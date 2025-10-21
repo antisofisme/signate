@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart TV Monitor Viewer</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            overflow: hidden;
+            background: #000;
+        }
+
+        /* Activation Screen */
+        #activation-screen {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        #activation-screen h1 {
+            font-size: 3rem;
+            margin-bottom: 2rem;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        #activation-code {
+            font-size: 6rem;
+            font-weight: bold;
+            letter-spacing: 1rem;
+            margin-bottom: 2rem;
+            padding: 2rem 4rem;
+            background: rgba(255,255,255,0.2);
+            border-radius: 20px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+        }
+
+        #activation-screen p {
+            font-size: 1.5rem;
+            opacity: 0.9;
+        }
+
+        /* Content Player */
+        #content-player {
+            display: none;
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            background: #000;
+        }
+
+        #content-player.active {
+            display: block;
+        }
+
+        .content-item {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            opacity: 0;
+            transition: opacity 1s ease-in-out;
+        }
+
+        .content-item.active {
+            opacity: 1;
+            z-index: 1;
+        }
+
+        /* Debug Info */
+        #debug-info {
+            display: none;
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            background: rgba(0,0,0,0.8);
+            color: #0f0;
+            padding: 10px;
+            border-radius: 5px;
+            font-family: monospace;
+            font-size: 12px;
+            z-index: 9999;
+            max-width: 300px;
+        }
+
+        #debug-info.visible {
+            display: block;
+        }
+
+        #debug-info div {
+            margin: 3px 0;
+        }
+
+        /* Loading Spinner */
+        .spinner {
+            border: 4px solid rgba(255,255,255,0.3);
+            border-top: 4px solid white;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Error Message */
+        .error-message {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(255,0,0,0.9);
+            color: white;
+            padding: 20px 40px;
+            border-radius: 10px;
+            font-size: 1.2rem;
+            z-index: 10000;
+            display: none;
+        }
+
+        .error-message.visible {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <!-- Activation Screen -->
+    <div id="activation-screen">
+        <h1>Smart TV Monitor</h1>
+        <div id="activation-code">------</div>
+        <p>Enter this code in Web Admin to activate</p>
+        <div class="spinner"></div>
+        <p style="margin-top: 2rem; font-size: 0.9rem; opacity: 0.7;">Press 'x' to reset and get a new code</p>
+    </div>
+
+    <!-- Content Player -->
+    <div id="content-player"></div>
+
+    <!-- Debug Info -->
+    <div id="debug-info">
+        <div><strong>Debug Info</strong></div>
+        <div id="debug-device-id">Device ID: -</div>
+        <div id="debug-status">Status: Initializing</div>
+        <div id="debug-playlist-count">Playlist: 0 items</div>
+        <div id="debug-current-index">Current: -</div>
+        <div id="debug-next-change">Next change: -</div>
+        <div><small>Keys: d=toggle, f=fullscreen, n=next, r=reload, x=reset</small></div>
+    </div>
+
+    <!-- Error Message -->
+    <div id="error-message" class="error-message"></div>
+
+    <script>
+        // Configuration
+        const API_BASE_URL = 'http://192.168.5.12:8001';
+        const POLL_INTERVAL = 5000; // 5 seconds
+        const PRELOAD_TIME = 3000; // 3 seconds before end
+        
+        // State
+        let deviceId = null;
+        let activationCode = null;
+        let isActivated = false;
+        let playlist = [];
+        let currentIndex = 0;
+        let currentContentElement = null;
+        let nextContentElement = null;
+        let contentTimer = null;
+        let pollTimer = null;
+
+        // Debug mode
+        let debugMode = false;
+
+        // Initialize
+        async function init() {
+            updateDebug('status', 'Initializing...');
+
+            // Check if already registered (from localStorage)
+            const savedDeviceId = localStorage.getItem('monitor_device_id');
+            const savedActivationCode = localStorage.getItem('monitor_activation_code');
+            const savedStatus = localStorage.getItem('monitor_status');
+
+            if (savedDeviceId && savedActivationCode) {
+                // Use saved device
+                deviceId = savedDeviceId;
+                activationCode = savedActivationCode;
+                document.getElementById('activation-code').textContent = activationCode;
+
+                updateDebug('device-id', `Device ID: ${deviceId}`);
+                updateDebug('status', 'Using saved monitor...');
+
+                console.log('Using saved monitor:', { deviceId, activationCode });
+
+                // Check if already activated
+                if (savedStatus === 'active') {
+                    isActivated = true;
+                    await onActivated();
+                } else {
+                    startPolling();
+                }
+            } else {
+                // Register new monitor
+                await registerMonitor();
+                startPolling();
+            }
+
+            setupKeyboardShortcuts();
+        }
+
+        // Generate 6-digit activation code
+        function generateActivationCode() {
+            return Math.floor(100000 + Math.random() * 900000).toString();
+        }
+
+        // Register monitor with backend
+        async function registerMonitor() {
+            try {
+                activationCode = generateActivationCode();
+                document.getElementById('activation-code').textContent = activationCode;
+
+                const response = await fetch(`${API_BASE_URL}/api/devices/monitor/register`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        activation_code: activationCode,
+                        device_name: `Monitor-${activationCode}`
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Registration failed: ${response.status}`);
+                }
+
+                const data = await response.json();
+                deviceId = data.id;
+
+                // Save to localStorage
+                localStorage.setItem('monitor_device_id', deviceId);
+                localStorage.setItem('monitor_activation_code', activationCode);
+                localStorage.setItem('monitor_status', 'pending');
+
+                updateDebug('device-id', `Device ID: ${deviceId}`);
+                updateDebug('status', 'Waiting for activation...');
+
+                console.log('Monitor registered:', data);
+            } catch (error) {
+                console.error('Registration error:', error);
+                showError('Failed to register monitor. Retrying in 10 seconds...');
+                setTimeout(registerMonitor, 10000);
+            }
+        }
+
+        // Poll activation status
+        async function checkActivationStatus() {
+            if (!deviceId || isActivated) return;
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/devices/${deviceId}`);
+                
+                if (!response.ok) {
+                    throw new Error(`Status check failed: ${response.status}`);
+                }
+
+                const data = await response.json();
+                
+                if (data.status === 'active') {
+                    isActivated = true;
+                    onActivated();
+                }
+            } catch (error) {
+                console.error('Status check error:', error);
+            }
+        }
+
+        // Start polling
+        function startPolling() {
+            pollTimer = setInterval(checkActivationStatus, POLL_INTERVAL);
+        }
+
+        // Stop polling
+        function stopPolling() {
+            if (pollTimer) {
+                clearInterval(pollTimer);
+                pollTimer = null;
+            }
+        }
+
+        // Monitor activated
+        async function onActivated() {
+            console.log('Monitor activated!');
+            updateDebug('status', 'Activated! Loading playlist...');
+
+            // Save activated status to localStorage
+            localStorage.setItem('monitor_status', 'active');
+
+            stopPolling();
+
+            // Hide activation screen
+            document.getElementById('activation-screen').style.display = 'none';
+
+            // Show content player
+            document.getElementById('content-player').classList.add('active');
+
+            // Enter fullscreen
+            enterFullscreen();
+
+            // Load and start playlist
+            await loadPlaylist();
+            startPlaylist();
+        }
+
+        // Load playlist from backend
+        async function loadPlaylist() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/client/playlist?device_id=${deviceId}`);
+                
+                if (!response.ok) {
+                    throw new Error(`Playlist load failed: ${response.status}`);
+                }
+
+                playlist = await response.json();
+                
+                updateDebug('playlist-count', `Playlist: ${playlist.length} items`);
+                updateDebug('status', 'Playing content');
+                
+                console.log('Playlist loaded:', playlist);
+            } catch (error) {
+                console.error('Playlist load error:', error);
+                showError('Failed to load playlist. Retrying in 10 seconds...');
+                setTimeout(loadPlaylist, 10000);
+            }
+        }
+
+        // Start playing playlist
+        function startPlaylist() {
+            if (playlist.length === 0) {
+                showError('Playlist is empty');
+                return;
+            }
+
+            currentIndex = 0;
+            playContent(currentIndex);
+        }
+
+        // Play specific content
+        function playContent(index) {
+            if (index >= playlist.length) {
+                index = 0; // Loop to start
+            }
+
+            const content = playlist[index];
+            currentIndex = index;
+            
+            updateDebug('current-index', `Current: ${index + 1}/${playlist.length}`);
+            
+            console.log('Playing content:', content);
+
+            // Create content element
+            const contentUrl = `${API_BASE_URL}/api/content/${content.id}/image`;
+            const isVideo = content.content_type === 'video';
+            
+            const element = isVideo 
+                ? createVideoElement(contentUrl) 
+                : createImageElement(contentUrl);
+            
+            // Add to player
+            const player = document.getElementById('content-player');
+            player.appendChild(element);
+            
+            // Fade in
+            setTimeout(() => {
+                element.classList.add('active');
+            }, 50);
+            
+            // Remove previous content after fade
+            if (currentContentElement) {
+                currentContentElement.classList.remove('active');
+                setTimeout(() => {
+                    currentContentElement.remove();
+                }, 1000); // After transition
+            }
+            
+            currentContentElement = element;
+            
+            // Schedule next content
+            const duration = content.duration * 1000; // Convert to milliseconds
+            const nextChangeTime = new Date(Date.now() + duration);
+            updateDebug('next-change', `Next: ${nextChangeTime.toLocaleTimeString()}`);
+            
+            // Preload next content
+            const preloadTime = Math.max(duration - PRELOAD_TIME, 0);
+            setTimeout(() => preloadNextContent(index + 1), preloadTime);
+            
+            // Schedule content change
+            contentTimer = setTimeout(() => playContent(index + 1), duration);
+        }
+
+        // Create image element
+        function createImageElement(url) {
+            const img = document.createElement('img');
+            img.src = url;
+            img.className = 'content-item';
+            return img;
+        }
+
+        // Create video element
+        function createVideoElement(url) {
+            const video = document.createElement('video');
+            video.src = url;
+            video.className = 'content-item';
+            video.autoplay = true;
+            video.muted = true; // Muted autoplay for browser compatibility
+            return video;
+        }
+
+        // Preload next content
+        function preloadNextContent(index) {
+            if (index >= playlist.length) {
+                index = 0;
+            }
+
+            const content = playlist[index];
+            const contentUrl = `${API_BASE_URL}/api/content/${content.id}/image`;
+            const isVideo = content.content_type === 'video';
+            
+            // Preload in background
+            if (isVideo) {
+                const video = document.createElement('video');
+                video.src = contentUrl;
+                video.preload = 'auto';
+                nextContentElement = video;
+            } else {
+                const img = new Image();
+                img.src = contentUrl;
+                nextContentElement = img;
+            }
+            
+            console.log('Preloaded next content:', content);
+        }
+
+        // Enter fullscreen
+        function enterFullscreen() {
+            const elem = document.documentElement;
+            
+            if (elem.requestFullscreen) {
+                elem.requestFullscreen();
+            } else if (elem.webkitRequestFullscreen) {
+                elem.webkitRequestFullscreen();
+            } else if (elem.msRequestFullscreen) {
+                elem.msRequestFullscreen();
+            }
+        }
+
+        // Toggle fullscreen
+        function toggleFullscreen() {
+            if (!document.fullscreenElement) {
+                enterFullscreen();
+            } else {
+                if (document.exitFullscreen) {
+                    document.exitFullscreen();
+                }
+            }
+        }
+
+        // Show error message
+        function showError(message) {
+            const errorDiv = document.getElementById('error-message');
+            errorDiv.textContent = message;
+            errorDiv.classList.add('visible');
+            
+            setTimeout(() => {
+                errorDiv.classList.remove('visible');
+            }, 5000);
+        }
+
+        // Update debug info
+        function updateDebug(field, value) {
+            const element = document.getElementById(`debug-${field}`);
+            if (element) {
+                element.textContent = value;
+            }
+        }
+
+        // Toggle debug mode
+        function toggleDebug() {
+            debugMode = !debugMode;
+            const debugInfo = document.getElementById('debug-info');
+            
+            if (debugMode) {
+                debugInfo.classList.add('visible');
+            } else {
+                debugInfo.classList.remove('visible');
+            }
+        }
+
+        // Reset monitor (clear localStorage and reload)
+        function resetMonitor() {
+            if (confirm('Reset monitor? This will clear saved data and generate a new activation code.')) {
+                localStorage.removeItem('monitor_device_id');
+                localStorage.removeItem('monitor_activation_code');
+                localStorage.removeItem('monitor_status');
+                location.reload();
+            }
+        }
+
+        // Setup keyboard shortcuts
+        function setupKeyboardShortcuts() {
+            document.addEventListener('keydown', (e) => {
+                switch(e.key.toLowerCase()) {
+                    case 'd':
+                        toggleDebug();
+                        break;
+                    case 'f':
+                        toggleFullscreen();
+                        break;
+                    case 'n':
+                        if (isActivated && playlist.length > 0) {
+                            clearTimeout(contentTimer);
+                            playContent(currentIndex + 1);
+                        }
+                        break;
+                    case 'r':
+                        if (isActivated) {
+                            loadPlaylist().then(() => {
+                                clearTimeout(contentTimer);
+                                startPlaylist();
+                            });
+                        }
+                        break;
+                    case 'x':
+                        // Reset monitor (only if NOT activated yet)
+                        if (!isActivated) {
+                            resetMonitor();
+                        }
+                        break;
+                }
+            });
+        }
+
+        // Start application
+        init();
+    </script>
+</body>
+</html>

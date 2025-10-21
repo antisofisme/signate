@@ -14,6 +14,7 @@ from app.models.device import Device
 from app.schemas.device import (
     TVRegisterRequest,
     MonitorGenerateRequest,
+    MonitorSelfRegisterRequest,
     MonitorActivateRequest,
     DeviceUpdateRequest,
     HeartbeatRequest,
@@ -201,6 +202,61 @@ def generate_monitor_code(
         code_expires_at=device.code_expires_at,
         status=device.status
     )
+
+
+@router.post("/monitor/register", response_model=DeviceResponse, status_code=status.HTTP_201_CREATED)
+def register_monitor_self(
+    device_data: MonitorSelfRegisterRequest,
+    db: Session = Depends(get_db)
+):
+    """
+    Self-registration endpoint for monitor devices (NO AUTH REQUIRED)
+
+    This allows monitor clients to register themselves with a self-generated
+    activation code. The monitor generates a 6-digit code, displays it to the user,
+    and the admin activates it via Web Admin.
+
+    Args:
+        device_data: Monitor registration data (activation_code, device_name)
+        db: Database session
+
+    Returns:
+        DeviceResponse: Created device with pending status
+
+    Raises:
+        HTTPException: If activation code already exists
+
+    Notes:
+        - This endpoint does NOT require authentication (for monitor clients)
+        - Monitor generates its own 6-digit activation code
+        - Device starts with status "pending"
+        - Admin activates via Web Admin PUT /devices/{id} endpoint
+    """
+    # Check if activation code already exists
+    existing_device = db.query(Device).filter(
+        Device.unique_code == device_data.activation_code
+    ).first()
+
+    if existing_device:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"Activation code {device_data.activation_code} already exists"
+        )
+
+    # Create monitor device with self-generated code
+    device = Device(
+        device_type="monitor",
+        device_name=device_data.device_name,
+        unique_code=device_data.activation_code,
+        code_expires_at=get_code_expiry(),  # 10 minutes expiry
+        status="pending"
+    )
+
+    db.add(device)
+    db.commit()
+    db.refresh(device)
+
+    return device
 
 
 @router.post("/monitor/activate", response_model=DeviceResponse)

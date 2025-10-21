@@ -41,6 +41,20 @@ class MonitorGenerateRequest(BaseModel):
         }
 
 
+class MonitorSelfRegisterRequest(BaseModel):
+    """Request schema for monitor self-registration (no auth required)"""
+    activation_code: str = Field(..., min_length=6, max_length=6, pattern="^[0-9]{6}$")
+    device_name: str = Field(..., min_length=1, max_length=100)
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "activation_code": "123456",
+                "device_name": "Monitor-123456"
+            }
+        }
+
+
 class MonitorActivateRequest(BaseModel):
     """Request schema for activating a monitor"""
     unique_code: str = Field(..., min_length=6, max_length=20)
