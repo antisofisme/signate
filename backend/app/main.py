@@ -46,15 +46,12 @@ if settings.ENABLE_CORS:
 # =============================================================================
 # API ROUTERS
 # =============================================================================
-from app.api import auth
+from app.api import auth, devices, content, client
 
 app.include_router(auth.router, prefix="/api/auth", tags=["Authentication"])
-
-# Will be added in Phase 2+ (devices, content, etc.)
-# from app.api import devices, content, client
-# app.include_router(devices.router, prefix="/api/devices", tags=["Devices"])
-# app.include_router(content.router, prefix="/api/content", tags=["Content"])
-# app.include_router(client.router, prefix="/api/client", tags=["Client"])
+app.include_router(devices.router, prefix="/api/devices", tags=["Devices"])
+app.include_router(content.router, prefix="/api/content", tags=["Content"])
+app.include_router(client.router, prefix="/api/client", tags=["Client"])
 
 # =============================================================================
 # ROOT ENDPOINTS

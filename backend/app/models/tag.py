@@ -35,7 +35,7 @@ class Tag(Base):
     color = Column(String(7), default="#3B82F6")  # Hex color code
 
     # Timestamps
-    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    created_at = Column(DateTime, server_default=func.now(), nullable=False)
 
     # Relationships
     device_tags = relationship("DeviceTag", back_populates="tag", cascade="all, delete-orphan")
@@ -59,23 +59,19 @@ class DeviceTag(Base):
     Many-to-many relationship between devices and tags
 
     Attributes:
-        id: Primary key
-        device_id: Foreign key to devices table
-        tag_id: Foreign key to tags table
+        device_id: Foreign key to devices table (composite primary key)
+        tag_id: Foreign key to tags table (composite primary key)
         assigned_at: Timestamp when tag was assigned to device
     """
 
     __tablename__ = "device_tags"
 
-    # Primary Key
-    id = Column(Integer, primary_key=True, index=True)
-
-    # Foreign Keys
-    device_id = Column(Integer, ForeignKey("devices.id", ondelete="CASCADE"), nullable=False, index=True)
-    tag_id = Column(Integer, ForeignKey("tags.id", ondelete="CASCADE"), nullable=False, index=True)
+    # Composite Primary Key (device_id, tag_id)
+    device_id = Column(Integer, ForeignKey("devices.id", ondelete="CASCADE"), primary_key=True, nullable=False)
+    tag_id = Column(Integer, ForeignKey("tags.id", ondelete="CASCADE"), primary_key=True, nullable=False)
 
     # Timestamps
-    assigned_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    assigned_at = Column(DateTime, server_default=func.now())
 
     # Relationships
     device = relationship("Device", back_populates="tags")
@@ -87,7 +83,6 @@ class DeviceTag(Base):
     def to_dict(self):
         """Convert model to dictionary"""
         return {
-            "id": self.id,
             "device_id": self.device_id,
             "tag_id": self.tag_id,
             "assigned_at": self.assigned_at.isoformat() if self.assigned_at else None,
