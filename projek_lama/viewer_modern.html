@@ -1,0 +1,848 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Digital Signage Manager</title>
+    <style>
+        :root {
+            --primary-500: #3b82f6;
+            --primary-600: #2563eb;
+            --primary-700: #1d4ed8;
+            --gray-50: #f9fafb;
+            --gray-100: #f3f4f6;
+            --gray-200: #e5e7eb;
+            --gray-300: #d1d5db;
+            --gray-400: #9ca3af;
+            --gray-500: #6b7280;
+            --gray-600: #4b5563;
+            --gray-700: #374151;
+            --gray-800: #1f2937;
+            --gray-900: #111827;
+            --gray-950: #030712;
+            --success-500: #10b981;
+            --warning-500: #f59e0b;
+            --error-500: #ef4444;
+            --border-radius: 12px;
+            --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+            --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+            --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1);
+            --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+            background: linear-gradient(135deg, var(--gray-950) 0%, var(--gray-900) 100%);
+            color: var(--gray-100);
+            min-height: 100vh;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0 1rem;
+        }
+
+        /* Header */
+        .header {
+            background: rgba(31, 41, 55, 0.8);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid var(--gray-800);
+            sticky: top 0;
+            z-index: 50;
+            padding: 1.5rem 0;
+        }
+
+        .header-content {
+            display: flex;
+            align-items: center;
+            justify-content: between;
+        }
+
+        .logo {
+            font-size: 1.75rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, var(--primary-500), var(--primary-700));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        /* Main Content */
+        .main {
+            padding: 2rem 0;
+        }
+
+        /* Control Panel */
+        .control-panel {
+            background: rgba(31, 41, 55, 0.6);
+            border: 1px solid var(--gray-800);
+            border-radius: var(--border-radius);
+            padding: 2rem;
+            margin-bottom: 2rem;
+            box-shadow: var(--shadow-lg);
+        }
+
+        .control-panel h2 {
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-bottom: 1.5rem;
+            color: var(--gray-100);
+        }
+
+        .controls-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .form-group label {
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: var(--gray-300);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .form-control {
+            padding: 0.75rem 1rem;
+            background: var(--gray-800);
+            border: 1px solid var(--gray-700);
+            border-radius: 8px;
+            color: var(--gray-100);
+            font-size: 0.875rem;
+            transition: all 0.2s ease;
+        }
+
+        .form-control:focus {
+            outline: none;
+            border-color: var(--primary-500);
+            box-shadow: 0 0 0 3px rgb(59 130 246 / 0.1);
+        }
+
+        /* Buttons */
+        .btn-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            justify-content: center;
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 8px;
+            font-size: 0.875rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.025em;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-decoration: none;
+        }
+
+        .btn-primary {
+            background: var(--primary-600);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: var(--primary-700);
+            transform: translateY(-1px);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .btn-secondary {
+            background: var(--gray-700);
+            color: var(--gray-200);
+        }
+
+        .btn-secondary:hover {
+            background: var(--gray-600);
+            transform: translateY(-1px);
+        }
+
+        /* Status Bar */
+        .status-bar {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .status-card {
+            background: rgba(31, 41, 55, 0.6);
+            border: 1px solid var(--gray-800);
+            border-radius: var(--border-radius);
+            padding: 1.5rem;
+            text-align: center;
+            box-shadow: var(--shadow-md);
+        }
+
+        .status-label {
+            font-size: 0.75rem;
+            color: var(--gray-400);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 0.5rem;
+        }
+
+        .status-value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--success-500);
+        }
+
+        /* Assets Section */
+        .assets-section {
+            background: rgba(31, 41, 55, 0.6);
+            border: 1px solid var(--gray-800);
+            border-radius: var(--border-radius);
+            overflow: hidden;
+            box-shadow: var(--shadow-lg);
+        }
+
+        .assets-header {
+            padding: 1.5rem 2rem;
+            border-bottom: 1px solid var(--gray-800);
+            background: rgba(17, 24, 39, 0.6);
+        }
+
+        .assets-header h2 {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: var(--gray-100);
+        }
+
+        .assets-grid {
+            padding: 2rem;
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .asset-card {
+            background: var(--gray-800);
+            border: 1px solid var(--gray-700);
+            border-radius: var(--border-radius);
+            overflow: hidden;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            position: relative;
+        }
+
+        .asset-card:hover {
+            transform: translateY(-4px);
+            box-shadow: var(--shadow-xl);
+            border-color: var(--primary-500);
+        }
+
+        .asset-media {
+            position: relative;
+            width: 100%;
+            height: 200px;
+            overflow: hidden;
+        }
+
+        .asset-media img,
+        .asset-media video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: transform 0.3s ease;
+        }
+
+        .asset-card:hover .asset-media img,
+        .asset-card:hover .asset-media video {
+            transform: scale(1.05);
+        }
+
+        .asset-overlay {
+            position: absolute;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.7);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .asset-card:hover .asset-overlay {
+            opacity: 1;
+        }
+
+        .play-btn {
+            width: 60px;
+            height: 60px;
+            background: var(--primary-600);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 24px;
+            box-shadow: var(--shadow-lg);
+        }
+
+        .asset-info {
+            padding: 1.5rem;
+        }
+
+        .asset-title {
+            font-weight: 600;
+            font-size: 1rem;
+            color: var(--gray-100);
+            margin-bottom: 0.75rem;
+            line-height: 1.4;
+        }
+
+        .asset-tags {
+            background: var(--gray-900);
+            color: var(--gray-300);
+            padding: 0.5rem 0.75rem;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            margin-bottom: 1rem;
+            word-break: break-word;
+        }
+
+        .asset-meta {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.75rem;
+            color: var(--gray-400);
+        }
+
+        .asset-duration {
+            background: var(--primary-600);
+            color: white;
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-weight: 600;
+        }
+
+        /* Fullscreen */
+        .fullscreen {
+            position: fixed;
+            inset: 0;
+            background: #000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+        }
+
+        .fullscreen img,
+        .fullscreen video {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+        }
+
+        /* Loading State */
+        .loading {
+            text-align: center;
+            padding: 3rem;
+            color: var(--gray-400);
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid var(--gray-800);
+            border-top: 3px solid var(--primary-600);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 1rem;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .container {
+                padding: 0 0.75rem;
+            }
+            
+            .control-panel,
+            .main {
+                padding: 1rem;
+            }
+            
+            .controls-grid {
+                grid-template-columns: 1fr;
+                gap: 1rem;
+            }
+            
+            .btn-group {
+                flex-direction: column;
+            }
+            
+            .assets-grid {
+                grid-template-columns: 1fr;
+                padding: 1rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <div class="container">
+            <div class="header-content">
+                <div class="logo">Digital Signage Manager</div>
+            </div>
+        </div>
+    </header>
+
+    <main class="main">
+        <div class="container">
+            <!-- Control Panel -->
+            <section class="control-panel">
+                <h2>📋 Control Panel</h2>
+                
+                <div class="controls-grid">
+                    <div class="form-group">
+                        <label for="screen-rotation">🔄 Screen Rotation</label>
+                        <select id="screen-rotation" class="form-control">
+                            <option value="0">No Rotation</option>
+                            <option value="90" selected>Rotate Right (90°)</option>
+                            <option value="180">Rotate 180°</option>
+                            <option value="270">Rotate Left (270°)</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="server-url">🌐 Server URL</label>
+                        <input type="url" id="server-url" class="form-control" placeholder="http://localhost:8080">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="refresh-interval">⏱️ Refresh Interval (seconds)</label>
+                        <input type="number" id="refresh-interval" class="form-control" min="5" max="300" value="30">
+                    </div>
+                </div>
+
+                <div class="btn-group">
+                    <button class="btn btn-primary" onclick="startSlideshow()">
+                        ▶️ Start Slideshow
+                    </button>
+                    <button class="btn btn-secondary" onclick="manualRefresh()">
+                        🔄 Refresh Assets
+                    </button>
+                    <button class="btn btn-secondary" onclick="testAPI()">
+                        🔧 Test API
+                    </button>
+                    <button class="btn btn-secondary" onclick="toggleConfig()" id="show-config-btn" style="display:none;">
+                        ⚙️ Config
+                    </button>
+                </div>
+            </section>
+
+            <!-- Status Bar -->
+            <div class="status-bar">
+                <div class="status-card">
+                    <div class="status-label">📊 Total Assets</div>
+                    <div class="status-value" id="total-count">0</div>
+                </div>
+                <div class="status-card">
+                    <div class="status-label">🎯 Filtered Assets</div>
+                    <div class="status-value" id="filtered-count">0</div>
+                </div>
+                <div class="status-card">
+                    <div class="status-label">🔌 Server Status</div>
+                    <div class="status-value" id="server-status">⚪ Loading</div>
+                </div>
+            </div>
+
+            <!-- Assets Section -->
+            <section class="assets-section">
+                <div class="assets-header">
+                    <h2>🎬 Media Assets Library</h2>
+                </div>
+                <div class="assets-grid" id="assets">
+                    <div class="loading">
+                        <div class="spinner"></div>
+                        <p>Loading media assets...</p>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <script>
+        // Configuration
+        let assets = [];
+        let slideshowIndex = 0;
+        let slideshowInterval;
+        let currentSlideshow = null;
+        let isSlideShowRunning = false;
+
+        const config = {
+            serverUrl: window.location.origin,
+            apiPath: '/api/v1.2/assets/',
+            refreshInterval: 30000,
+            objectFitMode: 'contain',
+            enableAudio: false,
+            selectedTags: [],
+            screenRotation: 90
+        };
+
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            loadConfig();
+            loadAssets();
+            setInterval(loadAssets, config.refreshInterval);
+        });
+
+        // Load configuration from form
+        function loadConfig() {
+            const serverUrl = document.getElementById('server-url');
+            const refreshInterval = document.getElementById('refresh-interval');
+            const screenRotation = document.getElementById('screen-rotation');
+            
+            if (serverUrl.value) config.serverUrl = serverUrl.value;
+            if (refreshInterval.value) config.refreshInterval = parseInt(refreshInterval.value) * 1000;
+            if (screenRotation.value) config.screenRotation = parseInt(screenRotation.value);
+        }
+
+        // Load assets from API
+        async function loadAssets() {
+            try {
+                console.log('🔄 Loading assets from API...');
+                updateServerStatus('⚡ Loading', 'var(--warning-500)');
+                
+                const apiUrl = config.serverUrl === window.location.origin ? 
+                    config.apiPath : 
+                    config.serverUrl + config.apiPath;
+                    
+                const response = await fetch(apiUrl);
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    console.log(`📦 Received ${data.length} total assets`);
+                    
+                    // Filter only active assets
+                    assets = data.filter(asset => asset.is_active === true);
+                    console.log(`✅ ${assets.length} active assets loaded`);
+                    
+                    displayAssets();
+                    updateStatusBar();
+                    updateServerStatus('🟢 Connected', 'var(--success-500)');
+                } else {
+                    throw new Error(`API failed with status: ${response.status}`);
+                }
+            } catch (error) {
+                console.error('❌ Error loading assets:', error);
+                updateServerStatus('🔴 Error', 'var(--error-500)');
+                
+                // Use demo assets as fallback
+                loadDemoAssets();
+            }
+        }
+
+        // Load demo assets for testing
+        function loadDemoAssets() {
+            console.log('🎭 Loading demo assets...');
+            assets = [
+                {
+                    "asset_id": "demo1",
+                    "name": "Sample Portrait Image #demo #test.jpg",
+                    "uri": "https://picsum.photos/1080/1920?random=1",
+                    "duration": 10,
+                    "mimetype": "image",
+                    "is_active": true
+                },
+                {
+                    "asset_id": "demo2", 
+                    "name": "Landscape Sample #demo #landscape.jpg",
+                    "uri": "https://picsum.photos/1920/1080?random=2",
+                    "duration": 8,
+                    "mimetype": "image",
+                    "is_active": true
+                },
+                {
+                    "asset_id": "demo3",
+                    "name": "Another Portrait #demo #portrait.jpg", 
+                    "uri": "https://picsum.photos/1080/1920?random=3",
+                    "duration": 12,
+                    "mimetype": "image",
+                    "is_active": true
+                }
+            ];
+            
+            displayAssets();
+            updateStatusBar();
+            updateServerStatus('🎭 Demo Mode', 'var(--warning-500)');
+        }
+
+        // Display assets in grid
+        function displayAssets() {
+            const container = document.getElementById('assets');
+            container.innerHTML = '';
+            
+            if (assets.length === 0) {
+                container.innerHTML = `
+                    <div class="loading">
+                        <p>📭 No assets found</p>
+                        <small>Check your server connection or API endpoint</small>
+                    </div>
+                `;
+                return;
+            }
+
+            assets.forEach(asset => {
+                const card = document.createElement('div');
+                card.className = 'asset-card';
+                card.onclick = () => showFullscreen(asset);
+
+                const tags = extractTags(asset.name);
+                const isPortrait = asset.name.toLowerCase().includes('portrait') || 
+                                 asset.uri.includes('1080/1920');
+                
+                card.innerHTML = `
+                    <div class="asset-media">
+                        ${asset.mimetype === 'image' 
+                            ? `<img src="${getImageUrl(asset.uri)}" alt="${asset.name}" loading="lazy">`
+                            : `<video src="${getImageUrl(asset.uri)}" muted preload="metadata">`
+                        }
+                        <div class="asset-overlay">
+                            <div class="play-btn">
+                                ${asset.mimetype === 'image' ? '🖼️' : '▶️'}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="asset-info">
+                        <div class="asset-title">${asset.name}</div>
+                        <div class="asset-tags">
+                            ${tags.length > 0 ? tags.map(tag => `#${tag}`).join(' ') : '🏷️ No tags'}
+                        </div>
+                        <div class="asset-meta">
+                            <span>${asset.mimetype} ${isPortrait ? '📱 Portrait' : '🖥️ Landscape'}</span>
+                            <span class="asset-duration">${asset.duration}s</span>
+                        </div>
+                    </div>
+                `;
+                
+                container.appendChild(card);
+            });
+        }
+
+        // Update status bar
+        function updateStatusBar() {
+            document.getElementById('total-count').textContent = assets.length;
+            document.getElementById('filtered-count').textContent = assets.length;
+        }
+
+        // Update server status
+        function updateServerStatus(text, color) {
+            const statusElement = document.getElementById('server-status');
+            statusElement.innerHTML = text;
+            statusElement.style.color = color;
+        }
+
+        // Extract hashtags from asset name
+        function extractTags(name) {
+            const tags = name.match(/#\w+/g);
+            return tags ? tags.map(tag => tag.substring(1)) : [];
+        }
+
+        // Get proper image URL
+        function getImageUrl(uri) {
+            if (uri.startsWith('http')) {
+                return uri;
+            }
+            return config.serverUrl + uri;
+        }
+
+        // Show single asset in fullscreen
+        function showFullscreen(asset) {
+            console.log('🎬 Opening fullscreen for:', asset.name);
+            
+            const fullscreen = document.createElement('div');
+            fullscreen.className = 'fullscreen';
+            fullscreen.onclick = () => {
+                document.body.removeChild(fullscreen);
+                console.log('❌ Fullscreen closed');
+            };
+
+            // Get rotation setting
+            loadConfig();
+            const currentRotation = config.screenRotation;
+
+            if (asset.mimetype === 'image') {
+                const img = document.createElement('img');
+                img.src = getImageUrl(asset.uri);
+                
+                // Apply the working CSS combination for rotation
+                img.style.objectFit = 'contain';
+                img.style.maxWidth = 'none';
+                img.style.maxHeight = 'none';
+                img.style.position = 'fixed';
+                
+                if (currentRotation !== 0) {
+                    img.style.transform = `rotate(${currentRotation}deg)`;
+                    console.log(`🔄 Applied ${currentRotation}° rotation`);
+                }
+                
+                fullscreen.appendChild(img);
+            } else if (asset.mimetype === 'video') {
+                const video = document.createElement('video');
+                video.src = getImageUrl(asset.uri);
+                video.controls = true;
+                video.autoplay = true;
+                video.muted = !config.enableAudio;
+                fullscreen.appendChild(video);
+            }
+
+            document.body.appendChild(fullscreen);
+        }
+
+        // Start slideshow
+        function startSlideshow() {
+            if (assets.length === 0) {
+                alert('📭 No assets available for slideshow');
+                return;
+            }
+            
+            console.log('🎬 Starting slideshow with', assets.length, 'assets');
+            slideshowIndex = 0;
+            isSlideShowRunning = true;
+            showSlideshow();
+        }
+
+        // Show slideshow
+        function showSlideshow() {
+            const fullscreen = document.createElement('div');
+            fullscreen.className = 'fullscreen';
+            fullscreen.id = 'slideshow';
+            
+            let isRunning = true;
+            
+            const exitSlideshow = () => {
+                isRunning = false;
+                isSlideShowRunning = false;
+                if (slideshowInterval) clearTimeout(slideshowInterval);
+                document.body.removeChild(fullscreen);
+                currentSlideshow = null;
+                console.log('⏹️ Slideshow stopped');
+            };
+            
+            fullscreen.onclick = exitSlideshow;
+            currentSlideshow = fullscreen;
+            document.body.appendChild(fullscreen);
+            
+            showSlide();
+            
+            function showSlide() {
+                if (!isRunning) return;
+                
+                const asset = assets[slideshowIndex];
+                fullscreen.innerHTML = '';
+                
+                console.log(`🎞️ Showing slide ${slideshowIndex + 1}/${assets.length}:`, asset.name);
+                
+                // Get current rotation
+                loadConfig();
+                const currentRotation = config.screenRotation;
+                
+                if (asset.mimetype === 'image') {
+                    const img = document.createElement('img');
+                    img.src = getImageUrl(asset.uri);
+                    
+                    // Apply working CSS for fullscreen rotation
+                    img.style.objectFit = 'contain';
+                    img.style.maxWidth = 'none';
+                    img.style.maxHeight = 'none';
+                    img.style.position = 'fixed';
+                    
+                    if (currentRotation !== 0) {
+                        img.style.transform = `rotate(${currentRotation}deg)`;
+                    }
+                    
+                    fullscreen.appendChild(img);
+                } else if (asset.mimetype === 'video') {
+                    const video = document.createElement('video');
+                    video.src = getImageUrl(asset.uri);
+                    video.autoplay = true;
+                    video.muted = !config.enableAudio;
+                    video.loop = false;
+                    fullscreen.appendChild(video);
+                }
+                
+                // Schedule next slide
+                slideshowInterval = setTimeout(() => {
+                    if (!isRunning) return;
+                    slideshowIndex = (slideshowIndex + 1) % assets.length;
+                    showSlide();
+                }, asset.duration * 1000);
+            }
+        }
+
+        // Manual refresh
+        function manualRefresh() {
+            console.log('🔄 Manual refresh triggered');
+            loadConfig();
+            loadAssets();
+        }
+
+        // Test API connection
+        function testAPI() {
+            console.log('🔧 Testing API connection...');
+            loadConfig();
+            loadAssets();
+            
+            setTimeout(() => {
+                const status = document.getElementById('server-status').textContent;
+                alert(`🔧 API Test Results:\n\nStatus: ${status}\nAssets Found: ${assets.length}\n\nCheck browser console for detailed logs.`);
+            }, 2000);
+        }
+
+        // Toggle configuration panel
+        function toggleConfig() {
+            alert('⚙️ Advanced configuration panel coming soon!\n\nCurrent settings:\n• Server: ' + config.serverUrl + '\n• Rotation: ' + config.screenRotation + '°\n• Refresh: ' + (config.refreshInterval/1000) + 's');
+        }
+
+        // Keyboard shortcuts
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'F11' || (e.key === 'f' && e.ctrlKey)) {
+                e.preventDefault();
+                if (assets.length > 0) {
+                    startSlideshow();
+                }
+            } else if (e.key === 'Escape' && currentSlideshow) {
+                currentSlideshow.click(); // Trigger exit
+            } else if (e.key === 'r' && e.ctrlKey) {
+                e.preventDefault();
+                manualRefresh();
+            }
+        });
+
+        console.log('🚀 Digital Signage Manager loaded');
+        console.log('⌨️ Keyboard shortcuts:');
+        console.log('  • Ctrl+F or F11: Start slideshow');
+        console.log('  • Escape: Exit slideshow');
+        console.log('  • Ctrl+R: Refresh assets');
+    </script>
+</body>
+</html>

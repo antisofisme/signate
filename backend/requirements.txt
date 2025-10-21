@@ -1,0 +1,54 @@
+# =============================================================================
+# SMART TV DIGITAL SIGNAGE - BACKEND API DEPENDENCIES
+# =============================================================================
+# Python 3.11+
+# Install: pip install -r requirements.txt
+# =============================================================================
+
+# FastAPI Framework
+fastapi==0.109.0
+uvicorn[standard]==0.27.0  # ASGI server with auto-reload
+
+# Database
+sqlalchemy==2.0.25  # ORM
+psycopg2-binary==2.9.9  # PostgreSQL adapter
+alembic==1.13.1  # Database migrations (optional)
+
+# Authentication & Security
+python-jose[cryptography]==3.3.0  # JWT tokens
+passlib[bcrypt]==1.7.4  # Password hashing
+python-multipart==0.0.6  # Form data parsing (file upload)
+cryptography==42.0.0  # Encryption for sensitive data
+
+# HTTP Client (for Anthias & Firebird API)
+httpx==0.26.0  # Async HTTP client
+
+# Redis (Cache & Session)
+redis==5.0.1  # Redis client
+hiredis==2.3.2  # Redis performance boost
+
+# Environment & Config
+python-dotenv==1.0.0  # Load .env files
+pydantic==2.5.3  # Data validation
+pydantic-settings==2.1.0  # Settings management
+
+# Utilities
+python-dateutil==2.8.2  # Date/time utilities
+pytz==2023.3  # Timezone handling
+
+# File Handling
+python-magic==0.4.27  # File type detection (optional)
+pillow==10.2.0  # Image processing (optional)
+
+# Logging
+loguru==0.7.2  # Better logging (optional)
+
+# Testing (Development)
+pytest==7.4.4  # Testing framework
+pytest-asyncio==0.23.3  # Async test support
+faker==22.0.0  # Generate fake data for testing
+
+# Development Tools
+black==23.12.1  # Code formatter
+flake8==7.0.0  # Linter
+mypy==1.8.0  # Type checker

@@ -1,0 +1,18 @@
+# syntax=docker/dockerfile:1.4
+# vim: ft=dockerfile
+
+FROM debian:bookworm
+
+RUN --mount=type=cache,target=/var/cache/apt \
+    apt-get update && \
+    apt-get -y install --no-install-recommends \
+    nginx
+
+ENV GIT_HASH=prod-build-latest
+ENV GIT_SHORT_HASH=prod-bf
+ENV GIT_BRANCH=production
+
+COPY docker/nginx/nginx.production.conf /etc/nginx/sites-enabled/
+RUN rm -f /etc/nginx/sites-enabled/default
+
+CMD ["nginx", "-g", "daemon off;"]

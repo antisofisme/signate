@@ -1,0 +1,1641 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Testing Custom Viewer</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            background: #000;
+            color: #fff;
+            font-family: Arial, sans-serif;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        
+        .assets-container {
+            display: flex;
+            overflow-x: auto;
+            gap: 20px;
+            padding: 20px 0;
+            scroll-behavior: smooth;
+        }
+        
+        .assets-container::-webkit-scrollbar {
+            height: 8px;
+        }
+        
+        .assets-container::-webkit-scrollbar-track {
+            background: #333;
+            border-radius: 4px;
+        }
+        
+        .assets-container::-webkit-scrollbar-thumb {
+            background: #666;
+            border-radius: 4px;
+        }
+        
+        .assets-container::-webkit-scrollbar-thumb:hover {
+            background: #888;
+        }
+        
+        .asset {
+            width: 280px;
+            min-height: 320px;
+            padding: 15px;
+            border: 1px solid #333;
+            border-radius: 8px;
+            flex-shrink: 0;
+            background: #111;
+            transition: transform 0.2s, box-shadow 0.2s;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .asset:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 16px rgba(255,255,255,0.1);
+        }
+        
+        .asset img {
+            width: 100%;
+            height: 180px;
+            object-fit: cover;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(255,255,255,0.1);
+            margin-bottom: 10px;
+        }
+        
+        .asset video {
+            width: 100%;
+            height: 180px;
+            object-fit: cover;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(255,255,255,0.1);
+            margin-bottom: 10px;
+        }
+        
+        .asset-info {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .asset-title {
+            font-weight: bold;
+            color: #fff;
+            margin-bottom: 8px;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+            hyphens: auto;
+            line-height: 1.3;
+        }
+        
+        .asset-tags {
+            background: #222;
+            padding: 4px 8px;
+            border-radius: 4px;
+            margin-bottom: 8px;
+            font-size: 11px;
+            word-wrap: break-word;
+        }
+        
+        .asset-meta {
+            font-size: 12px;
+            color: #888;
+            margin-top: auto;
+        }
+        
+        .info {
+            margin: 10px 0;
+            font-size: 14px;
+            color: #ccc;
+        }
+        
+        .fullscreen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: #000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            overflow: hidden;
+        }
+        
+        .fullscreen img {
+            width: 100vw !important;
+            height: 100vh !important;
+            max-width: none !important;
+            max-height: none !important;
+            object-fit: contain;
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+        
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        
+        button:hover {
+            background: #0056b3;
+        }
+        
+        /* Screen rotation classes */
+        .rotate-0 {
+            transform: rotate(0deg);
+        }
+        
+        .rotate-90 {
+            transform: rotate(90deg);
+        }
+        
+        .rotate-180 {
+            transform: rotate(180deg);
+        }
+        
+        .rotate-270 {
+            transform: rotate(270deg);
+        }
+        
+        .rotation-container {
+            transition: transform 0.5s ease-in-out;
+            transform-origin: center center;
+        }
+        
+        /* Adjust fullscreen content for rotation */
+        .fullscreen.rotated {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transform-origin: center center !important;
+        }
+        
+        .fullscreen.rotation-container {
+            position: fixed !important;
+            top: 0 !important;
+            left: 0 !important;
+            width: 100vw !important;
+            height: 100vh !important;
+            transform-origin: center center !important;
+        }
+        
+        .fullscreen img, .fullscreen video {
+            width: 100% !important;
+            height: 100% !important;
+            object-fit: contain; /* Default, akan di-override oleh JavaScript */
+            transition: none !important;
+            max-width: none !important;
+            max-height: none !important;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Signate</h1>
+        
+        <!-- Configuration Panel -->
+        <div id="config-panel" style="background: #222; padding: 15px; border-radius: 8px; margin-bottom: 20px; border: 1px solid #444;">
+            <h3 style="color: #4CAF50; margin-bottom: 15px;">⚙️ Viewer Configuration</h3>
+            <p style="color: #ccc; margin-bottom: 15px; font-size: 12px;">Configure the viewer to connect to your Anthias server. Changes will be applied immediately.</p>
+            
+            <div style="margin: 10px 0;">
+                <label style="color: #fff; font-weight: bold;">Anthias Server URL:</label><br>
+                <input type="text" id="server-url" value="http://anthias.local:8000" style="width: 300px; padding: 8px; margin: 5px 0; border: 1px solid #555; background: #333; color: #fff; border-radius: 4px;" placeholder="http://anthias.local:8000">
+                <small style="color: #888; display: block; margin-top: 5px;">Example: http://192.168.1.100:8000 or http://anthias.local:8000</small>
+            </div>
+            
+            <div style="margin: 10px 0;">
+                <label style="color: #fff; font-weight: bold;">Auto-refresh interval (seconds):</label><br>
+                <input type="number" id="refresh-interval" value="30" style="width: 100px; padding: 8px; margin: 5px 0; border: 1px solid #555; background: #333; color: #fff; border-radius: 4px;" min="10" max="300">
+                <small style="color: #888; display: block; margin-top: 5px;">How often to check for new assets (10-300 seconds)</small>
+            </div>
+            
+            <div style="margin: 10px 0;">
+                <label style="color: #fff; font-weight: bold;">Filter by Tags:</label><br>
+                
+                <!-- Dual Box Filter System -->
+                <div style="display: flex; gap: 15px; align-items: flex-start; margin: 10px 0;">
+                    <!-- Available Tags Box -->
+                    <div style="flex: 1;">
+                        <label style="color: #ccc; font-size: 12px; display: block; margin-bottom: 5px;">Available Tags:</label>
+                        <div id="available-tags-box" style="
+                            min-height: 120px; 
+                            max-height: 120px; 
+                            overflow-y: auto; 
+                            border: 1px solid #555; 
+                            background: #333; 
+                            border-radius: 4px; 
+                            padding: 8px;
+                        ">
+                            <div class="tag-item" data-tag="all" style="
+                                display: inline-block; 
+                                margin: 2px; 
+                                padding: 4px 8px; 
+                                background: #4CAF50; 
+                                color: white; 
+                                border-radius: 12px; 
+                                font-size: 11px; 
+                                cursor: pointer;
+                                user-select: none;
+                            ">Show All</div>
+                        </div>
+                    </div>
+                    
+                    <!-- Move Buttons -->
+                    <div style="display: flex; flex-direction: column; gap: 5px; margin-top: 25px;">
+                        <button id="move-to-selected" style="
+                            width: 40px; 
+                            height: 30px; 
+                            background: #2196F3; 
+                            border: none; 
+                            border-radius: 4px; 
+                            color: white; 
+                            cursor: pointer; 
+                            font-size: 14px;
+                        " title="Move to selected">→</button>
+                        <button id="move-to-available" style="
+                            width: 40px; 
+                            height: 30px; 
+                            background: #FF9800; 
+                            border: none; 
+                            border-radius: 4px; 
+                            color: white; 
+                            cursor: pointer; 
+                            font-size: 14px;
+                        " title="Move to available">←</button>
+                        <button id="clear-all-selected" style="
+                            width: 40px; 
+                            height: 30px; 
+                            background: #f44336; 
+                            border: none; 
+                            border-radius: 4px; 
+                            color: white; 
+                            cursor: pointer; 
+                            font-size: 12px;
+                        " title="Clear all">×</button>
+                    </div>
+                    
+                    <!-- Selected Tags Box -->
+                    <div style="flex: 1;">
+                        <label style="color: #ccc; font-size: 12px; display: block; margin-bottom: 5px;">Selected Tags (Filter Active):</label>
+                        <div id="selected-tags-box" style="
+                            min-height: 120px; 
+                            max-height: 120px; 
+                            overflow-y: auto; 
+                            border: 1px solid #555; 
+                            background: #2a2a2a; 
+                            border-radius: 4px; 
+                            padding: 8px;
+                        ">
+                            <div class="tag-item selected" data-tag="all" style="
+                                display: inline-block; 
+                                margin: 2px; 
+                                padding: 4px 8px; 
+                                background: #4CAF50; 
+                                color: white; 
+                                border-radius: 12px; 
+                                font-size: 11px; 
+                                cursor: pointer;
+                                user-select: none;
+                            ">Show All</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div style="margin: 5px 0;">
+                    <label style="color: #fff; font-size: 12px;">Multi-tag logic:</label>
+                    <select id="tag-filter-mode" style="width: 120px; padding: 4px; margin-left: 10px; border: 1px solid #555; background: #333; color: #fff; border-radius: 4px; font-size: 12px;">
+                        <option value="any">Any (OR)</option>
+                        <option value="all">All (AND)</option>
+                    </select>
+                </div>
+                
+                <div style="margin: 10px 0;">
+                    <label style="color: #fff; font-weight: bold;">Video Audio Settings:</label><br>
+                    <div style="margin: 5px 0;">
+                        <label style="color: #ccc; font-size: 12px;">
+                            <input type="checkbox" id="enable-audio" checked style="margin-right: 5px;">
+                            Enable audio in slideshow & fullscreen
+                        </label>
+                    </div>
+                    <div style="margin: 5px 0;">
+                        <label style="color: #ccc; font-size: 12px;">Volume level:</label>
+                        <input type="range" id="video-volume" min="0" max="1" step="0.1" value="0.8" style="width: 100px; margin-left: 10px;">
+                        <span id="volume-display" style="color: #ccc; font-size: 11px; margin-left: 5px;">80%</span>
+                    </div>
+                </div>
+                
+                <div style="margin: 10px 0;">
+                    <label style="color: #fff; font-weight: bold;">Display Rotation Settings:</label><br>
+                    <div style="margin: 5px 0;">
+                        <label style="color: #ccc; font-size: 12px;">Fullscreen rotation:</label>
+                        <select id="screen-rotation" style="width: 150px; padding: 4px; margin-left: 10px; border: 1px solid #555; background: #333; color: #fff; border-radius: 4px; font-size: 12px;">
+                            <option value="0">Normal (0°)</option>
+                            <option value="90">Rotate Right (90°)</option>
+                            <option value="180">Upside Down (180°)</option>
+                            <option value="270">Rotate Left (270°)</option>
+                        </select>
+                    </div>
+                    <div style="margin: 5px 0;">
+                        <label style="color: #ccc; font-size: 12px;">
+                            <input type="checkbox" id="apply-rotation-preview" style="margin-right: 5px;">
+                            Apply rotation to preview (not just fullscreen)
+                        </label>
+                    </div>
+                    <div style="margin: 5px 0;">
+                        <label style="color: #ccc; font-size: 12px;">Object fit mode:</label>
+                        <select id="object-fit-mode" style="width: 150px; padding: 4px; margin-left: 10px; border: 1px solid #555; background: #333; color: #fff; border-radius: 4px; font-size: 12px;">
+                            <option value="contain">Contain (Fit All)</option>
+                            <option value="cover">Cover (Fill Screen)</option>
+                            <option value="fill">Fill (Stretch)</option>
+                        </select>
+                        <span style="color: #999; font-size: 10px; margin-left: 5px;">How content fits in fullscreen</span>
+                    </div>
+                    <div style="margin-top: 10px;">
+                        <button onclick="testRotationNow()" style="background: #9C27B0; font-size: 11px; padding: 6px 12px;">Test Rotation Now</button>
+                        <button onclick="resetRotationTest()" style="background: #607D8B; font-size: 11px; padding: 6px 12px;">Reset Test</button>
+                    </div>
+                    <small style="color: #888; display: block; margin-top: 5px;">
+                        Useful for portrait displays or mounted screens.<br>
+                        Current display: <span id="display-orientation">Landscape</span><br>
+                        Test buttons apply rotation immediately for testing.
+                    </small>
+                </div>
+                
+                <small style="color: #888; display: block; margin-top: 5px;">
+                    Click tags to select, use buttons to move between boxes.<br>
+                    Tags extracted from filenames with # (e.g., "menu #kamar #hotel.jpg")
+                </small>
+                
+                <div id="tag-info" style="margin-top: 5px; padding: 5px; background: #222; border-radius: 4px; font-size: 11px; color: #aaa;">
+                    Filter mode: <span id="filter-mode">Any (OR)</span> | 
+                    Filtered assets: <span id="filtered-count">0</span> / <span id="total-count">0</span>
+                </div>
+            </div>
+            
+            <div style="margin-top: 15px;">
+                <button onclick="updateConfig()" style="background: #4CAF50;">Apply Changes</button>
+                <button onclick="saveConfig()" style="background: #2196F3;">Save Config</button>
+                <button onclick="loadConfig()" style="background: #FF9800;">Load Saved</button>
+                <button onclick="toggleConfig()" style="background: #757575;">Hide Panel</button>
+            </div>
+            
+            <div style="margin-top: 15px; padding: 10px; background: #333; border-radius: 4px; font-size: 12px; color: #ccc;">
+                <strong>📺 Display Information:</strong><br>
+                • Screen Resolution: <span id="display-resolution">-</span><br>
+                • Viewport Size: <span id="viewport-size">-</span><br>
+                • Device Pixel Ratio: <span id="pixel-ratio">-</span><br>
+                • User Agent: <span id="user-agent">-</span><br>
+                • Connection: <span id="connection-info">-</span>
+            </div>
+            
+            <div style="margin-top: 10px; padding: 10px; background: #333; border-radius: 4px; font-size: 12px; color: #ccc;">
+                <strong>💡 Configuration Tips:</strong><br>
+                • Use URL parameters: <code style="color: #4CAF50;">?server=http://anthias.local:8000&interval=60</code><br>
+                • Settings are saved in browser localStorage<br>
+                • For remote servers, ensure CORS is properly configured
+            </div>
+        </div>
+        
+        <p id="status">Loading assets...</p>
+        <div id="assets" class="assets-container"></div>
+        <button onclick="startSlideshow()">Start Fullscreen Slideshow</button>
+        <button onclick="manualRefresh()">Refresh Assets</button>
+        <button onclick="testAPI()">Test API Direct</button>
+        <button onclick="toggleConfig()" id="show-config-btn" style="display:none;">Show Config</button>
+    </div>
+    
+    <script>
+        /*
+        TEST ROTATION - Copy paste di console browser:
+        
+        const testDiv = document.createElement('div');
+        testDiv.style.position = 'fixed';
+        testDiv.style.top = '0';
+        testDiv.style.left = '0';
+        testDiv.style.width = '100vw';
+        testDiv.style.height = '100vh';
+        testDiv.style.background = 'red';
+        testDiv.style.zIndex = '9999';
+        document.body.appendChild(testDiv);
+        
+        setTimeout(() => {
+            testDiv.style.transform = 'rotate(90deg)';
+            console.log('Rotated - apakah masih full screen?');
+        }, 2000);
+        
+        */
+        
+        let assets = [];
+        let slideshowIndex = 0;
+        let slideshowInterval;
+        let currentSlideshow = null;
+        let isSlideShowRunning = false;
+        
+        // Configuration variables
+        let config = {
+            serverUrl: 'http://anthias.local:8000', // Default to anthias server
+            refreshInterval: 30,
+            apiPath: '/api/v2/assets',
+            assetsPath: '/screenly_assets/',
+            selectedTags: ['all'], // Default to show all assets
+            tagFilterMode: 'any', // 'any' (OR) or 'all' (AND) for multiple tags
+            enableAudio: true, // Enable audio for videos
+            videoVolume: 0.8, // Default volume level (0.0 - 1.0)
+            screenRotation: 0, // Screen rotation in degrees (0, 90, 180, 270)
+            objectFitMode: 'contain', // Object fit mode: 'contain', 'cover', 'fill'
+            applyRotationPreview: false // Apply rotation to preview, not just fullscreen
+        };
+        
+        // Convert API URI to nginx URI
+        function getImageUrl(uri) {
+            // Convert /data/screenly_assets/ to /screenly_assets/
+            const correctedUri = uri.replace('/data/screenly_assets/', config.assetsPath);
+            return config.serverUrl + correctedUri;
+        }
+        
+        // Extract tags from asset filename
+        function extractTags(filename) {
+            const tagPattern = /#(\w+)/g;
+            const tags = [];
+            let match;
+            
+            while ((match = tagPattern.exec(filename)) !== null) {
+                tags.push(match[1].toLowerCase());
+            }
+            
+            return tags;
+        }
+        
+        // Check if asset matches selected tags
+        function assetMatchesTags(asset, selectedTags) {
+            // If 'all' is selected, show all assets
+            if (selectedTags.includes('all')) {
+                return true;
+            }
+            
+            const assetTags = extractTags(asset.name);
+            
+            // If no tags in filename and not showing 'all', don't show
+            if (assetTags.length === 0) {
+                return selectedTags.includes('no-tags');
+            }
+            
+            // Filter based on tag filter mode
+            if (config.tagFilterMode === 'all') {
+                // AND logic: asset must have ALL selected tags
+                return selectedTags.every(tag => assetTags.includes(tag));
+            } else {
+                // OR logic: asset must have ANY of the selected tags
+                return selectedTags.some(tag => assetTags.includes(tag));
+            }
+        }
+        
+        // Get all unique tags from assets
+        function getAllTagsFromAssets(assets) {
+            const allTags = new Set();
+            
+            assets.forEach(asset => {
+                const tags = extractTags(asset.name);
+                tags.forEach(tag => allTags.add(tag));
+            });
+            
+            return Array.from(allTags).sort();
+        }
+        
+        // Update dual-box tag system
+        function updateTagOptions(assets) {
+            const availableTags = getAllTagsFromAssets(assets);
+            const availableBox = document.getElementById('available-tags-box');
+            const selectedBox = document.getElementById('selected-tags-box');
+            
+            // Clear available box except 'all' tag
+            availableBox.innerHTML = '';
+            
+            // Add 'Show All' to available if not selected
+            if (!config.selectedTags.includes('all')) {
+                availableBox.appendChild(createTagElement('all', 'Show All', false));
+            }
+            
+            // Add 'no-tags' option for assets without tags
+            if (!config.selectedTags.includes('no-tags')) {
+                availableBox.appendChild(createTagElement('no-tags', 'No Tags', false));
+            }
+            
+            // Add each available tag to appropriate box
+            availableTags.forEach(tag => {
+                if (!config.selectedTags.includes(tag)) {
+                    availableBox.appendChild(createTagElement(tag, `#${tag}`, false));
+                }
+            });
+            
+            // Update selected box
+            updateSelectedTagsBox();
+        }
+        
+        // Create tag element
+        function createTagElement(tagValue, displayText, isSelected) {
+            const tagDiv = document.createElement('div');
+            tagDiv.className = 'tag-item' + (isSelected ? ' selected' : '');
+            tagDiv.dataset.tag = tagValue;
+            tagDiv.textContent = displayText;
+            tagDiv.style.cssText = `
+                display: inline-block; 
+                margin: 2px; 
+                padding: 4px 8px; 
+                background: ${isSelected ? '#4CAF50' : '#666'}; 
+                color: white; 
+                border-radius: 12px; 
+                font-size: 11px; 
+                cursor: pointer;
+                user-select: none;
+                word-wrap: break-word;
+                max-width: 100px;
+                text-align: center;
+            `;
+            
+            // Add click handler for selection and double-click for move
+            tagDiv.addEventListener('click', (e) => {
+                // Clear other selections in the same box
+                const parent = tagDiv.parentElement;
+                parent.querySelectorAll('.tag-item').forEach(item => {
+                    item.classList.remove('selected-for-move');
+                    item.style.border = 'none';
+                });
+                
+                // Mark this as selected for move
+                tagDiv.classList.add('selected-for-move');
+                tagDiv.style.border = '2px solid #FFD700';
+            });
+            
+            // Double-click to move immediately
+            tagDiv.addEventListener('dblclick', () => {
+                if (isSelected) {
+                    moveTagToAvailable(tagValue);
+                } else {
+                    moveTagToSelected(tagValue);
+                }
+            });
+            
+            return tagDiv;
+        }
+        
+        // Update selected tags box
+        function updateSelectedTagsBox() {
+            const selectedBox = document.getElementById('selected-tags-box');
+            selectedBox.innerHTML = '';
+            
+            config.selectedTags.forEach(tag => {
+                let displayText;
+                if (tag === 'all') displayText = 'Show All';
+                else if (tag === 'no-tags') displayText = 'No Tags';
+                else displayText = `#${tag}`;
+                
+                selectedBox.appendChild(createTagElement(tag, displayText, true));
+            });
+        }
+        
+        // Update tag counts display
+        function updateTagCounts(filteredCount, totalCount) {
+            document.getElementById('filtered-count').textContent = filteredCount;
+            document.getElementById('total-count').textContent = totalCount;
+        }
+        
+        // Update selected tags display
+        function updateSelectedTagsDisplay() {
+            const selectedTagsDisplay = config.selectedTags.length > 0 ? 
+                config.selectedTags.map(t => t === 'all' ? 'all' : `#${t}`).join(', ') : 'none';
+            document.getElementById('selected-tags').textContent = selectedTagsDisplay;
+        }
+        
+        // Move tag to selected box
+        function moveTagToSelected(tagValue) {
+            // If selecting 'all', clear other selections
+            if (tagValue === 'all') {
+                config.selectedTags = ['all'];
+            } else {
+                // Remove 'all' if selecting specific tags
+                if (config.selectedTags.includes('all')) {
+                    config.selectedTags = [];
+                }
+                
+                // Add tag if not already selected
+                if (!config.selectedTags.includes(tagValue)) {
+                    config.selectedTags.push(tagValue);
+                }
+            }
+            
+            updateTagBoxes();
+            updateFilterModeDisplay();
+            displayAssets();
+        }
+        
+        // Move tag to available box
+        function moveTagToAvailable(tagValue) {
+            config.selectedTags = config.selectedTags.filter(tag => tag !== tagValue);
+            
+            // If no tags selected, default to 'all'
+            if (config.selectedTags.length === 0) {
+                config.selectedTags = ['all'];
+            }
+            
+            updateTagBoxes();
+            updateFilterModeDisplay();
+            displayAssets();
+        }
+        
+        // Update both tag boxes
+        function updateTagBoxes() {
+            const availableTags = getAllTagsFromAssets(assets);
+            const availableBox = document.getElementById('available-tags-box');
+            const selectedBox = document.getElementById('selected-tags-box');
+            
+            // Clear both boxes
+            availableBox.innerHTML = '';
+            selectedBox.innerHTML = '';
+            
+            // Populate available box
+            if (!config.selectedTags.includes('all')) {
+                availableBox.appendChild(createTagElement('all', 'Show All', false));
+            }
+            if (!config.selectedTags.includes('no-tags')) {
+                availableBox.appendChild(createTagElement('no-tags', 'No Tags', false));
+            }
+            availableTags.forEach(tag => {
+                if (!config.selectedTags.includes(tag)) {
+                    availableBox.appendChild(createTagElement(tag, `#${tag}`, false));
+                }
+            });
+            
+            // Populate selected box
+            config.selectedTags.forEach(tag => {
+                let displayText;
+                if (tag === 'all') displayText = 'Show All';
+                else if (tag === 'no-tags') displayText = 'No Tags';
+                else displayText = `#${tag}`;
+                
+                selectedBox.appendChild(createTagElement(tag, displayText, true));
+            });
+        }
+        
+        // Handle tag filter mode change
+        function onTagFilterModeChange() {
+            const filterModeSelect = document.getElementById('tag-filter-mode');
+            config.tagFilterMode = filterModeSelect.value;
+            
+            updateFilterModeDisplay();
+            displayAssets(); // Re-render assets with new filter mode
+        }
+        
+        // Update filter mode display
+        function updateFilterModeDisplay() {
+            const filterModeText = config.tagFilterMode === 'all' ? 'All (AND)' : 'Any (OR)';
+            document.getElementById('filter-mode').textContent = filterModeText;
+        }
+        
+        // Apply screen rotation with proper scaling
+        function applyRotation(element, rotation = null) {
+            const rotationDegrees = rotation !== null ? rotation : config.screenRotation;
+            console.log('Applying rotation:', rotationDegrees + '°', 'to fullscreen container');
+            
+            element.classList.add('rotation-container');
+            
+            // For fullscreen elements, rotate the entire container only
+            if (element.classList.contains('fullscreen')) {
+                element.style.transformOrigin = 'center center';
+                element.style.width = '100vw';
+                element.style.height = '100vh';
+                
+                // Apply rotation to the container only
+                element.style.transform = `rotate(${rotationDegrees}deg)`;
+                
+                console.log('Fullscreen container rotated. Content inside will auto-adjust to rotated display.');
+            } else {
+                // For non-fullscreen elements, just apply rotation
+                element.style.transform = `rotate(${rotationDegrees}deg)`;
+            }
+        }
+        
+        // Remove rotation
+        function removeRotation(element) {
+            element.style.transform = '';
+            element.classList.remove('rotation-container');
+            element.style.width = '';
+            element.style.height = '';
+        }
+        
+        // Update display orientation info
+        function updateDisplayOrientation() {
+            const ratio = window.innerWidth / window.innerHeight;
+            const orientation = ratio > 1 ? 'Landscape' : 'Portrait';
+            const orientationElement = document.getElementById('display-orientation');
+            if (orientationElement) {
+                orientationElement.textContent = `${orientation} (${window.innerWidth}x${window.innerHeight})`;
+            }
+        }
+        
+        // Apply rotation to preview (main viewer)
+        function applyPreviewRotation() {
+            const container = document.querySelector('.container');
+            if (container && config.screenRotation !== 0) {
+                applyRotation(container, config.screenRotation);
+                document.body.style.overflow = 'hidden';
+                
+                // Adjust body height for portrait rotations
+                if (config.screenRotation === 90 || config.screenRotation === 270) {
+                    const maxDim = Math.max(window.innerWidth, window.innerHeight);
+                    document.body.style.height = maxDim + 'px';
+                    document.body.style.width = maxDim + 'px';
+                }
+            }
+        }
+        
+        // Remove rotation from preview
+        function removePreviewRotation() {
+            const container = document.querySelector('.container');
+            if (container) {
+                removeRotation(container);
+                document.body.style.overflow = '';
+                document.body.style.height = '';
+                document.body.style.width = '';
+            }
+        }
+        
+        // Test rotation immediately (for debugging)
+        function testRotationNow() {
+            const rotation = parseInt(document.getElementById('screen-rotation').value);
+            console.log('Testing rotation:', rotation + '°');
+            
+            const container = document.querySelector('.container');
+            if (container) {
+                applyRotation(container, rotation);
+                alert(`Applied ${rotation}° rotation for testing. Use "Reset Test" to remove.`);
+            }
+        }
+        
+        // Reset rotation test
+        function resetRotationTest() {
+            const container = document.querySelector('.container');
+            if (container) {
+                removeRotation(container);
+                document.body.style.overflow = '';
+                document.body.style.height = '';
+                document.body.style.width = '';
+                console.log('Rotation test reset');
+                alert('Rotation test reset to normal.');
+            }
+        }
+        
+        // Load assets from API
+        async function loadAssets() {
+            try {
+                console.log('Loading assets from:', config.serverUrl + config.apiPath);
+                const apiUrl = config.serverUrl === window.location.origin ? 
+                    config.apiPath : 
+                    config.serverUrl + config.apiPath;
+                    
+                const response = await fetch(apiUrl, {
+                    method: 'GET'
+                });
+                
+                console.log('Response status:', response.status);
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    console.log('Raw API data:', data.length, 'total assets');
+                    console.log('All assets:', data.map(a => `${a.name} (active: ${a.is_active})`));
+                    
+                    // Filter only active assets
+                    const newAssets = data.filter(asset => asset.is_active === true);
+                    console.log('Filtered active assets:', newAssets.length);
+                    
+                    // Check if assets changed
+                    const assetsChanged = JSON.stringify(assets) !== JSON.stringify(newAssets);
+                    const oldCount = assets.length;
+                    assets = newAssets;
+                    
+                    console.log(`Assets count changed from ${oldCount} to ${assets.length}`);
+                    console.log('Current active assets:', assets.map(a => `${a.name} (${a.mimetype})`));
+                    
+                    // Update tag options based on available assets
+                    updateTagBoxes();
+                    
+                    // Always update display to reflect current state
+                    displayAssets();
+                    
+                    if (assetsChanged) {
+                        console.log('Assets changed, restarting slideshow if running');
+                        
+                        // Restart slideshow if currently running
+                        if (isSlideShowRunning) {
+                            console.log('Restarting slideshow with new assets');
+                            restartSlideshow();
+                        }
+                    }
+                    return;
+                }
+                
+                throw new Error(`API failed: ${response.status}`);
+            } catch (error) {
+                console.error('Error loading assets:', error);
+                
+                // Use hardcoded assets as fallback with sample tags
+                assets = [
+                    {
+                        "asset_id": "c1b473cbf4f94908b4b24c1e9aadf3c4",
+                        "name": "Pool bar promo #hotel #restaurant.jpg",
+                        "uri": "/screenly_assets/c1b473cbf4f94908b4b24c1e9aadf3c4.jpg",
+                        "duration": 10,
+                        "mimetype": "image",
+                        "is_active": true
+                    },
+                    {
+                        "asset_id": "1d38477c299043c3a68729e17af776da",
+                        "name": "Room service menu #kamar.jpg",
+                        "uri": "/screenly_assets/1d38477c299043c3a68729e17af776da.jpg",
+                        "duration": 10,
+                        "mimetype": "image",
+                        "is_active": true
+                    },
+                    {
+                        "asset_id": "demo3",
+                        "name": "Lobby welcome #hotel #lobby.jpg",
+                        "uri": "https://picsum.photos/1920/1080?random=3",
+                        "duration": 8,
+                        "mimetype": "image",
+                        "is_active": true
+                    },
+                    {
+                        "asset_id": "demo4",
+                        "name": "General info no tags.jpg",
+                        "uri": "https://picsum.photos/1920/1080?random=4",
+                        "duration": 6,
+                        "mimetype": "image",
+                        "is_active": true
+                    }
+                ];
+                
+                console.log('Using fallback assets:', assets);
+                displayAssets();
+            }
+        }
+        
+        // Display assets list
+        function displayAssets() {
+            const container = document.getElementById('assets');
+            container.innerHTML = '';
+            
+            if (assets.length === 0) {
+                container.innerHTML = '<p>No assets found</p>';
+                updateTagCounts(0, 0);
+                return;
+            }
+            
+            // Filter assets based on selected tags
+            const filteredAssets = assets.filter(asset => assetMatchesTags(asset, config.selectedTags));
+            
+            updateTagCounts(filteredAssets.length, assets.length);
+            
+            if (filteredAssets.length === 0) {
+                container.innerHTML = '<p>No assets match the selected tags</p>';
+                return;
+            }
+            
+            filteredAssets.forEach(asset => {
+                const assetTags = extractTags(asset.name);
+                const assetDiv = document.createElement('div');
+                assetDiv.className = 'asset';
+                
+                // Create media element first
+                let mediaElement = '';
+                if (asset.mimetype === 'image') {
+                    const img = document.createElement('img');
+                    img.src = getImageUrl(asset.uri);
+                    img.alt = asset.name;
+                    img.onclick = () => showFullscreen(asset);
+                    img.style.cursor = 'pointer';
+                    assetDiv.appendChild(img);
+                } else if (asset.mimetype === 'video') {
+                    const video = document.createElement('video');
+                    video.src = getImageUrl(asset.uri);
+                    video.controls = true;
+                    video.muted = true;
+                    video.onclick = () => showFullscreen(asset);
+                    video.style.cursor = 'pointer';
+                    assetDiv.appendChild(video);
+                }
+                
+                // Create info section with better layout
+                const infoDiv = document.createElement('div');
+                infoDiv.className = 'asset-info';
+                
+                infoDiv.innerHTML = `
+                    <div class="asset-title">${asset.name}</div>
+                    <div class="asset-tags">
+                        Tags: ${assetTags.length > 0 ? assetTags.map(t => `#${t}`).join(', ') : 'None'}
+                    </div>
+                    <div class="asset-meta">
+                        <div style="margin-bottom: 4px;">Type: ${asset.mimetype}</div>
+                        <div style="margin-bottom: 4px;">Duration: ${asset.duration}s</div>
+                        <div>Status: ${asset.is_active ? '✅ Active' : '❌ Inactive'}</div>
+                    </div>
+                `;
+                
+                assetDiv.appendChild(infoDiv);
+                container.appendChild(assetDiv);
+            });
+        }
+        
+        // Show single asset fullscreen
+        function showFullscreen(asset) {
+            
+            const fullscreen = document.createElement('div');
+            fullscreen.className = 'fullscreen';
+            fullscreen.onclick = () => document.body.removeChild(fullscreen);
+            
+            if (asset.mimetype === 'image') {
+                const img = document.createElement('img');
+                img.src = getImageUrl(asset.uri);
+                
+                // Langsung set ke viewport penuh dan rotate
+                img.style.width = '100vw';
+                img.style.height = '100vh';
+                img.style.objectFit = 'contain';
+                img.style.transform = `rotate(${config.screenRotation || 0}deg)`;
+                img.style.transformOrigin = 'center center';
+                
+                fullscreen.appendChild(img);
+                
+            } else if (asset.mimetype === 'video') {
+                const video = document.createElement('video');
+                video.src = getImageUrl(asset.uri);
+                video.controls = true;
+                video.autoplay = true;
+                video.muted = !config.enableAudio; // Use config setting
+                video.volume = config.videoVolume; // Use config volume
+                video.style.objectFit = config.objectFitMode;
+                
+                // Use physical screen dimensions to force true fullscreen
+                const physicalWidth = screen.width;
+                const physicalHeight = screen.height;
+                
+                video.style.width = `${physicalWidth}px`;
+                video.style.height = `${physicalHeight}px`;
+                video.style.maxWidth = 'none';
+                video.style.maxHeight = 'none';
+                video.style.objectFit = config.objectFitMode;
+                video.style.position = 'fixed';
+                video.style.top = '0';
+                video.style.left = '0';
+                video.style.zIndex = '9999';
+                
+                // Apply rotation at center of physical screen
+                if (config.screenRotation && config.screenRotation !== 0) {
+                    video.style.transform = `rotate(${config.screenRotation}deg)`;
+                    video.style.transformOrigin = `${physicalWidth/2}px ${physicalHeight/2}px`;
+                }
+                
+                video.style.maxWidth = 'none';
+                video.style.maxHeight = 'none';
+                
+                // Handle video load and play
+                video.onloadeddata = () => {
+                    if (config.enableAudio) {
+                        console.log('Single video loaded, attempting to play with audio');
+                        video.play().catch(error => {
+                            console.log('Auto-play failed for single video, trying without audio:', error);
+                            video.muted = true;
+                            video.play();
+                        });
+                    } else {
+                        console.log('Single video loaded, playing muted');
+                        video.play();
+                    }
+                };
+                
+                fullscreen.appendChild(video);
+            }
+            
+            document.body.appendChild(fullscreen);
+        }
+        
+        // Start slideshow
+        function startSlideshow() {
+            // Filter assets based on selected tags first
+            const filteredAssets = assets.filter(asset => assetMatchesTags(asset, config.selectedTags));
+            
+            // Include both image and video assets
+            const activeAssets = filteredAssets.filter(a => a.mimetype === 'image' || a.mimetype === 'video');
+            
+            if (activeAssets.length === 0) {
+                alert('No active media assets found for selected tags. Total assets: ' + assets.length + ', Filtered: ' + filteredAssets.length);
+                console.log('All assets:', assets);
+                console.log('Filtered assets:', filteredAssets);
+                console.log('Selected tags:', config.selectedTags);
+                return;
+            }
+            
+            console.log('Starting slideshow with', activeAssets.length, 'assets (images + videos) matching tags:', config.selectedTags);
+            slideshowIndex = 0;
+            isSlideShowRunning = true;
+            showSlideshow(activeAssets);
+        }
+        
+        function showSlideshow(activeAssets) {
+            // Create fullscreen slideshow
+            const fullscreen = document.createElement('div');
+            fullscreen.className = 'fullscreen';
+            fullscreen.id = 'slideshow';
+            
+            let isRunning = true;
+            
+            // Request true fullscreen mode
+            const requestFullscreen = () => {
+                if (fullscreen.requestFullscreen) {
+                    fullscreen.requestFullscreen();
+                } else if (fullscreen.mozRequestFullScreen) { // Firefox
+                    fullscreen.mozRequestFullScreen();
+                } else if (fullscreen.webkitRequestFullscreen) { // Chrome, Safari and Opera
+                    fullscreen.webkitRequestFullscreen();
+                } else if (fullscreen.msRequestFullscreen) { // IE/Edge
+                    fullscreen.msRequestFullscreen();
+                }
+            };
+            
+            // Exit function for both fullscreen and slideshow
+            const exitSlideshow = () => {
+                isRunning = false;
+                isSlideShowRunning = false;
+                if (slideshowInterval) clearTimeout(slideshowInterval);
+                
+                // Exit fullscreen mode
+                if (document.exitFullscreen) {
+                    document.exitFullscreen();
+                } else if (document.mozCancelFullScreen) { // Firefox
+                    document.mozCancelFullScreen();
+                } else if (document.webkitExitFullscreen) { // Chrome, Safari and Opera
+                    document.webkitExitFullscreen();
+                } else if (document.msExitFullscreen) { // IE/Edge
+                    document.msExitFullscreen();
+                }
+                
+                document.body.removeChild(fullscreen);
+                currentSlideshow = null;
+            };
+            
+            // Add exit on click or ESC key
+            fullscreen.onclick = exitSlideshow;
+            
+            // Listen for fullscreen change to detect ESC key
+            document.addEventListener('fullscreenchange', function onFullscreenChange() {
+                if (!document.fullscreenElement) {
+                    // Fullscreen deactivated
+                    document.removeEventListener('fullscreenchange', onFullscreenChange);
+                    if (currentSlideshow) {
+                        exitSlideshow();
+                    }
+                }
+            });
+            
+            currentSlideshow = fullscreen;
+            
+            document.body.appendChild(fullscreen);
+            
+            // Request fullscreen
+            setTimeout(() => {
+                requestFullscreen();
+            }, 100);
+            
+            // Show first slide
+            console.log('Showing first slide:', activeAssets[0].name);
+            showSlide(activeAssets, 0, fullscreen);
+            
+            // Auto advance slides with dynamic timing
+            function scheduleNextSlide() {
+                if (!isRunning) return;
+                
+                const currentAsset = activeAssets[slideshowIndex];
+                const duration = currentAsset?.duration * 1000 || 5000;
+                
+                console.log(`Next slide in ${duration/1000}s:`, currentAsset.name);
+                
+                slideshowInterval = setTimeout(() => {
+                    if (!isRunning) return;
+                    
+                    slideshowIndex = (slideshowIndex + 1) % activeAssets.length;
+                    console.log('Advancing to slide', slideshowIndex, ':', activeAssets[slideshowIndex].name);
+                    showSlide(activeAssets, slideshowIndex, fullscreen);
+                    scheduleNextSlide(); // Schedule next slide
+                }, duration);
+            }
+            
+            // Start the slideshow cycle (if more than 1 asset)
+            if (activeAssets.length > 1) {
+                scheduleNextSlide();
+            }
+        }
+        
+        function showSlide(activeAssets, index, container) {
+            const asset = activeAssets[index];
+            container.innerHTML = '';
+            
+            
+            if (asset.mimetype === 'image') {
+                const img = document.createElement('img');
+                img.src = getImageUrl(asset.uri);
+                img.style.objectFit = config.objectFitMode;
+                
+                // Use physical screen dimensions to force true fullscreen
+                const physicalWidth = screen.width;
+                const physicalHeight = screen.height;
+                
+                img.style.width = `${physicalWidth}px`;
+                img.style.height = `${physicalHeight}px`;
+                img.style.maxWidth = 'none';
+                img.style.maxHeight = 'none';
+                img.style.objectFit = config.objectFitMode;
+                img.style.position = 'fixed';
+                img.style.top = '0';
+                img.style.left = '0';
+                img.style.zIndex = '9999';
+                
+                // Apply rotation at center of physical screen
+                if (config.screenRotation && config.screenRotation !== 0) {
+                    img.style.transform = `rotate(${config.screenRotation}deg)`;
+                    img.style.transformOrigin = `${physicalWidth/2}px ${physicalHeight/2}px`;
+                }
+                
+                img.style.maxWidth = 'none';
+                img.style.maxHeight = 'none';
+                
+                container.appendChild(img);
+            } else if (asset.mimetype === 'video') {
+                const video = document.createElement('video');
+                video.src = getImageUrl(asset.uri);
+                video.autoplay = true;
+                video.muted = !config.enableAudio; // Use config setting
+                video.loop = false;
+                video.style.objectFit = config.objectFitMode;
+                video.controls = false; // Hide controls in slideshow
+                
+                // Use physical screen dimensions to force true fullscreen
+                const physicalWidth = screen.width;
+                const physicalHeight = screen.height;
+                
+                video.style.width = `${physicalWidth}px`;
+                video.style.height = `${physicalHeight}px`;
+                video.style.maxWidth = 'none';
+                video.style.maxHeight = 'none';
+                video.style.objectFit = config.objectFitMode;
+                video.style.position = 'fixed';
+                video.style.top = '0';
+                video.style.left = '0';
+                video.style.zIndex = '9999';
+                
+                // Apply rotation at center of physical screen
+                if (config.screenRotation && config.screenRotation !== 0) {
+                    video.style.transform = `rotate(${config.screenRotation}deg)`;
+                    video.style.transformOrigin = `${physicalWidth/2}px ${physicalHeight/2}px`;
+                }
+                
+                video.style.maxWidth = 'none';
+                video.style.maxHeight = 'none';
+                
+                // Set volume from config
+                video.volume = config.videoVolume;
+                
+                // Auto advance to next slide when video ends
+                video.onended = () => {
+                    if (isSlideShowRunning) {
+                        slideshowIndex = (slideshowIndex + 1) % activeAssets.length;
+                        showSlide(activeAssets, slideshowIndex, container);
+                        if (activeAssets.length > 1) scheduleNextSlide();
+                    }
+                };
+                
+                // Handle video load and play
+                video.onloadeddata = () => {
+                    if (config.enableAudio) {
+                        console.log('Video loaded, attempting to play with audio');
+                        video.play().catch(error => {
+                            console.log('Auto-play with audio failed, trying without audio:', error);
+                            video.muted = true;
+                            video.play();
+                        });
+                    } else {
+                        console.log('Video loaded, playing muted');
+                        video.play();
+                    }
+                };
+                
+                container.appendChild(video);
+            }
+            
+            // Note: Rotation is only applied to the fullscreen container, not individual slides
+        }
+        
+        // Update display information
+        function updateDisplayInfo() {
+            // Screen resolution
+            const screenRes = `${screen.width}x${screen.height}`;
+            document.getElementById('display-resolution').textContent = screenRes;
+            
+            // Viewport size
+            const viewportSize = `${window.innerWidth}x${window.innerHeight}`;
+            document.getElementById('viewport-size').textContent = viewportSize;
+            
+            // Device pixel ratio
+            const pixelRatio = window.devicePixelRatio || 1;
+            document.getElementById('pixel-ratio').textContent = pixelRatio;
+            
+            // User agent (simplified)
+            const ua = navigator.userAgent;
+            const browser = ua.includes('Chrome') ? 'Chrome' : 
+                           ua.includes('Firefox') ? 'Firefox' : 
+                           ua.includes('Safari') ? 'Safari' : 
+                           ua.includes('Edge') ? 'Edge' : 'Other';
+            document.getElementById('user-agent').textContent = browser;
+            
+            // Connection info
+            const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+            const connectionInfo = connection ? 
+                `${connection.effectiveType || 'Unknown'} (${connection.downlink || '?'}Mbps)` : 
+                'Unknown';
+            document.getElementById('connection-info').textContent = connectionInfo;
+            
+            // Update display orientation
+            updateDisplayOrientation();
+        }
+        
+        // Load assets on page load
+        window.addEventListener('load', () => {
+            initializeConfig();
+            updateDisplayInfo();
+            loadAssets();
+            
+            // Add event listeners for tag filter controls
+            document.getElementById('tag-filter-mode').addEventListener('change', onTagFilterModeChange);
+            
+            // Add event listeners for audio controls
+            document.getElementById('enable-audio').addEventListener('change', (e) => {
+                config.enableAudio = e.target.checked;
+                console.log('Audio setting changed:', config.enableAudio);
+            });
+            
+            document.getElementById('video-volume').addEventListener('input', (e) => {
+                config.videoVolume = parseFloat(e.target.value);
+                document.getElementById('volume-display').textContent = Math.round(config.videoVolume * 100) + '%';
+                console.log('Volume setting changed:', config.videoVolume);
+            });
+            
+            // Add event listeners for rotation controls
+            document.getElementById('screen-rotation').addEventListener('change', (e) => {
+                config.screenRotation = parseInt(e.target.value);
+                console.log('Screen rotation changed:', config.screenRotation + '°');
+                
+                // Apply rotation to preview if enabled
+                if (config.applyRotationPreview) {
+                    applyPreviewRotation();
+                }
+            });
+            
+            document.getElementById('apply-rotation-preview').addEventListener('change', (e) => {
+                config.applyRotationPreview = e.target.checked;
+                console.log('Apply rotation preview:', config.applyRotationPreview);
+                
+                if (config.applyRotationPreview) {
+                    applyPreviewRotation();
+                } else {
+                    removePreviewRotation();
+                }
+            });
+            
+            // Add event listener for object fit mode
+            document.getElementById('object-fit-mode').addEventListener('change', (e) => {
+                config.objectFitMode = e.target.value;
+                console.log('Object fit mode changed to:', config.objectFitMode);
+                console.log('This will apply to new fullscreen content. Current content needs refresh.');
+            });
+            
+            // Add event listeners for move buttons
+            document.getElementById('move-to-selected').addEventListener('click', () => {
+                const availableBox = document.getElementById('available-tags-box');
+                const selectedTag = availableBox.querySelector('.tag-item.selected-for-move');
+                if (selectedTag) {
+                    moveTagToSelected(selectedTag.dataset.tag);
+                    selectedTag.classList.remove('selected-for-move');
+                } else {
+                    alert('Please click a tag in the Available box first to select it for moving.');
+                }
+            });
+            
+            document.getElementById('move-to-available').addEventListener('click', () => {
+                const selectedBox = document.getElementById('selected-tags-box');
+                const selectedTag = selectedBox.querySelector('.tag-item.selected-for-move');
+                if (selectedTag) {
+                    moveTagToAvailable(selectedTag.dataset.tag);
+                    selectedTag.classList.remove('selected-for-move');
+                } else {
+                    alert('Please click a tag in the Selected box first to select it for moving.');
+                }
+            });
+            
+            document.getElementById('clear-all-selected').addEventListener('click', () => {
+                config.selectedTags = ['all'];
+                updateTagBoxes();
+                updateFilterModeDisplay();
+                displayAssets();
+            });
+        });
+        
+        // Update display info on resize
+        window.addEventListener('resize', () => {
+            updateDisplayInfo();
+        });
+        
+        // Auto-refresh assets (interval configured by user)
+        window.autoRefreshInterval = setInterval(() => {
+            console.log('Auto-refreshing assets from dashboard...');
+            loadAssets();
+        }, config.refreshInterval * 1000);
+        
+        // Manual refresh button
+        function manualRefresh() {
+            console.log('Manual refresh triggered');
+            loadAssets();
+        }
+        
+        // Restart slideshow with new assets
+        function restartSlideshow() {
+            if (currentSlideshow) {
+                // Close current slideshow
+                isSlideShowRunning = false;
+                if (slideshowInterval) clearTimeout(slideshowInterval);
+                document.body.removeChild(currentSlideshow);
+                currentSlideshow = null;
+            }
+            
+            // Start new slideshow with updated assets
+            setTimeout(() => {
+                startSlideshow();
+            }, 500);
+        }
+        
+        // Test API direct untuk debugging
+        async function testAPI() {
+            try {
+                const apiUrl = config.serverUrl === window.location.origin ? 
+                    config.apiPath : 
+                    config.serverUrl + config.apiPath;
+                const response = await fetch(apiUrl);
+                const data = await response.json();
+                console.log('=== DIRECT API TEST ===');
+                console.log('Total assets:', data.length);
+                console.log('Active assets:', data.filter(a => a.is_active).length);
+                console.log('Assets details:', data.map(a => ({
+                    name: a.name,
+                    active: a.is_active,
+                    mimetype: a.mimetype
+                })));
+                alert(`API Test: ${data.filter(a => a.is_active).length} active assets found`);
+            } catch (error) {
+                console.error('API test failed:', error);
+                alert('API test failed: ' + error.message);
+            }
+        }
+        
+        // Configuration management functions
+        function updateConfig() {
+            const serverUrl = document.getElementById('server-url').value;
+            const refreshInterval = parseInt(document.getElementById('refresh-interval').value);
+            
+            if (serverUrl) {
+                config.serverUrl = serverUrl;
+            }
+            if (refreshInterval >= 10 && refreshInterval <= 300) {
+                config.refreshInterval = refreshInterval;
+            }
+            
+            // Selected tags are already managed by the dual-box system
+            // No need to update from dropdown as it's been replaced
+            
+            // Update tag filter mode
+            const filterModeSelect = document.getElementById('tag-filter-mode');
+            config.tagFilterMode = filterModeSelect.value;
+            
+            // Update audio settings
+            const enableAudio = document.getElementById('enable-audio');
+            const videoVolume = document.getElementById('video-volume');
+            config.enableAudio = enableAudio.checked;
+            config.videoVolume = parseFloat(videoVolume.value);
+            
+            // Update rotation settings
+            const screenRotation = document.getElementById('screen-rotation');
+            const applyRotationPreview = document.getElementById('apply-rotation-preview');
+            const objectFitMode = document.getElementById('object-fit-mode');
+            config.screenRotation = parseInt(screenRotation.value);
+            config.applyRotationPreview = applyRotationPreview.checked;
+            config.objectFitMode = objectFitMode.value;
+            
+            console.log('Configuration updated:', config);
+            
+            // Update auto-refresh interval
+            clearInterval(window.autoRefreshInterval);
+            window.autoRefreshInterval = setInterval(() => {
+                console.log('Auto-refreshing assets from dashboard...');
+                loadAssets();
+            }, config.refreshInterval * 1000);
+            
+            // Reload assets with new configuration
+            loadAssets();
+            
+            alert('Configuration updated successfully!');
+        }
+        
+        function saveConfig() {
+            try {
+                localStorage.setItem('anthias-viewer-config', JSON.stringify(config));
+                alert('Configuration saved to browser storage!');
+            } catch (error) {
+                console.error('Failed to save config:', error);
+                alert('Failed to save configuration: ' + error.message);
+            }
+        }
+        
+        function loadConfig() {
+            try {
+                const savedConfig = localStorage.getItem('anthias-viewer-config');
+                if (savedConfig) {
+                    const parsedConfig = JSON.parse(savedConfig);
+                    config = { ...config, ...parsedConfig };
+                    
+                    // Update UI inputs
+                    document.getElementById('server-url').value = config.serverUrl;
+                    document.getElementById('refresh-interval').value = config.refreshInterval;
+                    
+                    // Update tag selections in dual-box system
+                    if (config.selectedTags && config.selectedTags.length > 0) {
+                        setTimeout(() => {
+                            updateTagBoxes();
+                        }, 100);
+                    }
+                    
+                    // Update tag filter mode
+                    if (config.tagFilterMode) {
+                        document.getElementById('tag-filter-mode').value = config.tagFilterMode;
+                        updateFilterModeDisplay();
+                    }
+                    
+                    // Update audio settings
+                    if (typeof config.enableAudio !== 'undefined') {
+                        document.getElementById('enable-audio').checked = config.enableAudio;
+                    }
+                    if (typeof config.videoVolume !== 'undefined') {
+                        document.getElementById('video-volume').value = config.videoVolume;
+                        document.getElementById('volume-display').textContent = Math.round(config.videoVolume * 100) + '%';
+                    }
+                    
+                    // Update rotation settings
+                    if (typeof config.screenRotation !== 'undefined') {
+                        document.getElementById('screen-rotation').value = config.screenRotation;
+                    }
+                    if (typeof config.applyRotationPreview !== 'undefined') {
+                        document.getElementById('apply-rotation-preview').checked = config.applyRotationPreview;
+                        if (config.applyRotationPreview) {
+                            setTimeout(() => applyPreviewRotation(), 100);
+                        }
+                    }
+                    if (typeof config.objectFitMode !== 'undefined') {
+                        document.getElementById('object-fit-mode').value = config.objectFitMode;
+                    }
+                    
+                    console.log('Configuration loaded:', config);
+                    alert('Configuration loaded from browser storage!');
+                    
+                    // Apply loaded configuration
+                    updateConfig();
+                } else {
+                    alert('No saved configuration found');
+                }
+            } catch (error) {
+                console.error('Failed to load config:', error);
+                alert('Failed to load configuration: ' + error.message);
+            }
+        }
+        
+        function toggleConfig() {
+            const configPanel = document.getElementById('config-panel');
+            const showBtn = document.getElementById('show-config-btn');
+            
+            if (configPanel.style.display === 'none') {
+                configPanel.style.display = 'block';
+                showBtn.style.display = 'none';
+            } else {
+                configPanel.style.display = 'none';
+                showBtn.style.display = 'inline-block';
+            }
+        }
+        
+        // Initialize configuration from URL parameters or localStorage on page load
+        function initializeConfig() {
+            // Check for URL parameters first
+            const urlParams = new URLSearchParams(window.location.search);
+            const serverFromUrl = urlParams.get('server');
+            const intervalFromUrl = urlParams.get('interval');
+            
+            if (serverFromUrl) {
+                config.serverUrl = serverFromUrl;
+                document.getElementById('server-url').value = serverFromUrl;
+            }
+            
+            if (intervalFromUrl) {
+                const interval = parseInt(intervalFromUrl);
+                if (interval >= 10 && interval <= 300) {
+                    config.refreshInterval = interval;
+                    document.getElementById('refresh-interval').value = interval;
+                }
+            }
+            
+            // If no URL params, try to load from localStorage
+            if (!serverFromUrl && !intervalFromUrl) {
+                const savedConfig = localStorage.getItem('anthias-viewer-config');
+                if (savedConfig) {
+                    try {
+                        const parsedConfig = JSON.parse(savedConfig);
+                        config = { ...config, ...parsedConfig };
+                        document.getElementById('server-url').value = config.serverUrl;
+                        document.getElementById('refresh-interval').value = config.refreshInterval;
+                        
+                        // Initialize tag selections if saved
+                        if (config.selectedTags && config.selectedTags.length > 0) {
+                            setTimeout(() => {
+                                updateTagBoxes();
+                            }, 200); // Small delay to ensure DOM is ready
+                        }
+                        
+                        // Initialize tag filter mode if saved
+                        if (config.tagFilterMode) {
+                            setTimeout(() => {
+                                document.getElementById('tag-filter-mode').value = config.tagFilterMode;
+                                updateFilterModeDisplay();
+                            }, 100);
+                        }
+                        
+                        // Initialize audio settings if saved
+                        if (typeof config.enableAudio !== 'undefined') {
+                            setTimeout(() => {
+                                document.getElementById('enable-audio').checked = config.enableAudio;
+                            }, 100);
+                        }
+                        if (typeof config.videoVolume !== 'undefined') {
+                            setTimeout(() => {
+                                document.getElementById('video-volume').value = config.videoVolume;
+                                document.getElementById('volume-display').textContent = Math.round(config.videoVolume * 100) + '%';
+                            }, 100);
+                        }
+                        
+                        // Initialize rotation settings if saved
+                        if (typeof config.screenRotation !== 'undefined') {
+                            setTimeout(() => {
+                                document.getElementById('screen-rotation').value = config.screenRotation;
+                            }, 100);
+                        }
+                        if (typeof config.applyRotationPreview !== 'undefined') {
+                            setTimeout(() => {
+                                document.getElementById('apply-rotation-preview').checked = config.applyRotationPreview;
+                                if (config.applyRotationPreview && config.screenRotation !== 0) {
+                                    setTimeout(() => applyPreviewRotation(), 200);
+                                }
+                            }, 100);
+                        }
+                        if (typeof config.objectFitMode !== 'undefined') {
+                            setTimeout(() => {
+                                document.getElementById('object-fit-mode').value = config.objectFitMode;
+                            }, 100);
+                        }
+                        
+                        console.log('Auto-loaded saved configuration');
+                    } catch (error) {
+                        console.error('Failed to auto-load config:', error);
+                    }
+                }
+            }
+        }
+    </script>
+</body>
+</html>
