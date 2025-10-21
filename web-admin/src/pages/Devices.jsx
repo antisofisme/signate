@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { devicesAPI } from '../services/api'
-import { Monitor, Tv, Plus, Trash2, Activity } from 'lucide-react'
+import { Monitor, Tv, Plus, Trash2, Activity, CheckCircle } from 'lucide-react'
 
 export default function Devices() {
   const queryClient = useQueryClient()
@@ -43,6 +43,18 @@ export default function Devices() {
       setShowActivateForm(false)
       alert('Monitor activated successfully!')
     },
+  })
+
+  // Update device mutation (for activating)
+  const updateDeviceMutation = useMutation({
+    mutationFn: ({ id, data }) => devicesAPI.update(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries(['devices'])
+      alert('Device activated successfully!')
+    },
+    onError: (error) => {
+      alert(error.response?.data?.detail || 'Failed to activate device')
+    }
   })
 
   // Delete device mutation
@@ -128,16 +140,38 @@ export default function Devices() {
                   {device.last_seen ? new Date(device.last_seen).toLocaleString() : 'Never'}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm">
-                  <button
-                    onClick={() => {
-                      if (confirm('Delete this device?')) {
-                        deleteDeviceMutation.mutate(device.id)
-                      }
-                    }}
-                    className="text-red-600 hover:text-red-800"
-                  >
-                    <Trash2 className="w-5 h-5" />
-                  </button>
+                  <div className="flex items-center gap-3">
+                    {/* Activate button for pending devices */}
+                    {device.status === 'pending' && (
+                      <button
+                        onClick={() => {
+                          if (confirm(`Activate ${device.device_name}?\n\nCode: ${device.unique_code || 'N/A'}`)) {
+                            updateDeviceMutation.mutate({
+                              id: device.id,
+                              data: { status: 'active' }
+                            })
+                          }
+                        }}
+                        className="text-green-600 hover:text-green-800"
+                        title="Activate device"
+                      >
+                        <CheckCircle className="w-5 h-5" />
+                      </button>
+                    )}
+
+                    {/* Delete button */}
+                    <button
+                      onClick={() => {
+                        if (confirm('Delete this device?')) {
+                          deleteDeviceMutation.mutate(device.id)
+                        }
+                      }}
+                      className="text-red-600 hover:text-red-800"
+                      title="Delete device"
+                    >
+                      <Trash2 className="w-5 h-5" />
+                    </button>
+                  </div>
                 </td>
               </tr>
             ))}
