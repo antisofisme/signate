@@ -17,11 +17,10 @@ class User(Base):
         username: Unique username for login
         email: User email address
         password_hash: Bcrypt hashed password
-        full_name: Full name of user
+        role: User role (admin, editor, viewer)
         is_active: Whether user account is active
-        is_superuser: Whether user has superuser privileges
         created_at: Timestamp when user was created
-        updated_at: Timestamp when user was last updated
+        last_login: Timestamp of last login
     """
 
     __tablename__ = "users"
@@ -34,16 +33,21 @@ class User(Base):
     email = Column(String(100), unique=True, nullable=False, index=True)
     password_hash = Column(String(255), nullable=False)
 
-    # User Info
-    full_name = Column(String(100))
+    # Role (admin, editor, viewer)
+    role = Column(String(20), default='viewer', nullable=False)
 
     # Status Flags
-    is_active = Column(Boolean, default=True, nullable=False)
-    is_superuser = Column(Boolean, default=False, nullable=False)
+    is_active = Column(Boolean, default=True)
 
     # Timestamps
-    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
-    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
+    created_at = Column(DateTime, server_default=func.now())
+    last_login = Column(DateTime)
+
+    # Helper property for backward compatibility
+    @property
+    def is_superuser(self) -> bool:
+        """Check if user is superuser (admin role)"""
+        return self.role == 'admin'
 
     def __repr__(self):
         return f"<User(id={self.id}, username='{self.username}', email='{self.email}')>"
@@ -54,9 +58,9 @@ class User(Base):
             "id": self.id,
             "username": self.username,
             "email": self.email,
-            "full_name": self.full_name,
+            "role": self.role,
             "is_active": self.is_active,
             "is_superuser": self.is_superuser,
             "created_at": self.created_at.isoformat() if self.created_at else None,
-            "updated_at": self.updated_at.isoformat() if self.updated_at else None,
+            "last_login": self.last_login.isoformat() if self.last_login else None,
         }
