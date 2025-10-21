@@ -84,13 +84,13 @@ class ContentResponse(BaseModel):
 class ContentListResponse(BaseModel):
     """Response schema for content list"""
     total: int
-    contents: List[ContentResponse]
+    items: List[ContentResponse]
 
     class Config:
         json_schema_extra = {
             "example": {
                 "total": 2,
-                "contents": [
+                "items": [
                     {
                         "id": 1,
                         "title": "Banner Promo",

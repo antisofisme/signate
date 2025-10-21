@@ -7,6 +7,7 @@ import Login from './pages/Login'
 import Dashboard from './pages/Dashboard'
 import Devices from './pages/Devices'
 import Content from './pages/Content'
+import Tags from './pages/Tags'
 import Layout from './components/Layout'
 
 const queryClient = new QueryClient({
@@ -53,6 +54,14 @@ function App() {
             <PrivateRoute>
               <Layout setIsAuthenticated={setIsAuthenticated}>
                 <Content />
+              </Layout>
+            </PrivateRoute>
+          } />
+
+          <Route path="/tags" element={
+            <PrivateRoute>
+              <Layout setIsAuthenticated={setIsAuthenticated}>
+                <Tags />
               </Layout>
             </PrivateRoute>
           } />

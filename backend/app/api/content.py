@@ -4,6 +4,7 @@ Integrates with Anthias for file storage and PostgreSQL for metadata
 """
 
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form
+from fastapi.responses import Response
 from sqlalchemy.orm import Session
 from typing import Optional, List
 import logging
@@ -94,10 +95,8 @@ async def upload_content(
         # Get Anthias asset URL
         anthias_url = await anthias_service.get_asset_url(anthias_asset["asset_id"])
 
-        # Get file size
-        await file.seek(0, 2)  # Seek to end
-        file_size = file.tell()
-        await file.seek(0)  # Reset
+        # Get file size from anthias response
+        file_size = anthias_asset.get("file_size", 0)
 
         # Save metadata to database
         content = Content(
@@ -171,7 +170,7 @@ def list_content(
 
     return ContentListResponse(
         total=total,
-        contents=contents
+        items=contents
     )
 
 
@@ -447,3 +446,57 @@ def get_content_assignments(
     ).all()
 
     return assignments
+
+
+@router.get("/{content_id}/image")
+async def get_content_image(
+    content_id: int,
+    db: Session = Depends(get_db)
+):
+    """
+    Proxy endpoint to serve content image with correct Content-Type
+
+    This endpoint fetches the image from Anthias (which stores files without extensions)
+    and serves it with the correct Content-Type header so browsers can display it.
+
+    Args:
+        content_id: Content ID
+        db: Database session
+
+    Returns:
+        Response: Image file with correct Content-Type
+
+    Raises:
+        HTTPException: If content not found or fetch fails
+    """
+    # Get content metadata from database
+    content = db.query(Content).filter(Content.id == content_id).first()
+
+    if not content:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Content with ID {content_id} not found"
+        )
+
+    if not content.anthias_asset_id:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Content has no associated Anthias asset"
+        )
+
+    try:
+        # Fetch image content from Anthias
+        image_bytes = await anthias_service.get_asset_content(content.anthias_asset_id)
+
+        # Determine Content-Type from mime_type in database
+        media_type = content.mime_type or "application/octet-stream"
+
+        # Return image with correct Content-Type
+        return Response(content=image_bytes, media_type=media_type)
+
+    except Exception as e:
+        logger.error(f"Error serving image: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to serve image: {str(e)}"
+        )

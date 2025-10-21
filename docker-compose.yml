@@ -75,8 +75,8 @@ services:
       - "8001:8000"  # Port 8001 external (Anthias uses 8000)
     environment:
       - DATABASE_URL=postgresql://${POSTGRES_USER:-signage_user}:${POSTGRES_PASSWORD:-signage_password}@postgres:5432/${POSTGRES_DB:-signage_db}
-      - REDIS_URL=redis://192.168.5.12:6379  # Use existing Redis from Anthias
-      - ANTHIAS_API_URL=${ANTHIAS_API_URL:-http://192.168.5.12:8000}
+      - REDIS_URL=redis://redis:6379  # Use Redis from Anthias network
+      - ANTHIAS_API_URL=http://anthias-nginx  # Connect via internal network
     env_file:
       - .env
     depends_on:
@@ -86,6 +86,7 @@ services:
       - ./backend/app:/app/app  # Mount app folder for hot reload
     networks:
       - signage-network
+      - anthias_default  # Connect to Anthias network
 
   # ===========================================================================
   # pgAdmin (Optional - Database Management UI)
@@ -113,6 +114,10 @@ services:
 networks:
   signage-network:
     driver: bridge
+
+  # Connect to existing Anthias network
+  anthias_default:
+    external: true
 
 # =============================================================================
 # Volumes (Persistent Data)

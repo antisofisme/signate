@@ -30,7 +30,7 @@ class Tag(Base):
     id = Column(Integer, primary_key=True, index=True)
 
     # Tag Info
-    tag_name = Column(String(50), unique=True, nullable=False, index=True)
+    tag_name = Column(String(100), unique=True, nullable=False, index=True)
     description = Column(Text)
     color = Column(String(7), default="#3B82F6")  # Hex color code
 

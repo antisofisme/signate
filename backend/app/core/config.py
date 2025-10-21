@@ -50,6 +50,10 @@ class Settings(BaseSettings):
         default="http://192.168.5.12:8000",
         env="ANTHIAS_API_URL"
     )
+    ANTHIAS_PUBLIC_URL: str = Field(
+        default="http://192.168.5.12:8000",
+        env="ANTHIAS_PUBLIC_URL"
+    )
     ANTHIAS_API_KEY: str = Field(default="", env="ANTHIAS_API_KEY")
 
     # =============================================================================

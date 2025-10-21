@@ -26,7 +26,8 @@ class AnthiasService:
 
     def __init__(self):
         self.base_url = settings.ANTHIAS_API_URL
-        self.api_version = "v1.2"
+        self.public_url = settings.ANTHIAS_PUBLIC_URL
+        self.api_version = "v1"
         self.timeout = 30.0  # 30 seconds timeout
 
     def _get_api_url(self, endpoint: str) -> str:
@@ -49,7 +50,9 @@ class AnthiasService:
         is_enabled: bool = True
     ) -> Dict[str, Any]:
         """
-        Upload an asset (image or video) to Anthias
+        Upload an asset (image or video) to Anthias using 2-step process:
+        1. Upload file to /file_asset endpoint
+        2. Create asset with file URI using /assets endpoint
 
         Args:
             file: File to upload (from FastAPI UploadFile)
@@ -64,41 +67,72 @@ class AnthiasService:
             HTTPException: If upload fails
         """
         try:
+            import json
+
             # Read file content
             file_content = await file.read()
 
-            # Reset file pointer for potential re-use
-            await file.seek(0)
+            # Determine mimetype
+            mimetype = "image" if file.content_type.startswith("image/") else "video"
 
-            # Prepare multipart form data
-            files = {
-                "file_upload": (file.filename, file_content, file.content_type)
-            }
-
-            data = {
-                "name": name or file.filename,
-                "duration": str(duration),
-                "is_enabled": "1" if is_enabled else "0",
-                "mimetype": "image" if file.content_type.startswith("image/") else "video"
-            }
-
-            # Upload to Anthias
             async with httpx.AsyncClient(timeout=self.timeout) as client:
-                response = await client.post(
-                    self._get_api_url("assets"),
-                    files=files,
-                    data=data
+                # STEP 1: Upload file to get URI
+                files = {
+                    "file_upload": (file.filename, file_content, file.content_type)
+                }
+
+                upload_response = await client.post(
+                    self._get_api_url("file_asset"),
+                    files=files
                 )
 
-                if response.status_code not in [200, 201]:
-                    logger.error(f"Anthias upload failed: {response.status_code} - {response.text}")
+                if upload_response.status_code != 200:
+                    logger.error(f"Anthias file upload failed: {upload_response.status_code} - {upload_response.text}")
                     raise HTTPException(
                         status_code=500,
-                        detail=f"Failed to upload to Anthias: {response.text}"
+                        detail=f"Failed to upload file to Anthias: {upload_response.text}"
                     )
 
-                asset_data = response.json()
-                logger.info(f"Asset uploaded to Anthias: {asset_data.get('asset_id')}")
+                file_data = upload_response.json()
+                file_uri = file_data.get("uri")
+
+                if not file_uri:
+                    raise HTTPException(
+                        status_code=500,
+                        detail="Anthias did not return file URI"
+                    )
+
+                logger.info(f"File uploaded to Anthias: {file_uri}")
+
+                # STEP 2: Create asset with the file URI
+                # Anthias v1 API expects 'model' field with JSON string
+                model_data = {
+                    "name": name or file.filename,
+                    "uri": file_uri,
+                    "mimetype": mimetype,
+                    "duration": str(duration),
+                    "is_enabled": 1 if is_enabled else 0,
+                    "skip_asset_check": 1  # Skip URL check since it's a local file
+                }
+
+                create_response = await client.post(
+                    self._get_api_url("assets"),
+                    data={"model": json.dumps(model_data)}
+                )
+
+                if create_response.status_code not in [200, 201]:
+                    logger.error(f"Anthias asset creation failed: {create_response.status_code} - {create_response.text}")
+                    raise HTTPException(
+                        status_code=500,
+                        detail=f"Failed to create asset in Anthias: {create_response.text}"
+                    )
+
+                asset_data = create_response.json()
+
+                # Add file_size to response
+                asset_data["file_size"] = len(file_content)
+
+                logger.info(f"Asset created in Anthias: {asset_data.get('asset_id')}")
                 return asset_data
 
         except httpx.RequestError as e:
@@ -350,9 +384,9 @@ class AnthiasService:
                     detail="Asset URI not found"
                 )
 
-            # Construct full URL
-            # Anthias serves assets at base_url + uri
-            asset_url = f"{self.base_url}{uri}"
+            # Construct full URL using public URL (accessible from browser)
+            # Anthias serves assets at public_url + uri
+            asset_url = f"{self.public_url}{uri}"
             return asset_url
 
         except HTTPException:
@@ -362,6 +396,68 @@ class AnthiasService:
             raise HTTPException(
                 status_code=500,
                 detail=f"URL error: {str(e)}"
+            )
+
+    async def get_asset_content(self, asset_id: str) -> bytes:
+        """
+        Get asset file content from Anthias content API
+
+        Args:
+            asset_id: Anthias asset ID
+
+        Returns:
+            bytes: File content (decoded from base64)
+
+        Raises:
+            HTTPException: If asset not found or fetch fails
+        """
+        try:
+            import base64
+
+            async with httpx.AsyncClient(timeout=self.timeout) as client:
+                response = await client.get(
+                    self._get_api_url(f"assets/{asset_id}/content")
+                )
+
+                if response.status_code == 404:
+                    raise HTTPException(
+                        status_code=404,
+                        detail=f"Asset {asset_id} not found"
+                    )
+
+                if response.status_code != 200:
+                    logger.error(f"Anthias content fetch failed: {response.status_code}")
+                    raise HTTPException(
+                        status_code=500,
+                        detail="Failed to fetch asset content from Anthias"
+                    )
+
+                data = response.json()
+                content_base64 = data.get("content")
+
+                if not content_base64:
+                    raise HTTPException(
+                        status_code=500,
+                        detail="No content in Anthias response"
+                    )
+
+                # Decode base64 to bytes
+                content_bytes = base64.b64decode(content_base64)
+                return content_bytes
+
+        except HTTPException:
+            raise
+        except httpx.RequestError as e:
+            logger.error(f"Anthias connection error: {e}")
+            raise HTTPException(
+                status_code=503,
+                detail="Cannot connect to Anthias service"
+            )
+        except Exception as e:
+            logger.error(f"Unexpected error fetching content: {e}")
+            raise HTTPException(
+                status_code=500,
+                detail=f"Content fetch error: {str(e)}"
             )
 
     async def check_connection(self) -> bool:

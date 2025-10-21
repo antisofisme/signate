@@ -66,6 +66,18 @@ export const contentAPI = {
   getAssignments: (id) => api.get(`/api/content/${id}/assignments`),
 }
 
+// Tags API
+export const tagsAPI = {
+  list: () => api.get('/api/tags'),
+  create: (data) => api.post('/api/tags', data),
+  get: (id) => api.get(`/api/tags/${id}`),
+  update: (id, data) => api.patch(`/api/tags/${id}`, data),
+  delete: (id) => api.delete(`/api/tags/${id}`),
+  assign: (data) => api.post('/api/tags/assign', data),
+  unassign: (data) => api.delete('/api/tags/assign', { data }),
+  getDevices: (id) => api.get(`/api/tags/${id}/devices`),
+}
+
 // Client API (for testing)
 export const clientAPI = {
   getPlaylist: (deviceId) => api.get(`/api/client/playlist?device_id=${deviceId}`),
