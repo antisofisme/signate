@@ -165,7 +165,8 @@
         // Configuration
         const API_BASE_URL = 'http://192.168.5.12:8001';
         const POLL_INTERVAL = 5000; // 5 seconds
-        const PRELOAD_TIME = 3000; // 3 seconds before end
+        const PRELOAD_TIME = 3000; // 3 seconds
+        const HEARTBEAT_INTERVAL = 30000; // 30 seconds before end
         
         // State
         let deviceId = null;
@@ -178,6 +179,7 @@
         let contentTimer = null;
         let pollTimer = null;
         let playlistRefreshTimer = null;
+        let heartbeatTimer = null;
 
         // Debug mode
         let debugMode = false;
@@ -328,6 +330,51 @@
             }
         }
 
+        // Send heartbeat to backend
+        async function sendHeartbeat() {
+            if (!deviceId) return;
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/devices/heartbeat`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ device_id: parseInt(deviceId) })
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    console.log('💓 Heartbeat sent:', data.last_seen);
+                    updateDebug('status', `Online - Last heartbeat: ${new Date().toLocaleTimeString()}`);
+                } else {
+                    console.error('Heartbeat failed:', response.status);
+                }
+            } catch (error) {
+                console.error('❌ Heartbeat error:', error);
+            }
+        }
+
+        // Start continuous heartbeat
+        function startHeartbeat() {
+            // Send initial heartbeat immediately
+            sendHeartbeat();
+
+            // Set up periodic heartbeat
+            if (heartbeatTimer) {
+                clearInterval(heartbeatTimer);
+            }
+            heartbeatTimer = setInterval(sendHeartbeat, HEARTBEAT_INTERVAL);
+            console.log('🫀 Heartbeat started (every 30 seconds)');
+        }
+
+        // Stop heartbeat
+        function stopHeartbeat() {
+            if (heartbeatTimer) {
+                clearInterval(heartbeatTimer);
+                heartbeatTimer = null;
+                console.log('Heartbeat stopped');
+            }
+        }
+
         // Monitor activated
         async function onActivated() {
             console.log('Monitor activated!');
@@ -337,6 +384,9 @@
             localStorage.setItem('monitor_status', 'active');
 
             stopPolling();
+
+            // Start continuous heartbeat to maintain online status
+            startHeartbeat();
 
             // Hide activation screen
             document.getElementById('activation-screen').style.display = 'none';
