@@ -3,12 +3,17 @@ Client API endpoints
 For TV/Monitor devices to fetch playlist and check status
 """
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
+from fastapi.responses import StreamingResponse, Response
 from sqlalchemy.orm import Session
 from typing import List
 import logging
+import httpx
+import base64
+import json
 
 from app.core.database import get_db
+from app.core.config import settings
 from app.models.device import Device
 from app.models.content import Content
 from app.models.assignment import ContentAssignment
@@ -104,11 +109,15 @@ def get_device_playlist(
 
         seen_content_ids.add(content.id)
 
+        # Use proxy URL instead of direct Anthias URL to avoid CORS issues
+        # The proxy endpoint will fetch content from Anthias and serve it with proper CORS headers
+        proxy_url = f"{settings.API_BASE_URL}/api/client/content-proxy/{content.id}"
+
         playlist_item = PlaylistItem(
             content_id=content.id,
             title=content.title,
             content_type=content.content_type,
-            url=content.anthias_url,
+            url=proxy_url,
             duration=content.duration,
             mime_type=content.mime_type
         )
@@ -174,3 +183,86 @@ def check_device_status(
         is_active=is_active,
         message=message
     )
+
+
+@router.get("/content-proxy/{content_id}")
+async def proxy_content(
+    content_id: int,
+    db: Session = Depends(get_db)
+):
+    """
+    Proxy content from Anthias to avoid CORS issues
+
+    This endpoint fetches content from the Anthias server and streams it to the client
+    with proper CORS headers, solving the cross-origin issue when the monitor viewer
+    tries to load content from Anthias.
+
+    Args:
+        content_id: Content ID to proxy
+        db: Database session
+
+    Returns:
+        StreamingResponse: Content streamed from Anthias with proper headers
+
+    Raises:
+        HTTPException: If content not found or Anthias request fails
+
+    Notes:
+        - This endpoint does NOT require authentication (for device clients)
+        - Content is fetched from Anthias and streamed through
+        - CORS headers are automatically added by FastAPI middleware
+    """
+    # Get content from database
+    content = db.query(Content).filter(Content.id == content_id).first()
+
+    if not content:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Content with ID {content_id} not found"
+        )
+
+    # Fetch content from Anthias using internal API
+    # Use anthias_asset_id to construct the correct API URL
+    # Note: From inside docker network, use anthias-nginx hostname
+    anthias_content_url = f"http://anthias-nginx/api/v1/assets/{content.anthias_asset_id}/content"
+
+    logger.info(f"Fetching content from Anthias: {anthias_content_url}")
+
+    try:
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            response = await client.get(anthias_content_url)
+
+            if response.status_code != 200:
+                raise HTTPException(
+                    status_code=status.HTTP_502_BAD_GATEWAY,
+                    detail=f"Failed to fetch content from Anthias: HTTP {response.status_code}"
+                )
+
+            # Parse JSON response from Anthias and decode base64 content
+            anthias_data = response.json()
+            base64_content = anthias_data.get('content', '')
+
+            if not base64_content:
+                raise HTTPException(
+                    status_code=status.HTTP_502_BAD_GATEWAY,
+                    detail="No content in Anthias response"
+                )
+
+            # Decode base64 content
+            binary_content = base64.b64decode(base64_content)
+
+            # Return binary content with proper headers
+            return Response(
+                content=binary_content,
+                media_type=content.mime_type or "application/octet-stream",
+                headers={
+                    "Content-Length": str(len(binary_content)),
+                    "Cache-Control": "public, max-age=3600",  # Cache for 1 hour
+                }
+            )
+    except httpx.RequestError as e:
+        logger.error(f"Error fetching content from Anthias: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=f"Failed to fetch content from Anthias: {str(e)}"
+        )

@@ -12,7 +12,10 @@ export default function Devices() {
   // Fetch devices
   const { data: devicesData, isLoading } = useQuery({
     queryKey: ['devices'],
-    queryFn: () => devicesAPI.list().then(res => res.data),
+    queryFn: () => devicesAPI.list().then(res => {
+      console.log('Devices API Response:', res.data)
+      return res.data
+    }),
   })
 
   // Register TV mutation
@@ -100,6 +103,7 @@ export default function Devices() {
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">ID</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Device</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Type</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">IP/Code</th>
@@ -109,8 +113,12 @@ export default function Devices() {
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
-            {devicesData?.items?.map((device) => (
+            {console.log('Rendering devices:', devicesData?.devices?.length, 'devices')}
+            {devicesData?.devices?.map((device) => (
               <tr key={device.id}>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <span className="font-mono font-bold text-blue-600">{device.id}</span>
+                </td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   <div className="flex items-center">
                     {device.device_type === 'tv' ? (

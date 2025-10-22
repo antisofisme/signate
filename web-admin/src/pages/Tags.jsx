@@ -321,7 +321,7 @@ function AssignTagForm({ tag, onClose }) {
         </div>
 
         <div className="space-y-2">
-          {devicesData?.items?.map((device) => {
+          {devicesData?.devices?.map((device) => {
             const isAssigned = assignedDeviceIds.includes(device.id)
             return (
               <div
@@ -349,7 +349,7 @@ function AssignTagForm({ tag, onClose }) {
           })}
         </div>
 
-        {devicesData?.items?.length === 0 && (
+        {devicesData?.devices?.length === 0 && (
           <p className="text-center py-8 text-gray-500">No devices available</p>
         )}
       </div>

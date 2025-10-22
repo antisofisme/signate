@@ -1,11 +1,12 @@
 import { useQuery } from '@tanstack/react-query'
 import { devicesAPI, contentAPI, tagsAPI } from '../services/api'
-import { Monitor, FileImage, Activity, TrendingUp, Tag, Tv } from 'lucide-react'
+import { Monitor, FileImage, Activity, TrendingUp, Tag, Tv, Wifi, WifiOff } from 'lucide-react'
 
 export default function Dashboard() {
-  const { data: devices } = useQuery({
+  const { data: devices, isLoading } = useQuery({
     queryKey: ['devices'],
     queryFn: () => devicesAPI.list().then(res => res.data),
+    refetchInterval: 10000, // Refresh every 10 seconds
   })
 
   const { data: content } = useQuery({
@@ -18,11 +19,22 @@ export default function Dashboard() {
     queryFn: () => tagsAPI.list().then(res => res.data),
   })
 
+  // Helper function to check if device is online
+  const isDeviceOnline = (lastSeen) => {
+    if (!lastSeen) return false
+    const lastSeenTime = new Date(lastSeen).getTime()
+    const now = Date.now()
+    const timeout = 300000 // 5 minutes in milliseconds (DEVICE_HEARTBEAT_TIMEOUT)
+    return (now - lastSeenTime) < timeout
+  }
+
   // Calculate stats
-  const tvDevices = devices?.items?.filter(d => d.device_type === 'tv').length || 0
-  const monitorDevices = devices?.items?.filter(d => d.device_type === 'monitor').length || 0
-  const activeDevices = devices?.items?.filter(d => d.status === 'active').length || 0
-  const pendingDevices = devices?.items?.filter(d => d.status === 'pending').length || 0
+  const devicesList = devices?.devices || []
+  const tvDevices = devicesList.filter(d => d.device_type === 'tv').length || 0
+  const monitorDevices = devicesList.filter(d => d.device_type === 'monitor').length || 0
+  const activeDevices = devicesList.filter(d => d.status === 'active').length || 0
+  const pendingDevices = devicesList.filter(d => d.status === 'pending').length || 0
+  const onlineDevices = devicesList.filter(d => isDeviceOnline(d.last_seen)).length || 0
 
   const stats = [
     {
@@ -33,10 +45,10 @@ export default function Dashboard() {
       color: 'blue',
     },
     {
-      name: 'Active Devices',
-      value: activeDevices,
-      subtitle: `${pendingDevices} pending`,
-      icon: Activity,
+      name: 'Online Devices',
+      value: onlineDevices,
+      subtitle: `${activeDevices} active • ${pendingDevices} pending`,
+      icon: Wifi,
       color: 'green',
     },
     {
@@ -101,39 +113,64 @@ export default function Dashboard() {
         {/* Recent Devices */}
         <div className="bg-white rounded-xl shadow-md p-6">
           <h2 className="text-xl font-bold text-gray-800 mb-4">Recent Devices</h2>
-          {devices?.items && devices.items.length > 0 ? (
+          {devicesList && devicesList.length > 0 ? (
             <div className="space-y-3">
-              {devices.items.slice(0, 5).map((device) => (
-                <div
-                  key={device.id}
-                  className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
-                >
-                  <div className="flex items-center">
-                    {device.device_type === 'tv' ? (
-                      <Tv className="w-5 h-5 text-blue-600 mr-3" />
-                    ) : (
-                      <Monitor className="w-5 h-5 text-green-600 mr-3" />
-                    )}
-                    <div>
-                      <p className="font-medium text-gray-800">{device.device_name}</p>
-                      <p className="text-sm text-gray-600">
-                        {device.device_type.toUpperCase()} • {device.ip_address || device.unique_code || 'N/A'}
-                      </p>
-                    </div>
-                  </div>
-                  <span
-                    className={`px-3 py-1 rounded-full text-sm font-medium ${
-                      device.status === 'active'
-                        ? 'bg-green-100 text-green-700'
-                        : device.status === 'pending'
-                        ? 'bg-yellow-100 text-yellow-700'
-                        : 'bg-gray-100 text-gray-700'
-                    }`}
+              {devicesList.slice(0, 5).map((device) => {
+                const online = isDeviceOnline(device.last_seen)
+                return (
+                  <div
+                    key={device.id}
+                    className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
                   >
-                    {device.status}
-                  </span>
-                </div>
-              ))}
+                    <div className="flex items-center flex-1">
+                      {device.device_type === 'tv' ? (
+                        <Tv className="w-5 h-5 text-blue-600 mr-3" />
+                      ) : (
+                        <Monitor className="w-5 h-5 text-green-600 mr-3" />
+                      )}
+                      <div className="flex-1">
+                        <div className="flex items-center">
+                          <p className="font-medium text-gray-800">{device.device_name}</p>
+                          {device.status === 'active' && (
+                            <div className="ml-2 flex items-center">
+                              {online ? (
+                                <div className="flex items-center">
+                                  <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse mr-1"></div>
+                                  <span className="text-xs text-green-600 font-medium">Online</span>
+                                </div>
+                              ) : (
+                                <div className="flex items-center">
+                                  <div className="w-2 h-2 bg-red-500 rounded-full mr-1"></div>
+                                  <span className="text-xs text-red-600 font-medium">Offline</span>
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                        <p className="text-sm text-gray-600">
+                          {device.device_type.toUpperCase()} • {device.ip_address || device.unique_code || 'N/A'}
+                        </p>
+                        {device.last_seen && (
+                          <p className="text-xs text-gray-500">
+                            Last seen: {new Date(device.last_seen).toLocaleString()}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                    <span
+                      className={`px-3 py-1 rounded-full text-sm font-medium ${
+                        device.status === 'active'
+                          ? 'bg-green-100 text-green-700'
+                          : device.status === 'pending'
+                          ? 'bg-yellow-100 text-yellow-700'
+                          : 'bg-gray-100 text-gray-700'
+                      }`}
+                    >
+                      {device.status}
+                    </span>
+                  </div>
+                )
+              })}
             </div>
           ) : (
             <p className="text-gray-500 text-center py-8">No devices registered yet</p>

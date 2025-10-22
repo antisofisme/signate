@@ -365,7 +365,7 @@ function AssignForm({ content, onClose, onSubmit }) {
                 required={assignType === 'device'}
               >
                 <option value="">Select Device...</option>
-                {devicesData?.items?.map((device) => (
+                {devicesData?.devices?.map((device) => (
                   <option key={device.id} value={device.id}>
                     {device.device_name} ({device.device_type})
                   </option>
@@ -556,7 +556,7 @@ function PreviewModal({ content, onClose }) {
                     let displayColor = 'bg-gray-100 text-gray-700'
 
                     if (assignment.device_id) {
-                      const device = devicesData?.items?.find(d => d.id === assignment.device_id)
+                      const device = devicesData?.devices?.find(d => d.id === assignment.device_id)
                       displayName = device ? device.device_name : `Device #${assignment.device_id}`
                       displayType = 'Device'
                       displayColor = 'bg-blue-100 text-blue-700'

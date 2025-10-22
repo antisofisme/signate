@@ -12,6 +12,14 @@ export default defineConfig({
   },
   server: {
     port: 3000,
+    host: true, // Allow network access
+    watch: {
+      usePolling: true, // Enable polling for WSL/Windows
+      interval: 100, // Check for changes every 100ms
+    },
+    hmr: {
+      overlay: true, // Show error overlay
+    },
     proxy: {
       '/api': {
         target: 'http://192.168.5.12:8001',

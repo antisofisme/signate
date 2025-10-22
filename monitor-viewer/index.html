@@ -71,13 +71,7 @@
             width: 100%;
             height: 100%;
             object-fit: contain;
-            opacity: 0;
-            transition: opacity 1s ease-in-out;
-        }
-
-        .content-item.active {
-            opacity: 1;
-            z-index: 1;
+            /* Direct replacement - no transition, no opacity, no flicker */
         }
 
         /* Debug Info */
@@ -183,6 +177,7 @@
         let nextContentElement = null;
         let contentTimer = null;
         let pollTimer = null;
+        let playlistRefreshTimer = null;
 
         // Debug mode
         let debugMode = false;
@@ -205,13 +200,15 @@
                 updateDebug('device-id', `Device ID: ${deviceId}`);
                 updateDebug('status', 'Using saved monitor...');
 
-                console.log('Using saved monitor:', { deviceId, activationCode });
+                console.log('Using saved monitor:', { deviceId, activationCode, status: savedStatus });
 
                 // Check if already activated
                 if (savedStatus === 'active') {
+                    // Already activated, start content player
                     isActivated = true;
                     await onActivated();
                 } else {
+                    // Still pending, start polling for activation
                     startPolling();
                 }
             } else {
@@ -268,22 +265,50 @@
             }
         }
 
-        // Poll activation status
+        // Poll activation status using heartbeat endpoint (no auth required)
         async function checkActivationStatus() {
             if (!deviceId || isActivated) return;
 
             try {
-                const response = await fetch(`${API_BASE_URL}/api/devices/${deviceId}`);
-                
+                const response = await fetch(`${API_BASE_URL}/api/devices/heartbeat`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        device_id: parseInt(deviceId)
+                    })
+                });
+
                 if (!response.ok) {
-                    throw new Error(`Status check failed: ${response.status}`);
+                    // Device might be deleted, clear localStorage and register new
+                    if (response.status === 404) {
+                        console.log('Device not found (404), re-registering...');
+                        stopPolling();
+                        localStorage.clear();
+                        deviceId = null;
+                        activationCode = null;
+                        isActivated = false;
+                        await registerMonitor();
+                        startPolling();
+                    } else {
+                        console.error('Heartbeat failed:', response.status);
+                    }
+                    return;
                 }
 
                 const data = await response.json();
-                
-                if (data.status === 'active') {
+                console.log('Heartbeat response:', data);
+
+                // Update localStorage with current status
+                localStorage.setItem('monitor_status', data.status);
+
+                // Check if activated
+                if (data.status === 'active' && !isActivated) {
+                    console.log('Device activated! Switching to content player...');
                     isActivated = true;
-                    onActivated();
+                    localStorage.setItem('monitor_status', 'active');
+                    await onActivated();
                 }
             } catch (error) {
                 console.error('Status check error:', error);
@@ -325,27 +350,110 @@
             // Load and start playlist
             await loadPlaylist();
             startPlaylist();
+
+            // Start periodic playlist refresh to detect new content
+            startPlaylistRefresh();
         }
 
         // Load playlist from backend
         async function loadPlaylist() {
             try {
                 const response = await fetch(`${API_BASE_URL}/api/client/playlist?device_id=${deviceId}`);
-                
+
                 if (!response.ok) {
                     throw new Error(`Playlist load failed: ${response.status}`);
                 }
 
-                playlist = await response.json();
-                
+                const data = await response.json();
+
+                // Extract playlist array from response
+                playlist = data.playlist || [];
+
                 updateDebug('playlist-count', `Playlist: ${playlist.length} items`);
                 updateDebug('status', 'Playing content');
-                
+
                 console.log('Playlist loaded:', playlist);
             } catch (error) {
                 console.error('Playlist load error:', error);
                 showError('Failed to load playlist. Retrying in 10 seconds...');
                 setTimeout(loadPlaylist, 10000);
+            }
+        }
+
+        // Refresh playlist periodically to check for new content
+        async function refreshPlaylist() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/client/playlist?device_id=${deviceId}`);
+
+                if (!response.ok) {
+                    console.error('Playlist refresh failed:', response.status);
+                    return;
+                }
+
+                const data = await response.json();
+                const newPlaylist = data.playlist || [];
+
+                // Check if playlist changed
+                if (JSON.stringify(newPlaylist) !== JSON.stringify(playlist)) {
+                    console.log('✨ Playlist updated! Reloading content...');
+                    console.log('Old playlist:', playlist.length, 'items');
+                    console.log('New playlist:', newPlaylist.length, 'items');
+
+                    // Update playlist
+                    playlist = newPlaylist;
+                    updateDebug('playlist-count', `Playlist: ${playlist.length} items`);
+
+                    // If playlist is empty, stop playing
+                    if (playlist.length === 0) {
+                        console.log('Playlist is empty, stopping playback');
+                        if (contentTimer) {
+                            clearTimeout(contentTimer);
+                            contentTimer = null;
+                        }
+                        updateDebug('status', 'No content assigned');
+                        return;
+                    }
+
+                    // If currently showing content is not in new playlist, restart from beginning
+                    const currentContentId = playlist[currentIndex]?.content_id;
+                    const stillExists = newPlaylist.some(item => item.content_id === currentContentId);
+
+                    if (!stillExists) {
+                        console.log('✨ Content changed, switching to new playlist...');
+
+                        // Clear timers
+                        if (contentTimer) {
+                            clearTimeout(contentTimer);
+                            contentTimer = null;
+                        }
+
+                        // Restart playback from beginning
+                        // playContent() will handle clearing via innerHTML = ''
+                        currentIndex = 0;
+                        playContent(0);
+                    }
+                }
+            } catch (error) {
+                console.error('Playlist refresh error:', error);
+            }
+        }
+
+        // Start periodic playlist refresh (every 10 seconds)
+        function startPlaylistRefresh() {
+            // Refresh playlist every 10 seconds
+            playlistRefreshTimer = setInterval(() => {
+                refreshPlaylist();
+            }, 10000); // 10 seconds
+
+            console.log('📡 Playlist auto-refresh started (every 10 seconds)');
+        }
+
+        // Stop playlist refresh
+        function stopPlaylistRefresh() {
+            if (playlistRefreshTimer) {
+                clearInterval(playlistRefreshTimer);
+                playlistRefreshTimer = null;
+                console.log('Playlist auto-refresh stopped');
             }
         }
 
@@ -362,53 +470,93 @@
 
         // Play specific content
         function playContent(index) {
+            // Clear any existing timer first to prevent multiple timers
+            if (contentTimer) {
+                clearTimeout(contentTimer);
+                contentTimer = null;
+            }
+
             if (index >= playlist.length) {
                 index = 0; // Loop to start
             }
 
             const content = playlist[index];
+
+            // If we're showing the same content again (single item playlist or looping)
+            // and the element is already active, just reschedule
+            if (currentIndex === index && currentContentElement && currentContentElement.classList.contains('active')) {
+                console.log('Same content already showing, rescheduling...');
+
+                // Schedule next content
+                const duration = content.duration * 1000;
+                const nextChangeTime = new Date(Date.now() + duration);
+                updateDebug('next-change', `Next: ${nextChangeTime.toLocaleTimeString()}`);
+
+                // Preload next content
+                const preloadTime = Math.max(duration - PRELOAD_TIME, 0);
+                setTimeout(() => preloadNextContent(index + 1), preloadTime);
+
+                // Schedule content change
+                contentTimer = setTimeout(() => playContent(index + 1), duration);
+                return;
+            }
+
             currentIndex = index;
-            
+
             updateDebug('current-index', `Current: ${index + 1}/${playlist.length}`);
-            
+
             console.log('Playing content:', content);
 
-            // Create content element
-            const contentUrl = `${API_BASE_URL}/api/content/${content.id}/image`;
+            // Use URL from playlist (already provided by backend)
+            const contentUrl = content.url;
             const isVideo = content.content_type === 'video';
-            
-            const element = isVideo 
-                ? createVideoElement(contentUrl) 
-                : createImageElement(contentUrl);
-            
-            // Add to player
+
+            console.log('Content URL:', contentUrl);
+
+            // DIRECT REPLACEMENT PATTERN (like old viewer - no crossfade, no flicker)
             const player = document.getElementById('content-player');
-            player.appendChild(element);
-            
-            // Fade in
-            setTimeout(() => {
-                element.classList.add('active');
-            }, 50);
-            
-            // Remove previous content after fade
-            if (currentContentElement) {
-                currentContentElement.classList.remove('active');
-                setTimeout(() => {
-                    currentContentElement.remove();
-                }, 1000); // After transition
+
+            // Clear all content first (key pattern from old viewer)
+            console.log('Clearing player (direct replacement)');
+            player.innerHTML = '';
+
+            if (isVideo) {
+                console.log('Creating video element');
+                const element = createVideoElement(contentUrl);
+
+                // Add directly to player
+                player.appendChild(element);
+                currentContentElement = element;
+
+                // Play video
+                element.play().catch(err => console.log('Video play error:', err));
+
+                element.addEventListener('loadeddata', () => {
+                    console.log('Video loaded and playing');
+                }, { once: true });
+
+            } else {
+                console.log('Creating image element');
+                const element = createImageElement(contentUrl);
+
+                // Add directly to player
+                player.appendChild(element);
+                currentContentElement = element;
+
+                element.addEventListener('load', () => {
+                    console.log('Image loaded successfully');
+                }, { once: true });
             }
-            
-            currentContentElement = element;
-            
+
             // Schedule next content
             const duration = content.duration * 1000; // Convert to milliseconds
             const nextChangeTime = new Date(Date.now() + duration);
             updateDebug('next-change', `Next: ${nextChangeTime.toLocaleTimeString()}`);
-            
+
             // Preload next content
             const preloadTime = Math.max(duration - PRELOAD_TIME, 0);
             setTimeout(() => preloadNextContent(index + 1), preloadTime);
-            
+
             // Schedule content change
             contentTimer = setTimeout(() => playContent(index + 1), duration);
         }
@@ -438,7 +586,7 @@
             }
 
             const content = playlist[index];
-            const contentUrl = `${API_BASE_URL}/api/content/${content.id}/image`;
+            const contentUrl = content.url; // Use URL from playlist
             const isVideo = content.content_type === 'video';
             
             // Preload in background

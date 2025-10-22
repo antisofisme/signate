@@ -26,6 +26,10 @@ class Settings(BaseSettings):
     # =============================================================================
     API_HOST: str = Field(default="0.0.0.0", env="API_HOST")
     API_PORT: int = Field(default=8000, env="API_PORT")
+    API_BASE_URL: str = Field(
+        default="http://192.168.5.12:8001",
+        env="API_BASE_URL"
+    )
 
     # =============================================================================
     # DATABASE
