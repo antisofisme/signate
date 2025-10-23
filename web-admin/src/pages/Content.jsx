@@ -10,6 +10,90 @@ const getImageUrl = (content) => {
   return `${baseUrl}/api/content/${content.id}/image`
 }
 
+// Helper function to get proxy video URL
+const getVideoUrl = (content) => {
+  // Use backend proxy endpoint which serves videos with correct Content-Type and avoids CORS issues
+  const baseUrl = import.meta.env.VITE_API_URL || 'http://192.168.5.12:8001'
+  return `${baseUrl}/api/content/${content.id}/video`
+}
+
+// VideoThumbnail component with error handling and fallback
+function VideoThumbnail({ content }) {
+  const [hasError, setHasError] = useState(false)
+  const [isLoaded, setIsLoaded] = useState(false)
+  const videoUrl = getVideoUrl(content)
+
+  if (hasError) {
+    // Show fallback icon if video fails to load
+    return (
+      <>
+        <div className="flex flex-col items-center justify-center">
+          <svg className="w-16 h-16 text-gray-400 mb-2" fill="currentColor" viewBox="0 0 24 24">
+            <path d="M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4z"/>
+          </svg>
+          <span className="text-xs text-gray-500">Video</span>
+        </div>
+        {/* Play icon overlay */}
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+          <div className="bg-black bg-opacity-50 rounded-full p-4">
+            <svg className="w-12 h-12 text-white" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M8 5v14l11-7z"/>
+            </svg>
+          </div>
+        </div>
+      </>
+    )
+  }
+
+  return (
+    <>
+      {/* Video element with error handling */}
+      <video
+        src={videoUrl}
+        className="w-full h-full object-cover"
+        preload="metadata"
+        muted
+        playsInline
+        onLoadedMetadata={(e) => {
+          // Successfully loaded metadata, seek to first frame
+          try {
+            e.target.currentTime = 0.1
+            setIsLoaded(true)
+          } catch (err) {
+            console.error('Error seeking video:', err)
+            setHasError(true)
+          }
+        }}
+        onError={(e) => {
+          console.error('Video load error for content:', content.id, videoUrl, e)
+          setHasError(true)
+        }}
+        style={{ display: isLoaded || !hasError ? 'block' : 'none' }}
+      />
+
+      {/* Loading placeholder while video loads */}
+      {!isLoaded && !hasError && (
+        <div className="absolute inset-0 flex items-center justify-center">
+          <div className="flex flex-col items-center">
+            <svg className="w-12 h-12 text-gray-400 animate-pulse" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4z"/>
+            </svg>
+          </div>
+        </div>
+      )}
+
+      {/* Play icon overlay */}
+      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+        <div className="bg-black bg-opacity-50 rounded-full p-4">
+          <svg className="w-12 h-12 text-white" fill="currentColor" viewBox="0 0 24 24">
+            <path d="M8 5v14l11-7z"/>
+          </svg>
+        </div>
+      </div>
+    </>
+  )
+}
+
 export default function Content() {
   const queryClient = useQueryClient()
   const [showUploadForm, setShowUploadForm] = useState(false)
@@ -20,11 +104,171 @@ export default function Content() {
   const [selectedContent, setSelectedContent] = useState(null)
   const [selectedIds, setSelectedIds] = useState(new Set())
 
+  // Grouping state: 'none', 'extension', 'tag', 'device'
+  const [groupBy, setGroupBy] = useState('none')
+  const [expandedGroups, setExpandedGroups] = useState(new Set())
+
   // Fetch content
   const { data: contentData } = useQuery({
     queryKey: ['content'],
     queryFn: () => contentAPI.list().then(res => res.data),
   })
+
+  // Fetch tags
+  const { data: tagsData } = useQuery({
+    queryKey: ['tags'],
+    queryFn: () => tagsAPI.list().then(res => res.data),
+  })
+
+  // Fetch devices
+  const { data: devicesData } = useQuery({
+    queryKey: ['devices'],
+    queryFn: () => devicesAPI.list().then(res => res.data),
+  })
+
+  // Fetch all assignments to map content to tags/devices
+  const { data: allAssignmentsData } = useQuery({
+    queryKey: ['all-assignments'],
+    queryFn: async () => {
+      if (!contentData?.items) return {}
+
+      const assignmentsMap = {}
+      for (const content of contentData.items) {
+        const res = await contentAPI.getAssignments(content.id)
+        assignmentsMap[content.id] = res.data
+      }
+      return assignmentsMap
+    },
+    enabled: !!contentData?.items,
+  })
+
+  // Group content based on selected grouping mode
+  const groupedContent = () => {
+    if (!contentData?.items) return []
+
+    if (groupBy === 'none') {
+      return [{ name: 'All Content', items: contentData.items, key: 'all' }]
+    }
+
+    if (groupBy === 'extension') {
+      const groups = {}
+      contentData.items.forEach(content => {
+        const mimeType = content.mime_type || 'unknown'
+        const category = mimeType.startsWith('image/') ? 'Images'
+                      : mimeType.startsWith('video/') ? 'Videos'
+                      : 'Other'
+
+        if (!groups[category]) {
+          groups[category] = []
+        }
+        groups[category].push(content)
+      })
+
+      return Object.entries(groups).map(([name, items]) => ({
+        name,
+        items,
+        key: name.toLowerCase(),
+        icon: name === 'Images' ? '🖼️' : name === 'Videos' ? '🎬' : '📄'
+      }))
+    }
+
+    if (groupBy === 'tag' && allAssignmentsData) {
+      const groups = {}
+      const untagged = []
+
+      contentData.items.forEach(content => {
+        const assignments = allAssignmentsData[content.id] || []
+        const contentTags = assignments.filter(a => a.tag_id).map(a => a.tag_id)
+
+        if (contentTags.length === 0) {
+          untagged.push(content)
+        } else {
+          contentTags.forEach(tagId => {
+            const tag = tagsData?.items?.find(t => t.id === tagId)
+            const tagName = tag?.tag_name || `Tag #${tagId}`
+
+            if (!groups[tagName]) {
+              groups[tagName] = []
+            }
+            groups[tagName].push(content)
+          })
+        }
+      })
+
+      const result = Object.entries(groups).map(([name, items]) => ({
+        name,
+        items,
+        key: `tag-${name}`,
+        icon: '🏷️'
+      }))
+
+      if (untagged.length > 0) {
+        result.push({ name: 'Untagged', items: untagged, key: 'untagged', icon: '❓' })
+      }
+
+      return result
+    }
+
+    if (groupBy === 'device' && allAssignmentsData) {
+      const groups = {}
+      const unassigned = []
+
+      contentData.items.forEach(content => {
+        const assignments = allAssignmentsData[content.id] || []
+        const contentDevices = assignments.filter(a => a.device_id).map(a => a.device_id)
+
+        if (contentDevices.length === 0) {
+          unassigned.push(content)
+        } else {
+          contentDevices.forEach(deviceId => {
+            const device = devicesData?.devices?.find(d => d.id === deviceId)
+            const deviceName = device?.device_name || `Device #${deviceId}`
+
+            if (!groups[deviceName]) {
+              groups[deviceName] = []
+            }
+            groups[deviceName].push(content)
+          })
+        }
+      })
+
+      const result = Object.entries(groups).map(([name, items]) => ({
+        name,
+        items,
+        key: `device-${name}`,
+        icon: '📺'
+      }))
+
+      if (unassigned.length > 0) {
+        result.push({ name: 'Unassigned', items: unassigned, key: 'unassigned', icon: '❓' })
+      }
+
+      return result
+    }
+
+    return []
+  }
+
+  const toggleGroup = (groupKey) => {
+    setExpandedGroups(prev => {
+      const newSet = new Set(prev)
+      if (newSet.has(groupKey)) {
+        newSet.delete(groupKey)
+      } else {
+        newSet.add(groupKey)
+      }
+      return newSet
+    })
+  }
+
+  const expandAllGroups = () => {
+    const allKeys = groupedContent().map(g => g.key)
+    setExpandedGroups(new Set(allKeys))
+  }
+
+  const collapseAllGroups = () => {
+    setExpandedGroups(new Set())
+  }
 
   // Upload content mutation
   const uploadMutation = useMutation({
@@ -87,10 +331,11 @@ export default function Content() {
   }
 
   const toggleSelectAll = () => {
-    if (selectedIds.size === contentData?.items?.length) {
+    const allContent = contentData?.items || []
+    if (selectedIds.size === allContent.length) {
       setSelectedIds(new Set())
     } else {
-      setSelectedIds(new Set(contentData?.items?.map(c => c.id)))
+      setSelectedIds(new Set(allContent.map(c => c.id)))
     }
   }
 
@@ -159,9 +404,117 @@ export default function Content() {
         </div>
       </div>
 
-      {/* Content Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {contentData?.items?.map((content) => (
+      {/* Grouping Section */}
+      <div className="bg-white rounded-xl shadow-md p-4 mb-6">
+        <div className="flex items-center justify-between flex-wrap gap-4">
+          <div className="flex items-center gap-4">
+            <span className="text-sm font-medium text-gray-700">Group by:</span>
+
+            {/* Grouping Options */}
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setGroupBy('none')}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                  groupBy === 'none'
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                None
+              </button>
+              <button
+                onClick={() => {
+                  setGroupBy('extension')
+                  expandAllGroups()
+                }}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                  groupBy === 'extension'
+                    ? 'bg-purple-600 text-white'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                🖼️ Extension
+              </button>
+              <button
+                onClick={() => {
+                  setGroupBy('tag')
+                  expandAllGroups()
+                }}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                  groupBy === 'tag'
+                    ? 'bg-green-600 text-white'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                🏷️ Tag
+              </button>
+              <button
+                onClick={() => {
+                  setGroupBy('device')
+                  expandAllGroups()
+                }}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                  groupBy === 'device'
+                    ? 'bg-orange-600 text-white'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                📺 Device
+              </button>
+            </div>
+          </div>
+
+          {/* Expand/Collapse All */}
+          {groupBy !== 'none' && (
+            <div className="flex items-center gap-2">
+              <button
+                onClick={expandAllGroups}
+                className="px-3 py-1 bg-gray-100 text-gray-700 rounded text-sm hover:bg-gray-200"
+              >
+                Expand All
+              </button>
+              <button
+                onClick={collapseAllGroups}
+                className="px-3 py-1 bg-gray-100 text-gray-700 rounded text-sm hover:bg-gray-200"
+              >
+                Collapse All
+              </button>
+            </div>
+          )}
+
+          {/* Total Count */}
+          <div className="text-sm text-gray-600">
+            {contentData?.items?.length || 0} content total
+          </div>
+        </div>
+      </div>
+
+      {/* Grouped Content */}
+      {groupedContent().map((group) => (
+        <div key={group.key} className="mb-6">
+          {/* Group Header */}
+          {groupBy !== 'none' && (
+            <button
+              onClick={() => toggleGroup(group.key)}
+              className="w-full bg-gradient-to-r from-gray-50 to-gray-100 border border-gray-300 rounded-lg px-4 py-3 mb-4 flex items-center justify-between hover:from-gray-100 hover:to-gray-200 transition-all"
+            >
+              <div className="flex items-center gap-3">
+                <span className="text-2xl">{group.icon}</span>
+                <h2 className="text-xl font-bold text-gray-800">{group.name}</h2>
+                <span className="bg-white px-3 py-1 rounded-full text-sm font-medium text-gray-600 shadow-sm">
+                  {group.items.length} items
+                </span>
+              </div>
+              <div className="text-gray-600">
+                {expandedGroups.has(group.key) ? '▼' : '▶'}
+              </div>
+            </button>
+          )}
+
+          {/* Group Content */}
+          {(groupBy === 'none' || expandedGroups.has(group.key)) && (
+            <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+              {group.items.map((content) => (
           <div
             key={content.id}
             onClick={() => handlePreview(content)}
@@ -183,16 +536,7 @@ export default function Content() {
             {/* Preview Thumbnail */}
             <div className="aspect-video bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center relative overflow-hidden">
               {content.content_type === 'video' ? (
-                <video
-                  src={getImageUrl(content)}
-                  className="w-full h-full object-cover"
-                  preload="metadata"
-                  controls
-                  onLoadedMetadata={(e) => {
-                    e.target.currentTime = 0.1 // Load first frame as thumbnail
-                  }}
-                  onClick={(e) => e.stopPropagation()}
-                />
+                <VideoThumbnail content={content} />
               ) : (
                 <>
                   <img
@@ -221,12 +565,40 @@ export default function Content() {
             </div>
 
             {/* Info */}
-            <div className="p-4">
-              <h3 className="font-bold text-gray-800 mb-1">{content.title}</h3>
-              <p className="text-sm text-gray-600 mb-2">{content.description || 'No description'}</p>
+            <div className="p-3">
+              <h3 className="font-bold text-gray-800 mb-1 text-sm truncate">{content.title}</h3>
 
-              <div className="flex items-center justify-between text-sm text-gray-600 mb-3">
-                <span>{content.content_type.toUpperCase()}</span>
+              {/* Metadata */}
+              <div className="space-y-1 mb-2">
+                {content.resolution && (
+                  <div className="flex items-center gap-1 text-xs text-gray-600">
+                    <span className="font-medium">📐</span>
+                    <span>{content.resolution}</span>
+                  </div>
+                )}
+                {content.codec && (
+                  <div className="flex items-center gap-1 text-xs text-gray-600">
+                    <span className="font-medium">🎞️</span>
+                    <span className="uppercase">{content.codec}</span>
+                    {content.fps && <span>@ {content.fps}fps</span>}
+                  </div>
+                )}
+                {content.bitrate && (
+                  <div className="flex items-center gap-1 text-xs text-gray-600">
+                    <span className="font-medium">⚡</span>
+                    <span>{content.bitrate} kbps</span>
+                  </div>
+                )}
+                {content.file_size && (
+                  <div className="flex items-center gap-1 text-xs text-gray-600">
+                    <span className="font-medium">💾</span>
+                    <span>{(content.file_size / 1024 / 1024).toFixed(1)} MB</span>
+                  </div>
+                )}
+              </div>
+
+              <div className="flex items-center justify-between text-xs text-gray-500 mb-2 pt-2 border-t">
+                <span className="font-medium">{content.content_type.toUpperCase()}</span>
                 <span>{content.duration}s</span>
               </div>
 
@@ -253,8 +625,11 @@ export default function Content() {
               </div>
             </div>
           </div>
-        ))}
-      </div>
+              ))}
+            </div>
+          )}
+        </div>
+      ))}
 
       {contentData?.items?.length === 0 && (
         <div className="text-center py-12 text-gray-500">
@@ -869,6 +1244,96 @@ function AssignForm({ content, onClose, onSubmit }) {
   )
 }
 
+// VideoPlayer component for modal with better error handling
+function ModalVideoPlayer({ content }) {
+  const [hasError, setHasError] = useState(false)
+  const [errorMessage, setErrorMessage] = useState('')
+  const [isLoading, setIsLoading] = useState(true)
+  const videoUrl = getVideoUrl(content)
+
+  if (hasError) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[300px] bg-gray-900 text-white rounded-lg p-8">
+        <svg className="w-20 h-20 text-red-400 mb-4" fill="currentColor" viewBox="0 0 24 24">
+          <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
+        </svg>
+        <h3 className="text-xl font-bold mb-2">Cannot Play Video</h3>
+        <p className="text-sm text-gray-300 mb-4 text-center max-w-md">{errorMessage}</p>
+        <div className="bg-gray-800 p-3 rounded text-xs font-mono text-left w-full max-w-md">
+          <p className="text-gray-400">Proxy URL: {videoUrl}</p>
+          <p className="text-gray-400 mt-1">Original URL: {content.anthias_url}</p>
+          <p className="text-gray-400 mt-1">Type: {content.mime_type || 'unknown'}</p>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="relative bg-black rounded-lg overflow-hidden">
+      {isLoading && (
+        <div className="absolute inset-0 flex items-center justify-center bg-gray-900">
+          <div className="text-white text-center">
+            <svg className="w-12 h-12 mx-auto mb-3 animate-spin" fill="none" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            <p className="text-sm">Loading video...</p>
+          </div>
+        </div>
+      )}
+      <video
+        controls
+        autoPlay={false}
+        preload="auto"
+        className="w-full h-auto max-h-[60vh]"
+        style={{ minHeight: '300px' }}
+        onLoadStart={() => {
+          console.log('Video loading started (proxy):', videoUrl)
+          console.log('Original Anthias URL:', content.anthias_url)
+          setIsLoading(true)
+        }}
+        onLoadedMetadata={(e) => {
+          console.log('Video metadata loaded:', {
+            duration: e.target.duration,
+            videoWidth: e.target.videoWidth,
+            videoHeight: e.target.videoHeight
+          })
+          setIsLoading(false)
+        }}
+        onCanPlay={() => {
+          console.log('Video can play')
+          setIsLoading(false)
+        }}
+        onError={(e) => {
+          console.error('Video error:', e.target.error)
+          console.error('Error code:', e.target.error?.code)
+          console.error('Error message:', e.target.error?.message)
+          console.error('Proxy Video URL:', videoUrl)
+          console.error('Original Anthias URL:', content.anthias_url)
+
+          let errorMsg = 'Unable to load video. '
+          if (e.target.error?.code === 4) {
+            errorMsg += 'Video format not supported or file not found.'
+          } else if (e.target.error?.code === 2) {
+            errorMsg += 'Network error while loading video.'
+          } else if (e.target.error?.code === 3) {
+            errorMsg += 'Video decoding failed.'
+          } else {
+            errorMsg += 'Unknown error occurred.'
+          }
+
+          setErrorMessage(errorMsg)
+          setHasError(true)
+          setIsLoading(false)
+        }}
+      >
+        <source src={videoUrl} type={content.mime_type || 'video/mp4'} />
+        Your browser does not support the video tag.
+      </video>
+    </div>
+  )
+}
+
 function PreviewModal({ content, onClose }) {
   const imageUrl = getImageUrl(content)
   console.log('PreviewModal - Image URL:', imageUrl)
@@ -919,27 +1384,23 @@ function PreviewModal({ content, onClose }) {
         {/* Content Preview */}
         <div className="p-6">
           {/* Media Display */}
-          <div className="bg-gray-100 rounded-lg overflow-hidden mb-6 min-h-[300px] flex items-center justify-center">
+          <div className="mb-6">
             {content.content_type === 'image' ? (
-              <img
-                src={imageUrl}
-                alt={content.title}
-                className="w-full h-auto max-h-[60vh] object-contain"
-                style={{ minHeight: '200px' }}
-                onLoad={() => console.log('Image loaded successfully')}
-                onError={(e) => {
-                  console.error('Image load error:', e)
-                  e.target.src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="400" height="300"><rect fill="%23ddd" width="400" height="300"/><text fill="%23999" x="50%" y="50%" text-anchor="middle" dy=".3em">Image not available</text></svg>'
-                }}
-              />
-            ) : (
-              <div className="aspect-video flex items-center justify-center bg-gray-200">
-                <div className="text-center">
-                  <div className="text-8xl mb-4">🎥</div>
-                  <p className="text-gray-600">Video Preview</p>
-                  <p className="text-sm text-gray-500 mt-2">Duration: {content.duration}s</p>
-                </div>
+              <div className="bg-gray-100 rounded-lg overflow-hidden min-h-[300px] flex items-center justify-center">
+                <img
+                  src={imageUrl}
+                  alt={content.title}
+                  className="w-full h-auto max-h-[60vh] object-contain"
+                  style={{ minHeight: '200px' }}
+                  onLoad={() => console.log('Image loaded successfully')}
+                  onError={(e) => {
+                    console.error('Image load error:', e)
+                    e.target.src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="400" height="300"><rect fill="%23ddd" width="400" height="300"/><text fill="%23999" x="50%" y="50%" text-anchor="middle" dy=".3em">Image not available</text></svg>'
+                  }}
+                />
               </div>
+            ) : (
+              <ModalVideoPlayer content={content} />
             )}
           </div>
 
@@ -952,6 +1413,64 @@ function PreviewModal({ content, onClose }) {
               </div>
             )}
 
+            {/* Media Metadata Section */}
+            {(content.resolution || content.codec || content.fps || content.bitrate) && (
+              <div className="border-t pt-4">
+                <h3 className="font-semibold text-gray-700 mb-3">Media Information</h3>
+                <div className="grid grid-cols-2 gap-3">
+                  {content.resolution && (
+                    <div className="bg-gray-50 p-3 rounded">
+                      <div className="text-xs text-gray-500 mb-1">Resolution</div>
+                      <div className="font-semibold text-gray-800">{content.resolution}</div>
+                    </div>
+                  )}
+                  {content.codec && (
+                    <div className="bg-gray-50 p-3 rounded">
+                      <div className="text-xs text-gray-500 mb-1">Codec</div>
+                      <div className="font-semibold text-gray-800 uppercase">{content.codec}</div>
+                    </div>
+                  )}
+                  {content.fps && (
+                    <div className="bg-gray-50 p-3 rounded">
+                      <div className="text-xs text-gray-500 mb-1">Frame Rate</div>
+                      <div className="font-semibold text-gray-800">{content.fps} fps</div>
+                    </div>
+                  )}
+                  {content.bitrate && (
+                    <div className="bg-gray-50 p-3 rounded">
+                      <div className="text-xs text-gray-500 mb-1">Bitrate</div>
+                      <div className="font-semibold text-gray-800">{content.bitrate} kbps</div>
+                    </div>
+                  )}
+                  {content.video_duration && (
+                    <div className="bg-gray-50 p-3 rounded">
+                      <div className="text-xs text-gray-500 mb-1">Video Duration</div>
+                      <div className="font-semibold text-gray-800">{content.video_duration.toFixed(2)}s</div>
+                    </div>
+                  )}
+                  {content.audio_codec && (
+                    <div className="bg-gray-50 p-3 rounded">
+                      <div className="text-xs text-gray-500 mb-1">Audio Codec</div>
+                      <div className="font-semibold text-gray-800 uppercase">{content.audio_codec}</div>
+                    </div>
+                  )}
+                  {content.audio_bitrate && (
+                    <div className="bg-gray-50 p-3 rounded">
+                      <div className="text-xs text-gray-500 mb-1">Audio Bitrate</div>
+                      <div className="font-semibold text-gray-800">{content.audio_bitrate} kbps</div>
+                    </div>
+                  )}
+                  {content.audio_sample_rate && (
+                    <div className="bg-gray-50 p-3 rounded">
+                      <div className="text-xs text-gray-500 mb-1">Sample Rate</div>
+                      <div className="font-semibold text-gray-800">{content.audio_sample_rate} Hz</div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* File Information Section */}
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <h3 className="font-semibold text-gray-700 mb-1">File Size</h3>

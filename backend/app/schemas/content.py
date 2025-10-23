@@ -25,6 +25,16 @@ class ContentUploadResponse(BaseModel):
     is_active: bool
     file_size: Optional[int]
     mime_type: Optional[str]
+    resolution: Optional[str]
+    width: Optional[int]
+    height: Optional[int]
+    codec: Optional[str]
+    fps: Optional[float]
+    bitrate: Optional[int]
+    video_duration: Optional[float]
+    audio_codec: Optional[str]
+    audio_bitrate: Optional[int]
+    audio_sample_rate: Optional[int]
     created_at: datetime
 
     class Config:
@@ -41,6 +51,16 @@ class ContentUploadResponse(BaseModel):
                 "is_active": True,
                 "file_size": 1024000,
                 "mime_type": "image/jpeg",
+                "resolution": "1920x1080",
+                "width": 1920,
+                "height": 1080,
+                "codec": "jpeg",
+                "fps": None,
+                "bitrate": None,
+                "video_duration": None,
+                "audio_codec": None,
+                "audio_bitrate": None,
+                "audio_sample_rate": None,
                 "created_at": "2025-10-21T12:00:00"
             }
         }
@@ -58,6 +78,16 @@ class ContentResponse(BaseModel):
     is_active: bool
     file_size: Optional[int]
     mime_type: Optional[str]
+    resolution: Optional[str]
+    width: Optional[int]
+    height: Optional[int]
+    codec: Optional[str]
+    fps: Optional[float]
+    bitrate: Optional[int]
+    video_duration: Optional[float]
+    audio_codec: Optional[str]
+    audio_bitrate: Optional[int]
+    audio_sample_rate: Optional[int]
     created_at: datetime
     updated_at: datetime
 
@@ -75,6 +105,16 @@ class ContentResponse(BaseModel):
                 "is_active": True,
                 "file_size": 1024000,
                 "mime_type": "image/jpeg",
+                "resolution": "1920x1080",
+                "width": 1920,
+                "height": 1080,
+                "codec": "jpeg",
+                "fps": None,
+                "bitrate": None,
+                "video_duration": None,
+                "audio_codec": None,
+                "audio_bitrate": None,
+                "audio_sample_rate": None,
                 "created_at": "2025-10-21T12:00:00",
                 "updated_at": "2025-10-21T12:00:00"
             }

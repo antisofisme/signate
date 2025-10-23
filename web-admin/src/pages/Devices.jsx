@@ -334,14 +334,25 @@ function AssignContentModal({ device, onClose }) {
                 >
                   <div className="flex items-center flex-1 min-w-0">
                     <div className="flex-shrink-0 w-16 h-16 bg-gray-200 rounded mr-3 overflow-hidden">
-                      <img
-                        src={`http://192.168.5.12:8001/api/content/${content.id}/image`}
-                        alt={content.title}
-                        className="w-full h-full object-cover"
-                        onError={(e) => {
-                          e.target.style.display = 'none'
-                        }}
-                      />
+                      {content.content_type === 'video' ? (
+                        <video
+                          src={`http://192.168.5.12:8001/api/content/${content.id}/image`}
+                          className="w-full h-full object-cover"
+                          preload="metadata"
+                          onLoadedMetadata={(e) => {
+                            e.target.currentTime = 0.1
+                          }}
+                        />
+                      ) : (
+                        <img
+                          src={`http://192.168.5.12:8001/api/content/${content.id}/image`}
+                          alt={content.title}
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            e.target.style.display = 'none'
+                          }}
+                        />
+                      )}
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="font-medium text-gray-800 truncate">{content.title}</p>
@@ -380,14 +391,25 @@ function AssignContentModal({ device, onClose }) {
                   <ArrowLeft className="w-5 h-5 text-gray-400 group-hover:text-red-600 transition-colors flex-shrink-0 mr-2" />
                   <div className="flex items-center flex-1 min-w-0">
                     <div className="flex-shrink-0 w-16 h-16 bg-gray-200 rounded mr-3 overflow-hidden">
-                      <img
-                        src={`http://192.168.5.12:8001/api/content/${content.id}/image`}
-                        alt={content.title}
-                        className="w-full h-full object-cover"
-                        onError={(e) => {
-                          e.target.style.display = 'none'
-                        }}
-                      />
+                      {content.content_type === 'video' ? (
+                        <video
+                          src={`http://192.168.5.12:8001/api/content/${content.id}/image`}
+                          className="w-full h-full object-cover"
+                          preload="metadata"
+                          onLoadedMetadata={(e) => {
+                            e.target.currentTime = 0.1
+                          }}
+                        />
+                      ) : (
+                        <img
+                          src={`http://192.168.5.12:8001/api/content/${content.id}/image`}
+                          alt={content.title}
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            e.target.style.display = 'none'
+                          }}
+                        />
+                      )}
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="font-medium text-gray-800 truncate">{content.title}</p>

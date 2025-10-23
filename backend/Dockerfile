@@ -20,6 +20,7 @@ RUN apt-get update && apt-get install -y \
     gcc \
     postgresql-client \
     libpq-dev \
+    ffmpeg \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy requirements
@@ -41,6 +42,7 @@ WORKDIR /app
 RUN apt-get update && apt-get install -y \
     libpq5 \
     curl \
+    ffmpeg \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy Python packages from builder

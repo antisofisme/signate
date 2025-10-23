@@ -8,6 +8,8 @@ from fastapi.responses import Response
 from sqlalchemy.orm import Session
 from typing import Optional, List
 import logging
+import tempfile
+import os
 
 from app.core.database import get_db
 from app.core.deps import get_current_active_user
@@ -25,6 +27,7 @@ from app.schemas.content import (
     ContentAssignmentResponse
 )
 from app.services.anthias_service import anthias_service
+from app.utils.media_metadata import MediaMetadataExtractor
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -98,6 +101,35 @@ async def upload_content(
         # Get file size from anthias response
         file_size = anthias_asset.get("file_size", 0)
 
+        # Extract metadata using FFprobe
+        metadata = {}
+        temp_file_path = None
+        try:
+            # Save uploaded file to temporary location for metadata extraction
+            with tempfile.NamedTemporaryFile(delete=False, suffix=os.path.splitext(file.filename)[1]) as temp_file:
+                # Reset file pointer to beginning
+                await file.seek(0)
+                content_bytes = await file.read()
+                temp_file.write(content_bytes)
+                temp_file_path = temp_file.name
+
+            # Extract metadata based on content type
+            logger.info(f"Extracting metadata from {temp_file_path}")
+            metadata = MediaMetadataExtractor.extract_metadata(temp_file_path, content_type)
+            logger.info(f"Extracted metadata: {metadata}")
+
+        except Exception as e:
+            logger.warning(f"Failed to extract metadata: {e}")
+            # Continue without metadata if extraction fails
+            metadata = {}
+        finally:
+            # Clean up temporary file
+            if temp_file_path and os.path.exists(temp_file_path):
+                try:
+                    os.unlink(temp_file_path)
+                except Exception as e:
+                    logger.warning(f"Failed to delete temp file {temp_file_path}: {e}")
+
         # Save metadata to database
         content = Content(
             title=title,
@@ -107,8 +139,19 @@ async def upload_content(
             anthias_asset_id=anthias_asset["asset_id"],
             duration=duration,
             is_active=is_active,
-            file_size=file_size,
-            mime_type=file.content_type
+            file_size=metadata.get("file_size") or file_size,
+            mime_type=file.content_type,
+            # Media metadata from FFprobe
+            resolution=metadata.get("resolution"),
+            width=metadata.get("width"),
+            height=metadata.get("height"),
+            codec=metadata.get("codec"),
+            fps=metadata.get("fps"),
+            bitrate=metadata.get("bitrate"),
+            video_duration=metadata.get("duration"),
+            audio_codec=metadata.get("audio_codec"),
+            audio_bitrate=metadata.get("audio_bitrate"),
+            audio_sample_rate=metadata.get("audio_sample_rate")
         )
 
         db.add(content)
@@ -564,4 +607,65 @@ async def get_content_image(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to serve image: {str(e)}"
+        )
+
+
+@router.get("/{content_id}/video")
+async def get_content_video(
+    content_id: int,
+    db: Session = Depends(get_db)
+):
+    """
+    Proxy endpoint to serve content video with correct Content-Type
+
+    This endpoint fetches the video from Anthias and serves it with the correct
+    Content-Type header and supports range requests for video streaming.
+
+    Args:
+        content_id: Content ID
+        db: Database session
+
+    Returns:
+        Response: Video file with correct Content-Type
+
+    Raises:
+        HTTPException: If content not found or fetch fails
+    """
+    # Get content metadata from database
+    content = db.query(Content).filter(Content.id == content_id).first()
+
+    if not content:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Content with ID {content_id} not found"
+        )
+
+    if not content.anthias_asset_id:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Content has no associated Anthias asset"
+        )
+
+    try:
+        # Fetch video content from Anthias
+        video_bytes = await anthias_service.get_asset_content(content.anthias_asset_id)
+
+        # Determine Content-Type from mime_type in database
+        media_type = content.mime_type or "video/mp4"
+
+        # Return video with correct Content-Type and Accept-Ranges header for streaming
+        return Response(
+            content=video_bytes,
+            media_type=media_type,
+            headers={
+                "Accept-Ranges": "bytes",
+                "Content-Length": str(len(video_bytes))
+            }
+        )
+
+    except Exception as e:
+        logger.error(f"Error serving video: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to serve video: {str(e)}"
         )
