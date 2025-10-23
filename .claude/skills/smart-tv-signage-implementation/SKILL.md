@@ -30,7 +30,7 @@ This skill provides structured, phase-by-phase guidance for implementing the Sma
 ✅ **PHASE 2: Backend API Core Features - COMPLETED**
 ✅ **PHASE 3: Docker Compose Setup - COMPLETED**
 ✅ **PHASE 4: Web Admin Frontend - COMPLETED**
-🔴 **PHASE 5: Monitor Viewer - CURRENT (NEXT TO BUILD)**
+🔴 **PHASE 5: Browser Viewer - CURRENT (NEXT TO BUILD)**
 ⏳ **PHASE 6: WebOS TV App - PENDING**
 
 **What We Have Now:**
@@ -509,11 +509,15 @@ curl http://localhost:8000/docs  # Should load
 
 ---
 
-### PHASE 5: Monitor Viewer (Week 4-5) - 🔴 CURRENT PHASE
+### PHASE 5: Browser Viewer (Week 4-5) - 🔴 CURRENT PHASE
 
 **THIS IS OUR NEXT PRIORITY!**
 
-Monitor Viewer is a web-based viewer that displays content in fullscreen mode. It's the simplest client to build and test before tackling WebOS TV App.
+Browser Viewer (`browser-viewer/`) is a web-based viewer for regular monitors that displays content in fullscreen mode. It's the simplest client to build and test before tackling WebOS TV App.
+
+**Note:** Sekarang ada 2 viewer yang BERBEDA:
+- `browser-viewer/` (port 8080) → Monitor browser biasa dengan 6-digit code
+- `webos-viewer/` (port 8081) → WebOS TV dengan UUID persistent
 
 **Why This First:**
 - No special hardware needed (just browser)
@@ -522,14 +526,16 @@ Monitor Viewer is a web-based viewer that displays content in fullscreen mode. I
 - Tests content display and transitions
 - Validates assignment logic
 
-#### Step 5.1: Monitor Viewer - Basic HTML
-**Location:** `monitor-viewer/index.html`
+#### Step 5.1: Browser Viewer - Basic HTML
+**Location:** `browser-viewer/index.html`
+
+**Purpose:** Viewer untuk monitor browser biasa (port 8080)
 
 **Tasks:**
 1. Create single-page HTML viewer
 2. On load:
-   - Generate unique code (6-digit)
-   - POST /api/devices/monitor → get device_id
+   - Generate unique code (6-digit numeric)
+   - POST /api/devices/monitor/register → get device_id
    - Display activation code on screen
    - Poll every 5 seconds: GET /api/devices/:id/status
 
@@ -545,8 +551,8 @@ Monitor Viewer is a web-based viewer that displays content in fullscreen mode. I
 
 **Validation Checklist:**
 - [ ] Opens in browser
-- [ ] Displays activation code
-- [ ] Admin can activate via Web Admin
+- [ ] Displays 6-digit activation code
+- [ ] Admin can activate via Web Admin (Pending Approval section)
 - [ ] After activation, goes fullscreen
 - [ ] Displays content from playlist
 - [ ] Smooth transitions work
@@ -554,14 +560,16 @@ Monitor Viewer is a web-based viewer that displays content in fullscreen mode. I
 
 **Test Flow:**
 ```
-1. Open monitor-viewer/index.html in browser
-2. Note activation code (e.g., "XYZ123")
-3. Go to Web Admin → Activate Monitor
-4. Enter code + device name
-5. Monitor should activate & display content
+1. Open http://192.168.5.12:8080/ in browser
+2. Note 6-digit code (e.g., "123456")
+3. Go to Web Admin → Devices → Pending Approval
+4. Click "Approve" button
+5. Browser viewer should activate & display content
 ```
 
-**DO NOT PROCEED** until monitor viewer works.
+**Note:** Ada juga `webos-viewer/` (port 8081) untuk WebOS TV yang menggunakan UUID persistent. Kedua viewer BERBEDA dan terpisah.
+
+**DO NOT PROCEED** until browser viewer works.
 
 ---
 

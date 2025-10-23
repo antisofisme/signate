@@ -84,11 +84,14 @@ class Settings(BaseSettings):
         default=[
             "http://localhost:3000",      # Web Admin React dev
             "http://localhost:8000",      # Backend docs
-            "http://localhost:8080",      # Monitor Viewer
+            "http://localhost:8080",      # Monitor Viewer (Browser)
+            "http://localhost:8081",      # WebOS Viewer
             "http://127.0.0.1:3000",
             "http://127.0.0.1:8000",
             "http://127.0.0.1:8080",
+            "http://127.0.0.1:8081",
             "http://192.168.5.12:8080",   # Monitor Viewer on network IP
+            "http://192.168.5.12:8081",   # WebOS Viewer on network IP
         ],
         env="CORS_ORIGINS"
     )

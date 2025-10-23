@@ -27,13 +27,31 @@ CREATE TABLE devices (
     device_type VARCHAR(20) NOT NULL CHECK (device_type IN ('tv', 'monitor')),
     device_name VARCHAR(100) NOT NULL,
 
-    -- For TV: IP address & passphrase (pairing)
+    -- For TV: IP address & passphrase (pairing) - DEPRECATED, now use UUID
     ip_address VARCHAR(45), -- IPv4 or IPv6
     passphrase VARCHAR(50),  -- 6-digit code dari Developer Mode
 
-    -- For Monitor: unique activation code
+    -- For Monitor Browser: unique activation code (6-digit numeric)
     unique_code VARCHAR(20) UNIQUE, -- 6-digit activation code
     code_expires_at TIMESTAMP, -- Code expiry (10 minutes)
+
+    -- For WebOS: UUID-based device identity (persistent)
+    device_uuid VARCHAR(36) UNIQUE, -- UUID v4 format (xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx)
+    platform VARCHAR(20), -- Platform info: 'webOS', 'browser', etc.
+
+    -- Device metadata from browser/TV
+    screen_width INTEGER, -- Screen width in pixels
+    screen_height INTEGER, -- Screen height in pixels
+    viewport_width INTEGER, -- Viewport width
+    viewport_height INTEGER, -- Viewport height
+    device_pixel_ratio DOUBLE PRECISION, -- Pixel ratio (e.g., 2.0 for retina)
+    user_agent TEXT, -- Browser user agent string
+    connection_type VARCHAR(50), -- Connection type (e.g., 'wifi', '4g')
+    connection_speed DOUBLE PRECISION, -- Network speed (Mbps)
+
+    -- WebOS specific metadata
+    model_name VARCHAR(100), -- Device model (e.g., "LG 43UN7300")
+    firmware_version VARCHAR(50) -- Firmware version (e.g., "webOS 6.0")
 
     -- Status tracking
     status VARCHAR(20) NOT NULL DEFAULT 'pending'
@@ -42,13 +60,11 @@ CREATE TABLE devices (
 
     -- Metadata
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 
-    -- Constraints
-    CONSTRAINT device_tv_requires_ip_passphrase
-        CHECK (device_type != 'tv' OR (ip_address IS NOT NULL AND passphrase IS NOT NULL)),
-    CONSTRAINT device_monitor_requires_code
-        CHECK (device_type != 'monitor' OR unique_code IS NOT NULL)
+    -- Note: Removed strict constraints to allow flexible registration
+    -- Browser viewer: uses unique_code
+    -- WebOS viewer: uses device_uuid
 );
 
 -- Indexes for devices
@@ -56,14 +72,28 @@ CREATE INDEX idx_devices_type ON devices(device_type);
 CREATE INDEX idx_devices_status ON devices(status);
 CREATE INDEX idx_devices_ip_address ON devices(ip_address);
 CREATE INDEX idx_devices_unique_code ON devices(unique_code);
+CREATE INDEX idx_devices_device_uuid ON devices(device_uuid);
+CREATE INDEX idx_devices_platform ON devices(platform);
 CREATE INDEX idx_devices_last_seen ON devices(last_seen);
 
-COMMENT ON TABLE devices IS 'Registry TV dan Monitor devices';
+COMMENT ON TABLE devices IS 'Registry TV dan Monitor devices dengan UUID support';
 COMMENT ON COLUMN devices.device_type IS 'tv atau monitor';
-COMMENT ON COLUMN devices.ip_address IS 'IP address untuk TV (pairing dengan passphrase)';
-COMMENT ON COLUMN devices.passphrase IS '6-digit code dari WebOS Developer Mode';
-COMMENT ON COLUMN devices.unique_code IS 'Activation code untuk Monitor (generated)';
-COMMENT ON COLUMN devices.status IS 'pending (belum connect), active, inactive';
+COMMENT ON COLUMN devices.ip_address IS 'IP address untuk TV (DEPRECATED, pakai device_uuid)';
+COMMENT ON COLUMN devices.passphrase IS '6-digit code dari WebOS Developer Mode (DEPRECATED)';
+COMMENT ON COLUMN devices.unique_code IS 'Activation code untuk Browser Monitor (6-digit numeric)';
+COMMENT ON COLUMN devices.device_uuid IS 'UUID v4 untuk WebOS devices (persistent identifier)';
+COMMENT ON COLUMN devices.platform IS 'Platform info: webOS, browser, etc.';
+COMMENT ON COLUMN devices.screen_width IS 'Screen width in pixels';
+COMMENT ON COLUMN devices.screen_height IS 'Screen height in pixels';
+COMMENT ON COLUMN devices.viewport_width IS 'Viewport width';
+COMMENT ON COLUMN devices.viewport_height IS 'Viewport height';
+COMMENT ON COLUMN devices.device_pixel_ratio IS 'Device pixel ratio';
+COMMENT ON COLUMN devices.user_agent IS 'Browser user agent string';
+COMMENT ON COLUMN devices.connection_type IS 'Connection type (wifi, 4g, etc.)';
+COMMENT ON COLUMN devices.connection_speed IS 'Network speed in Mbps';
+COMMENT ON COLUMN devices.model_name IS 'Device model (e.g., LG 43UN7300)';
+COMMENT ON COLUMN devices.firmware_version IS 'Firmware version (e.g., webOS 6.0)';
+COMMENT ON COLUMN devices.status IS 'pending (belum approved), active, inactive';
 COMMENT ON COLUMN devices.last_seen IS 'Timestamp terakhir heartbeat dari device';
 
 -- =============================================================================

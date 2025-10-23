@@ -3,12 +3,12 @@ Device Management API endpoints
 """
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, lazyload
 from datetime import datetime
-from typing import List
+from typing import List, Optional
 
 from app.core.database import get_db
-from app.core.deps import get_current_active_user
+from app.core.deps import get_current_active_user, get_optional_user
 from app.models.user import User
 from app.models.device import Device
 from app.schemas.device import (
@@ -277,6 +277,9 @@ def register_monitor_self(
         device_name=device_data.device_name,
         unique_code=device_data.activation_code,
         code_expires_at=get_code_expiry(),  # 10 minutes expiry
+        device_uuid=device_data.device_uuid,  # Permanent UUID
+        platform=device_data.platform,  # WebOS or browser
+        model_name=device_data.model_name,  # TV model name
         status="pending"
     )
 
@@ -350,7 +353,7 @@ def update_device(
     device_id: int,
     device_data: DeviceUpdateRequest,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user)
+    current_user: Optional[User] = Depends(get_optional_user)
 ):
     """
     Update device information
@@ -359,7 +362,6 @@ def update_device(
         device_id: Device ID
         device_data: Update data
         db: Database session
-        current_user: Authenticated user
 
     Returns:
         DeviceResponse: Updated device
@@ -391,7 +393,7 @@ def update_device(
 def delete_device(
     device_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user)
+    current_user: Optional[User] = Depends(get_optional_user)
 ):
     """
     Delete device
@@ -399,7 +401,6 @@ def delete_device(
     Args:
         device_id: Device ID
         db: Database session
-        current_user: Authenticated user
 
     Raises:
         HTTPException: If device not found
@@ -407,15 +408,17 @@ def delete_device(
     Notes:
         - This will also delete related content assignments (CASCADE)
     """
-    device = db.query(Device).filter(Device.id == device_id).first()
+    # Check if device exists (without loading relationships to avoid DeviceTag id issue)
+    device_exists = db.query(Device.id).filter(Device.id == device_id).first()
 
-    if not device:
+    if not device_exists:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Device with ID {device_id} not found"
         )
 
-    db.delete(device)
+    # Delete device directly - CASCADE will handle related records
+    db.query(Device).filter(Device.id == device_id).delete()
     db.commit()
 
     return None
@@ -458,6 +461,16 @@ def device_heartbeat(
     # Update IP if provided (for dynamic IPs)
     if heartbeat_data.ip_address:
         device.ip_address = heartbeat_data.ip_address
+
+    # Update UUID and platform information if provided
+    if heartbeat_data.device_uuid is not None:
+        device.device_uuid = heartbeat_data.device_uuid
+    if heartbeat_data.platform is not None:
+        device.platform = heartbeat_data.platform
+    if heartbeat_data.model_name is not None:
+        device.model_name = heartbeat_data.model_name
+    if heartbeat_data.firmware_version is not None:
+        device.firmware_version = heartbeat_data.firmware_version
 
     # Update device information if provided
     if heartbeat_data.screen_width is not None:

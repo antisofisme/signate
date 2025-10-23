@@ -9,10 +9,11 @@ from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.core.security.jwt import verify_token
+from app.core.config import settings
 from app.models.user import User
 
 # HTTP Bearer token scheme
-security = HTTPBearer()
+security = HTTPBearer(auto_error=False)  # Don't auto-error to allow optional auth
 
 
 def get_current_user(
@@ -113,3 +114,51 @@ def get_current_superuser(
             detail="Not enough permissions"
         )
     return current_user
+
+
+def get_optional_user(
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(security),
+    db: Session = Depends(get_db)
+) -> Optional[User]:
+    """
+    Get current user if authenticated, or None if not authenticated.
+    In DEBUG mode, allows unauthenticated access.
+
+    Args:
+        credentials: HTTP Bearer credentials (optional)
+        db: Database session
+
+    Returns:
+        Optional[User]: Authenticated user or None
+
+    Notes:
+        - In DEBUG mode (development), authentication is optional
+        - In production, still tries to authenticate if token provided
+    """
+    # In DEBUG mode, allow unauthenticated access
+    if settings.DEBUG:
+        if credentials is None:
+            return None
+        # Try to authenticate if token provided, but don't fail if invalid
+        try:
+            token = credentials.credentials
+            payload = verify_token(token, token_type="access")
+            if payload:
+                user_id = payload.get("user_id")
+                if user_id:
+                    user = db.query(User).filter(User.id == user_id).first()
+                    if user and user.is_active:
+                        return user
+        except Exception:
+            pass
+        return None
+
+    # In production mode, require authentication
+    if credentials is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Not authenticated",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    return get_current_user(credentials, db)

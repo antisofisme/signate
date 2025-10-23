@@ -59,6 +59,14 @@ class Device(Base):
     unique_code = Column(String(20), unique=True, index=True)
     code_expires_at = Column(DateTime)
 
+    # Permanent Device Identifier (UUID)
+    device_uuid = Column(String(36), unique=True, index=True)  # UUID v4 format
+
+    # Platform Information (WebOS or Browser)
+    platform = Column(String(20))  # 'webOS', 'browser', etc.
+    model_name = Column(String(100))  # WebOS TV model name
+    firmware_version = Column(String(50))  # WebOS firmware version
+
     # Status tracking
     status = Column(String(20), default="pending", nullable=False, index=True)
     last_seen = Column(DateTime)
@@ -94,6 +102,10 @@ class Device(Base):
             "passphrase": self.passphrase,
             "unique_code": self.unique_code,
             "code_expires_at": self.code_expires_at.isoformat() if self.code_expires_at else None,
+            "device_uuid": self.device_uuid,
+            "platform": self.platform,
+            "model_name": self.model_name,
+            "firmware_version": self.firmware_version,
             "status": self.status,
             "last_seen": self.last_seen.isoformat() if self.last_seen else None,
             "created_at": self.created_at.isoformat() if self.created_at else None,

@@ -1,6 +1,6 @@
-# Smart TV Monitor Viewer
+# Smart TV Browser Viewer
 
-Browser-based digital signage content viewer for Smart TV monitors.
+Browser-based digital signage content viewer for testing and development.
 
 ## Features
 
@@ -14,16 +14,16 @@ Browser-based digital signage content viewer for Smart TV monitors.
 
 ## Usage
 
-### 1. Open Monitor Viewer
+### 1. Open Browser Viewer
 
 Simply open `index.html` in any modern browser:
 
 ```bash
 # Option 1: Direct file open
-firefox /mnt/g/khoirul/signate/monitor-viewer/index.html
+firefox /mnt/g/khoirul/signate/browser-viewer/index.html
 
 # Option 2: Using file:// URL
-file:///mnt/g/khoirul/signate/monitor-viewer/index.html
+file:///mnt/g/khoirul/signate/browser-viewer/index.html
 
 # Option 3: Serve with simple HTTP server (recommended)
 cd /mnt/g/khoirul/signate/monitor-viewer

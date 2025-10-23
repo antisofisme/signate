@@ -41,7 +41,7 @@ signate/
 │   ├── appinfo.json           # WebOS app metadata
 │   └── package.json
 │
-├── monitor-viewer/             # Monitor Browser Viewer
+├── browser-viewer/             # Monitor Browser Viewer
 │   ├── index.html             # Main viewer page
 │   ├── viewer.js              # Content player logic
 │   └── styles.css
@@ -115,7 +115,7 @@ signate/
 
 ---
 
-### 4. `monitor-viewer/` - Monitor Browser Viewer
+### 4. `browser-viewer/` - Monitor Browser Viewer
 **Untuk apa:** Web page sederhana untuk monitor biasa
 
 **Fungsi:**
