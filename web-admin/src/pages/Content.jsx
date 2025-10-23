@@ -218,10 +218,10 @@ export default function Content() {
               <div className="flex gap-2">
                 <button
                   onClick={(e) => handleAssign(e, content)}
-                  className="flex-1 flex items-center justify-center px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm"
+                  className="flex-1 flex items-center justify-center px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm"
                 >
-                  <LinkIcon className="w-4 h-4 mr-1" />
-                  Assign
+                  <Edit className="w-4 h-4 mr-1" />
+                  Edit
                 </button>
                 <button
                   onClick={(e) => {
@@ -391,7 +391,14 @@ function UploadForm({ onClose, onSubmit }) {
               className="w-full px-3 py-2 border rounded-lg"
               disabled={uploading}
             />
-            <p className="text-xs text-gray-500 mt-1">You can select multiple files to upload at once</p>
+            <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+              <p className="text-xs font-semibold text-blue-800 mb-1">📋 Supported File Formats:</p>
+              <div className="text-xs text-blue-700 space-y-1">
+                <p><strong>Images:</strong> .jpg, .jpeg, .png, .gif, .bmp</p>
+                <p><strong>Videos:</strong> .mp4 (H264 MPEG4, max 1920x1080 @ 30FPS)</p>
+              </div>
+              <p className="text-xs text-gray-600 mt-2 italic">💡 You can select multiple files to upload at once</p>
+            </div>
           </div>
 
           {/* Duration Setting */}
@@ -471,13 +478,21 @@ function UploadForm({ onClose, onSubmit }) {
 }
 
 function AssignForm({ content, onClose, onSubmit }) {
-  const [assignType, setAssignType] = useState('device') // 'device' or 'tag'
-  const [assignData, setAssignData] = useState({
-    device_id: null,
-    tag_id: null,
-    priority: 0,
+  const queryClient = useQueryClient()
+  const [saving, setSaving] = useState(false)
+
+  // State for content metadata
+  const [title, setTitle] = useState(content.title)
+  const [description, setDescription] = useState(content.description || '')
+  const [duration, setDuration] = useState(content.duration)
+
+  // Fetch existing assignments for this content
+  const { data: assignmentsData, isLoading: assignmentsLoading } = useQuery({
+    queryKey: ['content-assignments', content.id],
+    queryFn: () => contentAPI.getAssignments(content.id).then(res => res.data),
   })
 
+  // Fetch devices and tags
   const { data: devicesData } = useQuery({
     queryKey: ['devices', 'active'],
     queryFn: () => devicesAPI.list({ status: 'active' }).then(res => res.data),
@@ -488,127 +503,338 @@ function AssignForm({ content, onClose, onSubmit }) {
     queryFn: () => tagsAPI.list().then(res => res.data),
   })
 
-  const handleSubmit = (e) => {
-    e.preventDefault()
+  // State for selected device and tag IDs
+  const [selectedDeviceIds, setSelectedDeviceIds] = useState(new Set())
+  const [selectedTagIds, setSelectedTagIds] = useState(new Set())
 
-    // Validate that either device_id or tag_id is set
-    if (!assignData.device_id && !assignData.tag_id) {
-      alert('Please select a device or tag')
-      return
-    }
+  // State for initial assignments (to track what to add/remove)
+  const [initialDeviceIds, setInitialDeviceIds] = useState(new Set())
+  const [initialTagIds, setInitialTagIds] = useState(new Set())
 
-    onSubmit({
-      id: content.id,
-      data: assignData,
+  // Pre-populate selections when assignments load
+  // Using useEffect instead of useState for side effects
+  const [initialized, setInitialized] = useState(false)
+
+  if (assignmentsData && !assignmentsLoading && !initialized) {
+    const deviceIds = new Set()
+    const tagIds = new Set()
+
+    assignmentsData.forEach(assignment => {
+      if (assignment.device_id) {
+        deviceIds.add(assignment.device_id)
+      }
+      if (assignment.tag_id) {
+        tagIds.add(assignment.tag_id)
+      }
+    })
+
+    setSelectedDeviceIds(deviceIds)
+    setSelectedTagIds(tagIds)
+    setInitialDeviceIds(deviceIds)
+    setInitialTagIds(tagIds)
+    setInitialized(true)
+  }
+
+  const toggleDevice = (deviceId) => {
+    setSelectedDeviceIds(prev => {
+      const newSet = new Set(prev)
+      if (newSet.has(deviceId)) {
+        newSet.delete(deviceId)
+      } else {
+        newSet.add(deviceId)
+      }
+      return newSet
     })
   }
 
+  const toggleTag = (tagId) => {
+    setSelectedTagIds(prev => {
+      const newSet = new Set(prev)
+      if (newSet.has(tagId)) {
+        newSet.delete(tagId)
+      } else {
+        newSet.add(tagId)
+      }
+      return newSet
+    })
+  }
+
+  const handleSubmit = async (e) => {
+    e.preventDefault()
+    setSaving(true)
+
+    try {
+      // First, update content metadata if changed
+      if (title !== content.title || description !== (content.description || '') || duration !== content.duration) {
+        await contentAPI.update(content.id, {
+          title,
+          description,
+          duration: parseInt(duration)
+        })
+      }
+
+      // Determine what to add and what to remove
+      const devicesToAdd = [...selectedDeviceIds].filter(id => !initialDeviceIds.has(id))
+      const devicesToRemove = [...initialDeviceIds].filter(id => !selectedDeviceIds.has(id))
+      const tagsToAdd = [...selectedTagIds].filter(id => !initialTagIds.has(id))
+      const tagsToRemove = [...initialTagIds].filter(id => !selectedTagIds.has(id))
+
+      // Add new device assignments
+      for (const deviceId of devicesToAdd) {
+        await contentAPI.assign(content.id, {
+          device_id: deviceId,
+          priority: 0
+        })
+      }
+
+      // Add new tag assignments
+      for (const tagId of tagsToAdd) {
+        await contentAPI.assign(content.id, {
+          tag_id: tagId,
+          priority: 0
+        })
+      }
+
+      // Remove device assignments
+      for (const deviceId of devicesToRemove) {
+        await contentAPI.unassign(content.id, {
+          device_id: deviceId
+        })
+      }
+
+      // Remove tag assignments
+      for (const tagId of tagsToRemove) {
+        await contentAPI.unassign(content.id, {
+          tag_id: tagId
+        })
+      }
+
+      // Refresh assignments and close
+      queryClient.invalidateQueries(['content-assignments', content.id])
+      queryClient.invalidateQueries(['content'])
+
+      setSaving(false)
+      alert('Content updated successfully!')
+      onClose()
+    } catch (error) {
+      setSaving(false)
+      alert(error.response?.data?.detail || 'Failed to update content')
+    }
+  }
+
+  if (assignmentsLoading) {
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="bg-white rounded-xl p-6 w-full max-w-2xl">
+          <p className="text-center text-gray-600">Loading assignments...</p>
+        </div>
+      </div>
+    )
+  }
+
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-xl p-6 w-full max-w-md">
-        <h2 className="text-xl font-bold mb-4">Assign: {content.title}</h2>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Assignment Type Toggle */}
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-xl w-full max-w-2xl max-h-[90vh] flex flex-col">
+        {/* Header */}
+        <div className="px-6 py-4 border-b flex items-center justify-between">
           <div>
-            <label className="block text-sm font-medium mb-2">Assign to</label>
-            <div className="flex gap-2 mb-3">
-              <button
-                type="button"
-                onClick={() => {
-                  setAssignType('device')
-                  setAssignData({...assignData, device_id: null, tag_id: null})
-                }}
-                className={`flex-1 px-4 py-2 rounded-lg font-medium ${
-                  assignType === 'device'
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-gray-200 text-gray-700'
-                }`}
-              >
-                Device
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setAssignType('tag')
-                  setAssignData({...assignData, device_id: null, tag_id: null})
-                }}
-                className={`flex-1 px-4 py-2 rounded-lg font-medium ${
-                  assignType === 'tag'
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-gray-200 text-gray-700'
-                }`}
-              >
-                Tag
-              </button>
-            </div>
+            <h2 className="text-2xl font-bold text-gray-800">Edit Content</h2>
+            <p className="text-sm text-gray-600 mt-1">Edit content details and assignments</p>
           </div>
+          <button
+            onClick={onClose}
+            className="text-gray-500 hover:text-gray-700 text-3xl leading-none"
+            disabled={saving}
+          >
+            ×
+          </button>
+        </div>
 
-          {/* Device Selector */}
-          {assignType === 'device' && (
-            <div>
-              <label className="block text-sm font-medium mb-1">Select Device</label>
-              <select
-                value={assignData.device_id || ''}
-                onChange={(e) => setAssignData({...assignData, device_id: parseInt(e.target.value) || null, tag_id: null})}
-                className="w-full px-3 py-2 border rounded-lg"
-                required={assignType === 'device'}
-              >
-                <option value="">Select Device...</option>
-                {devicesData?.devices?.map((device) => (
-                  <option key={device.id} value={device.id}>
-                    {device.device_name} ({device.device_type})
-                  </option>
-                ))}
-              </select>
+        {/* Form */}
+        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6">
+          <div className="space-y-6">
+            {/* Content Details Section */}
+            <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+              <div className="flex items-center gap-2 mb-4">
+                <span className="text-xl">✏️</span>
+                <h3 className="font-bold text-gray-800 text-lg">Content Details</h3>
+              </div>
+
+              <div className="space-y-4">
+                {/* Title */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Title
+                  </label>
+                  <input
+                    type="text"
+                    value={title}
+                    onChange={(e) => setTitle(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    disabled={saving}
+                    required
+                  />
+                </div>
+
+                {/* Description */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Description
+                  </label>
+                  <textarea
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    rows={3}
+                    disabled={saving}
+                  />
+                </div>
+
+                {/* Duration */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Duration (seconds)
+                  </label>
+                  <input
+                    type="number"
+                    value={duration}
+                    onChange={(e) => setDuration(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    disabled={saving}
+                    min="1"
+                    required
+                  />
+                </div>
+              </div>
             </div>
-          )}
 
-          {/* Tag Selector */}
-          {assignType === 'tag' && (
+            {/* Devices Section */}
             <div>
-              <label className="block text-sm font-medium mb-1">Select Tag</label>
-              <select
-                value={assignData.tag_id || ''}
-                onChange={(e) => setAssignData({...assignData, tag_id: parseInt(e.target.value) || null, device_id: null})}
-                className="w-full px-3 py-2 border rounded-lg"
-                required={assignType === 'tag'}
-              >
-                <option value="">Select Tag...</option>
-                {tagsData?.items?.map((tag) => (
-                  <option key={tag.id} value={tag.id}>
-                    {tag.tag_name} ({tag.device_count} devices)
-                  </option>
-                ))}
-              </select>
-              <p className="text-xs text-gray-500 mt-1">
-                Content will be assigned to all devices with this tag
+              <div className="flex items-center gap-2 mb-3">
+                <span className="text-xl">📱</span>
+                <h3 className="font-bold text-gray-800 text-lg">Devices</h3>
+              </div>
+              <p className="text-sm text-gray-600 mb-4">
+                Select devices to assign this content to
               </p>
+              {devicesData?.devices && devicesData.devices.length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {devicesData.devices.map((device) => (
+                    <label
+                      key={device.id}
+                      className={`flex items-center gap-3 p-3 border-2 rounded-lg cursor-pointer transition-all ${
+                        selectedDeviceIds.has(device.id)
+                          ? 'bg-blue-100 border-blue-500 shadow-md'
+                          : 'bg-white border-gray-200 hover:border-blue-300 hover:bg-blue-50'
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={selectedDeviceIds.has(device.id)}
+                        onChange={() => toggleDevice(device.id)}
+                        className="w-5 h-5 rounded accent-blue-600"
+                        disabled={saving}
+                      />
+                      <div className="flex-1 min-w-0">
+                        <span className="text-sm font-medium text-gray-800 block truncate">
+                          {device.device_name}
+                        </span>
+                        <span className="text-xs text-gray-500 block">
+                          {device.device_type.toUpperCase()}
+                        </span>
+                      </div>
+                    </label>
+                  ))}
+                </div>
+              ) : (
+                <div className="bg-gray-50 p-4 rounded-lg text-center text-gray-500 text-sm">
+                  No active devices available
+                </div>
+              )}
+              {selectedDeviceIds.size > 0 && (
+                <div className="mt-3 p-2 bg-blue-100 rounded border border-blue-300">
+                  <p className="text-sm text-blue-800">
+                    ✓ {selectedDeviceIds.size} device(s) selected
+                  </p>
+                </div>
+              )}
             </div>
-          )}
 
-          {/* Priority */}
-          <div>
-            <label className="block text-sm font-medium mb-1">Priority</label>
-            <input
-              type="number"
-              value={assignData.priority}
-              onChange={(e) => setAssignData({...assignData, priority: parseInt(e.target.value)})}
-              className="w-full px-3 py-2 border rounded-lg"
-              min={0}
-            />
-            <p className="text-xs text-gray-500 mt-1">Higher priority = displayed first</p>
-          </div>
-
-          {/* Actions */}
-          <div className="flex gap-3">
-            <button type="submit" className="flex-1 bg-green-600 text-white py-2 rounded-lg hover:bg-green-700">
-              Assign
-            </button>
-            <button type="button" onClick={onClose} className="flex-1 bg-gray-200 py-2 rounded-lg hover:bg-gray-300">
-              Cancel
-            </button>
+            {/* Tags Section */}
+            <div>
+              <div className="flex items-center gap-2 mb-3">
+                <span className="text-xl">🏷️</span>
+                <h3 className="font-bold text-gray-800 text-lg">Tags</h3>
+              </div>
+              <p className="text-sm text-gray-600 mb-4">
+                Select tags to assign this content to (affects all devices with these tags)
+              </p>
+              {tagsData?.items && tagsData.items.length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {tagsData.items.map((tag) => (
+                    <label
+                      key={tag.id}
+                      className={`flex items-center gap-3 p-3 border-2 rounded-lg cursor-pointer transition-all ${
+                        selectedTagIds.has(tag.id)
+                          ? 'bg-green-100 border-green-500 shadow-md'
+                          : 'bg-white border-gray-200 hover:border-green-300 hover:bg-green-50'
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={selectedTagIds.has(tag.id)}
+                        onChange={() => toggleTag(tag.id)}
+                        className="w-5 h-5 rounded accent-green-600"
+                        disabled={saving}
+                      />
+                      <div className="flex-1 min-w-0">
+                        <span className="text-sm font-medium text-gray-800 block truncate">
+                          {tag.tag_name}
+                        </span>
+                        {tag.description && (
+                          <span className="text-xs text-gray-500 block truncate">
+                            {tag.description}
+                          </span>
+                        )}
+                      </div>
+                    </label>
+                  ))}
+                </div>
+              ) : (
+                <div className="bg-gray-50 p-4 rounded-lg text-center text-gray-500 text-sm">
+                  No tags available
+                </div>
+              )}
+              {selectedTagIds.size > 0 && (
+                <div className="mt-3 p-2 bg-green-100 rounded border border-green-300">
+                  <p className="text-sm text-green-800">
+                    ✓ {selectedTagIds.size} tag(s) selected
+                  </p>
+                </div>
+              )}
+            </div>
           </div>
         </form>
+
+        {/* Footer */}
+        <div className="px-6 py-4 border-t flex gap-3">
+          <button
+            type="submit"
+            onClick={handleSubmit}
+            disabled={saving}
+            className="flex-1 bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
+          >
+            {saving ? 'Saving...' : 'Save Changes'}
+          </button>
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={saving}
+            className="flex-1 bg-gray-200 py-2 rounded-lg hover:bg-gray-300 disabled:bg-gray-100 disabled:cursor-not-allowed"
+          >
+            {saving ? 'Please wait...' : 'Cancel'}
+          </button>
+        </div>
       </div>
     </div>
   )

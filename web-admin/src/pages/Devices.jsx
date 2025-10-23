@@ -1,13 +1,11 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { devicesAPI, contentAPI, clientAPI } from '../services/api'
-import { Monitor, Tv, Plus, Trash2, Activity, CheckCircle, FileImage, ArrowRight, ArrowLeft } from 'lucide-react'
+import { Monitor, Tv, Plus, Trash2, CheckCircle, FileImage, ArrowRight, ArrowLeft } from 'lucide-react'
 
 export default function Devices() {
   const queryClient = useQueryClient()
   const [showTVForm, setShowTVForm] = useState(false)
-  const [showMonitorForm, setShowMonitorForm] = useState(false)
-  const [showActivateForm, setShowActivateForm] = useState(false)
   const [showContentModal, setShowContentModal] = useState(false)
   const [selectedDevice, setSelectedDevice] = useState(null)
 
@@ -27,26 +25,6 @@ export default function Devices() {
       queryClient.invalidateQueries(['devices'])
       setShowTVForm(false)
       alert('TV registered successfully!')
-    },
-  })
-
-  // Generate Monitor Code mutation
-  const generateMonitorMutation = useMutation({
-    mutationFn: devicesAPI.generateMonitorCode,
-    onSuccess: (data) => {
-      queryClient.invalidateQueries(['devices'])
-      setShowMonitorForm(false)
-      alert(`Monitor code generated: ${data.data.unique_code}\nExpires in 10 minutes`)
-    },
-  })
-
-  // Activate Monitor mutation
-  const activateMonitorMutation = useMutation({
-    mutationFn: devicesAPI.activateMonitor,
-    onSuccess: () => {
-      queryClient.invalidateQueries(['devices'])
-      setShowActivateForm(false)
-      alert('Monitor activated successfully!')
     },
   })
 
@@ -82,20 +60,6 @@ export default function Devices() {
           >
             <Tv className="w-5 h-5 mr-2" />
             Register TV
-          </button>
-          <button
-            onClick={() => setShowMonitorForm(true)}
-            className="flex items-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
-          >
-            <Monitor className="w-5 h-5 mr-2" />
-            Generate Monitor Code
-          </button>
-          <button
-            onClick={() => setShowActivateForm(true)}
-            className="flex items-center px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
-          >
-            <Activity className="w-5 h-5 mr-2" />
-            Activate Monitor
           </button>
         </div>
       </div>
@@ -203,12 +167,6 @@ export default function Devices() {
       {/* Register TV Modal */}
       {showTVForm && <TVRegisterForm onClose={() => setShowTVForm(false)} onSubmit={registerTVMutation.mutate} />}
 
-      {/* Generate Monitor Code Modal */}
-      {showMonitorForm && <MonitorCodeForm onClose={() => setShowMonitorForm(false)} onSubmit={generateMonitorMutation.mutate} />}
-
-      {/* Activate Monitor Modal */}
-      {showActivateForm && <ActivateMonitorForm onClose={() => setShowActivateForm(false)} onSubmit={activateMonitorMutation.mutate} />}
-
       {/* Content Assignment Modal */}
       {showContentModal && selectedDevice && (
         <AssignContentModal
@@ -273,74 +231,6 @@ function TVRegisterForm({ onClose, onSubmit }) {
           </div>
           <div className="flex gap-3">
             <button type="submit" className="flex-1 bg-blue-600 text-white py-2 rounded-lg">Register</button>
-            <button type="button" onClick={onClose} className="flex-1 bg-gray-200 py-2 rounded-lg">Cancel</button>
-          </div>
-        </form>
-      </div>
-    </div>
-  )
-}
-
-function MonitorCodeForm({ onClose, onSubmit }) {
-  const [deviceName, setDeviceName] = useState('')
-
-  const handleSubmit = (e) => {
-    e.preventDefault()
-    onSubmit({ device_name: deviceName })
-  }
-
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-xl p-6 w-full max-w-md">
-        <h2 className="text-xl font-bold mb-4">Generate Monitor Code</h2>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium mb-1">Device Name</label>
-            <input
-              type="text"
-              value={deviceName}
-              onChange={(e) => setDeviceName(e.target.value)}
-              className="w-full px-3 py-2 border rounded-lg"
-              required
-            />
-          </div>
-          <div className="flex gap-3">
-            <button type="submit" className="flex-1 bg-green-600 text-white py-2 rounded-lg">Generate</button>
-            <button type="button" onClick={onClose} className="flex-1 bg-gray-200 py-2 rounded-lg">Cancel</button>
-          </div>
-        </form>
-      </div>
-    </div>
-  )
-}
-
-function ActivateMonitorForm({ onClose, onSubmit }) {
-  const [code, setCode] = useState('')
-
-  const handleSubmit = (e) => {
-    e.preventDefault()
-    onSubmit({ unique_code: code })
-  }
-
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-xl p-6 w-full max-w-md">
-        <h2 className="text-xl font-bold mb-4">Activate Monitor</h2>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium mb-1">Activation Code</label>
-            <input
-              type="text"
-              value={code}
-              onChange={(e) => setCode(e.target.value.toUpperCase())}
-              className="w-full px-3 py-2 border rounded-lg text-center text-2xl font-mono"
-              placeholder="ABC123"
-              maxLength={6}
-              required
-            />
-          </div>
-          <div className="flex gap-3">
-            <button type="submit" className="flex-1 bg-purple-600 text-white py-2 rounded-lg">Activate</button>
             <button type="button" onClick={onClose} className="flex-1 bg-gray-200 py-2 rounded-lg">Cancel</button>
           </div>
         </form>

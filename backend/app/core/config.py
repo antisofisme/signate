@@ -88,6 +88,7 @@ class Settings(BaseSettings):
             "http://127.0.0.1:3000",
             "http://127.0.0.1:8000",
             "http://127.0.0.1:8080",
+            "http://192.168.5.12:8080",   # Monitor Viewer on network IP
         ],
         env="CORS_ORIGINS"
     )
