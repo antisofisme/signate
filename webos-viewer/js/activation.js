@@ -228,7 +228,11 @@ export async function onActivated() {
     document.getElementById('activation-screen').style.display = 'none';
 
     // Show content player
-    document.getElementById('content-player').classList.add('active');
+    const contentPlayer = document.getElementById('content-player');
+    if (contentPlayer) {
+        contentPlayer.classList.add('active');
+        contentPlayer.style.display = 'block';
+    }
 
     // Enter fullscreen
     enterFullscreen();
@@ -295,22 +299,17 @@ export async function resetToRegistration() {
     setCurrentIndex(0);
 
     // Clear any playing content first
-    const imagePlayer = document.getElementById('image-player');
-    const videoPlayer = document.getElementById('video-player');
-    if (videoPlayer) {
-        videoPlayer.pause();
-        videoPlayer.src = '';
-    }
-    if (imagePlayer) {
-        imagePlayer.style.display = 'none';
-    }
-    if (videoPlayer) {
-        videoPlayer.style.display = 'none';
-    }
-
-    // Reset UI - hide content player
     const contentPlayer = document.getElementById('content-player');
     if (contentPlayer) {
+        // Stop any video that might be playing
+        const videos = contentPlayer.querySelectorAll('video');
+        videos.forEach(video => {
+            video.pause();
+            video.src = '';
+        });
+
+        // Clear all content
+        contentPlayer.innerHTML = '';
         contentPlayer.classList.remove('active');
         contentPlayer.style.display = 'none';
     }
