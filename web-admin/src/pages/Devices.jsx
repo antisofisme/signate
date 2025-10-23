@@ -18,13 +18,14 @@ export default function Devices() {
   const [showDeviceInfoModal, setShowDeviceInfoModal] = useState(false)
   const [selectedDevice, setSelectedDevice] = useState(null)
 
-  // Fetch devices
+  // Fetch devices with auto-refresh every 5 seconds
   const { data: devicesData, isLoading } = useQuery({
     queryKey: ['devices'],
     queryFn: () => devicesAPI.list().then(res => {
       console.log('Devices API Response:', res.data)
       return res.data
     }),
+    refetchInterval: 5000, // Auto-refresh every 5 seconds to show new pending devices
   })
 
   // Register TV mutation
