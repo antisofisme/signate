@@ -1,0 +1,82 @@
+import { Monitor, Tv, CheckCircle } from 'lucide-react'
+
+/**
+ * PendingDeviceCard Component
+ * Displays a device pending approval with device information and approve button
+ *
+ * Features:
+ * - Device icon based on type (TV with UUID or Monitor without)
+ * - Device name and identifier (UUID or unique code)
+ * - Platform badge (webOS, etc.)
+ * - Last seen timestamp
+ * - Approve button with mutation callback
+ * - Visual styling with yellow theme for pending status
+ *
+ * @param {Object} device - Device object with pending status
+ * @param {Function} onApprove - Callback when approve button is clicked
+ */
+export default function PendingDeviceCard({ device, onApprove }) {
+  return (
+    <div className="bg-white rounded-lg p-4 border-2 border-yellow-300 flex items-center justify-between">
+      <div className="flex items-center gap-4">
+        {/* Device Icon */}
+        <div className={`flex items-center justify-center w-12 h-12 rounded-full ${
+          device.device_uuid ? 'bg-blue-100' : 'bg-green-100'
+        }`}>
+          {device.device_uuid ? (
+            <Tv className="w-6 h-6 text-blue-600" />
+          ) : (
+            <Monitor className="w-6 h-6 text-green-600" />
+          )}
+        </div>
+
+        {/* Device Info */}
+        <div>
+          <p className="font-bold text-gray-800">{device.device_name}</p>
+
+          {/* UUID or Code Display */}
+          <div className="flex items-center gap-3 mt-1">
+            {device.device_uuid ? (
+              <>
+                <span className="text-xs text-gray-500">UUID:</span>
+                <span className="font-mono text-sm text-blue-600 bg-blue-50 px-2 py-1 rounded">
+                  {device.device_uuid.substring(0, 13)}...
+                </span>
+                {device.platform && (
+                  <span className={`text-xs px-2 py-1 rounded-full ${
+                    device.platform === 'webOS' ? 'bg-purple-100 text-purple-700' : 'bg-gray-100 text-gray-700'
+                  }`}>
+                    {device.platform}
+                  </span>
+                )}
+              </>
+            ) : (
+              <>
+                <span className="text-xs text-gray-500">Code:</span>
+                <span className="font-mono text-lg font-bold text-yellow-600">
+                  {device.unique_code || 'N/A'}
+                </span>
+              </>
+            )}
+          </div>
+
+          {/* Last Seen */}
+          <p className="text-xs text-gray-500 mt-1">
+            {device.last_seen
+              ? `Last seen: ${new Date(device.last_seen).toLocaleString()}`
+              : 'Waiting for connection...'}
+          </p>
+        </div>
+      </div>
+
+      {/* Approve Button */}
+      <button
+        onClick={() => onApprove(device.id)}
+        className="flex items-center gap-2 px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium"
+      >
+        <CheckCircle className="w-5 h-5" />
+        Approve
+      </button>
+    </div>
+  )
+}
