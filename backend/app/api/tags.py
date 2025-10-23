@@ -192,12 +192,19 @@ def assign_tag_to_device(
             detail=f"Tag with ID {assignment.tag_id} not found"
         )
 
-    # Check if device exists
+    # Check if device exists and is active
     device = db.query(Device).filter(Device.id == assignment.device_id).first()
     if not device:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Device with ID {assignment.device_id} not found"
+        )
+
+    # Only allow assignment to active devices
+    if device.status != 'active':
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Cannot assign tag to device with status '{device.status}'. Device must be active."
         )
 
     # Check if already assigned

@@ -378,6 +378,13 @@ def assign_content(
                 detail=f"Device with ID {assignment_data.device_id} not found"
             )
 
+        # Only allow assignment to active devices
+        if device.status != 'active':
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Cannot assign content to device with status '{device.status}'. Device must be active."
+            )
+
     if assignment_data.tag_id:
         tag = db.query(Tag).filter(Tag.id == assignment_data.tag_id).first()
         if not tag:
@@ -446,6 +453,64 @@ def get_content_assignments(
     ).all()
 
     return assignments
+
+
+@router.delete("/{content_id}/assign", status_code=status.HTTP_204_NO_CONTENT)
+def unassign_content(
+    content_id: int,
+    assignment_data: ContentAssignRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    """
+    Unassign content from a device or tag
+
+    Args:
+        content_id: Content ID
+        assignment_data: Assignment data (device_id or tag_id)
+        db: Database session
+        current_user: Authenticated user
+
+    Raises:
+        HTTPException: If assignment not found
+
+    Notes:
+        - Removes the assignment relationship
+        - Content will no longer appear in device/tag playlist
+    """
+    # Validate assignment target
+    if not assignment_data.device_id and not assignment_data.tag_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Must specify either device_id or tag_id"
+        )
+
+    if assignment_data.device_id and assignment_data.tag_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot specify both device_id and tag_id"
+        )
+
+    # Find assignment
+    assignment = db.query(ContentAssignment).filter(
+        ContentAssignment.content_id == content_id,
+        ContentAssignment.device_id == assignment_data.device_id,
+        ContentAssignment.tag_id == assignment_data.tag_id
+    ).first()
+
+    if not assignment:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Assignment not found"
+        )
+
+    # Delete assignment
+    db.delete(assignment)
+    db.commit()
+
+    logger.info(f"Content unassigned: content_id={content_id}, device_id={assignment_data.device_id}, tag_id={assignment_data.tag_id}")
+
+    return None
 
 
 @router.get("/{content_id}/image")

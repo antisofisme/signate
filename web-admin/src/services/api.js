@@ -44,7 +44,7 @@ export const authAPI = {
 
 // Devices API
 export const devicesAPI = {
-  list: () => api.get('/api/devices'),
+  list: (params) => api.get('/api/devices', { params }),
   registerTV: (data) => api.post('/api/devices/tv', data),
   generateMonitorCode: (data) => api.post('/api/devices/monitor', data),
   activateMonitor: (data) => api.post('/api/devices/monitor/activate', data),
@@ -63,6 +63,7 @@ export const contentAPI = {
   update: (id, data) => api.patch(`/api/content/${id}`, data),
   delete: (id) => api.delete(`/api/content/${id}`),
   assign: (id, data) => api.post(`/api/content/${id}/assign`, data),
+  unassign: (id, data) => api.delete(`/api/content/${id}/assign`, { data }),
   getAssignments: (id) => api.get(`/api/content/${id}/assignments`),
 }
 

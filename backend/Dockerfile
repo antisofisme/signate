@@ -9,6 +9,9 @@
 # =============================================================================
 FROM python:3.11-slim as builder
 
+# Prevent Python from writing .pyc files during build (saves space)
+ENV PYTHONDONTWRITEBYTECODE=1
+
 # Set working directory
 WORKDIR /app
 
