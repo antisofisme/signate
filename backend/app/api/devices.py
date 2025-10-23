@@ -459,6 +459,24 @@ def device_heartbeat(
     if heartbeat_data.ip_address:
         device.ip_address = heartbeat_data.ip_address
 
+    # Update device information if provided
+    if heartbeat_data.screen_width is not None:
+        device.screen_width = heartbeat_data.screen_width
+    if heartbeat_data.screen_height is not None:
+        device.screen_height = heartbeat_data.screen_height
+    if heartbeat_data.viewport_width is not None:
+        device.viewport_width = heartbeat_data.viewport_width
+    if heartbeat_data.viewport_height is not None:
+        device.viewport_height = heartbeat_data.viewport_height
+    if heartbeat_data.device_pixel_ratio is not None:
+        device.device_pixel_ratio = heartbeat_data.device_pixel_ratio
+    if heartbeat_data.user_agent is not None:
+        device.user_agent = heartbeat_data.user_agent
+    if heartbeat_data.connection_type is not None:
+        device.connection_type = heartbeat_data.connection_type
+    if heartbeat_data.connection_speed is not None:
+        device.connection_speed = heartbeat_data.connection_speed
+
     db.commit()
     db.refresh(device)
 

@@ -330,15 +330,46 @@
             }
         }
 
+        // Collect device information
+        function getDeviceInfo() {
+            const info = {
+                screen_width: window.screen.width,
+                screen_height: window.screen.height,
+                viewport_width: window.innerWidth,
+                viewport_height: window.innerHeight,
+                device_pixel_ratio: window.devicePixelRatio || 1,
+                user_agent: navigator.userAgent
+            };
+
+            // Get connection information if available
+            if (navigator.connection || navigator.mozConnection || navigator.webkitConnection) {
+                const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+                info.connection_type = connection.effectiveType || connection.type || 'unknown';
+
+                // Calculate speed in Mbps (downlink is in Mbps already)
+                if (connection.downlink) {
+                    info.connection_speed = connection.downlink;
+                }
+            }
+
+            return info;
+        }
+
         // Send heartbeat to backend
         async function sendHeartbeat() {
             if (!deviceId) return;
 
             try {
+                // Collect device information
+                const deviceInfo = getDeviceInfo();
+
                 const response = await fetch(`${API_BASE_URL}/api/devices/heartbeat`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ device_id: parseInt(deviceId) })
+                    body: JSON.stringify({
+                        device_id: parseInt(deviceId),
+                        ...deviceInfo
+                    })
                 });
 
                 if (response.ok) {

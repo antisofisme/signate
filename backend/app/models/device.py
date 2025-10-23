@@ -3,7 +3,7 @@ Device Model
 TV and Monitor devices registered in the system
 """
 
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, Text, Enum as SQLEnum
+from sqlalchemy import Column, Integer, String, Boolean, DateTime, Text, Float, Enum as SQLEnum
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 import enum
@@ -63,6 +63,16 @@ class Device(Base):
     status = Column(String(20), default="pending", nullable=False, index=True)
     last_seen = Column(DateTime)
 
+    # Device Information (from viewer)
+    screen_width = Column(Integer)
+    screen_height = Column(Integer)
+    viewport_width = Column(Integer)
+    viewport_height = Column(Integer)
+    device_pixel_ratio = Column(Float)
+    user_agent = Column(Text)
+    connection_type = Column(String(50))
+    connection_speed = Column(Float)
+
     # Timestamps
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
@@ -88,4 +98,13 @@ class Device(Base):
             "last_seen": self.last_seen.isoformat() if self.last_seen else None,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,
+            # Device information
+            "screen_width": self.screen_width,
+            "screen_height": self.screen_height,
+            "viewport_width": self.viewport_width,
+            "viewport_height": self.viewport_height,
+            "device_pixel_ratio": self.device_pixel_ratio,
+            "user_agent": self.user_agent,
+            "connection_type": self.connection_type,
+            "connection_speed": self.connection_speed,
         }

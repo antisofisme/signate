@@ -85,12 +85,29 @@ class HeartbeatRequest(BaseModel):
     """Request schema for device heartbeat"""
     device_id: int
     ip_address: Optional[str] = None
+    # Device information
+    screen_width: Optional[int] = None
+    screen_height: Optional[int] = None
+    viewport_width: Optional[int] = None
+    viewport_height: Optional[int] = None
+    device_pixel_ratio: Optional[float] = None
+    user_agent: Optional[str] = None
+    connection_type: Optional[str] = None
+    connection_speed: Optional[float] = None
 
     class Config:
         json_schema_extra = {
             "example": {
                 "device_id": 1,
-                "ip_address": "192.168.1.100"
+                "ip_address": "192.168.1.100",
+                "screen_width": 1920,
+                "screen_height": 1080,
+                "viewport_width": 1299,
+                "viewport_height": 902,
+                "device_pixel_ratio": 1.0,
+                "user_agent": "Mozilla/5.0...",
+                "connection_type": "4g",
+                "connection_speed": 5.3
             }
         }
 
@@ -107,6 +124,15 @@ class DeviceResponse(BaseModel):
     last_seen: Optional[datetime] = None
     created_at: datetime
     updated_at: datetime
+    # Device information
+    screen_width: Optional[int] = None
+    screen_height: Optional[int] = None
+    viewport_width: Optional[int] = None
+    viewport_height: Optional[int] = None
+    device_pixel_ratio: Optional[float] = None
+    user_agent: Optional[str] = None
+    connection_type: Optional[str] = None
+    connection_speed: Optional[float] = None
 
     class Config:
         from_attributes = True
@@ -121,7 +147,15 @@ class DeviceResponse(BaseModel):
                 "status": "active",
                 "last_seen": "2025-10-21T12:00:00",
                 "created_at": "2025-10-21T10:00:00",
-                "updated_at": "2025-10-21T10:00:00"
+                "updated_at": "2025-10-21T10:00:00",
+                "screen_width": 1920,
+                "screen_height": 1080,
+                "viewport_width": 1299,
+                "viewport_height": 902,
+                "device_pixel_ratio": 1.0,
+                "user_agent": "Mozilla/5.0...",
+                "connection_type": "4g",
+                "connection_speed": 5.3
             }
         }
 
