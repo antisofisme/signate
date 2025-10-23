@@ -807,34 +807,34 @@ function BulkEditForm({ selectedIds, contentData, onClose, onComplete }) {
   const [updating, setUpdating] = useState(false)
   const [updateProgress, setUpdateProgress] = useState([])
 
-  // Form states
-  const [renameAction, setRenameAction] = useState('none') // 'none', 'prefix', 'suffix', 'replace'
-  const [renameValue, setRenameValue] = useState('')
-  const [renameFind, setRenameFind] = useState('') // For find-replace
-
-  const [updateDuration, setUpdateDuration] = useState(false)
-  const [durationValue, setDurationValue] = useState(10)
-
-  const [assignTags, setAssignTags] = useState(false)
-  const [selectedTagIds, setSelectedTagIds] = useState(new Set())
-
-  // Fetch tags
-  const { data: tagsData } = useQuery({
-    queryKey: ['tags'],
-    queryFn: () => tagsAPI.list().then(res => res.data),
-  })
-
   // Get selected content items
   const selectedContent = contentData?.items?.filter(c => selectedIds.has(c.id)) || []
 
+  // State for individual edits - Map of contentId -> {title, description, duration}
+  const [edits, setEdits] = useState(() => {
+    const initialEdits = {}
+    selectedContent.forEach(content => {
+      initialEdits[content.id] = {
+        title: content.title,
+        description: content.description || '',
+        duration: content.duration
+      }
+    })
+    return initialEdits
+  })
+
+  const updateEdit = (contentId, field, value) => {
+    setEdits(prev => ({
+      ...prev,
+      [contentId]: {
+        ...prev[contentId],
+        [field]: value
+      }
+    }))
+  }
+
   const handleBulkUpdate = async (e) => {
     e.preventDefault()
-
-    // Validate at least one action is selected
-    if (renameAction === 'none' && !updateDuration && !assignTags) {
-      alert('Please select at least one action to perform')
-      return
-    }
 
     setUpdating(true)
     setUpdateProgress(selectedContent.map(() => ({ status: 'pending', error: null })))
@@ -842,7 +842,7 @@ function BulkEditForm({ selectedIds, contentData, onClose, onComplete }) {
     let successCount = 0
     let failCount = 0
 
-    // Update all selected items
+    // Update all items with their individual edits
     const updatePromises = selectedContent.map(async (content, index) => {
       try {
         setUpdateProgress(prev => {
@@ -851,46 +851,23 @@ function BulkEditForm({ selectedIds, contentData, onClose, onComplete }) {
           return newProgress
         })
 
+        const editedData = edits[content.id]
         const updateData = {}
 
-        // Handle rename
-        if (renameAction !== 'none') {
-          let newTitle = content.title
-          if (renameAction === 'prefix') {
-            newTitle = `${renameValue}${content.title}`
-          } else if (renameAction === 'suffix') {
-            newTitle = `${content.title}${renameValue}`
-          } else if (renameAction === 'replace' && renameFind) {
-            newTitle = content.title.replace(new RegExp(renameFind, 'g'), renameValue)
-          }
-          updateData.title = newTitle
+        // Only include fields that have changed
+        if (editedData.title !== content.title) {
+          updateData.title = editedData.title
+        }
+        if (editedData.description !== (content.description || '')) {
+          updateData.description = editedData.description
+        }
+        if (editedData.duration !== content.duration) {
+          updateData.duration = editedData.duration
         }
 
-        // Handle duration update
-        if (updateDuration) {
-          updateData.duration = durationValue
-        }
-
-        // Update content metadata
+        // Only call API if there are changes
         if (Object.keys(updateData).length > 0) {
           await contentAPI.update(content.id, updateData)
-        }
-
-        // Handle tag assignment
-        if (assignTags && selectedTagIds.size > 0) {
-          for (const tagId of selectedTagIds) {
-            try {
-              await contentAPI.assign(content.id, {
-                tag_id: tagId,
-                priority: 0
-              })
-            } catch (err) {
-              // Ignore if already assigned
-              if (!err.response?.data?.detail?.includes('already exists')) {
-                throw err
-              }
-            }
-          }
         }
 
         setUpdateProgress(prev => {
@@ -923,18 +900,6 @@ function BulkEditForm({ selectedIds, contentData, onClose, onComplete }) {
     }
   }
 
-  const toggleTag = (tagId) => {
-    setSelectedTagIds(prev => {
-      const newSet = new Set(prev)
-      if (newSet.has(tagId)) {
-        newSet.delete(tagId)
-      } else {
-        newSet.add(tagId)
-      }
-      return newSet
-    })
-  }
-
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-xl w-full max-w-3xl max-h-[90vh] flex flex-col">
@@ -953,172 +918,94 @@ function BulkEditForm({ selectedIds, contentData, onClose, onComplete }) {
           </button>
         </div>
 
-        {/* Form */}
-        <form onSubmit={handleBulkUpdate} className="flex-1 overflow-y-auto p-6 space-y-6">
-          {/* Rename Section */}
-          <div className="bg-gray-50 p-4 rounded-lg">
-            <h3 className="font-semibold text-gray-800 mb-3">Rename Content</h3>
-            <div className="space-y-3">
-              <div>
-                <label className="block text-sm font-medium mb-2">Rename Action</label>
-                <select
-                  value={renameAction}
-                  onChange={(e) => setRenameAction(e.target.value)}
-                  className="w-full px-3 py-2 border rounded-lg"
-                  disabled={updating}
-                >
-                  <option value="none">No changes</option>
-                  <option value="prefix">Add Prefix</option>
-                  <option value="suffix">Add Suffix</option>
-                  <option value="replace">Find and Replace</option>
-                </select>
-              </div>
-
-              {renameAction === 'replace' && (
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-sm font-medium mb-1">Find</label>
-                    <input
-                      type="text"
-                      value={renameFind}
-                      onChange={(e) => setRenameFind(e.target.value)}
-                      className="w-full px-3 py-2 border rounded-lg"
-                      placeholder="Text to find"
-                      disabled={updating}
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-1">Replace with</label>
-                    <input
-                      type="text"
-                      value={renameValue}
-                      onChange={(e) => setRenameValue(e.target.value)}
-                      className="w-full px-3 py-2 border rounded-lg"
-                      placeholder="Replacement text"
-                      disabled={updating}
-                    />
-                  </div>
-                </div>
-              )}
-
-              {(renameAction === 'prefix' || renameAction === 'suffix') && (
-                <div>
-                  <label className="block text-sm font-medium mb-1">
-                    {renameAction === 'prefix' ? 'Prefix Text' : 'Suffix Text'}
-                  </label>
-                  <input
-                    type="text"
-                    value={renameValue}
-                    onChange={(e) => setRenameValue(e.target.value)}
-                    className="w-full px-3 py-2 border rounded-lg"
-                    placeholder={renameAction === 'prefix' ? 'Text to add before' : 'Text to add after'}
-                    disabled={updating}
-                  />
-                </div>
-              )}
-
-              {renameAction !== 'none' && selectedContent.length > 0 && (
-                <div className="bg-white p-3 rounded border">
-                  <p className="text-xs font-medium text-gray-600 mb-2">Preview:</p>
-                  <p className="text-sm text-gray-800">
-                    {renameAction === 'prefix' && `${renameValue}${selectedContent[0].title}`}
-                    {renameAction === 'suffix' && `${selectedContent[0].title}${renameValue}`}
-                    {renameAction === 'replace' && selectedContent[0].title.replace(new RegExp(renameFind || 'xxx', 'g'), renameValue)}
-                  </p>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Duration Section */}
-          <div className="bg-gray-50 p-4 rounded-lg">
-            <div className="flex items-center gap-3 mb-3">
-              <input
-                type="checkbox"
-                checked={updateDuration}
-                onChange={(e) => setUpdateDuration(e.target.checked)}
-                className="w-4 h-4"
-                disabled={updating}
-              />
-              <h3 className="font-semibold text-gray-800">Update Duration</h3>
-            </div>
-            {updateDuration && (
-              <div>
-                <label className="block text-sm font-medium mb-1">New Duration (seconds)</label>
-                <input
-                  type="number"
-                  value={durationValue}
-                  onChange={(e) => setDurationValue(parseInt(e.target.value))}
-                  className="w-full px-3 py-2 border rounded-lg"
-                  min={1}
-                  disabled={updating}
-                />
-              </div>
-            )}
-          </div>
-
-          {/* Tag Assignment Section */}
-          <div className="bg-gray-50 p-4 rounded-lg">
-            <div className="flex items-center gap-3 mb-3">
-              <input
-                type="checkbox"
-                checked={assignTags}
-                onChange={(e) => setAssignTags(e.target.checked)}
-                className="w-4 h-4"
-                disabled={updating}
-              />
-              <h3 className="font-semibold text-gray-800">Assign to Tags</h3>
-            </div>
-            {assignTags && (
-              <div className="space-y-2">
-                <p className="text-sm text-gray-600">Select tags to assign all selected content to:</p>
-                <div className="grid grid-cols-2 gap-2">
-                  {tagsData?.items?.map((tag) => (
-                    <label
-                      key={tag.id}
-                      className={`flex items-center gap-2 p-3 border rounded-lg cursor-pointer transition-colors ${
-                        selectedTagIds.has(tag.id)
-                          ? 'bg-blue-50 border-blue-500'
-                          : 'bg-white hover:bg-gray-50'
-                      }`}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={selectedTagIds.has(tag.id)}
-                        onChange={() => toggleTag(tag.id)}
-                        className="w-4 h-4"
-                        disabled={updating}
+        {/* Form - List of individual item editors */}
+        <form onSubmit={handleBulkUpdate} className="flex-1 overflow-y-auto p-6">
+          <div className="space-y-4">
+            {selectedContent.map((content, index) => (
+              <div
+                key={content.id}
+                className="bg-gray-50 p-4 rounded-lg border-2 border-gray-200"
+              >
+                {/* Item header with thumbnail and progress */}
+                <div className="flex items-center gap-3 mb-3 pb-3 border-b border-gray-300">
+                  <div className="w-16 h-16 bg-gray-200 rounded flex-shrink-0 flex items-center justify-center overflow-hidden">
+                    {content.content_type === 'image' ? (
+                      <img
+                        src={getImageUrl(content)}
+                        alt={content.title}
+                        className="w-full h-full object-cover"
+                        onError={(e) => { e.target.style.display = 'none' }}
                       />
-                      <span className="text-sm font-medium">{tag.tag_name}</span>
-                    </label>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Progress Display */}
-          {updateProgress.length > 0 && (
-            <div className="bg-gray-50 p-4 rounded-lg">
-              <h3 className="font-semibold text-gray-800 mb-3">Update Progress</h3>
-              <div className="space-y-2 max-h-40 overflow-y-auto">
-                {selectedContent.map((content, index) => (
-                  <div
-                    key={content.id}
-                    className="flex items-center justify-between bg-white p-2 rounded"
-                  >
-                    <span className="text-sm truncate flex-1">{content.title}</span>
-                    <span className="ml-2">
-                      {updateProgress[index]?.status === 'pending' && '⏳'}
-                      {updateProgress[index]?.status === 'updating' && '🔄'}
-                      {updateProgress[index]?.status === 'success' && '✅'}
-                      {updateProgress[index]?.status === 'failed' && '❌'}
-                    </span>
+                    ) : (
+                      <span className="text-2xl">🎥</span>
+                    )}
                   </div>
-                ))}
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-gray-800 truncate">Original: {content.title}</p>
+                    <p className="text-xs text-gray-500">{content.content_type.toUpperCase()}</p>
+                  </div>
+                  <div className="text-2xl">
+                    {updateProgress[index]?.status === 'pending' && '⏳'}
+                    {updateProgress[index]?.status === 'updating' && '🔄'}
+                    {updateProgress[index]?.status === 'success' && '✅'}
+                    {updateProgress[index]?.status === 'failed' && '❌'}
+                  </div>
+                </div>
+
+                {/* Editable fields */}
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Title
+                    </label>
+                    <input
+                      type="text"
+                      value={edits[content.id]?.title || ''}
+                      onChange={(e) => updateEdit(content.id, 'title', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      disabled={updating}
+                      placeholder="Content title"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Description
+                    </label>
+                    <textarea
+                      value={edits[content.id]?.description || ''}
+                      onChange={(e) => updateEdit(content.id, 'description', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      disabled={updating}
+                      rows={2}
+                      placeholder="Content description (optional)"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Duration (seconds)
+                    </label>
+                    <input
+                      type="number"
+                      value={edits[content.id]?.duration || 10}
+                      onChange={(e) => updateEdit(content.id, 'duration', parseInt(e.target.value) || 10)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      disabled={updating}
+                      min={1}
+                    />
+                  </div>
+                </div>
+
+                {/* Show error if failed */}
+                {updateProgress[index]?.status === 'failed' && (
+                  <div className="mt-3 p-2 bg-red-50 border border-red-200 rounded text-sm text-red-700">
+                    Error: {updateProgress[index]?.error}
+                  </div>
+                )}
               </div>
-            </div>
-          )}
+            ))}
+          </div>
         </form>
 
         {/* Footer */}
