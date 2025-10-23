@@ -290,8 +290,8 @@ function AssignForm({ content, onClose, onSubmit }) {
   })
 
   const { data: devicesData } = useQuery({
-    queryKey: ['devices'],
-    queryFn: () => devicesAPI.list().then(res => res.data),
+    queryKey: ['devices', 'active'],
+    queryFn: () => devicesAPI.list({ status: 'active' }).then(res => res.data),
   })
 
   const { data: tagsData } = useQuery({
@@ -438,8 +438,8 @@ function PreviewModal({ content, onClose }) {
 
   // Fetch devices and tags to show names
   const { data: devicesData } = useQuery({
-    queryKey: ['devices'],
-    queryFn: () => devicesAPI.list().then(res => res.data),
+    queryKey: ['devices', 'active'],
+    queryFn: () => devicesAPI.list({ status: 'active' }).then(res => res.data),
   })
 
   const { data: tagsData } = useQuery({

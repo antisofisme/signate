@@ -21,20 +21,46 @@ export default function Dashboard() {
 
   // Helper function to check if device is online
   const isDeviceOnline = (lastSeen) => {
-    if (!lastSeen) return false
-    const lastSeenTime = new Date(lastSeen).getTime()
+    console.log('🔍 isDeviceOnline check:', { lastSeen, type: typeof lastSeen })
+    if (!lastSeen) {
+      console.log('  ❌ No lastSeen')
+      return false
+    }
+    // Backend sends UTC timestamps without 'Z', add it to ensure correct parsing
+    const utcLastSeen = lastSeen.endsWith('Z') ? lastSeen : lastSeen + 'Z'
+    const lastSeenTime = new Date(utcLastSeen).getTime()
     const now = Date.now()
-    const timeout = 300000 // 5 minutes in milliseconds (DEVICE_HEARTBEAT_TIMEOUT)
-    return (now - lastSeenTime) < timeout
+    const timeout = 60000 // 60 seconds (2x heartbeat interval of 30s)
+    const diff = now - lastSeenTime
+    const isOnline = diff < timeout
+    console.log('  📊 Calc:', { utcLastSeen, lastSeenTime, now, diff: `${diff}ms`, timeout: `${timeout}ms`, isOnline })
+    return isOnline
   }
 
   // Calculate stats
   const devicesList = devices?.devices || []
+
+  // Debug: Log raw devices data
+  console.log('📦 Raw devices data:', devices)
+  console.log('📋 Devices list:', devicesList)
+  if (devicesList.length > 0) {
+    console.log('🔍 First device last_seen:', devicesList[0].last_seen, 'Type:', typeof devicesList[0].last_seen)
+  }
+
   const tvDevices = devicesList.filter(d => d.device_type === 'tv').length || 0
   const monitorDevices = devicesList.filter(d => d.device_type === 'monitor').length || 0
   const activeDevices = devicesList.filter(d => d.status === 'active').length || 0
   const pendingDevices = devicesList.filter(d => d.status === 'pending').length || 0
   const onlineDevices = devicesList.filter(d => isDeviceOnline(d.last_seen)).length || 0
+
+  console.log('📊 Calculated stats:', {
+    total: devicesList.length,
+    tvDevices,
+    monitorDevices,
+    activeDevices,
+    pendingDevices,
+    onlineDevices
+  })
 
   const stats = [
     {

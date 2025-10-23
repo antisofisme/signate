@@ -163,7 +163,7 @@
 
     <script>
         // Configuration
-        const API_BASE_URL = 'http://192.168.5.12:8000';
+        const API_BASE_URL = 'http://192.168.5.12:8001';
         const POLL_INTERVAL = 5000; // 5 seconds
         const PRELOAD_TIME = 3000; // 3 seconds
         const HEARTBEAT_INTERVAL = 30000; // 30 seconds before end
@@ -449,6 +449,9 @@
                     console.log('Old playlist:', playlist.length, 'items');
                     console.log('New playlist:', newPlaylist.length, 'items');
 
+                    // Save old playlist before updating (important for comparison!)
+                    const oldPlaylist = playlist;
+
                     // Update playlist
                     playlist = newPlaylist;
                     updateDebug('playlist-count', `Playlist: ${playlist.length} items`);
@@ -465,7 +468,8 @@
                     }
 
                     // If currently showing content is not in new playlist, restart from beginning
-                    const currentContentId = playlist[currentIndex]?.content_id;
+                    // Use oldPlaylist to check what was previously playing
+                    const currentContentId = oldPlaylist[currentIndex]?.content_id;
                     const stillExists = newPlaylist.some(item => item.content_id === currentContentId);
 
                     if (!stillExists) {

@@ -256,8 +256,8 @@ function AssignTagForm({ tag, onClose }) {
   const [selectedDevices, setSelectedDevices] = useState([])
 
   const { data: devicesData } = useQuery({
-    queryKey: ['devices'],
-    queryFn: () => devicesAPI.list().then(res => res.data),
+    queryKey: ['devices', 'active'],
+    queryFn: () => devicesAPI.list({ status: 'active' }).then(res => res.data),
   })
 
   const { data: tagDevices } = useQuery({

@@ -54,6 +54,10 @@ def list_devices(
 
     Returns:
         DeviceListResponse: List of devices with total count
+
+    Notes:
+        - Pending devices with expired activation codes are automatically filtered out
+        - This prevents closed monitor viewers from cluttering the device list
     """
     # Build query
     query = db.query(Device)
@@ -64,15 +68,39 @@ def list_devices(
     if status:
         query = query.filter(Device.status == status)
 
-    # Get total count
-    total = query.count()
-
     # Get devices with pagination
     devices = query.offset(skip).limit(limit).all()
 
+    # Filter out inactive pending devices (based on heartbeat, not expiry time)
+    # Pending devices only shown if actively sending heartbeat (last_seen within 60 seconds)
+    # Active/inactive devices always shown (for tracking)
+    filtered_devices = []
+    now = datetime.utcnow()
+    HEARTBEAT_TIMEOUT = 60  # 60 seconds (monitor sends heartbeat every 30s)
+
+    for device in devices:
+        # Keep all non-pending devices (active/inactive)
+        if device.status != 'pending':
+            filtered_devices.append(device)
+        # For pending devices, only keep if still sending heartbeat
+        elif device.last_seen:
+            seconds_since_last_seen = (now - device.last_seen).total_seconds()
+            if seconds_since_last_seen <= HEARTBEAT_TIMEOUT:
+                filtered_devices.append(device)
+            # If last_seen > 60 seconds ago, hide (viewer closed/disconnected)
+        # Pending devices without last_seen (just registered, not yet sent heartbeat)
+        # Keep them for a short grace period
+        elif device.created_at:
+            seconds_since_creation = (now - device.created_at).total_seconds()
+            if seconds_since_creation <= 30:  # 30 second grace period after registration
+                filtered_devices.append(device)
+
+    # Get total count (excluding offline pending devices)
+    total = len(filtered_devices)
+
     return DeviceListResponse(
         total=total,
-        devices=devices
+        devices=filtered_devices
     )
 
 
