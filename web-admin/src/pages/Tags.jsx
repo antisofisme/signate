@@ -68,15 +68,17 @@ export default function Tags() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-8">
-        <h1 className="text-3xl font-bold text-gray-800">Tags</h1>
-        <button
-          onClick={() => setShowCreateForm(true)}
-          className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-        >
-          <Plus className="w-5 h-5 mr-2" />
-          Create Tag
-        </button>
+      <div className="sticky top-0 z-50 bg-white pb-4 mb-4 border-b border-gray-200 px-6">
+        <div className="flex items-center justify-between pt-4">
+          <h1 className="text-3xl font-bold text-gray-800">Tags</h1>
+          <button
+            onClick={() => setShowCreateForm(true)}
+            className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+          >
+            <Plus className="w-5 h-5 mr-2" />
+            Create Tag
+          </button>
+        </div>
       </div>
 
       {/* Tags Grid */}

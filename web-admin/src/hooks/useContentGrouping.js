@@ -31,23 +31,44 @@ export default function useContentGrouping(contentItems, tags, devices, allAssig
     if (groupBy === 'extension') {
       const groups = {}
       contentItems.forEach(content => {
-        const mimeType = content.mime_type || 'unknown'
-        const category = mimeType.startsWith('image/') ? 'Images'
-                      : mimeType.startsWith('video/') ? 'Videos'
-                      : 'Other'
+        // Extract extension from filename or mime_type
+        let extension = 'Unknown'
 
-        if (!groups[category]) {
-          groups[category] = []
+        if (content.filename) {
+          const parts = content.filename.split('.')
+          if (parts.length > 1) {
+            extension = parts[parts.length - 1].toUpperCase()
+          }
+        } else if (content.mime_type) {
+          // Fallback: extract from mime_type (e.g., "image/jpeg" -> "JPEG")
+          const mimeType = content.mime_type
+          if (mimeType.includes('/')) {
+            extension = mimeType.split('/')[1].toUpperCase()
+          }
         }
-        groups[category].push(content)
+
+        if (!groups[extension]) {
+          groups[extension] = []
+        }
+        groups[extension].push(content)
       })
 
-      return Object.entries(groups).map(([name, items]) => ({
-        name,
-        items,
-        key: name.toLowerCase(),
-        icon: name === 'Images' ? '🖼️' : name === 'Videos' ? '🎬' : '📄'
-      }))
+      // Sort groups by extension name
+      const sortedGroups = Object.entries(groups).sort(([a], [b]) => a.localeCompare(b))
+
+      return sortedGroups.map(([name, items]) => {
+        // Determine icon based on extension
+        const isImage = ['JPG', 'JPEG', 'PNG', 'GIF', 'BMP', 'WEBP', 'SVG'].includes(name)
+        const isVideo = ['MP4', 'AVI', 'MOV', 'WMV', 'FLV', 'MKV', 'WEBM'].includes(name)
+        const icon = isImage ? '🖼️' : isVideo ? '🎬' : '📄'
+
+        return {
+          name: `.${name}`,
+          items,
+          key: `ext-${name.toLowerCase()}`,
+          icon
+        }
+      })
     }
 
     if (groupBy === 'tag' && allAssignmentsData) {

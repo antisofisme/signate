@@ -34,9 +34,10 @@ export default function ContentToolbar({
   const selectedCount = selectedIds.size
 
   return (
-    <div className="flex items-center justify-between mb-8">
-      <div className="flex items-center gap-4">
-        <h1 className="text-3xl font-bold text-gray-800">Content</h1>
+    <div className="sticky top-0 z-50 bg-white pb-4 mb-4 border-b border-gray-200 px-6">
+      <div className="flex items-center justify-between pt-4">
+        <div className="flex items-center gap-4">
+          <h1 className="text-3xl font-bold text-gray-800">Content</h1>
         {selectedCount > 0 && (
           <div className="flex items-center gap-3">
             <span className="bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-sm font-medium">
@@ -50,8 +51,8 @@ export default function ContentToolbar({
             </button>
           </div>
         )}
-      </div>
-      <div className="flex items-center gap-3">
+        </div>
+        <div className="flex items-center gap-3">
         {totalCount > 0 && (
           <button
             onClick={onToggleSelectAll}
@@ -90,6 +91,7 @@ export default function ContentToolbar({
           <Upload className="w-5 h-5 mr-2" />
           Upload Content
         </button>
+        </div>
       </div>
     </div>
   )
