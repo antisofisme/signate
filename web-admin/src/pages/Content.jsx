@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { contentAPI, devicesAPI, tagsAPI } from '../services/api'
-import { Upload, FileImage, Trash2, Link as LinkIcon, Edit, CheckSquare, Square } from 'lucide-react'
+import { Upload, FileImage, Trash2, Link as LinkIcon, Edit, CheckSquare, Square, ArrowRight, ArrowLeft, Tag } from 'lucide-react'
 
 // Helper function to get proxy image URL
 const getImageUrl = (content) => {
@@ -16,6 +16,7 @@ export default function Content() {
   const [showAssignForm, setShowAssignForm] = useState(false)
   const [showPreviewModal, setShowPreviewModal] = useState(false)
   const [showBulkEditForm, setShowBulkEditForm] = useState(false)
+  const [showBulkTagForm, setShowBulkTagForm] = useState(false)
   const [selectedContent, setSelectedContent] = useState(null)
   const [selectedIds, setSelectedIds] = useState(new Set())
 
@@ -131,13 +132,22 @@ export default function Content() {
             </button>
           )}
           {selectedIds.size > 0 && (
-            <button
-              onClick={() => setShowBulkEditForm(true)}
-              className="flex items-center px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
-            >
-              <Edit className="w-5 h-5 mr-2" />
-              Bulk Edit ({selectedIds.size})
-            </button>
+            <>
+              <button
+                onClick={() => setShowBulkEditForm(true)}
+                className="flex items-center px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
+              >
+                <Edit className="w-5 h-5 mr-2" />
+                Bulk Edit ({selectedIds.size})
+              </button>
+              <button
+                onClick={() => setShowBulkTagForm(true)}
+                className="flex items-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+              >
+                <Tag className="w-5 h-5 mr-2" />
+                Bulk Tag ({selectedIds.size})
+              </button>
+            </>
           )}
           <button
             onClick={() => setShowUploadForm(true)}
@@ -266,6 +276,19 @@ export default function Content() {
           onClose={() => setShowBulkEditForm(false)}
           onComplete={() => {
             setShowBulkEditForm(false)
+            clearSelection()
+          }}
+        />
+      )}
+
+      {/* Bulk Tag Modal */}
+      {showBulkTagForm && (
+        <BulkTagForm
+          selectedIds={selectedIds}
+          contentData={contentData}
+          onClose={() => setShowBulkTagForm(false)}
+          onComplete={() => {
+            setShowBulkTagForm(false)
             clearSelection()
           }}
         />
@@ -1049,15 +1072,6 @@ function BulkEditForm({ selectedIds, contentData, onClose, onComplete }) {
     return initialEdits
   })
 
-  // State for tag assignment (applies to all selected items)
-  const [selectedTagIds, setSelectedTagIds] = useState(new Set())
-
-  // Fetch tags
-  const { data: tagsData } = useQuery({
-    queryKey: ['tags'],
-    queryFn: () => tagsAPI.list().then(res => res.data),
-  })
-
   const updateEdit = (contentId, field, value) => {
     setEdits(prev => ({
       ...prev,
@@ -1066,18 +1080,6 @@ function BulkEditForm({ selectedIds, contentData, onClose, onComplete }) {
         [field]: value
       }
     }))
-  }
-
-  const toggleTag = (tagId) => {
-    setSelectedTagIds(prev => {
-      const newSet = new Set(prev)
-      if (newSet.has(tagId)) {
-        newSet.delete(tagId)
-      } else {
-        newSet.add(tagId)
-      }
-      return newSet
-    })
   }
 
   const handleBulkUpdate = async (e) => {
@@ -1115,23 +1117,6 @@ function BulkEditForm({ selectedIds, contentData, onClose, onComplete }) {
         // Only call API if there are changes
         if (Object.keys(updateData).length > 0) {
           await contentAPI.update(content.id, updateData)
-        }
-
-        // Assign selected tags to this content
-        if (selectedTagIds.size > 0) {
-          for (const tagId of selectedTagIds) {
-            try {
-              await contentAPI.assign(content.id, {
-                tag_id: tagId,
-                priority: 0
-              })
-            } catch (err) {
-              // Ignore if already assigned (409 Conflict)
-              if (!err.response?.data?.detail?.includes('already exists')) {
-                throw err
-              }
-            }
-          }
         }
 
         setUpdateProgress(prev => {
@@ -1185,56 +1170,6 @@ function BulkEditForm({ selectedIds, contentData, onClose, onComplete }) {
         {/* Form - List of individual item editors */}
         <form onSubmit={handleBulkUpdate} className="flex-1 overflow-y-auto p-6">
           <div className="space-y-6">
-            {/* Tag Assignment Section - Applies to ALL selected items */}
-            {tagsData?.items && tagsData.items.length > 0 && (
-              <div className="bg-gradient-to-r from-purple-50 to-blue-50 p-5 rounded-lg border-2 border-purple-200">
-                <div className="flex items-center gap-2 mb-3">
-                  <span className="text-xl">🏷️</span>
-                  <h3 className="font-bold text-gray-800 text-lg">Assign Tags to All Selected Items</h3>
-                </div>
-                <p className="text-sm text-gray-600 mb-4">
-                  Select tags to assign to all {selectedContent.length} selected content items
-                </p>
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                  {tagsData.items.map((tag) => (
-                    <label
-                      key={tag.id}
-                      className={`flex items-center gap-2 p-3 border-2 rounded-lg cursor-pointer transition-all ${
-                        selectedTagIds.has(tag.id)
-                          ? 'bg-purple-100 border-purple-500 shadow-md'
-                          : 'bg-white border-gray-200 hover:border-purple-300 hover:bg-purple-50'
-                      }`}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={selectedTagIds.has(tag.id)}
-                        onChange={() => toggleTag(tag.id)}
-                        className="w-5 h-5 rounded accent-purple-600"
-                        disabled={updating}
-                      />
-                      <div className="flex-1 min-w-0">
-                        <span className="text-sm font-medium text-gray-800 block truncate">
-                          {tag.tag_name}
-                        </span>
-                        {tag.description && (
-                          <span className="text-xs text-gray-500 block truncate">
-                            {tag.description}
-                          </span>
-                        )}
-                      </div>
-                    </label>
-                  ))}
-                </div>
-                {selectedTagIds.size > 0 && (
-                  <div className="mt-3 p-2 bg-purple-100 rounded border border-purple-300">
-                    <p className="text-sm text-purple-800">
-                      ✓ {selectedTagIds.size} tag(s) will be assigned to all {selectedContent.length} items
-                    </p>
-                  </div>
-                )}
-              </div>
-            )}
-
             {/* Individual Item Editors */}
             <div className="space-y-4">
               <h3 className="font-bold text-gray-700 text-lg flex items-center gap-2">
@@ -1246,78 +1181,89 @@ function BulkEditForm({ selectedIds, contentData, onClose, onComplete }) {
                 key={content.id}
                 className="bg-gray-50 p-4 rounded-lg border-2 border-gray-200"
               >
-                {/* Item header with thumbnail and progress */}
-                <div className="flex items-center gap-3 mb-3 pb-3 border-b border-gray-300">
-                  <div className="w-16 h-16 bg-gray-200 rounded flex-shrink-0 flex items-center justify-center overflow-hidden">
-                    {content.content_type === 'image' ? (
-                      <img
-                        src={getImageUrl(content)}
-                        alt={content.title}
-                        className="w-full h-full object-cover"
-                        onError={(e) => { e.target.style.display = 'none' }}
+                {/* Side-by-side layout: Preview LEFT, Form RIGHT */}
+                <div className="grid grid-cols-12 gap-4">
+                  {/* LEFT: Preview Content (60-70% width) */}
+                  <div className="col-span-7">
+                    <div className="relative bg-gradient-to-br from-gray-200 to-gray-300 rounded-lg overflow-hidden aspect-video flex items-center justify-center">
+                      {content.content_type === 'image' ? (
+                        <img
+                          src={getImageUrl(content)}
+                          alt={content.title}
+                          className="w-full h-full object-cover"
+                          onError={(e) => { e.target.style.display = 'none' }}
+                        />
+                      ) : (
+                        <div className="flex flex-col items-center justify-center">
+                          <span className="text-6xl mb-2">🎥</span>
+                          <span className="text-sm text-gray-600">Video</span>
+                        </div>
+                      )}
+
+                      {/* Status badge */}
+                      <div className="absolute top-2 right-2 text-3xl bg-white rounded-full w-12 h-12 flex items-center justify-center shadow-lg">
+                        {updateProgress[index]?.status === 'pending' && '⏳'}
+                        {updateProgress[index]?.status === 'updating' && '🔄'}
+                        {updateProgress[index]?.status === 'success' && '✅'}
+                        {updateProgress[index]?.status === 'failed' && '❌'}
+                      </div>
+                    </div>
+
+                    {/* Original info below preview */}
+                    <div className="mt-2 px-2">
+                      <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">Original</p>
+                      <p className="font-medium text-gray-800 truncate">{content.title}</p>
+                      <p className="text-xs text-gray-500">{content.content_type.toUpperCase()} • {content.duration}s</p>
+                    </div>
+                  </div>
+
+                  {/* RIGHT: Form Fields (30-40% width) */}
+                  <div className="col-span-5 flex flex-col justify-center space-y-3">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Title
+                      </label>
+                      <input
+                        type="text"
+                        value={edits[content.id]?.title || ''}
+                        onChange={(e) => updateEdit(content.id, 'title', e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                        disabled={updating}
+                        placeholder="Content title"
                       />
-                    ) : (
-                      <span className="text-2xl">🎥</span>
-                    )}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-medium text-gray-800 truncate">Original: {content.title}</p>
-                    <p className="text-xs text-gray-500">{content.content_type.toUpperCase()}</p>
-                  </div>
-                  <div className="text-2xl">
-                    {updateProgress[index]?.status === 'pending' && '⏳'}
-                    {updateProgress[index]?.status === 'updating' && '🔄'}
-                    {updateProgress[index]?.status === 'success' && '✅'}
-                    {updateProgress[index]?.status === 'failed' && '❌'}
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Description
+                      </label>
+                      <textarea
+                        value={edits[content.id]?.description || ''}
+                        onChange={(e) => updateEdit(content.id, 'description', e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                        disabled={updating}
+                        rows={3}
+                        placeholder="Content description (optional)"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Duration (seconds)
+                      </label>
+                      <input
+                        type="number"
+                        value={edits[content.id]?.duration || 10}
+                        onChange={(e) => updateEdit(content.id, 'duration', parseInt(e.target.value) || 10)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                        disabled={updating}
+                        min={1}
+                      />
+                    </div>
                   </div>
                 </div>
 
-                {/* Editable fields */}
-                <div className="space-y-3">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Title
-                    </label>
-                    <input
-                      type="text"
-                      value={edits[content.id]?.title || ''}
-                      onChange={(e) => updateEdit(content.id, 'title', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                      disabled={updating}
-                      placeholder="Content title"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Description
-                    </label>
-                    <textarea
-                      value={edits[content.id]?.description || ''}
-                      onChange={(e) => updateEdit(content.id, 'description', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                      disabled={updating}
-                      rows={2}
-                      placeholder="Content description (optional)"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Duration (seconds)
-                    </label>
-                    <input
-                      type="number"
-                      value={edits[content.id]?.duration || 10}
-                      onChange={(e) => updateEdit(content.id, 'duration', parseInt(e.target.value) || 10)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                      disabled={updating}
-                      min={1}
-                    />
-                  </div>
-                </div>
-
-                {/* Show error if failed */}
+                {/* Show error if failed - Full width below */}
                 {updateProgress[index]?.status === 'failed' && (
                   <div className="mt-3 p-2 bg-red-50 border border-red-200 rounded text-sm text-red-700">
                     Error: {updateProgress[index]?.error}
@@ -1346,6 +1292,276 @@ function BulkEditForm({ selectedIds, contentData, onClose, onComplete }) {
             className="flex-1 bg-gray-200 py-2 rounded-lg hover:bg-gray-300 disabled:bg-gray-100 disabled:cursor-not-allowed"
           >
             {updating ? 'Please wait...' : 'Cancel'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function BulkTagForm({ selectedIds, contentData, onClose, onComplete }) {
+  const queryClient = useQueryClient()
+  const [updating, setUpdating] = useState(false)
+
+  // Get selected content items
+  const selectedContent = contentData?.items?.filter(c => selectedIds.has(c.id)) || []
+
+  // Fetch all tags
+  const { data: tagsData } = useQuery({
+    queryKey: ['tags'],
+    queryFn: () => tagsAPI.list().then(res => res.data),
+  })
+
+  // Fetch assignments for all selected content items
+  const assignmentQueries = useQuery({
+    queryKey: ['bulk-tag-assignments', [...selectedIds]],
+    queryFn: async () => {
+      const assignmentsMap = {}
+      for (const contentId of selectedIds) {
+        const res = await contentAPI.getAssignments(contentId)
+        assignmentsMap[contentId] = res.data
+      }
+      return assignmentsMap
+    },
+    enabled: selectedIds.size > 0
+  })
+
+  // State: Map of contentId -> Set of selected tag IDs
+  const [tagSelections, setTagSelections] = useState(() => {
+    const initial = {}
+    selectedContent.forEach(content => {
+      initial[content.id] = new Set()
+    })
+    return initial
+  })
+
+  // Pre-populate tag selections when assignments load
+  const [initialized, setInitialized] = useState(false)
+  if (assignmentQueries.data && !assignmentQueries.isLoading && !initialized) {
+    const newSelections = {}
+    selectedContent.forEach(content => {
+      const assignments = assignmentQueries.data[content.id] || []
+      const tagIds = new Set()
+      assignments.forEach(assignment => {
+        if (assignment.tag_id) {
+          tagIds.add(assignment.tag_id)
+        }
+      })
+      newSelections[content.id] = tagIds
+    })
+    setTagSelections(newSelections)
+    setInitialized(true)
+  }
+
+  const toggleTag = (contentId, tagId) => {
+    setTagSelections(prev => {
+      const newSelections = { ...prev }
+      const currentSet = new Set(prev[contentId] || [])
+
+      if (currentSet.has(tagId)) {
+        currentSet.delete(tagId)
+      } else {
+        currentSet.add(tagId)
+      }
+
+      newSelections[contentId] = currentSet
+      return newSelections
+    })
+  }
+
+  const handleUpdateAll = async () => {
+    setUpdating(true)
+
+    try {
+      // For each content item
+      for (const content of selectedContent) {
+        const currentAssignments = assignmentQueries.data[content.id] || []
+        const currentTagIds = new Set(
+          currentAssignments
+            .filter(a => a.tag_id)
+            .map(a => a.tag_id)
+        )
+        const selectedTagIds = tagSelections[content.id] || new Set()
+
+        // Tags to add
+        const tagsToAdd = [...selectedTagIds].filter(id => !currentTagIds.has(id))
+        // Tags to remove
+        const tagsToRemove = [...currentTagIds].filter(id => !selectedTagIds.has(id))
+
+        // Add new tags
+        for (const tagId of tagsToAdd) {
+          try {
+            await contentAPI.assign(content.id, {
+              tag_id: tagId,
+              priority: 0
+            })
+          } catch (err) {
+            // Ignore if already assigned
+            if (!err.response?.data?.detail?.includes('already exists')) {
+              throw err
+            }
+          }
+        }
+
+        // Remove unselected tags
+        for (const tagId of tagsToRemove) {
+          try {
+            await contentAPI.unassign(content.id, {
+              tag_id: tagId
+            })
+          } catch (err) {
+            console.error('Unassign error:', err)
+          }
+        }
+      }
+
+      // Refresh queries
+      queryClient.invalidateQueries(['bulk-tag-assignments'])
+      queryClient.invalidateQueries(['content'])
+      queryClient.invalidateQueries(['content-assignments'])
+
+      alert('Tags updated successfully!')
+      onComplete()
+    } catch (error) {
+      alert(error.response?.data?.detail || 'Failed to update tags')
+    }
+
+    setUpdating(false)
+  }
+
+  const allTags = tagsData?.items || []
+
+  if (assignmentQueries.isLoading) {
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="bg-white rounded-xl p-6">
+          <p className="text-gray-600">Loading assignments...</p>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-xl w-full max-w-3xl max-h-[90vh] overflow-hidden flex flex-col">
+        {/* Header */}
+        <div className="flex items-center justify-between p-6 border-b">
+          <div>
+            <h2 className="text-2xl font-bold text-gray-800">Bulk Tag Assignment</h2>
+            <p className="text-sm text-gray-600 mt-1">{selectedContent.length} content items selected</p>
+          </div>
+          <button
+            onClick={onClose}
+            className="text-gray-500 hover:text-gray-700 text-2xl"
+            disabled={updating}
+          >
+            ✕
+          </button>
+        </div>
+
+        {/* Content list with tag checkboxes */}
+        <div className="flex-1 overflow-y-auto p-6">
+          <div className="space-y-4">
+            {selectedContent.map((content) => {
+              const selectedTags = tagSelections[content.id] || new Set()
+
+              return (
+                <div
+                  key={content.id}
+                  className="bg-gray-50 rounded-lg border-2 border-gray-200 p-4"
+                >
+                  {/* Title di atas */}
+                  <div className="mb-3">
+                    <p className="font-bold text-gray-800 text-lg">{content.title}</p>
+                    <p className="text-sm text-gray-600">
+                      {content.content_type.toUpperCase()} • {content.duration}s
+                    </p>
+                  </div>
+
+                  {/* Horizontal layout: Thumbnail (left) + Tag pills (right) */}
+                  <div className="grid grid-cols-12 gap-4">
+                    {/* Left: Thumbnail saja (30-35%) */}
+                    <div className="col-span-4">
+                      {/* Thumbnail with aspect-video like BulkEdit */}
+                      <div className="relative bg-gradient-to-br from-gray-200 to-gray-300 rounded-lg overflow-hidden aspect-video flex items-center justify-center">
+                        {content.content_type === 'image' ? (
+                          <img
+                            src={getImageUrl(content)}
+                            alt={content.title}
+                            className="w-full h-full object-cover"
+                            onError={(e) => { e.target.style.display = 'none' }}
+                          />
+                        ) : (
+                          <div className="flex flex-col items-center justify-center">
+                            <span className="text-5xl mb-2">🎥</span>
+                            <span className="text-xs text-gray-600">Video</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Right: Tag pills (65-70%) */}
+                    <div className="col-span-8">
+                      <div className="flex flex-wrap gap-2">
+                        {allTags.map((tag) => {
+                          const isSelected = selectedTags.has(tag.id)
+                          return (
+                            <div
+                              key={tag.id}
+                              onClick={() => !updating && toggleTag(content.id, tag.id)}
+                              className={`inline-flex flex-col px-3 py-2 rounded-xl cursor-pointer transition-all ${
+                                isSelected
+                                  ? 'bg-green-500 text-white shadow-md'
+                                  : 'bg-gray-300 text-gray-700 hover:bg-gray-400'
+                              }`}
+                              style={{
+                                userSelect: 'none',
+                                fontSize: '11px'
+                              }}
+                            >
+                              <div className="flex items-center gap-1">
+                                <span>🏷️</span>
+                                <span className="font-medium">{tag.tag_name}</span>
+                              </div>
+                              {tag.description && (
+                                <span className="text-[10px] opacity-90 mt-0.5">
+                                  {tag.description}
+                                </span>
+                              )}
+                            </div>
+                          )
+                        })}
+                      </div>
+                      {selectedTags.size > 0 && (
+                        <div className="mt-3 text-xs text-gray-600">
+                          ✓ {selectedTags.size} tag(s) selected
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="px-6 py-4 border-t flex gap-3">
+          <button
+            type="button"
+            onClick={handleUpdateAll}
+            disabled={updating}
+            className="flex-1 bg-green-600 text-white py-2 rounded-lg hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
+          >
+            {updating ? 'Updating...' : 'Update All'}
+          </button>
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={updating}
+            className="flex-1 bg-gray-200 py-2 rounded-lg hover:bg-gray-300 disabled:bg-gray-100 disabled:cursor-not-allowed"
+          >
+            Cancel
           </button>
         </div>
       </div>
