@@ -182,7 +182,18 @@ export default function Content() {
 
             {/* Preview Thumbnail */}
             <div className="aspect-video bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center relative overflow-hidden">
-              {content.content_type === 'image' ? (
+              {content.content_type === 'video' ? (
+                <video
+                  src={getImageUrl(content)}
+                  className="w-full h-full object-cover"
+                  preload="metadata"
+                  controls
+                  onLoadedMetadata={(e) => {
+                    e.target.currentTime = 0.1 // Load first frame as thumbnail
+                  }}
+                  onClick={(e) => e.stopPropagation()}
+                />
+              ) : (
                 <>
                   <img
                     src={getImageUrl(content)}
@@ -196,11 +207,6 @@ export default function Content() {
                     <FileImage className="w-16 h-16 text-gray-400 opacity-50" />
                   </div>
                 </>
-              ) : (
-                <div className="flex flex-col items-center justify-center">
-                  <div className="text-6xl mb-2">🎥</div>
-                  <span className="text-sm text-gray-500">Video</span>
-                </div>
               )}
 
               {/* Badges */}
@@ -1182,22 +1188,39 @@ function BulkEditForm({ selectedIds, contentData, onClose, onComplete }) {
                 className="bg-gray-50 p-4 rounded-lg border-2 border-gray-200"
               >
                 {/* Side-by-side layout: Preview LEFT, Form RIGHT */}
-                <div className="grid grid-cols-12 gap-4">
-                  {/* LEFT: Preview Content (60-70% width) */}
-                  <div className="col-span-7">
-                    <div className="relative bg-gradient-to-br from-gray-200 to-gray-300 rounded-lg overflow-hidden aspect-video flex items-center justify-center">
-                      {content.content_type === 'image' ? (
+                <div className="grid grid-cols-12 gap-4 items-start">
+                  {/* LEFT: Preview Content (30-35% width) */}
+                  <div className="col-span-4 flex flex-col">
+                    <div className="relative bg-gradient-to-br from-gray-200 to-gray-300 rounded-lg overflow-hidden max-h-48 flex items-center justify-center">
+                      {content.content_type === 'video' ? (
+                        <video
+                          src={getImageUrl(content)}
+                          className="w-full h-full object-contain"
+                          preload="metadata"
+                          controls
+                          onLoadedMetadata={(e) => {
+                            e.target.currentTime = 0.1 // Load first frame as thumbnail
+                          }}
+                        />
+                      ) : (
                         <img
                           src={getImageUrl(content)}
                           alt={content.title}
-                          className="w-full h-full object-cover"
-                          onError={(e) => { e.target.style.display = 'none' }}
+                          className="w-full h-full object-contain"
+                          onError={(e) => {
+                            e.target.style.display = 'none'
+                            const parent = e.target.parentElement
+                            if (!parent.querySelector('.video-icon-fallback')) {
+                              const fallback = document.createElement('div')
+                              fallback.className = 'video-icon-fallback flex flex-col items-center justify-center'
+                              fallback.innerHTML = `
+                                <span class="text-5xl mb-2">📷</span>
+                                <span class="text-xs text-gray-600">Image</span>
+                              `
+                              parent.appendChild(fallback)
+                            }
+                          }}
                         />
-                      ) : (
-                        <div className="flex flex-col items-center justify-center">
-                          <span className="text-6xl mb-2">🎥</span>
-                          <span className="text-sm text-gray-600">Video</span>
-                        </div>
                       )}
 
                       {/* Status badge */}
@@ -1210,15 +1233,15 @@ function BulkEditForm({ selectedIds, contentData, onClose, onComplete }) {
                     </div>
 
                     {/* Original info below preview */}
-                    <div className="mt-2 px-2">
+                    <div className="mt-2 px-2 flex-shrink-0">
                       <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">Original</p>
                       <p className="font-medium text-gray-800 truncate">{content.title}</p>
                       <p className="text-xs text-gray-500">{content.content_type.toUpperCase()} • {content.duration}s</p>
                     </div>
                   </div>
 
-                  {/* RIGHT: Form Fields (30-40% width) */}
-                  <div className="col-span-5 flex flex-col justify-center space-y-3">
+                  {/* RIGHT: Form Fields (65-70% width) */}
+                  <div className="col-span-8 flex flex-col space-y-3">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
                         Title
@@ -1482,20 +1505,37 @@ function BulkTagForm({ selectedIds, contentData, onClose, onComplete }) {
                   <div className="grid grid-cols-12 gap-4">
                     {/* Left: Thumbnail saja (30-35%) */}
                     <div className="col-span-4">
-                      {/* Thumbnail with aspect-video like BulkEdit */}
+                      {/* Thumbnail with aspect-video */}
                       <div className="relative bg-gradient-to-br from-gray-200 to-gray-300 rounded-lg overflow-hidden aspect-video flex items-center justify-center">
-                        {content.content_type === 'image' ? (
+                        {content.content_type === 'video' ? (
+                          <video
+                            src={getImageUrl(content)}
+                            className="w-full h-full object-cover"
+                            preload="metadata"
+                            controls
+                            onLoadedMetadata={(e) => {
+                              e.target.currentTime = 0.1 // Load first frame as thumbnail
+                            }}
+                          />
+                        ) : (
                           <img
                             src={getImageUrl(content)}
                             alt={content.title}
                             className="w-full h-full object-cover"
-                            onError={(e) => { e.target.style.display = 'none' }}
+                            onError={(e) => {
+                              e.target.style.display = 'none'
+                              const parent = e.target.parentElement
+                              if (!parent.querySelector('.video-icon-fallback')) {
+                                const fallback = document.createElement('div')
+                                fallback.className = 'video-icon-fallback flex flex-col items-center justify-center'
+                                fallback.innerHTML = `
+                                  <span class="text-5xl mb-2">📷</span>
+                                  <span class="text-xs text-gray-600">Image</span>
+                                `
+                                parent.appendChild(fallback)
+                              }
+                            }}
                           />
-                        ) : (
-                          <div className="flex flex-col items-center justify-center">
-                            <span className="text-5xl mb-2">🎥</span>
-                            <span className="text-xs text-gray-600">Video</span>
-                          </div>
                         )}
                       </div>
                     </div>
