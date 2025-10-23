@@ -202,78 +202,175 @@ function AssignmentBadge({ contentId }) {
 }
 
 function UploadForm({ onClose, onSubmit }) {
-  const [formData, setFormData] = useState({
-    title: '',
-    description: '',
-    duration: 10,
-  })
-  const [file, setFile] = useState(null)
+  const queryClient = useQueryClient()
+  const [files, setFiles] = useState([])
+  const [duration, setDuration] = useState(10)
+  const [uploading, setUploading] = useState(false)
+  const [uploadProgress, setUploadProgress] = useState([])
 
-  const handleSubmit = (e) => {
+  const handleFileSelect = (e) => {
+    const selectedFiles = Array.from(e.target.files)
+    setFiles(selectedFiles)
+    // Initialize progress for each file
+    setUploadProgress(selectedFiles.map(() => ({ status: 'pending', error: null })))
+  }
+
+  const handleBulkUpload = async (e) => {
     e.preventDefault()
-    if (!file) {
-      alert('Please select a file')
+    if (files.length === 0) {
+      alert('Please select at least one file')
       return
     }
 
-    const data = new FormData()
-    data.append('file', file)
-    data.append('title', formData.title)
-    data.append('description', formData.description || '')
-    data.append('duration', formData.duration)
-    data.append('is_active', 'true')
+    setUploading(true)
+    let successCount = 0
+    let failCount = 0
 
-    onSubmit(data)
+    // Upload all files in parallel
+    const uploadPromises = files.map(async (file, index) => {
+      try {
+        // Update status to uploading
+        setUploadProgress(prev => {
+          const newProgress = [...prev]
+          newProgress[index] = { status: 'uploading', error: null }
+          return newProgress
+        })
+
+        const formData = new FormData()
+        formData.append('file', file)
+        formData.append('title', file.name.split('.')[0]) // Use filename as title
+        formData.append('description', '')
+        formData.append('duration', duration)
+        formData.append('is_active', 'true')
+
+        await contentAPI.upload(formData)
+
+        // Update status to success
+        setUploadProgress(prev => {
+          const newProgress = [...prev]
+          newProgress[index] = { status: 'success', error: null }
+          return newProgress
+        })
+        successCount++
+      } catch (error) {
+        // Update status to failed
+        setUploadProgress(prev => {
+          const newProgress = [...prev]
+          newProgress[index] = {
+            status: 'failed',
+            error: error.response?.data?.detail || 'Upload failed'
+          }
+          return newProgress
+        })
+        failCount++
+      }
+    })
+
+    // Wait for all uploads to complete
+    await Promise.all(uploadPromises)
+
+    // Refresh content list
+    queryClient.invalidateQueries(['content'])
+
+    setUploading(false)
+
+    // Show summary
+    alert(`Upload complete!\n✅ Success: ${successCount}\n❌ Failed: ${failCount}`)
+
+    if (successCount > 0) {
+      onClose()
+    }
   }
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-xl p-6 w-full max-w-md">
+      <div className="bg-white rounded-xl p-6 w-full max-w-2xl max-h-[80vh] flex flex-col">
         <h2 className="text-xl font-bold mb-4">Upload Content</h2>
-        <form onSubmit={handleSubmit} className="space-y-4">
+
+        <form onSubmit={handleBulkUpload} className="flex-1 flex flex-col space-y-4 overflow-hidden">
+          {/* File Input */}
           <div>
-            <label className="block text-sm font-medium mb-1">File</label>
+            <label className="block text-sm font-medium mb-1">Select Files</label>
             <input
               type="file"
               accept="image/*,video/*"
-              onChange={(e) => setFile(e.target.files[0])}
+              multiple
+              onChange={handleFileSelect}
               className="w-full px-3 py-2 border rounded-lg"
-              required
+              disabled={uploading}
             />
+            <p className="text-xs text-gray-500 mt-1">You can select multiple files to upload at once</p>
           </div>
+
+          {/* Duration Setting */}
           <div>
-            <label className="block text-sm font-medium mb-1">Title</label>
-            <input
-              type="text"
-              value={formData.title}
-              onChange={(e) => setFormData({...formData, title: e.target.value})}
-              className="w-full px-3 py-2 border rounded-lg"
-              required
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">Description</label>
-            <textarea
-              value={formData.description}
-              onChange={(e) => setFormData({...formData, description: e.target.value})}
-              className="w-full px-3 py-2 border rounded-lg"
-              rows={2}
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">Duration (seconds)</label>
+            <label className="block text-sm font-medium mb-1">Default Duration (seconds)</label>
             <input
               type="number"
-              value={formData.duration}
-              onChange={(e) => setFormData({...formData, duration: parseInt(e.target.value)})}
+              value={duration}
+              onChange={(e) => setDuration(parseInt(e.target.value))}
               className="w-full px-3 py-2 border rounded-lg"
               min={1}
-              required
+              disabled={uploading}
             />
+            <p className="text-xs text-gray-500 mt-1">This duration will be applied to all files</p>
           </div>
-          <div className="flex gap-3">
-            <button type="submit" className="flex-1 bg-blue-600 text-white py-2 rounded-lg">Upload</button>
-            <button type="button" onClick={onClose} className="flex-1 bg-gray-200 py-2 rounded-lg">Cancel</button>
+
+          {/* File List */}
+          {files.length > 0 && (
+            <div className="flex-1 overflow-hidden flex flex-col">
+              <h3 className="text-sm font-medium mb-2">Selected Files ({files.length})</h3>
+              <div className="flex-1 overflow-y-auto space-y-2 pr-2">
+                {files.map((file, index) => (
+                  <div
+                    key={index}
+                    className="flex items-center justify-between bg-gray-50 p-3 rounded-lg"
+                  >
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-gray-800 truncate">{file.name}</p>
+                      <p className="text-xs text-gray-500">
+                        {(file.size / 1024 / 1024).toFixed(2)} MB
+                      </p>
+                    </div>
+                    <div className="ml-3 flex items-center gap-2">
+                      {uploadProgress[index]?.status === 'pending' && (
+                        <span className="text-gray-400">⏳</span>
+                      )}
+                      {uploadProgress[index]?.status === 'uploading' && (
+                        <span className="text-blue-500 animate-spin">🔄</span>
+                      )}
+                      {uploadProgress[index]?.status === 'success' && (
+                        <span className="text-green-500">✅</span>
+                      )}
+                      {uploadProgress[index]?.status === 'failed' && (
+                        <span className="text-red-500" title={uploadProgress[index]?.error}>
+                          ❌
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Action Buttons */}
+          <div className="flex gap-3 pt-2">
+            <button
+              type="submit"
+              disabled={uploading || files.length === 0}
+              className="flex-1 bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
+            >
+              {uploading ? 'Uploading...' : `Upload ${files.length} File(s)`}
+            </button>
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={uploading}
+              className="flex-1 bg-gray-200 py-2 rounded-lg hover:bg-gray-300 disabled:bg-gray-100 disabled:cursor-not-allowed"
+            >
+              {uploading ? 'Please wait...' : 'Cancel'}
+            </button>
           </div>
         </form>
       </div>

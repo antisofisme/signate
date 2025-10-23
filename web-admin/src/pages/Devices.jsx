@@ -426,16 +426,16 @@ function AssignContentModal({ device, onClose }) {
         </div>
 
         {/* Two-column layout */}
-        <div className="flex-1 grid grid-cols-2 gap-6 p-6 overflow-hidden">
+        <div className="flex-1 grid grid-cols-2 gap-6 p-6 overflow-hidden min-h-0">
           {/* Left: Unassigned Content */}
-          <div className="flex flex-col">
-            <div className="flex items-center justify-between mb-4">
+          <div className="flex flex-col min-h-0">
+            <div className="flex items-center justify-between mb-4 flex-shrink-0">
               <h3 className="font-bold text-gray-800 text-lg">Available Content</h3>
               <span className="text-sm text-gray-600">
                 {unassignedContent.length} items
               </span>
             </div>
-            <div className="flex-1 overflow-y-auto space-y-2 pr-2">
+            <div className="flex-1 overflow-y-auto space-y-2 pr-2 min-h-0">
               {unassignedContent.map((content) => (
                 <div
                   key={content.id}
@@ -473,14 +473,14 @@ function AssignContentModal({ device, onClose }) {
           </div>
 
           {/* Right: Assigned Content */}
-          <div className="flex flex-col">
-            <div className="flex items-center justify-between mb-4">
+          <div className="flex flex-col min-h-0">
+            <div className="flex items-center justify-between mb-4 flex-shrink-0">
               <h3 className="font-bold text-gray-800 text-lg">Assigned Content</h3>
               <span className="text-sm text-gray-600">
                 {assignedContent.length} items
               </span>
             </div>
-            <div className="flex-1 overflow-y-auto space-y-2 pr-2">
+            <div className="flex-1 overflow-y-auto space-y-2 pr-2 min-h-0">
               {assignedContent.map((content) => (
                 <div
                   key={content.id}
