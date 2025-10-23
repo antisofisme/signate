@@ -115,6 +115,7 @@ CREATE TABLE tags (
     id SERIAL PRIMARY KEY,
     tag_name VARCHAR(100) NOT NULL UNIQUE,
     description TEXT,
+    color VARCHAR(7) DEFAULT '#3B82F6', -- Hex color for UI
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
