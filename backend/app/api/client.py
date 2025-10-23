@@ -221,10 +221,9 @@ async def proxy_content(
             detail=f"Content with ID {content_id} not found"
         )
 
-    # Fetch content from Anthias using internal API
+    # Fetch content from Anthias using configured API URL
     # Use anthias_asset_id to construct the correct API URL
-    # Note: From inside docker network, use anthias-nginx hostname
-    anthias_content_url = f"http://anthias-nginx/api/v1/assets/{content.anthias_asset_id}/content"
+    anthias_content_url = f"{settings.ANTHIAS_API_URL}/api/v1/assets/{content.anthias_asset_id}/content"
 
     logger.info(f"Fetching content from Anthias: {anthias_content_url}")
 
