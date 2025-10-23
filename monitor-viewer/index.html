@@ -167,7 +167,10 @@
         const POLL_INTERVAL = 5000; // 5 seconds
         const PRELOAD_TIME = 3000; // 3 seconds
         const HEARTBEAT_INTERVAL = 30000; // 30 seconds before end
-        
+        const DB_NAME = 'SignageMediaCache';
+        const DB_VERSION = 1;
+        const STORE_NAME = 'mediaFiles';
+
         // State
         let deviceId = null;
         let activationCode = null;
@@ -180,13 +183,234 @@
         let pollTimer = null;
         let playlistRefreshTimer = null;
         let heartbeatTimer = null;
+        let db = null; // IndexedDB instance
+        let currentBlobUrl = null; // Track current blob URL for cleanup
 
         // Debug mode
         let debugMode = false;
 
+        // ========================================
+        // IndexedDB Cache Manager
+        // ========================================
+
+        // Initialize IndexedDB for offline media caching
+        async function initMediaCache() {
+            return new Promise((resolve, reject) => {
+                const request = indexedDB.open(DB_NAME, DB_VERSION);
+
+                request.onerror = () => {
+                    console.error('❌ IndexedDB failed to open:', request.error);
+                    reject(request.error);
+                };
+
+                request.onsuccess = () => {
+                    db = request.result;
+                    console.log('✅ IndexedDB opened successfully');
+                    resolve(db);
+                };
+
+                request.onupgradeneeded = (event) => {
+                    const db = event.target.result;
+
+                    // Create object store for media files
+                    if (!db.objectStoreNames.contains(STORE_NAME)) {
+                        const objectStore = db.createObjectStore(STORE_NAME, { keyPath: 'content_id' });
+                        objectStore.createIndex('url', 'url', { unique: false });
+                        objectStore.createIndex('timestamp', 'timestamp', { unique: false });
+                        console.log('📦 Created media cache object store');
+                    }
+                };
+            });
+        }
+
+        // Check if content is cached
+        async function isContentCached(contentId) {
+            return new Promise((resolve, reject) => {
+                const transaction = db.transaction([STORE_NAME], 'readonly');
+                const objectStore = transaction.objectStore(STORE_NAME);
+                const request = objectStore.get(contentId);
+
+                request.onsuccess = () => {
+                    resolve(!!request.result);
+                };
+
+                request.onerror = () => {
+                    reject(request.error);
+                };
+            });
+        }
+
+        // Get cached content
+        async function getCachedContent(contentId) {
+            return new Promise((resolve, reject) => {
+                const transaction = db.transaction([STORE_NAME], 'readonly');
+                const objectStore = transaction.objectStore(STORE_NAME);
+                const request = objectStore.get(contentId);
+
+                request.onsuccess = () => {
+                    resolve(request.result);
+                };
+
+                request.onerror = () => {
+                    reject(request.error);
+                };
+            });
+        }
+
+        // Download and cache content
+        async function downloadAndCacheContent(content) {
+            try {
+                console.log(`⬇️  Downloading content ${content.content_id}: ${content.title}`);
+
+                // Fetch content from URL
+                const response = await fetch(content.url);
+
+                if (!response.ok) {
+                    throw new Error(`Failed to fetch: ${response.status}`);
+                }
+
+                // Get blob data
+                const blob = await response.blob();
+                const contentType = response.headers.get('content-type') || content.mime_type || 'application/octet-stream';
+
+                // Store in IndexedDB
+                const cacheEntry = {
+                    content_id: content.content_id,
+                    title: content.title,
+                    url: content.url,
+                    content_type: content.content_type,
+                    mime_type: contentType,
+                    blob: blob,
+                    size: blob.size,
+                    timestamp: Date.now()
+                };
+
+                await saveToCache(cacheEntry);
+
+                console.log(`✅ Cached content ${content.content_id} (${(blob.size / 1024 / 1024).toFixed(2)} MB)`);
+                return cacheEntry;
+
+            } catch (error) {
+                console.error(`❌ Failed to cache content ${content.content_id}:`, error);
+                return null;
+            }
+        }
+
+        // Save to cache
+        async function saveToCache(cacheEntry) {
+            return new Promise((resolve, reject) => {
+                const transaction = db.transaction([STORE_NAME], 'readwrite');
+                const objectStore = transaction.objectStore(STORE_NAME);
+                const request = objectStore.put(cacheEntry);
+
+                request.onsuccess = () => {
+                    resolve();
+                };
+
+                request.onerror = () => {
+                    reject(request.error);
+                };
+            });
+        }
+
+        // Delete from cache
+        async function deleteFromCache(contentId) {
+            return new Promise((resolve, reject) => {
+                const transaction = db.transaction([STORE_NAME], 'readwrite');
+                const objectStore = transaction.objectStore(STORE_NAME);
+                const request = objectStore.delete(contentId);
+
+                request.onsuccess = () => {
+                    console.log(`🗑️  Removed content ${contentId} from cache`);
+                    resolve();
+                };
+
+                request.onerror = () => {
+                    reject(request.error);
+                };
+            });
+        }
+
+        // Sync cache with playlist
+        async function syncCacheWithPlaylist(newPlaylist) {
+            try {
+                // Get all cached content IDs
+                const cachedIds = await getAllCachedContentIds();
+                const playlistIds = newPlaylist.map(item => item.content_id);
+
+                // Find content to remove (in cache but not in playlist)
+                const idsToRemove = cachedIds.filter(id => !playlistIds.includes(id));
+
+                // Find content to download (in playlist but not in cache)
+                const idsToDownload = playlistIds.filter(id => !cachedIds.includes(id));
+
+                // Remove unused content from cache
+                for (const id of idsToRemove) {
+                    await deleteFromCache(id);
+                }
+
+                // Download new content
+                for (const content of newPlaylist) {
+                    if (idsToDownload.includes(content.content_id)) {
+                        await downloadAndCacheContent(content);
+                    }
+                }
+
+                console.log(`🔄 Cache synced: +${idsToDownload.length} downloaded, -${idsToRemove.length} removed`);
+
+            } catch (error) {
+                console.error('❌ Cache sync failed:', error);
+            }
+        }
+
+        // Get all cached content IDs
+        async function getAllCachedContentIds() {
+            return new Promise((resolve, reject) => {
+                const transaction = db.transaction([STORE_NAME], 'readonly');
+                const objectStore = transaction.objectStore(STORE_NAME);
+                const request = objectStore.getAllKeys();
+
+                request.onsuccess = () => {
+                    resolve(request.result);
+                };
+
+                request.onerror = () => {
+                    reject(request.error);
+                };
+            });
+        }
+
+        // Get cached blob URL for playback
+        async function getCachedBlobUrl(contentId) {
+            try {
+                const cached = await getCachedContent(contentId);
+
+                if (!cached) {
+                    return null;
+                }
+
+                // Create blob URL for playback
+                const blobUrl = URL.createObjectURL(cached.blob);
+                return blobUrl;
+
+            } catch (error) {
+                console.error(`❌ Failed to get cached blob URL for ${contentId}:`, error);
+                return null;
+            }
+        }
+
         // Initialize
         async function init() {
             updateDebug('status', 'Initializing...');
+
+            // Initialize IndexedDB for offline caching
+            try {
+                await initMediaCache();
+                console.log('📦 Media cache initialized');
+            } catch (error) {
+                console.error('❌ Failed to initialize media cache:', error);
+                showError('Failed to initialize offline cache. Content may stream instead of cache.');
+            }
 
             // Check if already registered (from localStorage)
             const savedDeviceId = localStorage.getItem('monitor_device_id');
@@ -451,9 +675,19 @@
                 playlist = data.playlist || [];
 
                 updateDebug('playlist-count', `Playlist: ${playlist.length} items`);
-                updateDebug('status', 'Playing content');
+                updateDebug('status', 'Syncing offline cache...');
 
                 console.log('Playlist loaded:', playlist);
+
+                // Sync cache with new playlist (download missing, remove unused)
+                if (db) {
+                    await syncCacheWithPlaylist(playlist);
+                    updateDebug('status', 'Cache synced, ready to play');
+                } else {
+                    console.warn('⚠️  Cache not available, will stream content');
+                    updateDebug('status', 'Playing content (streaming mode)');
+                }
+
             } catch (error) {
                 console.error('Playlist load error:', error);
                 showError('Failed to load playlist. Retrying in 10 seconds...');
@@ -486,6 +720,12 @@
                     // Update playlist
                     playlist = newPlaylist;
                     updateDebug('playlist-count', `Playlist: ${playlist.length} items`);
+
+                    // Sync cache with updated playlist
+                    if (db) {
+                        console.log('🔄 Syncing cache with updated playlist...');
+                        await syncCacheWithPlaylist(playlist);
+                    }
 
                     // If playlist is empty, stop playing
                     if (playlist.length === 0) {
@@ -554,7 +794,7 @@
         }
 
         // Play specific content
-        function playContent(index) {
+        async function playContent(index) {
             // Clear any existing timer first to prevent multiple timers
             if (contentTimer) {
                 clearTimeout(contentTimer);
@@ -592,14 +832,43 @@
 
             console.log('Playing content:', content);
 
-            // Use URL from playlist (already provided by backend)
-            const contentUrl = content.url;
+            // Try to get content from cache first (offline mode)
+            let contentUrl = content.url; // Fallback to streaming URL
+            let useCache = false;
+
+            if (db) {
+                try {
+                    const cachedBlobUrl = await getCachedBlobUrl(content.content_id);
+                    if (cachedBlobUrl) {
+                        contentUrl = cachedBlobUrl;
+                        useCache = true;
+                        console.log(`📦 Using cached content (ID: ${content.content_id})`);
+                    } else {
+                        console.log(`📡 Content not cached, streaming (ID: ${content.content_id})`);
+                    }
+                } catch (error) {
+                    console.error('Error getting cached content:', error);
+                    console.log('📡 Falling back to streaming');
+                }
+            }
+
             const isVideo = content.content_type === 'video';
 
-            console.log('Content URL:', contentUrl);
+            console.log('Content URL:', useCache ? '[Cached Blob]' : contentUrl);
 
             // DIRECT REPLACEMENT PATTERN (like old viewer - no crossfade, no flicker)
             const player = document.getElementById('content-player');
+
+            // Revoke previous blob URL to prevent memory leak
+            if (currentBlobUrl && useCache) {
+                URL.revokeObjectURL(currentBlobUrl);
+                currentBlobUrl = null;
+            }
+
+            // Store new blob URL if using cache
+            if (useCache) {
+                currentBlobUrl = contentUrl;
+            }
 
             // Clear all content first (key pattern from old viewer)
             console.log('Clearing player (direct replacement)');

@@ -796,12 +796,25 @@ function UploadForm({ onClose, onSubmit }) {
               disabled={uploading}
             />
             <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-              <p className="text-xs font-semibold text-blue-800 mb-1">📋 Supported File Formats:</p>
+              <p className="text-xs font-semibold text-blue-800 mb-2">📋 Supported File Formats:</p>
               <div className="text-xs text-blue-700 space-y-1">
-                <p><strong>Images:</strong> .jpg, .jpeg, .png, .gif, .bmp</p>
-                <p><strong>Videos:</strong> .mp4 (H264 MPEG4, max 1920x1080 @ 30FPS)</p>
+                <div>
+                  <p className="font-semibold mb-1">Images (Recommended):</p>
+                  <p className="ml-3">✅ PNG - Best for graphics, logos, transparent images</p>
+                  <p className="ml-3">✅ JPEG/JPG - Best for photographs</p>
+                  <p className="ml-3">✅ WebP - Modern format with better compression</p>
+                  <p className="ml-3 text-gray-600">⚠️ GIF, BMP, SVG - Supported but may have limitations</p>
+                </div>
+                <div className="mt-2">
+                  <p className="font-semibold mb-1">Videos (Recommended):</p>
+                  <p className="ml-3">✅ MP4 (H.264/AAC) - Best compatibility, max 1920x1080 @ 30fps</p>
+                  <p className="ml-3 text-gray-600">⚠️ WebM, OGV - Supported but browser-dependent</p>
+                </div>
               </div>
-              <p className="text-xs text-gray-600 mt-2 italic">💡 You can select multiple files to upload at once</p>
+              <div className="mt-2 pt-2 border-t border-blue-200">
+                <p className="text-xs text-gray-700">💡 You can select multiple files to upload at once</p>
+                <p className="text-xs text-gray-700">📏 Recommended: Images &lt;5MB, Videos &lt;100MB</p>
+              </div>
             </div>
           </div>
 
