@@ -109,15 +109,15 @@ def get_device_playlist(
 
         seen_content_ids.add(content.id)
 
-        # Use proxy URL instead of direct Anthias URL to avoid CORS issues
-        # The proxy endpoint will fetch content from Anthias and serve it with proper CORS headers
-        proxy_url = f"{settings.API_BASE_URL}/api/client/content-proxy/{content.id}"
+        # Use direct Anthias URL (CORS now enabled on Anthias nginx)
+        # This provides better performance than proxy approach
+        anthias_content_url = f"{settings.ANTHIAS_API_URL}/api/v1/assets/{content.anthias_asset_id}/content"
 
         playlist_item = PlaylistItem(
             content_id=content.id,
             title=content.title,
             content_type=content.content_type,
-            url=proxy_url,
+            url=anthias_content_url,
             duration=content.duration,
             mime_type=content.mime_type
         )
