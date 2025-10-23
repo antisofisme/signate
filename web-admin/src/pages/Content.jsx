@@ -823,6 +823,15 @@ function BulkEditForm({ selectedIds, contentData, onClose, onComplete }) {
     return initialEdits
   })
 
+  // State for tag assignment (applies to all selected items)
+  const [selectedTagIds, setSelectedTagIds] = useState(new Set())
+
+  // Fetch tags
+  const { data: tagsData } = useQuery({
+    queryKey: ['tags'],
+    queryFn: () => tagsAPI.list().then(res => res.data),
+  })
+
   const updateEdit = (contentId, field, value) => {
     setEdits(prev => ({
       ...prev,
@@ -831,6 +840,18 @@ function BulkEditForm({ selectedIds, contentData, onClose, onComplete }) {
         [field]: value
       }
     }))
+  }
+
+  const toggleTag = (tagId) => {
+    setSelectedTagIds(prev => {
+      const newSet = new Set(prev)
+      if (newSet.has(tagId)) {
+        newSet.delete(tagId)
+      } else {
+        newSet.add(tagId)
+      }
+      return newSet
+    })
   }
 
   const handleBulkUpdate = async (e) => {
@@ -868,6 +889,23 @@ function BulkEditForm({ selectedIds, contentData, onClose, onComplete }) {
         // Only call API if there are changes
         if (Object.keys(updateData).length > 0) {
           await contentAPI.update(content.id, updateData)
+        }
+
+        // Assign selected tags to this content
+        if (selectedTagIds.size > 0) {
+          for (const tagId of selectedTagIds) {
+            try {
+              await contentAPI.assign(content.id, {
+                tag_id: tagId,
+                priority: 0
+              })
+            } catch (err) {
+              // Ignore if already assigned (409 Conflict)
+              if (!err.response?.data?.detail?.includes('already exists')) {
+                throw err
+              }
+            }
+          }
         }
 
         setUpdateProgress(prev => {
@@ -920,8 +958,64 @@ function BulkEditForm({ selectedIds, contentData, onClose, onComplete }) {
 
         {/* Form - List of individual item editors */}
         <form onSubmit={handleBulkUpdate} className="flex-1 overflow-y-auto p-6">
-          <div className="space-y-4">
-            {selectedContent.map((content, index) => (
+          <div className="space-y-6">
+            {/* Tag Assignment Section - Applies to ALL selected items */}
+            {tagsData?.items && tagsData.items.length > 0 && (
+              <div className="bg-gradient-to-r from-purple-50 to-blue-50 p-5 rounded-lg border-2 border-purple-200">
+                <div className="flex items-center gap-2 mb-3">
+                  <span className="text-xl">🏷️</span>
+                  <h3 className="font-bold text-gray-800 text-lg">Assign Tags to All Selected Items</h3>
+                </div>
+                <p className="text-sm text-gray-600 mb-4">
+                  Select tags to assign to all {selectedContent.length} selected content items
+                </p>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                  {tagsData.items.map((tag) => (
+                    <label
+                      key={tag.id}
+                      className={`flex items-center gap-2 p-3 border-2 rounded-lg cursor-pointer transition-all ${
+                        selectedTagIds.has(tag.id)
+                          ? 'bg-purple-100 border-purple-500 shadow-md'
+                          : 'bg-white border-gray-200 hover:border-purple-300 hover:bg-purple-50'
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={selectedTagIds.has(tag.id)}
+                        onChange={() => toggleTag(tag.id)}
+                        className="w-5 h-5 rounded accent-purple-600"
+                        disabled={updating}
+                      />
+                      <div className="flex-1 min-w-0">
+                        <span className="text-sm font-medium text-gray-800 block truncate">
+                          {tag.tag_name}
+                        </span>
+                        {tag.description && (
+                          <span className="text-xs text-gray-500 block truncate">
+                            {tag.description}
+                          </span>
+                        )}
+                      </div>
+                    </label>
+                  ))}
+                </div>
+                {selectedTagIds.size > 0 && (
+                  <div className="mt-3 p-2 bg-purple-100 rounded border border-purple-300">
+                    <p className="text-sm text-purple-800">
+                      ✓ {selectedTagIds.size} tag(s) will be assigned to all {selectedContent.length} items
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Individual Item Editors */}
+            <div className="space-y-4">
+              <h3 className="font-bold text-gray-700 text-lg flex items-center gap-2">
+                <span>✏️</span>
+                Edit Individual Items
+              </h3>
+              {selectedContent.map((content, index) => (
               <div
                 key={content.id}
                 className="bg-gray-50 p-4 rounded-lg border-2 border-gray-200"
@@ -1004,7 +1098,8 @@ function BulkEditForm({ selectedIds, contentData, onClose, onComplete }) {
                   </div>
                 )}
               </div>
-            ))}
+              ))}
+            </div>
           </div>
         </form>
 
