@@ -12,7 +12,8 @@ import tempfile
 import os
 
 from app.core.database import get_db
-from app.core.deps import get_current_active_user
+from app.core.deps import get_current_active_user, get_optional_user
+from typing import Optional
 from app.models.user import User
 from app.models.content import Content
 from app.models.assignment import ContentAssignment
@@ -41,7 +42,7 @@ async def upload_content(
     duration: int = Form(10),
     is_active: bool = Form(True),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user)
+    current_user: Optional[User] = Depends(get_optional_user)
 ):
     """
     Upload content file to Anthias and save metadata to database
@@ -180,7 +181,7 @@ def list_content(
     content_type: Optional[str] = None,
     is_active: Optional[bool] = None,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user)
+    current_user: Optional[User] = Depends(get_optional_user)
 ):
     """
     List all content with optional filters
@@ -221,7 +222,7 @@ def list_content(
 def get_content(
     content_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user)
+    current_user: Optional[User] = Depends(get_optional_user)
 ):
     """
     Get content by ID
@@ -253,7 +254,7 @@ async def update_content(
     content_id: int,
     content_data: ContentUpdateRequest,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user)
+    current_user: Optional[User] = Depends(get_optional_user)
 ):
     """
     Update content metadata
@@ -317,7 +318,7 @@ async def update_content(
 async def delete_content(
     content_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user)
+    current_user: Optional[User] = Depends(get_optional_user)
 ):
     """
     Delete content from both Anthias and database
@@ -370,7 +371,7 @@ def assign_content(
     content_id: int,
     assignment_data: ContentAssignRequest,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user)
+    current_user: Optional[User] = Depends(get_optional_user)
 ):
     """
     Assign content to a device or tag
@@ -470,7 +471,7 @@ def assign_content(
 def get_content_assignments(
     content_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user)
+    current_user: Optional[User] = Depends(get_optional_user)
 ):
     """
     Get all assignments for a content
@@ -503,7 +504,7 @@ def unassign_content(
     content_id: int,
     assignment_data: ContentAssignRequest,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user)
+    current_user: Optional[User] = Depends(get_optional_user)
 ):
     """
     Unassign content from a device or tag

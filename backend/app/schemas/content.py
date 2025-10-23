@@ -70,24 +70,24 @@ class ContentResponse(BaseModel):
     """Response schema for content"""
     id: int
     title: str
-    description: Optional[str]
+    description: Optional[str] = None
     content_type: str
     anthias_url: str
-    anthias_asset_id: Optional[str]
+    anthias_asset_id: Optional[str] = None
     duration: int
     is_active: bool
-    file_size: Optional[int]
-    mime_type: Optional[str]
-    resolution: Optional[str]
-    width: Optional[int]
-    height: Optional[int]
-    codec: Optional[str]
-    fps: Optional[float]
-    bitrate: Optional[int]
-    video_duration: Optional[float]
-    audio_codec: Optional[str]
-    audio_bitrate: Optional[int]
-    audio_sample_rate: Optional[int]
+    file_size: Optional[int] = None
+    mime_type: Optional[str] = None
+    resolution: Optional[str] = None
+    width: Optional[int] = None
+    height: Optional[int] = None
+    codec: Optional[str] = None
+    fps: Optional[float] = None
+    bitrate: Optional[int] = None
+    video_duration: Optional[float] = None
+    audio_codec: Optional[str] = None
+    audio_bitrate: Optional[int] = None
+    audio_sample_rate: Optional[int] = None
     created_at: datetime
     updated_at: datetime
 

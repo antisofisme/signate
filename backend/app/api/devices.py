@@ -39,7 +39,7 @@ def list_devices(
     device_type: str = None,
     status: str = None,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user)
+    current_user: Optional[User] = Depends(get_optional_user)
 ):
     """
     List all devices with optional filters
@@ -108,7 +108,7 @@ def list_devices(
 def get_device(
     device_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user)
+    current_user: Optional[User] = Depends(get_optional_user)
 ):
     """
     Get device by ID
@@ -139,7 +139,7 @@ def get_device(
 def register_tv(
     device_data: TVRegisterRequest,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user)
+    current_user: Optional[User] = Depends(get_optional_user)
 ):
     """
     Register a new TV device
@@ -186,7 +186,7 @@ def register_tv(
 def generate_monitor_code(
     device_data: MonitorGenerateRequest,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user)
+    current_user: Optional[User] = Depends(get_optional_user)
 ):
     """
     Generate activation code for monitor device

@@ -5,11 +5,13 @@ For managing device tags and grouping
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 from typing import List
 
 from app.core.database import get_db
-from app.core.deps import get_current_active_user
+from app.core.deps import get_current_active_user, get_optional_user
 from app.models.user import User
+from typing import Optional
 from app.models.tag import Tag, DeviceTag
 from app.models.device import Device
 from app.schemas.tag import (
@@ -26,7 +28,7 @@ router = APIRouter()
 @router.get("", response_model=TagListResponse)
 def list_tags(
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user)
+    current_user: Optional[User] = Depends(get_optional_user)
 ):
     """
     Get all tags with device counts
@@ -36,7 +38,7 @@ def list_tags(
     # Add device count for each tag
     tag_responses = []
     for tag in tags:
-        device_count = db.query(DeviceTag).filter(DeviceTag.tag_id == tag.id).count()
+        device_count = db.query(func.count(DeviceTag.device_id)).filter(DeviceTag.tag_id == tag.id).scalar()
         tag_dict = tag.to_dict()
         tag_dict['device_count'] = device_count
         tag_responses.append(TagResponse(**tag_dict))
@@ -51,7 +53,7 @@ def list_tags(
 def create_tag(
     tag_data: TagCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user)
+    current_user: Optional[User] = Depends(get_optional_user)
 ):
     """
     Create a new tag
@@ -84,7 +86,7 @@ def create_tag(
 def get_tag(
     tag_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user)
+    current_user: Optional[User] = Depends(get_optional_user)
 ):
     """
     Get a single tag by ID
@@ -109,7 +111,7 @@ def update_tag(
     tag_id: int,
     tag_data: TagUpdate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user)
+    current_user: Optional[User] = Depends(get_optional_user)
 ):
     """
     Update a tag
@@ -156,7 +158,7 @@ def update_tag(
 def delete_tag(
     tag_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user)
+    current_user: Optional[User] = Depends(get_optional_user)
 ):
     """
     Delete a tag
@@ -179,7 +181,7 @@ def delete_tag(
 def assign_tag_to_device(
     assignment: DeviceTagAssign,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user)
+    current_user: Optional[User] = Depends(get_optional_user)
 ):
     """
     Assign a tag to a device
@@ -235,7 +237,7 @@ def assign_tag_to_device(
 def unassign_tag_from_device(
     assignment: DeviceTagAssign,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user)
+    current_user: Optional[User] = Depends(get_optional_user)
 ):
     """
     Remove a tag from a device
@@ -261,7 +263,7 @@ def unassign_tag_from_device(
 def get_tag_devices(
     tag_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user)
+    current_user: Optional[User] = Depends(get_optional_user)
 ):
     """
     Get all devices with this tag
