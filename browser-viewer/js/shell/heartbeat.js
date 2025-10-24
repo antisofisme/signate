@@ -5,21 +5,85 @@
 
 window.ShellHeartbeat = {
     /**
+     * Collect device information
+     */
+    getDeviceInfo: function() {
+        const info = {
+            // Display information
+            screen_width: window.screen.width,
+            screen_height: window.screen.height,
+            viewport_width: window.innerWidth,
+            viewport_height: window.innerHeight,
+            device_pixel_ratio: window.devicePixelRatio || 1,
+
+            // Platform information
+            user_agent: navigator.userAgent,
+            platform: this.detectPlatform(),
+
+            // Connection information
+            connection_type: this.getConnectionType(),
+            connection_speed: this.getConnectionSpeed()
+        };
+
+        return info;
+    },
+
+    /**
+     * Detect platform type
+     */
+    detectPlatform: function() {
+        const ua = navigator.userAgent.toLowerCase();
+
+        if (ua.includes('webos')) return 'webOS';
+        if (ua.includes('tizen')) return 'Tizen';
+        if (ua.includes('android tv')) return 'Android TV';
+        if (ua.includes('chrome')) return 'Chrome';
+        if (ua.includes('firefox')) return 'Firefox';
+        if (ua.includes('safari')) return 'Safari';
+        if (ua.includes('edge')) return 'Edge';
+
+        return 'Browser';
+    },
+
+    /**
+     * Get connection type
+     */
+    getConnectionType: function() {
+        if (!navigator.connection) return null;
+
+        const conn = navigator.connection;
+        return conn.effectiveType || conn.type || null;
+    },
+
+    /**
+     * Get connection speed (Mbps)
+     */
+    getConnectionSpeed: function() {
+        if (!navigator.connection || !navigator.connection.downlink) return null;
+
+        return navigator.connection.downlink;
+    },
+
+    /**
      * Start heartbeat loop (keep device online)
      */
     start: function() {
         const state = window.ShellState;
-        
+
         state.heartbeatInterval = setInterval(async () => {
             if (!state.deviceId) return;
 
             try {
+                // Collect device info
+                const deviceInfo = this.getDeviceInfo();
+
                 const response = await fetch(`${state.API_BASE_URL}/api/devices/heartbeat`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         device_id: parseInt(state.deviceId),
-                        device_type: 'monitor'
+                        device_type: 'monitor',
+                        ...deviceInfo
                     })
                 });
 

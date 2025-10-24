@@ -2,7 +2,7 @@
 Device Management API endpoints
 """
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.orm import Session, lazyload
 from datetime import datetime
 from typing import List, Optional
@@ -235,6 +235,7 @@ def generate_monitor_code(
 @router.post("/monitor/register", response_model=DeviceResponse, status_code=status.HTTP_201_CREATED)
 def register_monitor_self(
     device_data: MonitorSelfRegisterRequest,
+    request: Request,
     db: Session = Depends(get_db)
 ):
     """
@@ -246,6 +247,7 @@ def register_monitor_self(
 
     Args:
         device_data: Monitor registration data (activation_code, device_name)
+        request: FastAPI request object (for IP auto-detection)
         db: Database session
 
     Returns:
@@ -259,6 +261,7 @@ def register_monitor_self(
         - Monitor generates its own 6-digit activation code
         - Device starts with status "pending"
         - Admin activates via Web Admin PUT /devices/{id} endpoint
+        - Auto-detects client IP from request
     """
     # Check if activation code already exists
     existing_device = db.query(Device).filter(
@@ -271,6 +274,16 @@ def register_monitor_self(
             detail=f"Activation code {device_data.activation_code} already exists"
         )
 
+    # Auto-detect IP address from request
+    client_ip = None
+
+    # Check X-Forwarded-For header first (for proxy/nginx)
+    forwarded_for = request.headers.get("X-Forwarded-For")
+    if forwarded_for:
+        client_ip = forwarded_for.split(",")[0].strip()
+    elif request.client:
+        client_ip = request.client.host
+
     # Create monitor device with self-generated code
     device = Device(
         device_type="monitor",
@@ -280,6 +293,7 @@ def register_monitor_self(
         device_uuid=device_data.device_uuid,  # Permanent UUID
         platform=device_data.platform,  # WebOS or browser
         model_name=device_data.model_name,  # TV model name
+        ip_address=client_ip,  # Auto-detected IP
         status="pending"
     )
 
@@ -427,6 +441,7 @@ def delete_device(
 @router.post("/heartbeat", response_model=HeartbeatResponse)
 def device_heartbeat(
     heartbeat_data: HeartbeatRequest,
+    request: Request,
     db: Session = Depends(get_db)
 ):
     """
@@ -434,6 +449,7 @@ def device_heartbeat(
 
     Args:
         heartbeat_data: Device ID and optional IP
+        request: FastAPI request object (for IP auto-detection)
         db: Database session
 
     Returns:
@@ -446,6 +462,7 @@ def device_heartbeat(
         - This endpoint does NOT require authentication (for device clients)
         - Devices call this every 30-60 seconds to stay "online"
         - Updates last_seen timestamp
+        - Auto-detects client IP from request
     """
     device = db.query(Device).filter(Device.id == heartbeat_data.device_id).first()
 
@@ -458,9 +475,23 @@ def device_heartbeat(
     # Update last_seen
     device.last_seen = datetime.utcnow()
 
-    # Update IP if provided (for dynamic IPs)
+    # Auto-detect IP address from request
+    client_ip = None
+
+    # Check X-Forwarded-For header first (for proxy/nginx)
+    forwarded_for = request.headers.get("X-Forwarded-For")
+    if forwarded_for:
+        # X-Forwarded-For can be comma-separated list, take first IP
+        client_ip = forwarded_for.split(",")[0].strip()
+    elif request.client:
+        # Fallback to direct client IP
+        client_ip = request.client.host
+
+    # Update IP (priority: provided > auto-detected > existing)
     if heartbeat_data.ip_address:
         device.ip_address = heartbeat_data.ip_address
+    elif client_ip:
+        device.ip_address = client_ip
 
     # Update UUID and platform information if provided
     if heartbeat_data.device_uuid is not None:

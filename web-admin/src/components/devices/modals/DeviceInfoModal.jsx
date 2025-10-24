@@ -82,45 +82,6 @@ export default function DeviceInfoModal({ device, onClose }) {
             </div>
           </div>
 
-          {/* Platform Information Section */}
-          <div className="mb-6">
-            <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center">
-              🖥️ Platform Information
-            </h3>
-            <div className="space-y-3 bg-gray-50 rounded-lg p-4">
-              <div className="flex items-center">
-                <span className="w-48 font-medium text-gray-700">Device UUID:</span>
-                <span className="text-gray-900 font-mono text-sm">
-                  {device.device_uuid || 'N/A'}
-                </span>
-              </div>
-              <div className="flex items-center">
-                <span className="w-48 font-medium text-gray-700">Platform:</span>
-                <span className="text-gray-900">
-                  {device.platform ? (
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                      device.platform === 'webOS' ? 'bg-purple-100 text-purple-700' : 'bg-gray-100 text-gray-700'
-                    }`}>
-                      {device.platform}
-                    </span>
-                  ) : 'N/A'}
-                </span>
-              </div>
-              <div className="flex items-center">
-                <span className="w-48 font-medium text-gray-700">Model Name:</span>
-                <span className="text-gray-900">
-                  {device.model_name || 'N/A'}
-                </span>
-              </div>
-              <div className="flex items-center">
-                <span className="w-48 font-medium text-gray-700">Firmware Version:</span>
-                <span className="text-gray-900">
-                  {device.firmware_version || 'N/A'}
-                </span>
-              </div>
-            </div>
-          </div>
-
           {/* Device Basic Information */}
           <div>
             <h3 className="text-lg font-bold text-gray-800 mb-4">Device Information</h3>
