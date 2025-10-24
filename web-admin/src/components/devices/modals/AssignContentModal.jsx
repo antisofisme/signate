@@ -137,6 +137,11 @@ export default function AssignContentModal({ device, onClose }) {
                       <p className="text-sm text-gray-600">
                         {content.content_type.toUpperCase()} • {content.duration}s
                       </p>
+                      {content.content_type === 'video' && (content.video_start_time > 0 || content.video_end_time) && (
+                        <p className="text-xs text-blue-600 mt-0.5">
+                          🎬 Segment: {content.video_start_time || 0}s - {content.video_end_time ? `${content.video_end_time}s` : 'end'}
+                        </p>
+                      )}
                     </div>
                   </div>
                   <ArrowRight className="w-5 h-5 text-gray-400 group-hover:text-blue-600 transition-colors flex-shrink-0 ml-2" />
@@ -194,6 +199,11 @@ export default function AssignContentModal({ device, onClose }) {
                       <p className="text-sm text-gray-600">
                         {content.content_type.toUpperCase()} • {content.duration}s
                       </p>
+                      {content.content_type === 'video' && (content.video_start_time > 0 || content.video_end_time) && (
+                        <p className="text-xs text-blue-600 mt-0.5">
+                          🎬 Segment: {content.video_start_time || 0}s - {content.video_end_time ? `${content.video_end_time}s` : 'end'}
+                        </p>
+                      )}
                     </div>
                   </div>
                 </div>

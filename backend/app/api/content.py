@@ -131,6 +131,15 @@ async def upload_content(
                 except Exception as e:
                     logger.warning(f"Failed to delete temp file {temp_file_path}: {e}")
 
+        # Auto-set duration for videos without segment timing
+        # For videos: duration should default to video_duration, not 10 seconds
+        final_duration = duration
+        video_duration_val = metadata.get("duration")
+        if content_type == "video" and video_duration_val:
+            # Default: use full video duration
+            final_duration = int(video_duration_val)
+            logger.info(f"Video duration auto-set to {final_duration}s (from video_duration)")
+
         # Save metadata to database
         content = Content(
             title=title,
@@ -138,7 +147,7 @@ async def upload_content(
             content_type=content_type,
             anthias_url=anthias_url,
             anthias_asset_id=anthias_asset["asset_id"],
-            duration=duration,
+            duration=final_duration,
             is_active=is_active,
             file_size=metadata.get("file_size") or file_size,
             mime_type=file.content_type,
@@ -149,7 +158,7 @@ async def upload_content(
             codec=metadata.get("codec"),
             fps=metadata.get("fps"),
             bitrate=metadata.get("bitrate"),
-            video_duration=metadata.get("duration"),
+            video_duration=video_duration_val,
             audio_codec=metadata.get("audio_codec"),
             audio_bitrate=metadata.get("audio_bitrate"),
             audio_sample_rate=metadata.get("audio_sample_rate")
@@ -287,6 +296,10 @@ async def update_content(
             content.description = content_data.description
         if content_data.duration is not None:
             content.duration = content_data.duration
+        if content_data.video_start_time is not None:
+            content.video_start_time = content_data.video_start_time
+        if content_data.video_end_time is not None:
+            content.video_end_time = content_data.video_end_time
         if content_data.is_active is not None:
             content.is_active = content_data.is_active
 

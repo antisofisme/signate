@@ -32,6 +32,8 @@ class ContentUploadResponse(BaseModel):
     fps: Optional[float]
     bitrate: Optional[int]
     video_duration: Optional[float]
+    video_start_time: Optional[float]
+    video_end_time: Optional[float]
     audio_codec: Optional[str]
     audio_bitrate: Optional[int]
     audio_sample_rate: Optional[int]
@@ -85,6 +87,8 @@ class ContentResponse(BaseModel):
     fps: Optional[float] = None
     bitrate: Optional[int] = None
     video_duration: Optional[float] = None
+    video_start_time: Optional[float] = None
+    video_end_time: Optional[float] = None
     audio_codec: Optional[str] = None
     audio_bitrate: Optional[int] = None
     audio_sample_rate: Optional[int] = None
@@ -147,6 +151,8 @@ class ContentUpdateRequest(BaseModel):
     title: Optional[str] = Field(None, min_length=1, max_length=200)
     description: Optional[str] = None
     duration: Optional[int] = Field(None, gt=0)
+    video_start_time: Optional[float] = Field(None, ge=0)  # start time in seconds (video only)
+    video_end_time: Optional[float] = Field(None, ge=0)  # end time in seconds (video only, NULL = play to end)
     is_active: Optional[bool] = None
 
     class Config:
@@ -155,6 +161,8 @@ class ContentUpdateRequest(BaseModel):
                 "title": "Updated Banner",
                 "description": "Updated description",
                 "duration": 15,
+                "video_start_time": 30.0,
+                "video_end_time": 55.0,
                 "is_active": True
             }
         }

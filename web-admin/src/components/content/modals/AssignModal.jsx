@@ -26,7 +26,24 @@ export default function AssignModal({ content, onClose, onSubmit }) {
   // State for content metadata
   const [title, setTitle] = useState(content.title)
   const [description, setDescription] = useState(content.description || '')
-  const [duration, setDuration] = useState(content.duration)
+
+  // Video segment state
+  const [videoStartTime, setVideoStartTime] = useState(content.video_start_time || 0)
+  const [videoEndTime, setVideoEndTime] = useState(content.video_end_time || null)
+
+  // Auto-calculate duration for videos
+  const calculateDuration = (startTime, endTime) => {
+    if (content.content_type === 'video') {
+      if (endTime && endTime > startTime) {
+        return Math.ceil(endTime - startTime)
+      } else if (content.video_duration) {
+        return Math.ceil(content.video_duration - startTime)
+      }
+    }
+    return content.duration
+  }
+
+  const [duration, setDuration] = useState(calculateDuration(videoStartTime, videoEndTime))
 
   // Fetch existing assignments for this content
   const { data: assignmentsData, isLoading: assignmentsLoading } = useQuery({
@@ -107,12 +124,29 @@ export default function AssignModal({ content, onClose, onSubmit }) {
 
     try {
       // First, update content metadata if changed
-      if (title !== content.title || description !== (content.description || '') || duration !== content.duration) {
-        await contentAPI.update(content.id, {
+      const hasMetadataChanges =
+        title !== content.title ||
+        description !== (content.description || '') ||
+        duration !== content.duration ||
+        (content.content_type === 'video' && (
+          videoStartTime !== (content.video_start_time || 0) ||
+          videoEndTime !== content.video_end_time
+        ))
+
+      if (hasMetadataChanges) {
+        const updateData = {
           title,
           description,
           duration: parseInt(duration)
-        })
+        }
+
+        // Add video segment timing for videos
+        if (content.content_type === 'video') {
+          updateData.video_start_time = videoStartTime
+          updateData.video_end_time = videoEndTime
+        }
+
+        await contentAPI.update(content.id, updateData)
       }
 
       // Determine what to add and what to remove
@@ -236,17 +270,82 @@ export default function AssignModal({ content, onClose, onSubmit }) {
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Duration (seconds)
+                    {content.content_type === 'video' && (
+                      <span className="text-xs text-blue-600 ml-2">
+                        ⚡ Auto-calculated from segment
+                      </span>
+                    )}
                   </label>
                   <input
                     type="number"
                     value={duration}
                     onChange={(e) => setDuration(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    disabled={saving}
+                    className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                      content.content_type === 'video'
+                        ? 'border-gray-300 bg-gray-100 cursor-not-allowed'
+                        : 'border-gray-300'
+                    }`}
+                    disabled={saving || content.content_type === 'video'}
                     min="1"
+                    readOnly={content.content_type === 'video'}
                     required
                   />
+                  {content.content_type === 'video' && (
+                    <p className="text-xs text-gray-500 mt-1">
+                      📊 Auto-calculated: {videoEndTime
+                        ? `${videoEndTime}s - ${videoStartTime}s = ${duration}s`
+                        : `Total video (${content.video_duration?.toFixed(0) || '?'}s) - Start (${videoStartTime}s) = ${duration}s`
+                      }
+                    </p>
+                  )}
                 </div>
+
+                {/* Video Segment Timing (only for videos) */}
+                {content.content_type === 'video' && (
+                  <>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        🎬 Start Time (seconds)
+                      </label>
+                      <input
+                        type="number"
+                        step="0.1"
+                        value={videoStartTime}
+                        onChange={(e) => {
+                          const newStart = parseFloat(e.target.value) || 0
+                          setVideoStartTime(newStart)
+                          setDuration(calculateDuration(newStart, videoEndTime))
+                        }}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        disabled={saving}
+                        min={0}
+                        placeholder="0 (from beginning)"
+                      />
+                      <p className="text-xs text-gray-500 mt-1">Start video playback from this time</p>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        🏁 End Time (seconds)
+                      </label>
+                      <input
+                        type="number"
+                        step="0.1"
+                        value={videoEndTime || ''}
+                        onChange={(e) => {
+                          const newEnd = e.target.value ? parseFloat(e.target.value) : null
+                          setVideoEndTime(newEnd)
+                          setDuration(calculateDuration(videoStartTime, newEnd))
+                        }}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        disabled={saving}
+                        min={0}
+                        placeholder="(play until end)"
+                      />
+                      <p className="text-xs text-gray-500 mt-1">Stop video at this time (leave empty to play until end)</p>
+                    </div>
+                  </>
+                )}
               </div>
             </div>
 

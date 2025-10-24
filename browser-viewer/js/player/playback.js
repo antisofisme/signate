@@ -100,7 +100,7 @@ window.PlayerPlayback = {
     },
 
     /**
-     * Play video content
+     * Play video content with optional segment timing
      */
     playVideo: async function(content) {
         const state = window.PlayerState;
@@ -129,6 +129,14 @@ window.PlayerPlayback = {
 
         console.log('[Player] Video volume:', state.volumeEnabled ? 'Enabled' : 'Muted');
 
+        // Video segment timing
+        const startTime = content.video_start_time || 0;
+        const endTime = content.video_end_time; // null or undefined = play to end
+
+        if (startTime > 0) {
+            console.log(`[Player] Video segment: ${startTime}s - ${endTime ? endTime + 's' : 'end'}`);
+        }
+
         video.onerror = () => {
             console.error('[Player] Video load failed:', content.url);
             window.PlayerUI.showError(`Failed to load video: ${content.title}`);
@@ -145,9 +153,25 @@ window.PlayerPlayback = {
             const isLandscape = video.videoWidth > video.videoHeight;
             video.className = isLandscape ? 'landscape' : 'portrait';
             console.log('[Player] Video orientation:', video.className, `(${video.videoWidth}x${video.videoHeight})`);
+
+            // Set start time if specified
+            if (startTime > 0) {
+                video.currentTime = startTime;
+                console.log('[Player] Starting from:', startTime + 's');
+            }
         };
 
-        // Auto-advance when video ends (in case duration is wrong)
+        // Monitor playback time for custom end time
+        if (endTime && endTime > startTime) {
+            video.ontimeupdate = () => {
+                if (video.currentTime >= endTime) {
+                    console.log('[Player] Reached end time:', endTime + 's');
+                    this.playContent(state.currentIndex + 1);
+                }
+            };
+        }
+
+        // Auto-advance when video ends naturally (for videos without end time)
         video.onended = () => {
             console.log('[Player] Video ended, advancing...');
             this.playContent(state.currentIndex + 1);

@@ -35,27 +35,63 @@ export default function BulkEditModal({ selectedIds, contentData, onClose, onCom
   // Get selected content items
   const selectedContent = contentData?.items?.filter(c => selectedIds.has(c.id)) || []
 
-  // State for individual edits - Map of contentId -> {title, description, duration}
+  // State for individual edits - Map of contentId -> {title, description, duration, video_start_time, video_end_time}
   const [edits, setEdits] = useState(() => {
     const initialEdits = {}
     selectedContent.forEach(content => {
+      const startTime = content.video_start_time || 0
+      const endTime = content.video_end_time
+
+      // Auto-calculate duration for videos
+      let duration = content.duration
+      if (content.content_type === 'video') {
+        if (endTime && endTime > startTime) {
+          // Calculate from segment
+          duration = Math.ceil(endTime - startTime)
+        } else if (content.video_duration) {
+          // Calculate from total video length - start time
+          duration = Math.ceil(content.video_duration - startTime)
+        }
+      }
+
       initialEdits[content.id] = {
         title: content.title,
         description: content.description || '',
-        duration: content.duration
+        duration: duration,
+        video_start_time: startTime,
+        video_end_time: endTime
       }
     })
     return initialEdits
   })
 
   const updateEdit = (contentId, field, value) => {
-    setEdits(prev => ({
-      ...prev,
-      [contentId]: {
-        ...prev[contentId],
-        [field]: value
+    setEdits(prev => {
+      const newEdits = {
+        ...prev,
+        [contentId]: {
+          ...prev[contentId],
+          [field]: value
+        }
       }
-    }))
+
+      // Auto-calculate duration for video segments
+      const content = selectedContent.find(c => c.id === contentId)
+      if (content?.content_type === 'video' && (field === 'video_start_time' || field === 'video_end_time')) {
+        const startTime = field === 'video_start_time' ? value : newEdits[contentId].video_start_time || 0
+        const endTime = field === 'video_end_time' ? value : newEdits[contentId].video_end_time
+
+        if (endTime && endTime > startTime) {
+          // Calculate duration from segment
+          newEdits[contentId].duration = Math.ceil(endTime - startTime)
+        } else if (content.video_duration && !endTime) {
+          // If no end time, duration = total video length - start time
+          newEdits[contentId].duration = Math.ceil(content.video_duration - startTime)
+        }
+      }
+
+      return newEdits
+    })
   }
 
   const handleBulkUpdate = async (e) => {
@@ -88,6 +124,16 @@ export default function BulkEditModal({ selectedIds, contentData, onClose, onCom
         }
         if (editedData.duration !== content.duration) {
           updateData.duration = editedData.duration
+        }
+
+        // Video segment timing (only for videos)
+        if (content.content_type === 'video') {
+          if (editedData.video_start_time !== (content.video_start_time || 0)) {
+            updateData.video_start_time = editedData.video_start_time
+          }
+          if (editedData.video_end_time !== content.video_end_time) {
+            updateData.video_end_time = editedData.video_end_time
+          }
         }
 
         // Only call API if there are changes
@@ -243,16 +289,73 @@ export default function BulkEditModal({ selectedIds, contentData, onClose, onCom
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
                         Duration (seconds)
+                        {content.content_type === 'video' && (
+                          <span className="text-xs text-blue-600 ml-2">
+                            ⚡ Auto-calculated from segment
+                          </span>
+                        )}
                       </label>
                       <input
                         type="number"
                         value={edits[content.id]?.duration || 10}
                         onChange={(e) => updateEdit(content.id, 'duration', parseInt(e.target.value) || 10)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-                        disabled={updating}
+                        className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm ${
+                          content.content_type === 'video'
+                            ? 'border-gray-300 bg-gray-100 cursor-not-allowed'
+                            : 'border-gray-300'
+                        }`}
+                        disabled={updating || content.content_type === 'video'}
                         min={1}
+                        readOnly={content.content_type === 'video'}
                       />
+                      {content.content_type === 'video' && (
+                        <p className="text-xs text-gray-500 mt-1">
+                          📊 Auto-calculated: {edits[content.id]?.video_end_time
+                            ? `${edits[content.id]?.video_end_time}s - ${edits[content.id]?.video_start_time}s = ${edits[content.id]?.duration}s`
+                            : `Total video (${content.video_duration?.toFixed(0) || '?'}s) - Start (${edits[content.id]?.video_start_time}s) = ${edits[content.id]?.duration}s`
+                          }
+                        </p>
+                      )}
                     </div>
+
+                    {/* Video Segment Timing (only for videos) */}
+                    {content.content_type === 'video' && (
+                      <>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            🎬 Start Time (seconds)
+                          </label>
+                          <input
+                            type="number"
+                            step="0.1"
+                            value={edits[content.id]?.video_start_time || 0}
+                            onChange={(e) => updateEdit(content.id, 'video_start_time', parseFloat(e.target.value) || 0)}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                            disabled={updating}
+                            min={0}
+                            placeholder="0 (from beginning)"
+                          />
+                          <p className="text-xs text-gray-500 mt-1">Start video playback from this time</p>
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            🏁 End Time (seconds)
+                          </label>
+                          <input
+                            type="number"
+                            step="0.1"
+                            value={edits[content.id]?.video_end_time || ''}
+                            onChange={(e) => updateEdit(content.id, 'video_end_time', e.target.value ? parseFloat(e.target.value) : null)}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                            disabled={updating}
+                            min={0}
+                            placeholder="(play until end)"
+                          />
+                          <p className="text-xs text-gray-500 mt-1">Stop video at this time (leave empty to play until end)</p>
+                        </div>
+                      </>
+                    )}
                   </div>
                 </div>
 

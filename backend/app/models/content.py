@@ -37,6 +37,8 @@ class Content(Base):
         fps: Frame rate (video only)
         bitrate: Video bitrate in kbps
         video_duration: Actual video duration in seconds (from metadata)
+        video_start_time: Start time for video playback in seconds (video only)
+        video_end_time: End time for video playback in seconds (video only, NULL = play to end)
         audio_codec: Audio codec name (video only)
         audio_bitrate: Audio bitrate in kbps (video only)
         audio_sample_rate: Audio sample rate in Hz (video only)
@@ -74,6 +76,8 @@ class Content(Base):
     fps = Column(Float)  # frame rate (video only)
     bitrate = Column(Integer)  # kbps (video only)
     video_duration = Column(Float)  # seconds (video only, from metadata)
+    video_start_time = Column(Float, default=0)  # start time in seconds (video only)
+    video_end_time = Column(Float, nullable=True)  # end time in seconds (video only, NULL = play to end)
     audio_codec = Column(String(50))  # audio codec (video only)
     audio_bitrate = Column(Integer)  # kbps (video only)
     audio_sample_rate = Column(Integer)  # Hz (video only)
@@ -110,6 +114,8 @@ class Content(Base):
             "fps": self.fps,
             "bitrate": self.bitrate,
             "video_duration": self.video_duration,
+            "video_start_time": self.video_start_time,
+            "video_end_time": self.video_end_time,
             "audio_codec": self.audio_codec,
             "audio_bitrate": self.audio_bitrate,
             "audio_sample_rate": self.audio_sample_rate,

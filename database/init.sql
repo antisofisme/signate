@@ -162,6 +162,8 @@ CREATE TABLE content (
     fps DOUBLE PRECISION, -- frame rate (video only)
     bitrate INTEGER, -- kbps (video only)
     video_duration DOUBLE PRECISION, -- seconds (video only, from metadata)
+    video_start_time DOUBLE PRECISION DEFAULT 0, -- start time in seconds (video only)
+    video_end_time DOUBLE PRECISION, -- end time in seconds (video only, NULL = play to end)
     audio_codec VARCHAR(50), -- audio codec (video only)
     audio_bitrate INTEGER, -- kbps (video only)
     audio_sample_rate INTEGER, -- Hz (video only)
