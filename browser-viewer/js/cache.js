@@ -240,8 +240,10 @@ export async function getCachedBlobUrl(contentId) {
             return null;
         }
 
-        // Create blob URL for playback
-        const blobUrl = URL.createObjectURL(cached.blob);
+        // Create blob with correct MIME type for playback
+        // This is critical for video playback - browser needs to know the video format
+        const typedBlob = new Blob([cached.blob], { type: cached.mime_type });
+        const blobUrl = URL.createObjectURL(typedBlob);
         return blobUrl;
 
     } catch (error) {
