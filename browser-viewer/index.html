@@ -35,7 +35,8 @@
 
     <!-- Load and initialize application -->
     <script type="module">
-        import { init } from './js/app.js';
+        // Cache busting for module updates - increment v parameter when JS changes
+        import { init } from './js/app.js?v=2';
 
         // Initialize the application when DOM is ready
         if (document.readyState === 'loading') {
