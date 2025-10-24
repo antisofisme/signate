@@ -86,6 +86,10 @@ export function setupKeyboardShortcuts() {
  */
 export function handleKeyPress(key) {
     switch(key) {
+        case 'c':
+            // Clear cache and reload
+            clearCacheAndReload();
+            break;
         case 'd':
             // Toggle debug mode
             toggleDebug();
@@ -133,6 +137,32 @@ export function reloadPlaylist() {
     // For now, we'll dispatch a custom event
     const event = new CustomEvent('reloadPlaylist');
     document.dispatchEvent(event);
+}
+
+/**
+ * Clear IndexedDB cache and reload page
+ */
+export function clearCacheAndReload() {
+    console.log('🗑️  Clearing IndexedDB cache...');
+
+    // Delete IndexedDB database
+    const deleteRequest = indexedDB.deleteDatabase('signage-media-cache');
+
+    deleteRequest.onsuccess = () => {
+        console.log('✅ Cache cleared, reloading...');
+        location.reload();
+    };
+
+    deleteRequest.onerror = () => {
+        console.error('❌ Failed to clear cache');
+        // Reload anyway
+        location.reload();
+    };
+
+    deleteRequest.onblocked = () => {
+        console.warn('⚠️  Cache deletion blocked, reloading anyway...');
+        location.reload();
+    };
 }
 
 // ========================================
