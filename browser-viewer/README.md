@@ -1,144 +1,156 @@
-# Smart TV Browser Viewer
+# Browser Viewer - Smart TV Digital Signage
 
-Browser-based digital signage content viewer for testing and development.
+Static HTML/JS viewer for standard web browsers and monitors. Designed for monitors connected to PCs, Raspberry Pi, or any device with a modern web browser.
 
-## Features
+## Architecture Role
 
-- **Activation System**: Generates 6-digit activation code for pairing with Web Admin
-- **Auto-polling**: Checks activation status every 5 seconds
-- **Content Display**: Supports both images and videos
-- **Smooth Transitions**: 1-second fade between content items
-- **Preloading**: Loads next content 3 seconds before current ends
-- **Fullscreen Mode**: Automatically enters fullscreen on activation
-- **Playlist Looping**: Continuously loops through assigned content
+**Display Client** - Displays content playlists on monitors using:
 
-## Usage
+- **6-digit activation code** for device registration
+- **IndexedDB caching** for offline playback and bandwidth optimization
+- **Direct file access** from Anthias (no proxy)
+- **Fullscreen mode** for kiosk-style display
+- **Shell/Player separation** for stable core + updateable player
 
-### 1. Open Browser Viewer
+## Tech Stack
 
-Simply open `index.html` in any modern browser:
+- **Frontend**: Plain JavaScript modules (window.ModuleName pattern)
+- **Caching**: IndexedDB for offline media storage
+- **Logging**: Real-time console interception & batch sending
+- **HTTP Server**: Python `http.server` or nginx (static files only)
+- **Port**: 8080
+
+## Modular Architecture
+
+### Shell (Stable Core)
+```
+index.html
+js/shell/
+├── config.js       - State management & configuration
+├── logger.js       - Console interception & log sending
+├── registration.js - Device registration & activation polling
+├── heartbeat.js    - Keep-alive heartbeat loop
+├── ui.js          - Activation UI & player iframe loading
+└── init.js        - Main shell initialization
+```
+
+**Shell responsibilities:**
+- Device registration (6-digit code)
+- Device activation (polling & detection)
+- Heartbeat (keep device online)
+- Real-time logging (shell context)
+- Load player in iframe
+
+### Player (Updateable)
+```
+player.html
+js/player/
+├── config.js      - Player state management
+├── logger.js      - Console interception (player context)
+├── cache.js       - IndexedDB cache management
+├── api.js         - Playlist fetching & updates
+├── playback.js    - Image/video playback logic
+├── ui.js          - Loading states & keyboard shortcuts
+└── init.js        - Player initialization
+```
+
+**Player responsibilities:**
+- Fetch playlist from backend
+- Auto-sync cache (download new, delete old)
+- Play content (image/video)
+- Playlist refresh (every 60s)
+- Real-time logging (player context)
+
+**Benefits of separation:**
+- Shell = stable, rarely updated
+- Player = frequently updated without re-registration
+- Isolated contexts prevent conflicts
+- Easy debugging (separate logs)
+
+## Setup
+
+### 1. Ensure Backend API is Running
+
+Backend must be accessible at `http://192.168.5.12:8001`.
+
+Check: `curl http://192.168.5.12:8001/docs`
+
+### 2. Start HTTP Server
 
 ```bash
-# Option 1: Direct file open
-firefox /mnt/g/khoirul/signate/browser-viewer/index.html
-
-# Option 2: Using file:// URL
-file:///mnt/g/khoirul/signate/browser-viewer/index.html
-
-# Option 3: Serve with simple HTTP server (recommended)
-cd /mnt/g/khoirul/signate/monitor-viewer
+cd browser-viewer
 python3 -m http.server 8080
-# Then open: http://localhost:8080
 ```
 
-### 2. Activation Process
+### 3. Access Viewer
 
-1. Monitor viewer will display a 6-digit activation code
-2. Go to Web Admin → Devices
-3. Find the monitor in the list (status: "pending")
-4. Click "Activate" and the monitor will immediately start playing content
+Open browser: **http://192.168.5.12:8080**
 
-### 3. Content Assignment
+## Activation Flow
 
-Content is assigned to monitors through:
-- **Direct assignment**: Assign content directly to specific monitor
-- **Tag assignment**: Assign monitor to a tag, then assign content to that tag
+### 6-Digit Code Activation
 
-### 4. Keyboard Shortcuts
+1. Viewer generates random 6-digit code (e.g., `123456`)
+2. Viewer calls backend to register device
+3. Backend creates device with status `pending`
+4. Viewer polls backend every 5 seconds
+5. Admin approves device in web admin dashboard
+6. Viewer detects activation and stores `device_id` in localStorage
+7. Viewer starts playing content from playlist
 
-- `d` - Toggle debug info overlay
-- `f` - Toggle fullscreen mode
-- `n` - Skip to next content (when activated)
-- `r` - Reload playlist (when activated)
+**Reset activation**: Press `x` key to clear localStorage and get new code.
 
-## API Endpoints Used
+## Content Playback
 
-### Registration
-```
-POST /api/devices/monitor
-Body: {
-  "activation_code": "123456",
-  "device_name": "Monitor-123456"
-}
-```
+### Cache-First Playback
 
-### Status Check
-```
-GET /api/devices/{device_id}
-Returns: {
-  "id": 1,
-  "status": "pending" | "active",
-  ...
-}
-```
+**Architecture: Control Plane / Data Plane Separation**
 
-### Playlist
-```
-GET /api/client/playlist?device_id={device_id}
-Returns: [
-  {
-    "id": 1,
-    "content_type": "image",
-    "duration": 10,
-    ...
-  }
-]
-```
+1. Backend API returns playlist with direct Anthias URLs
+2. Browser Viewer checks IndexedDB cache for each content item
+3. Cache HIT: Play from blob URL (instant, no network)
+4. Cache MISS: Download from Anthias + Save to IndexedDB + Play
 
-### Content Serving
-```
-GET /api/content/{content_id}/image
-Returns: Image/video file with correct Content-Type
-```
+**Benefits:**
 
-## Configuration
+- ✅ Fast playback after first download
+- ✅ Offline mode support
+- ✅ Bandwidth savings
+- ✅ Smooth transitions
 
-Edit `index.html` to change settings:
+## Keyboard Shortcuts
 
-```javascript
-const API_BASE_URL = 'http://192.168.5.12:8001';  // Backend API URL
-const POLL_INTERVAL = 5000;   // Polling interval (ms)
-const PRELOAD_TIME = 3000;    // Preload time before content ends (ms)
-```
+### Shell (index.html)
+- `s` - Toggle shell debug info
+- `r` - Reload player iframe
+- `c` - Clear device registration & reset
+
+### Player (player.html iframe)
+- `p` - Toggle player debug info
+- `n` - Skip to next content
+- `r` - Reload playlist
+
+**Note:** Player shortcuts only work when focus is inside the iframe.
 
 ## Troubleshooting
 
-### Monitor doesn't register
-- Check if backend API is accessible at `http://192.168.5.12:8001`
-- Check browser console for errors (F12 → Console)
-- Ensure CORS is enabled on backend
+### Content not displaying
 
-### Content doesn't display
-- Check if monitor is activated (status: "active")
-- Verify content is assigned to monitor or its tag
-- Check content URLs in debug mode (press `d`)
-- Verify backend content proxy endpoint is working
+1. Check console logs
+2. Check Anthias CORS: `curl -I http://192.168.5.12:8000/screenly_assets/filename`
+3. Clear cache: Press `c`
 
-### Playlist doesn't loop
-- Check if playlist has content assigned
-- Refresh playlist with `r` key
-- Check backend playlist endpoint response
+### Video playback error
 
-## Debug Mode
+MIME type issue. Press `c` to clear cache and re-download.
 
-Press `d` to toggle debug overlay showing:
-- Device ID
-- Current status
-- Playlist item count
-- Current content index
-- Next content change time
+## Sync to Server
 
-## Browser Compatibility
+```bash
+sshpass -p 'Password@2021' scp -r browser-viewer/ gzjbbk@192.168.5.12:/home/gzjbbk/signage/
+```
 
-Tested on:
-- Chrome/Chromium 90+
-- Firefox 88+
-- Safari 14+
-- WebOS Browser (for LG TVs)
+## Important Links
 
-## Next Steps
-
-After testing this browser viewer:
-1. Create WebOS TV App (Phase 6) using Enyo framework
-2. Package as IPK for installation on LG TVs
-3. Deploy to production monitors
+- Root README: `../README.md`
+- Backend README: `../backend/README.md`

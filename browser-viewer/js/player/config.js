@@ -1,0 +1,37 @@
+/**
+ * Player Configuration
+ * Constants and global state for player
+ */
+
+// Global player state object
+window.PlayerState = {
+    // API Configuration
+    API_BASE_URL: 'http://192.168.5.12:8001',
+    REFRESH_INTERVAL: 60000,   // Check for playlist updates every minute
+    LOG_SEND_INTERVAL: 5000,   // 5 seconds
+    LOG_BUFFER_SIZE: 20,
+    
+    // Player state
+    deviceId: null,
+    playlist: [],
+    currentIndex: 0,
+    
+    // Timers
+    contentTimer: null,
+    refreshTimer: null,
+    logSendInterval: null,
+    
+    // Logger state
+    logBuffer: [],
+    
+    // Store original console methods
+    originalConsole: {
+        log: console.log,
+        warn: console.warn,
+        error: console.error,
+        info: console.info
+    },
+    
+    // Cache DB reference
+    cacheDb: null
+};

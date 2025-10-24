@@ -3,47 +3,190 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Smart TV Monitor Viewer</title>
-    <link rel="stylesheet" href="css/styles.css">
+    <title>Digital Signage Viewer - Shell</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            overflow: hidden;
+        }
+
+        /* Activation Screen (shown until approved) */
+        #activation-screen {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            text-align: center;
+            padding: 2rem;
+        }
+
+        .activation-card {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            padding: 3rem;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            max-width: 600px;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+        }
+
+        #activation-code {
+            font-size: 5rem;
+            font-weight: bold;
+            font-family: 'Courier New', monospace;
+            padding: 1.5rem 3rem;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 15px;
+            margin: 2rem 0;
+            letter-spacing: 0.3rem;
+        }
+
+        .spinner {
+            width: 60px;
+            height: 60px;
+            border: 5px solid rgba(255, 255, 255, 0.3);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 2rem auto;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        #status-message {
+            font-size: 1.5rem;
+            margin: 1.5rem 0;
+        }
+
+        /* Player Container (hidden until activated) */
+        #player-container {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: black;
+        }
+
+        #player-iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+
+        #error-message {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(255, 0, 0, 0.8);
+            color: white;
+            padding: 15px 30px;
+            border-radius: 10px;
+            font-size: 1.2rem;
+            display: none;
+        }
+
+        /* Shell Info (debug) */
+        #shell-info {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            background: rgba(0, 0, 0, 0.7);
+            color: #0f0;
+            padding: 10px;
+            border-radius: 5px;
+            font-family: monospace;
+            font-size: 12px;
+            z-index: 9999;
+            display: none; /* Hide by default, show with keyboard shortcut */
+        }
+    </style>
 </head>
 <body>
-    <!-- Activation Screen -->
+    <!-- Activation Screen (pending approval) -->
     <div id="activation-screen">
-        <h1>Smart TV Monitor</h1>
-        <div id="activation-code">------</div>
-        <p>⏳ Menunggu persetujuan dari server...</p>
-        <div class="spinner"></div>
-        <p style="margin-top: 2rem; font-size: 0.9rem; opacity: 0.7;">Press 'x' to reset and get a new code</p>
+        <div class="activation-card">
+            <h1>📺 Digital Signage</h1>
+
+            <div id="activation-code">------</div>
+
+            <div class="spinner"></div>
+
+            <p id="status-message">⏳ Initializing...</p>
+
+            <p style="margin-top: 1.5rem; font-size: 1rem; opacity: 0.8;">
+                Admin will approve this device in the Web Admin panel
+            </p>
+        </div>
     </div>
 
-    <!-- Content Player -->
-    <div id="content-player"></div>
-
-    <!-- Debug Info -->
-    <div id="debug-info">
-        <div><strong>Debug Info</strong></div>
-        <div id="debug-device-id">Device ID: -</div>
-        <div id="debug-status">Status: Initializing</div>
-        <div id="debug-playlist-count">Playlist: 0 items</div>
-        <div id="debug-current-index">Current: -</div>
-        <div id="debug-next-change">Next change: -</div>
-        <div><small>Keys: c=clear cache, d=toggle, f=fullscreen, n=next, r=reload, x=reset</small></div>
+    <!-- Player Container (iframe) -->
+    <div id="player-container">
+        <iframe id="player-iframe" allow="autoplay"></iframe>
+        <div id="error-message"></div>
     </div>
 
-    <!-- Error Message -->
-    <div id="error-message" class="error-message"></div>
+    <!-- Shell Info (debug - press 's' to toggle) -->
+    <div id="shell-info">
+        <strong>SHELL STATUS</strong><br>
+        Device ID: <span id="debug-device-id">-</span><br>
+        Status: <span id="debug-status">-</span><br>
+        Logger: <span id="debug-logger">Active ✅</span><br>
+        Heartbeat: <span id="debug-heartbeat">-</span>
+    </div>
 
-    <!-- Load and initialize application -->
-    <script type="module">
-        // Cache busting for module updates - increment v parameter when JS changes
-        import { init } from './js/app.js?v=2';
+    <!-- Shell Modules (STABLE CORE) - Load in correct order -->
+    <script src="js/shell/config.js"></script>
+    <script src="js/shell/logger.js"></script>
+    <script src="js/shell/registration.js"></script>
+    <script src="js/shell/heartbeat.js"></script>
+    <script src="js/shell/ui.js"></script>
+    <script src="js/shell/init.js"></script>
 
-        // Initialize the application when DOM is ready
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', init);
-        } else {
-            init();
-        }
+    <!-- Keyboard Shortcuts -->
+    <script>
+        // Press 's' to toggle shell debug info
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 's' || e.key === 'S') {
+                const info = document.getElementById('shell-info');
+                info.style.display = info.style.display === 'none' ? 'block' : 'none';
+
+                // Update debug info
+                document.getElementById('debug-device-id').textContent = localStorage.getItem('device_id') || '-';
+                document.getElementById('debug-status').textContent = localStorage.getItem('device_status') || '-';
+            }
+
+            // Press 'r' to reload player only (not shell)
+            if (e.key === 'r' || e.key === 'R') {
+                if (window.reloadPlayer) {
+                    window.reloadPlayer();
+                }
+            }
+
+            // Press 'c' to clear localStorage and reset device
+            if (e.key === 'c' || e.key === 'C') {
+                if (confirm('Clear device registration and reset?')) {
+                    localStorage.clear();
+                    location.reload();
+                }
+            }
+        });
     </script>
 </body>
 </html>
