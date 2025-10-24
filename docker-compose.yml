@@ -1,36 +1,40 @@
 version: '3.8'
 
 # =============================================================================
-# SMART TV DIGITAL SIGNAGE - DOCKER COMPOSE
+# SMART TV DIGITAL SIGNAGE - UNIFIED DOCKER COMPOSE
 # =============================================================================
-# Development setup untuk Backend API, PostgreSQL, Redis
+# Complete setup: PostgreSQL + Backend API + Anthias (all-in-one)
 #
 # Usage:
 #   docker-compose up -d          # Start all services
 #   docker-compose down           # Stop all services
 #   docker-compose logs -f        # View logs
 #   docker-compose ps             # Check status
+#   docker-compose build --no-cache  # Rebuild from scratch
+#
+# Rebuild strategy:
+#   1. docker-compose down --volumes --remove-orphans
+#   2. docker-compose build --no-cache
+#   3. docker-compose up -d
 # =============================================================================
 
 services:
   # ===========================================================================
-  # PostgreSQL Database
+  # PostgreSQL Database (for Backend API)
   # ===========================================================================
   postgres:
     image: postgres:15-alpine
     container_name: signage-postgres
     restart: unless-stopped
     ports:
-      - "5433:5432"  # Changed to 5433 to avoid conflict
+      - "5433:5432"
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-signage_user}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-signage_password}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-your_password_here}
       POSTGRES_DB: ${POSTGRES_DB:-signage_db}
       PGDATA: /var/lib/postgresql/data/pgdata
     volumes:
-      # Persistent data
       - postgres-data:/var/lib/postgresql/data
-      # Auto-run init.sql on first start
       - ./database/init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-signage_user}"]
@@ -41,26 +45,24 @@ services:
       - signage-network
 
   # ===========================================================================
-  # Redis (Cache & Session)
+  # Redis (Shared by Backend and Anthias)
   # ===========================================================================
-  # SKIP: Redis sudah ada di server (dari Anthias)
-  # Pakai: redis://192.168.5.12:6379
-  # redis:
-  #   image: redis:7-alpine
-  #   container_name: signage-redis
-  #   restart: unless-stopped
-  #   ports:
-  #     - "6379:6379"
-  #   command: redis-server --appendonly yes
-  #   volumes:
-  #     - redis-data:/data
-  #   healthcheck:
-  #     test: ["CMD", "redis-cli", "ping"]
-  #     interval: 10s
-  #     timeout: 5s
-  #     retries: 5
-  #   networks:
-  #     - signage-network
+  redis:
+    image: redis:7-alpine
+    container_name: signage-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - signage-network
 
   # ===========================================================================
   # Backend API (FastAPI)
@@ -72,53 +74,117 @@ services:
     container_name: signage-backend
     restart: unless-stopped
     ports:
-      - "8001:8000"  # Port 8001 external (Anthias uses 8000)
+      - "8001:8000"
     environment:
-      - DATABASE_URL=postgresql://${POSTGRES_USER:-signage_user}:${POSTGRES_PASSWORD:-signage_password}@postgres:5432/${POSTGRES_DB:-signage_db}
-      - REDIS_URL=redis://redis:6379  # Use Redis from Anthias network
-      - ANTHIAS_API_URL=http://anthias-nginx  # Connect via internal network
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-signage_user}:${POSTGRES_PASSWORD:-your_password_here}@postgres:5432/${POSTGRES_DB:-signage_db}
+      - REDIS_URL=redis://redis:6379
+      - ANTHIAS_API_URL=http://192.168.5.12:8000
+      - API_BASE_URL=http://192.168.5.12:8001
+      - SECRET_KEY=${SECRET_KEY:-your-secret-key-change-in-production}
+      - CORS_ORIGINS=["http://localhost:3000","http://localhost:3001","http://192.168.5.12:8080","http://192.168.5.12:8081"]
     env_file:
       - .env
     depends_on:
       postgres:
         condition: service_healthy
+      redis:
+        condition: service_healthy
     volumes:
-      - ./backend/app:/app/app  # Mount app folder for hot reload
+      - ./backend/app:/app/app
     networks:
       - signage-network
-      - anthias_default  # Connect to Anthias network
 
   # ===========================================================================
-  # pgAdmin (Optional - Database Management UI)
+  # Anthias Server (Digital Signage CMS)
   # ===========================================================================
-  # Uncomment jika mau GUI untuk manage PostgreSQL
-  # pgadmin:
-  #   image: dpage/pgadmin4:latest
-  #   container_name: signage-pgadmin
-  #   restart: unless-stopped
-  #   ports:
-  #     - "5050:80"
-  #   environment:
-  #     PGADMIN_DEFAULT_EMAIL: admin@signage.local
-  #     PGADMIN_DEFAULT_PASSWORD: admin123
-  #   volumes:
-  #     - pgadmin-data:/var/lib/pgadmin
-  #   depends_on:
-  #     - postgres
-  #   networks:
-  #     - signage-network
+  anthias-server:
+    build:
+      context: ./anthias
+      dockerfile: docker/Dockerfile.server
+    container_name: anthias-server
+    restart: unless-stopped
+    environment:
+      - HOME=/data
+      - LISTEN=0.0.0.0
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+    volumes:
+      - anthias-data:/data
+      - ./anthias-assets:/data/screenly_assets
+      - ./anthias/staticfiles:/data/screenly/staticfiles
+    depends_on:
+      - redis
+    networks:
+      - signage-network
+
+  # ===========================================================================
+  # Anthias Celery (Background Tasks)
+  # ===========================================================================
+  anthias-celery:
+    build:
+      context: ./anthias
+      dockerfile: docker/Dockerfile.celery
+    container_name: anthias-celery
+    restart: unless-stopped
+    environment:
+      - HOME=/data
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+    volumes:
+      - anthias-data:/data
+      - ./anthias-assets:/data/screenly_assets
+    depends_on:
+      - redis
+      - anthias-server
+    networks:
+      - signage-network
+
+  # ===========================================================================
+  # Anthias WebSocket Server
+  # ===========================================================================
+  anthias-websocket:
+    build:
+      context: ./anthias
+      dockerfile: docker/Dockerfile.websocket
+    container_name: anthias-websocket
+    restart: unless-stopped
+    environment:
+      - HOME=/data
+    volumes:
+      - anthias-data:/data
+    depends_on:
+      - redis
+    networks:
+      - signage-network
+
+  # ===========================================================================
+  # Anthias Nginx (Reverse Proxy with CORS)
+  # ===========================================================================
+  anthias-nginx:
+    build:
+      context: ./anthias
+      dockerfile: docker/Dockerfile.nginx
+    container_name: anthias-nginx
+    restart: unless-stopped
+    ports:
+      - "8000:80"
+    volumes:
+      - ./anthias/docker/nginx/nginx.development.conf:/etc/nginx/sites-enabled/nginx.development.conf:ro
+      - ./anthias-assets:/data/screenly_assets
+      - ./anthias/staticfiles:/data/screenly/staticfiles
+    depends_on:
+      - anthias-server
+      - anthias-websocket
+    networks:
+      - signage-network
 
 # =============================================================================
 # Networks
 # =============================================================================
 networks:
   signage-network:
-    name: signage-network  # Explicit name to avoid folder-based naming
+    name: signate_signage-network
     driver: bridge
-
-  # Connect to existing Anthias network
-  anthias_default:
-    external: true
 
 # =============================================================================
 # Volumes (Persistent Data)
@@ -128,5 +194,5 @@ volumes:
     driver: local
   redis-data:
     driver: local
-  # pgadmin-data:
-  #   driver: local
+  anthias-data:
+    driver: local

@@ -66,3 +66,6 @@ htmlcov/
 # Temporary files
 *.tmp
 .cache/
+
+# Database backups
+database/backups/

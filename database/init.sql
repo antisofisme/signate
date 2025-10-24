@@ -51,7 +51,7 @@ CREATE TABLE devices (
 
     -- WebOS specific metadata
     model_name VARCHAR(100), -- Device model (e.g., "LG 43UN7300")
-    firmware_version VARCHAR(50) -- Firmware version (e.g., "webOS 6.0")
+    firmware_version VARCHAR(50), -- Firmware version (e.g., "webOS 6.0")
 
     -- Status tracking
     status VARCHAR(20) NOT NULL DEFAULT 'pending'
@@ -122,6 +122,18 @@ CREATE TABLE content (
     -- Metadata
     file_size BIGINT, -- File size in bytes (optional)
     mime_type VARCHAR(100), -- image/jpeg, video/mp4, etc.
+
+    -- Media Metadata (extracted via FFprobe)
+    resolution VARCHAR(50), -- e.g., "1920x1080"
+    width INTEGER, -- pixels
+    height INTEGER, -- pixels
+    codec VARCHAR(50), -- video/image codec
+    fps DOUBLE PRECISION, -- frame rate (video only)
+    bitrate INTEGER, -- kbps (video only)
+    video_duration DOUBLE PRECISION, -- seconds (video only, from metadata)
+    audio_codec VARCHAR(50), -- audio codec (video only)
+    audio_bitrate INTEGER, -- kbps (video only)
+    audio_sample_rate INTEGER, -- Hz (video only)
 
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -339,7 +351,7 @@ COMMENT ON COLUMN firebird_config.query_params IS 'Query parameters sebagai JSON
 -- Password: admin123 (hashed with bcrypt)
 -- IMPORTANT: Ganti password ini di production!
 INSERT INTO users (username, password_hash, email, role) VALUES
-('admin', '$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewY5GyJpVO7v0ZbG', 'admin@signage.local', 'admin');
+('admin', '$2b$12$KK.KGcUEcVCSYotdWlLOP.7oHoGtQbdqWUbBVsvf36r2ne56ywwd2', 'admin@signage.local', 'admin');
 
 -- Insert sample tags
 INSERT INTO tags (tag_name, description) VALUES
