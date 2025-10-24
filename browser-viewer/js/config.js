@@ -16,7 +16,7 @@ export const PLAYLIST_REFRESH_INTERVAL = 10000; // 10 seconds
 
 // IndexedDB Configuration
 export const DB_NAME = 'SignageMediaCache';
-export const DB_VERSION = 1;
+export const DB_VERSION = 2; // Incremented to force re-download with MIME type fix
 export const STORE_NAME = 'mediaFiles';
 
 // ========================================

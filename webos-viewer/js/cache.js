@@ -30,23 +30,21 @@ export async function initMediaCache() {
         };
 
         request.onupgradeneeded = (event) => {
-            const database = event.target.result;
+            const dbInstance = event.target.result;
+            const oldVersion = event.oldVersion;
+
+            // If upgrading from version 1 to 2, delete old store to force re-download
+            if (oldVersion === 1 && dbInstance.objectStoreNames.contains(STORE_NAME)) {
+                dbInstance.deleteObjectStore(STORE_NAME);
+                console.log('🗑️  Deleted old cache (v1) - will re-download with MIME type fix');
+            }
 
             // Create object store for media files
-            if (!database.objectStoreNames.contains(STORE_NAME)) {
-                const objectStore = database.createObjectStore(STORE_NAME, { keyPath: 'content_id' });
+            if (!dbInstance.objectStoreNames.contains(STORE_NAME)) {
+                const objectStore = dbInstance.createObjectStore(STORE_NAME, { keyPath: 'content_id' });
                 objectStore.createIndex('url', 'url', { unique: false });
                 objectStore.createIndex('timestamp', 'timestamp', { unique: false });
-                console.log('📦 Created media cache object store');
-            }
-        };
-    });
-}
-
-/**
- * Check if content is cached
- * @param {number} contentId
- * @returns {Promise<boolean>}
+                console.log('📦 Created media cache object store (v2)');
  */
 export async function isContentCached(contentId) {
     return new Promise((resolve, reject) => {
