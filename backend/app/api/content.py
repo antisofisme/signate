@@ -249,7 +249,7 @@ def get_content(
     return content
 
 
-@router.put("/{content_id}", response_model=ContentResponse)
+@router.patch("/{content_id}", response_model=ContentResponse)
 async def update_content(
     content_id: int,
     content_data: ContentUpdateRequest,
@@ -257,11 +257,11 @@ async def update_content(
     current_user: Optional[User] = Depends(get_optional_user)
 ):
     """
-    Update content metadata
+    Update content metadata (partial update)
 
     Args:
         content_id: Content ID
-        content_data: Update data
+        content_data: Update data (partial - only changed fields)
         db: Database session
         current_user: Authenticated user
 
@@ -280,7 +280,7 @@ async def update_content(
         )
 
     try:
-        # Update local database
+        # Update local database (primary source of truth for viewers)
         if content_data.title is not None:
             content.title = content_data.title
         if content_data.description is not None:
@@ -290,23 +290,32 @@ async def update_content(
         if content_data.is_active is not None:
             content.is_active = content_data.is_active
 
-        # Update Anthias if needed
-        if content.anthias_asset_id and (content_data.title or content_data.duration or content_data.is_active is not None):
-            await anthias_service.update_asset(
-                asset_id=content.anthias_asset_id,
-                name=content.title if content_data.title else None,
-                duration=content.duration if content_data.duration else None,
-                is_enabled=content.is_active if content_data.is_active is not None else None
-            )
-
+        # Commit database changes first (this is what viewers use)
         db.commit()
         db.refresh(content)
+
+        # Try to update Anthias (optional - for consistency only)
+        # If this fails, database update still succeeds since it's already committed
+        if content.anthias_asset_id and (content_data.title or content_data.duration or content_data.is_active is not None):
+            try:
+                await anthias_service.update_asset(
+                    asset_id=content.anthias_asset_id,
+                    name=content.title if content_data.title else None,
+                    duration=content.duration if content_data.duration else None,
+                    is_enabled=content.is_active if content_data.is_active is not None else None
+                )
+                logger.info(f"Anthias asset {content.anthias_asset_id} updated")
+            except Exception as anthias_error:
+                # Log warning but don't fail the request
+                # Viewers use our database, not Anthias metadata
+                logger.warning(f"Failed to update Anthias asset {content.anthias_asset_id}: {anthias_error}")
+                logger.warning("Database update succeeded, but Anthias sync failed (non-critical)")
 
         logger.info(f"Content updated: ID={content.id}")
         return content
 
     except Exception as e:
-        logger.error(f"Update error: {e}")
+        logger.error(f"Database update error: {e}")
         db.rollback()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

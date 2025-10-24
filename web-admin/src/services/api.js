@@ -51,6 +51,8 @@ export const devicesAPI = {
   update: (id, data) => api.put(`/api/devices/${id}`, data),
   delete: (id) => api.delete(`/api/devices/${id}`),
   heartbeat: (id) => api.post(`/api/devices/${id}/heartbeat`),
+  getLogs: (id, params) => api.get(`/api/devices/${id}/logs`, { params }),
+  deleteLogs: (id, params) => api.delete(`/api/devices/${id}/logs`, { params }),
 }
 
 // Content API

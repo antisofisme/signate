@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simple WebOS Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            text-align: center;
+            padding: 50px;
+            min-height: 100vh;
+        }
+        .uuid {
+            font-size: 3rem;
+            font-weight: bold;
+            color: #ffd700;
+            margin: 30px 0;
+            font-family: monospace;
+            word-break: break-all;
+        }
+        .info {
+            background: rgba(255,255,255,0.2);
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px auto;
+            max-width: 600px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Simple WebOS UUID Test</h1>
+
+    <div class="info">
+        <h2>Device UUID:</h2>
+        <div class="uuid" id="uuid">Loading...</div>
+    </div>
+
+    <div class="info">
+        <h2>6-Digit Code:</h2>
+        <div class="uuid" id="code">------</div>
+    </div>
+
+    <div class="info">
+        <h2>Browser Info:</h2>
+        <div id="browser-info">Checking...</div>
+    </div>
+
+    <div class="info">
+        <h2>Status:</h2>
+        <div id="status">Initializing...</div>
+    </div>
+
+    <!-- NO ES6 MODULES - Plain JavaScript -->
+    <script>
+        // Generate UUID v4
+        function generateUUID() {
+            return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+                var r = Math.random() * 16 | 0;
+                var v = c === 'x' ? r : (r & 0x3 | 0x8);
+                return v.toString(16);
+            });
+        }
+
+        // Get or create UUID from localStorage
+        function getOrCreateUUID() {
+            var uuid = localStorage.getItem('device_uuid');
+            if (!uuid) {
+                uuid = generateUUID();
+                localStorage.setItem('device_uuid', uuid);
+                console.log('Generated new UUID:', uuid);
+            } else {
+                console.log('Using existing UUID:', uuid);
+            }
+            return uuid;
+        }
+
+        // Generate 6-digit code from UUID
+        function generateCode(uuid) {
+            var hexPart = uuid.replace(/-/g, '').substring(0, 8);
+            var numericCode = parseInt(hexPart, 16) % 1000000;
+            return numericCode.toString().padStart(6, '0');
+        }
+
+        // Initialize
+        try {
+            // Get UUID
+            var uuid = getOrCreateUUID();
+            document.getElementById('uuid').textContent = uuid;
+
+            // Get code
+            var code = generateCode(uuid);
+            document.getElementById('code').textContent = code;
+
+            // Browser info
+            var browserInfo = 'User Agent: ' + navigator.userAgent + '<br>';
+            browserInfo += 'localStorage: ' + (typeof localStorage !== 'undefined' ? 'Supported ✅' : 'NOT Supported ❌') + '<br>';
+            browserInfo += 'ES6 Modules: ' + (typeof Symbol !== 'undefined' ? 'Maybe ✅' : 'NO ❌');
+            document.getElementById('browser-info').innerHTML = browserInfo;
+
+            // Register to backend
+            document.getElementById('status').innerHTML = 'Ready! Attempting registration...';
+
+            // Try to register
+            var deviceName = 'WebOS TV - ' + uuid.substring(0, 8);
+
+            fetch('http://192.168.5.12:8001/api/devices/monitor/register', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    activation_code: code,
+                    device_name: deviceName,
+                    device_uuid: uuid,
+                    platform: 'webOS',
+                    model_name: 'WebOS TV'
+                })
+            })
+            .then(function(response) {
+                return response.json();
+            })
+            .then(function(data) {
+                if (data.id) {
+                    document.getElementById('status').innerHTML =
+                        '✅ Registered!<br>Device ID: ' + data.id +
+                        '<br>Status: ' + data.status +
+                        '<br><br>Go to Web Admin to approve!';
+                } else {
+                    document.getElementById('status').innerHTML =
+                        '⚠️ Response: ' + (data.detail || JSON.stringify(data));
+                }
+            })
+            .catch(function(error) {
+                document.getElementById('status').innerHTML =
+                    '❌ Error: ' + error.message;
+            });
+
+        } catch (error) {
+            document.getElementById('status').innerHTML = '❌ Init Error: ' + error.message;
+            console.error('Error:', error);
+        }
+    </script>
+</body>
+</html>

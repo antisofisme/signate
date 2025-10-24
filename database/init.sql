@@ -9,6 +9,7 @@
 DROP TABLE IF EXISTS schedules CASCADE;
 DROP TABLE IF EXISTS content_assignments CASCADE;
 DROP TABLE IF EXISTS device_tags CASCADE;
+DROP TABLE IF EXISTS device_logs CASCADE;
 DROP TABLE IF EXISTS firebird_config CASCADE;
 DROP TABLE IF EXISTS users CASCADE;
 DROP TABLE IF EXISTS tags CASCADE;
@@ -58,6 +59,10 @@ CREATE TABLE devices (
         CHECK (status IN ('pending', 'active', 'inactive')),
     last_seen TIMESTAMP, -- Last heartbeat timestamp
 
+    -- Display Settings (configurable from admin)
+    rotation INTEGER DEFAULT 0 CHECK (rotation IN (0, 90, 180, 270)), -- Screen rotation in degrees
+    volume_enabled BOOLEAN DEFAULT TRUE, -- Enable/disable video audio
+
     -- Metadata
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -95,6 +100,32 @@ COMMENT ON COLUMN devices.model_name IS 'Device model (e.g., LG 43UN7300)';
 COMMENT ON COLUMN devices.firmware_version IS 'Firmware version (e.g., webOS 6.0)';
 COMMENT ON COLUMN devices.status IS 'pending (belum approved), active, inactive';
 COMMENT ON COLUMN devices.last_seen IS 'Timestamp terakhir heartbeat dari device';
+COMMENT ON COLUMN devices.rotation IS 'Screen rotation in degrees (0, 90, 180, 270)';
+COMMENT ON COLUMN devices.volume_enabled IS 'Enable/disable video audio playback';
+
+-- =============================================================================
+-- TABLE: device_logs
+-- Purpose: Console logs from viewer devices for remote monitoring & debugging
+-- =============================================================================
+CREATE TABLE device_logs (
+    id SERIAL PRIMARY KEY,
+    device_id INTEGER NOT NULL REFERENCES devices(id) ON DELETE CASCADE,
+    log_level VARCHAR(20) NOT NULL CHECK (log_level IN ('log', 'warn', 'error', 'info', 'debug')),
+    message TEXT NOT NULL,
+    source VARCHAR(255), -- Optional: file/function where log originated
+    timestamp TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Indexes for device_logs
+CREATE INDEX idx_device_logs_device_id ON device_logs(device_id);
+CREATE INDEX idx_device_logs_level ON device_logs(log_level);
+CREATE INDEX idx_device_logs_timestamp ON device_logs(timestamp);
+
+COMMENT ON TABLE device_logs IS 'Console logs from viewers for remote debugging';
+COMMENT ON COLUMN device_logs.log_level IS 'Log level: log, warn, error, info, debug';
+COMMENT ON COLUMN device_logs.message IS 'Log message content';
+COMMENT ON COLUMN device_logs.source IS 'Optional source file/function';
+COMMENT ON COLUMN device_logs.timestamp IS 'Log timestamp (UTC)';
 
 -- =============================================================================
 -- TABLE: content

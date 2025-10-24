@@ -6,6 +6,7 @@
 import { API_BASE_URL, deviceId, deviceUUID, setDeviceId, setIsActivated } from './config.js';
 import { getWebOSDeviceInfo, generateNumericCodeFromUUID, getDeviceInfo } from './webos-bridge.js';
 import { updateDebug, showError } from './debug.js';
+import { initLogger } from './logger.js';
 
 // ========================================
 // Device Registration
@@ -56,6 +57,10 @@ export async function registerWebOSDevice(uuid) {
         localStorage.setItem('webos_device_id', data.id);
         localStorage.setItem('webos_status', 'pending');
 
+        // Initialize logger immediately after registration
+        // This ensures logs are sent even during activation polling, errors, etc.
+        initLogger(data.id);
+
         updateDebug('device-id', `Device ID: ${data.id}`);
         updateDebug('status', 'Registered. Waiting for approval...');
 
@@ -84,13 +89,16 @@ export async function sendHeartbeat() {
         // Collect device information
         const deviceInfo = getDeviceInfo(deviceUUID);
 
+        // Use Object.assign for WebOS TV compatibility (no spread operator)
+        const payload = Object.assign(
+            { device_id: parseInt(deviceId) },
+            deviceInfo
+        );
+
         const response = await fetch(`${API_BASE_URL}/api/devices/heartbeat`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                device_id: parseInt(deviceId),
-                ...deviceInfo
-            })
+            body: JSON.stringify(payload)
         });
 
         if (response.ok) {
@@ -119,15 +127,18 @@ export async function checkActivationStatus() {
         // Get device info for heartbeat
         const deviceInfo = getDeviceInfo(deviceUUID);
 
+        // Use Object.assign for WebOS TV compatibility (no spread operator)
+        const payload = Object.assign(
+            { device_id: parseInt(deviceId) },
+            deviceInfo
+        );
+
         const response = await fetch(`${API_BASE_URL}/api/devices/heartbeat`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify({
-                device_id: parseInt(deviceId),
-                ...deviceInfo
-            })
+            body: JSON.stringify(payload)
         });
 
         if (!response.ok) {

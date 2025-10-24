@@ -8,6 +8,8 @@ import toast, { Toaster } from 'react-hot-toast'
 import TVRegisterModal from '../components/devices/modals/TVRegisterModal'
 import AssignContentModal from '../components/devices/modals/AssignContentModal'
 import DeviceInfoModal from '../components/devices/modals/DeviceInfoModal'
+import DeviceEditModal from '../components/devices/modals/DeviceEditModal'
+import DeviceLogsModal from '../components/devices/modals/DeviceLogsModal'
 import PendingDeviceCard from '../components/devices/PendingDeviceCard'
 import DeviceTableRow from '../components/devices/DeviceTableRow'
 
@@ -16,6 +18,8 @@ export default function Devices() {
   const [showTVForm, setShowTVForm] = useState(false)
   const [showContentModal, setShowContentModal] = useState(false)
   const [showDeviceInfoModal, setShowDeviceInfoModal] = useState(false)
+  const [showDeviceEditModal, setShowDeviceEditModal] = useState(false)
+  const [showLogsModal, setShowLogsModal] = useState(false)
   const [selectedDevice, setSelectedDevice] = useState(null)
 
   // Fetch devices with auto-refresh every 5 seconds
@@ -97,7 +101,7 @@ export default function Devices() {
 
   const handleEdit = (device) => {
     setSelectedDevice(device)
-    setShowDeviceInfoModal(true)
+    setShowDeviceEditModal(true)
   }
 
   const handleDelete = (deviceId) => {
@@ -177,6 +181,10 @@ export default function Devices() {
                 onEdit={handleEdit}
                 onDelete={handleDelete}
                 onActivate={handleApprove}
+                onViewLogs={(device) => {
+                  setSelectedDevice(device)
+                  setShowLogsModal(true)
+                }}
               />
             ))}
           </tbody>
@@ -206,6 +214,29 @@ export default function Devices() {
           device={selectedDevice}
           onClose={() => {
             setShowDeviceInfoModal(false)
+            setSelectedDevice(null)
+          }}
+        />
+      )}
+
+      {showDeviceEditModal && selectedDevice && (
+        <DeviceEditModal
+          device={selectedDevice}
+          onClose={() => {
+            setShowDeviceEditModal(false)
+            setSelectedDevice(null)
+          }}
+          onSave={() => {
+            queryClient.invalidateQueries(['devices'])
+          }}
+        />
+      )}
+
+      {showLogsModal && selectedDevice && (
+        <DeviceLogsModal
+          device={selectedDevice}
+          onClose={() => {
+            setShowLogsModal(false)
             setSelectedDevice(null)
           }}
         />

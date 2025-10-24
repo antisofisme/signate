@@ -9,6 +9,7 @@ import { getOrCreateDeviceUUID, getWebOSDeviceInfo } from './webos-bridge.js';
 import { registerWebOSDevice } from './api.js';
 import { startPolling, onActivated } from './activation.js';
 import { updateDebug, setupKeyboardShortcuts, showError } from './debug.js';
+import { initLogger } from './logger.js';
 
 // ========================================
 // Application Initialization
@@ -54,6 +55,9 @@ export async function init() {
 
         updateDebug('device-id', `Device ID: ${savedDeviceId}`);
         updateDebug('status', 'Using saved device...');
+
+        // Initialize logger immediately (even before activation)
+        initLogger(savedDeviceId);
 
         console.log('Using saved device:', { deviceId: savedDeviceId, deviceUUID: uuid, status: savedStatus });
 

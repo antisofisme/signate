@@ -88,7 +88,13 @@ window.ShellHeartbeat = {
                 });
 
                 if (response.ok) {
+                    const data = await response.json();
                     console.log('[Shell] Heartbeat sent ✅');
+
+                    // Check if display settings changed
+                    if (window.ShellDisplaySettings) {
+                        await window.ShellDisplaySettings.checkAndApplyChanges(data);
+                    }
                 }
             } catch (error) {
                 console.error('[Shell] Heartbeat error:', error);

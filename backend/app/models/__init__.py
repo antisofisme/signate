@@ -10,6 +10,7 @@ from app.models.tag import Tag, DeviceTag
 from app.models.assignment import ContentAssignment
 from app.models.schedule import Schedule
 from app.models.firebird import FirebirdConfig
+from app.models.device_log import DeviceLog
 
 __all__ = [
     "User",
@@ -20,4 +21,5 @@ __all__ = [
     "ContentAssignment",
     "Schedule",
     "FirebirdConfig",
+    "DeviceLog",
 ]

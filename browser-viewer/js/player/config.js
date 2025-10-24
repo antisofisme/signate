@@ -15,6 +15,7 @@ window.PlayerState = {
     deviceId: null,
     playlist: [],
     currentIndex: 0,
+    volumeEnabled: true, // Volume setting from Shell
     
     // Timers
     contentTimer: null,

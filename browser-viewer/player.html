@@ -28,11 +28,25 @@
             background: black;
         }
 
+        /* Base content styling */
         #content-display img,
         #content-display video {
             max-width: 100%;
             max-height: 100%;
-            object-fit: contain;
+        }
+
+        /* Landscape content - fit width (kanan-kiri) */
+        #content-display img.landscape,
+        #content-display video.landscape {
+            width: 100%;
+            height: auto;
+        }
+
+        /* Portrait content - fit height (atas-bawah) */
+        #content-display img.portrait,
+        #content-display video.portrait {
+            height: 100%;
+            width: auto;
         }
 
         /* Loading State */

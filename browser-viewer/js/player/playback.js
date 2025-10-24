@@ -89,6 +89,11 @@ window.PlayerPlayback = {
         img.onload = () => {
             console.log('[Player] Image loaded ✅');
             window.PlayerUI.hideError();
+
+            // Detect orientation and apply class
+            const isLandscape = img.naturalWidth > img.naturalHeight;
+            img.className = isLandscape ? 'landscape' : 'portrait';
+            console.log('[Player] Image orientation:', img.className, `(${img.naturalWidth}x${img.naturalHeight})`);
         };
 
         display.appendChild(img);
@@ -119,9 +124,10 @@ window.PlayerPlayback = {
         }
 
         video.autoplay = true;
-        video.muted = true; // Autoplay requires muted
-        video.style.maxWidth = '100%';
-        video.style.maxHeight = '100%';
+        // Apply volume setting from Shell (muted = opposite of volumeEnabled)
+        video.muted = !state.volumeEnabled;
+
+        console.log('[Player] Video volume:', state.volumeEnabled ? 'Enabled' : 'Muted');
 
         video.onerror = () => {
             console.error('[Player] Video load failed:', content.url);
@@ -134,6 +140,11 @@ window.PlayerPlayback = {
         video.onloadeddata = () => {
             console.log('[Player] Video loaded ✅');
             window.PlayerUI.hideError();
+
+            // Detect orientation and apply class
+            const isLandscape = video.videoWidth > video.videoHeight;
+            video.className = isLandscape ? 'landscape' : 'portrait';
+            console.log('[Player] Video orientation:', video.className, `(${video.videoWidth}x${video.videoHeight})`);
         };
 
         // Auto-advance when video ends (in case duration is wrong)

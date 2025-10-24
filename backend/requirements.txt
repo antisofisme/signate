@@ -28,6 +28,9 @@ httpx==0.26.0  # Async HTTP client
 redis==5.0.1  # Redis client
 hiredis==2.3.2  # Redis performance boost
 
+# WebSocket support
+websockets==12.0  # WebSocket protocol
+
 # Environment & Config
 python-dotenv==1.0.0  # Load .env files
 pydantic==2.5.3  # Data validation

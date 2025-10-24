@@ -1,4 +1,4 @@
-import { Monitor, Tv, CheckCircle, Edit, Trash2 } from 'lucide-react'
+import { Monitor, Tv, CheckCircle, Edit, Trash2, FileText } from 'lucide-react'
 
 /**
  * DeviceTableRow Component
@@ -18,13 +18,15 @@ import { Monitor, Tv, CheckCircle, Edit, Trash2 } from 'lucide-react'
  * @param {Function} onEdit - Callback when edit button is clicked
  * @param {Function} onDelete - Callback when delete button is clicked
  * @param {Function} onActivate - Callback when activate button is clicked (pending only)
+ * @param {Function} onViewLogs - Callback when view logs button is clicked
  */
 export default function DeviceTableRow({
   device,
   onRowClick,
   onEdit,
   onDelete,
-  onActivate
+  onActivate,
+  onViewLogs
 }) {
   return (
     <tr
@@ -103,6 +105,18 @@ export default function DeviceTableRow({
             title="View device information"
           >
             <Edit className="w-5 h-5" />
+          </button>
+
+          {/* View Logs button */}
+          <button
+            onClick={(e) => {
+              e.stopPropagation()
+              onViewLogs(device)
+            }}
+            className="text-purple-600 hover:text-purple-800"
+            title="View device logs (real-time)"
+          >
+            <FileText className="w-5 h-5" />
           </button>
 
           {/* Delete button */}

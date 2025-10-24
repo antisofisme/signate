@@ -109,15 +109,45 @@ def get_device_playlist(
 
         seen_content_ids.add(content.id)
 
-        # Use direct Anthias URL (CORS now enabled on Anthias nginx)
-        # This provides better performance than proxy approach
-        anthias_content_url = f"{settings.ANTHIAS_API_URL}/api/v1/assets/{content.anthias_asset_id}/content"
+        # Use direct Anthias static file URL (CORS enabled via nginx config)
+        # Performance: Browser caching, no decode overhead, direct binary streaming
+        # Pattern: Control Plane (backend API) / Data Plane (Anthias static files) separation
+
+        # Fetch asset URI from Anthias to get actual file path
+        try:
+            anthias_asset_url = f"{settings.ANTHIAS_API_URL}/api/v1/assets/{content.anthias_asset_id}"
+
+            # Synchronous HTTP client for playlist generation
+            with httpx.Client(timeout=5.0) as client:
+                response = client.get(anthias_asset_url)
+
+                if response.status_code == 200:
+                    asset_data = response.json()
+                    asset_uri = asset_data.get('uri', '')  # e.g., /data/screenly_assets/51ef3ffb...
+
+                    if asset_uri and asset_uri.startswith('/data/screenly_assets/'):
+                        # Convert internal path to nginx static URL
+                        filename = asset_uri.replace('/data/screenly_assets/', '')
+                        direct_content_url = f"{settings.ANTHIAS_API_URL}/screenly_assets/{filename}"
+                        logger.debug(f"Direct URL for content {content.id}: {direct_content_url}")
+                    else:
+                        logger.warning(f"Unexpected URI format for asset {content.anthias_asset_id}: {asset_uri}")
+                        # Fallback to API endpoint (will return base64 JSON, not ideal but works)
+                        direct_content_url = f"{settings.ANTHIAS_API_URL}/api/v1/assets/{content.anthias_asset_id}/content"
+                else:
+                    logger.error(f"Failed to fetch asset {content.anthias_asset_id} from Anthias: HTTP {response.status_code}")
+                    # Fallback to API endpoint
+                    direct_content_url = f"{settings.ANTHIAS_API_URL}/api/v1/assets/{content.anthias_asset_id}/content"
+        except Exception as e:
+            logger.error(f"Error fetching asset URI for {content.anthias_asset_id}: {e}")
+            # Fallback to API endpoint
+            direct_content_url = f"{settings.ANTHIAS_API_URL}/api/v1/assets/{content.anthias_asset_id}/content"
 
         playlist_item = PlaylistItem(
             content_id=content.id,
             title=content.title,
             content_type=content.content_type,
-            url=anthias_content_url,
+            url=direct_content_url,
             duration=content.duration,
             mime_type=content.mime_type
         )
@@ -185,83 +215,7 @@ def check_device_status(
     )
 
 
-@router.get("/content-proxy/{content_id}")
-async def proxy_content(
-    content_id: int,
-    db: Session = Depends(get_db)
-):
-    """
-    Proxy content from Anthias to avoid CORS issues
-
-    This endpoint fetches content from the Anthias server and streams it to the client
-    with proper CORS headers, solving the cross-origin issue when the monitor viewer
-    tries to load content from Anthias.
-
-    Args:
-        content_id: Content ID to proxy
-        db: Database session
-
-    Returns:
-        StreamingResponse: Content streamed from Anthias with proper headers
-
-    Raises:
-        HTTPException: If content not found or Anthias request fails
-
-    Notes:
-        - This endpoint does NOT require authentication (for device clients)
-        - Content is fetched from Anthias and streamed through
-        - CORS headers are automatically added by FastAPI middleware
-    """
-    # Get content from database
-    content = db.query(Content).filter(Content.id == content_id).first()
-
-    if not content:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Content with ID {content_id} not found"
-        )
-
-    # Fetch content from Anthias using configured API URL
-    # Use anthias_asset_id to construct the correct API URL
-    anthias_content_url = f"{settings.ANTHIAS_API_URL}/api/v1/assets/{content.anthias_asset_id}/content"
-
-    logger.info(f"Fetching content from Anthias: {anthias_content_url}")
-
-    try:
-        async with httpx.AsyncClient(timeout=30.0) as client:
-            response = await client.get(anthias_content_url)
-
-            if response.status_code != 200:
-                raise HTTPException(
-                    status_code=status.HTTP_502_BAD_GATEWAY,
-                    detail=f"Failed to fetch content from Anthias: HTTP {response.status_code}"
-                )
-
-            # Parse JSON response from Anthias and decode base64 content
-            anthias_data = response.json()
-            base64_content = anthias_data.get('content', '')
-
-            if not base64_content:
-                raise HTTPException(
-                    status_code=status.HTTP_502_BAD_GATEWAY,
-                    detail="No content in Anthias response"
-                )
-
-            # Decode base64 content
-            binary_content = base64.b64decode(base64_content)
-
-            # Return binary content with proper headers
-            return Response(
-                content=binary_content,
-                media_type=content.mime_type or "application/octet-stream",
-                headers={
-                    "Content-Length": str(len(binary_content)),
-                    "Cache-Control": "public, max-age=3600",  # Cache for 1 hour
-                }
-            )
-    except httpx.RequestError as e:
-        logger.error(f"Error fetching content from Anthias: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_502_BAD_GATEWAY,
-            detail=f"Failed to fetch content from Anthias: {str(e)}"
-        )
+# Proxy endpoint removed - no longer needed
+# CORS is now enabled directly on Anthias nginx for /screenly_assets/
+# This allows direct binary file access without base64 decode overhead
+# See: anthias/docker/nginx/nginx.development.conf

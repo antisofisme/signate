@@ -114,9 +114,13 @@ window.ShellRegistration = {
     /**
      * Called when device becomes activated
      */
-    onActivated: function() {
+    onActivated: async function() {
         window.ShellUI.updateUI('active');
         window.ShellHeartbeat.start();
+
+        // Initialize display settings (rotation, volume)
+        await window.ShellDisplaySettings.init();
+
         window.ShellUI.loadPlayer();
     }
 };

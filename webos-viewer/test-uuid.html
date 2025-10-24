@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebOS UUID Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: rgba(255,255,255,0.1);
+            padding: 30px;
+            border-radius: 20px;
+            backdrop-filter: blur(10px);
+        }
+        .info-box {
+            background: rgba(255,255,255,0.2);
+            padding: 20px;
+            margin: 15px 0;
+            border-radius: 10px;
+            font-family: monospace;
+        }
+        .uuid {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #ffd700;
+            word-break: break-all;
+        }
+        button {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            font-size: 1rem;
+            border-radius: 10px;
+            cursor: pointer;
+            margin: 10px 5px;
+        }
+        button:hover {
+            background: #45a049;
+        }
+        .error {
+            background: rgba(255,0,0,0.3);
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+        .success {
+            background: rgba(0,255,0,0.3);
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 WebOS UUID Test Page</h1>
+
+        <div class="info-box">
+            <h3>Device UUID:</h3>
+            <div class="uuid" id="uuid-display">Loading...</div>
+        </div>
+
+        <div class="info-box">
+            <h3>6-Digit Code:</h3>
+            <div class="uuid" id="code-display">------</div>
+        </div>
+
+        <div class="info-box">
+            <h3>WebOS Info:</h3>
+            <div id="webos-info">Checking...</div>
+        </div>
+
+        <div class="info-box">
+            <h3>LocalStorage:</h3>
+            <div id="storage-info">Checking...</div>
+        </div>
+
+        <h2>Actions:</h2>
+        <button onclick="testRegistration()">Test Registration</button>
+        <button onclick="clearStorage()">Clear Storage</button>
+        <button onclick="refreshPage()">Refresh Page</button>
+
+        <div id="result"></div>
+    </div>
+
+    <script type="module">
+        import { generateUUID, getOrCreateDeviceUUID, generateNumericCodeFromUUID, getWebOSDeviceInfo, isWebOSDevice } from './js/webos-bridge.js?v=test1';
+        import { API_BASE_URL } from './js/config.js?v=test1';
+
+        // Display UUID
+        const uuid = getOrCreateDeviceUUID();
+        document.getElementById('uuid-display').textContent = uuid;
+
+        // Display 6-digit code
+        const code = generateNumericCodeFromUUID(uuid);
+        document.getElementById('code-display').textContent = code;
+
+        // Display WebOS info
+        const webOSInfo = getWebOSDeviceInfo();
+        document.getElementById('webos-info').innerHTML = `
+            <strong>Platform:</strong> ${webOSInfo.platform || 'browser'}<br>
+            <strong>Model:</strong> ${webOSInfo.modelName || 'Unknown'}<br>
+            <strong>Firmware:</strong> ${webOSInfo.firmwareVersion || 'N/A'}<br>
+            <strong>Is WebOS:</strong> ${isWebOSDevice() ? 'YES ✅' : 'NO ❌'}
+        `;
+
+        // Display storage info
+        const deviceId = localStorage.getItem('webos_device_id');
+        const status = localStorage.getItem('webos_status');
+        document.getElementById('storage-info').innerHTML = `
+            <strong>device_uuid:</strong> ${localStorage.getItem('device_uuid') || 'Not set'}<br>
+            <strong>webos_device_id:</strong> ${deviceId || 'Not registered'}<br>
+            <strong>webos_status:</strong> ${status || 'Not registered'}
+        `;
+
+        // Test registration
+        window.testRegistration = async function() {
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = '<div class="info-box">⏳ Testing registration...</div>';
+
+            try {
+                const webOSInfo = getWebOSDeviceInfo();
+                const deviceName = webOSInfo.platform === 'webOS'
+                    ? `${webOSInfo.modelName || 'webOS TV'} - ${uuid.substring(0, 8)}`
+                    : `Browser - ${uuid.substring(0, 8)}`;
+
+                const response = await fetch(`${API_BASE_URL}/api/devices/monitor/register`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        activation_code: code,
+                        device_name: deviceName,
+                        device_uuid: uuid,
+                        platform: webOSInfo.platform || 'browser',
+                        model_name: webOSInfo.modelName || 'Unknown'
+                    })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    resultDiv.innerHTML = `
+                        <div class="success">
+                            <h3>✅ Registration Successful!</h3>
+                            <strong>Device ID:</strong> ${data.id}<br>
+                            <strong>Device Name:</strong> ${data.device_name}<br>
+                            <strong>UUID:</strong> ${data.device_uuid}<br>
+                            <strong>Code:</strong> ${data.unique_code}<br>
+                            <strong>Status:</strong> ${data.status}<br>
+                            <br>
+                            <em>Go to Web Admin to approve this device!</em>
+                        </div>
+                    `;
+
+                    localStorage.setItem('webos_device_id', data.id);
+                    localStorage.setItem('webos_status', 'pending');
+                    location.reload();
+                } else {
+                    resultDiv.innerHTML = `
+                        <div class="error">
+                            <h3>❌ Registration Failed</h3>
+                            <strong>Error:</strong> ${data.detail || 'Unknown error'}<br>
+                            <br>
+                            <em>This might be because the device is already registered.</em>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <div class="error">
+                        <h3>❌ Network Error</h3>
+                        <strong>Error:</strong> ${error.message}<br>
+                        <strong>API URL:</strong> ${API_BASE_URL}
+                    </div>
+                `;
+            }
+        };
+
+        window.clearStorage = function() {
+            if (confirm('Clear all localStorage data? This will reset the device UUID!')) {
+                localStorage.clear();
+                location.reload();
+            }
+        };
+
+        window.refreshPage = function() {
+            location.reload();
+        };
+    </script>
+</body>
+</html>

@@ -12,9 +12,13 @@ window.PlayerInit = {
 
         state.originalConsole.log('[Player] Initializing...');
 
-        // Get deviceId from URL params (passed by shell)
+        // Get deviceId and volume settings from URL params (passed by shell)
         const params = new URLSearchParams(window.location.search);
         state.deviceId = params.get('deviceId');
+
+        // Get volume setting (default: enabled)
+        const volumeParam = params.get('volume');
+        state.volumeEnabled = volumeParam !== '0'; // '1' = enabled, '0' = disabled
 
         if (!state.deviceId) {
             window.PlayerUI.showError('No device ID provided');

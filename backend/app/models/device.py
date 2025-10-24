@@ -81,6 +81,10 @@ class Device(Base):
     connection_type = Column(String(50))
     connection_speed = Column(Float)
 
+    # Display Settings (configurable from admin)
+    rotation = Column(Integer, default=0)  # 0, 90, 180, 270
+    volume_enabled = Column(Boolean, default=True)
+
     # Timestamps
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
@@ -88,6 +92,7 @@ class Device(Base):
     # Relationships
     tags = relationship("DeviceTag", back_populates="device", cascade="all, delete-orphan")
     content_assignments = relationship("ContentAssignment", back_populates="device", cascade="all, delete-orphan")
+    logs = relationship("DeviceLog", back_populates="device", cascade="all, delete-orphan")
 
     def __repr__(self):
         return f"<Device(id={self.id}, name='{self.device_name}', type='{self.device_type}', status='{self.status}')>"
@@ -119,4 +124,7 @@ class Device(Base):
             "user_agent": self.user_agent,
             "connection_type": self.connection_type,
             "connection_speed": self.connection_speed,
+            # Display settings
+            "rotation": self.rotation,
+            "volume_enabled": self.volume_enabled,
         }

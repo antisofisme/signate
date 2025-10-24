@@ -28,8 +28,12 @@ window.ShellUI = {
         const iframe = document.getElementById('player-iframe');
 
         if (iframe) {
-            iframe.src = `player.html?t=${timestamp}&deviceId=${state.deviceId}`;
-            console.log('[Shell] Loading player iframe...');
+            // Get display settings to pass to Player
+            const playerParams = window.ShellDisplaySettings.getPlayerParams();
+            const volumeParam = playerParams.volume_enabled;
+
+            iframe.src = `player.html?t=${timestamp}&deviceId=${state.deviceId}&volume=${volumeParam}`;
+            console.log('[Shell] Loading player iframe with volume:', volumeParam);
 
             // Listen for player errors
             iframe.onerror = () => {

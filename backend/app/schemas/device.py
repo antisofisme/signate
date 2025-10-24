@@ -77,12 +77,23 @@ class DeviceUpdateRequest(BaseModel):
     """Request schema for updating device"""
     device_name: Optional[str] = Field(None, min_length=1, max_length=100)
     status: Optional[str] = Field(None, pattern="^(pending|active|inactive)$")
+    # Display settings
+    rotation: Optional[int] = Field(None, ge=0, le=270)
+    volume_enabled: Optional[bool] = None
+
+    @validator('rotation')
+    def validate_rotation(cls, v):
+        if v is not None and v not in [0, 90, 180, 270]:
+            raise ValueError('rotation must be 0, 90, 180, or 270')
+        return v
 
     class Config:
         json_schema_extra = {
             "example": {
                 "device_name": "Updated Device Name",
-                "status": "active"
+                "status": "active",
+                "rotation": 0,
+                "volume_enabled": True
             }
         }
 
@@ -153,6 +164,9 @@ class DeviceResponse(BaseModel):
     user_agent: Optional[str] = None
     connection_type: Optional[str] = None
     connection_speed: Optional[float] = None
+    # Display settings
+    rotation: int = 0
+    volume_enabled: bool = True
 
     class Config:
         from_attributes = True
@@ -179,7 +193,9 @@ class DeviceResponse(BaseModel):
                 "device_pixel_ratio": 1.0,
                 "user_agent": "Mozilla/5.0...",
                 "connection_type": "4g",
-                "connection_speed": 5.3
+                "connection_speed": 5.3,
+                "rotation": 0,
+                "volume_enabled": True
             }
         }
 
@@ -231,6 +247,9 @@ class HeartbeatResponse(BaseModel):
     status: str
     last_seen: datetime
     message: str
+    # Display settings (for auto-update)
+    rotation: int = 0
+    volume_enabled: bool = True
 
     class Config:
         json_schema_extra = {
@@ -238,6 +257,8 @@ class HeartbeatResponse(BaseModel):
                 "device_id": 1,
                 "status": "active",
                 "last_seen": "2025-10-21T12:00:00",
-                "message": "Heartbeat recorded"
+                "message": "Heartbeat recorded",
+                "rotation": 0,
+                "volume_enabled": True
             }
         }

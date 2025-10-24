@@ -32,6 +32,7 @@ import { syncCacheWithPlaylist } from './cache.js';
 import { playContent, enterFullscreen, exitFullscreen } from './player.js';
 import { updateDebug, showError } from './debug.js';
 import { getOrCreateDeviceUUID } from './webos-bridge.js';
+import { initLogger } from './logger.js';
 
 // ========================================
 // Polling and Activation

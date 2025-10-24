@@ -116,6 +116,85 @@
             z-index: 9999;
             display: none; /* Hide by default, show with keyboard shortcut */
         }
+
+        /* Enter Fullscreen Button */
+        #enter-fullscreen-btn {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            width: 50px;
+            height: 50px;
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            font-size: 24px;
+            cursor: pointer;
+            z-index: 10000;
+            opacity: 0;
+            transition: opacity 0.3s ease, background 0.2s ease, transform 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            pointer-events: auto;
+        }
+
+        /* Button hover effect */
+        #enter-fullscreen-btn:hover {
+            background: rgba(0, 100, 255, 0.8);
+            border-color: rgba(255, 255, 255, 0.8);
+            transform: scale(1.1);
+        }
+
+        /* Show button class (triggered by JS) */
+        #enter-fullscreen-btn.show {
+            opacity: 1;
+        }
+
+        /* Exit Fullscreen Button */
+        #exit-fullscreen-btn {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            width: 50px;
+            height: 50px;
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            font-size: 24px;
+            cursor: pointer;
+            z-index: 10000;
+            opacity: 0;
+            transition: opacity 0.3s ease, background 0.2s ease, transform 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            pointer-events: auto;
+        }
+
+        /* Button hover effect */
+        #exit-fullscreen-btn:hover {
+            background: rgba(255, 0, 0, 0.8);
+            border-color: rgba(255, 255, 255, 0.8);
+            transform: scale(1.1);
+        }
+
+        /* Show button class (triggered by JS) */
+        #exit-fullscreen-btn.show {
+            opacity: 1;
+        }
+
+        /* Hide buttons based on fullscreen state (toggled by JS) */
+        body.is-fullscreen #enter-fullscreen-btn {
+            display: none;
+        }
+
+        body:not(.is-fullscreen) #exit-fullscreen-btn {
+            display: none;
+        }
     </style>
 </head>
 <body>
@@ -142,6 +221,16 @@
         <div id="error-message"></div>
     </div>
 
+    <!-- Enter Fullscreen Button (hover to show) - OUTSIDE player container -->
+    <button id="enter-fullscreen-btn" title="Enter Fullscreen (F)">
+        ⛶
+    </button>
+
+    <!-- Exit Fullscreen Button (hover to show) - OUTSIDE player container -->
+    <button id="exit-fullscreen-btn" title="Exit Fullscreen (Esc)">
+        ✕
+    </button>
+
     <!-- Shell Info (debug - press 's' to toggle) -->
     <div id="shell-info">
         <strong>SHELL STATUS</strong><br>
@@ -152,17 +241,172 @@
     </div>
 
     <!-- Shell Modules (STABLE CORE) - Load in correct order -->
-    <script src="js/shell/config.js"></script>
-    <script src="js/shell/logger.js"></script>
-    <script src="js/shell/registration.js"></script>
-    <script src="js/shell/heartbeat.js"></script>
-    <script src="js/shell/ui.js"></script>
-    <script src="js/shell/init.js"></script>
+    <script src="js/shell/config.js?v=20251024-6"></script>
+    <script src="js/shell/logger.js?v=20251024-6"></script>
+    <script src="js/shell/registration.js?v=20251024-6"></script>
+    <script src="js/shell/heartbeat.js?v=20251024-6"></script>
+    <script src="js/shell/display-settings.js?v=20251024-6"></script>
+    <script src="js/shell/ui.js?v=20251024-6"></script>
+    <script src="js/shell/init.js?v=20251024-6"></script>
 
-    <!-- Keyboard Shortcuts -->
+    <!-- Keyboard Shortcuts & Fullscreen Management -->
     <script>
-        // Press 's' to toggle shell debug info
+        let hideButtonTimer = null;
+
+        // Track fullscreen state
+        function updateFullscreenState() {
+            const playerContainer = document.getElementById('player-container');
+            const exitBtn = document.getElementById('exit-fullscreen-btn');
+            const enterBtn = document.getElementById('enter-fullscreen-btn');
+
+            const isFullscreen = !!document.fullscreenElement;
+            console.log('[Shell] Fullscreen state changed:', isFullscreen);
+
+            if (isFullscreen) {
+                console.log('[Shell] Entering fullscreen mode');
+                playerContainer.classList.add('fullscreen');
+                document.body.classList.add('is-fullscreen');
+                // Show exit button initially for 3 seconds
+                showExitButton();
+                // Hide enter button
+                if (enterBtn) enterBtn.classList.remove('show');
+
+                // Wait for browser to finish fullscreen transition, then update
+                setTimeout(() => {
+                    // Recalculate rotation with new viewport dimensions
+                    console.log('[Shell] Recalculating rotation for fullscreen viewport...');
+                    if (window.ShellDisplaySettings && window.ShellDisplaySettings.applyRotation) {
+                        window.ShellDisplaySettings.applyRotation();
+                    }
+
+                    // Reload player to update viewport size
+                    console.log('[Shell] Reloading player for new viewport size...');
+                    if (window.ShellUI && window.ShellUI.loadPlayer) {
+                        window.ShellUI.loadPlayer();
+                    }
+                }, 100); // Small delay for browser to complete fullscreen
+            } else {
+                console.log('[Shell] Exiting fullscreen mode');
+                playerContainer.classList.remove('fullscreen');
+                document.body.classList.remove('is-fullscreen');
+                // Hide exit button
+                if (exitBtn) exitBtn.classList.remove('show');
+
+                // Wait for browser to finish fullscreen exit, then update
+                setTimeout(() => {
+                    // Recalculate rotation with normal viewport dimensions
+                    console.log('[Shell] Recalculating rotation for normal viewport...');
+                    if (window.ShellDisplaySettings && window.ShellDisplaySettings.applyRotation) {
+                        window.ShellDisplaySettings.applyRotation();
+                    }
+
+                    // Reload player to restore normal viewport size
+                    console.log('[Shell] Reloading player for normal viewport size...');
+                    if (window.ShellUI && window.ShellUI.loadPlayer) {
+                        window.ShellUI.loadPlayer();
+                    }
+                }, 100); // Small delay for browser to complete fullscreen exit
+            }
+        }
+
+        // Show exit button and auto-hide after 3 seconds
+        function showExitButton() {
+            const exitBtn = document.getElementById('exit-fullscreen-btn');
+            exitBtn.classList.add('show');
+
+            // Clear existing timer
+            if (hideButtonTimer) {
+                clearTimeout(hideButtonTimer);
+            }
+
+            // Auto-hide after 3 seconds
+            hideButtonTimer = setTimeout(() => {
+                exitBtn.classList.remove('show');
+            }, 3000);
+        }
+
+        // Show enter button and auto-hide after 3 seconds
+        function showEnterButton() {
+            const enterBtn = document.getElementById('enter-fullscreen-btn');
+            enterBtn.classList.add('show');
+
+            // Clear existing timer
+            if (hideButtonTimer) {
+                clearTimeout(hideButtonTimer);
+            }
+
+            // Auto-hide after 3 seconds
+            hideButtonTimer = setTimeout(() => {
+                enterBtn.classList.remove('show');
+            }, 3000);
+        }
+
+        // Track mouse movement to show appropriate button
+        document.addEventListener('mousemove', (e) => {
+            if (document.fullscreenElement) {
+                // In fullscreen - show exit button
+                showExitButton();
+            } else {
+                // Not in fullscreen - show enter button
+                showEnterButton();
+            }
+        });
+
+        // Listen for fullscreen changes
+        document.addEventListener('fullscreenchange', updateFullscreenState);
+        document.addEventListener('webkitfullscreenchange', updateFullscreenState);
+        document.addEventListener('mozfullscreenchange', updateFullscreenState);
+        document.addEventListener('MSFullscreenChange', updateFullscreenState);
+
+        // Enter fullscreen button click
+        const enterBtn = document.getElementById('enter-fullscreen-btn');
+        if (enterBtn) {
+            enterBtn.addEventListener('click', () => {
+                console.log('[Shell] Enter button clicked');
+                if (!document.fullscreenElement) {
+                    console.log('[Shell] Entering fullscreen via button...');
+                    const elem = document.documentElement;
+                    const requestFullscreen = elem.requestFullscreen ||
+                                             elem.webkitRequestFullscreen ||
+                                             elem.mozRequestFullScreen ||
+                                             elem.msRequestFullscreen;
+
+                    if (requestFullscreen) {
+                        requestFullscreen.call(elem).then(() => {
+                            console.log('[Shell] ✅ Fullscreen entered successfully');
+                        }).catch(err => {
+                            console.error('[Shell] ❌ Fullscreen error:', err);
+                        });
+                    }
+                } else {
+                    console.log('[Shell] Already in fullscreen');
+                }
+            });
+            console.log('[Shell] Enter button listener attached');
+        } else {
+            console.error('[Shell] Enter button not found!');
+        }
+
+        // Exit fullscreen button click
+        const exitBtn = document.getElementById('exit-fullscreen-btn');
+        if (exitBtn) {
+            exitBtn.addEventListener('click', () => {
+                console.log('[Shell] Exit button clicked');
+                if (document.fullscreenElement) {
+                    console.log('[Shell] Exiting fullscreen via button...');
+                    document.exitFullscreen();
+                } else {
+                    console.log('[Shell] Already not in fullscreen');
+                }
+            });
+            console.log('[Shell] Exit button listener attached');
+        } else {
+            console.error('[Shell] Exit button not found!');
+        }
+
+        // Keyboard shortcuts
         document.addEventListener('keydown', (e) => {
+            // Press 's' to toggle shell debug info
             if (e.key === 's' || e.key === 'S') {
                 const info = document.getElementById('shell-info');
                 info.style.display = info.style.display === 'none' ? 'block' : 'none';
@@ -186,7 +430,47 @@
                     location.reload();
                 }
             }
+
+            // Press 'f' to toggle fullscreen
+            if (e.key === 'f' || e.key === 'F') {
+                console.log('[Shell] F key pressed, current fullscreen state:', !!document.fullscreenElement);
+
+                if (!document.fullscreenElement) {
+                    // Enter fullscreen
+                    console.log('[Shell] Attempting to enter fullscreen...');
+
+                    const elem = document.documentElement;
+                    const requestFullscreen = elem.requestFullscreen ||
+                                             elem.webkitRequestFullscreen ||
+                                             elem.mozRequestFullScreen ||
+                                             elem.msRequestFullscreen;
+
+                    if (requestFullscreen) {
+                        requestFullscreen.call(elem).then(() => {
+                            console.log('[Shell] ✅ Fullscreen entered successfully');
+                        }).catch(err => {
+                            console.error('[Shell] ❌ Fullscreen error:', err);
+                            alert('Fullscreen failed: ' + err.message);
+                        });
+                    } else {
+                        console.error('[Shell] ❌ Fullscreen API not supported');
+                        alert('Fullscreen not supported in this browser');
+                    }
+                } else {
+                    // Exit fullscreen
+                    console.log('[Shell] Exiting fullscreen...');
+                    document.exitFullscreen();
+                }
+            }
+
+            // Press 'Esc' to exit fullscreen
+            if (e.key === 'Escape' && document.fullscreenElement) {
+                document.exitFullscreen();
+            }
         });
+
+        // Initial state
+        updateFullscreenState();
     </script>
 </body>
 </html>

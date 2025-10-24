@@ -1,182 +1,185 @@
-# WebOS Viewer (Production)
+# WebOS Viewer - Smart TV Digital Signage
 
-WebOS TV production viewer yang di-serve di **port 8081**.
+Static HTML/JS viewer specifically designed for LG WebOS Smart TVs. Uses UUID-based persistent device identity for seamless activation.
 
-## 🎯 Port Separation
+## Architecture Role
 
-Kita pisahkan environment untuk kemudahan development dan testing:
+**Display Client (WebOS TV)** - Displays content playlists on LG WebOS Smart TVs using:
 
-| Port | Environment | Purpose |
-|------|-------------|---------|
-| **8080** | Browser Testing | Testing di browser (development) |
-| **8081** | WebOS Production | WebOS TV production app |
+- **UUID-based persistent identity** (no manual activation needed)
+- **IndexedDB caching** for offline playback and bandwidth optimization
+- **Direct file access** from Anthias (no proxy)
+- **Automatic fullscreen** optimized for TV displays
 
-## 🚀 Running the Server
+## Tech Stack
 
-### On Server (Production)
+- **Frontend**: Vanilla JavaScript ES6 modules
+- **Caching**: IndexedDB for offline media storage
+- **HTTP Server**: Python `http.server` or nginx (static files only)
+- **Port**: 8081
+- **Platform**: LG WebOS Smart TV (via hosted web app or IPK package)
 
-```bash
-# Navigate to webos-viewer directory
-cd /home/gzjbbk/signage/webos-viewer
+## Differences from Browser Viewer
 
-# Start server on port 8081
-python3 -m http.server 8081
+| Feature | Browser Viewer | WebOS Viewer |
+|---------|---------------|--------------|
+| **Activation** | 6-digit code | UUID-based automatic |
+| **Port** | 8080 | 8081 |
+| **Platform** | Any browser | WebOS TV only |
+| **Registration** | Manual approval | Auto-registers on first run |
+| **Storage** | localStorage | localStorage (persistent on TV) |
 
-# Or run in background
-nohup python3 -m http.server 8081 > viewer.log 2>&1 &
+## Setup
+
+### Option 1: Hosted Web App (Recommended)
+
+1. Ensure HTTP server is running on port 8081
+2. On WebOS TV, open browser
+3. Navigate to `http://192.168.5.12:8081`
+4. Add to Home Screen for easy access
+
+### Option 2: IPK Package
+
+See `../webos-app/README.md` for packaging and installation.
+
+## UUID-Based Activation
+
+### How It Works
+
+1. **First run**: Viewer generates UUID (e.g., `550e8400-e29b-41d4-a716-446655440000`)
+2. **Register**: Calls backend to register device with UUID
+   ```javascript
+   POST /api/devices/register
+   {
+     "device_uuid": "550e8400-e29b-41d4-a716-446655440000",
+     "device_type": "webos"
+   }
+   ```
+3. **Backend creates** device with status `active` (auto-approved for WebOS)
+4. **Viewer stores** device_id in localStorage
+5. **Subsequent runs**: Viewer uses stored device_id (no re-registration)
+
+### Storage
+
+```javascript
+localStorage.setItem('device_uuid', uuid);
+localStorage.setItem('device_id', deviceId);
 ```
 
-### On Local (Development)
+**UUID persists** across TV reboots (unlike browser viewer which may clear localStorage).
+
+## Content Playback
+
+Identical to browser-viewer with cache-first architecture:
+
+1. Backend API returns playlist with direct Anthias URLs
+2. Viewer checks IndexedDB cache
+3. Cache HIT → Play from cache
+4. Cache MISS → Download from Anthias → Cache → Play
+
+## Keyboard Shortcuts
+
+Same as browser-viewer:
+
+- `d` - Toggle debug overlay
+- `f` - Toggle fullscreen (or use TV remote)
+- `n` - Next content
+- `r` - Reload playlist
+- `c` - Clear cache
+
+**Note**: Use WebOS TV remote for navigation and selection.
+
+## Configuration
+
+**File**: `js/config.js`
+
+```javascript
+export const API_BASE_URL = 'http://192.168.5.12:8001';
+export const DB_NAME = 'SignageCache';
+export const DB_VERSION = 2;
+export const PRELOAD_TIME = 3000;
+export const PLAYLIST_REFRESH_INTERVAL = 60000;
+export const HEARTBEAT_INTERVAL = 30000;
+```
+
+## Development
+
+### Start HTTP Server
 
 ```bash
-cd /mnt/g/khoirul/signate/webos-viewer
+cd webos-viewer
 python3 -m http.server 8081
 ```
 
-## 📱 WebOS App Configuration
+### Test on WebOS TV
 
-WebOS app (`webos-app/appinfo.json`) configured to load from:
+1. Open WebOS TV browser
+2. Navigate to `http://192.168.5.12:8081`
+3. Check browser console (if available) or use debug overlay
 
-```json
-{
-  "main": "http://192.168.5.12:8081/index.html"
+### Module Cache Busting
+
+When updating JavaScript modules, increment version in `index.html`:
+
+```html
+<script type="module">
+  import { init } from './js/app.js?v=5';  // Increment this
+  init();
+</script>
+```
+
+## Production Deployment
+
+### Nginx Configuration
+
+```nginx
+server {
+    listen 8081;
+    server_name 192.168.5.12;
+
+    root /home/gzjbbk/signage/webos-viewer;
+    index index.html;
+
+    location / {
+        try_files $uri $uri/ =404;
+    }
+
+    add_header Access-Control-Allow-Origin *;
 }
 ```
 
-## 🔄 Content Synchronization
+### WebOS App Package
 
-File `index.html` di `webos-viewer/` adalah viewer untuk WebOS TV yang menggunakan UUID-based device identity.
+For native WebOS app deployment, see `../webos-app/README.md`.
 
-**BERBEDA dengan `browser-viewer/`:**
-- `browser-viewer/` → 6-digit activation code (untuk monitor browser)
-- `webos-viewer/` → UUID persistent (untuk WebOS TV)
+## Troubleshooting
 
-### Update WebOS Viewer
+### TV not registering
 
-Jika ada perubahan pada `webos-viewer/index.html`:
+1. Check TV can access backend: Use TV browser to open `http://192.168.5.12:8001/docs`
+2. Check network connectivity (same network as server)
+3. Open debug overlay on TV (press `d` on keyboard or use remote)
+4. Check localStorage: UUID should be present
 
-```bash
-# Deploy to server
-scp /mnt/g/khoirul/signate/webos-viewer/index.html gzjbbk@192.168.5.12:/home/gzjbbk/signage/webos-viewer/
-```
+### Content not displaying
 
-## 🧪 Testing
+1. Check Anthias CORS headers (same as browser-viewer)
+2. Clear cache: Press `c` on keyboard
+3. Check TV browser console (if available)
 
-### Browser Testing (Port 8080)
-```
-http://192.168.5.12:8080/index.html
-```
+### Cache not working
 
-### WebOS Testing (Port 8081)
-```
-# Package and install WebOS app
-cd webos-app
-./package.sh
-./deploy.sh mytv
+WebOS TV browsers may have limitations on IndexedDB size. Monitor cache usage and clear periodically if needed.
 
-# App will load from:
-http://192.168.5.12:8081/index.html
-```
-
-## ✅ Benefits of Separation
-
-1. **Independent Testing**: Test di browser tanpa mempengaruhi WebOS production
-2. **Version Control**: Bisa roll back production tanpa affect testing
-3. **Performance**: Pisahkan traffic browser testing dan TV production
-4. **Easy Debugging**: Logs terpisah untuk setiap environment
-
-## 🔧 Server Setup
-
-### Check if Port 8081 is Available
+## Sync to Server
 
 ```bash
-# Check if port 8081 is in use
-netstat -tulpn | grep :8081
-
-# Or with lsof
-lsof -i :8081
+sshpass -p 'Password@2021' scp -r webos-viewer/ gzjbbk@192.168.5.12:/home/gzjbbk/signage/
 ```
 
-### Start Server on Boot (Optional)
+## Important Links
 
-Create systemd service:
-
-```bash
-# /etc/systemd/system/webos-viewer.service
-[Unit]
-Description=WebOS Viewer HTTP Server
-After=network.target
-
-[Service]
-Type=simple
-User=gzjbbk
-WorkingDirectory=/home/gzjbbk/signage/webos-viewer
-ExecStart=/usr/bin/python3 -m http.server 8081
-Restart=always
-
-[Install]
-WantedBy=multi-user.target
-```
-
-Enable and start:
-
-```bash
-sudo systemctl enable webos-viewer
-sudo systemctl start webos-viewer
-sudo systemctl status webos-viewer
-```
-
-## 📊 Architecture
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│                    192.168.5.12 Server                       │
-│                                                              │
-│  ┌────────────────────────┐  ┌─────────────────────────┐  │
-│  │  Port 8080             │  │  Port 8081              │  │
-│  │  browser-viewer/       │  │  webos-viewer/          │  │
-│  │  (Browser Testing)     │  │  (WebOS Production)     │  │
-│  │                        │  │                         │  │
-│  │  - Development         │  │  - Production           │  │
-│  │  - Quick testing       │  │  - WebOS TV App         │  │
-│  │  - DevTools available  │  │  - Stable version       │  │
-│  └────────────────────────┘  └─────────────────────────┘  │
-│            ↓                            ↓                    │
-│    Browser (Chrome/Firefox)      LG WebOS TV                │
-└─────────────────────────────────────────────────────────────┘
-```
-
-## 🎯 Use Cases
-
-### Development Flow
-
-1. Edit code in `webos-viewer/index.html`
-2. Test di browser → `http://192.168.5.12:8081`
-3. If stable, package WebOS app
-4. Deploy IPK to WebOS TV
-
-### Production Flow
-
-1. WebOS TV runs app from Port 8081
-2. Updates via `webos-viewer/index.html`
-3. No need to reinstall IPK (hosted app!)
-4. Just refresh content
-
-## 🔐 Security
-
-Both ports serve same content, but:
-- Port 8080: Development/testing (can have bugs)
-- Port 8081: Production (stable, tested version)
-
-## 📝 Notes
-
-- Kedua port serve file yang sama (`index.html`)
-- Pisahkan port untuk isolasi environment
-- WebOS app hanya load dari port 8081 (production)
-- Browser testing bisa gunakan port 8080 atau 8081
-
----
-
-**Current Status**:
-- ✅ Port 8080 running (Browser Testing)
-- ⏳ Port 8081 setup (WebOS Production)
+- Root README: `../README.md`
+- Backend README: `../backend/README.md`
+- Browser Viewer README: `../browser-viewer/README.md`
+- WebOS App README: `../webos-app/README.md` (for IPK packaging)

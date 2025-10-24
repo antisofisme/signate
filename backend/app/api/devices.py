@@ -396,6 +396,11 @@ def update_device(
         device.device_name = device_data.device_name
     if device_data.status is not None:
         device.status = device_data.status
+    # Update display settings if provided
+    if device_data.rotation is not None:
+        device.rotation = device_data.rotation
+    if device_data.volume_enabled is not None:
+        device.volume_enabled = device_data.volume_enabled
 
     db.commit()
     db.refresh(device)
@@ -528,5 +533,7 @@ def device_heartbeat(
         device_id=device.id,
         status=device.status,
         last_seen=device.last_seen,
-        message="Heartbeat recorded successfully"
+        message="Heartbeat recorded successfully",
+        rotation=device.rotation,
+        volume_enabled=device.volume_enabled
     )
