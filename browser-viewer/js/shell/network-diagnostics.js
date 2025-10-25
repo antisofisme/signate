@@ -129,30 +129,58 @@ window.ShellNetworkDiagnostics = {
 
     /**
      * Test download speed
-     * Downloads a dummy file and measures transfer rate
+     * Downloads data from public CDN to measure real internet speed
      */
     testDownloadSpeed: async function() {
-        const state = window.ShellState;
+        this.sendDirectLog('info', '[Shell/Network] Testing download speed from internet...');
 
-        this.sendDirectLog('info', '[Shell/Network] Testing download speed...');
-
-        // Use backend health endpoint with cache-busting
-        // We'll measure how fast we can download multiple requests
-        const startTime = performance.now();
+        const testDurationSeconds = 5; // Test for 5 seconds
+        const chunkSize = 1024 * 1024; // 1MB chunks
         let totalBytes = 0;
+        const startTime = performance.now();
 
         try {
-            // Make 5 parallel requests to simulate download
-            const requests = Array(5).fill().map(async () => {
-                const response = await fetch(`${state.API_BASE_URL}/health?t=${Date.now()}`, {
-                    cache: 'no-cache'
-                });
-                const text = await response.text();
-                return text.length;
-            });
+            // Use Cloudflare speed test endpoint or Google's public CDN
+            // These are reliable public endpoints for speed testing
+            const testUrls = [
+                'https://speed.cloudflare.com/__down?bytes=1000000', // Cloudflare speed test
+                'https://www.google.com/images/branding/googlelogo/2x/googlelogo_color_272x92dp.png', // Google CDN fallback
+            ];
 
-            const sizes = await Promise.all(requests);
-            totalBytes = sizes.reduce((a, b) => a + b, 0);
+            let testUrl = testUrls[0];
+
+            // Download repeatedly until test duration is reached
+            while ((performance.now() - startTime) / 1000 < testDurationSeconds) {
+                const chunkStart = performance.now();
+
+                try {
+                    const response = await fetch(testUrl + '&nocache=' + Date.now(), {
+                        method: 'GET',
+                        cache: 'no-cache',
+                        mode: 'cors'
+                    });
+
+                    if (!response.ok && testUrl === testUrls[0]) {
+                        // Fallback to Google CDN if Cloudflare fails
+                        testUrl = testUrls[1];
+                        continue;
+                    }
+
+                    const blob = await response.blob();
+                    totalBytes += blob.size;
+
+                    // Small delay to prevent overwhelming the connection
+                    await new Promise(resolve => setTimeout(resolve, 50));
+
+                } catch (fetchError) {
+                    // If first URL fails, try fallback
+                    if (testUrl === testUrls[0]) {
+                        testUrl = testUrls[1];
+                    } else {
+                        throw fetchError;
+                    }
+                }
+            }
 
             const endTime = performance.now();
             const durationSeconds = (endTime - startTime) / 1000;
@@ -165,50 +193,67 @@ window.ShellNetworkDiagnostics = {
                 mbps: mbps
             };
         } catch (error) {
-            this.sendDirectLog('error', `[Shell/Network] Download speed test failed: ${error.message}`);
+            this.sendDirectLog('error', `[Shell/Network] ❌ Download speed test failed: ${error.message}`);
             return { bytes: 0, duration: 0, mbps: 0 };
         }
     },
 
     /**
      * Test upload speed
-     * Sends dummy data to backend and measures transfer rate
+     * Uploads dummy data to backend to measure upload speed
      */
     testUploadSpeed: async function() {
         const state = window.ShellState;
 
         this.sendDirectLog('info', '[Shell/Network] Testing upload speed...');
 
-        // Create dummy data to upload (100 KB)
-        const testData = 'x'.repeat(100 * 1024);
+        const testDurationSeconds = 5; // Test for 5 seconds
+        let totalBytes = 0;
         const startTime = performance.now();
 
         try {
-            // We'll use the heartbeat endpoint as it accepts POST
-            // This is just for speed testing, actual data doesn't matter
-            const response = await fetch(`${state.API_BASE_URL}/api/devices/heartbeat`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    device_id: state.deviceId || 0,
-                    device_type: 'monitor',
-                    test_data: testData // Add dummy data for upload test
-                })
-            });
+            // Create dummy data chunks (100KB each)
+            const chunkSize = 100 * 1024;
+
+            // Upload repeatedly until test duration is reached
+            while ((performance.now() - startTime) / 1000 < testDurationSeconds) {
+                const testData = new ArrayBuffer(chunkSize);
+                const view = new Uint8Array(testData);
+
+                // Fill with random data
+                for (let i = 0; i < view.length; i++) {
+                    view[i] = Math.floor(Math.random() * 256);
+                }
+
+                const uploadStart = performance.now();
+
+                // Upload to backend speedtest endpoint
+                const response = await fetch(`${state.API_BASE_URL}/api/speedtest/upload`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/octet-stream' },
+                    body: testData
+                });
+
+                if (response.ok) {
+                    totalBytes += chunkSize;
+                }
+
+                // Small delay to prevent overwhelming the connection
+                await new Promise(resolve => setTimeout(resolve, 50));
+            }
 
             const endTime = performance.now();
             const durationSeconds = (endTime - startTime) / 1000;
-            const bytes = testData.length;
-            const bytesPerSecond = bytes / durationSeconds;
+            const bytesPerSecond = totalBytes / durationSeconds;
             const mbps = (bytesPerSecond * 8) / (1024 * 1024); // Convert to Mbps
 
             return {
-                bytes: bytes,
+                bytes: totalBytes,
                 duration: durationSeconds,
                 mbps: mbps
             };
         } catch (error) {
-            this.sendDirectLog('error', `[Shell/Network] Upload speed test failed: ${error.message}`);
+            this.sendDirectLog('error', `[Shell/Network] ❌ Upload speed test failed: ${error.message}`);
             return { bytes: 0, duration: 0, mbps: 0 };
         }
     },

@@ -46,7 +46,7 @@ if settings.ENABLE_CORS:
 # =============================================================================
 # API ROUTERS
 # =============================================================================
-from app.api import auth, devices, content, client, tags, logs, websocket
+from app.api import auth, devices, content, client, tags, logs, websocket, speedtest
 
 app.include_router(auth.router, prefix="/api/auth", tags=["Authentication"])
 app.include_router(devices.router, prefix="/api/devices", tags=["Devices"])
@@ -55,6 +55,7 @@ app.include_router(client.router, prefix="/api/client", tags=["Client"])
 app.include_router(tags.router, prefix="/api/tags", tags=["Tags"])
 app.include_router(logs.router, prefix="/api", tags=["Device Logs"])
 app.include_router(websocket.router, prefix="/api", tags=["WebSocket"])
+app.include_router(speedtest.router, tags=["Speed Test"])
 
 # =============================================================================
 # ROOT ENDPOINTS
