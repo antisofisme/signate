@@ -144,7 +144,7 @@ window.ShellNetworkDiagnostics = {
         try {
             // Make 5 parallel requests to simulate download
             const requests = Array(5).fill().map(async () => {
-                const response = await fetch(`${state.API_BASE_URL}/api/health?t=${Date.now()}`, {
+                const response = await fetch(`${state.API_BASE_URL}/health?t=${Date.now()}`, {
                     cache: 'no-cache'
                 });
                 const text = await response.text();
@@ -277,7 +277,7 @@ window.ShellNetworkDiagnostics = {
         const startTime = performance.now();
 
         try {
-            const response = await fetch(`${state.API_BASE_URL}/api/health`, {
+            const response = await fetch(`${state.API_BASE_URL}/health`, {
                 method: 'GET',
                 cache: 'no-cache'
             });
