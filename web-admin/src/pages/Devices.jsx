@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useCallback } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { devicesAPI } from '../services/api'
 import { Tv } from 'lucide-react'
@@ -8,6 +8,7 @@ import toast, { Toaster } from 'react-hot-toast'
 import TVRegisterModal from '../components/devices/modals/TVRegisterModal'
 import AssignContentModal from '../components/devices/modals/AssignContentModal'
 import DeviceInfoModal from '../components/devices/modals/DeviceInfoModal'
+import Button from '../components/shared/Button'
 import DeviceEditModal from '../components/devices/modals/DeviceEditModal'
 import DeviceLogsModal from '../components/devices/modals/DeviceLogsModal'
 import PendingDeviceCard from '../components/devices/PendingDeviceCard'
@@ -87,26 +88,31 @@ export default function Devices() {
     }
   })
 
-  const handleApprove = (deviceId) => {
+  const handleApprove = useCallback((deviceId) => {
     updateDeviceMutation.mutate({
       id: deviceId,
       data: { status: 'active' }
     })
-  }
+  }, [updateDeviceMutation])
 
-  const handleRowClick = (device) => {
+  const handleRowClick = useCallback((device) => {
     setSelectedDevice(device)
     setShowContentModal(true)
-  }
+  }, [])
 
-  const handleEdit = (device) => {
+  const handleEdit = useCallback((device) => {
     setSelectedDevice(device)
     setShowDeviceEditModal(true)
-  }
+  }, [])
 
-  const handleDelete = (deviceId) => {
+  const handleDelete = useCallback((deviceId) => {
     deleteDeviceMutation.mutate(deviceId)
-  }
+  }, [deleteDeviceMutation])
+
+  const handleViewLogs = useCallback((device) => {
+    setSelectedDevice(device)
+    setShowLogsModal(true)
+  }, [])
 
   const pendingDevices = devicesData?.devices?.filter(d => d.status === 'pending') || []
   const activeDevices = devicesData?.devices?.filter(d => d.status === 'active') || []
@@ -120,13 +126,13 @@ export default function Devices() {
       <div className="sticky top-0 z-50 bg-white pb-4 mb-4 border-b border-gray-200 px-6">
         <div className="flex items-center justify-between pt-4">
           <h1 className="text-3xl font-bold text-gray-800">Devices</h1>
-          <button
+          <Button
             onClick={() => setShowTVForm(true)}
-            className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+            variant="primary"
+            leftIcon={<Tv className="w-5 h-5" />}
           >
-            <Tv className="w-5 h-5 mr-2" />
             Register TV
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -188,10 +194,7 @@ export default function Devices() {
                 onEdit={handleEdit}
                 onDelete={handleDelete}
                 onActivate={handleApprove}
-                onViewLogs={(device) => {
-                  setSelectedDevice(device)
-                  setShowLogsModal(true)
-                }}
+                onViewLogs={handleViewLogs}
               />
             ))}
           </tbody>
@@ -233,10 +236,7 @@ export default function Devices() {
                   onEdit={handleEdit}
                   onDelete={handleDelete}
                   onActivate={handleApprove}
-                  onViewLogs={(device) => {
-                    setSelectedDevice(device)
-                    setShowLogsModal(true)
-                  }}
+                  onViewLogs={handleViewLogs}
                 />
               ))}
             </tbody>

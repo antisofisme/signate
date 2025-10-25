@@ -1,8 +1,10 @@
+import { memo } from 'react'
 import { Monitor, Tv, CheckCircle, Edit, Trash2, FileText } from 'lucide-react'
 
 /**
  * DeviceTableRow Component
  * Displays a single device row in the devices table
+ * Memoized to prevent unnecessary re-renders in large device lists
  *
  * Features:
  * - Device ID, name, type, IP/code, status, last seen
@@ -20,7 +22,7 @@ import { Monitor, Tv, CheckCircle, Edit, Trash2, FileText } from 'lucide-react'
  * @param {Function} onActivate - Callback when activate button is clicked (pending only)
  * @param {Function} onViewLogs - Callback when view logs button is clicked
  */
-export default function DeviceTableRow({
+function DeviceTableRow({
   device,
   onRowClick,
   onEdit,
@@ -152,3 +154,5 @@ export default function DeviceTableRow({
     </tr>
   )
 }
+
+export default memo(DeviceTableRow)

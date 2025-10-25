@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef } from 'react'
 import { X, Trash2, Download } from 'lucide-react'
 import { devicesAPI } from '../../../services/api'
+import { showToast } from '../../../utils/toast'
+import { Modal, Button } from '../../shared'
 
 /**
  * DeviceLogsModal Component
@@ -159,10 +161,10 @@ export default function DeviceLogsModal({ device, onClose }) {
         reason: 'Manual speed test triggered from web admin'
       })
 
-      alert('Speed test command queued successfully. Check logs in a few seconds for results.')
+      showToast.success('Speed test command queued successfully. Check logs in a few seconds for results.')
     } catch (error) {
       console.error('Failed to queue speed test command:', error)
-      alert(`Failed to run speed test: ${error.response?.data?.detail || error.message}`)
+      showToast.error(`Failed to run speed test: ${error.response?.data?.detail || error.message}`)
     }
   }
 
@@ -171,17 +173,17 @@ export default function DeviceLogsModal({ device, onClose }) {
       try {
         await devicesAPI.deleteLogs(device.id)
         setLogs([])
-        alert('Logs cleared successfully')
+        showToast.success('Logs cleared successfully')
       } catch (error) {
         console.error('Failed to clear logs:', error)
 
         // Show specific error message
         if (error.response?.status === 401) {
-          alert('Session expired. Please login again.')
+          showToast.error('Session expired. Please login again.')
         } else if (error.response?.status === 403) {
-          alert('You do not have permission to clear logs')
+          showToast.error('You do not have permission to clear logs')
         } else {
-          alert(`Failed to clear logs: ${error.response?.data?.detail || error.message}`)
+          showToast.error(`Failed to clear logs: ${error.response?.data?.detail || error.message}`)
         }
       }
     }
@@ -211,108 +213,125 @@ export default function DeviceLogsModal({ device, onClose }) {
   }
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] flex flex-col">
-        <div className="flex justify-between items-center p-6 border-b">
-          <div>
-            <h2 className="text-2xl font-bold">Device Logs</h2>
-            <p className="text-gray-600 mt-1">{device.device_name} (ID: {device.id})</p>
-            <div className="flex items-center gap-2 mt-2">
-              <div className={`w-3 h-3 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`}></div>
-              <span className="text-sm text-gray-600">{connectionStatus}</span>
-            </div>
-          </div>
-          <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
-            <X className="w-6 h-6" />
-          </button>
-        </div>
-
-        <div className="flex items-center justify-between p-4 border-b bg-gray-50">
-          <div className="flex items-center gap-4">
-            <span className="text-sm font-medium text-gray-700">Filter:</span>
-            {['all', 'log', 'info', 'warn', 'error'].map(level => {
-              const count = getLogCount(level)
-              return (
-                <button
-                  key={level}
-                  onClick={() => setSelectedLevel(level)}
-                  className={`inline-flex items-baseline gap-1 px-3 py-1 rounded text-sm font-medium transition-colors ${
-                    selectedLevel === level ? 'bg-blue-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-100'
-                  }`}
-                >
-                  <span>{level.toUpperCase()}</span>
-                  <span className={`px-1.5 rounded-full text-xs font-bold leading-tight -translate-y-2 ${
-                    selectedLevel === level
-                      ? 'bg-red-500 text-white'
-                      : 'bg-gray-500 text-white'
-                  }`}>
-                    {count}
-                  </span>
-                </button>
-              )
-            })}
+    <Modal
+      isOpen={true}
+      onClose={onClose}
+      size="4xl"
+      showCloseButton={false}
+      bodyClassName="flex-1 overflow-hidden flex flex-col p-0"
+    >
+      {/* Custom Header - Fixed */}
+      <div className="flex justify-between items-center p-6 bg-white border-b flex-shrink-0">
+        <div>
+          <h2 className="text-2xl font-bold">Device Logs</h2>
+          <p className="text-gray-600 mt-1">{device.device_name} (ID: {device.id})</p>
+          <div className="flex items-center gap-2 mt-2">
+            <div className={`w-3 h-3 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`}></div>
+            <span className="text-sm text-gray-600">{connectionStatus}</span>
           </div>
         </div>
+        <button
+          onClick={onClose}
+          className="text-gray-400 hover:text-gray-600 transition-colors p-1 rounded-lg hover:bg-gray-100"
+          aria-label="Close modal"
+        >
+          <X className="w-6 h-6" />
+        </button>
+      </div>
 
-        <div className="flex-1 overflow-y-auto p-4 bg-gray-900 text-gray-100 font-mono text-sm">
-          {filteredLogs.length === 0 ? (
-            <div className="text-center text-gray-500 py-8">
-              {logs.length === 0 ? 'Waiting for logs...' : 'No logs matching filter'}
-            </div>
-          ) : (
-            filteredLogs.map((log, index) => (
-              <div key={log.id || index} className="mb-2 flex items-start gap-3 hover:bg-gray-800 p-2 rounded">
-                <span className="text-gray-500 text-xs whitespace-nowrap">
-                  {formatLocalTime(log.timestamp)}
+      {/* Filter Section - Fixed */}
+      <div className="flex items-center justify-between p-4 border-b bg-gray-50 flex-shrink-0">
+        <div className="flex items-center gap-4">
+          <span className="text-sm font-medium text-gray-700">Filter:</span>
+          {['all', 'log', 'info', 'warn', 'error'].map(level => {
+            const count = getLogCount(level)
+            return (
+              <button
+                key={level}
+                onClick={() => setSelectedLevel(level)}
+                className={`inline-flex items-baseline gap-1 px-3 py-1 rounded text-sm font-medium transition-colors ${
+                  selectedLevel === level ? 'bg-blue-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-100'
+                }`}
+              >
+                <span>{level.toUpperCase()}</span>
+                <span className={`px-1.5 rounded-full text-xs font-bold leading-tight -translate-y-2 ${
+                  selectedLevel === level
+                    ? 'bg-red-500 text-white'
+                    : 'bg-gray-500 text-white'
+                }`}>
+                  {count}
                 </span>
-                <span className={`px-2 py-0.5 rounded text-xs font-bold ${getLogLevelColor(log.log_level)}`}>
-                  {log.log_level.toUpperCase()}
-                </span>
-                {log.source && (
-                  <span className="text-purple-400 text-xs">[{log.source}]</span>
-                )}
-                <span className="flex-1 break-words">{log.message}</span>
-              </div>
-            ))
-          )}
-          <div ref={logsEndRef} />
+              </button>
+            )
+          })}
         </div>
+      </div>
 
-        <div className="p-4 border-t bg-gray-50">
-          <div className="flex justify-between items-center mb-3">
-            <span className="text-sm text-gray-600">Total logs: {logs.length} | Filtered: {filteredLogs.length}</span>
-            <span className="text-xs text-gray-600">Real-time streaming via WebSocket</span>
+      {/* Logs View - Scrollable */}
+      <div className="flex-1 overflow-y-auto p-4 bg-gray-900 text-gray-100 font-mono text-sm">
+        {filteredLogs.length === 0 ? (
+          <div className="text-center text-gray-500 py-8">
+            {logs.length === 0 ? 'Waiting for logs...' : 'No logs matching filter'}
           </div>
-          <div className="flex items-center justify-end gap-2">
-            <button
-              onClick={handleRunSpeedTest}
-              className="flex items-center gap-2 px-3 py-1.5 bg-green-600 text-white rounded hover:bg-green-700 text-sm"
-              disabled={device.status !== 'active'}
-              title={device.status !== 'active' ? 'Device must be active to run speed test' : 'Run network speed test'}
-            >
+        ) : (
+          filteredLogs.map((log, index) => (
+            <div key={log.id || index} className="mb-2 flex items-start gap-3 hover:bg-gray-800 p-2 rounded">
+              <span className="text-gray-500 text-xs whitespace-nowrap">
+                {formatLocalTime(log.timestamp)}
+              </span>
+              <span className={`px-2 py-0.5 rounded text-xs font-bold ${getLogLevelColor(log.log_level)}`}>
+                {log.log_level.toUpperCase()}
+              </span>
+              {log.source && (
+                <span className="text-purple-400 text-xs">[{log.source}]</span>
+              )}
+              <span className="flex-1 break-words">{log.message}</span>
+            </div>
+          ))
+        )}
+        <div ref={logsEndRef} />
+      </div>
+
+      {/* Footer - Fixed */}
+      <div className="p-4 border-t bg-gray-50 flex-shrink-0">
+        <div className="flex justify-between items-center mb-3">
+          <span className="text-sm text-gray-600">Total logs: {logs.length} | Filtered: {filteredLogs.length}</span>
+          <span className="text-xs text-gray-600">Real-time streaming via WebSocket</span>
+        </div>
+        <div className="flex items-center justify-end gap-2">
+          <Button
+            onClick={handleRunSpeedTest}
+            variant="success"
+            size="sm"
+            disabled={device.status !== 'active'}
+            title={device.status !== 'active' ? 'Device must be active to run speed test' : 'Run network speed test'}
+            leftIcon={
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
               </svg>
-              Speed Test
-            </button>
-            <button
-              onClick={handleExportLogs}
-              className="flex items-center gap-2 px-3 py-1.5 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm"
-              disabled={filteredLogs.length === 0}
-            >
-              <Download className="w-4 h-4" />
-              Export
-            </button>
-            <button
-              onClick={handleClearLogs}
-              className="flex items-center gap-2 px-3 py-1.5 bg-red-600 text-white rounded hover:bg-red-700 text-sm"
-            >
-              <Trash2 className="w-4 h-4" />
-              Clear
-            </button>
-          </div>
+            }
+          >
+            Speed Test
+          </Button>
+          <Button
+            onClick={handleExportLogs}
+            variant="primary"
+            size="sm"
+            disabled={filteredLogs.length === 0}
+            leftIcon={<Download className="w-4 h-4" />}
+          >
+            Export
+          </Button>
+          <Button
+            onClick={handleClearLogs}
+            variant="danger"
+            size="sm"
+            leftIcon={<Trash2 className="w-4 h-4" />}
+          >
+            Clear
+          </Button>
         </div>
       </div>
-    </div>
+    </Modal>
   )
 }

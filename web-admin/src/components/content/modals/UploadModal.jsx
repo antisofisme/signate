@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { contentAPI } from '../../../services/api'
+import { showToast } from '../../../utils/toast'
+import { Modal, ModalFooter, Button, FormInput } from '../../shared'
 
 /**
  * UploadModal Component
@@ -35,7 +37,7 @@ export default function UploadModal({ onClose, onSubmit }) {
   const handleBulkUpload = async (e) => {
     e.preventDefault()
     if (files.length === 0) {
-      alert('Please select at least one file')
+      showToast.warning('Please select at least one file')
       return
     }
 
@@ -91,8 +93,14 @@ export default function UploadModal({ onClose, onSubmit }) {
 
     setUploading(false)
 
-    // Show summary
-    alert(`Upload complete!\n✅ Success: ${successCount}\n❌ Failed: ${failCount}`)
+    // Show summary based on results
+    if (failCount === 0) {
+      showToast.success(`Upload complete! ✅ ${successCount} files uploaded`)
+    } else if (successCount === 0) {
+      showToast.error(`Upload failed! ❌ ${failCount} files failed`)
+    } else {
+      showToast.warning(`Upload complete! ✅ ${successCount} success, ❌ ${failCount} failed`)
+    }
 
     if (successCount > 0) {
       onClose()
@@ -100,58 +108,49 @@ export default function UploadModal({ onClose, onSubmit }) {
   }
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-xl p-6 w-full max-w-2xl max-h-[80vh] flex flex-col">
-        <h2 className="text-xl font-bold mb-4">Upload Content</h2>
-
-        <form onSubmit={handleBulkUpload} className="flex-1 flex flex-col space-y-4 overflow-hidden">
+    <Modal isOpen={true} onClose={onClose} title="Upload Content" size="2xl">
+      <form onSubmit={handleBulkUpload} className="space-y-4">
           {/* File Input */}
-          <div>
-            <label className="block text-sm font-medium mb-1">Select Files</label>
-            <input
-              type="file"
-              accept="image/*,video/*"
-              multiple
-              onChange={handleFileSelect}
-              className="w-full px-3 py-2 border rounded-lg"
-              disabled={uploading}
-            />
-            <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-              <p className="text-xs font-semibold text-blue-800 mb-2">📋 Supported File Formats:</p>
-              <div className="text-xs text-blue-700 space-y-1">
-                <div>
-                  <p className="font-semibold mb-1">Images (Recommended):</p>
-                  <p className="ml-3">✅ PNG - Best for graphics, logos, transparent images</p>
-                  <p className="ml-3">✅ JPEG/JPG - Best for photographs</p>
-                  <p className="ml-3">✅ WebP - Modern format with better compression</p>
-                  <p className="ml-3 text-gray-600">⚠️ GIF, BMP, SVG - Supported but may have limitations</p>
-                </div>
-                <div className="mt-2">
-                  <p className="font-semibold mb-1">Videos (Recommended):</p>
-                  <p className="ml-3">✅ MP4 (H.264/AAC) - Best compatibility, max 1920x1080 @ 30fps</p>
-                  <p className="ml-3 text-gray-600">⚠️ WebM, OGV - Supported but browser-dependent</p>
-                </div>
+          <FormInput
+            label="Select Files"
+            type="file"
+            accept="image/*,video/*"
+            multiple
+            onChange={handleFileSelect}
+            disabled={uploading}
+          />
+          <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+            <p className="text-xs font-semibold text-blue-800 mb-2">📋 Supported File Formats:</p>
+            <div className="text-xs text-blue-700 space-y-1">
+              <div>
+                <p className="font-semibold mb-1">Images (Recommended):</p>
+                <p className="ml-3">✅ PNG - Best for graphics, logos, transparent images</p>
+                <p className="ml-3">✅ JPEG/JPG - Best for photographs</p>
+                <p className="ml-3">✅ WebP - Modern format with better compression</p>
+                <p className="ml-3 text-gray-600">⚠️ GIF, BMP, SVG - Supported but may have limitations</p>
               </div>
-              <div className="mt-2 pt-2 border-t border-blue-200">
-                <p className="text-xs text-gray-700">💡 You can select multiple files to upload at once</p>
-                <p className="text-xs text-gray-700">📏 Recommended: Images &lt;5MB, Videos &lt;100MB</p>
+              <div className="mt-2">
+                <p className="font-semibold mb-1">Videos (Recommended):</p>
+                <p className="ml-3">✅ MP4 (H.264/AAC) - Best compatibility, max 1920x1080 @ 30fps</p>
+                <p className="ml-3 text-gray-600">⚠️ WebM, OGV - Supported but browser-dependent</p>
               </div>
+            </div>
+            <div className="mt-2 pt-2 border-t border-blue-200">
+              <p className="text-xs text-gray-700">💡 You can select multiple files to upload at once</p>
+              <p className="text-xs text-gray-700">📏 Recommended: Images &lt;5MB, Videos &lt;100MB</p>
             </div>
           </div>
 
           {/* Duration Setting */}
-          <div>
-            <label className="block text-sm font-medium mb-1">Default Duration (seconds)</label>
-            <input
-              type="number"
-              value={duration}
-              onChange={(e) => setDuration(parseInt(e.target.value))}
-              className="w-full px-3 py-2 border rounded-lg"
-              min={1}
-              disabled={uploading}
-            />
-            <p className="text-xs text-gray-500 mt-1">This duration will be applied to all files</p>
-          </div>
+          <FormInput
+            label="Default Duration (seconds)"
+            type="number"
+            value={duration}
+            onChange={(e) => setDuration(parseInt(e.target.value))}
+            min={1}
+            disabled={uploading}
+            description="This duration will be applied to all files"
+          />
 
           {/* File List */}
           {files.length > 0 && (
@@ -191,26 +190,27 @@ export default function UploadModal({ onClose, onSubmit }) {
             </div>
           )}
 
-          {/* Action Buttons */}
-          <div className="flex gap-3 pt-2">
-            <button
-              type="submit"
-              disabled={uploading || files.length === 0}
-              className="flex-1 bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
-            >
-              {uploading ? 'Uploading...' : `Upload ${files.length} File(s)`}
-            </button>
-            <button
-              type="button"
-              onClick={onClose}
-              disabled={uploading}
-              className="flex-1 bg-gray-200 py-2 rounded-lg hover:bg-gray-300 disabled:bg-gray-100 disabled:cursor-not-allowed"
-            >
-              {uploading ? 'Please wait...' : 'Cancel'}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
+        {/* Action Buttons */}
+        <ModalFooter align="right">
+          <Button
+            type="button"
+            onClick={onClose}
+            disabled={uploading}
+            variant="secondary"
+            className="flex-1"
+          >
+            {uploading ? 'Please wait...' : 'Cancel'}
+          </Button>
+          <Button
+            type="submit"
+            disabled={uploading || files.length === 0}
+            variant="primary"
+            className="flex-1"
+          >
+            {uploading ? 'Uploading...' : `Upload ${files.length} File(s)`}
+          </Button>
+        </ModalFooter>
+      </form>
+    </Modal>
   )
 }

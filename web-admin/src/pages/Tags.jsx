@@ -2,6 +2,8 @@ import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { tagsAPI, devicesAPI } from '../services/api'
 import { Tag, Plus, Trash2, Edit2, Users } from 'lucide-react'
+import { showToast } from '../utils/toast'
+import { Button } from '../components/shared'
 
 // Modal Components
 import TagFormModal from '../components/tags/modals/TagFormModal'
@@ -26,10 +28,10 @@ export default function Tags() {
     onSuccess: () => {
       queryClient.invalidateQueries(['tags'])
       setShowCreateForm(false)
-      alert('Tag created successfully!')
+      showToast.success('Tag created successfully!')
     },
     onError: (error) => {
-      alert(error.response?.data?.detail || 'Create failed')
+      showToast.error(error.response?.data?.detail || 'Create failed')
     }
   })
 
@@ -40,10 +42,10 @@ export default function Tags() {
       queryClient.invalidateQueries(['tags'])
       setShowEditForm(false)
       setSelectedTag(null)
-      alert('Tag updated successfully!')
+      showToast.success('Tag updated successfully!')
     },
     onError: (error) => {
-      alert(error.response?.data?.detail || 'Update failed')
+      showToast.error(error.response?.data?.detail || 'Update failed')
     }
   })
 
@@ -52,7 +54,7 @@ export default function Tags() {
     mutationFn: tagsAPI.delete,
     onSuccess: () => {
       queryClient.invalidateQueries(['tags'])
-      alert('Tag deleted successfully!')
+      showToast.success('Tag deleted successfully!')
     },
   })
 
@@ -71,13 +73,13 @@ export default function Tags() {
       <div className="sticky top-0 z-50 bg-white pb-4 mb-4 border-b border-gray-200 px-6">
         <div className="flex items-center justify-between pt-4">
           <h1 className="text-3xl font-bold text-gray-800">Tags</h1>
-          <button
+          <Button
+            variant="primary"
+            leftIcon={<Plus className="w-5 h-5" />}
             onClick={() => setShowCreateForm(true)}
-            className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
           >
-            <Plus className="w-5 h-5 mr-2" />
             Create Tag
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -110,29 +112,33 @@ export default function Tags() {
 
             {/* Actions */}
             <div className="flex gap-2">
-              <button
+              <Button
+                variant="success"
+                size="sm"
+                leftIcon={<Users className="w-4 h-4" />}
                 onClick={() => handleAssign(tag)}
-                className="flex-1 flex items-center justify-center px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm"
+                className="flex-1"
               >
-                <Users className="w-4 h-4 mr-1" />
                 Assign
-              </button>
-              <button
+              </Button>
+              <Button
+                variant="warning"
+                size="sm"
                 onClick={() => handleEdit(tag)}
-                className="px-3 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700"
               >
                 <Edit2 className="w-4 h-4" />
-              </button>
-              <button
+              </Button>
+              <Button
+                variant="danger"
+                size="sm"
                 onClick={() => {
                   if (confirm('Delete this tag?')) {
                     deleteMutation.mutate(tag.id)
                   }
                 }}
-                className="px-3 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
               >
                 <Trash2 className="w-4 h-4" />
-              </button>
+              </Button>
             </div>
           </div>
         ))}

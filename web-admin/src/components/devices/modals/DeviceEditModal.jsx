@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
-import { Tv, Monitor, Save, RefreshCw, Unlock } from 'lucide-react'
+import { Tv, Monitor, Save, RefreshCw, Unlock, X } from 'lucide-react'
 import { devicesAPI } from '../../../services/api'
 import toast from 'react-hot-toast'
+import { Modal, ModalFooter, Button, FormInput } from '../../shared'
 
 /**
  * DeviceEditModal Component
@@ -150,29 +151,39 @@ export default function DeviceEditModal({ device, onClose, onSave }) {
   }
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
-        {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b bg-gradient-to-r from-blue-50 to-purple-50">
-          <div className="flex items-center">
-            {device.device_uuid ? (
-              <Tv className="w-6 h-6 text-blue-600 mr-3" />
-            ) : (
-              <Monitor className="w-6 h-6 text-green-600 mr-3" />
-            )}
-            <h2 className="text-2xl font-bold text-gray-800">Edit Device Settings</h2>
-          </div>
-          <button onClick={onClose} className="text-gray-500 hover:text-gray-700 text-2xl">
-            ✕
-          </button>
+    <Modal
+      isOpen={true}
+      onClose={onClose}
+      size="4xl"
+      showCloseButton={false}
+      bodyClassName="flex-1 overflow-hidden flex flex-col p-0"
+    >
+      {/* Custom header with gradient and icon - Fixed */}
+      <div className="flex items-center justify-between p-6 bg-gradient-to-r from-blue-50 to-purple-50 border-b flex-shrink-0">
+        <div className="flex items-center">
+          {device.device_uuid ? (
+            <Tv className="w-6 h-6 text-blue-600 mr-3" />
+          ) : (
+            <Monitor className="w-6 h-6 text-green-600 mr-3" />
+          )}
+          <h2 className="text-2xl font-bold text-gray-800">Edit Device Settings</h2>
         </div>
+        <button
+          onClick={onClose}
+          className="text-gray-400 hover:text-gray-600 transition-colors p-1 rounded-lg hover:bg-gray-100"
+          aria-label="Close modal"
+        >
+          <X className="w-6 h-6" />
+        </button>
+      </div>
 
-        {/* Content */}
-        <div className="p-6 space-y-6">
+      {/* Content - Scrollable */}
+      <div className="flex-1 overflow-y-auto p-6">
+        <div className="space-y-6">
           {/* Device Information Section (Editable) */}
           <div>
-            <h3 className="text-lg font-bold text-gray-800 mb-4">Device Information</h3>
-            <div className="space-y-4 bg-gray-50 rounded-lg p-4">
+            <h3 className="text-xl font-bold text-gray-900 mb-4">Device Information</h3>
+            <div className="space-y-4 bg-gray-50 rounded-lg p-4 border-2 border-gray-200 shadow-sm">
               {/* Device ID (Read-only) */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Device ID</label>
@@ -185,70 +196,57 @@ export default function DeviceEditModal({ device, onClose, onSave }) {
               </div>
 
               {/* Device Name (Editable) */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Device Name</label>
-                <input
-                  type="text"
-                  value={formData.device_name}
-                  onChange={(e) => handleChange('device_name', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  placeholder="Enter device name"
-                />
-              </div>
+              <FormInput
+                label="Device Name"
+                type="text"
+                value={formData.device_name}
+                onChange={(e) => handleChange('device_name', e.target.value)}
+                placeholder="Enter device name"
+              />
 
               {/* Device Type (Read-only) */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Device Type</label>
-                <input
-                  type="text"
-                  value={device.device_type.toUpperCase()}
-                  disabled
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-100 text-gray-600"
-                />
-              </div>
+              <FormInput
+                label="Device Type"
+                type="text"
+                value={device.device_type.toUpperCase()}
+                disabled
+              />
 
               {/* Status (Editable) */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
-                <select
-                  value={formData.status}
-                  onChange={(e) => handleChange('status', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                >
-                  <option value="pending">Pending</option>
-                  <option value="active">Active</option>
-                  <option value="inactive">Inactive</option>
-                </select>
-              </div>
+              <FormInput
+                label="Status"
+                type="select"
+                value={formData.status}
+                onChange={(e) => handleChange('status', e.target.value)}
+                options={[
+                  { value: 'pending', label: 'Pending' },
+                  { value: 'active', label: 'Active' },
+                  { value: 'inactive', label: 'Inactive' }
+                ]}
+              />
 
               {/* IP Address (Read-only) */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">IP Address</label>
-                <input
-                  type="text"
-                  value={device.ip_address || 'N/A'}
-                  disabled
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-100 text-gray-600"
-                />
-              </div>
+              <FormInput
+                label="IP Address"
+                type="text"
+                value={device.ip_address || 'N/A'}
+                disabled
+              />
 
               {/* Last Seen (Read-only) */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Last Seen</label>
-                <input
-                  type="text"
-                  value={device.last_seen ? new Date(device.last_seen).toLocaleString() : 'Never'}
-                  disabled
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-100 text-gray-600"
-                />
-              </div>
+              <FormInput
+                label="Last Seen"
+                type="text"
+                value={device.last_seen ? new Date(device.last_seen).toLocaleString() : 'Never'}
+                disabled
+              />
             </div>
           </div>
 
           {/* Replace with Pending Device Section (Only for Browser Devices) */}
           {(!device.device_uuid || device.device_uuid === '') && (
             <div>
-              <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center">
+              <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center">
                 <RefreshCw className="w-5 h-5 mr-2 text-orange-600" />
                 {device.status === 'inactive' ? 'Reconnect with Pending Viewer' : 'Replace with Pending Device'}
               </h3>
@@ -304,29 +302,24 @@ export default function DeviceEditModal({ device, onClose, onSave }) {
 
           {/* Display Settings Section (Editable) */}
           <div>
-            <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center">
+            <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center">
               🎛️ Display Settings
             </h3>
             <div className="space-y-4 bg-gradient-to-br from-blue-50 to-purple-50 rounded-lg p-4 border-2 border-blue-200">
               {/* Rotation Dropdown */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Screen Rotation
-                </label>
-                <select
-                  value={formData.rotation}
-                  onChange={(e) => handleChange('rotation', parseInt(e.target.value))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
-                >
-                  <option value={0}>0° (Normal)</option>
-                  <option value={90}>90° (Clockwise)</option>
-                  <option value={180}>180° (Upside Down)</option>
-                  <option value={270}>270° (Counter-clockwise)</option>
-                </select>
-                <p className="text-xs text-gray-600 mt-1">
-                  Rotate the display orientation for the viewer
-                </p>
-              </div>
+              <FormInput
+                label="Screen Rotation"
+                type="select"
+                value={formData.rotation}
+                onChange={(e) => handleChange('rotation', parseInt(e.target.value))}
+                options={[
+                  { value: 0, label: '0° (Normal)' },
+                  { value: 90, label: '90° (Clockwise)' },
+                  { value: 180, label: '180° (Upside Down)' },
+                  { value: 270, label: '270° (Counter-clockwise)' }
+                ]}
+                description="Rotate the display orientation for the viewer"
+              />
 
               {/* Volume Toggle */}
               <div>
@@ -366,12 +359,12 @@ export default function DeviceEditModal({ device, onClose, onSave }) {
 
           {/* Display Information Section (Read-only) */}
           <div>
-            <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center">
+            <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center">
               📺 Display Information
             </h3>
-            <div className="space-y-3 bg-gray-50 rounded-lg p-4">
+            <div className="space-y-3 bg-gray-50 rounded-lg p-4 border-2 border-gray-200 shadow-sm">
               <div className="flex items-center">
-                <span className="w-48 font-medium text-gray-700">Screen Resolution:</span>
+                <span className="w-48 font-semibold text-gray-900">Screen Resolution:</span>
                 <span className="text-gray-900">
                   {device.screen_width && device.screen_height
                     ? `${device.screen_width}x${device.screen_height}`
@@ -379,7 +372,7 @@ export default function DeviceEditModal({ device, onClose, onSave }) {
                 </span>
               </div>
               <div className="flex items-center">
-                <span className="w-48 font-medium text-gray-700">Viewport Size:</span>
+                <span className="w-48 font-semibold text-gray-900">Viewport Size:</span>
                 <span className="text-gray-900">
                   {device.viewport_width && device.viewport_height
                     ? `${device.viewport_width}x${device.viewport_height}`
@@ -387,19 +380,19 @@ export default function DeviceEditModal({ device, onClose, onSave }) {
                 </span>
               </div>
               <div className="flex items-center">
-                <span className="w-48 font-medium text-gray-700">Device Pixel Ratio:</span>
+                <span className="w-48 font-semibold text-gray-900">Device Pixel Ratio:</span>
                 <span className="text-gray-900">
                   {device.device_pixel_ratio || 'N/A'}
                 </span>
               </div>
               <div className="flex items-center">
-                <span className="w-48 font-medium text-gray-700">User Agent:</span>
+                <span className="w-48 font-semibold text-gray-900">User Agent:</span>
                 <span className="text-gray-900 text-sm break-all">
                   {device.user_agent || 'N/A'}
                 </span>
               </div>
               <div className="flex items-center">
-                <span className="w-48 font-medium text-gray-700">Connection:</span>
+                <span className="w-48 font-semibold text-gray-900">Connection:</span>
                 <span className="text-gray-900">
                   {device.connection_type && device.connection_speed
                     ? `${device.connection_type} (${device.connection_speed}Mbps)`
@@ -409,44 +402,46 @@ export default function DeviceEditModal({ device, onClose, onSave }) {
             </div>
           </div>
         </div>
+      </div>
 
-        {/* Footer */}
-        <div className="flex justify-between p-6 border-t bg-gray-50">
+      {/* Footer - Fixed */}
+      <div className="p-6 border-t bg-gray-50 flex-shrink-0">
+        <ModalFooter align="between">
           {/* Left side - Release button (only for active devices) */}
           <div>
             {device.status === 'active' && (
-              <button
+              <Button
                 onClick={handleRelease}
                 disabled={isReleasing || isSaving}
-                className="px-6 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                variant="warning"
                 title="Release device (reset with new activation code)"
               >
                 <Unlock className="w-4 h-4" />
                 {isReleasing ? 'Releasing...' : 'Release Device'}
-              </button>
+              </Button>
             )}
           </div>
 
           {/* Right side - Cancel and Save buttons */}
           <div className="flex gap-3">
-            <button
+            <Button
               onClick={onClose}
-              className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors"
+              variant="secondary"
               disabled={isSaving || isReleasing}
             >
               Cancel
-            </button>
-            <button
+            </Button>
+            <Button
               onClick={handleSave}
               disabled={isSaving || isReleasing}
-              className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              variant="primary"
             >
               <Save className="w-4 h-4" />
               {isSaving ? 'Saving...' : 'Save Changes'}
-            </button>
+            </Button>
           </div>
-        </div>
+        </ModalFooter>
       </div>
-    </div>
+    </Modal>
   )
 }

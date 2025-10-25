@@ -1,6 +1,8 @@
+import { useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { devicesAPI, contentAPI, tagsAPI } from '../services/api'
 import { Monitor, FileImage, Activity, TrendingUp, Tag, Tv, Wifi, WifiOff } from 'lucide-react'
+import { LoadingSkeleton } from '../components/shared'
 
 export default function Dashboard() {
   const { data: devices, isLoading } = useQuery({
@@ -21,9 +23,7 @@ export default function Dashboard() {
 
   // Helper function to check if device is online
   const isDeviceOnline = (lastSeen) => {
-    console.log('🔍 isDeviceOnline check:', { lastSeen, type: typeof lastSeen })
     if (!lastSeen) {
-      console.log('  ❌ No lastSeen')
       return false
     }
     // Backend sends UTC timestamps without 'Z', add it to ensure correct parsing
@@ -33,47 +33,35 @@ export default function Dashboard() {
     const timeout = 60000 // 60 seconds (2x heartbeat interval of 30s)
     const diff = now - lastSeenTime
     const isOnline = diff < timeout
-    console.log('  📊 Calc:', { utcLastSeen, lastSeenTime, now, diff: `${diff}ms`, timeout: `${timeout}ms`, isOnline })
     return isOnline
   }
 
-  // Calculate stats
-  const devicesList = devices?.devices || []
+  // Memoize devicesList to prevent array recreation on every render
+  const devicesList = useMemo(() => devices?.devices || [], [devices?.devices])
 
-  // Debug: Log raw devices data
-  console.log('📦 Raw devices data:', devices)
-  console.log('📋 Devices list:', devicesList)
-  if (devicesList.length > 0) {
-    console.log('🔍 First device last_seen:', devicesList[0].last_seen, 'Type:', typeof devicesList[0].last_seen)
-  }
+  // Calculate stats - Memoized to prevent recalculation on every render
+  const deviceStats = useMemo(() => {
+    return {
+      tvDevices: devicesList.filter(d => d.device_type === 'tv').length || 0,
+      monitorDevices: devicesList.filter(d => d.device_type === 'monitor').length || 0,
+      activeDevices: devicesList.filter(d => d.status === 'active').length || 0,
+      pendingDevices: devicesList.filter(d => d.status === 'pending').length || 0,
+      onlineDevices: devicesList.filter(d => isDeviceOnline(d.last_seen)).length || 0,
+    }
+  }, [devicesList])
 
-  const tvDevices = devicesList.filter(d => d.device_type === 'tv').length || 0
-  const monitorDevices = devicesList.filter(d => d.device_type === 'monitor').length || 0
-  const activeDevices = devicesList.filter(d => d.status === 'active').length || 0
-  const pendingDevices = devicesList.filter(d => d.status === 'pending').length || 0
-  const onlineDevices = devicesList.filter(d => isDeviceOnline(d.last_seen)).length || 0
-
-  console.log('📊 Calculated stats:', {
-    total: devicesList.length,
-    tvDevices,
-    monitorDevices,
-    activeDevices,
-    pendingDevices,
-    onlineDevices
-  })
-
-  const stats = [
+  const stats = useMemo(() => [
     {
       name: 'Total Devices',
       value: devices?.total || 0,
-      subtitle: `${tvDevices} TVs • ${monitorDevices} Monitors`,
+      subtitle: `${deviceStats.tvDevices} TVs • ${deviceStats.monitorDevices} Monitors`,
       icon: Monitor,
       color: 'blue',
     },
     {
       name: 'Online Devices',
-      value: onlineDevices,
-      subtitle: `${activeDevices} active • ${pendingDevices} pending`,
+      value: deviceStats.onlineDevices,
+      subtitle: `${deviceStats.activeDevices} active • ${deviceStats.pendingDevices} pending`,
       icon: Wifi,
       color: 'green',
     },
@@ -91,7 +79,27 @@ export default function Dashboard() {
       icon: Tag,
       color: 'orange',
     },
-  ]
+  ], [devices?.total, deviceStats, content?.total, content?.items, tags?.total])
+
+  // Show loading skeleton while fetching
+  if (isLoading) {
+    return (
+      <div>
+        <div className="sticky top-0 z-50 bg-white pb-4 mb-4 border-b border-gray-200 px-6">
+          <h1 className="text-3xl font-bold text-gray-800 pt-4">Dashboard</h1>
+        </div>
+
+        {/* Loading Stats */}
+        <LoadingSkeleton variant="stats" count={4} />
+
+        {/* Loading Content */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-8">
+          <LoadingSkeleton variant="list" count={5} />
+          <LoadingSkeleton variant="list" count={5} />
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div>

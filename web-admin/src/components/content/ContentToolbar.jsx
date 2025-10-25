@@ -1,4 +1,5 @@
 import { Upload, CheckSquare, Square, Edit, Tag } from 'lucide-react'
+import { Button } from '../shared'
 
 /**
  * ContentToolbar Component
@@ -43,54 +44,52 @@ export default function ContentToolbar({
             <span className="bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-sm font-medium">
               {selectedCount} selected
             </span>
-            <button
+            <Button
+              variant="ghost"
+              size="sm"
               onClick={onClearSelection}
-              className="text-sm text-gray-600 hover:text-gray-800 underline"
+              className="underline"
             >
               Clear
-            </button>
+            </Button>
           </div>
         )}
         </div>
         <div className="flex items-center gap-3">
         {totalCount > 0 && (
-          <button
+          <Button
+            variant="secondary"
+            leftIcon={selectedCount === totalCount ? <CheckSquare className="w-5 h-5" /> : <Square className="w-5 h-5" />}
             onClick={onToggleSelectAll}
-            className="flex items-center px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300"
           >
-            {selectedCount === totalCount ? (
-              <CheckSquare className="w-5 h-5 mr-2" />
-            ) : (
-              <Square className="w-5 h-5 mr-2" />
-            )}
             {selectedCount === totalCount ? 'Deselect All' : 'Select All'}
-          </button>
+          </Button>
         )}
         {selectedCount > 0 && (
           <>
-            <button
+            <Button
+              variant="warning"
+              leftIcon={<Edit className="w-5 h-5" />}
               onClick={onBulkEdit}
-              className="flex items-center px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
             >
-              <Edit className="w-5 h-5 mr-2" />
               Bulk Edit ({selectedCount})
-            </button>
-            <button
+            </Button>
+            <Button
+              variant="success"
+              leftIcon={<Tag className="w-5 h-5" />}
               onClick={onBulkTag}
-              className="flex items-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
             >
-              <Tag className="w-5 h-5 mr-2" />
               Bulk Tag ({selectedCount})
-            </button>
+            </Button>
           </>
         )}
-        <button
+        <Button
+          variant="primary"
+          leftIcon={<Upload className="w-5 h-5" />}
           onClick={onUpload}
-          className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
         >
-          <Upload className="w-5 h-5 mr-2" />
           Upload Content
-        </button>
+        </Button>
         </div>
       </div>
     </div>

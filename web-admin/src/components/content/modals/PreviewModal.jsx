@@ -1,21 +1,22 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
+import { X } from 'lucide-react'
 import { contentAPI, devicesAPI, tagsAPI } from '../../../services/api'
+import { API_BASE_URL } from '../../../utils/constants'
+import { Modal, ModalFooter, Button } from '../../shared'
 
 /**
  * Helper function to get proxy image URL
  */
 const getImageUrl = (content) => {
-  const baseUrl = import.meta.env.VITE_API_URL || 'http://192.168.5.12:8001'
-  return `${baseUrl}/api/content/${content.id}/image`
+  return `${API_BASE_URL}/api/content/${content.id}/image`
 }
 
 /**
  * Helper function to get proxy video URL
  */
 const getVideoUrl = (content) => {
-  const baseUrl = import.meta.env.VITE_API_URL || 'http://192.168.5.12:8001'
-  return `${baseUrl}/api/content/${content.id}/video`
+  return `${API_BASE_URL}/api/content/${content.id}/video`
 }
 
 /**
@@ -149,32 +150,32 @@ export default function PreviewModal({ content, onClose }) {
   })
 
   return (
-    <div
-      className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4"
-      onClick={onClose}
+    <Modal
+      isOpen={true}
+      onClose={onClose}
+      size="4xl"
+      showCloseButton={false}
+      bodyClassName="flex-1 overflow-hidden flex flex-col p-0"
     >
-      <div
-        className="bg-white rounded-xl max-w-4xl w-full max-h-[90vh] overflow-auto"
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* Header */}
-        <div className="sticky top-0 bg-white border-b px-6 py-4 flex items-center justify-between">
-          <div>
-            <h2 className="text-2xl font-bold text-gray-800">{content.title}</h2>
-            <p className="text-sm text-gray-600 mt-1">
-              {content.content_type.toUpperCase()} • {content.duration}s • {content.is_active ? 'Active' : 'Inactive'}
-            </p>
-          </div>
-          <button
-            onClick={onClose}
-            className="text-gray-500 hover:text-gray-700 text-3xl leading-none"
-          >
-            ×
-          </button>
+      {/* Custom Header - Fixed */}
+      <div className="flex items-center justify-between px-6 py-4 bg-white border-b flex-shrink-0">
+        <div>
+          <h2 className="text-2xl font-bold text-gray-800">{content.title}</h2>
+          <p className="text-sm text-gray-600 mt-1">
+            {content.content_type.toUpperCase()} • {content.duration}s • {content.is_active ? 'Active' : 'Inactive'}
+          </p>
         </div>
+        <button
+          onClick={onClose}
+          className="text-gray-400 hover:text-gray-600 transition-colors p-1 rounded-lg hover:bg-gray-100"
+          aria-label="Close modal"
+        >
+          <X className="w-6 h-6" />
+        </button>
+      </div>
 
-        {/* Content Preview */}
-        <div className="p-6">
+      {/* Content Preview - Scrollable */}
+      <div className="flex-1 overflow-y-auto p-6">
           {/* Media Display */}
           <div className="mb-6">
             {content.content_type === 'image' ? (
@@ -352,18 +353,16 @@ export default function PreviewModal({ content, onClose }) {
               )}
             </div>
           </div>
-        </div>
-
-        {/* Footer Actions */}
-        <div className="sticky bottom-0 bg-gray-50 border-t px-6 py-4">
-          <button
-            onClick={onClose}
-            className="w-full bg-gray-200 hover:bg-gray-300 text-gray-800 py-2 px-4 rounded-lg font-medium"
-          >
-            Close
-          </button>
-        </div>
       </div>
-    </div>
+
+      {/* Footer Actions - Fixed */}
+      <div className="p-6 border-t bg-gray-50 flex-shrink-0">
+        <ModalFooter align="center">
+          <Button onClick={onClose} variant="secondary" className="w-full">
+            Close
+          </Button>
+        </ModalFooter>
+      </div>
+    </Modal>
   )
 }

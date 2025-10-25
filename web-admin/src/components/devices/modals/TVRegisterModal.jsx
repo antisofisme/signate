@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Modal, ModalFooter, Button, FormInput } from '../../shared'
 
 /**
  * TVRegisterModal Component
@@ -27,55 +28,46 @@ export default function TVRegisterModal({ onClose, onSubmit }) {
   }
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-xl p-6 w-full max-w-md">
-        <h2 className="text-xl font-bold mb-4">Register TV</h2>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium mb-1">Device Name</label>
-            <input
-              type="text"
-              value={formData.device_name}
-              onChange={(e) => setFormData({...formData, device_name: e.target.value})}
-              className="w-full px-3 py-2 border rounded-lg"
-              required
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">IP Address</label>
-            <input
-              type="text"
-              value={formData.ip_address}
-              onChange={(e) => setFormData({...formData, ip_address: e.target.value})}
-              className="w-full px-3 py-2 border rounded-lg"
-              placeholder="192.168.1.100"
-              required
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">Passphrase</label>
-            <input
-              type="text"
-              value={formData.passphrase}
-              onChange={(e) => setFormData({...formData, passphrase: e.target.value})}
-              className="w-full px-3 py-2 border rounded-lg"
-              required
-            />
-          </div>
-          <div className="flex gap-3">
-            <button type="submit" className="flex-1 bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700">
-              Register
-            </button>
-            <button
-              type="button"
-              onClick={onClose}
-              className="flex-1 bg-gray-200 py-2 rounded-lg hover:bg-gray-300"
-            >
-              Cancel
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
+    <Modal
+      isOpen={true}
+      onClose={onClose}
+      title="Register TV"
+      size="md"
+      footer={
+        <ModalFooter>
+          <Button type="button" variant="secondary" onClick={onClose} className="flex-1">
+            Cancel
+          </Button>
+          <Button type="submit" variant="primary" onClick={handleSubmit} className="flex-1">
+            Register
+          </Button>
+        </ModalFooter>
+      }
+    >
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <FormInput
+          label="Device Name"
+          type="text"
+          value={formData.device_name}
+          onChange={(e) => setFormData({...formData, device_name: e.target.value})}
+          required
+        />
+        <FormInput
+          label="IP Address"
+          type="text"
+          value={formData.ip_address}
+          onChange={(e) => setFormData({...formData, ip_address: e.target.value})}
+          placeholder="192.168.1.100"
+          required
+        />
+        <FormInput
+          label="Passphrase"
+          type="text"
+          value={formData.passphrase}
+          onChange={(e) => setFormData({...formData, passphrase: e.target.value})}
+          required
+        />
+      </form>
+    </Modal>
   )
 }

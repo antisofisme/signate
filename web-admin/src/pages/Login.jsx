@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { authAPI } from '../services/api'
 import { Monitor } from 'lucide-react'
+import Button from '../components/shared/Button'
 
 export default function Login({ setIsAuthenticated }) {
   const navigate = useNavigate()
@@ -79,13 +80,16 @@ export default function Login({ setIsAuthenticated }) {
             />
           </div>
 
-          <button
+          <Button
             type="submit"
+            variant="primary"
+            size="lg"
             disabled={loading}
-            className="w-full bg-blue-600 text-white py-3 rounded-lg font-medium hover:bg-blue-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
+            loading={loading}
+            fullWidth
           >
             {loading ? 'Logging in...' : 'Login'}
-          </button>
+          </Button>
         </form>
 
         <p className="text-center text-sm text-gray-500 mt-6">

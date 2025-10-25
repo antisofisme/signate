@@ -4,11 +4,12 @@
  */
 
 /**
- * Generate random ID
- * @returns {string} Random ID
+ * Generate cryptographically secure random ID
+ * Uses Web Crypto API for security-safe random UUID generation
+ * @returns {string} Random UUID (e.g., "123e4567-e89b-12d3-a456-426614174000")
  */
 export function generateId() {
-  return Math.random().toString(36).substring(2, 15)
+  return crypto.randomUUID()
 }
 
 /**

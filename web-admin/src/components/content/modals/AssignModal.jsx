@@ -1,6 +1,9 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { X } from 'lucide-react'
 import { contentAPI, devicesAPI, tagsAPI } from '../../../services/api'
+import { showToast } from '../../../utils/toast'
+import { Modal, ModalFooter, Button } from '../../shared'
 
 /**
  * AssignModal Component
@@ -71,28 +74,26 @@ export default function AssignModal({ content, onClose, onSubmit }) {
   const [initialTagIds, setInitialTagIds] = useState(new Set())
 
   // Pre-populate selections when assignments load
-  // Using useEffect instead of useState for side effects
-  const [initialized, setInitialized] = useState(false)
+  useEffect(() => {
+    if (assignmentsData && !assignmentsLoading) {
+      const deviceIds = new Set()
+      const tagIds = new Set()
 
-  if (assignmentsData && !assignmentsLoading && !initialized) {
-    const deviceIds = new Set()
-    const tagIds = new Set()
+      assignmentsData.forEach(assignment => {
+        if (assignment.device_id) {
+          deviceIds.add(assignment.device_id)
+        }
+        if (assignment.tag_id) {
+          tagIds.add(assignment.tag_id)
+        }
+      })
 
-    assignmentsData.forEach(assignment => {
-      if (assignment.device_id) {
-        deviceIds.add(assignment.device_id)
-      }
-      if (assignment.tag_id) {
-        tagIds.add(assignment.tag_id)
-      }
-    })
-
-    setSelectedDeviceIds(deviceIds)
-    setSelectedTagIds(tagIds)
-    setInitialDeviceIds(deviceIds)
-    setInitialTagIds(tagIds)
-    setInitialized(true)
-  }
+      setSelectedDeviceIds(deviceIds)
+      setSelectedTagIds(tagIds)
+      setInitialDeviceIds(deviceIds)
+      setInitialTagIds(tagIds)
+    }
+  }, [assignmentsData, assignmentsLoading])
 
   const toggleDevice = (deviceId) => {
     setSelectedDeviceIds(prev => {
@@ -190,44 +191,48 @@ export default function AssignModal({ content, onClose, onSubmit }) {
       queryClient.invalidateQueries(['content'])
 
       setSaving(false)
-      alert('Content updated successfully!')
+      showToast.success('Content updated successfully!')
       onClose()
     } catch (error) {
       setSaving(false)
-      alert(error.response?.data?.detail || 'Failed to update content')
+      showToast.error(error.response?.data?.detail || 'Failed to update content')
     }
   }
 
   if (assignmentsLoading) {
     return (
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-        <div className="bg-white rounded-xl p-6 w-full max-w-2xl">
-          <p className="text-center text-gray-600">Loading assignments...</p>
-        </div>
-      </div>
+      <Modal isOpen={true} onClose={onClose} size="2xl">
+        <p className="text-center text-gray-600">Loading assignments...</p>
+      </Modal>
     )
   }
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-xl w-full max-w-2xl max-h-[90vh] flex flex-col">
-        {/* Header */}
-        <div className="px-6 py-4 border-b flex items-center justify-between">
-          <div>
-            <h2 className="text-2xl font-bold text-gray-800">Edit Content</h2>
-            <p className="text-sm text-gray-600 mt-1">Edit content details and assignments</p>
-          </div>
-          <button
-            onClick={onClose}
-            className="text-gray-500 hover:text-gray-700 text-3xl leading-none"
-            disabled={saving}
-          >
-            ×
-          </button>
+    <Modal
+      isOpen={true}
+      onClose={onClose}
+      size="2xl"
+      showCloseButton={false}
+      bodyClassName="flex-1 overflow-hidden flex flex-col p-0"
+    >
+      {/* Custom Header - Fixed */}
+      <div className="flex items-center justify-between px-6 py-4 bg-white border-b flex-shrink-0">
+        <div>
+          <h2 className="text-2xl font-bold text-gray-800">Edit Content</h2>
+          <p className="text-sm text-gray-600 mt-1">Edit content details and assignments</p>
         </div>
+        <button
+          onClick={onClose}
+          className="text-gray-400 hover:text-gray-600 transition-colors p-1 rounded-lg hover:bg-gray-100"
+          aria-label="Close modal"
+          disabled={saving}
+        >
+          <X className="w-6 h-6" />
+        </button>
+      </div>
 
-        {/* Form */}
-        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6">
+      {/* Form Content - Scrollable */}
+      <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6">
           <div className="space-y-6">
             {/* Content Details Section */}
             <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
@@ -455,28 +460,31 @@ export default function AssignModal({ content, onClose, onSubmit }) {
               )}
             </div>
           </div>
-        </form>
+      </form>
 
-        {/* Footer */}
-        <div className="px-6 py-4 border-t flex gap-3">
-          <button
-            type="submit"
-            onClick={handleSubmit}
-            disabled={saving}
-            className="flex-1 bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
-          >
-            {saving ? 'Saving...' : 'Save Changes'}
-          </button>
-          <button
+      {/* Footer - Fixed */}
+      <div className="p-6 border-t bg-gray-50 flex-shrink-0">
+        <ModalFooter align="right">
+          <Button
             type="button"
             onClick={onClose}
             disabled={saving}
-            className="flex-1 bg-gray-200 py-2 rounded-lg hover:bg-gray-300 disabled:bg-gray-100 disabled:cursor-not-allowed"
+            variant="secondary"
+            className="flex-1"
           >
             {saving ? 'Please wait...' : 'Cancel'}
-          </button>
-        </div>
+          </Button>
+          <Button
+            type="submit"
+            onClick={handleSubmit}
+            disabled={saving}
+            variant="primary"
+            className="flex-1"
+          >
+            {saving ? 'Saving...' : 'Save Changes'}
+          </Button>
+        </ModalFooter>
       </div>
-    </div>
+    </Modal>
   )
 }

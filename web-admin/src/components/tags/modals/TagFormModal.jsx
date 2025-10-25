@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Modal, ModalFooter, Button, FormInput } from '../../shared'
 
 /**
  * TagFormModal Component
@@ -40,61 +41,60 @@ export default function TagFormModal({ tag, onClose, onSubmit }) {
   ]
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-xl p-6 w-full max-w-md">
-        <h2 className="text-xl font-bold mb-4">{tag ? 'Edit Tag' : 'Create Tag'}</h2>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium mb-1">Tag Name</label>
-            <input
-              type="text"
-              value={formData.tag_name}
-              onChange={(e) => setFormData({...formData, tag_name: e.target.value})}
-              className="w-full px-3 py-2 border rounded-lg"
-              required
-            />
+    <Modal
+      isOpen={true}
+      onClose={onClose}
+      title={tag ? 'Edit Tag' : 'Create Tag'}
+      size="md"
+    >
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <FormInput
+          label="Tag Name"
+          type="text"
+          value={formData.tag_name}
+          onChange={(e) => setFormData({...formData, tag_name: e.target.value})}
+          required
+        />
+        <FormInput
+          label="Description"
+          type="textarea"
+          value={formData.description}
+          onChange={(e) => setFormData({...formData, description: e.target.value})}
+          rows={2}
+        />
+        <div>
+          <label className="block text-sm font-medium mb-1">Color</label>
+          <div className="flex items-center gap-2 mb-2">
+            {colorPresets.map((color) => (
+              <button
+                key={color}
+                type="button"
+                onClick={() => setFormData({...formData, color})}
+                className={`w-8 h-8 rounded-full border-2 ${
+                  formData.color === color ? 'border-gray-800' : 'border-transparent'
+                }`}
+                style={{ backgroundColor: color }}
+              />
+            ))}
           </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">Description</label>
-            <textarea
-              value={formData.description}
-              onChange={(e) => setFormData({...formData, description: e.target.value})}
-              className="w-full px-3 py-2 border rounded-lg"
-              rows={2}
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">Color</label>
-            <div className="flex items-center gap-2 mb-2">
-              {colorPresets.map((color) => (
-                <button
-                  key={color}
-                  type="button"
-                  onClick={() => setFormData({...formData, color})}
-                  className={`w-8 h-8 rounded-full border-2 ${
-                    formData.color === color ? 'border-gray-800' : 'border-transparent'
-                  }`}
-                  style={{ backgroundColor: color }}
-                />
-              ))}
-            </div>
-            <input
-              type="color"
-              value={formData.color}
-              onChange={(e) => setFormData({...formData, color: e.target.value})}
-              className="w-full h-10 border rounded-lg cursor-pointer"
-            />
-          </div>
-          <div className="flex gap-3">
-            <button type="submit" className="flex-1 bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700">
-              {tag ? 'Update' : 'Create'}
-            </button>
-            <button type="button" onClick={onClose} className="flex-1 bg-gray-200 py-2 rounded-lg hover:bg-gray-300">
-              Cancel
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
+          <input
+            type="color"
+            value={formData.color}
+            onChange={(e) => setFormData({...formData, color: e.target.value})}
+            className="w-full h-10 border rounded-lg cursor-pointer"
+          />
+        </div>
+
+        {/* Footer with action buttons */}
+        <ModalFooter>
+          <Button type="button" variant="secondary" onClick={onClose} className="flex-1">
+            Cancel
+          </Button>
+          <Button type="submit" variant="primary" className="flex-1">
+            {tag ? 'Update' : 'Create'}
+          </Button>
+        </ModalFooter>
+      </form>
+    </Modal>
   )
 }

@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { API_BASE_URL } from '../../utils/constants'
 
 /**
  * VideoThumbnail Component
@@ -15,8 +16,7 @@ import { useState } from 'react'
 // Helper function to get proxy video URL
 const getVideoUrl = (content) => {
   // Use backend proxy endpoint which serves videos with correct Content-Type and avoids CORS issues
-  const baseUrl = import.meta.env.VITE_API_URL || 'http://192.168.5.12:8001'
-  return `${baseUrl}/api/content/${content.id}/video`
+  return `${API_BASE_URL}/api/content/${content.id}/video`
 }
 
 export default function VideoThumbnail({ content }) {

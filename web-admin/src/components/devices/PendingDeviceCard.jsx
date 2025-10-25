@@ -1,8 +1,10 @@
+import { memo } from 'react'
 import { Monitor, Tv, CheckCircle } from 'lucide-react'
 
 /**
  * PendingDeviceCard Component
  * Displays a device pending approval with device information and approve button
+ * Memoized to prevent unnecessary re-renders in pending devices list
  *
  * Features:
  * - Device icon based on type (TV with UUID or Monitor without)
@@ -15,7 +17,7 @@ import { Monitor, Tv, CheckCircle } from 'lucide-react'
  * @param {Object} device - Device object with pending status
  * @param {Function} onApprove - Callback when approve button is clicked
  */
-export default function PendingDeviceCard({ device, onApprove }) {
+function PendingDeviceCard({ device, onApprove }) {
   return (
     <div className="bg-white rounded-lg p-4 border-2 border-yellow-300 flex items-center justify-between">
       <div className="flex items-center gap-4">
@@ -93,3 +95,5 @@ export default function PendingDeviceCard({ device, onApprove }) {
     </div>
   )
 }
+
+export default memo(PendingDeviceCard)

@@ -1,5 +1,6 @@
-import { FileImage, Edit, Trash2 } from 'lucide-react'
-import VideoThumbnail from './VideoThumbnail'
+import { memo } from 'react'
+import { Edit, Trash2 } from 'lucide-react'
+import { Thumbnail, StatusBadge, Button } from '../shared'
 import AssignmentBadge from './AssignmentBadge'
 
 /**
@@ -8,10 +9,9 @@ import AssignmentBadge from './AssignmentBadge'
  *
  * Features:
  * - Checkbox selection for bulk operations
- * - Video thumbnail preview with HTML5 video
- * - Image thumbnail with fallback
+ * - Unified Thumbnail component for both images and videos
  * - Comprehensive metadata display (resolution, codec, bitrate, file size)
- * - Active status badge
+ * - StatusBadge component for active status
  * - Assignment badge showing device/tag counts
  * - Edit and delete action buttons
  * - Click to preview functionality
@@ -23,16 +23,14 @@ import AssignmentBadge from './AssignmentBadge'
  * @param {Function} onPreview - Callback when card is clicked for preview
  * @param {Function} onEdit - Callback when edit button is clicked
  * @param {Function} onDelete - Callback when delete button is clicked
- * @param {Function} getImageUrl - Helper function to get image URL for content
  */
-export default function ContentCard({
+const ContentCard = memo(function ContentCard({
   content,
   isSelected,
   onToggleSelection,
   onPreview,
   onEdit,
-  onDelete,
-  getImageUrl
+  onDelete
 }) {
   return (
     <div
@@ -52,32 +50,19 @@ export default function ContentCard({
         />
       </div>
 
-      {/* Preview Thumbnail */}
-      <div className="aspect-video bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center relative overflow-hidden">
-        {content.content_type === 'video' ? (
-          <VideoThumbnail content={content} />
-        ) : (
-          <>
-            <img
-              src={getImageUrl(content)}
-              alt={content.title}
-              className="w-full h-full object-cover"
-              onError={(e) => {
-                e.target.style.display = 'none'
-              }}
-            />
-            <div className="absolute inset-0 flex items-center justify-center">
-              <FileImage className="w-16 h-16 text-gray-400 opacity-50" />
-            </div>
-          </>
-        )}
+      {/* Preview Thumbnail - Using Shared Thumbnail Component */}
+      <div className="relative">
+        <Thumbnail
+          content={content}
+          size="md"
+          aspectRatio="video"
+          showPlayIcon={content.content_type === 'video'}
+        />
 
-        {/* Badges */}
+        {/* Badges Overlay */}
         <div className="absolute top-2 right-2 flex flex-col gap-1 items-end">
           {content.is_active && (
-            <div className="bg-green-500 text-white text-xs px-2 py-1 rounded-full">
-              Active
-            </div>
+            <StatusBadge status="active" size="sm" />
           )}
           <AssignmentBadge contentId={content.id} />
         </div>
@@ -123,26 +108,30 @@ export default function ContentCard({
 
         {/* Actions */}
         <div className="flex gap-2">
-          <button
+          <Button
             onClick={(e) => onEdit(e, content)}
-            className="flex-1 flex items-center justify-center px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm"
+            variant="primary"
+            size="sm"
+            leftIcon={<Edit className="w-4 h-4" />}
+            className="flex-1"
           >
-            <Edit className="w-4 h-4 mr-1" />
             Edit
-          </button>
-          <button
+          </Button>
+          <Button
             onClick={(e) => {
               e.stopPropagation()
               if (confirm('Delete this content?')) {
                 onDelete(content.id)
               }
             }}
-            className="px-3 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
-          >
-            <Trash2 className="w-4 h-4" />
-          </button>
+            variant="danger"
+            size="sm"
+            leftIcon={<Trash2 className="w-4 h-4" />}
+          />
         </div>
       </div>
     </div>
   )
-}
+})
+
+export default ContentCard

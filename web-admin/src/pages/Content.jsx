@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { contentAPI, devicesAPI, tagsAPI } from '../services/api'
+import { API_BASE_URL } from '../utils/constants'
 import UploadModal from '../components/content/modals/UploadModal'
 import AssignModal from '../components/content/modals/AssignModal'
 import PreviewModal from '../components/content/modals/PreviewModal'
@@ -11,12 +12,12 @@ import GroupingControls from '../components/content/GroupingControls'
 import ContentCard from '../components/content/ContentCard'
 import useContentGrouping from '../hooks/useContentGrouping'
 import { FileImage } from 'lucide-react'
+import { showToast } from '../utils/toast'
 
 // Helper function to get proxy image URL
 const getImageUrl = (content) => {
   // Use backend proxy endpoint which serves images with correct Content-Type
-  const baseUrl = import.meta.env.VITE_API_URL || 'http://192.168.5.12:8001'
-  return `${baseUrl}/api/content/${content.id}/image`
+  return `${API_BASE_URL}/api/content/${content.id}/image`
 }
 
 export default function Content() {
@@ -85,10 +86,10 @@ export default function Content() {
     onSuccess: () => {
       queryClient.invalidateQueries(['content'])
       setShowUploadForm(false)
-      alert('Content uploaded successfully!')
+      showToast.success('Content uploaded successfully!')
     },
     onError: (error) => {
-      alert(error.response?.data?.detail || 'Upload failed')
+      showToast.error(error.response?.data?.detail || 'Upload failed')
     }
   })
 
@@ -98,10 +99,10 @@ export default function Content() {
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries(['content-assignments', variables.id])
       setShowAssignForm(false)
-      alert('Content assigned successfully!')
+      showToast.success('Content assigned successfully!')
     },
     onError: (error) => {
-      alert(error.response?.data?.detail || 'Assignment failed')
+      showToast.error(error.response?.data?.detail || 'Assignment failed')
     }
   })
 
@@ -110,7 +111,7 @@ export default function Content() {
     mutationFn: contentAPI.delete,
     onSuccess: () => {
       queryClient.invalidateQueries(['content'])
-      alert('Content deleted successfully!')
+      showToast.success('Content deleted successfully!')
     },
   })
 
@@ -207,7 +208,6 @@ export default function Content() {
                   onPreview={handlePreview}
                   onEdit={handleAssign}
                   onDelete={(id) => deleteMutation.mutate(id)}
-                  getImageUrl={getImageUrl}
                 />
               ))}
             </div>

@@ -1,14 +1,9 @@
 import { useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
+import { X } from 'lucide-react'
 import { contentAPI } from '../../../services/api'
-
-/**
- * Helper function to get proxy image URL
- */
-const getImageUrl = (content) => {
-  const baseUrl = import.meta.env.VITE_API_URL || 'http://192.168.5.12:8001'
-  return `${baseUrl}/api/content/${content.id}/image`
-}
+import { Thumbnail, Modal, ModalFooter, Button } from '../../shared'
+import { showToast } from '../../../utils/toast'
 
 /**
  * BulkEditModal Component
@@ -164,7 +159,14 @@ export default function BulkEditModal({ selectedIds, contentData, onClose, onCom
     queryClient.invalidateQueries(['content'])
     setUpdating(false)
 
-    alert(`Bulk update complete!\n✅ Success: ${successCount}\n❌ Failed: ${failCount}`)
+    // Show appropriate toast based on results
+    if (failCount === 0) {
+      showToast.success(`Bulk update complete! ✅ ${successCount} items updated`)
+    } else if (successCount === 0) {
+      showToast.error(`Bulk update failed! ❌ ${failCount} items failed`)
+    } else {
+      showToast.warning(`Bulk update complete! ✅ ${successCount} success, ❌ ${failCount} failed`)
+    }
 
     if (successCount > 0) {
       onComplete()
@@ -172,74 +174,57 @@ export default function BulkEditModal({ selectedIds, contentData, onClose, onCom
   }
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-xl w-full max-w-3xl max-h-[90vh] flex flex-col">
-        {/* Header */}
-        <div className="px-6 py-4 border-b flex items-center justify-between">
-          <div>
-            <h2 className="text-2xl font-bold text-gray-800">Bulk Edit Content</h2>
-            <p className="text-sm text-gray-600 mt-1">{selectedContent.length} items selected</p>
-          </div>
-          <button
-            onClick={onClose}
-            className="text-gray-500 hover:text-gray-700 text-3xl leading-none"
-            disabled={updating}
-          >
-            ×
-          </button>
+    <Modal
+      isOpen={true}
+      onClose={onClose}
+      size="3xl"
+      showCloseButton={false}
+      bodyClassName="flex-1 overflow-hidden flex flex-col p-0"
+    >
+      {/* Custom Header - Fixed */}
+      <div className="flex items-center justify-between px-6 py-4 bg-white border-b flex-shrink-0">
+        <div>
+          <h2 className="text-2xl font-bold text-gray-800">Bulk Edit Content</h2>
+          <p className="text-sm text-gray-600 mt-1">{selectedContent.length} items selected</p>
         </div>
+        <button
+          onClick={onClose}
+          className="text-gray-400 hover:text-gray-600 transition-colors p-1 rounded-lg hover:bg-gray-100"
+          aria-label="Close modal"
+          disabled={updating}
+        >
+          <X className="w-6 h-6" />
+        </button>
+      </div>
 
-        {/* Form - List of individual item editors */}
-        <form onSubmit={handleBulkUpdate} className="flex-1 overflow-y-auto p-6">
+      {/* Form - List of individual item editors - Scrollable */}
+      <form onSubmit={handleBulkUpdate} className="flex-1 overflow-y-auto p-6">
           <div className="space-y-6">
             {/* Individual Item Editors */}
             <div className="space-y-4">
-              <h3 className="font-bold text-gray-700 text-lg flex items-center gap-2">
+              <h3 className="font-bold text-gray-900 text-xl flex items-center gap-2">
                 <span>✏️</span>
                 Edit Individual Items
               </h3>
               {selectedContent.map((content, index) => (
               <div
                 key={content.id}
-                className="bg-gray-50 p-4 rounded-lg border-2 border-gray-200"
+                className="bg-gray-50 p-4 rounded-lg border-2 border-gray-200 shadow-sm hover:shadow-md transition-shadow"
               >
                 {/* Side-by-side layout: Preview LEFT, Form RIGHT */}
                 <div className="grid grid-cols-12 gap-4 items-start">
                   {/* LEFT: Preview Content (30-35% width) */}
                   <div className="col-span-4 flex flex-col">
-                    <div className="relative bg-gradient-to-br from-gray-200 to-gray-300 rounded-lg overflow-hidden max-h-48 flex items-center justify-center">
-                      {content.content_type === 'video' ? (
-                        <video
-                          src={getImageUrl(content)}
-                          className="w-full h-full object-contain"
-                          preload="metadata"
-                          controls
-                          onLoadedMetadata={(e) => {
-                            e.target.currentTime = 0.1 // Load first frame as thumbnail
-                          }}
-                        />
-                      ) : (
-                        <img
-                          src={getImageUrl(content)}
-                          alt={content.title}
-                          className="w-full h-full object-contain"
-                          onError={(e) => {
-                            e.target.style.display = 'none'
-                            const parent = e.target.parentElement
-                            if (!parent.querySelector('.video-icon-fallback')) {
-                              const fallback = document.createElement('div')
-                              fallback.className = 'video-icon-fallback flex flex-col items-center justify-center'
-                              fallback.innerHTML = `
-                                <span class="text-5xl mb-2">📷</span>
-                                <span class="text-xs text-gray-600">Image</span>
-                              `
-                              parent.appendChild(fallback)
-                            }
-                          }}
-                        />
-                      )}
+                    <div className="relative">
+                      <Thumbnail
+                        content={content}
+                        size="lg"
+                        aspectRatio="auto"
+                        showPlayIcon={false}
+                        className="max-h-48"
+                      />
 
-                      {/* Status badge */}
+                      {/* Update Progress Badge */}
                       <div className="absolute top-2 right-2 text-3xl bg-white rounded-full w-12 h-12 flex items-center justify-center shadow-lg">
                         {updateProgress[index]?.status === 'pending' && '⏳'}
                         {updateProgress[index]?.status === 'updating' && '🔄'}
@@ -250,9 +235,9 @@ export default function BulkEditModal({ selectedIds, contentData, onClose, onCom
 
                     {/* Original info below preview */}
                     <div className="mt-2 px-2 flex-shrink-0">
-                      <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">Original</p>
-                      <p className="font-medium text-gray-800 truncate">{content.title}</p>
-                      <p className="text-xs text-gray-500">{content.content_type.toUpperCase()} • {content.duration}s</p>
+                      <p className="text-xs text-gray-700 font-semibold uppercase tracking-wide mb-1">Original</p>
+                      <p className="font-semibold text-gray-900 truncate">{content.title}</p>
+                      <p className="text-xs text-gray-600">{content.content_type.toUpperCase()} • {content.duration}s</p>
                     </div>
                   </div>
 
@@ -369,28 +354,31 @@ export default function BulkEditModal({ selectedIds, contentData, onClose, onCom
               ))}
             </div>
           </div>
-        </form>
+      </form>
 
-        {/* Footer */}
-        <div className="px-6 py-4 border-t flex gap-3">
-          <button
-            type="submit"
-            onClick={handleBulkUpdate}
-            disabled={updating}
-            className="flex-1 bg-purple-600 text-white py-2 rounded-lg hover:bg-purple-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
-          >
-            {updating ? 'Updating...' : `Update ${selectedContent.length} Items`}
-          </button>
-          <button
+      {/* Footer - Fixed */}
+      <div className="p-6 border-t bg-gray-50 flex-shrink-0">
+        <ModalFooter align="right">
+          <Button
             type="button"
             onClick={onClose}
             disabled={updating}
-            className="flex-1 bg-gray-200 py-2 rounded-lg hover:bg-gray-300 disabled:bg-gray-100 disabled:cursor-not-allowed"
+            variant="secondary"
+            className="flex-1"
           >
             {updating ? 'Please wait...' : 'Cancel'}
-          </button>
-        </div>
+          </Button>
+          <Button
+            type="submit"
+            onClick={handleBulkUpdate}
+            disabled={updating}
+            variant="primary"
+            className="flex-1"
+          >
+            {updating ? 'Updating...' : `Update ${selectedContent.length} Items`}
+          </Button>
+        </ModalFooter>
       </div>
-    </div>
+    </Modal>
   )
 }

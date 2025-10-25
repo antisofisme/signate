@@ -1,6 +1,8 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { contentAPI, clientAPI } from '../../../services/api'
-import { Tv, Monitor, ArrowRight, ArrowLeft, FileImage } from 'lucide-react'
+import { Tv, Monitor, ArrowRight, ArrowLeft, FileImage, X } from 'lucide-react'
+import { showToast } from '../../../utils/toast'
+import { Modal } from '../../shared'
 
 /**
  * AssignContentModal Component
@@ -43,7 +45,7 @@ export default function AssignContentModal({ device, onClose }) {
       queryClient.invalidateQueries(['devices'])
     },
     onError: (error) => {
-      alert(error.response?.data?.detail || 'Assignment failed')
+      showToast.error(error.response?.data?.detail || 'Assignment failed')
     }
   })
 
@@ -58,7 +60,7 @@ export default function AssignContentModal({ device, onClose }) {
       queryClient.invalidateQueries(['devices'])
     },
     onError: (error) => {
-      alert(error.response?.data?.detail || 'Unassignment failed')
+      showToast.error(error.response?.data?.detail || 'Unassignment failed')
     }
   })
 
@@ -76,30 +78,39 @@ export default function AssignContentModal({ device, onClose }) {
   const assignedContent = allContent.filter(c => assignedContentIds.includes(c.id))
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-xl w-full max-w-6xl max-h-[90vh] overflow-hidden flex flex-col">
-        {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b">
-          <div className="flex items-center">
-            {device.device_uuid ? (
-              <Tv className="w-6 h-6 text-blue-600 mr-3" />
-            ) : (
-              <Monitor className="w-6 h-6 text-green-600 mr-3" />
-            )}
-            <h2 className="text-2xl font-bold">Assign Content: {device.device_name}</h2>
-          </div>
-          <button onClick={onClose} className="text-gray-500 hover:text-gray-700 text-2xl">
-            ✕
-          </button>
+    <Modal
+      isOpen={true}
+      onClose={onClose}
+      size="full"
+      showCloseButton={false}
+      bodyClassName="flex-1 overflow-hidden flex flex-col p-0"
+    >
+      {/* Custom Header - Fixed */}
+      <div className="flex items-center justify-between p-6 bg-white border-b flex-shrink-0">
+        <div className="flex items-center">
+          {device.device_uuid ? (
+            <Tv className="w-6 h-6 text-blue-600 mr-3" />
+          ) : (
+            <Monitor className="w-6 h-6 text-green-600 mr-3" />
+          )}
+          <h2 className="text-2xl font-bold">Assign Content: {device.device_name}</h2>
         </div>
+        <button
+          onClick={onClose}
+          className="text-gray-400 hover:text-gray-600 transition-colors p-1 rounded-lg hover:bg-gray-100"
+          aria-label="Close modal"
+        >
+          <X className="w-6 h-6" />
+        </button>
+      </div>
 
-        {/* Two-column layout */}
+        {/* Two-column layout - Scrollable */}
         <div className="flex-1 grid grid-cols-2 gap-6 p-6 overflow-hidden min-h-0">
           {/* Left: Unassigned Content */}
           <div className="flex flex-col min-h-0">
             <div className="flex items-center justify-between mb-4 flex-shrink-0">
-              <h3 className="font-bold text-gray-800 text-lg">Available Content</h3>
-              <span className="text-sm text-gray-600">
+              <h3 className="font-bold text-gray-900 text-xl">Available Content</h3>
+              <span className="text-sm text-gray-700 font-medium">
                 {unassignedContent.length} items
               </span>
             </div>
@@ -159,8 +170,8 @@ export default function AssignContentModal({ device, onClose }) {
           {/* Right: Assigned Content */}
           <div className="flex flex-col min-h-0">
             <div className="flex items-center justify-between mb-4 flex-shrink-0">
-              <h3 className="font-bold text-gray-800 text-lg">Assigned Content</h3>
-              <span className="text-sm text-gray-600">
+              <h3 className="font-bold text-gray-900 text-xl">Assigned Content</h3>
+              <span className="text-sm text-gray-700 font-medium">
                 {assignedContent.length} items
               </span>
             </div>
@@ -218,7 +229,6 @@ export default function AssignContentModal({ device, onClose }) {
             </div>
           </div>
         </div>
-      </div>
-    </div>
+    </Modal>
   )
 }
