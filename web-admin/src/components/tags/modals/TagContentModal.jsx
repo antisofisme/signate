@@ -1,6 +1,6 @@
 import { useState } from 'react'
-import { useQuery, useMutation, useQueryClient } from '@tantml:invoke>
-<parameter name="tagsAPI, contentAPI } from '../../../services/api'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { tagsAPI, contentAPI } from '../../../services/api'
 import { X, Plus, Trash2, Film, Image as ImageIcon } from 'lucide-react'
 import { showToast } from '../../../utils/toast'
 import { Modal, Button } from '../../shared'
