@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { tagsAPI, devicesAPI } from '../services/api'
-import { Tag, Plus, Trash2, Edit2, Users, Search, BarChart3 } from 'lucide-react'
+import { Tag, Plus, Trash2, Edit2, Users, Search, BarChart3, Film } from 'lucide-react'
 import { showToast } from '../utils/toast'
 import { Button, FormInput } from '../components/shared'
 
@@ -9,6 +9,7 @@ import { Button, FormInput } from '../components/shared'
 import TagFormModal from '../components/tags/modals/TagFormModal'
 import TagDeviceManagementModal from '../components/tags/modals/TagDeviceManagementModal'
 import TagStatsModal from '../components/tags/modals/TagStatsModal'
+import TagContentModal from '../components/tags/modals/TagContentModal'
 
 export default function Tags() {
   const queryClient = useQueryClient()
@@ -16,6 +17,7 @@ export default function Tags() {
   const [showEditForm, setShowEditForm] = useState(false)
   const [showManageDevices, setShowManageDevices] = useState(false)
   const [showStatsModal, setShowStatsModal] = useState(false)
+  const [showContentModal, setShowContentModal] = useState(false)
   const [selectedTag, setSelectedTag] = useState(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [sortBy, setSortBy] = useState('newest')
@@ -75,6 +77,11 @@ export default function Tags() {
   const handleViewStats = (tag) => {
     setSelectedTag(tag)
     setShowStatsModal(true)
+  }
+
+  const handleManageContent = (tag) => {
+    setSelectedTag(tag)
+    setShowContentModal(true)
   }
 
   // Filter tags based on search query
@@ -179,6 +186,15 @@ export default function Tags() {
               </div>
               <div className="flex gap-2">
                 <Button
+                  variant="success"
+                  size="sm"
+                  leftIcon={<Film className="w-4 h-4" />}
+                  onClick={() => handleManageContent(tag)}
+                  className="flex-1"
+                >
+                  Content
+                </Button>
+                <Button
                   variant="warning"
                   size="sm"
                   leftIcon={<Edit2 className="w-4 h-4" />}
@@ -187,6 +203,8 @@ export default function Tags() {
                 >
                   Edit
                 </Button>
+              </div>
+              <div className="flex gap-2">
                 <Button
                   variant="danger"
                   size="sm"
@@ -259,6 +277,17 @@ export default function Tags() {
           tag={selectedTag}
           onClose={() => {
             setShowStatsModal(false)
+            setSelectedTag(null)
+          }}
+        />
+      )}
+
+      {/* Content Modal */}
+      {showContentModal && selectedTag && (
+        <TagContentModal
+          tag={selectedTag}
+          onClose={() => {
+            setShowContentModal(false)
             setSelectedTag(null)
           }}
         />
