@@ -63,6 +63,14 @@ export default function DeviceLogsModal({ device, onClose }) {
     }
   }, [logs, selectedLevel])
 
+  // Count logs by level
+  const getLogCount = (level) => {
+    if (level === 'all') {
+      return logs.length
+    }
+    return logs.filter(log => log.log_level === level).length
+  }
+
   // Load initial logs from REST API
   useEffect(() => {
     const loadInitialLogs = async () => {
@@ -222,17 +230,27 @@ export default function DeviceLogsModal({ device, onClose }) {
         <div className="flex items-center justify-between p-4 border-b bg-gray-50">
           <div className="flex items-center gap-4">
             <span className="text-sm font-medium text-gray-700">Filter:</span>
-            {['all', 'log', 'info', 'warn', 'error'].map(level => (
-              <button
-                key={level}
-                onClick={() => setSelectedLevel(level)}
-                className={`px-3 py-1 rounded text-sm font-medium transition-colors ${
-                  selectedLevel === level ? 'bg-blue-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-100'
-                }`}
-              >
-                {level.toUpperCase()}
-              </button>
-            ))}
+            {['all', 'log', 'info', 'warn', 'error'].map(level => {
+              const count = getLogCount(level)
+              return (
+                <button
+                  key={level}
+                  onClick={() => setSelectedLevel(level)}
+                  className={`px-3 py-1 rounded text-sm font-medium transition-colors flex items-center gap-2 ${
+                    selectedLevel === level ? 'bg-blue-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-100'
+                  }`}
+                >
+                  <span>{level.toUpperCase()}</span>
+                  <span className={`px-1.5 py-0.5 rounded-full text-xs font-bold ${
+                    selectedLevel === level
+                      ? 'bg-blue-700 text-white'
+                      : 'bg-gray-200 text-gray-700'
+                  }`}>
+                    {count}
+                  </span>
+                </button>
+              )
+            })}
           </div>
           <div className="flex items-center gap-2">
             <button

@@ -96,7 +96,7 @@ window.ShellNetworkDiagnostics = {
             const startTime = performance.now();
 
             try {
-                const response = await fetch(`${state.API_BASE_URL}/api/health`, {
+                const response = await fetch(`${state.API_BASE_URL}/health`, {
                     method: 'GET',
                     cache: 'no-cache'
                 });
