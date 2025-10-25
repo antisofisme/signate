@@ -141,6 +141,16 @@ window.ShellRegistration = {
         // Initialize display settings (rotation, volume)
         await window.ShellDisplaySettings.init();
 
+        // Send pending network diagnostics (if any from before activation)
+        if (window.ShellNetworkDiagnostics && window.ShellNetworkDiagnostics.sendPendingDiagnostics) {
+            await window.ShellNetworkDiagnostics.sendPendingDiagnostics();
+        }
+
+        // Start periodic network diagnostics (every 30 minutes)
+        if (window.ShellNetworkDiagnostics && window.ShellNetworkDiagnostics.startPeriodicDiagnostics) {
+            window.ShellNetworkDiagnostics.startPeriodicDiagnostics();
+        }
+
         window.ShellUI.loadPlayer();
     }
 };

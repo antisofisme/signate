@@ -187,7 +187,9 @@ window.ShellNetworkDiagnostics = {
         const state = window.ShellState;
 
         if (!state.deviceId) {
-            console.warn('[Network] No device ID, skipping results upload');
+            console.warn('[Network] ⚠️ No device ID yet, will send diagnostics after activation');
+            // Store results to send later when device is activated
+            localStorage.setItem('pending_network_diagnostics', JSON.stringify(results));
             return;
         }
 
@@ -198,7 +200,7 @@ window.ShellNetworkDiagnostics = {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    device_id: state.deviceId,
+                    device_id: parseInt(state.deviceId),
                     logs: [{
                         level: 'info',
                         message: `Network Diagnostics - Ping: ${results.ping.avg}ms, Download: ${results.download.mbps.toFixed(2)} Mbps, Upload: ${results.upload.mbps.toFixed(2)} Mbps`,
@@ -211,6 +213,8 @@ window.ShellNetworkDiagnostics = {
 
             if (response.ok) {
                 console.log('[Network] ✅ Diagnostics results sent to backend');
+                // Clear pending diagnostics if any
+                localStorage.removeItem('pending_network_diagnostics');
             } else {
                 console.warn('[Network] ⚠️ Failed to send diagnostics results:', response.statusText);
             }
@@ -220,20 +224,42 @@ window.ShellNetworkDiagnostics = {
     },
 
     /**
+     * Send pending diagnostics after device activation
+     */
+    sendPendingDiagnostics: async function() {
+        const state = window.ShellState;
+
+        if (!state.deviceId) {
+            console.warn('[Network] No device ID, cannot send pending diagnostics');
+            return;
+        }
+
+        const pendingResults = localStorage.getItem('pending_network_diagnostics');
+        if (!pendingResults) {
+            return; // No pending diagnostics
+        }
+
+        try {
+            const results = JSON.parse(pendingResults);
+            console.log('[Network] 📤 Sending pending diagnostics from before activation...');
+
+            await this.sendResults(results);
+        } catch (error) {
+            console.error('[Network] Failed to send pending diagnostics:', error);
+            localStorage.removeItem('pending_network_diagnostics');
+        }
+    },
+
+    /**
      * Start periodic diagnostics
-     * Runs on startup, then every 30 minutes
+     * Runs every 30 minutes (after device activation)
      */
     startPeriodicDiagnostics: function() {
         const DIAGNOSTICS_INTERVAL = 30 * 60 * 1000; // 30 minutes
 
-        console.log('[Network] Starting periodic diagnostics (every 30 minutes)');
+        console.log('[Network] ⏰ Starting periodic diagnostics (every 30 minutes)');
 
-        // Run immediately on startup (after 5 seconds to let viewer stabilize)
-        setTimeout(() => {
-            this.runDiagnostics();
-        }, 5000);
-
-        // Then run every 30 minutes
+        // Run every 30 minutes (no immediate run, already done in init or onActivated)
         setInterval(() => {
             this.runDiagnostics();
         }, DIAGNOSTICS_INTERVAL);
