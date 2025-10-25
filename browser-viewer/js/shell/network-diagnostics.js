@@ -255,14 +255,14 @@ window.ShellNetworkDiagnostics = {
 
     /**
      * Start periodic diagnostics
-     * Runs every 30 minutes (after device activation)
+     * Runs every 5 minutes (after device activation)
      */
     startPeriodicDiagnostics: function() {
-        const DIAGNOSTICS_INTERVAL = 30 * 60 * 1000; // 30 minutes
+        const DIAGNOSTICS_INTERVAL = 5 * 60 * 1000; // 5 minutes
 
-        console.log('[Network] ⏰ Starting periodic diagnostics (every 30 minutes)');
+        this.sendDirectLog('info', '[Network] ⏰ Starting periodic diagnostics (every 5 minutes)');
 
-        // Run every 30 minutes (no immediate run, already done in init or onActivated)
+        // Run every 5 minutes (no immediate run, already done in onActivated)
         setInterval(() => {
             this.runDiagnostics();
         }, DIAGNOSTICS_INTERVAL);
