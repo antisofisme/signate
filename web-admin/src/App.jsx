@@ -10,6 +10,7 @@ import Content from './pages/Content'
 import Tags from './pages/Tags'
 import Playlists from './pages/Playlists'
 import Apps from './pages/Apps'
+import Settings from './pages/Settings'
 import Layout from './components/Layout'
 
 const queryClient = new QueryClient({
@@ -84,6 +85,14 @@ function App() {
             <PrivateRoute>
               <Layout setIsAuthenticated={setIsAuthenticated}>
                 <Apps />
+              </Layout>
+            </PrivateRoute>
+          } />
+
+          <Route path="/settings" element={
+            <PrivateRoute>
+              <Layout setIsAuthenticated={setIsAuthenticated}>
+                <Settings />
               </Layout>
             </PrivateRoute>
           } />

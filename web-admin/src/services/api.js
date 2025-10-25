@@ -111,6 +111,34 @@ export const appsAPI = {
   getDeployments: (id) => api.get(`/api/apps/${id}/deployments`),
 }
 
+// Users API
+export const usersAPI = {
+  list: () => api.get('/api/users'),
+  create: (data) => api.post('/api/users', data),
+  get: (id) => api.get(`/api/users/${id}`),
+  update: (id, data) => api.patch(`/api/users/${id}`, data),
+  delete: (id) => api.delete(`/api/users/${id}`),
+  resetPassword: (id, data) => api.post(`/api/users/${id}/reset-password`, data),
+}
+
+// Settings API
+export const settingsAPI = {
+  // Display Settings
+  getDisplay: () => api.get('/api/settings/display'),
+  updateDisplay: (data) => api.put('/api/settings/display', data),
+
+  // Notification Settings
+  getNotifications: () => api.get('/api/settings/notifications'),
+  updateNotifications: (data) => api.put('/api/settings/notifications', data),
+
+  // System Settings
+  getSystemInfo: () => api.get('/api/settings/system/info'),
+  backupDatabase: () => api.get('/api/settings/system/backup', {
+    responseType: 'blob',
+  }),
+  clearCache: () => api.post('/api/settings/system/clear-cache'),
+}
+
 // Client API (for testing)
 export const clientAPI = {
   getPlaylist: (deviceId) => api.get(`/api/client/playlist?device_id=${deviceId}`),
