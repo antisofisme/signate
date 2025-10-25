@@ -236,49 +236,21 @@ export default function DeviceLogsModal({ device, onClose }) {
                 <button
                   key={level}
                   onClick={() => setSelectedLevel(level)}
-                  className={`px-3 py-1 rounded text-sm font-medium transition-colors flex items-center gap-2 ${
+                  className={`inline-flex items-baseline gap-1 px-3 py-1 rounded text-sm font-medium transition-colors ${
                     selectedLevel === level ? 'bg-blue-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-100'
                   }`}
                 >
                   <span>{level.toUpperCase()}</span>
-                  <span className={`px-1.5 py-0.5 rounded-full text-xs font-bold ${
+                  <span className={`px-1.5 rounded-full text-xs font-bold leading-tight -translate-y-2 ${
                     selectedLevel === level
-                      ? 'bg-blue-700 text-white'
-                      : 'bg-gray-200 text-gray-700'
+                      ? 'bg-red-500 text-white'
+                      : 'bg-gray-500 text-white'
                   }`}>
                     {count}
                   </span>
                 </button>
               )
             })}
-          </div>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={handleRunSpeedTest}
-              className="flex items-center gap-2 px-3 py-1.5 bg-green-600 text-white rounded hover:bg-green-700 text-sm"
-              disabled={device.status !== 'active'}
-              title={device.status !== 'active' ? 'Device must be active to run speed test' : 'Run network speed test'}
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-              </svg>
-              Speed Test
-            </button>
-            <button
-              onClick={handleExportLogs}
-              className="flex items-center gap-2 px-3 py-1.5 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm"
-              disabled={filteredLogs.length === 0}
-            >
-              <Download className="w-4 h-4" />
-              Export
-            </button>
-            <button
-              onClick={handleClearLogs}
-              className="flex items-center gap-2 px-3 py-1.5 bg-red-600 text-white rounded hover:bg-red-700 text-sm"
-            >
-              <Trash2 className="w-4 h-4" />
-              Clear
-            </button>
           </div>
         </div>
 
@@ -306,10 +278,38 @@ export default function DeviceLogsModal({ device, onClose }) {
           <div ref={logsEndRef} />
         </div>
 
-        <div className="p-4 border-t bg-gray-50 text-sm text-gray-600">
-          <div className="flex justify-between items-center">
-            <span>Total logs: {logs.length} | Filtered: {filteredLogs.length}</span>
-            <span className="text-xs">Real-time streaming via WebSocket</span>
+        <div className="p-4 border-t bg-gray-50">
+          <div className="flex justify-between items-center mb-3">
+            <span className="text-sm text-gray-600">Total logs: {logs.length} | Filtered: {filteredLogs.length}</span>
+            <span className="text-xs text-gray-600">Real-time streaming via WebSocket</span>
+          </div>
+          <div className="flex items-center justify-end gap-2">
+            <button
+              onClick={handleRunSpeedTest}
+              className="flex items-center gap-2 px-3 py-1.5 bg-green-600 text-white rounded hover:bg-green-700 text-sm"
+              disabled={device.status !== 'active'}
+              title={device.status !== 'active' ? 'Device must be active to run speed test' : 'Run network speed test'}
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+              </svg>
+              Speed Test
+            </button>
+            <button
+              onClick={handleExportLogs}
+              className="flex items-center gap-2 px-3 py-1.5 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm"
+              disabled={filteredLogs.length === 0}
+            >
+              <Download className="w-4 h-4" />
+              Export
+            </button>
+            <button
+              onClick={handleClearLogs}
+              className="flex items-center gap-2 px-3 py-1.5 bg-red-600 text-white rounded hover:bg-red-700 text-sm"
+            >
+              <Trash2 className="w-4 h-4" />
+              Clear
+            </button>
           </div>
         </div>
       </div>
