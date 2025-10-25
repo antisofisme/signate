@@ -97,7 +97,7 @@ export default function PlaylistContentModal({ playlist, onClose }) {
   // Handle removing content
   const handleRemoveContent = (item) => {
     if (confirm(`Remove "${item.content_name}" from playlist?`)) {
-      removeContentMutation.mutate(item.content_id)
+      removeContentMutation.mutate(item.id)
     }
   }
 
