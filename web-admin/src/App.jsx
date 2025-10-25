@@ -13,8 +13,12 @@ import Layout from './components/Layout'
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      refetchOnWindowFocus: false,
-      retry: 1,
+      // Cache Settings - Prevent unnecessary refetching
+      staleTime: 5 * 60 * 1000,        // Data stays fresh for 5 minutes
+      cacheTime: 10 * 60 * 1000,       // Keep unused data in cache for 10 minutes
+      refetchOnMount: false,            // Don't refetch on component mount if data is fresh
+      refetchOnWindowFocus: false,      // Don't refetch on window focus
+      retry: 1,                         // Retry failed requests once
     },
   },
 })
