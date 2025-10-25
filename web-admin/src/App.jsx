@@ -8,6 +8,8 @@ import Dashboard from './pages/Dashboard'
 import Devices from './pages/Devices'
 import Content from './pages/Content'
 import Tags from './pages/Tags'
+import Playlists from './pages/Playlists'
+import Apps from './pages/Apps'
 import Layout from './components/Layout'
 
 const queryClient = new QueryClient({
@@ -66,6 +68,22 @@ function App() {
             <PrivateRoute>
               <Layout setIsAuthenticated={setIsAuthenticated}>
                 <Tags />
+              </Layout>
+            </PrivateRoute>
+          } />
+
+          <Route path="/playlists" element={
+            <PrivateRoute>
+              <Layout setIsAuthenticated={setIsAuthenticated}>
+                <Playlists />
+              </Layout>
+            </PrivateRoute>
+          } />
+
+          <Route path="/apps" element={
+            <PrivateRoute>
+              <Layout setIsAuthenticated={setIsAuthenticated}>
+                <Apps />
               </Layout>
             </PrivateRoute>
           } />

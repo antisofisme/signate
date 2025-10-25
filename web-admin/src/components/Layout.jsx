@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom'
-import { Monitor, FileImage, LayoutDashboard, LogOut, Tag } from 'lucide-react'
+import { Monitor, FileImage, LayoutDashboard, LogOut, Tag, ListVideo, Smartphone } from 'lucide-react'
 
 export default function Layout({ children, setIsAuthenticated }) {
   const location = useLocation()
@@ -13,7 +13,9 @@ export default function Layout({ children, setIsAuthenticated }) {
     { name: 'Dashboard', href: '/', icon: LayoutDashboard },
     { name: 'Devices', href: '/devices', icon: Monitor },
     { name: 'Content', href: '/content', icon: FileImage },
+    { name: 'Playlists', href: '/playlists', icon: ListVideo },
     { name: 'Tags', href: '/tags', icon: Tag },
+    { name: 'Apps', href: '/apps', icon: Smartphone },
   ]
 
   return (

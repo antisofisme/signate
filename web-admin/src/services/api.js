@@ -85,6 +85,32 @@ export const tagsAPI = {
   getDevices: (id) => api.get(`/api/tags/${id}/devices`),
 }
 
+// Playlists API
+export const playlistsAPI = {
+  list: () => api.get('/api/playlists'),
+  create: (data) => api.post('/api/playlists', data),
+  get: (id) => api.get(`/api/playlists/${id}`),
+  update: (id, data) => api.patch(`/api/playlists/${id}`, data),
+  delete: (id) => api.delete(`/api/playlists/${id}`),
+  getContent: (id) => api.get(`/api/playlists/${id}/content`),
+  assignContent: (id, data) => api.post(`/api/playlists/${id}/content`, data),
+  removeContent: (id, contentId) => api.delete(`/api/playlists/${id}/content/${contentId}`),
+  reorderContent: (id, data) => api.patch(`/api/playlists/${id}/reorder`, data),
+}
+
+// Apps API
+export const appsAPI = {
+  list: () => api.get('/api/apps'),
+  upload: (formData) => api.post('/api/apps/upload', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  }),
+  get: (id) => api.get(`/api/apps/${id}`),
+  update: (id, data) => api.patch(`/api/apps/${id}`, data),
+  delete: (id) => api.delete(`/api/apps/${id}`),
+  deploy: (id, data) => api.post(`/api/apps/${id}/deploy`, data),
+  getDeployments: (id) => api.get(`/api/apps/${id}/deployments`),
+}
+
 // Client API (for testing)
 export const clientAPI = {
   getPlaylist: (deviceId) => api.get(`/api/client/playlist?device_id=${deviceId}`),
