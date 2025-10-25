@@ -125,7 +125,7 @@ export default function PreviewPlayer({ content, isPlaying, onContentEnd }) {
         <video
           ref={videoRef}
           src={content.anthias_url}
-          className="max-w-full max-h-full object-contain"
+          className="absolute inset-0 w-full h-full object-contain"
           onError={handleVideoError}
           controls={false}
           playsInline
@@ -153,7 +153,7 @@ export default function PreviewPlayer({ content, isPlaying, onContentEnd }) {
         <img
           src={content.anthias_url}
           alt={content.title}
-          className="max-w-full max-h-full object-contain"
+          className="absolute inset-0 w-full h-full object-contain"
           onError={(e) => {
             console.error('Image error:', e)
             setError(`Failed to load image: ${content.title}`)
