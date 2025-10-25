@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { contentAPI } from '../../../services/api'
 import { showToast } from '../../../utils/toast'
+import { validateFileUpload, formatFileSize } from '../../../utils/helpers'
 import { Modal, ModalFooter, Button, FormInput } from '../../shared'
 
 /**
@@ -9,7 +10,8 @@ import { Modal, ModalFooter, Button, FormInput } from '../../shared'
  * Modal for uploading multiple content files (images/videos) with bulk upload support
  *
  * Features:
- * - Multiple file selection
+ * - Multiple file selection with validation
+ * - File size, MIME type, and magic number validation
  * - Parallel upload processing
  * - Per-file upload progress tracking
  * - File format information and recommendations
@@ -26,12 +28,64 @@ export default function UploadModal({ onClose, onSubmit }) {
   const [duration, setDuration] = useState(10)
   const [uploading, setUploading] = useState(false)
   const [uploadProgress, setUploadProgress] = useState([])
+  const [validating, setValidating] = useState(false)
 
-  const handleFileSelect = (e) => {
+  const handleFileSelect = async (e) => {
     const selectedFiles = Array.from(e.target.files)
-    setFiles(selectedFiles)
-    // Initialize progress for each file
-    setUploadProgress(selectedFiles.map(() => ({ status: 'pending', error: null })))
+
+    if (selectedFiles.length === 0) {
+      return
+    }
+
+    setValidating(true)
+
+    // Validate all files
+    const validationResults = await Promise.all(
+      selectedFiles.map(file => validateFileUpload(file))
+    )
+
+    // Filter out invalid files and show warnings
+    const validFiles = []
+    const invalidFiles = []
+
+    selectedFiles.forEach((file, index) => {
+      const validation = validationResults[index]
+      if (validation.isValid) {
+        validFiles.push(file)
+      } else {
+        invalidFiles.push({ file, errors: validation.errors })
+      }
+    })
+
+    setValidating(false)
+
+    // Show validation errors for invalid files
+    if (invalidFiles.length > 0) {
+      invalidFiles.forEach(({ file, errors }) => {
+        showToast.error(
+          `${file.name}: ${errors.join(', ')}`,
+          { duration: 6000 }
+        )
+      })
+    }
+
+    // Show success message for valid files
+    if (validFiles.length > 0) {
+      showToast.success(
+        `${validFiles.length} file(s) validated successfully`,
+        { duration: 3000 }
+      )
+    }
+
+    // Only set valid files
+    if (validFiles.length > 0) {
+      setFiles(validFiles)
+      // Initialize progress for each valid file
+      setUploadProgress(validFiles.map(() => ({ status: 'pending', error: null })))
+    } else {
+      setFiles([])
+      setUploadProgress([])
+    }
   }
 
   const handleBulkUpload = async (e) => {
@@ -117,7 +171,8 @@ export default function UploadModal({ onClose, onSubmit }) {
             accept="image/*,video/*"
             multiple
             onChange={handleFileSelect}
-            disabled={uploading}
+            disabled={uploading || validating}
+            description={validating ? 'Validating files...' : 'Select one or more image/video files'}
           />
           <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
             <p className="text-xs font-semibold text-blue-800 mb-2">📋 Supported File Formats:</p>

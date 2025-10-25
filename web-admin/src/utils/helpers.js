@@ -198,3 +198,203 @@ export function isValidUrl(url) {
     return false
   }
 }
+
+/**
+ * Validate IPv4 address format
+ * @param {string} ip - IP address to validate
+ * @returns {boolean} True if valid IPv4 address
+ */
+export function isValidIPv4(ip) {
+  // Regex pattern for IPv4 validation
+  const ipv4Regex = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/
+
+  if (!ipv4Regex.test(ip)) {
+    return false
+  }
+
+  // Validate each octet is between 0-255
+  const octets = ip.split('.')
+  return octets.every(octet => {
+    const num = parseInt(octet, 10)
+    return num >= 0 && num <= 255
+  })
+}
+
+/**
+ * Validate password strength
+ * @param {string} password - Password to validate
+ * @returns {Object} Validation result with isValid flag and strength level
+ */
+export function validatePasswordStrength(password) {
+  const result = {
+    isValid: false,
+    strength: 'weak',
+    issues: []
+  }
+
+  // Minimum length requirement
+  if (password.length < 8) {
+    result.issues.push('Must be at least 8 characters long')
+  }
+
+  // Uppercase letter requirement
+  if (!/[A-Z]/.test(password)) {
+    result.issues.push('Must contain at least one uppercase letter')
+  }
+
+  // Lowercase letter requirement
+  if (!/[a-z]/.test(password)) {
+    result.issues.push('Must contain at least one lowercase letter')
+  }
+
+  // Number requirement
+  if (!/\d/.test(password)) {
+    result.issues.push('Must contain at least one number')
+  }
+
+  // Determine strength based on criteria met
+  const criteriaMet = 4 - result.issues.length
+
+  if (criteriaMet === 4) {
+    result.strength = 'strong'
+    result.isValid = true
+  } else if (criteriaMet === 3) {
+    result.strength = 'medium'
+    result.isValid = false
+  } else {
+    result.strength = 'weak'
+    result.isValid = false
+  }
+
+  return result
+}
+
+/**
+ * File validation configuration
+ */
+const FILE_VALIDATION_CONFIG = {
+  maxSize: {
+    image: 5 * 1024 * 1024,    // 5MB for images
+    video: 100 * 1024 * 1024   // 100MB for videos
+  },
+  allowedMimeTypes: {
+    image: ['image/png', 'image/jpeg', 'image/jpg', 'image/webp', 'image/gif', 'image/bmp', 'image/svg+xml'],
+    video: ['video/mp4', 'video/webm', 'video/ogg']
+  },
+  // Magic numbers (file signatures) for common formats
+  magicNumbers: {
+    'image/png': [[0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]],
+    'image/jpeg': [[0xFF, 0xD8, 0xFF]],
+    'image/jpg': [[0xFF, 0xD8, 0xFF]],
+    'image/gif': [[0x47, 0x49, 0x46, 0x38]],
+    'image/webp': [[0x52, 0x49, 0x46, 0x46]], // RIFF (first 4 bytes)
+    'image/bmp': [[0x42, 0x4D]],
+    'video/mp4': [[0x00, 0x00, 0x00], [0x66, 0x74, 0x79, 0x70]], // ftyp at offset 4
+    'video/webm': [[0x1A, 0x45, 0xDF, 0xA3]],
+    'video/ogg': [[0x4F, 0x67, 0x67, 0x53]]
+  }
+}
+
+/**
+ * Read file header bytes for magic number validation
+ * @param {File} file - File object to read
+ * @param {number} bytes - Number of bytes to read (default 12)
+ * @returns {Promise<Uint8Array>} First N bytes of the file
+ */
+async function readFileHeader(file, bytes = 12) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    const blob = file.slice(0, bytes)
+
+    reader.onload = (e) => resolve(new Uint8Array(e.target.result))
+    reader.onerror = (e) => reject(e)
+
+    reader.readAsArrayBuffer(blob)
+  })
+}
+
+/**
+ * Check if file header matches expected magic numbers
+ * @param {Uint8Array} header - File header bytes
+ * @param {Array} magicNumbers - Array of magic number patterns
+ * @returns {boolean} True if header matches any pattern
+ */
+function matchesMagicNumber(header, magicNumbers) {
+  return magicNumbers.some(pattern => {
+    return pattern.every((byte, index) => header[index] === byte)
+  })
+}
+
+/**
+ * Validate file upload
+ * @param {File} file - File object to validate
+ * @param {Object} options - Validation options
+ * @returns {Promise<Object>} Validation result with isValid flag and error messages
+ */
+export async function validateFileUpload(file, options = {}) {
+  const result = {
+    isValid: true,
+    errors: []
+  }
+
+  // Determine file category
+  const isImage = file.type.startsWith('image/')
+  const isVideo = file.type.startsWith('video/')
+
+  if (!isImage && !isVideo) {
+    result.isValid = false
+    result.errors.push('File must be an image or video')
+    return result
+  }
+
+  const category = isImage ? 'image' : 'video'
+  const maxSize = options.maxSize || FILE_VALIDATION_CONFIG.maxSize[category]
+  const allowedMimeTypes = options.allowedMimeTypes || FILE_VALIDATION_CONFIG.allowedMimeTypes[category]
+
+  // 1. File size validation
+  if (file.size > maxSize) {
+    result.isValid = false
+    result.errors.push(
+      `File size exceeds ${(maxSize / 1024 / 1024).toFixed(0)}MB limit (current: ${(file.size / 1024 / 1024).toFixed(2)}MB)`
+    )
+  }
+
+  // 2. MIME type validation
+  if (!allowedMimeTypes.includes(file.type)) {
+    result.isValid = false
+    result.errors.push(`File type '${file.type}' is not allowed`)
+  }
+
+  // 3. Magic number validation (file signature)
+  try {
+    const header = await readFileHeader(file)
+    const magicPatterns = FILE_VALIDATION_CONFIG.magicNumbers[file.type]
+
+    if (magicPatterns && !matchesMagicNumber(header, magicPatterns)) {
+      result.isValid = false
+      result.errors.push(
+        `File signature doesn't match ${file.type}. File may be corrupted or have wrong extension.`
+      )
+    }
+  } catch (error) {
+    result.isValid = false
+    result.errors.push('Failed to read file signature')
+  }
+
+  return result
+}
+
+/**
+ * Format file size to human-readable string
+ * @param {number} bytes - File size in bytes
+ * @returns {string} Formatted file size (e.g., "1.5 MB")
+ */
+export function formatFileSize(bytes) {
+  if (bytes === 0) return '0 Bytes'
+
+  const k = 1024
+  const sizes = ['Bytes', 'KB', 'MB', 'GB']
+  const i = Math.floor(Math.log(bytes) / Math.log(k))
+
+  return `${(bytes / Math.pow(k, i)).toFixed(2)} ${sizes[i]}`
+}

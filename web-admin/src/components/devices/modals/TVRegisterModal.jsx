@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Modal, ModalFooter, Button, FormInput } from '../../shared'
+import { isValidIPv4 } from '../../../utils/helpers'
 
 /**
  * TVRegisterModal Component
@@ -7,7 +8,7 @@ import { Modal, ModalFooter, Button, FormInput } from '../../shared'
  *
  * Features:
  * - Device name input with validation
- * - IP address input for network connection
+ * - IP address input for network connection with IPv4 validation
  * - Passphrase for device authentication
  * - Form validation before submission
  * - Cancel and submit actions
@@ -21,9 +22,38 @@ export default function TVRegisterModal({ onClose, onSubmit }) {
     ip_address: '',
     passphrase: ''
   })
+  const [errors, setErrors] = useState({})
+
+  const validateIPAddress = (ip) => {
+    if (!ip) {
+      return 'IP address is required'
+    }
+    if (!isValidIPv4(ip)) {
+      return 'Invalid IPv4 address format (e.g., 192.168.1.100)'
+    }
+    return null
+  }
+
+  const handleIPChange = (e) => {
+    const newIP = e.target.value
+    setFormData({...formData, ip_address: newIP})
+
+    // Clear error when user starts typing
+    if (errors.ip_address) {
+      setErrors({...errors, ip_address: null})
+    }
+  }
 
   const handleSubmit = (e) => {
     e.preventDefault()
+
+    // Validate IP address before submitting
+    const ipError = validateIPAddress(formData.ip_address)
+    if (ipError) {
+      setErrors({...errors, ip_address: ipError})
+      return
+    }
+
     onSubmit(formData)
   }
 
@@ -56,8 +86,9 @@ export default function TVRegisterModal({ onClose, onSubmit }) {
           label="IP Address"
           type="text"
           value={formData.ip_address}
-          onChange={(e) => setFormData({...formData, ip_address: e.target.value})}
+          onChange={handleIPChange}
           placeholder="192.168.1.100"
+          error={errors.ip_address}
           required
         />
         <FormInput
