@@ -132,62 +132,73 @@ window.ShellNetworkDiagnostics = {
     /**
      * Test download speed
      * Downloads data from public CDN to measure real internet speed
+     * Optimized for accurate high-speed measurements (60-100+ Mbps)
      */
     testDownloadSpeed: async function() {
         this.sendDirectLog('info', '[Shell/Network] Testing download speed from CLOUDFLARE CDN...');
 
-        const testDurationSeconds = 5; // Test for 5 seconds
-        const chunkSize = 1024 * 1024; // 1MB chunks
+        const testDurationSeconds = 10; // 10 seconds for better accuracy
         let totalBytes = 0;
         const startTime = performance.now();
 
         try {
-            // Use Cloudflare speed test endpoint or Google's public CDN
-            // These are reliable public endpoints for speed testing
+            // Use Cloudflare speed test endpoint with larger chunks
             const testUrls = [
-                'https://speed.cloudflare.com/__down?bytes=1000000', // Cloudflare speed test
-                'https://www.google.com/images/branding/googlelogo/2x/googlelogo_color_272x92dp.png', // Google CDN fallback
+                'https://speed.cloudflare.com/__down?bytes=10000000', // 10MB chunks
+                'https://www.google.com/images/branding/googlelogo/2x/googlelogo_color_272x92dp.png', // Fallback
             ];
 
             let testUrl = testUrls[0];
             let usedSource = 'Cloudflare';
 
-            // Download repeatedly until test duration is reached
-            while ((performance.now() - startTime) / 1000 < testDurationSeconds) {
-                const chunkStart = performance.now();
+            // Parallel downloads for maximum throughput
+            const parallelRequests = 3; // 3 simultaneous downloads
+            const downloadPromises = [];
 
-                try {
-                    const response = await fetch(testUrl + '&nocache=' + Date.now(), {
-                        method: 'GET',
-                        cache: 'no-cache',
-                        mode: 'cors'
-                    });
+            for (let i = 0; i < parallelRequests; i++) {
+                const downloadTask = async () => {
+                    while ((performance.now() - startTime) / 1000 < testDurationSeconds) {
+                        try {
+                            const response = await fetch(testUrl + '&nocache=' + Date.now() + '_' + i, {
+                                method: 'GET',
+                                cache: 'no-cache',
+                                mode: 'cors'
+                            });
 
-                    if (!response.ok && testUrl === testUrls[0]) {
-                        // Fallback to Google CDN if Cloudflare fails
-                        this.sendDirectLog('warn', '[Shell/Network] Cloudflare failed, switching to GOOGLE CDN...');
-                        testUrl = testUrls[1];
-                        usedSource = 'Google CDN';
-                        continue;
+                            if (!response.ok && testUrl === testUrls[0]) {
+                                // Fallback to Google CDN if Cloudflare fails
+                                if (i === 0) { // Only log once
+                                    this.sendDirectLog('warn', '[Shell/Network] Cloudflare failed, switching to GOOGLE CDN...');
+                                }
+                                testUrl = testUrls[1];
+                                usedSource = 'Google CDN';
+                                continue;
+                            }
+
+                            const blob = await response.blob();
+                            totalBytes += blob.size;
+
+                        } catch (fetchError) {
+                            // If first URL fails, try fallback
+                            if (testUrl === testUrls[0]) {
+                                if (i === 0) { // Only log once
+                                    this.sendDirectLog('warn', '[Shell/Network] Cloudflare failed, switching to GOOGLE CDN...');
+                                }
+                                testUrl = testUrls[1];
+                                usedSource = 'Google CDN';
+                            } else {
+                                // Silent fail for individual requests
+                                break;
+                            }
+                        }
                     }
+                };
 
-                    const blob = await response.blob();
-                    totalBytes += blob.size;
-
-                    // Small delay to prevent overwhelming the connection
-                    await new Promise(resolve => setTimeout(resolve, 50));
-
-                } catch (fetchError) {
-                    // If first URL fails, try fallback
-                    if (testUrl === testUrls[0]) {
-                        this.sendDirectLog('warn', '[Shell/Network] Cloudflare failed, switching to GOOGLE CDN...');
-                        testUrl = testUrls[1];
-                        usedSource = 'Google CDN';
-                    } else {
-                        throw fetchError;
-                    }
-                }
+                downloadPromises.push(downloadTask());
             }
+
+            // Wait for all parallel downloads to complete
+            await Promise.all(downloadPromises);
 
             const endTime = performance.now();
             const durationSeconds = (endTime - startTime) / 1000;
@@ -211,42 +222,57 @@ window.ShellNetworkDiagnostics = {
     /**
      * Test upload speed
      * Uploads dummy data to backend server to measure upload bandwidth
+     * Optimized for accurate high-speed measurements (60-100+ Mbps)
      */
     testUploadSpeed: async function() {
         const state = window.ShellState;
         this.sendDirectLog('info', '[Shell/Network] Testing upload speed to BACKEND...');
 
-        const testDurationSeconds = 5; // Test for 5 seconds
+        const testDurationSeconds = 10; // 10 seconds for better accuracy
         let totalBytes = 0;
         const startTime = performance.now();
 
         try {
             const uploadUrl = `${state.API_BASE_URL}/api/speedtest/upload`;
-            const chunkSize = 100 * 1024; // 100KB chunks
+            const chunkSize = 1024 * 1024; // 1MB chunks
 
-            // Upload repeatedly until test duration is reached
-            while ((performance.now() - startTime) / 1000 < testDurationSeconds) {
-                // Create random binary data
-                const testData = new ArrayBuffer(chunkSize);
-                const view = new Uint8Array(testData);
-                for (let i = 0; i < view.length; i++) {
-                    view[i] = Math.floor(Math.random() * 256);
-                }
-
-                const response = await fetch(uploadUrl, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/octet-stream' },
-                    body: testData,
-                    cache: 'no-cache'
-                });
-
-                if (response.ok) {
-                    totalBytes += chunkSize;
-                }
-
-                // Small delay to prevent overwhelming the connection
-                await new Promise(resolve => setTimeout(resolve, 50));
+            // Pre-generate test data (reuse to save CPU)
+            const testData = new ArrayBuffer(chunkSize);
+            const view = new Uint8Array(testData);
+            for (let i = 0; i < view.length; i++) {
+                view[i] = Math.floor(Math.random() * 256);
             }
+
+            // Parallel uploads for maximum throughput
+            const parallelRequests = 3; // 3 simultaneous uploads
+            const uploadPromises = [];
+
+            for (let i = 0; i < parallelRequests; i++) {
+                const uploadTask = async () => {
+                    while ((performance.now() - startTime) / 1000 < testDurationSeconds) {
+                        try {
+                            const response = await fetch(uploadUrl, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/octet-stream' },
+                                body: testData,
+                                cache: 'no-cache'
+                            });
+
+                            if (response.ok) {
+                                totalBytes += chunkSize;
+                            }
+                        } catch (error) {
+                            // Silent fail for individual requests
+                            break;
+                        }
+                    }
+                };
+
+                uploadPromises.push(uploadTask());
+            }
+
+            // Wait for all parallel uploads to complete
+            await Promise.all(uploadPromises);
 
             const endTime = performance.now();
             const durationSeconds = (endTime - startTime) / 1000;
