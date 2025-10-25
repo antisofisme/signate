@@ -106,14 +106,8 @@ window.ShellInit = {
             await window.ShellRegistration.registerDevice();
         }
 
-        // Run initial network diagnostics (single test on startup)
-        // Periodic diagnostics will start after device activation
-        if (window.ShellNetworkDiagnostics && window.ShellNetworkDiagnostics.runDiagnostics) {
-            setTimeout(() => {
-                console.log('[Shell] Running initial network diagnostics...');
-                window.ShellNetworkDiagnostics.runDiagnostics();
-            }, 5000);
-        }
+        // Network diagnostics will run ONLY after device activation
+        // (No point running diagnostics sebelum device registered)
 
         console.log('[Shell] Initialization complete ✅');
     }

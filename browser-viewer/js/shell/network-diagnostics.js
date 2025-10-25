@@ -215,14 +215,13 @@ window.ShellNetworkDiagnostics = {
 
     /**
      * Send test results to backend
+     * NOTE: Diagnostics hanya jalan setelah device activated, jadi deviceId pasti ada
      */
     sendResults: async function(results) {
         const state = window.ShellState;
 
         if (!state.deviceId) {
-            this.sendDirectLog('warn', '[Network] ⚠️ No device ID yet, will send diagnostics after activation');
-            // Store results to send later when device is activated
-            localStorage.setItem('pending_network_diagnostics', JSON.stringify(results));
+            this.sendDirectLog('error', '[Network] ❌ No device ID - diagnostics should only run after activation!');
             return;
         }
 
@@ -246,40 +245,11 @@ window.ShellNetworkDiagnostics = {
 
             if (response.ok) {
                 this.sendDirectLog('info', '[Network] ✅ Diagnostics results sent to backend');
-                // Clear pending diagnostics if any
-                localStorage.removeItem('pending_network_diagnostics');
             } else {
                 this.sendDirectLog('warn', `[Network] ⚠️ Failed to send diagnostics results: ${response.statusText}`);
             }
         } catch (error) {
             this.sendDirectLog('error', `[Network] ❌ Error sending diagnostics results: ${error.message}`);
-        }
-    },
-
-    /**
-     * Send pending diagnostics after device activation
-     */
-    sendPendingDiagnostics: async function() {
-        const state = window.ShellState;
-
-        if (!state.deviceId) {
-            this.sendDirectLog('warn', '[Network] No device ID, cannot send pending diagnostics');
-            return;
-        }
-
-        const pendingResults = localStorage.getItem('pending_network_diagnostics');
-        if (!pendingResults) {
-            return; // No pending diagnostics
-        }
-
-        try {
-            const results = JSON.parse(pendingResults);
-            this.sendDirectLog('info', '[Network] 📤 Sending pending diagnostics from before activation...');
-
-            await this.sendResults(results);
-        } catch (error) {
-            this.sendDirectLog('error', `[Network] Failed to send pending diagnostics: ${error.message}`);
-            localStorage.removeItem('pending_network_diagnostics');
         }
     },
 

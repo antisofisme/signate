@@ -141,14 +141,17 @@ window.ShellRegistration = {
         // Initialize display settings (rotation, volume)
         await window.ShellDisplaySettings.init();
 
-        // Send pending network diagnostics (if any from before activation)
-        if (window.ShellNetworkDiagnostics && window.ShellNetworkDiagnostics.sendPendingDiagnostics) {
-            await window.ShellNetworkDiagnostics.sendPendingDiagnostics();
-        }
+        // Run network diagnostics immediately after activation
+        if (window.ShellNetworkDiagnostics) {
+            // Run diagnostics now (device sudah punya ID, log akan terkirim)
+            setTimeout(() => {
+                window.ShellNetworkDiagnostics.runDiagnostics();
+            }, 5000); // 5 detik setelah activation
 
-        // Start periodic network diagnostics (every 30 minutes)
-        if (window.ShellNetworkDiagnostics && window.ShellNetworkDiagnostics.startPeriodicDiagnostics) {
-            window.ShellNetworkDiagnostics.startPeriodicDiagnostics();
+            // Start periodic diagnostics (setiap 30 menit)
+            if (window.ShellNetworkDiagnostics.startPeriodicDiagnostics) {
+                window.ShellNetworkDiagnostics.startPeriodicDiagnostics();
+            }
         }
 
         window.ShellUI.loadPlayer();
