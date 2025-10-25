@@ -145,7 +145,7 @@ window.PlayerPlayback = {
             setTimeout(() => this.playContent(state.currentIndex + 1), 3000);
         };
 
-        video.onloadeddata = () => {
+        video.onloadeddata = async () => {
             console.log('[Player] Video loaded ✅');
             window.PlayerUI.hideError();
 
@@ -158,6 +158,21 @@ window.PlayerPlayback = {
             if (startTime > 0) {
                 video.currentTime = startTime;
                 console.log('[Player] Starting from:', startTime + 's');
+            }
+
+            // Explicitly play video (required for modern browsers)
+            try {
+                await video.play();
+                console.log('[Player] Video playback started ✅');
+            } catch (error) {
+                console.error('[Player] Video playback failed:', error);
+                // Try to play without promise (fallback)
+                video.play().catch(e => {
+                    console.error('[Player] Video play fallback also failed:', e);
+                    window.PlayerUI.showError(`Failed to play video: ${content.title}`);
+                    // Skip to next content after 3 seconds
+                    setTimeout(() => this.playContent(state.currentIndex + 1), 3000);
+                });
             }
         };
 
