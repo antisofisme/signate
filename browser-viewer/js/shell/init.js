@@ -28,7 +28,7 @@ window.ShellInit = {
         const savedStatus = localStorage.getItem('device_status');
         const savedCode = localStorage.getItem('device_code');
 
-        console.log('='.repeat(60));
+        state.originalConsole.log('='.repeat(60));
         console.log('[Shell] 🔍 DETAILED localStorage DEBUG:');
         console.log('[Shell] - device_id:', savedDeviceId);
         console.log('[Shell] - device_status:', savedStatus);
@@ -36,7 +36,7 @@ window.ShellInit = {
         console.log('[Shell] - hasDeviceId:', !!savedDeviceId);
         console.log('[Shell] - localStorage.length:', localStorage.length);
         console.log('[Shell] - All localStorage keys:', Object.keys(localStorage));
-        console.log('='.repeat(60));
+        state.originalConsole.log('='.repeat(60));
 
         if (savedDeviceId) {
             state.deviceId = savedDeviceId;

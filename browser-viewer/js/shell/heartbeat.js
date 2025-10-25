@@ -70,6 +70,8 @@ window.ShellHeartbeat = {
     start: function() {
         const state = window.ShellState;
 
+        console.log('[Shell/Heartbeat] ⏰ Starting heartbeat (every 30 seconds)');
+
         state.heartbeatInterval = setInterval(async () => {
             if (!state.deviceId) return;
 
@@ -143,10 +145,11 @@ window.ShellHeartbeat = {
      */
     stop: function() {
         const state = window.ShellState;
-        
+
         if (state.heartbeatInterval) {
             clearInterval(state.heartbeatInterval);
             state.heartbeatInterval = null;
+            console.log('[Shell/Heartbeat] ⏹️ Heartbeat stopped');
         }
     }
 };

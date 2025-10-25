@@ -30,6 +30,17 @@ window.ShellUI = {
     },
 
     /**
+     * Show activation success message
+     */
+    showActivationSuccess: function(deviceName) {
+        console.log(`[Shell/UI] 🎉 Activation successful! Device: ${deviceName}`);
+        const statusElement = document.getElementById('status-message');
+        if (statusElement) {
+            statusElement.textContent = `✅ Activated as: ${deviceName}`;
+        }
+    },
+
+    /**
      * Load player in iframe with cache-busting timestamp
      */
     loadPlayer: function() {
