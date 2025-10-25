@@ -70,11 +70,11 @@ export default function DeviceLogsModal({ device, onClose }) {
         setConnectionStatus('Loading logs...')
         const response = await devicesAPI.getLogs(device.id)
 
-        // Response is array of logs, reverse to show oldest first
-        const reversedLogs = [...response].reverse()
+        // Response.data is array of logs, reverse to show oldest first
+        const reversedLogs = [...response.data].reverse()
         setLogs(reversedLogs)
         setConnectionStatus('Loaded')
-        console.log(`Loaded ${response.length} initial logs for device ${device.id}`)
+        console.log(`Loaded ${response.data.length} initial logs for device ${device.id}`)
       } catch (error) {
         console.error('Failed to load initial logs:', error)
         setConnectionStatus('Failed to load logs')
