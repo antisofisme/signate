@@ -96,6 +96,12 @@ export const playlistsAPI = {
   assignContent: (id, data) => api.post(`/api/playlists/${id}/content`, data),
   removeContent: (id, contentId) => api.delete(`/api/playlists/${id}/content/${contentId}`),
   reorderContent: (id, data) => api.patch(`/api/playlists/${id}/reorder`, data),
+  // Device & Tag Assignments
+  getAssignments: (id) => api.get(`/api/playlists/${id}/assignments`),
+  assignToDevices: (id, data) => api.post(`/api/playlists/${id}/assign/devices`, data),
+  assignToTags: (id, data) => api.post(`/api/playlists/${id}/assign/tags`, data),
+  unassignFromDevices: (id, data) => api.delete(`/api/playlists/${id}/assign/devices`, { data }),
+  unassignFromTags: (id, data) => api.delete(`/api/playlists/${id}/assign/tags`, { data }),
 }
 
 // Widgets API

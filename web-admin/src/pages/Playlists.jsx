@@ -1,9 +1,14 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { playlistsAPI } from '../services/api'
-import { ListVideo, Plus, Trash2, Edit2, Play } from 'lucide-react'
+import { ListVideo, Plus, Trash2, Edit2, Play, Users, Copy, Monitor } from 'lucide-react'
 import { showToast } from '../utils/toast'
 import { Button } from '../components/shared'
+import PlaylistFormModal from '../components/playlists/modals/PlaylistFormModal'
+import PlaylistContentModal from '../components/playlists/modals/PlaylistContentModal'
+import PlaylistAssignmentModal from '../components/playlists/modals/PlaylistAssignmentModal'
+import DuplicatePlaylistModal from '../components/playlists/modals/DuplicatePlaylistModal'
+import PlaylistPreviewModal from '../components/playlists/modals/PlaylistPreviewModal'
 
 /**
  * Playlists Page
@@ -21,7 +26,10 @@ export default function Playlists() {
   const queryClient = useQueryClient()
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [showEditModal, setShowEditModal] = useState(false)
-  const [showAssignModal, setShowAssignModal] = useState(false)
+  const [showContentModal, setShowContentModal] = useState(false)
+  const [showAssignmentModal, setShowAssignmentModal] = useState(false)
+  const [showDuplicateModal, setShowDuplicateModal] = useState(false)
+  const [showPreviewModal, setShowPreviewModal] = useState(false)
   const [selectedPlaylist, setSelectedPlaylist] = useState(null)
 
   // Fetch playlists
@@ -74,9 +82,24 @@ export default function Playlists() {
     setShowEditModal(true)
   }
 
-  const handleAssign = (playlist) => {
+  const handleManageContent = (playlist) => {
     setSelectedPlaylist(playlist)
-    setShowAssignModal(true)
+    setShowContentModal(true)
+  }
+
+  const handleAssignDevices = (playlist) => {
+    setSelectedPlaylist(playlist)
+    setShowAssignmentModal(true)
+  }
+
+  const handleDuplicate = (playlist) => {
+    setSelectedPlaylist(playlist)
+    setShowDuplicateModal(true)
+  }
+
+  const handlePreview = (playlist) => {
+    setSelectedPlaylist(playlist)
+    setShowPreviewModal(true)
   }
 
   const handleDelete = (id, name) => {
@@ -185,40 +208,75 @@ export default function Playlists() {
               </div>
 
               {/* Actions */}
-              <div className="px-6 py-4 flex items-center gap-2">
-                <Button
-                  variant="primary"
-                  size="sm"
-                  leftIcon={<Play className="w-4 h-4" />}
-                  onClick={() => handleAssign(playlist)}
-                  className="flex-1"
-                >
-                  Manage
-                </Button>
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  leftIcon={<Edit2 className="w-4 h-4" />}
-                  onClick={() => handleEdit(playlist)}
-                >
-                  Edit
-                </Button>
-                <Button
-                  variant="danger"
-                  size="sm"
-                  leftIcon={<Trash2 className="w-4 h-4" />}
-                  onClick={() => handleDelete(playlist.id, playlist.name)}
-                >
-                  Delete
-                </Button>
+              <div className="px-6 py-4 space-y-2">
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    leftIcon={<Play className="w-4 h-4" />}
+                    onClick={() => handleManageContent(playlist)}
+                    className="flex-1"
+                  >
+                    Content
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    leftIcon={<Users className="w-4 h-4" />}
+                    onClick={() => handleAssignDevices(playlist)}
+                    className="flex-1"
+                  >
+                    Assign
+                  </Button>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="info"
+                    size="sm"
+                    leftIcon={<Monitor className="w-4 h-4" />}
+                    onClick={() => handlePreview(playlist)}
+                    className="flex-1"
+                  >
+                    Preview
+                  </Button>
+                  <Button
+                    variant="info"
+                    size="sm"
+                    leftIcon={<Copy className="w-4 h-4" />}
+                    onClick={() => handleDuplicate(playlist)}
+                    className="flex-1"
+                  >
+                    Duplicate
+                  </Button>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    leftIcon={<Edit2 className="w-4 h-4" />}
+                    onClick={() => handleEdit(playlist)}
+                    className="flex-1"
+                  >
+                    Edit
+                  </Button>
+                  <Button
+                    variant="danger"
+                    size="sm"
+                    leftIcon={<Trash2 className="w-4 h-4" />}
+                    onClick={() => handleDelete(playlist.id, playlist.name)}
+                    className="flex-1"
+                  >
+                    Delete
+                  </Button>
+                </div>
               </div>
             </div>
           ))}
         </div>
       )}
 
-      {/* Modals - Will be created later */}
-      {/* {showCreateModal && (
+      {/* Modals */}
+      {showCreateModal && (
         <PlaylistFormModal
           onClose={() => setShowCreateModal(false)}
           onSubmit={(data) => createMutation.mutate(data)}
@@ -236,15 +294,45 @@ export default function Playlists() {
         />
       )}
 
-      {showAssignModal && selectedPlaylist && (
+      {showContentModal && selectedPlaylist && (
         <PlaylistContentModal
           playlist={selectedPlaylist}
           onClose={() => {
-            setShowAssignModal(false)
+            setShowContentModal(false)
             setSelectedPlaylist(null)
           }}
         />
-      )} */}
+      )}
+
+      {showAssignmentModal && selectedPlaylist && (
+        <PlaylistAssignmentModal
+          playlist={selectedPlaylist}
+          onClose={() => {
+            setShowAssignmentModal(false)
+            setSelectedPlaylist(null)
+          }}
+        />
+      )}
+
+      {showDuplicateModal && selectedPlaylist && (
+        <DuplicatePlaylistModal
+          playlist={selectedPlaylist}
+          onClose={() => {
+            setShowDuplicateModal(false)
+            setSelectedPlaylist(null)
+          }}
+        />
+      )}
+
+      {showPreviewModal && selectedPlaylist && (
+        <PlaylistPreviewModal
+          playlist={selectedPlaylist}
+          onClose={() => {
+            setShowPreviewModal(false)
+            setSelectedPlaylist(null)
+          }}
+        />
+      )}
     </div>
   )
 }

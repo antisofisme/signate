@@ -12,6 +12,7 @@ from app.models.schedule import Schedule
 from app.models.firebird import FirebirdConfig
 from app.models.device_log import DeviceLog
 from app.models.device_command import DeviceCommand
+from app.models.playlist import Playlist, PlaylistContent, PlaylistAssignment
 
 __all__ = [
     "User",
@@ -24,4 +25,7 @@ __all__ = [
     "FirebirdConfig",
     "DeviceLog",
     "DeviceCommand",
+    "Playlist",
+    "PlaylistContent",
+    "PlaylistAssignment",
 ]
