@@ -31,7 +31,9 @@ window.ShellNetworkDiagnostics = {
 
             this.lastTestResults = results;
 
-            const summary = `[Shell/Network] ✅ Diagnostics complete: Ping ${results.ping.avg}ms (min: ${results.ping.min}ms, max: ${results.ping.max}ms), Download: ${results.download.mbps.toFixed(2)} Mbps, Upload: ${results.upload.mbps.toFixed(2)} Mbps`;
+            const downloadSource = results.download.source || 'Internet';
+            const uploadTarget = results.upload.target || 'Internet';
+            const summary = `[Shell/Network] ✅ Diagnostics complete: Ping to BACKEND ${results.ping.avg}ms (min: ${results.ping.min}ms, max: ${results.ping.max}ms), Download from ${downloadSource}: ${results.download.mbps.toFixed(2)} Mbps, Upload to ${uploadTarget}: ${results.upload.mbps.toFixed(2)} Mbps`;
             this.sendDirectLog('info', summary);
 
             // Send results to backend
@@ -90,7 +92,7 @@ window.ShellNetworkDiagnostics = {
         const pingResults = [];
         const sampleCount = 10;
 
-        this.sendDirectLog('info', `[Shell/Network] Testing ping (${sampleCount} samples)...`);
+        this.sendDirectLog('info', `[Shell/Network] Testing ping to BACKEND server (${sampleCount} samples)...`);
 
         for (let i = 0; i < sampleCount; i++) {
             const startTime = performance.now();
@@ -132,7 +134,7 @@ window.ShellNetworkDiagnostics = {
      * Downloads data from public CDN to measure real internet speed
      */
     testDownloadSpeed: async function() {
-        this.sendDirectLog('info', '[Shell/Network] Testing download speed from internet...');
+        this.sendDirectLog('info', '[Shell/Network] Testing download speed from CLOUDFLARE CDN...');
 
         const testDurationSeconds = 5; // Test for 5 seconds
         const chunkSize = 1024 * 1024; // 1MB chunks
@@ -148,6 +150,7 @@ window.ShellNetworkDiagnostics = {
             ];
 
             let testUrl = testUrls[0];
+            let usedSource = 'Cloudflare';
 
             // Download repeatedly until test duration is reached
             while ((performance.now() - startTime) / 1000 < testDurationSeconds) {
@@ -162,7 +165,9 @@ window.ShellNetworkDiagnostics = {
 
                     if (!response.ok && testUrl === testUrls[0]) {
                         // Fallback to Google CDN if Cloudflare fails
+                        this.sendDirectLog('warn', '[Shell/Network] Cloudflare failed, switching to GOOGLE CDN...');
                         testUrl = testUrls[1];
+                        usedSource = 'Google CDN';
                         continue;
                     }
 
@@ -175,7 +180,9 @@ window.ShellNetworkDiagnostics = {
                 } catch (fetchError) {
                     // If first URL fails, try fallback
                     if (testUrl === testUrls[0]) {
+                        this.sendDirectLog('warn', '[Shell/Network] Cloudflare failed, switching to GOOGLE CDN...');
                         testUrl = testUrls[1];
+                        usedSource = 'Google CDN';
                     } else {
                         throw fetchError;
                     }
@@ -187,10 +194,13 @@ window.ShellNetworkDiagnostics = {
             const bytesPerSecond = totalBytes / durationSeconds;
             const mbps = (bytesPerSecond * 8) / (1024 * 1024); // Convert to Mbps
 
+            this.sendDirectLog('info', `[Shell/Network] Download test completed using ${usedSource}`);
+
             return {
                 bytes: totalBytes,
                 duration: durationSeconds,
-                mbps: mbps
+                mbps: mbps,
+                source: usedSource
             };
         } catch (error) {
             this.sendDirectLog('error', `[Shell/Network] ❌ Download speed test failed: ${error.message}`);
@@ -200,24 +210,18 @@ window.ShellNetworkDiagnostics = {
 
     /**
      * Test upload speed
-     * Uploads dummy data to internet to measure real upload speed
+     * Uploads dummy data to backend server to measure upload bandwidth
      */
     testUploadSpeed: async function() {
-        this.sendDirectLog('info', '[Shell/Network] Testing upload speed to internet...');
+        const state = window.ShellState;
+        this.sendDirectLog('info', '[Shell/Network] Testing upload speed to BACKEND...');
 
         const testDurationSeconds = 5; // Test for 5 seconds
         let totalBytes = 0;
         const startTime = performance.now();
 
         try {
-            // Use Cloudflare speed test upload endpoint
-            // Or fallback to httpbin.org which accepts POST
-            const uploadUrls = [
-                'https://speed.cloudflare.com/__up', // Cloudflare upload test
-                'https://httpbin.org/post' // Fallback to httpbin
-            ];
-
-            let uploadUrl = uploadUrls[0];
+            const uploadUrl = `${state.API_BASE_URL}/api/speedtest/upload`;
             const chunkSize = 100 * 1024; // 100KB chunks
 
             // Upload repeatedly until test duration is reached
@@ -229,34 +233,19 @@ window.ShellNetworkDiagnostics = {
                     view[i] = Math.floor(Math.random() * 256);
                 }
 
-                try {
-                    const response = await fetch(uploadUrl, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/octet-stream' },
-                        body: testData,
-                        mode: 'cors',
-                        cache: 'no-cache'
-                    });
+                const response = await fetch(uploadUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/octet-stream' },
+                    body: testData,
+                    cache: 'no-cache'
+                });
 
-                    if (response.ok) {
-                        totalBytes += chunkSize;
-                    } else if (uploadUrl === uploadUrls[0]) {
-                        // Fallback to httpbin if Cloudflare fails
-                        uploadUrl = uploadUrls[1];
-                        continue;
-                    }
-
-                    // Small delay to prevent overwhelming the connection
-                    await new Promise(resolve => setTimeout(resolve, 100));
-
-                } catch (fetchError) {
-                    // If first URL fails, try fallback
-                    if (uploadUrl === uploadUrls[0]) {
-                        uploadUrl = uploadUrls[1];
-                    } else {
-                        throw fetchError;
-                    }
+                if (response.ok) {
+                    totalBytes += chunkSize;
                 }
+
+                // Small delay to prevent overwhelming the connection
+                await new Promise(resolve => setTimeout(resolve, 50));
             }
 
             const endTime = performance.now();
@@ -264,14 +253,17 @@ window.ShellNetworkDiagnostics = {
             const bytesPerSecond = totalBytes / durationSeconds;
             const mbps = (bytesPerSecond * 8) / (1024 * 1024); // Convert to Mbps
 
+            this.sendDirectLog('info', `[Shell/Network] Upload test completed to Backend`);
+
             return {
                 bytes: totalBytes,
                 duration: durationSeconds,
-                mbps: mbps
+                mbps: mbps,
+                target: 'Backend'
             };
         } catch (error) {
             this.sendDirectLog('error', `[Shell/Network] ❌ Upload speed test failed: ${error.message}`);
-            return { bytes: 0, duration: 0, mbps: 0 };
+            return { bytes: 0, duration: 0, mbps: 0, target: 'Backend' };
         }
     },
 
