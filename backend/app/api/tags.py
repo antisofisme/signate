@@ -3,7 +3,7 @@ Tags API endpoints
 For managing device tags and grouping
 """
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Body
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from typing import List
@@ -27,13 +27,32 @@ router = APIRouter()
 
 @router.get("", response_model=TagListResponse)
 def list_tags(
+    sort_by: str = "newest",
     db: Session = Depends(get_db),
     current_user: Optional[User] = Depends(get_optional_user)
 ):
     """
     Get all tags with device counts
+
+    Sort options:
+    - name_asc: Sort by name A-Z
+    - name_desc: Sort by name Z-A
+    - newest: Sort by created date (newest first)
+    - oldest: Sort by created date (oldest first)
     """
-    tags = db.query(Tag).all()
+    # Build query with sorting (with secondary sort by ID for consistency)
+    query = db.query(Tag)
+
+    if sort_by == "name_asc":
+        query = query.order_by(Tag.tag_name.asc(), Tag.id.asc())
+    elif sort_by == "name_desc":
+        query = query.order_by(Tag.tag_name.desc(), Tag.id.desc())
+    elif sort_by == "oldest":
+        query = query.order_by(Tag.created_at.asc(), Tag.id.asc())
+    else:  # newest (default)
+        query = query.order_by(Tag.created_at.desc(), Tag.id.desc())
+
+    tags = query.all()
 
     # Add device count for each tag
     tag_responses = []
@@ -80,6 +99,88 @@ def create_tag(
     tag_dict['device_count'] = 0
 
     return TagResponse(**tag_dict)
+
+
+@router.post("/assign", status_code=status.HTTP_201_CREATED)
+def assign_tag_to_device(
+    assignment: DeviceTagAssign,
+    db: Session = Depends(get_db),
+    current_user: Optional[User] = Depends(get_optional_user)
+):
+    """
+    Assign a tag to a device
+    """
+    # Check if tag exists
+    tag = db.query(Tag).filter(Tag.id == assignment.tag_id).first()
+    if not tag:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Tag with ID {assignment.tag_id} not found"
+        )
+
+    # Check if device exists and is active
+    device = db.query(Device).filter(Device.id == assignment.device_id).first()
+    if not device:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Device with ID {assignment.device_id} not found"
+        )
+
+    # Only allow assignment to active devices
+    if device.status != 'active':
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Cannot assign tag to device with status '{device.status}'. Device must be active."
+        )
+
+    # Check if already assigned
+    existing = db.query(DeviceTag).filter(
+        DeviceTag.device_id == assignment.device_id,
+        DeviceTag.tag_id == assignment.tag_id
+    ).first()
+
+    if existing:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Tag already assigned to this device"
+        )
+
+    # Create assignment
+    device_tag = DeviceTag(
+        device_id=assignment.device_id,
+        tag_id=assignment.tag_id
+    )
+
+    db.add(device_tag)
+    db.commit()
+
+    return {"message": "Tag assigned successfully"}
+
+
+@router.delete("/assign", status_code=status.HTTP_204_NO_CONTENT)
+def unassign_tag_from_device(
+    assignment: DeviceTagAssign = Body(...),
+    db: Session = Depends(get_db),
+    current_user: Optional[User] = Depends(get_optional_user)
+):
+    """
+    Remove a tag from a device
+    """
+    device_tag = db.query(DeviceTag).filter(
+        DeviceTag.device_id == assignment.device_id,
+        DeviceTag.tag_id == assignment.tag_id
+    ).first()
+
+    if not device_tag:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Tag assignment not found"
+        )
+
+    db.delete(device_tag)
+    db.commit()
+
+    return None
 
 
 @router.get("/{tag_id}", response_model=TagResponse)
@@ -172,88 +273,6 @@ def delete_tag(
         )
 
     db.delete(tag)
-    db.commit()
-
-    return None
-
-
-@router.post("/assign", status_code=status.HTTP_201_CREATED)
-def assign_tag_to_device(
-    assignment: DeviceTagAssign,
-    db: Session = Depends(get_db),
-    current_user: Optional[User] = Depends(get_optional_user)
-):
-    """
-    Assign a tag to a device
-    """
-    # Check if tag exists
-    tag = db.query(Tag).filter(Tag.id == assignment.tag_id).first()
-    if not tag:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Tag with ID {assignment.tag_id} not found"
-        )
-
-    # Check if device exists and is active
-    device = db.query(Device).filter(Device.id == assignment.device_id).first()
-    if not device:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Device with ID {assignment.device_id} not found"
-        )
-
-    # Only allow assignment to active devices
-    if device.status != 'active':
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Cannot assign tag to device with status '{device.status}'. Device must be active."
-        )
-
-    # Check if already assigned
-    existing = db.query(DeviceTag).filter(
-        DeviceTag.device_id == assignment.device_id,
-        DeviceTag.tag_id == assignment.tag_id
-    ).first()
-
-    if existing:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Tag already assigned to this device"
-        )
-
-    # Create assignment
-    device_tag = DeviceTag(
-        device_id=assignment.device_id,
-        tag_id=assignment.tag_id
-    )
-
-    db.add(device_tag)
-    db.commit()
-
-    return {"message": "Tag assigned successfully"}
-
-
-@router.delete("/assign", status_code=status.HTTP_204_NO_CONTENT)
-def unassign_tag_from_device(
-    assignment: DeviceTagAssign,
-    db: Session = Depends(get_db),
-    current_user: Optional[User] = Depends(get_optional_user)
-):
-    """
-    Remove a tag from a device
-    """
-    device_tag = db.query(DeviceTag).filter(
-        DeviceTag.device_id == assignment.device_id,
-        DeviceTag.tag_id == assignment.tag_id
-    ).first()
-
-    if not device_tag:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Tag assignment not found"
-        )
-
-    db.delete(device_tag)
     db.commit()
 
     return None

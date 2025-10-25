@@ -75,13 +75,17 @@ export const contentAPI = {
 
 // Tags API
 export const tagsAPI = {
-  list: () => api.get('/api/tags'),
+  list: (params) => api.get('/api/tags', { params }),
   create: (data) => api.post('/api/tags', data),
   get: (id) => api.get(`/api/tags/${id}`),
   update: (id, data) => api.patch(`/api/tags/${id}`, data),
   delete: (id) => api.delete(`/api/tags/${id}`),
   assign: (data) => api.post('/api/tags/assign', data),
-  unassign: (data) => api.delete('/api/tags/assign', { data }),
+  unassign: (data) => api({
+    method: 'delete',
+    url: '/api/tags/assign',
+    data: data
+  }),
   getDevices: (id) => api.get(`/api/tags/${id}/devices`),
 }
 

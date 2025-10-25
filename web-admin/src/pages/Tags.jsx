@@ -1,30 +1,29 @@
 import { useState, useMemo } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { tagsAPI, devicesAPI } from '../services/api'
-import { Tag, Plus, Trash2, Edit2, Users, Eye, Search, BarChart3 } from 'lucide-react'
+import { Tag, Plus, Trash2, Edit2, Users, Search, BarChart3 } from 'lucide-react'
 import { showToast } from '../utils/toast'
 import { Button, FormInput } from '../components/shared'
 
 // Modal Components
 import TagFormModal from '../components/tags/modals/TagFormModal'
-import AssignTagModal from '../components/tags/modals/AssignTagModal'
-import TagDevicesModal from '../components/tags/modals/TagDevicesModal'
+import TagDeviceManagementModal from '../components/tags/modals/TagDeviceManagementModal'
 import TagStatsModal from '../components/tags/modals/TagStatsModal'
 
 export default function Tags() {
   const queryClient = useQueryClient()
   const [showCreateForm, setShowCreateForm] = useState(false)
   const [showEditForm, setShowEditForm] = useState(false)
-  const [showAssignForm, setShowAssignForm] = useState(false)
-  const [showDevicesModal, setShowDevicesModal] = useState(false)
+  const [showManageDevices, setShowManageDevices] = useState(false)
   const [showStatsModal, setShowStatsModal] = useState(false)
   const [selectedTag, setSelectedTag] = useState(null)
   const [searchQuery, setSearchQuery] = useState('')
+  const [sortBy, setSortBy] = useState('newest')
 
-  // Fetch tags
+  // Fetch tags with sorting
   const { data: tagsData } = useQuery({
-    queryKey: ['tags'],
-    queryFn: () => tagsAPI.list().then(res => res.data),
+    queryKey: ['tags', sortBy],
+    queryFn: () => tagsAPI.list({ sort_by: sortBy }).then(res => res.data),
   })
 
   // Create tag mutation
@@ -68,14 +67,9 @@ export default function Tags() {
     setShowEditForm(true)
   }
 
-  const handleAssign = (tag) => {
+  const handleManageDevices = (tag) => {
     setSelectedTag(tag)
-    setShowAssignForm(true)
-  }
-
-  const handleViewDevices = (tag) => {
-    setSelectedTag(tag)
-    setShowDevicesModal(true)
+    setShowManageDevices(true)
   }
 
   const handleViewStats = (tag) => {
@@ -110,15 +104,27 @@ export default function Tags() {
           </Button>
         </div>
 
-        {/* Search Bar */}
-        <div className="max-w-md">
-          <FormInput
-            type="text"
-            placeholder="Search tags by name or description..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            leftIcon={<Search className="w-4 h-4 text-gray-400" />}
-          />
+        {/* Search Bar & Sort */}
+        <div className="flex gap-3">
+          <div className="flex-1 max-w-md">
+            <FormInput
+              type="text"
+              placeholder="Search tags by name or description..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              leftIcon={<Search className="w-4 h-4 text-gray-400" />}
+            />
+          </div>
+          <select
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value)}
+            className="px-4 py-2 border border-gray-300 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            <option value="newest">Terbaru</option>
+            <option value="oldest">Terlama</option>
+            <option value="name_asc">Nama: A-Z</option>
+            <option value="name_desc">Nama: Z-A</option>
+          </select>
         </div>
       </div>
 
@@ -164,20 +170,11 @@ export default function Tags() {
                 <Button
                   variant="primary"
                   size="sm"
-                  leftIcon={<Eye className="w-4 h-4" />}
-                  onClick={() => handleViewDevices(tag)}
-                  className="flex-1"
-                >
-                  Devices
-                </Button>
-                <Button
-                  variant="success"
-                  size="sm"
                   leftIcon={<Users className="w-4 h-4" />}
-                  onClick={() => handleAssign(tag)}
+                  onClick={() => handleManageDevices(tag)}
                   className="flex-1"
                 >
-                  Assign
+                  Devices ({tag.device_count})
                 </Button>
               </div>
               <div className="flex gap-2">
@@ -245,28 +242,13 @@ export default function Tags() {
         />
       )}
 
-      {/* Assign Form Modal */}
-      {showAssignForm && selectedTag && (
-        <AssignTagModal
+      {/* Manage Devices Modal */}
+      {showManageDevices && selectedTag && (
+        <TagDeviceManagementModal
           tag={selectedTag}
           onClose={() => {
-            setShowAssignForm(false)
+            setShowManageDevices(false)
             setSelectedTag(null)
-          }}
-        />
-      )}
-
-      {/* View Devices Modal */}
-      {showDevicesModal && selectedTag && (
-        <TagDevicesModal
-          tag={selectedTag}
-          onClose={() => {
-            setShowDevicesModal(false)
-            setSelectedTag(null)
-          }}
-          onOpenAssign={() => {
-            setShowDevicesModal(false)
-            setShowAssignForm(true)
           }}
         />
       )}
