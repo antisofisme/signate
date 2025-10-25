@@ -115,9 +115,37 @@ async def internal_error_handler(request, exc):
 # STARTUP & SHUTDOWN EVENTS
 # =============================================================================
 
+import asyncio
+from app.utils.log_cleanup import cleanup_old_logs
+
+# Background task handle
+cleanup_task = None
+
+
+async def periodic_log_cleanup():
+    """Background task to cleanup old device logs every hour"""
+    logger.info("🧹 Starting periodic log cleanup task (every 1 hour)")
+
+    while True:
+        try:
+            # Run cleanup every hour
+            await asyncio.sleep(3600)  # 1 hour = 3600 seconds
+
+            # Cleanup logs older than 24 hours (1 day retention)
+            deleted_count = cleanup_old_logs(retention_hours=24)
+
+            if deleted_count > 0:
+                logger.info(f"🧹 Cleaned up {deleted_count} old device logs (retention: 24 hours)")
+
+        except Exception as e:
+            logger.error(f"❌ Error in periodic log cleanup: {e}")
+
+
 @app.on_event("startup")
 async def startup_event():
     """Run on application startup"""
+    global cleanup_task
+
     logger.info("=" * 60)
     logger.info("Smart TV Digital Signage - Backend API Starting...")
     logger.info(f"Environment: {settings.ENVIRONMENT}")
@@ -139,11 +167,34 @@ async def startup_event():
     except Exception as e:
         logger.error(f"✗ Database connection failed: {e}")
 
+    # Run initial cleanup on startup
+    try:
+        deleted_count = cleanup_old_logs(retention_hours=24)
+        if deleted_count > 0:
+            logger.info(f"🧹 Initial cleanup: Deleted {deleted_count} old device logs")
+    except Exception as e:
+        logger.error(f"❌ Initial cleanup failed: {e}")
+
+    # Start background task for log cleanup
+    cleanup_task = asyncio.create_task(periodic_log_cleanup())
+    logger.info("✓ Background log cleanup task started")
+
 
 @app.on_event("shutdown")
 async def shutdown_event():
     """Run on application shutdown"""
+    global cleanup_task
+
     logger.info("Smart TV Digital Signage - Backend API Shutting Down...")
+
+    # Cancel background tasks
+    if cleanup_task:
+        cleanup_task.cancel()
+        try:
+            await cleanup_task
+        except asyncio.CancelledError:
+            logger.info("✓ Background log cleanup task cancelled")
+
     # Cleanup resources here
 
 
