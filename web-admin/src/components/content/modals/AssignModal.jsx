@@ -69,6 +69,9 @@ export default function AssignModal({ content, onClose, onSubmit }) {
   const [selectedDeviceIds, setSelectedDeviceIds] = useState(new Set())
   const [selectedTagIds, setSelectedTagIds] = useState(new Set())
 
+  // State for display order (for new assignments)
+  const [displayOrder, setDisplayOrder] = useState(0)
+
   // State for initial assignments (to track what to add/remove)
   const [initialDeviceIds, setInitialDeviceIds] = useState(new Set())
   const [initialTagIds, setInitialTagIds] = useState(new Set())
@@ -160,6 +163,7 @@ export default function AssignModal({ content, onClose, onSubmit }) {
       for (const deviceId of devicesToAdd) {
         await contentAPI.assign(content.id, {
           device_id: deviceId,
+          display_order: parseInt(displayOrder) || 0,
           priority: 0
         })
       }
@@ -168,6 +172,7 @@ export default function AssignModal({ content, onClose, onSubmit }) {
       for (const tagId of tagsToAdd) {
         await contentAPI.assign(content.id, {
           tag_id: tagId,
+          display_order: parseInt(displayOrder) || 0,
           priority: 0
         })
       }
@@ -351,6 +356,32 @@ export default function AssignModal({ content, onClose, onSubmit }) {
                     </div>
                   </>
                 )}
+              </div>
+            </div>
+
+            {/* Assignment Settings Section */}
+            <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+              <div className="flex items-center gap-2 mb-4">
+                <span className="text-xl">🔢</span>
+                <h3 className="font-bold text-gray-800 text-lg">Assignment Settings</h3>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Display Order
+                </label>
+                <input
+                  type="number"
+                  value={displayOrder}
+                  onChange={(e) => setDisplayOrder(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  disabled={saving}
+                  min="0"
+                  placeholder="0"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Order in playback sequence (lower numbers play first). This will be applied to all new assignments below.
+                </p>
               </div>
             </div>
 

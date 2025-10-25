@@ -24,6 +24,8 @@ export default function PlaylistFormModal({ playlist, onClose, onSubmit }) {
     description: playlist?.description || '',
     is_active: playlist?.is_active ?? true,
     priority: playlist?.priority || 1,
+    schedule_mode: playlist?.schedule_mode || 'inclusive',
+    schedule_timezone: playlist?.schedule_timezone || 'Asia/Jakarta',
     schedule: {
       start_time: playlist?.schedule?.start_time || '00:00',
       end_time: playlist?.schedule?.end_time || '23:59',
@@ -163,6 +165,73 @@ export default function PlaylistFormModal({ playlist, onClose, onSubmit }) {
         {/* Schedule Section */}
         <div className="border-t pt-4">
           <h3 className="text-sm font-semibold text-gray-800 mb-3">Schedule</h3>
+
+          {/* Schedule Mode */}
+          <div className="mb-4">
+            <label className="block text-sm font-medium mb-2 text-gray-700">
+              Schedule Mode
+            </label>
+            <div className="flex items-center gap-4">
+              <button
+                type="button"
+                onClick={() => setFormData({...formData, schedule_mode: 'inclusive'})}
+                className={`flex-1 px-4 py-3 rounded-lg font-medium transition-colors border-2 ${
+                  formData.schedule_mode === 'inclusive'
+                    ? 'bg-blue-50 border-blue-500 text-blue-700'
+                    : 'bg-white border-gray-200 text-gray-600 hover:border-blue-300'
+                }`}
+              >
+                <div className="text-left">
+                  <div className="font-bold">📋 Inclusive</div>
+                  <div className="text-xs mt-1">Add to existing rotation</div>
+                </div>
+              </button>
+              <button
+                type="button"
+                onClick={() => setFormData({...formData, schedule_mode: 'exclusive'})}
+                className={`flex-1 px-4 py-3 rounded-lg font-medium transition-colors border-2 ${
+                  formData.schedule_mode === 'exclusive'
+                    ? 'bg-red-50 border-red-500 text-red-700'
+                    : 'bg-white border-gray-200 text-gray-600 hover:border-red-300'
+                }`}
+              >
+                <div className="text-left">
+                  <div className="font-bold">🚨 Exclusive</div>
+                  <div className="text-xs mt-1">Replace all other content</div>
+                </div>
+              </button>
+            </div>
+            <p className="text-xs text-gray-500 mt-2">
+              {formData.schedule_mode === 'inclusive'
+                ? '✓ This playlist will be added to existing content during the schedule'
+                : '⚠️ This playlist will REPLACE all other content during the schedule (use for emergencies/events)'
+              }
+            </p>
+          </div>
+
+          {/* Timezone */}
+          <div className="mb-4">
+            <label className="block text-sm font-medium mb-2 text-gray-700">
+              Timezone
+            </label>
+            <select
+              value={formData.schedule_timezone}
+              onChange={(e) => setFormData({...formData, schedule_timezone: e.target.value})}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            >
+              <option value="Asia/Jakarta">Asia/Jakarta (WIB - UTC+7)</option>
+              <option value="Asia/Makassar">Asia/Makassar (WITA - UTC+8)</option>
+              <option value="Asia/Jayapura">Asia/Jayapura (WIT - UTC+9)</option>
+              <option value="Asia/Singapore">Asia/Singapore (SGT - UTC+8)</option>
+              <option value="Asia/Kuala_Lumpur">Asia/Kuala_Lumpur (MYT - UTC+8)</option>
+              <option value="Asia/Bangkok">Asia/Bangkok (ICT - UTC+7)</option>
+              <option value="Asia/Manila">Asia/Manila (PHT - UTC+8)</option>
+              <option value="UTC">UTC (UTC+0)</option>
+            </select>
+            <p className="text-xs text-gray-500 mt-1">
+              Schedule times will be interpreted in this timezone
+            </p>
+          </div>
 
           {/* Date Range (Optional) */}
           <div className="mb-4">
