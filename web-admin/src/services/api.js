@@ -123,14 +123,6 @@ export const usersAPI = {
 
 // Settings API
 export const settingsAPI = {
-  // Display Settings
-  getDisplay: () => api.get('/api/settings/display'),
-  updateDisplay: (data) => api.put('/api/settings/display', data),
-
-  // Notification Settings
-  getNotifications: () => api.get('/api/settings/notifications'),
-  updateNotifications: (data) => api.put('/api/settings/notifications', data),
-
   // System Settings
   getSystemInfo: () => api.get('/api/settings/system/info'),
   backupDatabase: () => api.get('/api/settings/system/backup', {

@@ -1,11 +1,9 @@
 import { useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { Users, Monitor, Bell, Database, Shield } from 'lucide-react'
+import { Users, Database } from 'lucide-react'
 
 // Tab Components
 import UsersTab from '../components/settings/UsersTab'
-import DisplayTab from '../components/settings/DisplayTab'
-import NotificationsTab from '../components/settings/NotificationsTab'
 import SystemTab from '../components/settings/SystemTab'
 
 /**
@@ -14,8 +12,6 @@ import SystemTab from '../components/settings/SystemTab'
  *
  * Tabs:
  * - Users: User management, roles, permissions
- * - Display: Default content duration, transitions, resolution
- * - Notifications: Alert settings, email notifications
  * - System: Backup, logs, maintenance, system info
  */
 export default function Settings() {
@@ -29,20 +25,6 @@ export default function Settings() {
       icon: Users,
       description: 'Manage users, roles, and permissions',
       component: UsersTab
-    },
-    {
-      id: 'display',
-      label: 'Display',
-      icon: Monitor,
-      description: 'Content duration, transitions, and display settings',
-      component: DisplayTab
-    },
-    {
-      id: 'notifications',
-      label: 'Notifications',
-      icon: Bell,
-      description: 'Alert settings and email notifications',
-      component: NotificationsTab
     },
     {
       id: 'system',
