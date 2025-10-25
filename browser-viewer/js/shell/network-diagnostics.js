@@ -11,13 +11,15 @@ window.ShellNetworkDiagnostics = {
      * Run full network diagnostics
      */
     runDiagnostics: async function() {
+        const state = window.ShellState;
+
         if (this.testInProgress) {
-            console.warn('[Network] Diagnostics already in progress, skipping...');
+            this.sendDirectLog('warn', '[Network] Diagnostics already in progress, skipping...');
             return this.lastTestResults;
         }
 
         this.testInProgress = true;
-        console.log('[Network] 🌐 Starting network diagnostics...');
+        this.sendDirectLog('info', '[Network] 🌐 Starting network diagnostics...');
 
         try {
             const results = {
@@ -29,21 +31,53 @@ window.ShellNetworkDiagnostics = {
 
             this.lastTestResults = results;
 
-            console.log('[Network] ✅ Diagnostics complete:', {
-                ping: `${results.ping.avg}ms (min: ${results.ping.min}ms, max: ${results.ping.max}ms)`,
-                download: `${results.download.mbps.toFixed(2)} Mbps`,
-                upload: `${results.upload.mbps.toFixed(2)} Mbps`
-            });
+            const summary = `[Network] ✅ Diagnostics complete: Ping ${results.ping.avg}ms (min: ${results.ping.min}ms, max: ${results.ping.max}ms), Download: ${results.download.mbps.toFixed(2)} Mbps, Upload: ${results.upload.mbps.toFixed(2)} Mbps`;
+            this.sendDirectLog('info', summary);
 
             // Send results to backend
             await this.sendResults(results);
 
             return results;
         } catch (error) {
-            console.error('[Network] ❌ Diagnostics failed:', error);
+            this.sendDirectLog('error', `[Network] ❌ Diagnostics failed: ${error.message}`);
             return null;
         } finally {
             this.testInProgress = false;
+        }
+    },
+
+    /**
+     * Send log directly to backend (bypass ShellLogger)
+     * Used for logs that need to be sent even before device activation
+     */
+    sendDirectLog: async function(level, message) {
+        const state = window.ShellState;
+
+        // Always print to console for debugging
+        state.originalConsole[level](`${message}`);
+
+        // If device not activated yet, skip backend sending
+        // (These logs will be in browser console only)
+        if (!state.deviceId) {
+            return;
+        }
+
+        try {
+            await fetch(`${state.API_BASE_URL}/api/client/logs/batch`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    device_id: parseInt(state.deviceId),
+                    logs: [{
+                        level: level,
+                        message: message,
+                        timestamp: new Date().toISOString(),
+                        source: 'browser-viewer'
+                    }]
+                })
+            });
+        } catch (error) {
+            state.originalConsole.error('[Network] Failed to send direct log:', error);
         }
     },
 
@@ -56,7 +90,7 @@ window.ShellNetworkDiagnostics = {
         const pingResults = [];
         const sampleCount = 10;
 
-        console.log(`[Network] Testing ping (${sampleCount} samples)...`);
+        this.sendDirectLog('info', `[Network] Testing ping (${sampleCount} samples)...`);
 
         for (let i = 0; i < sampleCount; i++) {
             const startTime = performance.now();
@@ -73,7 +107,7 @@ window.ShellNetworkDiagnostics = {
                     pingResults.push(latency);
                 }
             } catch (error) {
-                console.warn(`[Network] Ping sample ${i + 1} failed:`, error.message);
+                this.sendDirectLog('warn', `[Network] Ping sample ${i + 1} failed: ${error.message}`);
             }
 
             // Small delay between pings
@@ -100,11 +134,10 @@ window.ShellNetworkDiagnostics = {
     testDownloadSpeed: async function() {
         const state = window.ShellState;
 
-        console.log('[Network] Testing download speed...');
+        this.sendDirectLog('info', '[Network] Testing download speed...');
 
         // Use backend health endpoint with cache-busting
         // We'll measure how fast we can download multiple requests
-        const testSizeKB = 100; // Approximate size to test
         const startTime = performance.now();
         let totalBytes = 0;
 
@@ -132,7 +165,7 @@ window.ShellNetworkDiagnostics = {
                 mbps: mbps
             };
         } catch (error) {
-            console.error('[Network] Download speed test failed:', error);
+            this.sendDirectLog('error', `[Network] Download speed test failed: ${error.message}`);
             return { bytes: 0, duration: 0, mbps: 0 };
         }
     },
@@ -144,7 +177,7 @@ window.ShellNetworkDiagnostics = {
     testUploadSpeed: async function() {
         const state = window.ShellState;
 
-        console.log('[Network] Testing upload speed...');
+        this.sendDirectLog('info', '[Network] Testing upload speed...');
 
         // Create dummy data to upload (100 KB)
         const testData = 'x'.repeat(100 * 1024);
@@ -175,7 +208,7 @@ window.ShellNetworkDiagnostics = {
                 mbps: mbps
             };
         } catch (error) {
-            console.error('[Network] Upload speed test failed:', error);
+            this.sendDirectLog('error', `[Network] Upload speed test failed: ${error.message}`);
             return { bytes: 0, duration: 0, mbps: 0 };
         }
     },
@@ -187,14 +220,14 @@ window.ShellNetworkDiagnostics = {
         const state = window.ShellState;
 
         if (!state.deviceId) {
-            console.warn('[Network] ⚠️ No device ID yet, will send diagnostics after activation');
+            this.sendDirectLog('warn', '[Network] ⚠️ No device ID yet, will send diagnostics after activation');
             // Store results to send later when device is activated
             localStorage.setItem('pending_network_diagnostics', JSON.stringify(results));
             return;
         }
 
         try {
-            console.log('[Network] Sending diagnostics results to backend...');
+            this.sendDirectLog('info', '[Network] Sending diagnostics results to backend...');
 
             const response = await fetch(`${state.API_BASE_URL}/api/client/logs/batch`, {
                 method: 'POST',
@@ -212,14 +245,14 @@ window.ShellNetworkDiagnostics = {
             });
 
             if (response.ok) {
-                console.log('[Network] ✅ Diagnostics results sent to backend');
+                this.sendDirectLog('info', '[Network] ✅ Diagnostics results sent to backend');
                 // Clear pending diagnostics if any
                 localStorage.removeItem('pending_network_diagnostics');
             } else {
-                console.warn('[Network] ⚠️ Failed to send diagnostics results:', response.statusText);
+                this.sendDirectLog('warn', `[Network] ⚠️ Failed to send diagnostics results: ${response.statusText}`);
             }
         } catch (error) {
-            console.error('[Network] ❌ Error sending diagnostics results:', error);
+            this.sendDirectLog('error', `[Network] ❌ Error sending diagnostics results: ${error.message}`);
         }
     },
 
@@ -230,7 +263,7 @@ window.ShellNetworkDiagnostics = {
         const state = window.ShellState;
 
         if (!state.deviceId) {
-            console.warn('[Network] No device ID, cannot send pending diagnostics');
+            this.sendDirectLog('warn', '[Network] No device ID, cannot send pending diagnostics');
             return;
         }
 
@@ -241,11 +274,11 @@ window.ShellNetworkDiagnostics = {
 
         try {
             const results = JSON.parse(pendingResults);
-            console.log('[Network] 📤 Sending pending diagnostics from before activation...');
+            this.sendDirectLog('info', '[Network] 📤 Sending pending diagnostics from before activation...');
 
             await this.sendResults(results);
         } catch (error) {
-            console.error('[Network] Failed to send pending diagnostics:', error);
+            this.sendDirectLog('error', `[Network] Failed to send pending diagnostics: ${error.message}`);
             localStorage.removeItem('pending_network_diagnostics');
         }
     },
