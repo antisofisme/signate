@@ -22,15 +22,15 @@ window.ShellRegistration = {
 
         // 🛡️ GUARD 1: Prevent concurrent registrations
         if (this.isRegistering) {
-            console.warn('[Shell] ⚠️ Registration already in progress, skipping...');
+            console.warn('[Shell/Registration] ⚠️ Registration already in progress, skipping...');
             return;
         }
 
         // 🛡️ GUARD 2: Check if already registered (localStorage check)
         const existingDeviceId = localStorage.getItem('device_id');
         if (existingDeviceId) {
-            console.warn('[Shell] ⚠️ Device already registered (device_id exists in localStorage), skipping registration');
-            console.log('[Shell] Existing device_id:', existingDeviceId);
+            console.warn('[Shell/Registration] ⚠️ Device already registered (device_id exists in localStorage), skipping registration');
+            console.log('[Shell/Registration] Existing device_id:', existingDeviceId);
             return;
         }
 
@@ -40,7 +40,7 @@ window.ShellRegistration = {
             const code = this.generateActivationCode();
             const deviceName = `Browser - ${code}`;
 
-            console.log('[Shell] 📡 Registering device with code:', code);
+            console.log('[Shell/Registration] 📡 Registering device with code:', code);
 
             const response = await fetch(`${state.API_BASE_URL}/api/devices/monitor/register`, {
                 method: 'POST',
@@ -65,20 +65,20 @@ window.ShellRegistration = {
             state.deviceId = data.id;
             state.deviceCode = code;
 
-            console.log('[Shell] Device registered ✅', { deviceId: state.deviceId, code });
+            console.log('[Shell/Registration] ✅ Device registered', { deviceId: state.deviceId, code });
 
             // ✅ CANCEL any pending retry (registration succeeded)
             if (this.retryTimeout) {
                 clearTimeout(this.retryTimeout);
                 this.retryTimeout = null;
-                console.log('[Shell] ✅ Cancelled retry timeout (registration succeeded)');
+                console.log('[Shell/Registration] ✅ Cancelled retry timeout (registration succeeded)');
             }
 
             // Update UI (wrapped in try-catch to prevent UI errors from triggering retry)
             try {
                 window.ShellUI.updateUI('pending', code);
             } catch (uiError) {
-                console.error('[Shell] ⚠️ UI update failed (non-critical):', uiError);
+                console.error('[Shell/Registration] ⚠️ UI update failed (non-critical):', uiError);
                 // Don't throw - UI error shouldn't trigger re-registration
             }
 
@@ -88,7 +88,7 @@ window.ShellRegistration = {
                     window.ActivationPoll.startPolling();
                 }
             } catch (pollError) {
-                console.error('[Shell] ⚠️ Polling start failed (non-critical):', pollError);
+                console.error('[Shell/Registration] ⚠️ Polling start failed (non-critical):', pollError);
                 // Don't throw - polling error shouldn't trigger re-registration
             }
 
@@ -96,7 +96,7 @@ window.ShellRegistration = {
             this.isRegistering = false;
 
         } catch (error) {
-            console.error('[Shell] ❌ Registration failed:', error);
+            console.error('[Shell/Registration] ❌ Registration failed:', error);
 
             // Reset flag
             this.isRegistering = false;
@@ -105,7 +105,7 @@ window.ShellRegistration = {
             // Check again before retry (maybe succeeded but response parsing failed)
             const deviceIdAfterError = localStorage.getItem('device_id');
             if (deviceIdAfterError) {
-                console.warn('[Shell] ⚠️ Device already registered despite error, skipping retry');
+                console.warn('[Shell/Registration] ⚠️ Device already registered despite error, skipping retry');
                 return;
             }
 
@@ -115,9 +115,9 @@ window.ShellRegistration = {
             }
 
             // Schedule retry with exponential backoff
-            console.log('[Shell] 🔄 Scheduling retry in 10 seconds...');
+            console.log('[Shell/Registration] 🔄 Scheduling retry in 10 seconds...');
             this.retryTimeout = setTimeout(() => {
-                console.log('[Shell] 🔄 Retrying registration...');
+                console.log('[Shell/Registration] 🔄 Retrying registration...');
                 this.registerDevice();
             }, 10000);
         }

@@ -14,12 +14,12 @@ window.ShellNetworkDiagnostics = {
         const state = window.ShellState;
 
         if (this.testInProgress) {
-            this.sendDirectLog('warn', '[Network] Diagnostics already in progress, skipping...');
+            this.sendDirectLog('warn', '[Shell/Network] Diagnostics already in progress, skipping...');
             return this.lastTestResults;
         }
 
         this.testInProgress = true;
-        this.sendDirectLog('info', '[Network] 🌐 Starting network diagnostics...');
+        this.sendDirectLog('info', '[Shell/Network] 🌐 Starting network diagnostics...');
 
         try {
             const results = {
@@ -31,7 +31,7 @@ window.ShellNetworkDiagnostics = {
 
             this.lastTestResults = results;
 
-            const summary = `[Network] ✅ Diagnostics complete: Ping ${results.ping.avg}ms (min: ${results.ping.min}ms, max: ${results.ping.max}ms), Download: ${results.download.mbps.toFixed(2)} Mbps, Upload: ${results.upload.mbps.toFixed(2)} Mbps`;
+            const summary = `[Shell/Network] ✅ Diagnostics complete: Ping ${results.ping.avg}ms (min: ${results.ping.min}ms, max: ${results.ping.max}ms), Download: ${results.download.mbps.toFixed(2)} Mbps, Upload: ${results.upload.mbps.toFixed(2)} Mbps`;
             this.sendDirectLog('info', summary);
 
             // Send results to backend
@@ -39,7 +39,7 @@ window.ShellNetworkDiagnostics = {
 
             return results;
         } catch (error) {
-            this.sendDirectLog('error', `[Network] ❌ Diagnostics failed: ${error.message}`);
+            this.sendDirectLog('error', `[Shell/Network] ❌ Diagnostics failed: ${error.message}`);
             return null;
         } finally {
             this.testInProgress = false;
@@ -77,7 +77,7 @@ window.ShellNetworkDiagnostics = {
                 })
             });
         } catch (error) {
-            state.originalConsole.error('[Network] Failed to send direct log:', error);
+            state.originalConsole.error('[Shell/Network] Failed to send direct log:', error);
         }
     },
 
@@ -90,7 +90,7 @@ window.ShellNetworkDiagnostics = {
         const pingResults = [];
         const sampleCount = 10;
 
-        this.sendDirectLog('info', `[Network] Testing ping (${sampleCount} samples)...`);
+        this.sendDirectLog('info', `[Shell/Network] Testing ping (${sampleCount} samples)...`);
 
         for (let i = 0; i < sampleCount; i++) {
             const startTime = performance.now();
@@ -107,7 +107,7 @@ window.ShellNetworkDiagnostics = {
                     pingResults.push(latency);
                 }
             } catch (error) {
-                this.sendDirectLog('warn', `[Network] Ping sample ${i + 1} failed: ${error.message}`);
+                this.sendDirectLog('warn', `[Shell/Network] Ping sample ${i + 1} failed: ${error.message}`);
             }
 
             // Small delay between pings
@@ -134,7 +134,7 @@ window.ShellNetworkDiagnostics = {
     testDownloadSpeed: async function() {
         const state = window.ShellState;
 
-        this.sendDirectLog('info', '[Network] Testing download speed...');
+        this.sendDirectLog('info', '[Shell/Network] Testing download speed...');
 
         // Use backend health endpoint with cache-busting
         // We'll measure how fast we can download multiple requests
@@ -165,7 +165,7 @@ window.ShellNetworkDiagnostics = {
                 mbps: mbps
             };
         } catch (error) {
-            this.sendDirectLog('error', `[Network] Download speed test failed: ${error.message}`);
+            this.sendDirectLog('error', `[Shell/Network] Download speed test failed: ${error.message}`);
             return { bytes: 0, duration: 0, mbps: 0 };
         }
     },
@@ -177,7 +177,7 @@ window.ShellNetworkDiagnostics = {
     testUploadSpeed: async function() {
         const state = window.ShellState;
 
-        this.sendDirectLog('info', '[Network] Testing upload speed...');
+        this.sendDirectLog('info', '[Shell/Network] Testing upload speed...');
 
         // Create dummy data to upload (100 KB)
         const testData = 'x'.repeat(100 * 1024);
@@ -208,7 +208,7 @@ window.ShellNetworkDiagnostics = {
                 mbps: mbps
             };
         } catch (error) {
-            this.sendDirectLog('error', `[Network] Upload speed test failed: ${error.message}`);
+            this.sendDirectLog('error', `[Shell/Network] Upload speed test failed: ${error.message}`);
             return { bytes: 0, duration: 0, mbps: 0 };
         }
     },
@@ -221,12 +221,12 @@ window.ShellNetworkDiagnostics = {
         const state = window.ShellState;
 
         if (!state.deviceId) {
-            this.sendDirectLog('error', '[Network] ❌ No device ID - diagnostics should only run after activation!');
+            this.sendDirectLog('error', '[Shell/Network] ❌ No device ID - diagnostics should only run after activation!');
             return;
         }
 
         try {
-            this.sendDirectLog('info', '[Network] Sending diagnostics results to backend...');
+            this.sendDirectLog('info', '[Shell/Network] Sending diagnostics results to backend...');
 
             const response = await fetch(`${state.API_BASE_URL}/api/client/logs/batch`, {
                 method: 'POST',
@@ -244,12 +244,12 @@ window.ShellNetworkDiagnostics = {
             });
 
             if (response.ok) {
-                this.sendDirectLog('info', '[Network] ✅ Diagnostics results sent to backend');
+                this.sendDirectLog('info', '[Shell/Network] ✅ Diagnostics results sent to backend');
             } else {
-                this.sendDirectLog('warn', `[Network] ⚠️ Failed to send diagnostics results: ${response.statusText}`);
+                this.sendDirectLog('warn', `[Shell/Network] ⚠️ Failed to send diagnostics results: ${response.statusText}`);
             }
         } catch (error) {
-            this.sendDirectLog('error', `[Network] ❌ Error sending diagnostics results: ${error.message}`);
+            this.sendDirectLog('error', `[Shell/Network] ❌ Error sending diagnostics results: ${error.message}`);
         }
     },
 
@@ -260,7 +260,7 @@ window.ShellNetworkDiagnostics = {
     startPeriodicDiagnostics: function() {
         const DIAGNOSTICS_INTERVAL = 30 * 60 * 1000; // 30 minutes
 
-        this.sendDirectLog('info', '[Network] ⏰ Starting periodic diagnostics (every 30 minutes)');
+        this.sendDirectLog('info', '[Shell/Network] ⏰ Starting periodic diagnostics (every 30 minutes)');
 
         // Run every 30 minutes (no immediate run, already done in onActivated)
         setInterval(() => {
@@ -287,7 +287,7 @@ window.ShellNetworkDiagnostics = {
                 return Math.round(endTime - startTime);
             }
         } catch (error) {
-            console.warn('[Network] Quick ping failed:', error.message);
+            console.warn('[Shell/Network] Quick ping failed:', error.message);
         }
 
         return null;

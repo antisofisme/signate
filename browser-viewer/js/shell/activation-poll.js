@@ -21,7 +21,7 @@ window.ActivationPoll = {
 
         // Only poll if we have activation code but device is not activated yet
         if (!activationCode || state.isActivated) {
-            console.log('[Activation Poll] Skipping poll - no code or already activated');
+            console.log('[Shell/ActivationPoll] Skipping poll - no code or already activated');
             return;
         }
 
@@ -49,7 +49,7 @@ window.ActivationPoll = {
         if (this.pollInterval) {
             clearInterval(this.pollInterval);
             this.pollInterval = null;
-            console.log('[Activation Poll] ⏹️ Stopped activation polling');
+            console.log('[Shell/ActivationPoll] ⏹️ Stopped activation polling');
         }
     },
 
@@ -75,7 +75,7 @@ window.ActivationPoll = {
 
             // Handle device deletion (404) - auto-reset viewer
             if (response.status === 404) {
-                console.warn('[Activation Poll] ⚠️ Device code not found or deleted - Auto-resetting viewer');
+                console.warn('[Shell/ActivationPoll] ⚠️ Device code not found or deleted - Auto-resetting viewer');
 
                 // Stop polling
                 this.stopPolling();
@@ -93,22 +93,22 @@ window.ActivationPoll = {
                         deleteRequest.onblocked = () => resolve(); // Continue anyway
                     });
                 } catch (error) {
-                    console.error('[Activation Poll] Error deleting cache:', error);
+                    console.error('[Shell/ActivationPoll] Error deleting cache:', error);
                 }
 
                 // Reload to show new activation screen
-                console.log('[Activation Poll] 🔄 Reloading to register as new device...');
+                console.log('[Shell/ActivationPoll] 🔄 Reloading to register as new device...');
                 window.location.reload();
                 return;
             }
 
             if (!response.ok) {
-                console.warn('[Activation Poll] ⚠️ Failed to check activation status:', response.status);
+                console.warn('[Shell/ActivationPoll] ⚠️ Failed to check activation status:', response.status);
                 return;
             }
 
             const data = await response.json();
-            console.log('[Activation Poll] 📊 Activation status:', data);
+            console.log('[Shell/ActivationPoll] 📊 Activation status:', data);
 
             if (data.activated && data.device_id) {
                 console.log(`[Activation Poll] ✅ Code activated! Device ID: ${data.device_id}, Name: ${data.device_name}`);
@@ -128,7 +128,7 @@ window.ActivationPoll = {
                 // Step 2: Stop old heartbeat (if running) and wait for pending requests
                 if (window.ShellHeartbeat && window.ShellHeartbeat.stop) {
                     window.ShellHeartbeat.stop();
-                    console.log('[Activation Poll] Stopped old heartbeat, waiting for pending requests...');
+                    console.log('[Shell/ActivationPoll] Stopped old heartbeat, waiting for pending requests...');
 
                     // Wait 200ms for in-flight requests to complete
                     await new Promise(resolve => setTimeout(resolve, 200));
@@ -146,15 +146,15 @@ window.ActivationPoll = {
                     // Keep the activation code for reference
                     // device_code already exists from registration
 
-                    console.log('[Activation Poll] ✅ Device ID updated, localStorage synced');
-                    console.log('[Activation Poll] 🔍 localStorage after activation:', {
+                    console.log('[Shell/ActivationPoll] ✅ Device ID updated, localStorage synced');
+                    console.log('[Shell/ActivationPoll] 🔍 localStorage after activation:', {
                         device_id: localStorage.getItem('device_id'),
                         device_status: localStorage.getItem('device_status'),
                         device_code: localStorage.getItem('device_code')
                     });
                 } catch (storageError) {
-                    console.error('[Activation Poll] ❌ CRITICAL: Failed to save to localStorage!', storageError);
-                    console.error('[Activation Poll] localStorage might be disabled or quota exceeded');
+                    console.error('[Shell/ActivationPoll] ❌ CRITICAL: Failed to save to localStorage!', storageError);
+                    console.error('[Shell/ActivationPoll] localStorage might be disabled or quota exceeded');
                 }
 
                 // Step 5: Show success message
@@ -171,7 +171,7 @@ window.ActivationPoll = {
                 // Step 7: Check for pending commands (reload/reset) AFTER device ID update
                 // This handles Flow 2B where backend queues reload command for new device
                 if (window.ShellCommands) {
-                    console.log('[Activation Poll] Checking for pending commands after activation...');
+                    console.log('[Shell/ActivationPoll] Checking for pending commands after activation...');
                     await window.ShellCommands.checkAndExecute();
                 }
 
@@ -180,10 +180,10 @@ window.ActivationPoll = {
                     window.ShellUI.loadPlayer();
                 }
 
-                console.log('[Activation Poll] 🎉 Viewer activated successfully via polling!');
+                console.log('[Shell/ActivationPoll] 🎉 Viewer activated successfully via polling!');
             }
         } catch (error) {
-            console.error('[Activation Poll] ❌ Error checking activation:', error);
+            console.error('[Shell/ActivationPoll] ❌ Error checking activation:', error);
         }
     }
 };

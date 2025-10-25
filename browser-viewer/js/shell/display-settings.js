@@ -17,7 +17,7 @@ window.ShellDisplaySettings = {
         const state = window.ShellState;
 
         if (!state.deviceId) {
-            console.warn('[DisplaySettings] No device ID, using defaults');
+            console.warn('[Shell/DisplaySettings] No device ID, using defaults');
             return this.settings;
         }
 
@@ -26,8 +26,8 @@ window.ShellDisplaySettings = {
 
             if (response.status === 404) {
                 // Device deleted from backend - reset viewer
-                console.warn('[DisplaySettings] ⚠️ Device not found (404) - Device was deleted');
-                console.log('[DisplaySettings] 🔄 Resetting viewer...');
+                console.warn('[Shell/DisplaySettings] ⚠️ Device not found (404) - Device was deleted');
+                console.log('[Shell/DisplaySettings] 🔄 Resetting viewer...');
 
                 // Clear localStorage
                 localStorage.clear();
@@ -42,7 +42,7 @@ window.ShellDisplaySettings = {
                         deleteRequest.onblocked = () => resolve();
                     });
                 } catch (err) {
-                    console.error('[DisplaySettings] Error deleting cache:', err);
+                    console.error('[Shell/DisplaySettings] Error deleting cache:', err);
                 }
 
                 // Reload to show activation screen
@@ -60,11 +60,11 @@ window.ShellDisplaySettings = {
             this.settings.rotation = device.rotation || 0;
             this.settings.volume_enabled = device.volume_enabled !== undefined ? device.volume_enabled : true;
 
-            console.log('[DisplaySettings] Settings fetched:', this.settings);
+            console.log('[Shell/DisplaySettings] Settings fetched:', this.settings);
             return this.settings;
 
         } catch (error) {
-            console.error('[DisplaySettings] Failed to fetch settings:', error);
+            console.error('[Shell/DisplaySettings] Failed to fetch settings:', error);
             // Return defaults on error
             return this.settings;
         }
@@ -78,7 +78,7 @@ window.ShellDisplaySettings = {
         const playerContainer = document.getElementById('player-container');
 
         if (!playerContainer) {
-            console.warn('[DisplaySettings] Player container not found');
+            console.warn('[Shell/DisplaySettings] Player container not found');
             return;
         }
 
@@ -93,7 +93,7 @@ window.ShellDisplaySettings = {
 
         if (rotation === 0) {
             // Normal landscape - no rotation needed
-            console.log('[DisplaySettings] Rotation: 0° (Landscape)');
+            console.log('[Shell/DisplaySettings] Rotation: 0° (Landscape)');
         } else if (rotation === 90 || rotation === 270) {
             // Portrait mode - swap dimensions
             // Container needs to be sized for portrait, then rotated
@@ -109,11 +109,11 @@ window.ShellDisplaySettings = {
                 playerContainer.style.transform = `translate(${(screenWidth - screenHeight) / 2}px, ${(screenHeight - screenWidth) / 2}px) rotate(270deg)`;
             }
 
-            console.log('[DisplaySettings] Rotation:', rotation + '° (Portrait) - Viewport swapped to', screenHeight + 'x' + screenWidth);
+            console.log('[Shell/DisplaySettings] Rotation:', rotation + '° (Portrait) - Viewport swapped to', screenHeight + 'x' + screenWidth);
         } else if (rotation === 180) {
             // Upside down landscape
             playerContainer.style.transform = 'rotate(180deg)';
-            console.log('[DisplaySettings] Rotation: 180° (Upside Down Landscape)');
+            console.log('[Shell/DisplaySettings] Rotation: 180° (Upside Down Landscape)');
         }
     },
 
@@ -135,11 +135,11 @@ window.ShellDisplaySettings = {
                 await element.msRequestFullscreen();
             }
 
-            console.log('[DisplaySettings] Fullscreen entered ✅');
+            console.log('[Shell/DisplaySettings] ✅ Fullscreen entered');
             return true;
         } catch (error) {
             // Fullscreen may fail if not user-initiated, log but don't block
-            console.warn('[DisplaySettings] Fullscreen request failed (may need user interaction):', error.message);
+            console.warn('[Shell/DisplaySettings] Fullscreen request failed (may need user interaction):', error.message);
             return false;
         }
     },
@@ -179,14 +179,14 @@ window.ShellDisplaySettings = {
             hasChanges = true;
 
             // Reload player with new volume setting
-            console.log('[DisplaySettings] Volume changed, reloading player...');
+            console.log('[Shell/DisplaySettings] Volume changed, reloading player...');
             if (window.ShellUI && window.ShellUI.loadPlayer) {
                 window.ShellUI.loadPlayer();
             }
         }
 
         if (hasChanges) {
-            console.log('[DisplaySettings] Settings auto-updated:', changes.join(', '));
+            console.log('[Shell/DisplaySettings] Settings auto-updated:', changes.join(', '));
         }
     },
 
@@ -195,7 +195,7 @@ window.ShellDisplaySettings = {
      * Called when device is activated
      */
     init: async function() {
-        console.log('[DisplaySettings] Initializing...');
+        console.log('[Shell/DisplaySettings] Initializing...');
 
         // Fetch settings from backend
         await this.fetchSettings();
@@ -203,15 +203,15 @@ window.ShellDisplaySettings = {
         // Apply rotation
         this.applyRotation();
 
-        console.log('[DisplaySettings] Initialization complete ✅');
-        console.log('[DisplaySettings] Use F key or hover exit button for manual fullscreen');
+        console.log('[Shell/DisplaySettings] ✅ Initialization complete');
+        console.log('[Shell/DisplaySettings] Use F key or hover exit button for manual fullscreen');
     },
 
     /**
      * Refresh settings from backend and reapply
      */
     refresh: async function() {
-        console.log('[DisplaySettings] Refreshing settings...');
+        console.log('[Shell/DisplaySettings] Refreshing settings...');
         await this.fetchSettings();
         this.applyRotation();
         // Don't re-enter fullscreen on refresh

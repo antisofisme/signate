@@ -99,7 +99,7 @@ window.ShellHeartbeat = {
 
                 if (response.ok) {
                     const data = await response.json();
-                    console.log('[Shell] Heartbeat sent ✅');
+                    console.log('[Shell/Heartbeat] ✅ Heartbeat sent');
 
                     // Check for pending commands (reset, refresh, reload)
                     if (window.ShellCommands) {
@@ -112,8 +112,8 @@ window.ShellHeartbeat = {
                     }
                 } else if (response.status === 404) {
                     // Device deleted from backend - reset viewer
-                    console.warn('[Shell] ⚠️ Device not found (404) - Device was deleted from backend');
-                    console.log('[Shell] 🔄 Auto-resetting viewer to show new activation code...');
+                    console.warn('[Shell/Heartbeat] ⚠️ Device not found (404) - Device was deleted from backend');
+                    console.log('[Shell/Heartbeat] 🔄 Auto-resetting viewer to show new activation code...');
 
                     // Clear localStorage
                     localStorage.clear();
@@ -128,14 +128,14 @@ window.ShellHeartbeat = {
                             deleteRequest.onblocked = () => resolve(); // Continue anyway
                         });
                     } catch (error) {
-                        console.error('[Shell] Error deleting cache:', error);
+                        console.error('[Shell/Heartbeat] Error deleting cache:', error);
                     }
 
                     // Reload to show activation screen
                     window.location.reload();
                 }
             } catch (error) {
-                console.error('[Shell] Heartbeat error:', error);
+                console.error('[Shell/Heartbeat] Heartbeat error:', error);
             }
         }, state.HEARTBEAT_INTERVAL);
     },

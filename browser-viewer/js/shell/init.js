@@ -11,7 +11,7 @@ window.ShellInit = {
         const state = window.ShellState;
 
         state.originalConsole.log('='.repeat(60));
-        state.originalConsole.log('[Shell] Browser Viewer Shell Starting...');
+        state.originalConsole.log('[Shell/Init] Browser Viewer Shell Starting...');
         state.originalConsole.log('='.repeat(60));
 
         // Initialize logger FIRST
@@ -29,20 +29,20 @@ window.ShellInit = {
         const savedCode = localStorage.getItem('device_code');
 
         state.originalConsole.log('='.repeat(60));
-        console.log('[Shell] 🔍 DETAILED localStorage DEBUG:');
-        console.log('[Shell] - device_id:', savedDeviceId);
-        console.log('[Shell] - device_status:', savedStatus);
-        console.log('[Shell] - device_code:', savedCode);
-        console.log('[Shell] - hasDeviceId:', !!savedDeviceId);
-        console.log('[Shell] - localStorage.length:', localStorage.length);
-        console.log('[Shell] - All localStorage keys:', Object.keys(localStorage));
+        console.log('[Shell/Init] 🔍 DETAILED localStorage DEBUG:');
+        console.log('[Shell/Init] - device_id:', savedDeviceId);
+        console.log('[Shell/Init] - device_status:', savedStatus);
+        console.log('[Shell/Init] - device_code:', savedCode);
+        console.log('[Shell/Init] - hasDeviceId:', !!savedDeviceId);
+        console.log('[Shell/Init] - localStorage.length:', localStorage.length);
+        console.log('[Shell/Init] - All localStorage keys:', Object.keys(localStorage));
         state.originalConsole.log('='.repeat(60));
 
         if (savedDeviceId) {
             state.deviceId = savedDeviceId;
             state.deviceCode = savedCode;
 
-            console.log('[Shell] Using saved device:', { deviceId: state.deviceId, status: savedStatus });
+            console.log('[Shell/Init] Using saved device:', { deviceId: state.deviceId, status: savedStatus });
 
             // VERIFY status with backend before deciding what to show
             try {
@@ -53,11 +53,11 @@ window.ShellInit = {
 
                 if (verifyResponse.ok) {
                     const verifyData = await verifyResponse.json();
-                    console.log('[Shell] 🔍 Backend verification:', verifyData);
+                    console.log('[Shell/Init] 🔍 Backend verification:', verifyData);
 
                     if (verifyData.activated && verifyData.device_id) {
                         // Backend says activated - load player
-                        console.log('[Shell] ✅ Backend confirmed ACTIVE - loading player');
+                        console.log('[Shell/Init] ✅ Backend confirmed ACTIVE - loading player');
                         state.deviceId = verifyData.device_id;
                         state.deviceName = verifyData.device_name;
                         state.isActivated = true;
@@ -67,26 +67,26 @@ window.ShellInit = {
                         return; // Exit early
                     } else if (verifyData.message === 'Code not found or expired') {
                         // Code is invalid - clear localStorage and re-register
-                        console.warn('[Shell] ⚠️ Saved code is invalid/expired - clearing localStorage');
+                        console.warn('[Shell/Init] ⚠️ Saved code is invalid/expired - clearing localStorage');
                         localStorage.clear();
-                        console.log('[Shell] 🔄 Reloading to register as new device...');
+                        console.log('[Shell/Init] 🔄 Reloading to register as new device...');
                         window.location.reload();
                         return; // Exit early
                     }
                 }
             } catch (error) {
-                console.warn('[Shell] Verification failed, using localStorage:', error);
+                console.warn('[Shell/Init] Verification failed, using localStorage:', error);
             }
 
             // Backend verification failed or not activated - check localStorage
             if (savedStatus === 'active') {
                 // Already activated
-                console.log('[Shell] ⚠️ Device already ACTIVE - will load player');
+                console.log('[Shell/Init] ⚠️ Device already ACTIVE - will load player');
                 state.isActivated = true;
                 window.ShellRegistration.onActivated();
             } else {
                 // Still pending, start polling for activation
-                console.log('[Shell] Device PENDING - showing activation screen');
+                console.log('[Shell/Init] Device PENDING - showing activation screen');
                 window.ShellUI.updateUI('pending', savedCode);
 
                 // Start activation polling to auto-detect when code is activated
@@ -102,14 +102,14 @@ window.ShellInit = {
             }
         } else {
             // New device, register
-            console.log('[Shell] ✨ No saved device - will register NEW device');
+            console.log('[Shell/Init] ✨ No saved device - will register NEW device');
             await window.ShellRegistration.registerDevice();
         }
 
         // Network diagnostics will run ONLY after device activation
         // (No point running diagnostics sebelum device registered)
 
-        console.log('[Shell] Initialization complete ✅');
+        console.log('[Shell/Init] ✅ Initialization complete');
     }
 };
 
