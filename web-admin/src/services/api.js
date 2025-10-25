@@ -98,17 +98,15 @@ export const playlistsAPI = {
   reorderContent: (id, data) => api.patch(`/api/playlists/${id}/reorder`, data),
 }
 
-// Apps API
-export const appsAPI = {
-  list: () => api.get('/api/apps'),
-  upload: (formData) => api.post('/api/apps/upload', formData, {
-    headers: { 'Content-Type': 'multipart/form-data' },
-  }),
-  get: (id) => api.get(`/api/apps/${id}`),
-  update: (id, data) => api.patch(`/api/apps/${id}`, data),
-  delete: (id) => api.delete(`/api/apps/${id}`),
-  deploy: (id, data) => api.post(`/api/apps/${id}/deploy`, data),
-  getDeployments: (id) => api.get(`/api/apps/${id}/deployments`),
+// Widgets API
+export const widgetsAPI = {
+  list: (type) => api.get('/api/widgets', { params: { type } }),
+  create: (data) => api.post('/api/widgets', data),
+  get: (id) => api.get(`/api/widgets/${id}`),
+  update: (id, data) => api.patch(`/api/widgets/${id}`, data),
+  delete: (id) => api.delete(`/api/widgets/${id}`),
+  assign: (id, data) => api.post(`/api/widgets/${id}/assign`, data),
+  unassign: (id, data) => api.delete(`/api/widgets/${id}/assign`, { data }),
 }
 
 // Users API

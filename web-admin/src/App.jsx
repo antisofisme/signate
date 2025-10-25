@@ -9,7 +9,7 @@ import Devices from './pages/Devices'
 import Content from './pages/Content'
 import Tags from './pages/Tags'
 import Playlists from './pages/Playlists'
-import Apps from './pages/Apps'
+import Widgets from './pages/Widgets'
 import Settings from './pages/Settings'
 import Layout from './components/Layout'
 
@@ -81,10 +81,10 @@ function App() {
             </PrivateRoute>
           } />
 
-          <Route path="/apps" element={
+          <Route path="/widgets" element={
             <PrivateRoute>
               <Layout setIsAuthenticated={setIsAuthenticated}>
-                <Apps />
+                <Widgets />
               </Layout>
             </PrivateRoute>
           } />
