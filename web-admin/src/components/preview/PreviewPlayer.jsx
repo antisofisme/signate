@@ -121,11 +121,11 @@ export default function PreviewPlayer({ content, isPlaying, onContentEnd }) {
   // Render video
   if (content.content_type === 'video' || content.content_type === 'webpage') {
     return (
-      <div className="relative w-full h-full flex items-center justify-center bg-black">
+      <div className="relative w-full h-full flex items-center justify-center bg-black overflow-hidden">
         <video
           ref={videoRef}
           src={content.anthias_url}
-          className="w-full h-full object-contain"
+          className="max-w-full max-h-full object-contain"
           onError={handleVideoError}
           controls={false}
           playsInline
@@ -149,11 +149,11 @@ export default function PreviewPlayer({ content, isPlaying, onContentEnd }) {
   // Render image
   if (content.content_type === 'image') {
     return (
-      <div className="relative w-full h-full flex items-center justify-center bg-black">
+      <div className="relative w-full h-full flex items-center justify-center bg-black overflow-hidden">
         <img
           src={content.anthias_url}
           alt={content.title}
-          className="w-full h-full object-contain"
+          className="max-w-full max-h-full object-contain"
           onError={(e) => {
             console.error('Image error:', e)
             setError(`Failed to load image: ${content.title}`)
