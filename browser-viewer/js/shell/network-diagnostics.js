@@ -200,46 +200,63 @@ window.ShellNetworkDiagnostics = {
 
     /**
      * Test upload speed
-     * Uploads dummy data to backend to measure upload speed
+     * Uploads dummy data to internet to measure real upload speed
      */
     testUploadSpeed: async function() {
-        const state = window.ShellState;
-
-        this.sendDirectLog('info', '[Shell/Network] Testing upload speed...');
+        this.sendDirectLog('info', '[Shell/Network] Testing upload speed to internet...');
 
         const testDurationSeconds = 5; // Test for 5 seconds
         let totalBytes = 0;
         const startTime = performance.now();
 
         try {
-            // Create dummy data chunks (100KB each)
-            const chunkSize = 100 * 1024;
+            // Use Cloudflare speed test upload endpoint
+            // Or fallback to httpbin.org which accepts POST
+            const uploadUrls = [
+                'https://speed.cloudflare.com/__up', // Cloudflare upload test
+                'https://httpbin.org/post' // Fallback to httpbin
+            ];
+
+            let uploadUrl = uploadUrls[0];
+            const chunkSize = 100 * 1024; // 100KB chunks
 
             // Upload repeatedly until test duration is reached
             while ((performance.now() - startTime) / 1000 < testDurationSeconds) {
+                // Create random binary data
                 const testData = new ArrayBuffer(chunkSize);
                 const view = new Uint8Array(testData);
-
-                // Fill with random data
                 for (let i = 0; i < view.length; i++) {
                     view[i] = Math.floor(Math.random() * 256);
                 }
 
-                const uploadStart = performance.now();
+                try {
+                    const response = await fetch(uploadUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/octet-stream' },
+                        body: testData,
+                        mode: 'cors',
+                        cache: 'no-cache'
+                    });
 
-                // Upload to backend speedtest endpoint
-                const response = await fetch(`${state.API_BASE_URL}/api/speedtest/upload`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/octet-stream' },
-                    body: testData
-                });
+                    if (response.ok) {
+                        totalBytes += chunkSize;
+                    } else if (uploadUrl === uploadUrls[0]) {
+                        // Fallback to httpbin if Cloudflare fails
+                        uploadUrl = uploadUrls[1];
+                        continue;
+                    }
 
-                if (response.ok) {
-                    totalBytes += chunkSize;
+                    // Small delay to prevent overwhelming the connection
+                    await new Promise(resolve => setTimeout(resolve, 100));
+
+                } catch (fetchError) {
+                    // If first URL fails, try fallback
+                    if (uploadUrl === uploadUrls[0]) {
+                        uploadUrl = uploadUrls[1];
+                    } else {
+                        throw fetchError;
+                    }
                 }
-
-                // Small delay to prevent overwhelming the connection
-                await new Promise(resolve => setTimeout(resolve, 50));
             }
 
             const endTime = performance.now();
