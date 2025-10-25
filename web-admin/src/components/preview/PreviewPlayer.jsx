@@ -14,21 +14,50 @@ export default function PreviewPlayer({ content, isPlaying, onContentEnd }) {
   const videoRef = useRef(null)
   const [timeRemaining, setTimeRemaining] = useState(0)
   const [error, setError] = useState(null)
+  const playbackTimerRef = useRef(null)
 
-  // Handle video playback
+  // Handle video playback with duration limit
   useEffect(() => {
     if (!content) return
 
     if (content.content_type === 'video' && videoRef.current) {
+      const video = videoRef.current
+
+      // Clear any existing timer
+      if (playbackTimerRef.current) {
+        clearTimeout(playbackTimerRef.current)
+        playbackTimerRef.current = null
+      }
+
       if (isPlaying) {
-        videoRef.current.play().catch(err => {
+        // Set video to start from beginning
+        video.currentTime = 0
+
+        // Play video
+        video.play().catch(err => {
           console.error('Failed to play video:', err)
         })
+
+        // Set timer to stop video after specified duration
+        if (content.duration > 0) {
+          playbackTimerRef.current = setTimeout(() => {
+            video.pause()
+            onContentEnd()
+          }, content.duration * 1000)
+        }
       } else {
-        videoRef.current.pause()
+        video.pause()
       }
     }
-  }, [content, isPlaying])
+
+    // Cleanup timer on unmount or content change
+    return () => {
+      if (playbackTimerRef.current) {
+        clearTimeout(playbackTimerRef.current)
+        playbackTimerRef.current = null
+      }
+    }
+  }, [content, isPlaying, onContentEnd])
 
   // Handle video errors
   const handleVideoError = (e) => {
@@ -70,11 +99,6 @@ export default function PreviewPlayer({ content, isPlaying, onContentEnd }) {
     return () => clearInterval(timer)
   }, [content, isPlaying, onContentEnd])
 
-  // Handle video end
-  const handleVideoEnd = () => {
-    onContentEnd()
-  }
-
   if (!content) {
     return (
       <div className="text-gray-400 text-center">
@@ -97,15 +121,15 @@ export default function PreviewPlayer({ content, isPlaying, onContentEnd }) {
   // Render video
   if (content.content_type === 'video' || content.content_type === 'webpage') {
     return (
-      <div className="relative w-full h-full flex items-center justify-center">
+      <div className="relative w-full h-full flex items-center justify-center bg-black">
         <video
           ref={videoRef}
           src={content.anthias_url}
-          className="max-w-full max-h-full"
-          onEnded={handleVideoEnd}
+          className="w-full h-full object-contain"
           onError={handleVideoError}
           controls={false}
-          autoPlay={isPlaying}
+          playsInline
+          muted={false}
         />
 
         {/* Video Info Overlay */}
@@ -115,7 +139,7 @@ export default function PreviewPlayer({ content, isPlaying, onContentEnd }) {
             {content.title}
           </p>
           <p className="text-white text-xs mt-1 opacity-75">
-            {content.anthias_url}
+            Duration: {content.duration}s
           </p>
         </div>
       </div>
@@ -125,11 +149,11 @@ export default function PreviewPlayer({ content, isPlaying, onContentEnd }) {
   // Render image
   if (content.content_type === 'image') {
     return (
-      <div className="relative w-full h-full flex items-center justify-center p-8">
+      <div className="relative w-full h-full flex items-center justify-center bg-black">
         <img
           src={content.anthias_url}
           alt={content.title}
-          className="max-w-full max-h-full object-contain"
+          className="w-full h-full object-contain"
           onError={(e) => {
             console.error('Image error:', e)
             setError(`Failed to load image: ${content.title}`)
