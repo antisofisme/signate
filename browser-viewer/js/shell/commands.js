@@ -72,6 +72,10 @@ window.ShellCommands = {
                     await this.executeReload(command);
                     break;
 
+                case 'run_speed_test':
+                    await this.executeSpeedTest(command);
+                    break;
+
                 default:
                     console.warn(`[Shell Commands] Unknown command type: ${command.command_type}`);
                     break;
@@ -179,6 +183,21 @@ window.ShellCommands = {
         // Reload player iframe
         if (window.ShellUI && window.ShellUI.loadPlayer) {
             window.ShellUI.loadPlayer();
+        }
+    },
+
+    /**
+     * Execute SPEED TEST command (manual trigger from web admin)
+     */
+    executeSpeedTest: async function(command) {
+        console.log('[Shell Commands] 🌐 SPEED TEST: Running network diagnostics...');
+
+        // Run network diagnostics
+        if (window.ShellNetworkDiagnostics && window.ShellNetworkDiagnostics.runDiagnostics) {
+            await window.ShellNetworkDiagnostics.runDiagnostics();
+            console.log('[Shell Commands] ✅ Speed test completed - check logs for results');
+        } else {
+            console.error('[Shell Commands] ❌ Network diagnostics module not available');
         }
     },
 

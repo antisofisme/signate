@@ -56,6 +56,7 @@ export const devicesAPI = {
   heartbeat: (id) => api.post(`/api/devices/${id}/heartbeat`),
   getLogs: (id, params) => api.get(`/api/devices/${id}/logs`, { params }),
   deleteLogs: (id, params) => api.delete(`/api/devices/${id}/logs`, { params }),
+  queueCommand: (id, data) => api.post(`/api/devices/${id}/commands`, data),
 }
 
 // Content API

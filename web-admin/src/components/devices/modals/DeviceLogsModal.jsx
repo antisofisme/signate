@@ -143,6 +143,21 @@ export default function DeviceLogsModal({ device, onClose }) {
     }
   }, [device.id])
 
+  const handleRunSpeedTest = async () => {
+    try {
+      // Queue command to run speed test
+      await devicesAPI.queueCommand(device.id, {
+        command_type: 'run_speed_test',
+        reason: 'Manual speed test triggered from web admin'
+      })
+
+      alert('Speed test command queued successfully. Check logs in a few seconds for results.')
+    } catch (error) {
+      console.error('Failed to queue speed test command:', error)
+      alert(`Failed to run speed test: ${error.response?.data?.detail || error.message}`)
+    }
+  }
+
   const handleClearLogs = async () => {
     if (confirm('Clear all logs for this device?')) {
       try {
@@ -220,6 +235,17 @@ export default function DeviceLogsModal({ device, onClose }) {
             ))}
           </div>
           <div className="flex items-center gap-2">
+            <button
+              onClick={handleRunSpeedTest}
+              className="flex items-center gap-2 px-3 py-1.5 bg-green-600 text-white rounded hover:bg-green-700 text-sm"
+              disabled={device.status !== 'active'}
+              title={device.status !== 'active' ? 'Device must be active to run speed test' : 'Run network speed test'}
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+              </svg>
+              Speed Test
+            </button>
             <button
               onClick={handleExportLogs}
               className="flex items-center gap-2 px-3 py-1.5 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm"
