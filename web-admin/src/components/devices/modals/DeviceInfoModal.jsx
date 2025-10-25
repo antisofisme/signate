@@ -96,8 +96,24 @@ export default function DeviceInfoModal({ device, onClose }) {
               </div>
               <div className="flex items-center">
                 <span className="w-48 font-medium text-gray-700">IP Address:</span>
-                <span className="text-gray-900">{device.ip_address || 'N/A'}</span>
+                <span className="text-gray-900 font-mono">{device.ip_address || '-'}</span>
               </div>
+              {device.device_uuid && (
+                <div className="flex items-center">
+                  <span className="w-48 font-medium text-gray-700">Device UUID:</span>
+                  <span className="text-gray-900 font-mono text-sm bg-blue-50 px-2 py-1 rounded">
+                    {device.device_uuid}
+                  </span>
+                </div>
+              )}
+              {device.unique_code && (
+                <div className="flex items-center">
+                  <span className="w-48 font-medium text-gray-700">Activation Code:</span>
+                  <span className="text-gray-900 font-mono font-bold text-lg text-green-600">
+                    {device.unique_code}
+                  </span>
+                </div>
+              )}
               <div className="flex items-center">
                 <span className="w-48 font-medium text-gray-700">Status:</span>
                 <span className={`px-2 py-1 rounded-full text-xs font-medium ${

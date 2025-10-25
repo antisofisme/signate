@@ -24,6 +24,32 @@ window.ShellDisplaySettings = {
         try {
             const response = await fetch(`${state.API_BASE_URL}/api/devices/${state.deviceId}`);
 
+            if (response.status === 404) {
+                // Device deleted from backend - reset viewer
+                console.warn('[DisplaySettings] ⚠️ Device not found (404) - Device was deleted');
+                console.log('[DisplaySettings] 🔄 Resetting viewer...');
+
+                // Clear localStorage
+                localStorage.clear();
+
+                // Delete IndexedDB cache
+                const dbName = 'signage_media_cache';
+                try {
+                    await new Promise((resolve) => {
+                        const deleteRequest = indexedDB.deleteDatabase(dbName);
+                        deleteRequest.onsuccess = () => resolve();
+                        deleteRequest.onerror = () => resolve();
+                        deleteRequest.onblocked = () => resolve();
+                    });
+                } catch (err) {
+                    console.error('[DisplaySettings] Error deleting cache:', err);
+                }
+
+                // Reload to show activation screen
+                window.location.reload();
+                return;
+            }
+
             if (!response.ok) {
                 throw new Error(`Failed to fetch settings: ${response.status}`);
             }

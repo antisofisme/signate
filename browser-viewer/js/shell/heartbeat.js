@@ -91,10 +91,38 @@ window.ShellHeartbeat = {
                     const data = await response.json();
                     console.log('[Shell] Heartbeat sent ✅');
 
+                    // Check for pending commands (reset, refresh, reload)
+                    if (window.ShellCommands) {
+                        await window.ShellCommands.checkAndExecute();
+                    }
+
                     // Check if display settings changed
                     if (window.ShellDisplaySettings) {
                         await window.ShellDisplaySettings.checkAndApplyChanges(data);
                     }
+                } else if (response.status === 404) {
+                    // Device deleted from backend - reset viewer
+                    console.warn('[Shell] ⚠️ Device not found (404) - Device was deleted from backend');
+                    console.log('[Shell] 🔄 Auto-resetting viewer to show new activation code...');
+
+                    // Clear localStorage
+                    localStorage.clear();
+
+                    // Delete IndexedDB cache
+                    const dbName = 'signage_media_cache';
+                    try {
+                        await new Promise((resolve) => {
+                            const deleteRequest = indexedDB.deleteDatabase(dbName);
+                            deleteRequest.onsuccess = () => resolve();
+                            deleteRequest.onerror = () => resolve(); // Continue anyway
+                            deleteRequest.onblocked = () => resolve(); // Continue anyway
+                        });
+                    } catch (error) {
+                        console.error('[Shell] Error deleting cache:', error);
+                    }
+
+                    // Reload to show activation screen
+                    window.location.reload();
                 }
             } catch (error) {
                 console.error('[Shell] Heartbeat error:', error);

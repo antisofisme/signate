@@ -110,6 +110,7 @@ export default function Devices() {
 
   const pendingDevices = devicesData?.devices?.filter(d => d.status === 'pending') || []
   const activeDevices = devicesData?.devices?.filter(d => d.status === 'active') || []
+  const inactiveDevices = devicesData?.devices?.filter(d => d.status === 'inactive') || []
 
   return (
     <div>
@@ -133,7 +134,7 @@ export default function Devices() {
       <div className="mb-4 p-3 bg-blue-100 border border-blue-300 rounded">
         <p className="text-sm">
           <strong>Debug Info:</strong> Total devices: {devicesData?.devices?.length || 0} |
-          Pending: {pendingDevices.length}
+          Pending: {pendingDevices.length} | Active: {activeDevices.length} | Released: {inactiveDevices.length}
         </p>
       </div>
 
@@ -158,15 +159,21 @@ export default function Devices() {
         </div>
       )}
 
-      {/* Devices Table */}
-      <div className="bg-white rounded-xl shadow-md overflow-hidden">
+      {/* Active Devices Table */}
+      <div className="bg-white rounded-xl shadow-md overflow-hidden mb-6">
+        <div className="px-6 py-4 bg-gray-50 border-b border-gray-200">
+          <h2 className="text-xl font-bold text-gray-800">
+            Active Devices ({activeDevices.length})
+          </h2>
+        </div>
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">ID</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Device</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Type</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">IP/Code</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">IP Address</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Code/UUID</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Last Seen</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
@@ -190,6 +197,52 @@ export default function Devices() {
           </tbody>
         </table>
       </div>
+
+      {/* Released Devices Section */}
+      {inactiveDevices.length > 0 && (
+        <div className="bg-white rounded-xl shadow-md overflow-hidden mb-6">
+          <div className="px-6 py-4 bg-gray-100 border-b border-gray-300">
+            <div className="flex items-center">
+              <div className="w-3 h-3 bg-gray-500 rounded-full mr-3"></div>
+              <h2 className="text-xl font-bold text-gray-700">
+                Released Devices ({inactiveDevices.length})
+              </h2>
+            </div>
+            <p className="text-sm text-gray-600 mt-1">
+              Devices that have been released from viewers. They can be reactivated or deleted.
+            </p>
+          </div>
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">ID</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Device</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Type</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">IP Address</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Released At</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {inactiveDevices.map((device) => (
+                <DeviceTableRow
+                  key={device.id}
+                  device={device}
+                  onRowClick={handleRowClick}
+                  onEdit={handleEdit}
+                  onDelete={handleDelete}
+                  onActivate={handleApprove}
+                  onViewLogs={(device) => {
+                    setSelectedDevice(device)
+                    setShowLogsModal(true)
+                  }}
+                />
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
 
       {/* Modals */}
       {showTVForm && (
@@ -226,8 +279,9 @@ export default function Devices() {
             setShowDeviceEditModal(false)
             setSelectedDevice(null)
           }}
-          onSave={() => {
-            queryClient.invalidateQueries(['devices'])
+          onSave={async () => {
+            // Immediately refetch and wait for completion before modal closes
+            await queryClient.refetchQueries(['devices'])
           }}
         />
       )}

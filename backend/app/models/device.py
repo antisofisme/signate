@@ -88,11 +88,13 @@ class Device(Base):
     # Timestamps
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
+    released_at = Column(DateTime)  # Timestamp when device was released (orphaned from viewer)
 
     # Relationships
     tags = relationship("DeviceTag", back_populates="device", cascade="all, delete-orphan")
     content_assignments = relationship("ContentAssignment", back_populates="device", cascade="all, delete-orphan")
     logs = relationship("DeviceLog", back_populates="device", cascade="all, delete-orphan")
+    commands = relationship("DeviceCommand", back_populates="device", cascade="all, delete-orphan")
 
     def __repr__(self):
         return f"<Device(id={self.id}, name='{self.device_name}', type='{self.device_type}', status='{self.status}')>"
@@ -115,6 +117,7 @@ class Device(Base):
             "last_seen": self.last_seen.isoformat() if self.last_seen else None,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,
+            "released_at": self.released_at.isoformat() if self.released_at else None,
             # Device information
             "screen_width": self.screen_width,
             "screen_height": self.screen_height,

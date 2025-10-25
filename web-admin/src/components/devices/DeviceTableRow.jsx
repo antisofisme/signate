@@ -55,9 +55,24 @@ export default function DeviceTableRow({
         {device.device_type.toUpperCase()}
       </td>
 
-      {/* IP/Code Column */}
+      {/* IP Address Column */}
       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-        {device.ip_address || device.unique_code || 'N/A'}
+        <span className="font-mono">{device.ip_address || '-'}</span>
+      </td>
+
+      {/* Code/UUID Column */}
+      <td className="px-6 py-4 whitespace-nowrap text-sm">
+        {device.device_uuid ? (
+          <span className="font-mono text-xs text-blue-600 bg-blue-50 px-2 py-1 rounded">
+            {device.device_uuid.substring(0, 13)}...
+          </span>
+        ) : device.unique_code ? (
+          <span className="font-mono font-bold text-green-600">
+            {device.unique_code}
+          </span>
+        ) : (
+          <span className="text-gray-400">-</span>
+        )}
       </td>
 
       {/* Status Column */}

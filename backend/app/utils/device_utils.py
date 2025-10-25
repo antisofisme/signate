@@ -9,7 +9,7 @@ from datetime import datetime, timedelta
 
 def generate_activation_code(length: int = 6) -> str:
     """
-    Generate a unique activation code for monitor devices
+    Generate a unique activation code for monitor devices (alphanumeric)
 
     Args:
         length: Length of activation code (default 6)
@@ -20,6 +20,21 @@ def generate_activation_code(length: int = 6) -> str:
     # Use uppercase letters and numbers only (exclude confusing chars: 0, O, I, 1)
     chars = string.ascii_uppercase.replace('O', '').replace('I', '') + string.digits.replace('0', '').replace('1', '')
     code = ''.join(random.choice(chars) for _ in range(length))
+    return code
+
+
+def generate_numeric_code(length: int = 6) -> str:
+    """
+    Generate a unique numeric activation code for browser viewers
+
+    Args:
+        length: Length of numeric code (default 6)
+
+    Returns:
+        str: Random 6-digit numeric code
+    """
+    # Generate random 6-digit number
+    code = ''.join(random.choice(string.digits) for _ in range(length))
     return code
 
 

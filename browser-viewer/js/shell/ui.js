@@ -10,12 +10,22 @@ window.ShellUI = {
     updateUI: function(status, code = null) {
         const statusElement = document.getElementById('status-message');
         const codeElement = document.getElementById('activation-code');
+        const activationScreen = document.getElementById('activation-screen');
+        const playerContainer = document.getElementById('player-container');
 
         if (status === 'pending') {
             statusElement.textContent = '⏳ Waiting for approval...';
             codeElement.textContent = code;
+
+            // Ensure activation screen is visible and player is hidden
+            activationScreen.style.display = 'flex';
+            playerContainer.style.display = 'none';
         } else if (status === 'active') {
             statusElement.textContent = '✅ Activated! Loading player...';
+
+            // Keep activation screen visible until player loads
+            activationScreen.style.display = 'flex';
+            playerContainer.style.display = 'none';
         }
     },
 

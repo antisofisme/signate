@@ -50,6 +50,9 @@ export const devicesAPI = {
   activateMonitor: (data) => api.post('/api/devices/monitor/activate', data),
   update: (id, data) => api.put(`/api/devices/${id}`, data),
   delete: (id) => api.delete(`/api/devices/${id}`),
+  release: (id) => api.post(`/api/devices/${id}/release`),
+  replaceWithPending: (deviceId, pendingDeviceId) =>
+    api.post(`/api/devices/${deviceId}/replace-with-pending/${pendingDeviceId}`),
   heartbeat: (id) => api.post(`/api/devices/${id}/heartbeat`),
   getLogs: (id, params) => api.get(`/api/devices/${id}/logs`, { params }),
   deleteLogs: (id, params) => api.delete(`/api/devices/${id}/logs`, { params }),

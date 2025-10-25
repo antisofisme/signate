@@ -26,6 +26,8 @@
             min-height: 100vh;
             text-align: center;
             padding: 2rem;
+            position: relative;
+            z-index: 1000;
         }
 
         .activation-card {
@@ -81,6 +83,7 @@
             width: 100%;
             height: 100%;
             background: black;
+            z-index: 100;
         }
 
         #player-iframe {
@@ -195,6 +198,41 @@
         body:not(.is-fullscreen) #exit-fullscreen-btn {
             display: none;
         }
+
+        /* Hard Reset Button */
+        #hard-reset-btn {
+            position: fixed;
+            bottom: 80px;  /* Above fullscreen button */
+            right: 20px;
+            width: 50px;
+            height: 50px;
+            background: rgba(255, 69, 0, 0.7);  /* Orange-red for danger */
+            color: white;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            font-size: 24px;
+            cursor: pointer;
+            z-index: 10000;
+            opacity: 0;
+            transition: opacity 0.3s ease, background 0.2s ease, transform 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            pointer-events: auto;
+        }
+
+        /* Button hover effect */
+        #hard-reset-btn:hover {
+            background: rgba(255, 69, 0, 0.9);
+            border-color: rgba(255, 255, 255, 0.8);
+            transform: scale(1.1);
+        }
+
+        /* Show button class (triggered by JS) */
+        #hard-reset-btn.show {
+            opacity: 1;
+        }
     </style>
 </head>
 <body>
@@ -231,6 +269,11 @@
         ✕
     </button>
 
+    <!-- Hard Reset Button (hover to show) - OUTSIDE player container -->
+    <button id="hard-reset-btn" title="Hard Reset Device (Password Required)">
+        🔄
+    </button>
+
     <!-- Shell Info (debug - press 's' to toggle) -->
     <div id="shell-info">
         <strong>SHELL STATUS</strong><br>
@@ -241,13 +284,15 @@
     </div>
 
     <!-- Shell Modules (STABLE CORE) - Load in correct order -->
-    <script src="js/shell/config.js?v=20251024-6"></script>
-    <script src="js/shell/logger.js?v=20251024-6"></script>
-    <script src="js/shell/registration.js?v=20251024-6"></script>
-    <script src="js/shell/heartbeat.js?v=20251024-6"></script>
-    <script src="js/shell/display-settings.js?v=20251024-6"></script>
-    <script src="js/shell/ui.js?v=20251024-6"></script>
-    <script src="js/shell/init.js?v=20251024-6"></script>
+    <script src="js/shell/config.js?v=20251024-15"></script>
+    <script src="js/shell/logger.js?v=20251024-15"></script>
+    <script src="js/shell/registration.js?v=20251024-15"></script>
+    <script src="js/shell/heartbeat.js?v=20251024-15"></script>
+    <script src="js/shell/activation-poll.js?v=20251025-04"></script>
+    <script src="js/shell/commands.js?v=20251024-15"></script>
+    <script src="js/shell/display-settings.js?v=20251024-15"></script>
+    <script src="js/shell/ui.js?v=20251024-15"></script>
+    <script src="js/shell/init.js?v=20251025-05"></script>
 
     <!-- Keyboard Shortcuts & Fullscreen Management -->
     <script>
@@ -279,10 +324,14 @@
                         window.ShellDisplaySettings.applyRotation();
                     }
 
-                    // Reload player to update viewport size
-                    console.log('[Shell] Reloading player for new viewport size...');
-                    if (window.ShellUI && window.ShellUI.loadPlayer) {
-                        window.ShellUI.loadPlayer();
+                    // Reload player to update viewport size (ONLY if device is activated)
+                    if (window.ShellState && window.ShellState.isActivated) {
+                        console.log('[Shell] Reloading player for new viewport size...');
+                        if (window.ShellUI && window.ShellUI.loadPlayer) {
+                            window.ShellUI.loadPlayer();
+                        }
+                    } else {
+                        console.log('[Shell] Device not activated yet, skip player reload');
                     }
                 }, 100); // Small delay for browser to complete fullscreen
             } else {
@@ -300,10 +349,14 @@
                         window.ShellDisplaySettings.applyRotation();
                     }
 
-                    // Reload player to restore normal viewport size
-                    console.log('[Shell] Reloading player for normal viewport size...');
-                    if (window.ShellUI && window.ShellUI.loadPlayer) {
-                        window.ShellUI.loadPlayer();
+                    // Reload player to restore normal viewport size (ONLY if device is activated)
+                    if (window.ShellState && window.ShellState.isActivated) {
+                        console.log('[Shell] Reloading player for normal viewport size...');
+                        if (window.ShellUI && window.ShellUI.loadPlayer) {
+                            window.ShellUI.loadPlayer();
+                        }
+                    } else {
+                        console.log('[Shell] Device not activated yet, skip player reload');
                     }
                 }, 100); // Small delay for browser to complete fullscreen exit
             }
@@ -341,8 +394,32 @@
             }, 3000);
         }
 
+        // Show reset button and auto-hide after 3 seconds
+        function showResetButton() {
+            const resetBtn = document.getElementById('hard-reset-btn');
+            resetBtn.classList.add('show');
+
+            // Clear existing timer
+            if (hideButtonTimer) {
+                clearTimeout(hideButtonTimer);
+            }
+
+            // Auto-hide after 3 seconds
+            hideButtonTimer = setTimeout(() => {
+                resetBtn.classList.remove('show');
+            }, 3000);
+        }
+
         // Track mouse movement to show appropriate button
         document.addEventListener('mousemove', (e) => {
+            const screenWidth = window.innerWidth;
+            const mouseX = e.clientX;
+
+            // Show reset button when hovering on right edge (last 100px)
+            if (mouseX > screenWidth - 100) {
+                showResetButton();
+            }
+
             if (document.fullscreenElement) {
                 // In fullscreen - show exit button
                 showExitButton();
@@ -404,6 +481,107 @@
             console.error('[Shell] Exit button not found!');
         }
 
+        // Hard reset button click (with password protection)
+        const resetBtn = document.getElementById('hard-reset-btn');
+        let isResetting = false; // Prevent double-click
+
+        if (resetBtn) {
+            resetBtn.addEventListener('click', async () => {
+                // Prevent double-click during reset
+                if (isResetting) {
+                    console.warn('[Shell] Hard reset already in progress, ignoring click');
+                    return;
+                }
+
+                console.log('[Shell] Hard reset button clicked');
+
+                // Prompt for password
+                const password = prompt('⚠️ WARNING: This will ERASE ALL DATA and require re-activation.\n\nEnter admin password to confirm:');
+
+                if (!password) {
+                    console.log('[Shell] Hard reset cancelled (no password)');
+                    return;
+                }
+
+                // Simple password check (you can enhance this later)
+                const RESET_PASSWORD = 'admin123'; // TODO: Make this configurable
+
+                if (password !== RESET_PASSWORD) {
+                    alert('❌ Incorrect password! Reset cancelled.');
+                    console.error('[Shell] Hard reset failed - wrong password');
+                    return;
+                }
+
+                // Set flag to prevent double execution
+                isResetting = true;
+                console.log('[Shell] Password verified, executing hard reset...');
+
+                // Log BEFORE clear
+                console.log('[Shell] 📊 BEFORE clear - localStorage:', {
+                    deviceId: localStorage.getItem('device_id'),
+                    status: localStorage.getItem('device_status'),
+                    code: localStorage.getItem('device_code')
+                });
+
+                // Clear localStorage
+                localStorage.clear();
+
+                // Verify cleared
+                console.log('[Shell] 📊 AFTER clear - localStorage:', {
+                    deviceId: localStorage.getItem('device_id'),
+                    status: localStorage.getItem('device_status'),
+                    code: localStorage.getItem('device_code')
+                });
+                console.log('[Shell] ✅ localStorage cleared');
+
+                // Clear IndexedDB cache (if PlayerCache available)
+                let reloadExecuted = false; // Prevent multiple reloads
+
+                const executeReload = () => {
+                    if (!reloadExecuted) {
+                        reloadExecuted = true;
+                        console.log('[Shell] 🔄 Reloading page to complete hard reset...');
+                        setTimeout(() => location.reload(), 100); // Small delay for logs
+                    }
+                };
+
+                try {
+                    // Try to open PlayerCache DB and clear it
+                    const dbName = 'signage_media_cache';
+                    const deleteRequest = indexedDB.deleteDatabase(dbName);
+
+                    deleteRequest.onsuccess = () => {
+                        console.log('[Shell] ✅ IndexedDB cache deleted');
+                        executeReload();
+                    };
+
+                    deleteRequest.onerror = () => {
+                        console.error('[Shell] ⚠️ IndexedDB delete failed, reloading anyway');
+                        executeReload();
+                    };
+
+                    deleteRequest.onblocked = () => {
+                        console.warn('[Shell] ⚠️ IndexedDB delete blocked, reloading anyway');
+                        executeReload();
+                    };
+
+                    // Fallback: If nothing happens in 2 seconds, reload anyway
+                    setTimeout(() => {
+                        if (!reloadExecuted) {
+                            console.warn('[Shell] ⚠️ IndexedDB delete timeout, reloading...');
+                            executeReload();
+                        }
+                    }, 2000);
+                } catch (error) {
+                    console.error('[Shell] ⚠️ Error deleting IndexedDB:', error);
+                    executeReload();
+                }
+            });
+            console.log('[Shell] Hard reset button listener attached');
+        } else {
+            console.error('[Shell] Hard reset button not found!');
+        }
+
         // Keyboard shortcuts
         document.addEventListener('keydown', (e) => {
             // Press 's' to toggle shell debug info
@@ -420,14 +598,6 @@
             if (e.key === 'r' || e.key === 'R') {
                 if (window.reloadPlayer) {
                     window.reloadPlayer();
-                }
-            }
-
-            // Press 'c' to clear localStorage and reset device
-            if (e.key === 'c' || e.key === 'C') {
-                if (confirm('Clear device registration and reset?')) {
-                    localStorage.clear();
-                    location.reload();
                 }
             }
 

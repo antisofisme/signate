@@ -4,6 +4,9 @@
  */
 
 window.ShellRegistration = {
+    retryTimeout: null, // Store retry timeout for cancellation
+    isRegistering: false, // Prevent concurrent registrations
+
     /**
      * Generate 6-digit activation code
      */
@@ -16,10 +19,28 @@ window.ShellRegistration = {
      */
     registerDevice: async function() {
         const state = window.ShellState;
-        
+
+        // 🛡️ GUARD 1: Prevent concurrent registrations
+        if (this.isRegistering) {
+            console.warn('[Shell] ⚠️ Registration already in progress, skipping...');
+            return;
+        }
+
+        // 🛡️ GUARD 2: Check if already registered (localStorage check)
+        const existingDeviceId = localStorage.getItem('device_id');
+        if (existingDeviceId) {
+            console.warn('[Shell] ⚠️ Device already registered (device_id exists in localStorage), skipping registration');
+            console.log('[Shell] Existing device_id:', existingDeviceId);
+            return;
+        }
+
+        this.isRegistering = true;
+
         try {
             const code = this.generateActivationCode();
             const deviceName = `Browser - ${code}`;
+
+            console.log('[Shell] 📡 Registering device with code:', code);
 
             const response = await fetch(`${state.API_BASE_URL}/api/devices/monitor/register`, {
                 method: 'POST',
@@ -46,70 +67,69 @@ window.ShellRegistration = {
 
             console.log('[Shell] Device registered ✅', { deviceId: state.deviceId, code });
 
-            window.ShellUI.updateUI('pending', code);
-            this.startPolling();
+            // ✅ CANCEL any pending retry (registration succeeded)
+            if (this.retryTimeout) {
+                clearTimeout(this.retryTimeout);
+                this.retryTimeout = null;
+                console.log('[Shell] ✅ Cancelled retry timeout (registration succeeded)');
+            }
+
+            // Update UI (wrapped in try-catch to prevent UI errors from triggering retry)
+            try {
+                window.ShellUI.updateUI('pending', code);
+            } catch (uiError) {
+                console.error('[Shell] ⚠️ UI update failed (non-critical):', uiError);
+                // Don't throw - UI error shouldn't trigger re-registration
+            }
+
+            // Start activation polling (wrapped in try-catch)
+            try {
+                if (window.ActivationPoll && window.ActivationPoll.startPolling) {
+                    window.ActivationPoll.startPolling();
+                }
+            } catch (pollError) {
+                console.error('[Shell] ⚠️ Polling start failed (non-critical):', pollError);
+                // Don't throw - polling error shouldn't trigger re-registration
+            }
+
+            // Reset flag AFTER all operations complete
+            this.isRegistering = false;
 
         } catch (error) {
-            console.error('[Shell] Registration error:', error);
-            setTimeout(() => this.registerDevice(), 10000); // Retry in 10s
-        }
-    },
+            console.error('[Shell] ❌ Registration failed:', error);
 
-    /**
-     * Poll for activation status
-     */
-    checkActivation: async function() {
-        const state = window.ShellState;
-        
-        if (!state.deviceId) return;
+            // Reset flag
+            this.isRegistering = false;
 
-        try {
-            const response = await fetch(`${state.API_BASE_URL}/api/devices/heartbeat`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    device_id: parseInt(state.deviceId),
-                    device_type: 'monitor'
-                })
-            });
-
-            if (!response.ok) {
-                console.error('[Shell] Heartbeat failed:', response.status);
+            // 🛡️ GUARD 3: Only retry if device NOT already registered
+            // Check again before retry (maybe succeeded but response parsing failed)
+            const deviceIdAfterError = localStorage.getItem('device_id');
+            if (deviceIdAfterError) {
+                console.warn('[Shell] ⚠️ Device already registered despite error, skipping retry');
                 return;
             }
 
-            const data = await response.json();
-
-            if (data.status === 'active' && !state.isActivated) {
-                // Device just got activated!
-                localStorage.setItem('device_status', 'active');
-                state.isActivated = true;
-
-                console.log('[Shell] Device activated! ✅');
-
-                this.onActivated();
+            // Cancel existing retry timeout
+            if (this.retryTimeout) {
+                clearTimeout(this.retryTimeout);
             }
 
-        } catch (error) {
-            console.error('[Shell] Activation check error:', error);
+            // Schedule retry with exponential backoff
+            console.log('[Shell] 🔄 Scheduling retry in 10 seconds...');
+            this.retryTimeout = setTimeout(() => {
+                console.log('[Shell] 🔄 Retrying registration...');
+                this.registerDevice();
+            }, 10000);
         }
     },
 
     /**
-     * Start polling for activation
+     * OLD POLLING SYSTEM - DEPRECATED
+     * Replaced by ActivationPoll module for better separation of concerns
+     * Kept for reference but no longer called
      */
-    startPolling: function() {
-        const state = window.ShellState;
-        
-        // Poll every 3 seconds until activated
-        const pollingInterval = setInterval(() => {
-            if (state.isActivated) {
-                clearInterval(pollingInterval);
-            } else {
-                this.checkActivation();
-            }
-        }, 3000);
-    },
+    // checkActivation: async function() { ... },
+    // startPolling: function() { ... },
 
     /**
      * Called when device becomes activated

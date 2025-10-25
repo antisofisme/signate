@@ -9,6 +9,7 @@
 DROP TABLE IF EXISTS schedules CASCADE;
 DROP TABLE IF EXISTS content_assignments CASCADE;
 DROP TABLE IF EXISTS device_tags CASCADE;
+DROP TABLE IF EXISTS device_commands CASCADE;
 DROP TABLE IF EXISTS device_logs CASCADE;
 DROP TABLE IF EXISTS firebird_config CASCADE;
 DROP TABLE IF EXISTS users CASCADE;
@@ -65,7 +66,8 @@ CREATE TABLE devices (
 
     -- Metadata
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    released_at TIMESTAMP -- Timestamp when device was released (orphaned from viewer)
 
     -- Note: Removed strict constraints to allow flexible registration
     -- Browser viewer: uses unique_code
@@ -126,6 +128,42 @@ COMMENT ON COLUMN device_logs.log_level IS 'Log level: log, warn, error, info, d
 COMMENT ON COLUMN device_logs.message IS 'Log message content';
 COMMENT ON COLUMN device_logs.source IS 'Optional source file/function';
 COMMENT ON COLUMN device_logs.timestamp IS 'Log timestamp (UTC)';
+
+-- =============================================================================
+-- TABLE: device_commands
+-- Purpose: Queue system untuk remote commands ke devices (reset, release, etc.)
+-- =============================================================================
+CREATE TABLE device_commands (
+    id SERIAL PRIMARY KEY,
+    device_id INTEGER NOT NULL REFERENCES devices(id) ON DELETE CASCADE,
+
+    -- Command type
+    command_type VARCHAR(20) NOT NULL CHECK (command_type IN ('reset', 'refresh', 'reload')),
+    reason VARCHAR(100), -- Why command was issued (deleted_by_admin, released_by_admin, etc.)
+
+    -- Status tracking
+    status VARCHAR(20) NOT NULL DEFAULT 'pending'
+        CHECK (status IN ('pending', 'executed', 'expired')),
+
+    -- Timestamps
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    executed_at TIMESTAMP, -- When device executed the command
+    expires_at TIMESTAMP -- Command expiry (7 days default)
+);
+
+-- Indexes for device_commands
+CREATE INDEX idx_device_commands_device_id ON device_commands(device_id);
+CREATE INDEX idx_device_commands_command_type ON device_commands(command_type);
+CREATE INDEX idx_device_commands_status ON device_commands(status);
+CREATE INDEX idx_device_commands_expires_at ON device_commands(expires_at);
+
+COMMENT ON TABLE device_commands IS 'Remote command queue untuk devices (reset, release, etc.) - supports offline devices';
+COMMENT ON COLUMN device_commands.command_type IS 'reset (clear localStorage+cache), refresh (cache only), reload (player only)';
+COMMENT ON COLUMN device_commands.reason IS 'Why command was issued: deleted_by_admin, released_by_admin, manual_reset';
+COMMENT ON COLUMN device_commands.status IS 'pending (waiting for device), executed (device completed), expired (timeout)';
+COMMENT ON COLUMN device_commands.created_at IS 'When command was queued by admin';
+COMMENT ON COLUMN device_commands.executed_at IS 'When device executed the command';
+COMMENT ON COLUMN device_commands.expires_at IS 'Command auto-expires after 7 days if not executed';
 
 -- =============================================================================
 -- TABLE: content

@@ -34,28 +34,41 @@ export default function PendingDeviceCard({ device, onApprove }) {
         <div>
           <p className="font-bold text-gray-800">{device.device_name}</p>
 
+          {/* IP Address */}
+          <div className="flex items-center gap-2 mt-1">
+            <span className="text-xs text-gray-500">IP:</span>
+            <span className="font-mono text-sm text-gray-700">
+              {device.ip_address || '-'}
+            </span>
+            {device.platform && (
+              <span className={`text-xs px-2 py-1 rounded-full ${
+                device.platform === 'webOS' ? 'bg-purple-100 text-purple-700' : 'bg-gray-100 text-gray-700'
+              }`}>
+                {device.platform}
+              </span>
+            )}
+          </div>
+
           {/* UUID or Code Display */}
-          <div className="flex items-center gap-3 mt-1">
+          <div className="flex items-center gap-2 mt-1">
             {device.device_uuid ? (
               <>
                 <span className="text-xs text-gray-500">UUID:</span>
-                <span className="font-mono text-sm text-blue-600 bg-blue-50 px-2 py-1 rounded">
+                <span className="font-mono text-xs text-blue-600 bg-blue-50 px-2 py-1 rounded">
                   {device.device_uuid.substring(0, 13)}...
                 </span>
-                {device.platform && (
-                  <span className={`text-xs px-2 py-1 rounded-full ${
-                    device.platform === 'webOS' ? 'bg-purple-100 text-purple-700' : 'bg-gray-100 text-gray-700'
-                  }`}>
-                    {device.platform}
-                  </span>
-                )}
+              </>
+            ) : device.unique_code ? (
+              <>
+                <span className="text-xs text-gray-500">Code:</span>
+                <span className="font-mono text-lg font-bold text-yellow-600">
+                  {device.unique_code}
+                </span>
               </>
             ) : (
               <>
                 <span className="text-xs text-gray-500">Code:</span>
-                <span className="font-mono text-lg font-bold text-yellow-600">
-                  {device.unique_code || 'N/A'}
-                </span>
+                <span className="text-gray-400">-</span>
               </>
             )}
           </div>
