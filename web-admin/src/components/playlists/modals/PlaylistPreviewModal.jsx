@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { playlistsAPI } from '../../../services/api'
-import { Modal, ModalFooter, Button } from '../../shared'
+import { Modal, ModalFooter, Button, Thumbnail } from '../../shared'
 import { Play, Pause, SkipForward, SkipBack, Monitor, Clock, Image as ImageIcon, Video, FileText } from 'lucide-react'
 
 /**
@@ -26,7 +26,7 @@ export default function PlaylistPreviewModal({ playlist, onClose }) {
 
   // Fetch playlist content
   const { data: contentData, isLoading } = useQuery({
-    queryKey: ['playlist-content', playlist.id],
+    queryKey: ['playlists', playlist.id, 'content'],  // Match with PlaylistContentModal
     queryFn: () => playlistsAPI.getContent(playlist.id).then(res => res.data),
   })
 
@@ -137,27 +137,37 @@ export default function PlaylistPreviewModal({ playlist, onClose }) {
         {!isLoading && items.length > 0 && (
           <>
             {/* Current Item Display */}
-            <div className="bg-gradient-to-br from-gray-900 to-gray-800 rounded-lg p-8 text-white min-h-[300px] flex flex-col items-center justify-center relative overflow-hidden">
-              {/* Background Pattern */}
-              <div className="absolute inset-0 opacity-10">
-                <div className="absolute inset-0" style={{
-                  backgroundImage: 'repeating-linear-gradient(45deg, transparent, transparent 10px, rgba(255,255,255,0.1) 10px, rgba(255,255,255,0.1) 20px)'
-                }}></div>
+            <div className="bg-gradient-to-br from-gray-900 to-gray-800 rounded-lg overflow-hidden relative">
+              {/* Media Preview */}
+              <div className="aspect-video bg-black relative">
+                {currentItem && (
+                  <Thumbnail
+                    content={{
+                      id: currentItem.content_id,
+                      content_type: currentItem.content_type,
+                      title: currentItem.content_name
+                    }}
+                    size="xl"
+                    aspectRatio="video"
+                    showPlayIcon={true}
+                    className="w-full h-full"
+                  />
+                )}
               </div>
 
-              {/* Content Preview */}
-              <div className="relative z-10 text-center">
-                <div className="mb-4">
+              {/* Content Info Overlay */}
+              <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-4 text-white">
+                <div className="flex items-center gap-2 mb-1">
                   {getContentIcon(currentItem?.content_type)}
-                  <span className="ml-2 text-sm text-gray-400 uppercase">
+                  <span className="text-xs text-gray-300 uppercase">
                     {currentItem?.content_type || 'Unknown'}
                   </span>
                 </div>
-                <h3 className="text-2xl font-bold mb-2">
+                <h3 className="text-lg font-bold mb-1">
                   {currentItem?.content_name || 'Untitled'}
                 </h3>
-                <p className="text-gray-400 flex items-center justify-center gap-2">
-                  <Clock className="w-4 h-4" />
+                <p className="text-sm text-gray-300 flex items-center gap-2">
+                  <Clock className="w-3 h-3" />
                   Duration: {formatDuration(currentItem?.duration)}
                 </p>
               </div>
@@ -171,7 +181,7 @@ export default function PlaylistPreviewModal({ playlist, onClose }) {
               </div>
 
               {/* Item Counter */}
-              <div className="absolute top-4 right-4 bg-black bg-opacity-50 px-3 py-1 rounded-full text-sm">
+              <div className="absolute top-4 right-4 bg-black bg-opacity-70 px-3 py-1 rounded-full text-sm text-white font-semibold">
                 {currentIndex + 1} / {items.length}
               </div>
             </div>

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { FileImage, Film } from 'lucide-react'
 import { API_BASE_URL } from '../../utils/constants'
 
@@ -33,6 +33,8 @@ export default function Thumbnail({
 }) {
   const [hasError, setHasError] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
+  const [isPlaying, setIsPlaying] = useState(false)
+  const videoRef = useRef(null)
 
   // Get media URL based on content type
   const getMediaUrl = () => {
@@ -40,6 +42,20 @@ export default function Thumbnail({
       return `${API_BASE_URL}/api/content/${content.id}/video`
     }
     return `${API_BASE_URL}/api/content/${content.id}/image`
+  }
+
+  // Handle video play/pause toggle
+  const handleVideoToggle = (e) => {
+    e.stopPropagation()
+    if (videoRef.current) {
+      if (isPlaying) {
+        videoRef.current.pause()
+        setIsPlaying(false)
+      } else {
+        videoRef.current.play()
+        setIsPlaying(true)
+      }
+    }
   }
 
   // Size variants using design tokens
@@ -132,11 +148,13 @@ export default function Thumbnail({
       {/* Media content */}
       {isVideo ? (
         <video
+          ref={videoRef}
           src={mediaUrl}
-          className="w-full h-full object-cover"
+          className="w-full h-full object-contain"
           preload="metadata"
           muted
           playsInline
+          loop
           onLoadedMetadata={(e) => {
             try {
               e.target.currentTime = 0.1 // Load first frame
@@ -151,12 +169,15 @@ export default function Thumbnail({
             setHasError(true)
             setIsLoading(false)
           }}
+          onPlay={() => setIsPlaying(true)}
+          onPause={() => setIsPlaying(false)}
+          onClick={handleVideoToggle}
         />
       ) : (
         <img
           src={mediaUrl}
           alt={content.title}
-          className="w-full h-full object-cover"
+          className="w-full h-full object-contain"
           onLoad={() => setIsLoading(false)}
           onError={(e) => {
             console.error('Image load error:', e)
@@ -166,13 +187,23 @@ export default function Thumbnail({
         />
       )}
 
-      {/* Play icon overlay for videos */}
+      {/* Play/Pause icon overlay for videos */}
       {isVideo && showPlayIcon && !isLoading && !hasError && (
-        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-          <div className="bg-black bg-opacity-50 rounded-full p-3 transition-transform hover:scale-110">
-            <svg className="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 24 24">
-              <path d="M8 5v14l11-7z"/>
-            </svg>
+        <div
+          className="absolute inset-0 flex items-center justify-center cursor-pointer transition-opacity hover:opacity-100"
+          style={{ opacity: isPlaying ? 0 : 1 }}
+          onClick={handleVideoToggle}
+        >
+          <div className="bg-black bg-opacity-50 rounded-full p-3 transition-transform hover:scale-110 pointer-events-none">
+            {isPlaying ? (
+              <svg className="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z"/>
+              </svg>
+            ) : (
+              <svg className="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M8 5v14l11-7z"/>
+              </svg>
+            )}
           </div>
         </div>
       )}

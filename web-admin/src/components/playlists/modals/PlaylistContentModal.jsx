@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { playlistsAPI } from '../../../services/api'
 import { Modal, ModalFooter, Button, Thumbnail } from '../../shared'
@@ -27,6 +27,7 @@ export default function PlaylistContentModal({ playlist, onClose }) {
   const [showContentSelector, setShowContentSelector] = useState(false)
   const [contentItems, setContentItems] = useState([])
   const [draggedIndex, setDraggedIndex] = useState(null)
+  const saveTimeoutRef = useRef(null)
 
   // Fetch playlist content
   const { data: playlistContent, isLoading } = useQuery({
@@ -40,6 +41,15 @@ export default function PlaylistContentModal({ playlist, onClose }) {
       setContentItems(playlistContent.items)
     }
   }, [playlistContent])
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current)
+      }
+    }
+  }, [])
 
   // Add content mutation
   const addContentMutation = useMutation({
@@ -72,18 +82,21 @@ export default function PlaylistContentModal({ playlist, onClose }) {
   const reorderContentMutation = useMutation({
     mutationFn: (orderedItems) => {
       const orderData = orderedItems.map((item, index) => ({
-        content_id: item.content_id,
+        id: item.id,  // PlaylistContent.id (not content_id!)
         order_index: index,
         duration: item.duration
       }))
-      return playlistsAPI.reorderContent(playlist.id, { items: orderData })
+      console.log('📤 Sending reorder request:', { content_items: orderData })
+      return playlistsAPI.reorderContent(playlist.id, { content_items: orderData })  // Match backend schema!
     },
-    onSuccess: () => {
+    onSuccess: (response) => {
+      console.log('✅ Reorder successful!', response)
       queryClient.invalidateQueries(['playlists', playlist.id, 'content'])
       queryClient.invalidateQueries(['playlists'])
       showToast.success('Content order updated!')
     },
     onError: (error) => {
+      console.error('❌ Reorder failed:', error.response?.data || error.message)
       showToast.error(error.response?.data?.detail || 'Failed to reorder content')
     }
   })
@@ -101,20 +114,26 @@ export default function PlaylistContentModal({ playlist, onClose }) {
     }
   }
 
-  // Handle duration change
+  // Handle duration change with debouncing
   const handleDurationChange = (index, newDuration) => {
     const updatedItems = [...contentItems]
     updatedItems[index].duration = parseInt(newDuration) || 0
     setContentItems(updatedItems)
 
+    // Clear previous timeout
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current)
+    }
+
     // Auto-save after 1 second delay
-    setTimeout(() => {
+    saveTimeoutRef.current = setTimeout(() => {
       reorderContentMutation.mutate(updatedItems)
     }, 1000)
   }
 
   // Drag and Drop handlers
   const handleDragStart = (e, index) => {
+    console.log('🟢 Drag started from index:', index)
     setDraggedIndex(index)
     e.dataTransfer.effectAllowed = 'move'
   }
@@ -124,6 +143,8 @@ export default function PlaylistContentModal({ playlist, onClose }) {
     e.dataTransfer.dropEffect = 'move'
 
     if (draggedIndex === null || draggedIndex === index) return
+
+    console.log(`🔄 Dragging from ${draggedIndex} to ${index}`)
 
     // Reorder items
     const newItems = [...contentItems]
@@ -135,10 +156,21 @@ export default function PlaylistContentModal({ playlist, onClose }) {
     setDraggedIndex(index)
   }
 
-  const handleDragEnd = () => {
-    setDraggedIndex(null)
+  const handleDrop = (e) => {
+    e.preventDefault()
+    console.log('🎯 Drop! Final order:', contentItems.map((item, i) => ({ index: i, name: item.content_name, id: item.id })))
+
     // Save new order
-    reorderContentMutation.mutate(contentItems)
+    if (draggedIndex !== null) {
+      reorderContentMutation.mutate(contentItems)
+    }
+
+    setDraggedIndex(null)
+  }
+
+  const handleDragEnd = () => {
+    console.log('🏁 DragEnd triggered (cleanup only)')
+    setDraggedIndex(null)
   }
 
   // Calculate total duration
@@ -201,21 +233,24 @@ export default function PlaylistContentModal({ playlist, onClose }) {
               {contentItems.map((item, index) => (
                 <div
                   key={`${item.content_id}-${index}`}
-                  draggable
-                  onDragStart={(e) => handleDragStart(e, index)}
                   onDragOver={(e) => handleDragOver(e, index)}
-                  onDragEnd={handleDragEnd}
+                  onDrop={handleDrop}
                   className={`
                     flex items-center gap-3 p-3 bg-white rounded-lg border-2
-                    transition-all cursor-move
+                    transition-all
                     ${draggedIndex === index
                       ? 'border-blue-500 shadow-lg opacity-50'
                       : 'border-gray-200 hover:border-gray-300 hover:shadow-md'
                     }
                   `}
                 >
-                  {/* Drag Handle */}
-                  <div className="flex-shrink-0 text-gray-400 hover:text-gray-600 cursor-grab active:cursor-grabbing">
+                  {/* Drag Handle - Only this is draggable! */}
+                  <div
+                    draggable
+                    onDragStart={(e) => handleDragStart(e, index)}
+                    onDragEnd={handleDragEnd}
+                    className="flex-shrink-0 text-gray-400 hover:text-gray-600 cursor-grab active:cursor-grabbing"
+                  >
                     <GripVertical className="w-5 h-5" />
                   </div>
 

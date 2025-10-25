@@ -4,7 +4,7 @@ Device Management API endpoints
 
 import logging
 from fastapi import APIRouter, Depends, HTTPException, status, Request
-from sqlalchemy.orm import Session, lazyload
+from sqlalchemy.orm import Session, lazyload, joinedload
 from datetime import datetime, timedelta
 from typing import List, Optional
 
@@ -13,6 +13,8 @@ from app.core.deps import get_current_active_user, get_optional_user
 from app.models.user import User
 from app.models.device import Device
 from app.models.device_command import DeviceCommand
+from app.models.tag import Tag, DeviceTag
+from app.models.playlist import Playlist, PlaylistAssignment
 from app.schemas.device import (
     TVRegisterRequest,
     MonitorGenerateRequest,
@@ -30,6 +32,10 @@ from app.schemas.device_command import (
     DeviceCommandResponse,
     DeviceCommandListResponse
 )
+from app.schemas.preview import (
+    DevicePreviewResponse
+)
+from app.services.preview_service import PreviewService
 from app.utils.device_utils import (
     generate_activation_code,
     generate_numeric_code,
@@ -41,6 +47,74 @@ from app.utils.device_utils import (
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
+
+
+def device_to_response(device: Device, db: Session) -> DeviceResponse:
+    """
+    Transform Device model to DeviceResponse with populated tags & playlists
+
+    Args:
+        device: Device model instance
+        db: Database session for querying relationships
+
+    Returns:
+        DeviceResponse with populated tags & playlists
+    """
+    # Extract tags from device.tags relationship (DeviceTag -> Tag)
+    device_tags = []
+    for device_tag in device.tags:
+        tag = db.query(Tag).filter(Tag.id == device_tag.tag_id).first()
+        if tag:
+            device_tags.append({
+                "id": tag.id,
+                "tag_name": tag.tag_name,
+                "color": tag.color
+            })
+
+    # Extract playlists from device.playlist_assignments relationship
+    device_playlists = []
+    for assignment in device.playlist_assignments:
+        playlist = db.query(Playlist).filter(Playlist.id == assignment.playlist_id).first()
+        if playlist:
+            device_playlists.append({
+                "id": playlist.id,
+                "name": playlist.name,
+                "description": playlist.description,
+                "is_active": playlist.is_active,
+                "priority": playlist.priority
+            })
+
+    # Build DeviceResponse dict from device attributes
+    device_dict = {
+        "id": device.id,
+        "device_type": device.device_type,
+        "device_name": device.device_name,
+        "ip_address": device.ip_address,
+        "unique_code": device.unique_code,
+        "code_expires_at": device.code_expires_at,
+        "device_uuid": device.device_uuid,
+        "platform": device.platform,
+        "model_name": device.model_name,
+        "firmware_version": device.firmware_version,
+        "status": device.status,
+        "last_seen": device.last_seen,
+        "created_at": device.created_at,
+        "updated_at": device.updated_at,
+        "screen_width": device.screen_width,
+        "screen_height": device.screen_height,
+        "viewport_width": device.viewport_width,
+        "viewport_height": device.viewport_height,
+        "device_pixel_ratio": device.device_pixel_ratio,
+        "user_agent": device.user_agent,
+        "connection_type": device.connection_type,
+        "connection_speed": device.connection_speed,
+        "rotation": device.rotation,
+        "volume_enabled": device.volume_enabled,
+        "tags": device_tags,
+        "playlists": device_playlists
+    }
+
+    return DeviceResponse(**device_dict)
 
 
 @router.get("/", response_model=DeviceListResponse)
@@ -70,8 +144,11 @@ def list_devices(
         - Pending devices with expired activation codes are automatically filtered out
         - This prevents closed monitor viewers from cluttering the device list
     """
-    # Build query
-    query = db.query(Device)
+    # Build query with eager loading for tags & playlists
+    query = db.query(Device).options(
+        joinedload(Device.tags),
+        joinedload(Device.playlist_assignments)
+    )
 
     # Apply filters
     if device_type:
@@ -111,12 +188,15 @@ def list_devices(
             if seconds_since_creation <= 300:  # 5 minutes grace period
                 filtered_devices.append(device)
 
+    # Transform devices to response with tags & playlists
+    device_responses = [device_to_response(device, db) for device in filtered_devices]
+
     # Get total count (excluding offline pending devices)
-    total = len(filtered_devices)
+    total = len(device_responses)
 
     return DeviceListResponse(
         total=total,
-        devices=filtered_devices
+        devices=device_responses
     )
 
 
@@ -149,6 +229,77 @@ def get_device(
         )
 
     return device
+
+
+@router.get("/{device_id}/preview", response_model=DevicePreviewResponse)
+async def get_device_preview(
+    device_id: int,
+    preview_time: Optional[str] = None,
+    include_inactive: bool = False,
+    db: Session = Depends(get_db),
+    current_user: Optional[User] = Depends(get_optional_user)
+):
+    """
+    Get content preview for a device with resolution breakdown
+
+    This endpoint shows what content will be displayed on a device at a specific time,
+    including the resolution algorithm breakdown (direct, playlist, tag sources).
+
+    Args:
+        device_id: Device ID
+        preview_time: ISO 8601 datetime string for preview (defaults to current time)
+        include_inactive: Include inactive content sources in preview
+        db: Database session
+        current_user: Authenticated user
+
+    Returns:
+        DevicePreviewResponse: Complete preview with content sources and final playlist
+
+    Raises:
+        HTTPException: If device not found or preview generation fails
+
+    Notes:
+        - Resolution algorithm applies SEQUENTIAL PRIORITY (Direct > Playlist > Tag)
+        - EXCLUSIVE playlists override all other content sources
+        - INCLUSIVE mode merges all content by priority
+        - Time-based scheduling is evaluated at preview_time
+    """
+    # Verify device exists
+    device = db.query(Device).filter(Device.id == device_id).first()
+    if not device:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Device with ID {device_id} not found"
+        )
+
+    # Parse preview_time if provided
+    preview_datetime = None
+    if preview_time:
+        try:
+            preview_datetime = datetime.fromisoformat(preview_time.replace('Z', '+00:00'))
+        except ValueError:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid preview_time format. Use ISO 8601 format (e.g., 2025-10-26T14:00:00)"
+            )
+
+    # Initialize preview service
+    preview_service = PreviewService(db)
+
+    # Generate preview
+    try:
+        preview_data = await preview_service.get_device_preview(
+            device_id=device_id,
+            preview_time=preview_datetime,
+            include_inactive=include_inactive
+        )
+        return DevicePreviewResponse(**preview_data)
+    except Exception as e:
+        logger.error(f"Preview generation failed for device {device_id}: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to generate preview: {str(e)}"
+        )
 
 
 @router.post("/tv", response_model=DeviceResponse, status_code=status.HTTP_201_CREATED)

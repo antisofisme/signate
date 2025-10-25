@@ -7,6 +7,29 @@ from typing import Optional, List
 from datetime import datetime
 
 
+# Nested schemas for device response
+class DeviceTagNested(BaseModel):
+    """Nested tag schema for device response"""
+    id: int
+    tag_name: str
+    color: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
+
+class DevicePlaylistNested(BaseModel):
+    """Nested playlist schema for device response"""
+    id: int
+    name: str
+    description: Optional[str] = None
+    is_active: bool
+    priority: int
+
+    class Config:
+        from_attributes = True
+
+
 class DeviceBase(BaseModel):
     """Base device schema"""
     device_name: str = Field(..., min_length=1, max_length=100)
@@ -167,6 +190,9 @@ class DeviceResponse(BaseModel):
     # Display settings
     rotation: int = 0
     volume_enabled: bool = True
+    # Tags & Playlists (new fields for advanced UI)
+    tags: Optional[List[DeviceTagNested]] = []
+    playlists: Optional[List[DevicePlaylistNested]] = []
 
     class Config:
         from_attributes = True

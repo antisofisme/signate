@@ -21,6 +21,7 @@ class Tag(Base):
         tag_name: Name of the tag
         description: Description of tag purpose
         color: Color code for UI display (hex format)
+        tag_priority: Priority among tags (higher number = higher priority in content resolution)
         created_at: Timestamp when tag was created
     """
 
@@ -33,6 +34,7 @@ class Tag(Base):
     tag_name = Column(String(100), unique=True, nullable=False, index=True)
     description = Column(Text)
     color = Column(String(7), default="#3B82F6")  # Hex color code
+    tag_priority = Column(Integer, default=0, nullable=False)  # Priority for content resolution
 
     # Timestamps
     created_at = Column(DateTime, server_default=func.now(), nullable=False)
@@ -50,6 +52,7 @@ class Tag(Base):
             "tag_name": self.tag_name,
             "description": self.description,
             "color": self.color,
+            "tag_priority": self.tag_priority,
             "created_at": self.created_at.isoformat() if self.created_at else None,
         }
 

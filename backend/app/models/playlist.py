@@ -21,7 +21,12 @@ class Playlist(Base):
         description: Description of playlist purpose
         is_active: Whether this playlist is currently active
         priority: Priority level (1-10, higher = higher priority)
-        schedule: JSON field containing schedule configuration
+        schedule: JSON field containing schedule configuration (deprecated, use schedule_* fields)
+        schedule_mode: inclusive (add to rotation) or exclusive (replace all content)
+        schedule_start: Time when playlist should start (e.g., 06:00:00)
+        schedule_end: Time when playlist should end (e.g., 12:00:00)
+        schedule_days: JSON array of active days (e.g., ["mon","tue","wed"])
+        schedule_timezone: Timezone for schedule times (e.g., Asia/Jakarta, UTC)
         created_at: Timestamp when playlist was created
         updated_at: Timestamp when playlist was last updated
     """
@@ -37,7 +42,7 @@ class Playlist(Base):
     is_active = Column(Boolean, default=True, nullable=False, index=True)
     priority = Column(Integer, default=1, nullable=False)
 
-    # Schedule as JSON
+    # Schedule as JSON (deprecated, kept for backward compatibility)
     # Structure: {
     #   "start_time": "07:00",
     #   "end_time": "23:00",
@@ -46,6 +51,13 @@ class Playlist(Base):
     #   "end_date": "2025-12-31"      # optional
     # }
     schedule = Column(JSON)
+
+    # New scheduling fields (Phase 1 enhancement)
+    schedule_mode = Column(String(20), default='inclusive', nullable=True)  # 'inclusive' or 'exclusive'
+    schedule_start = Column(Time, nullable=True)  # Start time (e.g., 06:00:00)
+    schedule_end = Column(Time, nullable=True)  # End time (e.g., 12:00:00)
+    schedule_days = Column(String(50), nullable=True)  # JSON array: ["mon","tue","wed"]
+    schedule_timezone = Column(String(50), default='Asia/Jakarta', nullable=True)  # Timezone
 
     # Timestamps
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
@@ -67,6 +79,11 @@ class Playlist(Base):
             "is_active": self.is_active,
             "priority": self.priority,
             "schedule": self.schedule,
+            "schedule_mode": self.schedule_mode,
+            "schedule_start": self.schedule_start.isoformat() if self.schedule_start else None,
+            "schedule_end": self.schedule_end.isoformat() if self.schedule_end else None,
+            "schedule_days": self.schedule_days,
+            "schedule_timezone": self.schedule_timezone,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,
         }

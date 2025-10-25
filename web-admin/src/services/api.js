@@ -57,6 +57,12 @@ export const devicesAPI = {
   getLogs: (id, params) => api.get(`/api/devices/${id}/logs`, { params }),
   deleteLogs: (id, params) => api.delete(`/api/devices/${id}/logs`, { params }),
   queueCommand: (id, data) => api.post(`/api/devices/${id}/commands`, data),
+  // Content assignment endpoints (Phase 3)
+  getContent: (id, params) => api.get(`/api/devices/${id}/content`, { params }),
+  assignContent: (id, data) => api.post(`/api/devices/${id}/content`, data),
+  unassignContent: (id, contentId) => api.delete(`/api/devices/${id}/content/${contentId}`),
+  // Preview endpoint (Phase 2)
+  preview: (id, params) => api.get(`/api/devices/${id}/preview`, { params }),
 }
 
 // Content API
@@ -87,6 +93,10 @@ export const tagsAPI = {
     data: data
   }),
   getDevices: (id) => api.get(`/api/tags/${id}/devices`),
+  // Content assignment endpoints (Phase 3)
+  getContent: (id, params) => api.get(`/api/tags/${id}/content`, { params }),
+  assignContent: (id, data) => api.post(`/api/tags/${id}/content`, data),
+  unassignContent: (id, contentId) => api.delete(`/api/tags/${id}/content/${contentId}`),
 }
 
 // Playlists API

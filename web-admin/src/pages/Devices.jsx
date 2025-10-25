@@ -6,8 +6,7 @@ import toast, { Toaster } from 'react-hot-toast'
 
 // Components
 import TVRegisterModal from '../components/devices/modals/TVRegisterModal'
-import AssignContentModal from '../components/devices/modals/AssignContentModal'
-import DeviceInfoModal from '../components/devices/modals/DeviceInfoModal'
+import DeviceDetailModal from '../components/devices/modals/DeviceDetailModal'
 import Button from '../components/shared/Button'
 import DeviceEditModal from '../components/devices/modals/DeviceEditModal'
 import DeviceLogsModal from '../components/devices/modals/DeviceLogsModal'
@@ -17,8 +16,7 @@ import DeviceTableRow from '../components/devices/DeviceTableRow'
 export default function Devices() {
   const queryClient = useQueryClient()
   const [showTVForm, setShowTVForm] = useState(false)
-  const [showContentModal, setShowContentModal] = useState(false)
-  const [showDeviceInfoModal, setShowDeviceInfoModal] = useState(false)
+  const [showDeviceDetailModal, setShowDeviceDetailModal] = useState(false)
   const [showDeviceEditModal, setShowDeviceEditModal] = useState(false)
   const [showLogsModal, setShowLogsModal] = useState(false)
   const [selectedDevice, setSelectedDevice] = useState(null)
@@ -97,7 +95,7 @@ export default function Devices() {
 
   const handleRowClick = useCallback((device) => {
     setSelectedDevice(device)
-    setShowContentModal(true)
+    setShowDeviceDetailModal(true)
   }, [])
 
   const handleEdit = useCallback((device) => {
@@ -252,23 +250,16 @@ export default function Devices() {
         />
       )}
 
-      {showContentModal && selectedDevice && (
-        <AssignContentModal
+      {showDeviceDetailModal && selectedDevice && (
+        <DeviceDetailModal
           device={selectedDevice}
           onClose={() => {
-            setShowContentModal(false)
+            setShowDeviceDetailModal(false)
             setSelectedDevice(null)
           }}
-        />
-      )}
-
-      {showDeviceInfoModal && selectedDevice && (
-        <DeviceInfoModal
-          device={selectedDevice}
-          onClose={() => {
-            setShowDeviceInfoModal(false)
-            setSelectedDevice(null)
-          }}
+          onEdit={handleEdit}
+          onViewLogs={handleViewLogs}
+          onDelete={handleDelete}
         />
       )}
 

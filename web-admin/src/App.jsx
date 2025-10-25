@@ -6,6 +6,7 @@ import { useState } from 'react'
 import Login from './pages/Login'
 import Dashboard from './pages/Dashboard'
 import Devices from './pages/Devices'
+import DevicePreview from './pages/DevicePreview'
 import Content from './pages/Content'
 import Tags from './pages/Tags'
 import Playlists from './pages/Playlists'
@@ -54,6 +55,12 @@ function App() {
               <Layout setIsAuthenticated={setIsAuthenticated}>
                 <Devices />
               </Layout>
+            </PrivateRoute>
+          } />
+
+          <Route path="/devices/:id/preview" element={
+            <PrivateRoute>
+              <DevicePreview />
             </PrivateRoute>
           } />
 

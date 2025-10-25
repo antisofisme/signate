@@ -13,6 +13,14 @@ from app.models.firebird import FirebirdConfig
 from app.models.device_log import DeviceLog
 from app.models.device_command import DeviceCommand
 from app.models.playlist import Playlist, PlaylistContent, PlaylistAssignment
+from app.models.hotel import (
+    ExternalDataSource,
+    DeviceGuestMapping,
+    RoomConfiguration,
+    Widget,
+    DataAccessPolicy,
+    DataAccessLog,
+)
 
 __all__ = [
     "User",
@@ -28,4 +36,11 @@ __all__ = [
     "Playlist",
     "PlaylistContent",
     "PlaylistAssignment",
+    # Hotel Integration Models
+    "ExternalDataSource",
+    "DeviceGuestMapping",
+    "RoomConfiguration",
+    "Widget",
+    "DataAccessPolicy",
+    "DataAccessLog",
 ]

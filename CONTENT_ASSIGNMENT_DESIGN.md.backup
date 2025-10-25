@@ -1,0 +1,909 @@
+# Content Assignment System Design
+**Digital Signage - Content Distribution & Preview System**
+
+Last Updated: 2025-10-26
+Status: Design Phase - Ready for Implementation
+
+---
+
+## Table of Contents
+1. [Overview](#overview)
+2. [Content Sources Hierarchy](#content-sources-hierarchy)
+3. [Database Schema](#database-schema)
+4. [Playlist Scheduling](#playlist-scheduling)
+5. [Content Resolution Logic](#content-resolution-logic)
+6. [Preview System](#preview-system)
+7. [UI/UX Flow](#uiux-flow)
+8. [API Design](#api-design)
+9. [Implementation Roadmap](#implementation-roadmap)
+
+---
+
+## Overview
+
+Devices can receive content from multiple sources with different priorities:
+
+```
+Priority (Highest to Lowest):
+┌─────────────────────────────────────┐
+│ 1. Direct Content Assignment        │ ← Highest (override all)
+│    (Per-device manual)               │
+├─────────────────────────────────────┤
+│ 2. Playlist Assignment               │ ← Priority based on playlist.priority
+│    (Per-device or per-tag)           │
+├─────────────────────────────────────┤
+│ 3. Tag-based Content                 │ ← Content assigned to tags
+│    (Inherited from device tags)      │
+├─────────────────────────────────────┤
+│ 4. Widget Assignment (Future)        │ ← Widget overlays
+│    (Per-device or global)            │
+└─────────────────────────────────────┘
+```
+
+---
+
+## Content Sources Hierarchy
+
+### 1. Direct Content Assignment
+- **Definition:** Content manually assigned to specific device
+- **Priority:** HIGHEST (999)
+- **Use Case:** Device-specific content (e.g., "This promo only on Lobby TV 1")
+- **Table:** `content_assignments` with `device_id` set
+- **Override:** Overrides ALL playlist and tag content
+
+### 2. Playlist Assignment
+- **Definition:** Playlist assigned to device or tag
+- **Priority:** Based on `playlist.priority` (user-defined)
+- **Use Case:** Rotating content groups (e.g., "Morning News" playlist)
+- **Table:** `playlist_assignments`
+- **Scheduling:** Can have time-based schedules (06:00-12:00)
+- **Modes:**
+  - INCLUSIVE (default): Add to rotation
+  - EXCLUSIVE: Replace all other content during schedule
+
+### 3. Tag-based Content
+- **Definition:** Content assigned to tag, inherited by all devices with that tag
+- **Priority:** Based on `tag.tag_priority`
+- **Use Case:** Group content (e.g., "All Lobby devices show safety video")
+- **Table:** `content_assignments` with `tag_id` set
+- **Scalability:** Efficient for bulk assignment
+
+### 4. Widget Assignment (Future Feature)
+- **Definition:** Dynamic overlays (weather, clock, news ticker)
+- **Priority:** N/A (overlays, not in sequence)
+- **Use Case:** Real-time information display
+- **Behavior:** Can be in playlist sequence OR overlay
+
+---
+
+## Database Schema
+
+### Current Schema
+
+#### `content_assignments` (Existing)
+```sql
+content_assignments:
+├─ id SERIAL PRIMARY KEY
+├─ content_id INT FK → content(id)
+├─ device_id INT FK → devices(id) [NULLABLE]
+├─ tag_id INT FK → tags(id) [NULLABLE]
+├─ priority INT DEFAULT 0
+├─ created_at TIMESTAMP
+└─ CONSTRAINT: device_id OR tag_id (mutually exclusive)
+```
+
+### Proposed Schema Changes
+
+#### 1. Enhance `content_assignments`
+```sql
+ALTER TABLE content_assignments ADD COLUMN:
+├─ display_order INT DEFAULT 0           -- Order within same source group
+├─ is_active BOOLEAN DEFAULT TRUE        -- Soft delete/disable
+├─ start_date TIMESTAMP NULL             -- Scheduling start (future)
+├─ end_date TIMESTAMP NULL               -- Scheduling end (future)
+├─ notes TEXT NULL                       -- Admin notes
+└─ updated_at TIMESTAMP DEFAULT NOW()
+```
+
+**Rationale:**
+- `display_order`: Controls sequence within Direct or Tag assignments
+- `priority`: Keep for backward compatibility, or rename to `assignment_priority`
+- `is_active`: Temporary disable without deletion
+- Scheduling fields: Future-proof for time-based content
+
+#### 2. Enhance `tags`
+```sql
+ALTER TABLE tags ADD COLUMN:
+└─ tag_priority INT DEFAULT 0            -- Priority among tags
+```
+
+**Rationale:**
+- Control tag order: "Safety" tag before "Promotion" tag
+- Affects playback order of tag-based content
+
+#### 3. Enhance `playlists`
+```sql
+ALTER TABLE playlists ADD COLUMN:
+├─ schedule_mode ENUM('inclusive', 'exclusive') DEFAULT 'inclusive'
+├─ schedule_start TIME NULL              -- e.g., "06:00:00"
+├─ schedule_end TIME NULL                -- e.g., "12:00:00"
+├─ schedule_days VARCHAR(50) NULL        -- JSON: ["mon","tue","wed"]
+└─ schedule_timezone VARCHAR(50) DEFAULT 'Asia/Jakarta'
+```
+
+**Rationale:**
+- `schedule_mode`:
+  - `inclusive`: Add to existing rotation
+  - `exclusive`: Replace ALL other content during schedule
+- Schedule fields: Time-based playlist activation
+
+---
+
+## Playlist Scheduling
+
+### Schedule Modes
+
+#### INCLUSIVE Mode (Default)
+**Behavior:** Playlist content ADDS to existing rotation during schedule
+
+```
+Device: Lobby TV
+├─ Playlist "Breakfast Promo" (INCLUSIVE, 06:00-10:00, Priority 10)
+├─ Playlist "General Info" (INCLUSIVE, Always, Priority 5)
+└─ Direct: "Welcome Banner"
+
+08:00 (in schedule):
+└─ Play: Breakfast Promo + General Info + Welcome Banner
+   └─ All combined, ordered by priority
+
+11:00 (out of schedule):
+└─ Play: General Info + Welcome Banner
+   └─ Breakfast Promo excluded
+```
+
+**Use Cases:**
+- Promotional content during peak hours
+- Seasonal greetings without removing base content
+- Time-sensitive announcements
+
+---
+
+#### EXCLUSIVE Mode
+**Behavior:** Playlist content REPLACES all other content during schedule
+
+```
+Device: Conference Room TV
+├─ Playlist "Meeting Schedule" (EXCLUSIVE, 09:00-17:00, Priority 10)
+└─ Playlist "After Hours" (INCLUSIVE, Always, Priority 5)
+
+10:00 (in schedule):
+└─ ONLY Meeting Schedule
+   └─ After Hours content HIDDEN
+
+18:00 (out of schedule):
+└─ After Hours content
+   └─ Meeting Schedule HIDDEN
+```
+
+**Use Cases:**
+- Emergency announcements (fire drill)
+- Event-specific content (conference, exhibition)
+- Meeting room schedules
+
+---
+
+### Conflict Resolution
+
+**If multiple EXCLUSIVE playlists overlap:**
+```
+Priority Order:
+1. Highest priority EXCLUSIVE wins
+2. If same priority → Oldest created_at wins
+3. Other playlists excluded during that time
+```
+
+**Example:**
+```
+10:00-11:00:
+├─ Playlist A (EXCLUSIVE, Priority 10)
+└─ Playlist B (EXCLUSIVE, Priority 10)
+Result: Playlist A wins (older created_at)
+```
+
+---
+
+## Content Resolution Logic
+
+### Playback Sequence Algorithm
+
+```python
+def resolve_device_content(device_id, current_time):
+    """
+    Resolve final playback sequence for a device
+    Returns ordered list of content to play
+    """
+    final_sequence = []
+
+    # Step 1: Check for EXCLUSIVE playlists active now
+    exclusive_playlists = get_active_exclusive_playlists(device_id, current_time)
+
+    if exclusive_playlists:
+        # EXCLUSIVE mode: Return ONLY highest priority exclusive playlist
+        highest_priority = max(exclusive_playlists, key=lambda p: (p.priority, -p.created_at))
+        return get_playlist_content(highest_priority.id)
+
+    # Step 2: No exclusive playlists, proceed with normal resolution
+
+    # 2a. Direct Assignments (Highest Priority)
+    direct_content = get_direct_assignments(device_id)
+        .filter(is_active=True)
+        .order_by('display_order')
+    final_sequence.extend(direct_content)
+
+    # 2b. Playlists (by priority, highest first)
+    inclusive_playlists = get_active_inclusive_playlists(device_id, current_time)
+        .order_by('-priority', 'created_at')
+
+    for playlist in inclusive_playlists:
+        playlist_content = get_playlist_content(playlist.id)
+            .filter(is_active=True)
+            .order_by('order')
+        final_sequence.extend(playlist_content)
+
+    # 2c. Tag-based Content (by tag priority)
+    device_tags = get_device_tags(device_id).order_by('-tag_priority')
+
+    for tag in device_tags:
+        tag_content = get_tag_content(tag.id)
+            .filter(is_active=True)
+            .order_by('display_order')
+        final_sequence.extend(tag_content)
+
+    # Step 3: Get widgets (overlays, not in sequence)
+    widgets = get_device_widgets(device_id)
+
+    return {
+        'content_sequence': final_sequence,
+        'widgets': widgets,
+        'total_duration': sum(c.duration for c in final_sequence),
+        'mode': 'exclusive' if exclusive_playlists else 'inclusive'
+    }
+```
+
+---
+
+### Priority Handling
+
+#### Multiple Playlists with Same Priority
+
+**Decision:** SEQUENTIAL (all from first playlist, then all from second)
+
+```
+Device has:
+├─ Playlist A (priority 10, 3 items)
+├─ Playlist B (priority 10, 2 items)  ← Same priority!
+└─ Playlist C (priority 5, 4 items)
+
+Playback Order:
+1. A-Item1
+2. A-Item2
+3. A-Item3
+4. B-Item1  ← After A finishes
+5. B-Item2
+6. C-Item1
+7. C-Item2
+8. C-Item3
+9. C-Item4
+10. Loop back to #1
+```
+
+**Sub-sorting:** If same priority → order by `created_at ASC` (older first)
+
+**Rationale:**
+- Simplicity: Easy to understand and debug
+- Predictability: Same order every time
+- Control: Admin can set exact order via priority
+
+---
+
+#### Tag Content Order
+
+**Decision:** By tag priority, then by display_order within tag
+
+```
+Device has tags:
+├─ "Safety" (tag_priority=10, 3 content)
+└─ "Promotion" (tag_priority=5, 2 content)
+
+Playback:
+1. All content from "Safety" (ordered by display_order)
+2. Then all content from "Promotion" (ordered by display_order)
+```
+
+**Rationale:**
+- Real-world: Safety before promotion
+- Flexible: Can reorder tags without touching content
+- Granular: Control order within each tag
+
+---
+
+## Preview System
+
+### Preview Page Design
+
+**Location:** Separate page `/devices/:id/preview` (opens in new tab)
+
+**Rationale:**
+- Full screen for better preview experience
+- Dedicated page without distractions
+- Shareable link
+- Can keep device detail modal open in another tab
+
+---
+
+### Preview UI Mockup
+
+```
+┌─────────────────────────────────────────────────────────┐
+│  🎬 Preview: Lobby TV 1                                 │
+│  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━  │
+│                                                         │
+│  ⚡ Real-time preview of content playback              │
+│                                                         │
+│  ┌─────────────────────────────────────────────────┐  │
+│  │                                                  │  │
+│  │  📺 Video Player (1920x1080)                    │  │
+│  │  ┌──────────────────────────────────────────┐  │  │
+│  │  │                                          │  │  │
+│  │  │        [Content Preview Here]            │  │  │
+│  │  │                                          │  │  │
+│  │  │  ☁️ 25°C          Current: Item 1/10    │  │  │
+│  │  │                            🕐 14:30      │  │  │
+│  │  └──────────────────────────────────────────┘  │  │
+│  │                                                  │  │
+│  │  Playing: Welcome Banner.jpg (00:03/00:10)      │  │
+│  │  Source: Direct Assignment 🎯                   │  │
+│  └─────────────────────────────────────────────────┘  │
+│                                                         │
+│  🎬 Playback Sequence (Total: 1m 25s, ~42 loops/hr)   │
+│  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━    │
+│                                                         │
+│  1. 📹 Promo Video.mp4                  ▶️ [15s]      │
+│     └─ Source: Direct Assignment 🎯                    │
+│                                                         │
+│  2. 🖼️ Welcome Banner.jpg               ▶️ [10s]      │
+│     └─ Source: Direct Assignment 🎯                    │
+│                                                         │
+│  3. 📹 Morning News.mp4                 ▶️ [20s]      │
+│     └─ Source: Playlist "Morning" (P:10) 📋           │
+│                                                         │
+│  4. 🖼️ Special Offer.jpg                ▶️ [10s]      │
+│     └─ Source: Playlist "Morning" (P:10) 📋           │
+│                                                         │
+│  5. 📹 General Ad 1.mp4                 ▶️ [15s]      │
+│     └─ Source: Playlist "General Ads" (P:5) 📋        │
+│                                                         │
+│  6. 📹 Lobby Announcement.mp4           ▶️ [15s]      │
+│     └─ Source: Tag "Lobby" (TP:10) 🏷️                │
+│                                                         │
+│  [↻ Then loop back to #1]                             │
+│                                                         │
+│  ⚠️ Widgets (Overlays):                               │
+│  • ☁️ Weather Widget (Bottom Left)                    │
+│  • 🕐 Clock Widget (Top Right)                        │
+│                                                         │
+│  [⏮️ Prev] [⏸️ Pause] [⏭️ Next] [↻ Restart]        │
+│                                                         │
+└─────────────────────────────────────────────────────────┘
+```
+
+---
+
+### Content Source Badges
+
+**Visual Indicators:**
+- 🎯 **Direct Assignment** → Red badge (Priority: 999)
+- 📋 **Playlist** → Blue badge (Priority: user-defined, shown)
+- 🏷️ **Tag** → Purple badge (Tag Priority shown)
+- 🧩 **Widget** → Green badge (Overlay)
+
+---
+
+## UI/UX Flow
+
+### Content Assignment Methods
+
+#### Method 1: Device → Content (Device-centric)
+**Use Case:** "I want to configure this specific device"
+
+```
+Flow:
+1. Devices Page → Click device row
+2. Device Detail Modal opens
+3. Click [Content] tab
+4. Section: Direct Assignments
+   └─ [+ Add Content] button
+      └─ Opens content selector
+         └─ Select content → Set order → Save
+5. Section: Playlists (already assigned in Playlists tab)
+6. Section: Tag-based (inherited, view-only)
+```
+
+**Advantages:**
+- Contextual: See all device info in one place
+- Comprehensive: See all content sources
+- Quick setup for individual device
+
+---
+
+#### Method 2: Content → Devices (Content-centric)
+**Use Case:** "I want this video to play on multiple devices"
+
+```
+Flow:
+1. Content Page → Click content card
+2. Content menu → [Assign to Devices]
+3. Device selector modal:
+   ├─ [Select Devices] tab
+   │  └─ Checkboxes for devices → Set order → Save
+   └─ [Select Tags] tab
+      └─ Checkboxes for tags → Set order → Save
+```
+
+**Advantages:**
+- Bulk operation: Assign to many devices at once
+- Efficient: One content to many destinations
+- Tag-based: Assign to tag for automatic distribution
+
+---
+
+#### Method 3: Tag → Content (Tag-centric)
+**Use Case:** "All Lobby devices should show these videos"
+
+```
+Flow:
+1. Tags Page → Click tag
+2. Tag Detail Modal
+3. Tab: [Assigned Content]
+4. [+ Add Content] button
+   └─ Content selector
+      └─ Select multiple content → Set order → Save
+```
+
+**Advantages:**
+- Centralized: Manage tag content in one place
+- Scalable: One assignment affects all tagged devices
+- Organized: See all content for a tag
+
+---
+
+### Preview Access
+
+**Button Location:** Device Detail Modal header
+
+```
+Device Detail Modal:
+┌─────────────────────────────────────┐
+│ 📺 Lobby TV 1          [🎬 Preview] │  ← Opens in new tab
+│ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━  │
+│ [Device Info] [Tags] [Content] ... │
+└─────────────────────────────────────┘
+```
+
+**Alternate Access:**
+- Device table row → Right-click → "Preview Content"
+- Dashboard → Device card → [👁️ Preview] icon
+
+---
+
+## API Design
+
+### Endpoint: Get Device Content Preview
+
+```http
+GET /api/devices/{device_id}/preview
+```
+
+**Query Parameters:**
+- `simulate_time` (optional): Simulate specific time (for testing schedules)
+  - Example: `?simulate_time=2025-10-26T08:00:00`
+
+**Response:**
+```json
+{
+  "device_id": 99,
+  "device_name": "Lobby TV 1",
+  "preview_generated_at": "2025-10-26T14:30:00Z",
+  "current_mode": "inclusive",  // or "exclusive"
+  "total_duration_seconds": 85,
+  "loops_per_hour": 42,
+
+  "content_sequence": [
+    {
+      "sequence_number": 1,
+      "content_id": 5,
+      "title": "Welcome Banner",
+      "description": "Main lobby welcome screen",
+      "content_type": "image",
+      "duration": 10,
+      "anthias_url": "http://192.168.5.12:8000/assets/5.jpg",
+      "thumbnail_url": "http://192.168.5.12:8000/assets/5_thumb.jpg",
+
+      "source": {
+        "type": "direct",  // direct | playlist | tag
+        "id": null,
+        "name": "Direct Assignment",
+        "priority": 999,
+        "badge_color": "red",
+        "badge_icon": "🎯"
+      }
+    },
+    {
+      "sequence_number": 2,
+      "content_id": 12,
+      "title": "Morning Promo Video",
+      "description": "Breakfast special promotion",
+      "content_type": "video",
+      "duration": 15,
+      "anthias_url": "http://192.168.5.12:8000/assets/12.mp4",
+      "thumbnail_url": "http://192.168.5.12:8000/assets/12_thumb.jpg",
+
+      "source": {
+        "type": "playlist",
+        "id": 3,
+        "name": "Morning Playlist",
+        "priority": 10,
+        "badge_color": "blue",
+        "badge_icon": "📋",
+        "schedule": {
+          "mode": "inclusive",
+          "active": true,
+          "start": "06:00:00",
+          "end": "12:00:00",
+          "days": ["mon", "tue", "wed", "thu", "fri"]
+        }
+      }
+    },
+    {
+      "sequence_number": 3,
+      "content_id": 8,
+      "title": "Safety Guidelines",
+      "description": "Emergency procedures",
+      "content_type": "image",
+      "duration": 15,
+      "anthias_url": "http://192.168.5.12:8000/assets/8.jpg",
+      "thumbnail_url": "http://192.168.5.12:8000/assets/8_thumb.jpg",
+
+      "source": {
+        "type": "tag",
+        "id": 1,
+        "name": "Lobby",
+        "priority": 10,  // tag_priority
+        "badge_color": "purple",
+        "badge_icon": "🏷️"
+      }
+    }
+  ],
+
+  "widgets": [
+    {
+      "widget_id": 1,
+      "widget_type": "weather",
+      "position": "bottom-left",
+      "is_overlay": true,
+      "config": {
+        "location": "Jakarta",
+        "update_interval": 300
+      }
+    },
+    {
+      "widget_id": 2,
+      "widget_type": "clock",
+      "position": "top-right",
+      "is_overlay": true,
+      "config": {
+        "format": "24h",
+        "timezone": "Asia/Jakarta"
+      }
+    }
+  ],
+
+  "warnings": [
+    {
+      "type": "schedule_conflict",
+      "severity": "warning",
+      "message": "Playlist 'Morning' and 'Breakfast' both scheduled at 08:00-10:00",
+      "details": {
+        "playlist_ids": [3, 7],
+        "time_range": "08:00-10:00"
+      }
+    },
+    {
+      "type": "no_content_source",
+      "severity": "info",
+      "message": "No direct content assignments",
+      "recommendation": "Consider adding device-specific content"
+    }
+  ],
+
+  "metadata": {
+    "total_sources": 3,
+    "source_breakdown": {
+      "direct": 1,
+      "playlist": 1,
+      "tag": 1
+    },
+    "total_unique_content": 3,
+    "average_content_duration": 13.33,
+    "estimated_variety": "high"  // high | medium | low
+  }
+}
+```
+
+---
+
+### Additional Endpoints
+
+#### Assign Content to Device (Direct)
+```http
+POST /api/devices/{device_id}/content
+Content-Type: application/json
+
+{
+  "content_id": 5,
+  "display_order": 1,
+  "is_active": true
+}
+```
+
+#### Assign Content to Tag
+```http
+POST /api/tags/{tag_id}/content
+Content-Type: application/json
+
+{
+  "content_id": 8,
+  "display_order": 1,
+  "is_active": true
+}
+```
+
+#### Bulk Assign Content
+```http
+POST /api/content/{content_id}/assign
+Content-Type: application/json
+
+{
+  "device_ids": [1, 2, 3],
+  "tag_ids": [5, 6],
+  "display_order": 1
+}
+```
+
+---
+
+## Implementation Roadmap
+
+### Phase 1: Database Schema (PRIORITY)
+**Estimated Time:** 2 hours
+
+- [ ] Create migration for `content_assignments` enhancements
+  - [ ] Add `display_order` column
+  - [ ] Add `is_active` column
+  - [ ] Add `start_date`, `end_date` columns
+  - [ ] Add `notes` column
+  - [ ] Add `updated_at` column
+
+- [ ] Create migration for `tags` enhancements
+  - [ ] Add `tag_priority` column
+  - [ ] Set default values for existing tags
+
+- [ ] Create migration for `playlists` enhancements
+  - [ ] Add `schedule_mode` ENUM column
+  - [ ] Add `schedule_start` TIME column
+  - [ ] Add `schedule_end` TIME column
+  - [ ] Add `schedule_days` VARCHAR column
+  - [ ] Add `schedule_timezone` VARCHAR column
+
+- [ ] Update SQLAlchemy models to match schema
+- [ ] Test migrations on development database
+- [ ] Deploy migrations to production
+
+---
+
+### Phase 2: Backend API - Preview Endpoint (PRIORITY)
+**Estimated Time:** 4 hours
+
+- [ ] Create preview service (`/backend/app/services/preview.py`)
+  - [ ] Implement `resolve_device_content()` function
+  - [ ] Implement EXCLUSIVE playlist logic
+  - [ ] Implement INCLUSIVE playlist logic
+  - [ ] Implement priority-based sorting
+  - [ ] Implement tag priority sorting
+
+- [ ] Create preview endpoint (`/api/devices/{id}/preview`)
+  - [ ] Add route in devices API
+  - [ ] Create response schema
+  - [ ] Add warning/conflict detection
+  - [ ] Add metadata generation
+
+- [ ] Write unit tests
+  - [ ] Test exclusive mode
+  - [ ] Test inclusive mode
+  - [ ] Test priority conflicts
+  - [ ] Test empty content scenarios
+
+- [ ] API documentation (auto-generated by FastAPI)
+
+---
+
+### Phase 3: Backend API - Assignment Endpoints
+**Estimated Time:** 3 hours
+
+- [ ] Device direct content assignment
+  - [ ] POST `/api/devices/{id}/content`
+  - [ ] DELETE `/api/devices/{id}/content/{content_id}`
+  - [ ] GET `/api/devices/{id}/content` (list)
+
+- [ ] Tag content assignment
+  - [ ] POST `/api/tags/{id}/content`
+  - [ ] DELETE `/api/tags/{id}/content/{content_id}`
+  - [ ] GET `/api/tags/{id}/content` (list)
+
+- [ ] Bulk assignment
+  - [ ] POST `/api/content/{id}/assign`
+
+- [ ] Update existing endpoints
+  - [ ] Update device detail to include direct content
+  - [ ] Update tag detail to include assigned content
+
+---
+
+### Phase 4: Frontend - Device Detail Modal Enhancement
+**Estimated Time:** 4 hours
+
+- [ ] Add [Content] tab to DeviceDetailModal
+  - [ ] Section: Direct Assignments
+    - [ ] [+ Add Content] button
+    - [ ] Content selector modal
+    - [ ] Display order input
+    - [ ] Delete assignment button
+
+  - [ ] Section: Playlists (link to existing tab)
+
+  - [ ] Section: Tag-based Content (read-only view)
+    - [ ] Show inherited content from tags
+    - [ ] Group by tag
+    - [ ] Show tag priority
+
+- [ ] Add [🎬 Preview] button to modal header
+  - [ ] Opens `/devices/:id/preview` in new tab
+
+---
+
+### Phase 5: Frontend - Preview Page
+**Estimated Time:** 6 hours
+
+- [ ] Create Preview page (`/src/pages/DevicePreview.jsx`)
+  - [ ] Full-screen video/image player
+  - [ ] Content sequence list
+  - [ ] Source badges with colors
+  - [ ] Playback controls (prev/next/pause)
+  - [ ] Auto-advance to next content
+  - [ ] Widget overlay simulation
+
+- [ ] Create PreviewPlayer component
+  - [ ] Video player with auto-advance
+  - [ ] Image display with timer
+  - [ ] Transition effects
+  - [ ] Widget overlays
+
+- [ ] Create SequenceList component
+  - [ ] Scrollable content list
+  - [ ] Current item highlight
+  - [ ] Source badges
+  - [ ] Duration display
+  - [ ] Click to jump to item
+
+- [ ] Add warning/alert display
+  - [ ] Schedule conflicts
+  - [ ] Missing content warnings
+  - [ ] Recommendations
+
+---
+
+### Phase 6: Frontend - Content Assignment UI
+**Estimated Time:** 5 hours
+
+- [ ] Content Page enhancements
+  - [ ] Add [Assign to Devices] button on content card
+  - [ ] Device/Tag selector modal
+  - [ ] Bulk assignment UI
+
+- [ ] Tags Page enhancements
+  - [ ] Add [Assigned Content] section to tag detail
+  - [ ] Content assignment UI
+  - [ ] Display order management
+
+- [ ] Playlist scheduling UI
+  - [ ] Add schedule mode selector (inclusive/exclusive)
+  - [ ] Time picker for start/end
+  - [ ] Day selector (weekdays)
+  - [ ] Timezone selector
+
+---
+
+### Phase 7: Testing & Polish
+**Estimated Time:** 3 hours
+
+- [ ] End-to-end testing
+  - [ ] Assign direct content
+  - [ ] Assign tag content
+  - [ ] Create scheduled playlist
+  - [ ] Test exclusive mode
+  - [ ] Test priority conflicts
+  - [ ] Test preview accuracy
+
+- [ ] UI/UX polish
+  - [ ] Loading states
+  - [ ] Error handling
+  - [ ] Toast notifications
+  - [ ] Responsive design
+
+- [ ] Documentation
+  - [ ] Update user guide
+  - [ ] Add screenshots
+  - [ ] Video tutorial (optional)
+
+---
+
+### Phase 8: Widget System (Future)
+**Estimated Time:** TBD
+
+- [ ] Widget framework
+- [ ] Weather widget
+- [ ] Clock widget
+- [ ] News ticker widget
+- [ ] Custom widget API
+
+---
+
+## Key Design Decisions Summary
+
+| Aspect | Decision | Rationale |
+|--------|----------|-----------|
+| **Tag Content** | Separate table (`content_assignments` with `tag_id`) | Granular control, can set different order per tag |
+| **Scheduling Mode** | HYBRID (inclusive default, exclusive option) | Flexibility for both normal and emergency use cases |
+| **Priority Conflicts** | SEQUENTIAL (all from high → all from low) | Simplicity, predictability, easy to debug |
+| **Tag Order** | By `tag_priority`, then `display_order` within tag | Control tag importance, granular content order |
+| **Preview Location** | Separate page `/devices/:id/preview` | Full screen, better UX, shareable link |
+| **API Resolution** | Backend endpoint with complete logic | Single source of truth, consistent across clients |
+| **UI Flow** | Bi-directional (device→content AND content→device) | Supports different workflows and use cases |
+
+---
+
+## Next Steps
+
+1. **Review this document** with team for approval
+2. **Start Phase 1** (Database Schema) immediately
+3. **Parallel work possible:**
+   - Backend dev: Phases 2-3
+   - Frontend dev: Phases 4-6 (mock data initially)
+4. **Integration testing** after Phase 6
+5. **Deploy to production** after Phase 7
+
+---
+
+## Notes
+
+- Widget system (Phase 8) is marked as **FUTURE** - not in current scope
+- Scheduling feature in playlists is **INCLUDED** in current scope
+- All migrations must be **backward compatible**
+- API must support **pagination** for large content lists
+- Preview page should **cache API response** for performance
+- Consider **rate limiting** on preview endpoint (expensive query)
+
+---
+
+**Document maintained by:** Claude Code
+**For questions/updates:** Reference this document before making architectural changes

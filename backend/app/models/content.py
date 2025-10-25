@@ -3,7 +3,7 @@ Content Model
 Media content (images, videos) served to devices
 """
 
-from sqlalchemy import Column, Integer, String, DateTime, Text, Enum as SQLEnum, Boolean, Float
+from sqlalchemy import Column, Integer, String, DateTime, Text, Enum as SQLEnum, Boolean, Float, JSON, ForeignKey
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 import enum
@@ -43,6 +43,11 @@ class Content(Base):
         audio_bitrate: Audio bitrate in kbps (video only)
         audio_sample_rate: Audio sample rate in Hz (video only)
         is_active: Whether content is active
+        is_template: Whether this content uses template variables
+        template_variables: JSON array of variable names used in template
+        language_code: ISO language code (en, zh, ja, etc.)
+        content_group_id: Groups translations together
+        fallback_content_id: Fallback content if template fails
         created_at: Timestamp when content was uploaded
         updated_at: Timestamp when content was last updated
     """
@@ -85,6 +90,13 @@ class Content(Base):
     # Status
     is_active = Column(Boolean, default=True, index=True)
 
+    # Template & Multi-language fields (Phase 0 enhancement)
+    is_template = Column(Boolean, default=False, nullable=True)  # Whether content uses templates
+    template_variables = Column(JSON, nullable=True)  # JSON array of variable names
+    language_code = Column(String(10), nullable=True)  # ISO language code (en, zh, ja, etc.)
+    content_group_id = Column(Integer, nullable=True)  # Groups translations together
+    fallback_content_id = Column(Integer, ForeignKey("content.id", ondelete="SET NULL"), nullable=True)  # Fallback content
+
     # Timestamps
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
@@ -120,6 +132,12 @@ class Content(Base):
             "audio_bitrate": self.audio_bitrate,
             "audio_sample_rate": self.audio_sample_rate,
             "is_active": self.is_active,
+            # Template & Multi-language fields
+            "is_template": self.is_template,
+            "template_variables": self.template_variables,
+            "language_code": self.language_code,
+            "content_group_id": self.content_group_id,
+            "fallback_content_id": self.fallback_content_id,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,
         }

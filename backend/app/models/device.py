@@ -38,6 +38,10 @@ class Device(Base):
         code_expires_at: Expiry timestamp for Monitor activation code
         status: Current status of device (pending/active/inactive)
         last_seen: Last time device sent heartbeat
+        room_number: Room number for hotel guest room devices
+        location_type: Type of location (guest_room, public_area, staff_area, meeting_room)
+        supports_personalization: Whether device supports guest personalization
+        privacy_mode: full (show all PII), limited (welcome only), none (generic)
         created_at: Timestamp when device was registered
         updated_at: Timestamp when device was last updated
     """
@@ -85,6 +89,12 @@ class Device(Base):
     rotation = Column(Integer, default=0)  # 0, 90, 180, 270
     volume_enabled = Column(Boolean, default=True)
 
+    # Hotel-specific fields (Phase 0 enhancement)
+    room_number = Column(String(20), nullable=True)  # Room number for guest room devices
+    location_type = Column(String(50), default='guest_room', nullable=True)  # guest_room, public_area, staff_area, meeting_room
+    supports_personalization = Column(Boolean, default=True, nullable=True)  # Whether device supports personalization
+    privacy_mode = Column(String(50), default='limited', nullable=True)  # full, limited, none
+
     # Timestamps
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
@@ -92,6 +102,7 @@ class Device(Base):
 
     # Relationships
     tags = relationship("DeviceTag", back_populates="device", cascade="all, delete-orphan")
+    playlist_assignments = relationship("PlaylistAssignment", back_populates="device", cascade="all, delete-orphan")
     content_assignments = relationship("ContentAssignment", back_populates="device", cascade="all, delete-orphan")
     logs = relationship("DeviceLog", back_populates="device", cascade="all, delete-orphan")
     commands = relationship("DeviceCommand", back_populates="device", cascade="all, delete-orphan")
@@ -130,4 +141,9 @@ class Device(Base):
             # Display settings
             "rotation": self.rotation,
             "volume_enabled": self.volume_enabled,
+            # Hotel-specific fields
+            "room_number": self.room_number,
+            "location_type": self.location_type,
+            "supports_personalization": self.supports_personalization,
+            "privacy_mode": self.privacy_mode,
         }
