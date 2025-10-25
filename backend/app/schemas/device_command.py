@@ -9,7 +9,7 @@ from datetime import datetime
 
 class DeviceCommandBase(BaseModel):
     """Base device command schema"""
-    command_type: str = Field(..., pattern="^(reset|refresh|reload)$")
+    command_type: str = Field(..., pattern="^(reset|refresh|reload|run_speed_test)$")
     reason: Optional[str] = Field(None, max_length=100)
 
 

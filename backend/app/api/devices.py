@@ -26,6 +26,7 @@ from app.schemas.device import (
     HeartbeatResponse
 )
 from app.schemas.device_command import (
+    DeviceCommandBase,
     DeviceCommandResponse,
     DeviceCommandListResponse
 )
@@ -872,6 +873,64 @@ def device_heartbeat(
 # =============================================================================
 # DEVICE COMMAND ENDPOINTS (Remote command queue system)
 # =============================================================================
+
+@router.post("/{device_id}/commands", response_model=DeviceCommandResponse)
+def queue_command(
+    device_id: int,
+    command: DeviceCommandBase,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    """
+    Queue a command for device (generic endpoint for all command types)
+
+    Accepts any command type: reset, refresh, reload, run_speed_test, etc.
+    Command is queued and will be executed when device polls for commands.
+
+    Args:
+        device_id: Device ID
+        command: Command details (command_type, reason)
+
+    Returns:
+        DeviceCommandResponse with command details
+
+    Raises:
+        404: Device not found
+    """
+    # Check if device exists
+    device = db.query(Device).filter(Device.id == device_id).first()
+    if not device:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Device with id {device_id} not found"
+        )
+
+    # Create command
+    device_command = DeviceCommand(
+        device_id=device_id,
+        command_type=command.command_type,
+        reason=command.reason or f"manual_{command.command_type}",
+        status="pending",
+        expires_at=datetime.now() + timedelta(days=7)  # Expire after 7 days
+    )
+
+    db.add(device_command)
+    db.commit()
+    db.refresh(device_command)
+
+    logger.info(f"Queued {command.command_type} command for device {device_id} by user {current_user.username}")
+
+    return DeviceCommandResponse(
+        id=device_command.id,
+        device_id=device_command.device_id,
+        command_type=device_command.command_type,
+        reason=device_command.reason,
+        status=device_command.status,
+        created_at=device_command.created_at,
+        executed_at=device_command.executed_at,
+        expires_at=device_command.expires_at
+    )
+
 
 @router.post("/{device_id}/commands/reset", response_model=DeviceCommandResponse)
 def queue_reset_command(
