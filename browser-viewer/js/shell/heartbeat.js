@@ -77,6 +77,14 @@ window.ShellHeartbeat = {
                 // Collect device info
                 const deviceInfo = this.getDeviceInfo();
 
+                // Add ping latency if network diagnostics available
+                if (window.ShellNetworkDiagnostics && window.ShellNetworkDiagnostics.quickPing) {
+                    const ping = await window.ShellNetworkDiagnostics.quickPing();
+                    if (ping !== null) {
+                        deviceInfo.ping_ms = ping;
+                    }
+                }
+
                 const response = await fetch(`${state.API_BASE_URL}/api/devices/heartbeat`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },

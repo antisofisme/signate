@@ -63,7 +63,28 @@ export default function DeviceLogsModal({ device, onClose }) {
     }
   }, [logs, selectedLevel])
 
-  // WebSocket connection
+  // Load initial logs from REST API
+  useEffect(() => {
+    const loadInitialLogs = async () => {
+      try {
+        setConnectionStatus('Loading logs...')
+        const response = await devicesAPI.getLogs(device.id)
+
+        // Response is array of logs, reverse to show oldest first
+        const reversedLogs = [...response].reverse()
+        setLogs(reversedLogs)
+        setConnectionStatus('Loaded')
+        console.log(`Loaded ${response.length} initial logs for device ${device.id}`)
+      } catch (error) {
+        console.error('Failed to load initial logs:', error)
+        setConnectionStatus('Failed to load logs')
+      }
+    }
+
+    loadInitialLogs()
+  }, [device.id])
+
+  // WebSocket connection for real-time updates (optional)
   useEffect(() => {
     const wsUrl = `ws://192.168.5.12:8001/api/ws/logs/${device.id}`
 
@@ -72,9 +93,9 @@ export default function DeviceLogsModal({ device, onClose }) {
       wsRef.current = ws
 
       ws.onopen = () => {
-        console.log('WebSocket connected')
+        console.log('WebSocket connected for real-time logs')
         setIsConnected(true)
-        setConnectionStatus('Connected')
+        setConnectionStatus('Connected (real-time)')
       }
 
       ws.onmessage = (event) => {
@@ -85,25 +106,34 @@ export default function DeviceLogsModal({ device, onClose }) {
         } else if (data.type === 'subscribed') {
           console.log('Subscribed to channel:', data.channel)
         } else if (data.type === 'log') {
+          // Add new log to the end
           setLogs(prev => [...prev, data])
         }
       }
 
       ws.onerror = (error) => {
         console.error('WebSocket error:', error)
-        setConnectionStatus('Error')
+        // Don't change status if we already have logs loaded
+        if (logs.length === 0) {
+          setConnectionStatus('WebSocket error (viewing cached logs)')
+        }
         setIsConnected(false)
       }
 
       ws.onclose = () => {
         console.log('WebSocket disconnected')
         setIsConnected(false)
-        setConnectionStatus('Disconnected')
+        // Keep status as "Loaded" if we have logs
+        if (logs.length > 0) {
+          setConnectionStatus('Loaded (no real-time updates)')
+        } else {
+          setConnectionStatus('Disconnected')
+        }
       }
 
     } catch (error) {
       console.error('Failed to create WebSocket:', error)
-      setConnectionStatus('Failed to connect')
+      setConnectionStatus('WebSocket unavailable (viewing cached logs)')
     }
 
     return () => {

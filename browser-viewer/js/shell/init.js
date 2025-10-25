@@ -106,6 +106,11 @@ window.ShellInit = {
             await window.ShellRegistration.registerDevice();
         }
 
+        // Start network diagnostics (runs on startup + every 30 min)
+        if (window.ShellNetworkDiagnostics && window.ShellNetworkDiagnostics.startPeriodicDiagnostics) {
+            window.ShellNetworkDiagnostics.startPeriodicDiagnostics();
+        }
+
         console.log('[Shell] Initialization complete ✅');
     }
 };
