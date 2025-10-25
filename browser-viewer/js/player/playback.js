@@ -154,16 +154,17 @@ window.PlayerPlayback = {
             video.className = isLandscape ? 'landscape' : 'portrait';
             console.log('[Player] Video orientation:', video.className, `(${video.videoWidth}x${video.videoHeight})`);
 
-            // Set start time if specified
-            if (startTime > 0) {
-                video.currentTime = startTime;
-                console.log('[Player] Starting from:', startTime + 's');
-            }
-
-            // Explicitly play video (required for modern browsers)
+            // Explicitly play video first (required for modern browsers)
             try {
                 await video.play();
                 console.log('[Player] Video playback started ✅');
+
+                // AFTER video is playing, seek to start time if specified
+                // This prevents freeze issues when setting currentTime before play
+                if (startTime > 0) {
+                    video.currentTime = startTime;
+                    console.log('[Player] Seeking to start time:', startTime + 's');
+                }
             } catch (error) {
                 console.error('[Player] Video playback failed:', error);
                 // Try to play without promise (fallback)
