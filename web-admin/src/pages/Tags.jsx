@@ -191,7 +191,7 @@ export default function Tags() {
       {/* pt-40 (160px) mobile, pt-[172px] tablet (custom value between pt-42/168px and pt-44/176px), pt-44 (176px) desktop */}
       <div className="pt-40 sm:pt-[172px] lg:pt-44">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
         {filteredTags.map((tag) => (
           <div key={tag.id} className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-300 dark:border-gray-600 p-6 hover:shadow-xl transition-shadow">
             {/* Tag Header */}

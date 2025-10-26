@@ -221,7 +221,7 @@ export default function Playlists() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           {/* Loading State */}
           {isLoading && (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
               <LoadingSkeleton variant="grid" count={6} />
             </div>
           )}
@@ -246,7 +246,7 @@ export default function Playlists() {
 
           {/* Playlists Grid */}
           {!isLoading && filteredPlaylists.length > 0 && (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-fade-in">
+            <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 animate-fade-in">
           {filteredPlaylists.map((playlist) => (
             <div
               key={playlist.id}
