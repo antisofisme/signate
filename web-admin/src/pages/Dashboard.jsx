@@ -2,13 +2,17 @@ import { useMemo } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import { devicesAPI, contentAPI, tagsAPI, playlistsAPI } from '../services/api'
-import { Monitor, FileImage, Tag, Tv, Wifi, ListVideo, Link, CheckCircle, XCircle, Eye } from 'lucide-react'
+import { Monitor, FileImage, Tag, Tv, Wifi, ListVideo, Link, CheckCircle, XCircle, Eye, WifiOff } from 'lucide-react'
 import { LoadingSkeleton, Button } from '../components/shared'
 import { showToast } from '../utils/toast'
+import { useDashboardWebSocket } from '../hooks/useDashboardWebSocket'
 
 export default function Dashboard() {
   const queryClient = useQueryClient()
   const navigate = useNavigate()
+
+  // FASE 9.3: WebSocket real-time updates
+  const { isConnected: wsConnected, connectionStatus: wsStatus } = useDashboardWebSocket()
 
   const { data: devices, isLoading } = useQuery({
     queryKey: ['devices'],
@@ -217,8 +221,31 @@ export default function Dashboard() {
 
   return (
     <div className="px-4 sm:px-6 lg:px-8">
+      {/* FASE 9.1: Page Header with Description */}
       <div className="sticky top-0 z-50 bg-white dark:bg-gray-800 pb-4 mb-6 border-b border-gray-200 dark:border-gray-700 -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8">
-        <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-100 pt-4">Dashboard</h1>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-100 pt-4">Dashboard</h1>
+            <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+              Overview of your digital signage system
+            </p>
+          </div>
+
+          {/* FASE 9.3: WebSocket Status Indicator */}
+          <div className="flex items-center gap-2 text-xs">
+            {wsConnected ? (
+              <div className="flex items-center gap-1 text-green-600 dark:text-green-400">
+                <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                <span>Live</span>
+              </div>
+            ) : (
+              <div className="flex items-center gap-1 text-gray-500 dark:text-gray-400" title={wsStatus}>
+                <WifiOff className="w-3 h-3" />
+                <span>Auto-refresh</span>
+              </div>
+            )}
+          </div>
+        </div>
       </div>
 
       {/* Stats Grid with fade-in animation */}
