@@ -29,10 +29,10 @@ export default function VideoThumbnail({ content }) {
     return (
       <>
         <div className="flex flex-col items-center justify-center">
-          <svg className="w-16 h-16 text-gray-400 mb-2" fill="currentColor" viewBox="0 0 24 24">
+          <svg className="w-16 h-16 text-gray-400 dark:text-gray-500 mb-2" fill="currentColor" viewBox="0 0 24 24">
             <path d="M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4z"/>
           </svg>
-          <span className="text-xs text-gray-500">Video</span>
+          <span className="text-xs text-gray-500 dark:text-gray-400">Video</span>
         </div>
         {/* Play icon overlay */}
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
@@ -76,7 +76,7 @@ export default function VideoThumbnail({ content }) {
       {!isLoaded && !hasError && (
         <div className="absolute inset-0 flex items-center justify-center">
           <div className="flex flex-col items-center">
-            <svg className="w-12 h-12 text-gray-400 animate-pulse" fill="currentColor" viewBox="0 0 24 24">
+            <svg className="w-12 h-12 text-gray-400 dark:text-gray-500 animate-pulse" fill="currentColor" viewBox="0 0 24 24">
               <path d="M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4z"/>
             </svg>
           </div>

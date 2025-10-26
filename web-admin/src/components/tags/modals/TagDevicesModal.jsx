@@ -72,7 +72,7 @@ export default function TagDevicesModal({ tag, onClose, onOpenAssign }) {
               className="w-4 h-4 rounded-full"
               style={{ backgroundColor: tag.color }}
             />
-            <p className="text-sm text-gray-600">
+            <p className="text-sm text-gray-600 dark:text-gray-400">
               {devices.length} device{devices.length !== 1 ? 's' : ''} in this tag
             </p>
           </div>
@@ -95,10 +95,10 @@ export default function TagDevicesModal({ tag, onClose, onOpenAssign }) {
 
         {/* Empty State */}
         {!isLoading && devices.length === 0 && (
-          <div className="text-center py-12 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
-            <Monitor className="w-12 h-12 text-gray-400 mx-auto mb-3" />
-            <p className="text-gray-600 font-medium mb-2">No devices in this tag</p>
-            <p className="text-sm text-gray-500 mb-4">Assign devices to this tag to get started</p>
+          <div className="text-center py-12 bg-gray-50 dark:bg-gray-800 dark:bg-gray-900 rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-600">
+            <Monitor className="w-12 h-12 text-gray-400 dark:text-gray-500 mx-auto mb-3" />
+            <p className="text-gray-600 dark:text-gray-400 font-medium mb-2">No devices in this tag</p>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">Assign devices to this tag to get started</p>
             <Button
               variant="primary"
               leftIcon={<Plus className="w-4 h-4" />}
@@ -115,7 +115,7 @@ export default function TagDevicesModal({ tag, onClose, onOpenAssign }) {
             {devices.map((device) => (
               <div
                 key={device.id}
-                className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
+                className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-800 dark:bg-gray-900 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
               >
                 {/* Device Info */}
                 <div className="flex items-center gap-3 flex-1">
@@ -127,25 +127,25 @@ export default function TagDevicesModal({ tag, onClose, onOpenAssign }) {
                         <span className="absolute -top-1 -right-1 w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
                       </div>
                     ) : (
-                      <WifiOff className="w-5 h-5 text-gray-400" />
+                      <WifiOff className="w-5 h-5 text-gray-400 dark:text-gray-500" />
                     )}
                   </div>
 
                   {/* Device Details */}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
-                      <p className="font-medium text-gray-800 truncate">
+                      <p className="font-medium text-gray-800 dark:text-gray-100 truncate">
                         {device.device_name}
                       </p>
                       <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
                         device.status === 'online'
-                          ? 'bg-green-100 text-green-700'
+                          ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
                           : 'bg-gray-100 text-gray-600'
                       }`}>
                         {device.status}
                       </span>
                     </div>
-                    <p className="text-sm text-gray-600">
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
                       {device.device_type?.toUpperCase() || 'Unknown'} • {device.ip_address || 'No IP'}
                     </p>
                   </div>

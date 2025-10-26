@@ -112,7 +112,7 @@ export default function PlaylistFormModal({ playlist, onClose, onSubmit }) {
 
         {/* Active Status Toggle */}
         <div>
-          <label className="block text-sm font-medium mb-2 text-gray-700">
+          <label className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">
             Status
           </label>
           <div className="flex items-center gap-4">
@@ -122,7 +122,7 @@ export default function PlaylistFormModal({ playlist, onClose, onSubmit }) {
               className={`px-4 py-2 rounded-lg font-medium transition-colors ${
                 formData.is_active
                   ? 'bg-green-500 text-white'
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
               }`}
             >
               Active
@@ -133,20 +133,20 @@ export default function PlaylistFormModal({ playlist, onClose, onSubmit }) {
               className={`px-4 py-2 rounded-lg font-medium transition-colors ${
                 !formData.is_active
                   ? 'bg-red-500 text-white'
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
               }`}
             >
               Inactive
             </button>
           </div>
-          <p className="text-xs text-gray-500 mt-1">
+          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
             {formData.is_active ? 'Playlist is active and will be displayed' : 'Playlist is inactive and will not be displayed'}
           </p>
         </div>
 
         {/* Priority */}
         <div>
-          <label className="block text-sm font-medium mb-2 text-gray-700">
+          <label className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">
             Priority
           </label>
           <FormInput
@@ -157,18 +157,18 @@ export default function PlaylistFormModal({ playlist, onClose, onSubmit }) {
             onChange={(e) => setFormData({...formData, priority: parseInt(e.target.value)})}
             placeholder="1-10 (higher number = higher priority)"
           />
-          <p className="text-xs text-gray-500 mt-1">
+          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
             When multiple playlists overlap, the one with higher priority will be shown (1-10, default: 1)
           </p>
         </div>
 
         {/* Schedule Section */}
         <div className="border-t pt-4">
-          <h3 className="text-sm font-semibold text-gray-800 mb-3">Schedule</h3>
+          <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-100 mb-3">Schedule</h3>
 
           {/* Schedule Mode */}
           <div className="mb-4">
-            <label className="block text-sm font-medium mb-2 text-gray-700">
+            <label className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">
               Schedule Mode
             </label>
             <div className="flex items-center gap-4">
@@ -201,7 +201,7 @@ export default function PlaylistFormModal({ playlist, onClose, onSubmit }) {
                 </div>
               </button>
             </div>
-            <p className="text-xs text-gray-500 mt-2">
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
               {formData.schedule_mode === 'inclusive'
                 ? '✓ This playlist will be added to existing content during the schedule'
                 : '⚠️ This playlist will REPLACE all other content during the schedule (use for emergencies/events)'
@@ -211,13 +211,13 @@ export default function PlaylistFormModal({ playlist, onClose, onSubmit }) {
 
           {/* Timezone */}
           <div className="mb-4">
-            <label className="block text-sm font-medium mb-2 text-gray-700">
+            <label className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">
               Timezone
             </label>
             <select
               value={formData.schedule_timezone}
               onChange={(e) => setFormData({...formData, schedule_timezone: e.target.value})}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             >
               <option value="Asia/Jakarta">Asia/Jakarta (WIB - UTC+7)</option>
               <option value="Asia/Makassar">Asia/Makassar (WITA - UTC+8)</option>
@@ -228,14 +228,14 @@ export default function PlaylistFormModal({ playlist, onClose, onSubmit }) {
               <option value="Asia/Manila">Asia/Manila (PHT - UTC+8)</option>
               <option value="UTC">UTC (UTC+0)</option>
             </select>
-            <p className="text-xs text-gray-500 mt-1">
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
               Schedule times will be interpreted in this timezone
             </p>
           </div>
 
           {/* Date Range (Optional) */}
           <div className="mb-4">
-            <label className="block text-sm font-medium mb-2 text-gray-700">
+            <label className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">
               Date Range (Optional)
             </label>
             <div className="grid grid-cols-2 gap-4">
@@ -260,7 +260,7 @@ export default function PlaylistFormModal({ playlist, onClose, onSubmit }) {
                 placeholder="Leave empty for no end limit"
               />
             </div>
-            <p className="text-xs text-gray-500 mt-1">
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
               Limit when this playlist can be active. Leave empty for unlimited duration.
             </p>
           </div>
@@ -291,7 +291,7 @@ export default function PlaylistFormModal({ playlist, onClose, onSubmit }) {
 
           {/* Days of Week */}
           <div>
-            <label className="block text-sm font-medium mb-2 text-gray-700">
+            <label className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">
               Days of Week
             </label>
             <div className="flex flex-wrap gap-2">
@@ -303,14 +303,14 @@ export default function PlaylistFormModal({ playlist, onClose, onSubmit }) {
                   className={`px-4 py-2 rounded-lg font-medium text-sm transition-colors ${
                     formData.schedule.days.includes(day.value)
                       ? 'bg-blue-500 text-white'
-                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                      : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
                   }`}
                 >
                   {day.label}
                 </button>
               ))}
             </div>
-            <p className="text-xs text-gray-500 mt-1">
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
               Select the days when this playlist should be active
             </p>
           </div>

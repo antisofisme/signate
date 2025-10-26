@@ -101,7 +101,7 @@ export default function PreviewPlayer({ content, isPlaying, onContentEnd }) {
 
   if (!content) {
     return (
-      <div className="text-gray-400 text-center">
+      <div className="text-gray-400 dark:text-gray-500 text-center">
         <Film className="w-16 h-16 mx-auto mb-4" />
         <p>No content selected</p>
       </div>
@@ -194,7 +194,7 @@ export default function PreviewPlayer({ content, isPlaying, onContentEnd }) {
 
   // Unsupported content type
   return (
-    <div className="text-gray-400 text-center p-8">
+    <div className="text-gray-400 dark:text-gray-500 text-center p-8">
       <AlertCircle className="w-16 h-16 mx-auto mb-4" />
       <p className="text-xl font-semibold mb-2">Unsupported Content Type</p>
       <p className="text-sm">{content.content_type}</p>

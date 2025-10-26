@@ -159,18 +159,18 @@ export default function DeviceEditModal({ device, onClose, onSave }) {
       bodyClassName="flex-1 overflow-hidden flex flex-col p-0"
     >
       {/* Custom header with gradient and icon - Fixed */}
-      <div className="flex items-center justify-between p-6 bg-gradient-to-r from-blue-50 to-purple-50 border-b flex-shrink-0">
+      <div className="flex items-center justify-between p-6 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
         <div className="flex items-center">
           {device.device_uuid ? (
             <Tv className="w-6 h-6 text-blue-600 mr-3" />
           ) : (
             <Monitor className="w-6 h-6 text-green-600 mr-3" />
           )}
-          <h2 className="text-2xl font-bold text-gray-800">Edit Device Settings</h2>
+          <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100">Edit Device Settings</h2>
         </div>
         <button
           onClick={onClose}
-          className="text-gray-400 hover:text-gray-600 transition-colors p-1 rounded-lg hover:bg-gray-100"
+          className="text-gray-400 dark:text-gray-500 hover:text-gray-600 transition-colors p-1 rounded-lg hover:bg-gray-100"
           aria-label="Close modal"
         >
           <X className="w-6 h-6" />
@@ -182,16 +182,16 @@ export default function DeviceEditModal({ device, onClose, onSave }) {
         <div className="space-y-6">
           {/* Device Information Section (Editable) */}
           <div>
-            <h3 className="text-xl font-bold text-gray-900 mb-4">Device Information</h3>
-            <div className="space-y-4 bg-gray-50 rounded-lg p-4 border-2 border-gray-200 shadow-sm">
+            <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4">Device Information</h3>
+            <div className="space-y-4 bg-gray-50 dark:bg-gray-800 dark:bg-gray-900 rounded-lg p-4 border-2 border-gray-200 dark:border-gray-700 shadow-sm">
               {/* Device ID (Read-only) */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Device ID</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Device ID</label>
                 <input
                   type="text"
                   value={device.id}
                   disabled
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-100 text-gray-600 font-mono"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 font-mono"
                 />
               </div>
 
@@ -246,32 +246,32 @@ export default function DeviceEditModal({ device, onClose, onSave }) {
           {/* Replace with Pending Device Section (Only for Browser Devices) */}
           {(!device.device_uuid || device.device_uuid === '') && (
             <div>
-              <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center">
+              <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4 flex items-center">
                 <RefreshCw className="w-5 h-5 mr-2 text-orange-600" />
                 {device.status === 'inactive' ? 'Reconnect with Pending Viewer' : 'Replace with Pending Device'}
               </h3>
-              <div className="bg-gradient-to-br from-orange-50 to-yellow-50 rounded-lg p-4 border-2 border-orange-200">
-                <p className="text-sm text-gray-700 mb-3">
+              <div className="bg-gradient-to-br from-orange-50 to-yellow-50 dark:from-orange-900/20 dark:to-yellow-900/20 rounded-lg p-4 border-2 border-orange-200 dark:border-orange-700">
+                <p className="text-sm text-gray-700 dark:text-gray-300 mb-3">
                   {device.status === 'inactive'
                     ? 'This device has been released. Connect it with a new viewer by selecting a pending device below. The device will be reactivated automatically.'
                     : 'If this device lost its connection (e.g., cache cleared), you can replace it with a new pending device to reconnect.'}
                 </p>
 
                 {isLoadingPending ? (
-                  <div className="text-center py-4 text-gray-500">Loading pending devices...</div>
+                  <div className="text-center py-4 text-gray-500 dark:text-gray-400">Loading pending devices...</div>
                 ) : pendingDevices.length === 0 ? (
-                  <div className="text-center py-4 text-gray-500 bg-white rounded-lg border-2 border-dashed border-gray-300">
+                  <div className="text-center py-4 text-gray-500 dark:text-gray-400 bg-white dark:bg-gray-800 rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-600">
                     No pending devices available
                   </div>
                 ) : (
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                       Select Pending Device to Replace With:
                     </label>
                     <select
                       value={selectedPendingId || ''}
                       onChange={(e) => setSelectedPendingId(e.target.value ? parseInt(e.target.value) : null)}
-                      className="w-full px-3 py-2 border border-orange-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 bg-white"
+                      className="w-full px-3 py-2 border border-orange-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 bg-white dark:bg-gray-800"
                     >
                       <option value="">
                         {device.status === 'inactive'
@@ -286,8 +286,8 @@ export default function DeviceEditModal({ device, onClose, onSave }) {
                     </select>
 
                     {selectedPendingId && (
-                      <div className="mt-3 p-3 bg-orange-100 border border-orange-300 rounded-lg">
-                        <p className="text-sm font-medium text-orange-800">
+                      <div className="mt-3 p-3 bg-orange-100 dark:bg-orange-900/30 border border-orange-300 dark:border-orange-600 rounded-lg">
+                        <p className="text-sm font-medium text-orange-800 dark:text-orange-300">
                           {device.status === 'inactive'
                             ? '✅ This will reconnect the inactive device with the selected viewer and reactivate it. The pending device will be merged and deleted.'
                             : '⚠️ Warning: This will replace the current device code with the selected pending device. The pending device will be deleted after replacement.'}
@@ -302,10 +302,10 @@ export default function DeviceEditModal({ device, onClose, onSave }) {
 
           {/* Display Settings Section (Editable) */}
           <div>
-            <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center">
+            <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4 flex items-center">
               🎛️ Display Settings
             </h3>
-            <div className="space-y-4 bg-gradient-to-br from-blue-50 to-purple-50 rounded-lg p-4 border-2 border-blue-200">
+            <div className="space-y-4 bg-gradient-to-br from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 rounded-lg p-4 border-2 border-blue-200 dark:border-blue-700">
               {/* Rotation Dropdown */}
               <FormInput
                 label="Screen Rotation"
@@ -323,7 +323,7 @@ export default function DeviceEditModal({ device, onClose, onSave }) {
 
               {/* Volume Toggle */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Video Audio
                 </label>
                 <div className="flex items-center space-x-4">
@@ -350,7 +350,7 @@ export default function DeviceEditModal({ device, onClose, onSave }) {
                     🔇 Off
                   </button>
                 </div>
-                <p className="text-xs text-gray-600 mt-1">
+                <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
                   Enable or disable audio playback for videos
                 </p>
               </div>
@@ -359,41 +359,41 @@ export default function DeviceEditModal({ device, onClose, onSave }) {
 
           {/* Display Information Section (Read-only) */}
           <div>
-            <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center">
+            <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4 flex items-center">
               📺 Display Information
             </h3>
-            <div className="space-y-3 bg-gray-50 rounded-lg p-4 border-2 border-gray-200 shadow-sm">
+            <div className="space-y-3 bg-gray-50 dark:bg-gray-800 dark:bg-gray-900 rounded-lg p-4 border-2 border-gray-200 dark:border-gray-700 shadow-sm">
               <div className="flex items-center">
-                <span className="w-48 font-semibold text-gray-900">Screen Resolution:</span>
-                <span className="text-gray-900">
+                <span className="w-48 font-semibold text-gray-900 dark:text-white">Screen Resolution:</span>
+                <span className="text-gray-900 dark:text-white">
                   {device.screen_width && device.screen_height
                     ? `${device.screen_width}x${device.screen_height}`
                     : 'N/A'}
                 </span>
               </div>
               <div className="flex items-center">
-                <span className="w-48 font-semibold text-gray-900">Viewport Size:</span>
-                <span className="text-gray-900">
+                <span className="w-48 font-semibold text-gray-900 dark:text-white">Viewport Size:</span>
+                <span className="text-gray-900 dark:text-white">
                   {device.viewport_width && device.viewport_height
                     ? `${device.viewport_width}x${device.viewport_height}`
                     : 'N/A'}
                 </span>
               </div>
               <div className="flex items-center">
-                <span className="w-48 font-semibold text-gray-900">Device Pixel Ratio:</span>
-                <span className="text-gray-900">
+                <span className="w-48 font-semibold text-gray-900 dark:text-white">Device Pixel Ratio:</span>
+                <span className="text-gray-900 dark:text-white">
                   {device.device_pixel_ratio || 'N/A'}
                 </span>
               </div>
               <div className="flex items-center">
-                <span className="w-48 font-semibold text-gray-900">User Agent:</span>
-                <span className="text-gray-900 text-sm break-all">
+                <span className="w-48 font-semibold text-gray-900 dark:text-white">User Agent:</span>
+                <span className="text-gray-900 dark:text-white text-sm break-all">
                   {device.user_agent || 'N/A'}
                 </span>
               </div>
               <div className="flex items-center">
-                <span className="w-48 font-semibold text-gray-900">Connection:</span>
-                <span className="text-gray-900">
+                <span className="w-48 font-semibold text-gray-900 dark:text-white">Connection:</span>
+                <span className="text-gray-900 dark:text-white">
                   {device.connection_type && device.connection_speed
                     ? `${device.connection_type} (${device.connection_speed}Mbps)`
                     : device.connection_type || 'N/A'}
@@ -405,7 +405,7 @@ export default function DeviceEditModal({ device, onClose, onSave }) {
       </div>
 
       {/* Footer - Fixed */}
-      <div className="p-6 border-t bg-gray-50 flex-shrink-0">
+      <div className="p-6 border-t bg-gray-50 dark:bg-gray-800 dark:bg-gray-900 flex-shrink-0">
         <ModalFooter align="between">
           {/* Left side - Release button (only for active devices) */}
           <div>

@@ -182,14 +182,14 @@ export default function BulkEditModal({ selectedIds, contentData, onClose, onCom
       bodyClassName="flex-1 overflow-hidden flex flex-col p-0"
     >
       {/* Custom Header - Fixed */}
-      <div className="flex items-center justify-between px-6 py-4 bg-white border-b flex-shrink-0">
+      <div className="flex items-center justify-between px-6 py-4 bg-white dark:bg-gray-800 border-b flex-shrink-0">
         <div>
-          <h2 className="text-2xl font-bold text-gray-800">Bulk Edit Content</h2>
-          <p className="text-sm text-gray-600 mt-1">{selectedContent.length} items selected</p>
+          <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100">Bulk Edit Content</h2>
+          <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{selectedContent.length} items selected</p>
         </div>
         <button
           onClick={onClose}
-          className="text-gray-400 hover:text-gray-600 transition-colors p-1 rounded-lg hover:bg-gray-100"
+          className="text-gray-400 dark:text-gray-500 hover:text-gray-600 transition-colors p-1 rounded-lg hover:bg-gray-100"
           aria-label="Close modal"
           disabled={updating}
         >
@@ -202,14 +202,14 @@ export default function BulkEditModal({ selectedIds, contentData, onClose, onCom
           <div className="space-y-6">
             {/* Individual Item Editors */}
             <div className="space-y-4">
-              <h3 className="font-bold text-gray-900 text-xl flex items-center gap-2">
+              <h3 className="font-bold text-gray-900 dark:text-white text-xl flex items-center gap-2">
                 <span>✏️</span>
                 Edit Individual Items
               </h3>
               {selectedContent.map((content, index) => (
               <div
                 key={content.id}
-                className="bg-gray-50 p-4 rounded-lg border-2 border-gray-200 shadow-sm hover:shadow-md transition-shadow"
+                className="bg-gray-50 dark:bg-gray-900 p-4 rounded-lg border-2 border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-md transition-shadow"
               >
                 {/* Side-by-side layout: Preview LEFT, Form RIGHT */}
                 <div className="grid grid-cols-12 gap-4 items-start">
@@ -225,7 +225,7 @@ export default function BulkEditModal({ selectedIds, contentData, onClose, onCom
                       />
 
                       {/* Update Progress Badge */}
-                      <div className="absolute top-2 right-2 text-3xl bg-white rounded-full w-12 h-12 flex items-center justify-center shadow-lg">
+                      <div className="absolute top-2 right-2 text-3xl bg-white dark:bg-gray-800 rounded-full w-12 h-12 flex items-center justify-center shadow-lg">
                         {updateProgress[index]?.status === 'pending' && '⏳'}
                         {updateProgress[index]?.status === 'updating' && '🔄'}
                         {updateProgress[index]?.status === 'success' && '✅'}
@@ -235,36 +235,36 @@ export default function BulkEditModal({ selectedIds, contentData, onClose, onCom
 
                     {/* Original info below preview */}
                     <div className="mt-2 px-2 flex-shrink-0">
-                      <p className="text-xs text-gray-700 font-semibold uppercase tracking-wide mb-1">Original</p>
-                      <p className="font-semibold text-gray-900 truncate">{content.title}</p>
-                      <p className="text-xs text-gray-600">{content.content_type.toUpperCase()} • {content.duration}s</p>
+                      <p className="text-xs text-gray-700 dark:text-gray-300 font-semibold uppercase tracking-wide mb-1">Original</p>
+                      <p className="font-semibold text-gray-900 dark:text-white truncate">{content.title}</p>
+                      <p className="text-xs text-gray-600 dark:text-gray-400">{content.content_type.toUpperCase()} • {content.duration}s</p>
                     </div>
                   </div>
 
                   {/* RIGHT: Form Fields (65-70% width) */}
                   <div className="col-span-8 flex flex-col space-y-3">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                         Title
                       </label>
                       <input
                         type="text"
                         value={edits[content.id]?.title || ''}
                         onChange={(e) => updateEdit(content.id, 'title', e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                         disabled={updating}
                         placeholder="Content title"
                       />
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                         Description
                       </label>
                       <textarea
                         value={edits[content.id]?.description || ''}
                         onChange={(e) => updateEdit(content.id, 'description', e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                         disabled={updating}
                         rows={3}
                         placeholder="Content description (optional)"
@@ -272,7 +272,7 @@ export default function BulkEditModal({ selectedIds, contentData, onClose, onCom
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                         Duration (seconds)
                         {content.content_type === 'video' && (
                           <span className="text-xs text-blue-600 ml-2">
@@ -286,15 +286,15 @@ export default function BulkEditModal({ selectedIds, contentData, onClose, onCom
                         onChange={(e) => updateEdit(content.id, 'duration', parseInt(e.target.value) || 10)}
                         className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm ${
                           content.content_type === 'video'
-                            ? 'border-gray-300 bg-gray-100 cursor-not-allowed'
-                            : 'border-gray-300'
+                            ? 'border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 cursor-not-allowed'
+                            : 'border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white'
                         }`}
                         disabled={updating || content.content_type === 'video'}
                         min={1}
                         readOnly={content.content_type === 'video'}
                       />
                       {content.content_type === 'video' && (
-                        <p className="text-xs text-gray-500 mt-1">
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                           📊 Auto-calculated: {edits[content.id]?.video_end_time
                             ? `${edits[content.id]?.video_end_time}s - ${edits[content.id]?.video_start_time}s = ${edits[content.id]?.duration}s`
                             : `Total video (${content.video_duration?.toFixed(0) || '?'}s) - Start (${edits[content.id]?.video_start_time}s) = ${edits[content.id]?.duration}s`
@@ -307,7 +307,7 @@ export default function BulkEditModal({ selectedIds, contentData, onClose, onCom
                     {content.content_type === 'video' && (
                       <>
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                             🎬 Start Time (seconds)
                           </label>
                           <input
@@ -315,16 +315,16 @@ export default function BulkEditModal({ selectedIds, contentData, onClose, onCom
                             step="0.1"
                             value={edits[content.id]?.video_start_time || 0}
                             onChange={(e) => updateEdit(content.id, 'video_start_time', parseFloat(e.target.value) || 0)}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                             disabled={updating}
                             min={0}
                             placeholder="0 (from beginning)"
                           />
-                          <p className="text-xs text-gray-500 mt-1">Start video playback from this time</p>
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Start video playback from this time</p>
                         </div>
 
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                             🏁 End Time (seconds)
                           </label>
                           <input
@@ -332,12 +332,12 @@ export default function BulkEditModal({ selectedIds, contentData, onClose, onCom
                             step="0.1"
                             value={edits[content.id]?.video_end_time || ''}
                             onChange={(e) => updateEdit(content.id, 'video_end_time', e.target.value ? parseFloat(e.target.value) : null)}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                             disabled={updating}
                             min={0}
                             placeholder="(play until end)"
                           />
-                          <p className="text-xs text-gray-500 mt-1">Stop video at this time (leave empty to play until end)</p>
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Stop video at this time (leave empty to play until end)</p>
                         </div>
                       </>
                     )}
@@ -357,7 +357,7 @@ export default function BulkEditModal({ selectedIds, contentData, onClose, onCom
       </form>
 
       {/* Footer - Fixed */}
-      <div className="p-6 border-t bg-gray-50 flex-shrink-0">
+      <div className="p-6 border-t bg-gray-50 dark:bg-gray-800 dark:bg-gray-900 flex-shrink-0">
         <ModalFooter align="right">
           <Button
             type="button"

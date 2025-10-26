@@ -7,7 +7,7 @@ import toast, { Toaster } from 'react-hot-toast'
 // Components
 import TVRegisterModal from '../components/devices/modals/TVRegisterModal'
 import DeviceDetailModal from '../components/devices/modals/DeviceDetailModal'
-import { Button, PageHeader, FormInput } from '../components/shared'
+import { Button, PageHeader, FormInput, LoadingSkeleton } from '../components/shared'
 import DeviceEditModal from '../components/devices/modals/DeviceEditModal'
 import DeviceLogsModal from '../components/devices/modals/DeviceLogsModal'
 import PendingDeviceCard from '../components/devices/PendingDeviceCard'
@@ -187,8 +187,34 @@ export default function Devices() {
     ]
   }, [devicesData?.devices])
 
+  // Show loading skeleton while fetching
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-slate-50 dark:bg-gray-900">
+        <Toaster />
+
+        {/* PageHeader Skeleton */}
+        <div className="sticky top-0 z-50 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 sm:px-6 lg:px-8 py-4">
+          <div className="h-8 w-32 bg-gray-200 rounded animate-pulse mb-2"></div>
+          <div className="h-4 w-64 bg-gray-200 rounded animate-pulse"></div>
+        </div>
+
+        {/* Content Area */}
+        <div className="pt-40 sm:pt-[172px] lg:pt-44">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+            {/* Pending Devices Skeleton */}
+            <LoadingSkeleton variant="pending-approvals" count={2} className="mb-6" />
+
+            {/* Devices Table Skeleton */}
+            <LoadingSkeleton variant="table" count={5} />
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-slate-50 dark:bg-gray-900">
       <Toaster />
 
       <PageHeader
@@ -217,7 +243,7 @@ export default function Devices() {
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value)}
-              className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value="newest">Terbaru</option>
               <option value="oldest">Terlama</option>
@@ -233,7 +259,7 @@ export default function Devices() {
 
       {/* Content with padding to account for fixed header */}
       {/* pt-40 (160px) mobile, pt-[172px] tablet (custom value between pt-42/168px and pt-44/176px), pt-44 (176px) desktop */}
-      <div className="pt-40 sm:pt-[172px] lg:pt-44">
+      <div className="pt-40 sm:pt-[172px] lg:pt-44 animate-fade-in">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           {/* Pending Approval Section */}
       {pendingDevices.length > 0 && (
@@ -257,21 +283,21 @@ export default function Devices() {
       )}
 
       {/* Active Devices Table */}
-      <div className="bg-white rounded-xl shadow-lg border border-gray-300 overflow-hidden mb-6">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
+      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-300 dark:border-gray-600 overflow-hidden mb-6">
+        <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+          <thead className="bg-gray-50 dark:bg-gray-700">
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">ID</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Device</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Type</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">IP Address</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Code/UUID</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Last Seen</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">ID</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Device</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Type</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">IP Address</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Code/UUID</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Status</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Last Seen</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Actions</th>
             </tr>
           </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
+          <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
             {activeDevices.map((device) => (
               <DeviceTableRow
                 key={device.id}
@@ -289,31 +315,31 @@ export default function Devices() {
 
       {/* Released Devices Section */}
       {inactiveDevices.length > 0 && (
-        <div className="bg-white rounded-xl shadow-lg border border-gray-300 overflow-hidden mb-6">
-          <div className="px-6 py-4 bg-gray-100 border-b border-gray-300">
+        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-300 dark:border-gray-600 overflow-hidden mb-6">
+          <div className="px-6 py-4 bg-gray-100 dark:bg-gray-700 border-b border-gray-300 dark:border-gray-600">
             <div className="flex items-center">
               <div className="w-3 h-3 bg-gray-500 rounded-full mr-3"></div>
-              <h2 className="text-xl font-bold text-gray-700">
+              <h2 className="text-xl font-bold text-gray-700 dark:text-gray-300">
                 Released Devices ({inactiveDevices.length})
               </h2>
             </div>
-            <p className="text-sm text-gray-600 mt-1">
+            <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
               Devices that have been released from viewers. They can be reactivated or deleted.
             </p>
           </div>
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
+          <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+            <thead className="bg-gray-50 dark:bg-gray-700">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">ID</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Device</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Type</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">IP Address</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Released At</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">ID</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Device</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Type</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">IP Address</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Released At</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Status</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Actions</th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
+            <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
               {inactiveDevices.map((device) => (
                 <DeviceTableRow
                   key={device.id}

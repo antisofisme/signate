@@ -191,7 +191,7 @@ export default function PlaylistContentModal({ playlist, onClose }) {
           {/* Header with Add Button */}
           <div className="flex items-center justify-between pb-3 border-b">
             <div>
-              <p className="text-sm text-gray-600">
+              <p className="text-sm text-gray-600 dark:text-gray-400">
                 {contentItems.length} item{contentItems.length !== 1 ? 's' : ''} • Total: {Math.floor(totalDuration / 60)}m {totalDuration % 60}s
               </p>
             </div>
@@ -214,9 +214,9 @@ export default function PlaylistContentModal({ playlist, onClose }) {
 
           {/* Empty State */}
           {!isLoading && contentItems.length === 0 && (
-            <div className="text-center py-12 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
-              <p className="text-gray-600 font-medium mb-2">No content in this playlist</p>
-              <p className="text-sm text-gray-500 mb-4">Add content to start building your playlist</p>
+            <div className="text-center py-12 bg-gray-50 dark:bg-gray-800 dark:bg-gray-900 rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-600">
+              <p className="text-gray-600 dark:text-gray-400 font-medium mb-2">No content in this playlist</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">Add content to start building your playlist</p>
               <Button
                 variant="primary"
                 leftIcon={<Plus className="w-4 h-4" />}
@@ -249,13 +249,13 @@ export default function PlaylistContentModal({ playlist, onClose }) {
                     draggable
                     onDragStart={(e) => handleDragStart(e, index)}
                     onDragEnd={handleDragEnd}
-                    className="flex-shrink-0 text-gray-400 hover:text-gray-600 cursor-grab active:cursor-grabbing"
+                    className="flex-shrink-0 text-gray-400 dark:text-gray-500 hover:text-gray-600 cursor-grab active:cursor-grabbing"
                   >
                     <GripVertical className="w-5 h-5" />
                   </div>
 
                   {/* Order Number */}
-                  <div className="flex-shrink-0 w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-sm font-bold text-blue-600">
+                  <div className="flex-shrink-0 w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center text-sm font-bold text-blue-600 dark:text-blue-400">
                     {index + 1}
                   </div>
 
@@ -274,17 +274,17 @@ export default function PlaylistContentModal({ playlist, onClose }) {
 
                   {/* Content Info */}
                   <div className="flex-1 min-w-0">
-                    <p className="font-medium text-gray-800 truncate">
+                    <p className="font-medium text-gray-800 dark:text-gray-100 truncate">
                       {item.content_name}
                     </p>
-                    <p className="text-xs text-gray-500 capitalize">
+                    <p className="text-xs text-gray-500 dark:text-gray-400 capitalize">
                       {item.content_type}
                     </p>
                   </div>
 
                   {/* Duration Input */}
                   <div className="flex-shrink-0 flex items-center gap-2">
-                    <Clock className="w-4 h-4 text-gray-400" />
+                    <Clock className="w-4 h-4 text-gray-400 dark:text-gray-500" />
                     <input
                       type="number"
                       min="1"
@@ -293,7 +293,7 @@ export default function PlaylistContentModal({ playlist, onClose }) {
                       onChange={(e) => handleDurationChange(index, e.target.value)}
                       className="w-16 px-2 py-1 border rounded text-sm text-center focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     />
-                    <span className="text-xs text-gray-500">sec</span>
+                    <span className="text-xs text-gray-500 dark:text-gray-400">sec</span>
                   </div>
 
                   {/* Remove Button */}
@@ -311,7 +311,7 @@ export default function PlaylistContentModal({ playlist, onClose }) {
 
           {/* Info Text */}
           {contentItems.length > 0 && (
-            <div className="text-xs text-gray-500 bg-blue-50 p-3 rounded-lg">
+            <div className="text-xs text-gray-500 dark:text-gray-400 bg-blue-50 p-3 rounded-lg">
               💡 Drag and drop to reorder content. Changes are saved automatically.
             </div>
           )}

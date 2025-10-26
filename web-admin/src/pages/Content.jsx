@@ -3,14 +3,14 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { contentAPI, devicesAPI, tagsAPI } from '../services/api'
 import { API_BASE_URL } from '../utils/constants'
 import UploadModal from '../components/content/modals/UploadModal'
-import AssignModal from '../components/content/modals/AssignModal'
+import EditContentModal from '../components/content/modals/EditContentModal'
 import PreviewModal from '../components/content/modals/PreviewModal'
 import BulkEditModal from '../components/content/modals/BulkEditModal'
 import BulkTagModal from '../components/content/modals/BulkTagModal'
 import ContentCard from '../components/content/ContentCard'
 import { FileImage, Upload, CheckSquare, Square, Edit, Tag as TagIcon, Search } from 'lucide-react'
 import { showToast } from '../utils/toast'
-import { Button, PageHeader, FormInput } from '../components/shared'
+import { Button, PageHeader, FormInput, LoadingSkeleton } from '../components/shared'
 
 // Helper function to get proxy image URL
 const getImageUrl = (content) => {
@@ -21,7 +21,7 @@ const getImageUrl = (content) => {
 export default function Content() {
   const queryClient = useQueryClient()
   const [showUploadForm, setShowUploadForm] = useState(false)
-  const [showAssignForm, setShowAssignForm] = useState(false)
+  const [showEditForm, setShowEditForm] = useState(false)
   const [showPreviewModal, setShowPreviewModal] = useState(false)
   const [showBulkEditForm, setShowBulkEditForm] = useState(false)
   const [showBulkTagForm, setShowBulkTagForm] = useState(false)
@@ -32,7 +32,7 @@ export default function Content() {
   const [sortBy, setSortBy] = useState('newest')
 
   // Fetch content
-  const { data: contentData } = useQuery({
+  const { data: contentData, isLoading } = useQuery({
     queryKey: ['content'],
     queryFn: () => contentAPI.list().then(res => res.data),
   })
@@ -136,7 +136,7 @@ export default function Content() {
     mutationFn: ({ id, data }) => contentAPI.assign(id, data),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries(['content-assignments', variables.id])
-      setShowAssignForm(false)
+      setShowEditForm(false)
       showToast.success('Content assigned successfully!')
     },
     onError: (error) => {
@@ -156,7 +156,7 @@ export default function Content() {
   const handleAssign = (e, content) => {
     e.stopPropagation()
     setSelectedContent(content)
-    setShowAssignForm(true)
+    setShowEditForm(true)
   }
 
   const handlePreview = (content) => {
@@ -217,8 +217,30 @@ export default function Content() {
   const selectedCount = selectedIds.size
   const totalCount = contentData?.items?.length || 0
 
+  // Show loading skeleton while fetching
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-slate-50 dark:bg-gray-900">
+        {/* PageHeader Skeleton */}
+        <div className="sticky top-0 z-50 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 sm:px-6 lg:px-8 py-4">
+          <div className="h-8 w-32 bg-gray-200 rounded animate-pulse mb-2"></div>
+          <div className="h-4 w-64 bg-gray-200 rounded animate-pulse"></div>
+        </div>
+
+        {/* Content Grid Skeleton */}
+        <div className="pt-40 sm:pt-[172px] lg:pt-44">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+              <LoadingSkeleton variant="grid" count={8} />
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-slate-50 dark:bg-gray-900">
       <PageHeader
         title="Content"
         description="Manage and organize media content"
@@ -274,7 +296,7 @@ export default function Content() {
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value)}
-              className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value="newest">Terbaru</option>
               <option value="oldest">Terlama</option>
@@ -294,9 +316,9 @@ export default function Content() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           {/* Selection Info */}
           {selectedCount > 0 && (
-            <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-3 mb-6 flex items-center justify-between">
+            <div className="bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-700 rounded-lg px-4 py-3 mb-6 flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <span className="bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-sm font-medium">
+                <span className="bg-blue-100 dark:bg-blue-800 text-blue-700 dark:text-blue-300 px-3 py-1 rounded-full text-sm font-medium">
                   {selectedCount} selected
                 </span>
               </div>
@@ -329,7 +351,7 @@ export default function Content() {
           )}
 
           {contentData?.items?.length === 0 && (
-            <div className="text-center py-12 text-gray-500">
+            <div className="text-center py-12 text-gray-500 dark:text-gray-400">
               <FileImage className="w-16 h-16 mx-auto mb-4 opacity-50" />
               <p>No content uploaded yet</p>
             </div>
@@ -340,8 +362,8 @@ export default function Content() {
       {/* Upload Form Modal */}
       {showUploadForm && <UploadModal onClose={() => setShowUploadForm(false)} onSubmit={uploadMutation.mutate} />}
 
-      {/* Assign Form Modal */}
-      {showAssignForm && <AssignModal content={selectedContent} onClose={() => setShowAssignForm(false)} onSubmit={assignMutation.mutate} />}
+      {/* Edit Content Modal */}
+      {showEditForm && <EditContentModal content={selectedContent} onClose={() => setShowEditForm(false)} onSubmit={assignMutation.mutate} />}
 
       {/* Preview Modal */}
       {showPreviewModal && selectedContent && (

@@ -93,7 +93,7 @@ export default function Modal({
 
   return (
     <div
-      className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+      className="fixed inset-0 bg-black bg-opacity-50 dark:bg-opacity-70 flex items-center justify-center z-50 p-4"
       onClick={handleBackdropClick}
       role="dialog"
       aria-modal="true"
@@ -102,21 +102,21 @@ export default function Modal({
       {/* Modal Content */}
       <div
         className={`
-          bg-white rounded-xl shadow-2xl w-full
+          bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full
           ${sizeClasses[size]}
           ${className}
           max-h-[90vh] flex flex-col
-          animate-fadeIn
+          animate-fadeIn transition-colors
         `}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
         {(title || showCloseButton) && (
-          <div className="flex items-center justify-between p-6 pb-4 border-b border-gray-200 flex-shrink-0">
+          <div className="flex items-center justify-between p-6 pb-4 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
             {title && (
               <h2
                 id="modal-title"
-                className="text-xl font-bold text-gray-900"
+                className="text-xl font-bold text-gray-900 dark:text-white"
               >
                 {title}
               </h2>
@@ -125,7 +125,7 @@ export default function Modal({
             {showCloseButton && (
               <button
                 onClick={onClose}
-                className="text-gray-400 hover:text-gray-600 transition-colors p-1 rounded-lg hover:bg-gray-100"
+                className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors p-1 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700"
                 aria-label="Close modal"
               >
                 <X className="w-6 h-6" />
@@ -141,7 +141,7 @@ export default function Modal({
 
         {/* Footer */}
         {footer && (
-          <div className="border-t border-gray-200 p-6 pt-4 bg-gray-50 rounded-b-xl flex-shrink-0">
+          <div className="border-t border-gray-200 dark:border-gray-700 p-6 pt-4 bg-gray-50 dark:bg-gray-800 dark:bg-gray-900 rounded-b-xl flex-shrink-0">
             {footer}
           </div>
         )}

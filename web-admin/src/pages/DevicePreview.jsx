@@ -72,8 +72,8 @@ export default function DevicePreview() {
   // Loading state
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
-        <div className="text-white text-xl">Loading preview...</div>
+      <div className="min-h-screen bg-gray-900 dark:bg-gray-900 flex items-center justify-center">
+        <div className="text-white dark:text-white text-xl">Loading preview...</div>
       </div>
     )
   }
@@ -81,11 +81,11 @@ export default function DevicePreview() {
   // Error state
   if (error) {
     return (
-      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
+      <div className="min-h-screen bg-gray-900 dark:bg-gray-900 flex items-center justify-center">
         <div className="text-center">
           <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
-          <h2 className="text-white text-2xl mb-2">Failed to load preview</h2>
-          <p className="text-gray-400 mb-6">{error.message}</p>
+          <h2 className="text-white dark:text-white text-2xl mb-2">Failed to load preview</h2>
+          <p className="text-gray-400 dark:text-gray-500 mb-6">{error.message}</p>
           <Button onClick={() => navigate('/devices')}>
             <ArrowLeft className="w-4 h-4 mr-2" />
             Back to Devices
@@ -98,11 +98,11 @@ export default function DevicePreview() {
   // No content state
   if (!previewData?.content_sequence || previewData.content_sequence.length === 0) {
     return (
-      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
+      <div className="min-h-screen bg-gray-900 dark:bg-gray-900 flex items-center justify-center">
         <div className="text-center">
           <AlertCircle className="w-16 h-16 text-yellow-500 mx-auto mb-4" />
-          <h2 className="text-white text-2xl mb-2">No Content Assigned</h2>
-          <p className="text-gray-400 mb-6">
+          <h2 className="text-white dark:text-white text-2xl mb-2">No Content Assigned</h2>
+          <p className="text-gray-400 dark:text-gray-500 mb-6">
             This device has no content to preview. Please assign content first.
           </p>
           <Button onClick={() => navigate('/devices')}>
@@ -115,14 +115,14 @@ export default function DevicePreview() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-900 text-white">
+    <div className="min-h-screen bg-gray-900 dark:bg-gray-900 text-white dark:text-white">
       {/* Header */}
       <div className="bg-gray-800 border-b border-gray-700 px-6 py-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
             <button
               onClick={() => navigate('/devices')}
-              className="text-gray-400 hover:text-white transition-colors"
+              className="text-gray-400 dark:text-gray-500 hover:text-white transition-colors"
             >
               <ArrowLeft className="w-6 h-6" />
             </button>
@@ -130,7 +130,7 @@ export default function DevicePreview() {
               <h1 className="text-2xl font-bold">
                 🎬 Preview: {previewData.device_name}
               </h1>
-              <p className="text-sm text-gray-400 mt-1">
+              <p className="text-sm text-gray-400 dark:text-gray-500 mt-1">
                 {previewData.content_sequence.length} content items •
                 Total duration: {Math.floor(previewData.total_duration_seconds / 60)}m {previewData.total_duration_seconds % 60}s •
                 ~{previewData.loops_per_hour} loops/hour
@@ -178,7 +178,7 @@ export default function DevicePreview() {
                 <h3 className="font-semibold text-lg">
                   {currentContent?.title || 'Unknown Content'}
                 </h3>
-                <p className="text-sm text-gray-400">
+                <p className="text-sm text-gray-400 dark:text-gray-500">
                   Playing: {currentIndex + 1}/{previewData.content_sequence.length} •
                   Duration: {currentContent?.duration}s •
                   Source: {currentContent?.source?.name || 'Unknown'}

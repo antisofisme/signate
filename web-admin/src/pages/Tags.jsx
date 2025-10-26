@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { tagsAPI, devicesAPI } from '../services/api'
 import { Tag, Plus, Trash2, Edit2, Users, Search, BarChart3, Film } from 'lucide-react'
 import { showToast } from '../utils/toast'
-import { Button, FormInput, PageHeader } from '../components/shared'
+import { Button, FormInput, PageHeader, LoadingSkeleton } from '../components/shared'
 
 // Modal Components
 import TagFormModal from '../components/tags/modals/TagFormModal'
@@ -24,7 +24,7 @@ export default function Tags() {
   const [activeFilter, setActiveFilter] = useState('all')
 
   // Fetch tags with sorting
-  const { data: tagsData } = useQuery({
+  const { data: tagsData, isLoading } = useQuery({
     queryKey: ['tags', sortBy],
     queryFn: () => tagsAPI.list({ sort_by: sortBy }).then(res => res.data),
   })
@@ -128,8 +128,25 @@ export default function Tags() {
     ]
   }, [tagsData?.items])
 
+  // Show loading skeleton
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-slate-50 dark:bg-gray-900">
+        <div className="sticky top-0 z-50 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 sm:px-6 lg:px-8 py-4">
+          <div className="h-8 w-32 bg-gray-200 rounded animate-pulse mb-2"></div>
+          <div className="h-4 w-64 bg-gray-200 rounded animate-pulse"></div>
+        </div>
+        <div className="pt-40 sm:pt-[172px] lg:pt-44">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+            <LoadingSkeleton variant="table" count={6} />
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-slate-50 dark:bg-gray-900">
       <PageHeader
         title="Tags"
         description="Organize and manage tags for device grouping and content assignment"
@@ -150,13 +167,13 @@ export default function Tags() {
                 placeholder="Search tags..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                leftIcon={<Search className="w-4 h-4 text-gray-400" />}
+                leftIcon={<Search className="w-4 h-4 text-gray-400 dark:text-gray-500" />}
               />
             </div>
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value)}
-              className="px-4 py-2 border border-gray-300 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value="newest">Terbaru</option>
               <option value="oldest">Terlama</option>
@@ -176,7 +193,7 @@ export default function Tags() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {filteredTags.map((tag) => (
-          <div key={tag.id} className="bg-white rounded-xl shadow-lg border border-gray-300 p-6 hover:shadow-xl transition-shadow">
+          <div key={tag.id} className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-300 dark:border-gray-600 p-6 hover:shadow-xl transition-shadow">
             {/* Tag Header */}
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center">
@@ -184,18 +201,18 @@ export default function Tags() {
                   className="w-4 h-4 rounded-full mr-3"
                   style={{ backgroundColor: tag.color }}
                 />
-                <h3 className="font-bold text-gray-800">{tag.tag_name}</h3>
+                <h3 className="font-bold text-gray-800 dark:text-gray-100">{tag.tag_name}</h3>
               </div>
-              <Tag className="w-5 h-5 text-gray-400" />
+              <Tag className="w-5 h-5 text-gray-400 dark:text-gray-500" />
             </div>
 
             {/* Description */}
-            <p className="text-sm text-gray-600 mb-4 min-h-[40px]">
+            <p className="text-sm text-gray-600 dark:text-gray-400 mb-4 min-h-[40px]">
               {tag.description || 'No description'}
             </p>
 
             {/* Device Count */}
-            <div className="flex items-center text-sm text-gray-600 mb-4">
+            <div className="flex items-center text-sm text-gray-600 dark:text-gray-400 mb-4">
               <Users className="w-4 h-4 mr-1" />
               <span>{tag.device_count} device{tag.device_count !== 1 ? 's' : ''}</span>
             </div>
@@ -264,14 +281,14 @@ export default function Tags() {
 
       {/* Empty States */}
       {tagsData?.items?.length === 0 && (
-        <div className="text-center py-12 text-gray-500">
+        <div className="text-center py-12 text-gray-500 dark:text-gray-400">
           <Tag className="w-16 h-16 mx-auto mb-4 opacity-50" />
           <p>No tags created yet</p>
         </div>
       )}
 
       {filteredTags.length === 0 && tagsData?.items?.length > 0 && (
-        <div className="text-center py-12 text-gray-500">
+        <div className="text-center py-12 text-gray-500 dark:text-gray-400">
           <Search className="w-16 h-16 mx-auto mb-4 opacity-50" />
           <p>No tags found matching "{searchQuery}"</p>
           <button

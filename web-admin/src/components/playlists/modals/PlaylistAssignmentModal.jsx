@@ -123,13 +123,13 @@ export default function PlaylistAssignmentModal({ playlist, onClose }) {
     >
       <div className="space-y-4">
         {/* Tabs */}
-        <div className="flex gap-2 border-b border-gray-200">
+        <div className="flex gap-2 border-b border-gray-200 dark:border-gray-700">
           <button
             onClick={() => setActiveTab('devices')}
             className={`px-4 py-2 font-medium text-sm transition-colors flex items-center gap-2 ${
               activeTab === 'devices'
                 ? 'text-blue-600 border-b-2 border-blue-600'
-                : 'text-gray-600 hover:text-gray-800'
+                : 'text-gray-600 hover:text-gray-800 dark:text-gray-100'
             }`}
           >
             <Monitor className="w-4 h-4" />
@@ -140,7 +140,7 @@ export default function PlaylistAssignmentModal({ playlist, onClose }) {
             className={`px-4 py-2 font-medium text-sm transition-colors flex items-center gap-2 ${
               activeTab === 'tags'
                 ? 'text-blue-600 border-b-2 border-blue-600'
-                : 'text-gray-600 hover:text-gray-800'
+                : 'text-gray-600 hover:text-gray-800 dark:text-gray-100'
             }`}
           >
             <Tag className="w-4 h-4" />
@@ -156,15 +156,15 @@ export default function PlaylistAssignmentModal({ playlist, onClose }) {
               return (
                 <div
                   key={device.id}
-                  className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
+                  className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 dark:bg-gray-900 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
                 >
                   <div className="flex items-center gap-3">
                     <div className={`w-3 h-3 rounded-full ${
                       device.status === 'online' ? 'bg-green-500' : 'bg-gray-400'
                     }`} />
                     <div>
-                      <p className="font-medium text-gray-800">{device.device_name}</p>
-                      <p className="text-sm text-gray-600">
+                      <p className="font-medium text-gray-800 dark:text-gray-100">{device.device_name}</p>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">
                         {device.device_type.toUpperCase()} • {device.ip_address || 'N/A'}
                       </p>
                     </div>
@@ -185,7 +185,7 @@ export default function PlaylistAssignmentModal({ playlist, onClose }) {
 
             {/* Empty state */}
             {devicesData?.devices?.length === 0 && (
-              <p className="text-center py-8 text-gray-500">No devices available</p>
+              <p className="text-center py-8 text-gray-500 dark:text-gray-400">No devices available</p>
             )}
           </div>
         )}
@@ -198,7 +198,7 @@ export default function PlaylistAssignmentModal({ playlist, onClose }) {
               return (
                 <div
                   key={tag.id}
-                  className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
+                  className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 dark:bg-gray-900 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
                 >
                   <div className="flex items-center gap-3">
                     <div
@@ -206,8 +206,8 @@ export default function PlaylistAssignmentModal({ playlist, onClose }) {
                       style={{ backgroundColor: tag.color }}
                     />
                     <div>
-                      <p className="font-medium text-gray-800">{tag.tag_name}</p>
-                      <p className="text-sm text-gray-600">
+                      <p className="font-medium text-gray-800 dark:text-gray-100">{tag.tag_name}</p>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">
                         {tag.description || 'No description'} • {tag.device_count || 0} devices
                       </p>
                     </div>
@@ -228,7 +228,7 @@ export default function PlaylistAssignmentModal({ playlist, onClose }) {
 
             {/* Empty state */}
             {tagsData?.items?.length === 0 && (
-              <p className="text-center py-8 text-gray-500">No tags available</p>
+              <p className="text-center py-8 text-gray-500 dark:text-gray-400">No tags available</p>
             )}
           </div>
         )}

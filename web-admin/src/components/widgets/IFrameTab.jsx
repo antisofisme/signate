@@ -25,8 +25,8 @@ export default function IFrameTab() {
     <div>
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h3 className="text-lg font-semibold text-gray-800">iFrame Widgets</h3>
-          <p className="text-sm text-gray-600">Embed external websites and web content</p>
+          <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-100">iFrame Widgets</h3>
+          <p className="text-sm text-gray-600 dark:text-gray-400">Embed external websites and web content</p>
         </div>
         <Button variant="primary" leftIcon={<Plus className="w-4 h-4" />}>
           Create iFrame
@@ -40,10 +40,10 @@ export default function IFrameTab() {
       )}
 
       {!isLoading && (!widgetsData?.items || widgetsData.items.length === 0) && (
-        <div className="text-center py-12 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
-          <Globe className="w-12 h-12 text-gray-400 mx-auto mb-3" />
-          <p className="text-gray-600 font-medium">No iFrame Widgets</p>
-          <p className="text-sm text-gray-500 mb-4">Create your first iFrame widget</p>
+        <div className="text-center py-12 bg-gray-50 dark:bg-gray-800 dark:bg-gray-900 rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-600">
+          <Globe className="w-12 h-12 text-gray-400 dark:text-gray-500 mx-auto mb-3" />
+          <p className="text-gray-600 dark:text-gray-400 font-medium">No iFrame Widgets</p>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">Create your first iFrame widget</p>
           <Button variant="primary" leftIcon={<Plus className="w-4 h-4" />}>
             Create iFrame
           </Button>

@@ -24,10 +24,10 @@ export default function GroupingControls({
   totalCount
 }) {
   return (
-    <div className="bg-white rounded-xl shadow-md p-4 mb-6">
+    <div className="bg-white dark:bg-gray-800 rounded-xl shadow-md p-4 mb-6">
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div className="flex items-center gap-4">
-          <span className="text-sm font-medium text-gray-700">Group by:</span>
+          <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Group by:</span>
 
           {/* Grouping Options */}
           <div className="flex items-center gap-2">
@@ -36,7 +36,7 @@ export default function GroupingControls({
               className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
                 groupBy === 'none'
                   ? 'bg-blue-600 text-white'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
               }`}
             >
               None
@@ -46,7 +46,7 @@ export default function GroupingControls({
               className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
                 groupBy === 'extension'
                   ? 'bg-purple-600 text-white'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
               }`}
             >
               🖼️ Extension
@@ -56,7 +56,7 @@ export default function GroupingControls({
               className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
                 groupBy === 'tag'
                   ? 'bg-green-600 text-white'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
               }`}
             >
               🏷️ Tag
@@ -66,7 +66,7 @@ export default function GroupingControls({
               className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
                 groupBy === 'device'
                   ? 'bg-orange-600 text-white'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
               }`}
             >
               📺 Device
@@ -79,13 +79,13 @@ export default function GroupingControls({
           <div className="flex items-center gap-2">
             <button
               onClick={onExpandAll}
-              className="px-3 py-1 bg-gray-100 text-gray-700 rounded text-sm hover:bg-gray-200"
+              className="px-3 py-1 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded text-sm hover:bg-gray-200 dark:hover:bg-gray-600"
             >
               Expand All
             </button>
             <button
               onClick={onCollapseAll}
-              className="px-3 py-1 bg-gray-100 text-gray-700 rounded text-sm hover:bg-gray-200"
+              className="px-3 py-1 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded text-sm hover:bg-gray-200 dark:hover:bg-gray-600"
             >
               Collapse All
             </button>
@@ -93,7 +93,7 @@ export default function GroupingControls({
         )}
 
         {/* Total Count */}
-        <div className="text-sm text-gray-600">
+        <div className="text-sm text-gray-600 dark:text-gray-400">
           {totalCount || 0} content total
         </div>
       </div>

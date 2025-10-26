@@ -50,15 +50,15 @@ export default function PageHeader({
 
   return (
     <>
-      <div className="fixed top-0 left-0 right-0 lg:left-64 z-40 bg-white border-b border-gray-200 shadow-md">
+      <div className="fixed top-0 left-0 right-0 lg:left-64 z-40 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 shadow-md transition-colors">
         <div className="px-4 sm:px-6 lg:px-8 pt-3 sm:pt-4 pb-1">
           {/* Title & Description */}
           <div className="mb-3 pl-12 lg:pl-0">
-            <h1 className="text-xl sm:text-2xl font-bold text-gray-900">
+            <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">
               {title}
             </h1>
             {description && (
-              <p className="text-xs sm:text-sm text-gray-600 mt-1">
+              <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-300 mt-1">
                 {description}
               </p>
             )}
@@ -85,7 +85,7 @@ export default function PageHeader({
 
         {/* Stats Row as Tabs (if provided) */}
         {stats && stats.length > 0 && (
-          <div className="flex flex-nowrap overflow-x-auto gap-1 mt-2 border-b border-gray-200">
+          <div className="flex flex-nowrap overflow-x-auto gap-1 mt-2 border-b border-gray-200 dark:border-gray-700">
             {stats.map((stat, index) => {
               const isActive = activeFilter === stat.filterKey
               const isClickable = !!onStatClick && !!stat.filterKey
@@ -98,20 +98,20 @@ export default function PageHeader({
                   onClick={() => onStatClick(stat.filterKey)}
                   className={`flex items-center gap-2 px-4 py-2.5 border-b-2 transition-all whitespace-nowrap ${
                     isActive
-                      ? 'border-blue-600 bg-blue-50'
-                      : 'border-transparent hover:border-gray-300 hover:bg-gray-50'
+                      ? 'border-blue-600 bg-blue-50 dark:bg-blue-900/30'
+                      : 'border-transparent hover:border-gray-300 dark:hover:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700'
                   }`}
                 >
                   <span className={`text-sm font-medium ${
-                    isActive ? 'text-blue-700' : 'text-gray-600'
+                    isActive ? 'text-blue-700 dark:text-blue-400' : 'text-gray-600 dark:text-gray-300'
                   }`}>
                     {stat.label}
                   </span>
                   <span
                     className={`text-sm font-bold px-2 py-0.5 rounded-full ${
                       isActive
-                        ? 'bg-blue-200 text-blue-900'
-                        : 'bg-gray-200 text-gray-700'
+                        ? 'bg-blue-200 dark:bg-blue-800 text-blue-900 dark:text-blue-100'
+                        : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
                     }`}
                   >
                     {stat.value}

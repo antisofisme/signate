@@ -101,7 +101,7 @@ export default function DuplicatePlaylistModal({ playlist, onClose }) {
 
           {/* New Name Input */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               New Playlist Name *
             </label>
             <FormInput
@@ -116,7 +116,7 @@ export default function DuplicatePlaylistModal({ playlist, onClose }) {
 
           {/* Description Input */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               Description (Optional)
             </label>
             <textarea
@@ -124,7 +124,7 @@ export default function DuplicatePlaylistModal({ playlist, onClose }) {
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Enter description"
               rows={3}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors resize-none"
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors resize-none"
             />
           </div>
 

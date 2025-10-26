@@ -127,9 +127,9 @@ export default function PlaylistPreviewModal({ playlist, onClose }) {
         {/* Empty State */}
         {!isLoading && items.length === 0 && (
           <div className="text-center py-12">
-            <Monitor className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-            <p className="text-gray-600 mb-2">No content in this playlist</p>
-            <p className="text-sm text-gray-500">Add content to see preview</p>
+            <Monitor className="w-16 h-16 text-gray-400 dark:text-gray-500 mx-auto mb-4" />
+            <p className="text-gray-600 dark:text-gray-400 mb-2">No content in this playlist</p>
+            <p className="text-sm text-gray-500 dark:text-gray-400">Add content to see preview</p>
           </div>
         )}
 
@@ -217,9 +217,9 @@ export default function PlaylistPreviewModal({ playlist, onClose }) {
             </div>
 
             {/* Playlist Items List */}
-            <div className="border border-gray-200 rounded-lg overflow-hidden">
-              <div className="bg-gray-50 px-4 py-2 border-b border-gray-200">
-                <p className="font-semibold text-gray-700 text-sm">
+            <div className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
+              <div className="bg-gray-50 dark:bg-gray-900 px-4 py-2 border-b border-gray-200 dark:border-gray-700">
+                <p className="font-semibold text-gray-700 dark:text-gray-300 text-sm">
                   Playlist Content ({items.length} items)
                 </p>
               </div>
@@ -228,7 +228,7 @@ export default function PlaylistPreviewModal({ playlist, onClose }) {
                   <button
                     key={item.id}
                     onClick={() => handleSelectItem(index)}
-                    className={`w-full px-4 py-3 flex items-center gap-3 hover:bg-gray-50 transition-colors text-left ${
+                    className={`w-full px-4 py-3 flex items-center gap-3 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-left ${
                       currentIndex === index ? 'bg-purple-50 border-l-4 border-purple-500' : ''
                     }`}
                   >
@@ -244,14 +244,14 @@ export default function PlaylistPreviewModal({ playlist, onClose }) {
                     {/* Content Info */}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1">
-                        <span className="text-gray-400">
+                        <span className="text-gray-400 dark:text-gray-500">
                           {getContentIcon(item.content_type)}
                         </span>
-                        <p className="font-medium text-gray-800 truncate">
+                        <p className="font-medium text-gray-800 dark:text-gray-100 truncate">
                           {item.content_name}
                         </p>
                       </div>
-                      <p className="text-xs text-gray-500 flex items-center gap-1">
+                      <p className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1">
                         <Clock className="w-3 h-3" />
                         {formatDuration(item.duration)}
                       </p>

@@ -33,7 +33,7 @@ function DeviceTableRow({
   return (
     <tr
       onClick={() => onRowClick(device)}
-      className="cursor-pointer hover:bg-blue-50 transition-colors"
+      className="cursor-pointer hover:bg-blue-50 dark:hover:bg-gray-700 transition-colors"
     >
       {/* ID Column */}
       <td className="px-6 py-4 whitespace-nowrap">
@@ -48,17 +48,17 @@ function DeviceTableRow({
           ) : (
             <Monitor className="w-5 h-5 text-green-600 mr-2" />
           )}
-          <span className="font-medium">{device.device_name}</span>
+          <span className="font-medium text-gray-900 dark:text-gray-100">{device.device_name}</span>
         </div>
       </td>
 
       {/* Type Column */}
-      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-400">
         {device.device_type.toUpperCase()}
       </td>
 
       {/* IP Address Column */}
-      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-400">
         <span className="font-mono">{device.ip_address || '-'}</span>
       </td>
 
@@ -73,23 +73,23 @@ function DeviceTableRow({
             {device.unique_code}
           </span>
         ) : (
-          <span className="text-gray-400">-</span>
+          <span className="text-gray-400 dark:text-gray-500">-</span>
         )}
       </td>
 
       {/* Status Column */}
       <td className="px-6 py-4 whitespace-nowrap">
         <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-          device.status === 'active' ? 'bg-green-100 text-green-700' :
-          device.status === 'pending' ? 'bg-yellow-100 text-yellow-700' :
-          'bg-gray-100 text-gray-700'
+          device.status === 'active' ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400' :
+          device.status === 'pending' ? 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400' :
+          'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
         }`}>
           {device.status}
         </span>
       </td>
 
       {/* Last Seen Column */}
-      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-400">
         {device.last_seen ? new Date(device.last_seen).toLocaleString() : 'Never'}
       </td>
 

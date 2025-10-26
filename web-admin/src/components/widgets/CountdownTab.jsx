@@ -25,8 +25,8 @@ export default function CountdownTab() {
     <div>
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h3 className="text-lg font-semibold text-gray-800">Countdown Widgets</h3>
-          <p className="text-sm text-gray-600">Create countdown timers for events</p>
+          <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-100">Countdown Widgets</h3>
+          <p className="text-sm text-gray-600 dark:text-gray-400">Create countdown timers for events</p>
         </div>
         <Button variant="primary" leftIcon={<Plus className="w-4 h-4" />}>
           Create Countdown
@@ -40,10 +40,10 @@ export default function CountdownTab() {
       )}
 
       {!isLoading && (!widgetsData?.items || widgetsData.items.length === 0) && (
-        <div className="text-center py-12 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
-          <Timer className="w-12 h-12 text-gray-400 mx-auto mb-3" />
-          <p className="text-gray-600 font-medium">No Countdown Widgets</p>
-          <p className="text-sm text-gray-500 mb-4">Create your first countdown widget</p>
+        <div className="text-center py-12 bg-gray-50 dark:bg-gray-800 dark:bg-gray-900 rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-600">
+          <Timer className="w-12 h-12 text-gray-400 dark:text-gray-500 mx-auto mb-3" />
+          <p className="text-gray-600 dark:text-gray-400 font-medium">No Countdown Widgets</p>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">Create your first countdown widget</p>
           <Button variant="primary" leftIcon={<Plus className="w-4 h-4" />}>
             Create Countdown
           </Button>

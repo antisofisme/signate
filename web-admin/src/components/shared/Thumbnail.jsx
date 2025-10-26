@@ -90,14 +90,14 @@ export default function Thumbnail({
     return (
       <div
         className={`
-          relative bg-gradient-to-br from-gray-200 to-gray-300
+          relative bg-gradient-to-br from-gray-200 to-gray-300 dark:from-gray-700 dark:to-gray-800
           rounded-lg overflow-hidden flex items-center justify-center
           ${aspectRatioClasses[aspectRatio]}
           ${className}
         `}
         onClick={onClick}
       >
-        <div className="flex flex-col items-center justify-center text-gray-500">
+        <div className="flex flex-col items-center justify-center text-gray-500 dark:text-gray-400">
           {isVideo ? (
             <Film className={iconSizeClasses[size]} />
           ) : (
@@ -125,7 +125,7 @@ export default function Thumbnail({
   return (
     <div
       className={`
-        relative bg-gradient-to-br from-gray-200 to-gray-300
+        relative bg-gradient-to-br from-gray-200 to-gray-300 dark:from-gray-700 dark:to-gray-800
         rounded-lg overflow-hidden
         ${aspectRatioClasses[aspectRatio]}
         ${className}
@@ -134,8 +134,8 @@ export default function Thumbnail({
     >
       {/* Loading skeleton */}
       {isLoading && (
-        <div className="absolute inset-0 flex items-center justify-center bg-gray-200 animate-pulse">
-          <div className="text-gray-400">
+        <div className="absolute inset-0 flex items-center justify-center bg-gray-200 dark:bg-gray-600 animate-pulse">
+          <div className="text-gray-400 dark:text-gray-500">
             {isVideo ? (
               <Film className={iconSizeClasses[size]} />
             ) : (

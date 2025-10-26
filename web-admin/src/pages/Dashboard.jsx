@@ -1,10 +1,15 @@
 import { useMemo } from 'react'
-import { useQuery } from '@tanstack/react-query'
-import { devicesAPI, contentAPI, tagsAPI } from '../services/api'
-import { Monitor, FileImage, Activity, TrendingUp, Tag, Tv, Wifi, WifiOff } from 'lucide-react'
-import { LoadingSkeleton } from '../components/shared'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useNavigate } from 'react-router-dom'
+import { devicesAPI, contentAPI, tagsAPI, playlistsAPI } from '../services/api'
+import { Monitor, FileImage, Tag, Tv, Wifi, ListVideo, Link, CheckCircle, XCircle, Eye } from 'lucide-react'
+import { LoadingSkeleton, Button } from '../components/shared'
+import { showToast } from '../utils/toast'
 
 export default function Dashboard() {
+  const queryClient = useQueryClient()
+  const navigate = useNavigate()
+
   const { data: devices, isLoading } = useQuery({
     queryKey: ['devices'],
     queryFn: () => devicesAPI.list().then(res => res.data),
@@ -19,6 +24,56 @@ export default function Dashboard() {
   const { data: tags } = useQuery({
     queryKey: ['tags'],
     queryFn: () => tagsAPI.list().then(res => res.data),
+  })
+
+  // Fetch playlists data (FASE 1.1)
+  const { data: playlists } = useQuery({
+    queryKey: ['playlists'],
+    queryFn: () => playlistsAPI.list().then(res => res.data),
+  })
+
+  // Fetch all content assignments (FASE 1.2)
+  const { data: allAssignments } = useQuery({
+    queryKey: ['all-content-assignments'],
+    queryFn: async () => {
+      if (!content?.items) return {}
+
+      const assignments = {}
+      for (const contentItem of content.items) {
+        try {
+          const res = await contentAPI.getAssignments(contentItem.id)
+          assignments[contentItem.id] = res.data
+        } catch (err) {
+          assignments[contentItem.id] = []
+        }
+      }
+      return assignments
+    },
+    enabled: !!content?.items,
+  })
+
+  // FASE 2.1: Approve device mutation
+  const approveDeviceMutation = useMutation({
+    mutationFn: (deviceId) => devicesAPI.update(deviceId, { status: 'active' }),
+    onSuccess: () => {
+      queryClient.invalidateQueries(['devices'])
+      showToast.success('Device approved successfully!')
+    },
+    onError: (error) => {
+      showToast.error(error.response?.data?.detail || 'Failed to approve device')
+    }
+  })
+
+  // FASE 2.1: Reject device mutation
+  const rejectDeviceMutation = useMutation({
+    mutationFn: devicesAPI.delete,
+    onSuccess: () => {
+      queryClient.invalidateQueries(['devices'])
+      showToast.success('Device rejected successfully!')
+    },
+    onError: (error) => {
+      showToast.error(error.response?.data?.detail || 'Failed to reject device')
+    }
   })
 
   // Helper function to check if device is online
@@ -39,6 +94,12 @@ export default function Dashboard() {
   // Memoize devicesList to prevent array recreation on every render
   const devicesList = useMemo(() => devices?.devices || [], [devices?.devices])
 
+  // FASE 2.1: Filter pending devices
+  const pendingDevices = useMemo(() =>
+    devicesList.filter(d => d.status === 'pending'),
+    [devicesList]
+  )
+
   // Calculate stats - Memoized to prevent recalculation on every render
   const deviceStats = useMemo(() => {
     return {
@@ -50,50 +111,103 @@ export default function Dashboard() {
     }
   }, [devicesList])
 
-  const stats = useMemo(() => [
-    {
-      name: 'Total Devices',
-      value: devices?.total || 0,
-      subtitle: `${deviceStats.tvDevices} TVs • ${deviceStats.monitorDevices} Monitors`,
-      icon: Monitor,
-      color: 'blue',
-    },
-    {
-      name: 'Online Devices',
-      value: deviceStats.onlineDevices,
-      subtitle: `${deviceStats.activeDevices} active • ${deviceStats.pendingDevices} pending`,
-      icon: Wifi,
-      color: 'green',
-    },
-    {
-      name: 'Total Content',
-      value: content?.total || 0,
-      subtitle: `${content?.items?.filter(c => c.is_active).length || 0} active`,
-      icon: FileImage,
-      color: 'purple',
-    },
-    {
-      name: 'Tags',
-      value: tags?.total || 0,
-      subtitle: 'Device groups',
-      icon: Tag,
-      color: 'orange',
-    },
-  ], [devices?.total, deviceStats, content?.total, content?.items, tags?.total])
+  const stats = useMemo(() => {
+    // FASE 1.3: Enhanced device breakdown (Browser vs App)
+    const browserDevices = devicesList.filter(d => d.device_type === 'browser').length || 0
+    const appDevices = devicesList.filter(d => d.device_type === 'tv').length || 0
+
+    // FASE 1.2: Content assignment stats
+    const assignedContent = content?.items ? content.items.filter(c => {
+      const assignments = allAssignments?.[c.id]
+      return assignments && assignments.length > 0
+    }).length : 0
+    const totalContent = content?.total || 0
+    const assignmentRate = totalContent > 0 ? Math.round((assignedContent / totalContent) * 100) : 0
+
+    // FASE 1.1: Playlists stats
+    const totalPlaylists = playlists?.total || 0
+    const activePlaylists = playlists?.items?.filter(p => p.is_active).length || 0
+
+    return [
+      // Row 1 - Main Stats
+      {
+        name: 'Total Devices',
+        value: devices?.total || 0,
+        subtitle: `${browserDevices} browsers • ${appDevices} apps`,
+        icon: Monitor,
+        color: 'blue',
+      },
+      {
+        name: 'Online Devices',
+        value: deviceStats.onlineDevices,
+        subtitle: `${deviceStats.activeDevices} active • ${deviceStats.pendingDevices} pending`,
+        icon: Wifi,
+        color: 'green',
+      },
+      {
+        name: 'Total Content',
+        value: totalContent,
+        subtitle: `${content?.items?.filter(c => c.is_active).length || 0} active`,
+        icon: FileImage,
+        color: 'purple',
+      },
+      {
+        name: 'Tags',
+        value: tags?.total || 0,
+        subtitle: 'Device groups',
+        icon: Tag,
+        color: 'orange',
+      },
+      // Row 2 - Additional Stats
+      {
+        name: 'Playlists',
+        value: totalPlaylists,
+        subtitle: `${activePlaylists} active • ${totalPlaylists - activePlaylists} inactive`,
+        icon: ListVideo,
+        color: 'indigo',
+      },
+      {
+        name: 'Assigned Content',
+        value: assignedContent,
+        subtitle: `${assignmentRate}% assignment rate`,
+        icon: Link,
+        color: 'teal',
+      },
+      {
+        name: 'Browser Displays',
+        value: browserDevices,
+        subtitle: 'Web-based viewers',
+        icon: Monitor,
+        color: 'purple',
+      },
+      {
+        name: 'TV/App Displays',
+        value: appDevices,
+        subtitle: 'Smart TV viewers',
+        icon: Tv,
+        color: 'blue',
+      },
+    ]
+  }, [devices?.total, deviceStats, devicesList, content?.total, content?.items, tags?.total, playlists?.total, playlists?.items, allAssignments])
 
   // Show loading skeleton while fetching
   if (isLoading) {
     return (
-      <div>
-        <div className="sticky top-0 z-50 bg-white pb-4 mb-4 border-b border-gray-200 px-6">
-          <h1 className="text-3xl font-bold text-gray-800 pt-4">Dashboard</h1>
+      <div className="px-4 sm:px-6 lg:px-8">
+        <div className="sticky top-0 z-50 bg-white dark:bg-gray-800 pb-4 mb-6 border-b border-gray-200 dark:border-gray-700 -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8">
+          <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-100 pt-4">Dashboard</h1>
         </div>
 
-        {/* Loading Stats */}
-        <LoadingSkeleton variant="stats" count={4} />
+        {/* Loading Stats - 8 cards */}
+        <LoadingSkeleton variant="stats" count={8} />
 
-        {/* Loading Content */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-8">
+        {/* Loading Pending Approvals (simulate) */}
+        <div className="mb-8">
+          <LoadingSkeleton variant="pending-approvals" count={2} />
+        </div>
+
+        {/* Loading Recent Devices & Content */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <LoadingSkeleton variant="list" count={5} />
           <LoadingSkeleton variant="list" count={5} />
         </div>
@@ -102,38 +216,42 @@ export default function Dashboard() {
   }
 
   return (
-    <div>
-      <div className="sticky top-0 z-50 bg-white pb-4 mb-4 border-b border-gray-200 px-6">
-        <h1 className="text-3xl font-bold text-gray-800 pt-4">Dashboard</h1>
+    <div className="px-4 sm:px-6 lg:px-8">
+      <div className="sticky top-0 z-50 bg-white dark:bg-gray-800 pb-4 mb-6 border-b border-gray-200 dark:border-gray-700 -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8">
+        <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-100 pt-4">Dashboard</h1>
       </div>
 
-      {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+      {/* Stats Grid with fade-in animation */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8 animate-fade-in">
         {stats.map((stat) => {
           const Icon = stat.icon
           const bgColors = {
-            blue: 'bg-blue-100',
-            green: 'bg-green-100',
-            purple: 'bg-purple-100',
-            orange: 'bg-orange-100'
+            blue: 'bg-blue-100 dark:bg-blue-900/30',
+            green: 'bg-green-100 dark:bg-green-900/30',
+            purple: 'bg-purple-100 dark:bg-purple-900/30',
+            orange: 'bg-orange-100 dark:bg-orange-900/30',
+            indigo: 'bg-indigo-100 dark:bg-indigo-900/30',
+            teal: 'bg-teal-100 dark:bg-teal-900/30'
           }
           const textColors = {
             blue: 'text-blue-600',
             green: 'text-green-600',
             purple: 'text-purple-600',
-            orange: 'text-orange-600'
+            orange: 'text-orange-600',
+            indigo: 'text-indigo-600',
+            teal: 'text-teal-600'
           }
 
           return (
             <div
               key={stat.name}
-              className="bg-white rounded-xl shadow-lg border border-gray-300 p-6 hover:shadow-xl transition-shadow"
+              className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-300 dark:border-gray-600 p-4 hover:shadow-xl transition-shadow"
             >
-              <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center justify-between">
                 <div className="flex-1">
-                  <p className="text-sm text-gray-600 font-medium">{stat.name}</p>
-                  <p className="text-3xl font-bold text-gray-800 mt-2">{stat.value}</p>
-                  <p className="text-xs text-gray-500 mt-1">{stat.subtitle}</p>
+                  <p className="text-sm text-gray-600 dark:text-gray-400 font-medium">{stat.name}</p>
+                  <p className="text-3xl font-bold text-gray-800 dark:text-gray-100 mt-2">{stat.value}</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{stat.subtitle}</p>
                 </div>
                 <div className={`p-3 rounded-full ${bgColors[stat.color]}`}>
                   <Icon className={`w-6 h-6 ${textColors[stat.color]}`} />
@@ -144,11 +262,91 @@ export default function Dashboard() {
         })}
       </div>
 
-      {/* Recent Devices & Content */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      {/* FASE 2.1: Pending Approvals Section with fade-in animation */}
+      {pendingDevices.length > 0 && (
+        <div className="bg-yellow-50 dark:bg-yellow-900/20 border-2 border-yellow-400 dark:border-yellow-700 rounded-xl p-6 mb-8 animate-fade-in">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-3">
+              <div className="w-3 h-3 bg-yellow-500 rounded-full animate-pulse"></div>
+              <h2 className="text-xl font-bold text-yellow-800">
+                Pending Approvals ({pendingDevices.length})
+              </h2>
+            </div>
+            <Button
+              variant="warning"
+              leftIcon={<Eye className="w-4 h-4" />}
+              onClick={() => navigate('/devices')}
+            >
+              View All
+            </Button>
+          </div>
+
+          <div className="grid gap-3">
+            {pendingDevices.slice(0, 3).map(device => (
+              <div key={device.id} className="bg-white dark:bg-gray-800 rounded-lg p-4 flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <div className={`flex items-center justify-center w-12 h-12 rounded-full ${
+                    device.device_type === 'tv' ? 'bg-blue-100 dark:bg-blue-900/30' : 'bg-green-100 dark:bg-green-900/30'
+                  }`}>
+                    {device.device_type === 'tv' ? (
+                      <Tv className="w-6 h-6 text-blue-600" />
+                    ) : (
+                      <Monitor className="w-6 h-6 text-green-600" />
+                    )}
+                  </div>
+                  <div>
+                    <p className="font-bold text-gray-800 dark:text-gray-100">{device.device_name}</p>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                      {device.device_type.toUpperCase()} • {device.ip_address || '-'}
+                    </p>
+                    {device.last_seen && (
+                      <p className="text-xs text-gray-500 dark:text-gray-400">
+                        {new Date(device.last_seen).toLocaleString()}
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex gap-2">
+                  <Button
+                    variant="success"
+                    size="sm"
+                    leftIcon={<CheckCircle className="w-4 h-4" />}
+                    onClick={() => approveDeviceMutation.mutate(device.id)}
+                    disabled={approveDeviceMutation.isLoading}
+                  >
+                    Approve
+                  </Button>
+                  <Button
+                    variant="danger"
+                    size="sm"
+                    leftIcon={<XCircle className="w-4 h-4" />}
+                    onClick={() => {
+                      if (confirm(`Reject device "${device.device_name}"?`)) {
+                        rejectDeviceMutation.mutate(device.id)
+                      }
+                    }}
+                    disabled={rejectDeviceMutation.isLoading}
+                  >
+                    Reject
+                  </Button>
+                </div>
+              </div>
+            ))}
+            {pendingDevices.length > 3 && (
+              <p className="text-sm text-yellow-700 text-center pt-2">
+                and {pendingDevices.length - 3} more pending device(s)...
+              </p>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Recent Devices & Content with fade-in animation */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 animate-fade-in">
         {/* Recent Devices */}
-        <div className="bg-white rounded-xl shadow-lg border border-gray-300 p-6">
-          <h2 className="text-xl font-bold text-gray-800 mb-4">Recent Devices</h2>
+        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-300 dark:border-gray-600 p-6">
+          <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100 mb-4">Recent Devices</h2>
           {devicesList && devicesList.length > 0 ? (
             <div className="space-y-3">
               {devicesList.slice(0, 5).map((device) => {
@@ -156,7 +354,7 @@ export default function Dashboard() {
                 return (
                   <div
                     key={device.id}
-                    className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
+                    className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-900 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
                   >
                     <div className="flex items-center flex-1">
                       {device.device_type === 'tv' ? (
@@ -166,7 +364,7 @@ export default function Dashboard() {
                       )}
                       <div className="flex-1">
                         <div className="flex items-center">
-                          <p className="font-medium text-gray-800">{device.device_name}</p>
+                          <p className="font-medium text-gray-800 dark:text-gray-100">{device.device_name}</p>
                           {device.status === 'active' && (
                             <div className="ml-2 flex items-center">
                               {online ? (
@@ -183,11 +381,11 @@ export default function Dashboard() {
                             </div>
                           )}
                         </div>
-                        <p className="text-sm text-gray-600">
+                        <p className="text-sm text-gray-600 dark:text-gray-400">
                           {device.device_type.toUpperCase()} • {device.ip_address || device.unique_code || 'N/A'}
                         </p>
                         {device.last_seen && (
-                          <p className="text-xs text-gray-500">
+                          <p className="text-xs text-gray-500 dark:text-gray-400">
                             Last seen: {new Date(device.last_seen).toLocaleString()}
                           </p>
                         )}
@@ -196,10 +394,10 @@ export default function Dashboard() {
                     <span
                       className={`px-3 py-1 rounded-full text-sm font-medium ${
                         device.status === 'active'
-                          ? 'bg-green-100 text-green-700'
+                          ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
                           : device.status === 'pending'
-                          ? 'bg-yellow-100 text-yellow-700'
-                          : 'bg-gray-100 text-gray-700'
+                          ? 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400'
+                          : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
                       }`}
                     >
                       {device.status}
@@ -209,25 +407,25 @@ export default function Dashboard() {
               })}
             </div>
           ) : (
-            <p className="text-gray-500 text-center py-8">No devices registered yet</p>
+            <p className="text-gray-500 dark:text-gray-400 text-center py-8">No devices registered yet</p>
           )}
         </div>
 
         {/* Recent Content */}
-        <div className="bg-white rounded-xl shadow-lg border border-gray-300 p-6">
-          <h2 className="text-xl font-bold text-gray-800 mb-4">Recent Content</h2>
+        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-300 dark:border-gray-600 p-6">
+          <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100 mb-4">Recent Content</h2>
           {content?.items && content.items.length > 0 ? (
             <div className="space-y-3">
               {content.items.slice(0, 5).map((item) => (
                 <div
                   key={item.id}
-                  className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
+                  className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-900 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
                 >
                   <div className="flex items-center flex-1">
                     <FileImage className="w-5 h-5 text-purple-600 mr-3" />
                     <div className="flex-1">
-                      <p className="font-medium text-gray-800">{item.title}</p>
-                      <p className="text-sm text-gray-600">
+                      <p className="font-medium text-gray-800 dark:text-gray-100">{item.title}</p>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">
                         {item.content_type.toUpperCase()} • {item.duration}s
                       </p>
                     </div>
@@ -235,8 +433,8 @@ export default function Dashboard() {
                   <span
                     className={`px-3 py-1 rounded-full text-sm font-medium ${
                       item.is_active
-                        ? 'bg-green-100 text-green-700'
-                        : 'bg-gray-100 text-gray-700'
+                        ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
+                        : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
                     }`}
                   >
                     {item.is_active ? 'Active' : 'Inactive'}
@@ -245,7 +443,7 @@ export default function Dashboard() {
               ))}
             </div>
           ) : (
-            <p className="text-gray-500 text-center py-8">No content uploaded yet</p>
+            <p className="text-gray-500 dark:text-gray-400 text-center py-8">No content uploaded yet</p>
           )}
         </div>
       </div>

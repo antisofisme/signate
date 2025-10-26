@@ -1,6 +1,7 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { useState } from 'react'
+import { ThemeProvider } from './contexts/ThemeContext'
 
 // Pages (will be created next)
 import Login from './pages/Login'
@@ -37,75 +38,77 @@ function App() {
   }
 
   return (
-    <QueryClientProvider client={queryClient}>
-      <Router>
-        <Routes>
-          <Route path="/login" element={<Login setIsAuthenticated={setIsAuthenticated} />} />
+    <ThemeProvider>
+      <QueryClientProvider client={queryClient}>
+        <Router>
+          <Routes>
+            <Route path="/login" element={<Login setIsAuthenticated={setIsAuthenticated} />} />
 
-          <Route path="/" element={
-            <PrivateRoute>
-              <Layout setIsAuthenticated={setIsAuthenticated}>
-                <Dashboard />
-              </Layout>
-            </PrivateRoute>
-          } />
+            <Route path="/" element={
+              <PrivateRoute>
+                <Layout setIsAuthenticated={setIsAuthenticated}>
+                  <Dashboard />
+                </Layout>
+              </PrivateRoute>
+            } />
 
-          <Route path="/devices" element={
-            <PrivateRoute>
-              <Layout setIsAuthenticated={setIsAuthenticated}>
-                <Devices />
-              </Layout>
-            </PrivateRoute>
-          } />
+            <Route path="/devices" element={
+              <PrivateRoute>
+                <Layout setIsAuthenticated={setIsAuthenticated}>
+                  <Devices />
+                </Layout>
+              </PrivateRoute>
+            } />
 
-          <Route path="/devices/:id/preview" element={
-            <PrivateRoute>
-              <DevicePreview />
-            </PrivateRoute>
-          } />
+            <Route path="/devices/:id/preview" element={
+              <PrivateRoute>
+                <DevicePreview />
+              </PrivateRoute>
+            } />
 
-          <Route path="/content" element={
-            <PrivateRoute>
-              <Layout setIsAuthenticated={setIsAuthenticated}>
-                <Content />
-              </Layout>
-            </PrivateRoute>
-          } />
+            <Route path="/content" element={
+              <PrivateRoute>
+                <Layout setIsAuthenticated={setIsAuthenticated}>
+                  <Content />
+                </Layout>
+              </PrivateRoute>
+            } />
 
-          <Route path="/tags" element={
-            <PrivateRoute>
-              <Layout setIsAuthenticated={setIsAuthenticated}>
-                <Tags />
-              </Layout>
-            </PrivateRoute>
-          } />
+            <Route path="/tags" element={
+              <PrivateRoute>
+                <Layout setIsAuthenticated={setIsAuthenticated}>
+                  <Tags />
+                </Layout>
+              </PrivateRoute>
+            } />
 
-          <Route path="/playlists" element={
-            <PrivateRoute>
-              <Layout setIsAuthenticated={setIsAuthenticated}>
-                <Playlists />
-              </Layout>
-            </PrivateRoute>
-          } />
+            <Route path="/playlists" element={
+              <PrivateRoute>
+                <Layout setIsAuthenticated={setIsAuthenticated}>
+                  <Playlists />
+                </Layout>
+              </PrivateRoute>
+            } />
 
-          <Route path="/widgets" element={
-            <PrivateRoute>
-              <Layout setIsAuthenticated={setIsAuthenticated}>
-                <Widgets />
-              </Layout>
-            </PrivateRoute>
-          } />
+            <Route path="/widgets" element={
+              <PrivateRoute>
+                <Layout setIsAuthenticated={setIsAuthenticated}>
+                  <Widgets />
+                </Layout>
+              </PrivateRoute>
+            } />
 
-          <Route path="/settings" element={
-            <PrivateRoute>
-              <Layout setIsAuthenticated={setIsAuthenticated}>
-                <Settings />
-              </Layout>
-            </PrivateRoute>
-          } />
-        </Routes>
-      </Router>
-    </QueryClientProvider>
+            <Route path="/settings" element={
+              <PrivateRoute>
+                <Layout setIsAuthenticated={setIsAuthenticated}>
+                  <Settings />
+                </Layout>
+              </PrivateRoute>
+            } />
+          </Routes>
+        </Router>
+      </QueryClientProvider>
+    </ThemeProvider>
   )
 }
 

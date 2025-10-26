@@ -19,32 +19,32 @@ import { Monitor, Tv, CheckCircle } from 'lucide-react'
  */
 function PendingDeviceCard({ device, onApprove }) {
   return (
-    <div className="bg-white rounded-lg p-4 border-2 border-yellow-300 flex items-center justify-between">
+    <div className="bg-white dark:bg-gray-800 rounded-lg p-4 border-2 border-yellow-300 flex items-center justify-between">
       <div className="flex items-center gap-4">
         {/* Device Icon */}
         <div className={`flex items-center justify-center w-12 h-12 rounded-full ${
-          device.device_uuid ? 'bg-blue-100' : 'bg-green-100'
+          device.device_uuid ? 'bg-blue-100 dark:bg-blue-900/30' : 'bg-green-100 dark:bg-green-900/30'
         }`}>
           {device.device_uuid ? (
-            <Tv className="w-6 h-6 text-blue-600" />
+            <Tv className="w-6 h-6 text-blue-600 dark:text-blue-400" />
           ) : (
-            <Monitor className="w-6 h-6 text-green-600" />
+            <Monitor className="w-6 h-6 text-green-600 dark:text-green-400" />
           )}
         </div>
 
         {/* Device Info */}
         <div>
-          <p className="font-bold text-gray-800">{device.device_name}</p>
+          <p className="font-bold text-gray-800 dark:text-gray-100">{device.device_name}</p>
 
           {/* IP Address */}
           <div className="flex items-center gap-2 mt-1">
-            <span className="text-xs text-gray-500">IP:</span>
-            <span className="font-mono text-sm text-gray-700">
+            <span className="text-xs text-gray-500 dark:text-gray-400">IP:</span>
+            <span className="font-mono text-sm text-gray-700 dark:text-gray-300">
               {device.ip_address || '-'}
             </span>
             {device.platform && (
               <span className={`text-xs px-2 py-1 rounded-full ${
-                device.platform === 'webOS' ? 'bg-purple-100 text-purple-700' : 'bg-gray-100 text-gray-700'
+                device.platform === 'webOS' ? 'bg-purple-100 text-purple-700' : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
               }`}>
                 {device.platform}
               </span>
@@ -55,28 +55,28 @@ function PendingDeviceCard({ device, onApprove }) {
           <div className="flex items-center gap-2 mt-1">
             {device.device_uuid ? (
               <>
-                <span className="text-xs text-gray-500">UUID:</span>
+                <span className="text-xs text-gray-500 dark:text-gray-400">UUID:</span>
                 <span className="font-mono text-xs text-blue-600 bg-blue-50 px-2 py-1 rounded">
                   {device.device_uuid.substring(0, 13)}...
                 </span>
               </>
             ) : device.unique_code ? (
               <>
-                <span className="text-xs text-gray-500">Code:</span>
+                <span className="text-xs text-gray-500 dark:text-gray-400">Code:</span>
                 <span className="font-mono text-lg font-bold text-yellow-600">
                   {device.unique_code}
                 </span>
               </>
             ) : (
               <>
-                <span className="text-xs text-gray-500">Code:</span>
-                <span className="text-gray-400">-</span>
+                <span className="text-xs text-gray-500 dark:text-gray-400">Code:</span>
+                <span className="text-gray-400 dark:text-gray-500">-</span>
               </>
             )}
           </div>
 
           {/* Last Seen */}
-          <p className="text-xs text-gray-500 mt-1">
+          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
             {device.last_seen
               ? `Last seen: ${new Date(device.last_seen).toLocaleString()}`
               : 'Waiting for connection...'}

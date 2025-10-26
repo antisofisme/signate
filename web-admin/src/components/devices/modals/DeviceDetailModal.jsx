@@ -251,7 +251,7 @@ export default function DeviceDetailModal({ device: initialDevice, onClose, onEd
       bodyClassName="flex-1 overflow-hidden flex flex-col p-0"
     >
       {/* Custom header with gradient and icon - Fixed */}
-      <div className="flex items-center justify-between p-6 bg-gradient-to-r from-blue-50 to-purple-50 border-b flex-shrink-0">
+      <div className="flex items-center justify-between p-6 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
         <div className="flex items-center gap-3">
           {device.device_uuid ? (
             <Tv className="w-6 h-6 text-blue-600" />
@@ -259,7 +259,7 @@ export default function DeviceDetailModal({ device: initialDevice, onClose, onEd
             <Monitor className="w-6 h-6 text-green-600" />
           )}
           <div>
-            <h2 className="text-2xl font-bold text-gray-800">{device.device_name}</h2>
+            <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100">{device.device_name}</h2>
             <div className="flex items-center gap-2 mt-1">
               {isOnline ? (
                 <>
@@ -277,7 +277,7 @@ export default function DeviceDetailModal({ device: initialDevice, onClose, onEd
         </div>
         <button
           onClick={onClose}
-          className="text-gray-400 hover:text-gray-600 transition-colors p-1 rounded-lg hover:bg-gray-100"
+          className="text-gray-400 dark:text-gray-500 hover:text-gray-600 transition-colors p-1 rounded-lg hover:bg-gray-100"
           aria-label="Close modal"
         >
           <X className="w-6 h-6" />
@@ -338,7 +338,7 @@ export default function DeviceDetailModal({ device: initialDevice, onClose, onEd
         {/* Tags Section */}
         <div className="mb-6">
           <div className="flex items-center justify-between mb-3">
-            <h3 className="text-lg font-bold text-gray-800 flex items-center gap-2">
+            <h3 className="text-lg font-bold text-gray-800 dark:text-gray-100 flex items-center gap-2">
               <TagIcon className="w-5 h-5 text-purple-600" />
               Tags
             </h3>
@@ -353,7 +353,7 @@ export default function DeviceDetailModal({ device: initialDevice, onClose, onEd
           {/* Tag Selector (when adding) */}
           {showTagSelector && availableTags.length > 0 && (
             <div className="mb-3 p-3 bg-blue-50 rounded-lg border border-blue-200">
-              <p className="text-sm text-gray-700 mb-2 font-medium">Select a tag to add:</p>
+              <p className="text-sm text-gray-700 dark:text-gray-300 mb-2 font-medium">Select a tag to add:</p>
               <div className="flex flex-wrap gap-2">
                 {availableTags.map(tag => (
                   <button
@@ -392,14 +392,14 @@ export default function DeviceDetailModal({ device: initialDevice, onClose, onEd
               ))}
             </div>
           ) : (
-            <p className="text-sm text-gray-500 italic">No tags assigned</p>
+            <p className="text-sm text-gray-500 dark:text-gray-400 italic">No tags assigned</p>
           )}
         </div>
 
         {/* Playlists Section */}
         <div className="mb-6">
           <div className="flex items-center justify-between mb-3">
-            <h3 className="text-lg font-bold text-gray-800 flex items-center gap-2">
+            <h3 className="text-lg font-bold text-gray-800 dark:text-gray-100 flex items-center gap-2">
               <List className="w-5 h-5 text-indigo-600" />
               Playlists
             </h3>
@@ -414,7 +414,7 @@ export default function DeviceDetailModal({ device: initialDevice, onClose, onEd
           {/* Playlist Selector (when adding) */}
           {showPlaylistSelector && availablePlaylists.length > 0 && (
             <div className="mb-3 p-3 bg-indigo-50 rounded-lg border border-indigo-200">
-              <p className="text-sm text-gray-700 mb-2 font-medium">Select a playlist to add:</p>
+              <p className="text-sm text-gray-700 dark:text-gray-300 mb-2 font-medium">Select a playlist to add:</p>
               <div className="space-y-2">
                 {availablePlaylists.map(playlist => (
                   <button
@@ -423,16 +423,16 @@ export default function DeviceDetailModal({ device: initialDevice, onClose, onEd
                       assignPlaylistMutation.mutate(playlist.id)
                       setShowPlaylistSelector(false)
                     }}
-                    className="w-full text-left px-3 py-2 bg-white rounded-lg border border-gray-200 hover:border-indigo-500 hover:bg-indigo-50 transition-colors"
+                    className="w-full text-left px-3 py-2 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 hover:border-indigo-500 hover:bg-indigo-50 transition-colors"
                   >
                     <div className="flex items-center justify-between">
-                      <span className="font-medium text-gray-800">{playlist.name}</span>
+                      <span className="font-medium text-gray-800 dark:text-gray-100">{playlist.name}</span>
                       {playlist.is_active && (
-                        <span className="text-xs px-2 py-0.5 bg-green-100 text-green-700 rounded-full">Active</span>
+                        <span className="text-xs px-2 py-0.5 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 rounded-full">Active</span>
                       )}
                     </div>
                     {playlist.description && (
-                      <p className="text-xs text-gray-500 mt-1">{playlist.description}</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{playlist.description}</p>
                     )}
                   </button>
                 ))}
@@ -446,18 +446,18 @@ export default function DeviceDetailModal({ device: initialDevice, onClose, onEd
               {device.playlists.map(playlist => (
                 <div
                   key={playlist.id}
-                  className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-200"
+                  className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700"
                 >
                   <div className="flex-1">
                     <div className="flex items-center gap-2">
-                      <span className="font-medium text-gray-800">{playlist.name}</span>
+                      <span className="font-medium text-gray-800 dark:text-gray-100">{playlist.name}</span>
                       {playlist.is_active && (
-                        <span className="text-xs px-2 py-0.5 bg-green-100 text-green-700 rounded-full">Active</span>
+                        <span className="text-xs px-2 py-0.5 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 rounded-full">Active</span>
                       )}
-                      <span className="text-xs text-gray-500">Priority: {playlist.priority}</span>
+                      <span className="text-xs text-gray-500 dark:text-gray-400">Priority: {playlist.priority}</span>
                     </div>
                     {playlist.description && (
-                      <p className="text-xs text-gray-500 mt-1">{playlist.description}</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{playlist.description}</p>
                     )}
                   </div>
                   <button
@@ -471,13 +471,13 @@ export default function DeviceDetailModal({ device: initialDevice, onClose, onEd
               ))}
             </div>
           ) : (
-            <p className="text-sm text-gray-500 italic">No playlists assigned</p>
+            <p className="text-sm text-gray-500 dark:text-gray-400 italic">No playlists assigned</p>
           )}
         </div>
 
         {/* Content Section */}
         <div className="mb-6">
-          <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
+          <h3 className="text-lg font-bold text-gray-800 dark:text-gray-100 mb-4 flex items-center gap-2">
             <Film className="w-5 h-5 text-pink-600" />
             Content
           </h3>
@@ -485,7 +485,7 @@ export default function DeviceDetailModal({ device: initialDevice, onClose, onEd
           {/* Direct Assignments Subsection */}
           <div className="mb-4">
             <div className="flex items-center justify-between mb-3">
-              <h4 className="font-semibold text-gray-700">Direct Assignments</h4>
+              <h4 className="font-semibold text-gray-700 dark:text-gray-300">Direct Assignments</h4>
               <button
                 onClick={() => setShowContentSelector(!showContentSelector)}
                 className="text-blue-600 hover:text-blue-800 text-sm font-medium"
@@ -497,7 +497,7 @@ export default function DeviceDetailModal({ device: initialDevice, onClose, onEd
             {/* Content Selector (when adding) */}
             {showContentSelector && availableContent.length > 0 && (
               <div className="mb-3 p-3 bg-pink-50 rounded-lg border border-pink-200">
-                <p className="text-sm text-gray-700 mb-2 font-medium">Select content to add:</p>
+                <p className="text-sm text-gray-700 dark:text-gray-300 mb-2 font-medium">Select content to add:</p>
                 <div className="space-y-2 max-h-60 overflow-y-auto">
                   {availableContent.map(content => (
                     <button
@@ -510,16 +510,16 @@ export default function DeviceDetailModal({ device: initialDevice, onClose, onEd
                         })
                         setShowContentSelector(false)
                       }}
-                      className="w-full text-left px-3 py-2 bg-white rounded-lg border border-gray-200 hover:border-pink-500 hover:bg-pink-50 transition-colors"
+                      className="w-full text-left px-3 py-2 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 hover:border-pink-500 hover:bg-pink-50 transition-colors"
                     >
                       <div className="flex items-center justify-between">
                         <div className="flex-1">
-                          <span className="font-medium text-gray-800">{content.title}</span>
+                          <span className="font-medium text-gray-800 dark:text-gray-100">{content.title}</span>
                           <div className="flex items-center gap-2 mt-1">
-                            <span className="text-xs px-2 py-0.5 bg-gray-100 text-gray-600 rounded">
+                            <span className="text-xs px-2 py-0.5 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded">
                               {content.content_type}
                             </span>
-                            <span className="text-xs text-gray-500">{content.duration}s</span>
+                            <span className="text-xs text-gray-500 dark:text-gray-400">{content.duration}s</span>
                           </div>
                         </div>
                       </div>
@@ -537,28 +537,28 @@ export default function DeviceDetailModal({ device: initialDevice, onClose, onEd
                   .map((assignment) => (
                   <div
                     key={assignment.id}
-                    className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-200"
+                    className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700"
                   >
                     <div className="flex-1">
                       <div className="flex items-center gap-2">
-                        <span className="font-medium text-gray-800">
+                        <span className="font-medium text-gray-800 dark:text-gray-100">
                           {assignment.content?.title || `Content #${assignment.content_id}`}
                         </span>
                         {!assignment.is_active && (
-                          <span className="text-xs px-2 py-0.5 bg-gray-100 text-gray-500 rounded">Inactive</span>
+                          <span className="text-xs px-2 py-0.5 bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 rounded">Inactive</span>
                         )}
-                        <span className="text-xs px-2 py-0.5 bg-blue-100 text-blue-700 rounded">
+                        <span className="text-xs px-2 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 rounded">
                           Priority: {assignment.priority}
                         </span>
                       </div>
                       {assignment.content && (
                         <div className="flex items-center gap-2 mt-1">
-                          <span className="text-xs px-2 py-0.5 bg-gray-100 text-gray-600 rounded">
+                          <span className="text-xs px-2 py-0.5 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded">
                             {assignment.content.content_type}
                           </span>
-                          <span className="text-xs text-gray-500">{assignment.content.duration}s</span>
+                          <span className="text-xs text-gray-500 dark:text-gray-400">{assignment.content.duration}s</span>
                           {assignment.notes && (
-                            <span className="text-xs text-gray-500">• {assignment.notes}</span>
+                            <span className="text-xs text-gray-500 dark:text-gray-400">• {assignment.notes}</span>
                           )}
                         </div>
                       )}
@@ -574,17 +574,17 @@ export default function DeviceDetailModal({ device: initialDevice, onClose, onEd
                 ))}
               </div>
             ) : (
-              <p className="text-sm text-gray-500 italic">No direct content assigned</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400 italic">No direct content assigned</p>
             )}
           </div>
 
           {/* Tag-based Content Subsection (Read-only) */}
           <div className="border-t pt-4">
-            <h4 className="font-semibold text-gray-700 mb-3">Inherited from Tags</h4>
+            <h4 className="font-semibold text-gray-700 dark:text-gray-300 mb-3">Inherited from Tags</h4>
             {tagContentQueries.data && tagContentQueries.data.length > 0 ? (
               <div className="space-y-3">
                 {tagContentQueries.data.map(({ tag, content }) => (
-                  <div key={tag.id} className="bg-gray-50 rounded-lg p-3 border border-gray-200">
+                  <div key={tag.id} className="bg-gray-50 dark:bg-gray-900 rounded-lg p-3 border border-gray-200 dark:border-gray-700">
                     <div className="flex items-center gap-2 mb-2">
                       <span
                         className="px-2 py-1 rounded-full text-xs font-medium text-white"
@@ -592,7 +592,7 @@ export default function DeviceDetailModal({ device: initialDevice, onClose, onEd
                       >
                         {tag.tag_name}
                       </span>
-                      <span className="text-xs text-gray-500">
+                      <span className="text-xs text-gray-500 dark:text-gray-400">
                         {content && content.length > 0
                           ? `${content.length} content item${content.length !== 1 ? 's' : ''}`
                           : 'No content'
@@ -602,24 +602,24 @@ export default function DeviceDetailModal({ device: initialDevice, onClose, onEd
                     {content && content.length > 0 ? (
                       <div className="space-y-1">
                         {content.slice(0, 3).map((assignment) => (
-                          <div key={assignment.id} className="text-sm text-gray-700 flex items-center gap-2">
+                          <div key={assignment.id} className="text-sm text-gray-700 dark:text-gray-300 flex items-center gap-2">
                             <span className="w-1.5 h-1.5 rounded-full bg-gray-400"></span>
                             <span>{assignment.content?.title || `Content #${assignment.content_id}`}</span>
                             {assignment.content && (
-                              <span className="text-xs text-gray-500">
+                              <span className="text-xs text-gray-500 dark:text-gray-400">
                                 ({assignment.content.content_type}, {assignment.content.duration}s)
                               </span>
                             )}
                           </div>
                         ))}
                         {content.length > 3 && (
-                          <p className="text-xs text-gray-500 ml-4">
+                          <p className="text-xs text-gray-500 dark:text-gray-400 ml-4">
                             +{content.length - 3} more...
                           </p>
                         )}
                       </div>
                     ) : (
-                      <p className="text-xs text-gray-500 italic ml-4">
+                      <p className="text-xs text-gray-500 dark:text-gray-400 italic ml-4">
                         No content assigned to this tag
                       </p>
                     )}
@@ -627,63 +627,63 @@ export default function DeviceDetailModal({ device: initialDevice, onClose, onEd
                 ))}
               </div>
             ) : (
-              <p className="text-sm text-gray-500 italic">No tags assigned to this device</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400 italic">No tags assigned to this device</p>
             )}
           </div>
         </div>
 
         {/* Device Information Section */}
         <div className="border-t pt-6">
-          <h3 className="text-lg font-bold text-gray-800 mb-4">Device Information</h3>
-          <div className="space-y-3 bg-gray-50 rounded-lg p-4">
+          <h3 className="text-lg font-bold text-gray-800 dark:text-gray-100 mb-4">Device Information</h3>
+          <div className="space-y-3 bg-gray-50 dark:bg-gray-800 dark:bg-gray-900 rounded-lg p-4">
             <div className="flex items-center">
-              <span className="w-48 font-medium text-gray-700">Device ID:</span>
-              <span className="text-gray-900 font-mono">{device.id}</span>
+              <span className="w-48 font-medium text-gray-700 dark:text-gray-300">Device ID:</span>
+              <span className="text-gray-900 dark:text-white font-mono">{device.id}</span>
             </div>
             <div className="flex items-center">
-              <span className="w-48 font-medium text-gray-700">Device Type:</span>
-              <span className="text-gray-900">{device.device_type.toUpperCase()}</span>
+              <span className="w-48 font-medium text-gray-700 dark:text-gray-300">Device Type:</span>
+              <span className="text-gray-900 dark:text-white">{device.device_type.toUpperCase()}</span>
             </div>
             <div className="flex items-center">
-              <span className="w-48 font-medium text-gray-700">IP Address:</span>
-              <span className="text-gray-900 font-mono">{device.ip_address || '-'}</span>
+              <span className="w-48 font-medium text-gray-700 dark:text-gray-300">IP Address:</span>
+              <span className="text-gray-900 dark:text-white font-mono">{device.ip_address || '-'}</span>
             </div>
             {device.device_uuid && (
               <div className="flex items-center">
-                <span className="w-48 font-medium text-gray-700">Device UUID:</span>
-                <span className="text-gray-900 font-mono text-sm bg-blue-50 px-2 py-1 rounded">
+                <span className="w-48 font-medium text-gray-700 dark:text-gray-300">Device UUID:</span>
+                <span className="text-gray-900 dark:text-white font-mono text-sm bg-blue-50 px-2 py-1 rounded">
                   {device.device_uuid}
                 </span>
               </div>
             )}
             {device.unique_code && (
               <div className="flex items-center">
-                <span className="w-48 font-medium text-gray-700">Activation Code:</span>
-                <span className="text-gray-900 font-mono font-bold text-lg text-green-600">
+                <span className="w-48 font-medium text-gray-700 dark:text-gray-300">Activation Code:</span>
+                <span className="text-gray-900 dark:text-white font-mono font-bold text-lg text-green-600">
                   {device.unique_code}
                 </span>
               </div>
             )}
             <div className="flex items-center">
-              <span className="w-48 font-medium text-gray-700">Status:</span>
+              <span className="w-48 font-medium text-gray-700 dark:text-gray-300">Status:</span>
               <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                device.status === 'active' ? 'bg-green-100 text-green-700' :
-                device.status === 'pending' ? 'bg-yellow-100 text-yellow-700' :
-                'bg-gray-100 text-gray-700'
+                device.status === 'active' ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400' :
+                device.status === 'pending' ? 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400' :
+                'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
               }`}>
                 {device.status}
               </span>
             </div>
             <div className="flex items-center">
-              <span className="w-48 font-medium text-gray-700">Last Seen:</span>
-              <span className="text-gray-900">
+              <span className="w-48 font-medium text-gray-700 dark:text-gray-300">Last Seen:</span>
+              <span className="text-gray-900 dark:text-white">
                 {device.last_seen ? new Date(device.last_seen).toLocaleString() : 'Never'}
               </span>
             </div>
             {device.screen_width && device.screen_height && (
               <div className="flex items-center">
-                <span className="w-48 font-medium text-gray-700">Screen Resolution:</span>
-                <span className="text-gray-900">{device.screen_width}x{device.screen_height}</span>
+                <span className="w-48 font-medium text-gray-700 dark:text-gray-300">Screen Resolution:</span>
+                <span className="text-gray-900 dark:text-white">{device.screen_width}x{device.screen_height}</span>
               </div>
             )}
           </div>
@@ -691,7 +691,7 @@ export default function DeviceDetailModal({ device: initialDevice, onClose, onEd
       </div>
 
       {/* Footer - Fixed */}
-      <div className="p-6 border-t bg-gray-50 flex-shrink-0">
+      <div className="p-6 border-t bg-gray-50 dark:bg-gray-800 dark:bg-gray-900 flex-shrink-0">
         <ModalFooter align="right">
           <Button onClick={onClose} variant="primary" className="min-w-[120px]">
             Close

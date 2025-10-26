@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { playlistsAPI } from '../services/api'
 import { ListVideo, Plus, Trash2, Edit2, Play, Users, Copy, Monitor, Search } from 'lucide-react'
 import { showToast } from '../utils/toast'
-import { Button, PageHeader, FormInput } from '../components/shared'
+import { Button, PageHeader, FormInput, LoadingSkeleton } from '../components/shared'
 import PlaylistFormModal from '../components/playlists/modals/PlaylistFormModal'
 import PlaylistContentModal from '../components/playlists/modals/PlaylistContentModal'
 import PlaylistAssignmentModal from '../components/playlists/modals/PlaylistAssignmentModal'
@@ -174,7 +174,7 @@ export default function Playlists() {
   }, [playlistsData?.items])
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-slate-50 dark:bg-gray-900">
       <PageHeader
         title="Playlists"
         description="Organize content into playlists for scheduled playback"
@@ -201,7 +201,7 @@ export default function Playlists() {
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value)}
-              className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value="newest">Terbaru</option>
               <option value="oldest">Terlama</option>
@@ -221,17 +221,17 @@ export default function Playlists() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           {/* Loading State */}
           {isLoading && (
-            <div className="flex justify-center items-center py-20">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <LoadingSkeleton variant="grid" count={6} />
             </div>
           )}
 
           {/* Empty State */}
           {!isLoading && (!playlistsData?.items || playlistsData.items.length === 0) && (
-            <div className="bg-white rounded-xl shadow-md p-12 text-center">
-              <ListVideo className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-xl font-semibold text-gray-800 mb-2">No Playlists Yet</h3>
-              <p className="text-gray-600 mb-6">
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-md p-12 text-center">
+              <ListVideo className="w-16 h-16 text-gray-400 dark:text-gray-500 mx-auto mb-4" />
+              <h3 className="text-xl font-semibold text-gray-800 dark:text-gray-100 mb-2">No Playlists Yet</h3>
+              <p className="text-gray-600 dark:text-gray-400 mb-6">
                 Create your first playlist to organize content for scheduled playback
               </p>
               <Button
@@ -246,22 +246,22 @@ export default function Playlists() {
 
           {/* Playlists Grid */}
           {!isLoading && filteredPlaylists.length > 0 && (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-fade-in">
           {filteredPlaylists.map((playlist) => (
             <div
               key={playlist.id}
-              className="bg-white rounded-xl shadow-lg border border-gray-300 hover:shadow-xl transition-shadow overflow-hidden"
+              className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-300 dark:border-gray-600 hover:shadow-xl transition-shadow overflow-hidden"
             >
               {/* Playlist Header */}
-              <div className="p-6 border-b border-gray-200">
+              <div className="p-6 border-b border-gray-200 dark:border-gray-700">
                 <div className="flex items-start justify-between mb-3">
                   <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
-                      <ListVideo className="w-6 h-6 text-purple-600" />
+                    <div className="w-12 h-12 bg-purple-100 dark:bg-purple-900/30 rounded-lg flex items-center justify-center">
+                      <ListVideo className="w-6 h-6 text-purple-600 dark:text-purple-400" />
                     </div>
                     <div>
-                      <h3 className="font-bold text-gray-800 text-lg">{playlist.name}</h3>
-                      <p className="text-sm text-gray-600">
+                      <h3 className="font-bold text-gray-800 dark:text-gray-100 text-lg">{playlist.name}</h3>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">
                         {playlist.content_count || 0} items
                       </p>
                     </div>
@@ -269,26 +269,26 @@ export default function Playlists() {
                 </div>
 
                 {playlist.description && (
-                  <p className="text-sm text-gray-600 line-clamp-2">
+                  <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2">
                     {playlist.description}
                   </p>
                 )}
               </div>
 
               {/* Playlist Stats */}
-              <div className="px-6 py-4 bg-gray-50">
+              <div className="px-6 py-4 bg-gray-50 dark:bg-gray-700">
                 <div className="grid grid-cols-2 gap-4 text-sm">
                   <div>
-                    <p className="text-gray-500">Duration</p>
-                    <p className="font-semibold text-gray-800">
+                    <p className="text-gray-500 dark:text-gray-400">Duration</p>
+                    <p className="font-semibold text-gray-800 dark:text-gray-100">
                       {playlist.total_duration ? `${Math.floor(playlist.total_duration / 60)}m` : 'N/A'}
                     </p>
                   </div>
                   <div>
-                    <p className="text-gray-500">Status</p>
+                    <p className="text-gray-500 dark:text-gray-400">Status</p>
                     <span className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${
                       playlist.is_active
-                        ? 'bg-green-100 text-green-700'
+                        ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
                         : 'bg-gray-100 text-gray-700'
                     }`}>
                       {playlist.is_active ? 'Active' : 'Inactive'}

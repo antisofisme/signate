@@ -205,10 +205,10 @@ export default function DeviceLogsModal({ device, onClose }) {
 
   const getLogLevelColor = (level) => {
     switch (level) {
-      case 'error': return 'text-red-600 bg-red-50'
-      case 'warn': return 'text-yellow-600 bg-yellow-50'
-      case 'info': return 'text-blue-600 bg-blue-50'
-      default: return 'text-gray-600 bg-gray-50'
+      case 'error': return 'text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/30'
+      case 'warn': return 'text-yellow-600 dark:text-yellow-400 bg-yellow-50 dark:bg-yellow-900/30'
+      case 'info': return 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30'
+      default: return 'text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-700'
     }
   }
 
@@ -221,18 +221,18 @@ export default function DeviceLogsModal({ device, onClose }) {
       bodyClassName="flex-1 overflow-hidden flex flex-col p-0"
     >
       {/* Custom Header - Fixed */}
-      <div className="flex justify-between items-center p-6 bg-white border-b flex-shrink-0">
+      <div className="flex justify-between items-center p-6 bg-white dark:bg-gray-800 border-b flex-shrink-0">
         <div>
           <h2 className="text-2xl font-bold">Device Logs</h2>
-          <p className="text-gray-600 mt-1">{device.device_name} (ID: {device.id})</p>
+          <p className="text-gray-600 dark:text-gray-400 mt-1">{device.device_name} (ID: {device.id})</p>
           <div className="flex items-center gap-2 mt-2">
             <div className={`w-3 h-3 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`}></div>
-            <span className="text-sm text-gray-600">{connectionStatus}</span>
+            <span className="text-sm text-gray-600 dark:text-gray-400">{connectionStatus}</span>
           </div>
         </div>
         <button
           onClick={onClose}
-          className="text-gray-400 hover:text-gray-600 transition-colors p-1 rounded-lg hover:bg-gray-100"
+          className="text-gray-400 dark:text-gray-500 hover:text-gray-600 transition-colors p-1 rounded-lg hover:bg-gray-100"
           aria-label="Close modal"
         >
           <X className="w-6 h-6" />
@@ -240,9 +240,9 @@ export default function DeviceLogsModal({ device, onClose }) {
       </div>
 
       {/* Filter Section - Fixed */}
-      <div className="flex items-center justify-between p-4 border-b bg-gray-50 flex-shrink-0">
+      <div className="flex items-center justify-between p-4 border-b bg-gray-50 dark:bg-gray-800 dark:bg-gray-900 flex-shrink-0">
         <div className="flex items-center gap-4">
-          <span className="text-sm font-medium text-gray-700">Filter:</span>
+          <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Filter:</span>
           {['all', 'log', 'info', 'warn', 'error'].map(level => {
             const count = getLogCount(level)
             return (
@@ -250,7 +250,7 @@ export default function DeviceLogsModal({ device, onClose }) {
                 key={level}
                 onClick={() => setSelectedLevel(level)}
                 className={`inline-flex items-baseline gap-1 px-3 py-1 rounded text-sm font-medium transition-colors ${
-                  selectedLevel === level ? 'bg-blue-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-100'
+                  selectedLevel === level ? 'bg-blue-600 text-white' : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600'
                 }`}
               >
                 <span>{level.toUpperCase()}</span>
@@ -270,13 +270,13 @@ export default function DeviceLogsModal({ device, onClose }) {
       {/* Logs View - Scrollable */}
       <div className="flex-1 overflow-y-auto p-4 bg-gray-900 text-gray-100 font-mono text-sm">
         {filteredLogs.length === 0 ? (
-          <div className="text-center text-gray-500 py-8">
+          <div className="text-center text-gray-500 dark:text-gray-400 py-8">
             {logs.length === 0 ? 'Waiting for logs...' : 'No logs matching filter'}
           </div>
         ) : (
           filteredLogs.map((log, index) => (
             <div key={log.id || index} className="mb-2 flex items-start gap-3 hover:bg-gray-800 p-2 rounded">
-              <span className="text-gray-500 text-xs whitespace-nowrap">
+              <span className="text-gray-500 dark:text-gray-400 text-xs whitespace-nowrap">
                 {formatLocalTime(log.timestamp)}
               </span>
               <span className={`px-2 py-0.5 rounded text-xs font-bold ${getLogLevelColor(log.log_level)}`}>
@@ -293,10 +293,10 @@ export default function DeviceLogsModal({ device, onClose }) {
       </div>
 
       {/* Footer - Fixed */}
-      <div className="p-4 border-t bg-gray-50 flex-shrink-0">
+      <div className="p-4 border-t bg-gray-50 dark:bg-gray-800 dark:bg-gray-900 flex-shrink-0">
         <div className="flex justify-between items-center mb-3">
-          <span className="text-sm text-gray-600">Total logs: {logs.length} | Filtered: {filteredLogs.length}</span>
-          <span className="text-xs text-gray-600">Real-time streaming via WebSocket</span>
+          <span className="text-sm text-gray-600 dark:text-gray-400">Total logs: {logs.length} | Filtered: {filteredLogs.length}</span>
+          <span className="text-xs text-gray-600 dark:text-gray-400">Real-time streaming via WebSocket</span>
         </div>
         <div className="flex items-center justify-end gap-2">
           <Button

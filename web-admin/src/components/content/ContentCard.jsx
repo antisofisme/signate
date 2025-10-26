@@ -35,7 +35,7 @@ const ContentCard = memo(function ContentCard({
   return (
     <div
       onClick={() => onPreview(content)}
-      className={`bg-white rounded-xl shadow-lg border border-gray-300 overflow-hidden hover:shadow-xl transition-all cursor-pointer relative ${
+      className={`bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-300 dark:border-gray-600 overflow-hidden hover:shadow-xl transition-all cursor-pointer relative ${
         isSelected ? 'ring-4 ring-blue-500' : ''
       }`}
     >
@@ -70,38 +70,38 @@ const ContentCard = memo(function ContentCard({
 
       {/* Info */}
       <div className="p-3">
-        <h3 className="font-bold text-gray-800 mb-1 text-sm truncate">{content.title}</h3>
+        <h3 className="font-bold text-gray-800 dark:text-gray-100 mb-1 text-sm truncate">{content.title}</h3>
 
         {/* Metadata */}
         <div className="space-y-1 mb-2">
           {content.resolution && (
-            <div className="flex items-center gap-1 text-xs text-gray-600">
+            <div className="flex items-center gap-1 text-xs text-gray-600 dark:text-gray-400">
               <span className="font-medium">📐</span>
               <span>{content.resolution}</span>
             </div>
           )}
           {content.codec && (
-            <div className="flex items-center gap-1 text-xs text-gray-600">
+            <div className="flex items-center gap-1 text-xs text-gray-600 dark:text-gray-400">
               <span className="font-medium">🎞️</span>
               <span className="uppercase">{content.codec}</span>
               {content.fps && <span>@ {content.fps}fps</span>}
             </div>
           )}
           {content.bitrate && (
-            <div className="flex items-center gap-1 text-xs text-gray-600">
+            <div className="flex items-center gap-1 text-xs text-gray-600 dark:text-gray-400">
               <span className="font-medium">⚡</span>
               <span>{content.bitrate} kbps</span>
             </div>
           )}
           {content.file_size && (
-            <div className="flex items-center gap-1 text-xs text-gray-600">
+            <div className="flex items-center gap-1 text-xs text-gray-600 dark:text-gray-400">
               <span className="font-medium">💾</span>
               <span>{(content.file_size / 1024 / 1024).toFixed(1)} MB</span>
             </div>
           )}
         </div>
 
-        <div className="flex items-center justify-between text-xs text-gray-500 mb-2 pt-2 border-t">
+        <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400 mb-2 pt-2 border-t border-gray-200 dark:border-gray-700">
           <span className="font-medium">{content.content_type.toUpperCase()}</span>
           <span>{content.duration}s</span>
         </div>

@@ -72,65 +72,65 @@ export default function SystemTab() {
     <div className="space-y-6">
       {/* System Information */}
       <div>
-        <h3 className="text-lg font-semibold text-gray-800 mb-4">System Information</h3>
+        <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-4">System Information</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {/* Version */}
-          <div className="bg-white border border-gray-200 rounded-lg p-4">
+          <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4">
             <div className="flex items-center gap-3 mb-2">
               <Package className="w-5 h-5 text-blue-600" />
-              <p className="font-medium text-gray-800">Version</p>
+              <p className="font-medium text-gray-800 dark:text-gray-100">Version</p>
             </div>
-            <p className="text-2xl font-bold text-gray-900">{systemInfo?.version || 'v1.0.0'}</p>
-            <p className="text-sm text-gray-500">Digital Signage System</p>
+            <p className="text-2xl font-bold text-gray-900 dark:text-white">{systemInfo?.version || 'v1.0.0'}</p>
+            <p className="text-sm text-gray-500 dark:text-gray-400">Digital Signage System</p>
           </div>
 
           {/* Uptime */}
-          <div className="bg-white border border-gray-200 rounded-lg p-4">
+          <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4">
             <div className="flex items-center gap-3 mb-2">
               <Clock className="w-5 h-5 text-green-600" />
-              <p className="font-medium text-gray-800">Uptime</p>
+              <p className="font-medium text-gray-800 dark:text-gray-100">Uptime</p>
             </div>
-            <p className="text-2xl font-bold text-gray-900">
+            <p className="text-2xl font-bold text-gray-900 dark:text-white">
               {systemInfo?.uptime_hours ? `${Math.floor(systemInfo.uptime_hours / 24)}d ${systemInfo.uptime_hours % 24}h` : 'N/A'}
             </p>
-            <p className="text-sm text-gray-500">System running</p>
+            <p className="text-sm text-gray-500 dark:text-gray-400">System running</p>
           </div>
 
           {/* Database Size */}
-          <div className="bg-white border border-gray-200 rounded-lg p-4">
+          <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4">
             <div className="flex items-center gap-3 mb-2">
               <HardDrive className="w-5 h-5 text-purple-600" />
-              <p className="font-medium text-gray-800">Database Size</p>
+              <p className="font-medium text-gray-800 dark:text-gray-100">Database Size</p>
             </div>
-            <p className="text-2xl font-bold text-gray-900">
+            <p className="text-2xl font-bold text-gray-900 dark:text-white">
               {systemInfo?.database_size ? formatFileSize(systemInfo.database_size) : 'N/A'}
             </p>
-            <p className="text-sm text-gray-500">Total database storage</p>
+            <p className="text-sm text-gray-500 dark:text-gray-400">Total database storage</p>
           </div>
 
           {/* Storage Used */}
-          <div className="bg-white border border-gray-200 rounded-lg p-4">
+          <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4">
             <div className="flex items-center gap-3 mb-2">
               <Server className="w-5 h-5 text-orange-600" />
-              <p className="font-medium text-gray-800">Media Storage</p>
+              <p className="font-medium text-gray-800 dark:text-gray-100">Media Storage</p>
             </div>
-            <p className="text-2xl font-bold text-gray-900">
+            <p className="text-2xl font-bold text-gray-900 dark:text-white">
               {systemInfo?.media_storage_used ? formatFileSize(systemInfo.media_storage_used) : 'N/A'}
             </p>
-            <p className="text-sm text-gray-500">Content files storage</p>
+            <p className="text-sm text-gray-500 dark:text-gray-400">Content files storage</p>
           </div>
         </div>
       </div>
 
       {/* Database Management */}
       <div>
-        <h3 className="text-lg font-semibold text-gray-800 mb-4">Database Management</h3>
-        <div className="bg-white border border-gray-200 rounded-lg p-4 space-y-4">
+        <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-4">Database Management</h3>
+        <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4 space-y-4">
           {/* Backup */}
           <div className="flex items-center justify-between">
             <div>
-              <p className="font-medium text-gray-800">Backup Database</p>
-              <p className="text-sm text-gray-600">Download complete database backup (SQL dump)</p>
+              <p className="font-medium text-gray-800 dark:text-gray-100">Backup Database</p>
+              <p className="text-sm text-gray-600 dark:text-gray-400">Download complete database backup (SQL dump)</p>
             </div>
             <Button
               variant="primary"
@@ -142,11 +142,11 @@ export default function SystemTab() {
             </Button>
           </div>
 
-          <div className="border-t border-gray-200 pt-4">
+          <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="font-medium text-gray-800">Restore Database</p>
-                <p className="text-sm text-gray-600">Restore from backup file (SQL dump)</p>
+                <p className="font-medium text-gray-800 dark:text-gray-100">Restore Database</p>
+                <p className="text-sm text-gray-600 dark:text-gray-400">Restore from backup file (SQL dump)</p>
               </div>
               <Button
                 variant="secondary"
@@ -163,12 +163,12 @@ export default function SystemTab() {
 
       {/* Cache Management */}
       <div>
-        <h3 className="text-lg font-semibold text-gray-800 mb-4">Cache Management</h3>
-        <div className="bg-white border border-gray-200 rounded-lg p-4">
+        <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-4">Cache Management</h3>
+        <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4">
           <div className="flex items-center justify-between">
             <div>
-              <p className="font-medium text-gray-800">Clear System Cache</p>
-              <p className="text-sm text-gray-600">Clear cached data to free up memory and resolve issues</p>
+              <p className="font-medium text-gray-800 dark:text-gray-100">Clear System Cache</p>
+              <p className="text-sm text-gray-600 dark:text-gray-400">Clear cached data to free up memory and resolve issues</p>
               <p className="text-xs text-orange-600 mt-1">⚠️ This will temporarily slow down the system</p>
             </div>
             <Button
@@ -185,11 +185,11 @@ export default function SystemTab() {
 
       {/* System Logs (Future Feature) */}
       <div>
-        <h3 className="text-lg font-semibold text-gray-800 mb-4">System Logs</h3>
-        <div className="bg-gray-50 border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
-          <Server className="w-12 h-12 text-gray-400 mx-auto mb-3" />
-          <p className="text-gray-600 font-medium">System Logs Viewer</p>
-          <p className="text-sm text-gray-500 mb-4">View and export system logs</p>
+        <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-4">System Logs</h3>
+        <div className="bg-gray-50 dark:bg-gray-900 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-8 text-center">
+          <Server className="w-12 h-12 text-gray-400 dark:text-gray-500 mx-auto mb-3" />
+          <p className="text-gray-600 dark:text-gray-400 font-medium">System Logs Viewer</p>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">View and export system logs</p>
           <Button variant="secondary" disabled>
             Coming Soon
           </Button>

@@ -41,7 +41,7 @@ export default function TagStatsModal({ tag, onClose }) {
         <TagStatsCard tag={tag} />
 
         {/* Info Box */}
-        <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 text-sm text-gray-700">
+        <div className="bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg p-3 text-sm text-gray-700 dark:text-gray-300">
           <p className="font-semibold mb-1">📊 About These Statistics</p>
           <ul className="list-disc list-inside space-y-1 text-xs">
             <li>Device statistics are updated in real-time based on last heartbeat</li>

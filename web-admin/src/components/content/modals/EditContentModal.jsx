@@ -6,8 +6,8 @@ import { showToast } from '../../../utils/toast'
 import { Modal, ModalFooter, Button } from '../../shared'
 
 /**
- * AssignModal Component
- * Modal for editing content details and managing device/tag assignments
+ * EditContentModal Component
+ * Modal for editing individual content details and managing device/tag assignments
  *
  * Features:
  * - Edit content metadata (title, description, duration)
@@ -22,7 +22,7 @@ import { Modal, ModalFooter, Button } from '../../shared'
  * @param {Function} onClose - Callback when modal should close
  * @param {Function} onSubmit - Optional callback after successful save
  */
-export default function AssignModal({ content, onClose, onSubmit }) {
+export default function EditContentModal({ content, onClose, onSubmit }) {
   const queryClient = useQueryClient()
   const [saving, setSaving] = useState(false)
 
@@ -207,7 +207,7 @@ export default function AssignModal({ content, onClose, onSubmit }) {
   if (assignmentsLoading) {
     return (
       <Modal isOpen={true} onClose={onClose} size="2xl">
-        <p className="text-center text-gray-600">Loading assignments...</p>
+        <p className="text-center text-gray-600 dark:text-gray-400">Loading assignments...</p>
       </Modal>
     )
   }
@@ -221,14 +221,14 @@ export default function AssignModal({ content, onClose, onSubmit }) {
       bodyClassName="flex-1 overflow-hidden flex flex-col p-0"
     >
       {/* Custom Header - Fixed */}
-      <div className="flex items-center justify-between px-6 py-4 bg-white border-b flex-shrink-0">
+      <div className="flex items-center justify-between px-6 py-4 bg-white dark:bg-gray-800 border-b flex-shrink-0">
         <div>
-          <h2 className="text-2xl font-bold text-gray-800">Edit Content</h2>
-          <p className="text-sm text-gray-600 mt-1">Edit content details and assignments</p>
+          <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100">Edit Content</h2>
+          <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">Edit content details and assignments</p>
         </div>
         <button
           onClick={onClose}
-          className="text-gray-400 hover:text-gray-600 transition-colors p-1 rounded-lg hover:bg-gray-100"
+          className="text-gray-400 dark:text-gray-500 hover:text-gray-600 transition-colors p-1 rounded-lg hover:bg-gray-100"
           aria-label="Close modal"
           disabled={saving}
         >
@@ -240,23 +240,23 @@ export default function AssignModal({ content, onClose, onSubmit }) {
       <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6">
           <div className="space-y-6">
             {/* Content Details Section */}
-            <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+            <div className="bg-gray-50 dark:bg-gray-900 p-4 rounded-lg border border-gray-200 dark:border-gray-700">
               <div className="flex items-center gap-2 mb-4">
                 <span className="text-xl">✏️</span>
-                <h3 className="font-bold text-gray-800 text-lg">Content Details</h3>
+                <h3 className="font-bold text-gray-800 dark:text-gray-100 text-lg">Content Details</h3>
               </div>
 
               <div className="space-y-4">
                 {/* Title */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                     Title
                   </label>
                   <input
                     type="text"
                     value={title}
                     onChange={(e) => setTitle(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                     disabled={saving}
                     required
                   />
@@ -264,13 +264,13 @@ export default function AssignModal({ content, onClose, onSubmit }) {
 
                 {/* Description */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                     Description
                   </label>
                   <textarea
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                     rows={3}
                     disabled={saving}
                   />
@@ -278,7 +278,7 @@ export default function AssignModal({ content, onClose, onSubmit }) {
 
                 {/* Duration */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                     Duration (seconds)
                     {content.content_type === 'video' && (
                       <span className="text-xs text-blue-600 ml-2">
@@ -292,8 +292,8 @@ export default function AssignModal({ content, onClose, onSubmit }) {
                     onChange={(e) => setDuration(e.target.value)}
                     className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
                       content.content_type === 'video'
-                        ? 'border-gray-300 bg-gray-100 cursor-not-allowed'
-                        : 'border-gray-300'
+                        ? 'border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 cursor-not-allowed'
+                        : 'border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white'
                     }`}
                     disabled={saving || content.content_type === 'video'}
                     min="1"
@@ -301,7 +301,7 @@ export default function AssignModal({ content, onClose, onSubmit }) {
                     required
                   />
                   {content.content_type === 'video' && (
-                    <p className="text-xs text-gray-500 mt-1">
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                       📊 Auto-calculated: {videoEndTime
                         ? `${videoEndTime}s - ${videoStartTime}s = ${duration}s`
                         : `Total video (${content.video_duration?.toFixed(0) || '?'}s) - Start (${videoStartTime}s) = ${duration}s`
@@ -314,7 +314,7 @@ export default function AssignModal({ content, onClose, onSubmit }) {
                 {content.content_type === 'video' && (
                   <>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                         🎬 Start Time (seconds)
                       </label>
                       <input
@@ -326,16 +326,16 @@ export default function AssignModal({ content, onClose, onSubmit }) {
                           setVideoStartTime(newStart)
                           setDuration(calculateDuration(newStart, videoEndTime))
                         }}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                         disabled={saving}
                         min={0}
                         placeholder="0 (from beginning)"
                       />
-                      <p className="text-xs text-gray-500 mt-1">Start video playback from this time</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Start video playback from this time</p>
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                         🏁 End Time (seconds)
                       </label>
                       <input
@@ -347,12 +347,12 @@ export default function AssignModal({ content, onClose, onSubmit }) {
                           setVideoEndTime(newEnd)
                           setDuration(calculateDuration(videoStartTime, newEnd))
                         }}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                         disabled={saving}
                         min={0}
                         placeholder="(play until end)"
                       />
-                      <p className="text-xs text-gray-500 mt-1">Stop video at this time (leave empty to play until end)</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Stop video at this time (leave empty to play until end)</p>
                     </div>
                   </>
                 )}
@@ -360,26 +360,26 @@ export default function AssignModal({ content, onClose, onSubmit }) {
             </div>
 
             {/* Assignment Settings Section */}
-            <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+            <div className="bg-gray-50 dark:bg-gray-900 p-4 rounded-lg border border-gray-200 dark:border-gray-700">
               <div className="flex items-center gap-2 mb-4">
                 <span className="text-xl">🔢</span>
-                <h3 className="font-bold text-gray-800 text-lg">Assignment Settings</h3>
+                <h3 className="font-bold text-gray-800 dark:text-gray-100 text-lg">Assignment Settings</h3>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                   Display Order
                 </label>
                 <input
                   type="number"
                   value={displayOrder}
                   onChange={(e) => setDisplayOrder(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   disabled={saving}
                   min="0"
                   placeholder="0"
                 />
-                <p className="text-xs text-gray-500 mt-1">
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                   Order in playback sequence (lower numbers play first). This will be applied to all new assignments below.
                 </p>
               </div>
@@ -389,9 +389,9 @@ export default function AssignModal({ content, onClose, onSubmit }) {
             <div>
               <div className="flex items-center gap-2 mb-3">
                 <span className="text-xl">📱</span>
-                <h3 className="font-bold text-gray-800 text-lg">Devices</h3>
+                <h3 className="font-bold text-gray-800 dark:text-gray-100 text-lg">Devices</h3>
               </div>
-              <p className="text-sm text-gray-600 mb-4">
+              <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
                 Select devices to assign this content to
               </p>
               {devicesData?.devices && devicesData.devices.length > 0 ? (
@@ -401,8 +401,8 @@ export default function AssignModal({ content, onClose, onSubmit }) {
                       key={device.id}
                       className={`flex items-center gap-3 p-3 border-2 rounded-lg cursor-pointer transition-all ${
                         selectedDeviceIds.has(device.id)
-                          ? 'bg-blue-100 border-blue-500 shadow-md'
-                          : 'bg-white border-gray-200 hover:border-blue-300 hover:bg-blue-50'
+                          ? 'bg-blue-100 dark:bg-blue-900/30 border-blue-500 dark:border-blue-600 shadow-md'
+                          : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:hover:border-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20'
                       }`}
                     >
                       <input
@@ -413,10 +413,10 @@ export default function AssignModal({ content, onClose, onSubmit }) {
                         disabled={saving}
                       />
                       <div className="flex-1 min-w-0">
-                        <span className="text-sm font-medium text-gray-800 block truncate">
+                        <span className="text-sm font-medium text-gray-800 dark:text-gray-100 block truncate">
                           {device.device_name}
                         </span>
-                        <span className="text-xs text-gray-500 block">
+                        <span className="text-xs text-gray-500 dark:text-gray-400 block">
                           {device.device_type.toUpperCase()}
                         </span>
                       </div>
@@ -424,12 +424,12 @@ export default function AssignModal({ content, onClose, onSubmit }) {
                   ))}
                 </div>
               ) : (
-                <div className="bg-gray-50 p-4 rounded-lg text-center text-gray-500 text-sm">
+                <div className="bg-gray-50 dark:bg-gray-900 p-4 rounded-lg text-center text-gray-500 dark:text-gray-400 text-sm">
                   No active devices available
                 </div>
               )}
               {selectedDeviceIds.size > 0 && (
-                <div className="mt-3 p-2 bg-blue-100 rounded border border-blue-300">
+                <div className="mt-3 p-2 bg-blue-100 dark:bg-blue-900/30 rounded border border-blue-300 dark:border-blue-600">
                   <p className="text-sm text-blue-800">
                     ✓ {selectedDeviceIds.size} device(s) selected
                   </p>
@@ -441,9 +441,9 @@ export default function AssignModal({ content, onClose, onSubmit }) {
             <div>
               <div className="flex items-center gap-2 mb-3">
                 <span className="text-xl">🏷️</span>
-                <h3 className="font-bold text-gray-800 text-lg">Tags</h3>
+                <h3 className="font-bold text-gray-800 dark:text-gray-100 text-lg">Tags</h3>
               </div>
-              <p className="text-sm text-gray-600 mb-4">
+              <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
                 Select tags to assign this content to (affects all devices with these tags)
               </p>
               {tagsData?.items && tagsData.items.length > 0 ? (
@@ -453,8 +453,8 @@ export default function AssignModal({ content, onClose, onSubmit }) {
                       key={tag.id}
                       className={`flex items-center gap-3 p-3 border-2 rounded-lg cursor-pointer transition-all ${
                         selectedTagIds.has(tag.id)
-                          ? 'bg-green-100 border-green-500 shadow-md'
-                          : 'bg-white border-gray-200 hover:border-green-300 hover:bg-green-50'
+                          ? 'bg-green-100 dark:bg-green-900/30 border-green-500 dark:border-green-600 shadow-md'
+                          : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 hover:border-green-300 dark:hover:border-green-600 hover:bg-green-50 dark:hover:bg-green-900/20'
                       }`}
                     >
                       <input
@@ -465,11 +465,11 @@ export default function AssignModal({ content, onClose, onSubmit }) {
                         disabled={saving}
                       />
                       <div className="flex-1 min-w-0">
-                        <span className="text-sm font-medium text-gray-800 block truncate">
+                        <span className="text-sm font-medium text-gray-800 dark:text-gray-100 block truncate">
                           {tag.tag_name}
                         </span>
                         {tag.description && (
-                          <span className="text-xs text-gray-500 block truncate">
+                          <span className="text-xs text-gray-500 dark:text-gray-400 block truncate">
                             {tag.description}
                           </span>
                         )}
@@ -478,12 +478,12 @@ export default function AssignModal({ content, onClose, onSubmit }) {
                   ))}
                 </div>
               ) : (
-                <div className="bg-gray-50 p-4 rounded-lg text-center text-gray-500 text-sm">
+                <div className="bg-gray-50 dark:bg-gray-900 p-4 rounded-lg text-center text-gray-500 dark:text-gray-400 text-sm">
                   No tags available
                 </div>
               )}
               {selectedTagIds.size > 0 && (
-                <div className="mt-3 p-2 bg-green-100 rounded border border-green-300">
+                <div className="mt-3 p-2 bg-green-100 dark:bg-green-900/30 rounded border border-green-300 dark:border-green-600">
                   <p className="text-sm text-green-800">
                     ✓ {selectedTagIds.size} tag(s) selected
                   </p>
@@ -494,7 +494,7 @@ export default function AssignModal({ content, onClose, onSubmit }) {
       </form>
 
       {/* Footer - Fixed */}
-      <div className="p-6 border-t bg-gray-50 flex-shrink-0">
+      <div className="p-6 border-t bg-gray-50 dark:bg-gray-800 dark:bg-gray-900 flex-shrink-0">
         <ModalFooter align="right">
           <Button
             type="button"

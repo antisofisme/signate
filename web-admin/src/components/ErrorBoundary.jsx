@@ -63,8 +63,8 @@ class ErrorBoundary extends Component {
     if (this.state.hasError) {
       // Render fallback UI
       return (
-        <div className="min-h-screen bg-gray-50 flex items-center justify-center p-6">
-          <div className="max-w-2xl w-full bg-white rounded-xl shadow-lg p-8">
+        <div className="min-h-screen bg-gray-50 dark:bg-gray-800 dark:bg-gray-900 flex items-center justify-center p-6">
+          <div className="max-w-2xl w-full bg-white dark:bg-gray-800 rounded-xl shadow-lg p-8">
             {/* Error Icon */}
             <div className="flex justify-center mb-6">
               <div className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center">
@@ -73,7 +73,7 @@ class ErrorBoundary extends Component {
             </div>
 
             {/* Error Title */}
-            <h1 className="text-3xl font-bold text-gray-900 text-center mb-4">
+            "<h1 className="text-3xl font-bold text-gray-900 dark:text-white text-center mb-4">
               Oops! Something went wrong
             </h1>
 
@@ -84,15 +84,15 @@ class ErrorBoundary extends Component {
 
             {/* Error Details (Development Mode) */}
             {process.env.NODE_ENV === 'development' && this.state.error && (
-              <div className="mb-6 p-4 bg-gray-100 rounded-lg border border-gray-200">
-                <h2 className="text-sm font-semibold text-gray-700 mb-2">Error Details:</h2>
+              <div className="mb-6 p-4 bg-gray-100 dark:bg-gray-700 rounded-lg border border-gray-200">
+                <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Error Details:</h2>
                 <pre className="text-xs text-red-600 overflow-auto max-h-48">
                   {this.state.error.toString()}
                 </pre>
                 {this.state.errorInfo && (
                   <>
-                    <h3 className="text-sm font-semibold text-gray-700 mt-3 mb-2">Component Stack:</h3>
-                    <pre className="text-xs text-gray-600 overflow-auto max-h-48">
+                    <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mt-3 mb-2">Component Stack:</h3>
+                    <pre className="text-xs text-gray-600 dark:text-gray-400 overflow-auto max-h-48">
                       {this.state.errorInfo.componentStack}
                     </pre>
                   </>
@@ -119,7 +119,7 @@ class ErrorBoundary extends Component {
             </div>
 
             {/* Help Text */}
-            <p className="text-sm text-gray-500 text-center mt-6">
+            <p className="text-sm text-gray-500 dark:text-gray-400 text-center mt-6">
               If this problem persists, please contact support.
             </p>
           </div>

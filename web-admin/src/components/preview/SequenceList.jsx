@@ -12,7 +12,7 @@ import { Film, Image as ImageIcon, Play } from 'lucide-react'
 export default function SequenceList({ sequence, currentIndex, onJumpTo }) {
   if (!sequence || sequence.length === 0) {
     return (
-      <div className="p-6 text-center text-gray-400">
+      <div className="p-6 text-center text-gray-400 dark:text-gray-500">
         <p>No content in sequence</p>
       </div>
     )
@@ -60,7 +60,7 @@ export default function SequenceList({ sequence, currentIndex, onJumpTo }) {
         <h3 className="font-semibold text-white">
           🎬 Playback Sequence
         </h3>
-        <p className="text-xs text-gray-400 mt-1">
+        <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
           {sequence.length} items • Click to jump
         </p>
       </div>
@@ -98,7 +98,7 @@ export default function SequenceList({ sequence, currentIndex, onJumpTo }) {
                 <div className="flex items-start gap-3">
                   <span className={`
                     flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold
-                    ${isActive ? 'bg-white text-blue-600' : 'bg-gray-600 text-white'}
+                    ${isActive ? 'bg-white dark:bg-gray-700 text-blue-600 dark:text-blue-400' : 'bg-gray-600 text-white'}
                   `}>
                     {index + 1}
                   </span>
@@ -130,7 +130,7 @@ export default function SequenceList({ sequence, currentIndex, onJumpTo }) {
                       </span>
                       <span className={`
                         text-xs
-                        ${isActive ? 'text-blue-100' : 'text-gray-400'}
+                        ${isActive ? 'text-blue-100' : 'text-gray-400 dark:text-gray-500'}
                       `}>
                         {item.duration}s
                       </span>
@@ -154,7 +154,7 @@ export default function SequenceList({ sequence, currentIndex, onJumpTo }) {
                     {item.description && (
                       <p className={`
                         text-xs mt-2 line-clamp-2
-                        ${isActive ? 'text-blue-100' : 'text-gray-400'}
+                        ${isActive ? 'text-blue-100' : 'text-gray-400 dark:text-gray-500'}
                       `}>
                         {item.description}
                       </p>
@@ -183,19 +183,19 @@ export default function SequenceList({ sequence, currentIndex, onJumpTo }) {
       <div className="px-4 py-3 border-t border-gray-700 bg-gray-900">
         <div className="grid grid-cols-3 gap-2 text-center text-xs">
           <div>
-            <p className="text-gray-400">Direct</p>
+            <p className="text-gray-400 dark:text-gray-500">Direct</p>
             <p className="text-red-400 font-bold">
               {sequence.filter(s => s.source?.type === 'direct').length}
             </p>
           </div>
           <div>
-            <p className="text-gray-400">Playlist</p>
+            <p className="text-gray-400 dark:text-gray-500">Playlist</p>
             <p className="text-blue-400 font-bold">
               {sequence.filter(s => s.source?.type === 'playlist').length}
             </p>
           </div>
           <div>
-            <p className="text-gray-400">Tag</p>
+            <p className="text-gray-400 dark:text-gray-500">Tag</p>
             <p className="text-purple-400 font-bold">
               {sequence.filter(s => s.source?.type === 'tag').length}
             </p>

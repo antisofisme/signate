@@ -5,6 +5,25 @@
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Signage Admin - Smart TV Digital Signage</title>
+    <script>
+      // Apply theme before page loads to prevent flash
+      (function() {
+        try {
+          const saved = localStorage.getItem('theme');
+          const theme = (saved === 'dark' || saved === 'light') ? saved : 'light';
+
+          // Always remove both classes first to ensure clean state
+          document.documentElement.classList.remove('dark', 'light');
+
+          // Add dark class only if dark mode
+          if (theme === 'dark') {
+            document.documentElement.classList.add('dark');
+          }
+        } catch (e) {
+          // Fail silently - React will handle it
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

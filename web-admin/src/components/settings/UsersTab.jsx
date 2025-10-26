@@ -49,9 +49,9 @@ export default function UsersTab() {
 
   const getRoleBadge = (role) => {
     const styles = {
-      admin: 'bg-purple-100 text-purple-700',
-      editor: 'bg-blue-100 text-blue-700',
-      viewer: 'bg-gray-100 text-gray-700'
+      admin: 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300',
+      editor: 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300',
+      viewer: 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
     }
     return styles[role] || styles.viewer
   }
@@ -61,8 +61,8 @@ export default function UsersTab() {
       {/* Header Actions */}
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h3 className="text-lg font-semibold text-gray-800">User Management</h3>
-          <p className="text-sm text-gray-600">Manage users, roles, and permissions</p>
+          <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-100">User Management</h3>
+          <p className="text-sm text-gray-600 dark:text-gray-400">Manage users, roles, and permissions</p>
         </div>
         <Button
           variant="primary"
@@ -82,33 +82,33 @@ export default function UsersTab() {
 
       {/* Users Table */}
       {!isLoading && usersData?.items && (
-        <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
+        <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+          <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+            <thead className="bg-gray-50 dark:bg-gray-900">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">User</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Role</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Email</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Last Login</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">User</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Role</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Email</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Last Login</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Status</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Actions</th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
+            <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
               {usersData.items.map((user) => (
-                <tr key={user.id} className="hover:bg-gray-50">
+                <tr key={user.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
                   {/* User Info */}
                   <td className="px-6 py-4">
                     <div className="flex items-center">
-                      <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center mr-3">
+                      <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center mr-3">
                         <span className="font-semibold text-blue-600">
                           {user.username.charAt(0).toUpperCase()}
                         </span>
                       </div>
                       <div>
-                        <p className="font-semibold text-gray-800">{user.username}</p>
+                        <p className="font-semibold text-gray-800 dark:text-gray-100">{user.username}</p>
                         {user.full_name && (
-                          <p className="text-sm text-gray-500">{user.full_name}</p>
+                          <p className="text-sm text-gray-500 dark:text-gray-400">{user.full_name}</p>
                         )}
                       </div>
                     </div>
@@ -125,24 +125,24 @@ export default function UsersTab() {
                   {/* Email */}
                   <td className="px-6 py-4">
                     {user.email ? (
-                      <div className="flex items-center gap-1 text-sm text-gray-600">
+                      <div className="flex items-center gap-1 text-sm text-gray-600 dark:text-gray-400">
                         <Mail className="w-4 h-4" />
                         {user.email}
                       </div>
                     ) : (
-                      <span className="text-gray-400">-</span>
+                      <span className="text-gray-400 dark:text-gray-500">-</span>
                     )}
                   </td>
 
                   {/* Last Login */}
                   <td className="px-6 py-4">
                     {user.last_login ? (
-                      <div className="flex items-center gap-1 text-sm text-gray-600">
+                      <div className="flex items-center gap-1 text-sm text-gray-600 dark:text-gray-400">
                         <Calendar className="w-4 h-4" />
                         {new Date(user.last_login).toLocaleDateString()}
                       </div>
                     ) : (
-                      <span className="text-gray-400">Never</span>
+                      <span className="text-gray-400 dark:text-gray-500">Never</span>
                     )}
                   </td>
 
@@ -150,8 +150,8 @@ export default function UsersTab() {
                   <td className="px-6 py-4">
                     <span className={`px-2 py-1 rounded-full text-xs font-medium ${
                       user.is_active
-                        ? 'bg-green-100 text-green-700'
-                        : 'bg-gray-100 text-gray-700'
+                        ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
+                        : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
                     }`}>
                       {user.is_active ? 'Active' : 'Inactive'}
                     </span>
@@ -190,10 +190,10 @@ export default function UsersTab() {
 
       {/* Empty State */}
       {!isLoading && (!usersData?.items || usersData.items.length === 0) && (
-        <div className="text-center py-12 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
-          <Shield className="w-12 h-12 text-gray-400 mx-auto mb-3" />
-          <p className="text-gray-600 font-medium">No users found</p>
-          <p className="text-sm text-gray-500 mb-4">Add your first user to get started</p>
+        <div className="text-center py-12 bg-gray-50 dark:bg-gray-800 dark:bg-gray-900 rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-600">
+          <Shield className="w-12 h-12 text-gray-400 dark:text-gray-500 mx-auto mb-3" />
+          <p className="text-gray-600 dark:text-gray-400 font-medium">No users found</p>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">Add your first user to get started</p>
           <Button
             variant="primary"
             leftIcon={<Plus className="w-4 h-4" />}

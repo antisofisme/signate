@@ -174,25 +174,25 @@ export default function UploadModal({ onClose, onSubmit }) {
             disabled={uploading || validating}
             description={validating ? 'Validating files...' : 'Select one or more image/video files'}
           />
-          <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-            <p className="text-xs font-semibold text-blue-800 mb-2">📋 Supported File Formats:</p>
-            <div className="text-xs text-blue-700 space-y-1">
+          <div className="mt-2 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-lg">
+            <p className="text-xs font-semibold text-blue-800 dark:text-blue-300 mb-2">📋 Supported File Formats:</p>
+            <div className="text-xs text-blue-700 dark:text-blue-300 space-y-1">
               <div>
                 <p className="font-semibold mb-1">Images (Recommended):</p>
                 <p className="ml-3">✅ PNG - Best for graphics, logos, transparent images</p>
                 <p className="ml-3">✅ JPEG/JPG - Best for photographs</p>
                 <p className="ml-3">✅ WebP - Modern format with better compression</p>
-                <p className="ml-3 text-gray-600">⚠️ GIF, BMP, SVG - Supported but may have limitations</p>
+                <p className="ml-3 text-gray-600 dark:text-gray-400">⚠️ GIF, BMP, SVG - Supported but may have limitations</p>
               </div>
               <div className="mt-2">
                 <p className="font-semibold mb-1">Videos (Recommended):</p>
                 <p className="ml-3">✅ MP4 (H.264/AAC) - Best compatibility, max 1920x1080 @ 30fps</p>
-                <p className="ml-3 text-gray-600">⚠️ WebM, OGV - Supported but browser-dependent</p>
+                <p className="ml-3 text-gray-600 dark:text-gray-400">⚠️ WebM, OGV - Supported but browser-dependent</p>
               </div>
             </div>
-            <div className="mt-2 pt-2 border-t border-blue-200">
-              <p className="text-xs text-gray-700">💡 You can select multiple files to upload at once</p>
-              <p className="text-xs text-gray-700">📏 Recommended: Images &lt;5MB, Videos &lt;100MB</p>
+            <div className="mt-2 pt-2 border-t border-blue-200 dark:border-blue-700">
+              <p className="text-xs text-gray-700 dark:text-gray-300">💡 You can select multiple files to upload at once</p>
+              <p className="text-xs text-gray-700 dark:text-gray-300">📏 Recommended: Images &lt;5MB, Videos &lt;100MB</p>
             </div>
           </div>
 
@@ -215,17 +215,17 @@ export default function UploadModal({ onClose, onSubmit }) {
                 {files.map((file, index) => (
                   <div
                     key={index}
-                    className="flex items-center justify-between bg-gray-50 p-3 rounded-lg"
+                    className="flex items-center justify-between bg-gray-50 dark:bg-gray-800 dark:bg-gray-900 p-3 rounded-lg"
                   >
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-gray-800 truncate">{file.name}</p>
-                      <p className="text-xs text-gray-500">
+                      <p className="text-sm font-medium text-gray-800 dark:text-gray-100 truncate">{file.name}</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">
                         {(file.size / 1024 / 1024).toFixed(2)} MB
                       </p>
                     </div>
                     <div className="ml-3 flex items-center gap-2">
                       {uploadProgress[index]?.status === 'pending' && (
-                        <span className="text-gray-400">⏳</span>
+                        <span className="text-gray-400 dark:text-gray-500">⏳</span>
                       )}
                       {uploadProgress[index]?.status === 'uploading' && (
                         <span className="text-blue-500 animate-spin">🔄</span>

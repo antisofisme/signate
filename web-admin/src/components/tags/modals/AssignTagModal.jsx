@@ -93,7 +93,7 @@ export default function AssignTagModal({ tag, onClose }) {
         </div>
         <button
           onClick={onClose}
-          className="text-gray-400 hover:text-gray-600 transition-colors p-1 rounded-lg hover:bg-gray-100"
+          className="text-gray-400 dark:text-gray-500 hover:text-gray-600 transition-colors p-1 rounded-lg hover:bg-gray-100"
           aria-label="Close modal"
         >
           <X className="w-6 h-6" />
@@ -107,11 +107,11 @@ export default function AssignTagModal({ tag, onClose }) {
           return (
             <div
               key={device.id}
-              className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
+              className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 dark:bg-gray-900 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
             >
               <div>
-                <p className="font-medium text-gray-800">{device.device_name}</p>
-                <p className="text-sm text-gray-600">
+                <p className="font-medium text-gray-800 dark:text-gray-100">{device.device_name}</p>
+                <p className="text-sm text-gray-600 dark:text-gray-400">
                   {device.device_type.toUpperCase()} • {device.ip_address || 'N/A'}
                 </p>
               </div>
@@ -132,7 +132,7 @@ export default function AssignTagModal({ tag, onClose }) {
 
       {/* Empty state */}
       {devicesData?.devices?.length === 0 && (
-        <p className="text-center py-8 text-gray-500">No devices available</p>
+        <p className="text-center py-8 text-gray-500 dark:text-gray-400">No devices available</p>
       )}
     </Modal>
   )

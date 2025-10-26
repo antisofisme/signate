@@ -90,10 +90,10 @@ export default function Widgets() {
   return (
     <div>
       {/* Header */}
-      <div className="sticky top-0 z-50 bg-white pb-4 mb-4 border-b border-gray-200 px-6">
+      <div className="sticky top-0 z-50 bg-white dark:bg-gray-800 dark:bg-gray-800 pb-4 mb-4 border-b border-gray-200 dark:border-gray-700 px-6">
         <div className="pt-4">
-          <h1 className="text-3xl font-bold text-gray-800">Widgets</h1>
-          <p className="text-gray-600 text-sm mt-1">
+          <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-100">Widgets</h1>
+          <p className="text-gray-600 dark:text-gray-400 text-sm mt-1">
             Create interactive content and widgets to display on devices
           </p>
         </div>
@@ -101,7 +101,7 @@ export default function Widgets() {
 
       <div className="px-6">
         {/* Tab Navigation */}
-        <div className="bg-white rounded-xl shadow-md overflow-hidden mb-6">
+        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-md overflow-hidden mb-6">
           <div className="border-b border-gray-200">
             <nav className="flex -mb-px overflow-x-auto">
               {tabs.map((tab) => {
@@ -116,7 +116,7 @@ export default function Widgets() {
                       flex items-center gap-2 px-6 py-4 border-b-2 font-medium text-sm transition-colors whitespace-nowrap
                       ${isActive
                         ? 'border-blue-600 text-blue-600'
-                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                        : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:border-gray-300'
                       }
                     `}
                   >
@@ -129,8 +129,8 @@ export default function Widgets() {
           </div>
 
           {/* Tab Description */}
-          <div className="px-6 py-3 bg-gray-50 border-b border-gray-200">
-            <p className="text-sm text-gray-600">
+          <div className="px-6 py-3 bg-gray-50 dark:bg-gray-800 dark:bg-gray-900 border-b border-gray-200">
+            <p className="text-sm text-gray-600 dark:text-gray-400">
               {currentTab.description}
             </p>
           </div>

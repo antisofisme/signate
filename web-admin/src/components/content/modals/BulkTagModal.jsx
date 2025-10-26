@@ -157,7 +157,7 @@ export default function BulkTagModal({ selectedIds, contentData, onClose, onComp
   if (assignmentQueries.isLoading) {
     return (
       <Modal isOpen={true} onClose={onClose} size="md">
-        <p className="text-gray-600 text-center">Loading assignments...</p>
+        <p className="text-gray-600 dark:text-gray-400 text-center">Loading assignments...</p>
       </Modal>
     )
   }
@@ -171,14 +171,14 @@ export default function BulkTagModal({ selectedIds, contentData, onClose, onComp
       bodyClassName="flex-1 overflow-hidden flex flex-col p-0"
     >
       {/* Custom Header - Fixed */}
-      <div className="flex items-center justify-between px-6 py-4 bg-white border-b flex-shrink-0">
+      <div className="flex items-center justify-between px-6 py-4 bg-white dark:bg-gray-800 border-b flex-shrink-0">
           <div>
-            <h2 className="text-2xl font-bold text-gray-800">Bulk Tag Assignment</h2>
-            <p className="text-sm text-gray-600 mt-1">{selectedContent.length} content items selected</p>
+            <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100">Bulk Tag Assignment</h2>
+            <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{selectedContent.length} content items selected</p>
           </div>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 transition-colors p-1 rounded-lg hover:bg-gray-100"
+            className="text-gray-400 dark:text-gray-500 hover:text-gray-600 transition-colors p-1 rounded-lg hover:bg-gray-100"
             aria-label="Close modal"
             disabled={updating}
           >
@@ -195,12 +195,12 @@ export default function BulkTagModal({ selectedIds, contentData, onClose, onComp
               return (
                 <div
                   key={content.id}
-                  className="bg-gray-50 rounded-lg border-2 border-gray-200 p-4 shadow-sm hover:shadow-md transition-shadow"
+                  className="bg-gray-50 dark:bg-gray-900 rounded-lg border-2 border-gray-200 dark:border-gray-700 p-4 shadow-sm hover:shadow-md transition-shadow"
                 >
                   {/* Title di atas */}
                   <div className="mb-3">
-                    <p className="font-bold text-gray-900 text-lg">{content.title}</p>
-                    <p className="text-sm text-gray-700">
+                    <p className="font-bold text-gray-900 dark:text-white text-lg">{content.title}</p>
+                    <p className="text-sm text-gray-700 dark:text-gray-300">
                       {content.content_type.toUpperCase()} • {content.duration}s
                     </p>
                   </div>
@@ -229,7 +229,7 @@ export default function BulkTagModal({ selectedIds, contentData, onClose, onComp
                               className={`inline-flex flex-col px-3 py-2 rounded-xl cursor-pointer transition-all ${
                                 isSelected
                                   ? 'bg-green-500 text-white shadow-md'
-                                  : 'bg-gray-300 text-gray-700 hover:bg-gray-400'
+                                  : 'bg-gray-300 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-400 dark:hover:bg-gray-600'
                               }`}
                               style={{
                                 userSelect: 'none',
@@ -250,7 +250,7 @@ export default function BulkTagModal({ selectedIds, contentData, onClose, onComp
                         })}
                       </div>
                       {selectedTags.size > 0 && (
-                        <div className="mt-3 text-xs text-gray-600">
+                        <div className="mt-3 text-xs text-gray-600 dark:text-gray-400">
                           ✓ {selectedTags.size} tag(s) selected
                         </div>
                       )}
@@ -263,7 +263,7 @@ export default function BulkTagModal({ selectedIds, contentData, onClose, onComp
         </div>
 
       {/* Footer - Fixed */}
-      <div className="p-6 border-t bg-gray-50 flex-shrink-0">
+      <div className="p-6 border-t bg-gray-50 dark:bg-gray-800 dark:bg-gray-900 flex-shrink-0">
         <ModalFooter align="right">
           <Button
             type="button"

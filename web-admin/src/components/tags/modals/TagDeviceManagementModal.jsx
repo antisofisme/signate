@@ -99,15 +99,15 @@ export default function TagDeviceManagementModal({ tag, onClose }) {
             return (
               <div
                 key={device.id}
-                className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
+                className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 dark:bg-gray-900 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
               >
                 <div className="flex items-center gap-3">
                   <div className={`w-3 h-3 rounded-full ${
                     device.status === 'online' ? 'bg-green-500' : 'bg-gray-400'
                   }`} />
                   <div>
-                    <p className="font-medium text-gray-800">{device.device_name}</p>
-                    <p className="text-sm text-gray-600">
+                    <p className="font-medium text-gray-800 dark:text-gray-100">{device.device_name}</p>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
                       {device.device_type.toUpperCase()} • {device.ip_address || 'N/A'}
                     </p>
                   </div>
@@ -130,20 +130,20 @@ export default function TagDeviceManagementModal({ tag, onClose }) {
           {/* Empty state */}
           {devicesData?.devices?.length === 0 && (
             <div className="text-center py-8">
-              <Monitor className="w-12 h-12 text-gray-400 mx-auto mb-2" />
-              <p className="text-gray-500">No active devices available</p>
+              <Monitor className="w-12 h-12 text-gray-400 dark:text-gray-500 mx-auto mb-2" />
+              <p className="text-gray-500 dark:text-gray-400">No active devices available</p>
             </div>
           )}
         </div>
 
         {/* Stats Summary */}
-        <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 text-sm">
+        <div className="bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg p-3 text-sm">
           <div className="flex items-center justify-between">
-            <span className="text-gray-600">Total Devices:</span>
-            <span className="font-semibold text-gray-800">{devicesData?.devices?.length || 0}</span>
+            <span className="text-gray-600 dark:text-gray-400">Total Devices:</span>
+            <span className="font-semibold text-gray-800 dark:text-gray-100">{devicesData?.devices?.length || 0}</span>
           </div>
           <div className="flex items-center justify-between mt-1">
-            <span className="text-gray-600">Assigned to this tag:</span>
+            <span className="text-gray-600 dark:text-gray-400">Assigned to this tag:</span>
             <span className="font-semibold text-green-700">{assignedDeviceIds.length}</span>
           </div>
         </div>
