@@ -104,6 +104,13 @@ export default function Dashboard() {
     [devicesList]
   )
 
+  // FASE 5.3: Top Tags by device count
+  const topTags = useMemo(() => {
+    return tags?.items
+      ?.sort((a, b) => b.device_count - a.device_count)
+      ?.slice(0, 5) || []
+  }, [tags?.items])
+
   // Calculate stats - Memoized to prevent recalculation on every render
   const deviceStats = useMemo(() => {
     return {
@@ -484,6 +491,75 @@ export default function Dashboard() {
           )}
             </div>
           </div>
+
+          {/* FASE 5.3: Top Tags by Usage Section */}
+          {topTags.length > 0 && (
+            <div className="mt-4 sm:mt-6 animate-fade-in">
+              <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-300 dark:border-gray-600 p-4 sm:p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100">Top Tags by Usage</h2>
+                  <button
+                    onClick={() => navigate('/tags')}
+                    className="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-medium transition-colors"
+                  >
+                    View All Tags →
+                  </button>
+                </div>
+                <div className="space-y-3">
+                  {topTags.map((tag, index) => (
+                    <div
+                      key={tag.id}
+                      className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-900 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors group cursor-pointer"
+                      onClick={() => navigate('/tags')}
+                    >
+                      <div className="flex items-center gap-4 flex-1">
+                        {/* Ranking Number */}
+                        <div className="flex items-center justify-center w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 text-white font-bold text-lg">
+                          #{index + 1}
+                        </div>
+
+                        {/* Color Indicator */}
+                        <div
+                          className="w-4 h-4 rounded-full border-2 border-white dark:border-gray-800 shadow-md flex-shrink-0"
+                          style={{ backgroundColor: tag.color }}
+                        />
+
+                        {/* Tag Name */}
+                        <div className="flex-1">
+                          <p className="font-semibold text-gray-800 dark:text-gray-100 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+                            {tag.tag_name}
+                          </p>
+                          <p className="text-sm text-gray-600 dark:text-gray-400">
+                            {tag.description || 'No description'}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Device Count Badge */}
+                      <div className="flex items-center gap-2 ml-4">
+                        <Tag className="w-4 h-4 text-gray-500 dark:text-gray-400" />
+                        <span className="text-lg font-bold text-gray-700 dark:text-gray-300">
+                          {tag.device_count}
+                        </span>
+                        <span className="text-sm text-gray-500 dark:text-gray-400">
+                          {tag.device_count === 1 ? 'device' : 'devices'}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Empty State for Tags */}
+                {tags?.items && tags.items.length > 5 && (
+                  <div className="mt-4 text-center">
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                      and {tags.items.length - 5} more tag{tags.items.length - 5 !== 1 ? 's' : ''}...
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>
