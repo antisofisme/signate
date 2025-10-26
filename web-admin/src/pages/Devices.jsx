@@ -284,6 +284,7 @@ export default function Devices() {
 
       {/* Active Devices Table */}
       <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-300 dark:border-gray-600 overflow-hidden mb-6">
+        <div className="overflow-x-auto">
         <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
           <thead className="bg-gray-50 dark:bg-gray-700">
             <tr>
@@ -311,6 +312,7 @@ export default function Devices() {
             ))}
           </tbody>
         </table>
+        </div>
       </div>
 
       {/* Released Devices Section */}
@@ -327,6 +329,7 @@ export default function Devices() {
               Devices that have been released from viewers. They can be reactivated or deleted.
             </p>
           </div>
+          <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
             <thead className="bg-gray-50 dark:bg-gray-700">
               <tr>
@@ -353,6 +356,7 @@ export default function Devices() {
               ))}
             </tbody>
           </table>
+          </div>
         </div>
       )}
         </div>
