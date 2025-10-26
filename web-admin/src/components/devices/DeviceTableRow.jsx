@@ -93,8 +93,8 @@ function DeviceTableRow({
         {device.last_seen ? new Date(device.last_seen).toLocaleString() : 'Never'}
       </td>
 
-      {/* Actions Column */}
-      <td className="px-6 py-4 whitespace-nowrap text-sm">
+      {/* Actions Column - Sticky Right */}
+      <td className="px-6 py-4 whitespace-nowrap text-sm sticky right-0 bg-white dark:bg-gray-800 shadow-[-4px_0_6px_-1px_rgba(0,0,0,0.1)]">
         <div className="flex items-center gap-3">
           {/* Activate button for pending devices */}
           {device.status === 'pending' && (

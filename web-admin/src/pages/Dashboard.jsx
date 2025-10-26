@@ -205,16 +205,18 @@ export default function Dashboard() {
           </div>
         </div>
 
-        <div className="px-4 sm:px-6 lg:px-8 pt-2">
-          {/* Loading Stats - 8 cards in 2 cols mobile, 4 cols desktop */}
-          <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-8">
-            <LoadingSkeleton variant="stats" count={8} />
-          </div>
+        <div className="pt-20 sm:pt-24 lg:pt-20">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+            {/* Loading Stats - 8 cards in 2 cols mobile, 4 cols desktop */}
+            <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-8">
+              <LoadingSkeleton variant="stats" count={8} />
+            </div>
 
-          {/* Loading Recent Devices & Content */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
-            <LoadingSkeleton variant="list" count={5} />
-            <LoadingSkeleton variant="list" count={5} />
+            {/* Loading Recent Devices & Content */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+              <LoadingSkeleton variant="list" count={5} />
+              <LoadingSkeleton variant="list" count={5} />
+            </div>
           </div>
         </div>
       </div>
@@ -250,12 +252,16 @@ export default function Dashboard() {
           </div>
         </div>
       </div>
+      </div>
 
-      {/* Stats Grid with fade-in animation - 2 cols mobile, 2 cols tablet, 4 cols desktop */}
-      <div className="px-4 sm:px-6 lg:px-8 pt-2">
-      <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-8 animate-fade-in">
-        {stats.map((stat) => {
-          const Icon = stat.icon
+      {/* Content with padding to account for fixed header */}
+      {/* Dashboard has simpler header, so needs less padding than other pages */}
+      <div className="pt-20 sm:pt-24 lg:pt-20">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+          {/* Stats Grid with fade-in animation - 2 cols mobile, 2 cols tablet, 4 cols desktop */}
+          <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-8 animate-fade-in">
+            {stats.map((stat) => {
+              const Icon = stat.icon
           const bgColors = {
             blue: 'bg-blue-100 dark:bg-blue-900/30',
             green: 'bg-green-100 dark:bg-green-900/30',
@@ -290,14 +296,12 @@ export default function Dashboard() {
               </div>
             </div>
           )
-        })}
-      </div>
+            })}
+          </div>
 
-      </div>
-
-      <div className="px-4 sm:px-6 lg:px-8">
-      {pendingDevices.length > 0 && (
-        <div className="bg-yellow-50 dark:bg-yellow-900/20 border-2 border-yellow-400 dark:border-yellow-700 rounded-xl p-4 sm:p-6 mb-8 animate-fade-in">
+          {/* Pending Approvals Section */}
+          {pendingDevices.length > 0 && (
+            <div className="bg-yellow-50 dark:bg-yellow-900/20 border-2 border-yellow-400 dark:border-yellow-700 rounded-xl p-4 sm:p-6 mb-8 animate-fade-in">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-3">
               <div className="w-3 h-3 bg-yellow-500 rounded-full animate-pulse"></div>
@@ -372,15 +376,14 @@ export default function Dashboard() {
               </p>
             )}
           </div>
-        </div>
-      )}
-      </div>
+            </div>
+          )}
 
-      <div className="px-4 sm:px-6 lg:px-8">
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 animate-fade-in">
-        {/* Recent Devices */}
-        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-300 dark:border-gray-600 p-4 sm:p-6">
-          <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100 mb-4">Recent Devices</h2>
+          {/* Recent Devices & Content Section */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 animate-fade-in">
+            {/* Recent Devices */}
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-300 dark:border-gray-600 p-4 sm:p-6">
+              <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100 mb-4">Recent Devices</h2>
           {devicesList && devicesList.length > 0 ? (
             <div className="space-y-3">
               {devicesList.slice(0, 5).map((device) => {
@@ -443,11 +446,11 @@ export default function Dashboard() {
           ) : (
             <p className="text-gray-500 dark:text-gray-400 text-center py-8">No devices registered yet</p>
           )}
-        </div>
+            </div>
 
-        {/* Recent Content */}
-        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-300 dark:border-gray-600 p-4 sm:p-6">
-          <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100 mb-4">Recent Content</h2>
+            {/* Recent Content */}
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-300 dark:border-gray-600 p-4 sm:p-6">
+              <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100 mb-4">Recent Content</h2>
           {content?.items && content.items.length > 0 ? (
             <div className="space-y-3">
               {content.items.slice(0, 5).map((item) => (
@@ -479,9 +482,9 @@ export default function Dashboard() {
           ) : (
             <p className="text-gray-500 dark:text-gray-400 text-center py-8">No content uploaded yet</p>
           )}
+            </div>
+          </div>
         </div>
-      </div>
-      </div>
       </div>
     </div>
   )
