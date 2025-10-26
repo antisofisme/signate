@@ -127,7 +127,7 @@ export default function Dashboard() {
           return (
             <div
               key={stat.name}
-              className="bg-white rounded-xl shadow-md p-6 hover:shadow-lg transition-shadow"
+              className="bg-white rounded-xl shadow-lg border border-gray-300 p-6 hover:shadow-xl transition-shadow"
             >
               <div className="flex items-center justify-between mb-2">
                 <div className="flex-1">
@@ -147,7 +147,7 @@ export default function Dashboard() {
       {/* Recent Devices & Content */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Recent Devices */}
-        <div className="bg-white rounded-xl shadow-md p-6">
+        <div className="bg-white rounded-xl shadow-lg border border-gray-300 p-6">
           <h2 className="text-xl font-bold text-gray-800 mb-4">Recent Devices</h2>
           {devicesList && devicesList.length > 0 ? (
             <div className="space-y-3">
@@ -214,7 +214,7 @@ export default function Dashboard() {
         </div>
 
         {/* Recent Content */}
-        <div className="bg-white rounded-xl shadow-md p-6">
+        <div className="bg-white rounded-xl shadow-lg border border-gray-300 p-6">
           <h2 className="text-xl font-bold text-gray-800 mb-4">Recent Content</h2>
           {content?.items && content.items.length > 0 ? (
             <div className="space-y-3">

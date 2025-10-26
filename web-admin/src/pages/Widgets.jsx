@@ -1,15 +1,15 @@
 import { useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { Calendar, MessageSquare, Globe, Type, Cloud, Timer, Clock } from 'lucide-react'
+import { Calendar, MessageSquare, Globe, Cloud, Timer, Clock, Hotel } from 'lucide-react'
 
 // Tab Components (will be created)
 import CalendarTab from '../components/widgets/CalendarTab'
-import WelcomeMessageTab from '../components/widgets/WelcomeMessageTab'
+import TextTab from '../components/widgets/TextTab'
 import IFrameTab from '../components/widgets/IFrameTab'
-import SimpleMessageTab from '../components/widgets/SimpleMessageTab'
 import WeatherTab from '../components/widgets/WeatherTab'
 import CountdownTab from '../components/widgets/CountdownTab'
 import ClockTab from '../components/widgets/ClockTab'
+import SystemPMSTab from '../components/widgets/SystemPMSTab'
 
 /**
  * Widgets Page
@@ -37,11 +37,11 @@ export default function Widgets() {
       component: CalendarTab
     },
     {
-      id: 'welcome',
-      label: 'Welcome Message',
+      id: 'text',
+      label: 'Text',
       icon: MessageSquare,
-      description: 'Configure greeting and welcome messages',
-      component: WelcomeMessageTab
+      description: 'Create and display text messages',
+      component: TextTab
     },
     {
       id: 'iframe',
@@ -49,13 +49,6 @@ export default function Widgets() {
       icon: Globe,
       description: 'Embed external websites and web content',
       component: IFrameTab
-    },
-    {
-      id: 'message',
-      label: 'Simple Message',
-      icon: Type,
-      description: 'Display simple text messages and announcements',
-      component: SimpleMessageTab
     },
     {
       id: 'weather',
@@ -77,6 +70,13 @@ export default function Widgets() {
       icon: Clock,
       description: 'Display time and date information',
       component: ClockTab
+    },
+    {
+      id: 'systempms',
+      label: 'SystemPMS',
+      icon: Hotel,
+      description: 'Integrate with Property Management System for hotel data',
+      component: SystemPMSTab
     }
   ]
 

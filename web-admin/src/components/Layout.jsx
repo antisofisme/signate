@@ -1,8 +1,10 @@
 import { Link, useLocation } from 'react-router-dom'
-import { Monitor, FileImage, LayoutDashboard, LogOut, Tag, ListVideo, Puzzle, Settings } from 'lucide-react'
+import { Monitor, FileImage, LayoutDashboard, LogOut, Tag, ListVideo, Puzzle, Settings, Menu, X } from 'lucide-react'
+import { useState } from 'react'
 
 export default function Layout({ children, setIsAuthenticated }) {
   const location = useLocation()
+  const [sidebarOpen, setSidebarOpen] = useState(false)
 
   const handleLogout = () => {
     localStorage.removeItem('token')
@@ -21,8 +23,27 @@ export default function Layout({ children, setIsAuthenticated }) {
 
   return (
     <div className="min-h-screen bg-gray-100">
+      {/* Mobile Burger Menu Button */}
+      <button
+        onClick={() => setSidebarOpen(!sidebarOpen)}
+        className="fixed top-4 left-4 z-[60] lg:hidden p-2 bg-blue-600 text-white rounded-lg shadow-lg"
+        aria-label="Toggle menu"
+      >
+        {sidebarOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+      </button>
+
+      {/* Overlay for mobile */}
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
       {/* Sidebar */}
-      <div className="fixed inset-y-0 left-0 w-64 bg-white shadow-lg">
+      <div className={`fixed inset-y-0 left-0 w-64 bg-white shadow-xl border-r border-gray-400 z-50 transform transition-transform duration-300 ${
+        sidebarOpen ? 'translate-x-0' : '-translate-x-full'
+      } lg:translate-x-0`}>
         <div className="flex flex-col h-full">
           {/* Logo */}
           <div className="flex items-center justify-center h-16 bg-blue-600">
@@ -30,7 +51,7 @@ export default function Layout({ children, setIsAuthenticated }) {
           </div>
 
           {/* Navigation */}
-          <nav className="flex-1 px-4 py-6 space-y-2">
+          <nav className="flex-1 px-4 py-6 space-y-2 overflow-y-auto">
             {navigation.map((item) => {
               const Icon = item.icon
               const isActive = location.pathname === item.href
@@ -38,6 +59,7 @@ export default function Layout({ children, setIsAuthenticated }) {
                 <Link
                   key={item.name}
                   to={item.href}
+                  onClick={() => setSidebarOpen(false)}
                   className={`flex items-center px-4 py-3 rounded-lg transition-colors ${
                     isActive
                       ? 'bg-blue-50 text-blue-600'
@@ -65,8 +87,8 @@ export default function Layout({ children, setIsAuthenticated }) {
       </div>
 
       {/* Main Content */}
-      <div className="ml-64">
-        <main className="p-8">
+      <div className="lg:ml-64">
+        <main>
           {children}
         </main>
       </div>

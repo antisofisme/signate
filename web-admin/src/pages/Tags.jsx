@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { tagsAPI, devicesAPI } from '../services/api'
 import { Tag, Plus, Trash2, Edit2, Users, Search, BarChart3, Film } from 'lucide-react'
 import { showToast } from '../utils/toast'
-import { Button, FormInput } from '../components/shared'
+import { Button, FormInput, PageHeader } from '../components/shared'
 
 // Modal Components
 import TagFormModal from '../components/tags/modals/TagFormModal'
@@ -21,6 +21,7 @@ export default function Tags() {
   const [selectedTag, setSelectedTag] = useState(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [sortBy, setSortBy] = useState('newest')
+  const [activeFilter, setActiveFilter] = useState('all')
 
   // Fetch tags with sorting
   const { data: tagsData } = useQuery({
@@ -84,24 +85,55 @@ export default function Tags() {
     setShowContentModal(true)
   }
 
-  // Filter tags based on search query
+  // Filter tags based on search query AND active filter
   const filteredTags = useMemo(() => {
     if (!tagsData?.items) return []
 
-    if (!searchQuery.trim()) return tagsData.items
+    let filtered = tagsData.items
 
-    const query = searchQuery.toLowerCase()
-    return tagsData.items.filter(tag =>
-      tag.tag_name.toLowerCase().includes(query) ||
-      tag.description?.toLowerCase().includes(query)
-    )
-  }, [tagsData?.items, searchQuery])
+    // Apply stat filter
+    if (activeFilter === 'with_devices') {
+      filtered = filtered.filter(tag => tag.device_count > 0)
+    } else if (activeFilter === 'without_devices') {
+      filtered = filtered.filter(tag => tag.device_count === 0)
+    }
+    // 'all' shows everything
+
+    // Apply search filter
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase()
+      filtered = filtered.filter(tag =>
+        tag.tag_name.toLowerCase().includes(query) ||
+        tag.description?.toLowerCase().includes(query)
+      )
+    }
+
+    return filtered
+  }, [tagsData?.items, searchQuery, activeFilter])
+
+  // Calculate stats with filterKey
+  const stats = useMemo(() => {
+    if (!tagsData?.items) return []
+
+    const total = tagsData.items.length
+    const active = tagsData.items.filter(tag => tag.device_count > 0).length
+    const inactive = total - active
+    const totalDevices = tagsData.items.reduce((sum, tag) => sum + (tag.device_count || 0), 0)
+
+    return [
+      { label: 'Total Tags', value: total, color: 'blue', filterKey: 'all' },
+      { label: 'With Devices', value: active, color: 'green', filterKey: 'with_devices' },
+      { label: 'Without Devices', value: inactive, color: 'gray', filterKey: 'without_devices' },
+      { label: 'Total Devices', value: totalDevices, color: 'purple', filterKey: null }
+    ]
+  }, [tagsData?.items])
 
   return (
-    <div>
-      <div className="sticky top-0 z-50 bg-white pb-4 mb-4 border-b border-gray-200 px-6">
-        <div className="flex items-center justify-between pt-4 mb-4">
-          <h1 className="text-3xl font-bold text-gray-800">Tags</h1>
+    <div className="min-h-screen bg-slate-50">
+      <PageHeader
+        title="Tags"
+        description="Organize and manage tags for device grouping and content assignment"
+        actions={
           <Button
             variant="primary"
             leftIcon={<Plus className="w-5 h-5" />}
@@ -109,36 +141,42 @@ export default function Tags() {
           >
             Create Tag
           </Button>
-        </div>
-
-        {/* Search Bar & Sort */}
-        <div className="flex gap-3">
-          <div className="flex-1 max-w-md">
-            <FormInput
-              type="text"
-              placeholder="Search tags by name or description..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              leftIcon={<Search className="w-4 h-4 text-gray-400" />}
-            />
+        }
+        searchBar={
+          <div className="flex gap-3 max-w-xl">
+            <div className="flex-1">
+              <FormInput
+                type="text"
+                placeholder="Search tags..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                leftIcon={<Search className="w-4 h-4 text-gray-400" />}
+              />
+            </div>
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value)}
+              className="px-4 py-2 border border-gray-300 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="newest">Terbaru</option>
+              <option value="oldest">Terlama</option>
+              <option value="name_asc">Nama: A-Z</option>
+              <option value="name_desc">Nama: Z-A</option>
+            </select>
           </div>
-          <select
-            value={sortBy}
-            onChange={(e) => setSortBy(e.target.value)}
-            className="px-4 py-2 border border-gray-300 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-          >
-            <option value="newest">Terbaru</option>
-            <option value="oldest">Terlama</option>
-            <option value="name_asc">Nama: A-Z</option>
-            <option value="name_desc">Nama: Z-A</option>
-          </select>
-        </div>
-      </div>
+        }
+        stats={stats}
+        activeFilter={activeFilter}
+        onStatClick={setActiveFilter}
+      />
 
-      {/* Tags Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      {/* Content with padding to account for fixed header */}
+      {/* pt-40 (160px) mobile, pt-[172px] tablet (custom value between pt-42/168px and pt-44/176px), pt-44 (176px) desktop */}
+      <div className="pt-40 sm:pt-[172px] lg:pt-44">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {filteredTags.map((tag) => (
-          <div key={tag.id} className="bg-white rounded-xl shadow-md p-6 hover:shadow-lg transition-shadow">
+          <div key={tag.id} className="bg-white rounded-xl shadow-lg border border-gray-300 p-6 hover:shadow-xl transition-shadow">
             {/* Tag Header */}
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center">
@@ -244,6 +282,8 @@ export default function Tags() {
           </button>
         </div>
       )}
+        </div>
+      </div>
 
       {/* Create Form Modal */}
       {showCreateForm && <TagFormModal onClose={() => setShowCreateForm(false)} onSubmit={createMutation.mutate} />}

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { contentAPI, devicesAPI, tagsAPI } from '../services/api'
 import { API_BASE_URL } from '../utils/constants'
@@ -7,12 +7,10 @@ import AssignModal from '../components/content/modals/AssignModal'
 import PreviewModal from '../components/content/modals/PreviewModal'
 import BulkEditModal from '../components/content/modals/BulkEditModal'
 import BulkTagModal from '../components/content/modals/BulkTagModal'
-import ContentToolbar from '../components/content/ContentToolbar'
-import GroupingControls from '../components/content/GroupingControls'
 import ContentCard from '../components/content/ContentCard'
-import useContentGrouping from '../hooks/useContentGrouping'
-import { FileImage } from 'lucide-react'
+import { FileImage, Upload, CheckSquare, Square, Edit, Tag as TagIcon, Search } from 'lucide-react'
 import { showToast } from '../utils/toast'
+import { Button, PageHeader, FormInput } from '../components/shared'
 
 // Helper function to get proxy image URL
 const getImageUrl = (content) => {
@@ -29,6 +27,9 @@ export default function Content() {
   const [showBulkTagForm, setShowBulkTagForm] = useState(false)
   const [selectedContent, setSelectedContent] = useState(null)
   const [selectedIds, setSelectedIds] = useState(new Set())
+  const [searchQuery, setSearchQuery] = useState('')
+  const [activeFilter, setActiveFilter] = useState('all')
+  const [sortBy, setSortBy] = useState('newest')
 
   // Fetch content
   const { data: contentData } = useQuery({
@@ -64,21 +65,58 @@ export default function Content() {
     enabled: !!contentData?.items,
   })
 
-  // Use content grouping hook
-  const {
-    groupBy,
-    groupedContent,
-    expandedGroups,
-    setGroupBy,
-    toggleGroup,
-    expandAllGroups,
-    collapseAllGroups
-  } = useContentGrouping(
-    contentData?.items,
-    tagsData?.items,
-    devicesData?.devices,
-    allAssignmentsData
-  )
+  // Filter and sort content
+  const filteredContent = useMemo(() => {
+    if (!contentData?.items) return []
+
+    let filtered = contentData.items
+
+    // Apply stat filter
+    if (activeFilter === 'images') {
+      filtered = filtered.filter(c => c.content_type === 'image')
+    } else if (activeFilter === 'videos') {
+      filtered = filtered.filter(c => c.content_type === 'video')
+    } else if (activeFilter === 'assigned') {
+      filtered = filtered.filter(c => {
+        const assignments = allAssignmentsData?.[c.id]
+        return assignments && assignments.length > 0
+      })
+    } else if (activeFilter === 'unassigned') {
+      filtered = filtered.filter(c => {
+        const assignments = allAssignmentsData?.[c.id]
+        return !assignments || assignments.length === 0
+      })
+    }
+    // 'all' shows everything
+
+    // Apply search filter
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase()
+      filtered = filtered.filter(content =>
+        content.file_name?.toLowerCase().includes(query) ||
+        content.title?.toLowerCase().includes(query) ||
+        content.description?.toLowerCase().includes(query)
+      )
+    }
+
+    // Apply sorting
+    const sorted = [...filtered].sort((a, b) => {
+      switch (sortBy) {
+        case 'newest':
+          return new Date(b.created_at) - new Date(a.created_at)
+        case 'oldest':
+          return new Date(a.created_at) - new Date(b.created_at)
+        case 'name_asc':
+          return (a.file_name || '').localeCompare(b.file_name || '')
+        case 'name_desc':
+          return (b.file_name || '').localeCompare(a.file_name || '')
+        default:
+          return 0
+      }
+    })
+
+    return sorted
+  }, [contentData?.items, searchQuery, activeFilter, allAssignmentsData, sortBy])
 
   // Upload content mutation
   const uploadMutation = useMutation({
@@ -152,54 +190,131 @@ export default function Content() {
     setSelectedIds(new Set())
   }
 
+  // Calculate stats
+  const stats = useMemo(() => {
+    if (!contentData?.items) return []
+
+    const total = contentData.items.length
+    const images = contentData.items.filter(c => c.content_type === 'image').length
+    const videos = contentData.items.filter(c => c.content_type === 'video').length
+
+    // Count assigned content (content that has assignments)
+    const assigned = contentData.items.filter(c => {
+      const assignments = allAssignmentsData?.[c.id]
+      return assignments && assignments.length > 0
+    }).length
+    const unassigned = total - assigned
+
+    return [
+      { label: 'All Content', value: total, color: 'blue', filterKey: 'all' },
+      { label: 'Images', value: images, color: 'purple', filterKey: 'images' },
+      { label: 'Videos', value: videos, color: 'green', filterKey: 'videos' },
+      { label: 'Assigned', value: assigned, color: 'green', filterKey: 'assigned' },
+      { label: 'Unassigned', value: unassigned, color: 'gray', filterKey: 'unassigned' }
+    ]
+  }, [contentData?.items, allAssignmentsData])
+
+  const selectedCount = selectedIds.size
+  const totalCount = contentData?.items?.length || 0
+
   return (
-    <div>
-      {/* Toolbar */}
-      <ContentToolbar
-        selectedIds={selectedIds}
-        totalCount={contentData?.items?.length}
-        onClearSelection={clearSelection}
-        onToggleSelectAll={toggleSelectAll}
-        onBulkEdit={() => setShowBulkEditForm(true)}
-        onBulkTag={() => setShowBulkTagForm(true)}
-        onUpload={() => setShowUploadForm(true)}
-      />
-
-      {/* Grouping Controls */}
-      <GroupingControls
-        groupBy={groupBy}
-        onGroupByChange={setGroupBy}
-        onExpandAll={expandAllGroups}
-        onCollapseAll={collapseAllGroups}
-        totalCount={contentData?.items?.length}
-      />
-
-      {/* Grouped Content */}
-      {groupedContent.map((group) => (
-        <div key={group.key} className="mb-6">
-          {/* Group Header */}
-          {groupBy !== 'none' && (
-            <button
-              onClick={() => toggleGroup(group.key)}
-              className="w-full bg-gradient-to-r from-gray-50 to-gray-100 border border-gray-300 rounded-lg px-4 py-3 mb-4 flex items-center justify-between hover:from-gray-100 hover:to-gray-200 transition-all"
+    <div className="min-h-screen bg-slate-50">
+      <PageHeader
+        title="Content"
+        description="Manage and organize media content"
+        actions={
+          <div className="flex items-center gap-3">
+            {totalCount > 0 && (
+              <Button
+                variant="secondary"
+                leftIcon={selectedCount === totalCount ? <CheckSquare className="w-5 h-5" /> : <Square className="w-5 h-5" />}
+                onClick={toggleSelectAll}
+              >
+                {selectedCount === totalCount ? 'Deselect All' : 'Select All'}
+              </Button>
+            )}
+            {selectedCount > 0 && (
+              <>
+                <Button
+                  variant="warning"
+                  leftIcon={<Edit className="w-5 h-5" />}
+                  onClick={() => setShowBulkEditForm(true)}
+                >
+                  Bulk Edit ({selectedCount})
+                </Button>
+                <Button
+                  variant="success"
+                  leftIcon={<TagIcon className="w-5 h-5" />}
+                  onClick={() => setShowBulkTagForm(true)}
+                >
+                  Bulk Tag ({selectedCount})
+                </Button>
+              </>
+            )}
+            <Button
+              variant="primary"
+              leftIcon={<Upload className="w-5 h-5" />}
+              onClick={() => setShowUploadForm(true)}
             >
+              Upload Content
+            </Button>
+          </div>
+        }
+        searchBar={
+          <div className="flex gap-3 max-w-xl">
+            <div className="flex-1">
+              <FormInput
+                icon={Search}
+                type="text"
+                placeholder="Search content..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+            </div>
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value)}
+              className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="newest">Terbaru</option>
+              <option value="oldest">Terlama</option>
+              <option value="name_asc">Nama: A-Z</option>
+              <option value="name_desc">Nama: Z-A</option>
+            </select>
+          </div>
+        }
+        stats={stats}
+        activeFilter={activeFilter}
+        onStatClick={setActiveFilter}
+      />
+
+      {/* Content with padding to account for fixed header */}
+      {/* pt-40 (160px) mobile, pt-[172px] tablet (custom value between pt-42/168px and pt-44/176px), pt-44 (176px) desktop */}
+      <div className="pt-40 sm:pt-[172px] lg:pt-44">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+          {/* Selection Info */}
+          {selectedCount > 0 && (
+            <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-3 mb-6 flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <span className="text-2xl">{group.icon}</span>
-                <h2 className="text-xl font-bold text-gray-800">{group.name}</h2>
-                <span className="bg-white px-3 py-1 rounded-full text-sm font-medium text-gray-600 shadow-sm">
-                  {group.items.length} items
+                <span className="bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-sm font-medium">
+                  {selectedCount} selected
                 </span>
               </div>
-              <div className="text-gray-600">
-                {expandedGroups.has(group.key) ? '▼' : '▶'}
-              </div>
-            </button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={clearSelection}
+                className="underline"
+              >
+                Clear Selection
+              </Button>
+            </div>
           )}
 
-          {/* Group Content */}
-          {(groupBy === 'none' || expandedGroups.has(group.key)) && (
+          {/* Content Grid */}
+          {filteredContent.length > 0 && (
             <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-              {group.items.map((content) => (
+              {filteredContent.map((content) => (
                 <ContentCard
                   key={content.id}
                   content={content}
@@ -212,15 +327,15 @@ export default function Content() {
               ))}
             </div>
           )}
-        </div>
-      ))}
 
-      {contentData?.items?.length === 0 && (
-        <div className="text-center py-12 text-gray-500">
-          <FileImage className="w-16 h-16 mx-auto mb-4 opacity-50" />
-          <p>No content uploaded yet</p>
+          {contentData?.items?.length === 0 && (
+            <div className="text-center py-12 text-gray-500">
+              <FileImage className="w-16 h-16 mx-auto mb-4 opacity-50" />
+              <p>No content uploaded yet</p>
+            </div>
+          )}
         </div>
-      )}
+      </div>
 
       {/* Upload Form Modal */}
       {showUploadForm && <UploadModal onClose={() => setShowUploadForm(false)} onSubmit={uploadMutation.mutate} />}
@@ -258,6 +373,52 @@ export default function Content() {
           }}
         />
       )}
+
+      {/* Floating Action Buttons - Mobile Only */}
+      <div className="sm:hidden">
+        {/* Upload Button - Bottom (Primary) */}
+        <button
+          onClick={() => setShowUploadForm(true)}
+          className="fixed bottom-6 right-6 z-[55] w-14 h-14 bg-blue-600 text-white rounded-full shadow-lg hover:bg-blue-700 active:bg-blue-800 transition-colors flex items-center justify-center"
+          aria-label="Upload Content"
+        >
+          <Upload className="w-6 h-6" />
+        </button>
+
+        {/* Select All Button - Above Upload */}
+        {totalCount > 0 && (
+          <button
+            onClick={toggleSelectAll}
+            className="fixed bottom-24 right-6 z-[55] w-14 h-14 bg-gray-600 text-white rounded-full shadow-lg hover:bg-gray-700 active:bg-gray-800 transition-colors flex items-center justify-center"
+            aria-label={selectedCount === totalCount ? 'Deselect All' : 'Select All'}
+          >
+            {selectedCount === totalCount ? <CheckSquare className="w-6 h-6" /> : <Square className="w-6 h-6" />}
+          </button>
+        )}
+
+        {/* Bulk Action Buttons - Above Select All */}
+        {selectedCount > 0 && (
+          <>
+            {/* Bulk Tag Button */}
+            <button
+              onClick={() => setShowBulkTagForm(true)}
+              className="fixed bottom-[168px] right-6 z-[55] w-14 h-14 bg-green-600 text-white rounded-full shadow-lg hover:bg-green-700 active:bg-green-800 transition-colors flex items-center justify-center"
+              aria-label="Bulk Tag"
+            >
+              <TagIcon className="w-6 h-6" />
+            </button>
+
+            {/* Bulk Edit Button */}
+            <button
+              onClick={() => setShowBulkEditForm(true)}
+              className="fixed bottom-[240px] right-6 z-[55] w-14 h-14 bg-yellow-600 text-white rounded-full shadow-lg hover:bg-yellow-700 active:bg-yellow-800 transition-colors flex items-center justify-center"
+              aria-label="Bulk Edit"
+            >
+              <Edit className="w-6 h-6" />
+            </button>
+          </>
+        )}
+      </div>
     </div>
   )
 }

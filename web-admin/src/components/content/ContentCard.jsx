@@ -35,7 +35,7 @@ const ContentCard = memo(function ContentCard({
   return (
     <div
       onClick={() => onPreview(content)}
-      className={`bg-white rounded-xl shadow-md overflow-hidden hover:shadow-lg transition-all cursor-pointer relative ${
+      className={`bg-white rounded-xl shadow-lg border border-gray-300 overflow-hidden hover:shadow-xl transition-all cursor-pointer relative ${
         isSelected ? 'ring-4 ring-blue-500' : ''
       }`}
     >

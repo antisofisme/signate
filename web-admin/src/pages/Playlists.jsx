@@ -1,9 +1,9 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { playlistsAPI } from '../services/api'
-import { ListVideo, Plus, Trash2, Edit2, Play, Users, Copy, Monitor } from 'lucide-react'
+import { ListVideo, Plus, Trash2, Edit2, Play, Users, Copy, Monitor, Search } from 'lucide-react'
 import { showToast } from '../utils/toast'
-import { Button } from '../components/shared'
+import { Button, PageHeader, FormInput } from '../components/shared'
 import PlaylistFormModal from '../components/playlists/modals/PlaylistFormModal'
 import PlaylistContentModal from '../components/playlists/modals/PlaylistContentModal'
 import PlaylistAssignmentModal from '../components/playlists/modals/PlaylistAssignmentModal'
@@ -31,12 +31,57 @@ export default function Playlists() {
   const [showDuplicateModal, setShowDuplicateModal] = useState(false)
   const [showPreviewModal, setShowPreviewModal] = useState(false)
   const [selectedPlaylist, setSelectedPlaylist] = useState(null)
+  const [activeFilter, setActiveFilter] = useState('all')
+  const [searchQuery, setSearchQuery] = useState('')
+  const [sortBy, setSortBy] = useState('newest')
 
   // Fetch playlists
   const { data: playlistsData, isLoading } = useQuery({
     queryKey: ['playlists'],
     queryFn: () => playlistsAPI.list().then(res => res.data),
   })
+
+  // Filter and sort playlists
+  const filteredPlaylists = useMemo(() => {
+    if (!playlistsData?.items) return []
+
+    let filtered = playlistsData.items
+
+    // Apply status filter
+    if (activeFilter === 'active') {
+      filtered = filtered.filter(p => p.is_active)
+    } else if (activeFilter === 'inactive') {
+      filtered = filtered.filter(p => !p.is_active)
+    }
+    // 'all' shows everything
+
+    // Apply search filter
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase()
+      filtered = filtered.filter(playlist =>
+        playlist.name?.toLowerCase().includes(query) ||
+        playlist.description?.toLowerCase().includes(query)
+      )
+    }
+
+    // Apply sorting
+    const sorted = [...filtered].sort((a, b) => {
+      switch (sortBy) {
+        case 'newest':
+          return new Date(b.created_at) - new Date(a.created_at)
+        case 'oldest':
+          return new Date(a.created_at) - new Date(b.created_at)
+        case 'name_asc':
+          return (a.name || '').localeCompare(b.name || '')
+        case 'name_desc':
+          return (b.name || '').localeCompare(a.name || '')
+        default:
+          return 0
+      }
+    })
+
+    return sorted
+  }, [playlistsData?.items, activeFilter, searchQuery, sortBy])
 
   // Create playlist mutation
   const createMutation = useMutation({
@@ -108,17 +153,32 @@ export default function Playlists() {
     }
   }
 
+  // Calculate stats
+  const stats = useMemo(() => {
+    if (!playlistsData?.items) return []
+
+    const total = playlistsData.items.length
+    const active = playlistsData.items.filter(p => p.is_active).length
+    const inactive = total - active
+    const totalContent = playlistsData.items.reduce((sum, p) => sum + (p.content_count || 0), 0)
+    const totalDuration = playlistsData.items.reduce((sum, p) => sum + (p.total_duration || 0), 0)
+    const durationMinutes = Math.floor(totalDuration / 60)
+
+    return [
+      { label: 'Total Playlists', value: total, color: 'blue', filterKey: 'all' },
+      { label: 'Active', value: active, color: 'green', filterKey: 'active' },
+      { label: 'Inactive', value: inactive, color: 'gray', filterKey: 'inactive' },
+      { label: 'Total Items', value: totalContent, color: 'purple', filterKey: null },
+      { label: 'Total Duration', value: `${durationMinutes}m`, color: 'blue', filterKey: null }
+    ]
+  }, [playlistsData?.items])
+
   return (
-    <div>
-      {/* Header */}
-      <div className="sticky top-0 z-50 bg-white pb-4 mb-4 border-b border-gray-200 px-6">
-        <div className="flex items-center justify-between pt-4">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-800">Playlists</h1>
-            <p className="text-gray-600 text-sm mt-1">
-              Organize content into playlists for scheduled playback
-            </p>
-          </div>
+    <div className="min-h-screen bg-slate-50">
+      <PageHeader
+        title="Playlists"
+        description="Organize content into playlists for scheduled playback"
+        actions={
           <Button
             variant="primary"
             leftIcon={<Plus className="w-5 h-5" />}
@@ -126,41 +186,71 @@ export default function Playlists() {
           >
             Create Playlist
           </Button>
-        </div>
-      </div>
+        }
+        searchBar={
+          <div className="flex gap-3 max-w-xl">
+            <div className="flex-1">
+              <FormInput
+                icon={Search}
+                type="text"
+                placeholder="Search playlists..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+            </div>
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value)}
+              className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="newest">Terbaru</option>
+              <option value="oldest">Terlama</option>
+              <option value="name_asc">Nama: A-Z</option>
+              <option value="name_desc">Nama: Z-A</option>
+            </select>
+          </div>
+        }
+        stats={stats}
+        activeFilter={activeFilter}
+        onStatClick={setActiveFilter}
+      />
 
-      {/* Loading State */}
-      {isLoading && (
-        <div className="flex justify-center items-center py-20">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-        </div>
-      )}
+      {/* Content with padding to account for fixed header */}
+      {/* pt-40 (160px) mobile, pt-[172px] tablet (custom value between pt-42/168px and pt-44/176px), pt-44 (176px) desktop */}
+      <div className="pt-40 sm:pt-[172px] lg:pt-44">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+          {/* Loading State */}
+          {isLoading && (
+            <div className="flex justify-center items-center py-20">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+            </div>
+          )}
 
-      {/* Empty State */}
-      {!isLoading && (!playlistsData?.items || playlistsData.items.length === 0) && (
-        <div className="bg-white rounded-xl shadow-md p-12 text-center">
-          <ListVideo className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-          <h3 className="text-xl font-semibold text-gray-800 mb-2">No Playlists Yet</h3>
-          <p className="text-gray-600 mb-6">
-            Create your first playlist to organize content for scheduled playback
-          </p>
-          <Button
-            variant="primary"
-            leftIcon={<Plus className="w-5 h-5" />}
-            onClick={() => setShowCreateModal(true)}
-          >
-            Create First Playlist
-          </Button>
-        </div>
-      )}
+          {/* Empty State */}
+          {!isLoading && (!playlistsData?.items || playlistsData.items.length === 0) && (
+            <div className="bg-white rounded-xl shadow-md p-12 text-center">
+              <ListVideo className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+              <h3 className="text-xl font-semibold text-gray-800 mb-2">No Playlists Yet</h3>
+              <p className="text-gray-600 mb-6">
+                Create your first playlist to organize content for scheduled playback
+              </p>
+              <Button
+                variant="primary"
+                leftIcon={<Plus className="w-5 h-5" />}
+                onClick={() => setShowCreateModal(true)}
+              >
+                Create First Playlist
+              </Button>
+            </div>
+          )}
 
-      {/* Playlists Grid */}
-      {!isLoading && playlistsData?.items && playlistsData.items.length > 0 && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {playlistsData.items.map((playlist) => (
+          {/* Playlists Grid */}
+          {!isLoading && filteredPlaylists.length > 0 && (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {filteredPlaylists.map((playlist) => (
             <div
               key={playlist.id}
-              className="bg-white rounded-xl shadow-md hover:shadow-lg transition-shadow overflow-hidden"
+              className="bg-white rounded-xl shadow-lg border border-gray-300 hover:shadow-xl transition-shadow overflow-hidden"
             >
               {/* Playlist Header */}
               <div className="p-6 border-b border-gray-200">
@@ -272,8 +362,10 @@ export default function Playlists() {
               </div>
             </div>
           ))}
+            </div>
+          )}
         </div>
-      )}
+      </div>
 
       {/* Modals */}
       {showCreateModal && (

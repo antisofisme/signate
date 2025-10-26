@@ -1,13 +1,13 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useMemo } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { devicesAPI } from '../services/api'
-import { Tv } from 'lucide-react'
+import { Tv, Search } from 'lucide-react'
 import toast, { Toaster } from 'react-hot-toast'
 
 // Components
 import TVRegisterModal from '../components/devices/modals/TVRegisterModal'
 import DeviceDetailModal from '../components/devices/modals/DeviceDetailModal'
-import Button from '../components/shared/Button'
+import { Button, PageHeader, FormInput } from '../components/shared'
 import DeviceEditModal from '../components/devices/modals/DeviceEditModal'
 import DeviceLogsModal from '../components/devices/modals/DeviceLogsModal'
 import PendingDeviceCard from '../components/devices/PendingDeviceCard'
@@ -20,6 +20,9 @@ export default function Devices() {
   const [showDeviceEditModal, setShowDeviceEditModal] = useState(false)
   const [showLogsModal, setShowLogsModal] = useState(false)
   const [selectedDevice, setSelectedDevice] = useState(null)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [sortBy, setSortBy] = useState('newest')
+  const [activeFilter, setActiveFilter] = useState('all')
 
   // Fetch devices with auto-refresh every 5 seconds
   const { data: devicesData, isLoading } = useQuery({
@@ -112,18 +115,86 @@ export default function Devices() {
     setShowLogsModal(true)
   }, [])
 
-  const pendingDevices = devicesData?.devices?.filter(d => d.status === 'pending') || []
-  const activeDevices = devicesData?.devices?.filter(d => d.status === 'active') || []
-  const inactiveDevices = devicesData?.devices?.filter(d => d.status === 'inactive') || []
+  // Filter and sort devices
+  const filteredAndSortedDevices = useMemo(() => {
+    if (!devicesData?.devices) return []
+
+    let filtered = devicesData.devices
+
+    // Apply status filter
+    if (activeFilter === 'pending') {
+      filtered = filtered.filter(d => d.status === 'pending')
+    } else if (activeFilter === 'active') {
+      filtered = filtered.filter(d => d.status === 'active')
+    } else if (activeFilter === 'inactive') {
+      filtered = filtered.filter(d => d.status === 'inactive')
+    } else if (activeFilter === 'browser') {
+      filtered = filtered.filter(d => d.device_type === 'browser')
+    } else if (activeFilter === 'app') {
+      filtered = filtered.filter(d => d.device_type === 'tv')
+    }
+    // 'all' shows everything
+
+    // Apply search filter
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase()
+      filtered = filtered.filter(device =>
+        device.device_name?.toLowerCase().includes(query) ||
+        device.ip_address?.toLowerCase().includes(query) ||
+        device.pairing_code?.toLowerCase().includes(query)
+      )
+    }
+
+    // Apply sorting
+    const sorted = [...filtered].sort((a, b) => {
+      switch (sortBy) {
+        case 'newest':
+          return new Date(b.created_at) - new Date(a.created_at)
+        case 'oldest':
+          return new Date(a.created_at) - new Date(b.created_at)
+        case 'name_asc':
+          return (a.device_name || '').localeCompare(b.device_name || '')
+        case 'name_desc':
+          return (b.device_name || '').localeCompare(a.device_name || '')
+        default:
+          return 0
+      }
+    })
+
+    return sorted
+  }, [devicesData?.devices, searchQuery, sortBy, activeFilter])
+
+  const pendingDevices = filteredAndSortedDevices.filter(d => d.status === 'pending')
+  const activeDevices = filteredAndSortedDevices.filter(d => d.status === 'active')
+  const inactiveDevices = filteredAndSortedDevices.filter(d => d.status === 'inactive')
+
+  // Calculate stats with filterKey
+  const stats = useMemo(() => {
+    const total = devicesData?.devices?.length || 0
+    const pending = devicesData?.devices?.filter(d => d.status === 'pending').length || 0
+    const active = devicesData?.devices?.filter(d => d.status === 'active').length || 0
+    const inactive = devicesData?.devices?.filter(d => d.status === 'inactive').length || 0
+    const browser = devicesData?.devices?.filter(d => d.device_type === 'browser').length || 0
+    const app = devicesData?.devices?.filter(d => d.device_type === 'tv').length || 0
+
+    return [
+      { label: 'All Devices', value: total, color: 'blue', filterKey: 'all' },
+      { label: 'Pending', value: pending, color: 'yellow', filterKey: 'pending' },
+      { label: 'Active', value: active, color: 'green', filterKey: 'active' },
+      { label: 'Inactive', value: inactive, color: 'gray', filterKey: 'inactive' },
+      { label: 'Browser', value: browser, color: 'purple', filterKey: 'browser' },
+      { label: 'App', value: app, color: 'blue', filterKey: 'app' }
+    ]
+  }, [devicesData?.devices])
 
   return (
-    <div>
+    <div className="min-h-screen bg-slate-50">
       <Toaster />
 
-      {/* Header */}
-      <div className="sticky top-0 z-50 bg-white pb-4 mb-4 border-b border-gray-200 px-6">
-        <div className="flex items-center justify-between pt-4">
-          <h1 className="text-3xl font-bold text-gray-800">Devices</h1>
+      <PageHeader
+        title="Devices"
+        description="Manage and monitor all registered devices"
+        actions={
           <Button
             onClick={() => setShowTVForm(true)}
             variant="primary"
@@ -131,18 +202,40 @@ export default function Devices() {
           >
             Register TV
           </Button>
-        </div>
-      </div>
+        }
+        searchBar={
+          <div className="flex gap-3 max-w-xl">
+            <div className="flex-1">
+              <FormInput
+                icon={Search}
+                type="text"
+                placeholder="Search devices..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+            </div>
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value)}
+              className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="newest">Terbaru</option>
+              <option value="oldest">Terlama</option>
+              <option value="name_asc">Nama: A-Z</option>
+              <option value="name_desc">Nama: Z-A</option>
+            </select>
+          </div>
+        }
+        stats={stats}
+        activeFilter={activeFilter}
+        onStatClick={setActiveFilter}
+      />
 
-      {/* Debug Info */}
-      <div className="mb-4 p-3 bg-blue-100 border border-blue-300 rounded">
-        <p className="text-sm">
-          <strong>Debug Info:</strong> Total devices: {devicesData?.devices?.length || 0} |
-          Pending: {pendingDevices.length} | Active: {activeDevices.length} | Released: {inactiveDevices.length}
-        </p>
-      </div>
-
-      {/* Pending Approval Section */}
+      {/* Content with padding to account for fixed header */}
+      {/* pt-40 (160px) mobile, pt-[172px] tablet (custom value between pt-42/168px and pt-44/176px), pt-44 (176px) desktop */}
+      <div className="pt-40 sm:pt-[172px] lg:pt-44">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+          {/* Pending Approval Section */}
       {pendingDevices.length > 0 && (
         <div className="mb-6 bg-yellow-50 border-2 border-yellow-200 rounded-xl p-6">
           <div className="flex items-center mb-4">
@@ -164,12 +257,7 @@ export default function Devices() {
       )}
 
       {/* Active Devices Table */}
-      <div className="bg-white rounded-xl shadow-md overflow-hidden mb-6">
-        <div className="px-6 py-4 bg-gray-50 border-b border-gray-200">
-          <h2 className="text-xl font-bold text-gray-800">
-            Active Devices ({activeDevices.length})
-          </h2>
-        </div>
+      <div className="bg-white rounded-xl shadow-lg border border-gray-300 overflow-hidden mb-6">
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
@@ -201,7 +289,7 @@ export default function Devices() {
 
       {/* Released Devices Section */}
       {inactiveDevices.length > 0 && (
-        <div className="bg-white rounded-xl shadow-md overflow-hidden mb-6">
+        <div className="bg-white rounded-xl shadow-lg border border-gray-300 overflow-hidden mb-6">
           <div className="px-6 py-4 bg-gray-100 border-b border-gray-300">
             <div className="flex items-center">
               <div className="w-3 h-3 bg-gray-500 rounded-full mr-3"></div>
@@ -241,6 +329,8 @@ export default function Devices() {
           </table>
         </div>
       )}
+        </div>
+      </div>
 
       {/* Modals */}
       {showTVForm && (
