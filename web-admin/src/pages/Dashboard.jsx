@@ -197,39 +197,44 @@ export default function Dashboard() {
   // Show loading skeleton while fetching
   if (isLoading) {
     return (
-      <div className="px-4 sm:px-6 lg:px-8">
-        <div className="sticky top-0 z-50 bg-white dark:bg-gray-800 pb-4 mb-6 border-b border-gray-200 dark:border-gray-700 -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8">
-          <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-100 pt-4">Dashboard</h1>
+      <div className="min-h-screen bg-slate-50 dark:bg-gray-900">
+        <div className="fixed top-0 left-0 right-0 lg:left-64 z-40 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 sm:px-6 lg:px-8 pt-3 sm:pt-4 pb-3">
+          <div className="pl-12 lg:pl-0">
+            <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">Dashboard</h1>
+            <div className="h-4 w-64 bg-gray-200 dark:bg-gray-700 rounded animate-pulse mt-1"></div>
+          </div>
         </div>
 
-        {/* Loading Stats - 8 cards */}
-        <LoadingSkeleton variant="stats" count={8} />
+        <div className="pt-20 sm:pt-24">
+        <div className="px-4 sm:px-6 lg:px-8">
+          {/* Loading Stats - 8 cards in 2 cols mobile, 4 cols desktop */}
+          <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-8">
+            <LoadingSkeleton variant="stats" count={8} />
+          </div>
 
-        {/* Loading Pending Approvals (simulate) */}
-        <div className="mb-8">
-          <LoadingSkeleton variant="pending-approvals" count={2} />
+          {/* Loading Recent Devices & Content */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+            <LoadingSkeleton variant="list" count={5} />
+            <LoadingSkeleton variant="list" count={5} />
+          </div>
         </div>
-
-        {/* Loading Recent Devices & Content */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <LoadingSkeleton variant="list" count={5} />
-          <LoadingSkeleton variant="list" count={5} />
         </div>
       </div>
     )
   }
 
   return (
-    <div className="px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-slate-50 dark:bg-gray-900">
       {/* FASE 9.1: Page Header with Description */}
-      <div className="sticky top-0 z-50 bg-white dark:bg-gray-800 pb-4 mb-6 border-b border-gray-200 dark:border-gray-700 -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-100 pt-4">Dashboard</h1>
-            <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-              Overview of your digital signage system
-            </p>
-          </div>
+      <div className="fixed top-0 left-0 right-0 lg:left-64 z-40 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 shadow-md transition-colors">
+        <div className="px-4 sm:px-6 lg:px-8 pt-3 sm:pt-4 pb-3">
+          <div className="flex items-center justify-between pl-12 lg:pl-0">
+            <div>
+              <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">Dashboard</h1>
+              <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-300 mt-1">
+                Overview of your digital signage system
+              </p>
+            </div>
 
           {/* FASE 9.3: WebSocket Status Indicator */}
           <div className="flex items-center gap-2 text-xs">
@@ -248,8 +253,12 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Stats Grid with fade-in animation */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8 animate-fade-in">
+      {/* Content with padding to account for fixed header - smaller padding since no search/sort */}
+      <div className="pt-20 sm:pt-24">
+
+      {/* Stats Grid with fade-in animation - 2 cols mobile, 2 cols tablet, 4 cols desktop */}
+      <div className="px-4 sm:px-6 lg:px-8">
+      <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-8 animate-fade-in">
         {stats.map((stat) => {
           const Icon = stat.icon
           const bgColors = {
@@ -289,9 +298,12 @@ export default function Dashboard() {
         })}
       </div>
 
+      </div>
+
       {/* FASE 2.1: Pending Approvals Section with fade-in animation */}
+      <div className="px-4 sm:px-6 lg:px-8">
       {pendingDevices.length > 0 && (
-        <div className="bg-yellow-50 dark:bg-yellow-900/20 border-2 border-yellow-400 dark:border-yellow-700 rounded-xl p-6 mb-8 animate-fade-in">
+        <div className="bg-yellow-50 dark:bg-yellow-900/20 border-2 border-yellow-400 dark:border-yellow-700 rounded-xl p-4 sm:p-6 mb-8 animate-fade-in">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-3">
               <div className="w-3 h-3 bg-yellow-500 rounded-full animate-pulse"></div>
@@ -368,11 +380,13 @@ export default function Dashboard() {
           </div>
         </div>
       )}
+      </div>
 
-      {/* Recent Devices & Content with fade-in animation */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 animate-fade-in">
+      {/* Recent Devices & Content with fade-in animation - 1 col on all sizes */}
+      <div className="px-4 sm:px-6 lg:px-8">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 animate-fade-in">
         {/* Recent Devices */}
-        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-300 dark:border-gray-600 p-6">
+        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-300 dark:border-gray-600 p-4 sm:p-6">
           <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100 mb-4">Recent Devices</h2>
           {devicesList && devicesList.length > 0 ? (
             <div className="space-y-3">
@@ -439,7 +453,7 @@ export default function Dashboard() {
         </div>
 
         {/* Recent Content */}
-        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-300 dark:border-gray-600 p-6">
+        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-300 dark:border-gray-600 p-4 sm:p-6">
           <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100 mb-4">Recent Content</h2>
           {content?.items && content.items.length > 0 ? (
             <div className="space-y-3">
@@ -473,6 +487,9 @@ export default function Dashboard() {
             <p className="text-gray-500 dark:text-gray-400 text-center py-8">No content uploaded yet</p>
           )}
         </div>
+      </div>
+      </div>
+      </div>
       </div>
     </div>
   )
