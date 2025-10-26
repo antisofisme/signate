@@ -89,6 +89,18 @@ ares-log --device mytv --follow
 ares-inspect --device mytv --app com.signage.viewer --open
 ```
 
+## 🧪 Quick Test with Simulator (No TV needed!)
+
+**For webOS TV 22+ Simulator:**
+
+```bash
+# Test tanpa install IPK!
+ares-launch --simulator /mnt/g/khoirul/signate/webos-app
+
+# Pastikan viewer server running:
+cd ../viewer && python3 -m http.server 8080
+```
+
 ## ❓ Troubleshooting
 
 ### App tidak bisa di-install
@@ -103,7 +115,7 @@ ares-setup-device
 
 ### Activation code tidak muncul
 
-1. Check server running: http://192.168.5.12:8080
+1. Check viewer server running: http://192.168.5.12:8080
 2. Check backend API: http://192.168.5.12:8001/health
 3. Reload app:
    ```bash

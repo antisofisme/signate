@@ -32,9 +32,10 @@ LG Smart TV (WebOS App)
 ```
 webos-app/
 ├── appinfo.json          # WebOS app configuration
+├── index.html            # Loader that redirects to server (hosted app)
 ├── icon.png              # App icon 80x80
 ├── largeIcon.png         # Large icon 130x130
-├── bg.png                # Background image (optional)
+├── bg.png                # Background image 1920x1080
 └── README.md             # This file
 ```
 
@@ -148,21 +149,48 @@ ares-inspect --device mytv --app com.signage.viewer --open
 6. **Assign/Unassign** content
 7. **TV auto-refresh** dalam 10 detik dan download konten baru!
 
-### Update App (Jika Perlu)
+### Update Viewer Code (TANPA Reinstall IPK!)
 
-Jika ada perubahan code viewer (bukan konten):
+**Ini yang PALING PENTING** - Hosted app architecture memungkinkan update tanpa reinstall:
 
 ```bash
-# Update version di appinfo.json
-# Misalnya: "version": "1.0.1"
+# 1. Fix bug di viewer/ (local)
+vim ../viewer/js/player/playback.js
 
-# Package ulang
-ares-package . --outdir ../build
+# 2. Test lokal
+cd ../viewer
+python3 -m http.server 8080
 
-# Install ulang
-ares-install --device mytv ../build/com.signage.viewer_1.0.1_all.ipk
+# 3. Sync ke server
+sshpass -p 'Password@2021' scp -r ../viewer/ gzjbbk@192.168.5.12:/home/gzjbbk/signage/
 
-# Launch
+# 4. TV langsung dapat update - TIDAK PERLU REINSTALL IPK! ✅
+# Restart app di TV (tutup → buka lagi) → Otomatis load versi baru
+```
+
+**Kenapa tidak perlu reinstall?**
+- IPK hanya berisi `index.html` yang redirect ke server
+- Semua viewer code (JS/HTML) ada di server (http://192.168.5.12:8080)
+- Update di server = TV langsung dapat update!
+
+### Update IPK (JARANG Diperlukan)
+
+Rebuild IPK HANYA jika:
+- ✅ Ubah icon/logo (icon.png, largeIcon.png, bg.png)
+- ✅ Ubah appinfo.json (app ID, version, permissions)
+- ✅ Ubah server URL di index.html
+
+```bash
+# 1. Update file yang perlu (icon, appinfo.json, dll)
+
+# 2. Rebuild IPK
+cd /mnt/g/khoirul/signate
+ares-package webos-app -o webos-ipk/
+
+# 3. Reinstall ke TV
+ares-install --device mytv webos-ipk/com.signage.viewer_1.0.1_all.ipk
+
+# 4. Launch
 ares-launch --device mytv com.signage.viewer
 ```
 
@@ -187,32 +215,50 @@ Edit `appinfo.json` untuk customize:
   "id": "com.signage.viewer",        // Unique app ID
   "version": "1.0.0",                 // App version
   "title": "Digital Signage Viewer",  // Nama app di TV
-  "main": "http://192.168.5.12:8080/index.html",  // URL server
+  "main": "index.html",               // Entry point (redirects to server)
   "resolution": "1920x1080"           // Target resolution
 }
 ```
 
 ### Server URL
 
-Jika server pindah IP, update di `appinfo.json`:
+Jika server pindah IP, update di `webos-app/index.html`:
 
-```json
-{
-  "main": "http://NEW_IP:8080/index.html"
-}
+```javascript
+// Line 12 in index.html
+const SERVER_URL = 'http://NEW_IP:8080/index.html';
 ```
+
+**Note:** Tidak perlu rebuild IPK! File `index.html` hanya perlu diupdate di TV saat reinstall pertama kali.
 
 ## 🧪 Testing
 
-### Test Local (Before Deploy)
+### Test with Simulator (Recommended - No IPK needed!)
+
+**For webOS TV 22+ Simulator** - Test langsung tanpa build IPK:
+
+```bash
+# Run directly from source folder
+ares-launch --simulator /mnt/g/khoirul/signate/webos-app
+
+# Simulator will load index.html and redirect to server
+```
+
+**Pastikan viewer server running:**
+```bash
+cd ../viewer
+python3 -m http.server 8080
+```
+
+### Test Local (Browser Testing)
 
 ```bash
 # Run local web server
-cd ../webos-viewer
-python3 -m http.server 8081
+cd ../viewer
+python3 -m http.server 8080
 
-# Akses dari TV browser untuk test
-# URL: http://192.168.5.12:8081
+# Akses dari browser untuk test
+# URL: http://192.168.5.12:8080
 ```
 
 ### Test Deployed App

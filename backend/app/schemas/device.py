@@ -68,7 +68,6 @@ class MonitorSelfRegisterRequest(BaseModel):
     """Request schema for monitor self-registration (no auth required)"""
     activation_code: str = Field(..., min_length=6, max_length=6, pattern="^[0-9]{6}$")
     device_name: str = Field(..., min_length=1, max_length=100)
-    device_uuid: Optional[str] = Field(None, min_length=36, max_length=36)
     platform: Optional[str] = Field(None, max_length=20)
     model_name: Optional[str] = Field(None, max_length=100)
 
@@ -77,7 +76,6 @@ class MonitorSelfRegisterRequest(BaseModel):
             "example": {
                 "activation_code": "123456",
                 "device_name": "Monitor-123456",
-                "device_uuid": "550e8400-e29b-41d4-a716-446655440000",
                 "platform": "webOS",
                 "model_name": "LG OLED55C1PUB"
             }
@@ -125,8 +123,6 @@ class HeartbeatRequest(BaseModel):
     """Request schema for device heartbeat"""
     device_id: int
     ip_address: Optional[str] = None
-    # Permanent device identifier
-    device_uuid: Optional[str] = None
     # Platform information
     platform: Optional[str] = None
     model_name: Optional[str] = None
@@ -146,7 +142,6 @@ class HeartbeatRequest(BaseModel):
             "example": {
                 "device_id": 1,
                 "ip_address": "192.168.1.100",
-                "device_uuid": "550e8400-e29b-41d4-a716-446655440000",
                 "platform": "webOS",
                 "model_name": "LG OLED55C1PUB",
                 "firmware_version": "6.0.0",
@@ -170,7 +165,6 @@ class DeviceResponse(BaseModel):
     ip_address: Optional[str] = None
     unique_code: Optional[str] = None
     code_expires_at: Optional[datetime] = None
-    device_uuid: Optional[str] = None
     platform: Optional[str] = None
     model_name: Optional[str] = None
     firmware_version: Optional[str] = None
@@ -204,7 +198,6 @@ class DeviceResponse(BaseModel):
                 "ip_address": "192.168.1.100",
                 "unique_code": None,
                 "code_expires_at": None,
-                "device_uuid": "550e8400-e29b-41d4-a716-446655440000",
                 "platform": "webOS",
                 "model_name": "LG OLED55C1PUB",
                 "firmware_version": "6.0.0",

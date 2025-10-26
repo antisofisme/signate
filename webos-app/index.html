@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Digital Signage Viewer - Loading...</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: #1e40af;
+            color: white;
+            font-family: system-ui, -apple-system, sans-serif;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+        }
+        .loader {
+            text-align: center;
+        }
+        .spinner {
+            border: 4px solid rgba(255, 255, 255, 0.3);
+            border-top: 4px solid white;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        p {
+            margin: 10px 0;
+            opacity: 0.9;
+        }
+        .error {
+            color: #fca5a5;
+            font-size: 14px;
+            max-width: 400px;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="loader">
+        <div class="spinner"></div>
+        <h2>Digital Signage Viewer</h2>
+        <p id="status">Connecting to server...</p>
+        <p class="error" id="error" style="display: none;"></p>
+    </div>
+
+    <script>
+        // Hosted App Configuration
+        const SERVER_URL = 'http://192.168.5.12:8080/index.html';
+        const MAX_RETRIES = 3;
+        let retryCount = 0;
+
+        function updateStatus(message) {
+            document.getElementById('status').textContent = message;
+        }
+
+        function showError(message) {
+            const errorEl = document.getElementById('error');
+            errorEl.textContent = message;
+            errorEl.style.display = 'block';
+        }
+
+        async function checkServer() {
+            try {
+                updateStatus(`Checking server availability... (${retryCount + 1}/${MAX_RETRIES})`);
+
+                // Manual timeout implementation for older browsers
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
+
+                const response = await fetch('http://192.168.5.12:8080/', {
+                    method: 'HEAD',
+                    cache: 'no-cache',
+                    signal: controller.signal
+                });
+
+                clearTimeout(timeoutId);
+
+                if (response.ok) {
+                    updateStatus('Server found! Redirecting...');
+                    // Redirect to server version
+                    window.location.href = SERVER_URL;
+                } else {
+                    throw new Error(`Server returned ${response.status}`);
+                }
+            } catch (error) {
+                console.error('Server check failed:', error);
+
+                retryCount++;
+                if (retryCount < MAX_RETRIES) {
+                    updateStatus(`Retrying in 2 seconds...`);
+                    setTimeout(checkServer, 2000);
+                } else {
+                    updateStatus('Unable to connect to server');
+                    showError(
+                        'Cannot connect to server at ' + SERVER_URL + '. ' +
+                        'Please check:\n' +
+                        '1. Server is running (http://192.168.5.12:8080)\n' +
+                        '2. Network connection is active\n' +
+                        '3. Firewall allows connection'
+                    );
+                }
+            }
+        }
+
+        // Start checking server
+        checkServer();
+    </script>
+</body>
+</html>

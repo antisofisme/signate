@@ -7,9 +7,9 @@ import { Monitor, Tv, CheckCircle } from 'lucide-react'
  * Memoized to prevent unnecessary re-renders in pending devices list
  *
  * Features:
- * - Device icon based on type (TV with UUID or Monitor without)
- * - Device name and identifier (UUID or unique code)
- * - Platform badge (webOS, etc.)
+ * - Device icon based on platform (TV platforms or Monitor/Browser)
+ * - Device name and identifier (unique code)
+ * - Platform badge (webOS, Chrome, etc.)
  * - Last seen timestamp
  * - Approve button with mutation callback
  * - Visual styling with yellow theme for pending status
@@ -18,14 +18,17 @@ import { Monitor, Tv, CheckCircle } from 'lucide-react'
  * @param {Function} onApprove - Callback when approve button is clicked
  */
 function PendingDeviceCard({ device, onApprove }) {
+  // Determine if device is TV based on platform
+  const isTv = device.platform && ['webOS', 'Tizen', 'Android TV'].includes(device.platform)
+
   return (
     <div className="bg-white dark:bg-gray-800 rounded-lg p-4 border-2 border-yellow-300 flex items-center justify-between">
       <div className="flex items-center gap-4">
         {/* Device Icon */}
         <div className={`flex items-center justify-center w-12 h-12 rounded-full ${
-          device.device_uuid ? 'bg-blue-100 dark:bg-blue-900/30' : 'bg-green-100 dark:bg-green-900/30'
+          isTv ? 'bg-blue-100 dark:bg-blue-900/30' : 'bg-green-100 dark:bg-green-900/30'
         }`}>
-          {device.device_uuid ? (
+          {isTv ? (
             <Tv className="w-6 h-6 text-blue-600 dark:text-blue-400" />
           ) : (
             <Monitor className="w-6 h-6 text-green-600 dark:text-green-400" />
@@ -51,16 +54,9 @@ function PendingDeviceCard({ device, onApprove }) {
             )}
           </div>
 
-          {/* UUID or Code Display */}
+          {/* Code Display */}
           <div className="flex items-center gap-2 mt-1">
-            {device.device_uuid ? (
-              <>
-                <span className="text-xs text-gray-500 dark:text-gray-400">UUID:</span>
-                <span className="font-mono text-xs text-blue-600 bg-blue-50 px-2 py-1 rounded">
-                  {device.device_uuid.substring(0, 13)}...
-                </span>
-              </>
-            ) : device.unique_code ? (
+            {device.unique_code ? (
               <>
                 <span className="text-xs text-gray-500 dark:text-gray-400">Code:</span>
                 <span className="font-mono text-lg font-bold text-yellow-600">

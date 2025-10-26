@@ -4,11 +4,12 @@ Panduan lengkap untuk testing WebOS app tanpa TV fisik.
 
 ## 🎯 Testing Options
 
-Ada 3 cara testing WebOS app:
+Ada 4 cara testing WebOS app (dari tercepat ke paling lengkap):
 
 1. **Browser Testing** ⚡ Tercepat, untuk hosted app
-2. **ares-server** 🚀 Local WebOS environment
-3. **WebOS Emulator** 📺 Full TV simulation
+2. **WebOS Simulator** 🚀 Modern (webOS TV 22+), tanpa IPK
+3. **ares-server** 📡 Local WebOS environment
+4. **WebOS Emulator** 📺 Full TV simulation (deprecated untuk webOS TV 22+)
 
 ## 1️⃣ Browser Testing (Recommended untuk Hosted App)
 
@@ -17,13 +18,13 @@ Karena app kita adalah **hosted app** (load dari web server), kita bisa test lan
 ### Quick Test
 
 ```bash
-# Pastikan server running
-cd ../webos-viewer
-python3 -m http.server 8081
+# Pastikan viewer server running
+cd ../viewer
+python3 -m http.server 8080
 
 # Buka di browser
-# Chrome: http://localhost:8081
-# Firefox: http://localhost:8081
+# Chrome: http://localhost:8080
+# Firefox: http://localhost:8080
 ```
 
 ### Simulate TV Resolution
@@ -44,7 +45,52 @@ Di Chrome DevTools:
 ✅ Offline caching (DevTools → Application → IndexedDB)
 ✅ Auto-refresh (console logs)
 
-## 2️⃣ ares-server (Local WebOS Environment)
+## 2️⃣ WebOS Simulator (Recommended untuk webOS TV 22+)
+
+**MODERN** approach - tidak perlu build IPK, langsung run dari source folder!
+
+### Prerequisites
+
+1. **WebOS Studio** atau **WebOS CLI** terinstall
+2. **Download Simulator** untuk OS kamu:
+   - https://webostv.developer.lge.com/develop/tools/simulator-installation
+
+### Quick Start
+
+```bash
+# Run app di Simulator (TANPA build IPK!)
+ares-launch --simulator /mnt/g/khoirul/signate/webos-app
+
+# Pastikan viewer server running:
+cd ../viewer && python3 -m http.server 8080
+```
+
+### Advanced Usage
+
+```bash
+# Specify Simulator version
+ares-launch -s 23 -sp /path/to/webOS_TV_23_Simulator webos-app
+
+# With auto-reload on code changes
+ares-launch --simulator --inspect webos-app
+```
+
+### Features
+
+- ✅ **Instant reload** saat code berubah
+- ✅ **Built-in inspector** (auto-open Chrome DevTools)
+- ✅ **No IPK needed** - langsung run dari source
+- ✅ **Faster iteration** - save → reload otomatis
+- ⚠️ Simulator hanya untuk webOS TV 22+ (versi baru)
+
+### Expected Behavior
+
+1. Simulator launch → Load `webos-app/index.html`
+2. index.html check server (http://192.168.5.12:8080)
+3. Jika server running → Redirect ke viewer full
+4. Jika server offline → Show error + retry
+
+## 3️⃣ ares-server (Local WebOS Environment)
 
 WebOS CLI menyediakan local web server yang mensimulasikan WebOS environment.
 
@@ -82,7 +128,9 @@ ares-server --open
 - ✅ Shows WebOS-specific logs
 - ⚠️ Tidak bisa test TV-specific features
 
-## 3️⃣ WebOS Emulator (Full TV Simulation)
+## 4️⃣ WebOS Emulator (Full TV Simulation - Deprecated)
+
+**⚠️ WARNING:** Emulator deprecated untuk webOS TV 22+. Gunakan **Simulator** sebagai gantinya!
 
 Emulator adalah virtual TV yang berjalan di VirtualBox.
 
@@ -355,33 +403,41 @@ navigator.storage.estimate().then(estimate => {
 3. Test in regular browser first
 4. Check console for errors
 
-## 💡 Best Testing Strategy
+## 💡 Best Testing Strategy (Updated 2025)
 
-### Development Phase
+### Development Phase (Fast Iteration)
 
-1. **Browser Testing** (fast iteration)
+1. **Browser Testing** ⚡ (5 menit)
    - Test UI changes
    - Test API integration
    - Test caching logic
+   - **Tercepat untuk debug!**
 
-2. **ares-server** (WebOS environment)
-   - Test hosted app loading
+2. **WebOS Simulator** 🚀 (10 menit - webOS TV 22+)
+   - Test hosted app loading & redirect
    - Verify WebOS compatibility
    - Test app lifecycle
+   - Auto-reload on code changes
+   - **RECOMMENDED untuk development!**
 
 ### Pre-Production
 
-3. **Emulator** (TV simulation)
-   - Test full TV experience
-   - Test remote control (if using)
-   - Performance testing
+3. **ares-server** 📡 (15 menit)
+   - Test WebOS environment
+   - Verify app configuration
+   - Test without Simulator/Emulator
+
+4. **Emulator** 📺 (30 menit - ONLY for webOS TV 6.0 or older)
+   - ⚠️ Deprecated untuk webOS TV 22+
+   - Use Simulator instead jika memungkinkan
 
 ### Production
 
-4. **Real TV** (final validation)
+5. **Real TV** ✅ (5 menit - final validation)
    - Test on actual hardware
    - Verify resolution/quality
-   - Long-term stability test
+   - Long-term stability test (24+ hours)
+   - Test remote control interaction
 
 ## 📚 Resources
 
@@ -391,10 +447,16 @@ navigator.storage.estimate().then(estimate => {
 
 ---
 
-**Recommendation**: Start dengan **Browser Testing** untuk development cepat, lalu test di **Emulator** atau **Real TV** sebelum production.
+**Recommendation (2025)**:
+1. **Development**: Start dengan **Browser Testing** (tercepat)
+2. **Verification**: Test di **WebOS Simulator** (untuk webOS TV 22+)
+3. **Production**: Final test di **Real TV** sebelum deploy
+
+**⚠️ Skip Emulator** - deprecated untuk webOS TV 22+, gunakan Simulator!
 
 **Estimated Testing Time**:
 - Browser: 5 minutes ⚡
-- ares-server: 10 minutes
-- Emulator: 30 minutes (first time)
-- Real TV: 5 minutes (setelah setup)
+- WebOS Simulator: 10 minutes 🚀 (RECOMMENDED)
+- ares-server: 15 minutes
+- Emulator: 30 minutes (deprecated, skip jika bisa)
+- Real TV: 5 minutes ✅ (final validation)

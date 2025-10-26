@@ -92,7 +92,6 @@ def device_to_response(device: Device, db: Session) -> DeviceResponse:
         "ip_address": device.ip_address,
         "unique_code": device.unique_code,
         "code_expires_at": device.code_expires_at,
-        "device_uuid": device.device_uuid,
         "platform": device.platform,
         "model_name": device.model_name,
         "firmware_version": device.firmware_version,
@@ -451,21 +450,10 @@ def register_monitor_self(
     elif request.client:
         client_ip = request.client.host
 
-    # 🔥 AUTO-CLEANUP: Delete old pending devices from same IP
-    # This ensures that when a viewer refreshes, the old pending device is immediately removed
-    # instead of waiting for heartbeat timeout (60s) or manual cleanup
-    if client_ip:
-        old_pending_devices = db.query(Device).filter(
-            Device.ip_address == client_ip,
-            Device.device_type == "monitor",
-            Device.status == "pending"
-        ).all()
-
-        if old_pending_devices:
-            logger.info(f"[Monitor Register] Auto-cleanup: Deleting {len(old_pending_devices)} old pending device(s) from IP {client_ip}")
-            for old_device in old_pending_devices:
-                logger.info(f"[Monitor Register] Deleting device {old_device.id} (code: {old_device.unique_code}, IP: {old_device.ip_address})")
-                db.delete(old_device)
+    # AUTO-CLEANUP DISABLED
+    # Multiple devices can have the same IP (e.g., Chrome + WebOS Simulator on same PC)
+    # Let pending devices expire naturally via code_expires_at (10 minutes)
+    # Or admin can manually delete old pending devices from Web Admin
 
     # Create monitor device with self-generated code
     device = Device(
@@ -473,9 +461,8 @@ def register_monitor_self(
         device_name=device_data.device_name,
         unique_code=device_data.activation_code,
         code_expires_at=get_code_expiry(),  # 10 minutes expiry
-        device_uuid=device_data.device_uuid,  # Permanent UUID
-        platform=device_data.platform,  # WebOS or browser
-        model_name=device_data.model_name,  # TV model name
+        platform=device_data.platform if device_data.platform else None,  # Optional
+        model_name=device_data.model_name if device_data.model_name else None,  # Optional
         ip_address=client_ip,  # Auto-detected IP
         status="pending"
     )
@@ -730,7 +717,6 @@ def release_device(
         ip_address=device.ip_address,
         unique_code=device.unique_code,
         code_expires_at=device.code_expires_at,
-        device_uuid=device.device_uuid,
         platform=device.platform,
         model_name=device.model_name,
         firmware_version=device.firmware_version,
@@ -798,13 +784,6 @@ def replace_device_with_pending(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Device {pending_device_id} is not pending (status: {pending_device.status})"
-        )
-
-    # Validate both are browser devices (not WebOS with UUID)
-    if target_device.device_uuid or pending_device.device_uuid:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Can only replace browser devices (not WebOS TV with UUID)"
         )
 
     logger.info(f"Replacing device {device_id} (code: {target_device.unique_code}) with pending device {pending_device_id} (code: {pending_device.unique_code})")
@@ -980,9 +959,7 @@ def device_heartbeat(
     elif client_ip:
         device.ip_address = client_ip
 
-    # Update UUID and platform information if provided
-    if heartbeat_data.device_uuid is not None:
-        device.device_uuid = heartbeat_data.device_uuid
+    # Update platform information if provided
     if heartbeat_data.platform is not None:
         device.platform = heartbeat_data.platform
     if heartbeat_data.model_name is not None:

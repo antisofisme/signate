@@ -34,15 +34,20 @@ export default function DeviceEditModal({ device, onClose, onSave }) {
   const [selectedPendingId, setSelectedPendingId] = useState(null)
   const [isLoadingPending, setIsLoadingPending] = useState(false)
 
-  // Fetch pending devices (only browser devices without UUID)
+  // Check if device is TV platform
+  const isTv = device.platform && ['webOS', 'Tizen', 'Android TV'].includes(device.platform)
+
+  // Fetch pending devices (only for browser devices)
   useEffect(() => {
     const fetchPendingDevices = async () => {
       try {
         setIsLoadingPending(true)
         const response = await devicesAPI.list()
-        // Filter: hanya pending devices yang browser (tidak punya UUID) dan bukan device ini sendiri
+        // Filter: only pending browser/monitor devices (not TV platforms) and not this device
         const pending = response.data.devices.filter(
-          d => d.status === 'pending' && (!d.device_uuid || d.device_uuid === '') && d.id !== device.id
+          d => d.status === 'pending' &&
+          !(d.platform && ['webOS', 'Tizen', 'Android TV'].includes(d.platform)) &&
+          d.id !== device.id
         )
         setPendingDevices(pending)
       } catch (error) {
@@ -52,11 +57,11 @@ export default function DeviceEditModal({ device, onClose, onSave }) {
       }
     }
 
-    // Only fetch for browser devices (not WebOS TV with UUID)
-    if (!device.device_uuid || device.device_uuid === '') {
+    // Only fetch for browser/monitor devices (not TV platforms)
+    if (!isTv) {
       fetchPendingDevices()
     }
-  }, [device.id, device.device_uuid])
+  }, [device.id, device.platform, isTv])
 
   const handleChange = (field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }))
@@ -161,7 +166,7 @@ export default function DeviceEditModal({ device, onClose, onSave }) {
       {/* Custom header with gradient and icon - Fixed */}
       <div className="flex items-center justify-between p-6 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
         <div className="flex items-center">
-          {device.device_uuid ? (
+          {isTv ? (
             <Tv className="w-6 h-6 text-blue-600 mr-3" />
           ) : (
             <Monitor className="w-6 h-6 text-green-600 mr-3" />
@@ -244,7 +249,7 @@ export default function DeviceEditModal({ device, onClose, onSave }) {
           </div>
 
           {/* Replace with Pending Device Section (Only for Browser Devices) */}
-          {(!device.device_uuid || device.device_uuid === '') && (
+          {!isTv && (
             <div>
               <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4 flex items-center">
                 <RefreshCw className="w-5 h-5 mr-2 text-orange-600" />

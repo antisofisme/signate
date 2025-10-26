@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "vendor": "Smart TV Digital Signage",
   "type": "web",
-  "main": "http://192.168.5.12:8081/index.html",
+  "main": "index.html",
   "title": "Digital Signage Viewer",
   "icon": "icon.png",
   "largeIcon": "largeIcon.png",

@@ -22,6 +22,9 @@ import { Modal } from '../../shared'
 export default function AssignContentModal({ device, onClose }) {
   const queryClient = useQueryClient()
 
+  // Determine if device is TV based on platform
+  const isTv = device.platform && ['webOS', 'Tizen', 'Android TV'].includes(device.platform)
+
   // Fetch all content
   const { data: contentData } = useQuery({
     queryKey: ['content'],
@@ -88,7 +91,7 @@ export default function AssignContentModal({ device, onClose }) {
       {/* Custom Header - Fixed */}
       <div className="flex items-center justify-between p-6 bg-white dark:bg-gray-800 border-b flex-shrink-0">
         <div className="flex items-center">
-          {device.device_uuid ? (
+          {isTv ? (
             <Tv className="w-6 h-6 text-blue-600 mr-3" />
           ) : (
             <Monitor className="w-6 h-6 text-green-600 mr-3" />

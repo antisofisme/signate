@@ -30,6 +30,9 @@ function DeviceTableRow({
   onActivate,
   onViewLogs
 }) {
+  // Determine if device is TV based on platform
+  const isTv = device.platform && ['webOS', 'Tizen', 'Android TV'].includes(device.platform)
+
   return (
     <tr
       onClick={() => onRowClick(device)}
@@ -43,7 +46,7 @@ function DeviceTableRow({
       {/* Device Name Column */}
       <td className="px-6 py-4 whitespace-nowrap">
         <div className="flex items-center">
-          {device.device_uuid ? (
+          {isTv ? (
             <Tv className="w-5 h-5 text-blue-600 mr-2" />
           ) : (
             <Monitor className="w-5 h-5 text-green-600 mr-2" />
@@ -62,13 +65,9 @@ function DeviceTableRow({
         <span className="font-mono">{device.ip_address || '-'}</span>
       </td>
 
-      {/* Code/UUID Column */}
+      {/* Code Column */}
       <td className="px-6 py-4 whitespace-nowrap text-sm">
-        {device.device_uuid ? (
-          <span className="font-mono text-xs text-blue-600 bg-blue-50 px-2 py-1 rounded">
-            {device.device_uuid.substring(0, 13)}...
-          </span>
-        ) : device.unique_code ? (
+        {device.unique_code ? (
           <span className="font-mono font-bold text-green-600">
             {device.unique_code}
           </span>

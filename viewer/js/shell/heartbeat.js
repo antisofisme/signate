@@ -30,19 +30,43 @@ window.ShellHeartbeat = {
 
     /**
      * Detect platform type
+     * IMPORTANT: Check TV platforms FIRST before browsers
+     * (WebOS/Tizen user agents also contain "Chrome" keyword)
      */
     detectPlatform: function() {
         const ua = navigator.userAgent.toLowerCase();
 
-        if (ua.includes('webos')) return 'webOS';
+        // TV platforms (CHECK FIRST!)
+        if (ua.includes('webos') || ua.includes('web0s')) return 'webOS';
         if (ua.includes('tizen')) return 'Tizen';
         if (ua.includes('android tv')) return 'Android TV';
-        if (ua.includes('chrome')) return 'Chrome';
+
+        // Desktop browsers (check after TV platforms)
+        if (ua.includes('edg/') || ua.includes('edge')) return 'Edge';
         if (ua.includes('firefox')) return 'Firefox';
+        if (ua.includes('chrome')) return 'Chrome';
         if (ua.includes('safari')) return 'Safari';
-        if (ua.includes('edge')) return 'Edge';
 
         return 'Browser';
+    },
+
+    /**
+     * Get device category (tv, browser, or unknown)
+     */
+    getDeviceCategory: function() {
+        const platform = this.detectPlatform();
+
+        // TV platforms
+        if (['webOS', 'Tizen', 'Android TV'].includes(platform)) {
+            return 'tv';
+        }
+
+        // Desktop browsers
+        if (['Chrome', 'Firefox', 'Safari', 'Edge', 'Browser'].includes(platform)) {
+            return 'browser';
+        }
+
+        return 'unknown';
     },
 
     /**
@@ -92,8 +116,10 @@ window.ShellHeartbeat = {
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         device_id: parseInt(state.deviceId),
-                        device_type: 'monitor',
-                        ...deviceInfo
+                        platform: this.detectPlatform(),           // 'webOS', 'Chrome', etc (backend schema)
+                        ...deviceInfo,
+                        // Additional metadata for frontend filtering
+                        device_category: this.getDeviceCategory()  // 'tv' or 'browser' (custom field)
                     })
                 });
 

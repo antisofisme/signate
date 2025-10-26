@@ -242,6 +242,9 @@ export default function DeviceDetailModal({ device: initialDevice, onClose, onEd
   const assignedContentIds = deviceContentData?.map(c => c.content_id) || []
   const availableContent = allContentData?.items?.filter(c => !assignedContentIds.includes(c.id)) || []
 
+  // Determine if device is TV based on platform
+  const isTv = device.platform && ['webOS', 'Tizen', 'Android TV'].includes(device.platform)
+
   return (
     <Modal
       isOpen={true}
@@ -253,7 +256,7 @@ export default function DeviceDetailModal({ device: initialDevice, onClose, onEd
       {/* Custom header with gradient and icon - Fixed */}
       <div className="flex items-center justify-between p-6 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
         <div className="flex items-center gap-3">
-          {device.device_uuid ? (
+          {isTv ? (
             <Tv className="w-6 h-6 text-blue-600" />
           ) : (
             <Monitor className="w-6 h-6 text-green-600" />
@@ -648,14 +651,6 @@ export default function DeviceDetailModal({ device: initialDevice, onClose, onEd
               <span className="w-48 font-medium text-gray-700 dark:text-gray-300">IP Address:</span>
               <span className="text-gray-900 dark:text-white font-mono">{device.ip_address || '-'}</span>
             </div>
-            {device.device_uuid && (
-              <div className="flex items-center">
-                <span className="w-48 font-medium text-gray-700 dark:text-gray-300">Device UUID:</span>
-                <span className="text-gray-900 dark:text-white font-mono text-sm bg-blue-50 px-2 py-1 rounded">
-                  {device.device_uuid}
-                </span>
-              </div>
-            )}
             {device.unique_code && (
               <div className="flex items-center">
                 <span className="w-48 font-medium text-gray-700 dark:text-gray-300">Activation Code:</span>
