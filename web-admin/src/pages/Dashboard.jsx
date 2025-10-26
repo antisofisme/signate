@@ -185,9 +185,9 @@ export default function Dashboard() {
         color: 'purple',
       },
       {
-        name: 'TV/App Displays',
+        name: 'App Displays',
         value: appDevices,
-        subtitle: 'Smart TV viewers',
+        subtitle: 'App-based viewers',
         icon: Tv,
         color: 'blue',
       },
@@ -334,7 +334,7 @@ export default function Dashboard() {
                   <div>
                     <p className="font-bold text-gray-800 dark:text-gray-100">{device.device_name}</p>
                     <p className="text-sm text-gray-600 dark:text-gray-400">
-                      {device.device_type.toUpperCase()} • {device.ip_address || '-'}
+                      {device.platform || device.device_type.charAt(0).toUpperCase() + device.device_type.slice(1)} • {device.ip_address || '-'}
                     </p>
                     {device.last_seen && (
                       <p className="text-xs text-gray-500 dark:text-gray-400">
@@ -419,7 +419,7 @@ export default function Dashboard() {
                           )}
                         </div>
                         <p className="text-sm text-gray-600 dark:text-gray-400">
-                          {device.device_type.toUpperCase()} • {device.ip_address || device.unique_code || 'N/A'}
+                          {device.platform || device.device_type.charAt(0).toUpperCase() + device.device_type.slice(1)} • {device.ip_address || device.unique_code || 'N/A'}
                         </p>
                         {device.last_seen && (
                           <p className="text-xs text-gray-500 dark:text-gray-400">

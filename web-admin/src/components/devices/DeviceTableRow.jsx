@@ -55,9 +55,9 @@ function DeviceTableRow({
         </div>
       </td>
 
-      {/* Type Column */}
+      {/* Platform Column */}
       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-400">
-        {device.device_type.toUpperCase()}
+        {device.platform || device.device_type.charAt(0).toUpperCase() + device.device_type.slice(1)}
       </td>
 
       {/* IP Address Column */}

@@ -644,8 +644,8 @@ export default function DeviceDetailModal({ device: initialDevice, onClose, onEd
               <span className="text-gray-900 dark:text-white font-mono">{device.id}</span>
             </div>
             <div className="flex items-center">
-              <span className="w-48 font-medium text-gray-700 dark:text-gray-300">Device Type:</span>
-              <span className="text-gray-900 dark:text-white">{device.device_type.toUpperCase()}</span>
+              <span className="w-48 font-medium text-gray-700 dark:text-gray-300">Platform:</span>
+              <span className="text-gray-900 dark:text-white">{device.platform || device.device_type.charAt(0).toUpperCase() + device.device_type.slice(1)}</span>
             </div>
             <div className="flex items-center">
               <span className="w-48 font-medium text-gray-700 dark:text-gray-300">IP Address:</span>
