@@ -74,7 +74,7 @@ window.ShellNetworkDiagnostics = {
                         level: level,
                         message: message,
                         timestamp: new Date().toISOString(),
-                        source: 'browser-viewer'
+                        source: 'viewer'
                     }]
                 })
             });
@@ -317,7 +317,7 @@ window.ShellNetworkDiagnostics = {
                         level: 'info',
                         message: `Network Diagnostics - Ping: ${results.ping.avg}ms, Download: ${results.download.mbps.toFixed(2)} Mbps, Upload: ${results.upload.mbps.toFixed(2)} Mbps`,
                         timestamp: results.timestamp,
-                        source: 'browser-viewer',
+                        source: 'viewer',
                         metadata: JSON.stringify(results)
                     }]
                 })

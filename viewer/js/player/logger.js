@@ -1,16 +1,15 @@
 /**
- * Shell Logger Module
- * Intercepts console logs and sends to backend
- * CRITICAL: Runs in shell, persists even if player crashes
+ * Player Logger Module
+ * Handles console interception and log sending to backend
  */
 
-window.ShellLogger = {
+window.PlayerLogger = {
     /**
-     * Initialize logger - intercept all console.* calls
+     * Initialize logger (intercept console methods)
      */
     init: function() {
-        const state = window.ShellState;
-        
+        const state = window.PlayerState;
+
         console.log = (...args) => this.interceptLog('log', args);
         console.warn = (...args) => this.interceptLog('warn', args);
         console.error = (...args) => this.interceptLog('error', args);
@@ -19,19 +18,19 @@ window.ShellLogger = {
         // Start periodic send
         state.logSendInterval = setInterval(() => this.sendLogs(), state.LOG_SEND_INTERVAL);
 
-        state.originalConsole.log('[Shell] Logger initialized ✅');
+        state.originalConsole.log('[Player] Logger initialized ✅');
     },
 
     /**
-     * Intercept log call
+     * Intercept console log calls
      */
     interceptLog: function(level, args) {
-        const state = window.ShellState;
-        
+        const state = window.PlayerState;
+
         // Call original console method
         state.originalConsole[level](...args);
 
-        if (!state.deviceId) return; // Don't log before registration
+        if (!state.deviceId) return; // Don't log before we have deviceId
 
         // Format message
         const message = args.map(arg => {
@@ -55,7 +54,7 @@ window.ShellLogger = {
             level: level,
             message: truncated,
             timestamp: new Date().toISOString(),
-            source: 'browser-viewer'
+            source: 'viewer'
         });
 
         // Send if buffer is full
@@ -68,8 +67,8 @@ window.ShellLogger = {
      * Send logs to backend
      */
     sendLogs: async function() {
-        const state = window.ShellState;
-        
+        const state = window.PlayerState;
+
         if (!state.deviceId || state.logBuffer.length === 0) return;
 
         const logsToSend = [...state.logBuffer];
@@ -86,10 +85,10 @@ window.ShellLogger = {
             });
 
             if (!response.ok) {
-                state.originalConsole.warn('[Shell] Failed to send logs:', response.statusText);
+                state.originalConsole.warn('[Player] Failed to send logs:', response.statusText);
             }
         } catch (error) {
-            state.originalConsole.error('[Shell] Error sending logs:', error);
+            state.originalConsole.error('[Player] Error sending logs:', error);
         }
     }
 };

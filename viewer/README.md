@@ -1,6 +1,6 @@
-# Browser Viewer - Smart TV Digital Signage
+# Viewer - Smart TV Digital Signage
 
-Static HTML/JS viewer for standard web browsers and monitors. Designed for monitors connected to PCs, Raspberry Pi, or any device with a modern web browser.
+Static HTML/JS viewer for standard web browsers and monitors. Designed for monitors connected to PCs, Raspberry Pi, or any device with a modern web browser. Also used as source for WebOS TV IPK builds.
 
 ## Architecture Role
 
@@ -78,7 +78,7 @@ Check: `curl http://192.168.5.12:8001/docs`
 ### 2. Start HTTP Server
 
 ```bash
-cd browser-viewer
+cd viewer
 python3 -m http.server 8080
 ```
 
@@ -147,7 +147,7 @@ MIME type issue. Press `c` to clear cache and re-download.
 ## Sync to Server
 
 ```bash
-sshpass -p 'Password@2021' scp -r browser-viewer/ gzjbbk@192.168.5.12:/home/gzjbbk/signage/
+sshpass -p 'Password@2021' scp -r viewer/ gzjbbk@192.168.5.12:/home/gzjbbk/signage/
 ```
 
 ## Important Links
