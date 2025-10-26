@@ -198,15 +198,14 @@ export default function Dashboard() {
   if (isLoading) {
     return (
       <div className="min-h-screen bg-slate-50 dark:bg-gray-900">
-        <div className="fixed top-0 left-0 right-0 lg:left-64 z-40 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 sm:px-6 lg:px-8 pt-3 sm:pt-4 pb-3">
+        <div className="fixed top-0 left-0 right-0 lg:left-64 z-40 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 sm:px-6 lg:px-8 py-3">
           <div className="pl-12 lg:pl-0">
             <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">Dashboard</h1>
             <div className="h-4 w-64 bg-gray-200 dark:bg-gray-700 rounded animate-pulse mt-1"></div>
           </div>
         </div>
 
-        <div className="pt-20 sm:pt-24">
-        <div className="px-4 sm:px-6 lg:px-8">
+        <div className="px-4 sm:px-6 lg:px-8 pt-2">
           {/* Loading Stats - 8 cards in 2 cols mobile, 4 cols desktop */}
           <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-8">
             <LoadingSkeleton variant="stats" count={8} />
@@ -218,16 +217,15 @@ export default function Dashboard() {
             <LoadingSkeleton variant="list" count={5} />
           </div>
         </div>
-        </div>
       </div>
     )
   }
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-gray-900">
-      {/* FASE 9.1: Page Header with Description */}
+      {/* FASE 9.1: Page Header with Description - Simple, no search/stats */}
       <div className="fixed top-0 left-0 right-0 lg:left-64 z-40 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 shadow-md transition-colors">
-        <div className="px-4 sm:px-6 lg:px-8 pt-3 sm:pt-4 pb-3">
+        <div className="px-4 sm:px-6 lg:px-8 py-3">
           <div className="flex items-center justify-between pl-12 lg:pl-0">
             <div>
               <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">Dashboard</h1>
@@ -253,11 +251,8 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Content with padding to account for fixed header - smaller padding since no search/sort */}
-      <div className="pt-20 sm:pt-24">
-
       {/* Stats Grid with fade-in animation - 2 cols mobile, 2 cols tablet, 4 cols desktop */}
-      <div className="px-4 sm:px-6 lg:px-8">
+      <div className="px-4 sm:px-6 lg:px-8 pt-2">
       <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-8 animate-fade-in">
         {stats.map((stat) => {
           const Icon = stat.icon
@@ -300,7 +295,6 @@ export default function Dashboard() {
 
       </div>
 
-      {/* FASE 2.1: Pending Approvals Section with fade-in animation */}
       <div className="px-4 sm:px-6 lg:px-8">
       {pendingDevices.length > 0 && (
         <div className="bg-yellow-50 dark:bg-yellow-900/20 border-2 border-yellow-400 dark:border-yellow-700 rounded-xl p-4 sm:p-6 mb-8 animate-fade-in">
@@ -382,7 +376,6 @@ export default function Dashboard() {
       )}
       </div>
 
-      {/* Recent Devices & Content with fade-in animation - 1 col on all sizes */}
       <div className="px-4 sm:px-6 lg:px-8">
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 animate-fade-in">
         {/* Recent Devices */}
@@ -487,7 +480,6 @@ export default function Dashboard() {
             <p className="text-gray-500 dark:text-gray-400 text-center py-8">No content uploaded yet</p>
           )}
         </div>
-      </div>
       </div>
       </div>
       </div>
