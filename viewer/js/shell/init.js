@@ -17,6 +17,11 @@ window.ShellInit = {
         // Initialize logger FIRST
         window.ShellLogger.init();
 
+        // Initialize WiFi status indicator
+        if (window.ShellWiFiStatus && window.ShellWiFiStatus.init) {
+            window.ShellWiFiStatus.init();
+        }
+
         // ENSURE activation screen is visible by default (prevent player from showing prematurely)
         const activationScreen = document.getElementById('activation-screen');
         const playerContainer = document.getElementById('player-container');
@@ -65,13 +70,17 @@ window.ShellInit = {
                         localStorage.setItem('device_status', 'active');
                         window.ShellRegistration.onActivated();
                         return; // Exit early
-                    } else if (verifyData.message === 'Code not found or expired') {
-                        // Code is invalid - clear localStorage and re-register
-                        console.warn('[Shell/Init] ⚠️ Saved code is invalid/expired - clearing localStorage');
+                    } else if (verifyData.expired && !verifyData.device_id) {
+                        // Code expired AND device deleted - clear and re-register
+                        console.warn('[Shell/Init] ⚠️ Device code expired and deleted - clearing localStorage');
                         localStorage.clear();
                         console.log('[Shell/Init] 🔄 Reloading to register as new device...');
                         window.location.reload();
                         return; // Exit early
+                    } else if (verifyData.expired && verifyData.device_id) {
+                        // Code expired but device still exists (PENDING) - keep using it
+                        console.log('[Shell/Init] ⏳ Code expired but device still pending - continue polling');
+                        // Fall through to pending logic below (line 92-100)
                     }
                 }
             } catch (error) {

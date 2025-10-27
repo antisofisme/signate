@@ -129,7 +129,7 @@ export default function Devices() {
     } else if (activeFilter === 'inactive') {
       filtered = filtered.filter(d => d.status === 'inactive')
     } else if (activeFilter === 'browser') {
-      filtered = filtered.filter(d => d.device_type === 'browser')
+      filtered = filtered.filter(d => d.device_type === 'monitor')
     } else if (activeFilter === 'app') {
       filtered = filtered.filter(d => d.device_type === 'tv')
     }
@@ -174,7 +174,7 @@ export default function Devices() {
     const pending = devicesData?.devices?.filter(d => d.status === 'pending').length || 0
     const active = devicesData?.devices?.filter(d => d.status === 'active').length || 0
     const inactive = devicesData?.devices?.filter(d => d.status === 'inactive').length || 0
-    const browser = devicesData?.devices?.filter(d => d.device_type === 'browser').length || 0
+    const browser = devicesData?.devices?.filter(d => d.device_type === 'monitor').length || 0
     const app = devicesData?.devices?.filter(d => d.device_type === 'tv').length || 0
 
     return [

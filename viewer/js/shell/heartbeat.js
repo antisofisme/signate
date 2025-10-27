@@ -127,6 +127,11 @@ window.ShellHeartbeat = {
                     const data = await response.json();
                     console.log('[Shell/Heartbeat] ✅ Heartbeat sent');
 
+                    // Show WiFi online icon
+                    if (window.ShellWiFiStatus) {
+                        window.ShellWiFiStatus.updateStatus('online');
+                    }
+
                     // Check for pending commands (reset, refresh, reload)
                     if (window.ShellCommands) {
                         await window.ShellCommands.checkAndExecute();
@@ -161,7 +166,17 @@ window.ShellHeartbeat = {
                     window.location.reload();
                 }
             } catch (error) {
-                console.error('[Shell/Heartbeat] Heartbeat error:', error);
+                // Network error (server down/unreachable)
+                // DON'T clear localStorage or re-register - just show WiFi offline
+                console.error('[Shell/Heartbeat] ❌ Network error (server unreachable):', error.message);
+
+                // Show WiFi offline icon
+                if (window.ShellWiFiStatus) {
+                    window.ShellWiFiStatus.updateStatus('offline');
+                }
+
+                // Continue retrying in next heartbeat cycle (don't stop heartbeat)
+                console.log('[Shell/Heartbeat] ⏳ Will retry in next heartbeat cycle...');
             }
         }, state.HEARTBEAT_INTERVAL);
     },

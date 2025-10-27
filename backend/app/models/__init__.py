@@ -13,6 +13,8 @@ from app.models.firebird import FirebirdConfig
 from app.models.device_log import DeviceLog
 from app.models.device_command import DeviceCommand
 from app.models.playlist import Playlist, PlaylistContent, PlaylistAssignment
+from app.models.activity_log import ActivityLog, ActivityAction, EntityType
+from app.models.speed_test import DeviceSpeedTest, SpeedTestQuality
 from app.models.hotel import (
     ExternalDataSource,
     DeviceGuestMapping,
@@ -36,6 +38,13 @@ __all__ = [
     "Playlist",
     "PlaylistContent",
     "PlaylistAssignment",
+    # Activity Logs
+    "ActivityLog",
+    "ActivityAction",
+    "EntityType",
+    # Speed Tests
+    "DeviceSpeedTest",
+    "SpeedTestQuality",
     # Hotel Integration Models
     "ExternalDataSource",
     "DeviceGuestMapping",

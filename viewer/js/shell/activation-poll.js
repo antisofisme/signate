@@ -110,6 +110,46 @@ window.ActivationPoll = {
             const data = await response.json();
             console.log('[Shell/ActivationPoll] 📊 Activation status:', data);
 
+            // Connection successful - show WiFi online and reset status message
+            if (window.ShellWiFiStatus) {
+                window.ShellWiFiStatus.updateStatus('online');
+            }
+
+            const statusMessage = document.getElementById('status-message');
+            if (statusMessage && statusMessage.textContent.includes('Cannot connect')) {
+                statusMessage.textContent = '⏳ Waiting for approval...';
+                statusMessage.style.color = ''; // Reset color
+            }
+
+            // Handle expired code - clear localStorage and re-register
+            if (data.expired) {
+                console.warn('[Shell/ActivationPoll] ⚠️ Activation code expired - Auto-resetting viewer');
+
+                // Stop polling
+                this.stopPolling();
+
+                // Clear localStorage
+                localStorage.clear();
+
+                // Delete IndexedDB cache
+                const dbName = 'signage_media_cache';
+                try {
+                    await new Promise((resolve) => {
+                        const deleteRequest = indexedDB.deleteDatabase(dbName);
+                        deleteRequest.onsuccess = () => resolve();
+                        deleteRequest.onerror = () => resolve();
+                        deleteRequest.onblocked = () => resolve();
+                    });
+                } catch (error) {
+                    console.error('[Shell/ActivationPoll] Error deleting cache:', error);
+                }
+
+                // Reload to show new activation screen
+                console.log('[Shell/ActivationPoll] 🔄 Reloading to register as new device...');
+                window.location.reload();
+                return;
+            }
+
             if (data.activated && data.device_id) {
                 console.log(`[Activation Poll] ✅ Code activated! Device ID: ${data.device_id}, Name: ${data.device_name}`);
 
@@ -183,7 +223,24 @@ window.ActivationPoll = {
                 console.log('[Shell/ActivationPoll] 🎉 Viewer activated successfully via polling!');
             }
         } catch (error) {
-            console.error('[Shell/ActivationPoll] ❌ Error checking activation:', error);
+            // Network error (server down/unreachable)
+            // Show alert and WiFi offline icon, but keep polling
+            console.error('[Shell/ActivationPoll] ❌ Network error (server unreachable):', error.message);
+
+            // Show WiFi offline icon
+            if (window.ShellWiFiStatus) {
+                window.ShellWiFiStatus.updateStatus('offline');
+            }
+
+            // Update UI status message (if available)
+            const statusMessage = document.getElementById('status-message');
+            if (statusMessage) {
+                statusMessage.textContent = '⚠️ Cannot connect to server - Retrying...';
+                statusMessage.style.color = '#ef4444'; // Red color
+            }
+
+            // Continue polling - don't stop or clear localStorage
+            console.log('[Shell/ActivationPoll] ⏳ Will retry in next poll cycle...');
         }
     }
 };

@@ -106,6 +106,7 @@ class Device(Base):
     content_assignments = relationship("ContentAssignment", back_populates="device", cascade="all, delete-orphan")
     logs = relationship("DeviceLog", back_populates="device", cascade="all, delete-orphan")
     commands = relationship("DeviceCommand", back_populates="device", cascade="all, delete-orphan")
+    speed_tests = relationship("DeviceSpeedTest", back_populates="device", cascade="all, delete-orphan")
 
     def __repr__(self):
         return f"<Device(id={self.id}, name='{self.device_name}', type='{self.device_type}', status='{self.status}')>"

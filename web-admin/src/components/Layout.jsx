@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom'
-import { Monitor, FileImage, LayoutDashboard, LogOut, Tag, ListVideo, Puzzle, Settings, Menu, X, Sun, Moon } from 'lucide-react'
+import { Monitor, FileImage, LayoutDashboard, LogOut, Tag, ListVideo, Puzzle, Settings, Menu, X, Sun, Moon, Clock } from 'lucide-react'
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { devicesAPI } from '../services/api'
@@ -31,6 +31,7 @@ export default function Layout({ children, setIsAuthenticated }) {
     { name: 'Content', href: '/content', icon: FileImage },
     { name: 'Playlists', href: '/playlists', icon: ListVideo },
     { name: 'Tags', href: '/tags', icon: Tag },
+    { name: 'Activity Logs', href: '/activities', icon: Clock },
     { name: 'Widgets', href: '/widgets', icon: Puzzle },
     { name: 'Settings', href: '/settings', icon: Settings },
   ]

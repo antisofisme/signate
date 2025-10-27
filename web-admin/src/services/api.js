@@ -63,6 +63,9 @@ export const devicesAPI = {
   unassignContent: (deviceId, contentId) => api.delete(`/api/devices/${deviceId}/content/${contentId}`),
   // Preview endpoint (Phase 2)
   preview: (id, params) => api.get(`/api/devices/${id}/preview`, { params }),
+  // Speed Test endpoints
+  getSpeedTests: (id, limit = 20) => api.get(`/api/speedtest/devices/${id}/speedtest`, { params: { limit } }),
+  getLatestSpeedTest: (id) => api.get(`/api/speedtest/devices/${id}/speedtest/latest`),
 }
 
 // Content API
