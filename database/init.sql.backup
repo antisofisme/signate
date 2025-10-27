@@ -181,6 +181,57 @@ COMMENT ON COLUMN device_commands.expires_at IS 'Command auto-expires after 7 da
 -- TABLE: content
 -- Purpose: Metadata konten (image/video) - FILE DISIMPAN DI ANTHIAS!
 -- =============================================================================
+CREATE TABLE content (
+    id SERIAL PRIMARY KEY,
+    title VARCHAR(200) NOT NULL,
+    description TEXT,
+
+    -- Content type
+    content_type VARCHAR(20) NOT NULL CHECK (content_type IN ('image', 'video')),
+
+    -- IMPORTANT: anthias_url berisi URL ke Anthias, BUKAN file binary!
+    -- Example: http://192.168.5.12:8000/asset/abc123.jpg
+    anthias_url VARCHAR(500) NOT NULL,
+    anthias_asset_id VARCHAR(100), -- Asset ID dari Anthias (untuk delete)
+
+    -- Display duration (seconds)
+    duration INTEGER NOT NULL DEFAULT 10 CHECK (duration > 0),
+
+    -- Status
+    is_active BOOLEAN DEFAULT TRUE,
+
+    -- Metadata
+    file_size BIGINT, -- File size in bytes (optional)
+    mime_type VARCHAR(100), -- image/jpeg, video/mp4, etc.
+
+    -- Media Metadata (extracted via FFprobe)
+    resolution VARCHAR(50), -- e.g., "1920x1080"
+    width INTEGER, -- pixels
+    height INTEGER, -- pixels
+    codec VARCHAR(50), -- video/image codec
+    fps DOUBLE PRECISION, -- frame rate (video only)
+    bitrate INTEGER, -- kbps (video only)
+    video_duration DOUBLE PRECISION, -- seconds (video only, from metadata)
+    video_start_time DOUBLE PRECISION DEFAULT 0, -- start time in seconds (video only)
+    video_end_time DOUBLE PRECISION, -- end time in seconds (video only, NULL = play to end)
+    audio_codec VARCHAR(50), -- audio codec (video only)
+    audio_bitrate INTEGER, -- kbps (video only)
+    audio_sample_rate INTEGER, -- Hz (video only)
+
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Indexes for content
+CREATE INDEX idx_content_type ON content(content_type);
+CREATE INDEX idx_content_is_active ON content(is_active);
+CREATE INDEX idx_content_anthias_asset_id ON content(anthias_asset_id);
+
+COMMENT ON TABLE content IS 'Metadata konten - FILE ASLI DISIMPAN DI ANTHIAS';
+COMMENT ON COLUMN content.anthias_url IS 'URL ke asset di Anthias (bukan file binary!)';
+COMMENT ON COLUMN content.anthias_asset_id IS 'Asset ID dari Anthias untuk delete/update';
+COMMENT ON COLUMN content.duration IS 'Durasi display dalam detik';
+
 -- =============================================================================
 -- TABLE: tags
 -- Purpose: Groups/categories untuk devices (untuk assign content ke banyak device)
@@ -223,7 +274,7 @@ COMMENT ON TABLE device_tags IS 'Many-to-many relationship: devices <-> tags';
 -- =============================================================================
 CREATE TABLE content_assignments (
     id SERIAL PRIMARY KEY,
-    content_id INTEGER NOT NULL REFERENCES contents(id) ON DELETE CASCADE,
+    content_id INTEGER NOT NULL REFERENCES content(id) ON DELETE CASCADE,
 
     -- Assign ke device OR tag (salah satu, tidak boleh keduanya)
     device_id INTEGER REFERENCES devices(id) ON DELETE CASCADE,
@@ -259,7 +310,7 @@ COMMENT ON COLUMN content_assignments.priority IS 'Priority untuk sorting playli
 -- =============================================================================
 CREATE TABLE schedules (
     id SERIAL PRIMARY KEY,
-    content_id INTEGER NOT NULL REFERENCES contents(id) ON DELETE CASCADE,
+    content_id INTEGER NOT NULL REFERENCES content(id) ON DELETE CASCADE,
 
     -- Schedule untuk device OR tag
     device_id INTEGER REFERENCES devices(id) ON DELETE CASCADE,
@@ -405,7 +456,7 @@ COMMENT ON TABLE playlists IS 'Playlists untuk grouping multiple content items';
 CREATE TABLE playlist_content (
     id SERIAL PRIMARY KEY,
     playlist_id INTEGER NOT NULL REFERENCES playlists(id) ON DELETE CASCADE,
-    content_id INTEGER NOT NULL REFERENCES contents(id) ON DELETE CASCADE,
+    content_id INTEGER NOT NULL REFERENCES content(id) ON DELETE CASCADE,
     order_index INTEGER NOT NULL DEFAULT 0,
     duration INTEGER,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
