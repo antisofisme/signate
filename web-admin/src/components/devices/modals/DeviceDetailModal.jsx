@@ -2,8 +2,10 @@ import { useState, useMemo, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { devicesAPI, tagsAPI, playlistsAPI, contentAPI } from '../../../services/api'
 import { Modal, ModalFooter, Button } from '../../shared'
-import { Tv, Monitor, X, Edit, FileText, Trash2, Plus, Tag as TagIcon, List, Wifi, WifiOff, Circle, Eye, Film } from 'lucide-react'
+import { Tv, Monitor, X, Edit, FileText, Trash2, Plus, Tag as TagIcon, List, Wifi, WifiOff, Circle, Eye, Film, Activity, Download, Upload } from 'lucide-react'
 import toast from 'react-hot-toast'
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
+import SpeedHistoryModal from './SpeedHistoryModal'
 
 /**
  * DeviceDetailModal Component
@@ -28,6 +30,7 @@ export default function DeviceDetailModal({ device: initialDevice, onClose, onEd
   const [showTagSelector, setShowTagSelector] = useState(false)
   const [showPlaylistSelector, setShowPlaylistSelector] = useState(false)
   const [showContentSelector, setShowContentSelector] = useState(false)
+  const [showSpeedHistory, setShowSpeedHistory] = useState(false)
 
   // Fetch current device data (will auto-update on invalidation)
   const { data: devicesData } = useQuery({
@@ -99,6 +102,14 @@ export default function DeviceDetailModal({ device: initialDevice, onClose, onEd
       tagContentQueries.refetch()
     }
   }, [device.tags?.map(t => t.id).sort().join(',')])
+
+  // Fetch speed test history for this device (last 10 tests for chart)
+  const { data: speedTestHistoryData, isLoading: isLoadingSpeedTest } = useQuery({
+    queryKey: ['devices', device.id, 'speedtest', 'history-chart'],
+    queryFn: () => devicesAPI.getSpeedTests(device.id, 10).then(res => res.data),
+    retry: false, // Don't retry if no speed test data exists
+    refetchInterval: 60000, // Auto-refresh every 60 seconds
+  })
 
   // Assign tag mutation
   const assignTagMutation = useMutation({
@@ -218,6 +229,32 @@ export default function DeviceDetailModal({ device: initialDevice, onClose, onEd
     }
   })
 
+  // Run speed test handler
+  const handleRunSpeedTest = async () => {
+    try {
+      await devicesAPI.queueCommand(device.id, {
+        command_type: 'run_speed_test',
+        reason: 'Manual speed test triggered from web admin'
+      })
+      toast.success('Speed test command queued successfully. Results will appear in 15-20 seconds.', {
+        duration: 4000,
+        position: 'bottom-right',
+      })
+
+      // Auto-refresh speed test data after speed test completes (estimated 15 seconds)
+      setTimeout(() => {
+        queryClient.invalidateQueries({ queryKey: ['devices', device.id, 'speedtest'] })
+        console.log('[DeviceDetail] Invalidated speed test cache after manual test')
+      }, 15000)
+    } catch (error) {
+      console.error('Failed to queue speed test command:', error)
+      toast.error(`Failed to run speed test: ${error.response?.data?.detail || error.message}`, {
+        duration: 4000,
+        position: 'bottom-right',
+      })
+    }
+  }
+
   // Check if device is online (last_seen within 60 seconds)
   const isOnline = (() => {
     if (!device.last_seen) return false
@@ -246,6 +283,7 @@ export default function DeviceDetailModal({ device: initialDevice, onClose, onEd
   const isTv = device.platform && ['webOS', 'Tizen', 'Android TV'].includes(device.platform)
 
   return (
+    <>
     <Modal
       isOpen={true}
       onClose={onClose}
@@ -312,6 +350,14 @@ export default function DeviceDetailModal({ device: initialDevice, onClose, onEd
             }}
           >
             View Logs
+          </Button>
+          <Button
+            variant="secondary"
+            size="sm"
+            leftIcon={<Activity className="w-4 h-4" />}
+            onClick={() => setShowSpeedHistory(true)}
+          >
+            Speed History
           </Button>
           <Button
             variant="primary"
@@ -681,6 +727,147 @@ export default function DeviceDetailModal({ device: initialDevice, onClose, onEd
               </div>
             )}
           </div>
+
+          {/* Network Speed Section */}
+          <div className="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
+            <div className="flex items-center justify-between mb-4">
+              <h4 className="text-md font-semibold text-gray-800 dark:text-gray-100 flex items-center gap-2">
+                <Activity className="w-5 h-5 text-blue-600" />
+                Network Speed History
+              </h4>
+              <Button
+                onClick={handleRunSpeedTest}
+                variant="success"
+                size="sm"
+                disabled={device.status !== 'active'}
+                title={device.status !== 'active' ? 'Device must be active to run speed test' : 'Run network speed test'}
+                leftIcon={
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                  </svg>
+                }
+              >
+                Run Speed Test
+              </Button>
+            </div>
+            {isLoadingSpeedTest ? (
+              <div className="text-center text-gray-500 dark:text-gray-400 py-8">
+                Loading speed test data...
+              </div>
+            ) : speedTestHistoryData && speedTestHistoryData.total > 0 ? (
+              <div>
+                {/* Latest Speed Stats */}
+                <div className="grid grid-cols-3 gap-3 mb-4">
+                  <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-700 rounded-lg p-3">
+                    <div className="flex items-center gap-2 mb-1">
+                      <Download className="w-4 h-4 text-green-600 dark:text-green-400" />
+                      <span className="text-xs font-medium text-gray-600 dark:text-gray-400">Latest Download</span>
+                    </div>
+                    <div className="text-xl font-bold text-green-700 dark:text-green-400">
+                      {speedTestHistoryData.items[0].download_speed.toFixed(2)} Mbps
+                    </div>
+                  </div>
+                  <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-lg p-3">
+                    <div className="flex items-center gap-2 mb-1">
+                      <Upload className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                      <span className="text-xs font-medium text-gray-600 dark:text-gray-400">Latest Upload</span>
+                    </div>
+                    <div className="text-xl font-bold text-blue-700 dark:text-blue-400">
+                      {speedTestHistoryData.items[0].upload_speed.toFixed(2)} Mbps
+                    </div>
+                  </div>
+                  <div className="bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-3">
+                    <div className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Quality</div>
+                    <div className={`inline-block px-2 py-1 rounded text-sm font-medium ${
+                      speedTestHistoryData.items[0].quality === 'good' ? 'bg-green-200 dark:bg-green-900/50 text-green-800 dark:text-green-300' :
+                      speedTestHistoryData.items[0].quality === 'fair' ? 'bg-yellow-200 dark:bg-yellow-900/50 text-yellow-800 dark:text-yellow-300' :
+                      'bg-red-200 dark:bg-red-900/50 text-red-800 dark:text-red-300'
+                    }`}>
+                      {speedTestHistoryData.items[0].quality}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Speed Chart */}
+                <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+                  <ResponsiveContainer width="100%" height={250}>
+                    <LineChart
+                      data={speedTestHistoryData.items.map(test => ({
+                        time: new Date(test.tested_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                        download: parseFloat(test.download_speed.toFixed(2)),
+                        upload: parseFloat(test.upload_speed.toFixed(2)),
+                      })).reverse()}
+                      margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+                    >
+                      <CartesianGrid strokeDasharray="3 3" className="stroke-gray-300 dark:stroke-gray-600" />
+                      <XAxis
+                        dataKey="time"
+                        className="text-xs fill-gray-600 dark:fill-gray-400"
+                        tick={{ fontSize: 12 }}
+                      />
+                      <YAxis
+                        label={{ value: 'Mbps', angle: -90, position: 'insideLeft', className: 'fill-gray-600 dark:fill-gray-400' }}
+                        className="text-xs fill-gray-600 dark:fill-gray-400"
+                        tick={{ fontSize: 12 }}
+                      />
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: 'rgba(255, 255, 255, 0.95)',
+                          border: '1px solid #e5e7eb',
+                          borderRadius: '0.5rem',
+                          fontSize: '0.875rem'
+                        }}
+                      />
+                      <Legend wrapperStyle={{ fontSize: '0.875rem' }} />
+                      <Line
+                        type="monotone"
+                        dataKey="download"
+                        stroke="#16a34a"
+                        strokeWidth={2}
+                        name="Download"
+                        dot={{ fill: '#16a34a', r: 4 }}
+                        activeDot={{ r: 6 }}
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="upload"
+                        stroke="#2563eb"
+                        strokeWidth={2}
+                        name="Upload"
+                        dot={{ fill: '#2563eb', r: 4 }}
+                        activeDot={{ r: 6 }}
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+
+                {/* Quality Info */}
+                <div className="mt-3 text-xs text-gray-500 dark:text-gray-400 flex items-center justify-between">
+                  <div>Last tested: {new Date(speedTestHistoryData.items[0].tested_at).toLocaleString()}</div>
+                  <div className="flex gap-4">
+                    <span className="flex items-center gap-1">
+                      <span className="w-3 h-3 bg-green-500 rounded"></span>
+                      Good: ≥25/10
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <span className="w-3 h-3 bg-yellow-500 rounded"></span>
+                      Fair: ≥10/5
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <span className="w-3 h-3 bg-red-500 rounded"></span>
+                      Poor: &lt;10/5
+                    </span>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="text-center text-gray-500 dark:text-gray-400 py-8">
+                <Activity className="w-12 h-12 mx-auto mb-3 opacity-30" />
+                <p>No speed test data available</p>
+                <p className="text-sm mt-1">Viewer will perform speed test every 30 minutes</p>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
@@ -693,5 +880,14 @@ export default function DeviceDetailModal({ device: initialDevice, onClose, onEd
         </ModalFooter>
       </div>
     </Modal>
+
+    {/* Speed History Modal */}
+    {showSpeedHistory && (
+      <SpeedHistoryModal
+        device={device}
+        onClose={() => setShowSpeedHistory(false)}
+      />
+    )}
+  </>
   )
 }

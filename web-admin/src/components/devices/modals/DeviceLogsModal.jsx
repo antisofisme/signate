@@ -153,21 +153,6 @@ export default function DeviceLogsModal({ device, onClose }) {
     }
   }, [device.id])
 
-  const handleRunSpeedTest = async () => {
-    try {
-      // Queue command to run speed test
-      await devicesAPI.queueCommand(device.id, {
-        command_type: 'run_speed_test',
-        reason: 'Manual speed test triggered from web admin'
-      })
-
-      showToast.success('Speed test command queued successfully. Check logs in a few seconds for results.')
-    } catch (error) {
-      console.error('Failed to queue speed test command:', error)
-      showToast.error(`Failed to run speed test: ${error.response?.data?.detail || error.message}`)
-    }
-  }
-
   const handleClearLogs = async () => {
     if (confirm('Clear all logs for this device?')) {
       try {
@@ -299,20 +284,6 @@ export default function DeviceLogsModal({ device, onClose }) {
           <span className="text-xs text-gray-600 dark:text-gray-400">Real-time streaming via WebSocket</span>
         </div>
         <div className="flex items-center justify-end gap-2">
-          <Button
-            onClick={handleRunSpeedTest}
-            variant="success"
-            size="sm"
-            disabled={device.status !== 'active'}
-            title={device.status !== 'active' ? 'Device must be active to run speed test' : 'Run network speed test'}
-            leftIcon={
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-              </svg>
-            }
-          >
-            Speed Test
-          </Button>
           <Button
             onClick={handleExportLogs}
             variant="primary"

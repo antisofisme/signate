@@ -20,10 +20,12 @@ import { formatFileSize } from '../../utils/helpers'
 export default function SystemTab() {
   const [processing, setProcessing] = useState(false)
 
-  // Fetch system info
+  // Fetch system info with auto-refresh every 30 seconds
   const { data: systemInfo, isLoading } = useQuery({
     queryKey: ['system', 'info'],
     queryFn: () => settingsAPI.getSystemInfo().then(res => res.data),
+    refetchInterval: 30000, // Auto-refresh every 30 seconds
+    refetchOnWindowFocus: true, // Refresh when window regains focus
   })
 
   // Backup database mutation
@@ -84,16 +86,20 @@ export default function SystemTab() {
             <p className="text-sm text-gray-500 dark:text-gray-400">Digital Signage System</p>
           </div>
 
-          {/* Uptime */}
+          {/* Database Uptime */}
           <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4">
             <div className="flex items-center gap-3 mb-2">
               <Clock className="w-5 h-5 text-green-600" />
-              <p className="font-medium text-gray-800 dark:text-gray-100">Uptime</p>
+              <p className="font-medium text-gray-800 dark:text-gray-100">Database Uptime</p>
             </div>
             <p className="text-2xl font-bold text-gray-900 dark:text-white">
-              {systemInfo?.uptime_hours ? `${Math.floor(systemInfo.uptime_hours / 24)}d ${systemInfo.uptime_hours % 24}h` : 'N/A'}
+              {systemInfo?.database_uptime || 'N/A'}
             </p>
-            <p className="text-sm text-gray-500 dark:text-gray-400">System running</p>
+            <p className="text-sm text-gray-500 dark:text-gray-400">
+              Backend: {systemInfo?.backend_uptime || 'N/A'}
+              {systemInfo?.backend_restart_count !== undefined && ` (${systemInfo.backend_restart_count} restarts)`}
+              {systemInfo?.database_restart_count !== undefined && ` • DB: ${systemInfo.database_restart_count} restarts`}
+            </p>
           </div>
 
           {/* Database Size */}
@@ -115,7 +121,7 @@ export default function SystemTab() {
               <p className="font-medium text-gray-800 dark:text-gray-100">Media Storage</p>
             </div>
             <p className="text-2xl font-bold text-gray-900 dark:text-white">
-              {systemInfo?.media_storage_used ? formatFileSize(systemInfo.media_storage_used) : 'N/A'}
+              {systemInfo?.media_storage_used !== undefined ? formatFileSize(systemInfo.media_storage_used) : 'N/A'}
             </p>
             <p className="text-sm text-gray-500 dark:text-gray-400">Content files storage</p>
           </div>

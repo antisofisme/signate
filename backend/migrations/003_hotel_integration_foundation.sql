@@ -140,7 +140,7 @@ ADD COLUMN IF NOT EXISTS is_template BOOLEAN DEFAULT FALSE,
 ADD COLUMN IF NOT EXISTS template_variables JSONB,
 ADD COLUMN IF NOT EXISTS language_code VARCHAR(10),
 ADD COLUMN IF NOT EXISTS content_group_id INTEGER,
-ADD COLUMN IF NOT EXISTS fallback_content_id INTEGER REFERENCES content(id) ON DELETE SET NULL;
+ADD COLUMN IF NOT EXISTS fallback_content_id INTEGER REFERENCES contents(id) ON DELETE SET NULL;
 
 CREATE INDEX IF NOT EXISTS idx_content_is_template ON content(is_template);
 CREATE INDEX IF NOT EXISTS idx_content_language ON content(language_code);
@@ -150,7 +150,7 @@ COMMENT ON COLUMN content.is_template IS 'Whether this content uses template var
 COMMENT ON COLUMN content.template_variables IS 'JSON array of variable names used in template';
 COMMENT ON COLUMN content.language_code IS 'ISO language code (en, zh, ja, etc.)';
 COMMENT ON COLUMN content.content_group_id IS 'Groups translations together';
-COMMENT ON COLUMN content.fallback_content_id IS 'Fallback content if template fails';
+COMMENT ON COLUMN contents.fallback_content_id IS 'Fallback content if template fails';
 
 -- ===========================================================================
 -- PART 6: Widgets table (for future widget system)

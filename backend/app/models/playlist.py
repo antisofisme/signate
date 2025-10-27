@@ -111,7 +111,7 @@ class PlaylistContent(Base):
 
     # Foreign Keys
     playlist_id = Column(Integer, ForeignKey("playlists.id", ondelete="CASCADE"), nullable=False, index=True)
-    content_id = Column(Integer, ForeignKey("content.id", ondelete="CASCADE"), nullable=False, index=True)
+    content_id = Column(Integer, ForeignKey("contents.id", ondelete="CASCADE"), nullable=False, index=True)
 
     # Ordering and Settings
     order_index = Column(Integer, default=0, nullable=False)

@@ -15,6 +15,26 @@ window.ShellRegistration = {
     },
 
     /**
+     * Simple platform detection (fallback if ShellHeartbeat not loaded)
+     */
+    detectPlatformSimple: function() {
+        const ua = navigator.userAgent.toLowerCase();
+
+        // TV platforms (CHECK FIRST!)
+        if (ua.includes('webos') || ua.includes('web0s')) return 'webOS';
+        if (ua.includes('tizen')) return 'Tizen';
+        if (ua.includes('android tv')) return 'Android TV';
+
+        // Desktop browsers (check after TV platforms)
+        if (ua.includes('edg/') || ua.includes('edge')) return 'Edge';
+        if (ua.includes('firefox')) return 'Firefox';
+        if (ua.includes('chrome')) return 'Chrome';
+        if (ua.includes('safari')) return 'Safari';
+
+        return 'Browser';
+    },
+
+    /**
      * Register device to backend
      */
     registerDevice: async function() {
@@ -38,16 +58,20 @@ window.ShellRegistration = {
 
         try {
             const code = this.generateActivationCode();
-            const deviceName = `Browser - ${code}`;
 
-            console.log('[Shell/Registration] 📡 Registering device with code:', code);
+            // Detect platform (use ShellHeartbeat if available, otherwise detect here)
+            const platform = window.ShellHeartbeat?.detectPlatform() || this.detectPlatformSimple();
+            const deviceName = `${platform} - ${code}`;
+
+            console.log('[Shell/Registration] 📡 Registering device with code:', code, 'platform:', platform);
 
             const response = await fetch(`${state.API_BASE_URL}/api/devices/monitor/register`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     activation_code: code,
-                    device_name: deviceName
+                    device_name: deviceName,
+                    platform: platform
                 })
             });
 
@@ -66,6 +90,11 @@ window.ShellRegistration = {
             state.deviceCode = code;
 
             console.log('[Shell/Registration] ✅ Device registered', { deviceId: state.deviceId, code });
+
+            // Show WiFi online icon (registration succeeded)
+            if (window.ShellWiFiStatus) {
+                window.ShellWiFiStatus.updateStatus('online');
+            }
 
             // ✅ CANCEL any pending retry (registration succeeded)
             if (this.retryTimeout) {
@@ -96,10 +125,23 @@ window.ShellRegistration = {
             this.isRegistering = false;
 
         } catch (error) {
-            console.error('[Shell/Registration] ❌ Registration failed:', error);
+            // Network error (server down/unreachable)
+            console.error('[Shell/Registration] ❌ Network error (server unreachable):', error.message);
 
             // Reset flag
             this.isRegistering = false;
+
+            // Show WiFi offline icon
+            if (window.ShellWiFiStatus) {
+                window.ShellWiFiStatus.updateStatus('offline');
+            }
+
+            // Update UI status message
+            const statusMessage = document.getElementById('status-message');
+            if (statusMessage) {
+                statusMessage.textContent = '⚠️ Cannot connect to server - Retrying...';
+                statusMessage.style.color = '#ef4444'; // Red color
+            }
 
             // 🛡️ GUARD 3: Only retry if device NOT already registered
             // Check again before retry (maybe succeeded but response parsing failed)

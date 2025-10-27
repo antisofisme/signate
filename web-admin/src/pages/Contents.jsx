@@ -206,7 +206,7 @@ export default function Content() {
     const unassigned = total - assigned
 
     return [
-      { label: 'All Content', value: total, color: 'blue', filterKey: 'all' },
+      { label: 'All Contents', value: total, color: 'blue', filterKey: 'all' },
       { label: 'Images', value: images, color: 'purple', filterKey: 'images' },
       { label: 'Videos', value: videos, color: 'green', filterKey: 'videos' },
       { label: 'Assigned', value: assigned, color: 'green', filterKey: 'assigned' },
@@ -242,7 +242,7 @@ export default function Content() {
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-gray-900">
       <PageHeader
-        title="Content"
+        title="Contents"
         description="Manage and organize media content"
         actions={
           <div className="flex items-center gap-3">

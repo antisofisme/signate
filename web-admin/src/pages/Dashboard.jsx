@@ -6,6 +6,7 @@ import { Monitor, FileImage, Tag, Tv, Wifi, ListVideo, Link, CheckCircle, XCircl
 import { LoadingSkeleton, Button } from '../components/shared'
 import { showToast } from '../utils/toast'
 import { useDashboardWebSocket } from '../hooks/useDashboardWebSocket'
+import ActivityTimeline from '../components/dashboard/ActivityTimeline'
 
 export default function Dashboard() {
   const queryClient = useQueryClient()
@@ -124,7 +125,7 @@ export default function Dashboard() {
 
   const stats = useMemo(() => {
     // FASE 1.3: Enhanced device breakdown (Browser vs App)
-    const browserDevices = devicesList.filter(d => d.device_type === 'browser').length || 0
+    const browserDevices = devicesList.filter(d => d.device_type === 'monitor').length || 0
     const appDevices = devicesList.filter(d => d.device_type === 'tv').length || 0
 
     // FASE 1.2: Content assignment stats
@@ -156,7 +157,7 @@ export default function Dashboard() {
         color: 'green',
       },
       {
-        name: 'Total Content',
+        name: 'Total Contents',
         value: totalContent,
         subtitle: `${content?.items?.filter(c => c.is_active).length || 0} active`,
         icon: FileImage,
@@ -178,7 +179,7 @@ export default function Dashboard() {
         color: 'indigo',
       },
       {
-        name: 'Assigned Content',
+        name: 'Assigned Contents',
         value: assignedContent,
         subtitle: `${assignmentRate}% assignment rate`,
         icon: Link,
@@ -391,8 +392,8 @@ export default function Dashboard() {
             {/* Recent Devices */}
             <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-300 dark:border-gray-600 p-4 sm:p-6">
               <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100 mb-4">Recent Devices</h2>
-          {devicesList && devicesList.length > 0 ? (
-            <div className="space-y-3">
+              {devicesList && devicesList.length > 0 ? (
+                <div className="space-y-3">
               {devicesList.slice(0, 5).map((device) => {
                 const online = isDeviceOnline(device.last_seen)
                 return (
@@ -449,17 +450,17 @@ export default function Dashboard() {
                   </div>
                 )
               })}
-            </div>
-          ) : (
-            <p className="text-gray-500 dark:text-gray-400 text-center py-8">No devices registered yet</p>
-          )}
+                </div>
+              ) : (
+                <p className="text-gray-500 dark:text-gray-400 text-center py-8">No devices registered yet</p>
+              )}
             </div>
 
             {/* Recent Content */}
             <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-300 dark:border-gray-600 p-4 sm:p-6">
               <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100 mb-4">Recent Content</h2>
-          {content?.items && content.items.length > 0 ? (
-            <div className="space-y-3">
+              {content?.items && content.items.length > 0 ? (
+                <div className="space-y-3">
               {content.items.slice(0, 5).map((item) => (
                 <div
                   key={item.id}
@@ -485,11 +486,16 @@ export default function Dashboard() {
                   </span>
                 </div>
               ))}
+                </div>
+              ) : (
+                <p className="text-gray-500 dark:text-gray-400 text-center py-8">No content uploaded yet</p>
+              )}
             </div>
-          ) : (
-            <p className="text-gray-500 dark:text-gray-400 text-center py-8">No content uploaded yet</p>
-          )}
-            </div>
+          </div>
+
+          {/* FASE 3.2: Activity Timeline Section */}
+          <div className="mt-4 sm:mt-6 animate-fade-in">
+            <ActivityTimeline />
           </div>
 
           {/* FASE 5.3: Top Tags by Usage Section */}

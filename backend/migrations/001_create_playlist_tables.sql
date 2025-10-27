@@ -22,7 +22,7 @@ CREATE INDEX IF NOT EXISTS idx_playlists_name ON playlists(name);
 CREATE TABLE IF NOT EXISTS playlist_content (
     id SERIAL PRIMARY KEY,
     playlist_id INTEGER NOT NULL REFERENCES playlists(id) ON DELETE CASCADE,
-    content_id INTEGER NOT NULL REFERENCES content(id) ON DELETE CASCADE,
+    content_id INTEGER NOT NULL REFERENCES contents(id) ON DELETE CASCADE,
     order_index INTEGER NOT NULL DEFAULT 0,
     duration INTEGER,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()

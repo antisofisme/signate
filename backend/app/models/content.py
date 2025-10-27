@@ -52,7 +52,7 @@ class Content(Base):
         updated_at: Timestamp when content was last updated
     """
 
-    __tablename__ = "content"
+    __tablename__ = "contents"
 
     # Primary Key
     id = Column(Integer, primary_key=True, index=True)
@@ -95,7 +95,7 @@ class Content(Base):
     template_variables = Column(JSON, nullable=True)  # JSON array of variable names
     language_code = Column(String(10), nullable=True)  # ISO language code (en, zh, ja, etc.)
     content_group_id = Column(Integer, nullable=True)  # Groups translations together
-    fallback_content_id = Column(Integer, ForeignKey("content.id", ondelete="SET NULL"), nullable=True)  # Fallback content
+    fallback_content_id = Column(Integer, ForeignKey("contents.id", ondelete="SET NULL"), nullable=True)  # Fallback content
 
     # Timestamps
     created_at = Column(DateTime, server_default=func.now())
