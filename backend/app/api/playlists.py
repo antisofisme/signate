@@ -1,15 +1,25 @@
 """
 Playlists API endpoints
 For managing content playlists and scheduling
+
+MIGRATED TO QUICK WINS STANDARDS:
+- Structured logging with StructuredLogger
+- Custom exceptions (NotFoundException, BadRequestException)
+- Standardized success_response wrapper
+- Request ID tracking
 """
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, Request, status
 from sqlalchemy.orm import Session
 from sqlalchemy import func
-from typing import List, Optional
+from typing import Optional
 
 from app.core.database import get_db
 from app.core.deps import get_current_active_user, get_optional_user
+from app.core.logging import StructuredLogger
+from app.core.exceptions import NotFoundException, BadRequestException
+from app.middleware.request_id import get_request_id
+from app.schemas.common import success_response
 from app.models.user import User
 from app.models.playlist import Playlist, PlaylistContent, PlaylistAssignment
 from app.models.content import Content
@@ -29,21 +39,36 @@ from app.schemas.playlist import (
     PlaylistAssignmentResponse
 )
 
+logger = StructuredLogger(__name__)
 router = APIRouter()
 
 
-@router.get("", response_model=PlaylistListResponse)
+# =============================================================================
+# PLAYLIST CRUD ENDPOINTS (5 endpoints)
+# =============================================================================
+
+@router.get("")
 def list_playlists(
+    request: Request,
     db: Session = Depends(get_db),
     current_user: Optional[User] = Depends(get_optional_user)
 ):
     """
-    Get all playlists with content counts
+    Get all playlists with content counts and total duration
     """
+    request_id = get_request_id(request)
+
+    logger.info(
+        "Listing all playlists",
+        request_id=request_id
+    )
+
     playlists = db.query(Playlist).order_by(Playlist.created_at.desc()).all()
 
     # Add content count and total duration for each playlist
     playlist_responses = []
+    total_calculated_duration = 0
+
     for playlist in playlists:
         content_count = db.query(func.count(PlaylistContent.id)).filter(
             PlaylistContent.playlist_id == playlist.id
@@ -68,22 +93,44 @@ def list_playlists(
         playlist_dict['content_count'] = content_count or 0
         playlist_dict['total_duration'] = total_duration
         playlist_responses.append(PlaylistResponse(**playlist_dict))
+        total_calculated_duration += total_duration
 
-    return PlaylistListResponse(
-        total=len(playlist_responses),
-        items=playlist_responses
+    logger.info(
+        "Playlists listed successfully",
+        request_id=request_id,
+        total_playlists=len(playlist_responses),
+        total_duration_calculated=total_calculated_duration
+    )
+
+    return success_response(
+        data={
+            "total": len(playlist_responses),
+            "items": [p.model_dump() for p in playlist_responses]
+        },
+        request_id=request_id
     )
 
 
-@router.post("", response_model=PlaylistResponse, status_code=status.HTTP_201_CREATED)
+@router.post("", status_code=status.HTTP_201_CREATED)
 def create_playlist(
     playlist_data: PlaylistCreate,
+    request: Request,
     db: Session = Depends(get_db),
     current_user: Optional[User] = Depends(get_optional_user)
 ):
     """
     Create a new playlist
     """
+    request_id = get_request_id(request)
+
+    logger.info(
+        "Creating new playlist",
+        request_id=request_id,
+        playlist_name=playlist_data.name,
+        is_active=playlist_data.is_active,
+        priority=playlist_data.priority
+    )
+
     # Convert schedule to dict if it's a Pydantic model
     schedule_dict = None
     if playlist_data.schedule:
@@ -105,24 +152,49 @@ def create_playlist(
     playlist_dict['content_count'] = 0
     playlist_dict['total_duration'] = 0
 
-    return PlaylistResponse(**playlist_dict)
+    logger.info(
+        "Playlist created successfully",
+        request_id=request_id,
+        playlist_id=playlist.id,
+        playlist_name=playlist.name
+    )
+
+    return success_response(
+        data=playlist_dict,
+        request_id=request_id
+    )
 
 
-@router.get("/{playlist_id}", response_model=PlaylistResponse)
+@router.get("/{playlist_id}")
 def get_playlist(
     playlist_id: int,
+    request: Request,
     db: Session = Depends(get_db),
     current_user: Optional[User] = Depends(get_optional_user)
 ):
     """
-    Get a single playlist by ID
+    Get a single playlist by ID with content count and total duration
     """
+    request_id = get_request_id(request)
+
+    logger.info(
+        "Retrieving playlist",
+        request_id=request_id,
+        playlist_id=playlist_id
+    )
+
     playlist = db.query(Playlist).filter(Playlist.id == playlist_id).first()
 
     if not playlist:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Playlist with ID {playlist_id} not found"
+        logger.warning(
+            "Playlist not found",
+            request_id=request_id,
+            playlist_id=playlist_id
+        )
+        raise NotFoundException(
+            message=f"Playlist with ID {playlist_id} not found",
+            resource_type="Playlist",
+            resource_id=playlist_id
         )
 
     content_count = db.query(PlaylistContent).filter(
@@ -147,25 +219,57 @@ def get_playlist(
     playlist_dict['content_count'] = content_count
     playlist_dict['total_duration'] = total_duration
 
-    return PlaylistResponse(**playlist_dict)
+    logger.info(
+        "Playlist retrieved successfully",
+        request_id=request_id,
+        playlist_id=playlist.id,
+        playlist_name=playlist.name,
+        content_count=content_count,
+        total_duration=total_duration
+    )
+
+    return success_response(
+        data=playlist_dict,
+        request_id=request_id
+    )
 
 
-@router.patch("/{playlist_id}", response_model=PlaylistResponse)
+@router.patch("/{playlist_id}")
 def update_playlist(
     playlist_id: int,
     playlist_data: PlaylistUpdate,
+    request: Request,
     db: Session = Depends(get_db),
     current_user: Optional[User] = Depends(get_optional_user)
 ):
     """
     Update a playlist
     """
+    request_id = get_request_id(request)
+
+    logger.info(
+        "Updating playlist",
+        request_id=request_id,
+        playlist_id=playlist_id,
+        update_fields={
+            "name": playlist_data.name,
+            "is_active": playlist_data.is_active,
+            "priority": playlist_data.priority
+        }
+    )
+
     playlist = db.query(Playlist).filter(Playlist.id == playlist_id).first()
 
     if not playlist:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Playlist with ID {playlist_id} not found"
+        logger.warning(
+            "Playlist not found for update",
+            request_id=request_id,
+            playlist_id=playlist_id
+        )
+        raise NotFoundException(
+            message=f"Playlist with ID {playlist_id} not found",
+            resource_type="Playlist",
+            resource_id=playlist_id
         )
 
     # Update fields
@@ -209,48 +313,102 @@ def update_playlist(
     playlist_dict['content_count'] = content_count
     playlist_dict['total_duration'] = total_duration
 
-    return PlaylistResponse(**playlist_dict)
+    logger.info(
+        "Playlist updated successfully",
+        request_id=request_id,
+        playlist_id=playlist.id,
+        playlist_name=playlist.name,
+        content_count=content_count
+    )
+
+    return success_response(
+        data=playlist_dict,
+        request_id=request_id
+    )
 
 
-@router.delete("/{playlist_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/{playlist_id}")
 def delete_playlist(
     playlist_id: int,
+    request: Request,
     db: Session = Depends(get_db),
     current_user: Optional[User] = Depends(get_optional_user)
 ):
     """
-    Delete a playlist
+    Delete a playlist (cascades to content items and assignments)
     """
+    request_id = get_request_id(request)
+
+    logger.info(
+        "Deleting playlist",
+        request_id=request_id,
+        playlist_id=playlist_id
+    )
+
     playlist = db.query(Playlist).filter(Playlist.id == playlist_id).first()
 
     if not playlist:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Playlist with ID {playlist_id} not found"
+        logger.warning(
+            "Playlist not found for deletion",
+            request_id=request_id,
+            playlist_id=playlist_id
+        )
+        raise NotFoundException(
+            message=f"Playlist with ID {playlist_id} not found",
+            resource_type="Playlist",
+            resource_id=playlist_id
         )
 
+    playlist_name = playlist.name
     db.delete(playlist)
     db.commit()
 
-    return None
+    logger.info(
+        "Playlist deleted successfully",
+        request_id=request_id,
+        playlist_id=playlist_id,
+        playlist_name=playlist_name
+    )
+
+    return success_response(
+        data={"message": f"Playlist '{playlist_name}' deleted successfully"},
+        request_id=request_id
+    )
 
 
-# ==================== Content Management ====================
+# =============================================================================
+# CONTENT MANAGEMENT ENDPOINTS (4 endpoints)
+# =============================================================================
 
-@router.get("/{playlist_id}/content", response_model=PlaylistContentResponse)
+@router.get("/{playlist_id}/content")
 def get_playlist_content(
     playlist_id: int,
+    request: Request,
     db: Session = Depends(get_db),
     current_user: Optional[User] = Depends(get_optional_user)
 ):
     """
-    Get all content items in a playlist
+    Get all content items in a playlist with content details
     """
+    request_id = get_request_id(request)
+
+    logger.info(
+        "Retrieving playlist content",
+        request_id=request_id,
+        playlist_id=playlist_id
+    )
+
     playlist = db.query(Playlist).filter(Playlist.id == playlist_id).first()
     if not playlist:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Playlist with ID {playlist_id} not found"
+        logger.warning(
+            "Playlist not found",
+            request_id=request_id,
+            playlist_id=playlist_id
+        )
+        raise NotFoundException(
+            message=f"Playlist with ID {playlist_id} not found",
+            resource_type="Playlist",
+            resource_id=playlist_id
         )
 
     playlist_items = db.query(PlaylistContent).filter(
@@ -271,9 +429,19 @@ def get_playlist_content(
                 created_at=item.created_at
             ))
 
-    return PlaylistContentResponse(
-        total=len(content_items),
-        items=content_items
+    logger.info(
+        "Playlist content retrieved successfully",
+        request_id=request_id,
+        playlist_id=playlist_id,
+        content_items_count=len(content_items)
+    )
+
+    return success_response(
+        data={
+            "total": len(content_items),
+            "items": [item.model_dump() for item in content_items]
+        },
+        request_id=request_id
     )
 
 
@@ -281,17 +449,35 @@ def get_playlist_content(
 def add_content_to_playlist(
     playlist_id: int,
     content_data: PlaylistContentAdd,
+    request: Request,
     db: Session = Depends(get_db),
     current_user: Optional[User] = Depends(get_optional_user)
 ):
     """
-    Add content to a playlist
+    Add content items to playlist (bulk add with content_ids list)
+    Sets display_order automatically
     """
+    request_id = get_request_id(request)
+
+    logger.info(
+        "Adding content to playlist",
+        request_id=request_id,
+        playlist_id=playlist_id,
+        content_ids=content_data.content_ids,
+        content_ids_count=len(content_data.content_ids)
+    )
+
     playlist = db.query(Playlist).filter(Playlist.id == playlist_id).first()
     if not playlist:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Playlist with ID {playlist_id} not found"
+        logger.warning(
+            "Playlist not found",
+            request_id=request_id,
+            playlist_id=playlist_id
+        )
+        raise NotFoundException(
+            message=f"Playlist with ID {playlist_id} not found",
+            resource_type="Playlist",
+            resource_id=playlist_id
         )
 
     # Get current max order_index
@@ -300,10 +486,14 @@ def add_content_to_playlist(
     ).scalar() or -1
 
     added_count = 0
+    skipped_missing = []
+    skipped_duplicate = []
+
     for content_id in content_data.content_ids:
         # Check if content exists
         content = db.query(Content).filter(Content.id == content_id).first()
         if not content:
+            skipped_missing.append(content_id)
             continue
 
         # Check if already in playlist
@@ -312,6 +502,7 @@ def add_content_to_playlist(
             PlaylistContent.content_id == content_id
         ).first()
         if existing:
+            skipped_duplicate.append(content_id)
             continue
 
         # Add to playlist
@@ -327,54 +518,135 @@ def add_content_to_playlist(
 
     db.commit()
 
-    return {"message": f"Added {added_count} content item(s) to playlist"}
+    # Log warnings if some items were skipped
+    if skipped_missing:
+        logger.warning(
+            "Some content items not found",
+            request_id=request_id,
+            playlist_id=playlist_id,
+            missing_content_ids=skipped_missing
+        )
+
+    if skipped_duplicate:
+        logger.warning(
+            "Some content items already in playlist",
+            request_id=request_id,
+            playlist_id=playlist_id,
+            duplicate_content_ids=skipped_duplicate
+        )
+
+    logger.info(
+        "Content added to playlist successfully",
+        request_id=request_id,
+        playlist_id=playlist_id,
+        added_count=added_count,
+        skipped_missing_count=len(skipped_missing),
+        skipped_duplicate_count=len(skipped_duplicate)
+    )
+
+    return success_response(
+        data={
+            "message": f"Added {added_count} content item(s) to playlist",
+            "added_count": added_count,
+            "skipped_missing": skipped_missing,
+            "skipped_duplicate": skipped_duplicate
+        },
+        request_id=request_id
+    )
 
 
-@router.delete("/{playlist_id}/content/{content_item_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/{playlist_id}/content/{content_item_id}")
 def remove_content_from_playlist(
     playlist_id: int,
     content_item_id: int,
+    request: Request,
     db: Session = Depends(get_db),
     current_user: Optional[User] = Depends(get_optional_user)
 ):
     """
-    Remove content from a playlist
+    Remove content item from playlist
     """
+    request_id = get_request_id(request)
+
+    logger.info(
+        "Removing content from playlist",
+        request_id=request_id,
+        playlist_id=playlist_id,
+        content_item_id=content_item_id
+    )
+
     playlist_content = db.query(PlaylistContent).filter(
         PlaylistContent.id == content_item_id,
         PlaylistContent.playlist_id == playlist_id
     ).first()
 
     if not playlist_content:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Content not found in playlist"
+        logger.warning(
+            "Content not found in playlist",
+            request_id=request_id,
+            playlist_id=playlist_id,
+            content_item_id=content_item_id
+        )
+        raise NotFoundException(
+            message="Content not found in playlist",
+            resource_type="PlaylistContent",
+            resource_id=content_item_id
         )
 
+    content_id = playlist_content.content_id
     db.delete(playlist_content)
     db.commit()
 
-    return None
+    logger.info(
+        "Content removed from playlist successfully",
+        request_id=request_id,
+        playlist_id=playlist_id,
+        content_item_id=content_item_id,
+        content_id=content_id
+    )
+
+    return success_response(
+        data={"message": "Content removed from playlist successfully"},
+        request_id=request_id
+    )
 
 
 @router.patch("/{playlist_id}/reorder")
 def reorder_playlist_content(
     playlist_id: int,
     reorder_data: PlaylistContentReorder,
+    request: Request,
     db: Session = Depends(get_db),
     current_user: Optional[User] = Depends(get_optional_user)
 ):
     """
     Reorder and update duration of content in a playlist
+    Bulk update display_order for content items
     """
+    request_id = get_request_id(request)
+
+    logger.info(
+        "Reordering playlist content",
+        request_id=request_id,
+        playlist_id=playlist_id,
+        items_to_reorder=len(reorder_data.content_items)
+    )
+
     playlist = db.query(Playlist).filter(Playlist.id == playlist_id).first()
     if not playlist:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Playlist with ID {playlist_id} not found"
+        logger.warning(
+            "Playlist not found for reorder",
+            request_id=request_id,
+            playlist_id=playlist_id
+        )
+        raise NotFoundException(
+            message=f"Playlist with ID {playlist_id} not found",
+            resource_type="Playlist",
+            resource_id=playlist_id
         )
 
     # Update order and duration for each item
+    updated_count = 0
     for item_data in reorder_data.content_items:
         playlist_content = db.query(PlaylistContent).filter(
             PlaylistContent.id == item_data.get('id'),
@@ -386,28 +658,60 @@ def reorder_playlist_content(
                 playlist_content.order_index = item_data['order_index']
             if 'duration' in item_data:
                 playlist_content.duration = item_data['duration']
+            updated_count += 1
 
     db.commit()
 
-    return {"message": "Playlist content reordered successfully"}
+    logger.info(
+        "Playlist content reordered successfully",
+        request_id=request_id,
+        playlist_id=playlist_id,
+        updated_count=updated_count
+    )
+
+    return success_response(
+        data={
+            "message": "Playlist content reordered successfully",
+            "updated_count": updated_count
+        },
+        request_id=request_id
+    )
 
 
-# ==================== Assignment Management ====================
+# =============================================================================
+# ASSIGNMENT MANAGEMENT ENDPOINTS (5 endpoints)
+# =============================================================================
 
-@router.get("/{playlist_id}/assignments", response_model=PlaylistAssignmentResponse)
+@router.get("/{playlist_id}/assignments")
 def get_playlist_assignments(
     playlist_id: int,
+    request: Request,
     db: Session = Depends(get_db),
     current_user: Optional[User] = Depends(get_optional_user)
 ):
     """
     Get all device and tag assignments for a playlist
+    Complex query: device assignments + tag assignments
     """
+    request_id = get_request_id(request)
+
+    logger.info(
+        "Retrieving playlist assignments",
+        request_id=request_id,
+        playlist_id=playlist_id
+    )
+
     playlist = db.query(Playlist).filter(Playlist.id == playlist_id).first()
     if not playlist:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Playlist with ID {playlist_id} not found"
+        logger.warning(
+            "Playlist not found",
+            request_id=request_id,
+            playlist_id=playlist_id
+        )
+        raise NotFoundException(
+            message=f"Playlist with ID {playlist_id} not found",
+            resource_type="Playlist",
+            resource_id=playlist_id
         )
 
     # Get all assignments
@@ -427,9 +731,20 @@ def get_playlist_assignments(
     tags = db.query(Tag).filter(Tag.id.in_(tag_ids)).all() if tag_ids else []
     tag_list = [tag.to_dict() for tag in tags]
 
-    return PlaylistAssignmentResponse(
-        devices=device_list,
-        tags=tag_list
+    logger.info(
+        "Playlist assignments retrieved successfully",
+        request_id=request_id,
+        playlist_id=playlist_id,
+        device_count=len(device_list),
+        tag_count=len(tag_list)
+    )
+
+    return success_response(
+        data={
+            "devices": device_list,
+            "tags": tag_list
+        },
+        request_id=request_id
     )
 
 
@@ -437,24 +752,46 @@ def get_playlist_assignments(
 def assign_playlist_to_devices(
     playlist_id: int,
     assignment_data: PlaylistDeviceAssign,
+    request: Request,
     db: Session = Depends(get_db),
     current_user: Optional[User] = Depends(get_optional_user)
 ):
     """
-    Assign a playlist to devices
+    Assign playlist to multiple devices (bulk assign with device_ids list)
+    Validation: playlist exists, all devices exist, no duplicates
     """
+    request_id = get_request_id(request)
+
+    logger.info(
+        "Assigning playlist to devices",
+        request_id=request_id,
+        playlist_id=playlist_id,
+        device_ids=assignment_data.device_ids,
+        device_ids_count=len(assignment_data.device_ids)
+    )
+
     playlist = db.query(Playlist).filter(Playlist.id == playlist_id).first()
     if not playlist:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Playlist with ID {playlist_id} not found"
+        logger.warning(
+            "Playlist not found for device assignment",
+            request_id=request_id,
+            playlist_id=playlist_id
+        )
+        raise NotFoundException(
+            message=f"Playlist with ID {playlist_id} not found",
+            resource_type="Playlist",
+            resource_id=playlist_id
         )
 
     assigned_count = 0
+    skipped_missing = []
+    skipped_duplicate = []
+
     for device_id in assignment_data.device_ids:
         # Check if device exists
         device = db.query(Device).filter(Device.id == device_id).first()
         if not device:
+            skipped_missing.append(device_id)
             continue
 
         # Check if already assigned
@@ -463,6 +800,7 @@ def assign_playlist_to_devices(
             PlaylistAssignment.device_id == device_id
         ).first()
         if existing:
+            skipped_duplicate.append(device_id)
             continue
 
         # Create assignment
@@ -476,31 +814,87 @@ def assign_playlist_to_devices(
 
     db.commit()
 
-    return {"message": f"Playlist assigned to {assigned_count} device(s)"}
+    # Log warnings if some items were skipped
+    if skipped_missing:
+        logger.warning(
+            "Some devices not found",
+            request_id=request_id,
+            playlist_id=playlist_id,
+            missing_device_ids=skipped_missing
+        )
+
+    if skipped_duplicate:
+        logger.warning(
+            "Some devices already assigned",
+            request_id=request_id,
+            playlist_id=playlist_id,
+            duplicate_device_ids=skipped_duplicate
+        )
+
+    logger.info(
+        "Playlist assigned to devices successfully",
+        request_id=request_id,
+        playlist_id=playlist_id,
+        assigned_count=assigned_count,
+        skipped_missing_count=len(skipped_missing),
+        skipped_duplicate_count=len(skipped_duplicate)
+    )
+
+    return success_response(
+        data={
+            "message": f"Playlist assigned to {assigned_count} device(s)",
+            "assigned_count": assigned_count,
+            "skipped_missing": skipped_missing,
+            "skipped_duplicate": skipped_duplicate
+        },
+        request_id=request_id
+    )
 
 
 @router.post("/{playlist_id}/assign/tags", status_code=status.HTTP_201_CREATED)
 def assign_playlist_to_tags(
     playlist_id: int,
     assignment_data: PlaylistTagAssign,
+    request: Request,
     db: Session = Depends(get_db),
     current_user: Optional[User] = Depends(get_optional_user)
 ):
     """
-    Assign a playlist to tags
+    Assign playlist to multiple tags (bulk assign with tag_ids list)
+    Validation: playlist exists, all tags exist, no duplicates
     """
+    request_id = get_request_id(request)
+
+    logger.info(
+        "Assigning playlist to tags",
+        request_id=request_id,
+        playlist_id=playlist_id,
+        tag_ids=assignment_data.tag_ids,
+        tag_ids_count=len(assignment_data.tag_ids)
+    )
+
     playlist = db.query(Playlist).filter(Playlist.id == playlist_id).first()
     if not playlist:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Playlist with ID {playlist_id} not found"
+        logger.warning(
+            "Playlist not found for tag assignment",
+            request_id=request_id,
+            playlist_id=playlist_id
+        )
+        raise NotFoundException(
+            message=f"Playlist with ID {playlist_id} not found",
+            resource_type="Playlist",
+            resource_id=playlist_id
         )
 
     assigned_count = 0
+    skipped_missing = []
+    skipped_duplicate = []
+
     for tag_id in assignment_data.tag_ids:
         # Check if tag exists
         tag = db.query(Tag).filter(Tag.id == tag_id).first()
         if not tag:
+            skipped_missing.append(tag_id)
             continue
 
         # Check if already assigned
@@ -509,6 +903,7 @@ def assign_playlist_to_tags(
             PlaylistAssignment.tag_id == tag_id
         ).first()
         if existing:
+            skipped_duplicate.append(tag_id)
             continue
 
         # Create assignment
@@ -522,19 +917,65 @@ def assign_playlist_to_tags(
 
     db.commit()
 
-    return {"message": f"Playlist assigned to {assigned_count} tag(s)"}
+    # Log warnings if some items were skipped
+    if skipped_missing:
+        logger.warning(
+            "Some tags not found",
+            request_id=request_id,
+            playlist_id=playlist_id,
+            missing_tag_ids=skipped_missing
+        )
+
+    if skipped_duplicate:
+        logger.warning(
+            "Some tags already assigned",
+            request_id=request_id,
+            playlist_id=playlist_id,
+            duplicate_tag_ids=skipped_duplicate
+        )
+
+    logger.info(
+        "Playlist assigned to tags successfully",
+        request_id=request_id,
+        playlist_id=playlist_id,
+        assigned_count=assigned_count,
+        skipped_missing_count=len(skipped_missing),
+        skipped_duplicate_count=len(skipped_duplicate)
+    )
+
+    return success_response(
+        data={
+            "message": f"Playlist assigned to {assigned_count} tag(s)",
+            "assigned_count": assigned_count,
+            "skipped_missing": skipped_missing,
+            "skipped_duplicate": skipped_duplicate
+        },
+        request_id=request_id
+    )
 
 
-@router.delete("/{playlist_id}/assign/devices", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/{playlist_id}/assign/devices")
 def unassign_playlist_from_devices(
     playlist_id: int,
     assignment_data: PlaylistDeviceAssign,
+    request: Request,
     db: Session = Depends(get_db),
     current_user: Optional[User] = Depends(get_optional_user)
 ):
     """
-    Remove playlist assignment from devices
+    Remove playlist assignment from devices (bulk unassign with device_ids list)
     """
+    request_id = get_request_id(request)
+
+    logger.info(
+        "Unassigning playlist from devices",
+        request_id=request_id,
+        playlist_id=playlist_id,
+        device_ids=assignment_data.device_ids,
+        device_ids_count=len(assignment_data.device_ids)
+    )
+
+    removed_count = 0
     for device_id in assignment_data.device_ids:
         assignment = db.query(PlaylistAssignment).filter(
             PlaylistAssignment.playlist_id == playlist_id,
@@ -543,22 +984,48 @@ def unassign_playlist_from_devices(
 
         if assignment:
             db.delete(assignment)
+            removed_count += 1
 
     db.commit()
 
-    return None
+    logger.info(
+        "Playlist unassigned from devices successfully",
+        request_id=request_id,
+        playlist_id=playlist_id,
+        removed_count=removed_count
+    )
+
+    return success_response(
+        data={
+            "message": f"Playlist unassigned from {removed_count} device(s)",
+            "removed_count": removed_count
+        },
+        request_id=request_id
+    )
 
 
-@router.delete("/{playlist_id}/assign/tags", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/{playlist_id}/assign/tags")
 def unassign_playlist_from_tags(
     playlist_id: int,
     assignment_data: PlaylistTagAssign,
+    request: Request,
     db: Session = Depends(get_db),
     current_user: Optional[User] = Depends(get_optional_user)
 ):
     """
-    Remove playlist assignment from tags
+    Remove playlist assignment from tags (bulk unassign with tag_ids list)
     """
+    request_id = get_request_id(request)
+
+    logger.info(
+        "Unassigning playlist from tags",
+        request_id=request_id,
+        playlist_id=playlist_id,
+        tag_ids=assignment_data.tag_ids,
+        tag_ids_count=len(assignment_data.tag_ids)
+    )
+
+    removed_count = 0
     for tag_id in assignment_data.tag_ids:
         assignment = db.query(PlaylistAssignment).filter(
             PlaylistAssignment.playlist_id == playlist_id,
@@ -567,7 +1034,21 @@ def unassign_playlist_from_tags(
 
         if assignment:
             db.delete(assignment)
+            removed_count += 1
 
     db.commit()
 
-    return None
+    logger.info(
+        "Playlist unassigned from tags successfully",
+        request_id=request_id,
+        playlist_id=playlist_id,
+        removed_count=removed_count
+    )
+
+    return success_response(
+        data={
+            "message": f"Playlist unassigned from {removed_count} tag(s)",
+            "removed_count": removed_count
+        },
+        request_id=request_id
+    )
