@@ -3,15 +3,18 @@ Activity Logs API endpoints
 System activity and audit logging management
 """
 
-import logging
-from fastapi import APIRouter, Depends, HTTPException, status, Request
+from fastapi import APIRouter, Depends, Request, status
 from sqlalchemy.orm import Session
-from sqlalchemy import func, and_, or_
+from sqlalchemy import func
 from datetime import datetime, timedelta
 from typing import List, Optional, Dict, Any
 
 from app.core.database import get_db
 from app.core.deps import get_current_active_user
+from app.core.logging import StructuredLogger
+from app.core.exceptions import NotFoundException, BadRequestException, InternalServerException
+from app.middleware.request_id import get_request_id
+from app.schemas.common import success_response, paginated_response
 from app.models.user import User
 from app.models.activity_log import ActivityLog, ActivityAction, EntityType
 from app.schemas.activity_log import (
@@ -22,8 +25,8 @@ from app.schemas.activity_log import (
 )
 from app.utils.activity_logger import log_activity
 
-# Create logger
-logger = logging.getLogger(__name__)
+# Create structured logger
+logger = StructuredLogger(__name__)
 
 router = APIRouter()
 
@@ -68,6 +71,7 @@ def activity_to_response(activity: ActivityLog, db: Session) -> ActivityLogRespo
 
 @router.get("/activities", response_model=ActivityLogListResponse)
 async def list_activities(
+    request: Request,
     skip: int = 0,
     limit: int = 50,
     action_type: Optional[str] = None,
@@ -95,6 +99,24 @@ async def list_activities(
     Returns:
         ActivityLogListResponse with total count and items
     """
+    request_id = get_request_id(request)
+
+    logger.info(
+        "Listing activity logs",
+        request_id=request_id,
+        user_id=current_user.id,
+        skip=skip,
+        limit=limit,
+        filters={
+            "action_type": action_type,
+            "entity_type": entity_type,
+            "entity_id": entity_id,
+            "user_id": user_id,
+            "start_date": start_date.isoformat() if start_date else None,
+            "end_date": end_date.isoformat() if end_date else None
+        }
+    )
+
     try:
         # Validate limit
         if limit > 500:
@@ -128,7 +150,12 @@ async def list_activities(
         # Transform to response models
         items = [activity_to_response(activity, db) for activity in activities]
 
-        logger.debug(f"Retrieved {len(items)} activities (total: {total})")
+        logger.info(
+            "Activity logs retrieved successfully",
+            request_id=request_id,
+            total=total,
+            returned_count=len(items)
+        )
 
         return ActivityLogListResponse(
             total=total,
@@ -136,15 +163,21 @@ async def list_activities(
         )
 
     except Exception as e:
-        logger.error(f"Error listing activities: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to retrieve activity logs"
+        logger.error(
+            "Failed to retrieve activity logs",
+            request_id=request_id,
+            error=str(e),
+            exc_info=True
+        )
+        raise InternalServerException(
+            message="Failed to retrieve activity logs",
+            details={"error": str(e)}
         )
 
 
 @router.get("/activities/stats", response_model=ActivityStatsResponse)
 async def get_activity_stats(
+    request: Request,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
 ):
@@ -155,6 +188,14 @@ async def get_activity_stats(
         ActivityStatsResponse with counts for today, this week, this month,
         and breakdowns by action type and entity type
     """
+    request_id = get_request_id(request)
+
+    logger.info(
+        "Fetching activity statistics",
+        request_id=request_id,
+        user_id=current_user.id
+    )
+
     try:
         now = datetime.utcnow()
         today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
@@ -190,7 +231,15 @@ async def get_activity_stats(
 
         by_entity = {entity: count for entity, count in entity_type_counts}
 
-        logger.debug(f"Activity stats - Today: {today_count}, Week: {week_count}, Month: {month_count}")
+        logger.info(
+            "Activity statistics retrieved successfully",
+            request_id=request_id,
+            today=today_count,
+            this_week=week_count,
+            this_month=month_count,
+            action_types_count=len(by_type),
+            entity_types_count=len(by_entity)
+        )
 
         return ActivityStatsResponse(
             today=today_count,
@@ -201,16 +250,22 @@ async def get_activity_stats(
         )
 
     except Exception as e:
-        logger.error(f"Error getting activity stats: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to retrieve activity statistics"
+        logger.error(
+            "Failed to retrieve activity statistics",
+            request_id=request_id,
+            error=str(e),
+            exc_info=True
+        )
+        raise InternalServerException(
+            message="Failed to retrieve activity statistics",
+            details={"error": str(e)}
         )
 
 
 @router.get("/activities/{activity_id}", response_model=ActivityLogResponse)
 async def get_activity(
     activity_id: int,
+    request: Request,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
 ):
@@ -223,24 +278,52 @@ async def get_activity(
     Returns:
         ActivityLogResponse with user info populated
     """
+    request_id = get_request_id(request)
+
+    logger.info(
+        "Fetching activity log",
+        request_id=request_id,
+        activity_id=activity_id,
+        user_id=current_user.id
+    )
+
     try:
         activity = db.query(ActivityLog).filter(ActivityLog.id == activity_id).first()
 
         if not activity:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Activity log with ID {activity_id} not found"
+            logger.warning(
+                "Activity log not found",
+                request_id=request_id,
+                activity_id=activity_id
             )
+            raise NotFoundException(
+                message=f"Activity log with ID {activity_id} not found",
+                resource_type="ActivityLog",
+                resource_id=activity_id
+            )
+
+        logger.info(
+            "Activity log retrieved successfully",
+            request_id=request_id,
+            activity_id=activity_id,
+            action_type=activity.action_type
+        )
 
         return activity_to_response(activity, db)
 
-    except HTTPException:
+    except NotFoundException:
         raise
     except Exception as e:
-        logger.error(f"Error retrieving activity {activity_id}: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to retrieve activity log"
+        logger.error(
+            "Failed to retrieve activity log",
+            request_id=request_id,
+            activity_id=activity_id,
+            error=str(e),
+            exc_info=True
+        )
+        raise InternalServerException(
+            message="Failed to retrieve activity log",
+            details={"error": str(e)}
         )
 
 
@@ -263,6 +346,16 @@ async def create_activity_log(
     Returns:
         Created ActivityLogResponse
     """
+    request_id = get_request_id(request)
+
+    logger.info(
+        "Creating activity log",
+        request_id=request_id,
+        user_id=current_user.id,
+        action_type=activity_data.action_type,
+        entity_type=activity_data.entity_type
+    )
+
     try:
         # Auto-populate user_id from current user if not provided
         user_id = activity_data.user_id if activity_data.user_id else current_user.id
@@ -291,27 +384,43 @@ async def create_activity_log(
         )
 
         if not activity:
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Failed to create activity log"
+            logger.error(
+                "Failed to create activity log - log_activity returned None",
+                request_id=request_id,
+                action_type=activity_data.action_type
+            )
+            raise InternalServerException(
+                message="Failed to create activity log"
             )
 
-        logger.info(f"Activity log created manually: {activity.action_type} by user {user_id}")
+        logger.info(
+            "Activity log created successfully",
+            request_id=request_id,
+            activity_id=activity.id,
+            action_type=activity.action_type,
+            created_by=user_id
+        )
 
         return activity_to_response(activity, db)
 
-    except HTTPException:
+    except InternalServerException:
         raise
     except Exception as e:
-        logger.error(f"Error creating activity log: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to create activity log"
+        logger.error(
+            "Failed to create activity log",
+            request_id=request_id,
+            error=str(e),
+            exc_info=True
+        )
+        raise InternalServerException(
+            message="Failed to create activity log",
+            details={"error": str(e)}
         )
 
 
 @router.delete("/activities/cleanup")
 async def cleanup_old_activities(
+    request: Request,
     retention_days: int = 90,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
@@ -328,12 +437,26 @@ async def cleanup_old_activities(
     Note: This is a maintenance endpoint and should be called periodically
     (e.g., via cron job or scheduled task)
     """
+    request_id = get_request_id(request)
+
+    logger.info(
+        "Starting activity logs cleanup",
+        request_id=request_id,
+        user_id=current_user.id,
+        retention_days=retention_days
+    )
+
     try:
         # Validate retention days
         if retention_days < 1:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Retention days must be at least 1"
+            logger.warning(
+                "Invalid retention days parameter",
+                request_id=request_id,
+                retention_days=retention_days
+            )
+            raise BadRequestException(
+                message="Retention days must be at least 1",
+                details={"retention_days": retention_days, "minimum": 1}
             )
 
         # Calculate cutoff date
@@ -360,22 +483,35 @@ async def cleanup_old_activities(
             user=current_user
         )
 
-        logger.info(f"Cleaned up {deleted_count} activity logs older than {retention_days} days")
+        logger.info(
+            "Activity logs cleanup completed successfully",
+            request_id=request_id,
+            deleted_count=deleted_count,
+            retention_days=retention_days,
+            cutoff_date=cutoff_date.isoformat()
+        )
 
-        return {
-            "success": True,
-            "message": f"Deleted {deleted_count} activity logs older than {retention_days} days",
-            "deleted_count": deleted_count,
-            "retention_days": retention_days,
-            "cutoff_date": cutoff_date.isoformat()
-        }
+        return success_response(
+            data={
+                "message": f"Deleted {deleted_count} activity logs older than {retention_days} days",
+                "deleted_count": deleted_count,
+                "retention_days": retention_days,
+                "cutoff_date": cutoff_date.isoformat()
+            },
+            request_id=request_id
+        )
 
-    except HTTPException:
+    except BadRequestException:
         raise
     except Exception as e:
-        logger.error(f"Error cleaning up activities: {e}")
+        logger.error(
+            "Failed to cleanup activity logs",
+            request_id=request_id,
+            error=str(e),
+            exc_info=True
+        )
         db.rollback()
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to cleanup activity logs"
+        raise InternalServerException(
+            message="Failed to cleanup activity logs",
+            details={"error": str(e)}
         )

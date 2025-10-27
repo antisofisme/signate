@@ -10,14 +10,17 @@ Security Features:
 - Connection pooling with resource limits
 """
 
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi import APIRouter, Depends, Request, status, Query
 from sqlalchemy.orm import Session
 from typing import Optional
 from datetime import datetime
-import logging
 
 from app.core.database import get_db
 from app.core.deps import get_current_active_user
+from app.middleware.request_id import get_request_id
+from app.core.logging import StructuredLogger
+from app.core.exceptions import NotFoundException, BadRequestException, InternalServerException
+from app.schemas.common import success_response
 from app.models.user import User
 from app.models.firebird import FirebirdConfig
 from app.schemas.firebird import (
@@ -33,7 +36,7 @@ from app.schemas.firebird import (
 )
 from app.services.firebird_service import firebird_service
 
-logger = logging.getLogger(__name__)
+logger = StructuredLogger(__name__)
 router = APIRouter()
 
 
@@ -43,12 +46,12 @@ router = APIRouter()
 
 @router.post(
     "/api/firebird/configs",
-    response_model=FirebirdConfigResponse,
     status_code=status.HTTP_201_CREATED,
     summary="Create Firebird configuration",
     description="Create a new Firebird database configuration with encrypted credentials"
 )
 async def create_firebird_config(
+    request: Request,
     config_data: FirebirdConfigCreate,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
@@ -60,6 +63,7 @@ async def create_firebird_config(
     Connection pool will be created on first use.
 
     Args:
+        request: FastAPI Request object
         config_data: Configuration details
         db: Database session
         current_user: Authenticated user
@@ -68,9 +72,19 @@ async def create_firebird_config(
         Created configuration (without decrypted API key)
 
     Raises:
-        HTTPException 400: If config_key already exists
-        HTTPException 500: If encryption or database operation fails
+        BadRequestException: If config_key already exists
+        InternalServerException: If encryption or database operation fails
     """
+    request_id = get_request_id(request)
+
+    logger.info(
+        "Creating Firebird configuration",
+        request_id=request_id,
+        config_key=config_data.config_key,
+        user_id=current_user.id,
+        username=current_user.username
+    )
+
     try:
         # Check if config_key already exists
         existing = db.query(FirebirdConfig).filter(
@@ -78,9 +92,9 @@ async def create_firebird_config(
         ).first()
 
         if existing:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Configuration with key '{config_data.config_key}' already exists"
+            raise BadRequestException(
+                message=f"Configuration with key '{config_data.config_key}' already exists",
+                details={"config_key": config_data.config_key}
             )
 
         # Encrypt API key before storing
@@ -101,30 +115,45 @@ async def create_firebird_config(
         db.refresh(new_config)
 
         logger.info(
-            f"Created Firebird config: id={new_config.id}, "
-            f"key={new_config.config_key} by user={current_user.username}"
+            "Firebird configuration created successfully",
+            request_id=request_id,
+            config_id=new_config.id,
+            config_key=new_config.config_key,
+            user_id=current_user.id
         )
 
-        return new_config
+        # Convert to response model
+        config_response = FirebirdConfigResponse.model_validate(new_config)
 
-    except HTTPException:
+        return success_response(
+            data=config_response.model_dump(),
+            request_id=request_id
+        )
+
+    except BadRequestException:
         raise
     except Exception as e:
         db.rollback()
-        logger.error(f"Failed to create Firebird config: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to create configuration: {str(e)}"
+        logger.error(
+            "Failed to create Firebird configuration",
+            request_id=request_id,
+            config_key=config_data.config_key,
+            error=str(e),
+            exc_info=True
+        )
+        raise InternalServerException(
+            message=f"Failed to create configuration: {str(e)}",
+            details={"config_key": config_data.config_key}
         )
 
 
 @router.get(
     "/api/firebird/configs",
-    response_model=FirebirdConfigListResponse,
     summary="List Firebird configurations",
     description="Get list of all Firebird database configurations"
 )
 async def list_firebird_configs(
+    request: Request,
     is_active: Optional[bool] = Query(None, description="Filter by active status"),
     skip: int = Query(0, ge=0, description="Number of records to skip"),
     limit: int = Query(100, ge=1, le=500, description="Maximum number of records to return"),
@@ -135,6 +164,7 @@ async def list_firebird_configs(
     List all Firebird database configurations
 
     Args:
+        request: FastAPI Request object
         is_active: Optional filter by active status
         skip: Number of records to skip (pagination)
         limit: Maximum number of records to return
@@ -144,6 +174,17 @@ async def list_firebird_configs(
     Returns:
         List of configurations (without decrypted API keys)
     """
+    request_id = get_request_id(request)
+
+    logger.info(
+        "Listing Firebird configurations",
+        request_id=request_id,
+        is_active=is_active,
+        skip=skip,
+        limit=limit,
+        user_id=current_user.id
+    )
+
     try:
         query = db.query(FirebirdConfig)
 
@@ -157,26 +198,43 @@ async def list_firebird_configs(
         # Apply pagination
         configs = query.order_by(FirebirdConfig.id).offset(skip).limit(limit).all()
 
-        return FirebirdConfigListResponse(
+        # Convert to response models
+        config_list = [FirebirdConfigResponse.model_validate(config) for config in configs]
+
+        logger.info(
+            "Firebird configurations retrieved successfully",
+            request_id=request_id,
             total=total,
-            configs=configs
+            returned=len(configs)
+        )
+
+        return success_response(
+            data={
+                "total": total,
+                "configs": [config.model_dump() for config in config_list]
+            },
+            request_id=request_id
         )
 
     except Exception as e:
-        logger.error(f"Failed to list Firebird configs: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to retrieve configurations: {str(e)}"
+        logger.error(
+            "Failed to list Firebird configurations",
+            request_id=request_id,
+            error=str(e),
+            exc_info=True
+        )
+        raise InternalServerException(
+            message=f"Failed to retrieve configurations: {str(e)}"
         )
 
 
 @router.get(
     "/api/firebird/configs/{config_id}",
-    response_model=FirebirdConfigResponse,
     summary="Get Firebird configuration",
     description="Get details of a specific Firebird database configuration"
 )
 async def get_firebird_config(
+    request: Request,
     config_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
@@ -185,6 +243,7 @@ async def get_firebird_config(
     Get a specific Firebird database configuration
 
     Args:
+        request: FastAPI Request object
         config_id: Configuration ID
         db: Database session
         current_user: Authenticated user
@@ -193,26 +252,49 @@ async def get_firebird_config(
         Configuration details (without decrypted API key)
 
     Raises:
-        HTTPException 404: If configuration not found
+        NotFoundException: If configuration not found
     """
+    request_id = get_request_id(request)
+
+    logger.info(
+        "Getting Firebird configuration",
+        request_id=request_id,
+        config_id=config_id,
+        user_id=current_user.id
+    )
+
     config = db.query(FirebirdConfig).filter(FirebirdConfig.id == config_id).first()
 
     if not config:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Configuration with ID {config_id} not found"
+        raise NotFoundException(
+            message=f"Configuration with ID {config_id} not found",
+            resource_type="FirebirdConfig",
+            resource_id=config_id
         )
 
-    return config
+    # Convert to response model
+    config_response = FirebirdConfigResponse.model_validate(config)
+
+    logger.info(
+        "Firebird configuration retrieved successfully",
+        request_id=request_id,
+        config_id=config_id,
+        config_key=config.config_key
+    )
+
+    return success_response(
+        data=config_response.model_dump(),
+        request_id=request_id
+    )
 
 
 @router.put(
     "/api/firebird/configs/{config_id}",
-    response_model=FirebirdConfigResponse,
     summary="Update Firebird configuration",
     description="Update an existing Firebird database configuration"
 )
 async def update_firebird_config(
+    request: Request,
     config_id: int,
     config_data: FirebirdConfigUpdate,
     db: Session = Depends(get_db),
@@ -225,6 +307,7 @@ async def update_firebird_config(
     Connection pool will be recreated on next use if endpoint or credentials change.
 
     Args:
+        request: FastAPI Request object
         config_id: Configuration ID
         config_data: Updated configuration data
         db: Database session
@@ -234,18 +317,28 @@ async def update_firebird_config(
         Updated configuration
 
     Raises:
-        HTTPException 404: If configuration not found
-        HTTPException 400: If config_key conflict
-        HTTPException 500: If update fails
+        NotFoundException: If configuration not found
+        BadRequestException: If config_key conflict
+        InternalServerException: If update fails
     """
+    request_id = get_request_id(request)
+
+    logger.info(
+        "Updating Firebird configuration",
+        request_id=request_id,
+        config_id=config_id,
+        user_id=current_user.id
+    )
+
     try:
         # Get existing config
         config = db.query(FirebirdConfig).filter(FirebirdConfig.id == config_id).first()
 
         if not config:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Configuration with ID {config_id} not found"
+            raise NotFoundException(
+                message=f"Configuration with ID {config_id} not found",
+                resource_type="FirebirdConfig",
+                resource_id=config_id
             )
 
         # Check config_key uniqueness if being updated
@@ -256,9 +349,9 @@ async def update_firebird_config(
             ).first()
 
             if existing:
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail=f"Configuration with key '{config_data.config_key}' already exists"
+                raise BadRequestException(
+                    message=f"Configuration with key '{config_data.config_key}' already exists",
+                    details={"config_key": config_data.config_key}
                 )
 
         # Track if connection pool needs to be recreated
@@ -289,26 +382,45 @@ async def update_firebird_config(
         # Remove old connection pool if credentials or endpoint changed
         if pool_needs_reset:
             firebird_service.remove_pool(config_id)
-            logger.info(f"Connection pool reset for config_id={config_id}")
+            logger.info(
+                "Connection pool reset",
+                request_id=request_id,
+                config_id=config_id
+            )
 
         db.commit()
         db.refresh(config)
 
         logger.info(
-            f"Updated Firebird config: id={config_id}, "
-            f"key={config.config_key} by user={current_user.username}"
+            "Firebird configuration updated successfully",
+            request_id=request_id,
+            config_id=config_id,
+            config_key=config.config_key,
+            pool_reset=pool_needs_reset
         )
 
-        return config
+        # Convert to response model
+        config_response = FirebirdConfigResponse.model_validate(config)
 
-    except HTTPException:
+        return success_response(
+            data=config_response.model_dump(),
+            request_id=request_id
+        )
+
+    except (NotFoundException, BadRequestException):
         raise
     except Exception as e:
         db.rollback()
-        logger.error(f"Failed to update Firebird config: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to update configuration: {str(e)}"
+        logger.error(
+            "Failed to update Firebird configuration",
+            request_id=request_id,
+            config_id=config_id,
+            error=str(e),
+            exc_info=True
+        )
+        raise InternalServerException(
+            message=f"Failed to update configuration: {str(e)}",
+            details={"config_id": config_id}
         )
 
 
@@ -319,6 +431,7 @@ async def update_firebird_config(
     description="Delete a Firebird database configuration and close its connection pool"
 )
 async def delete_firebird_config(
+    request: Request,
     config_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
@@ -329,6 +442,7 @@ async def delete_firebird_config(
     This will also close and remove the associated connection pool.
 
     Args:
+        request: FastAPI Request object
         config_id: Configuration ID
         db: Database session
         current_user: Authenticated user
@@ -337,16 +451,26 @@ async def delete_firebird_config(
         Success message
 
     Raises:
-        HTTPException 404: If configuration not found
-        HTTPException 500: If deletion fails
+        NotFoundException: If configuration not found
+        InternalServerException: If deletion fails
     """
+    request_id = get_request_id(request)
+
+    logger.info(
+        "Deleting Firebird configuration",
+        request_id=request_id,
+        config_id=config_id,
+        user_id=current_user.id
+    )
+
     try:
         config = db.query(FirebirdConfig).filter(FirebirdConfig.id == config_id).first()
 
         if not config:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Configuration with ID {config_id} not found"
+            raise NotFoundException(
+                message=f"Configuration with ID {config_id} not found",
+                resource_type="FirebirdConfig",
+                resource_id=config_id
             )
 
         config_key = config.config_key
@@ -359,23 +483,35 @@ async def delete_firebird_config(
         db.commit()
 
         logger.info(
-            f"Deleted Firebird config: id={config_id}, "
-            f"key={config_key} by user={current_user.username}"
+            "Firebird configuration deleted successfully",
+            request_id=request_id,
+            config_id=config_id,
+            config_key=config_key,
+            user_id=current_user.id
         )
 
-        return {
-            "message": f"Configuration '{config_key}' deleted successfully",
-            "config_id": config_id
-        }
+        return success_response(
+            data={
+                "message": f"Configuration '{config_key}' deleted successfully",
+                "config_id": config_id
+            },
+            request_id=request_id
+        )
 
-    except HTTPException:
+    except NotFoundException:
         raise
     except Exception as e:
         db.rollback()
-        logger.error(f"Failed to delete Firebird config: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to delete configuration: {str(e)}"
+        logger.error(
+            "Failed to delete Firebird configuration",
+            request_id=request_id,
+            config_id=config_id,
+            error=str(e),
+            exc_info=True
+        )
+        raise InternalServerException(
+            message=f"Failed to delete configuration: {str(e)}",
+            details={"config_id": config_id}
         )
 
 
@@ -385,11 +521,11 @@ async def delete_firebird_config(
 
 @router.post(
     "/api/firebird/configs/{config_id}/test",
-    response_model=FirebirdTestResult,
     summary="Test Firebird connection",
     description="Test connection to Firebird database and optionally execute a test query"
 )
 async def test_firebird_connection(
+    request: Request,
     config_id: int,
     test_request: Optional[FirebirdTestRequest] = None,
     db: Session = Depends(get_db),
@@ -402,6 +538,7 @@ async def test_firebird_connection(
     Optionally executes a custom test query.
 
     Args:
+        request: FastAPI Request object
         config_id: Configuration ID
         test_request: Optional test query to execute
         db: Database session
@@ -411,15 +548,25 @@ async def test_firebird_connection(
         Test result with connection time and status
 
     Raises:
-        HTTPException 404: If configuration not found
+        NotFoundException: If configuration not found
     """
+    request_id = get_request_id(request)
+
+    logger.info(
+        "Testing Firebird connection",
+        request_id=request_id,
+        config_id=config_id,
+        user_id=current_user.id
+    )
+
     # Get configuration
     config = db.query(FirebirdConfig).filter(FirebirdConfig.id == config_id).first()
 
     if not config:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Configuration with ID {config_id} not found"
+        raise NotFoundException(
+            message=f"Configuration with ID {config_id} not found",
+            resource_type="FirebirdConfig",
+            resource_id=config_id
         )
 
     # Get test query if provided
@@ -439,20 +586,29 @@ async def test_firebird_connection(
         db.commit()
 
     logger.info(
-        f"Connection test for config_id={config_id}: "
-        f"success={result['success']} by user={current_user.username}"
+        "Firebird connection test completed",
+        request_id=request_id,
+        config_id=config_id,
+        success=result["success"],
+        connection_time=result.get("connection_time")
     )
 
-    return FirebirdTestResult(**result)
+    # Convert to response model
+    test_result = FirebirdTestResult(**result)
+
+    return success_response(
+        data=test_result.model_dump(),
+        request_id=request_id
+    )
 
 
 @router.post(
     "/api/firebird/configs/{config_id}/query",
-    response_model=FirebirdQueryResult,
     summary="Execute Firebird query",
     description="Execute a read-only SELECT query against the Firebird database"
 )
 async def execute_firebird_query(
+    request: Request,
     config_id: int,
     query_request: FirebirdQueryRequest,
     db: Session = Depends(get_db),
@@ -465,6 +621,7 @@ async def execute_firebird_query(
     Query results are limited by max_rows parameter (1-1000).
 
     Args:
+        request: FastAPI Request object
         config_id: Configuration ID
         query_request: Query details (SQL and max_rows)
         db: Database session
@@ -474,23 +631,34 @@ async def execute_firebird_query(
         Query results with columns and rows
 
     Raises:
-        HTTPException 404: If configuration not found
-        HTTPException 400: If configuration is inactive
+        NotFoundException: If configuration not found
+        BadRequestException: If configuration is inactive
     """
+    request_id = get_request_id(request)
+
+    logger.info(
+        "Executing Firebird query",
+        request_id=request_id,
+        config_id=config_id,
+        max_rows=query_request.max_rows,
+        user_id=current_user.id
+    )
+
     # Get configuration
     config = db.query(FirebirdConfig).filter(FirebirdConfig.id == config_id).first()
 
     if not config:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Configuration with ID {config_id} not found"
+        raise NotFoundException(
+            message=f"Configuration with ID {config_id} not found",
+            resource_type="FirebirdConfig",
+            resource_id=config_id
         )
 
     # Check if configuration is active
     if not config.is_active:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Configuration '{config.config_key}' is not active"
+        raise BadRequestException(
+            message=f"Configuration '{config.config_key}' is not active",
+            details={"config_key": config.config_key, "is_active": False}
         )
 
     # Execute query
@@ -506,21 +674,30 @@ async def execute_firebird_query(
         db.commit()
 
     logger.info(
-        f"Query execution for config_id={config_id}: "
-        f"success={result['success']}, rows={result['row_count']} "
-        f"by user={current_user.username}"
+        "Firebird query executed",
+        request_id=request_id,
+        config_id=config_id,
+        success=result["success"],
+        row_count=result.get("row_count"),
+        execution_time=result.get("execution_time")
     )
 
-    return FirebirdQueryResult(**result)
+    # Convert to response model
+    query_result = FirebirdQueryResult(**result)
+
+    return success_response(
+        data=query_result.model_dump(),
+        request_id=request_id
+    )
 
 
 @router.get(
     "/api/firebird/configs/{config_id}/health",
-    response_model=FirebirdHealthResult,
     summary="Check Firebird connection health",
     description="Check connection health and pool status for a Firebird configuration"
 )
 async def check_firebird_health(
+    request: Request,
     config_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
@@ -531,6 +708,7 @@ async def check_firebird_health(
     Returns current connection pool status and tests if database is accessible.
 
     Args:
+        request: FastAPI Request object
         config_id: Configuration ID
         db: Database session
         current_user: Authenticated user
@@ -539,23 +717,42 @@ async def check_firebird_health(
         Health status with connection and pool information
 
     Raises:
-        HTTPException 404: If configuration not found
+        NotFoundException: If configuration not found
     """
+    request_id = get_request_id(request)
+
+    logger.info(
+        "Checking Firebird connection health",
+        request_id=request_id,
+        config_id=config_id,
+        user_id=current_user.id
+    )
+
     # Get configuration
     config = db.query(FirebirdConfig).filter(FirebirdConfig.id == config_id).first()
 
     if not config:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Configuration with ID {config_id} not found"
+        raise NotFoundException(
+            message=f"Configuration with ID {config_id} not found",
+            resource_type="FirebirdConfig",
+            resource_id=config_id
         )
 
     # Check health
     result = await firebird_service.health_check(config)
 
     logger.info(
-        f"Health check for config_id={config_id}: "
-        f"healthy={result['is_healthy']} by user={current_user.username}"
+        "Firebird health check completed",
+        request_id=request_id,
+        config_id=config_id,
+        is_healthy=result.get("is_healthy"),
+        pool_size=result.get("pool_size")
     )
 
-    return FirebirdHealthResult(**result)
+    # Convert to response model
+    health_result = FirebirdHealthResult(**result)
+
+    return success_response(
+        data=health_result.model_dump(),
+        request_id=request_id
+    )

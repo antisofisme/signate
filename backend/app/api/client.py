@@ -3,29 +3,30 @@ Client API endpoints
 For TV/Monitor devices to fetch playlist and check status
 """
 
-from fastapi import APIRouter, Depends, HTTPException, status, Request
-from fastapi.responses import StreamingResponse, Response
+from fastapi import APIRouter, Depends, Request
 from sqlalchemy.orm import Session
 from typing import List
-import logging
 import httpx
-import base64
-import json
 
 from app.core.database import get_db
 from app.core.config import settings
+from app.core.logging import StructuredLogger
+from app.core.exceptions import NotFoundException, InternalServerException
+from app.middleware.request_id import get_request_id
+from app.schemas.common import success_response
 from app.models.device import Device
 from app.models.content import Content
 from app.models.assignment import ContentAssignment
 from app.models.tag import DeviceTag
 from app.schemas.client import PlaylistResponse, PlaylistItem, DeviceStatusResponse
 
-logger = logging.getLogger(__name__)
+logger = StructuredLogger(__name__)
 router = APIRouter()
 
 
 @router.get("/playlist", response_model=PlaylistResponse)
 def get_device_playlist(
+    request: Request,
     device_id: int,
     db: Session = Depends(get_db)
 ):
@@ -45,6 +46,7 @@ def get_device_playlist(
     6. Return playlist with Anthias URLs
 
     Args:
+        request: FastAPI Request object (for request_id tracking)
         device_id: Device ID
         db: Database session
 
@@ -52,27 +54,48 @@ def get_device_playlist(
         PlaylistResponse: Playlist with content items
 
     Raises:
-        HTTPException: If device not found
+        NotFoundException: If device not found
+        InternalServerException: If Anthias API call fails
 
     Notes:
         - This endpoint does NOT require authentication (for device clients)
         - Content is served from Anthias URLs
         - Playlist is regenerated on each request (real-time)
     """
+    request_id = get_request_id(request)
+
+    logger.info(
+        "Fetching device playlist",
+        request_id=request_id,
+        device_id=device_id
+    )
+
     # Get device
     device = db.query(Device).filter(Device.id == device_id).first()
 
     if not device:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Device with ID {device_id} not found"
+        logger.warning(
+            "Device not found",
+            request_id=request_id,
+            device_id=device_id
+        )
+        raise NotFoundException(
+            message=f"Device with ID {device_id} not found",
+            resource_type="Device",
+            resource_id=device_id
         )
 
     # Get device's tags
     device_tags = db.query(DeviceTag).filter(DeviceTag.device_id == device_id).all()
     tag_ids = [dt.tag_id for dt in device_tags]
 
-    logger.info(f"Device {device_id} has {len(tag_ids)} tags: {tag_ids}")
+    logger.info(
+        "Retrieved device tags",
+        request_id=request_id,
+        device_id=device_id,
+        tag_count=len(tag_ids),
+        tag_ids=tag_ids
+    )
 
     # Query content assignments
     # Get content assigned to this device OR to any of its tags
@@ -117,6 +140,13 @@ def get_device_playlist(
         try:
             anthias_asset_url = f"{settings.ANTHIAS_API_URL}/api/v1/assets/{content.anthias_asset_id}"
 
+            logger.debug(
+                "Fetching asset from Anthias",
+                request_id=request_id,
+                anthias_asset_id=content.anthias_asset_id,
+                content_id=content.id
+            )
+
             # Synchronous HTTP client for playlist generation
             with httpx.Client(timeout=5.0) as client:
                 response = client.get(anthias_asset_url)
@@ -129,17 +159,39 @@ def get_device_playlist(
                         # Convert internal path to nginx static URL
                         filename = asset_uri.replace('/data/screenly_assets/', '')
                         direct_content_url = f"{settings.ANTHIAS_API_URL}/screenly_assets/{filename}"
-                        logger.debug(f"Direct URL for content {content.id}: {direct_content_url}")
+
+                        logger.debug(
+                            "Generated direct URL for asset",
+                            request_id=request_id,
+                            content_id=content.id,
+                            direct_url=direct_content_url
+                        )
                     else:
-                        logger.warning(f"Unexpected URI format for asset {content.anthias_asset_id}: {asset_uri}")
+                        logger.warning(
+                            "Unexpected URI format, using fallback",
+                            request_id=request_id,
+                            anthias_asset_id=content.anthias_asset_id,
+                            asset_uri=asset_uri
+                        )
                         # Fallback to API endpoint (will return base64 JSON, not ideal but works)
                         direct_content_url = f"{settings.ANTHIAS_API_URL}/api/v1/assets/{content.anthias_asset_id}/content"
                 else:
-                    logger.error(f"Failed to fetch asset {content.anthias_asset_id} from Anthias: HTTP {response.status_code}")
+                    logger.error(
+                        "Failed to fetch asset from Anthias",
+                        request_id=request_id,
+                        anthias_asset_id=content.anthias_asset_id,
+                        status_code=response.status_code
+                    )
                     # Fallback to API endpoint
                     direct_content_url = f"{settings.ANTHIAS_API_URL}/api/v1/assets/{content.anthias_asset_id}/content"
         except Exception as e:
-            logger.error(f"Error fetching asset URI for {content.anthias_asset_id}: {e}")
+            logger.error(
+                "Error fetching asset URI from Anthias",
+                request_id=request_id,
+                anthias_asset_id=content.anthias_asset_id,
+                error=str(e),
+                exc_info=True
+            )
             # Fallback to API endpoint
             direct_content_url = f"{settings.ANTHIAS_API_URL}/api/v1/assets/{content.anthias_asset_id}/content"
 
@@ -153,7 +205,12 @@ def get_device_playlist(
         )
         playlist_items.append(playlist_item)
 
-    logger.info(f"Generated playlist for device {device_id}: {len(playlist_items)} items")
+    logger.info(
+        "Playlist generated successfully",
+        request_id=request_id,
+        device_id=device_id,
+        total_items=len(playlist_items)
+    )
 
     return PlaylistResponse(
         device_id=device.id,
@@ -166,6 +223,7 @@ def get_device_playlist(
 
 @router.get("/status", response_model=DeviceStatusResponse)
 def check_device_status(
+    request: Request,
     device_id: int,
     db: Session = Depends(get_db)
 ):
@@ -175,6 +233,7 @@ def check_device_status(
     Used by devices to check if they are still active and authorized.
 
     Args:
+        request: FastAPI Request object (for request_id tracking)
         device_id: Device ID
         db: Database session
 
@@ -182,18 +241,32 @@ def check_device_status(
         DeviceStatusResponse: Device status information
 
     Raises:
-        HTTPException: If device not found
+        NotFoundException: If device not found
 
     Notes:
         - This endpoint does NOT require authentication
         - Devices can poll this to check their status
     """
+    request_id = get_request_id(request)
+
+    logger.info(
+        "Checking device status",
+        request_id=request_id,
+        device_id=device_id
+    )
+
     device = db.query(Device).filter(Device.id == device_id).first()
 
     if not device:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Device with ID {device_id} not found"
+        logger.warning(
+            "Device not found for status check",
+            request_id=request_id,
+            device_id=device_id
+        )
+        raise NotFoundException(
+            message=f"Device with ID {device_id} not found",
+            resource_type="Device",
+            resource_id=device_id
         )
 
     is_active = device.status == "active"
@@ -206,6 +279,14 @@ def check_device_status(
         message = "Device is inactive"
     else:
         message = f"Device status: {device.status}"
+
+    logger.info(
+        "Device status retrieved",
+        request_id=request_id,
+        device_id=device_id,
+        status=device.status,
+        is_active=is_active
+    )
 
     return DeviceStatusResponse(
         device_id=device.id,
