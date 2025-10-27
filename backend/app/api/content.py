@@ -422,6 +422,7 @@ def get_content(
 async def update_content(
     content_id: int,
     content_data: ContentUpdateRequest,
+    request: Request,
     db: Session = Depends(get_db),
     current_user: Optional[User] = Depends(get_optional_user)
 ):
@@ -431,21 +432,38 @@ async def update_content(
     Args:
         content_id: Content ID
         content_data: Update data (partial - only changed fields)
+        request: FastAPI request object (for request_id)
         db: Database session
         current_user: Authenticated user
 
     Returns:
-        ContentResponse: Updated content
+        APIResponse: Updated content wrapped in standardized response
 
     Raises:
-        HTTPException: If content not found or update fails
+        NotFoundException: If content not found
+        InternalServerException: If update fails
     """
+    request_id = get_request_id(request)
+
+    logger.info(
+        "Updating content",
+        request_id=request_id,
+        content_id=content_id,
+        fields_to_update=content_data.dict(exclude_unset=True)
+    )
+
     content = db.query(Content).filter(Content.id == content_id).first()
 
     if not content:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Content with ID {content_id} not found"
+        logger.warning(
+            "Content not found",
+            request_id=request_id,
+            content_id=content_id
+        )
+        raise NotFoundException(
+            message=f"Content with ID {content_id} not found",
+            resource_type="Content",
+            resource_id=content_id
         )
 
     try:
@@ -477,28 +495,78 @@ async def update_content(
                     duration=content.duration if content_data.duration else None,
                     is_enabled=content.is_active if content_data.is_active is not None else None
                 )
-                logger.info(f"Anthias asset {content.anthias_asset_id} updated")
+                logger.info(
+                    "Anthias asset updated",
+                    request_id=request_id,
+                    anthias_asset_id=content.anthias_asset_id
+                )
             except Exception as anthias_error:
                 # Log warning but don't fail the request
                 # Viewers use our database, not Anthias metadata
-                logger.warning(f"Failed to update Anthias asset {content.anthias_asset_id}: {anthias_error}")
-                logger.warning("Database update succeeded, but Anthias sync failed (non-critical)")
+                logger.warning(
+                    "Anthias sync failed (non-critical)",
+                    request_id=request_id,
+                    anthias_asset_id=content.anthias_asset_id,
+                    error=str(anthias_error)
+                )
 
-        logger.info(f"Content updated: ID={content.id}")
-        return content
+        logger.info(
+            "Content updated successfully",
+            request_id=request_id,
+            content_id=content.id,
+            title=content.title
+        )
+
+        # Convert to dict
+        content_dict = {
+            "id": content.id,
+            "title": content.title,
+            "description": content.description,
+            "content_type": content.content_type,
+            "anthias_url": content.anthias_url,
+            "anthias_asset_id": content.anthias_asset_id,
+            "duration": content.duration,
+            "is_active": content.is_active,
+            "file_size": content.file_size,
+            "mime_type": content.mime_type,
+            "resolution": content.resolution,
+            "width": content.width,
+            "height": content.height,
+            "codec": content.codec,
+            "fps": content.fps,
+            "bitrate": content.bitrate,
+            "video_duration": content.video_duration,
+            "audio_codec": content.audio_codec,
+            "audio_bitrate": content.audio_bitrate,
+            "audio_sample_rate": content.audio_sample_rate,
+            "created_at": content.created_at,
+            "updated_at": content.updated_at
+        }
+
+        return success_response(
+            data=content_dict,
+            request_id=request_id
+        )
 
     except Exception as e:
-        logger.error(f"Database update error: {e}")
+        logger.error(
+            "Content update failed",
+            request_id=request_id,
+            content_id=content_id,
+            error=str(e),
+            exc_info=True
+        )
         db.rollback()
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Update failed: {str(e)}"
+        raise InternalServerException(
+            message="Update failed",
+            details={"error": str(e)}
         )
 
 
 @router.delete("/{content_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_content(
     content_id: int,
+    request: Request,
     db: Session = Depends(get_db),
     current_user: Optional[User] = Depends(get_optional_user)
 ):
@@ -507,44 +575,83 @@ async def delete_content(
 
     Args:
         content_id: Content ID
+        request: FastAPI request object (for request_id)
         db: Database session
         current_user: Authenticated user
 
+    Returns:
+        APIResponse: Success message wrapped in standardized response
+
     Raises:
-        HTTPException: If content not found or deletion fails
+        NotFoundException: If content not found
+        InternalServerException: If deletion fails
 
     Notes:
         - Deletes file from Anthias
         - Deletes metadata from PostgreSQL
         - Cascades to content_assignments
     """
+    request_id = get_request_id(request)
+
+    logger.info(
+        "Deleting content",
+        request_id=request_id,
+        content_id=content_id
+    )
+
     content = db.query(Content).filter(Content.id == content_id).first()
 
     if not content:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Content with ID {content_id} not found"
+        logger.warning(
+            "Content not found",
+            request_id=request_id,
+            content_id=content_id
+        )
+        raise NotFoundException(
+            message=f"Content with ID {content_id} not found",
+            resource_type="Content",
+            resource_id=content_id
         )
 
     try:
+        anthias_asset_id = content.anthias_asset_id
+
         # Delete from Anthias if asset ID exists
-        if content.anthias_asset_id:
-            await anthias_service.delete_asset(content.anthias_asset_id)
-            logger.info(f"Deleted from Anthias: {content.anthias_asset_id}")
+        if anthias_asset_id:
+            await anthias_service.delete_asset(anthias_asset_id)
+            logger.info(
+                "Deleted from Anthias",
+                request_id=request_id,
+                anthias_asset_id=anthias_asset_id
+            )
 
         # Delete from database (cascades to assignments)
         db.delete(content)
         db.commit()
 
-        logger.info(f"Content deleted: ID={content_id}")
-        return None
+        logger.info(
+            "Content deleted successfully",
+            request_id=request_id,
+            content_id=content_id
+        )
+
+        return success_response(
+            data={"message": f"Content {content_id} deleted successfully"},
+            request_id=request_id
+        )
 
     except Exception as e:
-        logger.error(f"Delete error: {e}")
+        logger.error(
+            "Content deletion failed",
+            request_id=request_id,
+            content_id=content_id,
+            error=str(e),
+            exc_info=True
+        )
         db.rollback()
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Delete failed: {str(e)}"
+        raise InternalServerException(
+            message="Delete failed",
+            details={"error": str(e)}
         )
 
 
@@ -552,6 +659,7 @@ async def delete_content(
 def assign_content(
     content_id: int,
     assignment_data: ContentAssignRequest,
+    request: Request,
     db: Session = Depends(get_db),
     current_user: Optional[User] = Depends(get_optional_user)
 ):
@@ -561,62 +669,120 @@ def assign_content(
     Args:
         content_id: Content ID
         assignment_data: Assignment data (device_id or tag_id)
+        request: FastAPI request object (for request_id)
         db: Database session
         current_user: Authenticated user
 
     Returns:
-        ContentAssignmentResponse: Created assignment
+        APIResponse: Created assignment wrapped in standardized response
 
     Raises:
-        HTTPException: If content, device, or tag not found
+        NotFoundException: If content, device, or tag not found
+        BadRequestException: If validation fails
+        ConflictException: If assignment already exists
 
     Notes:
         - Must assign to EITHER device OR tag (not both)
         - If assigned to tag, content will show on all devices with that tag
     """
+    request_id = get_request_id(request)
+
+    logger.info(
+        "Assigning content",
+        request_id=request_id,
+        content_id=content_id,
+        device_id=assignment_data.device_id,
+        tag_id=assignment_data.tag_id,
+        priority=assignment_data.priority
+    )
+
     # Validate content exists
     content = db.query(Content).filter(Content.id == content_id).first()
     if not content:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Content with ID {content_id} not found"
+        logger.warning(
+            "Content not found",
+            request_id=request_id,
+            content_id=content_id
+        )
+        raise NotFoundException(
+            message=f"Content with ID {content_id} not found",
+            resource_type="Content",
+            resource_id=content_id
         )
 
     # Validate assignment target (must be device OR tag, not both)
     if not assignment_data.device_id and not assignment_data.tag_id:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Must assign to either device_id or tag_id"
+        logger.warning(
+            "Invalid assignment - no target specified",
+            request_id=request_id,
+            content_id=content_id
+        )
+        raise BadRequestException(
+            message="Must assign to either device_id or tag_id",
+            details={"content_id": content_id}
         )
 
     if assignment_data.device_id and assignment_data.tag_id:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Cannot assign to both device_id and tag_id"
+        logger.warning(
+            "Invalid assignment - both targets specified",
+            request_id=request_id,
+            content_id=content_id,
+            device_id=assignment_data.device_id,
+            tag_id=assignment_data.tag_id
+        )
+        raise BadRequestException(
+            message="Cannot assign to both device_id and tag_id",
+            details={
+                "content_id": content_id,
+                "device_id": assignment_data.device_id,
+                "tag_id": assignment_data.tag_id
+            }
         )
 
     # Validate device or tag exists
     if assignment_data.device_id:
         device = db.query(Device).filter(Device.id == assignment_data.device_id).first()
         if not device:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Device with ID {assignment_data.device_id} not found"
+            logger.warning(
+                "Device not found",
+                request_id=request_id,
+                device_id=assignment_data.device_id
+            )
+            raise NotFoundException(
+                message=f"Device with ID {assignment_data.device_id} not found",
+                resource_type="Device",
+                resource_id=assignment_data.device_id
             )
 
         # Only allow assignment to active devices
         if device.status != 'active':
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Cannot assign content to device with status '{device.status}'. Device must be active."
+            logger.warning(
+                "Cannot assign to inactive device",
+                request_id=request_id,
+                device_id=device.id,
+                device_status=device.status
+            )
+            raise BadRequestException(
+                message=f"Cannot assign content to device with status '{device.status}'. Device must be active.",
+                details={
+                    "device_id": device.id,
+                    "device_status": device.status,
+                    "required_status": "active"
+                }
             )
 
     if assignment_data.tag_id:
         tag = db.query(Tag).filter(Tag.id == assignment_data.tag_id).first()
         if not tag:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Tag with ID {assignment_data.tag_id} not found"
+            logger.warning(
+                "Tag not found",
+                request_id=request_id,
+                tag_id=assignment_data.tag_id
+            )
+            raise NotFoundException(
+                message=f"Tag with ID {assignment_data.tag_id} not found",
+                resource_type="Tag",
+                resource_id=assignment_data.tag_id
             )
 
     # Check if assignment already exists
@@ -627,9 +793,20 @@ def assign_content(
     ).first()
 
     if existing:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="Assignment already exists"
+        logger.warning(
+            "Assignment already exists",
+            request_id=request_id,
+            content_id=content_id,
+            device_id=assignment_data.device_id,
+            tag_id=assignment_data.tag_id
+        )
+        raise ConflictException(
+            message="Assignment already exists",
+            details={
+                "content_id": content_id,
+                "device_id": assignment_data.device_id,
+                "tag_id": assignment_data.tag_id
+            }
         )
 
     # Create assignment
@@ -644,14 +821,35 @@ def assign_content(
     db.commit()
     db.refresh(assignment)
 
-    logger.info(f"Content assigned: content_id={content_id}, device_id={assignment_data.device_id}, tag_id={assignment_data.tag_id}")
+    logger.info(
+        "Content assigned successfully",
+        request_id=request_id,
+        content_id=content_id,
+        device_id=assignment_data.device_id,
+        tag_id=assignment_data.tag_id,
+        assignment_id=assignment.id
+    )
 
-    return assignment
+    # Convert to dict
+    assignment_dict = {
+        "id": assignment.id,
+        "content_id": assignment.content_id,
+        "device_id": assignment.device_id,
+        "tag_id": assignment.tag_id,
+        "priority": assignment.priority,
+        "created_at": assignment.created_at
+    }
+
+    return success_response(
+        data=assignment_dict,
+        request_id=request_id
+    )
 
 
 @router.get("/{content_id}/assignments", response_model=List[ContentAssignmentResponse])
 def get_content_assignments(
     content_id: int,
+    request: Request,
     db: Session = Depends(get_db),
     current_user: Optional[User] = Depends(get_optional_user)
 ):
@@ -660,31 +858,73 @@ def get_content_assignments(
 
     Args:
         content_id: Content ID
+        request: FastAPI request object (for request_id)
         db: Database session
         current_user: Authenticated user
 
     Returns:
-        List[ContentAssignmentResponse]: List of assignments
+        APIResponse: List of assignments wrapped in standardized response
+
+    Raises:
+        NotFoundException: If content not found
     """
+    request_id = get_request_id(request)
+
+    logger.info(
+        "Fetching content assignments",
+        request_id=request_id,
+        content_id=content_id
+    )
+
     # Validate content exists
     content = db.query(Content).filter(Content.id == content_id).first()
     if not content:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Content with ID {content_id} not found"
+        logger.warning(
+            "Content not found",
+            request_id=request_id,
+            content_id=content_id
+        )
+        raise NotFoundException(
+            message=f"Content with ID {content_id} not found",
+            resource_type="Content",
+            resource_id=content_id
         )
 
     assignments = db.query(ContentAssignment).filter(
         ContentAssignment.content_id == content_id
     ).all()
 
-    return assignments
+    logger.info(
+        "Content assignments fetched successfully",
+        request_id=request_id,
+        content_id=content_id,
+        assignment_count=len(assignments)
+    )
+
+    # Convert to list of dicts
+    assignments_list = [
+        {
+            "id": a.id,
+            "content_id": a.content_id,
+            "device_id": a.device_id,
+            "tag_id": a.tag_id,
+            "priority": a.priority,
+            "created_at": a.created_at
+        }
+        for a in assignments
+    ]
+
+    return success_response(
+        data=assignments_list,
+        request_id=request_id
+    )
 
 
 @router.delete("/{content_id}/assign", status_code=status.HTTP_204_NO_CONTENT)
 def unassign_content(
     content_id: int,
     assignment_data: ContentAssignRequest,
+    request: Request,
     db: Session = Depends(get_db),
     current_user: Optional[User] = Depends(get_optional_user)
 ):
@@ -694,27 +934,58 @@ def unassign_content(
     Args:
         content_id: Content ID
         assignment_data: Assignment data (device_id or tag_id)
+        request: FastAPI request object (for request_id)
         db: Database session
         current_user: Authenticated user
 
+    Returns:
+        APIResponse: Success message wrapped in standardized response
+
     Raises:
-        HTTPException: If assignment not found
+        BadRequestException: If validation fails
+        NotFoundException: If assignment not found
 
     Notes:
         - Removes the assignment relationship
         - Content will no longer appear in device/tag playlist
     """
+    request_id = get_request_id(request)
+
+    logger.info(
+        "Unassigning content",
+        request_id=request_id,
+        content_id=content_id,
+        device_id=assignment_data.device_id,
+        tag_id=assignment_data.tag_id
+    )
+
     # Validate assignment target
     if not assignment_data.device_id and not assignment_data.tag_id:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Must specify either device_id or tag_id"
+        logger.warning(
+            "Invalid unassignment - no target specified",
+            request_id=request_id,
+            content_id=content_id
+        )
+        raise BadRequestException(
+            message="Must specify either device_id or tag_id",
+            details={"content_id": content_id}
         )
 
     if assignment_data.device_id and assignment_data.tag_id:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Cannot specify both device_id and tag_id"
+        logger.warning(
+            "Invalid unassignment - both targets specified",
+            request_id=request_id,
+            content_id=content_id,
+            device_id=assignment_data.device_id,
+            tag_id=assignment_data.tag_id
+        )
+        raise BadRequestException(
+            message="Cannot specify both device_id and tag_id",
+            details={
+                "content_id": content_id,
+                "device_id": assignment_data.device_id,
+                "tag_id": assignment_data.tag_id
+            }
         )
 
     # Find assignment
@@ -725,18 +996,39 @@ def unassign_content(
     ).first()
 
     if not assignment:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Assignment not found"
+        logger.warning(
+            "Assignment not found",
+            request_id=request_id,
+            content_id=content_id,
+            device_id=assignment_data.device_id,
+            tag_id=assignment_data.tag_id
+        )
+        raise NotFoundException(
+            message="Assignment not found",
+            resource_type="ContentAssignment",
+            details={
+                "content_id": content_id,
+                "device_id": assignment_data.device_id,
+                "tag_id": assignment_data.tag_id
+            }
         )
 
     # Delete assignment
     db.delete(assignment)
     db.commit()
 
-    logger.info(f"Content unassigned: content_id={content_id}, device_id={assignment_data.device_id}, tag_id={assignment_data.tag_id}")
+    logger.info(
+        "Content unassigned successfully",
+        request_id=request_id,
+        content_id=content_id,
+        device_id=assignment_data.device_id,
+        tag_id=assignment_data.tag_id
+    )
 
-    return None
+    return success_response(
+        data={"message": f"Content {content_id} unassigned successfully"},
+        request_id=request_id
+    )
 
 
 @router.get("/{content_id}/image")
