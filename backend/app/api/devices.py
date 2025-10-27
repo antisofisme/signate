@@ -485,14 +485,14 @@ def register_monitor_self(
 
     Args:
         device_data: Monitor registration data (activation_code, device_name)
-        request: FastAPI request object (for IP auto-detection)
+        request: FastAPI request object (for IP auto-detection and request_id)
         db: Database session
 
     Returns:
-        DeviceResponse: Created device with pending status
+        APIResponse: Created device wrapped in standardized response
 
     Raises:
-        HTTPException: If activation code already exists
+        ConflictException: If activation code already exists
 
     Notes:
         - This endpoint does NOT require authentication (for monitor clients)
@@ -501,15 +501,32 @@ def register_monitor_self(
         - Admin activates via Web Admin PUT /devices/{id} endpoint
         - Auto-detects client IP from request
     """
+    request_id = get_request_id(request)
+
+    logger.info(
+        "Monitor self-registration initiated",
+        request_id=request_id,
+        activation_code=device_data.activation_code,
+        device_name=device_data.device_name,
+        platform=device_data.platform
+    )
+
     # Check if activation code already exists
     existing_device = db.query(Device).filter(
         Device.unique_code == device_data.activation_code
     ).first()
 
     if existing_device:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail=f"Activation code {device_data.activation_code} already exists"
+        logger.warning(
+            "Monitor registration failed - activation code already exists",
+            request_id=request_id,
+            activation_code=device_data.activation_code,
+            existing_device_id=existing_device.id
+        )
+        raise ConflictException(
+            message=f"Activation code {device_data.activation_code} already exists",
+            field="activation_code",
+            details={"activation_code": device_data.activation_code, "existing_device_id": existing_device.id}
         )
 
     # Auto-detect IP address from request
@@ -550,7 +567,23 @@ def register_monitor_self(
     db.commit()
     db.refresh(device)
 
-    return device
+    logger.info(
+        "Monitor self-registration successful",
+        request_id=request_id,
+        device_id=device.id,
+        device_name=device.device_name,
+        device_type=device_type,
+        activation_code=device_data.activation_code,
+        ip_address=client_ip
+    )
+
+    # Transform to response
+    device_response = device_to_response(device, db)
+
+    return success_response(
+        data=device_response.model_dump() if hasattr(device_response, 'model_dump') else device_response.dict(),
+        request_id=request_id
+    )
 
 
 @router.post("/monitor/activate", response_model=DeviceResponse)
@@ -696,6 +729,7 @@ def update_device(
 @router.delete("/{device_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_device(
     device_id: int,
+    request: Request,
     db: Session = Depends(get_db),
     current_user: Optional[User] = Depends(get_optional_user)
 ):
@@ -708,23 +742,42 @@ def delete_device(
 
     Args:
         device_id: Device ID
+        request: FastAPI request object (for request_id)
         db: Database session
+        current_user: Authenticated user
+
+    Returns:
+        APIResponse: Success message wrapped in standardized response
 
     Raises:
-        HTTPException: If device not found
+        NotFoundException: If device not found
 
     Notes:
         - This will also delete related content assignments (CASCADE)
         - A reset command is queued before deletion (in case device is online)
         - Command will be CASCADE deleted along with device
     """
+    request_id = get_request_id(request)
+
+    logger.info(
+        "Deleting device",
+        request_id=request_id,
+        device_id=device_id
+    )
+
     # Check if device exists (without loading relationships to avoid DeviceTag id issue)
     device_exists = db.query(Device.id).filter(Device.id == device_id).first()
 
     if not device_exists:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Device with ID {device_id} not found"
+        logger.warning(
+            "Device deletion failed - device not found",
+            request_id=request_id,
+            device_id=device_id
+        )
+        raise NotFoundException(
+            message=f"Device with ID {device_id} not found",
+            resource_type="Device",
+            resource_id=device_id
         )
 
     # Queue reset command BEFORE deletion
@@ -740,6 +793,12 @@ def delete_device(
         db.add(reset_command)
         db.commit()  # Commit command first
 
+        logger.info(
+            "Reset command queued before device deletion",
+            request_id=request_id,
+            device_id=device_id
+        )
+
         # Brief window for device to poll before deletion
         import time
         time.sleep(0.5)  # 500ms window for online devices to poll
@@ -747,18 +806,33 @@ def delete_device(
     except Exception as e:
         # If command creation fails, continue with deletion anyway
         db.rollback()
-        print(f"Warning: Failed to queue reset command for device {device_id}: {e}")
+        logger.warning(
+            "Failed to queue reset command for device deletion",
+            request_id=request_id,
+            device_id=device_id,
+            error=str(e)
+        )
 
     # Delete device directly - CASCADE will handle related records (including the command we just created)
     db.query(Device).filter(Device.id == device_id).delete()
     db.commit()
 
-    return None
+    logger.info(
+        "Device deleted successfully",
+        request_id=request_id,
+        device_id=device_id
+    )
+
+    return success_response(
+        data={"message": f"Device {device_id} deleted successfully"},
+        request_id=request_id
+    )
 
 
 @router.post("/{device_id}/release", response_model=DeviceResponse)
 def release_device(
     device_id: int,
+    request: Request,
     db: Session = Depends(get_db),
     current_user: Optional[User] = Depends(get_optional_user)
 ):
@@ -767,8 +841,8 @@ def release_device(
 
     This will:
     1. Queue a reset command for the device
-    2. Change device status to "pending"
-    3. Generate new activation code
+    2. Change device status to "inactive"
+    3. Clear activation code
     4. Keep all content assignments and settings
 
     Unlike DELETE, this keeps the device record in database.
@@ -776,20 +850,37 @@ def release_device(
 
     Args:
         device_id: Device ID
+        request: FastAPI request object (for request_id)
         db: Database session
-
-    Raises:
-        HTTPException: If device not found
+        current_user: Authenticated user
 
     Returns:
-        Updated device with new status and code
+        APIResponse: Updated device wrapped in standardized response
+
+    Raises:
+        NotFoundException: If device not found
+        BadRequestException: If reset command queueing fails
     """
+    request_id = get_request_id(request)
+
+    logger.info(
+        "Releasing device",
+        request_id=request_id,
+        device_id=device_id
+    )
+
     # Get device
     device = db.query(Device).filter(Device.id == device_id).first()
     if not device:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Device with ID {device_id} not found"
+        logger.warning(
+            "Device release failed - device not found",
+            request_id=request_id,
+            device_id=device_id
+        )
+        raise NotFoundException(
+            message=f"Device with ID {device_id} not found",
+            resource_type="Device",
+            resource_id=device_id
         )
 
     # Queue reset command (will persist since device is not deleted)
@@ -803,11 +894,24 @@ def release_device(
         )
         db.add(reset_command)
         db.commit()
+
+        logger.info(
+            "Reset command queued for device release",
+            request_id=request_id,
+            device_id=device_id
+        )
+
     except Exception as e:
         db.rollback()
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to queue reset command: {str(e)}"
+        logger.error(
+            "Failed to queue reset command for device release",
+            request_id=request_id,
+            device_id=device_id,
+            error=str(e)
+        )
+        raise BadRequestException(
+            message=f"Failed to queue reset command: {str(e)}",
+            details={"device_id": device_id, "error": str(e)}
         )
 
     # Release device: Set inactive, mark released timestamp, clear code
@@ -825,30 +929,19 @@ def release_device(
     db.commit()
     db.refresh(device)
 
-    return DeviceResponse(
-        id=device.id,
-        device_type=device.device_type,
-        device_name=device.device_name,
-        ip_address=device.ip_address,
-        unique_code=device.unique_code,
-        code_expires_at=device.code_expires_at,
-        platform=device.platform,
-        model_name=device.model_name,
-        firmware_version=device.firmware_version,
-        status=device.status,
-        last_seen=device.last_seen,
-        screen_width=device.screen_width,
-        screen_height=device.screen_height,
-        viewport_width=device.viewport_width,
-        viewport_height=device.viewport_height,
-        device_pixel_ratio=device.device_pixel_ratio,
-        user_agent=device.user_agent,
-        connection_type=device.connection_type,
-        connection_speed=device.connection_speed,
-        rotation=device.rotation,
-        volume_enabled=device.volume_enabled,
-        created_at=device.created_at,
-        updated_at=device.updated_at
+    logger.info(
+        "Device released successfully",
+        request_id=request_id,
+        device_id=device_id,
+        device_name=device.device_name
+    )
+
+    # Transform to response
+    device_response = device_to_response(device, db)
+
+    return success_response(
+        data=device_response.model_dump() if hasattr(device_response, 'model_dump') else device_response.dict(),
+        request_id=request_id
     )
 
 
@@ -972,6 +1065,7 @@ def replace_device_with_pending(
 @router.get("/check-activation/{activation_code}")
 def check_activation_status(
     activation_code: str,
+    request: Request,
     db: Session = Depends(get_db)
 ):
     """
@@ -982,56 +1076,107 @@ def check_activation_status(
 
     Args:
         activation_code: The activation code to check
+        request: FastAPI request object (for request_id)
         db: Database session
 
     Returns:
-        dict with:
-        - activated: boolean
-        - device_id: int (if activated)
-        - device_name: str (if activated)
+        APIResponse: Activation status wrapped in standardized response
+            - activated: boolean
+            - device_id: int (if activated)
+            - device_name: str (if activated)
+
+    Notes:
+        - This endpoint does NOT require authentication (for device clients)
+        - Called periodically by pending devices to poll activation status
     """
+    request_id = get_request_id(request)
+
+    logger.info(
+        "Checking activation status",
+        request_id=request_id,
+        activation_code=activation_code
+    )
+
     # Find device with this code
     device = db.query(Device).filter(Device.unique_code == activation_code).first()
 
     if not device:
-        return {
-            "activated": False,
-            "expired": True,  # Code not found = expired/deleted
-            "device_id": None,
-            "device_name": None,
-            "message": "Code not found or expired"
-        }
+        logger.info(
+            "Activation check - code not found or expired",
+            request_id=request_id,
+            activation_code=activation_code
+        )
+        return success_response(
+            data={
+                "activated": False,
+                "expired": True,  # Code not found = expired/deleted
+                "device_id": None,
+                "device_name": None,
+                "message": "Code not found or expired"
+            },
+            request_id=request_id
+        )
 
     # Check if code expired (for pending devices)
     if device.status == "pending" and device.code_expires_at:
         if is_code_expired(device.code_expires_at):
-            return {
-                "activated": False,
-                "expired": True,
-                "device_id": device.id,
-                "device_name": device.device_name,
-                "message": "Activation code has expired"
-            }
+            logger.info(
+                "Activation check - code expired",
+                request_id=request_id,
+                activation_code=activation_code,
+                device_id=device.id,
+                code_expires_at=device.code_expires_at
+            )
+            return success_response(
+                data={
+                    "activated": False,
+                    "expired": True,
+                    "device_id": device.id,
+                    "device_name": device.device_name,
+                    "message": "Activation code has expired"
+                },
+                request_id=request_id
+            )
 
     # Check if activated
     if device.status == "active":
-        return {
-            "activated": True,
-            "expired": False,
-            "device_id": device.id,
-            "device_name": device.device_name,
-            "message": "Code activated successfully"
-        }
+        logger.info(
+            "Activation check - code activated",
+            request_id=request_id,
+            activation_code=activation_code,
+            device_id=device.id,
+            device_name=device.device_name
+        )
+        return success_response(
+            data={
+                "activated": True,
+                "expired": False,
+                "device_id": device.id,
+                "device_name": device.device_name,
+                "message": "Code activated successfully"
+            },
+            request_id=request_id
+        )
     else:
         # Still pending (not expired, not activated)
-        return {
-            "activated": False,
-            "expired": False,
-            "device_id": device.id,
-            "device_name": device.device_name,
-            "status": device.status,
-            "message": f"Code found but status is {device.status}"
-        }
+        logger.info(
+            "Activation check - code still pending",
+            request_id=request_id,
+            activation_code=activation_code,
+            device_id=device.id,
+            device_status=device.status
+        )
+        return success_response(
+            data={
+                "activated": False,
+                "expired": False,
+                "device_id": device.id,
+                "device_name": device.device_name,
+                "status": device.status,
+                "message": f"Code found but status is {device.status}"
+            },
+            request_id=request_id
+        )
 
 
 @router.post("/heartbeat", response_model=HeartbeatResponse)
@@ -1045,14 +1190,14 @@ def device_heartbeat(
 
     Args:
         heartbeat_data: Device ID and optional IP
-        request: FastAPI request object (for IP auto-detection)
+        request: FastAPI request object (for IP auto-detection and request_id)
         db: Database session
 
     Returns:
-        HeartbeatResponse: Heartbeat confirmation
+        APIResponse: Heartbeat confirmation wrapped in standardized response
 
     Raises:
-        HTTPException: If device not found
+        NotFoundException: If device not found
 
     Notes:
         - This endpoint does NOT require authentication (for device clients)
@@ -1060,12 +1205,26 @@ def device_heartbeat(
         - Updates last_seen timestamp
         - Auto-detects client IP from request
     """
+    request_id = get_request_id(request)
+
+    logger.info(
+        "Device heartbeat received",
+        request_id=request_id,
+        device_id=heartbeat_data.device_id
+    )
+
     device = db.query(Device).filter(Device.id == heartbeat_data.device_id).first()
 
     if not device:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Device with ID {heartbeat_data.device_id} not found"
+        logger.warning(
+            "Heartbeat failed - device not found",
+            request_id=request_id,
+            device_id=heartbeat_data.device_id
+        )
+        raise NotFoundException(
+            message=f"Device with ID {heartbeat_data.device_id} not found",
+            resource_type="Device",
+            resource_id=heartbeat_data.device_id
         )
 
     # Update last_seen
@@ -1118,13 +1277,26 @@ def device_heartbeat(
     db.commit()
     db.refresh(device)
 
-    return HeartbeatResponse(
+    logger.info(
+        "Device heartbeat processed successfully",
+        request_id=request_id,
+        device_id=device.id,
+        device_name=device.device_name,
+        ip_address=device.ip_address
+    )
+
+    heartbeat_response = HeartbeatResponse(
         device_id=device.id,
         status=device.status,
         last_seen=device.last_seen,
         message="Heartbeat recorded successfully",
         rotation=device.rotation,
         volume_enabled=device.volume_enabled
+    )
+
+    return success_response(
+        data=heartbeat_response.model_dump() if hasattr(heartbeat_response, 'model_dump') else heartbeat_response.dict(),
+        request_id=request_id
     )
 
 
