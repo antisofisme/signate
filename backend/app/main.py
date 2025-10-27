@@ -48,7 +48,7 @@ if settings.ENABLE_CORS:
 # =============================================================================
 # API ROUTERS
 # =============================================================================
-from app.api import auth, devices, content, client, tags, logs, websocket, speedtest, playlists, activities
+from app.api import auth, devices, content, client, tags, logs, websocket, speedtest, playlists, activities, firebird
 
 app.include_router(auth.router, prefix="/api/auth", tags=["Authentication"])
 app.include_router(devices.router, prefix="/api/devices", tags=["Devices"])
@@ -60,6 +60,7 @@ app.include_router(activities.router, prefix="/api", tags=["Activity Logs"])
 app.include_router(logs.router, prefix="/api", tags=["Device Logs"])
 app.include_router(websocket.router, prefix="/api", tags=["WebSocket"])
 app.include_router(speedtest.router, tags=["Speed Test"])
+app.include_router(firebird.router, tags=["Firebird Integration"])
 
 # =============================================================================
 # ROOT ENDPOINTS
@@ -205,6 +206,14 @@ async def shutdown_event():
             await cleanup_task
         except asyncio.CancelledError:
             logger.info("✓ Background log cleanup task cancelled")
+
+    # Cleanup Firebird connection pools
+    try:
+        from app.services.firebird_service import firebird_service
+        firebird_service.shutdown()
+        logger.info("✓ Firebird connection pools closed")
+    except Exception as e:
+        logger.error(f"❌ Error closing Firebird pools: {e}")
 
     # Cleanup resources here
 

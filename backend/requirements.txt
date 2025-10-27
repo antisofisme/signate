@@ -24,6 +24,9 @@ cryptography==42.0.0  # Encryption for sensitive data
 # HTTP Client (for Anthias & Firebird API)
 httpx==0.26.0  # Async HTTP client
 
+# Firebird Database
+fdb==2.0.2  # Firebird database driver
+
 # Redis (Cache & Session)
 redis==5.0.1  # Redis client
 hiredis==2.3.2  # Redis performance boost
