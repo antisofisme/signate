@@ -6,6 +6,11 @@
 -- =============================================================================
 
 -- Drop tables if exists (for clean reinstall)
+DROP TABLE IF EXISTS device_speed_tests CASCADE;
+DROP TABLE IF EXISTS activity_logs CASCADE;
+DROP TABLE IF EXISTS playlist_assignments CASCADE;
+DROP TABLE IF EXISTS playlist_content CASCADE;
+DROP TABLE IF EXISTS playlists CASCADE;
 DROP TABLE IF EXISTS schedules CASCADE;
 DROP TABLE IF EXISTS content_assignments CASCADE;
 DROP TABLE IF EXISTS device_tags CASCADE;
@@ -14,6 +19,7 @@ DROP TABLE IF EXISTS device_logs CASCADE;
 DROP TABLE IF EXISTS firebird_config CASCADE;
 DROP TABLE IF EXISTS users CASCADE;
 DROP TABLE IF EXISTS tags CASCADE;
+DROP TABLE IF EXISTS contents CASCADE;
 DROP TABLE IF EXISTS content CASCADE;
 DROP TABLE IF EXISTS devices CASCADE;
 
@@ -63,6 +69,12 @@ CREATE TABLE devices (
     -- Display Settings (configurable from admin)
     rotation INTEGER DEFAULT 0 CHECK (rotation IN (0, 90, 180, 270)), -- Screen rotation in degrees
     volume_enabled BOOLEAN DEFAULT TRUE, -- Enable/disable video audio
+
+    -- Hotel-specific fields (for guest room personalization)
+    room_number VARCHAR(20), -- Room number for guest room devices
+    location_type VARCHAR(50) DEFAULT 'guest_room', -- guest_room, public_area, staff_area, meeting_room
+    supports_personalization BOOLEAN DEFAULT TRUE, -- Whether device supports personalization
+    privacy_mode VARCHAR(50) DEFAULT 'limited', -- full (show all PII), limited (welcome only), none (generic)
 
     -- Metadata
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -383,36 +395,191 @@ COMMENT ON COLUMN users.role IS 'admin (full access), editor (manage content), v
 -- =============================================================================
 CREATE TABLE firebird_config (
     id SERIAL PRIMARY KEY,
-    api_endpoint VARCHAR(500) NOT NULL,
+    config_key VARCHAR(50) UNIQUE NOT NULL,
+    host VARCHAR(255),
+    port INTEGER DEFAULT 3050 NOT NULL,
+    database_path VARCHAR(500) NOT NULL,
+    username VARCHAR(100) NOT NULL,
+    password VARCHAR(255) NOT NULL,
+    charset VARCHAR(50) DEFAULT 'UTF8' NOT NULL,
+    connection_mode VARCHAR(20) DEFAULT 'server' NOT NULL,
+    max_connections INTEGER DEFAULT 5 NOT NULL,
+    connection_timeout INTEGER DEFAULT 30 NOT NULL,
+    query_timeout INTEGER DEFAULT 60 NOT NULL,
+    refresh_interval INTEGER DEFAULT 300 NOT NULL,
+    is_active BOOLEAN DEFAULT TRUE NOT NULL,
+    last_sync TIMESTAMP WITH TIME ZONE,
+    last_error TEXT,
+    error_count INTEGER DEFAULT 0 NOT NULL,
+    last_health_check TIMESTAMP WITH TIME ZONE,
+    config_json TEXT,
+    notes TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    created_by VARCHAR(100),
+    updated_by VARCHAR(100),
 
-    -- API key (encrypted di application layer sebelum save)
-    api_key TEXT NOT NULL,
+    CONSTRAINT check_connection_mode CHECK (connection_mode IN ('server', 'embedded')),
+    CONSTRAINT check_max_connections CHECK (max_connections BETWEEN 1 AND 20)
+);
 
-    -- Refresh interval (seconds)
-    refresh_interval INTEGER DEFAULT 300 CHECK (refresh_interval > 0),
+-- Indexes for firebird_config
+CREATE INDEX idx_firebird_config_key ON firebird_config(config_key);
+CREATE INDEX idx_firebird_is_active ON firebird_config(is_active);
 
-    -- Query parameters (JSON)
-    -- Example: {"status": "checked_in", "limit": 100}
-    query_params JSONB DEFAULT '{}',
+COMMENT ON TABLE firebird_config IS 'Firebird database connection configurations';
 
-    -- Status
+-- =============================================================================
+-- TABLE: playlists
+-- Purpose: Playlist grouping untuk multiple content items
+-- =============================================================================
+CREATE TABLE playlists (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(200) NOT NULL,
+    description TEXT,
     is_active BOOLEAN DEFAULT TRUE,
-
-    -- Last fetch
-    last_fetched_at TIMESTAMP,
-    last_fetch_status VARCHAR(20), -- success, error
-    last_fetch_error TEXT,
-
+    priority INTEGER DEFAULT 1 NOT NULL,
+    schedule JSON,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Index for firebird_config
-CREATE INDEX idx_firebird_is_active ON firebird_config(is_active);
+CREATE INDEX idx_playlists_is_active ON playlists(is_active);
+CREATE INDEX idx_playlists_priority ON playlists(priority DESC);
 
-COMMENT ON TABLE firebird_config IS 'Configuration Firebird API untuk data tamu hotel';
-COMMENT ON COLUMN firebird_config.api_key IS 'API key (encrypted di app layer)';
-COMMENT ON COLUMN firebird_config.refresh_interval IS 'Interval fetch data (seconds)';
-COMMENT ON COLUMN firebird_config.query_params IS 'Query parameters sebagai JSON';
+COMMENT ON TABLE playlists IS 'Playlists untuk grouping multiple content items';
+
+-- =============================================================================
+-- TABLE: playlist_content
+-- Purpose: Content items dalam playlist (with ordering)
+-- =============================================================================
+CREATE TABLE playlist_content (
+    id SERIAL PRIMARY KEY,
+    playlist_id INTEGER NOT NULL REFERENCES playlists(id) ON DELETE CASCADE,
+    content_id INTEGER NOT NULL REFERENCES content(id) ON DELETE CASCADE,
+    order_index INTEGER NOT NULL DEFAULT 0,
+    duration INTEGER,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+    UNIQUE(playlist_id, content_id)
+);
+
+CREATE INDEX idx_playlist_content_playlist_id ON playlist_content(playlist_id);
+CREATE INDEX idx_playlist_content_content_id ON playlist_content(content_id);
+CREATE INDEX idx_playlist_content_order_index ON playlist_content(order_index);
+
+COMMENT ON TABLE playlist_content IS 'Content items dalam playlist dengan ordering';
+
+-- =============================================================================
+-- TABLE: playlist_assignments
+-- Purpose: Assign playlists ke devices atau tags
+-- =============================================================================
+CREATE TABLE playlist_assignments (
+    id SERIAL PRIMARY KEY,
+    playlist_id INTEGER NOT NULL REFERENCES playlists(id) ON DELETE CASCADE,
+    device_id INTEGER REFERENCES devices(id) ON DELETE CASCADE,
+    tag_id INTEGER REFERENCES tags(id) ON DELETE CASCADE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT playlist_assignment_target_check
+        CHECK (
+            (device_id IS NOT NULL AND tag_id IS NULL) OR
+            (device_id IS NULL AND tag_id IS NOT NULL)
+        )
+);
+
+CREATE INDEX idx_playlist_assignments_playlist_id ON playlist_assignments(playlist_id);
+CREATE INDEX idx_playlist_assignments_device_id ON playlist_assignments(device_id);
+CREATE INDEX idx_playlist_assignments_tag_id ON playlist_assignments(tag_id);
+
+COMMENT ON TABLE playlist_assignments IS 'Assignment playlists ke devices atau tags';
+
+-- =============================================================================
+-- TABLE: activity_logs
+-- Purpose: Activity logging untuk audit trail
+-- =============================================================================
+CREATE TABLE activity_logs (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    action VARCHAR(100) NOT NULL,
+    entity_type VARCHAR(50),
+    entity_id INTEGER,
+    details JSONB,
+    ip_address VARCHAR(45),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_activity_logs_user_id ON activity_logs(user_id);
+CREATE INDEX idx_activity_logs_action ON activity_logs(action);
+CREATE INDEX idx_activity_logs_entity_type ON activity_logs(entity_type);
+CREATE INDEX idx_activity_logs_created_at ON activity_logs(created_at);
+
+COMMENT ON TABLE activity_logs IS 'Activity audit trail untuk semua user actions';
+
+-- =============================================================================
+-- TABLE: device_speed_tests
+-- Purpose: Speed test history untuk devices
+-- =============================================================================
+CREATE TABLE device_speed_tests (
+    id SERIAL PRIMARY KEY,
+    device_id INTEGER NOT NULL REFERENCES devices(id) ON DELETE CASCADE,
+    download_speed DOUBLE PRECISION,
+    upload_speed DOUBLE PRECISION,
+    ping_latency DOUBLE PRECISION,
+    test_server VARCHAR(255),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_device_speed_tests_device_id ON device_speed_tests(device_id);
+CREATE INDEX idx_device_speed_tests_created_at ON device_speed_tests(created_at);
+
+COMMENT ON TABLE device_speed_tests IS 'Speed test history untuk monitoring device connection quality';
+
+-- =============================================================================
+-- TABLE: contents (alias for content - for compatibility)
+-- Purpose: Alias table untuk backward compatibility
+-- =============================================================================
+CREATE TABLE contents (
+    id SERIAL PRIMARY KEY,
+    title VARCHAR(200) NOT NULL,
+    description TEXT,
+    content_type VARCHAR(20) NOT NULL CHECK (content_type IN ('image', 'video')),
+    anthias_url VARCHAR(500) NOT NULL,
+    anthias_asset_id VARCHAR(100),
+    duration INTEGER NOT NULL DEFAULT 10 CHECK (duration > 0),
+    is_active BOOLEAN DEFAULT TRUE,
+    file_size BIGINT,
+    mime_type VARCHAR(100),
+    resolution VARCHAR(50),
+    width INTEGER,
+    height INTEGER,
+    codec VARCHAR(50),
+    fps DOUBLE PRECISION,
+    bitrate INTEGER,
+    video_duration DOUBLE PRECISION,
+    video_start_time DOUBLE PRECISION DEFAULT 0,
+    video_end_time DOUBLE PRECISION,
+    audio_codec VARCHAR(50),
+    audio_bitrate INTEGER,
+    audio_sample_rate INTEGER,
+    -- Template & Multi-language fields
+    is_template BOOLEAN DEFAULT FALSE,
+    template_variables JSON,
+    language_code VARCHAR(10),
+    content_group_id INTEGER,
+    fallback_content_id INTEGER,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    -- Foreign key for fallback_content_id
+    CONSTRAINT contents_fallback_content_id_fkey
+        FOREIGN KEY (fallback_content_id) REFERENCES contents(id) ON DELETE SET NULL
+);
+
+CREATE INDEX idx_contents_type ON contents(content_type);
+CREATE INDEX idx_contents_is_active ON contents(is_active);
+CREATE INDEX idx_contents_anthias_asset_id ON contents(anthias_asset_id);
+
+COMMENT ON TABLE contents IS 'Metadata konten (alias untuk content table) - FILE ASLI DISIMPAN DI ANTHIAS';
 
 -- =============================================================================
 -- SEED DATA

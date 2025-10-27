@@ -148,3 +148,121 @@ async def websocket_logs(
             logger.info(f"🔌 Cleaned up Redis connection for device {device_id}")
         except Exception as e:
             logger.error(f"Cleanup error: {e}")
+
+
+@router.websocket("/ws/dashboard")
+async def websocket_dashboard(websocket: WebSocket):
+    """
+    WebSocket endpoint for real-time dashboard updates
+
+    Broadcasts events like:
+    - device_registered, device_approved, device_deleted, device_updated
+    - content_uploaded, content_deleted, content_updated
+    - playlist_created, playlist_updated, playlist_deleted
+    - tag_created, tag_updated, tag_deleted
+
+    Message Format:
+        {
+            "type": "dashboard_update",
+            "event": "device_registered",
+            "data": {...}
+        }
+    """
+    await websocket.accept()
+
+    try:
+        logger.info("📡 WebSocket connected to dashboard")
+
+        # Send initial connection success message
+        await websocket.send_json({
+            "type": "connected",
+            "message": "Connected to dashboard updates"
+        })
+
+        # Create Redis async client for pub/sub
+        redis_client = redis.from_url(
+            settings.REDIS_URL,
+            decode_responses=True
+        )
+
+        pubsub = redis_client.pubsub()
+
+        # Subscribe to all dashboard event channels
+        channels = [
+            "dashboard:devices",
+            "dashboard:content",
+            "dashboard:playlists",
+            "dashboard:tags"
+        ]
+
+        for channel in channels:
+            await pubsub.subscribe(channel)
+
+        logger.info(f"📻 Subscribed to dashboard channels: {channels}")
+
+        # Send subscription confirmation
+        await websocket.send_json({
+            "type": "subscribed",
+            "channels": channels,
+            "message": "Listening for dashboard updates"
+        })
+
+        # Listen for messages from Redis and forward to WebSocket
+        async def redis_listener():
+            """Listen to Redis pub/sub and forward to WebSocket"""
+            try:
+                async for message in pubsub.listen():
+                    if message["type"] == "message":
+                        # Parse event data
+                        event_data = json.loads(message["data"])
+
+                        # Forward to WebSocket client
+                        await websocket.send_json({
+                            "type": "dashboard_update",
+                            **event_data
+                        })
+
+            except Exception as e:
+                logger.error(f"Redis listener error: {e}")
+
+        # Listen for client messages (e.g., ping/pong)
+        async def websocket_receiver():
+            """Receive messages from WebSocket client"""
+            try:
+                while True:
+                    data = await websocket.receive_json()
+
+                    # Handle ping
+                    if data.get("type") == "ping":
+                        await websocket.send_json({"type": "pong"})
+
+            except WebSocketDisconnect:
+                logger.info("WebSocket disconnected from dashboard")
+            except Exception as e:
+                logger.error(f"WebSocket receiver error: {e}")
+
+        # Run both listeners concurrently
+        await asyncio.gather(
+            redis_listener(),
+            websocket_receiver()
+        )
+
+    except WebSocketDisconnect:
+        logger.info("🔌 WebSocket disconnected from dashboard")
+    except Exception as e:
+        logger.error(f"❌ WebSocket error for dashboard: {e}")
+        try:
+            await websocket.send_json({
+                "error": str(e)
+            })
+        except:
+            pass
+    finally:
+        # Cleanup
+        try:
+            for channel in channels:
+                await pubsub.unsubscribe(channel)
+            await redis_client.close()
+            logger.info("🔌 Cleaned up Redis connection for dashboard")
+        except Exception as e:
+            logger.error(f"Cleanup error: {e}")

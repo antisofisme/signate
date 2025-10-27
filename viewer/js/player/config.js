@@ -5,9 +5,9 @@
 
 // Global player state object
 window.PlayerState = {
-    // API Configuration
-    API_BASE_URL: 'http://192.168.5.12:8001',
-    REFRESH_INTERVAL: 60000,   // Check for playlist updates every minute
+    // API Configuration (loaded from window.ENV)
+    API_BASE_URL: window.ENV?.API_BASE_URL || 'http://localhost:8001',
+    REFRESH_INTERVAL: window.ENV?.CONTENT_REFRESH_INTERVAL || 60000,   // Check for playlist updates every minute
     LOG_SEND_INTERVAL: 5000,   // 5 seconds
     LOG_BUFFER_SIZE: 20,
     

@@ -9,9 +9,14 @@
 
 set -e  # Exit on error
 
+# Change to parent directory (project root)
+cd "$(dirname "$0")/.."
+
 echo "=========================================="
 echo "  SIGNAGE SYSTEM - COMPLETE REBUILD"
 echo "=========================================="
+echo ""
+echo "Working directory: $(pwd)"
 echo ""
 
 # Colors for output
@@ -41,7 +46,7 @@ fi
 
 # Step 1: Stop dan hapus containers lama
 print_step "1/5 - Stopping old containers..."
-docker-compose down --remove-orphans || true
+docker-compose -f docker/docker-compose.yml down --remove-orphans || true
 
 # Stop old anthias containers if exists
 docker stop $(docker ps -aq --filter "name=anthias") 2>/dev/null || true
@@ -68,11 +73,11 @@ docker network rm anthias_default 2>/dev/null || true
 
 # Step 4: Build fresh images
 print_step "3/5 - Building fresh Docker images (this may take a while)..."
-docker-compose build --no-cache --parallel
+docker-compose -f docker/docker-compose.yml build --no-cache --parallel
 
 # Step 5: Start services
 print_step "4/5 - Starting all services..."
-docker-compose up -d
+docker-compose -f docker/docker-compose.yml up -d
 
 # Step 6: Wait and check health
 print_step "5/5 - Waiting for services to be healthy..."
@@ -81,7 +86,7 @@ sleep 10
 # Show status
 echo ""
 print_step "Checking service status..."
-docker-compose ps
+docker-compose -f docker/docker-compose.yml ps
 
 echo ""
 echo "=========================================="
@@ -95,9 +100,9 @@ echo "  - Backend API:    http://192.168.5.12:8001"
 echo "  - Anthias:        http://192.168.5.12:8000"
 echo ""
 echo "Check logs:"
-echo "  docker-compose logs -f"
+echo "  docker-compose -f docker/docker-compose.yml logs -f"
 echo ""
 echo "Check specific service:"
-echo "  docker-compose logs -f backend-api"
-echo "  docker-compose logs -f anthias-server"
+echo "  docker-compose -f docker/docker-compose.yml logs -f backend-api"
+echo "  docker-compose -f docker/docker-compose.yml logs -f anthias-server"
 echo ""

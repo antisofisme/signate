@@ -69,3 +69,4 @@ htmlcov/
 
 # Database backups
 database/backups/
+*.gdb

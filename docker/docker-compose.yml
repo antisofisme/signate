@@ -27,7 +27,7 @@ services:
     container_name: signage-postgres
     restart: unless-stopped
     ports:
-      - "5433:5432"
+      - "${POSTGRES_EXTERNAL_PORT:-5433}:5432"
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-signage_user}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-your_password_here}
@@ -35,7 +35,7 @@ services:
       PGDATA: /var/lib/postgresql/data/pgdata
     volumes:
       - postgres-data:/var/lib/postgresql/data
-      - ./database/init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+      - ../database/init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-signage_user}"]
       interval: 10s
@@ -52,7 +52,7 @@ services:
     container_name: signage-redis
     restart: unless-stopped
     ports:
-      - "6379:6379"
+      - "${REDIS_EXTERNAL_PORT:-6379}:6379"
     command: redis-server --appendonly yes
     volumes:
       - redis-data:/data
@@ -69,28 +69,34 @@ services:
   # ===========================================================================
   backend-api:
     build:
-      context: ./backend
+      context: ../backend
       dockerfile: Dockerfile
     container_name: signage-backend
     restart: unless-stopped
     ports:
-      - "8001:8000"
+      - "${BACKEND_EXTERNAL_PORT:-8001}:8000"
     environment:
       - DATABASE_URL=postgresql://${POSTGRES_USER:-signage_user}:${POSTGRES_PASSWORD:-your_password_here}@postgres:5432/${POSTGRES_DB:-signage_db}
-      - REDIS_URL=redis://redis:6379
-      - ANTHIAS_API_URL=http://192.168.5.12:8000
-      - API_BASE_URL=http://192.168.5.12:8001
+      - REDIS_URL=${REDIS_URL:-redis://redis:6379}
+      - ANTHIAS_API_URL=${ANTHIAS_API_URL}
+      - ANTHIAS_INTERNAL_URL=${ANTHIAS_INTERNAL_URL:-http://anthias-nginx}
+      - API_BASE_URL=${API_BASE_URL}
       - SECRET_KEY=${SECRET_KEY:-your-secret-key-change-in-production}
-      - CORS_ORIGINS=["http://localhost:3000","http://localhost:3001","http://192.168.5.12:8080","http://192.168.5.12:8081"]
+      - JWT_SECRET=${JWT_SECRET}
+      - ENCRYPTION_KEY=${ENCRYPTION_KEY}
+      - CORS_ORIGINS=${CORS_ORIGINS}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - DEBUG=${DEBUG:-False}
+      - ENVIRONMENT=${ENVIRONMENT:-production}
     env_file:
-      - .env
+      - ../.env
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
     volumes:
-      - ./backend/app:/app/app
+      - ../backend/app:/app/app
     networks:
       - signage-network
 
@@ -99,19 +105,21 @@ services:
   # ===========================================================================
   anthias-server:
     build:
-      context: ./anthias
+      context: ../anthias
       dockerfile: docker/Dockerfile.server
     container_name: anthias-server
     restart: unless-stopped
     environment:
-      - HOME=/data
-      - LISTEN=0.0.0.0
-      - CELERY_BROKER_URL=redis://redis:6379/0
-      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - HOME=${ANTHIAS_HOME:-/data}
+      - LISTEN=${ANTHIAS_LISTEN:-0.0.0.0}
+      - CELERY_BROKER_URL=${CELERY_BROKER_URL:-redis://redis:6379/0}
+      - CELERY_RESULT_BACKEND=${CELERY_RESULT_BACKEND:-redis://redis:6379/0}
+      - ZMQ_PUBLISHER_PORT=${ZMQ_PUBLISHER_PORT:-10001}
+      - ZMQ_COLLECTOR_PORT=${ZMQ_COLLECTOR_PORT:-5558}
     volumes:
       - anthias-data:/data
-      - ./anthias-assets:/data/screenly_assets
-      - ./anthias/staticfiles:/data/screenly/staticfiles
+      - ../anthias-assets:/data/screenly_assets
+      - ../anthias/staticfiles:/data/screenly/staticfiles
     depends_on:
       - redis
     networks:
@@ -122,17 +130,17 @@ services:
   # ===========================================================================
   anthias-celery:
     build:
-      context: ./anthias
+      context: ../anthias
       dockerfile: docker/Dockerfile.celery
     container_name: anthias-celery
     restart: unless-stopped
     environment:
-      - HOME=/data
-      - CELERY_BROKER_URL=redis://redis:6379/0
-      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - HOME=${ANTHIAS_HOME:-/data}
+      - CELERY_BROKER_URL=${CELERY_BROKER_URL:-redis://redis:6379/0}
+      - CELERY_RESULT_BACKEND=${CELERY_RESULT_BACKEND:-redis://redis:6379/0}
     volumes:
       - anthias-data:/data
-      - ./anthias-assets:/data/screenly_assets
+      - ../anthias-assets:/data/screenly_assets
     depends_on:
       - redis
       - anthias-server
@@ -144,12 +152,12 @@ services:
   # ===========================================================================
   anthias-websocket:
     build:
-      context: ./anthias
+      context: ../anthias
       dockerfile: docker/Dockerfile.websocket
     container_name: anthias-websocket
     restart: unless-stopped
     environment:
-      - HOME=/data
+      - HOME=${ANTHIAS_HOME:-/data}
     volumes:
       - anthias-data:/data
     depends_on:
@@ -162,16 +170,16 @@ services:
   # ===========================================================================
   anthias-nginx:
     build:
-      context: ./anthias
+      context: ../anthias
       dockerfile: docker/Dockerfile.nginx
     container_name: anthias-nginx
     restart: unless-stopped
     ports:
-      - "8000:80"
+      - "${ANTHIAS_EXTERNAL_PORT:-8000}:80"
     volumes:
-      - ./anthias/docker/nginx/nginx.development.conf:/etc/nginx/sites-enabled/nginx.development.conf:ro
-      - ./anthias-assets:/data/screenly_assets
-      - ./anthias/staticfiles:/data/screenly/staticfiles
+      - ../anthias/docker/nginx/nginx.development.conf:/etc/nginx/sites-enabled/nginx.development.conf:ro
+      - ../anthias-assets:/data/screenly_assets
+      - ../anthias/staticfiles:/data/screenly/staticfiles
     depends_on:
       - anthias-server
       - anthias-websocket
@@ -183,8 +191,8 @@ services:
 # =============================================================================
 networks:
   signage-network:
-    name: signate_signage-network
-    driver: bridge
+    name: ${DOCKER_NETWORK_NAME:-signate_signage-network}
+    driver: ${DOCKER_NETWORK_DRIVER:-bridge}
 
 # =============================================================================
 # Volumes (Persistent Data)

@@ -312,6 +312,9 @@
         Heartbeat: <span id="debug-heartbeat">-</span>
     </div>
 
+    <!-- Environment Configuration - MUST load first -->
+    <script src="js/config/env.js?v=20251027-env"></script>
+
     <!-- Shell Modules (STABLE CORE) - Load in correct order -->
     <script src="js/shell/config.js?v=20251025-27"></script>
     <script src="js/shell/logger.js?v=20251025-27"></script>
@@ -534,8 +537,8 @@
                     return;
                 }
 
-                // Simple password check (you can enhance this later)
-                const RESET_PASSWORD = 'admin123'; // TODO: Make this configurable
+                // Simple password check (loaded from ENV config)
+                const RESET_PASSWORD = window.ENV?.RESET_PASSWORD || 'admin123';
 
                 if (password !== RESET_PASSWORD) {
                     alert('❌ Incorrect password! Reset cancelled.');

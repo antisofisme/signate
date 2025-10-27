@@ -43,6 +43,7 @@ RUN apt-get update && apt-get install -y \
     libpq5 \
     curl \
     ffmpeg \
+    netcat-openbsd \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy Python packages from builder
@@ -52,9 +53,14 @@ COPY --from=builder /usr/local/bin /usr/local/bin
 # Copy application code
 COPY ./app /app/app
 
-# Create non-root user for security
+# Copy migrations and scripts
+COPY ./migrations /app/migrations
+COPY ./scripts /app/scripts
+
+# Create non-root user for security and set permissions
 RUN useradd -m -u 1000 appuser && \
-    chown -R appuser:appuser /app
+    chown -R appuser:appuser /app && \
+    chmod +x /app/scripts/docker-entrypoint.sh
 
 # Switch to non-root user
 USER appuser
@@ -66,5 +72,5 @@ EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD curl -f http://localhost:8000/health || exit 1
 
-# Run application
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Set entrypoint to run migrations before starting server
+ENTRYPOINT ["/app/scripts/docker-entrypoint.sh"]

@@ -27,53 +27,70 @@ class Settings(BaseSettings):
     API_HOST: str = Field(default="0.0.0.0", env="API_HOST")
     API_PORT: int = Field(default=8000, env="API_PORT")
     API_BASE_URL: str = Field(
-        default="http://192.168.5.12:8001",
-        env="API_BASE_URL"
+        default="http://localhost:8001",
+        env="API_BASE_URL",
+        description="External URL for API (must be configured in .env)"
     )
 
     # =============================================================================
     # DATABASE
     # =============================================================================
     DATABASE_URL: str = Field(
-        default="postgresql://signage_user:signage_password@localhost:5433/signage_db",
-        env="DATABASE_URL"
+        default="postgresql://signage_user:password@postgres:5432/signage_db",
+        env="DATABASE_URL",
+        description="Database connection URL (must be configured in .env)"
     )
 
     # =============================================================================
     # REDIS
     # =============================================================================
     REDIS_URL: str = Field(
-        default="redis://192.168.5.12:6379",
-        env="REDIS_URL"
+        default="redis://redis:6379",
+        env="REDIS_URL",
+        description="Redis connection URL (use Docker service name or host IP)"
     )
 
     # =============================================================================
     # ANTHIAS INTEGRATION
     # =============================================================================
     ANTHIAS_API_URL: str = Field(
-        default="http://192.168.5.12:8000",
-        env="ANTHIAS_API_URL"
+        default="http://localhost:8000",
+        env="ANTHIAS_API_URL",
+        description="External Anthias API URL (must be configured in .env)"
+    )
+    ANTHIAS_INTERNAL_URL: str = Field(
+        default="http://anthias-nginx",
+        env="ANTHIAS_INTERNAL_URL",
+        description="Internal Anthias URL for backend-to-anthias communication"
     )
     ANTHIAS_PUBLIC_URL: str = Field(
-        default="http://192.168.5.12:8000",
-        env="ANTHIAS_PUBLIC_URL"
+        default="http://localhost:8000",
+        env="ANTHIAS_PUBLIC_URL",
+        description="Public Anthias URL for client access"
     )
     ANTHIAS_API_KEY: str = Field(default="", env="ANTHIAS_API_KEY")
 
     # =============================================================================
     # SECURITY
     # =============================================================================
+    SECRET_KEY: str = Field(
+        ...,  # Required field - must be set in .env
+        env="SECRET_KEY",
+        description="Secret key for application (REQUIRED in .env)"
+    )
     JWT_SECRET: str = Field(
-        default="your_super_secret_jwt_key_change_this_in_production",
-        env="JWT_SECRET"
+        ...,  # Required field - must be set in .env
+        env="JWT_SECRET",
+        description="JWT secret key (REQUIRED in .env)"
     )
     JWT_ALGORITHM: str = Field(default="HS256", env="JWT_ALGORITHM")
     JWT_ACCESS_TOKEN_EXPIRE_MINUTES: int = Field(default=15, env="JWT_ACCESS_TOKEN_EXPIRE_MINUTES")
     JWT_REFRESH_TOKEN_EXPIRE_DAYS: int = Field(default=7, env="JWT_REFRESH_TOKEN_EXPIRE_DAYS")
 
     ENCRYPTION_KEY: str = Field(
-        default="your_encryption_key_here",
-        env="ENCRYPTION_KEY"
+        ...,  # Required field - must be set in .env
+        env="ENCRYPTION_KEY",
+        description="Encryption key for sensitive data (REQUIRED in .env)"
     )
 
     # =============================================================================
@@ -82,21 +99,12 @@ class Settings(BaseSettings):
     ENABLE_CORS: bool = Field(default=True, env="ENABLE_CORS")
     CORS_ORIGINS: Union[str, List[str]] = Field(
         default=[
-            "http://localhost:3000",      # Web Admin React dev
-            "http://localhost:8000",      # Backend docs
-            "http://localhost:8080",      # Monitor Viewer (Browser) - old port
-            "http://localhost:8081",      # WebOS Viewer
-            "http://localhost:8082",      # Monitor Viewer (Browser) - new port
-            "http://127.0.0.1:3000",
-            "http://127.0.0.1:8000",
-            "http://127.0.0.1:8080",
-            "http://127.0.0.1:8081",
-            "http://127.0.0.1:8082",
-            "http://192.168.5.12:8080",   # Monitor Viewer on network IP - old port
-            "http://192.168.5.12:8081",   # WebOS Viewer on network IP
-            "http://192.168.5.12:8082",   # Monitor Viewer on network IP - new port
+            "http://localhost:3000",
+            "http://localhost:8000",
+            "http://localhost:8080",
         ],
-        env="CORS_ORIGINS"
+        env="CORS_ORIGINS",
+        description="Comma-separated list of allowed CORS origins (configure in .env)"
     )
 
     # =============================================================================

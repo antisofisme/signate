@@ -9,6 +9,9 @@
 
 set -e
 
+# Change to parent directory (project root)
+cd "$(dirname "$0")/.."
+
 BACKUP_DIR="./database/backups"
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 BACKUP_FILE="$BACKUP_DIR/backup_$TIMESTAMP.sql"
@@ -16,6 +19,8 @@ BACKUP_FILE="$BACKUP_DIR/backup_$TIMESTAMP.sql"
 echo "==========================================="
 echo "  DATABASE BACKUP"
 echo "==========================================="
+echo ""
+echo "Working directory: $(pwd)"
 echo ""
 
 # Create backup directory if not exists
