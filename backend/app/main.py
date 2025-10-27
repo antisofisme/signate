@@ -10,6 +10,7 @@ import logging
 
 from app.core.config import settings
 from app.core.database import engine, check_db_connection
+
 # Import models to register them with SQLAlchemy Base
 from app.models import (
     User, Device, Content, Tag, DeviceTag,
@@ -18,11 +19,13 @@ from app.models import (
     ActivityLog, ActivityAction, EntityType
 )
 
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
+# =============================================================================
+# QUICK WINS: Structured Logging Setup
+# =============================================================================
+from app.core.logging import setup_logging
+
+# Setup structured logging (JSON format in production, text in development)
+setup_logging()
 logger = logging.getLogger(__name__)
 
 # Create FastAPI app
@@ -33,6 +36,14 @@ app = FastAPI(
     docs_url="/docs" if settings.ENABLE_API_DOCS else None,
     redoc_url="/redoc" if settings.ENABLE_API_DOCS else None,
 )
+
+# =============================================================================
+# QUICK WINS: Request ID Tracking Middleware
+# =============================================================================
+from app.middleware.request_id import RequestIDMiddleware
+
+app.add_middleware(RequestIDMiddleware)
+logger.info("✓ Request ID tracking middleware registered")
 
 # CORS Middleware
 if settings.ENABLE_CORS:
@@ -63,6 +74,12 @@ app.include_router(logs.router, prefix="/api", tags=["Device Logs"])
 app.include_router(websocket.router, prefix="/api", tags=["WebSocket"])
 app.include_router(speedtest.router, tags=["Speed Test"])
 app.include_router(firebird.router, tags=["Firebird Integration"])
+
+# Quick Wins Demo Router (only in DEBUG mode)
+if settings.DEBUG:
+    from app.api import quickwins_demo
+    app.include_router(quickwins_demo.router, prefix="/api/demo", tags=["Quick Wins Demo"])
+    logger.info("✓ Quick Wins demo endpoints registered (DEBUG mode)")
 
 # =============================================================================
 # ROOT ENDPOINTS
@@ -98,9 +115,18 @@ async def ping():
 
 
 # =============================================================================
-# ERROR HANDLERS
+# QUICK WINS: Exception Handlers
 # =============================================================================
+from app.core.exceptions import (
+    APIException,
+    register_exception_handlers
+)
 
+# Register all Quick Wins exception handlers
+register_exception_handlers(app)
+logger.info("✓ Quick Wins exception handlers registered")
+
+# Keep legacy error handlers for non-Quick Wins exceptions
 @app.exception_handler(404)
 async def not_found_handler(request, exc):
     # Preserve HTTPException detail messages from application logic

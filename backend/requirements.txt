@@ -50,6 +50,7 @@ pillow==10.2.0  # Image processing (optional)
 
 # Logging
 loguru==0.7.2  # Better logging (optional)
+python-json-logger==2.0.7  # JSON structured logging for production
 
 # Testing (Development)
 pytest==7.4.4  # Testing framework
