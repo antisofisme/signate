@@ -3,7 +3,7 @@ Content Management API endpoints
 Integrates with Anthias for file storage and PostgreSQL for metadata
 """
 
-from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form
+from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form, Request
 from fastapi.responses import Response
 from sqlalchemy.orm import Session
 from typing import Optional, List
@@ -13,6 +13,10 @@ import os
 
 from app.core.database import get_db
 from app.core.deps import get_current_active_user, get_optional_user
+from app.core.logging import StructuredLogger
+from app.core.exceptions import NotFoundException, ConflictException, BadRequestException, ValidationException, InternalServerException
+from app.schemas.common import success_response, paginated_response, APIResponse, PaginatedAPIResponse
+from app.middleware.request_id import get_request_id
 from typing import Optional
 from app.models.user import User
 from app.models.content import Content
@@ -30,12 +34,13 @@ from app.schemas.content import (
 from app.services.anthias_service import anthias_service
 from app.utils.media_metadata import MediaMetadataExtractor
 
-logger = logging.getLogger(__name__)
+logger = StructuredLogger(__name__)
 router = APIRouter()
 
 
-@router.post("/upload", response_model=ContentUploadResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/upload", status_code=status.HTTP_201_CREATED)
 async def upload_content(
+    request: Request,
     file: UploadFile = File(...),
     title: str = Form(...),
     description: Optional[str] = Form(None),
@@ -53,6 +58,7 @@ async def upload_content(
     3. Save metadata to PostgreSQL with Anthias URL
 
     Args:
+        request: FastAPI request object (for request_id)
         file: Content file (image or video)
         title: Content title
         description: Content description (optional)
@@ -62,17 +68,28 @@ async def upload_content(
         current_user: Authenticated user
 
     Returns:
-        ContentUploadResponse: Created content with Anthias URL
+        APIResponse: Created content with Anthias URL wrapped in standardized response
 
     Raises:
-        HTTPException: If upload fails or invalid file type
+        BadRequestException: If file type invalid or upload fails
+        InternalServerException: If unexpected error occurs
     """
+    request_id = get_request_id(request)
+
+    logger.info(
+        "Content upload started",
+        request_id=request_id,
+        filename=file.filename,
+        title=title,
+        content_type=file.content_type
+    )
+
     try:
         # Validate file type
         if not file.content_type:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Could not determine file type"
+            raise BadRequestException(
+                message="Could not determine file type",
+                details={"filename": file.filename}
             )
 
         # Determine content type
@@ -81,12 +98,17 @@ async def upload_content(
         elif file.content_type.startswith("video/"):
             content_type = "video"
         else:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Unsupported file type: {file.content_type}. Only images and videos are supported."
+            raise BadRequestException(
+                message=f"Unsupported file type: {file.content_type}. Only images and videos are supported.",
+                details={"content_type": file.content_type, "filename": file.filename}
             )
 
-        logger.info(f"Uploading {content_type} to Anthias: {file.filename}")
+        logger.info(
+            "Uploading to Anthias",
+            request_id=request_id,
+            content_type=content_type,
+            filename=file.filename
+        )
 
         # Upload to Anthias
         anthias_asset = await anthias_service.upload_asset(
@@ -168,23 +190,65 @@ async def upload_content(
         db.commit()
         db.refresh(content)
 
-        logger.info(f"Content created: ID={content.id}, Anthias ID={content.anthias_asset_id}")
+        logger.info(
+            "Content upload completed",
+            request_id=request_id,
+            content_id=content.id,
+            anthias_asset_id=content.anthias_asset_id,
+            title=content.title
+        )
 
-        return content
+        # Convert SQLAlchemy model to dict for response
+        content_dict = {
+            "id": content.id,
+            "title": content.title,
+            "description": content.description,
+            "content_type": content.content_type,
+            "anthias_url": content.anthias_url,
+            "anthias_asset_id": content.anthias_asset_id,
+            "duration": content.duration,
+            "is_active": content.is_active,
+            "file_size": content.file_size,
+            "mime_type": content.mime_type,
+            "resolution": content.resolution,
+            "width": content.width,
+            "height": content.height,
+            "codec": content.codec,
+            "fps": content.fps,
+            "bitrate": content.bitrate,
+            "video_duration": content.video_duration,
+            "audio_codec": content.audio_codec,
+            "audio_bitrate": content.audio_bitrate,
+            "audio_sample_rate": content.audio_sample_rate,
+            "created_at": content.created_at,
+            "updated_at": content.updated_at
+        }
 
-    except HTTPException:
+        return success_response(
+            data=content_dict,
+            request_id=request_id
+        )
+
+    except (BadRequestException, ValidationException):
+        # Re-raise custom exceptions (already have proper format)
         raise
     except Exception as e:
-        logger.error(f"Upload error: {e}")
+        logger.error(
+            "Content upload failed",
+            request_id=request_id,
+            error=str(e),
+            exc_info=True
+        )
         db.rollback()
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Upload failed: {str(e)}"
+        raise InternalServerException(
+            message="Upload failed",
+            details={"error": str(e)}
         )
 
 
-@router.get("/", response_model=ContentListResponse)
+@router.get("/")
 def list_content(
+    request: Request,
     skip: int = 0,
     limit: int = 100,
     content_type: Optional[str] = None,
@@ -196,6 +260,7 @@ def list_content(
     List all content with optional filters
 
     Args:
+        request: FastAPI request object (for request_id)
         skip: Number of records to skip (pagination)
         limit: Max number of records to return
         content_type: Filter by content type (image/video)
@@ -204,8 +269,19 @@ def list_content(
         current_user: Authenticated user
 
     Returns:
-        ContentListResponse: List of content with total count
+        PaginatedAPIResponse: List of content with pagination metadata
     """
+    request_id = get_request_id(request)
+
+    logger.info(
+        "Listing content",
+        request_id=request_id,
+        skip=skip,
+        limit=limit,
+        content_type=content_type,
+        is_active=is_active
+    )
+
     # Build query
     query = db.query(Content)
 
@@ -221,15 +297,51 @@ def list_content(
     # Get content with pagination
     contents = query.order_by(Content.created_at.desc()).offset(skip).limit(limit).all()
 
-    return ContentListResponse(
+    logger.info(
+        "Content listed successfully",
+        request_id=request_id,
         total=total,
-        items=contents
+        returned=len(contents)
+    )
+
+    # Convert to dicts
+    content_list = []
+    for content in contents:
+        content_dict = {
+            "id": content.id,
+            "title": content.title,
+            "description": content.description,
+            "content_type": content.content_type,
+            "anthias_url": content.anthias_url,
+            "anthias_asset_id": content.anthias_asset_id,
+            "duration": content.duration,
+            "is_active": content.is_active,
+            "file_size": content.file_size,
+            "mime_type": content.mime_type,
+            "resolution": content.resolution,
+            "width": content.width,
+            "height": content.height,
+            "created_at": content.created_at,
+            "updated_at": content.updated_at
+        }
+        content_list.append(content_dict)
+
+    # Calculate page number (1-indexed)
+    page = (skip // limit) + 1 if limit > 0 else 1
+
+    return paginated_response(
+        data=content_list,
+        total=total,
+        page=page,
+        page_size=limit,
+        request_id=request_id
     )
 
 
-@router.get("/{content_id}", response_model=ContentResponse)
+@router.get("/{content_id}")
 def get_content(
     content_id: int,
+    request: Request,
     db: Session = Depends(get_db),
     current_user: Optional[User] = Depends(get_optional_user)
 ):
@@ -238,24 +350,72 @@ def get_content(
 
     Args:
         content_id: Content ID
+        request: FastAPI request object (for request_id)
         db: Database session
         current_user: Authenticated user
 
     Returns:
-        ContentResponse: Content details
+        APIResponse: Content details wrapped in standardized response
 
     Raises:
-        HTTPException: If content not found
+        NotFoundException: If content not found
     """
+    request_id = get_request_id(request)
+
+    logger.info(
+        "Fetching content",
+        request_id=request_id,
+        content_id=content_id
+    )
+
     content = db.query(Content).filter(Content.id == content_id).first()
 
     if not content:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Content with ID {content_id} not found"
+        logger.warning(
+            "Content not found",
+            request_id=request_id,
+            content_id=content_id
+        )
+        raise NotFoundException(
+            message=f"Content with ID {content_id} not found",
+            resource_type="Content",
+            resource_id=content_id
         )
 
-    return content
+    logger.info(
+        "Content fetched successfully",
+        request_id=request_id,
+        content_id=content_id,
+        title=content.title
+    )
+
+    # Convert to dict
+    content_dict = {
+        "id": content.id,
+        "title": content.title,
+        "description": content.description,
+        "content_type": content.content_type,
+        "anthias_url": content.anthias_url,
+        "anthias_asset_id": content.anthias_asset_id,
+        "duration": content.duration,
+        "is_active": content.is_active,
+        "file_size": content.file_size,
+        "mime_type": content.mime_type,
+        "resolution": content.resolution,
+        "width": content.width,
+        "height": content.height,
+        "codec": content.codec,
+        "fps": content.fps,
+        "bitrate": content.bitrate,
+        "video_duration": content.video_duration,
+        "created_at": content.created_at,
+        "updated_at": content.updated_at
+    }
+
+    return success_response(
+        data=content_dict,
+        request_id=request_id
+    )
 
 
 @router.patch("/{content_id}", response_model=ContentResponse)

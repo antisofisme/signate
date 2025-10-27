@@ -2,22 +2,28 @@
 Authentication API endpoints
 """
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.core.security import hash_password, verify_password, create_access_token, create_refresh_token, verify_token
 from app.core.deps import get_current_user, get_current_active_user
 from app.core.config import settings
+from app.core.logging import StructuredLogger
+from app.core.exceptions import UnauthorizedException, ForbiddenException, ValidationException
+from app.schemas.common import success_response, APIResponse
+from app.middleware.request_id import get_request_id
 from app.models.user import User
 from app.schemas.auth import LoginRequest, TokenResponse, UserResponse, RefreshTokenRequest
 
+logger = StructuredLogger(__name__)
 router = APIRouter()
 
 
-@router.post("/login", response_model=TokenResponse)
+@router.post("/login")
 def login(
     login_data: LoginRequest,
+    request: Request,
     db: Session = Depends(get_db)
 ):
     """
@@ -25,30 +31,48 @@ def login(
 
     Args:
         login_data: Login credentials (username and password)
+        request: FastAPI request object (for request_id)
         db: Database session
 
     Returns:
-        TokenResponse: Access and refresh tokens
+        APIResponse: Access and refresh tokens wrapped in standardized response
 
     Raises:
-        HTTPException: If credentials are invalid
+        UnauthorizedException: If credentials are invalid
+        ForbiddenException: If user is inactive
     """
+    request_id = get_request_id(request)
+
+    logger.info(
+        "Login attempt",
+        request_id=request_id,
+        username=login_data.username
+    )
+
     # Find user by username
     user = db.query(User).filter(User.username == login_data.username).first()
 
     # Verify user exists and password is correct
     if not user or not verify_password(login_data.password, user.password_hash):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect username or password",
-            headers={"WWW-Authenticate": "Bearer"},
+        logger.warning(
+            "Login failed - invalid credentials",
+            request_id=request_id,
+            username=login_data.username
+        )
+        raise UnauthorizedException(
+            message="Incorrect username or password"
         )
 
     # Check if user is active
     if not user.is_active:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Inactive user"
+        logger.warning(
+            "Login failed - inactive user",
+            request_id=request_id,
+            username=login_data.username,
+            user_id=user.id
+        )
+        raise ForbiddenException(
+            message="Inactive user"
         )
 
     # Create tokens
@@ -62,17 +86,30 @@ def login(
         "user_id": user.id
     })
 
-    return TokenResponse(
-        access_token=access_token,
-        refresh_token=refresh_token,
-        token_type="bearer",
-        expires_in=settings.JWT_ACCESS_TOKEN_EXPIRE_MINUTES * 60
+    logger.info(
+        "Login successful",
+        request_id=request_id,
+        user_id=user.id,
+        username=user.username
+    )
+
+    token_data = {
+        "access_token": access_token,
+        "refresh_token": refresh_token,
+        "token_type": "bearer",
+        "expires_in": settings.JWT_ACCESS_TOKEN_EXPIRE_MINUTES * 60
+    }
+
+    return success_response(
+        data=token_data,
+        request_id=request_id
     )
 
 
-@router.post("/refresh", response_model=TokenResponse)
+@router.post("/refresh")
 def refresh_token(
     refresh_data: RefreshTokenRequest,
+    request: Request,
     db: Session = Depends(get_db)
 ):
     """
@@ -80,21 +117,31 @@ def refresh_token(
 
     Args:
         refresh_data: Refresh token
+        request: FastAPI request object (for request_id)
         db: Database session
 
     Returns:
-        TokenResponse: New access and refresh tokens
+        APIResponse: New access and refresh tokens wrapped in standardized response
 
     Raises:
-        HTTPException: If refresh token is invalid
+        UnauthorizedException: If refresh token is invalid or user not found/inactive
     """
+    request_id = get_request_id(request)
+
+    logger.info(
+        "Token refresh attempt",
+        request_id=request_id
+    )
+
     # Verify refresh token
     payload = verify_token(refresh_data.refresh_token, token_type="refresh")
     if not payload:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid refresh token",
-            headers={"WWW-Authenticate": "Bearer"},
+        logger.warning(
+            "Token refresh failed - invalid token",
+            request_id=request_id
+        )
+        raise UnauthorizedException(
+            message="Invalid refresh token"
         )
 
     # Get user
@@ -102,9 +149,13 @@ def refresh_token(
     user = db.query(User).filter(User.id == user_id).first()
 
     if not user or not user.is_active:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="User not found or inactive"
+        logger.warning(
+            "Token refresh failed - user not found or inactive",
+            request_id=request_id,
+            user_id=user_id
+        )
+        raise UnauthorizedException(
+            message="User not found or inactive"
         )
 
     # Create new tokens
@@ -118,11 +169,23 @@ def refresh_token(
         "user_id": user.id
     })
 
-    return TokenResponse(
-        access_token=access_token,
-        refresh_token=new_refresh_token,
-        token_type="bearer",
-        expires_in=settings.JWT_ACCESS_TOKEN_EXPIRE_MINUTES * 60
+    logger.info(
+        "Token refresh successful",
+        request_id=request_id,
+        user_id=user.id,
+        username=user.username
+    )
+
+    token_data = {
+        "access_token": access_token,
+        "refresh_token": new_refresh_token,
+        "token_type": "bearer",
+        "expires_in": settings.JWT_ACCESS_TOKEN_EXPIRE_MINUTES * 60
+    }
+
+    return success_response(
+        data=token_data,
+        request_id=request_id
     )
 
 

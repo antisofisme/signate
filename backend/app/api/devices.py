@@ -10,6 +10,10 @@ from typing import List, Optional
 
 from app.core.database import get_db
 from app.core.deps import get_current_active_user, get_optional_user
+from app.core.logging import StructuredLogger
+from app.core.exceptions import NotFoundException, ConflictException, BadRequestException, ValidationException
+from app.schemas.common import success_response, paginated_response, APIResponse, PaginatedAPIResponse
+from app.middleware.request_id import get_request_id
 from app.models.user import User
 from app.models.device import Device
 from app.models.device_command import DeviceCommand
@@ -49,8 +53,8 @@ from app.utils.device_utils import (
     is_code_expired
 )
 
-# Create logger
-logger = logging.getLogger(__name__)
+# Create structured logger
+logger = StructuredLogger(__name__)
 
 router = APIRouter()
 
@@ -122,12 +126,13 @@ def device_to_response(device: Device, db: Session) -> DeviceResponse:
     return DeviceResponse(**device_dict)
 
 
-@router.get("/", response_model=DeviceListResponse)
+@router.get("/")
 def list_devices(
+    request: Request,
     skip: int = 0,
     limit: int = 100,
     device_type: str = None,
-    status: str = None,
+    status_filter: str = None,
     db: Session = Depends(get_db),
     current_user: Optional[User] = Depends(get_optional_user)
 ):
@@ -135,20 +140,32 @@ def list_devices(
     List all devices with optional filters
 
     Args:
+        request: FastAPI request object (for request_id)
         skip: Number of records to skip (pagination)
         limit: Max number of records to return
         device_type: Filter by device type (tv/monitor)
-        status: Filter by status (pending/active/inactive)
+        status_filter: Filter by status (pending/active/inactive)
         db: Database session
         current_user: Authenticated user
 
     Returns:
-        DeviceListResponse: List of devices with total count
+        PaginatedAPIResponse: List of devices with pagination metadata
 
     Notes:
         - Pending devices with expired activation codes are automatically filtered out
         - This prevents closed monitor viewers from cluttering the device list
     """
+    request_id = get_request_id(request)
+
+    logger.info(
+        "Listing devices",
+        request_id=request_id,
+        skip=skip,
+        limit=limit,
+        device_type=device_type,
+        status_filter=status_filter
+    )
+
     # Build query with eager loading for tags & playlists
     query = db.query(Device).options(
         joinedload(Device.tags),
@@ -158,8 +175,11 @@ def list_devices(
     # Apply filters
     if device_type:
         query = query.filter(Device.device_type == device_type)
-    if status:
-        query = query.filter(Device.status == status)
+    if status_filter:
+        query = query.filter(Device.status == status_filter)
+
+    # Get total count before pagination
+    total = query.count()
 
     # Get devices with pagination
     devices = query.offset(skip).limit(limit).all()
@@ -172,18 +192,29 @@ def list_devices(
     # Transform devices to response with tags & playlists
     device_responses = [device_to_response(device, db) for device in devices]
 
-    # Get total count
-    total = len(device_responses)
-
-    return DeviceListResponse(
+    logger.info(
+        "Devices listed successfully",
+        request_id=request_id,
         total=total,
-        devices=device_responses
+        returned=len(device_responses)
+    )
+
+    # Calculate page number (1-indexed)
+    page = (skip // limit) + 1 if limit > 0 else 1
+
+    return paginated_response(
+        data=[d.model_dump() if hasattr(d, 'model_dump') else d.dict() for d in device_responses],
+        total=total,
+        page=page,
+        page_size=limit,
+        request_id=request_id
     )
 
 
-@router.get("/{device_id}", response_model=DeviceResponse)
+@router.get("/{device_id}")
 def get_device(
     device_id: int,
+    request: Request,
     db: Session = Depends(get_db),
     current_user: Optional[User] = Depends(get_optional_user)
 ):
@@ -192,24 +223,52 @@ def get_device(
 
     Args:
         device_id: Device ID
+        request: FastAPI request object (for request_id)
         db: Database session
         current_user: Authenticated user
 
     Returns:
-        DeviceResponse: Device details
+        APIResponse: Device details wrapped in standardized response
 
     Raises:
-        HTTPException: If device not found
+        NotFoundException: If device not found
     """
+    request_id = get_request_id(request)
+
+    logger.info(
+        "Fetching device",
+        request_id=request_id,
+        device_id=device_id
+    )
+
     device = db.query(Device).filter(Device.id == device_id).first()
 
     if not device:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Device with ID {device_id} not found"
+        logger.warning(
+            "Device not found",
+            request_id=request_id,
+            device_id=device_id
+        )
+        raise NotFoundException(
+            message=f"Device with ID {device_id} not found",
+            resource_type="Device",
+            resource_id=device_id
         )
 
-    return device
+    # Transform to response with populated tags & playlists
+    device_response = device_to_response(device, db)
+
+    logger.info(
+        "Device fetched successfully",
+        request_id=request_id,
+        device_id=device_id,
+        device_name=device.device_name
+    )
+
+    return success_response(
+        data=device_response.model_dump() if hasattr(device_response, 'model_dump') else device_response.dict(),
+        request_id=request_id
+    )
 
 
 @router.get("/{device_id}/preview", response_model=DevicePreviewResponse)
@@ -283,9 +342,10 @@ async def get_device_preview(
         )
 
 
-@router.post("/tv", response_model=DeviceResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/tv", status_code=status.HTTP_201_CREATED)
 def register_tv(
     device_data: TVRegisterRequest,
+    request: Request,
     db: Session = Depends(get_db),
     current_user: Optional[User] = Depends(get_optional_user)
 ):
@@ -294,24 +354,41 @@ def register_tv(
 
     Args:
         device_data: TV registration data (name, IP, passphrase)
+        request: FastAPI request object (for request_id)
         db: Database session
         current_user: Authenticated user
 
     Returns:
-        DeviceResponse: Created device
+        APIResponse: Created device wrapped in standardized response
 
     Raises:
-        HTTPException: If IP already registered
+        ConflictException: If IP already registered
     """
+    request_id = get_request_id(request)
+
+    logger.info(
+        "Registering TV device",
+        request_id=request_id,
+        device_name=device_data.device_name,
+        ip_address=device_data.ip_address
+    )
+
     # Check if IP already registered
     existing_device = db.query(Device).filter(
         Device.ip_address == device_data.ip_address
     ).first()
 
     if existing_device:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail=f"Device with IP {device_data.ip_address} already registered"
+        logger.warning(
+            "TV registration failed - IP already registered",
+            request_id=request_id,
+            ip_address=device_data.ip_address,
+            existing_device_id=existing_device.id
+        )
+        raise ConflictException(
+            message=f"Device with IP {device_data.ip_address} already registered",
+            field="ip_address",
+            details={"ip_address": device_data.ip_address, "existing_device_id": existing_device.id}
         )
 
     # Create TV device
@@ -327,7 +404,20 @@ def register_tv(
     db.commit()
     db.refresh(device)
 
-    return device
+    logger.info(
+        "TV device registered successfully",
+        request_id=request_id,
+        device_id=device.id,
+        device_name=device.device_name
+    )
+
+    # Transform to response
+    device_response = device_to_response(device, db)
+
+    return success_response(
+        data=device_response.model_dump() if hasattr(device_response, 'model_dump') else device_response.dict(),
+        request_id=request_id
+    )
 
 
 @router.post("/monitor", response_model=MonitorCodeResponse, status_code=status.HTTP_201_CREATED)
@@ -521,10 +611,11 @@ def activate_monitor(
     return device
 
 
-@router.put("/{device_id}", response_model=DeviceResponse)
+@router.put("/{device_id}")
 def update_device(
     device_id: int,
     device_data: DeviceUpdateRequest,
+    request: Request,
     db: Session = Depends(get_db),
     current_user: Optional[User] = Depends(get_optional_user)
 ):
@@ -534,37 +625,72 @@ def update_device(
     Args:
         device_id: Device ID
         device_data: Update data
+        request: FastAPI request object (for request_id)
         db: Database session
 
     Returns:
-        DeviceResponse: Updated device
+        APIResponse: Updated device wrapped in standardized response
 
     Raises:
-        HTTPException: If device not found
+        NotFoundException: If device not found
     """
+    request_id = get_request_id(request)
+
+    logger.info(
+        "Updating device",
+        request_id=request_id,
+        device_id=device_id
+    )
+
     device = db.query(Device).filter(Device.id == device_id).first()
 
     if not device:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Device with ID {device_id} not found"
+        logger.warning(
+            "Device update failed - device not found",
+            request_id=request_id,
+            device_id=device_id
         )
+        raise NotFoundException(
+            message=f"Device with ID {device_id} not found",
+            resource_type="Device",
+            resource_id=device_id
+        )
+
+    # Track what was updated
+    updates = {}
 
     # Update fields if provided
     if device_data.device_name is not None:
         device.device_name = device_data.device_name
+        updates['device_name'] = device_data.device_name
     if device_data.status is not None:
         device.status = device_data.status
+        updates['status'] = device_data.status
     # Update display settings if provided
     if device_data.rotation is not None:
         device.rotation = device_data.rotation
+        updates['rotation'] = device_data.rotation
     if device_data.volume_enabled is not None:
         device.volume_enabled = device_data.volume_enabled
+        updates['volume_enabled'] = device_data.volume_enabled
 
     db.commit()
     db.refresh(device)
 
-    return device
+    logger.info(
+        "Device updated successfully",
+        request_id=request_id,
+        device_id=device_id,
+        updates=updates
+    )
+
+    # Transform to response
+    device_response = device_to_response(device, db)
+
+    return success_response(
+        data=device_response.model_dump() if hasattr(device_response, 'model_dump') else device_response.dict(),
+        request_id=request_id
+    )
 
 
 @router.delete("/{device_id}", status_code=status.HTTP_204_NO_CONTENT)

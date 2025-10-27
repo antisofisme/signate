@@ -1,0 +1,924 @@
+openapi: 3.1.0
+
+info:
+  title: Smart TV Digital Signage API
+  version: 1.0.0
+  description: |
+    # Smart TV Digital Signage Backend API
+
+    Comprehensive backend API for managing Smart TV digital signage devices, content distribution,
+    and centralized control across multiple display devices including monitors, browsers, and WebOS TVs.
+
+    ## Key Features
+
+    - **Multi-Device Support**: Manage TV, monitor, and browser-based displays
+    - **Content Management**: Upload and manage images and videos with metadata
+    - **Playlist System**: Create dynamic playlists with scheduling capabilities
+    - **Device Monitoring**: Real-time heartbeat tracking and online/offline status
+    - **Tag-Based Grouping**: Organize devices using tags for bulk content assignment
+    - **Remote Commands**: Send commands to devices (reload, reset, speed test)
+    - **Speed Testing**: Built-in network speed testing for devices
+    - **Firebird Integration**: Optional integration with Firebird database
+
+    ## Architecture
+
+    - **Framework**: FastAPI (Python 3.8+)
+    - **Database**: PostgreSQL 15+
+    - **Media Storage**: Anthias CMS (port 8000)
+    - **Authentication**: JWT Bearer tokens
+    - **WebSocket**: Real-time communication support
+
+    ## Response Standards
+
+    This API follows Quick Wins standardized response format:
+
+    ### Success Response
+    ```json
+    {
+      "success": true,
+      "data": { ... },
+      "meta": {
+        "timestamp": "2025-10-27T10:30:00Z",
+        "request_id": "uuid-v4"
+      }
+    }
+    ```
+
+    ### Error Response
+    ```json
+    {
+      "success": false,
+      "error": {
+        "code": "ERROR_CODE",
+        "message": "Human-readable error message",
+        "details": { ... }
+      },
+      "meta": {
+        "timestamp": "2025-10-27T10:30:00Z",
+        "request_id": "uuid-v4"
+      }
+    }
+    ```
+
+    ## Authentication
+
+    Most endpoints require JWT authentication using Bearer token:
+
+    ```
+    Authorization: Bearer <access_token>
+    ```
+
+    Client endpoints (for devices) do NOT require authentication:
+    - `POST /api/devices/monitor/register` - Device self-registration
+    - `POST /api/devices/heartbeat` - Device heartbeat
+    - `GET /api/devices/check-activation/{code}` - Activation status check
+    - `GET /api/client/playlist` - Fetch device playlist
+    - `GET /api/devices/{id}/commands/pending` - Get pending commands
+
+  contact:
+    name: Smart TV Signage API Support
+    email: support@example.com
+    url: https://github.com/yourusername/signate
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: http://192.168.5.12:8001
+    description: Production Server (Local Network)
+  - url: http://localhost:8001
+    description: Development Server (Local)
+
+tags:
+  - name: Authentication
+    description: |
+      User authentication and authorization endpoints.
+
+      **Flow**:
+      1. Login with username/password → Get access & refresh tokens
+      2. Use access token for authenticated requests
+      3. Refresh access token when expired using refresh token
+      4. Get current user info with `/me` endpoint
+
+  - name: Devices
+    description: |
+      Device registration, management, and monitoring endpoints.
+
+      **Device Types**:
+      - **TV**: WebOS, Tizen, Android TV devices
+      - **Monitor**: Browser-based displays (Chrome, Firefox, Safari, Edge)
+
+      **Registration Flow**:
+      1. Device generates 6-digit activation code
+      2. Device calls `POST /api/devices/monitor/register`
+      3. Admin sees pending device in Web Admin
+      4. Admin activates device via `PUT /api/devices/{id}` (status: active)
+      5. Device polls `GET /api/devices/check-activation/{code}`
+      6. Device starts heartbeat every 30 seconds
+
+      **Device Commands**:
+      - **reset**: Clear localStorage and reload (for device deletion/release)
+      - **reload**: Reload page without clearing data
+      - **refresh**: Refresh content playlist
+      - **run_speed_test**: Trigger network speed test
+
+  - name: Content
+    description: |
+      Content upload, management, and assignment endpoints.
+
+      **Supported Types**:
+      - **Images**: JPEG, PNG, GIF, WebP
+      - **Videos**: MP4, WebM, AVI, MOV
+
+      **Content Assignment**:
+      - Direct assignment to devices
+      - Tag-based assignment (bulk assignment to device groups)
+      - Playlist-based assignment (scheduled content delivery)
+
+      **Metadata Extraction**:
+      - Resolution (width x height)
+      - Duration (for videos)
+      - Codec information
+      - Bitrate and FPS
+      - Audio metadata
+
+  - name: Playlists
+    description: |
+      Playlist creation, content management, and device assignment.
+
+      **Features**:
+      - Sequential content playback
+      - Custom duration per content item
+      - Drag-and-drop reordering
+      - Time-based scheduling (coming soon)
+      - Priority-based content resolution
+
+      **Assignment Types**:
+      - Device assignment (specific devices)
+      - Tag assignment (all devices with tag)
+
+  - name: Tags
+    description: |
+      Device tagging and grouping for bulk management.
+
+      **Use Cases**:
+      - Location-based grouping (Floor 1, Floor 2, Lobby)
+      - Department grouping (HR, IT, Marketing)
+      - Display type grouping (Portrait, Landscape)
+      - Content category grouping (News, Announcements, Ads)
+
+  - name: Client
+    description: |
+      Client-facing endpoints for TV/Monitor devices to fetch content.
+
+      These endpoints do NOT require authentication.
+
+  - name: Settings
+    description: |
+      System settings and configuration management.
+
+  - name: Device Logs
+    description: |
+      Device activity logging and history tracking.
+
+  - name: Speed Test
+    description: |
+      Network speed testing for devices.
+
+  - name: Firebird Integration
+    description: |
+      Optional Firebird database integration for external data sources.
+
+  - name: WebSocket
+    description: |
+      Real-time WebSocket communication for live updates.
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: |
+        JWT Bearer token authentication.
+
+        Obtain tokens via `POST /api/auth/login` endpoint.
+
+        **Token Expiry**:
+        - Access Token: 30 minutes
+        - Refresh Token: 7 days
+
+        **Usage**:
+        ```
+        Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+        ```
+
+  schemas:
+    # ============================================================================
+    # QUICK WINS: Standard Response Schemas
+    # ============================================================================
+
+    APIResponse:
+      type: object
+      description: Standard success response wrapper (Quick Wins format)
+      properties:
+        success:
+          type: boolean
+          example: true
+          description: Indicates if request was successful
+        data:
+          type: object
+          description: Response payload (schema varies by endpoint)
+        meta:
+          type: object
+          description: Response metadata
+          properties:
+            timestamp:
+              type: string
+              format: date-time
+              example: "2025-10-27T10:30:00Z"
+              description: Server timestamp (ISO 8601 UTC)
+            request_id:
+              type: string
+              format: uuid
+              example: "550e8400-e29b-41d4-a716-446655440000"
+              description: Unique request identifier for tracing
+      required:
+        - success
+        - data
+
+    ErrorResponse:
+      type: object
+      description: Standard error response wrapper (Quick Wins format)
+      properties:
+        success:
+          type: boolean
+          example: false
+          description: Always false for errors
+        error:
+          type: object
+          description: Error details
+          properties:
+            code:
+              type: string
+              example: "VALIDATION_ERROR"
+              description: Machine-readable error code
+            message:
+              type: string
+              example: "Invalid input data"
+              description: Human-readable error message
+            details:
+              type: object
+              description: Additional error context (optional)
+          required:
+            - code
+            - message
+        meta:
+          type: object
+          description: Response metadata
+          properties:
+            timestamp:
+              type: string
+              format: date-time
+              example: "2025-10-27T10:30:00Z"
+            request_id:
+              type: string
+              format: uuid
+              example: "550e8400-e29b-41d4-a716-446655440000"
+      required:
+        - success
+        - error
+
+    HTTPValidationError:
+      type: object
+      description: FastAPI validation error response
+      properties:
+        detail:
+          type: array
+          items:
+            type: object
+            properties:
+              loc:
+                type: array
+                items:
+                  type: string
+                description: Location of validation error
+              msg:
+                type: string
+                description: Error message
+              type:
+                type: string
+                description: Error type
+
+    # ============================================================================
+    # Authentication Schemas
+    # ============================================================================
+
+    LoginRequest:
+      type: object
+      required:
+        - username
+        - password
+      properties:
+        username:
+          type: string
+          example: "admin"
+          description: User's username
+        password:
+          type: string
+          format: password
+          example: "password123"
+          description: User's password
+
+    TokenResponse:
+      type: object
+      properties:
+        access_token:
+          type: string
+          example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+          description: JWT access token (30 min expiry)
+        refresh_token:
+          type: string
+          example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+          description: JWT refresh token (7 day expiry)
+        token_type:
+          type: string
+          example: "bearer"
+          description: Token type (always "bearer")
+        expires_in:
+          type: integer
+          example: 1800
+          description: Access token expiry in seconds (1800 = 30 min)
+
+    UserResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        username:
+          type: string
+          example: "admin"
+        email:
+          type: string
+          format: email
+          example: "admin@example.com"
+        full_name:
+          type: string
+          example: "Administrator"
+          nullable: true
+        is_active:
+          type: boolean
+          example: true
+        is_superuser:
+          type: boolean
+          example: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    # ============================================================================
+    # Device Schemas
+    # ============================================================================
+
+    DeviceResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+          description: Device unique identifier
+        device_type:
+          type: string
+          enum: [tv, monitor]
+          example: "monitor"
+          description: Device type
+        device_name:
+          type: string
+          example: "Reception Display"
+          description: Device friendly name
+        ip_address:
+          type: string
+          format: ipv4
+          example: "192.168.5.100"
+          nullable: true
+          description: Device IP address (auto-detected)
+        unique_code:
+          type: string
+          example: "123456"
+          nullable: true
+          description: 6-digit activation code
+        code_expires_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: Activation code expiry (10 minutes from registration)
+        platform:
+          type: string
+          example: "Chrome"
+          nullable: true
+          description: Device platform (webOS, Chrome, Firefox, etc.)
+        model_name:
+          type: string
+          example: "LG 55UM7300PUA"
+          nullable: true
+          description: Device model name
+        firmware_version:
+          type: string
+          example: "05.00.15"
+          nullable: true
+          description: Device firmware version
+        status:
+          type: string
+          enum: [pending, active, inactive]
+          example: "active"
+          description: |
+            Device status:
+            - pending: Awaiting admin activation
+            - active: Active and operational
+            - inactive: Deactivated or released
+        last_seen:
+          type: string
+          format: date-time
+          nullable: true
+          description: Last heartbeat timestamp (device considered online if < 5 min ago)
+        screen_width:
+          type: integer
+          example: 1920
+          nullable: true
+          description: Screen width in pixels
+        screen_height:
+          type: integer
+          example: 1080
+          nullable: true
+          description: Screen height in pixels
+        rotation:
+          type: integer
+          enum: [0, 90, 180, 270]
+          example: 0
+          default: 0
+          description: Screen rotation in degrees
+        volume_enabled:
+          type: boolean
+          example: true
+          default: true
+          description: Audio enabled/disabled
+        tags:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: integer
+              tag_name:
+                type: string
+              color:
+                type: string
+          description: Tags assigned to device
+        playlists:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: integer
+              name:
+                type: string
+              description:
+                type: string
+                nullable: true
+              is_active:
+                type: boolean
+              priority:
+                type: integer
+          description: Playlists assigned to device
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    MonitorSelfRegisterRequest:
+      type: object
+      required:
+        - activation_code
+        - device_name
+      properties:
+        activation_code:
+          type: string
+          example: "123456"
+          description: Self-generated 6-digit activation code
+        device_name:
+          type: string
+          example: "Lobby Display"
+          description: Device friendly name
+        platform:
+          type: string
+          example: "Chrome"
+          nullable: true
+          description: Browser/platform name (optional)
+        model_name:
+          type: string
+          example: "Dell OptiPlex 7090"
+          nullable: true
+          description: Device model (optional)
+
+    HeartbeatRequest:
+      type: object
+      required:
+        - device_id
+      properties:
+        device_id:
+          type: integer
+          example: 1
+          description: Device ID
+        ip_address:
+          type: string
+          format: ipv4
+          example: "192.168.5.100"
+          nullable: true
+          description: Device IP (optional, auto-detected if not provided)
+        platform:
+          type: string
+          example: "Chrome"
+          nullable: true
+        screen_width:
+          type: integer
+          example: 1920
+          nullable: true
+        screen_height:
+          type: integer
+          example: 1080
+          nullable: true
+
+    HeartbeatResponse:
+      type: object
+      properties:
+        device_id:
+          type: integer
+          example: 1
+        status:
+          type: string
+          example: "active"
+        last_seen:
+          type: string
+          format: date-time
+        message:
+          type: string
+          example: "Heartbeat recorded successfully"
+        rotation:
+          type: integer
+          example: 0
+          description: Screen rotation setting (device should apply)
+        volume_enabled:
+          type: boolean
+          example: true
+          description: Audio setting (device should apply)
+
+    DeviceCommandBase:
+      type: object
+      required:
+        - command_type
+      properties:
+        command_type:
+          type: string
+          enum: [reset, reload, refresh, run_speed_test]
+          example: "reload"
+          description: |
+            Command type:
+            - reset: Clear localStorage and reload (for device deletion)
+            - reload: Reload page without clearing data
+            - refresh: Refresh content playlist
+            - run_speed_test: Trigger network speed test
+        reason:
+          type: string
+          example: "manual_reload"
+          nullable: true
+          description: Command reason/note
+
+    DeviceCommandResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        device_id:
+          type: integer
+          example: 1
+        command_type:
+          type: string
+          example: "reload"
+        reason:
+          type: string
+          example: "manual_reload"
+          nullable: true
+        status:
+          type: string
+          enum: [pending, executed, expired]
+          example: "pending"
+        created_at:
+          type: string
+          format: date-time
+        executed_at:
+          type: string
+          format: date-time
+          nullable: true
+        expires_at:
+          type: string
+          format: date-time
+
+    # ============================================================================
+    # Content Schemas
+    # ============================================================================
+
+    ContentResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        title:
+          type: string
+          example: "Welcome Banner"
+        description:
+          type: string
+          example: "Main lobby welcome banner"
+          nullable: true
+        content_type:
+          type: string
+          enum: [image, video]
+          example: "image"
+        anthias_url:
+          type: string
+          format: uri
+          example: "http://192.168.5.12:8000/asset-path"
+          description: Anthias storage URL
+        anthias_asset_id:
+          type: string
+          example: "abc123"
+          description: Anthias asset ID
+        duration:
+          type: integer
+          example: 10
+          description: Display duration in seconds
+        file_size:
+          type: integer
+          example: 2048576
+          description: File size in bytes
+        mime_type:
+          type: string
+          example: "image/jpeg"
+        resolution:
+          type: string
+          example: "1920x1080"
+          nullable: true
+        width:
+          type: integer
+          example: 1920
+          nullable: true
+        height:
+          type: integer
+          example: 1080
+          nullable: true
+        video_duration:
+          type: number
+          format: float
+          example: 30.5
+          nullable: true
+          description: Video duration in seconds (for video content)
+        is_active:
+          type: boolean
+          example: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    ContentUploadResponse:
+      allOf:
+        - $ref: '#/components/schemas/ContentResponse'
+      description: Response after successful content upload
+
+    # ============================================================================
+    # Playlist Schemas
+    # ============================================================================
+
+    PlaylistResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        name:
+          type: string
+          example: "Morning Announcements"
+        description:
+          type: string
+          example: "Daily morning announcements playlist"
+          nullable: true
+        is_active:
+          type: boolean
+          example: true
+        priority:
+          type: integer
+          example: 10
+          description: Playlist priority (higher = more important)
+        content_count:
+          type: integer
+          example: 5
+          description: Number of content items in playlist
+        total_duration:
+          type: integer
+          example: 150
+          description: Total playlist duration in seconds
+        schedule:
+          type: object
+          nullable: true
+          description: Time-based scheduling rules (future feature)
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    PlaylistCreate:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+          example: "Morning Announcements"
+        description:
+          type: string
+          example: "Daily morning announcements"
+          nullable: true
+        is_active:
+          type: boolean
+          example: true
+          default: true
+        priority:
+          type: integer
+          example: 10
+          default: 0
+        schedule:
+          type: object
+          nullable: true
+
+    # ============================================================================
+    # Tag Schemas
+    # ============================================================================
+
+    TagResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        tag_name:
+          type: string
+          example: "Lobby"
+        description:
+          type: string
+          example: "All lobby displays"
+          nullable: true
+        color:
+          type: string
+          example: "#3B82F6"
+          description: Hex color code for tag badge
+        device_count:
+          type: integer
+          example: 5
+          description: Number of devices with this tag
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    TagCreate:
+      type: object
+      required:
+        - tag_name
+      properties:
+        tag_name:
+          type: string
+          example: "Lobby"
+        description:
+          type: string
+          example: "All lobby displays"
+          nullable: true
+        color:
+          type: string
+          example: "#3B82F6"
+          default: "#3B82F6"
+
+    # ============================================================================
+    # Client Schemas (for devices)
+    # ============================================================================
+
+    PlaylistItem:
+      type: object
+      properties:
+        content_id:
+          type: integer
+          example: 1
+        title:
+          type: string
+          example: "Welcome Banner"
+        content_type:
+          type: string
+          enum: [image, video]
+          example: "image"
+        url:
+          type: string
+          format: uri
+          example: "http://192.168.5.12:8000/asset-path"
+          description: Content file URL
+        duration:
+          type: integer
+          example: 10
+          description: Display duration in seconds
+        priority:
+          type: integer
+          example: 5
+          description: Content priority
+
+    ClientPlaylistResponse:
+      type: object
+      properties:
+        device_id:
+          type: integer
+          example: 1
+        device_name:
+          type: string
+          example: "Reception Display"
+        playlist_count:
+          type: integer
+          example: 5
+        playlist:
+          type: array
+          items:
+            $ref: '#/components/schemas/PlaylistItem'
+
+# ============================================================================
+# Security Requirements (applied globally to most endpoints)
+# ============================================================================
+security:
+  - BearerAuth: []
+
+# ============================================================================
+# Common Response Examples
+# ============================================================================
+x-response-examples:
+  success-example:
+    value:
+      success: true
+      data:
+        id: 1
+        name: "Example Resource"
+      meta:
+        timestamp: "2025-10-27T10:30:00Z"
+        request_id: "550e8400-e29b-41d4-a716-446655440000"
+
+  error-404-example:
+    value:
+      success: false
+      error:
+        code: "NOT_FOUND"
+        message: "Resource not found"
+        details:
+          resource_type: "device"
+          resource_id: 999
+      meta:
+        timestamp: "2025-10-27T10:30:00Z"
+        request_id: "550e8400-e29b-41d4-a716-446655440000"
+
+  error-validation-example:
+    value:
+      success: false
+      error:
+        code: "VALIDATION_ERROR"
+        message: "Invalid input data"
+        details:
+          field: "email"
+          issue: "Invalid email format"
+      meta:
+        timestamp: "2025-10-27T10:30:00Z"
+        request_id: "550e8400-e29b-41d4-a716-446655440000"
+
+# ============================================================================
+# Endpoint Paths
+# ============================================================================
+# Note: Full path documentation is auto-generated by FastAPI
+# This enhanced spec provides schemas, descriptions, and metadata
+# The actual endpoint paths are available at http://192.168.5.12:8001/openapi.json
+# ============================================================================
