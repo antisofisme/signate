@@ -157,7 +157,7 @@ export default function Dashboard() {
         color: 'green',
       },
       {
-        name: 'Total Content',
+        name: 'Total Contents',
         value: totalContent,
         subtitle: `${content?.items?.filter(c => c.is_active).length || 0} active`,
         icon: FileImage,
@@ -179,7 +179,7 @@ export default function Dashboard() {
         color: 'indigo',
       },
       {
-        name: 'Assigned Content',
+        name: 'Assigned Contents',
         value: assignedContent,
         subtitle: `${assignmentRate}% assignment rate`,
         icon: Link,

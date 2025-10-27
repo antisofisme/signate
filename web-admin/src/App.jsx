@@ -8,7 +8,7 @@ import Login from './pages/Login'
 import Dashboard from './pages/Dashboard'
 import Devices from './pages/Devices'
 import DevicePreview from './pages/DevicePreview'
-import Content from './pages/Content'
+import Contents from './pages/Contents'
 import Tags from './pages/Tags'
 import Playlists from './pages/Playlists'
 import Activities from './pages/Activities'
@@ -67,10 +67,10 @@ function App() {
               </PrivateRoute>
             } />
 
-            <Route path="/content" element={
+            <Route path="/contents" element={
               <PrivateRoute>
                 <Layout setIsAuthenticated={setIsAuthenticated}>
-                  <Content />
+                  <Contents />
                 </Layout>
               </PrivateRoute>
             } />

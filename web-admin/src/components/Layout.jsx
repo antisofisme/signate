@@ -28,7 +28,7 @@ export default function Layout({ children, setIsAuthenticated }) {
   const navigation = [
     { name: 'Dashboard', href: '/', icon: LayoutDashboard },
     { name: 'Devices', href: '/devices', icon: Monitor },
-    { name: 'Content', href: '/content', icon: FileImage },
+    { name: 'Contents', href: '/contents', icon: FileImage },
     { name: 'Playlists', href: '/playlists', icon: ListVideo },
     { name: 'Tags', href: '/tags', icon: Tag },
     { name: 'Activity Logs', href: '/activities', icon: Clock },

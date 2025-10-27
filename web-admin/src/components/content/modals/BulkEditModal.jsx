@@ -184,7 +184,7 @@ export default function BulkEditModal({ selectedIds, contentData, onClose, onCom
       {/* Custom Header - Fixed */}
       <div className="flex items-center justify-between px-6 py-4 bg-white dark:bg-gray-800 border-b flex-shrink-0">
         <div>
-          <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100">Bulk Edit Content</h2>
+          <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100">Bulk Edit Contents</h2>
           <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{selectedContent.length} items selected</p>
         </div>
         <button
