@@ -192,6 +192,7 @@ class ContentAssignmentResponse(BaseModel):
     tag_id: Optional[int]
     priority: int
     created_at: datetime
+    content: Optional['ContentResponse'] = None
 
     class Config:
         from_attributes = True

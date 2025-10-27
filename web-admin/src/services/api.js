@@ -59,8 +59,8 @@ export const devicesAPI = {
   queueCommand: (id, data) => api.post(`/api/devices/${id}/commands`, data),
   // Content assignment endpoints (Phase 3)
   getContent: (id, params) => api.get(`/api/devices/${id}/content`, { params }),
-  assignContent: (id, data) => api.post(`/api/devices/${id}/content`, data),
-  unassignContent: (id, contentId) => api.delete(`/api/devices/${id}/content/${contentId}`),
+  assignContent: (deviceId, contentId, priority = 0) => api.post(`/api/content/${contentId}/assign`, { device_id: deviceId, priority }),
+  unassignContent: (deviceId, contentId) => api.delete(`/api/devices/${deviceId}/content/${contentId}`),
   // Preview endpoint (Phase 2)
   preview: (id, params) => api.get(`/api/devices/${id}/preview`, { params }),
 }
@@ -153,6 +153,15 @@ export const settingsAPI = {
 export const clientAPI = {
   getPlaylist: (deviceId) => api.get(`/api/client/playlist?device_id=${deviceId}`),
   getStatus: (deviceId) => api.get(`/api/client/status?device_id=${deviceId}`),
+}
+
+// Activities API (FASE 3: Activity Logs)
+export const activitiesAPI = {
+  list: (params) => api.get('/api/activities', { params }),
+  stats: () => api.get('/api/activities/stats'),
+  get: (id) => api.get(`/api/activities/${id}`),
+  create: (data) => api.post('/api/activities', data),
+  cleanup: (retentionDays = 90) => api.delete('/api/activities/cleanup', { params: { retention_days: retentionDays } }),
 }
 
 export default api

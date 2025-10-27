@@ -4,7 +4,7 @@ For managing device tags and grouping
 """
 
 from fastapi import APIRouter, Depends, HTTPException, status, Body
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import func
 from typing import List
 
@@ -14,6 +14,7 @@ from app.models.user import User
 from typing import Optional
 from app.models.tag import Tag, DeviceTag
 from app.models.device import Device
+from app.models.assignment import ContentAssignment
 from app.schemas.tag import (
     TagCreate,
     TagUpdate,
@@ -21,6 +22,7 @@ from app.schemas.tag import (
     TagListResponse,
     DeviceTagAssign
 )
+from app.schemas.content import ContentAssignmentResponse
 
 router = APIRouter()
 
@@ -304,3 +306,44 @@ def get_tag_devices(
         "tag": tag.to_dict(),
         "devices": [device.to_dict() for device in devices]
     }
+
+
+@router.get("/{tag_id}/content", response_model=List[ContentAssignmentResponse])
+def get_tag_content(
+    tag_id: int,
+    db: Session = Depends(get_db),
+    current_user: Optional[User] = Depends(get_optional_user)
+):
+    """
+    Get all content assigned to a tag
+
+    Returns list of ContentAssignment objects for content assigned to this tag.
+
+    Args:
+        tag_id: Tag ID
+        db: Database session
+        current_user: Authenticated user (optional)
+
+    Returns:
+        List[ContentAssignmentResponse]: List of content assignments
+
+    Raises:
+        404: Tag not found
+    """
+    # Verify tag exists
+    tag = db.query(Tag).filter(Tag.id == tag_id).first()
+    if not tag:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Tag with ID {tag_id} not found"
+        )
+
+    # Get tag content assignments with content relationship
+    assignments = db.query(ContentAssignment).options(
+        joinedload(ContentAssignment.content)
+    ).filter(
+        ContentAssignment.tag_id == tag_id,
+        ContentAssignment.device_id == None
+    ).order_by(ContentAssignment.display_order).all()
+
+    return assignments

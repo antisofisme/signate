@@ -14,7 +14,8 @@ from app.core.database import engine, check_db_connection
 from app.models import (
     User, Device, Content, Tag, DeviceTag,
     ContentAssignment, Schedule, FirebirdConfig, DeviceLog,
-    Playlist, PlaylistContent, PlaylistAssignment
+    Playlist, PlaylistContent, PlaylistAssignment,
+    ActivityLog, ActivityAction, EntityType
 )
 
 # Configure logging
@@ -47,7 +48,7 @@ if settings.ENABLE_CORS:
 # =============================================================================
 # API ROUTERS
 # =============================================================================
-from app.api import auth, devices, content, client, tags, logs, websocket, speedtest, playlists
+from app.api import auth, devices, content, client, tags, logs, websocket, speedtest, playlists, activities
 
 app.include_router(auth.router, prefix="/api/auth", tags=["Authentication"])
 app.include_router(devices.router, prefix="/api/devices", tags=["Devices"])
@@ -55,6 +56,7 @@ app.include_router(content.router, prefix="/api/content", tags=["Content"])
 app.include_router(playlists.router, prefix="/api/playlists", tags=["Playlists"])
 app.include_router(client.router, prefix="/api/client", tags=["Client"])
 app.include_router(tags.router, prefix="/api/tags", tags=["Tags"])
+app.include_router(activities.router, prefix="/api", tags=["Activity Logs"])
 app.include_router(logs.router, prefix="/api", tags=["Device Logs"])
 app.include_router(websocket.router, prefix="/api", tags=["WebSocket"])
 app.include_router(speedtest.router, tags=["Speed Test"])
@@ -98,9 +100,16 @@ async def ping():
 
 @app.exception_handler(404)
 async def not_found_handler(request, exc):
+    # Preserve HTTPException detail messages from application logic
+    # Only use generic message for routing 404s
+    if hasattr(exc, 'detail') and exc.detail != exc.status_code:
+        detail = exc.detail
+    else:
+        detail = "Endpoint not found"
+
     return JSONResponse(
         status_code=404,
-        content={"detail": "Endpoint not found"}
+        content={"detail": detail}
     )
 
 

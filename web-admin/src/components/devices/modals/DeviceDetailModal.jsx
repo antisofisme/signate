@@ -184,7 +184,7 @@ export default function DeviceDetailModal({ device: initialDevice, onClose, onEd
 
   // Assign content mutation
   const assignContentMutation = useMutation({
-    mutationFn: (data) => devicesAPI.assignContent(device.id, data),
+    mutationFn: ({ contentId, priority }) => devicesAPI.assignContent(device.id, contentId, priority),
     onSuccess: () => {
       queryClient.invalidateQueries(['devices', device.id, 'content'])
       toast.success('Content assigned!', {
@@ -507,9 +507,8 @@ export default function DeviceDetailModal({ device: initialDevice, onClose, onEd
                       key={content.id}
                       onClick={() => {
                         assignContentMutation.mutate({
-                          content_id: content.id,
-                          display_order: (deviceContentData?.length || 0),
-                          is_active: true
+                          contentId: content.id,
+                          priority: 0
                         })
                         setShowContentSelector(false)
                       }}

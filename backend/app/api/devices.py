@@ -15,6 +15,8 @@ from app.models.device import Device
 from app.models.device_command import DeviceCommand
 from app.models.tag import Tag, DeviceTag
 from app.models.playlist import Playlist, PlaylistAssignment
+from app.models.assignment import ContentAssignment
+from app.models.content import Content
 from app.schemas.device import (
     TVRegisterRequest,
     MonitorGenerateRequest,
@@ -34,6 +36,10 @@ from app.schemas.device_command import (
 )
 from app.schemas.preview import (
     DevicePreviewResponse
+)
+from app.schemas.content import (
+    ContentAssignmentResponse,
+    ContentAssignRequest
 )
 from app.services.preview_service import PreviewService
 from app.utils.device_utils import (
@@ -158,39 +164,15 @@ def list_devices(
     # Get devices with pagination
     devices = query.offset(skip).limit(limit).all()
 
-    # Filter out inactive pending devices (based on heartbeat, not expiry time)
-    # Pending devices only shown if actively sending heartbeat (last_seen within 60 seconds)
-    # Active/inactive devices always shown (for tracking)
-    filtered_devices = []
-    now = datetime.utcnow()
-    HEARTBEAT_TIMEOUT = 60  # 60 seconds (monitor sends heartbeat every 30s)
-
-    for device in devices:
-        # Keep all non-pending devices (active/inactive)
-        if device.status != 'pending':
-            filtered_devices.append(device)
-        # For pending devices, only keep if still sending heartbeat
-        elif device.last_seen:
-            seconds_since_last_seen = (now - device.last_seen).total_seconds()
-            if seconds_since_last_seen <= HEARTBEAT_TIMEOUT:
-                filtered_devices.append(device)
-            # If last_seen > 60 seconds ago, hide (viewer closed/disconnected)
-        # Pending devices without last_seen (just registered, not yet sent heartbeat)
-        # Show as long as activation code hasn't expired (to allow admin to connect)
-        elif device.code_expires_at:
-            if now < device.code_expires_at:
-                # Code still valid, show the device
-                filtered_devices.append(device)
-        # Fallback: Keep for short grace period if no expiry time
-        elif device.created_at:
-            seconds_since_creation = (now - device.created_at).total_seconds()
-            if seconds_since_creation <= 300:  # 5 minutes grace period
-                filtered_devices.append(device)
+    # NO FILTERING - show all devices regardless of status
+    # Let viewer handle expired codes via check-activation endpoint
+    # Admin can manually delete pending devices that are no longer needed
+    # This allows admin to approve pending devices at any time, even if code expired
 
     # Transform devices to response with tags & playlists
-    device_responses = [device_to_response(device, db) for device in filtered_devices]
+    device_responses = [device_to_response(device, db) for device in devices]
 
-    # Get total count (excluding offline pending devices)
+    # Get total count
     total = len(device_responses)
 
     return DeviceListResponse(
@@ -455,9 +437,16 @@ def register_monitor_self(
     # Let pending devices expire naturally via code_expires_at (10 minutes)
     # Or admin can manually delete old pending devices from Web Admin
 
-    # Create monitor device with self-generated code
+    # Determine device_type based on platform
+    # TV platforms: webOS, Tizen, Android TV
+    # Monitor/Browser platforms: Chrome, Firefox, Safari, Edge, etc.
+    device_type = "monitor"  # Default
+    if device_data.platform and device_data.platform in ['webOS', 'Tizen', 'Android TV']:
+        device_type = "tv"
+
+    # Create device with self-generated code
     device = Device(
-        device_type="monitor",
+        device_type=device_type,
         device_name=device_data.device_name,
         unique_code=device_data.activation_code,
         code_expires_at=get_code_expiry(),  # 10 minutes expiry
@@ -881,22 +870,37 @@ def check_activation_status(
     if not device:
         return {
             "activated": False,
+            "expired": True,  # Code not found = expired/deleted
             "device_id": None,
             "device_name": None,
             "message": "Code not found or expired"
         }
 
+    # Check if code expired (for pending devices)
+    if device.status == "pending" and device.code_expires_at:
+        if is_code_expired(device.code_expires_at):
+            return {
+                "activated": False,
+                "expired": True,
+                "device_id": device.id,
+                "device_name": device.device_name,
+                "message": "Activation code has expired"
+            }
+
     # Check if activated
     if device.status == "active":
         return {
             "activated": True,
+            "expired": False,
             "device_id": device.id,
             "device_name": device.device_name,
             "message": "Code activated successfully"
         }
     else:
+        # Still pending (not expired, not activated)
         return {
             "activated": False,
+            "expired": False,
             "device_id": device.id,
             "device_name": device.device_name,
             "status": device.status,
@@ -1248,3 +1252,184 @@ def execute_command(
         "device_id": device_id,
         "executed_at": command.executed_at
     }
+
+
+# ==================== CONTENT ASSIGNMENT ENDPOINTS ====================
+
+@router.get("/{device_id}/content", response_model=List[ContentAssignmentResponse])
+def get_device_content(
+    device_id: int,
+    db: Session = Depends(get_db),
+    current_user: Optional[User] = Depends(get_optional_user)
+):
+    """
+    Get all content directly assigned to a device
+
+    Returns list of ContentAssignment objects for content directly assigned
+    to this device (not including tag-based assignments).
+
+    Args:
+        device_id: Device ID
+        db: Database session
+        current_user: Authenticated user (optional)
+
+    Returns:
+        List[ContentAssignmentResponse]: List of content assignments
+
+    Raises:
+        404: Device not found
+    """
+    # Verify device exists
+    device = db.query(Device).filter(Device.id == device_id).first()
+    if not device:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Device with ID {device_id} not found"
+        )
+
+    # Get direct assignments (device_id matches, tag_id is NULL) with content relationship
+    assignments = db.query(ContentAssignment).options(
+        joinedload(ContentAssignment.content)
+    ).filter(
+        ContentAssignment.device_id == device_id,
+        ContentAssignment.tag_id == None
+    ).order_by(ContentAssignment.priority.desc()).all()
+
+    return assignments
+
+
+@router.post("/{device_id}/content", response_model=ContentAssignmentResponse, status_code=status.HTTP_201_CREATED)
+def assign_content_to_device(
+    device_id: int,
+    assignment_data: ContentAssignRequest,
+    db: Session = Depends(get_db),
+    current_user: Optional[User] = Depends(get_optional_user)
+):
+    """
+    Assign content directly to a device
+
+    Creates a new direct assignment (device-to-content).
+
+    Args:
+        device_id: Device ID
+        assignment_data: Assignment data (must include content_id)
+        db: Database session
+        current_user: Authenticated user (optional)
+
+    Returns:
+        ContentAssignmentResponse: Created assignment
+
+    Raises:
+        404: Device or content not found
+        409: Assignment already exists
+        400: Invalid request
+    """
+    # Verify device exists and is active
+    device = db.query(Device).filter(Device.id == device_id).first()
+    if not device:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Device with ID {device_id} not found"
+        )
+
+    if device.status != 'active':
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Cannot assign content to device with status '{device.status}'. Device must be active."
+        )
+
+    # Verify content exists
+    if not assignment_data.content_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="content_id is required"
+        )
+
+    content = db.query(Content).filter(Content.id == assignment_data.content_id).first()
+    if not content:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Content with ID {assignment_data.content_id} not found"
+        )
+
+    # Check if assignment already exists
+    existing = db.query(ContentAssignment).filter(
+        ContentAssignment.content_id == assignment_data.content_id,
+        ContentAssignment.device_id == device_id,
+        ContentAssignment.tag_id == None
+    ).first()
+
+    if existing:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Content already assigned to this device"
+        )
+
+    # Create assignment
+    assignment = ContentAssignment(
+        content_id=assignment_data.content_id,
+        device_id=device_id,
+        tag_id=None,
+        priority=assignment_data.priority if hasattr(assignment_data, 'priority') else 0,
+        display_order=assignment_data.display_order if hasattr(assignment_data, 'display_order') else 0,
+        is_active=assignment_data.is_active if hasattr(assignment_data, 'is_active') else True
+    )
+
+    db.add(assignment)
+    db.commit()
+    db.refresh(assignment)
+
+    logger.info(f"Content {assignment_data.content_id} assigned to device {device_id}")
+
+    return assignment
+
+
+@router.delete("/{device_id}/content/{content_id}", status_code=status.HTTP_204_NO_CONTENT)
+def unassign_content_from_device(
+    device_id: int,
+    content_id: int,
+    db: Session = Depends(get_db),
+    current_user: Optional[User] = Depends(get_optional_user)
+):
+    """
+    Remove content assignment from a device
+
+    Deletes the direct assignment between device and content.
+
+    Args:
+        device_id: Device ID
+        content_id: Content ID to unassign
+        db: Database session
+        current_user: Authenticated user (optional)
+
+    Raises:
+        404: Device, content, or assignment not found
+    """
+    # Verify device exists
+    device = db.query(Device).filter(Device.id == device_id).first()
+    if not device:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Device with ID {device_id} not found"
+        )
+
+    # Find assignment
+    assignment = db.query(ContentAssignment).filter(
+        ContentAssignment.content_id == content_id,
+        ContentAssignment.device_id == device_id,
+        ContentAssignment.tag_id == None
+    ).first()
+
+    if not assignment:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Content {content_id} is not assigned to device {device_id}"
+        )
+
+    # Delete assignment
+    db.delete(assignment)
+    db.commit()
+
+    logger.info(f"Content {content_id} unassigned from device {device_id}")
+
+    return None
