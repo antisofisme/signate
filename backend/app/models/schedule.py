@@ -42,7 +42,7 @@ class Schedule(Base):
 
     # Foreign Keys (nullable - can be tag-based or device-based)
     device_id = Column(Integer, ForeignKey("devices.id", ondelete="CASCADE"), index=True)
-    content_id = Column(Integer, ForeignKey("content.id", ondelete="CASCADE"), nullable=False, index=True)
+    content_id = Column(Integer, ForeignKey("contents.id", ondelete="CASCADE"), nullable=False, index=True)
 
     # Time Settings
     day_of_week = Column(String(20))  # e.g., "0,1,2,3,4" for weekdays

@@ -130,7 +130,7 @@ async def get_system_info(
         media_storage_used = 0
         try:
             result = db.execute(text(
-                "SELECT COALESCE(SUM(file_size), 0)::BIGINT FROM content WHERE is_active = true"
+                "SELECT COALESCE(SUM(file_size), 0)::BIGINT FROM contents WHERE is_active = true"
             ))
             media_storage_used = int(result.scalar() or 0)
         except Exception as e:
