@@ -65,49 +65,10 @@ window.ActivationPoll = {
         }
 
         try {
-            const response = await fetch(
-                `${state.API_BASE_URL}/api/devices/check-activation/${state.activationCode}`,
-                {
-                    method: 'GET',
-                    headers: { 'Content-Type': 'application/json' }
-                }
+            // Use APIClient for standardized response handling
+            const data = await window.APIClient.get(
+                `${state.API_BASE_URL}/api/devices/check-activation/${state.activationCode}`
             );
-
-            // Handle device deletion (404) - auto-reset viewer
-            if (response.status === 404) {
-                console.warn('[Shell/ActivationPoll] ⚠️ Device code not found or deleted - Auto-resetting viewer');
-
-                // Stop polling
-                this.stopPolling();
-
-                // Clear localStorage
-                localStorage.clear();
-
-                // Delete IndexedDB cache
-                const dbName = 'signage_media_cache';
-                try {
-                    await new Promise((resolve) => {
-                        const deleteRequest = indexedDB.deleteDatabase(dbName);
-                        deleteRequest.onsuccess = () => resolve();
-                        deleteRequest.onerror = () => resolve(); // Continue anyway
-                        deleteRequest.onblocked = () => resolve(); // Continue anyway
-                    });
-                } catch (error) {
-                    console.error('[Shell/ActivationPoll] Error deleting cache:', error);
-                }
-
-                // Reload to show new activation screen
-                console.log('[Shell/ActivationPoll] 🔄 Reloading to register as new device...');
-                window.location.reload();
-                return;
-            }
-
-            if (!response.ok) {
-                console.warn('[Shell/ActivationPoll] ⚠️ Failed to check activation status:', response.status);
-                return;
-            }
-
-            const data = await response.json();
             console.log('[Shell/ActivationPoll] 📊 Activation status:', data);
 
             // Connection successful - show WiFi online and reset status message
@@ -160,18 +121,6 @@ window.ActivationPoll = {
 
                 if (oldDeviceId && oldDeviceId !== newDeviceId) {
                     console.warn(`[Activation Poll] ⚠️ Device ID changed: ${oldDeviceId} → ${newDeviceId} (Replace scenario)`);
-                }
-
-                // Save JWT token from activation response
-                if (data.device_token && window.TokenManager) {
-                    window.TokenManager.saveToken({
-                        token: data.device_token,
-                        refresh_token: data.refresh_token,
-                        expires_at: data.token_expires_at
-                    });
-                    console.log('[Activation Poll] 🔐 JWT token saved');
-                } else if (!data.device_token) {
-                    console.warn('[Activation Poll] ⚠️ No device_token in activation response');
                 }
 
                 // Step 1: Stop polling
@@ -235,6 +184,35 @@ window.ActivationPoll = {
                 console.log('[Shell/ActivationPoll] 🎉 Viewer activated successfully via polling!');
             }
         } catch (error) {
+            // Handle 404 - Device code not found or deleted
+            if (error.status === 404) {
+                console.warn('[Shell/ActivationPoll] ⚠️ Device code not found or deleted (404) - Auto-resetting viewer');
+
+                // Stop polling
+                this.stopPolling();
+
+                // Clear localStorage
+                localStorage.clear();
+
+                // Delete IndexedDB cache
+                const dbName = 'signage_media_cache';
+                try {
+                    await new Promise((resolve) => {
+                        const deleteRequest = indexedDB.deleteDatabase(dbName);
+                        deleteRequest.onsuccess = () => resolve();
+                        deleteRequest.onerror = () => resolve(); // Continue anyway
+                        deleteRequest.onblocked = () => resolve(); // Continue anyway
+                    });
+                } catch (cacheError) {
+                    console.error('[Shell/ActivationPoll] Error deleting cache:', cacheError);
+                }
+
+                // Reload to show new activation screen
+                console.log('[Shell/ActivationPoll] 🔄 Reloading to register as new device...');
+                window.location.reload();
+                return;
+            }
+
             // Network error (server down/unreachable)
             // Show alert and WiFi offline icon, but keep polling
             console.error('[Shell/ActivationPoll] ❌ Network error (server unreachable):', error.message);

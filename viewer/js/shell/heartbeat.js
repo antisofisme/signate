@@ -111,51 +111,37 @@ window.ShellHeartbeat = {
                     }
                 }
 
-                // Add Authorization header with JWT token
-                const headers = window.TokenManager.addAuthHeader({
-                    'Content-Type': 'application/json'
-                });
-
-                const response = await fetch(`${state.API_BASE_URL}/api/devices/heartbeat`, {
-                    method: 'POST',
-                    headers: await headers,
-                    body: JSON.stringify({
+                // Use APIClient for standardized response handling
+                const data = await window.APIClient.post(
+                    `${state.API_BASE_URL}/api/devices/heartbeat`,
+                    {
                         device_id: parseInt(state.deviceId),
                         platform: this.detectPlatform(),           // 'webOS', 'Chrome', etc (backend schema)
                         ...deviceInfo,
                         // Additional metadata for frontend filtering
                         device_category: this.getDeviceCategory()  // 'tv' or 'browser' (custom field)
-                    })
-                });
-
-                if (response.ok) {
-                    const data = await response.json();
-                    console.log('[Shell/Heartbeat] ✅ Heartbeat sent');
-
-                    // Show WiFi online icon
-                    if (window.ShellWiFiStatus) {
-                        window.ShellWiFiStatus.updateStatus('online');
                     }
+                );
 
-                    // Check for pending commands (reset, refresh, reload)
-                    if (window.ShellCommands) {
-                        await window.ShellCommands.checkAndExecute();
-                    }
+                console.log('[Shell/Heartbeat] ✅ Heartbeat sent');
 
-                    // Check if display settings changed
-                    if (window.ShellDisplaySettings) {
-                        await window.ShellDisplaySettings.checkAndApplyChanges(data);
-                    }
-                } else if (response.status === 401) {
-                    // Token expired - attempt refresh
-                    console.warn('[Shell/Heartbeat] ⚠️ Unauthorized (401) - Token expired, refreshing...');
-                    const handled = await window.TokenManager.handle401(state.API_BASE_URL);
-                    if (!handled) {
-                        // handle401 will reload the page to show activation screen
-                        console.log('[Shell/Heartbeat] Token refresh failed, viewer will reset');
-                    }
-                } else if (response.status === 404) {
-                    // Device deleted from backend - reset viewer
+                // Show WiFi online icon
+                if (window.ShellWiFiStatus) {
+                    window.ShellWiFiStatus.updateStatus('online');
+                }
+
+                // Check for pending commands (reset, refresh, reload)
+                if (window.ShellCommands) {
+                    await window.ShellCommands.checkAndExecute();
+                }
+
+                // Check if display settings changed
+                if (window.ShellDisplaySettings) {
+                    await window.ShellDisplaySettings.checkAndApplyChanges(data);
+                }
+            } catch (error) {
+                // Handle 404 - Device deleted from backend
+                if (error.status === 404) {
                     console.warn('[Shell/Heartbeat] ⚠️ Device not found (404) - Device was deleted from backend');
                     console.log('[Shell/Heartbeat] 🔄 Auto-resetting viewer to show new activation code...');
 
@@ -171,14 +157,15 @@ window.ShellHeartbeat = {
                             deleteRequest.onerror = () => resolve(); // Continue anyway
                             deleteRequest.onblocked = () => resolve(); // Continue anyway
                         });
-                    } catch (error) {
-                        console.error('[Shell/Heartbeat] Error deleting cache:', error);
+                    } catch (cacheError) {
+                        console.error('[Shell/Heartbeat] Error deleting cache:', cacheError);
                     }
 
                     // Reload to show activation screen
                     window.location.reload();
+                    return;
                 }
-            } catch (error) {
+
                 // Network error (server down/unreachable)
                 // DON'T clear localStorage or re-register - just show WiFi offline
                 console.error('[Shell/Heartbeat] ❌ Network error (server unreachable):', error.message);

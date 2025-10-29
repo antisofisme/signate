@@ -3,10 +3,11 @@ Content Management API endpoints
 Integrates with Anthias for file storage and PostgreSQL for metadata
 """
 
-from fastapi import APIRouter, Depends, status, UploadFile, File, Form, Request
+from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form, Request
 from fastapi.responses import Response
 from sqlalchemy.orm import Session
 from typing import Optional, List
+import logging
 import tempfile
 import os
 
@@ -78,7 +79,7 @@ async def upload_content(
     logger.info(
         "Content upload started",
         request_id=request_id,
-        filename=file.filename,
+        uploaded_filename=file.filename,
         title=title,
         content_type=file.content_type
     )
@@ -106,7 +107,7 @@ async def upload_content(
             "Uploading to Anthias",
             request_id=request_id,
             content_type=content_type,
-            filename=file.filename
+            uploaded_filename=file.filename
         )
 
         # Upload to Anthias
@@ -117,14 +118,8 @@ async def upload_content(
             is_enabled=is_active
         )
 
-        # Get Anthias asset URL and cache the file URI
-        # PHASE 1 OPTIMIZATION: Cache URI to avoid repeated API calls
+        # Get Anthias asset URL
         anthias_url = await anthias_service.get_asset_url(anthias_asset["asset_id"])
-
-        # Extract and cache the file URI from the get_asset response
-        # This eliminates the need to call get_asset_url() on every content list/get operation
-        asset_details = await anthias_service.get_asset(anthias_asset["asset_id"])
-        anthias_file_uri = asset_details.get("uri")  # e.g., "/data/screenly_assets/abc123.jpg"
 
         # Get file size from anthias response
         file_size = anthias_asset.get("file_size", 0)
@@ -174,7 +169,6 @@ async def upload_content(
             content_type=content_type,
             anthias_url=anthias_url,
             anthias_asset_id=anthias_asset["asset_id"],
-            anthias_file_uri=anthias_file_uri,  # PHASE 1: Cache URI for performance
             duration=final_duration,
             is_active=is_active,
             file_size=metadata.get("file_size") or file_size,
@@ -212,7 +206,6 @@ async def upload_content(
             "content_type": content.content_type,
             "anthias_url": content.anthias_url,
             "anthias_asset_id": content.anthias_asset_id,
-            "anthias_file_uri": content.anthias_file_uri,
             "duration": content.duration,
             "is_active": content.is_active,
             "file_size": content.file_size,
@@ -256,7 +249,7 @@ async def upload_content(
 @router.get("/")
 def list_content(
     request: Request,
-    page: int = 1,
+    skip: int = 0,
     limit: int = 100,
     content_type: Optional[str] = None,
     is_active: Optional[bool] = None,
@@ -268,8 +261,8 @@ def list_content(
 
     Args:
         request: FastAPI request object (for request_id)
-        page: Page number (1-indexed, default 1)
-        limit: Max number of records to return (default 100)
+        skip: Number of records to skip (pagination)
+        limit: Max number of records to return
         content_type: Filter by content type (image/video)
         is_active: Filter by active status
         db: Database session
@@ -283,7 +276,7 @@ def list_content(
     logger.info(
         "Listing content",
         request_id=request_id,
-        page=page,
+        skip=skip,
         limit=limit,
         content_type=content_type,
         is_active=is_active
@@ -301,18 +294,14 @@ def list_content(
     # Get total count
     total = query.count()
 
-    # Calculate offset from page number
-    offset = (page - 1) * limit
-
     # Get content with pagination
-    contents = query.order_by(Content.created_at.desc()).offset(offset).limit(limit).all()
+    contents = query.order_by(Content.created_at.desc()).offset(skip).limit(limit).all()
 
     logger.info(
         "Content listed successfully",
         request_id=request_id,
         total=total,
-        returned=len(contents),
-        page=page
+        returned=len(contents)
     )
 
     # Convert to dicts
@@ -325,7 +314,6 @@ def list_content(
             "content_type": content.content_type,
             "anthias_url": content.anthias_url,
             "anthias_asset_id": content.anthias_asset_id,
-            "anthias_file_uri": content.anthias_file_uri,
             "duration": content.duration,
             "is_active": content.is_active,
             "file_size": content.file_size,
@@ -337,6 +325,9 @@ def list_content(
             "updated_at": content.updated_at
         }
         content_list.append(content_dict)
+
+    # Calculate page number (1-indexed)
+    page = (skip // limit) + 1 if limit > 0 else 1
 
     return paginated_response(
         data=content_list,
@@ -406,7 +397,6 @@ def get_content(
         "content_type": content.content_type,
         "anthias_url": content.anthias_url,
         "anthias_asset_id": content.anthias_asset_id,
-        "anthias_file_uri": content.anthias_file_uri,
         "duration": content.duration,
         "is_active": content.is_active,
         "file_size": content.file_size,
@@ -535,7 +525,6 @@ async def update_content(
             "content_type": content.content_type,
             "anthias_url": content.anthias_url,
             "anthias_asset_id": content.anthias_asset_id,
-            "anthias_file_uri": content.anthias_file_uri,
             "duration": content.duration,
             "is_active": content.is_active,
             "file_size": content.file_size,
@@ -582,12 +571,7 @@ async def delete_content(
     current_user: Optional[User] = Depends(get_optional_user)
 ):
     """
-    Delete content with cascade delete to Anthias storage
-
-    Implements cascade delete mechanism:
-    1. Attempts to delete file from Anthias storage
-    2. Deletes metadata from PostgreSQL (even if Anthias delete fails)
-    3. Cascades to content_assignments via SQLAlchemy relationship
+    Delete content from both Anthias and database
 
     Args:
         content_id: Content ID
@@ -600,17 +584,17 @@ async def delete_content(
 
     Raises:
         NotFoundException: If content not found
-        InternalServerException: If database deletion fails
+        InternalServerException: If deletion fails
 
     Notes:
-        - PostgreSQL deletion always succeeds (even if Anthias fails)
-        - Anthias deletion failure is logged but non-blocking
-        - Prevents orphaned files when possible, but prioritizes data consistency
+        - Deletes file from Anthias
+        - Deletes metadata from PostgreSQL
+        - Cascades to content_assignments
     """
     request_id = get_request_id(request)
 
     logger.info(
-        "Cascade delete initiated",
+        "Deleting content",
         request_id=request_id,
         content_id=content_id
     )
@@ -629,75 +613,36 @@ async def delete_content(
             resource_id=content_id
         )
 
-    anthias_asset_id = content.anthias_asset_id
-    anthias_deleted = False
-    anthias_error = None
+    try:
+        anthias_asset_id = content.anthias_asset_id
 
-    # STEP 1: Try to delete from Anthias storage (cascade delete)
-    if anthias_asset_id:
-        try:
+        # Delete from Anthias if asset ID exists
+        if anthias_asset_id:
             await anthias_service.delete_asset(anthias_asset_id)
-            anthias_deleted = True
             logger.info(
-                "Cascade delete: Anthias asset deleted",
+                "Deleted from Anthias",
                 request_id=request_id,
-                content_id=content_id,
                 anthias_asset_id=anthias_asset_id
             )
-        except Exception as e:
-            # Log error but continue to delete from database
-            # This prevents blocking deletion if Anthias is unavailable
-            anthias_error = str(e)
-            logger.warning(
-                "Cascade delete: Anthias deletion failed (non-blocking)",
-                request_id=request_id,
-                content_id=content_id,
-                anthias_asset_id=anthias_asset_id,
-                error=anthias_error,
-                resolution="Proceeding with database deletion"
-            )
-    else:
-        logger.info(
-            "Cascade delete: No Anthias asset to delete",
-            request_id=request_id,
-            content_id=content_id
-        )
 
-    # STEP 2: Delete from PostgreSQL (always execute)
-    try:
-        # This cascades to content_assignments via SQLAlchemy relationship
+        # Delete from database (cascades to assignments)
         db.delete(content)
         db.commit()
 
         logger.info(
-            "Cascade delete completed",
+            "Content deleted successfully",
             request_id=request_id,
-            content_id=content_id,
-            anthias_deleted=anthias_deleted,
-            database_deleted=True
+            content_id=content_id
         )
 
-        # Build response message
-        response_data = {
-            "message": f"Content {content_id} deleted successfully",
-            "cascade_results": {
-                "database_deleted": True,
-                "anthias_deleted": anthias_deleted
-            }
-        }
-
-        if anthias_error:
-            response_data["cascade_results"]["anthias_error"] = anthias_error
-            response_data["cascade_results"]["warning"] = "Anthias file may be orphaned (manual cleanup may be required)"
-
         return success_response(
-            data=response_data,
+            data={"message": f"Content {content_id} deleted successfully"},
             request_id=request_id
         )
 
     except Exception as e:
         logger.error(
-            "Cascade delete: Database deletion failed",
+            "Content deletion failed",
             request_id=request_id,
             content_id=content_id,
             error=str(e),
@@ -705,7 +650,7 @@ async def delete_content(
         )
         db.rollback()
         raise InternalServerException(
-            message="Database deletion failed",
+            message="Delete failed",
             details={"error": str(e)}
         )
 
@@ -1089,7 +1034,6 @@ def unassign_content(
 @router.get("/{content_id}/image")
 async def get_content_image(
     content_id: int,
-    request: Request,
     db: Session = Depends(get_db)
 ):
     """
@@ -1100,49 +1044,27 @@ async def get_content_image(
 
     Args:
         content_id: Content ID
-        request: FastAPI request object (for request_id)
         db: Database session
 
     Returns:
         Response: Image file with correct Content-Type
 
     Raises:
-        NotFoundException: If content not found or no Anthias asset
-        InternalServerException: If fetch fails
+        HTTPException: If content not found or fetch fails
     """
-    request_id = get_request_id(request)
-
-    logger.info(
-        "Serving content image",
-        request_id=request_id,
-        content_id=content_id
-    )
-
     # Get content metadata from database
     content = db.query(Content).filter(Content.id == content_id).first()
 
     if not content:
-        logger.warning(
-            "Content not found for image proxy",
-            request_id=request_id,
-            content_id=content_id
-        )
-        raise NotFoundException(
-            message=f"Content with ID {content_id} not found",
-            resource_type="Content",
-            resource_id=content_id
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Content with ID {content_id} not found"
         )
 
     if not content.anthias_asset_id:
-        logger.warning(
-            "Content has no Anthias asset",
-            request_id=request_id,
-            content_id=content_id
-        )
-        raise NotFoundException(
-            message="Content has no associated Anthias asset",
-            resource_type="Content",
-            resource_id=content_id
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Content has no associated Anthias asset"
         )
 
     try:
@@ -1152,35 +1074,20 @@ async def get_content_image(
         # Determine Content-Type from mime_type in database
         media_type = content.mime_type or "application/octet-stream"
 
-        logger.info(
-            "Image served successfully",
-            request_id=request_id,
-            content_id=content_id,
-            media_type=media_type,
-            size_bytes=len(image_bytes)
-        )
-
         # Return image with correct Content-Type
         return Response(content=image_bytes, media_type=media_type)
 
     except Exception as e:
-        logger.error(
-            "Error serving image",
-            request_id=request_id,
-            content_id=content_id,
-            error=str(e),
-            exc_info=True
-        )
-        raise InternalServerException(
-            message="Failed to serve image",
-            details={"error": str(e), "content_id": content_id}
+        logger.error(f"Error serving image: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to serve image: {str(e)}"
         )
 
 
 @router.get("/{content_id}/video")
 async def get_content_video(
     content_id: int,
-    request: Request,
     db: Session = Depends(get_db)
 ):
     """
@@ -1191,49 +1098,27 @@ async def get_content_video(
 
     Args:
         content_id: Content ID
-        request: FastAPI request object (for request_id)
         db: Database session
 
     Returns:
         Response: Video file with correct Content-Type
 
     Raises:
-        NotFoundException: If content not found or no Anthias asset
-        InternalServerException: If fetch fails
+        HTTPException: If content not found or fetch fails
     """
-    request_id = get_request_id(request)
-
-    logger.info(
-        "Serving content video",
-        request_id=request_id,
-        content_id=content_id
-    )
-
     # Get content metadata from database
     content = db.query(Content).filter(Content.id == content_id).first()
 
     if not content:
-        logger.warning(
-            "Content not found for video proxy",
-            request_id=request_id,
-            content_id=content_id
-        )
-        raise NotFoundException(
-            message=f"Content with ID {content_id} not found",
-            resource_type="Content",
-            resource_id=content_id
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Content with ID {content_id} not found"
         )
 
     if not content.anthias_asset_id:
-        logger.warning(
-            "Content has no Anthias asset",
-            request_id=request_id,
-            content_id=content_id
-        )
-        raise NotFoundException(
-            message="Content has no associated Anthias asset",
-            resource_type="Content",
-            resource_id=content_id
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Content has no associated Anthias asset"
         )
 
     try:
@@ -1242,14 +1127,6 @@ async def get_content_video(
 
         # Determine Content-Type from mime_type in database
         media_type = content.mime_type or "video/mp4"
-
-        logger.info(
-            "Video served successfully",
-            request_id=request_id,
-            content_id=content_id,
-            media_type=media_type,
-            size_bytes=len(video_bytes)
-        )
 
         # Return video with correct Content-Type and Accept-Ranges header for streaming
         return Response(
@@ -1262,14 +1139,8 @@ async def get_content_video(
         )
 
     except Exception as e:
-        logger.error(
-            "Error serving video",
-            request_id=request_id,
-            content_id=content_id,
-            error=str(e),
-            exc_info=True
-        )
-        raise InternalServerException(
-            message="Failed to serve video",
-            details={"error": str(e), "content_id": content_id}
+        logger.error(f"Error serving video: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to serve video: {str(e)}"
         )

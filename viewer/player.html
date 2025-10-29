@@ -130,9 +130,12 @@
 
     <!-- Player Modules (Load in correct order) -->
     <script src="js/player/config.js?v=20251025-28"></script>
+    <!-- API Client - Standardized response wrapper (load before player modules) -->
+    <script src="js/shared/api-client.js?v=20251027-standardized-api"></script>
+
     <script src="js/player/logger.js?v=20251025-28"></script>
     <script src="js/player/cache.js?v=20251025-28"></script>
-    <script src="js/player/api.js?v=20251025-28"></script>
+    <script src="js/player/api.js?v=20251027-api-client"></script>
     <script src="js/player/playback.js?v=20251025-28"></script>
     <script src="js/player/ui.js?v=20251025-28"></script>
     <script src="js/player/init.js?v=20251025-28"></script>

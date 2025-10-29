@@ -65,21 +65,15 @@ window.ShellRegistration = {
 
             console.log('[Shell/Registration] 📡 Registering device with code:', code, 'platform:', platform);
 
-            const response = await fetch(`${state.API_BASE_URL}/api/devices/monitor/register`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
+            // Use APIClient for standardized response handling
+            const data = await window.APIClient.post(
+                `${state.API_BASE_URL}/api/devices/monitor/register`,
+                {
                     activation_code: code,
                     device_name: deviceName,
                     platform: platform
-                })
-            });
-
-            if (!response.ok) {
-                throw new Error(`Registration failed: ${response.status}`);
-            }
-
-            const data = await response.json();
+                }
+            );
 
             // Save to localStorage (PERSISTENT)
             localStorage.setItem('device_id', data.id);

@@ -1,238 +1,458 @@
-# Token Refresh Interceptor - Test Plan
+# API Interceptor Testing Guide
 
-## Implementation Summary
+## Quick Testing Steps
 
-Automatic token refresh interceptor has been implemented in the web-admin application with the following features:
+### 1. Enable Debug Logging
 
-### Changes Made:
-1. **api.js (lines 26-116)**: Complete token refresh logic with queue-based pattern
-2. **Login.jsx (lines 23-26)**: Store both access_token and refresh_token on login
-3. **Layout.jsx (lines 24-25)**: Clear both tokens on logout
-
-### Key Features:
-- **Automatic Token Refresh**: When 401 error occurs, automatically attempts to refresh token
-- **Queue Pattern**: Handles concurrent requests during token refresh (prevents multiple refresh calls)
-- **Retry Logic**: Automatically retries failed request with new token
-- **Infinite Loop Prevention**: Uses `_retry` flag to prevent circular refresh attempts
-- **Graceful Fallback**: Redirects to login only after refresh token expires
-
-### Architecture:
-```
-401 Error → Check if refreshing
-  ↓ No → Start refresh process
-  ↓ Yes → Queue request
-  ↓
-Refresh Token → Success?
-  ↓ Yes → Update tokens + Retry original request + Process queue
-  ↓ No → Clear tokens + Redirect to login
+Edit `/mnt/g/khoirul/signate/web-admin/.env`:
+```env
+VITE_DEBUG_API=true
 ```
 
----
-
-## Test Plan
-
-### Test 1: Normal Token Refresh Flow
-**Objective**: Verify automatic token refresh works when access token expires
-
-**Steps:**
-1. Login to web-admin (admin/admin123)
-2. Wait for access token to expire (default: 30 minutes, but can be shortened in backend config)
-   - OR manually expire token: `localStorage.setItem('token', 'expired_token')`
-3. Navigate to any page (e.g., Devices, Contents)
-4. Observe browser Network tab (F12 → Network)
-
-**Expected Result:**
-- First request fails with 401
-- `/api/auth/refresh` is called automatically
-- Original request is retried with new token
-- Page loads successfully without redirect to login
-- No user interaction required
-
-**Verification:**
-```javascript
-// Check tokens were updated in browser console
-console.log(localStorage.getItem('token')); // Should be new token
-console.log(localStorage.getItem('refresh_token')); // Should be new refresh token
+Restart dev server:
+```bash
+npm run dev
 ```
 
----
+### 2. Open Browser Console
 
-### Test 2: Concurrent Requests During Refresh
-**Objective**: Verify queue pattern prevents multiple refresh calls
+Navigate to Web Admin: `http://localhost:3000`
 
-**Steps:**
-1. Login to web-admin
-2. Manually expire token: `localStorage.setItem('token', 'expired_token')`
-3. Trigger multiple API calls simultaneously:
-   - Navigate to Dashboard (triggers multiple API calls for stats, devices, etc.)
-4. Monitor Network tab
+Open DevTools (F12) → Console tab
 
-**Expected Result:**
-- Only ONE `/api/auth/refresh` call is made
-- All other 401 requests are queued
-- After refresh succeeds, all queued requests are retried
-- All requests complete successfully
+### 3. Test Each Page
 
-**Verification:**
-- Network tab shows only 1 refresh call despite multiple 401s
-- Dashboard loads completely with all data
+#### Dashboard (`/`)
+**Expected Console Logs:**
+```
+[API] Unwrapping standardized response: {url: "/api/devices", success: true, ...}
+[API] Unwrapping standardized response: {url: "/api/content", success: true, ...}
+[API] Unwrapping standardized response: {url: "/api/tags", success: true, ...}
+[API] Unwrapping standardized response: {url: "/api/playlists", success: true, ...}
+```
 
----
+**Visual Check:**
+- [ ] Stats cards show correct numbers
+- [ ] Device list displays
+- [ ] Pending devices section works
+- [ ] Activity timeline loads
 
-### Test 3: Refresh Token Expiration
-**Objective**: Verify graceful fallback when refresh token expires
+#### Devices Page (`/devices`)
+**Expected Console Logs:**
+```
+[API] Unwrapping standardized response: {url: "/api/devices", success: true, ...}
+```
 
-**Steps:**
-1. Login to web-admin
-2. Manually expire BOTH tokens:
-   ```javascript
-   localStorage.setItem('token', 'expired_token');
-   localStorage.setItem('refresh_token', 'expired_refresh_token');
+**Visual Check:**
+- [ ] Device table populates
+- [ ] Search works
+- [ ] Filter by status works
+- [ ] Click device → modal opens with details
+- [ ] Speed test history loads
+
+**Actions to Test:**
+- [ ] Register new TV device
+- [ ] Approve pending device
+- [ ] Reject pending device
+- [ ] Edit device details
+- [ ] Delete device
+
+#### Content Page (`/content`)
+**Expected Console Logs:**
+```
+[API] Unwrapping standardized response: {url: "/api/content", success: true, ...}
+```
+
+**Visual Check:**
+- [ ] Content grid displays
+- [ ] Thumbnails load
+- [ ] Upload button works
+
+**Actions to Test:**
+- [ ] Upload new content
+- [ ] Edit content metadata
+- [ ] Delete content
+- [ ] Assign to device
+- [ ] Unassign from device
+
+#### Tags Page (`/tags`)
+**Expected Console Logs:**
+```
+[API] Unwrapping standardized response: {url: "/api/tags", success: true, ...}
+```
+
+**Actions to Test:**
+- [ ] Create new tag
+- [ ] Edit tag
+- [ ] Delete tag
+- [ ] Assign tag to device
+
+#### Playlists Page (`/playlists`)
+**Expected Console Logs:**
+```
+[API] Unwrapping standardized response: {url: "/api/playlists", success: true, ...}
+```
+
+**Actions to Test:**
+- [ ] Create playlist
+- [ ] Add content to playlist
+- [ ] Reorder content
+- [ ] Assign to devices
+- [ ] Delete playlist
+
+#### Activities Page (`/activities`)
+**Expected Console Logs:**
+```
+[API] Unwrapping standardized response: {url: "/api/activities", success: true, ...}
+[API] Unwrapping standardized response: {url: "/api/activities/stats", success: true, ...}
+```
+
+**Visual Check:**
+- [ ] Activity log table loads
+- [ ] Stats cards show numbers
+- [ ] Filters work
+- [ ] Pagination works
+
+#### Settings Page (`/settings`)
+
+**System Tab:**
+```
+[API] Unwrapping standardized response: {url: "/api/settings/system/info", ...}
+```
+
+**Actions to Test:**
+- [ ] View system info
+- [ ] Download database backup (should see `[API] Blob response - skipping unwrap`)
+- [ ] Clear cache
+
+**Users Tab:**
+```
+[API] Unwrapping standardized response: {url: "/api/users", success: true, ...}
+```
+
+**Actions to Test:**
+- [ ] List users
+- [ ] Create user
+- [ ] Edit user
+- [ ] Delete user
+
+**Firebird Integration Tab:**
+```
+[API] Unwrapping standardized response: {url: "/api/firebird/configs", ...}
+```
+
+**Actions to Test:**
+- [ ] List configs
+- [ ] Create config
+- [ ] Test connection
+- [ ] Delete config
+
+### 4. Error Testing
+
+#### Test 404 Error
+1. Manually edit a device ID in URL to invalid ID
+2. Open DevTools Console
+
+**Expected:**
+```
+[API] Standardized error response: {
+  url: "/api/devices/99999",
+  code: "NOT_FOUND",
+  message: "Device not found",
+  ...
+}
+```
+
+**Visual:**
+- [ ] Toast shows "Device not found"
+
+#### Test Validation Error
+1. Try creating a tag with empty name
+2. Check console
+
+**Expected:**
+```
+[API] Standardized error response: {
+  code: "VALIDATION_ERROR",
+  message: "Tag name is required",
+  field: "tag_name",
+  ...
+}
+```
+
+**Visual:**
+- [ ] Error message displays
+- [ ] Form field highlighted
+
+#### Test 401 Unauthorized
+1. Clear localStorage token: `localStorage.removeItem('token')`
+2. Try any API action
+
+**Expected:**
+- [ ] Redirects to `/login`
+
+### 5. Network Tab Verification
+
+Open DevTools → Network tab
+
+Filter: `Fetch/XHR`
+
+**For each request, verify:**
+
+1. **Request Headers:**
+   - `Content-Type: application/json`
+   - `Authorization: Bearer <token>` (if logged in)
+
+2. **Response (Raw):**
+   ```json
+   {
+     "success": true,
+     "data": { ... },
+     "meta": {
+       "timestamp": "2025-10-27T...",
+       "request_id": "...",
+       "version": "1.0.0"
+     }
+   }
    ```
-3. Navigate to any page
 
-**Expected Result:**
-- First request fails with 401
-- Refresh attempt fails (refresh token invalid)
-- Both tokens are cleared from localStorage
-- User is redirected to /login
-- Login page shows (no error, clean state)
+3. **Console Log Shows:**
+   ```
+   [API] Unwrapping standardized response: ...
+   ```
 
-**Verification:**
+4. **Component Receives:**
+   - Check React DevTools Props
+   - Should show unwrapped data
+
+### 6. Performance Testing
+
+#### Check Interceptor Overhead
+
+1. Open DevTools → Performance tab
+2. Start recording
+3. Navigate to Dashboard
+4. Stop recording
+5. Find `Response Interceptor` calls
+6. Verify execution time <1ms
+
+#### Memory Leak Test
+
+1. Navigate between pages 10 times
+2. Open DevTools → Memory tab
+3. Take heap snapshot
+4. Check for retained objects
+5. Verify no memory leaks from interceptor
+
+### 7. Edge Cases
+
+#### Empty Response
 ```javascript
-// In browser console after redirect
-console.log(localStorage.getItem('token')); // Should be null
-console.log(localStorage.getItem('refresh_token')); // Should be null
+// Backend returns: { success: true, data: [], meta: {...} }
+// Component should receive: []
 ```
 
----
+**Test:** Navigate to page with no data (empty playlists, no devices, etc.)
 
-### Test 4: Logout Cleanup
-**Objective**: Verify logout clears both tokens
-
-**Steps:**
-1. Login to web-admin
-2. Click logout button in navigation
-3. Check localStorage
-
-**Expected Result:**
-- User redirected to /login
-- Both `token` and `refresh_token` removed from localStorage
-
-**Verification:**
+#### Null Data
 ```javascript
-// In browser console after logout
-console.log(localStorage.getItem('token')); // Should be null
-console.log(localStorage.getItem('refresh_token')); // Should be null
+// Backend returns: { success: true, data: null, meta: {...} }
+// Component should receive: null
 ```
 
----
+**Test:** Request non-existent resource (returns null instead of error)
 
-## Manual Testing Shortcuts
-
-### Expire Access Token Only:
+#### Nested Data
 ```javascript
-// In browser console
-localStorage.setItem('token', 'expired_token');
-// Then navigate to any page
+// Backend returns:
+{
+  success: true,
+  data: {
+    devices: [...],
+    total: 10,
+    page: 1,
+    nested: {
+      more: "data"
+    }
+  },
+  meta: {...}
+}
+
+// Component should receive full nested structure
 ```
 
-### Expire Both Tokens:
+**Test:** Paginated endpoints (devices, activities, etc.)
+
+#### File Download (Blob)
 ```javascript
-// In browser console
-localStorage.setItem('token', 'expired_token');
-localStorage.setItem('refresh_token', 'expired_refresh_token');
-// Then navigate to any page
+// Should NOT unwrap blob responses
+// responseType: 'blob' should pass through unchanged
 ```
 
-### Check Current Tokens:
+**Test:**
+1. Go to Settings → System
+2. Click "Backup Database"
+3. Check console: `[API] Blob response - skipping unwrap`
+4. Verify file downloads correctly
+
+### 8. Concurrent Requests
+
+**Test:** Multiple parallel API calls
+
+1. Open Dashboard (loads 4+ endpoints simultaneously)
+2. Check console - should see multiple unwrapping logs
+3. Verify all data loads correctly
+4. No race conditions or data corruption
+
+### 9. Cleanup
+
+After testing, disable debug logging:
+
+```env
+VITE_DEBUG_API=false
+```
+
+Restart dev server:
+```bash
+npm run dev
+```
+
+## Expected Results Summary
+
+### Success Criteria
+✅ All pages load without errors
+✅ All CRUD operations work
+✅ Error messages display correctly
+✅ File downloads work (backups)
+✅ Console shows unwrapping logs (when debug enabled)
+✅ No console errors
+✅ No memory leaks
+✅ Performance impact <1ms per request
+
+### If Tests Fail
+
+#### Data shows as undefined
+**Cause:** Interceptor not unwrapping correctly
+**Fix:** Check backend response structure matches expected format
+
+#### Errors not showing
+**Cause:** Error transformation not working
+**Fix:** Verify error response has `error.response.data.detail`
+
+#### Blob downloads broken
+**Cause:** Blob responses being unwrapped
+**Fix:** Ensure `responseType: 'blob'` is set in API call
+
+#### Console flooded with logs
+**Cause:** Debug mode enabled in production
+**Fix:** Set `VITE_DEBUG_API=false`
+
+## Automated Testing (Future)
+
+### Unit Tests for Interceptor
+
 ```javascript
-// In browser console
-console.log({
-  access_token: localStorage.getItem('token'),
-  refresh_token: localStorage.getItem('refresh_token')
-});
+// tests/api-interceptor.test.js
+describe('API Response Interceptor', () => {
+  it('unwraps standardized response', () => {
+    const mockResponse = {
+      data: {
+        success: true,
+        data: { id: 1, name: 'Test' },
+        meta: { timestamp: '2025-10-27T10:30:00Z' }
+      }
+    }
+
+    // Test unwrapping logic
+    expect(unwrappedData).toEqual({ id: 1, name: 'Test' })
+  })
+
+  it('passes through legacy response', () => {
+    const mockResponse = {
+      data: { id: 1, name: 'Test' }
+    }
+
+    // Should not modify
+    expect(result).toEqual(mockResponse)
+  })
+
+  it('transforms standardized error', () => {
+    const mockError = {
+      response: {
+        data: {
+          success: false,
+          error: {
+            code: 'NOT_FOUND',
+            message: 'Not found'
+          }
+        }
+      }
+    }
+
+    // Should transform
+    expect(error.response.data.detail).toBe('Not found')
+  })
+})
 ```
 
-### Monitor Refresh Attempts:
+### E2E Tests
+
 ```javascript
-// Open Network tab (F12 → Network)
-// Filter by "refresh" to see refresh calls
-// Check request/response payload
+// e2e/api-integration.spec.js
+test('Dashboard loads with unwrapped API responses', async ({ page }) => {
+  await page.goto('/')
+
+  // Check console for unwrapping logs
+  page.on('console', msg => {
+    if (msg.text().includes('[API] Unwrapping')) {
+      console.log('✓ Unwrapping detected')
+    }
+  })
+
+  // Verify data displays
+  await expect(page.locator('.device-count')).toBeVisible()
+})
 ```
 
----
+## Monitoring in Production
 
-## Edge Cases Handled
+### Add Sentry/Error Tracking
 
-1. **No Refresh Token**: If refresh_token missing, immediately redirects to login
-2. **Network Errors**: Refresh failure treated as expired token → redirect to login
-3. **Concurrent Requests**: Queue pattern prevents race conditions
-4. **Infinite Loops**: `_retry` flag prevents circular refresh attempts
-5. **Non-401 Errors**: Other errors (404, 500, etc.) pass through normally
-
----
-
-## Configuration
-
-### Backend Token Lifetimes:
-```python
-# backend/app/core/config.py
-JWT_ACCESS_TOKEN_EXPIRE_MINUTES = 30  # Access token lifetime
-JWT_REFRESH_TOKEN_EXPIRE_DAYS = 7     # Refresh token lifetime
+```javascript
+// Log interceptor issues to error tracking
+if (error.response?.data?.success === false) {
+  Sentry.captureMessage('Standardized API Error', {
+    extra: {
+      code: error.response.data.error.code,
+      requestId: error.response.meta.request_id
+    }
+  })
+}
 ```
 
-To test faster, temporarily reduce access token lifetime:
-```python
-JWT_ACCESS_TOKEN_EXPIRE_MINUTES = 1  # 1 minute for testing
+### Add Analytics
+
+```javascript
+// Track API performance
+if (isStandardizedFormat) {
+  analytics.track('API Response Unwrapped', {
+    endpoint: response.config.url,
+    duration: response.meta.timestamp
+  })
+}
 ```
 
----
+## Support Contacts
 
-## Troubleshooting
+**Frontend Issues:**
+- Check `/mnt/g/khoirul/signate/web-admin/src/services/api.js`
+- Review console logs with `VITE_DEBUG_API=true`
 
-### Issue: Refresh loop (multiple refresh calls)
-- **Cause**: `_retry` flag not working
-- **Check**: `originalRequest._retry` should be set to `true`
+**Backend Issues:**
+- Check `/mnt/g/khoirul/signate/backend/app/schemas/common.py`
+- Verify response format matches schema
 
-### Issue: Tokens not updating
-- **Cause**: Response structure mismatch
-- **Check**: Backend returns `response.data.data.access_token` (not `response.data.access_token`)
-
-### Issue: Still redirecting immediately on 401
-- **Cause**: Refresh token missing
-- **Check**: Login stores both tokens in localStorage
-
-### Issue: Queue not processing
-- **Cause**: `processQueue` not called after refresh
-- **Check**: Both success and error paths call `processQueue`
-
----
-
-## Success Criteria
-
-✅ Token refreshes automatically on 401 without user intervention
-✅ Multiple concurrent requests handled efficiently (single refresh call)
-✅ Failed refresh redirects to login cleanly
-✅ Logout clears both tokens
-✅ No infinite refresh loops
-✅ Original requests retry successfully after refresh
-
----
-
-## Next Steps (Optional Enhancements)
-
-1. **Proactive Refresh**: Refresh token before it expires (check expiry in JWT)
-2. **Refresh Token Rotation**: Backend rotates refresh token on each use (already implemented!)
-3. **Session Timeout Warning**: Show modal before redirecting to login
-4. **Analytics**: Track refresh success/failure rates
-5. **Retry Strategy**: Add exponential backoff for network errors
-
----
-
-## Related Files
-
-- `/mnt/g/khoirul/signate/web-admin/src/services/api.js` - Token refresh logic
-- `/mnt/g/khoirul/signate/web-admin/src/pages/Login.jsx` - Store tokens on login
-- `/mnt/g/khoirul/signate/web-admin/src/components/Layout.jsx` - Clear tokens on logout
-- `/mnt/g/khoirul/signate/backend/app/api/auth.py` - Backend refresh endpoint
+**Integration Issues:**
+- Review API_INTEGRATION_FIX.md
+- Check network tab in browser DevTools
+- Verify request_id in logs for correlation

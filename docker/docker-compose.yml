@@ -1,9 +1,22 @@
 version: '3.8'
 
 # =============================================================================
-# SMART TV DIGITAL SIGNAGE - UNIFIED DOCKER COMPOSE
+# SMART TV DIGITAL SIGNAGE - MICROSERVICES DOCKER COMPOSE
 # =============================================================================
-# Complete setup: PostgreSQL + Backend API + Anthias (all-in-one)
+# Complete setup: PostgreSQL + Redis + Backend API + Celery + Viewer + Storage
+#
+# Services:
+#   - postgres:         PostgreSQL database (port 5433)
+#   - redis:            Message broker + cache (port 6379) - Shared
+#   - backend-api:      FastAPI application (port 8001)
+#   - celery-worker:    Backend background tasks (concurrency 4)
+#   - celery-beat:      Backend periodic tasks scheduler
+#   - flower:           Celery monitoring UI (port 5555)
+#   - viewer:           Content viewer Nginx (port 8080)
+#   - storage-server:   Minimal storage service (port 8000)
+#   - storage-celery:   Storage background tasks
+#   - storage-websocket: Storage WebSocket server
+#   - storage-nginx:    Storage reverse proxy
 #
 # Usage:
 #   docker-compose up -d          # Start all services
@@ -11,6 +24,12 @@ version: '3.8'
 #   docker-compose logs -f        # View logs
 #   docker-compose ps             # Check status
 #   docker-compose build --no-cache  # Rebuild from scratch
+#
+# Monitoring:
+#   Flower UI: http://localhost:5555 (admin/admin123)
+#   Backend API Docs: http://localhost:8001/docs
+#   Viewer: http://localhost:8080
+#   Storage API: http://localhost:8000
 #
 # Rebuild strategy:
 #   1. docker-compose down --volumes --remove-orphans
@@ -53,7 +72,12 @@ services:
     restart: unless-stopped
     ports:
       - "${REDIS_EXTERNAL_PORT:-6379}:6379"
-    command: redis-server --appendonly yes
+    command: >
+      redis-server
+      --appendonly yes
+      --maxmemory 512mb
+      --maxmemory-policy allkeys-lru
+      --save 60 1000
     volumes:
       - redis-data:/data
     healthcheck:
@@ -63,6 +87,10 @@ services:
       retries: 5
     networks:
       - signage-network
+    deploy:
+      resources:
+        limits:
+          memory: 512M
 
   # ===========================================================================
   # Backend API (FastAPI)
@@ -79,7 +107,7 @@ services:
       - DATABASE_URL=postgresql://${POSTGRES_USER:-signage_user}:${POSTGRES_PASSWORD:-your_password_here}@postgres:5432/${POSTGRES_DB:-signage_db}
       - REDIS_URL=${REDIS_URL:-redis://redis:6379}
       - ANTHIAS_API_URL=${ANTHIAS_API_URL}
-      - ANTHIAS_INTERNAL_URL=${ANTHIAS_INTERNAL_URL:-http://anthias-nginx}
+      - ANTHIAS_INTERNAL_URL=${ANTHIAS_INTERNAL_URL:-http://storage-nginx}
       - API_BASE_URL=${API_BASE_URL}
       - SECRET_KEY=${SECRET_KEY:-your-secret-key-change-in-production}
       - JWT_SECRET=${JWT_SECRET}
@@ -101,13 +129,126 @@ services:
       - signage-network
 
   # ===========================================================================
-  # Anthias Server (Digital Signage CMS)
+  # Celery Worker (Backend Background Tasks)
   # ===========================================================================
-  anthias-server:
+  celery-worker:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    container_name: signage-celery-worker
+    restart: unless-stopped
+    command: celery -A app.celery_app worker --loglevel=info --concurrency=4
+    environment:
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-signage_user}:${POSTGRES_PASSWORD:-your_password_here}@postgres:5432/${POSTGRES_DB:-signage_db}
+      - REDIS_URL=${REDIS_URL:-redis://redis:6379}
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - ANTHIAS_API_URL=${ANTHIAS_API_URL}
+      - ANTHIAS_INTERNAL_URL=${ANTHIAS_INTERNAL_URL:-http://storage-nginx}
+      - SECRET_KEY=${SECRET_KEY:-your-secret-key-change-in-production}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+    env_file:
+      - ../.env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      backend-api:
+        condition: service_started
+    volumes:
+      - ../backend/app:/app/app
+      - ../data:/app/data
+    healthcheck:
+      test: ["CMD-SHELL", "celery -A app.celery_app inspect ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - signage-network
+
+  # ===========================================================================
+  # Celery Beat (Backend Periodic Tasks Scheduler)
+  # ===========================================================================
+  celery-beat:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    container_name: signage-celery-beat
+    restart: unless-stopped
+    command: celery -A app.celery_app beat --loglevel=info
+    environment:
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-signage_user}:${POSTGRES_PASSWORD:-your_password_here}@postgres:5432/${POSTGRES_DB:-signage_db}
+      - REDIS_URL=${REDIS_URL:-redis://redis:6379}
+      - SECRET_KEY=${SECRET_KEY:-your-secret-key-change-in-production}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+    env_file:
+      - ../.env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      backend-api:
+        condition: service_started
+    volumes:
+      - ../backend/app:/app/app
+    networks:
+      - signage-network
+
+  # ===========================================================================
+  # Flower (Celery Monitoring UI)
+  # ===========================================================================
+  flower:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    container_name: signage-flower
+    restart: unless-stopped
+    command: celery -A app.celery_app flower --port=5555 --basic_auth=admin:admin123
+    ports:
+      - "${FLOWER_EXTERNAL_PORT:-5555}:5555"
+    environment:
+      - REDIS_URL=${REDIS_URL:-redis://redis:6379}
+      - CELERY_BROKER_URL=${CELERY_BROKER_URL:-redis://redis:6379/0}
+    env_file:
+      - ../.env
+    depends_on:
+      redis:
+        condition: service_healthy
+      celery-worker:
+        condition: service_started
+    networks:
+      - signage-network
+
+  # ===========================================================================
+  # Viewer (Content Viewer - Nginx Static Server)
+  # ===========================================================================
+  viewer:
+    image: nginx:alpine
+    container_name: signage-viewer
+    restart: unless-stopped
+    ports:
+      - "${VIEWER_EXTERNAL_PORT:-8080}:80"
+    volumes:
+      - ../viewer:/usr/share/nginx/html:ro
+      - ./nginx/viewer.conf:/etc/nginx/conf.d/default.conf:ro
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - signage-network
+
+  # ===========================================================================
+  # Storage Server (Minimal Storage Service)
+  # ===========================================================================
+  storage-server:
     build:
       context: ../anthias
       dockerfile: docker/Dockerfile.server
-    container_name: anthias-server
+    container_name: signage-storage-server
     restart: unless-stopped
     environment:
       - HOME=${ANTHIAS_HOME:-/data}
@@ -126,13 +267,13 @@ services:
       - signage-network
 
   # ===========================================================================
-  # Anthias Celery (Background Tasks)
+  # Storage Celery (Background Tasks)
   # ===========================================================================
-  anthias-celery:
+  storage-celery:
     build:
       context: ../anthias
       dockerfile: docker/Dockerfile.celery
-    container_name: anthias-celery
+    container_name: signage-storage-celery
     restart: unless-stopped
     environment:
       - HOME=${ANTHIAS_HOME:-/data}
@@ -143,18 +284,18 @@ services:
       - ../anthias-assets:/data/screenly_assets
     depends_on:
       - redis
-      - anthias-server
+      - storage-server
     networks:
       - signage-network
 
   # ===========================================================================
-  # Anthias WebSocket Server
+  # Storage WebSocket Server
   # ===========================================================================
-  anthias-websocket:
+  storage-websocket:
     build:
       context: ../anthias
       dockerfile: docker/Dockerfile.websocket
-    container_name: anthias-websocket
+    container_name: signage-storage-websocket
     restart: unless-stopped
     environment:
       - HOME=${ANTHIAS_HOME:-/data}
@@ -166,13 +307,13 @@ services:
       - signage-network
 
   # ===========================================================================
-  # Anthias Nginx (Reverse Proxy with CORS)
+  # Storage Nginx (Reverse Proxy with CORS)
   # ===========================================================================
-  anthias-nginx:
+  storage-nginx:
     build:
       context: ../anthias
       dockerfile: docker/Dockerfile.nginx
-    container_name: anthias-nginx
+    container_name: signage-storage-nginx
     restart: unless-stopped
     ports:
       - "${ANTHIAS_EXTERNAL_PORT:-8000}:80"
@@ -181,8 +322,8 @@ services:
       - ../anthias-assets:/data/screenly_assets
       - ../anthias/staticfiles:/data/screenly/staticfiles
     depends_on:
-      - anthias-server
-      - anthias-websocket
+      - storage-server
+      - storage-websocket
     networks:
       - signage-network
 
