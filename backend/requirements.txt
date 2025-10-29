@@ -48,6 +48,9 @@ pytz==2023.3  # Timezone handling
 python-magic==0.4.27  # File type detection (optional)
 pillow==10.2.0  # Image processing (optional)
 
+# Video Processing
+ffmpeg-python==0.2.0  # FFmpeg wrapper for video processing
+
 # Logging
 loguru==0.7.2  # Better logging (optional)
 python-json-logger==2.0.7  # JSON structured logging for production

@@ -343,5 +343,3 @@ volumes:
     driver: local
   redis-data:
     driver: local
-  anthias-data:
-    driver: local

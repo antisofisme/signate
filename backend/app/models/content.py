@@ -43,6 +43,12 @@ class Content(Base):
         audio_codec: Audio codec name (video only)
         audio_bitrate: Audio bitrate in kbps (video only)
         audio_sample_rate: Audio sample rate in Hz (video only)
+        transcoding_status: Status of transcoding job (pending/processing/completed/failed/cancelled)
+        transcoding_job_id: Celery task ID for transcoding job
+        transcoding_progress: Transcoding progress percentage (0-100)
+        transcoding_error: Error message if transcoding failed
+        hls_master_playlist_path: Path to HLS master playlist (master.m3u8)
+        hls_variants: JSON array of HLS variant information
         is_active: Whether content is active
         is_template: Whether this content uses template variables
         template_variables: JSON array of variable names used in template
@@ -89,6 +95,14 @@ class Content(Base):
     audio_bitrate = Column(Integer)  # kbps (video only)
     audio_sample_rate = Column(Integer)  # Hz (video only)
 
+    # Transcoding Fields (for HLS streaming)
+    transcoding_status = Column(String(50), default=None, nullable=True)  # pending/processing/completed/failed/cancelled
+    transcoding_job_id = Column(String(200), nullable=True)  # Celery task ID
+    transcoding_progress = Column(Integer, default=0, nullable=True)  # 0-100%
+    transcoding_error = Column(Text, nullable=True)  # Error message
+    hls_master_playlist_path = Column(String(500), nullable=True)  # Path to master.m3u8
+    hls_variants = Column(JSON, nullable=True)  # Array of variant info
+
     # Status
     is_active = Column(Boolean, default=True, index=True)
 
@@ -134,6 +148,13 @@ class Content(Base):
             "audio_codec": self.audio_codec,
             "audio_bitrate": self.audio_bitrate,
             "audio_sample_rate": self.audio_sample_rate,
+            # Transcoding fields
+            "transcoding_status": self.transcoding_status,
+            "transcoding_job_id": self.transcoding_job_id,
+            "transcoding_progress": self.transcoding_progress,
+            "transcoding_error": self.transcoding_error,
+            "hls_master_playlist_path": self.hls_master_playlist_path,
+            "hls_variants": self.hls_variants,
             "is_active": self.is_active,
             # Template & Multi-language fields
             "is_template": self.is_template,
