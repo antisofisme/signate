@@ -242,90 +242,90 @@ services:
       - signage-network
 
   # ===========================================================================
-  # Storage Server (Minimal Storage Service)
+  # Storage Server (Minimal Storage Service) - DISABLED FOR NOW
   # ===========================================================================
-  storage-server:
-    build:
-      context: ../anthias
-      dockerfile: docker/Dockerfile.server
-    container_name: signage-storage-server
-    restart: unless-stopped
-    environment:
-      - HOME=${ANTHIAS_HOME:-/data}
-      - LISTEN=${ANTHIAS_LISTEN:-0.0.0.0}
-      - CELERY_BROKER_URL=${CELERY_BROKER_URL:-redis://redis:6379/0}
-      - CELERY_RESULT_BACKEND=${CELERY_RESULT_BACKEND:-redis://redis:6379/0}
-      - ZMQ_PUBLISHER_PORT=${ZMQ_PUBLISHER_PORT:-10001}
-      - ZMQ_COLLECTOR_PORT=${ZMQ_COLLECTOR_PORT:-5558}
-    volumes:
-      - anthias-data:/data
-      - ../anthias-assets:/data/screenly_assets
-      - ../anthias/staticfiles:/data/screenly/staticfiles
-    depends_on:
-      - redis
-    networks:
-      - signage-network
+  # storage-server:
+  #   build:
+  #     context: ../anthias
+  #     dockerfile: docker/Dockerfile.server
+  #   container_name: signage-storage-server
+  #   restart: unless-stopped
+  #   environment:
+  #     - HOME=${ANTHIAS_HOME:-/data}
+  #     - LISTEN=${ANTHIAS_LISTEN:-0.0.0.0}
+  #     - CELERY_BROKER_URL=${CELERY_BROKER_URL:-redis://redis:6379/0}
+  #     - CELERY_RESULT_BACKEND=${CELERY_RESULT_BACKEND:-redis://redis:6379/0}
+  #     - ZMQ_PUBLISHER_PORT=${ZMQ_PUBLISHER_PORT:-10001}
+  #     - ZMQ_COLLECTOR_PORT=${ZMQ_COLLECTOR_PORT:-5558}
+  #   volumes:
+  #     - anthias-data:/data
+  #     - ../anthias-assets:/data/screenly_assets
+  #     - ../anthias/staticfiles:/data/screenly/staticfiles
+  #   depends_on:
+  #     - redis
+  #   networks:
+  #     - signage-network
 
   # ===========================================================================
-  # Storage Celery (Background Tasks)
+  # Storage Celery (Background Tasks) - DISABLED FOR NOW
   # ===========================================================================
-  storage-celery:
-    build:
-      context: ../anthias
-      dockerfile: docker/Dockerfile.celery
-    container_name: signage-storage-celery
-    restart: unless-stopped
-    environment:
-      - HOME=${ANTHIAS_HOME:-/data}
-      - CELERY_BROKER_URL=${CELERY_BROKER_URL:-redis://redis:6379/0}
-      - CELERY_RESULT_BACKEND=${CELERY_RESULT_BACKEND:-redis://redis:6379/0}
-    volumes:
-      - anthias-data:/data
-      - ../anthias-assets:/data/screenly_assets
-    depends_on:
-      - redis
-      - storage-server
-    networks:
-      - signage-network
+  # storage-celery:
+  #   build:
+  #     context: ../anthias
+  #     dockerfile: docker/Dockerfile.celery
+  #   container_name: signage-storage-celery
+  #   restart: unless-stopped
+  #   environment:
+  #     - HOME=${ANTHIAS_HOME:-/data}
+  #     - CELERY_BROKER_URL=${CELERY_BROKER_URL:-redis://redis:6379/0}
+  #     - CELERY_RESULT_BACKEND=${CELERY_RESULT_BACKEND:-redis://redis:6379/0}
+  #   volumes:
+  #     - anthias-data:/data
+  #     - ../anthias-assets:/data/screenly_assets
+  #   depends_on:
+  #     - redis
+  #     - storage-server
+  #   networks:
+  #     - signage-network
 
   # ===========================================================================
-  # Storage WebSocket Server
+  # Storage WebSocket Server - DISABLED FOR NOW
   # ===========================================================================
-  storage-websocket:
-    build:
-      context: ../anthias
-      dockerfile: docker/Dockerfile.websocket
-    container_name: signage-storage-websocket
-    restart: unless-stopped
-    environment:
-      - HOME=${ANTHIAS_HOME:-/data}
-    volumes:
-      - anthias-data:/data
-    depends_on:
-      - redis
-    networks:
-      - signage-network
+  # storage-websocket:
+  #   build:
+  #     context: ../anthias
+  #     dockerfile: docker/Dockerfile.websocket
+  #   container_name: signage-storage-websocket
+  #   restart: unless-stopped
+  #   environment:
+  #     - HOME=${ANTHIAS_HOME:-/data}
+  #   volumes:
+  #     - anthias-data:/data
+  #   depends_on:
+  #     - redis
+  #   networks:
+  #     - signage-network
 
   # ===========================================================================
-  # Storage Nginx (Reverse Proxy with CORS)
+  # Storage Nginx (Reverse Proxy with CORS) - DISABLED FOR NOW
   # ===========================================================================
-  storage-nginx:
-    build:
-      context: ../anthias
-      dockerfile: docker/Dockerfile.nginx
-    container_name: signage-storage-nginx
-    restart: unless-stopped
-    ports:
-      - "${ANTHIAS_EXTERNAL_PORT:-8000}:80"
-    volumes:
-      - ../anthias/docker/nginx/nginx.development.conf:/etc/nginx/sites-enabled/nginx.development.conf:ro
-      - ../anthias-assets:/data/screenly_assets
-      - ../anthias/staticfiles:/data/screenly/staticfiles
-    depends_on:
-      - storage-server
-      - storage-websocket
-    networks:
-      - signage-network
+  # storage-nginx:
+  #   build:
+  #     context: ../anthias
+  #     dockerfile: docker/Dockerfile.nginx
+  #   container_name: signage-storage-nginx
+  #   restart: unless-stopped
+  #   ports:
+  #     - "${ANTHIAS_EXTERNAL_PORT:-8000}:80"
+  #   volumes:
+  #     - ../anthias/docker/nginx/nginx.development.conf:/etc/nginx/sites-enabled/nginx.development.conf:ro
+  #     - ../anthias-assets:/data/screenly_assets
+  #     - ../anthias/staticfiles:/data/screenly/staticfiles
+  #   depends_on:
+  #     - storage-server
+  #     - storage-websocket
+  #   networks:
+  #     - signage-network
 
 # =============================================================================
 # Networks

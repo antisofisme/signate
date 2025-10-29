@@ -28,6 +28,11 @@
 ✅ Dockerfile optimized with PYTHONDONTWRITEBYTECODE=1 to prevent build failures
 ✅ WebOS IPK packaging via webos-app folder (copies from viewer)
 
+## Default Credentials
+- **Username**: `admin`
+- **Password**: `admin123`
+- **Password Hash** (bcrypt): `$2b$12$KK.KGcUEcVCSYotdWlLOP.7oHoGtQbdqWUbBVsvf36r2ne56ywwd2`
+
 ## Important Notes
 - ⚠️ **ALL services MUST run on SERVER (192.168.5.12), NOT localhost**
 - ✅ Backend API is running in Docker container (signage-backend)
@@ -66,10 +71,10 @@ npm run dev  # untuk frontend
 uvicorn app.main:app --reload  # untuk backend
 
 # 3. Sync ke SERVER menggunakan scp/rsync
-sshpass -p 'Password@2021' scp -r file_yang_diubah gzjbbk@192.168.5.12:/home/gzjbbk/signate/
+sshpass -p 'Password@2021' scp -r file_yang_diubah gzjbbk@192.168.5.12:/home/gzjbbk/prototipe2/
 
 # 4. Rebuild container di server jika diperlukan
-sshpass -p 'Password@2021' ssh gzjbbk@192.168.5.12 "cd /home/gzjbbk/signate && docker-compose up -d --build backend-api"
+sshpass -p 'Password@2021' ssh gzjbbk@192.168.5.12 "cd /home/gzjbbk/prototipe2 && docker-compose -f docker/docker-compose.yml up -d --build backend-api"
 ```
 
 ### ⚠️ Konsekuensi Jika TIDAK Sinkron:
@@ -83,3 +88,99 @@ sshpass -p 'Password@2021' ssh gzjbbk@192.168.5.12 "cd /home/gzjbbk/signate && d
 - **COMMIT ke Git setelah update sukses di kedua lokasi**
 - **Test di local sebelum deploy ke server**
 - **Dokumentasikan perubahan di changelog atau commit message**
+
+## 🚀 Docker Compose Best Practices
+
+### ⚠️ CRITICAL: Run from Parent Directory
+**SELALU jalankan docker-compose dari parent directory, BUKAN dari subdirectory docker/**
+
+```bash
+# ✅ CORRECT - Environment variables akan terload dengan benar
+cd /home/gzjbbk/prototipe2
+docker-compose -f docker/docker-compose.yml up -d
+
+# ❌ WRONG - CORS_ORIGINS dan env vars lainnya TIDAK akan terload!
+cd /home/gzjbbk/prototipe2/docker
+docker-compose up -d
+```
+
+**Kenapa?** Karena docker-compose mencari file `.env` di current directory. Kalau dijalankan dari `docker/`, file `../.env` tidak terbaca dengan benar, menyebabkan:
+- CORS_ORIGINS kosong → CORS error di frontend
+- Environment variables lain tidak terload
+- Backend tidak bisa connect ke services lain
+
+### 🔧 Common Issues & Solutions
+
+#### 1. CORS Error - "No Access-Control-Allow-Origin header"
+**Symptom**: Login di web admin gagal dengan CORS error
+**Root Cause**: docker-compose dijalankan dari subdirectory docker/, sehingga CORS_ORIGINS tidak terload
+**Solution**:
+```bash
+# Stop all containers
+cd /home/gzjbbk/prototipe2
+docker-compose -f docker/docker-compose.yml down
+
+# Restart from parent directory
+docker-compose -f docker/docker-compose.yml up -d
+
+# Verify CORS loaded
+docker logs signage-backend 2>&1 | grep "CORS enabled"
+# Should show: "CORS enabled for origins: ['http://localhost:3000', ...]"
+```
+
+#### 2. Login Gagal - "Invalid salt" Error
+**Symptom**: Login returns 500 error, backend logs shows "ValueError: Invalid salt"
+**Root Cause**: Password hash di database korup (bash meng-interpret dollar signs)
+**Solution**:
+```bash
+# Reset password menggunakan SQL file (hindari escaping issue)
+echo "UPDATE users SET password_hash = '\$2b\$12\$KK.KGcUEcVCSYotdWlLOP.7oHoGtQbdqWUbBVsvf36r2ne56ywwd2' WHERE username='admin';" > /tmp/reset_pass.sql
+
+docker exec -i signage-postgres psql -U signage_user -d signage_db < /tmp/reset_pass.sql
+
+# Verify
+docker exec signage-postgres psql -U signage_user -d signage_db -c "SELECT username, password_hash FROM users WHERE username='admin';"
+```
+
+#### 3. Database Init - Fresh Install
+**Jika perlu reset database dari awal:**
+```bash
+# Stop all services
+cd /home/gzjbbk/prototipe2
+docker-compose -f docker/docker-compose.yml down --volumes
+
+# Remove all data (HATI-HATI! Data akan hilang)
+docker volume rm signate_postgres-data signate_redis-data signate_anthias-data
+
+# Start fresh - init.sql akan dijalankan otomatis
+docker-compose -f docker/docker-compose.yml up -d
+
+# Wait for database to initialize
+sleep 10
+
+# Verify admin user exists
+docker exec signage-postgres psql -U signage_user -d signage_db -c "SELECT username, role FROM users WHERE username='admin';"
+```
+
+### 📋 Quick Reference Commands
+
+```bash
+# Check all services status
+docker-compose -f docker/docker-compose.yml ps
+
+# View logs for specific service
+docker logs signage-backend --tail 50
+docker logs signage-postgres --tail 50
+
+# Restart specific service
+docker-compose -f docker/docker-compose.yml restart backend-api
+
+# Rebuild and restart
+docker-compose -f docker/docker-compose.yml up -d --build backend-api
+
+# Access database
+docker exec -it signage-postgres psql -U signage_user -d signage_db
+
+# Check environment variables in container
+docker exec signage-backend env | grep CORS_ORIGINS
+```
