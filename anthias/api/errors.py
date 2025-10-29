@@ -1,2 +1,0 @@
-class AssetCreationError(Exception):
-    pass

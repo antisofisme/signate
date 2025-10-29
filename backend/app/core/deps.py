@@ -8,9 +8,10 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.core.security.jwt import verify_token
+from app.core.security.jwt import verify_token, verify_device_token
 from app.core.config import settings
 from app.models.user import User
+from app.models.device import Device
 
 # HTTP Bearer token scheme
 security = HTTPBearer(auto_error=False)  # Don't auto-error to allow optional auth
@@ -124,6 +125,29 @@ def get_current_superuser(
     return current_user
 
 
+def require_admin(
+    current_user: User = Depends(get_current_active_user)
+) -> User:
+    """
+    Require admin/superuser privileges
+
+    Args:
+        current_user: Current active user from get_current_active_user dependency
+
+    Returns:
+        User: Admin user
+
+    Raises:
+        HTTPException: If user is not an admin/superuser
+    """
+    if not current_user.is_superuser:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin access required"
+        )
+    return current_user
+
+
 def get_optional_user(
     credentials: Optional[HTTPAuthorizationCredentials] = Depends(security),
     db: Session = Depends(get_db)
@@ -170,3 +194,72 @@ def get_optional_user(
         )
 
     return get_current_user(credentials, db)
+
+
+def get_current_device(
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    db: Session = Depends(get_db)
+) -> Device:
+    """
+    Get current authenticated device from JWT token
+
+    Args:
+        credentials: HTTP Bearer credentials
+        db: Database session
+
+    Returns:
+        Device: Authenticated device
+
+    Raises:
+        HTTPException: If token is invalid or device not found
+
+    Notes:
+        - Verifies device JWT token
+        - Extracts device_id from token payload
+        - Returns Device object from database
+    """
+    # Check if credentials provided
+    if credentials is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Device not authenticated",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    token = credentials.credentials
+
+    # Verify device token
+    payload = verify_device_token(token)
+    if not payload:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid device authentication credentials",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    # Get device_id from token
+    device_id: Optional[int] = payload.get("device_id")
+    if device_id is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid device authentication credentials",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    # Get device from database
+    device = db.query(Device).filter(Device.id == device_id).first()
+    if device is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Device not found",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    # Check if device is active
+    if device.status != "active":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Device is not active"
+        )
+
+    return device

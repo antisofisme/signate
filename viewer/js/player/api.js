@@ -14,9 +14,28 @@ window.PlayerAPI = {
             window.PlayerUI.hideError();
             window.PlayerUI.showLoading('Loading playlist...');
 
-            const response = await fetch(`${state.API_BASE_URL}/api/client/playlist?device_id=${state.deviceId}`);
+            // Add Authorization header with JWT token
+            const headers = window.TokenManager.addAuthHeader({
+                'Content-Type': 'application/json'
+            });
+
+            const response = await fetch(`${state.API_BASE_URL}/api/client/playlist`, {
+                headers: await headers
+            });
 
             if (!response.ok) {
+                // 401 = Unauthorized (token invalid/expired)
+                if (response.status === 401) {
+                    console.warn('[Player] Unauthorized - attempting token refresh');
+                    const handled = await window.TokenManager.handle401(state.API_BASE_URL);
+                    if (handled) {
+                        // Token refreshed, retry request
+                        return this.loadPlaylist();
+                    }
+                    // handle401 will reload the page if refresh fails
+                    return;
+                }
+
                 // 404 = No content assigned yet (normal, not an error)
                 if (response.status === 404) {
                     console.log('[Player] No content assigned yet');
@@ -71,7 +90,20 @@ window.PlayerAPI = {
         const state = window.PlayerState;
 
         try {
-            const response = await fetch(`${state.API_BASE_URL}/api/client/playlist?device_id=${state.deviceId}`);
+            // Add Authorization header with JWT token
+            const headers = window.TokenManager.addAuthHeader({
+                'Content-Type': 'application/json'
+            });
+
+            const response = await fetch(`${state.API_BASE_URL}/api/client/playlist`, {
+                headers: await headers
+            });
+
+            // Handle 401 silently for background checks
+            if (response.status === 401) {
+                console.warn('[Player] Token expired during playlist check, will refresh on next load');
+                return;
+            }
 
             if (!response.ok) return;
 

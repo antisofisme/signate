@@ -1,0 +1,89 @@
+"""
+Celery Configuration for Background Tasks
+Handles async processing for transcoding, notifications, etc.
+"""
+
+from celery import Celery
+from app.core.config import settings
+import logging
+from app.core.logging import StructuredLogger
+
+logger = StructuredLogger(__name__)
+
+# Create Celery instance
+celery_app = Celery(
+    'signage_backend',
+    broker=settings.REDIS_URL,
+    backend=settings.REDIS_URL,
+    include=[
+        'app.tasks.transcoding',
+        'app.tasks.notifications',
+        'app.tasks.maintenance'
+    ]
+)
+
+# Celery configuration
+celery_app.conf.update(
+    # Task settings
+    task_serializer='json',
+    accept_content=['json'],
+    result_serializer='json',
+    timezone='UTC',
+    enable_utc=True,
+
+    # Result backend settings
+    result_expires=3600,  # Results expire after 1 hour
+    result_backend_always_retry=True,
+    result_backend_max_retries=10,
+
+    # Task execution settings
+    task_track_started=True,
+    task_time_limit=1800,  # 30 minutes hard limit
+    task_soft_time_limit=1500,  # 25 minutes soft limit
+    task_acks_late=True,
+    task_reject_on_worker_lost=True,
+
+    # Worker settings
+    worker_prefetch_multiplier=4,
+    worker_max_tasks_per_child=1000,
+    worker_disable_rate_limits=False,
+    worker_send_task_events=True,
+
+    # Queue routing
+    task_routes={
+        'transcode_video': {'queue': 'transcoding'},
+        'send_notification': {'queue': 'notifications'},
+        'cleanup_old_files': {'queue': 'maintenance'},
+    },
+
+    # Retry settings
+    task_autoretry_for=(Exception,),
+    task_max_retries=3,
+    task_retry_backoff=True,
+    task_retry_backoff_max=600,  # Max 10 minutes between retries
+    task_retry_jitter=True,
+
+    # Beat schedule (periodic tasks)
+    beat_schedule={
+        'cleanup-old-transcoded-files': {
+            'task': 'cleanup_old_files',
+            'schedule': 3600.0,  # Every hour
+            'options': {'queue': 'maintenance'}
+        },
+        'check-device-heartbeats': {
+            'task': 'check_device_heartbeats',
+            'schedule': 60.0,  # Every minute
+            'options': {'queue': 'maintenance'}
+        },
+    },
+
+    # Monitoring
+    worker_send_task_events=True,
+    task_send_sent_event=True,
+)
+
+# Initialize Celery on import
+logger.info("Celery app configured with Redis backend")
+
+if __name__ == '__main__':
+    celery_app.start()

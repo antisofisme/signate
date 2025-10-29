@@ -281,3 +281,50 @@ class HeartbeatResponse(BaseModel):
                 "volume_enabled": True
             }
         }
+
+
+class DeviceActivationResponse(BaseModel):
+    """Response schema for device activation with JWT token"""
+    device: DeviceResponse
+    token: str
+    token_expires_at: datetime
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "device": {
+                    "id": 1,
+                    "device_type": "monitor",
+                    "device_name": "Monitor-123456",
+                    "status": "active"
+                },
+                "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+                "token_expires_at": "2025-11-21T10:00:00"
+            }
+        }
+
+
+class DeviceTokenRefreshRequest(BaseModel):
+    """Request schema for refreshing device token"""
+    token: str = Field(..., description="Current device JWT token")
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+            }
+        }
+
+
+class DeviceTokenRefreshResponse(BaseModel):
+    """Response schema for device token refresh"""
+    token: str
+    token_expires_at: datetime
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+                "token_expires_at": "2025-11-21T10:00:00"
+            }
+        }

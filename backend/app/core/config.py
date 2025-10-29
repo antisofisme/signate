@@ -102,6 +102,7 @@ class Settings(BaseSettings):
             "http://localhost:3000",
             "http://localhost:8000",
             "http://localhost:8080",
+            "webos-local://",  # WebOS TV app
         ],
         env="CORS_ORIGINS",
         description="Comma-separated list of allowed CORS origins (configure in .env)"

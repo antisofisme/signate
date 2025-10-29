@@ -111,9 +111,14 @@ window.ShellHeartbeat = {
                     }
                 }
 
+                // Add Authorization header with JWT token
+                const headers = window.TokenManager.addAuthHeader({
+                    'Content-Type': 'application/json'
+                });
+
                 const response = await fetch(`${state.API_BASE_URL}/api/devices/heartbeat`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: await headers,
                     body: JSON.stringify({
                         device_id: parseInt(state.deviceId),
                         platform: this.detectPlatform(),           // 'webOS', 'Chrome', etc (backend schema)
@@ -140,6 +145,14 @@ window.ShellHeartbeat = {
                     // Check if display settings changed
                     if (window.ShellDisplaySettings) {
                         await window.ShellDisplaySettings.checkAndApplyChanges(data);
+                    }
+                } else if (response.status === 401) {
+                    // Token expired - attempt refresh
+                    console.warn('[Shell/Heartbeat] ⚠️ Unauthorized (401) - Token expired, refreshing...');
+                    const handled = await window.TokenManager.handle401(state.API_BASE_URL);
+                    if (!handled) {
+                        // handle401 will reload the page to show activation screen
+                        console.log('[Shell/Heartbeat] Token refresh failed, viewer will reset');
                     }
                 } else if (response.status === 404) {
                     // Device deleted from backend - reset viewer

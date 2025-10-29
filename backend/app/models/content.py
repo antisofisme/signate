@@ -27,6 +27,7 @@ class Content(Base):
         content_type: Type of content (image or video)
         anthias_url: URL to content in Anthias system
         anthias_asset_id: Asset ID in Anthias
+        anthias_file_uri: Cached file URI from Anthias (e.g., "/data/screenly_assets/abc123.jpg")
         duration: Display duration in seconds
         file_size: File size in bytes
         mime_type: MIME type of file
@@ -65,6 +66,7 @@ class Content(Base):
     # Anthias Integration
     anthias_url = Column(String(500), nullable=False)
     anthias_asset_id = Column(String(100), index=True)
+    anthias_file_uri = Column(String(500), nullable=True, index=True)  # Cached URI from Anthias (e.g., "/data/screenly_assets/abc123.jpg")
 
     # Display Settings
     duration = Column(Integer, default=10, nullable=False)  # seconds
@@ -116,6 +118,7 @@ class Content(Base):
             "content_type": self.content_type,
             "anthias_url": self.anthias_url,
             "anthias_asset_id": self.anthias_asset_id,
+            "anthias_file_uri": self.anthias_file_uri,
             "duration": self.duration,
             "file_size": self.file_size,
             "mime_type": self.mime_type,

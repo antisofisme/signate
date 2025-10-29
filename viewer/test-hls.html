@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HLS Player Test</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            background: #1a1a1a;
+            color: white;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            margin-bottom: 20px;
+            color: #4ade80;
+        }
+
+        .video-container {
+            background: black;
+            border-radius: 8px;
+            overflow: hidden;
+            margin-bottom: 20px;
+            position: relative;
+        }
+
+        video {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+
+        .controls {
+            background: #2a2a2a;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        .control-group {
+            margin-bottom: 15px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #4ade80;
+        }
+
+        input, select, button {
+            padding: 10px;
+            border-radius: 5px;
+            border: 1px solid #444;
+            background: #333;
+            color: white;
+            width: 100%;
+            font-size: 14px;
+        }
+
+        button {
+            background: #4ade80;
+            color: black;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 10px;
+            transition: background 0.2s;
+        }
+
+        button:hover {
+            background: #22c55e;
+        }
+
+        button:active {
+            background: #16a34a;
+        }
+
+        .stats {
+            background: #2a2a2a;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        .stat-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #444;
+        }
+
+        .stat-row:last-child {
+            border-bottom: none;
+        }
+
+        .stat-label {
+            color: #9ca3af;
+        }
+
+        .stat-value {
+            font-weight: bold;
+            color: #4ade80;
+        }
+
+        .test-urls {
+            background: #2a2a2a;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        .test-url {
+            background: #333;
+            padding: 10px;
+            border-radius: 5px;
+            margin-bottom: 10px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .test-url:hover {
+            background: #444;
+        }
+
+        .test-url-label {
+            font-weight: bold;
+            color: #4ade80;
+            margin-bottom: 5px;
+        }
+
+        .test-url-link {
+            color: #6b7280;
+            font-size: 12px;
+            word-break: break-all;
+        }
+
+        .logs {
+            background: #2a2a2a;
+            padding: 20px;
+            border-radius: 8px;
+            max-height: 300px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+        }
+
+        .log-entry {
+            padding: 4px 0;
+            border-bottom: 1px solid #333;
+        }
+
+        .log-info { color: #60a5fa; }
+        .log-success { color: #4ade80; }
+        .log-warn { color: #fbbf24; }
+        .log-error { color: #ef4444; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎬 HLS Player Test Suite</h1>
+
+        <!-- Video Player -->
+        <div class="video-container">
+            <video id="test-video" controls></video>
+        </div>
+
+        <!-- Controls -->
+        <div class="controls">
+            <div class="control-group">
+                <label>HLS Stream URL</label>
+                <input type="text" id="hls-url" placeholder="Enter HLS master.m3u8 URL">
+                <button onclick="loadHLS()">Load HLS Stream</button>
+            </div>
+
+            <div class="control-group">
+                <label>Quality Control</label>
+                <select id="quality-select">
+                    <option value="auto">Auto (Adaptive)</option>
+                </select>
+            </div>
+
+            <div class="control-group">
+                <button onclick="testAutoSwitch()">Test Auto Quality Switch</button>
+                <button onclick="testErrorRecovery()">Test Error Recovery</button>
+                <button onclick="clearLogs()">Clear Logs</button>
+            </div>
+        </div>
+
+        <!-- Test URLs -->
+        <div class="test-urls">
+            <h3>Test HLS Streams</h3>
+            <div class="test-url" onclick="loadTestURL(0)">
+                <div class="test-url-label">Apple Big Buck Bunny (Multi-bitrate)</div>
+                <div class="test-url-link" id="test-url-0">https://devstreaming-cdn.apple.com/videos/streaming/examples/bipbop_4x3/bipbop_4x3_variant.m3u8</div>
+            </div>
+            <div class="test-url" onclick="loadTestURL(1)">
+                <div class="test-url-label">Akamai Test Stream</div>
+                <div class="test-url-link" id="test-url-1">https://cph-p2p-msl.akamaized.net/hls/live/2000341/test/master.m3u8</div>
+            </div>
+        </div>
+
+        <!-- Stats -->
+        <div class="stats">
+            <h3>HLS Statistics</h3>
+            <div class="stat-row">
+                <span class="stat-label">Status:</span>
+                <span class="stat-value" id="stat-status">Not loaded</span>
+            </div>
+            <div class="stat-row">
+                <span class="stat-label">Current Quality:</span>
+                <span class="stat-value" id="stat-quality">-</span>
+            </div>
+            <div class="stat-row">
+                <span class="stat-label">Bandwidth:</span>
+                <span class="stat-value" id="stat-bandwidth">-</span>
+            </div>
+            <div class="stat-row">
+                <span class="stat-label">Buffer Length:</span>
+                <span class="stat-value" id="stat-buffer">-</span>
+            </div>
+            <div class="stat-row">
+                <span class="stat-label">Quality Changes:</span>
+                <span class="stat-value" id="stat-changes">0</span>
+            </div>
+            <div class="stat-row">
+                <span class="stat-label">Buffering Events:</span>
+                <span class="stat-value" id="stat-buffering">0</span>
+            </div>
+            <div class="stat-row">
+                <span class="stat-label">Errors:</span>
+                <span class="stat-value" id="stat-errors">0</span>
+            </div>
+        </div>
+
+        <!-- Logs -->
+        <div class="logs" id="logs">
+            <div class="log-entry log-info">HLS Player Test Suite Ready</div>
+        </div>
+    </div>
+
+    <!-- HLS.js Library -->
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.15"></script>
+
+    <script>
+        let hlsPlayer = null;
+        let currentAnalytics = {
+            qualityChanges: 0,
+            bufferingEvents: 0,
+            errors: 0
+        };
+
+        // Logging
+        function log(message, type = 'info') {
+            const logsEl = document.getElementById('logs');
+            const entry = document.createElement('div');
+            entry.className = `log-entry log-${type}`;
+            entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            logsEl.appendChild(entry);
+            logsEl.scrollTop = logsEl.scrollHeight;
+            console.log(`[${type.toUpperCase()}]`, message);
+        }
+
+        function clearLogs() {
+            document.getElementById('logs').innerHTML = '<div class="log-entry log-info">Logs cleared</div>';
+        }
+
+        // Load test URL
+        function loadTestURL(index) {
+            const url = document.getElementById(`test-url-${index}`).textContent;
+            document.getElementById('hls-url').value = url;
+            loadHLS();
+        }
+
+        // Load HLS stream
+        function loadHLS() {
+            const url = document.getElementById('hls-url').value.trim();
+            if (!url) {
+                log('Please enter HLS URL', 'error');
+                return;
+            }
+
+            log(`Loading HLS: ${url}`, 'info');
+
+            const video = document.getElementById('test-video');
+
+            // Cleanup previous instance
+            if (hlsPlayer) {
+                hlsPlayer.destroy();
+                hlsPlayer = null;
+            }
+
+            // Reset analytics
+            currentAnalytics = {
+                qualityChanges: 0,
+                bufferingEvents: 0,
+                errors: 0
+            };
+            updateStats();
+
+            // Check HLS support
+            if (Hls.isSupported()) {
+                log('Using HLS.js for playback', 'success');
+
+                hlsPlayer = new Hls({
+                    maxBufferLength: 30,
+                    maxMaxBufferLength: 60,
+                    startLevel: -1,
+                    capLevelToPlayerSize: true,
+                    debug: false
+                });
+
+                hlsPlayer.loadSource(url);
+                hlsPlayer.attachMedia(video);
+
+                // Event handlers
+                hlsPlayer.on(Hls.Events.MANIFEST_PARSED, (event, data) => {
+                    log(`Manifest loaded: ${data.levels.length} quality levels`, 'success');
+                    updateQualitySelector(data.levels);
+                    updateStat('status', 'Loaded');
+                    video.play();
+                });
+
+                hlsPlayer.on(Hls.Events.LEVEL_SWITCHED, (event, data) => {
+                    const level = hlsPlayer.levels[data.level];
+                    log(`Quality switched: ${level.height}p @ ${(level.bitrate / 1000000).toFixed(2)} Mbps`, 'success');
+                    currentAnalytics.qualityChanges++;
+                    updateStat('quality', `${level.height}p (${level.width}x${level.height})`);
+                    updateStat('changes', currentAnalytics.qualityChanges);
+                });
+
+                hlsPlayer.on(Hls.Events.FRAG_LOADED, (event, data) => {
+                    const loadTime = data.stats.loading.end - data.stats.loading.start;
+                    const bandwidth = (data.frag.loaded * 8000) / loadTime;
+                    updateStat('bandwidth', `${(bandwidth / 1000000).toFixed(2)} Mbps`);
+                });
+
+                hlsPlayer.on(Hls.Events.BUFFER_STALLED, () => {
+                    log('Buffer stalled', 'warn');
+                    currentAnalytics.bufferingEvents++;
+                    updateStat('buffering', currentAnalytics.bufferingEvents);
+                });
+
+                hlsPlayer.on(Hls.Events.ERROR, (event, data) => {
+                    if (data.fatal) {
+                        log(`Fatal error: ${data.type} - ${data.details}`, 'error');
+                        currentAnalytics.errors++;
+                        updateStat('errors', currentAnalytics.errors);
+                        updateStat('status', 'Error');
+                    } else {
+                        log(`Non-fatal error: ${data.details}`, 'warn');
+                    }
+                });
+
+            } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+                log('Using native HLS playback (Safari)', 'success');
+                video.src = url;
+                video.play();
+                updateStat('status', 'Playing (Native)');
+            } else {
+                log('HLS not supported in this browser', 'error');
+                updateStat('status', 'Not supported');
+            }
+        }
+
+        // Update quality selector
+        function updateQualitySelector(levels) {
+            const select = document.getElementById('quality-select');
+            select.innerHTML = '<option value="auto">Auto (Adaptive)</option>';
+
+            levels.forEach((level, index) => {
+                const option = document.createElement('option');
+                option.value = index;
+                option.textContent = `${level.height}p (${level.width}x${level.height}) - ${(level.bitrate / 1000000).toFixed(2)} Mbps`;
+                select.appendChild(option);
+            });
+
+            select.onchange = () => {
+                const value = select.value;
+                if (hlsPlayer) {
+                    if (value === 'auto') {
+                        hlsPlayer.currentLevel = -1;
+                        log('Quality set to AUTO', 'info');
+                    } else {
+                        hlsPlayer.currentLevel = parseInt(value);
+                        log(`Quality set to level ${value}`, 'info');
+                    }
+                }
+            };
+        }
+
+        // Update stat
+        function updateStat(key, value) {
+            const el = document.getElementById(`stat-${key}`);
+            if (el) el.textContent = value;
+        }
+
+        // Update all stats
+        function updateStats() {
+            updateStat('changes', currentAnalytics.qualityChanges);
+            updateStat('buffering', currentAnalytics.bufferingEvents);
+            updateStat('errors', currentAnalytics.errors);
+        }
+
+        // Update buffer display
+        setInterval(() => {
+            const video = document.getElementById('test-video');
+            const buffered = video.buffered;
+            if (buffered.length > 0) {
+                const currentTime = video.currentTime;
+                const bufferEnd = buffered.end(buffered.length - 1);
+                const bufferLength = bufferEnd - currentTime;
+                updateStat('buffer', `${bufferLength.toFixed(1)}s`);
+            }
+        }, 1000);
+
+        // Test auto switch
+        function testAutoSwitch() {
+            if (!hlsPlayer) {
+                log('Load HLS stream first', 'error');
+                return;
+            }
+
+            log('Testing automatic quality switching...', 'info');
+            hlsPlayer.currentLevel = -1; // Set to auto
+            log('Quality set to AUTO - watch for switches', 'success');
+        }
+
+        // Test error recovery
+        function testErrorRecovery() {
+            if (!hlsPlayer) {
+                log('Load HLS stream first', 'error');
+                return;
+            }
+
+            log('Simulating network error...', 'warn');
+            // Trigger a recoverable error
+            hlsPlayer.trigger(Hls.Events.ERROR, {
+                type: Hls.ErrorTypes.NETWORK_ERROR,
+                details: Hls.ErrorDetails.FRAG_LOAD_ERROR,
+                fatal: false
+            });
+            log('Error triggered - observe recovery', 'info');
+        }
+
+        // Cleanup on page unload
+        window.addEventListener('beforeunload', () => {
+            if (hlsPlayer) {
+                hlsPlayer.destroy();
+            }
+        });
+    </script>
+</body>
+</html>

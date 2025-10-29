@@ -162,6 +162,18 @@ window.ActivationPoll = {
                     console.warn(`[Activation Poll] ⚠️ Device ID changed: ${oldDeviceId} → ${newDeviceId} (Replace scenario)`);
                 }
 
+                // Save JWT token from activation response
+                if (data.device_token && window.TokenManager) {
+                    window.TokenManager.saveToken({
+                        token: data.device_token,
+                        refresh_token: data.refresh_token,
+                        expires_at: data.token_expires_at
+                    });
+                    console.log('[Activation Poll] 🔐 JWT token saved');
+                } else if (!data.device_token) {
+                    console.warn('[Activation Poll] ⚠️ No device_token in activation response');
+                }
+
                 // Step 1: Stop polling
                 this.stopPolling();
 

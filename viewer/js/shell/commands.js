@@ -16,16 +16,26 @@ window.ShellCommands = {
         }
 
         try {
+            // Add Authorization header with JWT token
+            const headers = window.TokenManager.addAuthHeader({
+                'Content-Type': 'application/json'
+            });
+
             // Poll for pending commands
             const response = await fetch(
                 `${state.API_BASE_URL}/api/devices/${state.deviceId}/commands/pending`,
                 {
                     method: 'GET',
-                    headers: { 'Content-Type': 'application/json' }
+                    headers: await headers
                 }
             );
 
             if (!response.ok) {
+                // Handle 401 silently - token will be refreshed on next heartbeat
+                if (response.status === 401) {
+                    console.warn('[Shell/Commands] Unauthorized - token may be expired');
+                    return;
+                }
                 console.error('[Shell/Commands] Failed to fetch commands:', response.status);
                 return;
             }
@@ -208,11 +218,16 @@ window.ShellCommands = {
         const state = window.ShellState;
 
         try {
+            // Add Authorization header with JWT token
+            const headers = window.TokenManager.addAuthHeader({
+                'Content-Type': 'application/json'
+            });
+
             const response = await fetch(
                 `${state.API_BASE_URL}/api/devices/${state.deviceId}/commands/${commandId}/execute`,
                 {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' }
+                    headers: await headers
                 }
             );
 

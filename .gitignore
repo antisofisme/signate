@@ -67,6 +67,11 @@ htmlcov/
 *.tmp
 .cache/
 
+# Backup files
+*.bak
+*.old
+*.orig
+
 # Database backups
 database/backups/
 *.gdb

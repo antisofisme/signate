@@ -1,0 +1,11 @@
+# Minimal Storage Service Requirements
+# Only includes dependencies for file storage operations
+
+# Core Django
+Django==4.2.22
+
+# Required for basic functionality
+python-dateutil==2.9.0.post0
+
+# Server
+gunicorn==23.0.0

@@ -9,9 +9,10 @@ from datetime import datetime, timedelta
 from typing import List, Optional
 
 from app.core.database import get_db
-from app.core.deps import get_current_active_user, get_optional_user
+from app.core.deps import get_current_active_user, get_optional_user, get_current_device
 from app.core.logging import StructuredLogger
 from app.core.exceptions import NotFoundException, ConflictException, BadRequestException, ValidationException
+from app.core.security.jwt import create_device_token
 from app.schemas.common import success_response, paginated_response, APIResponse, PaginatedAPIResponse
 from app.middleware.request_id import get_request_id
 from app.models.user import User
@@ -31,7 +32,10 @@ from app.schemas.device import (
     DeviceResponse,
     MonitorCodeResponse,
     DeviceListResponse,
-    HeartbeatResponse
+    HeartbeatResponse,
+    DeviceActivationResponse,
+    DeviceTokenRefreshRequest,
+    DeviceTokenRefreshResponse
 )
 from app.schemas.device_command import (
     DeviceCommandBase,
@@ -391,31 +395,51 @@ def register_tv(
             details={"ip_address": device_data.ip_address, "existing_device_id": existing_device.id}
         )
 
-    # Create TV device
+    # Create TV device (starts as active for TV devices)
     device = Device(
         device_type="tv",
         device_name=device_data.device_name,
         ip_address=device_data.ip_address,
         passphrase=device_data.passphrase,
-        status="pending"  # Pending until TV connects
+        status="active"  # TV devices are immediately active
     )
 
     db.add(device)
     db.commit()
     db.refresh(device)
 
+    # Generate JWT token for device
+    token_data = {
+        "device_id": device.id,
+        "device_type": device.device_type,
+        "ip_address": device.ip_address,
+        "activated_at": datetime.utcnow().isoformat()
+    }
+
+    # Create token with 30-day expiry
+    token_expires = timedelta(days=30)
+    device_token = create_device_token(token_data, expires_delta=token_expires)
+    token_expires_at = datetime.utcnow() + token_expires
+
     logger.info(
-        "TV device registered successfully",
+        "TV device registered successfully with token",
         request_id=request_id,
         device_id=device.id,
-        device_name=device.device_name
+        device_name=device.device_name,
+        token_expires_at=token_expires_at
     )
 
-    # Transform to response
+    # Transform to response with token
     device_response = device_to_response(device, db)
 
+    activation_response = DeviceActivationResponse(
+        device=device_response,
+        token=device_token,
+        token_expires_at=token_expires_at
+    )
+
     return success_response(
-        data=device_response.model_dump() if hasattr(device_response, 'model_dump') else device_response.dict(),
+        data=activation_response.model_dump() if hasattr(activation_response, 'model_dump') else activation_response.dict(),
         request_id=request_id
     )
 
@@ -586,20 +610,22 @@ def register_monitor_self(
     )
 
 
-@router.post("/monitor/activate", response_model=DeviceResponse)
+@router.post("/monitor/activate")
 def activate_monitor(
     activation_data: MonitorActivateRequest,
+    request: Request,
     db: Session = Depends(get_db)
 ):
     """
-    Activate monitor using activation code
+    Activate monitor using activation code and return JWT token
 
     Args:
         activation_data: Activation code
+        request: FastAPI request object (for request_id)
         db: Database session
 
     Returns:
-        DeviceResponse: Activated device
+        APIResponse: Activated device with JWT token
 
     Raises:
         HTTPException: If code invalid, expired, or already used
@@ -607,14 +633,27 @@ def activate_monitor(
     Notes:
         - This endpoint does NOT require authentication (for monitor client)
         - Monitor client calls this to activate itself
+        - Returns JWT token for subsequent API calls
     """
+    request_id = get_request_id(request)
+
+    logger.info(
+        "Monitor activation attempt",
+        request_id=request_id,
+        activation_code=activation_data.unique_code
+    )
+
     # Find device by activation code
     device = db.query(Device).filter(
-        Device.unique_code == activation_data.unique_code,
-        Device.device_type == "monitor"
+        Device.unique_code == activation_data.unique_code
     ).first()
 
     if not device:
+        logger.warning(
+            "Monitor activation failed - invalid code",
+            request_id=request_id,
+            activation_code=activation_data.unique_code
+        )
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Invalid activation code"
@@ -622,26 +661,68 @@ def activate_monitor(
 
     # Check if already activated
     if device.status == "active":
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="Device already activated"
+        # For already active devices, still return a new token
+        # This allows devices to re-authenticate if they lost their token
+        logger.info(
+            "Device already active, issuing new token",
+            request_id=request_id,
+            device_id=device.id
         )
+    else:
+        # Check if code expired
+        if is_code_expired(device.code_expires_at):
+            logger.warning(
+                "Monitor activation failed - code expired",
+                request_id=request_id,
+                device_id=device.id,
+                code_expires_at=device.code_expires_at
+            )
+            raise HTTPException(
+                status_code=status.HTTP_410_GONE,
+                detail="Activation code expired. Please generate a new code."
+            )
 
-    # Check if code expired
-    if is_code_expired(device.code_expires_at):
-        raise HTTPException(
-            status_code=status.HTTP_410_GONE,
-            detail="Activation code expired. Please generate a new code."
-        )
+        # Activate device
+        device.status = "active"
+        device.last_seen = datetime.utcnow()
 
-    # Activate device
-    device.status = "active"
-    device.last_seen = datetime.utcnow()
+        db.commit()
+        db.refresh(device)
 
-    db.commit()
-    db.refresh(device)
+    # Generate JWT token for device
+    token_data = {
+        "device_id": device.id,
+        "device_type": device.device_type,
+        "mac_address": device.unique_code,  # Use unique_code as identifier
+        "activated_at": datetime.utcnow().isoformat()
+    }
 
-    return device
+    # Create token with 30-day expiry
+    token_expires = timedelta(days=30)
+    device_token = create_device_token(token_data, expires_delta=token_expires)
+    token_expires_at = datetime.utcnow() + token_expires
+
+    logger.info(
+        "Monitor activated successfully with token",
+        request_id=request_id,
+        device_id=device.id,
+        device_name=device.device_name,
+        token_expires_at=token_expires_at
+    )
+
+    # Transform to response with token
+    device_response = device_to_response(device, db)
+
+    activation_response = DeviceActivationResponse(
+        device=device_response,
+        token=device_token,
+        token_expires_at=token_expires_at
+    )
+
+    return success_response(
+        data=activation_response.model_dump() if hasattr(activation_response, 'model_dump') else activation_response.dict(),
+        request_id=request_id
+    )
 
 
 @router.put("/{device_id}")
@@ -1140,12 +1221,25 @@ def check_activation_status(
 
     # Check if activated
     if device.status == "active":
+        # Generate JWT token for newly activated device
+        token_data = {
+            "device_id": device.id,
+            "device_type": device.device_type,
+            "activated_at": datetime.utcnow().isoformat()
+        }
+
+        # Create token with 30-day expiry
+        token_expires = timedelta(days=30)
+        device_token = create_device_token(token_data, expires_delta=token_expires)
+        token_expires_at = datetime.utcnow() + token_expires
+
         logger.info(
             "Activation check - code activated",
             request_id=request_id,
             activation_code=activation_code,
             device_id=device.id,
-            device_name=device.device_name
+            device_name=device.device_name,
+            token_generated=True
         )
         return success_response(
             data={
@@ -1153,6 +1247,8 @@ def check_activation_status(
                 "expired": False,
                 "device_id": device.id,
                 "device_name": device.device_name,
+                "device_token": device_token,
+                "token_expires_at": token_expires_at.isoformat(),
                 "message": "Code activated successfully"
             },
             request_id=request_id
@@ -1183,24 +1279,27 @@ def check_activation_status(
 def device_heartbeat(
     heartbeat_data: HeartbeatRequest,
     request: Request,
+    device: Device = Depends(get_current_device),
     db: Session = Depends(get_db)
 ):
     """
     Device heartbeat endpoint
 
     Args:
-        heartbeat_data: Device ID and optional IP
+        heartbeat_data: Optional device info updates
         request: FastAPI request object (for IP auto-detection and request_id)
+        device: Authenticated device from JWT token
         db: Database session
 
     Returns:
         APIResponse: Heartbeat confirmation wrapped in standardized response
 
     Raises:
-        NotFoundException: If device not found
+        401: If device token is invalid
+        403: If device is not active
 
     Notes:
-        - This endpoint does NOT require authentication (for device clients)
+        - Requires device JWT authentication
         - Devices call this every 30-60 seconds to stay "online"
         - Updates last_seen timestamp
         - Auto-detects client IP from request
@@ -1210,22 +1309,11 @@ def device_heartbeat(
     logger.info(
         "Device heartbeat received",
         request_id=request_id,
-        device_id=heartbeat_data.device_id
+        device_id=device.id,
+        device_name=device.device_name
     )
 
-    device = db.query(Device).filter(Device.id == heartbeat_data.device_id).first()
-
-    if not device:
-        logger.warning(
-            "Heartbeat failed - device not found",
-            request_id=request_id,
-            device_id=heartbeat_data.device_id
-        )
-        raise NotFoundException(
-            message=f"Device with ID {heartbeat_data.device_id} not found",
-            resource_type="Device",
-            resource_id=heartbeat_data.device_id
-        )
+    # Device is already verified via get_current_device dependency
 
     # Update last_seen
     device.last_seen = datetime.utcnow()
@@ -1731,3 +1819,118 @@ def unassign_content_from_device(
     logger.info(f"Content {content_id} unassigned from device {device_id}")
 
     return None
+
+
+@router.post("/refresh")
+def refresh_device_token(
+    refresh_data: DeviceTokenRefreshRequest,
+    request: Request,
+    db: Session = Depends(get_db)
+):
+    """
+    Refresh device JWT token
+
+    Args:
+        refresh_data: Current device token
+        request: FastAPI request object (for request_id)
+        db: Database session
+
+    Returns:
+        APIResponse: New JWT token with expiration
+
+    Raises:
+        HTTPException: If token is invalid or device not found
+
+    Notes:
+        - Verifies old token is valid
+        - Issues new token with fresh expiry
+        - Old token remains valid until expiry
+    """
+    request_id = get_request_id(request)
+
+    logger.info(
+        "Device token refresh attempt",
+        request_id=request_id
+    )
+
+    # Verify current token
+    from app.core.security.jwt import verify_device_token
+    payload = verify_device_token(refresh_data.token)
+
+    if not payload:
+        logger.warning(
+            "Device token refresh failed - invalid token",
+            request_id=request_id
+        )
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid device token"
+        )
+
+    # Get device from token
+    device_id = payload.get("device_id")
+    if not device_id:
+        logger.warning(
+            "Device token refresh failed - no device_id in token",
+            request_id=request_id
+        )
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid token payload"
+        )
+
+    # Verify device exists and is active
+    device = db.query(Device).filter(Device.id == device_id).first()
+    if not device:
+        logger.warning(
+            "Device token refresh failed - device not found",
+            request_id=request_id,
+            device_id=device_id
+        )
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Device not found"
+        )
+
+    if device.status != "active":
+        logger.warning(
+            "Device token refresh failed - device not active",
+            request_id=request_id,
+            device_id=device_id,
+            status=device.status
+        )
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Device is not active"
+        )
+
+    # Generate new JWT token
+    token_data = {
+        "device_id": device.id,
+        "device_type": device.device_type,
+        "mac_address": device.unique_code if device.unique_code else device.ip_address,
+        "activated_at": datetime.utcnow().isoformat()
+    }
+
+    # Create new token with 30-day expiry
+    token_expires = timedelta(days=30)
+    new_token = create_device_token(token_data, expires_delta=token_expires)
+    token_expires_at = datetime.utcnow() + token_expires
+
+    logger.info(
+        "Device token refreshed successfully",
+        request_id=request_id,
+        device_id=device.id,
+        device_name=device.device_name,
+        token_expires_at=token_expires_at
+    )
+
+    refresh_response = DeviceTokenRefreshResponse(
+        token=new_token,
+        token_expires_at=token_expires_at
+    )
+
+    return success_response(
+        data=refresh_response.model_dump() if hasattr(refresh_response, 'model_dump') else refresh_response.dict(),
+        request_id=request_id
+    )

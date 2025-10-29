@@ -22,6 +22,7 @@ export default function Layout({ children, setIsAuthenticated }) {
 
   const handleLogout = () => {
     localStorage.removeItem('token')
+    localStorage.removeItem('refresh_token')
     setIsAuthenticated(false)
   }
 

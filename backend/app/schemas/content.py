@@ -21,6 +21,7 @@ class ContentUploadResponse(BaseModel):
     content_type: str
     anthias_url: str
     anthias_asset_id: str
+    anthias_file_uri: Optional[str]
     duration: int
     is_active: bool
     file_size: Optional[int]
@@ -49,6 +50,7 @@ class ContentUploadResponse(BaseModel):
                 "content_type": "image",
                 "anthias_url": "http://192.168.5.12:8000/data/screenly_assets/abc123.jpg",
                 "anthias_asset_id": "abc123",
+                "anthias_file_uri": "/data/screenly_assets/abc123.jpg",
                 "duration": 10,
                 "is_active": True,
                 "file_size": 1024000,
@@ -76,6 +78,7 @@ class ContentResponse(BaseModel):
     content_type: str
     anthias_url: str
     anthias_asset_id: Optional[str] = None
+    anthias_file_uri: Optional[str] = None
     duration: int
     is_active: bool
     file_size: Optional[int] = None
@@ -105,6 +108,7 @@ class ContentResponse(BaseModel):
                 "content_type": "image",
                 "anthias_url": "http://192.168.5.12:8000/data/screenly_assets/abc123.jpg",
                 "anthias_asset_id": "abc123",
+                "anthias_file_uri": "/data/screenly_assets/abc123.jpg",
                 "duration": 10,
                 "is_active": True,
                 "file_size": 1024000,

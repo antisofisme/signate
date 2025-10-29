@@ -20,7 +20,10 @@ export default function Login({ setIsAuthenticated }) {
 
     try {
       const response = await authAPI.login(credentials)
-      localStorage.setItem('token', response.data.access_token)
+      // Extract tokens from standardized backend response
+      const { access_token, refresh_token } = response.data.data
+      localStorage.setItem('token', access_token)
+      localStorage.setItem('refresh_token', refresh_token)
       setIsAuthenticated(true)
       navigate('/')
     } catch (err) {

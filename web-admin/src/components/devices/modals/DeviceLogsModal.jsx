@@ -3,6 +3,7 @@ import { X, Trash2, Download } from 'lucide-react'
 import { devicesAPI } from '../../../services/api'
 import { showToast } from '../../../utils/toast'
 import { Modal, Button } from '../../shared'
+import { API_BASE_URL } from '../../../utils/constants'
 
 /**
  * DeviceLogsModal Component
@@ -96,7 +97,7 @@ export default function DeviceLogsModal({ device, onClose }) {
 
   // WebSocket connection for real-time updates (optional)
   useEffect(() => {
-    const wsUrl = `ws://192.168.5.12:8001/api/ws/logs/${device.id}`
+    const wsUrl = API_BASE_URL.replace(/^http/, 'ws') + `/api/ws/logs/${device.id}`
 
     try {
       const ws = new WebSocket(wsUrl)
