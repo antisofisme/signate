@@ -186,6 +186,15 @@ async def upload_content(
             audio_sample_rate=metadata.get("audio_sample_rate")
         )
 
+        # Set organization_id and uploaded_by (created_by) if user is authenticated
+        if current_user:
+            if hasattr(current_user, 'current_organization_id'):
+                content.organization_id = current_user.current_organization_id
+            else:
+                # Fallback for backward compatibility
+                content.organization_id = 1
+            content.uploaded_by = current_user.id
+
         db.add(content)
         db.commit()
         db.refresh(content)

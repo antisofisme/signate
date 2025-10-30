@@ -1,4 +1,4 @@
-cec==0.2.8
+# cec==0.2.8  # Removed - HDMI-CEC not needed for storage service
 celery==5.2.2
 certifi==2024.7.4
 cffi==1.14.4
@@ -22,7 +22,7 @@ Mako==1.2.2
 netifaces==0.10.9
 psutil==5.7.3
 pyasn1==0.4.8
-pydbus==0.6.0
+# pydbus==0.6.0  # Removed - D-Bus not needed for storage service
 pyOpenSSL==19.1.0
 python-dateutil==2.9.0.post0
 pytz==2022.2.1

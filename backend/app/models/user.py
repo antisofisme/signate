@@ -4,6 +4,7 @@ Authentication and authorization for admin users
 """
 
 from sqlalchemy import Column, Integer, String, Boolean, DateTime
+from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from app.core.database import Base
 
@@ -19,6 +20,9 @@ class User(Base):
         password_hash: Bcrypt hashed password
         role: User role (admin, editor, viewer)
         is_active: Whether user account is active
+        is_super_admin: Whether user is a super admin (system-wide access)
+        full_name: User's full name
+        phone: User's phone number
         created_at: Timestamp when user was created
         last_login: Timestamp of last login
     """
@@ -33,21 +37,40 @@ class User(Base):
     email = Column(String(100), unique=True, nullable=False, index=True)
     password_hash = Column(String(255), nullable=False)
 
-    # Role (admin, editor, viewer)
+    # Role (admin, editor, viewer) - legacy field, kept for compatibility
     role = Column(String(20), default='viewer', nullable=False)
+
+    # Additional user info
+    full_name = Column(String(100))
+    phone = Column(String(20))
 
     # Status Flags
     is_active = Column(Boolean, default=True)
+    is_super_admin = Column(Boolean, default=False)
 
     # Timestamps
     created_at = Column(DateTime, server_default=func.now())
     last_login = Column(DateTime)
 
+    # Relationships
+    organizations = relationship("UserOrganization", back_populates="user", foreign_keys="UserOrganization.user_id")
+
     # Helper property for backward compatibility
     @property
     def is_superuser(self) -> bool:
-        """Check if user is superuser (admin role)"""
-        return self.role == 'admin'
+        """Check if user is superuser (admin role or super admin)"""
+        return self.is_super_admin or self.role == 'admin'
+
+    def get_primary_organization_id(self):
+        """Get user's primary organization ID"""
+        for org in self.organizations:
+            if org.is_primary and org.is_active:
+                return org.organization_id
+        # Return first active organization if no primary found
+        for org in self.organizations:
+            if org.is_active:
+                return org.organization_id
+        return None
 
     def __repr__(self):
         return f"<User(id={self.id}, username='{self.username}', email='{self.email}')>"

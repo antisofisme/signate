@@ -86,6 +86,11 @@ window.ActivationPoll = {
             if (data.expired) {
                 console.warn('[Shell/ActivationPoll] ⚠️ Activation code expired - Auto-resetting viewer');
 
+                // Show toast notification
+                if (window.Toast) {
+                    window.Toast.warning('Activation Code Expired', 'Your activation code has expired. Restarting registration...', 5000);
+                }
+
                 // Stop polling
                 this.stopPolling();
 
@@ -163,6 +168,11 @@ window.ActivationPoll = {
                     window.ShellUI.showActivationSuccess(data.device_name);
                 }
 
+                // Show toast notification
+                if (window.Toast) {
+                    window.Toast.success('Device Activated!', `Successfully activated as: ${data.device_name}`, 5000);
+                }
+
                 // Step 6: Start heartbeat with NEW device_id
                 if (window.ShellHeartbeat && window.ShellHeartbeat.start) {
                     window.ShellHeartbeat.start();
@@ -187,6 +197,11 @@ window.ActivationPoll = {
             // Handle 404 - Device code not found or deleted
             if (error.status === 404) {
                 console.warn('[Shell/ActivationPoll] ⚠️ Device code not found or deleted (404) - Auto-resetting viewer');
+
+                // Show toast notification
+                if (window.Toast) {
+                    window.Toast.warning('Device Code Not Found', 'Your device code was deleted. Restarting registration...', 5000);
+                }
 
                 // Stop polling
                 this.stopPolling();
@@ -225,8 +240,13 @@ window.ActivationPoll = {
             // Update UI status message (if available)
             const statusMessage = document.getElementById('status-message');
             if (statusMessage) {
-                statusMessage.textContent = '⚠️ Cannot connect to server - Retrying...';
+                statusMessage.textContent = 'Cannot connect to server - Retrying...';
                 statusMessage.style.color = '#ef4444'; // Red color
+            }
+
+            // Show toast notification
+            if (window.Toast) {
+                window.Toast.warning('Connection Lost', 'Cannot reach server during activation check. Retrying...', 6000);
             }
 
             // Continue polling - don't stop or clear localStorage

@@ -3,7 +3,7 @@ Role Model
 Role-based access control for organizations
 """
 
-from sqlalchemy import Column, Integer, String, Boolean, JSON, ForeignKey, UniqueConstraint
+from sqlalchemy import Column, Integer, String, Boolean, JSON, ForeignKey, UniqueConstraint, DateTime
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from app.core.database import Base
@@ -185,6 +185,3 @@ class Role(Base):
                 }
             )
         ]
-
-
-from datetime import DateTime  # Add this import at the top

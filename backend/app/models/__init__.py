@@ -4,6 +4,9 @@ All database models for Smart TV Digital Signage
 """
 
 from app.models.user import User
+from app.models.organization import Organization
+from app.models.role import Role
+from app.models.user_organization import UserOrganization
 from app.models.device import Device
 from app.models.content import Content
 from app.models.tag import Tag, DeviceTag
@@ -26,6 +29,9 @@ from app.models.hotel import (
 
 __all__ = [
     "User",
+    "Organization",
+    "Role",
+    "UserOrganization",
     "Device",
     "Content",
     "Tag",

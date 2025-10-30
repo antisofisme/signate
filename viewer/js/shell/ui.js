@@ -60,7 +60,12 @@ window.ShellUI = {
             iframe.onerror = () => {
                 console.error('[Shell] Player iframe failed to load');
                 document.getElementById('error-message').textContent =
-                    '⚠️ Player failed to load. Retrying...';
+                    'Player failed to load. Retrying...';
+
+                // Show toast notification
+                if (window.Toast) {
+                    window.Toast.error('Player Error', 'Player failed to load. Retrying in 5 seconds...', 4000);
+                }
 
                 // Retry after 5 seconds
                 setTimeout(() => this.loadPlayer(), 5000);

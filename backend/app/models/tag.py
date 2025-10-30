@@ -22,6 +22,8 @@ class Tag(Base):
         description: Description of tag purpose
         color: Color code for UI display (hex format)
         tag_priority: Priority among tags (higher number = higher priority in content resolution)
+        organization_id: Organization this tag belongs to
+        created_by: User who created this tag
         created_at: Timestamp when tag was created
     """
 
@@ -31,16 +33,22 @@ class Tag(Base):
     id = Column(Integer, primary_key=True, index=True)
 
     # Tag Info
-    tag_name = Column(String(100), unique=True, nullable=False, index=True)
+    tag_name = Column(String(100), nullable=False, index=True)  # Note: unique constraint should be per organization
     description = Column(Text)
     color = Column(String(7), default="#3B82F6")  # Hex color code
     tag_priority = Column(Integer, default=0, nullable=False)  # Priority for content resolution
+
+    # Multi-tenancy fields
+    organization_id = Column(Integer, ForeignKey("organizations.id", ondelete="CASCADE"), nullable=False, index=True)
+    created_by = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
 
     # Timestamps
     created_at = Column(DateTime, server_default=func.now(), nullable=False)
 
     # Relationships
     device_tags = relationship("DeviceTag", back_populates="tag", cascade="all, delete-orphan")
+    organization = relationship("Organization", back_populates="tags")
+    creator = relationship("User", foreign_keys=[created_by])
 
     def __repr__(self):
         return f"<Tag(id={self.id}, name='{self.tag_name}')>"

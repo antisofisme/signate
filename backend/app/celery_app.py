@@ -24,8 +24,8 @@ logger = StructuredLogger(__name__)
 # Create Celery instance
 celery_app = Celery(
     "signage",
-    broker=settings.CELERY_BROKER_URL,
-    backend=settings.CELERY_RESULT_BACKEND,
+    broker=settings.REDIS_URL,
+    backend=settings.REDIS_URL,
     include=["app.tasks.transcoding"]  # Auto-discover tasks
 )
 
@@ -43,12 +43,12 @@ celery_app.conf.update(
     enable_utc=True,
 
     # Task time limits
-    task_time_limit=settings.CELERY_TASK_TIME_LIMIT,  # Hard limit (2 hours)
-    task_soft_time_limit=settings.CELERY_TASK_SOFT_TIME_LIMIT,  # Soft limit (1 hour)
+    task_time_limit=7200,  # Hard limit (2 hours)
+    task_soft_time_limit=3600,  # Soft limit (1 hour)
 
     # Retry settings
-    task_default_retry_delay=settings.CELERY_TASK_DEFAULT_RETRY_DELAY,
-    task_max_retries=settings.CELERY_TASK_MAX_RETRIES,
+    task_default_retry_delay=300,  # 5 minutes
+    task_max_retries=3,
 
     # Worker settings
     worker_prefetch_multiplier=1,  # Disable prefetching for long-running tasks
@@ -216,8 +216,8 @@ def on_worker_ready(**kwargs):
     Called when worker is ready to accept tasks
     """
     logger.info("✓ Celery worker ready to accept tasks")
-    logger.info(f"  Broker: {settings.CELERY_BROKER_URL}")
-    logger.info(f"  Backend: {settings.CELERY_RESULT_BACKEND}")
+    logger.info(f"  Broker: {settings.REDIS_URL}")
+    logger.info(f"  Backend: {settings.REDIS_URL}")
     logger.info(f"  Queues: default, transcoding, anthias")
 
 @worker_shutdown.connect
@@ -390,7 +390,7 @@ def health_check() -> dict:
             'workers': worker_count,
             'active_tasks': total_active,
             'reserved_tasks': total_reserved,
-            'broker_url': settings.CELERY_BROKER_URL.split('@')[-1] if '@' in settings.CELERY_BROKER_URL else 'redis',
+            'broker_url': settings.REDIS_URL.split('@')[-1] if '@' in settings.REDIS_URL else 'redis',
             'stats': stats
         }
     except Exception as e:

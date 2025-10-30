@@ -202,9 +202,6 @@ export default function Devices() {
         {/* Content Area */}
         <div className="pt-40 sm:pt-[172px] lg:pt-44">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-            {/* Pending Devices Skeleton */}
-            <LoadingSkeleton variant="pending-approvals" count={2} className="mb-6" />
-
             {/* Devices Table Skeleton */}
             <LoadingSkeleton variant="table" count={5} />
           </div>

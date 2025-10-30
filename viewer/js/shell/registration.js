@@ -83,6 +83,9 @@ window.ShellRegistration = {
             state.deviceId = data.id;
             state.deviceCode = code;
 
+            // Clear pending code (registration succeeded)
+            this.pendingCode = null;
+
             console.log('[Shell/Registration] ✅ Device registered', { deviceId: state.deviceId, code });
 
             // Show WiFi online icon (registration succeeded)
@@ -130,11 +133,30 @@ window.ShellRegistration = {
                 window.ShellWiFiStatus.updateStatus('offline');
             }
 
+            // 🎯 FIX: Display generated code even when offline
+            // Store code for this registration attempt
+            if (!this.pendingCode) {
+                this.pendingCode = this.generateActivationCode();
+                console.log('[Shell/Registration] 📋 Generated code for offline display:', this.pendingCode);
+            }
+
+            // Update UI with pending code (even though backend is unreachable)
+            try {
+                window.ShellUI.updateUI('pending', this.pendingCode);
+            } catch (uiError) {
+                console.error('[Shell/Registration] ⚠️ UI update failed:', uiError);
+            }
+
             // Update UI status message
             const statusMessage = document.getElementById('status-message');
             if (statusMessage) {
-                statusMessage.textContent = '⚠️ Cannot connect to server - Retrying...';
+                statusMessage.textContent = 'Cannot connect to server - Retrying...';
                 statusMessage.style.color = '#ef4444'; // Red color
+            }
+
+            // Show toast notification
+            if (window.Toast) {
+                window.Toast.error('Connection Failed', 'Cannot connect to server. Retrying in 10 seconds...', 8000);
             }
 
             // 🛡️ GUARD 3: Only retry if device NOT already registered

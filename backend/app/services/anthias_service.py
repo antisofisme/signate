@@ -25,7 +25,8 @@ class AnthiasService:
     """
 
     def __init__(self):
-        self.base_url = settings.ANTHIAS_API_URL
+        # Use ANTHIAS_INTERNAL_URL for backend-to-Anthias communication (Docker network)
+        self.base_url = settings.ANTHIAS_INTERNAL_URL
         self.public_url = settings.ANTHIAS_PUBLIC_URL
         self.api_version = "v1"
         self.timeout = 30.0  # 30 seconds timeout

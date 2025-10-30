@@ -59,6 +59,10 @@ class Playlist(Base):
     schedule_days = Column(String(50), nullable=True)  # JSON array: ["mon","tue","wed"]
     schedule_timezone = Column(String(50), default='Asia/Jakarta', nullable=True)  # Timezone
 
+    # Multi-tenancy fields
+    organization_id = Column(Integer, ForeignKey("organizations.id", ondelete="CASCADE"), nullable=False, index=True)
+    created_by = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
+
     # Timestamps
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
@@ -66,6 +70,8 @@ class Playlist(Base):
     # Relationships
     content_items = relationship("PlaylistContent", back_populates="playlist", cascade="all, delete-orphan", order_by="PlaylistContent.order_index")
     assignments = relationship("PlaylistAssignment", back_populates="playlist", cascade="all, delete-orphan")
+    organization = relationship("Organization", back_populates="playlists")
+    creator = relationship("User", foreign_keys=[created_by])
 
     def __repr__(self):
         return f"<Playlist(id={self.id}, name='{self.name}')>"

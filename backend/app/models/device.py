@@ -3,7 +3,7 @@ Device Model
 TV and Monitor devices registered in the system
 """
 
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, Text, Float, Enum as SQLEnum
+from sqlalchemy import Column, Integer, String, Boolean, DateTime, Text, Float, Enum as SQLEnum, ForeignKey
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 import enum
@@ -95,6 +95,10 @@ class Device(Base):
     supports_personalization = Column(Boolean, default=True, nullable=True)  # Whether device supports personalization
     privacy_mode = Column(String(50), default='limited', nullable=True)  # full, limited, none
 
+    # Multi-tenancy fields
+    organization_id = Column(Integer, ForeignKey("organizations.id", ondelete="CASCADE"), nullable=False, index=True)
+    created_by = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
+
     # Timestamps
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
@@ -107,6 +111,8 @@ class Device(Base):
     logs = relationship("DeviceLog", back_populates="device", cascade="all, delete-orphan")
     commands = relationship("DeviceCommand", back_populates="device", cascade="all, delete-orphan")
     speed_tests = relationship("DeviceSpeedTest", back_populates="device", cascade="all, delete-orphan")
+    organization = relationship("Organization", back_populates="devices")
+    creator = relationship("User", foreign_keys=[created_by])
 
     def __repr__(self):
         return f"<Device(id={self.id}, name='{self.device_name}', type='{self.device_type}', status='{self.status}')>"

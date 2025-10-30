@@ -4,23 +4,26 @@ Handles async processing for transcoding, notifications, etc.
 """
 
 from celery import Celery
-from app.core.config import settings
+import os
 import logging
-from app.core.logging import StructuredLogger
 
-logger = StructuredLogger(__name__)
+logger = logging.getLogger(__name__)
+
+# Get Redis URL from environment variable
+# Using os.getenv to avoid circular imports with settings
+redis_url = os.getenv('REDIS_URL', 'redis://redis:6379')
 
 # Create Celery instance
 celery_app = Celery(
     'signage_backend',
-    broker=settings.REDIS_URL,
-    backend=settings.REDIS_URL,
-    include=[
-        'app.tasks.transcoding',
-        'app.tasks.notifications',
-        'app.tasks.maintenance'
-    ]
+    broker=redis_url,
+    backend=redis_url
 )
+
+# Autodiscover tasks
+celery_app.autodiscover_tasks([
+    'app.tasks',
+])
 
 # Celery configuration
 celery_app.conf.update(
@@ -78,7 +81,6 @@ celery_app.conf.update(
     },
 
     # Monitoring
-    worker_send_task_events=True,
     task_send_sent_event=True,
 )
 

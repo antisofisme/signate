@@ -1,10 +1,8 @@
-# syntax=docker/dockerfile:1.4
 # vim: ft=dockerfile
 
 FROM debian:bookworm
 
-RUN --mount=type=cache,target=/var/cache/apt \
-    apt-get update && \
+RUN apt-get update && \
     apt-get -y install --no-install-recommends \
         build-essential \
         cec-utils \
@@ -32,7 +30,8 @@ RUN --mount=type=cache,target=/var/cache/apt \
         python3-simplejson \
         python-is-python3 \
         sudo \
-        sqlite3
+        sqlite3 && \
+    rm -rf /var/lib/apt/lists/*
 
 # Works around issue with `curl`
 # https://github.com/balena-io-library/base-images/issues/562
@@ -40,13 +39,11 @@ RUN c_rehash
 
 # We need this to ensure that the wheels can be built.
 # Otherwise we get "invalid command 'bdist_wheel'"
-RUN --mount=type=cache,target=/root/.cache/pip \
-    pip3 install --upgrade pip --break-system-packages && \
+RUN pip3 install --upgrade pip --break-system-packages && \
     pip3 install wheel --break-system-packages
 
 COPY requirements/requirements.txt /tmp/requirements.txt
-RUN --mount=type=cache,target=/root/.cache/pip \
-  pip3 install -r /tmp/requirements.txt --break-system-packages
+RUN pip3 install -r /tmp/requirements.txt --break-system-packages
 
 RUN mkdir -p /usr/src/app
 WORKDIR /usr/src/app

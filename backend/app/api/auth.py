@@ -75,15 +75,21 @@ def login(
             message="Inactive user"
         )
 
-    # Create tokens
+    # Get user's primary organization
+    db.refresh(user)  # Ensure relationships are loaded
+    organization_id = user.get_primary_organization_id()
+
+    # Create tokens with organization_id
     access_token = create_access_token(data={
         "user_id": user.id,
         "username": user.username,
-        "is_superuser": user.is_superuser
+        "is_superuser": user.is_superuser,
+        "organization_id": organization_id
     })
 
     refresh_token = create_refresh_token(data={
-        "user_id": user.id
+        "user_id": user.id,
+        "organization_id": organization_id
     })
 
     logger.info(
@@ -158,15 +164,21 @@ def refresh_token(
             message="User not found or inactive"
         )
 
-    # Create new tokens
+    # Get user's primary organization
+    db.refresh(user)  # Ensure relationships are loaded
+    organization_id = user.get_primary_organization_id()
+
+    # Create new tokens with organization_id
     access_token = create_access_token(data={
         "user_id": user.id,
         "username": user.username,
-        "is_superuser": user.is_superuser
+        "is_superuser": user.is_superuser,
+        "organization_id": organization_id
     })
 
     new_refresh_token = create_refresh_token(data={
-        "user_id": user.id
+        "user_id": user.id,
+        "organization_id": organization_id
     })
 
     logger.info(

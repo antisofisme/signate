@@ -55,8 +55,12 @@ def list_tags(
         sort_by=sort_by
     )
 
-    # Build query with sorting (with secondary sort by ID for consistency)
+    # Build query with organization filtering
     query = db.query(Tag)
+
+    # Filter by organization if user is authenticated
+    if current_user and hasattr(current_user, 'current_organization_id'):
+        query = query.filter(Tag.organization_id == current_user.current_organization_id)
 
     if sort_by == "name_asc":
         query = query.order_by(Tag.tag_name.asc(), Tag.id.asc())
@@ -110,8 +114,14 @@ def create_tag(
         tag_name=tag_data.tag_name
     )
 
-    # Check if tag name already exists
-    existing = db.query(Tag).filter(Tag.tag_name == tag_data.tag_name).first()
+    # Check if tag name already exists in the same organization
+    existing_query = db.query(Tag).filter(Tag.tag_name == tag_data.tag_name)
+
+    # Filter by organization if user is authenticated
+    if current_user and hasattr(current_user, 'current_organization_id'):
+        existing_query = existing_query.filter(Tag.organization_id == current_user.current_organization_id)
+
+    existing = existing_query.first()
     if existing:
         logger.warning(
             "Tag name already exists",
@@ -128,6 +138,18 @@ def create_tag(
         description=tag_data.description,
         color=tag_data.color
     )
+
+    # Set organization_id and created_by if user is authenticated
+    if current_user:
+        if hasattr(current_user, 'current_organization_id'):
+            tag.organization_id = current_user.current_organization_id
+        else:
+            # Fallback to organization_id = 1 if not set
+            tag.organization_id = 1
+        tag.created_by = current_user.id
+    else:
+        # Default to organization_id = 1 if no user (for backwards compatibility)
+        tag.organization_id = 1
 
     db.add(tag)
     db.commit()

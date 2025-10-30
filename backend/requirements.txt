@@ -28,8 +28,13 @@ httpx==0.26.0  # Async HTTP client
 fdb==2.0.2  # Firebird database driver
 
 # Redis (Cache & Session)
-redis==5.0.1  # Redis client
+redis==4.6.0  # Redis client (compatible with Celery 5.3.4)
 hiredis==2.3.2  # Redis performance boost
+
+# Celery (Background Tasks & Video Transcoding)
+celery[redis]==5.3.4  # Distributed task queue
+kombu==5.3.4  # Messaging library for Celery
+vine==5.1.0  # Promises/Deferreds for Celery
 
 # WebSocket support
 websockets==12.0  # WebSocket protocol

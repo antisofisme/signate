@@ -63,7 +63,12 @@ def list_playlists(
         request_id=request_id
     )
 
-    playlists = db.query(Playlist).order_by(Playlist.created_at.desc()).all()
+    # Filter by organization_id if user is authenticated
+    query = db.query(Playlist)
+    if current_user and hasattr(current_user, 'current_organization_id'):
+        query = query.filter(Playlist.organization_id == current_user.current_organization_id)
+
+    playlists = query.order_by(Playlist.created_at.desc()).all()
 
     # Add content count and total duration for each playlist
     playlist_responses = []
@@ -143,6 +148,15 @@ def create_playlist(
         priority=playlist_data.priority,
         schedule=schedule_dict
     )
+
+    # Set organization_id and created_by if user is authenticated
+    if current_user:
+        if hasattr(current_user, 'current_organization_id'):
+            playlist.organization_id = current_user.current_organization_id
+        else:
+            # Fallback for backward compatibility
+            playlist.organization_id = 1
+        playlist.created_by = current_user.id
 
     db.add(playlist)
     db.commit()

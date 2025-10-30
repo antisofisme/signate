@@ -22,7 +22,8 @@ from app.core.config import settings
 from app.core.database import SessionLocal
 from app.models.content import Content
 from app.services.transcoding_service import TranscodingService, TranscodingError
-from app.services.anthias_client import AnthiasClient, AnthiasClientError
+# TODO: Refactor to use new AnthiasService async interface
+# from app.services.anthias_service import AnthiasService
 from app.schemas.transcoding import TranscodingStatus, TranscodingProgress
 
 logger = StructuredLogger(__name__)
@@ -120,7 +121,7 @@ def transcode_video_task(
     logger.info(f"Starting transcoding task for content {content_id}")
 
     temp_dir = None
-    anthias_client = None
+    # anthias_client = None  # TODO: Restore when AnthiasService integration is refactored
 
     try:
         # Initialize progress
@@ -146,45 +147,23 @@ def transcode_video_task(
         temp_dir = tempfile.mkdtemp(prefix=f"transcode_{content_id}_")
         logger.info(f"Created temp directory: {temp_dir}")
 
-        # Initialize Anthias client
-        anthias_client = AnthiasClient()
-
-        # Step 1: Download source video from Anthias (10%)
+        # TODO: Refactor to use new AnthiasService async interface
+        # Step 1: Download source video from storage
         self.update_progress(
             content_id,
             TranscodingStatus.PROCESSING,
             5,
-            "Downloading source video from Anthias"
+            "Preparing source video"
         )
 
         source_path = os.path.join(temp_dir, f"source_{content_id}.mp4")
 
-        def download_progress(progress):
-            # Map download progress from 0-100 to 5-15 in overall progress
-            overall_progress = 5 + int(progress * 0.1)
-            self.update_progress(
-                content_id,
-                TranscodingStatus.PROCESSING,
-                overall_progress,
-                f"Downloading source video: {progress}%"
-            )
+        # TODO: Implement video download using AnthiasService.get_asset_content()
+        # For now, skip download step - video should be available at source_url
+        logger.warning(f"TODO: Implement video download from storage - assuming video exists at {source_url}")
 
-        # Download video from Anthias
-        if asset_id:
-            try:
-                anthias_client.download_file(
-                    asset_id=asset_id,
-                    destination=source_path,
-                    progress_callback=download_progress
-                )
-            except AnthiasClientError:
-                # Fallback to direct URL download if asset ID fails
-                logger.warning(f"Failed to download via asset ID, trying direct URL: {source_url}")
-                # You might want to implement direct URL download here
-                raise
-        else:
-            # No asset ID, need to implement direct URL download
-            raise NotImplementedError("Direct URL download not yet implemented")
+        # Temporary: raise error since we can't transcode without source file
+        raise NotImplementedError("Video download from storage not yet implemented - requires AnthiasService refactoring")
 
         # Step 2: Transcode video to HLS (15-85%)
         self.update_progress(
@@ -241,31 +220,17 @@ def transcode_video_task(
         finally:
             loop.close()
 
-        # Step 3: Upload HLS files to Anthias (85-95%)
+        # Step 3: Upload HLS files to storage (85-95%)
+        # TODO: Implement upload using AnthiasService or new storage service
         self.update_progress(
             content_id,
             TranscodingStatus.PROCESSING,
             85,
-            "Uploading HLS files to Anthias"
+            "Saving HLS files (upload to storage - TODO)"
         )
 
-        def upload_progress(progress):
-            # Map upload progress from 0-100 to 85-95 in overall progress
-            overall_progress = 85 + int(progress * 0.1)
-            self.update_progress(
-                content_id,
-                TranscodingStatus.PROCESSING,
-                overall_progress,
-                f"Uploading HLS files: {progress}%"
-            )
-
-        # Upload HLS directory to Anthias
-        hls_asset_id = f"hls_{content_id}"
-        upload_result = anthias_client.upload_directory(
-            directory_path=hls_output_dir,
-            asset_id=hls_asset_id,
-            progress_callback=upload_progress
-        )
+        logger.warning("TODO: Implement HLS file upload to storage service")
+        # For now, HLS files remain in temp directory (will be cleaned up)
 
         # Step 4: Update database with results (95-100%)
         self.update_progress(
@@ -369,8 +334,9 @@ def transcode_video_task(
 
     finally:
         # Cleanup
-        if anthias_client:
-            anthias_client.close()
+        # TODO: Restore anthias_client cleanup when refactored
+        # if anthias_client:
+        #     anthias_client.close()
 
         if temp_dir and os.path.exists(temp_dir):
             try:

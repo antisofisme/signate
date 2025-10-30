@@ -32,12 +32,20 @@ fi
 
 echo ""
 echo "=========================================="
-echo "🚀 Starting Backend API Server..."
-echo "=========================================="
 
-# Start the FastAPI application
-exec uvicorn app.main:app \
-    --host 0.0.0.0 \
-    --port 8000 \
-    --reload \
-    --log-level info
+# Check if a command was provided
+if [ $# -eq 0 ]; then
+    echo "🚀 Starting Backend API Server..."
+    echo "=========================================="
+    # Start the FastAPI application (default)
+    exec uvicorn app.main:app \
+        --host 0.0.0.0 \
+        --port 8000 \
+        --reload \
+        --log-level info
+else
+    # Execute the provided command (for celery-worker, celery-beat, etc.)
+    echo "🚀 Executing command: $@"
+    echo "=========================================="
+    exec "$@"
+fi

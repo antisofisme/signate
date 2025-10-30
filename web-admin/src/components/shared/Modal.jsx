@@ -112,7 +112,7 @@ export default function Modal({
       >
         {/* Header */}
         {(title || showCloseButton) && (
-          <div className="flex items-center justify-between p-6 pb-4 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
+          <div className="flex items-center justify-between p-6 pb-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-900/50 flex-shrink-0">
             {title && (
               <h2
                 id="modal-title"
@@ -141,7 +141,7 @@ export default function Modal({
 
         {/* Footer */}
         {footer && (
-          <div className="border-t border-gray-200 dark:border-gray-700 p-6 pt-4 bg-gray-50 dark:bg-gray-800 dark:bg-gray-900 rounded-b-xl flex-shrink-0">
+          <div className="border-t border-gray-200 dark:border-gray-700 p-6 pt-4 bg-gray-50/50 dark:bg-gray-900/50 rounded-b-xl flex-shrink-0">
             {footer}
           </div>
         )}

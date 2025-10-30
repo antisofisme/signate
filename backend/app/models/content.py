@@ -113,12 +113,18 @@ class Content(Base):
     content_group_id = Column(Integer, nullable=True)  # Groups translations together
     fallback_content_id = Column(Integer, ForeignKey("contents.id", ondelete="SET NULL"), nullable=True)  # Fallback content
 
+    # Multi-tenancy fields
+    organization_id = Column(Integer, ForeignKey("organizations.id", ondelete="CASCADE"), nullable=False, index=True)
+    created_by = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
+
     # Timestamps
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
 
     # Relationships
     assignments = relationship("ContentAssignment", back_populates="content", cascade="all, delete-orphan")
+    organization = relationship("Organization", back_populates="content")
+    creator = relationship("User", foreign_keys=[created_by])
 
     def __repr__(self):
         return f"<Content(id={self.id}, title='{self.title}', type='{self.content_type}')>"
