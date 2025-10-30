@@ -155,13 +155,11 @@ export default function Playlists() {
 
   // Calculate stats
   const stats = useMemo(() => {
-    if (!playlistsData?.items) return []
-
-    const total = playlistsData.items.length
-    const active = playlistsData.items.filter(p => p.is_active).length
+    const total = playlistsData?.items?.length || 0
+    const active = playlistsData?.items?.filter(p => p.is_active).length || 0
     const inactive = total - active
-    const totalContent = playlistsData.items.reduce((sum, p) => sum + (p.content_count || 0), 0)
-    const totalDuration = playlistsData.items.reduce((sum, p) => sum + (p.total_duration || 0), 0)
+    const totalContent = playlistsData?.items?.reduce((sum, p) => sum + (p.content_count || 0), 0) || 0
+    const totalDuration = playlistsData?.items?.reduce((sum, p) => sum + (p.total_duration || 0), 0) || 0
     const durationMinutes = Math.floor(totalDuration / 60)
 
     return [

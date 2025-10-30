@@ -3,7 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { X } from 'lucide-react'
 import { contentAPI, devicesAPI, tagsAPI } from '../../../services/api'
 import { showToast } from '../../../utils/toast'
-import { Modal, ModalFooter, Button } from '../../shared'
+import { Modal, Button } from '../../shared'
 
 /**
  * EditContentModal Component
@@ -204,6 +204,30 @@ export default function EditContentModal({ content, onClose, onSubmit }) {
     }
   }
 
+  // Footer with action buttons
+  const footer = (
+    <div className="flex gap-3 justify-end">
+      <Button
+        type="button"
+        onClick={onClose}
+        disabled={saving}
+        variant="secondary"
+        className="flex-1"
+      >
+        {saving ? 'Please wait...' : 'Cancel'}
+      </Button>
+      <Button
+        type="submit"
+        onClick={handleSubmit}
+        disabled={saving}
+        variant="primary"
+        className="flex-1"
+      >
+        {saving ? 'Saving...' : 'Save Changes'}
+      </Button>
+    </div>
+  )
+
   if (assignmentsLoading) {
     return (
       <Modal isOpen={true} onClose={onClose} size="2xl">
@@ -219,6 +243,7 @@ export default function EditContentModal({ content, onClose, onSubmit }) {
       size="2xl"
       showCloseButton={false}
       bodyClassName="flex-1 overflow-hidden flex flex-col p-0"
+      footer={footer}
     >
       {/* Custom Header - Fixed */}
       <div className="flex items-center justify-between px-6 py-4 bg-white dark:bg-gray-800 border-b flex-shrink-0">
@@ -492,30 +517,6 @@ export default function EditContentModal({ content, onClose, onSubmit }) {
             </div>
           </div>
       </form>
-
-      {/* Footer - Fixed */}
-      <div className="p-6 border-t bg-gray-50 dark:bg-gray-800 dark:bg-gray-900 flex-shrink-0">
-        <ModalFooter align="right">
-          <Button
-            type="button"
-            onClick={onClose}
-            disabled={saving}
-            variant="secondary"
-            className="flex-1"
-          >
-            {saving ? 'Please wait...' : 'Cancel'}
-          </Button>
-          <Button
-            type="submit"
-            onClick={handleSubmit}
-            disabled={saving}
-            variant="primary"
-            className="flex-1"
-          >
-            {saving ? 'Saving...' : 'Save Changes'}
-          </Button>
-        </ModalFooter>
-      </div>
     </Modal>
   )
 }

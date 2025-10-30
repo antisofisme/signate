@@ -192,17 +192,15 @@ export default function Content() {
 
   // Calculate stats
   const stats = useMemo(() => {
-    if (!contentData?.items) return []
-
-    const total = contentData.items.length
-    const images = contentData.items.filter(c => c.content_type === 'image').length
-    const videos = contentData.items.filter(c => c.content_type === 'video').length
+    const total = contentData?.items?.length || 0
+    const images = contentData?.items?.filter(c => c.content_type === 'image').length || 0
+    const videos = contentData?.items?.filter(c => c.content_type === 'video').length || 0
 
     // Count assigned content (content that has assignments)
-    const assigned = contentData.items.filter(c => {
+    const assigned = contentData?.items?.filter(c => {
       const assignments = allAssignmentsData?.[c.id]
       return assignments && assignments.length > 0
-    }).length
+    }).length || 0
     const unassigned = total - assigned
 
     return [
@@ -350,10 +348,21 @@ export default function Content() {
             </div>
           )}
 
-          {contentData?.items?.length === 0 && (
-            <div className="text-center py-12 text-gray-500 dark:text-gray-400">
-              <FileImage className="w-16 h-16 mx-auto mb-4 opacity-50" />
-              <p>No content uploaded yet</p>
+          {/* Empty State */}
+          {!isLoading && (!contentData?.items || contentData.items.length === 0) && (
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-md p-12 text-center">
+              <FileImage className="w-16 h-16 text-gray-400 dark:text-gray-500 mx-auto mb-4" />
+              <h3 className="text-xl font-semibold text-gray-800 dark:text-gray-100 mb-2">No Content Yet</h3>
+              <p className="text-gray-600 dark:text-gray-400 mb-6">
+                Upload your first image or video to start building your digital signage content library
+              </p>
+              <Button
+                variant="primary"
+                leftIcon={<Upload className="w-5 h-5" />}
+                onClick={() => setShowUploadModal(true)}
+              >
+                Upload First Content
+              </Button>
             </div>
           )}
         </div>

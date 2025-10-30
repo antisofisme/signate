@@ -61,6 +61,7 @@ if settings.ENABLE_CORS:
 # =============================================================================
 from app.api import auth, devices, content, client, tags, logs, websocket, speedtest, playlists, firebird, activities
 from app.api import settings as settings_api  # Renamed to avoid conflict with app.core.config.settings
+from app.api.v1 import organizations  # V1 API for multi-tenant organizations
 
 app.include_router(auth.router, prefix="/api/auth", tags=["Authentication"])
 app.include_router(devices.router, prefix="/api/devices", tags=["Devices"])
@@ -68,6 +69,7 @@ app.include_router(content.router, prefix="/api/content", tags=["Content"])
 app.include_router(playlists.router, prefix="/api/playlists", tags=["Playlists"])
 app.include_router(client.router, prefix="/api/client", tags=["Client"])
 app.include_router(tags.router, prefix="/api/tags", tags=["Tags"])
+app.include_router(organizations.router, prefix="/api/organizations", tags=["Organizations"])  # Multi-tenant organizations
 app.include_router(settings_api.router, prefix="/api", tags=["Settings"])
 app.include_router(activities.router, prefix="/api", tags=["Activity Logs"])  # ✅ Enabled
 app.include_router(logs.router, prefix="/api", tags=["Device Logs"])

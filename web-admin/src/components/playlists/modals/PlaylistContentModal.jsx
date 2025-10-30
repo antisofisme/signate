@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { playlistsAPI } from '../../../services/api'
-import { Modal, ModalFooter, Button, Thumbnail } from '../../shared'
+import { Modal, Button, Thumbnail } from '../../shared'
 import { Plus, Trash2, GripVertical, Clock } from 'lucide-react'
 import { showToast } from '../../../utils/toast'
 import ContentSelectorModal from './ContentSelectorModal'
@@ -179,6 +179,15 @@ export default function PlaylistContentModal({ playlist, onClose }) {
   // Get already selected content IDs to prevent duplicates
   const alreadySelectedIds = contentItems.map(item => item.content_id)
 
+  // Footer with close button
+  const footer = (
+    <div className="flex justify-end">
+      <Button variant="secondary" onClick={onClose} className="flex-1">
+        Close
+      </Button>
+    </div>
+  )
+
   return (
     <>
       <Modal
@@ -186,6 +195,7 @@ export default function PlaylistContentModal({ playlist, onClose }) {
         onClose={onClose}
         title={`Manage Content: ${playlist.name}`}
         size="2xl"
+        footer={footer}
       >
         <div className="space-y-4">
           {/* Header with Add Button */}
@@ -315,13 +325,6 @@ export default function PlaylistContentModal({ playlist, onClose }) {
               💡 Drag and drop to reorder content. Changes are saved automatically.
             </div>
           )}
-
-          {/* Footer */}
-          <ModalFooter>
-            <Button variant="secondary" onClick={onClose} className="flex-1">
-              Close
-            </Button>
-          </ModalFooter>
         </div>
       </Modal>
 

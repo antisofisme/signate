@@ -72,6 +72,16 @@ class User(Base):
                 return org.organization_id
         return None
 
+    @property
+    def organization_id(self):
+        """Property to access user's organization ID (for backward compatibility with devices API)"""
+        return self.get_primary_organization_id()
+
+    @property
+    def current_organization_id(self):
+        """Property to access user's current organization ID (for backward compatibility with tags/playlists API)"""
+        return self.get_primary_organization_id()
+
     def __repr__(self):
         return f"<User(id={self.id}, username='{self.username}', email='{self.email}')>"
 

@@ -1,4 +1,4 @@
-import { Modal, ModalFooter, Button } from '../../shared'
+import { Modal, Button } from '../../shared'
 import TagStatsCard from '../TagStatsCard'
 import { BarChart3 } from 'lucide-react'
 
@@ -15,12 +15,29 @@ import { BarChart3 } from 'lucide-react'
  * @param {Function} onClose - Callback when modal should close
  */
 export default function TagStatsModal({ tag, onClose }) {
+  // Footer with action buttons
+
+  const footer = (
+
+    <div className="flex gap-3 justify-end">
+
+  <Button variant="secondary" onClick={onClose} className="flex-1">
+            Close
+          </Button>
+
+    </div>
+
+  )
+
+
+  
   return (
     <Modal
       isOpen={true}
       onClose={onClose}
       title={
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2"
+      footer={footer}>
           <BarChart3 className="w-6 h-6 text-blue-600" />
           <span>Tag Statistics: {tag.tag_name}</span>
         </div>
@@ -50,13 +67,7 @@ export default function TagStatsModal({ tag, onClose }) {
           </ul>
         </div>
 
-        {/* Footer */}
-        <ModalFooter>
-          <Button variant="secondary" onClick={onClose} className="flex-1">
-            Close
-          </Button>
-        </ModalFooter>
-      </div>
+        {/* Footer */}</div>
     </Modal>
   )
 }

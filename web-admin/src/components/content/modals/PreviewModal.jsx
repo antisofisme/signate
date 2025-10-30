@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query'
 import { X } from 'lucide-react'
 import { contentAPI, devicesAPI, tagsAPI } from '../../../services/api'
 import { API_BASE_URL } from '../../../utils/constants'
-import { Modal, ModalFooter, Button } from '../../shared'
+import { Modal, Button } from '../../shared'
 
 /**
  * Helper function to get proxy image URL
@@ -149,6 +149,15 @@ export default function PreviewModal({ content, onClose }) {
     queryFn: () => tagsAPI.list().then(res => res.data),
   })
 
+  // Footer with close button
+  const footer = (
+    <div className="flex justify-center">
+      <Button onClick={onClose} variant="secondary" className="w-full">
+        Close
+      </Button>
+    </div>
+  )
+
   return (
     <Modal
       isOpen={true}
@@ -156,6 +165,7 @@ export default function PreviewModal({ content, onClose }) {
       size="4xl"
       showCloseButton={false}
       bodyClassName="flex-1 overflow-hidden flex flex-col p-0"
+      footer={footer}
     >
       {/* Custom Header - Fixed */}
       <div className="flex items-center justify-between px-6 py-4 bg-white dark:bg-gray-800 border-b flex-shrink-0">
@@ -353,15 +363,6 @@ export default function PreviewModal({ content, onClose }) {
               )}
             </div>
           </div>
-      </div>
-
-      {/* Footer Actions - Fixed */}
-      <div className="p-6 border-t bg-gray-50 dark:bg-gray-800 dark:bg-gray-900 flex-shrink-0">
-        <ModalFooter align="center">
-          <Button onClick={onClose} variant="secondary" className="w-full">
-            Close
-          </Button>
-        </ModalFooter>
       </div>
     </Modal>
   )

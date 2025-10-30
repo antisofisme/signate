@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { contentAPI } from '../../../services/api'
-import { Modal, ModalFooter, Button, FormInput, Thumbnail } from '../../shared'
+import { Modal, Button, FormInput, Thumbnail } from '../../shared'
 import { Search, Image as ImageIcon, Video, Check } from 'lucide-react'
 
 /**
@@ -73,12 +73,31 @@ export default function ContentSelectorModal({ alreadySelected = [], onClose, on
     onSubmit(selectedContent)
   }
 
+  // Footer with action buttons
+  const footer = (
+    <div className="flex gap-3">
+      <Button type="button" variant="secondary" onClick={onClose} className="flex-1">
+        Cancel
+      </Button>
+      <Button
+        type="button"
+        variant="primary"
+        onClick={handleSubmit}
+        disabled={selectedContent.length === 0}
+        className="flex-1"
+      >
+        Add {selectedContent.length > 0 && `(${selectedContent.length})`} to Playlist
+      </Button>
+    </div>
+  )
+
   return (
     <Modal
       isOpen={true}
       onClose={onClose}
       title="Add Content to Playlist"
       size="3xl"
+      footer={footer}
     >
       <div className="space-y-4">
         {/* Search and Filter Controls */}
@@ -136,7 +155,7 @@ export default function ContentSelectorModal({ alreadySelected = [], onClose, on
 
         {/* Selected Count */}
         {selectedContent.length > 0 && (
-          <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-2 text-sm text-blue-700">
+          <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-lg px-4 py-2 text-sm text-blue-700 dark:text-blue-300">
             {selectedContent.length} item{selectedContent.length > 1 ? 's' : ''} selected
           </div>
         )}
@@ -223,22 +242,6 @@ export default function ContentSelectorModal({ alreadySelected = [], onClose, on
             })}
           </div>
         )}
-
-        {/* Footer with action buttons */}
-        <ModalFooter>
-          <Button type="button" variant="secondary" onClick={onClose} className="flex-1">
-            Cancel
-          </Button>
-          <Button
-            type="button"
-            variant="primary"
-            onClick={handleSubmit}
-            disabled={selectedContent.length === 0}
-            className="flex-1"
-          >
-            Add {selectedContent.length > 0 && `(${selectedContent.length})`} to Playlist
-          </Button>
-        </ModalFooter>
       </div>
     </Modal>
   )

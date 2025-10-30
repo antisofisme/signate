@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { playlistsAPI } from '../../../services/api'
-import { Modal, ModalFooter, Button, Thumbnail } from '../../shared'
+import { Modal, Button, Thumbnail } from '../../shared'
 import { Play, Pause, SkipForward, SkipBack, Monitor, Clock, Image as ImageIcon, Video, FileText } from 'lucide-react'
 
 /**
@@ -104,12 +104,36 @@ export default function PlaylistPreviewModal({ playlist, onClose }) {
     return remainingSeconds > 0 ? `${minutes}m ${remainingSeconds}s` : `${minutes}m`
   }
 
+  // Footer with action buttons
+
+
+  const footer = (
+
+
+    <div className="flex gap-3 justify-end">
+
+
+  <Button variant="secondary" onClick={onClose} className="flex-1">
+            Close
+          </Button>
+
+
+    </div>
+
+
+  )
+
+
+
+  
+
   return (
     <Modal
       isOpen={true}
       onClose={onClose}
       title={
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2"
+      footer={footer}>
           <Monitor className="w-6 h-6 text-purple-600" />
           <span>Preview Playlist: {playlist.name}</span>
         </div>
@@ -282,13 +306,7 @@ export default function PlaylistPreviewModal({ playlist, onClose }) {
           </>
         )}
 
-        {/* Footer */}
-        <ModalFooter>
-          <Button variant="secondary" onClick={onClose} className="flex-1">
-            Close
-          </Button>
-        </ModalFooter>
-      </div>
+        {/* Footer */}</div>
     </Modal>
   )
 }

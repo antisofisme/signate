@@ -3,7 +3,7 @@ import { useMutation } from '@tanstack/react-query'
 import { Database, Server, Eye, EyeOff, Save, Loader, CheckCircle, XCircle, AlertCircle } from 'lucide-react'
 import { firebirdAPI } from '../../../services/api'
 import { showToast } from '../../../utils/toast'
-import { Modal, ModalFooter, Button, FormInput } from '../../shared'
+import { Modal, Button, FormInput } from '../../shared'
 
 /**
  * FirebirdConfigModal Component
@@ -163,12 +163,47 @@ export default function FirebirdConfigModal({ config, onClose, onSuccess }) {
 
   const isServerMode = formData.connection_mode === 'server'
 
+  // Footer with split layout (Test Connection on left, Cancel/Save on right)
+  const footer = (
+    <div className="flex justify-between gap-3">
+      {/* Left side - Test Connection */}
+      <Button
+        onClick={handleTestConnection}
+        disabled={testConnectionMutation.isLoading || saveMutation.isLoading}
+        variant="outline"
+        leftIcon={testStatus === 'testing' ? <Loader className="w-4 h-4 animate-spin" /> : <Database className="w-4 h-4" />}
+      >
+        {testStatus === 'testing' ? 'Testing...' : 'Test Connection'}
+      </Button>
+
+      {/* Right side - Cancel and Save */}
+      <div className="flex gap-3">
+        <Button
+          onClick={onClose}
+          variant="secondary"
+          disabled={saveMutation.isLoading}
+        >
+          Cancel
+        </Button>
+        <Button
+          onClick={handleSave}
+          disabled={saveMutation.isLoading}
+          variant="primary"
+          leftIcon={saveMutation.isLoading ? <Loader className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+        >
+          {saveMutation.isLoading ? 'Saving...' : 'Save Configuration'}
+        </Button>
+      </div>
+    </div>
+  )
+
   return (
     <Modal
       isOpen={true}
       onClose={onClose}
       size="3xl"
       bodyClassName="flex-1 overflow-y-auto p-6"
+      footer={footer}
     >
       {/* Header */}
       <div className="flex items-center mb-6">
@@ -440,38 +475,6 @@ export default function FirebirdConfigModal({ config, onClose, onSuccess }) {
           </div>
         )}
       </div>
-
-      {/* Footer */}
-      <ModalFooter align="between">
-        {/* Left side - Test Connection */}
-        <Button
-          onClick={handleTestConnection}
-          disabled={testConnectionMutation.isLoading || saveMutation.isLoading}
-          variant="outline"
-          leftIcon={testStatus === 'testing' ? <Loader className="w-4 h-4 animate-spin" /> : <Database className="w-4 h-4" />}
-        >
-          {testStatus === 'testing' ? 'Testing...' : 'Test Connection'}
-        </Button>
-
-        {/* Right side - Cancel and Save */}
-        <div className="flex gap-3">
-          <Button
-            onClick={onClose}
-            variant="secondary"
-            disabled={saveMutation.isLoading}
-          >
-            Cancel
-          </Button>
-          <Button
-            onClick={handleSave}
-            disabled={saveMutation.isLoading}
-            variant="primary"
-            leftIcon={saveMutation.isLoading ? <Loader className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-          >
-            {saveMutation.isLoading ? 'Saving...' : 'Save Configuration'}
-          </Button>
-        </div>
-      </ModalFooter>
     </Modal>
   )
 }

@@ -35,6 +35,40 @@ window.ShellRegistration = {
     },
 
     /**
+     * Get or prompt for Organization PIN (using modal)
+     */
+    getOrganizationPIN: async function() {
+        // Check localStorage first
+        let orgPIN = localStorage.getItem('organization_pin');
+
+        if (!orgPIN) {
+            console.log('[Shell/Registration] 📌 Organization PIN not found, showing modal...');
+
+            try {
+                // Show modal to get Organization PIN
+                if (!window.OrganizationPINModal) {
+                    console.error('[Shell/Registration] ❌ OrganizationPINModal not loaded');
+                    throw new Error('Organization PIN modal not available');
+                }
+
+                orgPIN = await window.OrganizationPINModal.show();
+
+                if (!orgPIN || orgPIN.length < 8) {
+                    console.error('[Shell/Registration] ❌ Invalid organization PIN');
+                    throw new Error('Organization PIN is required');
+                }
+
+                console.log('[Shell/Registration] ✅ Organization PIN obtained from modal');
+            } catch (error) {
+                console.error('[Shell/Registration] ❌ Failed to get Organization PIN:', error);
+                throw new Error('Organization PIN is required');
+            }
+        }
+
+        return orgPIN;
+    },
+
+    /**
      * Register device to backend
      */
     registerDevice: async function() {
@@ -57,18 +91,22 @@ window.ShellRegistration = {
         this.isRegistering = true;
 
         try {
+            // Get Organization PIN (show modal if not exists)
+            const orgPIN = await this.getOrganizationPIN();
+
             const code = this.generateActivationCode();
 
             // Detect platform (use ShellHeartbeat if available, otherwise detect here)
             const platform = window.ShellHeartbeat?.detectPlatform() || this.detectPlatformSimple();
             const deviceName = `${platform} - ${code}`;
 
-            console.log('[Shell/Registration] 📡 Registering device with code:', code, 'platform:', platform);
+            console.log('[Shell/Registration] 📡 Registering device with code:', code, 'platform:', platform, 'org PIN:', orgPIN);
 
             // Use APIClient for standardized response handling
             const data = await window.APIClient.post(
                 `${state.API_BASE_URL}/api/devices/monitor/register`,
                 {
+                    organization_pin: orgPIN,
                     activation_code: code,
                     device_name: deviceName,
                     platform: platform

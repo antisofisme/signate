@@ -3,7 +3,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { Tv, Monitor, Save, RefreshCw, Unlock, X } from 'lucide-react'
 import { devicesAPI } from '../../../services/api'
 import toast from 'react-hot-toast'
-import { Modal, ModalFooter, Button, FormInput } from '../../shared'
+import { Modal, Button, FormInput } from '../../shared'
 
 /**
  * DeviceEditModal Component
@@ -155,6 +155,45 @@ export default function DeviceEditModal({ device, onClose, onSave }) {
     }
   }
 
+  // Footer with split layout (Release on left, Cancel/Save on right)
+  const footer = (
+    <div className="flex justify-between gap-3">
+      {/* Left side - Release button (only for active devices) */}
+      <div>
+        {device.status === 'active' && (
+          <Button
+            onClick={handleRelease}
+            disabled={isReleasing || isSaving}
+            variant="warning"
+            title="Release device (reset with new activation code)"
+          >
+            <Unlock className="w-4 h-4" />
+            {isReleasing ? 'Releasing...' : 'Release Device'}
+          </Button>
+        )}
+      </div>
+
+      {/* Right side - Cancel and Save buttons */}
+      <div className="flex gap-3">
+        <Button
+          onClick={onClose}
+          variant="secondary"
+          disabled={isSaving || isReleasing}
+        >
+          Cancel
+        </Button>
+        <Button
+          onClick={handleSave}
+          disabled={isSaving || isReleasing}
+          variant="primary"
+        >
+          <Save className="w-4 h-4" />
+          {isSaving ? 'Saving...' : 'Save Changes'}
+        </Button>
+      </div>
+    </div>
+  )
+
   return (
     <Modal
       isOpen={true}
@@ -162,6 +201,7 @@ export default function DeviceEditModal({ device, onClose, onSave }) {
       size="4xl"
       showCloseButton={false}
       bodyClassName="flex-1 overflow-hidden flex flex-col p-0"
+      footer={footer}
     >
       {/* Custom header with gradient and icon - Fixed */}
       <div className="flex items-center justify-between p-6 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
@@ -407,45 +447,6 @@ export default function DeviceEditModal({ device, onClose, onSave }) {
             </div>
           </div>
         </div>
-      </div>
-
-      {/* Footer - Fixed */}
-      <div className="p-6 border-t bg-gray-50 dark:bg-gray-800 dark:bg-gray-900 flex-shrink-0">
-        <ModalFooter align="between">
-          {/* Left side - Release button (only for active devices) */}
-          <div>
-            {device.status === 'active' && (
-              <Button
-                onClick={handleRelease}
-                disabled={isReleasing || isSaving}
-                variant="warning"
-                title="Release device (reset with new activation code)"
-              >
-                <Unlock className="w-4 h-4" />
-                {isReleasing ? 'Releasing...' : 'Release Device'}
-              </Button>
-            )}
-          </div>
-
-          {/* Right side - Cancel and Save buttons */}
-          <div className="flex gap-3">
-            <Button
-              onClick={onClose}
-              variant="secondary"
-              disabled={isSaving || isReleasing}
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={handleSave}
-              disabled={isSaving || isReleasing}
-              variant="primary"
-            >
-              <Save className="w-4 h-4" />
-              {isSaving ? 'Saving...' : 'Save Changes'}
-            </Button>
-          </div>
-        </ModalFooter>
       </div>
     </Modal>
   )

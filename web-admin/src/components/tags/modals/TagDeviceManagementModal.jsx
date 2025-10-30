@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { tagsAPI, devicesAPI } from '../../../services/api'
-import { Modal, ModalFooter, Button } from '../../shared'
+import { Modal, Button } from '../../shared'
 import { Monitor } from 'lucide-react'
 import { showToast } from '../../../utils/toast'
 
@@ -77,12 +77,36 @@ export default function TagDeviceManagementModal({ tag, onClose }) {
   // Get list of assigned device IDs for quick lookup
   const assignedDeviceIds = assignedDevicesData?.devices?.map(d => d.id) || []
 
+  // Footer with action buttons
+
+
+  const footer = (
+
+
+    <div className="flex gap-3 justify-end">
+
+
+  <Button variant="secondary" onClick={onClose} className="flex-1">
+            Close
+          </Button>
+
+
+    </div>
+
+
+  )
+
+
+
+  
+
   return (
     <Modal
       isOpen={true}
       onClose={onClose}
       title={`Devices: ${tag.tag_name}`}
       size="2xl"
+      footer={footer}
     >
       <div className="space-y-4">
         {/* Tag Info */}
@@ -148,13 +172,7 @@ export default function TagDeviceManagementModal({ tag, onClose }) {
           </div>
         </div>
 
-        {/* Footer */}
-        <ModalFooter>
-          <Button variant="secondary" onClick={onClose} className="flex-1">
-            Close
-          </Button>
-        </ModalFooter>
-      </div>
+        {/* Footer */}</div>
     </Modal>
   )
 }

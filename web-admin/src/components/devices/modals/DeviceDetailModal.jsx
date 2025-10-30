@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { devicesAPI, tagsAPI, playlistsAPI, contentAPI } from '../../../services/api'
-import { Modal, ModalFooter, Button } from '../../shared'
+import { Modal, Button } from '../../shared'
 import { Tv, Monitor, X, Edit, FileText, Trash2, Plus, Tag as TagIcon, List, Wifi, WifiOff, Circle, Eye, Film, Activity, Download, Upload } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
@@ -282,6 +282,15 @@ export default function DeviceDetailModal({ device: initialDevice, onClose, onEd
   // Determine if device is TV based on platform
   const isTv = device.platform && ['webOS', 'Tizen', 'Android TV'].includes(device.platform)
 
+  // Footer with close button
+  const footer = (
+    <div className="flex justify-end">
+      <Button onClick={onClose} variant="primary" className="min-w-[120px]">
+        Close
+      </Button>
+    </div>
+  )
+
   return (
     <>
     <Modal
@@ -290,6 +299,7 @@ export default function DeviceDetailModal({ device: initialDevice, onClose, onEd
       size="2xl"
       showCloseButton={false}
       bodyClassName="flex-1 overflow-hidden flex flex-col p-0"
+      footer={footer}
     >
       {/* Custom header with gradient and icon - Fixed */}
       <div className="flex items-center justify-between p-6 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
@@ -869,15 +879,6 @@ export default function DeviceDetailModal({ device: initialDevice, onClose, onEd
             )}
           </div>
         </div>
-      </div>
-
-      {/* Footer - Fixed */}
-      <div className="p-6 border-t bg-gray-50 dark:bg-gray-800 dark:bg-gray-900 flex-shrink-0">
-        <ModalFooter align="right">
-          <Button onClick={onClose} variant="primary" className="min-w-[120px]">
-            Close
-          </Button>
-        </ModalFooter>
       </div>
     </Modal>
 

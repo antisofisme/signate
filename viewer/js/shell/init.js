@@ -73,7 +73,7 @@ window.ShellInit = {
                     } else if (verifyData.expired && !verifyData.device_id) {
                         // Code expired AND device deleted - clear and re-register
                         console.warn('[Shell/Init] ⚠️ Device code expired and deleted - clearing localStorage');
-                        localStorage.clear();
+                        window.clearLocalStoragePreservePIN();
                         console.log('[Shell/Init] 🔄 Reloading to register as new device...');
                         window.location.reload();
                         return; // Exit early

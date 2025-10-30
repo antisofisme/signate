@@ -3,7 +3,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { contentAPI } from '../../../services/api'
 import { showToast } from '../../../utils/toast'
 import { validateFileUpload, formatFileSize } from '../../../utils/helpers'
-import { Modal, ModalFooter, Button, FormInput } from '../../shared'
+import { Modal, Button, FormInput } from '../../shared'
 
 /**
  * UploadModal Component
@@ -161,8 +161,32 @@ export default function UploadModal({ onClose, onSubmit }) {
     }
   }
 
+  // Footer with action buttons
+  const footer = (
+    <div className="flex gap-3 justify-end">
+      <Button
+        type="button"
+        onClick={onClose}
+        disabled={uploading}
+        variant="secondary"
+        className="flex-1"
+      >
+        {uploading ? 'Please wait...' : 'Cancel'}
+      </Button>
+      <Button
+        type="submit"
+        disabled={uploading || files.length === 0}
+        variant="primary"
+        className="flex-1"
+        onClick={handleBulkUpload}
+      >
+        {uploading ? 'Uploading...' : `Upload ${files.length} File(s)`}
+      </Button>
+    </div>
+  )
+
   return (
-    <Modal isOpen={true} onClose={onClose} title="Upload Content" size="2xl">
+    <Modal isOpen={true} onClose={onClose} title="Upload Content" size="2xl" footer={footer}>
       <form onSubmit={handleBulkUpload} className="space-y-4">
           {/* File Input */}
           <FormInput
@@ -244,27 +268,6 @@ export default function UploadModal({ onClose, onSubmit }) {
               </div>
             </div>
           )}
-
-        {/* Action Buttons */}
-        <ModalFooter align="right">
-          <Button
-            type="button"
-            onClick={onClose}
-            disabled={uploading}
-            variant="secondary"
-            className="flex-1"
-          >
-            {uploading ? 'Please wait...' : 'Cancel'}
-          </Button>
-          <Button
-            type="submit"
-            disabled={uploading || files.length === 0}
-            variant="primary"
-            className="flex-1"
-          >
-            {uploading ? 'Uploading...' : `Upload ${files.length} File(s)`}
-          </Button>
-        </ModalFooter>
       </form>
     </Modal>
   )

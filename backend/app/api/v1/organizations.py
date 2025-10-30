@@ -41,6 +41,39 @@ from app.core.config import settings
 router = APIRouter()
 
 
+@router.get("/validate-pin", response_model=SuccessResponse)
+async def validate_organization_pin(
+    pin: str = Query(..., description="Organization PIN to validate", min_length=8),
+    db: Session = Depends(get_db)
+):
+    """
+    Validate organization PIN (public endpoint - no authentication required)
+
+    This endpoint is used by the viewer to validate the organization PIN
+    before saving it to localStorage during device registration.
+
+    Returns:
+        - 200 with success message if PIN is valid
+        - 404 if PIN is invalid or organization is inactive
+    """
+    # Query for organization with this PIN
+    organization = db.query(Organization).filter(
+        Organization.organization_pin == pin,
+        Organization.is_active == True
+    ).first()
+
+    if not organization:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Invalid organization PIN or organization is inactive"
+        )
+
+    return SuccessResponse(
+        message=f"Valid organization PIN for: {organization.name}",
+        details={"organization_name": organization.name}
+    )
+
+
 @router.get("/", response_model=List[OrganizationResponse])
 async def list_user_organizations(
     context: OrganizationContext = Depends(get_current_user_with_context),

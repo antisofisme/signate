@@ -1,5 +1,5 @@
 import { Tv, Monitor, X } from 'lucide-react'
-import { Modal, ModalFooter, Button } from '../../shared'
+import { Modal, Button } from '../../shared'
 
 /**
  * DeviceInfoModal Component
@@ -21,6 +21,15 @@ export default function DeviceInfoModal({ device, onClose }) {
   // Determine if device is TV based on platform
   const isTv = device.platform && ['webOS', 'Tizen', 'Android TV'].includes(device.platform)
 
+  // Footer with close button
+  const footer = (
+    <div className="flex justify-end">
+      <Button onClick={onClose} variant="primary">
+        Close
+      </Button>
+    </div>
+  )
+
   return (
     <Modal
       isOpen={true}
@@ -28,6 +37,7 @@ export default function DeviceInfoModal({ device, onClose }) {
       size="2xl"
       showCloseButton={false}
       bodyClassName="flex-1 overflow-hidden flex flex-col p-0"
+      footer={footer}
     >
       {/* Custom header with gradient and icon - Fixed */}
       <div className="flex items-center justify-between p-6 bg-gradient-to-r from-blue-50 to-purple-50 border-b flex-shrink-0">
@@ -137,15 +147,6 @@ export default function DeviceInfoModal({ device, onClose }) {
               </div>
             </div>
           </div>
-      </div>
-
-      {/* Footer - Fixed */}
-      <div className="p-6 border-t bg-gray-50 dark:bg-gray-800 dark:bg-gray-900 flex-shrink-0">
-        <ModalFooter align="right">
-          <Button onClick={onClose} variant="primary">
-            Close
-          </Button>
-        </ModalFooter>
       </div>
     </Modal>
   )

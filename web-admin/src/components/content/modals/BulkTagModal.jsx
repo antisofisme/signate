@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { X } from 'lucide-react'
 import { contentAPI, tagsAPI } from '../../../services/api'
-import { Thumbnail, Modal, ModalFooter, Button } from '../../shared'
+import { Thumbnail, Modal, Button } from '../../shared'
 import { showToast } from '../../../utils/toast'
 
 /**
@@ -154,6 +154,30 @@ export default function BulkTagModal({ selectedIds, contentData, onClose, onComp
 
   const allTags = tagsData?.items || []
 
+  // Footer with action buttons
+  const footer = (
+    <div className="flex gap-3 justify-end">
+      <Button
+        type="button"
+        onClick={onClose}
+        disabled={updating}
+        variant="secondary"
+        className="flex-1"
+      >
+        Cancel
+      </Button>
+      <Button
+        type="button"
+        onClick={handleUpdateAll}
+        disabled={updating}
+        variant="success"
+        className="flex-1"
+      >
+        {updating ? 'Updating...' : 'Update All'}
+      </Button>
+    </div>
+  )
+
   if (assignmentQueries.isLoading) {
     return (
       <Modal isOpen={true} onClose={onClose} size="md">
@@ -169,6 +193,7 @@ export default function BulkTagModal({ selectedIds, contentData, onClose, onComp
       size="3xl"
       showCloseButton={false}
       bodyClassName="flex-1 overflow-hidden flex flex-col p-0"
+      footer={footer}
     >
       {/* Custom Header - Fixed */}
       <div className="flex items-center justify-between px-6 py-4 bg-white dark:bg-gray-800 border-b flex-shrink-0">
@@ -261,30 +286,6 @@ export default function BulkTagModal({ selectedIds, contentData, onClose, onComp
             })}
           </div>
         </div>
-
-      {/* Footer - Fixed */}
-      <div className="p-6 border-t bg-gray-50 dark:bg-gray-800 dark:bg-gray-900 flex-shrink-0">
-        <ModalFooter align="right">
-          <Button
-            type="button"
-            onClick={onClose}
-            disabled={updating}
-            variant="secondary"
-            className="flex-1"
-          >
-            Cancel
-          </Button>
-          <Button
-            type="button"
-            onClick={handleUpdateAll}
-            disabled={updating}
-            variant="success"
-            className="flex-1"
-          >
-            {updating ? 'Updating...' : 'Update All'}
-          </Button>
-        </ModalFooter>
-      </div>
     </Modal>
   )
 }

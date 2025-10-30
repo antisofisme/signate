@@ -94,8 +94,8 @@ window.ActivationPoll = {
                 // Stop polling
                 this.stopPolling();
 
-                // Clear localStorage
-                localStorage.clear();
+                // Clear localStorage (preserve Organization PIN)
+                window.clearLocalStoragePreservePIN();
 
                 // Delete IndexedDB cache
                 const dbName = 'signage_media_cache';
@@ -206,8 +206,8 @@ window.ActivationPoll = {
                 // Stop polling
                 this.stopPolling();
 
-                // Clear localStorage
-                localStorage.clear();
+                // Clear localStorage (preserve Organization PIN)
+                window.clearLocalStoragePreservePIN();
 
                 // Delete IndexedDB cache
                 const dbName = 'signage_media_cache';

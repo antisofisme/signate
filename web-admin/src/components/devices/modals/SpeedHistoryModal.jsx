@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { devicesAPI } from '../../../services/api'
-import { Modal, ModalFooter, Button } from '../../shared'
+import { Modal, Button } from '../../shared'
 import { Activity, Download, Upload, Clock, Server, Wifi } from 'lucide-react'
 
 /**
@@ -38,6 +38,15 @@ export default function SpeedHistoryModal({ device, onClose }) {
     )
   }
 
+  // Footer with close button
+  const footer = (
+    <div className="flex justify-end">
+      <Button onClick={onClose} variant="primary">
+        Close
+      </Button>
+    </div>
+  )
+
   return (
     <Modal
       isOpen={true}
@@ -49,6 +58,7 @@ export default function SpeedHistoryModal({ device, onClose }) {
       }
       onClose={onClose}
       size="4xl"
+      footer={footer}
     >
       {/* Content */}
       <div className="p-6">
@@ -162,15 +172,6 @@ export default function SpeedHistoryModal({ device, onClose }) {
             </div>
           </div>
         )}
-      </div>
-
-      {/* Footer */}
-      <div className="p-6 border-t bg-gray-50 dark:bg-gray-800 flex-shrink-0">
-        <ModalFooter align="right">
-          <Button onClick={onClose} variant="primary">
-            Close
-          </Button>
-        </ModalFooter>
       </div>
     </Modal>
   )

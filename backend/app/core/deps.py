@@ -76,13 +76,8 @@ def get_current_user(
             detail="Inactive user"
         )
 
-    # Add organization_id from token to user object
-    user.current_organization_id = payload.get("organization_id")
-
-    # If no organization_id in token, get primary organization
-    if not user.current_organization_id:
-        db.refresh(user)  # Ensure relationships are loaded
-        user.current_organization_id = user.get_primary_organization_id()
+    # Ensure relationships are loaded for organization access
+    db.refresh(user, ['organizations'])
 
     return user
 

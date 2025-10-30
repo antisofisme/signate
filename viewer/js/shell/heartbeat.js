@@ -145,8 +145,8 @@ window.ShellHeartbeat = {
                     console.warn('[Shell/Heartbeat] ⚠️ Device not found (404) - Device was deleted from backend');
                     console.log('[Shell/Heartbeat] 🔄 Auto-resetting viewer to show new activation code...');
 
-                    // Clear localStorage
-                    localStorage.clear();
+                    // Clear localStorage (preserve Organization PIN)
+                    window.clearLocalStoragePreservePIN();
 
                     // Delete IndexedDB cache
                     const dbName = 'signage_media_cache';

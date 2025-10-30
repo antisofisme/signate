@@ -113,12 +113,10 @@ export default function Tags() {
 
   // Calculate stats with filterKey
   const stats = useMemo(() => {
-    if (!tagsData?.items) return []
-
-    const total = tagsData.items.length
-    const active = tagsData.items.filter(tag => tag.device_count > 0).length
+    const total = tagsData?.items?.length || 0
+    const active = tagsData?.items?.filter(tag => tag.device_count > 0).length || 0
     const inactive = total - active
-    const totalDevices = tagsData.items.reduce((sum, tag) => sum + (tag.device_count || 0), 0)
+    const totalDevices = tagsData?.items?.reduce((sum, tag) => sum + (tag.device_count || 0), 0) || 0
 
     return [
       { label: 'Total Tags', value: total, color: 'blue', filterKey: 'all' },
@@ -279,11 +277,21 @@ export default function Tags() {
         ))}
       </div>
 
-      {/* Empty States */}
-      {tagsData?.items?.length === 0 && (
-        <div className="text-center py-12 text-gray-500 dark:text-gray-400">
-          <Tag className="w-16 h-16 mx-auto mb-4 opacity-50" />
-          <p>No tags created yet</p>
+      {/* Empty State */}
+      {!isLoading && (!tagsData?.items || tagsData.items.length === 0) && (
+        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-md p-12 text-center">
+          <Tag className="w-16 h-16 text-gray-400 dark:text-gray-500 mx-auto mb-4" />
+          <h3 className="text-xl font-semibold text-gray-800 dark:text-gray-100 mb-2">No Tags Yet</h3>
+          <p className="text-gray-600 dark:text-gray-400 mb-6">
+            Create your first tag to organize and group devices or content for easier management
+          </p>
+          <Button
+            variant="primary"
+            leftIcon={<Plus className="w-5 h-5" />}
+            onClick={() => setShowCreateForm(true)}
+          >
+            Create First Tag
+          </Button>
         </div>
       )}
 

@@ -1,13 +1,12 @@
 import { useState, useCallback, useMemo } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { devicesAPI } from '../services/api'
-import { Tv, Search } from 'lucide-react'
+import { Search, Monitor } from 'lucide-react'
 import toast, { Toaster } from 'react-hot-toast'
 
 // Components
-import TVRegisterModal from '../components/devices/modals/TVRegisterModal'
 import DeviceDetailModal from '../components/devices/modals/DeviceDetailModal'
-import { Button, PageHeader, FormInput, LoadingSkeleton } from '../components/shared'
+import { PageHeader, FormInput, LoadingSkeleton } from '../components/shared'
 import DeviceEditModal from '../components/devices/modals/DeviceEditModal'
 import DeviceLogsModal from '../components/devices/modals/DeviceLogsModal'
 import PendingDeviceCard from '../components/devices/PendingDeviceCard'
@@ -15,7 +14,6 @@ import DeviceTableRow from '../components/devices/DeviceTableRow'
 
 export default function Devices() {
   const queryClient = useQueryClient()
-  const [showTVForm, setShowTVForm] = useState(false)
   const [showDeviceDetailModal, setShowDeviceDetailModal] = useState(false)
   const [showDeviceEditModal, setShowDeviceEditModal] = useState(false)
   const [showLogsModal, setShowLogsModal] = useState(false)
@@ -27,30 +25,11 @@ export default function Devices() {
   // Fetch devices with auto-refresh every 5 seconds
   const { data: devicesData, isLoading } = useQuery({
     queryKey: ['devices'],
-    queryFn: () => devicesAPI.list().then(res => {
+    queryFn: () => devicesAPI.list({ limit: 2000 }).then(res => {
       console.log('Devices API Response:', res.data)
       return res.data
     }),
     refetchInterval: 5000, // Auto-refresh every 5 seconds to show new pending devices
-  })
-
-  // Register TV mutation
-  const registerTVMutation = useMutation({
-    mutationFn: devicesAPI.registerTV,
-    onSuccess: () => {
-      queryClient.invalidateQueries(['devices'])
-      setShowTVForm(false)
-      toast.success('TV registered successfully!', {
-        duration: 3000,
-        position: 'bottom-right',
-      })
-    },
-    onError: (error) => {
-      toast.error(error.response?.data?.detail || 'Failed to register TV', {
-        duration: 4000,
-        position: 'bottom-right',
-      })
-    }
   })
 
   // Update device mutation (for activating)
@@ -217,15 +196,6 @@ export default function Devices() {
       <PageHeader
         title="Devices"
         description="Manage and monitor all registered devices"
-        actions={
-          <Button
-            onClick={() => setShowTVForm(true)}
-            variant="primary"
-            leftIcon={<Tv className="w-5 h-5" />}
-          >
-            Register TV
-          </Button>
-        }
         searchBar={
           <div className="flex gap-3 max-w-xl">
             <div className="flex-1">
@@ -279,7 +249,21 @@ export default function Devices() {
         </div>
       )}
 
+      {/* Empty State */}
+      {!isLoading && activeDevices.length === 0 && pendingDevices.length === 0 && inactiveDevices.length === 0 && (
+        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-md p-12 text-center">
+          <Monitor className="w-16 h-16 text-gray-400 dark:text-gray-500 mx-auto mb-4" />
+          <h3 className="text-xl font-semibold text-gray-800 dark:text-gray-100 mb-2">No Devices Yet</h3>
+          <p className="text-gray-600 dark:text-gray-400">
+            Devices will appear here once they register using the activation code system.
+            <br />
+            Open the viewer app on your device to get started.
+          </p>
+        </div>
+      )}
+
       {/* Active Devices Table */}
+      {activeDevices.length > 0 && (
       <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-300 dark:border-gray-600 overflow-hidden mb-6">
         <div className="overflow-x-auto">
         <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
@@ -311,6 +295,7 @@ export default function Devices() {
         </table>
         </div>
       </div>
+      )}
 
       {/* Released Devices Section */}
       {inactiveDevices.length > 0 && (
@@ -360,13 +345,6 @@ export default function Devices() {
       </div>
 
       {/* Modals */}
-      {showTVForm && (
-        <TVRegisterModal
-          onClose={() => setShowTVForm(false)}
-          onSubmit={registerTVMutation.mutate}
-        />
-      )}
-
       {showDeviceDetailModal && selectedDevice && (
         <DeviceDetailModal
           device={selectedDevice}

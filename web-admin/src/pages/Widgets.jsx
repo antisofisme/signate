@@ -88,18 +88,22 @@ export default function Widgets() {
   const TabComponent = currentTab.component
 
   return (
-    <div>
-      {/* Header */}
-      <div className="sticky top-0 z-50 bg-white dark:bg-gray-800 dark:bg-gray-800 pb-4 mb-4 border-b border-gray-200 dark:border-gray-700 px-6">
-        <div className="pt-4">
-          <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-100">Widgets</h1>
-          <p className="text-gray-600 dark:text-gray-400 text-sm mt-1">
-            Create interactive content and widgets to display on devices
-          </p>
+    <div className="min-h-screen bg-slate-50 dark:bg-gray-900">
+      {/* Page Header - Dashboard style */}
+      <div className="fixed top-0 left-0 right-0 lg:left-64 z-40 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 shadow-md transition-colors">
+        <div className="px-4 sm:px-6 lg:px-8 py-3">
+          <div className="pl-12 lg:pl-0">
+            <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">Widgets</h1>
+            <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-300 mt-1">
+              Create interactive content and widgets to display on devices
+            </p>
+          </div>
         </div>
       </div>
 
-      <div className="px-6">
+      {/* Content with padding to account for fixed header */}
+      <div className="pt-20 sm:pt-24 lg:pt-20">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         {/* Tab Navigation */}
         <div className="bg-white dark:bg-gray-800 rounded-xl shadow-md overflow-hidden mb-6">
           <div className="border-b border-gray-200">
@@ -139,6 +143,7 @@ export default function Widgets() {
           <div className="p-6">
             <TabComponent />
           </div>
+        </div>
         </div>
       </div>
     </div>

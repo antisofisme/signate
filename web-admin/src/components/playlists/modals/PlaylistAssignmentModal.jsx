@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { playlistsAPI, devicesAPI, tagsAPI } from '../../../services/api'
-import { Modal, ModalFooter, Button } from '../../shared'
+import { Modal, Button } from '../../shared'
 import { Monitor, Tag } from 'lucide-react'
 import { showToast } from '../../../utils/toast'
 
@@ -114,12 +114,22 @@ export default function PlaylistAssignmentModal({ playlist, onClose }) {
   const assignedDeviceIds = assignmentsData?.devices?.map(d => d.id) || []
   const assignedTagIds = assignmentsData?.tags?.map(t => t.id) || []
 
+  // Footer with close button
+  const footer = (
+    <div className="flex justify-end">
+      <Button variant="secondary" onClick={onClose} className="flex-1">
+        Close
+      </Button>
+    </div>
+  )
+
   return (
     <Modal
       isOpen={true}
       onClose={onClose}
       title={`Assign Playlist: ${playlist.name}`}
       size="2xl"
+      footer={footer}
     >
       <div className="space-y-4">
         {/* Tabs */}
@@ -245,13 +255,6 @@ export default function PlaylistAssignmentModal({ playlist, onClose }) {
             </p>
           )}
         </div>
-
-        {/* Footer */}
-        <ModalFooter>
-          <Button variant="secondary" onClick={onClose} className="flex-1">
-            Close
-          </Button>
-        </ModalFooter>
       </div>
     </Modal>
   )
