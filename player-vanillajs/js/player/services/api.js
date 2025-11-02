@@ -68,6 +68,28 @@ window.PlayerAPI = {
                     }
                 } catch (error) {
                     console.error('❌ Cache sync error:', error);
+
+                    // ✅ ERROR RECOVERY: Notify user about cache failure
+                    if (window.Toast) {
+                        window.Toast.warning(
+                            'Cache Warning',
+                            'Failed to cache content. Offline mode may not work properly.',
+                            window.ENV?.TOAST_DURATION || 5000
+                        );
+                    }
+
+                    // ✅ ERROR RECOVERY: Emit event for monitoring/logging
+                    if (window.eventBus) {
+                        window.eventBus.emit('cache:sync-failed', {
+                            error: error.message,
+                            playlist_size: playlist?.length || 0,
+                            timestamp: new Date().toISOString()
+                        });
+                    }
+
+                    // ✅ ERROR RECOVERY: Schedule retry after delay (optional)
+                    // Note: Don't retry immediately to avoid blocking playback
+                    // Cache will retry on next playlist update
                 }
             }
 
@@ -97,12 +119,27 @@ window.PlayerAPI = {
             }
 
             console.error('[Player] Failed to load playlist:', error);
+
+            // ✅ ERROR RECOVERY: Show user-friendly error message
+            const retryDelay = window.ENV?.RETRY_INTERVAL || 10000;
+            const retrySeconds = Math.round(retryDelay / 1000);
+
             if (window.PlayerUI) {
-                window.PlayerUI.showError(`⚠️ Connection Error\n\nRetrying in 10 seconds...`);
+                window.PlayerUI.showError(`⚠️ Connection Error\n\n${error.message || 'Failed to load playlist'}\n\nRetrying in ${retrySeconds} seconds...`);
             }
 
-            // Retry after 10 seconds
-            setTimeout(() => this.loadPlaylist(), 10000);
+            // ✅ ERROR RECOVERY: Emit event for monitoring
+            if (window.eventBus) {
+                window.eventBus.emit('playlist:load-failed', {
+                    error: error.message,
+                    status: error.status,
+                    retry_in: retryDelay,
+                    timestamp: new Date().toISOString()
+                });
+            }
+
+            // Retry after configured interval
+            setTimeout(() => this.loadPlaylist(), retryDelay);
         }
     },
 
