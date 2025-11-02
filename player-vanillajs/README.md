@@ -955,15 +955,33 @@ rsync -avz --exclude 'node_modules' . user@server:/path/to/player-vanillajs/
 
 ### 3. Configure for Production
 
+**Option A: Using Configuration Script (Recommended)**
+
+```bash
+# 1. Copy environment template
+cp .env.example .env
+
+# 2. Edit .env with your production values
+nano .env
+# Update VIEWER_API_URL, VIEWER_WEBSOCKET_URL, etc.
+
+# 3. Generate env.js from template
+./generate-config.sh
+```
+
+**Option B: Manual Configuration**
+
 ```javascript
 // js/core/config/env.js
 window.ENV = {
   API_BASE_URL: 'https://api.yourdomain.com',
-  DEBUG: false,
-  HEARTBEAT_INTERVAL: 30000,
-  SYNC_CHECK_INTERVAL: 900000,
+  WEBSOCKET_URL: 'wss://api.yourdomain.com',
+  ENVIRONMENT: 'production',
+  // ... other config values
 };
 ```
+
+**Important:** Never commit `.env` or `js/core/config/env.js` to git. These files contain environment-specific values and are excluded via `.gitignore`.
 
 ### 4. Deploy to WebOS TV
 
