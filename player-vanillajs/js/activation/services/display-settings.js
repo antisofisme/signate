@@ -14,15 +14,27 @@ window.ShellDisplaySettings = {
      * Fetch device settings from backend
      */
     fetchSettings: async function() {
-        const state = window.ShellState;
+        // ✅ STATE MIGRATION: Use NEW deviceState, fallback to OLD ShellState
+        const device = window.deviceState ? window.deviceState.getDevice() : null;
+        const deviceId = device ? device.id : window.ShellState?.deviceId;
 
-        if (!state.deviceId) {
+        // ✅ NULL CHECK: Ensure deviceId exists
+        if (!deviceId) {
             console.warn('[Shell/DisplaySettings] No device ID, using defaults');
             return this.settings;
         }
 
+        // ✅ STATE MIGRATION: Get API_BASE_URL from Config/ENV (config, not state)
+        const apiBaseUrl = window.Config?.API_BASE_URL || window.ENV?.API_BASE_URL;
+
+        // ✅ NULL CHECK: Ensure API_BASE_URL exists
+        if (!apiBaseUrl) {
+            console.error('[Shell/DisplaySettings] No API_BASE_URL configured');
+            return this.settings;
+        }
+
         try {
-            const response = await fetch(`${state.API_BASE_URL}/api/devices/${state.deviceId}`);
+            const response = await fetch(`${apiBaseUrl}/api/devices/${deviceId}`);
 
             if (response.status === 404) {
                 // Device deleted from backend - reset viewer
