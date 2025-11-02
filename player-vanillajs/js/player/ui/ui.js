@@ -11,7 +11,11 @@ window.PlayerUI = {
         this.hideError();
         const loading = document.getElementById('loading');
         if (loading) {
-            loading.querySelector('p').textContent = message;
+            // ✅ NULL CHECK: Ensure paragraph element exists
+            const paragraph = loading.querySelector('p');
+            if (paragraph) {
+                paragraph.textContent = message;
+            }
             loading.style.display = 'block';
         }
     },
@@ -40,8 +44,14 @@ window.PlayerUI = {
             if (spinner) {
                 spinner.style.borderTopColor = '#ffa500';
             }
-            loading.querySelector('p').textContent = message;
-            loading.querySelector('p').style.color = '#ffa500';
+
+            // ✅ NULL CHECK: Ensure paragraph element exists
+            const paragraph = loading.querySelector('p');
+            if (paragraph) {
+                paragraph.textContent = message;
+                paragraph.style.color = '#ffa500';
+            }
+
             loading.style.display = 'block';
         }
     },
@@ -78,11 +88,24 @@ window.PlayerUI = {
     updateDebugInfo: function(content, index, isCached) {
         const state = window.PlayerState;
 
-        document.getElementById('debug-content').textContent = content.title;
-        document.getElementById('debug-index').textContent = index + 1;
-        document.getElementById('debug-total').textContent = state.playlist.length;
-        document.getElementById('debug-type').textContent = content.content_type;
-        document.getElementById('debug-cache').textContent = isCached ? 'Cached ✅' : 'Downloading...';
+        // ✅ NULL CHECK: Ensure state and content exist
+        if (!state || !content) {
+            console.debug('[Player/UI] Cannot update debug info - missing state or content');
+            return;
+        }
+
+        // ✅ NULL CHECK: Update debug elements only if they exist
+        const debugContent = document.getElementById('debug-content');
+        const debugIndex = document.getElementById('debug-index');
+        const debugTotal = document.getElementById('debug-total');
+        const debugType = document.getElementById('debug-type');
+        const debugCache = document.getElementById('debug-cache');
+
+        if (debugContent) debugContent.textContent = content.title || 'Unknown';
+        if (debugIndex) debugIndex.textContent = index + 1;
+        if (debugTotal && state.playlist) debugTotal.textContent = state.playlist.length;
+        if (debugType) debugType.textContent = content.content_type || 'unknown';
+        if (debugCache) debugCache.textContent = isCached ? 'Cached ✅' : 'Downloading...';
     },
 
     /**
@@ -90,6 +113,12 @@ window.PlayerUI = {
      */
     initKeyboardShortcuts: function() {
         const state = window.PlayerState;
+
+        // ✅ NULL CHECK: Ensure PlayerState exists
+        if (!state) {
+            console.warn('[Player/UI] PlayerState not initialized - keyboard shortcuts disabled');
+            return;
+        }
 
         document.addEventListener('keydown', (e) => {
             // Press 'p' to toggle player info
@@ -102,14 +131,20 @@ window.PlayerUI = {
 
             // Press 'n' to skip to next content
             if (e.key === 'n' || e.key === 'N') {
-                console.log('[Player] Manual skip to next');
-                window.PlayerPlayback.playContent(state.currentIndex + 1);
+                // ✅ NULL CHECK: Ensure PlayerPlayback exists
+                if (window.PlayerPlayback && window.PlayerPlayback.playContent) {
+                    console.log('[Player] Manual skip to next');
+                    window.PlayerPlayback.playContent(state.currentIndex + 1);
+                }
             }
 
             // Press 'r' to reload playlist
             if (e.key === 'r' || e.key === 'R') {
-                console.log('[Player] Manual reload playlist');
-                window.PlayerAPI.loadPlaylist();
+                // ✅ NULL CHECK: Ensure PlayerAPI exists
+                if (window.PlayerAPI && window.PlayerAPI.loadPlaylist) {
+                    console.log('[Player] Manual reload playlist');
+                    window.PlayerAPI.loadPlaylist();
+                }
             }
         });
     }

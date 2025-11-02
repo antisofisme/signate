@@ -10,10 +10,23 @@ window.PlayerPlayback = {
     playContent: async function(index) {
         const state = window.PlayerState;
 
+        // ✅ NULL CHECK: Ensure PlayerState exists
+        if (!state) {
+            console.error('[Player/Playback] PlayerState not initialized');
+            return;
+        }
+
         // Clear existing timer
         if (state.contentTimer) {
             clearTimeout(state.contentTimer);
             state.contentTimer = null;
+        }
+
+        // ✅ NULL CHECK: Ensure playlist exists and has content
+        if (!state.playlist || state.playlist.length === 0) {
+            console.error('[Player/Playback] No playlist available');
+            window.PlayerUI.showWaiting('⏳ Waiting for content...');
+            return;
         }
 
         if (index >= state.playlist.length) {
@@ -21,6 +34,13 @@ window.PlayerPlayback = {
         }
 
         const content = state.playlist[index];
+
+        // ✅ NULL CHECK: Ensure content exists
+        if (!content) {
+            console.error('[Player/Playback] Content not found at index:', index);
+            return;
+        }
+
         state.currentIndex = index;
 
         console.log('[Player] Playing:', content.title);
@@ -34,10 +54,19 @@ window.PlayerPlayback = {
         }
 
         // Update debug info
-        window.PlayerUI.updateDebugInfo(content, index, isCached);
+        if (window.PlayerUI && window.PlayerUI.updateDebugInfo) {
+            window.PlayerUI.updateDebugInfo(content, index, isCached);
+        }
 
         // Clear existing content
         const display = document.getElementById('content-display');
+
+        // ✅ NULL CHECK: Ensure display element exists
+        if (!display) {
+            console.error('[Player/Playback] content-display element not found');
+            return;
+        }
+
         display.innerHTML = '';
 
         // Create content element
@@ -58,6 +87,18 @@ window.PlayerPlayback = {
     playImage: async function(content) {
         const state = window.PlayerState;
         const display = document.getElementById('content-display');
+
+        // ✅ NULL CHECK: Ensure display element exists
+        if (!display) {
+            console.error('[Player/Playback] content-display element not found');
+            return;
+        }
+
+        // ✅ NULL CHECK: Ensure content has URL
+        if (!content || !content.url) {
+            console.error('[Player/Playback] Invalid image content:', content);
+            return;
+        }
 
         const img = document.createElement('img');
 
@@ -105,6 +146,18 @@ window.PlayerPlayback = {
     playVideo: async function(content) {
         const state = window.PlayerState;
         const display = document.getElementById('content-display');
+
+        // ✅ NULL CHECK: Ensure display element exists
+        if (!display) {
+            console.error('[Player/Playback] content-display element not found');
+            return;
+        }
+
+        // ✅ NULL CHECK: Ensure content has URL
+        if (!content || !content.url) {
+            console.error('[Player/Playback] Invalid video content:', content);
+            return;
+        }
 
         const video = document.createElement('video');
 
