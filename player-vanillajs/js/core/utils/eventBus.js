@@ -98,9 +98,17 @@ class EventBus {
   }
 }
 
-// Export singleton instance
-export const eventBus = new EventBus();
+// Create singleton instance
+const eventBusInstance = new EventBus();
 
-// Export class for testing
+// Export for ES6 modules
+export const eventBus = eventBusInstance;
 export { EventBus };
+
+// Also expose to window for backward compatibility (IIFE pattern)
+if (typeof window !== 'undefined') {
+  window.eventBus = eventBusInstance;
+  window.EventBus = EventBus;
+  console.log('[EventBus] Initialized and exposed to window');
+}
 

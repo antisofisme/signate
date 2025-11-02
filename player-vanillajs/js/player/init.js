@@ -4,6 +4,9 @@
  */
 
 window.PlayerInit = {
+    // Store unsubscribe functions for cleanup
+    eventUnsubscribers: [],
+
     /**
      * Initialize player
      */
@@ -78,6 +81,7 @@ window.PlayerInit = {
 
     /**
      * Setup EventBus listeners for reactive state updates (Phase 3)
+     * ✅ MEMORY LEAK FIX: Store unsubscribe functions for cleanup
      */
     setupEventListeners: function() {
         if (!window.eventBus) {
@@ -86,42 +90,69 @@ window.PlayerInit = {
         }
 
         // Listen for playlist loaded
-        window.eventBus.on('playlist:loaded', (data) => {
+        // ✅ Store unsubscribe function returned by .on()
+        const unsubPlaylistLoaded = window.eventBus.on('playlist:loaded', (data) => {
             console.log('[Player/Init] 📋 Playlist loaded event:', {
                 contentCount: data.contentCount,
                 totalDuration: data.totalDuration
             });
         });
+        this.eventUnsubscribers.push(unsubPlaylistLoaded);
 
         // Listen for content changes
-        window.eventBus.on('player:index-changed', (data) => {
+        const unsubIndexChanged = window.eventBus.on('player:index-changed', (data) => {
             console.log('[Player/Init] 🎬 Content changed:', {
                 index: data.index,
                 total: data.total,
                 content: data.content ? data.content.name : 'unknown'
             });
         });
+        this.eventUnsubscribers.push(unsubIndexChanged);
 
         // Listen for playback state changes
-        window.eventBus.on('player:playing', (data) => {
+        const unsubPlaying = window.eventBus.on('player:playing', (data) => {
             console.log('[Player/Init] ▶️ Playing:', data.content ? data.content.name : 'unknown');
         });
+        this.eventUnsubscribers.push(unsubPlaying);
 
-        window.eventBus.on('player:paused', (data) => {
+        const unsubPaused = window.eventBus.on('player:paused', (data) => {
             console.log('[Player/Init] ⏸️ Paused:', data.content ? data.content.name : 'unknown');
         });
+        this.eventUnsubscribers.push(unsubPaused);
 
         // Listen for content ended (auto advance)
-        window.eventBus.on('player:content-ended', (data) => {
+        const unsubContentEnded = window.eventBus.on('player:content-ended', (data) => {
             console.log('[Player/Init] ✅ Content ended, advancing to next...');
         });
+        this.eventUnsubscribers.push(unsubContentEnded);
 
         // Listen for download progress
-        window.eventBus.on('player:download-progress', (data) => {
+        const unsubDownloadProgress = window.eventBus.on('player:download-progress', (data) => {
             console.log('[Player/Init] 📥 Download progress:', `${data.progress}%`);
         });
+        this.eventUnsubscribers.push(unsubDownloadProgress);
 
-        console.log('[Player/Init] ✅ EventBus listeners registered');
+        console.log('[Player/Init] ✅ EventBus listeners registered:', this.eventUnsubscribers.length);
+    },
+
+    /**
+     * Cleanup all event listeners
+     * ✅ MEMORY LEAK FIX: Call all unsubscribe functions
+     */
+    cleanup: function() {
+        console.log('[Player/Init] 🧹 Cleaning up event listeners...');
+
+        // Call all unsubscribe functions
+        this.eventUnsubscribers.forEach(unsub => {
+            if (typeof unsub === 'function') {
+                unsub();
+            }
+        });
+
+        // Clear array
+        this.eventUnsubscribers = [];
+
+        console.log('[Player/Init] ✅ Event listeners cleaned up');
     },
 
     /**
@@ -225,3 +256,10 @@ if (document.readyState === 'loading') {
     // DOM already loaded
     window.PlayerInit.init();
 }
+
+// ✅ MEMORY LEAK FIX: Cleanup listeners before page unload
+window.addEventListener('beforeunload', () => {
+    if (window.PlayerInit && window.PlayerInit.cleanup) {
+        window.PlayerInit.cleanup();
+    }
+});
