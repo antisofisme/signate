@@ -773,17 +773,43 @@
                 const toast = document.createElement('div');
                 toast.className = `toast ${type}`;
 
-                toast.innerHTML = `
-                    <div class="toast-icon">${this.icons[type]}</div>
-                    <div class="toast-content">
-                        <div class="toast-title">${title}</div>
-                        ${message ? `<div class="toast-message">${message}</div>` : ''}
-                    </div>
-                    <div class="toast-close">${this.icons.close}</div>
-                `;
+                // ✅ SECURITY FIX: Build DOM safely to prevent XSS
+                // Create icon element
+                const iconDiv = document.createElement('div');
+                iconDiv.className = 'toast-icon';
+                iconDiv.innerHTML = this.icons[type]; // Safe - icons are controlled by us
 
-                // Close button
-                toast.querySelector('.toast-close').addEventListener('click', () => {
+                // Create content container
+                const contentDiv = document.createElement('div');
+                contentDiv.className = 'toast-content';
+
+                // Create title element - SAFE from XSS
+                const titleDiv = document.createElement('div');
+                titleDiv.className = 'toast-title';
+                titleDiv.textContent = title; // ✅ textContent auto-escapes HTML
+
+                contentDiv.appendChild(titleDiv);
+
+                // Create message element if provided - SAFE from XSS
+                if (message) {
+                    const messageDiv = document.createElement('div');
+                    messageDiv.className = 'toast-message';
+                    messageDiv.textContent = message; // ✅ textContent auto-escapes HTML
+                    contentDiv.appendChild(messageDiv);
+                }
+
+                // Create close button
+                const closeDiv = document.createElement('div');
+                closeDiv.className = 'toast-close';
+                closeDiv.innerHTML = this.icons.close; // Safe - icons are controlled by us
+
+                // Assemble toast
+                toast.appendChild(iconDiv);
+                toast.appendChild(contentDiv);
+                toast.appendChild(closeDiv);
+
+                // Close button event
+                closeDiv.addEventListener('click', () => {
                     this.remove(toast);
                 });
 

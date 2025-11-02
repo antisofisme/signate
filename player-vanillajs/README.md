@@ -120,10 +120,7 @@ player-vanillajs/
 │       │   └── cache.js               # Cache implementation (PlayerCache)
 │       └── utils/
 │           ├── eventBus.js            # ✅ Pub/Sub pattern (window.eventBus)
-│           ├── logger.js              # Logging utility
-│           ├── analytics-tracker.js   # Analytics tracking (unused)
-│           ├── language-manager.js    # i18n support (unused)
-│           └── language-selector.js   # Language selector UI (unused)
+│           └── logger.js              # Logging utility
 └── README.md
 ```
 
@@ -132,7 +129,7 @@ player-vanillajs/
 - ✅ **No `features/` wrapper** - Direct feature folders
 - ✅ **Models** - Device, Playlist, Content, Segment (with validation)
 - ✅ **State** - deviceState, playerState (reactive with EventBus)
-- ✅ **28 active files** - Cleaned dead code (removed 4 unused files: 1,698 lines)
+- ✅ **25 active files** - Cleaned dead code (removed 7 unused files: ~2,820 lines)
 
 ## Key Principles
 

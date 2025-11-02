@@ -13,19 +13,37 @@ window.ShellUI = {
         const activationScreen = document.getElementById('activation-screen');
         const playerContainer = document.getElementById('player-container');
 
+        // ✅ NULL CHECK: Defensive programming to prevent crashes
+        if (!statusElement) {
+            console.error('[Shell/UI] Status element not found');
+            return;
+        }
+
         if (status === 'pending') {
             statusElement.textContent = '⏳ Waiting for approval...';
-            codeElement.textContent = code;
+
+            // ✅ NULL CHECK: Only update if element exists
+            if (codeElement) {
+                codeElement.textContent = code;
+            }
 
             // Ensure activation screen is visible and player is hidden
-            activationScreen.style.display = 'flex';
-            playerContainer.style.display = 'none';
+            if (activationScreen) {
+                activationScreen.style.display = 'flex';
+            }
+            if (playerContainer) {
+                playerContainer.style.display = 'none';
+            }
         } else if (status === 'active') {
             statusElement.textContent = '✅ Activated! Loading player...';
 
             // Keep activation screen visible until player loads
-            activationScreen.style.display = 'flex';
-            playerContainer.style.display = 'none';
+            if (activationScreen) {
+                activationScreen.style.display = 'flex';
+            }
+            if (playerContainer) {
+                playerContainer.style.display = 'none';
+            }
         }
     },
 
@@ -59,8 +77,12 @@ window.ShellUI = {
             // Listen for player errors
             iframe.onerror = () => {
                 console.error('[Shell] Player iframe failed to load');
-                document.getElementById('error-message').textContent =
-                    'Player failed to load. Retrying...';
+
+                // ✅ NULL CHECK: Ensure error element exists before updating
+                const errorElement = document.getElementById('error-message');
+                if (errorElement) {
+                    errorElement.textContent = 'Player failed to load. Retrying...';
+                }
 
                 // Show toast notification
                 if (window.Toast) {
