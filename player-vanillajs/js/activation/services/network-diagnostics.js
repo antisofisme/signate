@@ -53,23 +53,32 @@ window.ShellNetworkDiagnostics = {
      * Used for logs that need to be sent even before device activation
      */
     sendDirectLog: async function(level, message) {
-        const state = window.ShellState;
-
         // Always print to console for debugging
-        state.originalConsole[level](`${message}`);
+        console[level](`${message}`);
+
+        // ✅ STATE MIGRATION: Get deviceId from deviceState, fallback to ShellState
+        const device = window.deviceState ? window.deviceState.getDevice() : null;
+        const deviceId = device ? device.id : window.ShellState?.deviceId;
 
         // If device not activated yet, skip backend sending
         // (These logs will be in browser console only)
-        if (!state.deviceId) {
+        if (!deviceId) {
+            return;
+        }
+
+        // ✅ STATE MIGRATION: Get API_BASE_URL from Config/ENV (config, not state)
+        const apiBaseUrl = window.Config?.API_BASE_URL || window.ENV?.API_BASE_URL;
+        if (!apiBaseUrl) {
+            console.error('[Shell/Network] No API_BASE_URL configured');
             return;
         }
 
         try {
-            await fetch(`${state.API_BASE_URL}/api/client/logs/batch`, {
+            await fetch(`${apiBaseUrl}/api/client/logs/batch`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    device_id: parseInt(state.deviceId),
+                    device_id: parseInt(deviceId),
                     logs: [{
                         level: level,
                         message: message,
@@ -79,7 +88,7 @@ window.ShellNetworkDiagnostics = {
                 })
             });
         } catch (error) {
-            state.originalConsole.error('[Shell/Network] Failed to send direct log:', error);
+            console.error('[Shell/Network] Failed to send direct log:', error);
         }
     },
 
@@ -88,7 +97,12 @@ window.ShellNetworkDiagnostics = {
      * Sends 10 pings and calculates min/max/avg
      */
     testPing: async function() {
-        const state = window.ShellState;
+        // ✅ STATE MIGRATION: Get API_BASE_URL from Config/ENV (config, not state)
+        const apiBaseUrl = window.Config?.API_BASE_URL || window.ENV?.API_BASE_URL;
+        if (!apiBaseUrl) {
+            throw new Error('No API_BASE_URL configured');
+        }
+
         const pingResults = [];
         const sampleCount = 10;
 
@@ -98,7 +112,7 @@ window.ShellNetworkDiagnostics = {
             const startTime = performance.now();
 
             try {
-                const response = await fetch(`${state.API_BASE_URL}/health`, {
+                const response = await fetch(`${apiBaseUrl}/health`, {
                     method: 'GET',
                     cache: 'no-cache'
                 });
@@ -225,15 +239,20 @@ window.ShellNetworkDiagnostics = {
      * Optimized for accurate high-speed measurements (60-100+ Mbps)
      */
     testUploadSpeed: async function() {
-        const state = window.ShellState;
         this.sendDirectLog('info', '[Shell/Network] Testing upload speed to BACKEND...');
+
+        // ✅ STATE MIGRATION: Get API_BASE_URL from Config/ENV (config, not state)
+        const apiBaseUrl = window.Config?.API_BASE_URL || window.ENV?.API_BASE_URL;
+        if (!apiBaseUrl) {
+            throw new Error('No API_BASE_URL configured');
+        }
 
         const testDurationSeconds = 10; // 10 seconds for better accuracy
         let totalBytes = 0;
         const startTime = performance.now();
 
         try {
-            const uploadUrl = `${state.API_BASE_URL}/api/speedtest/upload`;
+            const uploadUrl = `${apiBaseUrl}/api/speedtest/upload`;
             const chunkSize = 1024 * 1024; // 1MB chunks
 
             // Pre-generate test data (reuse to save CPU)
@@ -298,21 +317,30 @@ window.ShellNetworkDiagnostics = {
      * NOTE: Diagnostics hanya jalan setelah device activated, jadi deviceId pasti ada
      */
     sendResults: async function(results) {
-        const state = window.ShellState;
+        // ✅ STATE MIGRATION: Get deviceId from deviceState, fallback to ShellState
+        const device = window.deviceState ? window.deviceState.getDevice() : null;
+        const deviceId = device ? device.id : window.ShellState?.deviceId;
 
-        if (!state.deviceId) {
+        if (!deviceId) {
             this.sendDirectLog('error', '[Shell/Network] ❌ No device ID - diagnostics should only run after activation!');
+            return;
+        }
+
+        // ✅ STATE MIGRATION: Get API_BASE_URL from Config/ENV (config, not state)
+        const apiBaseUrl = window.Config?.API_BASE_URL || window.ENV?.API_BASE_URL;
+        if (!apiBaseUrl) {
+            this.sendDirectLog('error', '[Shell/Network] ❌ No API_BASE_URL configured');
             return;
         }
 
         try {
             this.sendDirectLog('info', '[Shell/Network] Sending diagnostics results to backend...');
 
-            const response = await fetch(`${state.API_BASE_URL}/api/client/logs/batch`, {
+            const response = await fetch(`${apiBaseUrl}/api/client/logs/batch`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    device_id: parseInt(state.deviceId),
+                    device_id: parseInt(deviceId),
                     logs: [{
                         level: 'info',
                         message: `Network Diagnostics - Ping: ${results.ping.avg}ms, Download: ${results.download.mbps.toFixed(2)} Mbps, Upload: ${results.upload.mbps.toFixed(2)} Mbps`,
@@ -353,11 +381,17 @@ window.ShellNetworkDiagnostics = {
      * Used by heartbeat to measure latency
      */
     quickPing: async function() {
-        const state = window.ShellState;
+        // ✅ STATE MIGRATION: Get API_BASE_URL from Config/ENV (config, not state)
+        const apiBaseUrl = window.Config?.API_BASE_URL || window.ENV?.API_BASE_URL;
+        if (!apiBaseUrl) {
+            console.warn('[Shell/Network] No API_BASE_URL configured');
+            return null;
+        }
+
         const startTime = performance.now();
 
         try {
-            const response = await fetch(`${state.API_BASE_URL}/health`, {
+            const response = await fetch(`${apiBaseUrl}/health`, {
                 method: 'GET',
                 cache: 'no-cache'
             });

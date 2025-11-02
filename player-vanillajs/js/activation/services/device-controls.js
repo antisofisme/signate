@@ -377,7 +377,7 @@ window.ShellDeviceControls = {
          * @param {string} url - URL to ping
          * @returns {Promise<number>} - Latency in ms
          */
-        ping: async function(url = window.ENV?.API_BASE_URL || window.ShellState?.API_BASE_URL || 'http://localhost:8001') {
+        ping: async function(url = window.Config?.API_BASE_URL || window.ENV?.API_BASE_URL || 'http://localhost:8001') {
             const startTime = performance.now();
 
             try {
