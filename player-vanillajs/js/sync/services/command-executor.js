@@ -338,11 +338,17 @@ window.ShellCommandExecutor = {
         // Upload to backend if requested
         if (upload) {
             try {
+                // ✅ STATE MIGRATION: Get API_BASE_URL from Config/ENV (config, not state)
+                const apiBaseUrl = window.Config?.API_BASE_URL || window.ENV?.API_BASE_URL;
+                if (!apiBaseUrl) {
+                    throw new Error('No API_BASE_URL configured');
+                }
+
                 const formData = new FormData();
                 formData.append('screenshot', blob, `screenshot_${Date.now()}.jpg`);
                 formData.append('device_id', localStorage.getItem('device_id') || '0');
 
-                const uploadUrl = `${window.ShellState.API_BASE_URL}/api/screenshots/upload`;
+                const uploadUrl = `${apiBaseUrl}/api/screenshots/upload`;
                 console.log(`[CommandExecutor] Uploading screenshot to ${uploadUrl}`);
 
                 const response = await fetch(uploadUrl, {
@@ -702,10 +708,19 @@ window.ShellCommandExecutor = {
      * @returns {Promise<void>}
      */
     reportStatus: async function(commandId, status, result = null, error = null) {
-        const state = window.ShellState;
+        // ✅ STATE MIGRATION: Get deviceId from deviceState, fallback to ShellState
+        const device = window.deviceState ? window.deviceState.getDevice() : null;
+        const deviceId = device ? device.id : window.ShellState?.deviceId;
 
-        if (!state.deviceId) {
+        if (!deviceId) {
             console.warn('[CommandExecutor] No device ID, cannot report status');
+            return;
+        }
+
+        // ✅ STATE MIGRATION: Get API_BASE_URL from Config/ENV (config, not state)
+        const apiBaseUrl = window.Config?.API_BASE_URL || window.ENV?.API_BASE_URL;
+        if (!apiBaseUrl) {
+            console.error('[CommandExecutor] No API_BASE_URL configured');
             return;
         }
 
@@ -722,7 +737,7 @@ window.ShellCommandExecutor = {
         try {
             // Use APIClient for standardized response handling
             await window.APIClient.post(
-                `${state.API_BASE_URL}/api/devices/${state.deviceId}/commands/${commandId}/report`,
+                `${apiBaseUrl}/api/devices/${deviceId}/commands/${commandId}/report`,
                 report
             );
 

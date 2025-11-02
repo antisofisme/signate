@@ -8,17 +8,26 @@ window.ShellCommands = {
      * Check for pending commands and execute them
      */
     checkAndExecute: async function() {
-        const state = window.ShellState;
+        // ✅ STATE MIGRATION: Get deviceId from deviceState, fallback to ShellState
+        const device = window.deviceState ? window.deviceState.getDevice() : null;
+        const deviceId = device ? device.id : window.ShellState?.deviceId;
 
-        if (!state.deviceId) {
+        if (!deviceId) {
             console.log('[Shell/Commands] No device ID, skip command check');
+            return;
+        }
+
+        // ✅ STATE MIGRATION: Get API_BASE_URL from Config/ENV (config, not state)
+        const apiBaseUrl = window.Config?.API_BASE_URL || window.ENV?.API_BASE_URL;
+        if (!apiBaseUrl) {
+            console.error('[Shell/Commands] No API_BASE_URL configured');
             return;
         }
 
         try {
             // Use APIClient for standardized response handling
             const data = await window.APIClient.get(
-                `${state.API_BASE_URL}/api/devices/${state.deviceId}/commands/pending`
+                `${apiBaseUrl}/api/devices/${deviceId}/commands/pending`
             );
 
             if (!data.commands || data.commands.length === 0) {
@@ -42,8 +51,6 @@ window.ShellCommands = {
      * Execute a single command
      */
     executeCommand: async function(command) {
-        const state = window.ShellState;
-
         console.log(`[Shell/Commands] 🔄 Executing command: ${command.command_type} (ID: ${command.id})`);
         console.log(`[Shell/Commands] Reason: ${command.reason}`);
 
@@ -82,8 +89,6 @@ window.ShellCommands = {
      * Execute RESET command (clear localStorage + cache, then reload)
      */
     executeReset: async function(command) {
-        const state = window.ShellState;
-
         console.log('[Shell/Commands] 🔄 RESET: Clearing all data...');
 
         // Clear localStorage
@@ -194,12 +199,26 @@ window.ShellCommands = {
      * Mark command as executed in backend
      */
     markExecuted: async function(commandId) {
-        const state = window.ShellState;
+        // ✅ STATE MIGRATION: Get deviceId from deviceState, fallback to ShellState
+        const device = window.deviceState ? window.deviceState.getDevice() : null;
+        const deviceId = device ? device.id : window.ShellState?.deviceId;
+
+        if (!deviceId) {
+            console.warn('[Shell/Commands] No device ID, cannot mark command as executed');
+            return;
+        }
+
+        // ✅ STATE MIGRATION: Get API_BASE_URL from Config/ENV (config, not state)
+        const apiBaseUrl = window.Config?.API_BASE_URL || window.ENV?.API_BASE_URL;
+        if (!apiBaseUrl) {
+            console.error('[Shell/Commands] No API_BASE_URL configured');
+            return;
+        }
 
         try {
             // Use APIClient for standardized response handling
             await window.APIClient.post(
-                `${state.API_BASE_URL}/api/devices/${state.deviceId}/commands/${commandId}/execute`
+                `${apiBaseUrl}/api/devices/${deviceId}/commands/${commandId}/execute`
             );
 
             console.log(`[Shell/Commands] ✅ Command ${commandId} marked as executed`);
