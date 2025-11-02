@@ -11,7 +11,7 @@ from datetime import datetime
 class OrganizationBase(BaseModel):
     """Base organization schema"""
     name: str = Field(..., min_length=2, max_length=100, description="Organization name")
-    slug: Optional[str] = Field(None, min_length=2, max_length=100, regex="^[a-z0-9-]+$", description="URL-friendly identifier")
+    slug: Optional[str] = Field(None, min_length=2, max_length=100, pattern="^[a-z0-9-]+$", description="URL-friendly identifier")
     description: Optional[str] = Field(None, max_length=500, description="Organization description")
 
     @validator('slug')
@@ -120,11 +120,11 @@ class OrganizationStats(BaseModel):
 
 class OrganizationSettings(BaseModel):
     """Organization settings schema"""
-    theme: Optional[str] = Field("light", regex="^(light|dark)$")
+    theme: Optional[str] = Field("light", pattern="^(light|dark)$")
     timezone: Optional[str] = Field("UTC")
-    language: Optional[str] = Field("en", regex="^[a-z]{2}$")
+    language: Optional[str] = Field("en", pattern="^[a-z]{2}$")
     date_format: Optional[str] = Field("YYYY-MM-DD")
-    time_format: Optional[str] = Field("24h", regex="^(12h|24h)$")
+    time_format: Optional[str] = Field("24h", pattern="^(12h|24h)$")
     allow_device_self_registration: bool = Field(False)
     default_content_duration: int = Field(30, ge=5, le=300, description="Default content duration in seconds")
     maintenance_mode: bool = Field(False)

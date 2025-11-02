@@ -55,7 +55,7 @@ def activity_to_response(activity: ActivityLog, db: Session) -> ActivityLogRespo
 
     return ActivityLogResponse(
         id=activity.id,
-        timestamp=activity.timestamp,
+        timestamp=activity.created_at,  # Use created_at for timestamp (backward compatibility)
         user_id=activity.user_id,
         action_type=activity.action_type,
         entity_type=activity.entity_type,
@@ -137,15 +137,15 @@ async def list_activities(
         if user_id:
             query = query.filter(ActivityLog.user_id == user_id)
         if start_date:
-            query = query.filter(ActivityLog.timestamp >= start_date)
+            query = query.filter(ActivityLog.created_at >= start_date)
         if end_date:
-            query = query.filter(ActivityLog.timestamp <= end_date)
+            query = query.filter(ActivityLog.created_at <= end_date)
 
         # Get total count
         total = query.count()
 
-        # Get paginated results, ordered by timestamp descending
-        activities = query.order_by(ActivityLog.timestamp.desc()).offset(skip).limit(limit).all()
+        # Get paginated results, ordered by created_at descending
+        activities = query.order_by(ActivityLog.created_at.desc()).offset(skip).limit(limit).all()
 
         # Transform to response models
         items = [activity_to_response(activity, db) for activity in activities]
@@ -204,15 +204,15 @@ async def get_activity_stats(
 
         # Count activities for different time periods
         today_count = db.query(func.count(ActivityLog.id)).filter(
-            ActivityLog.timestamp >= today_start
+            ActivityLog.created_at >= today_start
         ).scalar()
 
         week_count = db.query(func.count(ActivityLog.id)).filter(
-            ActivityLog.timestamp >= week_start
+            ActivityLog.created_at >= week_start
         ).scalar()
 
         month_count = db.query(func.count(ActivityLog.id)).filter(
-            ActivityLog.timestamp >= month_start
+            ActivityLog.created_at >= month_start
         ).scalar()
 
         # Group by action type
@@ -464,7 +464,7 @@ async def cleanup_old_activities(
 
         # Delete old activities
         deleted_count = db.query(ActivityLog).filter(
-            ActivityLog.timestamp < cutoff_date
+            ActivityLog.created_at < cutoff_date
         ).delete(synchronize_session=False)
 
         db.commit()

@@ -1,6 +1,7 @@
 """
-Activity Logger Utility
+Activity Logger Utility (FIXED)
 Helper function for logging system activities
+Fixed to work with corrected activity_log model
 """
 
 from typing import Optional, Dict, Any
@@ -49,17 +50,22 @@ def log_activity(
         if user and not user_id:
             user_id = user.id
 
-        # Create activity log entry
+        # Prepare details dict - include entity_name and user_agent if provided
+        activity_details = details or {}
+        if entity_name:
+            activity_details['entity_name'] = entity_name
+        if user_agent:
+            activity_details['user_agent'] = user_agent
+
+        # Create activity log entry - FIXED: Removed timestamp field, use created_at default
         activity = ActivityLog(
-            action_type=action_type,
+            action=action_type,  # FIXED: Use 'action' directly (setter will handle action_type)
             entity_type=entity_type,
             entity_id=entity_id,
-            entity_name=entity_name,
-            details=details or {},
+            details=activity_details,  # Store entity_name and user_agent in details
             user_id=user_id,
             ip_address=ip_address,
-            user_agent=user_agent,
-            timestamp=datetime.utcnow()
+            # created_at will be set automatically by server_default
         )
 
         db.add(activity)
@@ -67,9 +73,9 @@ def log_activity(
         db.refresh(activity)
 
         logger.info(
-            f"Activity logged: {action_type.value} on {entity_type.value}",
-            action_type=action_type.value,
-            entity_type=entity_type.value,
+            f"Activity logged: {action_type} on {entity_type}",
+            action_type=action_type,
+            entity_type=entity_type,
             entity_id=entity_id,
             user_id=user_id
         )
@@ -79,8 +85,8 @@ def log_activity(
     except Exception as e:
         logger.error(
             f"Failed to log activity: {e}",
-            action_type=action_type.value if action_type else None,
-            entity_type=entity_type.value if entity_type else None,
+            action_type=action_type if action_type else None,
+            entity_type=entity_type if entity_type else None,
             error=str(e)
         )
         db.rollback()

@@ -176,6 +176,15 @@ def list_devices(
         joinedload(Device.playlist_assignments)
     )
 
+    # Apply organization filter if user is authenticated
+    if current_user and hasattr(current_user, 'organization_id') and current_user.organization_id:
+        query = query.filter(Device.organization_id == current_user.organization_id)
+        logger.info(
+            "Filtering devices by organization",
+            request_id=request_id,
+            organization_id=current_user.organization_id
+        )
+
     # Apply filters
     if device_type:
         query = query.filter(Device.device_type == device_type)
@@ -530,10 +539,30 @@ def register_monitor_self(
     logger.info(
         "Monitor self-registration initiated",
         request_id=request_id,
+        organization_pin=device_data.organization_pin,
         activation_code=device_data.activation_code,
         device_name=device_data.device_name,
         platform=device_data.platform
     )
+
+    # Validate organization PIN and get organization_id
+    from app.models.organization import Organization
+    organization = db.query(Organization).filter(
+        Organization.organization_pin == device_data.organization_pin,
+        Organization.is_active == True
+    ).first()
+
+    if not organization:
+        logger.warning(
+            "Monitor registration failed - invalid organization PIN",
+            request_id=request_id,
+            organization_pin=device_data.organization_pin
+        )
+        raise NotFoundException(
+            message=f"Invalid organization PIN: {device_data.organization_pin}",
+            field="organization_pin",
+            details={"organization_pin": device_data.organization_pin}
+        )
 
     # Check if activation code already exists
     existing_device = db.query(Device).filter(
@@ -575,7 +604,7 @@ def register_monitor_self(
     if device_data.platform and device_data.platform in ['webOS', 'Tizen', 'Android TV']:
         device_type = "tv"
 
-    # Create device with self-generated code
+    # Create device with self-generated code and organization_id
     device = Device(
         device_type=device_type,
         device_name=device_data.device_name,
@@ -584,6 +613,7 @@ def register_monitor_self(
         platform=device_data.platform if device_data.platform else None,  # Optional
         model_name=device_data.model_name if device_data.model_name else None,  # Optional
         ip_address=client_ip,  # Auto-detected IP
+        organization_id=organization.id,  # Set organization from PIN
         status="pending"
     )
 
@@ -604,10 +634,8 @@ def register_monitor_self(
     # Transform to response
     device_response = device_to_response(device, db)
 
-    return success_response(
-        data=device_response.model_dump() if hasattr(device_response, 'model_dump') else device_response.dict(),
-        request_id=request_id
-    )
+    # Return DeviceResponse directly (FastAPI wraps it based on response_model)
+    return device_response
 
 
 @router.post("/monitor/activate")

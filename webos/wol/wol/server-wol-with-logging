@@ -1,0 +1,10 @@
+#!/bin/bash
+export TZ=Asia/Jakarta
+
+# Change to working directory
+cd /opt/backend/wol
+
+# Execute the application with timestamp logging
+exec /opt/backend/wol/server-wol 2>&1 | while IFS= read -r line; do
+    echo "$(date '+%Y-%m-%d %H:%M:%S') [BACKEND] $line" >> /opt/backend/wol/logs/backend.log
+done

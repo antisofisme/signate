@@ -66,6 +66,7 @@ class MonitorGenerateRequest(BaseModel):
 
 class MonitorSelfRegisterRequest(BaseModel):
     """Request schema for monitor self-registration (no auth required)"""
+    organization_pin: str = Field(..., min_length=8, max_length=20, description="Organization PIN (8-digit) for multi-tenant identification")
     activation_code: str = Field(..., min_length=6, max_length=6, pattern="^[0-9]{6}$")
     device_name: str = Field(..., min_length=1, max_length=100)
     platform: Optional[str] = Field(None, max_length=20)
@@ -74,6 +75,7 @@ class MonitorSelfRegisterRequest(BaseModel):
     class Config:
         json_schema_extra = {
             "example": {
+                "organization_pin": "12345678",
                 "activation_code": "123456",
                 "device_name": "Monitor-123456",
                 "platform": "webOS",

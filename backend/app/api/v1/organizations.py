@@ -34,9 +34,9 @@ from app.models.device import Device
 from app.models.content import Content
 from app.models.playlist import Playlist
 from app.models.user import User
-from app.services.organization_service import OrganizationService
 from app.core.security import create_access_token, create_refresh_token
 from app.core.config import settings
+import secrets
 
 router = APIRouter()
 
@@ -161,9 +161,46 @@ async def create_organization(
                 detail=f"Organization with slug '{org_data.slug}' already exists"
             )
 
-    # Create organization using service
-    service = OrganizationService()
-    organization = await service.create_organization(db, org_data, context.user)
+    # Generate unique organization PIN (8-digit)
+    organization_pin = ''.join([str(secrets.randbelow(10)) for _ in range(8)])
+
+    # Ensure PIN is unique
+    while db.query(Organization).filter(Organization.organization_pin == organization_pin).first():
+        organization_pin = ''.join([str(secrets.randbelow(10)) for _ in range(8)])
+
+    # Create organization
+    organization = Organization(
+        name=org_data.name,
+        slug=org_data.slug or org_data.name.lower().replace(' ', '-'),
+        description=org_data.description,
+        settings=org_data.settings,
+        max_devices=org_data.max_devices,
+        max_users=org_data.max_users,
+        max_storage_gb=org_data.max_storage_gb,
+        organization_pin=organization_pin,
+        subscription_tier="free",
+        is_active=True
+    )
+    db.add(organization)
+    db.commit()
+    db.refresh(organization)
+
+    # Get or create admin role
+    admin_role = db.query(Role).filter(Role.name == "Admin").first()
+    if not admin_role:
+        admin_role = db.query(Role).first()
+
+    # Add user as admin of the organization
+    user_org = UserOrganization(
+        user_id=context.user.id,
+        organization_id=organization.id,
+        role_id=admin_role.id if admin_role else 1,
+        is_primary=False,
+        is_active=True,
+        invited_by=context.user.id
+    )
+    db.add(user_org)
+    db.commit()
 
     # Return with computed fields
     response = OrganizationResponse.from_orm(organization)

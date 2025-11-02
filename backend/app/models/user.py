@@ -62,14 +62,29 @@ class User(Base):
         return self.is_super_admin or self.role == 'admin'
 
     def get_primary_organization_id(self):
-        """Get user's primary organization ID"""
-        for org in self.organizations:
-            if org.is_primary and org.is_active:
-                return org.organization_id
-        # Return first active organization if no primary found
-        for org in self.organizations:
-            if org.is_active:
-                return org.organization_id
+        """Get user's primary organization ID
+
+        Returns None if organizations relationship is not loaded yet
+        to prevent breaking authentication flow
+        """
+        try:
+            # Check if organizations relationship is loaded
+            if not hasattr(self, 'organizations') or self.organizations is None:
+                return None
+
+            # Iterate through loaded organizations
+            for org in self.organizations:
+                if org.is_primary and org.is_active:
+                    return org.organization_id
+            # Return first active organization if no primary found
+            for org in self.organizations:
+                if org.is_active:
+                    return org.organization_id
+        except Exception:
+            # If relationship not loaded or any error, return None
+            # This prevents breaking authentication when relationship is not eagerly loaded
+            return None
+
         return None
 
     @property

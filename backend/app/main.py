@@ -59,7 +59,7 @@ if settings.ENABLE_CORS:
 # =============================================================================
 # API ROUTERS
 # =============================================================================
-from app.api import auth, devices, content, client, tags, logs, websocket, speedtest, playlists, firebird, activities
+from app.api import auth, devices, content, client, tags, logs, websocket, speedtest, playlists, firebird, activities, celery_monitor
 from app.api import settings as settings_api  # Renamed to avoid conflict with app.core.config.settings
 from app.api.v1 import organizations  # V1 API for multi-tenant organizations
 
@@ -76,6 +76,7 @@ app.include_router(logs.router, prefix="/api", tags=["Device Logs"])
 app.include_router(websocket.router, prefix="/api", tags=["WebSocket"])
 app.include_router(speedtest.router, tags=["Speed Test"])
 app.include_router(firebird.router, tags=["Firebird Integration"])
+app.include_router(celery_monitor.router, prefix="/api", tags=["Celery Tasks"])  # Background task monitoring
 
 # Quick Wins Demo Router (only in DEBUG mode)
 if settings.DEBUG:

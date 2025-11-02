@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="utf-8" />
+  <link rel="stylesheet" href="css/style.css" />
+  <title>ZuriExpress</title>
+  <script src="webOSTV.js"></script>
+  <script src="js/lifecycle.js"></script>
+</head>
+
+<body>
+  <div class="welcome-container">
+    <h1 id="welcome-message">Welcome to Hotel Zuri Express Lippo Cikarang</h1>
+    <div id="status" class="status-message">Initializing...</div>
+    <div id="debug" class="debug-info">Ready to receive parameters...</div>
+
+    <!-- Hidden button for development/testing - remove in production -->
+    <button id="clear-storage" class="debug-button hidden" onclick="clearStorageAndReload()">
+      Clear Saved Room
+    </button>
+  </div>
+
+  <script>
+    // Function to clear storage (for testing purposes)
+    function clearStorageAndReload() {
+      if (typeof clearSavedUrl === 'function') {
+        clearSavedUrl();
+        location.reload();
+      }
+    }
+
+    // Show clear button in debug mode
+    if (typeof DEBUG_MODE !== 'undefined' && DEBUG_MODE) {
+      document.getElementById('clear-storage').classList.remove('hidden');
+    }
+  </script>
+</body>
+
+</html>

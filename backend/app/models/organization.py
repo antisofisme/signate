@@ -39,6 +39,9 @@ class Organization(Base):
     slug = Column(String(100), unique=True, nullable=False, index=True)
     description = Column(String(500))
 
+    # Organization PIN for device registration (8-digit, unique)
+    organization_pin = Column(String(20), unique=True, index=True)
+
     # Organization Settings
     settings = Column(JSON, default=dict)
     max_devices = Column(Integer, default=10)
@@ -74,6 +77,7 @@ class Organization(Base):
             "name": self.name,
             "slug": self.slug,
             "description": self.description,
+            "organization_pin": self.organization_pin,
             "settings": self.settings or {},
             "max_devices": self.max_devices,
             "max_users": self.max_users,

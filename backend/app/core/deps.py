@@ -76,8 +76,8 @@ def get_current_user(
             detail="Inactive user"
         )
 
-    # Ensure relationships are loaded for organization access
-    db.refresh(user, ['organizations'])
+    # User model has @property for organization_id that accesses the relationship
+    # No need to explicitly refresh here - lazy loading will handle it
 
     return user
 

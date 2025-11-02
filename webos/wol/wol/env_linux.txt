@@ -1,0 +1,40 @@
+#DatabasePostgres
+PGHOST=192.168.8.196
+PGPORT=5432
+PGUSER=postgres
+PGPASSWORD=Password@2021
+PGDATABASE=dbesm
+
+# Database URL
+DATABASE_URL=postgresql://postgres:Password@2021@192.168.8.196:5432/dbesm
+HOTEL_ID=ZUEXLIPPO
+PORT=4000
+NODE_ENV=development
+
+# WebOS CLI Configuration
+WEBOS_NPM_GLOBAL_PATH=/home/edp/.nvm/versions/node/v22.20.0/bin
+WEBOS_CLI_TIMEOUT=30000
+WEBOS_CLI_SHELL=bash
+
+STATUS_ARES_RESET_HOURS=0
+
+# High-Speed Monitoring Configuration (optimized for 3s detection)
+MONITOR_INTERVAL=2000          # 2 detik interval (dari 5000)
+MONITOR_BATCH_SIZE=25          # Batch lebih besar (dari 20)
+MONITOR_BATCH_DELAY=20         # Delay lebih cepat (dari 30)
+PING_TIMEOUT=200               # Ping lebih cepat (dari 250)
+PORT_TIMEOUT=350               # Port check lebih cepat (dari 200)
+DB_UPDATE_DELAY=3              # Database update lebih cepat
+
+# Autolaunch Retry Configuration (Optional)
+AUTOLAUNCH_MAX_RETRIES=2
+AUTOLAUNCH_PORT_TIMEOUT=3000    # 3 detik
+AUTOLAUNCH_RETRY_DELAY=5000     # 5 detik
+AUTOLAUNCH_TRIGGER_DELAY=2000   # 2 detik
+
+# Front Office API Configuration
+API_SERVER=http://192.168.8.196
+FO_API_ENDPOINT=/api/fo/sql
+FO_API_TIMEOUT=3000
+FO_API_KEY=tv_sync
+FO_DATABASE_NAME=dbfo

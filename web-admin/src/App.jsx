@@ -16,6 +16,14 @@ import Widgets from './pages/Widgets'
 import Settings from './pages/Settings'
 import Layout from './components/Layout'
 
+// Super Admin Pages
+import SuperAdminLayout from './layouts/SuperAdminLayout'
+import SuperDashboard from './pages/super/SuperDashboard'
+import TenantsManagement from './pages/super/TenantsManagement'
+import UsersManagement from './pages/super/UsersManagement'
+import GlobalAnalytics from './pages/super/GlobalAnalytics'
+import SystemSettings from './pages/super/SystemSettings'
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -119,6 +127,20 @@ function App() {
                 </Layout>
               </PrivateRoute>
             } />
+
+            {/* Super Admin Routes */}
+            <Route path="/super" element={
+              <PrivateRoute>
+                <SuperAdminLayout />
+              </PrivateRoute>
+            }>
+              <Route index element={<Navigate to="/super/dashboard" replace />} />
+              <Route path="dashboard" element={<SuperDashboard />} />
+              <Route path="tenants" element={<TenantsManagement />} />
+              <Route path="users" element={<UsersManagement />} />
+              <Route path="analytics" element={<GlobalAnalytics />} />
+              <Route path="system" element={<SystemSettings />} />
+            </Route>
           </Routes>
         </Router>
       </QueryClientProvider>

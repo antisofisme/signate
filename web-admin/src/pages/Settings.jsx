@@ -1,8 +1,9 @@
 import { useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { Users, Database } from 'lucide-react'
+import { Building2, Users, Database } from 'lucide-react'
 
 // Tab Components
+import OrganizationTab from '../components/settings/OrganizationTab'
 import UsersTab from '../components/settings/UsersTab'
 import SystemTab from '../components/settings/SystemTab'
 
@@ -11,14 +12,22 @@ import SystemTab from '../components/settings/SystemTab'
  * Central configuration hub with tabbed interface
  *
  * Tabs:
+ * - Organization: Organization information and settings
  * - Users: User management, roles, permissions
  * - System: Backup, logs, maintenance, system info
  */
 export default function Settings() {
   const [searchParams, setSearchParams] = useSearchParams()
-  const activeTab = searchParams.get('tab') || 'users'
+  const activeTab = searchParams.get('tab') || 'organization'
 
   const tabs = [
+    {
+      id: 'organization',
+      label: 'Organization',
+      icon: Building2,
+      description: 'Manage organization information and preferences',
+      component: OrganizationTab
+    },
     {
       id: 'users',
       label: 'Users',

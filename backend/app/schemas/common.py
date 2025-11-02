@@ -152,6 +152,59 @@ class PaginatedAPIResponse(BaseModel, Generic[T]):
         }
 
 
+class SuccessResponse(BaseModel):
+    """
+    Simple success response with message and optional details
+
+    Used for operations that don't return complex data (e.g., delete, validate)
+
+    Attributes:
+        message: Success message
+        details: Optional additional context
+    """
+    message: str = Field(description="Success message")
+    details: Optional[Dict[str, Any]] = Field(None, description="Optional additional details")
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "message": "Operation completed successfully",
+                "details": {"organization_name": "Acme Corp"}
+            }
+        }
+
+
+class PaginatedResponse(BaseModel, Generic[T]):
+    """
+    Alias for PaginatedAPIResponse for backward compatibility
+
+    Use PaginatedAPIResponse for new code
+    """
+    success: bool = Field(default=True)
+    data: list[T] = Field(description="List of items for current page")
+    meta: PaginationMeta
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "success": True,
+                "data": [
+                    {"id": 1, "name": "Item 1"},
+                    {"id": 2, "name": "Item 2"}
+                ],
+                "meta": {
+                    "timestamp": "2025-10-27T10:30:00Z",
+                    "request_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+                    "version": "1.0.0",
+                    "total": 150,
+                    "page": 1,
+                    "page_size": 20,
+                    "total_pages": 8
+                }
+            }
+        }
+
+
 class ErrorDetail(BaseModel):
     """
     Error detail structure for API errors

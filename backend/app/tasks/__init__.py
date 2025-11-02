@@ -1,22 +1,51 @@
 """
-Celery Tasks Module
-Background tasks for video transcoding and other async operations
+Background Tasks Package
+========================
+
+Celery tasks untuk async operations:
+- Device monitoring dan management
+- Content processing dan cleanup
+- System analytics dan maintenance
 """
 
-from app.core.celery_app import celery_app
+# Import all tasks to make them discoverable by Celery
+from app.tasks.device_tasks import (
+    check_offline_devices,
+    sync_device_heartbeats,
+    cleanup_inactive_devices,
+    send_device_command
+)
 
-# Import all tasks to register them with Celery
-from app.tasks.transcoding import (
-    transcode_video_task,
-    check_transcoding_progress,
-    cleanup_old_jobs,
-    cancel_transcoding_task
+from app.tasks.content_tasks import (
+    cleanup_expired_content,
+    generate_thumbnails,
+    transcode_video,
+    validate_content
+)
+
+from app.tasks.system_tasks import (
+    generate_daily_analytics,
+    check_storage_quota,
+    cleanup_old_logs,
+    database_backup
 )
 
 __all__ = [
-    'celery_app',
-    'transcode_video_task',
-    'check_transcoding_progress',
-    'cleanup_old_jobs',
-    'cancel_transcoding_task'
+    # Device tasks
+    "check_offline_devices",
+    "sync_device_heartbeats",
+    "cleanup_inactive_devices",
+    "send_device_command",
+
+    # Content tasks
+    "cleanup_expired_content",
+    "generate_thumbnails",
+    "transcode_video",
+    "validate_content",
+
+    # System tasks
+    "generate_daily_analytics",
+    "check_storage_quota",
+    "cleanup_old_logs",
+    "database_backup",
 ]

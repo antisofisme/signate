@@ -1,0 +1,14 @@
+[Unit]
+Description=Server Linux Backend
+After=network.target
+
+[Service]
+ExecStart=/opt/backend/webos/server-linux-with-logging
+WorkingDirectory=/opt/backend/webos
+Restart=always
+RestartSec=5
+User=edp
+Group=edp
+
+[Install]
+WantedBy=multi-user.target
