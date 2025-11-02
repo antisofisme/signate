@@ -43,8 +43,8 @@ window.PlayerAPI = {
                     window.PlayerUI.showWaiting('⏳ No content assigned yet...');
                 }
 
-                // Retry after 10 seconds
-                setTimeout(() => this.loadPlaylist(), 10000);
+                // Retry after configured interval
+                setTimeout(() => this.loadPlaylist(), window.ENV?.RETRY_INTERVAL || 10000);
                 return;
             }
 
@@ -81,8 +81,8 @@ window.PlayerAPI = {
                     window.PlayerUI.showWaiting('⏳ Waiting for content assignment...');
                 }
 
-                // Retry after 10 seconds
-                setTimeout(() => this.loadPlaylist(), 10000);
+                // Retry after configured interval
+                setTimeout(() => this.loadPlaylist(), window.ENV?.RETRY_INTERVAL || 10000);
                 return;
             }
 

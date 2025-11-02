@@ -35,10 +35,10 @@ class SignageWebSocket {
         this.reconnectAttempts = 0;
         this.maxReconnectAttempts = 10;
         this.reconnectDelay = 1000; // Start at 1 second
-        this.maxReconnectDelay = 30000; // Max 30 seconds
+        this.maxReconnectDelay = window.ENV?.WEBSOCKET_MAX_RECONNECT_DELAY || 30000; // Max 30 seconds
 
         // Heartbeat
-        this.heartbeatInterval = 30000; // 30 seconds
+        this.heartbeatInterval = window.ENV?.WEBSOCKET_HEARTBEAT_INTERVAL || 30000; // 30 seconds
         this.heartbeatTimer = null;
         this.lastPongTime = null;
         this.missedPongs = 0;

@@ -57,7 +57,7 @@ window.PlayerInit = {
                 if (window.PlayerAPI && window.PlayerAPI.checkPlaylistUpdate) {
                     window.PlayerAPI.checkPlaylistUpdate();
                 }
-            }, 60000);
+            }, window.ENV?.PLAYLIST_CHECK_INTERVAL || 60000);
 
             // 8. Setup keyboard shortcuts (debug mode)
             this.setupKeyboardShortcuts();
@@ -69,10 +69,10 @@ window.PlayerInit = {
             console.error('[Player/Init] ❌ Initialization failed:', error);
             window.PlayerUI.showError(`⚠️ Initialization Error\n\n${error.message}\n\nReloading in 10 seconds...`);
 
-            // Retry initialization after 10 seconds
+            // Retry initialization after configured interval
             setTimeout(() => {
                 window.location.reload();
-            }, 10000);
+            }, window.ENV?.RETRY_INTERVAL || 10000);
         }
     },
 

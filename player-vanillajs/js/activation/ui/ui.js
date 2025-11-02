@@ -89,8 +89,8 @@ window.ShellUI = {
                     window.Toast.error('Player Error', 'Player failed to load. Retrying in 5 seconds...', 4000);
                 }
 
-                // Retry after 5 seconds
-                setTimeout(() => this.loadPlayer(), 5000);
+                // Retry after configured interval
+                setTimeout(() => this.loadPlayer(), window.ENV?.PLAYER_RETRY_INTERVAL || 5000);
             };
 
             // Hide activation screen, show player
