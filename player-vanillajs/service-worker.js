@@ -47,8 +47,6 @@ const CRITICAL_ASSETS = [
     '/player.html',
     '/js/config/env.js',
     '/js/shared/api-client.js',
-    '/js/shared/cache-manager.js',
-    '/js/shared/offline-detector.js',
     '/js/shell/config.js',
     '/js/shell/logger.js',
     '/js/shell/wifi-status.js',

@@ -113,21 +113,17 @@ player-vanillajs/
 │       ├── api/
 │       │   ├── api-client.js          # ⚠️ CENTRALIZED HTTP client (window.APIClient)
 │       │   ├── endpoints.js           # ⚠️ CENTRALIZED API routes (window.API_ENDPOINTS)
-│       │   ├── websocket-client.js    # WebSocket client
-│       │   └── websocket.js           # WebSocket wrapper
+│       │   └── websocket.js           # WebSocket wrapper (SignageWebSocket)
 │       ├── storage/
 │       │   ├── indexedDB.js           # IndexedDB wrapper
 │       │   ├── schema.js              # Database schema (devices, playlists, segments)
-│       │   ├── cache.js               # Cache implementation
-│       │   └── cache-manager.js       # Cache manager
+│       │   └── cache.js               # Cache implementation (PlayerCache)
 │       └── utils/
 │           ├── eventBus.js            # ✅ Pub/Sub pattern (window.eventBus)
 │           ├── logger.js              # Logging utility
-│           ├── analytics-tracker.js   # Analytics tracking
-│           ├── language-manager.js    # i18n support
-│           ├── language-selector.js   # Language selector UI
-│           ├── offline-detector.js    # Offline detection
-│           └── token-manager.js       # Token management
+│           ├── analytics-tracker.js   # Analytics tracking (unused)
+│           ├── language-manager.js    # i18n support (unused)
+│           └── language-selector.js   # Language selector UI (unused)
 └── README.md
 ```
 
@@ -136,7 +132,7 @@ player-vanillajs/
 - ✅ **No `features/` wrapper** - Direct feature folders
 - ✅ **Models** - Device, Playlist, Content, Segment (with validation)
 - ✅ **State** - deviceState, playerState (reactive with EventBus)
-- ✅ **32 total files** - All organized by feature
+- ✅ **28 active files** - Cleaned dead code (removed 4 unused files: 1,698 lines)
 
 ## Key Principles
 
