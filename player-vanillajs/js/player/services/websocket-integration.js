@@ -31,18 +31,30 @@ window.PlayerWebSocket = {
      * Initialize WebSocket connection after device activation
      */
     initialize: function() {
-        const state = window.PlayerState;
+        // ✅ STATE MIGRATION: Get deviceId from PlayerState (runtime param, not migrated to playerState)
+        // deviceId is passed via URL params and stored in OLD PlayerState for backward compatibility
+        const deviceId = window.PlayerState?.deviceId;
 
-        if (!state.deviceId) {
+        // ✅ NULL CHECK: Ensure deviceId exists
+        if (!deviceId) {
             console.warn('[Player/WebSocket] No device ID - skipping WebSocket initialization');
             return;
         }
 
-        console.log('[Player/WebSocket] Initializing WebSocket for device:', state.deviceId);
+        // ✅ STATE MIGRATION: Get API_BASE_URL from Config/ENV (config, not state)
+        const apiBaseUrl = window.Config?.API_BASE_URL || window.ENV?.API_BASE_URL;
+
+        // ✅ NULL CHECK: Ensure API_BASE_URL exists
+        if (!apiBaseUrl) {
+            console.error('[Player/WebSocket] No API_BASE_URL configured');
+            return;
+        }
+
+        console.log('[Player/WebSocket] Initializing WebSocket for device:', deviceId);
 
         try {
             // Create WebSocket client
-            this.ws = new window.SignageWebSocket(state.deviceId, state.API_BASE_URL);
+            this.ws = new window.SignageWebSocket(deviceId, apiBaseUrl);
 
             // Register event handlers
             this._registerHandlers();
