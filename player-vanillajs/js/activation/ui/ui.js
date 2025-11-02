@@ -62,7 +62,10 @@ window.ShellUI = {
      * Load player in iframe with cache-busting timestamp
      */
     loadPlayer: function() {
-        const state = window.ShellState;
+        // ✅ STATE MIGRATION: Use NEW deviceState instead of OLD ShellState
+        const device = window.deviceState ? window.deviceState.getDevice() : null;
+        const deviceId = device ? device.id : window.ShellState?.deviceId; // Fallback for backward compatibility
+
         const timestamp = Date.now();
         const iframe = document.getElementById('player-iframe');
 
@@ -71,8 +74,8 @@ window.ShellUI = {
             const playerParams = window.ShellDisplaySettings.getPlayerParams();
             const volumeParam = playerParams.volume_enabled;
 
-            iframe.src = `player.html?t=${timestamp}&deviceId=${state.deviceId}&volume=${volumeParam}`;
-            console.log('[Shell] Loading player iframe with volume:', volumeParam);
+            iframe.src = `player.html?t=${timestamp}&deviceId=${deviceId}&volume=${volumeParam}`;
+            console.log('[Shell] Loading player iframe with deviceId:', deviceId, 'volume:', volumeParam);
 
             // Listen for player errors
             iframe.onerror = () => {

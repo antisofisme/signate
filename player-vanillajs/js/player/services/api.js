@@ -8,19 +8,16 @@ window.PlayerAPI = {
      * Load playlist from backend
      */
     loadPlaylist: async function() {
-        const state = window.PlayerState;
+        // ✅ STATE MIGRATION: Prefer NEW reactive state, fallback to OLD for compatibility
+        const state = window.PlayerState; // Keep for backward compatibility
+        const apiBaseUrl = window.Config?.API_BASE_URL || window.ENV?.API_BASE_URL || state?.API_BASE_URL;
+        const deviceId = state?.deviceId;
 
-        // ✅ NULL CHECK: Ensure PlayerState exists
-        if (!state) {
-            console.error('[Player/API] PlayerState not initialized');
-            return;
-        }
-
-        // ✅ NULL CHECK: Ensure required state properties exist
-        if (!state.API_BASE_URL || !state.deviceId) {
+        // ✅ NULL CHECK: Ensure required config exists
+        if (!apiBaseUrl || !deviceId) {
             console.error('[Player/API] Missing API_BASE_URL or deviceId:', {
-                API_BASE_URL: state.API_BASE_URL,
-                deviceId: state.deviceId
+                API_BASE_URL: apiBaseUrl,
+                deviceId: deviceId
             });
             return;
         }
@@ -34,7 +31,7 @@ window.PlayerAPI = {
 
             // Use APIClient for standardized response handling
             const data = await window.APIClient.get(
-                `${state.API_BASE_URL}/api/client/playlist?device_id=${state.deviceId}`
+                `${apiBaseUrl}/api/client/playlist?device_id=${deviceId}`
             );
 
             if (!data.playlist || data.playlist.length === 0) {
@@ -48,14 +45,27 @@ window.PlayerAPI = {
                 return;
             }
 
-            state.playlist = data.playlist;
-            console.log('[Player] Playlist loaded:', state.playlist.length, 'items');
+            // ✅ STATE MIGRATION: Use NEW playerState for reactive playlist management
+            if (window.playerState && window.playerState.setPlaylist) {
+                window.playerState.setPlaylist(data.playlist);
+                console.log('[Player/API] Playlist set reactively via playerState');
+            } else {
+                // Fallback to OLD pattern
+                if (state) {
+                    state.playlist = data.playlist;
+                }
+                console.log('[Player/API] Playlist loaded (fallback):', data.playlist.length, 'items');
+            }
 
             // Sync cache with playlist (download new, delete old)
             // ✅ NULL CHECK: Ensure PlayerCache exists
             if (window.PlayerCache && window.PlayerCache.syncCacheWithPlaylist) {
                 try {
-                    await window.PlayerCache.syncCacheWithPlaylist(state.playlist);
+                    // ✅ STATE MIGRATION: Get playlist from playerState
+                    const playlist = window.playerState ? window.playerState.getPlaylist() : state?.playlist;
+                    if (playlist) {
+                        await window.PlayerCache.syncCacheWithPlaylist(playlist.contents || playlist);
+                    }
                 } catch (error) {
                     console.error('❌ Cache sync error:', error);
                 }
@@ -100,22 +110,23 @@ window.PlayerAPI = {
      * Check for playlist updates (periodic)
      */
     checkPlaylistUpdate: async function() {
-        const state = window.PlayerState;
+        // ✅ STATE MIGRATION: Prefer NEW reactive state, fallback to OLD
+        const state = window.PlayerState; // Keep for backward compatibility
+        const apiBaseUrl = window.Config?.API_BASE_URL || window.ENV?.API_BASE_URL || state?.API_BASE_URL;
+        const deviceId = state?.deviceId;
 
-        // ✅ NULL CHECK: Ensure PlayerState exists
-        if (!state) {
-            console.debug('[Player/API] PlayerState not initialized');
-            return;
-        }
-
-        // ✅ NULL CHECK: Ensure required state properties exist
-        if (!state.API_BASE_URL || !state.deviceId) {
+        // ✅ NULL CHECK: Ensure required config exists
+        if (!apiBaseUrl || !deviceId) {
             console.debug('[Player/API] Missing API_BASE_URL or deviceId');
             return;
         }
 
+        // ✅ STATE MIGRATION: Get current playlist from playerState
+        const currentPlaylistObj = window.playerState ? window.playerState.getPlaylist() : null;
+        const currentPlaylist = currentPlaylistObj ? (currentPlaylistObj.contents || currentPlaylistObj) : state?.playlist;
+
         // ✅ NULL CHECK: Ensure current playlist exists to compare
-        if (!state.playlist) {
+        if (!currentPlaylist) {
             console.debug('[Player/API] No current playlist to compare');
             return;
         }
@@ -123,7 +134,7 @@ window.PlayerAPI = {
         try {
             // Use APIClient for standardized response handling
             const data = await window.APIClient.get(
-                `${state.API_BASE_URL}/api/client/playlist?device_id=${state.deviceId}`
+                `${apiBaseUrl}/api/client/playlist?device_id=${deviceId}`
             );
 
             // ✅ NULL CHECK: Ensure response has playlist
@@ -133,8 +144,9 @@ window.PlayerAPI = {
             }
 
             // Compare playlist (simple check - compare length and first item)
-            if (data.playlist.length !== state.playlist.length ||
-                (data.playlist[0] && state.playlist[0] && data.playlist[0].content_id !== state.playlist[0].content_id)) {
+            const currentArray = Array.isArray(currentPlaylist) ? currentPlaylist : currentPlaylist.contents || [];
+            if (data.playlist.length !== currentArray.length ||
+                (data.playlist[0] && currentArray[0] && data.playlist[0].content_id !== currentArray[0].content_id)) {
 
                 console.log('[Player] Playlist updated! Reloading...');
                 await this.loadPlaylist();
