@@ -145,18 +145,21 @@ window.ActivationPoll = {
                 state.deviceName = data.device_name;
                 state.isActivated = true;
 
-                // Step 4: Save to localStorage with correct keys
+                // Step 4: ✅ Update device status using deviceState (Phase 3)
                 try {
+                    // Update device with active status
+                    window.deviceState.setStatus('active');
+
+                    // Also update legacy localStorage for backward compatibility
                     localStorage.setItem('device_id', newDeviceId);
                     localStorage.setItem('device_status', 'active');
                     // Keep the activation code for reference
                     // device_code already exists from registration
 
-                    console.log('[Shell/ActivationPoll] ✅ Device ID updated, localStorage synced');
-                    console.log('[Shell/ActivationPoll] 🔍 localStorage after activation:', {
-                        device_id: localStorage.getItem('device_id'),
-                        device_status: localStorage.getItem('device_status'),
-                        device_code: localStorage.getItem('device_code')
+                    console.log('[Shell/ActivationPoll] ✅ Device activated with model', {
+                        device_id: newDeviceId,
+                        status: 'active',
+                        model: window.deviceState.getDevice()?.toJSON()
                     });
                 } catch (storageError) {
                     console.error('[Shell/ActivationPoll] ❌ CRITICAL: Failed to save to localStorage!', storageError);

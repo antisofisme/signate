@@ -97,7 +97,9 @@ window.ShellHeartbeat = {
         console.log('[Shell/Heartbeat] ⏰ Starting heartbeat (every 30 seconds)');
 
         state.heartbeatInterval = setInterval(async () => {
-            if (!state.deviceId) return;
+            // ✅ Use deviceState (Phase 3)
+            const device = window.deviceState.getDevice();
+            if (!device || !device.id) return;
 
             try {
                 // Collect device info
@@ -115,13 +117,16 @@ window.ShellHeartbeat = {
                 const data = await window.APIClient.post(
                     window.getFullURL(window.API_ENDPOINTS.DEVICES.HEARTBEAT),
                     {
-                        device_id: parseInt(state.deviceId),
+                        device_id: parseInt(device.id),
                         platform: this.detectPlatform(),           // 'webOS', 'Chrome', etc (backend schema)
                         ...deviceInfo,
                         // Additional metadata for frontend filtering
                         device_category: this.getDeviceCategory()  // 'tv' or 'browser' (custom field)
                     }
                 );
+
+                // ✅ Update last_seen using deviceState (Phase 3)
+                window.deviceState.updateLastSeen();
 
                 console.log('[Shell/Heartbeat] ✅ Heartbeat sent');
 

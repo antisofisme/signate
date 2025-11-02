@@ -731,6 +731,19 @@
     <!-- API Client - Standardized response wrapper (load before shell modules) -->
     <script src="js/core/api/api-client.js?v=20251027-standardized-api"></script>
 
+    <!-- EventBus - For reactive state management -->
+    <script src="js/core/utils/eventBus.js?v=20251102-phase3"></script>
+
+    <!-- Models - Data models with validation (load before states) -->
+    <script src="js/activation/models/Device.js?v=20251102-phase3"></script>
+    <script src="js/player/models/Playlist.js?v=20251102-phase3"></script>
+    <script src="js/player/models/Content.js?v=20251102-phase3"></script>
+    <script src="js/player/models/Segment.js?v=20251102-phase3"></script>
+
+    <!-- State Management - Reactive state with EventBus (load before services) -->
+    <script src="js/activation/state/deviceState.js?v=20251102-phase3"></script>
+    <script src="js/player/state/playerState.js?v=20251102-phase3"></script>
+
     <!-- Shell Modules (STABLE CORE) - Load in correct order -->
     <script src="js/core/config/config.js?v=20251025-27"></script>
     <script src="js/core/utils/logger.js?v=20251025-27"></script>

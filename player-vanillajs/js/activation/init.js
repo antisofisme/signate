@@ -17,6 +17,12 @@ window.ShellInit = {
         // Initialize logger FIRST
         window.ShellLogger.init();
 
+        // ✅ Restore device from localStorage using deviceState (Phase 3)
+        const restoredDevice = window.deviceState.loadFromStorage();
+        if (restoredDevice) {
+            console.log('[Shell/Init] ✅ Device restored from storage', restoredDevice.toJSON());
+        }
+
         // Initialize WiFi status indicator
         if (window.ShellWiFiStatus && window.ShellWiFiStatus.init) {
             window.ShellWiFiStatus.init();

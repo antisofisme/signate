@@ -113,18 +113,27 @@ window.ShellRegistration = {
                 }
             );
 
-            // Save to localStorage (PERSISTENT)
-            localStorage.setItem('device_id', data.id);
-            localStorage.setItem('device_code', code);
-            localStorage.setItem('device_status', 'pending');
+            // ✅ Use Device model and deviceState (Phase 3)
+            const device = new window.Device({
+                id: data.id,
+                code: code,
+                name: deviceName,
+                status: 'pending',
+                organization_id: data.organization_id,
+                platform: platform
+            });
 
+            // Save device using state management (auto saves to localStorage)
+            window.deviceState.setDevice(device);
+
+            // Update legacy state for backward compatibility
             state.deviceId = data.id;
             state.deviceCode = code;
 
             // Clear pending code (registration succeeded)
             this.pendingCode = null;
 
-            console.log('[Shell/Registration] ✅ Device registered', { deviceId: state.deviceId, code });
+            console.log('[Shell/Registration] ✅ Device registered with model', device.toJSON());
 
             // Show WiFi online icon (registration succeeded)
             if (window.ShellWiFiStatus) {
