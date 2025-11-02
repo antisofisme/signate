@@ -1,25 +1,23 @@
 /**
- * Player Configuration
- * Constants and global state for player
+ * Shell Configuration
+ * Constants and global state for shell
  */
 
-// Global player state object
-window.PlayerState = {
+// Global shell state object
+window.ShellState = {
     // API Configuration (loaded from window.ENV)
     API_BASE_URL: window.ENV?.API_BASE_URL || 'http://localhost:8001',
-    REFRESH_INTERVAL: window.ENV?.CONTENT_REFRESH_INTERVAL || 60000,   // Check for playlist updates every minute
+    HEARTBEAT_INTERVAL: window.ENV?.HEARTBEAT_INTERVAL || 30000, // 30 seconds
     LOG_SEND_INTERVAL: 5000,   // 5 seconds
     LOG_BUFFER_SIZE: 20,
     
-    // Player state
+    // Device state
     deviceId: null,
-    playlist: [],
-    currentIndex: 0,
-    volumeEnabled: true, // Volume setting from Shell
+    deviceCode: null,
+    isActivated: false,
     
-    // Timers
-    contentTimer: null,
-    refreshTimer: null,
+    // Intervals
+    heartbeatInterval: null,
     logSendInterval: null,
     
     // Logger state
@@ -31,8 +29,6 @@ window.PlayerState = {
         warn: console.warn,
         error: console.error,
         info: console.info
-    },
-    
-    // Cache DB reference
-    cacheDb: null
+    }
 };
+

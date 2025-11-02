@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Shell Heartbeat Module
  * Sends periodic heartbeat to keep device online
  */
@@ -113,7 +113,7 @@ window.ShellHeartbeat = {
 
                 // Use APIClient for standardized response handling
                 const data = await window.APIClient.post(
-                    `${state.API_BASE_URL}/api/devices/heartbeat`,
+                    window.getFullURL(window.API_ENDPOINTS.DEVICES.HEARTBEAT),
                     {
                         device_id: parseInt(state.deviceId),
                         platform: this.detectPlatform(),           // 'webOS', 'Chrome', etc (backend schema)

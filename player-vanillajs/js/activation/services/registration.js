@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Shell Registration Module
  * Handles device registration and activation polling
  */
@@ -104,7 +104,7 @@ window.ShellRegistration = {
 
             // Use APIClient for standardized response handling
             const data = await window.APIClient.post(
-                `${state.API_BASE_URL}/api/devices/monitor/register`,
+                window.getFullURL(window.API_ENDPOINTS.DEVICES.REGISTER),
                 {
                     organization_pin: orgPIN,
                     activation_code: code,

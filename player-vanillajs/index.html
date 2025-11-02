@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -725,23 +725,24 @@
     </script>
 
     <!-- Environment Configuration - MUST load first -->
-    <script src="js/config/env.js?v=20251027-env"></script>
+    <script src="js/core/config/env.js?v=20251027-env"></script>
+    <script src="js/core/api/endpoints.js?v=20251102-centralized"></script>
 
     <!-- API Client - Standardized response wrapper (load before shell modules) -->
-    <script src="js/shared/api-client.js?v=20251027-standardized-api"></script>
+    <script src="js/core/api/api-client.js?v=20251027-standardized-api"></script>
 
     <!-- Shell Modules (STABLE CORE) - Load in correct order -->
-    <script src="js/shell/config.js?v=20251025-27"></script>
-    <script src="js/shell/logger.js?v=20251025-27"></script>
-    <script src="js/shell/wifi-status.js?v=20251026-lucide-svg"></script>
-    <script src="js/shell/network-diagnostics.js?v=20251025-27"></script>
-    <script src="js/shell/registration.js?v=20251030-org-pin"></script>
-    <script src="js/shell/heartbeat.js?v=20251027-api-client"></script>
-    <script src="js/shell/activation-poll.js?v=20251027-api-client"></script>
-    <script src="js/shell/commands.js?v=20251027-api-client"></script>
-    <script src="js/shell/display-settings.js?v=20251025-27"></script>
-    <script src="js/shell/ui.js?v=20251025-27"></script>
-    <script src="js/shell/init.js?v=20251026-fix-duplicate-device"></script>
+    <script src="js/core/config/config.js?v=20251025-27"></script>
+    <script src="js/core/utils/logger.js?v=20251025-27"></script>
+    <script src="js/activation/services/wifi-status.js?v=20251026-lucide-svg"></script>
+    <script src="js/activation/services/network-diagnostics.js?v=20251025-27"></script>
+    <script src="js/activation/services/registration.js?v=20251030-org-pin"></script>
+    <script src="js/sync/services/heartbeat.js?v=20251027-api-client"></script>
+    <script src="js/activation/services/activation-poll.js?v=20251027-api-client"></script>
+    <script src="js/sync/services/commands.js?v=20251027-api-client"></script>
+    <script src="js/activation/services/display-settings.js?v=20251025-27"></script>
+    <script src="js/activation/ui/ui.js?v=20251025-27"></script>
+    <script src="js/activation/init.js?v=20251026-fix-duplicate-device"></script>
 
     <!-- Toast Notification System -->
     <script>
