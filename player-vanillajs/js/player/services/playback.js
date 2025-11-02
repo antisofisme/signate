@@ -8,32 +8,34 @@ window.PlayerPlayback = {
      * Play content at given index
      */
     playContent: async function(index) {
-        const state = window.PlayerState;
+        // ✅ STATE MIGRATION: Use NEW playerState, fallback to OLD
+        const state = window.PlayerState; // Keep for contentTimer (runtime state)
 
-        // ✅ NULL CHECK: Ensure PlayerState exists
-        if (!state) {
-            console.error('[Player/Playback] PlayerState not initialized');
-            return;
-        }
-
-        // Clear existing timer
-        if (state.contentTimer) {
+        // Clear existing timer (still use PlayerState for runtime state)
+        if (state && state.contentTimer) {
             clearTimeout(state.contentTimer);
             state.contentTimer = null;
         }
 
+        // ✅ STATE MIGRATION: Get playlist from playerState
+        const playlistObj = window.playerState ? window.playerState.getPlaylist() : null;
+        const playlist = playlistObj ? (playlistObj.contents || playlistObj) : state?.playlist;
+
         // ✅ NULL CHECK: Ensure playlist exists and has content
-        if (!state.playlist || state.playlist.length === 0) {
+        if (!playlist || playlist.length === 0) {
             console.error('[Player/Playback] No playlist available');
-            window.PlayerUI.showWaiting('⏳ Waiting for content...');
+            if (window.PlayerUI) {
+                window.PlayerUI.showWaiting('⏳ Waiting for content...');
+            }
             return;
         }
 
-        if (index >= state.playlist.length) {
-            index = 0; // Loop to start
+        // Loop to start if index out of bounds
+        if (index >= playlist.length) {
+            index = 0;
         }
 
-        const content = state.playlist[index];
+        const content = playlist[index];
 
         // ✅ NULL CHECK: Ensure content exists
         if (!content) {
@@ -41,9 +43,15 @@ window.PlayerPlayback = {
             return;
         }
 
-        state.currentIndex = index;
+        // ✅ STATE MIGRATION: Use playerState.setCurrentIndex() for reactive updates
+        if (window.playerState && window.playerState.setCurrentIndex) {
+            window.playerState.setCurrentIndex(index);
+        } else if (state) {
+            // Fallback to OLD pattern
+            state.currentIndex = index;
+        }
 
-        console.log('[Player] Playing:', content.title);
+        console.log('[Player/Playback] Playing:', content.title || content.name);
 
         // Check if content is cached (for debug info)
         let isCached = false;
@@ -78,14 +86,15 @@ window.PlayerPlayback = {
 
         // Schedule next content
         const duration = content.duration * 1000;
-        state.contentTimer = setTimeout(() => this.playContent(index + 1), duration);
+        if (state) {
+            state.contentTimer = setTimeout(() => this.playContent(index + 1), duration);
+        }
     },
 
     /**
      * Play image content
      */
     playImage: async function(content) {
-        const state = window.PlayerState;
         const display = document.getElementById('content-display');
 
         // ✅ NULL CHECK: Ensure display element exists
@@ -121,10 +130,14 @@ window.PlayerPlayback = {
 
         img.onerror = () => {
             console.error('[Player] Image load failed:', content.url);
-            window.PlayerUI.showError(`Failed to load image: ${content.title}`);
+            if (window.PlayerUI) {
+                window.PlayerUI.showError(`Failed to load image: ${content.title || 'Unknown'}`);
+            }
 
             // Skip to next content
-            setTimeout(() => this.playContent(state.currentIndex + 1), 3000);
+            // ✅ STATE MIGRATION: Get current index from playerState
+            const currentIndex = window.playerState ? window.playerState.getCurrentIndex() : window.PlayerState?.currentIndex || 0;
+            setTimeout(() => this.playContent(currentIndex + 1), 3000);
         };
 
         img.onload = () => {
@@ -144,7 +157,6 @@ window.PlayerPlayback = {
      * Play video content with optional segment timing
      */
     playVideo: async function(content) {
-        const state = window.PlayerState;
         const display = document.getElementById('content-display');
 
         // ✅ NULL CHECK: Ensure display element exists
@@ -177,10 +189,13 @@ window.PlayerPlayback = {
         }
 
         video.autoplay = true;
-        // Apply volume setting from Shell (muted = opposite of volumeEnabled)
-        video.muted = !state.volumeEnabled;
 
-        console.log('[Player] Video volume:', state.volumeEnabled ? 'Enabled' : 'Muted');
+        // ✅ STATE MIGRATION: Get volume from playerState
+        const volume = window.playerState ? window.playerState.getVolume() : (window.PlayerState?.volumeEnabled ? 1.0 : 0.0);
+        const volumeEnabled = volume > 0;
+        video.muted = !volumeEnabled;
+
+        console.log('[Player] Video volume:', volumeEnabled ? `Enabled (${volume})` : 'Muted');
 
         // Video segment timing
         const startTime = content.video_start_time || 0;
@@ -192,10 +207,14 @@ window.PlayerPlayback = {
 
         video.onerror = () => {
             console.error('[Player] Video load failed:', content.url);
-            window.PlayerUI.showError(`Failed to load video: ${content.title}`);
+            if (window.PlayerUI) {
+                window.PlayerUI.showError(`Failed to load video: ${content.title || 'Unknown'}`);
+            }
 
             // Skip to next content
-            setTimeout(() => this.playContent(state.currentIndex + 1), 3000);
+            // ✅ STATE MIGRATION: Get current index from playerState
+            const currentIndex = window.playerState ? window.playerState.getCurrentIndex() : window.PlayerState?.currentIndex || 0;
+            setTimeout(() => this.playContent(currentIndex + 1), 3000);
         };
 
         video.onloadeddata = async () => {
@@ -223,9 +242,13 @@ window.PlayerPlayback = {
                 // Try to play without promise (fallback)
                 video.play().catch(e => {
                     console.error('[Player] Video play fallback also failed:', e);
-                    window.PlayerUI.showError(`Failed to play video: ${content.title}`);
+                    if (window.PlayerUI) {
+                        window.PlayerUI.showError(`Failed to play video: ${content.title || 'Unknown'}`);
+                    }
                     // Skip to next content after 3 seconds
-                    setTimeout(() => this.playContent(state.currentIndex + 1), 3000);
+                    // ✅ STATE MIGRATION: Get current index from playerState
+                    const currentIndex = window.playerState ? window.playerState.getCurrentIndex() : window.PlayerState?.currentIndex || 0;
+                    setTimeout(() => this.playContent(currentIndex + 1), 3000);
                 });
             }
         };
@@ -235,7 +258,18 @@ window.PlayerPlayback = {
             video.ontimeupdate = () => {
                 if (video.currentTime >= endTime) {
                     console.log('[Player] Reached end time:', endTime + 's');
-                    this.playContent(state.currentIndex + 1);
+                    // ✅ STATE MIGRATION: Use playNext() for reactive state update
+                    if (window.playerState && window.playerState.playNext) {
+                        window.playerState.playNext();
+                        const nextContent = window.playerState.getCurrentContent();
+                        if (nextContent) {
+                            this.playContent(window.playerState.getCurrentIndex());
+                        }
+                    } else {
+                        // Fallback
+                        const currentIndex = window.PlayerState?.currentIndex || 0;
+                        this.playContent(currentIndex + 1);
+                    }
                 }
             };
         }
@@ -243,7 +277,18 @@ window.PlayerPlayback = {
         // Auto-advance when video ends naturally (for videos without end time)
         video.onended = () => {
             console.log('[Player] Video ended, advancing...');
-            this.playContent(state.currentIndex + 1);
+            // ✅ STATE MIGRATION: Use playNext() for reactive state update
+            if (window.playerState && window.playerState.playNext) {
+                window.playerState.playNext();
+                const nextContent = window.playerState.getCurrentContent();
+                if (nextContent) {
+                    this.playContent(window.playerState.getCurrentIndex());
+                }
+            } else {
+                // Fallback
+                const currentIndex = window.PlayerState?.currentIndex || 0;
+                this.playContent(currentIndex + 1);
+            }
         };
 
         display.appendChild(video);
