@@ -29,7 +29,13 @@ window.PlayerCache = {
 
             request.onsuccess = () => {
                 self.cacheDb = request.result;
-                window.PlayerState.cacheDb = self.cacheDb;
+
+                // ✅ STATE MIGRATION: Keep backward compatibility with OLD PlayerState
+                // Note: cacheDb is infrastructure, not reactive state, so it stays in PlayerState (not migrated to playerState)
+                if (window.PlayerState) {
+                    window.PlayerState.cacheDb = self.cacheDb;
+                }
+
                 console.log('✅ IndexedDB opened successfully');
                 resolve(self.cacheDb);
             };
