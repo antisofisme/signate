@@ -86,13 +86,15 @@ window.PlayerUI = {
      * Update debug info overlay
      */
     updateDebugInfo: function(content, index, isCached) {
-        const state = window.PlayerState;
-
-        // ✅ NULL CHECK: Ensure state and content exist
-        if (!state || !content) {
-            console.debug('[Player/UI] Cannot update debug info - missing state or content');
+        // ✅ NULL CHECK: Ensure content exists
+        if (!content) {
+            console.debug('[Player/UI] Cannot update debug info - missing content');
             return;
         }
+
+        // ✅ STATE MIGRATION: Get playlist from playerState
+        const playlistObj = window.playerState ? window.playerState.getPlaylist() : null;
+        const playlist = playlistObj ? (playlistObj.contents || playlistObj) : window.PlayerState?.playlist;
 
         // ✅ NULL CHECK: Update debug elements only if they exist
         const debugContent = document.getElementById('debug-content');
@@ -101,9 +103,12 @@ window.PlayerUI = {
         const debugType = document.getElementById('debug-type');
         const debugCache = document.getElementById('debug-cache');
 
-        if (debugContent) debugContent.textContent = content.title || 'Unknown';
+        if (debugContent) debugContent.textContent = content.title || content.name || 'Unknown';
         if (debugIndex) debugIndex.textContent = index + 1;
-        if (debugTotal && state.playlist) debugTotal.textContent = state.playlist.length;
+        if (debugTotal && playlist) {
+            const totalCount = Array.isArray(playlist) ? playlist.length : (playlistObj?.getContentCount?.() || 0);
+            debugTotal.textContent = totalCount;
+        }
         if (debugType) debugType.textContent = content.content_type || 'unknown';
         if (debugCache) debugCache.textContent = isCached ? 'Cached ✅' : 'Downloading...';
     },
@@ -112,14 +117,6 @@ window.PlayerUI = {
      * Initialize keyboard shortcuts
      */
     initKeyboardShortcuts: function() {
-        const state = window.PlayerState;
-
-        // ✅ NULL CHECK: Ensure PlayerState exists
-        if (!state) {
-            console.warn('[Player/UI] PlayerState not initialized - keyboard shortcuts disabled');
-            return;
-        }
-
         document.addEventListener('keydown', (e) => {
             // Press 'p' to toggle player info
             if (e.key === 'p' || e.key === 'P') {
@@ -134,7 +131,11 @@ window.PlayerUI = {
                 // ✅ NULL CHECK: Ensure PlayerPlayback exists
                 if (window.PlayerPlayback && window.PlayerPlayback.playContent) {
                     console.log('[Player] Manual skip to next');
-                    window.PlayerPlayback.playContent(state.currentIndex + 1);
+
+                    // ✅ STATE MIGRATION: Get current index from playerState
+                    const currentIndex = window.playerState ? window.playerState.getCurrentIndex() :
+                                        (window.PlayerState?.currentIndex || 0);
+                    window.PlayerPlayback.playContent(currentIndex + 1);
                 }
             }
 
