@@ -39,8 +39,12 @@ body {
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 60px;
     animation: pulse 2s ease-in-out infinite;
+}
+
+.offline-icon svg {
+    color: #fff;
+    filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.2));
 }
 
 @keyframes pulse {
