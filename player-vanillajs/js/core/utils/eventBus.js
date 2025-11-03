@@ -1,23 +1,79 @@
 /**
  * EventBus - Simple Pub/Sub Pattern for State Management
  *
- * Usage:
- *   import { eventBus } from './core/utils/eventBus.js';
- *   
- *   // Subscribe
- *   eventBus.on('playlist:loaded', (playlist) => {
- *     console.log('Playlist loaded:', playlist);
- *   });
- *   
- *   // Emit
- *   eventBus.emit('playlist:loaded', playlist);
- *   
- *   // Unsubscribe
- *   eventBus.off('playlist:loaded', callback);
+ * @class EventBus
+ * @description
+ * Singleton event bus for decoupled communication between modules.
+ * Implements the Observer pattern for reactive state management.
+ *
+ * @features
+ * - Type-safe event subscription/emission
+ * - Automatic unsubscribe function return
+ * - Once-only event handlers
+ * - Error isolation (one handler error won't break others)
+ * - Memory leak prevention via unsubscribe pattern
+ *
+ * @event_naming_convention
+ * Events follow the pattern: `namespace:action`
+ * Examples:
+ * - playlist:loaded - Playlist data loaded from API
+ * - playlist:changed - Playlist content changed
+ * - device:registered - Device registration complete
+ * - device:activated - Device activation complete
+ * - cache:sync-failed - Cache synchronization failed
+ * - content:ended - Content playback ended
+ * - websocket:connected - WebSocket connection established
+ * - websocket:message - WebSocket message received
+ *
+ * @usage
+ * ```javascript
+ * import { eventBus } from './core/utils/eventBus.js';
+ *
+ * // Subscribe to event
+ * const unsubscribe = eventBus.on('playlist:loaded', (playlist) => {
+ *   console.log('Playlist loaded:', playlist);
+ * });
+ *
+ * // Emit event
+ * eventBus.emit('playlist:loaded', { contents: [...] });
+ *
+ * // Unsubscribe (prevents memory leaks)
+ * unsubscribe();
+ * // OR
+ * eventBus.off('playlist:loaded', callback);
+ * ```
+ *
+ * @memory_leak_prevention
+ * Always unsubscribe when component unmounts or is destroyed:
+ * ```javascript
+ * class MyComponent {
+ *   init() {
+ *     this.unsubscribers = [
+ *       eventBus.on('playlist:loaded', this.handlePlaylist.bind(this)),
+ *       eventBus.on('device:activated', this.handleActivation.bind(this))
+ *     ];
+ *   }
+ *
+ *   destroy() {
+ *     this.unsubscribers.forEach(unsub => unsub());
+ *   }
+ * }
+ * ```
+ *
+ * @singleton
+ * Exposed as both ES6 module export and window.eventBus global
  */
-
 class EventBus {
+  /**
+   * Create EventBus instance
+   * @constructor
+   */
   constructor() {
+    /**
+     * Event registry mapping event names to callback arrays
+     * @type {Object.<string, Function[]>}
+     * @private
+     */
     this.events = {};
   }
 
@@ -38,16 +94,21 @@ class EventBus {
   }
 
   /**
-   * Subscribe to event once
+   * Subscribe to event once (auto-unsubscribes after first call)
    * @param {string} event - Event name
-   * @param {Function} callback - Callback function
+   * @param {Function} callback - Callback function (called once then removed)
+   * @returns {Function} Unsubscribe function (for manual early cancellation)
+   * @example
+   * eventBus.once('device:activated', (device) => {
+   *   console.log('Device activated (will only log once):', device);
+   * });
    */
   once(event, callback) {
     const onceWrapper = (...args) => {
       callback(...args);
       this.off(event, onceWrapper);
     };
-    this.on(event, onceWrapper);
+    return this.on(event, onceWrapper);
   }
 
   /**
@@ -61,9 +122,19 @@ class EventBus {
   }
 
   /**
-   * Emit event
+   * Emit event to all registered listeners
    * @param {string} event - Event name
-   * @param {*} data - Event data
+   * @param {*} data - Event data payload (can be any type)
+   * @throws {Error} Errors in individual handlers are caught and logged (doesn't break other handlers)
+   * @example
+   * // Emit with object payload
+   * eventBus.emit('playlist:loaded', { contents: [...], updated_at: '2025-01-01' });
+   *
+   * // Emit with primitive payload
+   * eventBus.emit('content:index-changed', 5);
+   *
+   * // Emit with error context
+   * eventBus.emit('cache:sync-failed', { error: 'Network timeout', retry_in: 5000 });
    */
   emit(event, data) {
     if (!this.events[event]) return;

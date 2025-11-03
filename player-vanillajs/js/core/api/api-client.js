@@ -1,20 +1,102 @@
 /**
  * API Client Wrapper for Viewer
  *
- * Lightweight wrapper for standardized backend API responses.
- * Handles auto-unwrapping of new API format: {success: true, data: {...}, meta: {...}}
+ * @namespace APIClient
+ * @global
+ * @description
+ * Lightweight wrapper for standardized backend API responses with automatic response unwrapping.
+ * Handles both new standardized format and legacy direct-response format.
  *
- * Features:
- * - Auto-detects new API format and unwraps data field
- * - Backward compatible with old direct-response format
- * - No external dependencies (pure vanilla JS)
- * - WebOS TV compatible (ES6+ with fallbacks)
- * - Proper error handling with detailed logging
+ * @features
+ * - **Auto-unwrapping**: Detects `{success, data, meta}` format and returns just `data`
+ * - **Backward compatible**: Works with old direct-response format
+ * - **Zero dependencies**: Pure vanilla JavaScript
+ * - **WebOS TV compatible**: ES6+ with fallbacks for older browsers
+ * - **Error handling**: Enhanced errors with request context and timing
+ * - **Debug mode**: Optional verbose logging via localStorage or URL parameter
+ * - **Request tracing**: Unique request IDs for debugging
+ *
+ * @response_formats
+ * **New Standardized Format (auto-unwrapped):**
+ * ```json
+ * {
+ *   "success": true,
+ *   "data": { ... },  // <- This is what you get
+ *   "meta": { "timestamp": "...", "version": "1.0" }
+ * }
+ * ```
+ *
+ * **Legacy Format (passed through):**
+ * ```json
+ * { "id": 1, "name": "..." }  // <- This is what you get
+ * ```
+ *
+ * @usage
+ * ```javascript
+ * // GET request
+ * const device = await APIClient.get('/api/devices/123');
+ * console.log(device.name); // Direct access to data
+ *
+ * // POST request
+ * const result = await APIClient.post('/api/devices', {
+ *   code: '123456',
+ *   name: 'Lobby Display'
+ * });
+ *
+ * // PUT request
+ * await APIClient.put('/api/devices/123', {
+ *   name: 'Updated Name'
+ * });
+ *
+ * // DELETE request
+ * await APIClient.delete('/api/devices/123');
+ *
+ * // Error handling
+ * try {
+ *   const data = await APIClient.get('/api/playlist');
+ * } catch (error) {
+ *   if (error.status === 404) {
+ *     console.log('Playlist not found');
+ *   } else if (error.isNetworkError) {
+ *     console.log('Network error:', error.message);
+ *   }
+ * }
+ * ```
+ *
+ * @error_handling
+ * All errors are enhanced with additional context:
+ * - **status**: HTTP status code (404, 500, etc.)
+ * - **statusText**: HTTP status text ("Not Found", etc.)
+ * - **requestId**: Unique request identifier for tracing
+ * - **duration**: Request duration in milliseconds
+ * - **isNetworkError**: true for network/fetch failures, false for HTTP errors
+ * - **errorData**: Parsed error response body (if available)
+ *
+ * @debug_mode
+ * Enable verbose logging for all API requests:
+ * ```javascript
+ * // Enable via console
+ * enableAPIDebug();
+ *
+ * // Enable via localStorage
+ * localStorage.setItem('API_DEBUG', 'true');
+ *
+ * // Enable via URL parameter
+ * http://localhost:8080/?api_debug=true
+ *
+ * // Disable
+ * disableAPIDebug();
+ * ```
+ *
+ * @browser_compatibility
+ * - Modern browsers (Chrome 60+, Firefox 55+, Safari 12+)
+ * - WebOS TV 3.0+ (2017 models and newer)
+ * - Tizen TV 3.0+ (2017 models and newer)
+ * - Internet Explorer NOT supported (requires Fetch API)
  *
  * @author Generated for Smart TV Digital Signage System
  * @version 2.0.0
  */
-
 window.APIClient = {
     /**
      * Execute fetch request with automatic response unwrapping

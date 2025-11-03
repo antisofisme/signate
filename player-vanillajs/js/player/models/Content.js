@@ -1,23 +1,107 @@
 /**
  * Content Model
- * Represents a single content item (video, image, webpage) with validation
+ *
+ * @class Content
+ * @description
+ * Represents a single playable content item (video, image, or webpage) with validation and utility methods.
+ * Supports both standard video formats (MP4, WebM) and HLS streaming (m3u8).
+ *
+ * @features
+ * - Multi-type content support (video, image, webpage)
+ * - HLS video detection (.m3u8 extension)
+ * - Duration and file size formatting
+ * - Display title truncation
+ * - File extension parsing
+ * - Type-specific icon mapping
+ *
+ * @usage
+ * ```javascript
+ * // Create content from API response
+ * const content = Content.fromAPI({
+ *   id: 1,
+ *   title: 'Product Demo Video',
+ *   type: 'video',
+ *   url: 'https://cdn.example.com/demo.mp4',
+ *   duration: 120,
+ *   file_size: 15728640
+ * });
+ *
+ * // Check content type
+ * if (content.isVideo()) {
+ *   console.log('This is a video');
+ * }
+ *
+ * // Check if HLS
+ * if (content.isHLS()) {
+ *   console.log('Use HLS player');
+ * }
+ *
+ * // Get formatted duration and size
+ * console.log('Duration:', content.getFormattedDuration()); // "2:00"
+ * console.log('Size:', content.getFormattedSize()); // "15.0 MB"
+ * ```
+ *
+ * @content_types
+ * - **video**: MP4, WebM, HLS (.m3u8) video files
+ * - **image**: JPG, PNG, GIF, WebP static images
+ * - **webpage**: External URLs or HTML content
+ *
+ * @hls_support
+ * Content with .m3u8 extension is treated as HLS stream.
+ * Use `isHLS()` to detect and load with appropriate player (hls.js).
  */
-
 (function() {
   'use strict';
 
   class Content {
+    /**
+     * Create a Content instance
+     * @constructor
+     * @param {Object} data - Content data from API
+     * @param {number} [data.id=null] - Content unique identifier
+     * @param {string} [data.title=null] - Content display title
+     * @param {('video'|'image'|'webpage')} [data.type='video'] - Content type
+     * @param {string} [data.url=null] - Content file URL or webpage URL
+     * @param {number} [data.duration=10] - Display duration in seconds
+     * @param {number} [data.file_size=0] - File size in bytes
+     * @param {string} [data.thumbnail_url=null] - Thumbnail preview URL
+     * @param {number} [data.order=0] - Display order in playlist
+     * @param {Object} [data.metadata={}] - Additional metadata (width, height, fps, etc.)
+     * @param {string} [data.created_at=null] - ISO timestamp of content creation
+     * @param {string} [data.updated_at=null] - ISO timestamp of last update
+     */
     constructor(data = {}) {
+      /** @type {number|null} Content unique identifier */
       this.id = data.id || null;
+
+      /** @type {string|null} Content display title */
       this.title = data.title || null;
-      this.type = data.type || 'video'; // video, image, webpage
+
+      /** @type {('video'|'image'|'webpage')} Content type */
+      this.type = data.type || 'video';
+
+      /** @type {string|null} Content file URL or webpage URL */
       this.url = data.url || null;
-      this.duration = data.duration || 10; // seconds
-      this.file_size = data.file_size || 0; // bytes
+
+      /** @type {number} Display duration in seconds (for images/webpages) or video length */
+      this.duration = data.duration || 10;
+
+      /** @type {number} File size in bytes (0 for webpages) */
+      this.file_size = data.file_size || 0;
+
+      /** @type {string|null} Thumbnail preview URL */
       this.thumbnail_url = data.thumbnail_url || null;
+
+      /** @type {number} Display order in playlist (0-indexed) */
       this.order = data.order || 0;
+
+      /** @type {Object} Additional metadata (width, height, fps, codec, etc.) */
       this.metadata = data.metadata || {};
+
+      /** @type {string|null} ISO timestamp of content creation */
       this.created_at = data.created_at || null;
+
+      /** @type {string|null} ISO timestamp of last update */
       this.updated_at = data.updated_at || null;
     }
 

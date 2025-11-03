@@ -1,16 +1,80 @@
 /**
  * Device State Management
- * Reactive state management for device using EventBus pattern
+ *
+ * @module deviceState
+ * @description
+ * Reactive state management for device registration and activation using EventBus pattern.
+ * Manages device lifecycle: registration → activation → heartbeat monitoring.
+ *
+ * @features
+ * - Centralized device state management
+ * - Automatic localStorage persistence
+ * - Reactive event-driven updates via EventBus
+ * - Device validation and error handling
+ * - Online/offline status tracking
+ * - Memory leak prevention via private state
+ *
+ * @events_emitted
+ * - **device:loaded** - Device set/updated (payload: Device)
+ * - **device:restored** - Device loaded from localStorage (payload: Device)
+ * - **device:status-changed** - Status updated (payload: {device, status})
+ * - **device:heartbeat-sent** - Heartbeat timestamp updated (payload: Device)
+ * - **device:cleared** - Device state cleared/logged out (no payload)
+ *
+ * @usage
+ * ```javascript
+ * // Subscribe to device events
+ * eventBus.on('device:loaded', (device) => {
+ *   console.log('Device registered:', device);
+ *   document.querySelector('#device-name').textContent = device.name;
+ * });
+ *
+ * // Set device after registration
+ * deviceState.setDevice({
+ *   id: 123,
+ *   code: '123456',
+ *   name: 'Lobby Display',
+ *   status: 'pending'
+ * });
+ *
+ * // Update status after activation
+ * deviceState.setStatus('active');
+ *
+ * // Check device state
+ * if (deviceState.isActive()) {
+ *   console.log('Device is active');
+ * }
+ *
+ * // Send heartbeat
+ * deviceState.updateLastSeen();
+ * ```
+ *
+ * @persistence
+ * Device data is automatically saved to localStorage on every update:
+ * - device_id
+ * - device_code
+ * - device_name
+ * - device_status
+ * - organization_id
+ * - platform
+ *
+ * Use `loadFromStorage()` on page load to restore device state.
+ *
+ * @architecture
+ * Uses private state (_currentDevice) encapsulated in IIFE to prevent external mutation.
+ * All updates must go through public methods, ensuring validation and event emission.
  */
-
 (function() {
   'use strict';
 
   // Private state
+  /** @type {Device|null} Current device instance (private, access via getDevice()) */
   let _currentDevice = null;
 
   /**
    * Device State Manager
+   * @namespace deviceState
+   * @global
    */
   const deviceState = {
     /**

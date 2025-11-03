@@ -1,21 +1,94 @@
 /**
  * Playlist Model
- * Represents a content playlist with validation and computed properties
+ *
+ * @class Playlist
+ * @description
+ * Represents a scheduled content playlist with validation, computed properties, and download progress tracking.
+ * Supports both default (always-active) playlists and time-scheduled playlists.
+ *
+ * @features
+ * - Schedule-based activation (start/end time)
+ * - Default playlist fallback
+ * - Total duration and file size calculation
+ * - Download progress tracking
+ * - Content filtering by type (video, image, webpage)
+ * - Human-readable size formatting
+ *
+ * @usage
+ * ```javascript
+ * // Create playlist from API response
+ * const playlist = Playlist.fromAPI({
+ *   id: 1,
+ *   name: 'Morning Playlist',
+ *   schedule_start: '2025-01-01T08:00:00Z',
+ *   schedule_end: '2025-01-01T12:00:00Z',
+ *   contents: [...]
+ * });
+ *
+ * // Check if currently active
+ * if (playlist.isActive()) {
+ *   console.log('Playlist is active now');
+ * }
+ *
+ * // Get total duration
+ * console.log('Total duration:', playlist.getTotalDuration(), 'seconds');
+ *
+ * // Track download progress
+ * const downloadedIds = [1, 2, 3];
+ * const progress = playlist.getDownloadProgress(downloadedIds);
+ * console.log('Download progress:', progress + '%');
+ * ```
+ *
+ * @scheduling
+ * Playlists can be scheduled or set as default:
+ * - **Scheduled**: Active only during schedule_start to schedule_end
+ * - **Default**: Active when no scheduled playlist is active (is_default: true)
+ * - **Priority**: Scheduled playlists override default playlist
  */
-
 (function() {
   'use strict';
 
   class Playlist {
+    /**
+     * Create a Playlist instance
+     * @constructor
+     * @param {Object} data - Playlist data from API
+     * @param {number} [data.id=null] - Playlist unique identifier
+     * @param {string} [data.name=null] - Playlist display name
+     * @param {string} [data.schedule_start=null] - ISO timestamp of schedule start
+     * @param {string} [data.schedule_end=null] - ISO timestamp of schedule end
+     * @param {boolean} [data.is_default=false] - Default playlist flag (fallback when no schedule active)
+     * @param {number} [data.organization_id=null] - Organization/tenant ID
+     * @param {Array} [data.contents=[]] - Array of Content objects
+     * @param {string} [data.created_at=null] - ISO timestamp of playlist creation
+     * @param {string} [data.updated_at=null] - ISO timestamp of last update
+     */
     constructor(data = {}) {
+      /** @type {number|null} Playlist unique identifier */
       this.id = data.id || null;
+
+      /** @type {string|null} Playlist display name */
       this.name = data.name || null;
+
+      /** @type {string|null} ISO timestamp of schedule start (null = no schedule) */
       this.schedule_start = data.schedule_start || null;
+
+      /** @type {string|null} ISO timestamp of schedule end (null = no schedule) */
       this.schedule_end = data.schedule_end || null;
+
+      /** @type {boolean} Default playlist flag (active when no scheduled playlist) */
       this.is_default = data.is_default || false;
+
+      /** @type {number|null} Organization/tenant ID for multi-tenancy */
       this.organization_id = data.organization_id || null;
+
+      /** @type {Array<Object>} Array of Content objects */
       this.contents = data.contents || [];
+
+      /** @type {string|null} ISO timestamp of playlist creation */
       this.created_at = data.created_at || null;
+
+      /** @type {string|null} ISO timestamp of last update */
       this.updated_at = data.updated_at || null;
     }
 

@@ -1,21 +1,100 @@
 /**
  * Segment Model
- * Represents an HLS video segment for offline storage in IndexedDB
+ *
+ * @class Segment
+ * @description
+ * Represents an HLS video segment (.ts file) for offline caching in IndexedDB.
+ * Used to store HLS video segments locally for offline playback capability.
+ *
+ * @features
+ * - HLS segment blob storage in IndexedDB
+ * - Download progress tracking
+ * - Sequence-based ordering
+ * - Size formatting
+ * - Unique segment ID generation
+ *
+ * @usage
+ * ```javascript
+ * // Create segment from HLS playlist
+ * const segment = Segment.fromHLSPlaylist(
+ *   123,  // content_id
+ *   'https://cdn.example.com/video/segment_00001.ts',
+ *   10.0, // duration in seconds
+ *   1     // sequence number
+ * );
+ *
+ * // Download and store
+ * const response = await fetch(segment.url);
+ * const blob = await response.blob();
+ * segment.markAsDownloaded(blob);
+ *
+ * // Save to IndexedDB
+ * const segmentData = segment.toIndexedDB();
+ * await db.segments.put(segmentData);
+ *
+ * // Check if downloaded
+ * if (segment.isDownloaded()) {
+ *   console.log('Segment ready for offline playback');
+ * }
+ * ```
+ *
+ * @hls_workflow
+ * 1. **Parse HLS manifest** (.m3u8) to extract segment URLs
+ * 2. **Create Segment instances** for each .ts file
+ * 3. **Download segments** progressively (fetch + blob)
+ * 4. **Store in IndexedDB** using toIndexedDB() format
+ * 5. **Offline playback** by loading blobs from IndexedDB
+ *
+ * @indexeddb_schema
+ * Segments are stored in IndexedDB with this structure:
+ * - **Object Store**: 'segments'
+ * - **Key**: Segment ID (e.g., "123_seg_1")
+ * - **Indexes**: content_id, sequence
  */
-
 (function() {
   'use strict';
 
   class Segment {
+    /**
+     * Create a Segment instance
+     * @constructor
+     * @param {Object} data - Segment data
+     * @param {string} [data.id=null] - Unique segment ID (auto-generated if null)
+     * @param {number} [data.content_id=null] - Parent content ID
+     * @param {string} [data.url=null] - Original segment URL (.ts file)
+     * @param {number} [data.sequence=0] - Segment sequence number (0-indexed)
+     * @param {number} [data.duration=0] - Segment duration in seconds
+     * @param {Blob} [data.blob=null] - Blob data for offline storage
+     * @param {number} [data.size=0] - Blob size in bytes
+     * @param {boolean} [data.downloaded=false] - Download status flag
+     * @param {string} [data.downloaded_at=null] - ISO timestamp of download completion
+     */
     constructor(data = {}) {
-      this.id = data.id || null; // Unique segment ID
-      this.content_id = data.content_id || null; // Parent content ID
-      this.url = data.url || null; // Original segment URL
-      this.sequence = data.sequence || 0; // Segment sequence number
-      this.duration = data.duration || 0; // Segment duration in seconds
-      this.blob = data.blob || null; // Blob data for offline storage
-      this.size = data.size || 0; // Blob size in bytes
+      /** @type {string|null} Unique segment ID (format: "{content_id}_seg_{sequence}") */
+      this.id = data.id || null;
+
+      /** @type {number|null} Parent content ID */
+      this.content_id = data.content_id || null;
+
+      /** @type {string|null} Original segment URL (.ts file) */
+      this.url = data.url || null;
+
+      /** @type {number} Segment sequence number (0-indexed) */
+      this.sequence = data.sequence || 0;
+
+      /** @type {number} Segment duration in seconds */
+      this.duration = data.duration || 0;
+
+      /** @type {Blob|null} Blob data for offline storage */
+      this.blob = data.blob || null;
+
+      /** @type {number} Blob size in bytes */
+      this.size = data.size || 0;
+
+      /** @type {boolean} Download status flag */
       this.downloaded = data.downloaded || false;
+
+      /** @type {string|null} ISO timestamp of download completion */
       this.downloaded_at = data.downloaded_at || null;
     }
 

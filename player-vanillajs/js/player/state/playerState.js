@@ -1,21 +1,97 @@
 /**
  * Player State Management
- * Reactive state management for playlist and playback using EventBus pattern
+ *
+ * @module playerState
+ * @description
+ * Reactive state management for playlist playback and content sequencing using EventBus pattern.
+ * Manages playlist lifecycle: load → validate → play → next/previous → download tracking.
+ *
+ * @features
+ * - Centralized playback state management
+ * - Reactive event-driven updates via EventBus
+ * - Playlist validation and error handling
+ * - Auto-play next content on completion
+ * - Download progress tracking
+ * - Volume control
+ * - Memory leak prevention via private state
+ *
+ * @events_emitted
+ * - **playlist:loaded** - Playlist set/updated (payload: {playlist, contentCount, totalDuration})
+ * - **playlist:cleared** - Playlist cleared (no payload)
+ * - **player:index-changed** - Content index changed (payload: {index, content, total})
+ * - **player:next** - Next content requested (payload: {index, content})
+ * - **player:previous** - Previous content requested (payload: {index, content})
+ * - **player:playing** - Playback started (payload: {content, index})
+ * - **player:paused** - Playback paused (payload: {content, index})
+ * - **player:content-ended** - Content playback finished (payload: {content, index})
+ * - **player:volume-changed** - Volume changed (payload: number 0.0-1.0)
+ * - **player:download-progress** - Content downloaded (payload: {contentId, progress, isComplete})
+ *
+ * @usage
+ * ```javascript
+ * // Subscribe to playlist events
+ * eventBus.on('playlist:loaded', (data) => {
+ *   console.log('Playlist loaded:', data.playlist.name);
+ *   console.log('Total contents:', data.contentCount);
+ * });
+ *
+ * // Load playlist from API
+ * playerState.setPlaylist({
+ *   id: 1,
+ *   name: 'Morning Playlist',
+ *   contents: [...]
+ * });
+ *
+ * // Navigate content
+ * playerState.playNext();
+ * playerState.playPrevious();
+ * playerState.setCurrentIndex(5);
+ *
+ * // Control playback
+ * playerState.setPlaying(true);
+ * playerState.setVolume(0.8);
+ *
+ * // Track downloads
+ * playerState.markContentDownloaded(123);
+ * const progress = playerState.getDownloadProgress(); // 75%
+ * ```
+ *
+ * @playback_lifecycle
+ * 1. **Load**: setPlaylist() → validates → emits playlist:loaded
+ * 2. **Play**: getCurrentContent() → UI displays content
+ * 3. **End**: onContentEnd() → emits player:content-ended → auto playNext()
+ * 4. **Loop**: playNext() wraps to index 0 when reaching end
+ *
+ * @architecture
+ * Uses private state encapsulated in IIFE to prevent external mutation.
+ * All updates must go through public methods, ensuring validation and event emission.
  */
-
 (function() {
   'use strict';
 
   // Private state
+  /** @type {Playlist|null} Current playlist instance */
   let _currentPlaylist = null;
+
+  /** @type {number} Current content index (0-indexed) */
   let _currentIndex = 0;
+
+  /** @type {boolean} Playback state flag */
   let _isPlaying = false;
+
+  /** @type {boolean} Pause state flag */
   let _isPaused = false;
+
+  /** @type {number} Volume level (0.0 - 1.0) */
   let _volume = 1.0;
+
+  /** @type {Array<number>} Downloaded content IDs for offline playback */
   let _downloadedContentIds = [];
 
   /**
    * Player State Manager
+   * @namespace playerState
+   * @global
    */
   const playerState = {
     /**
