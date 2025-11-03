@@ -22,7 +22,7 @@
 // ============================================================================
 
 // Dynamic cache version based on timestamp (for easy invalidation)
-const BUILD_TIMESTAMP = '2025-11-03T01:13:00Z'; // Updated on build
+const BUILD_TIMESTAMP = '2025-11-03T09:15:00Z'; // Updated on build
 const CACHE_VERSION = `v2-${BUILD_TIMESTAMP}`;
 const CACHE_STATIC = `${CACHE_VERSION}-static`;
 const CACHE_MEDIA = `${CACHE_VERSION}-media`;
@@ -42,11 +42,17 @@ const CACHE_TTL = {
     hls: 24 * 60 * 60 * 1000         // 1 day
 };
 
-// Critical assets to cache on install (updated for Phase 3 structure)
+// Critical assets to cache on install (updated for Phase 3 structure + Refactoring)
 const CRITICAL_ASSETS = [
     '/',
     '/index.html',
     '/offline.html',
+    '/player.html',
+
+    // Stylesheets (refactored from inline)
+    '/styles/shell.css',
+    '/styles/offline.css',
+    '/styles/player.css',
 
     // Core - Shared utilities and infrastructure
     '/js/core/config/env.js',
@@ -60,6 +66,11 @@ const CRITICAL_ASSETS = [
     '/js/core/storage/indexedDB.js',
     '/js/core/storage/schema.js',
 
+    // Core UI - Modular UI components (refactored from inline)
+    '/js/core/ui/toast.js',
+    '/js/core/ui/modal.js',
+    '/js/core/ui/offline-handler.js',
+
     // Activation - Device registration and activation
     '/js/activation/init.js',
     '/js/activation/models/Device.js',
@@ -71,6 +82,9 @@ const CRITICAL_ASSETS = [
     '/js/activation/services/network-diagnostics.js',
     '/js/activation/services/device-controls.js',
     '/js/activation/ui/ui.js',
+    '/js/activation/ui/fullscreen.js',
+    '/js/activation/ui/keyboard.js',
+    '/js/activation/ui/hard-reset.js',
 
     // Player - Content playback
     '/js/player/init.js',
@@ -82,7 +96,23 @@ const CRITICAL_ASSETS = [
     '/js/player/services/playback.js',
     '/js/player/services/hls-player.js',
     '/js/player/services/websocket-integration.js',
-    '/js/player/ui/ui.js'
+    '/js/player/ui/ui.js',
+
+    // Sync - Background sync and commands
+    '/js/sync/services/heartbeat.js',
+    '/js/sync/services/commands.js',
+    '/js/sync/services/command-executor.js',
+
+    // Command Pattern - Modular command execution (refactored)
+    '/js/sync/commands/BaseCommand.js',
+    '/js/sync/commands/VolumeCommand.js',
+    '/js/sync/commands/BrightnessCommand.js',
+    '/js/sync/commands/ScreenshotCommand.js',
+    '/js/sync/commands/RebootCommand.js',
+    '/js/sync/commands/ShellCommand.js',
+    '/js/sync/commands/InfoCommand.js',
+    '/js/sync/utils/device-info.js',
+    '/js/sync/utils/command-reporter.js'
 ];
 
 // ============================================================================
