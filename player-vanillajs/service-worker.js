@@ -21,7 +21,9 @@
 // CONFIGURATION
 // ============================================================================
 
-const CACHE_VERSION = 'v1';
+// Dynamic cache version based on timestamp (for easy invalidation)
+const BUILD_TIMESTAMP = '2025-11-03T01:13:00Z'; // Updated on build
+const CACHE_VERSION = `v2-${BUILD_TIMESTAMP}`;
 const CACHE_STATIC = `${CACHE_VERSION}-static`;
 const CACHE_MEDIA = `${CACHE_VERSION}-media`;
 const CACHE_API = `${CACHE_VERSION}-api`;
@@ -40,31 +42,47 @@ const CACHE_TTL = {
     hls: 24 * 60 * 60 * 1000         // 1 day
 };
 
-// Critical assets to cache on install
+// Critical assets to cache on install (updated for Phase 3 structure)
 const CRITICAL_ASSETS = [
     '/',
     '/index.html',
-    '/player.html',
-    '/js/config/env.js',
-    '/js/shared/api-client.js',
-    '/js/shell/config.js',
-    '/js/shell/logger.js',
-    '/js/shell/wifi-status.js',
-    '/js/shell/network-diagnostics.js',
-    '/js/shell/registration.js',
-    '/js/shell/heartbeat.js',
-    '/js/shell/activation-poll.js',
-    '/js/shell/commands.js',
-    '/js/shell/display-settings.js',
-    '/js/shell/ui.js',
-    '/js/shell/init.js',
-    '/js/player/config.js',
-    '/js/player/logger.js',
-    '/js/player/cache.js',
-    '/js/player/api.js',
-    '/js/player/playback.js',
-    '/js/player/ui.js',
-    '/js/player/init.js'
+    '/offline.html',
+
+    // Core - Shared utilities and infrastructure
+    '/js/core/config/env.js',
+    '/js/core/config/config.js',
+    '/js/core/api/api-client.js',
+    '/js/core/api/endpoints.js',
+    '/js/core/api/websocket.js',
+    '/js/core/utils/eventBus.js',
+    '/js/core/utils/logger.js',
+    '/js/core/storage/cache.js',
+    '/js/core/storage/indexedDB.js',
+    '/js/core/storage/schema.js',
+
+    // Activation - Device registration and activation
+    '/js/activation/init.js',
+    '/js/activation/models/Device.js',
+    '/js/activation/state/deviceState.js',
+    '/js/activation/services/registration.js',
+    '/js/activation/services/activation-poll.js',
+    '/js/activation/services/display-settings.js',
+    '/js/activation/services/wifi-status.js',
+    '/js/activation/services/network-diagnostics.js',
+    '/js/activation/services/device-controls.js',
+    '/js/activation/ui/ui.js',
+
+    // Player - Content playback
+    '/js/player/init.js',
+    '/js/player/models/Playlist.js',
+    '/js/player/models/Content.js',
+    '/js/player/models/Segment.js',
+    '/js/player/state/playerState.js',
+    '/js/player/services/api.js',
+    '/js/player/services/playback.js',
+    '/js/player/services/hls-player.js',
+    '/js/player/services/websocket-integration.js',
+    '/js/player/ui/ui.js'
 ];
 
 // ============================================================================
@@ -154,8 +172,11 @@ self.addEventListener('fetch', (event) => {
     } else if (isAPIRequest(url)) {
         // API requests - network first with cache fallback
         event.respondWith(networkFirstStrategy(request, CACHE_API));
+    } else if (isNavigationRequest(request)) {
+        // Navigation requests (HTML pages) - network first with offline fallback
+        event.respondWith(navigationStrategy(request));
     } else {
-        // Static assets (HTML, CSS, JS) - cache first
+        // Static assets (CSS, JS, fonts) - cache first
         event.respondWith(cacheFirstStrategy(request, CACHE_STATIC));
     }
 });
@@ -267,6 +288,62 @@ async function staleWhileRevalidate(request, cacheName) {
 
     // Return cached response immediately if available
     return cachedResponse || networkFetch;
+}
+
+/**
+ * Navigation Strategy
+ * Network first with offline.html fallback for navigation requests
+ * Good for: HTML page navigation
+ */
+async function navigationStrategy(request) {
+    try {
+        // Try network first
+        const networkResponse = await fetch(request);
+
+        if (networkResponse.ok) {
+            // Cache successful navigation response
+            await cacheResponse(request, networkResponse.clone(), CACHE_STATIC);
+            return networkResponse;
+        }
+
+        // Network returned error - fallback to offline page
+        return await serveOfflinePage();
+
+    } catch (error) {
+        console.log('[SW] Navigation failed, serving offline page:', error);
+
+        // Network failed - try cache first
+        const cachedResponse = await caches.match(request);
+
+        if (cachedResponse) {
+            console.log('[SW] Serving cached page:', request.url);
+            return cachedResponse;
+        }
+
+        // No cache - serve offline page
+        return await serveOfflinePage();
+    }
+}
+
+/**
+ * Serve offline fallback page
+ */
+async function serveOfflinePage() {
+    const offlinePage = await caches.match('/offline.html');
+
+    if (offlinePage) {
+        return offlinePage;
+    }
+
+    // Offline page not cached - create basic response
+    return new Response(
+        '<html><body><h1>Offline</h1><p>Unable to connect to server. Please check your network connection.</p></body></html>',
+        {
+            status: 503,
+            statusText: 'Service Unavailable',
+            headers: { 'Content-Type': 'text/html' }
+        }
+    );
 }
 
 // ============================================================================
@@ -609,6 +686,16 @@ async function handleGetCacheSize(event) {
 // ============================================================================
 // UTILITY FUNCTIONS
 // ============================================================================
+
+/**
+ * Check if request is navigation (HTML page request)
+ */
+function isNavigationRequest(request) {
+    return (
+        request.mode === 'navigate' ||
+        (request.method === 'GET' && request.headers.get('accept').includes('text/html'))
+    );
+}
 
 /**
  * Check if URL is HLS segment

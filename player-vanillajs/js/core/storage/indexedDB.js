@@ -232,6 +232,102 @@ class IndexedDBManager {
   }
 
   /**
+   * Batch put operation (optimized for bulk inserts)
+   * @param {string} storeName
+   * @param {Array} dataArray - Array of objects to insert/update
+   * @returns {Promise<number>} Number of records inserted
+   */
+  async putBatch(storeName, dataArray) {
+    if (!Array.isArray(dataArray) || dataArray.length === 0) {
+      return 0;
+    }
+
+    const db = await this.open();
+    const startTime = performance.now();
+
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(storeName, 'readwrite');
+      const store = tx.objectStore(storeName);
+      let insertCount = 0;
+
+      // Queue all puts in single transaction
+      dataArray.forEach(data => {
+        const request = store.put(data);
+        request.onsuccess = () => insertCount++;
+      });
+
+      // Transaction completion
+      tx.oncomplete = () => {
+        const duration = Math.round(performance.now() - startTime);
+        console.log(`[IndexedDB] Batch put ${insertCount} records to ${storeName} (${duration}ms)`);
+        resolve(insertCount);
+      };
+
+      tx.onerror = () => {
+        console.error('[IndexedDB] Batch put failed:', tx.error);
+        reject(tx.error);
+      };
+    });
+  }
+
+  /**
+   * Batch delete operation (optimized for bulk deletes)
+   * @param {string} storeName
+   * @param {Array} keysArray - Array of keys to delete
+   * @returns {Promise<number>} Number of records deleted
+   */
+  async deleteBatch(storeName, keysArray) {
+    if (!Array.isArray(keysArray) || keysArray.length === 0) {
+      return 0;
+    }
+
+    const db = await this.open();
+    const startTime = performance.now();
+
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(storeName, 'readwrite');
+      const store = tx.objectStore(storeName);
+      let deleteCount = 0;
+
+      // Queue all deletes in single transaction
+      keysArray.forEach(key => {
+        const request = store.delete(key);
+        request.onsuccess = () => deleteCount++;
+      });
+
+      // Transaction completion
+      tx.oncomplete = () => {
+        const duration = Math.round(performance.now() - startTime);
+        console.log(`[IndexedDB] Batch delete ${deleteCount} records from ${storeName} (${duration}ms)`);
+        resolve(deleteCount);
+      };
+
+      tx.onerror = () => {
+        console.error('[IndexedDB] Batch delete failed:', tx.error);
+        reject(tx.error);
+      };
+    });
+  }
+
+  /**
+   * Get database size estimate
+   * @returns {Promise<{usage: number, quota: number, percentage: number}>}
+   */
+  async getStorageEstimate() {
+    if ('storage' in navigator && 'estimate' in navigator.storage) {
+      const estimate = await navigator.storage.estimate();
+      return {
+        usage: estimate.usage || 0,
+        quota: estimate.quota || 0,
+        percentage: estimate.quota ? Math.round((estimate.usage / estimate.quota) * 100) : 0
+      };
+    }
+
+    // Fallback for browsers without storage API
+    return { usage: 0, quota: 0, percentage: 0 };
+  }
+
+  /**
    * Close database connection
    */
   close() {
