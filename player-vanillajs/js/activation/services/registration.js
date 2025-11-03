@@ -6,6 +6,7 @@
 window.ShellRegistration = {
     retryTimeout: null, // Store retry timeout for cancellation
     isRegistering: false, // Prevent concurrent registrations
+    pendingValidationTimeout: null, // Timeout for pending PIN validation retry
 
     /**
      * Generate 6-digit activation code
@@ -36,40 +37,129 @@ window.ShellRegistration = {
 
     /**
      * Get or prompt for Organization PIN (using modal)
+     * NOTE: PIN is NOT saved to localStorage until validated by server
      */
-    getOrganizationPIN: async function() {
-        // Check localStorage first
+    getOrganizationPIN: async function(errorMessage = null) {
+        // Check localStorage first for validated PIN
         let orgPIN = localStorage.getItem('organization_pin');
+        const pinValidated = localStorage.getItem('organization_pin_validated') === 'true';
 
-        if (!orgPIN) {
-            console.log('[Shell/Registration] 📌 Organization PIN not found, showing modal...');
+        // If PIN exists AND validated, return it
+        if (orgPIN && pinValidated) {
+            console.log('[Shell/Registration] ✅ Using validated Organization PIN from localStorage');
+            return orgPIN;
+        }
 
-            try {
-                // Show modal to get Organization PIN
-                if (!window.OrganizationPINModal) {
-                    console.error('[Shell/Registration] ❌ OrganizationPINModal not loaded');
-                    throw new Error('Organization PIN modal not available');
-                }
+        // Check for pending validation PIN
+        const pendingPIN = localStorage.getItem('organization_pin_pending');
+        if (pendingPIN) {
+            console.log('[Shell/Registration] ⏳ Found pending validation PIN, will retry validation');
+            return pendingPIN;
+        }
 
-                orgPIN = await window.OrganizationPINModal.show();
+        // No validated PIN - show modal to get new PIN
+        console.log('[Shell/Registration] 📌 Organization PIN not found or not validated, showing modal...');
 
-                if (!orgPIN || orgPIN.length < 8) {
-                    console.error('[Shell/Registration] ❌ Invalid organization PIN');
-                    throw new Error('Organization PIN is required');
-                }
+        try {
+            // Show modal to get Organization PIN
+            if (!window.OrganizationPINModal) {
+                console.error('[Shell/Registration] ❌ OrganizationPINModal not loaded');
+                throw new Error('Organization PIN modal not available');
+            }
 
-                console.log('[Shell/Registration] ✅ Organization PIN obtained from modal');
-            } catch (error) {
-                console.error('[Shell/Registration] ❌ Failed to get Organization PIN:', error);
+            // Pass error message and skipValidation=true for registration flow
+            // Registration will validate PIN with device registration endpoint
+            orgPIN = await window.OrganizationPINModal.show(errorMessage, true);
+
+            if (!orgPIN || orgPIN.length < 8) {
+                console.error('[Shell/Registration] ❌ Invalid organization PIN');
                 throw new Error('Organization PIN is required');
             }
+
+            console.log('[Shell/Registration] ✅ Organization PIN obtained from modal (not yet validated)');
+        } catch (error) {
+            console.error('[Shell/Registration] ❌ Failed to get Organization PIN:', error);
+            throw new Error('Organization PIN is required');
         }
 
         return orgPIN;
     },
 
     /**
+     * Save validated PIN to localStorage
+     */
+    savePINAsValidated: function(pin) {
+        localStorage.setItem('organization_pin', pin);
+        localStorage.setItem('organization_pin_validated', 'true');
+        // Clear pending PIN if exists
+        localStorage.removeItem('organization_pin_pending');
+        console.log('[Shell/Registration] ✅ PIN saved as validated');
+    },
+
+    /**
+     * Save PIN as pending validation (server offline)
+     */
+    savePINAsPending: function(pin) {
+        localStorage.setItem('organization_pin_pending', pin);
+        console.log('[Shell/Registration] ⏳ PIN saved as pending validation');
+    },
+
+    /**
+     * Clear invalid PIN from storage
+     */
+    clearPIN: function() {
+        localStorage.removeItem('organization_pin');
+        localStorage.removeItem('organization_pin_validated');
+        localStorage.removeItem('organization_pin_pending');
+        console.log('[Shell/Registration] 🗑️ PIN cleared from storage');
+    },
+
+    /**
+     * Validate pending PIN when server comes back online
+     */
+    validatePendingPIN: async function() {
+        const pendingPIN = localStorage.getItem('organization_pin_pending');
+
+        if (!pendingPIN) {
+            console.log('[Shell/Registration] ℹ️ No pending PIN to validate');
+            return;
+        }
+
+        console.log('[Shell/Registration] 🔄 Validating pending PIN...');
+
+        // Cancel existing timeout
+        if (this.pendingValidationTimeout) {
+            clearTimeout(this.pendingValidationTimeout);
+            this.pendingValidationTimeout = null;
+        }
+
+        // Try to register with pending PIN
+        // This will trigger full registration flow which will validate PIN
+        await this.registerDevice();
+    },
+
+    /**
+     * Start background retry for pending PIN validation
+     */
+    startPendingValidationRetry: function() {
+        // Cancel existing timeout
+        if (this.pendingValidationTimeout) {
+            clearTimeout(this.pendingValidationTimeout);
+        }
+
+        console.log('[Shell/Registration] ⏰ Starting background retry for pending PIN validation (every 10s)');
+
+        this.pendingValidationTimeout = setTimeout(() => {
+            this.validatePendingPIN();
+        }, 10000); // Retry every 10 seconds
+    },
+
+    /**
      * Register device to backend
+     * Handles 3 scenarios:
+     * 1. Server online + PIN valid → Save PIN + device, show success
+     * 2. Server online + PIN invalid → Clear PIN, show error modal, retry
+     * 3. Server offline → Save PIN as pending, retry in background
      */
     registerDevice: async function() {
         const state = window.ShellState;
@@ -89,10 +179,11 @@ window.ShellRegistration = {
         }
 
         this.isRegistering = true;
+        let orgPIN = null;
 
         try {
             // Get Organization PIN (show modal if not exists)
-            const orgPIN = await this.getOrganizationPIN();
+            orgPIN = await this.getOrganizationPIN();
 
             const code = this.generateActivationCode();
 
@@ -112,6 +203,12 @@ window.ShellRegistration = {
                     platform: platform
                 }
             );
+
+            // ✅ SCENARIO 1: SUCCESS - Server online + PIN valid
+            console.log('[Shell/Registration] ✅ Registration successful - PIN valid');
+
+            // Save PIN as validated (only after server confirms it's valid)
+            this.savePINAsValidated(orgPIN);
 
             // ✅ Use Device model and deviceState (Phase 3)
             const device = new window.Device({
@@ -147,6 +244,18 @@ window.ShellRegistration = {
                 console.log('[Shell/Registration] ✅ Cancelled retry timeout (registration succeeded)');
             }
 
+            // Cancel pending validation retry
+            if (this.pendingValidationTimeout) {
+                clearTimeout(this.pendingValidationTimeout);
+                this.pendingValidationTimeout = null;
+                console.log('[Shell/Registration] ✅ Cancelled pending validation timeout');
+            }
+
+            // Show success toast
+            if (window.Toast) {
+                window.Toast.success('Registration Successful', 'Device registered successfully. Waiting for admin activation...', 5000);
+            }
+
             // Update UI (wrapped in try-catch to prevent UI errors from triggering retry)
             try {
                 window.ShellUI.updateUI('pending', code);
@@ -169,11 +278,49 @@ window.ShellRegistration = {
             this.isRegistering = false;
 
         } catch (error) {
-            // Network error (server down/unreachable)
+            // Reset flag first
+            this.isRegistering = false;
+
+            // Check error type to distinguish between network error and invalid PIN
+            const isNetworkError = !error.status || error.message?.includes('Failed to fetch') || error.message?.includes('Network');
+            const isPINError = error.status === 404 || error.message?.includes('Invalid organization PIN');
+
+            // ❌ SCENARIO 2: Server online + PIN INVALID
+            if (isPINError) {
+                console.error('[Shell/Registration] ❌ Invalid Organization PIN:', error.message);
+
+                // Clear invalid PIN from storage
+                this.clearPIN();
+
+                // Show error toast
+                if (window.Toast) {
+                    window.Toast.error('Invalid PIN', 'Organization PIN is incorrect. Please try again.', 6000);
+                }
+
+                // Show modal again with error message
+                setTimeout(async () => {
+                    try {
+                        const newPIN = await this.getOrganizationPIN('Invalid Organization PIN. Please enter correct PIN.');
+                        if (newPIN) {
+                            // User entered new PIN, retry registration
+                            console.log('[Shell/Registration] 🔄 Retrying with new PIN...');
+                            this.registerDevice();
+                        }
+                    } catch (modalError) {
+                        console.error('[Shell/Registration] ❌ Failed to get new PIN:', modalError);
+                    }
+                }, 1000);
+
+                return;
+            }
+
+            // ⏳ SCENARIO 3: Network error (server offline/unreachable)
             console.error('[Shell/Registration] ❌ Network error (server unreachable):', error.message);
 
-            // Reset flag
-            this.isRegistering = false;
+            // Save PIN as pending validation (will be validated when server comes online)
+            if (orgPIN) {
+                this.savePINAsPending(orgPIN);
+            }
 
             // Show WiFi offline icon
             if (window.ShellWiFiStatus) {
@@ -197,13 +344,13 @@ window.ShellRegistration = {
             // Update UI status message
             const statusMessage = document.getElementById('status-message');
             if (statusMessage) {
-                statusMessage.textContent = 'Cannot connect to server - Retrying...';
-                statusMessage.style.color = '#ef4444'; // Red color
+                statusMessage.textContent = 'Server offline - PIN will be validated when online';
+                statusMessage.style.color = '#f59e0b'; // Orange color for pending
             }
 
             // Show toast notification
             if (window.Toast) {
-                window.Toast.error('Connection Failed', 'Cannot connect to server. Retrying in 10 seconds...', 8000);
+                window.Toast.warning('Server Offline', 'Cannot connect to server. PIN will be validated when server comes online.', 8000);
             }
 
             // 🛡️ GUARD 3: Only retry if device NOT already registered
@@ -225,6 +372,9 @@ window.ShellRegistration = {
                 console.log('[Shell/Registration] 🔄 Retrying registration...');
                 this.registerDevice();
             }, 10000);
+
+            // Also start pending validation retry in background
+            this.startPendingValidationRetry();
         }
     },
 

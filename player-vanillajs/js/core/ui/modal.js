@@ -95,11 +95,11 @@
         /**
          * Show organization PIN input modal and return a Promise
          *
-         * Validates PIN against server before resolving
-         *
+         * @param {string|null} errorMessage - Optional error message to display
+         * @param {boolean} skipValidation - Skip server validation (for registration flow)
          * @returns {Promise<string>} Promise resolving to PIN string, rejecting on cancel
          */
-        show: function() {
+        show: function(errorMessage = null, skipValidation = false) {
             return new Promise((resolve, reject) => {
                 const modal = document.getElementById('org-pin-modal');
                 const input = document.getElementById('org-pin-input');
@@ -107,16 +107,25 @@
                 const saveBtn = document.getElementById('org-pin-save');
                 const currentPinDisplay = document.getElementById('current-pin-display');
                 const currentPinValue = document.getElementById('current-pin-value');
+                const errorDisplay = document.getElementById('org-pin-error');
 
-                // Check if PIN already exists
-                const existingPIN = localStorage.getItem('organization_pin');
-                if (existingPIN) {
+                // Display error message if provided
+                if (errorMessage && errorDisplay) {
+                    errorDisplay.textContent = errorMessage;
+                    errorDisplay.style.display = 'block';
+                } else if (errorDisplay) {
+                    errorDisplay.style.display = 'none';
+                }
+
+                // Check if PIN already exists (only show if validation is not skipped)
+                const existingPIN = !skipValidation ? localStorage.getItem('organization_pin') : null;
+                if (existingPIN && !skipValidation) {
                     currentPinDisplay.style.display = 'block';
                     currentPinValue.textContent = existingPIN;
                     input.placeholder = 'Enter new PIN to change';
                 } else {
-                    currentPinDisplay.style.display = 'none';
-                    input.placeholder = 'Enter 8-digit PIN';
+                    if (currentPinDisplay) currentPinDisplay.style.display = 'none';
+                    input.placeholder = 'Enter 8-digit Organization PIN';
                 }
 
                 // Reset input
@@ -138,7 +147,7 @@
 
                 /**
                  * Save button click handler
-                 * Validates PIN with server before saving
+                 * Validates PIN with server before saving (unless skipValidation=true)
                  * @private
                  */
                 const handleSave = async () => {
@@ -150,7 +159,22 @@
                         return;
                     }
 
-                    // If user entered a new PIN, validate with server
+                    // If skipValidation is true, return PIN immediately without server validation
+                    // This is used by registration flow where validation happens separately
+                    if (skipValidation) {
+                        if (!pin) {
+                            window.Toast.error('PIN Required', 'Please enter Organization PIN');
+                            return;
+                        }
+                        console.log('[Shell/OrganizationPIN] Returning PIN without validation (skipValidation=true)');
+                        modal.classList.remove('show');
+                        resolve(pin);
+                        cleanup();
+                        return;
+                    }
+
+                    // Normal flow: validate with server before saving
+                    // This is used by org-pin-btn (manual PIN change from UI)
                     if (pin) {
                         // Disable button while validating
                         saveBtn.disabled = true;
@@ -180,6 +204,7 @@
 
                             // Save new PIN
                             localStorage.setItem('organization_pin', pin);
+                            localStorage.setItem('organization_pin_validated', 'true');
                             window.Toast.success('PIN Saved', `Organization: ${data.details?.organization_name || 'Unknown'}`);
                             console.log('[Shell/OrganizationPIN] PIN saved:', pin);
 
