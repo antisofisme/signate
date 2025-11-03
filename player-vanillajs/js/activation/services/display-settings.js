@@ -34,10 +34,19 @@ window.ShellDisplaySettings = {
         }
 
         try {
-            const response = await fetch(`${apiBaseUrl}/api/devices/${deviceId}`);
+            // ✅ USE APICLIENT: Standardized API calls with automatic error handling
+            const device = await window.APIClient.get(`${apiBaseUrl}/api/devices/${deviceId}`);
 
-            if (response.status === 404) {
-                // Device deleted from backend - reset viewer
+            // Update settings from backend
+            this.settings.rotation = device.rotation || 0;
+            this.settings.volume_enabled = device.volume_enabled !== undefined ? device.volume_enabled : true;
+
+            console.log('[Shell/DisplaySettings] Settings fetched:', this.settings);
+            return this.settings;
+
+        } catch (error) {
+            // Handle 404 - Device deleted from backend
+            if (error.status === 404) {
                 console.warn('[Shell/DisplaySettings] ⚠️ Device not found (404) - Device was deleted');
                 console.log('[Shell/DisplaySettings] 🔄 Resetting viewer...');
 
@@ -62,20 +71,7 @@ window.ShellDisplaySettings = {
                 return;
             }
 
-            if (!response.ok) {
-                throw new Error(`Failed to fetch settings: ${response.status}`);
-            }
-
-            const device = await response.json();
-
-            // Update settings from backend
-            this.settings.rotation = device.rotation || 0;
-            this.settings.volume_enabled = device.volume_enabled !== undefined ? device.volume_enabled : true;
-
-            console.log('[Shell/DisplaySettings] Settings fetched:', this.settings);
-            return this.settings;
-
-        } catch (error) {
+            // Handle other errors
             console.error('[Shell/DisplaySettings] Failed to fetch settings:', error);
             // Return defaults on error
             return this.settings;

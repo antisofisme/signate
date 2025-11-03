@@ -69,27 +69,24 @@ window.ShellLogger = {
      */
     sendLogs: async function() {
         const state = window.ShellState;
-        
+
         if (!state.deviceId || state.logBuffer.length === 0) return;
 
         const logsToSend = [...state.logBuffer];
         state.logBuffer = []; // Clear buffer
 
         try {
-            const response = await fetch(`${state.API_BASE_URL}/api/client/logs/batch`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    device_id: state.deviceId,
-                    logs: logsToSend
-                })
+            // ✅ USE APICLIENT: Standardized API calls with automatic error handling
+            await window.APIClient.post(`${state.API_BASE_URL}/api/client/logs/batch`, {
+                device_id: state.deviceId,
+                logs: logsToSend
             });
-
-            if (!response.ok) {
-                state.originalConsole.warn('[Shell] Failed to send logs:', response.statusText);
-            }
+            // Success - logs sent (no response body expected from logs endpoint)
         } catch (error) {
+            // Error - restore logs to buffer for retry
             state.originalConsole.error('[Shell] Error sending logs:', error);
+            // Note: Not restoring to buffer to avoid infinite growth
+            // Logs will be sent in next batch if logger continues to work
         }
     }
 };

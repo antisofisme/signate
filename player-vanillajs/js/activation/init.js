@@ -57,37 +57,32 @@ window.ShellInit = {
 
             // VERIFY status with backend before deciding what to show
             try {
-                const verifyResponse = await fetch(`${state.API_BASE_URL}/api/devices/check-activation/${savedCode}`, {
-                    method: 'GET',
-                    headers: { 'Content-Type': 'application/json' }
-                });
+                // ✅ USE APICLIENT: Standardized API calls with automatic error handling
+                const verifyData = await window.APIClient.get(`${state.API_BASE_URL}/api/devices/check-activation/${savedCode}`);
 
-                if (verifyResponse.ok) {
-                    const verifyData = await verifyResponse.json();
-                    console.log('[Shell/Init] 🔍 Backend verification:', verifyData);
+                console.log('[Shell/Init] 🔍 Backend verification:', verifyData);
 
-                    if (verifyData.activated && verifyData.device_id) {
-                        // Backend says activated - load player
-                        console.log('[Shell/Init] ✅ Backend confirmed ACTIVE - loading player');
-                        state.deviceId = verifyData.device_id;
-                        state.deviceName = verifyData.device_name;
-                        state.isActivated = true;
-                        localStorage.setItem('device_id', verifyData.device_id);
-                        localStorage.setItem('device_status', 'active');
-                        window.ShellRegistration.onActivated();
-                        return; // Exit early
-                    } else if (verifyData.expired && !verifyData.device_id) {
-                        // Code expired AND device deleted - clear and re-register
-                        console.warn('[Shell/Init] ⚠️ Device code expired and deleted - clearing localStorage');
-                        window.clearLocalStoragePreservePIN();
-                        console.log('[Shell/Init] 🔄 Reloading to register as new device...');
-                        window.location.reload();
-                        return; // Exit early
-                    } else if (verifyData.expired && verifyData.device_id) {
-                        // Code expired but device still exists (PENDING) - keep using it
-                        console.log('[Shell/Init] ⏳ Code expired but device still pending - continue polling');
-                        // Fall through to pending logic below (line 92-100)
-                    }
+                if (verifyData.activated && verifyData.device_id) {
+                    // Backend says activated - load player
+                    console.log('[Shell/Init] ✅ Backend confirmed ACTIVE - loading player');
+                    state.deviceId = verifyData.device_id;
+                    state.deviceName = verifyData.device_name;
+                    state.isActivated = true;
+                    localStorage.setItem('device_id', verifyData.device_id);
+                    localStorage.setItem('device_status', 'active');
+                    window.ShellRegistration.onActivated();
+                    return; // Exit early
+                } else if (verifyData.expired && !verifyData.device_id) {
+                    // Code expired AND device deleted - clear and re-register
+                    console.warn('[Shell/Init] ⚠️ Device code expired and deleted - clearing localStorage');
+                    window.clearLocalStoragePreservePIN();
+                    console.log('[Shell/Init] 🔄 Reloading to register as new device...');
+                    window.location.reload();
+                    return; // Exit early
+                } else if (verifyData.expired && verifyData.device_id) {
+                    // Code expired but device still exists (PENDING) - keep using it
+                    console.log('[Shell/Init] ⏳ Code expired but device still pending - continue polling');
+                    // Fall through to pending logic below
                 }
             } catch (error) {
                 console.warn('[Shell/Init] Verification failed, using localStorage:', error);
