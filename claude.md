@@ -1,3 +1,106 @@
+# Refactoring Concept
+
+## Overview
+Refactoring dari arsitektur lama ke arsitektur baru dengan Clean Architecture:
+- **Dari**: `web-admin` (React/Next.js) + `backend` (Node.js/Express)
+- **Ke**: `cms-vite` (React/Vite) + `backend-python` (FastAPI)
+- **Acuan struktur**: Clean Architecture, max 3-level directory depth
+- **Acuan fitur**: web-admin lama (sebagai referensi logika bisnis yang sudah ada)
+
+## Architecture Principles
+
+### Backend (Python - FastAPI)
+```
+backend-python/
+├── services/          # Modular services (auth, device, content, playlist)
+│   └── [service]/
+│       ├── models.py        # SQLAlchemy models
+│       ├── dtos.py          # Request/Response DTOs
+│       ├── routes.py        # FastAPI routes
+│       ├── repositories/    # Data access layer
+│       └── use_cases/       # Business logic
+└── shared/            # Shared utilities (config, database, api_routes)
+```
+
+**Prinsip**:
+- Clean Architecture dengan dependency injection
+- Phased database schema (tidak semua tabel dibuat sekaligus)
+- Repository pattern untuk data access
+- Use cases untuk business logic
+- Centralized API routes definition di `shared/api_routes.py`
+
+### Frontend (React - Vite)
+```
+cms-vite/
+├── src/
+│   ├── features/      # Feature modules (auth, devices, content, playlist)
+│   │   └── [feature]/
+│   │       ├── api/         # API calls
+│   │       ├── components/  # Feature components
+│   │       ├── hooks/       # Custom hooks
+│   │       └── types/       # TypeScript types
+│   ├── shared/        # Shared utilities, components, layouts
+│   └── stores/        # Zustand global state
+```
+
+**Tech Stack**:
+- Vite + React 18 + TypeScript
+- TanStack Query (server state)
+- Zustand (global state)
+- React Hook Form + Zod (forms & validation)
+- Tailwind CSS + shadcn/ui (styling)
+- Axios (HTTP client)
+
+**Prinsip**:
+- Feature-based architecture
+- Separation of concerns: API / Components / Hooks / Types
+- Zustand untuk global state (auth, UI)
+- TanStack Query untuk server state (data fetching, caching)
+- Reusable components di shared/
+
+## Phased Development
+
+**Phase 1**: Authentication ✅
+- Backend: Login/Register endpoints, JWT tokens, Organizations
+- Frontend: Login page, Auth store, API integration
+- Database: users, organizations tables only
+
+**Phase 2**: Device Management (Next)
+- Backend: Device registration, heartbeat, status
+- Frontend: Device list, activation, monitoring
+- Database: devices table
+
+**Phase 3**: Content Management
+- Backend: Upload, validation, storage integration
+- Frontend: Content upload, preview, management
+- Database: contents table
+
+**Phase 4**: Playlist Management
+- Backend: Playlist CRUD, scheduling
+- Frontend: Playlist builder, assignment
+- Database: playlists, playlist_items tables
+
+## Key Differences from Old Architecture
+
+| Aspect | Old (web-admin + backend) | New (cms-vite + backend-python) |
+|--------|---------------------------|--------------------------------|
+| Backend Framework | Express.js (Node) | FastAPI (Python) |
+| Architecture | Monolithic routes | Clean Architecture + Use Cases |
+| Frontend Build | Next.js | Vite |
+| State Management | Redux | Zustand + TanStack Query |
+| Forms | Formik | React Hook Form + Zod |
+| UI Components | Custom CSS | Tailwind + shadcn/ui |
+| Database Schema | All tables at once | Phased creation |
+| API Routes | Scattered in files | Centralized in api_routes.py |
+
+## Important Notes
+- **Player sudah di-refactoring ke player-vanillajs/** ✅ - Sudah Clean Architecture, jangan diubah lagi
+- **Referensi logika dari web-admin lama**, tapi dengan struktur lebih baik
+- **Bertahap** - Satu phase selesai baru lanjut phase berikutnya
+- **Testing di local dulu**, baru deploy ke server
+
+---
+
 # Server Information
 
 ## Production Server
