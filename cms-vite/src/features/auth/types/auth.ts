@@ -2,12 +2,15 @@
  * Authentication Domain Types
  */
 
+import type { SuccessResponse } from '@/lib/api/responseTypes';
+import type { UserRole } from '@/lib/auth/permissions';
+
 export interface User {
   id: number;
   username: string;
   email: string;
   full_name: string;
-  role: 'super_admin' | 'admin' | 'user';
+  role: UserRole;
   is_active: boolean;
   organization_id?: number;
   created_at: string;
@@ -28,14 +31,13 @@ export interface LoginRequest {
   password: string;
 }
 
-export interface LoginResponse {
-  success: boolean;
-  data: {
-    user: User;
-    token: string;
-    organizations: Organization[];
-  };
+export interface LoginData {
+  user: User;
+  token: string;
+  organizations: Organization[];
 }
+
+export type LoginResponse = SuccessResponse<LoginData>;
 
 export interface RegisterRequest {
   username: string;

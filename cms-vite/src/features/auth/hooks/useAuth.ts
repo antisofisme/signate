@@ -9,6 +9,8 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { authApi } from '@/features/auth/services/authApi';
 import { useAuthStore } from '@/lib/stores/authStore';
+import { handleAPIError } from '@/lib/errors/errorHandler';
+import { toast } from '@/lib/notifications/toast';
 import type { LoginRequest, RegisterRequest } from '@/features/auth/types/auth';
 
 /**
@@ -42,6 +44,9 @@ export function useLogin() {
       // Invalidate queries
       queryClient.invalidateQueries({ queryKey: ['user'] });
 
+      // Show success toast
+      toast.success(`Selamat datang, ${data.user.full_name || data.user.username}!`);
+
       // Navigate based on organization count
       if (data.organizations.length === 1) {
         // Single org - go to dashboard
@@ -51,8 +56,12 @@ export function useLogin() {
         navigate('/select-organization');
       } else {
         // No org - error (shouldn't happen)
-        console.error('User has no organizations');
+        toast.error('User tidak memiliki organisasi');
       }
+    },
+    onError: (error) => {
+      const appError = handleAPIError(error);
+      toast.error(appError.message);
     },
   });
 }
@@ -66,8 +75,15 @@ export function useRegister() {
   return useMutation({
     mutationFn: (userData: RegisterRequest) => authApi.register(userData),
     onSuccess: () => {
+      // Show success toast
+      toast.success('Registrasi berhasil! Silakan login.');
+
       // Redirect to login after successful registration
       navigate('/login');
+    },
+    onError: (error) => {
+      const appError = handleAPIError(error);
+      toast.error(appError.message);
     },
   });
 }
@@ -89,6 +105,9 @@ export function useLogout() {
       // Clear all queries
       queryClient.clear();
 
+      // Show success toast
+      toast.success('Anda telah logout');
+
       // Redirect to login
       navigate('/login');
     },
@@ -96,6 +115,7 @@ export function useLogout() {
       // Even if API call fails, clear local state
       logout();
       queryClient.clear();
+      toast.info('Anda telah logout');
       navigate('/login');
     },
   });
