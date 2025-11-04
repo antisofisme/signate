@@ -1,6 +1,8 @@
 """
 Login Use Case
 Handles user authentication
+
+Updated to use centralized error handling
 """
 
 from typing import Dict, Any
@@ -10,6 +12,7 @@ from ..repositories.organization_repo import OrganizationRepository
 from passlib.context import CryptContext
 from jose import jwt
 from datetime import datetime, timedelta
+from shared.errors import AuthenticationError, ErrorCodes
 
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -41,10 +44,10 @@ class LoginUseCase:
             password: User's password (plain text)
 
         Returns:
-            Dict with access_token and token_type
+            Dict with user, token, and organizations
 
         Raises:
-            ValueError: If credentials are invalid
+            AuthenticationError: If credentials are invalid or user is disabled
         """
         # Validate credentials
         credentials = Credentials(username=username, password=password)
@@ -52,15 +55,24 @@ class LoginUseCase:
         # Find user
         user = self.user_repository.find_by_username(credentials.username)
         if not user:
-            raise ValueError("Invalid username or password")
+            raise AuthenticationError(
+                message="Username atau password salah",
+                code=ErrorCodes.INVALID_CREDENTIALS
+            )
 
         # Verify password
         if not pwd_context.verify(credentials.password, user.password_hash):
-            raise ValueError("Invalid username or password")
+            raise AuthenticationError(
+                message="Username atau password salah",
+                code=ErrorCodes.INVALID_CREDENTIALS
+            )
 
         # Check if user is active
         if not user.is_active:
-            raise ValueError("User account is disabled")
+            raise AuthenticationError(
+                message="Akun Anda telah dinonaktifkan",
+                code=ErrorCodes.ACCOUNT_DISABLED
+            )
 
         # Generate JWT token with organization_id
         token = self._create_access_token(

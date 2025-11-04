@@ -11,15 +11,21 @@ import DashboardLayout from '@/shared/components/layout/DashboardLayout';
 
 // Pages
 import LoginPage from '@/pages/LoginPage';
+import RegisterPage from '@/pages/RegisterPage';
 import DashboardPage from '@/pages/DashboardPage';
 import SelectOrganizationPage from '@/pages/SelectOrganizationPage';
-import DevicesPage from '@/pages/DevicesPage';
+import SettingsPage from '@/pages/SettingsPage';
+// import DevicesPage from '@/pages/DevicesPage'; // TODO: Create DevicesPage
 
 export const router = createBrowserRouter([
   // Public Routes
   {
     path: '/login',
     element: <LoginPage />,
+  },
+  {
+    path: '/register',
+    element: <RegisterPage />,
   },
 
   // Protected Routes
@@ -43,10 +49,15 @@ export const router = createBrowserRouter([
         path: 'select-organization',
         element: <SelectOrganizationPage />,
       },
+      // Settings (Organizations & Users)
+      {
+        path: 'settings',
+        element: <SettingsPage />,
+      },
       // Device Management
       {
         path: 'devices',
-        element: <DevicesPage />,
+        element: <div className="p-8">Devices Page - Coming Soon</div>,
       },
       {
         path: 'contents',
@@ -67,10 +78,6 @@ export const router = createBrowserRouter([
       {
         path: 'widgets',
         element: <div className="p-8">Widgets Page - Coming Soon</div>,
-      },
-      {
-        path: 'settings',
-        element: <div className="p-8">Settings Page - Coming Soon</div>,
       },
     ],
   },

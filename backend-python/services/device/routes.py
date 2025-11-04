@@ -1,13 +1,22 @@
 """
 Device API Routes
 HTTP endpoints for device management
+
+Updated to use centralized utilities:
+- shared.errors for error handling
+- shared.responses for standardized responses
+- shared.logging for request logging
 """
 
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi import APIRouter, Depends, Request, status, Query
 from sqlalchemy.orm import Session
 from shared.database import get_db
 from shared.api_routes import DeviceRoutes
+from shared.errors import handle_errors, NotFoundError, ValidationError
+from shared.responses import success_response
+from shared.logging import RequestLogger, AuditLogger
 from typing import Optional
+import time
 
 from .dtos import (
     RequestActivationCodeRequest,
@@ -30,6 +39,10 @@ from .domain.device import DeviceHeartbeat
 
 
 router = APIRouter()
+
+# Initialize loggers
+request_logger = RequestLogger()
+audit_logger = AuditLogger()
 
 
 # =============================================================================
@@ -186,34 +199,62 @@ def check_activation_status(
 # TODO: Add authentication middleware
 # =============================================================================
 
-@router.post(DeviceRoutes.ACTIVATE, response_model=DeviceResponse)
+@router.post(DeviceRoutes.ACTIVATE)
+@handle_errors
 def activate_device(
-    request: ActivateDeviceRequest,
+    request_body: ActivateDeviceRequest,
+    http_request: Request,
     use_case: ActivateDeviceUseCase = Depends(get_activate_device_use_case)
 ):
     """
     Activate device with code (called by CMS admin)
 
     Admin enters the 6-digit code shown on screen to activate device
+    Uses centralized error handling and logging
     """
-    try:
-        device = use_case.execute(
-            unique_code=request.unique_code,
-            device_name=request.device_name,
-            room_number=request.room_number,
-            location_type=request.location_type
-        )
+    start_time = time.time()
 
-        # Convert to response with is_online computed field
-        response = DeviceResponse.model_validate(device)
-        response.is_online = device.is_online()
+    # Execute activation use case (will raise ValidationError if fails)
+    device = use_case.execute(
+        unique_code=request_body.unique_code,
+        device_name=request_body.device_name,
+        room_number=request_body.room_number,
+        location_type=request_body.location_type
+    )
 
-        return response
-    except ValueError as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
-        )
+    # Convert to response with is_online computed field
+    response = DeviceResponse.model_validate(device)
+    response.is_online = device.is_online()
+
+    # Calculate duration
+    duration_ms = (time.time() - start_time) * 1000
+
+    # Log successful activation
+    request_logger.log_request(
+        method="POST",
+        path=DeviceRoutes.ACTIVATE,
+        status_code=200,
+        duration_ms=duration_ms
+    )
+
+    # Audit log
+    audit_logger.log_action(
+        user_id=None,  # TODO: Get from JWT token when auth is implemented
+        action="device.activate",
+        resource_type="device",
+        resource_id=device.id,
+        details={
+            "unique_code": request_body.unique_code,
+            "device_name": request_body.device_name,
+            "ip_address": http_request.client.host if http_request.client else None
+        }
+    )
+
+    # Return standardized success response
+    return success_response(
+        data=response,
+        message=f"Device '{device.device_name}' berhasil diaktivasi"
+    )
 
 
 @router.get(DeviceRoutes.LIST, response_model=DeviceListResponse)
@@ -289,61 +330,109 @@ def get_device(
         )
 
 
-@router.put(DeviceRoutes.UPDATE, response_model=DeviceResponse)
+@router.put(DeviceRoutes.UPDATE)
+@handle_errors
 def update_device(
     device_id: int,
-    request: UpdateDeviceRequest,
+    request_body: UpdateDeviceRequest,
+    http_request: Request,
     use_case: UpdateDeviceUseCase = Depends(get_update_device_use_case)
 ):
     """
     Update device settings (called by CMS)
+    Uses centralized error handling and logging
     """
-    try:
-        device = use_case.execute(
-            device_id=device_id,
-            device_name=request.device_name,
-            room_number=request.room_number,
-            location_type=request.location_type,
-            rotation=request.rotation,
-            volume_enabled=request.volume_enabled,
-            supports_personalization=request.supports_personalization,
-            privacy_mode=request.privacy_mode
-        )
+    start_time = time.time()
 
-        # Convert to response with is_online computed field
-        response = DeviceResponse.model_validate(device)
-        response.is_online = device.is_online()
+    # Execute update use case (will raise ValidationError/NotFoundError if fails)
+    device = use_case.execute(
+        device_id=device_id,
+        device_name=request_body.device_name,
+        room_number=request_body.room_number,
+        location_type=request_body.location_type,
+        rotation=request_body.rotation,
+        volume_enabled=request_body.volume_enabled,
+        supports_personalization=request_body.supports_personalization,
+        privacy_mode=request_body.privacy_mode
+    )
 
-        return response
-    except ValueError as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
-        )
+    # Convert to response with is_online computed field
+    response = DeviceResponse.model_validate(device)
+    response.is_online = device.is_online()
+
+    # Calculate duration
+    duration_ms = (time.time() - start_time) * 1000
+
+    # Log successful update
+    request_logger.log_request(
+        method="PUT",
+        path=DeviceRoutes.UPDATE.replace("{device_id}", str(device_id)),
+        status_code=200,
+        duration_ms=duration_ms
+    )
+
+    # Audit log
+    audit_logger.log_action(
+        user_id=None,  # TODO: Get from JWT token
+        action="device.update",
+        resource_type="device",
+        resource_id=device_id,
+        details={
+            "device_name": request_body.device_name,
+            "ip_address": http_request.client.host if http_request.client else None
+        }
+    )
+
+    # Return standardized success response
+    return success_response(
+        data=response,
+        message=f"Device '{device.device_name}' berhasil diupdate"
+    )
 
 
 @router.delete(DeviceRoutes.DELETE, status_code=status.HTTP_204_NO_CONTENT)
+@handle_errors
 def delete_device(
     device_id: int,
+    http_request: Request,
     use_case: UpdateDeviceUseCase = Depends(get_update_device_use_case)
 ):
     """
     Delete device (called by CMS)
+    Uses centralized error handling and logging
     """
-    try:
-        success = use_case.delete_device(device_id)
+    start_time = time.time()
 
-        if not success:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Device with ID {device_id} not found"
-            )
+    # Execute delete use case (will raise NotFoundError if device not found)
+    success = use_case.delete_device(device_id)
 
-        return None
-    except HTTPException:
-        raise
-    except ValueError as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
+    if not success:
+        raise NotFoundError(
+            message=f"Device dengan ID {device_id} tidak ditemukan",
+            resource_type="device",
+            resource_id=device_id
         )
+
+    # Calculate duration
+    duration_ms = (time.time() - start_time) * 1000
+
+    # Log successful deletion
+    request_logger.log_request(
+        method="DELETE",
+        path=DeviceRoutes.DELETE.replace("{device_id}", str(device_id)),
+        status_code=204,
+        duration_ms=duration_ms
+    )
+
+    # Audit log
+    audit_logger.log_action(
+        user_id=None,  # TODO: Get from JWT token
+        action="device.delete",
+        resource_type="device",
+        resource_id=device_id,
+        details={
+            "ip_address": http_request.client.host if http_request.client else None
+        }
+    )
+
+    return None

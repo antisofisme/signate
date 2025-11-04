@@ -36,6 +36,21 @@ class OrganizationRoutes:
 
 
 # =============================================================================
+# USER MANAGEMENT SERVICE ROUTES
+# =============================================================================
+class UserRoutes:
+    """User account management"""
+    BASE = f"{API_V1}/users"
+
+    LIST = BASE
+    CREATE = BASE
+    GET = f"{BASE}/{{user_id}}"
+    UPDATE = f"{BASE}/{{user_id}}"
+    DELETE = f"{BASE}/{{user_id}}"
+    CHANGE_PASSWORD = f"{BASE}/{{user_id}}/change-password"
+
+
+# =============================================================================
 # DEVICE SERVICE ROUTES
 # =============================================================================
 class DeviceRoutes:
@@ -131,6 +146,7 @@ def get_all_routes():
     return {
         "auth": {k: v for k, v in vars(AuthRoutes).items() if not k.startswith("_")},
         "organizations": {k: v for k, v in vars(OrganizationRoutes).items() if not k.startswith("_")},
+        "users": {k: v for k, v in vars(UserRoutes).items() if not k.startswith("_")},
         "devices": {k: v for k, v in vars(DeviceRoutes).items() if not k.startswith("_")},
         "content": {k: v for k, v in vars(ContentRoutes).items() if not k.startswith("_")},
         "analytics": {k: v for k, v in vars(AnalyticsRoutes).items() if not k.startswith("_")},

@@ -1,6 +1,8 @@
 """
 Activate Device Use Case
 Activate device using 6-digit code from CMS
+
+Updated to use centralized validators and error handling
 """
 
 from datetime import datetime
@@ -8,6 +10,8 @@ from typing import Dict, Optional
 
 from ..domain.device import Device, ActivationCode
 from ..domain.interfaces import IDeviceRepository
+from shared.errors import ValidationError, NotFoundError, ErrorCodes
+from shared.validators import validate_activation_code
 
 
 class ActivateDeviceUseCase:
@@ -39,28 +43,47 @@ class ActivateDeviceUseCase:
             Activated Device
 
         Raises:
-            ValueError: If code invalid or expired
+            ValidationError: If code invalid or expired
+            NotFoundError: If device not found
         """
 
-        # Validate code format
-        try:
-            activation_code = ActivationCode(code=unique_code.upper())
-        except ValueError as e:
-            raise ValueError(f"Invalid activation code: {str(e)}")
+        # Validate code format using centralized validator
+        is_valid_code, error_msg = validate_activation_code(unique_code)
+        if not is_valid_code:
+            raise ValidationError(
+                message=error_msg,
+                code=ErrorCodes.VALIDATION_ERROR,
+                details={"field": "unique_code"}
+            )
+
+        # Normalize code to uppercase
+        normalized_code = unique_code.upper()
 
         # Find device by code
-        device = self.device_repo.find_by_code(activation_code.code)
+        device = self.device_repo.find_by_code(normalized_code)
 
         if not device:
-            raise ValueError("Device not found with this code")
+            raise NotFoundError(
+                message="Device dengan kode ini tidak ditemukan",
+                resource_type="device",
+                resource_id=normalized_code
+            )
 
         # Check if already activated
         if device.is_active():
-            raise ValueError("Device already activated")
+            raise ValidationError(
+                message="Device sudah diaktivasi sebelumnya",
+                code=ErrorCodes.ALREADY_EXISTS,
+                details={"device_id": device.id, "status": device.status}
+            )
 
         # Check if code expired
         if not device.can_activate():
-            raise ValueError("Activation code expired. Please request a new code from the device.")
+            raise ValidationError(
+                message="Kode aktivasi sudah kadaluarsa. Silakan request kode baru dari device.",
+                code=ErrorCodes.EXPIRED_CODE,
+                details={"expires_at": device.expires_at.isoformat() if device.expires_at else None}
+            )
 
         # Update device
         device.status = 'active'

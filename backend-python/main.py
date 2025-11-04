@@ -15,6 +15,8 @@ from shared.api_routes import API_V1
 # Import service routers
 from services.auth.routes import router as auth_router
 from services.device.routes import router as device_router
+from services.organization.routes import router as organization_router
+from services.user.routes import router as user_router
 
 
 # =============================================================================
@@ -26,7 +28,7 @@ async def lifespan(app: FastAPI):
     """Startup and shutdown events"""
     # Startup
     print("=" * 80)
-    print("🚀 Starting Digital Signage Backend - Phase 2: Auth + Device")
+    print("🚀 Starting Digital Signage Backend - Phase 3: Auth + Device + Organizations + Users")
     print("=" * 80)
     print(f"Environment: {settings.ENVIRONMENT}")
     print(f"Debug Mode: {settings.DEBUG}")
@@ -59,8 +61,8 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="Digital Signage API",
-    description="Clean Architecture FastAPI Backend - Phase 2: Auth + Device Management",
-    version="1.0.0-phase2",
+    description="Clean Architecture FastAPI Backend - Phase 3: Auth + Device + Organization + User Management",
+    version="1.0.0-phase3",
     docs_url="/docs" if settings.ENABLE_API_DOCS else None,
     redoc_url="/redoc" if settings.ENABLE_API_DOCS else None,
     lifespan=lifespan
@@ -103,9 +105,9 @@ def root():
     """Root endpoint - Health check"""
     return {
         "service": "Digital Signage API",
-        "version": "1.0.0-phase2",
+        "version": "1.0.0-phase3",
         "status": "running",
-        "phase": "Phase 2: Auth + Device",
+        "phase": "Phase 3: Auth + Device + Organizations + Users",
         "environment": settings.ENVIRONMENT
     }
 
@@ -118,18 +120,20 @@ def health_check():
     return {
         "status": "healthy" if db_healthy else "unhealthy",
         "database": "connected" if db_healthy else "disconnected",
-        "phase": "Phase 2: Auth + Device"
+        "phase": "Phase 3: Auth + Device + Organizations + Users"
     }
 
 
 # =============================================================================
-# API ROUTERS (Phase 2: Auth + Device)
+# API ROUTERS (Phase 3: Auth + Device + Organizations + Users)
 # =============================================================================
 
 # Note: Routes already include full path from Route classes
 # So we don't add prefix here
 app.include_router(auth_router, tags=["Authentication"])
 app.include_router(device_router, tags=["Device Management"])
+app.include_router(organization_router, tags=["Organization Management"])
+app.include_router(user_router, tags=["User Management"])
 
 
 # =============================================================================
@@ -143,7 +147,7 @@ async def not_found_handler(request, exc):
         status_code=404,
         content={
             "detail": "Endpoint not found",
-            "phase": "Phase 2: Auth + Device",
+            "phase": "Phase 3: Auth + Device + Organizations + Users",
             "available_routes": [
                 "/docs",
                 "/health",
@@ -152,7 +156,9 @@ async def not_found_handler(request, exc):
                 f"{API_V1}/devices/request-code",
                 f"{API_V1}/devices/activate",
                 f"{API_V1}/devices/heartbeat",
-                f"{API_V1}/devices"
+                f"{API_V1}/devices",
+                f"{API_V1}/organizations",
+                f"{API_V1}/users"
             ]
         }
     )
@@ -168,7 +174,7 @@ if __name__ == "__main__":
     uvicorn.run(
         "main:app",
         host="0.0.0.0",
-        port=8001,
+        port=settings.AUTH_SERVICE_PORT,  # From .env
         reload=True if settings.ENVIRONMENT == "development" else False,
         log_level=settings.LOG_LEVEL.lower()
     )

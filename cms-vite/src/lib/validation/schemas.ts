@@ -4,9 +4,12 @@
  */
 
 export const validators = {
-  email: (value: string): boolean => {
+  email: (value: string): { valid: boolean; error?: string } => {
     const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return regex.test(value);
+    if (!regex.test(value)) {
+      return { valid: false, error: 'Email address is invalid' };
+    }
+    return { valid: true };
   },
 
   username: (value: string): { valid: boolean; error?: string } => {

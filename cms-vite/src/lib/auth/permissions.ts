@@ -22,6 +22,13 @@ export function hasRole(user: User | null, role: UserRole): boolean {
 }
 
 /**
+ * Check if user is super admin
+ */
+export function isSuperAdmin(user: User | null): boolean {
+  return hasRole(user, USER_ROLES.SUPER_ADMIN);
+}
+
+/**
  * Check if user is admin
  */
 export function isAdmin(user: User | null): boolean {
@@ -29,10 +36,17 @@ export function isAdmin(user: User | null): boolean {
 }
 
 /**
+ * Check if user is admin or super admin
+ */
+export function isAdminOrAbove(user: User | null): boolean {
+  return user?.role === USER_ROLES.SUPER_ADMIN || user?.role === USER_ROLES.ADMIN;
+}
+
+/**
  * Check if user is manager or admin
  */
 export function isManagerOrAbove(user: User | null): boolean {
-  return user?.role === USER_ROLES.ADMIN || user?.role === USER_ROLES.MANAGER;
+  return user?.role === USER_ROLES.SUPER_ADMIN || user?.role === USER_ROLES.ADMIN || user?.role === USER_ROLES.MANAGER;
 }
 
 /**
@@ -42,6 +56,7 @@ export function canPerformAction(user: User | null, action: string): boolean {
   if (!user) return false;
 
   const permissions: Record<UserRole, string[]> = {
+    [USER_ROLES.SUPER_ADMIN]: ['*'], // All permissions
     [USER_ROLES.ADMIN]: ['*'], // All permissions
     [USER_ROLES.MANAGER]: [
       'device.view',
@@ -62,7 +77,7 @@ export function canPerformAction(user: User | null, action: string): boolean {
 
   const userPermissions = permissions[user.role] || [];
 
-  // Admin has all permissions
+  // Super Admin and Admin have all permissions
   if (userPermissions.includes('*')) return true;
 
   return userPermissions.includes(action);

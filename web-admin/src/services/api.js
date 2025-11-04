@@ -1,9 +1,14 @@
 import axios from 'axios'
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://192.168.5.12:8001'
+const IS_DEV = import.meta.env.DEV
 
+/**
+ * Development: Uses empty baseURL so /api/* endpoints are relative (proxied by Vite)
+ * Production: Uses absolute URL http://192.168.5.12:8001
+ */
 const api = axios.create({
-  baseURL: API_BASE_URL,
+  baseURL: IS_DEV ? '' : API_BASE_URL,
   headers: {
     'Content-Type': 'application/json',
   },

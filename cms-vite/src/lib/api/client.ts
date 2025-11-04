@@ -13,13 +13,16 @@ import axios, { AxiosError } from 'axios';
 // Environment variables
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://192.168.5.12:8001';
 const API_VERSION = import.meta.env.VITE_API_VERSION || 'v1';
+const IS_DEV = import.meta.env.DEV;
 
 /**
  * Axios client instance
- * Base URL: http://192.168.5.12:8001/api/v1
+ *
+ * Development: Uses relative URL /api/v1 (proxied by Vite to http://192.168.5.12:8001)
+ * Production: Uses absolute URL http://192.168.5.12:8001/api/v1
  */
 export const apiClient = axios.create({
-  baseURL: `${API_BASE_URL}/api/${API_VERSION}`,
+  baseURL: IS_DEV ? `/api/${API_VERSION}` : `${API_BASE_URL}/api/${API_VERSION}`,
   timeout: 30000,
   headers: {
     'Content-Type': 'application/json',
