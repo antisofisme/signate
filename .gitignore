@@ -23,6 +23,10 @@ wheels/
 .installed.cfg
 *.egg
 
+# Exception: Allow TypeScript lib folders in frontend
+!cms-vite/src/lib/
+!cms-vite/src/lib/**
+
 # Environment
 .env
 .env.*

@@ -27,10 +27,14 @@ backend-python/
 │   ├── device/             # Device Service
 │   ├── content/            # Content Service
 │   └── analytics/          # Analytics Service
-└── shared/                 # Shared utilities (NO business logic!)
-    ├── api_routes.py      # ⚠️ CENTRALIZED API ROUTES DEFINITION
+└── shared/                 # 📦 CENTRALIZED UTILITIES (stable patterns)
+    ├── api_routes.py      # ⚠️ API routes definition (Single Source of Truth)
     ├── config.py          # Settings from .env
-    └── database.py        # SQLAlchemy setup
+    ├── database.py        # SQLAlchemy setup
+    ├── errors.py          # ✅ Custom exceptions & error handling
+    ├── responses.py       # ✅ Standardized API response formatters
+    ├── validators.py      # ✅ Common validation functions
+    └── logging.py         # ✅ Centralized logging infrastructure
 ```
 
 **Dependency Flow (Clean Architecture):**

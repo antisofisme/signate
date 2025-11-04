@@ -98,7 +98,11 @@ VITE_APP_NAME="Digital Signage CMS"
 
 ---
 
-## Structure (Clean Architecture - Feature-based)
+## Structure (Modular + Clean + Centralized Architecture)
+
+**Architecture:** Modular (feature-based) + Clean Architecture (layered) + Centralized (shared code)
+
+See `README_STRUCTURE.md` for detailed architecture explanation.
 
 ```
 cms-vite/
@@ -108,6 +112,7 @@ cms-vite/
 ├── vite.config.ts             # Vite configuration
 ├── tailwind.config.ts
 ├── index.html                 # Entry point (Vite)
+├── README_STRUCTURE.md        # 📘 Architecture guide (Modular + Clean + Centralized)
 ├── src/
 │   ├── main.tsx              # ⚡ React entry point
 │   ├── App.tsx               # 🎯 Root component + Router
@@ -134,17 +139,17 @@ cms-vite/
 │   │   ├── settings/
 │   │   │   └── SettingsPage.tsx
 │   │   └── NotFoundPage.tsx
-│   ├── features/             # 🎯 BUSINESS LOGIC (per feature)
+│   ├── features/             # 🎯 BUSINESS LOGIC (per feature/domain)
 │   │   ├── auth/
-│   │   │   ├── components/
+│   │   │   ├── components/        # Feature-specific components
 │   │   │   │   ├── LoginForm.tsx
 │   │   │   │   ├── RegisterForm.tsx
 │   │   │   │   └── OrgSelector.tsx
-│   │   │   ├── hooks/
-│   │   │   │   ├── useAuth.ts         # React Query mutations
-│   │   │   │   └── useAuthStore.ts    # Zustand store
-│   │   │   ├── services/
-│   │   │   │   └── authApi.ts         # API calls
+│   │   │   ├── hooks/             # React Query + custom hooks
+│   │   │   │   ├── useAuth.ts
+│   │   │   │   └── useAuthStore.ts
+│   │   │   ├── services/          # API calls (feature-specific)
+│   │   │   │   └── authApi.ts
 │   │   │   └── types/
 │   │   │       └── auth.ts
 │   │   ├── devices/
@@ -154,7 +159,7 @@ cms-vite/
 │   │   │   │   ├── DeviceActions.tsx
 │   │   │   │   └── DeviceStatusBadge.tsx
 │   │   │   ├── hooks/
-│   │   │   │   ├── useDevices.ts      # React Query
+│   │   │   │   ├── useDevices.ts
 │   │   │   │   └── useDeviceActions.ts
 │   │   │   ├── services/
 │   │   │   │   └── deviceApi.ts
@@ -162,78 +167,71 @@ cms-vite/
 │   │   │       └── device.ts
 │   │   ├── content/
 │   │   │   ├── components/
-│   │   │   │   ├── ContentGrid.tsx
-│   │   │   │   ├── UploadModal.tsx
-│   │   │   │   └── ContentPreview.tsx
 │   │   │   ├── hooks/
-│   │   │   │   ├── useContent.ts
-│   │   │   │   └── useUpload.ts       # Upload progress
 │   │   │   ├── services/
-│   │   │   │   └── contentApi.ts
 │   │   │   └── types/
-│   │   │       └── content.ts
 │   │   ├── playlists/
 │   │   │   ├── components/
-│   │   │   │   ├── PlaylistBuilder.tsx
-│   │   │   │   ├── PlaylistItem.tsx
-│   │   │   │   └── AssignDeviceModal.tsx
 │   │   │   ├── hooks/
-│   │   │   │   ├── usePlaylists.ts
-│   │   │   │   └── usePlaylistBuilder.ts
 │   │   │   ├── services/
-│   │   │   │   └── playlistApi.ts
 │   │   │   └── types/
-│   │   │       └── playlist.ts
 │   │   ├── users/
 │   │   │   ├── components/
-│   │   │   │   ├── UserTable.tsx
-│   │   │   │   └── UserModal.tsx
 │   │   │   ├── hooks/
-│   │   │   │   └── useUsers.ts
 │   │   │   ├── services/
-│   │   │   │   └── userApi.ts
 │   │   │   └── types/
-│   │   │       └── user.ts
 │   │   └── dashboard/
 │   │       ├── components/
-│   │       │   ├── StatsCard.tsx
-│   │       │   ├── OnlineDevicesChart.tsx
-│   │       │   └── RecentActivity.tsx
 │   │       ├── hooks/
-│   │       │   └── useDashboard.ts
 │   │       └── services/
-│   │           └── dashboardApi.ts
-│   ├── components/           # 🧩 SHARED COMPONENTS
-│   │   ├── ui/              # Shadcn UI components
-│   │   │   ├── button.tsx
-│   │   │   ├── card.tsx
-│   │   │   ├── input.tsx
-│   │   │   ├── table.tsx
-│   │   │   ├── dialog.tsx
-│   │   │   └── ...
-│   │   ├── layout/
-│   │   │   ├── Sidebar.tsx
-│   │   │   ├── Topbar.tsx
-│   │   │   ├── DashboardLayout.tsx
-│   │   │   └── AuthLayout.tsx
-│   │   └── common/
-│   │       ├── LoadingSpinner.tsx
-│   │       ├── ErrorBoundary.tsx
-│   │       └── EmptyState.tsx
-│   ├── lib/                 # 📦 CORE UTILITIES
-│   │   ├── api/
-│   │   │   ├── client.ts           # ⚠️ CENTRALIZED Axios instance
-│   │   │   └── endpoints.ts        # ⚠️ CENTRALIZED API routes
-│   │   ├── stores/
-│   │   │   ├── authStore.ts        # Zustand auth
-│   │   │   └── uiStore.ts          # Zustand UI (sidebar, theme, modals)
-│   │   ├── hooks/
+│   ├── shared/               # 🧩 SHARED/GENERIC COMPONENTS (domain-agnostic)
+│   │   └── components/
+│   │       ├── ui/          # Shadcn UI primitives
+│   │       │   ├── button.tsx
+│   │       │   ├── card.tsx
+│   │       │   ├── input.tsx
+│   │       │   ├── table.tsx
+│   │       │   ├── dialog.tsx
+│   │       │   └── ...
+│   │       ├── layout/      # App layout components
+│   │       │   ├── Sidebar.tsx
+│   │       │   ├── Topbar.tsx
+│   │       │   ├── DashboardLayout.tsx
+│   │       │   └── AuthLayout.tsx
+│   │       └── common/      # Generic reusable components
+│   │           ├── Button.tsx
+│   │           ├── LoadingSpinner.tsx
+│   │           ├── ErrorBoundary.tsx
+│   │           ├── EmptyState.tsx
+│   │           ├── ThemeSwitcher.tsx
+│   │           └── LanguageSwitcher.tsx
+│   ├── lib/                 # 📦 CENTRALIZED UTILITIES (stable patterns)
+│   │   ├── errors/          # Error handling
+│   │   │   ├── apiErrors.ts        # Error types & classes
+│   │   │   ├── errorMessages.ts    # Error messages (Indonesian)
+│   │   │   └── errorHandler.ts     # Error handling logic
+│   │   ├── api/             # HTTP client & API
+│   │   │   ├── client.ts           # Axios instance + interceptors
+│   │   │   ├── endpoints.ts        # API route definitions
+│   │   │   ├── responseTypes.ts    # Response type definitions
+│   │   │   └── interceptors.ts     # Request/response interceptors
+│   │   ├── validation/      # Validation utilities
+│   │   │   └── schemas.ts          # Validation rules
+│   │   ├── constants/       # App-wide constants
+│   │   │   └── app.ts              # Constants (roles, limits, formats)
+│   │   ├── notifications/   # Toast notifications
+│   │   │   └── toast.ts            # Toast manager & useToast hook
+│   │   ├── auth/            # Auth utilities
+│   │   │   └── permissions.ts      # RBAC (role-based access control)
+│   │   ├── stores/          # Zustand stores (global state)
+│   │   │   ├── authStore.ts        # Auth state (user, token, org)
+│   │   │   └── uiStore.ts          # UI state (sidebar, theme, modals)
+│   │   ├── hooks/           # Shared hooks
 │   │   │   ├── useDebounce.ts
 │   │   │   └── useLocalStorage.ts
-│   │   └── utils/
+│   │   └── utils/           # General utilities
 │   │       ├── cn.ts               # Tailwind class merger
-│   │       ├── formatDate.ts
-│   │       └── validators.ts
+│   │       └── dateTime.ts         # Date/time formatting
 │   ├── styles/
 │   │   └── globals.css            # Tailwind + theme variables
 │   └── i18n/                # 🌐 TRANSLATIONS
@@ -247,6 +245,11 @@ cms-vite/
 │   └── fonts/
 └── dist/                     # Build output (static files)
 ```
+
+**Key Principles:**
+- **Modular**: Code organized by feature/domain (not by type)
+- **Clean Architecture**: Clear separation of concerns (UI → Business → Infrastructure)
+- **Centralized**: Reusable code in `shared/` and `lib/` for consistency
 
 **Path depth:** Max 5 levels (`src/features/devices/components/DeviceTable.tsx`)
 

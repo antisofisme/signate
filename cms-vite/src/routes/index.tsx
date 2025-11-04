@@ -7,7 +7,7 @@
 
 import { createBrowserRouter, Navigate } from 'react-router-dom';
 import ProtectedRoute from './ProtectedRoute';
-import DashboardLayout from '@/components/layout/DashboardLayout';
+import DashboardLayout from '@/shared/components/layout/DashboardLayout';
 
 // Pages
 import LoginPage from '@/pages/LoginPage';
