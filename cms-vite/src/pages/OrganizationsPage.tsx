@@ -18,6 +18,7 @@ import type {
   CreateOrganizationRequest,
   UpdateOrganizationRequest,
 } from '@/features/organizations/types/organization';
+import { PageHeader } from '@/shared/components';
 
 export default function OrganizationsPage() {
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -54,25 +55,24 @@ export default function OrganizationsPage() {
   };
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-            Organizations
-          </h1>
-          <p className="text-gray-600 dark:text-gray-400 mt-1">
-            Manage organizations and their settings
-          </p>
-        </div>
-        <button
-          onClick={() => setShowCreateModal(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-        >
-          <Plus className="w-5 h-5" />
-          Create Organization
-        </button>
-      </div>
+    <>
+      {/* Sticky Page Header */}
+      <PageHeader
+        title="Organizations"
+        description="Manage organizations and their settings"
+        actions={
+          <button
+            onClick={() => setShowCreateModal(true)}
+            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            <Plus className="w-5 h-5" />
+            Create Organization
+          </button>
+        }
+      />
+
+      {/* Content */}
+      <div className="space-y-6">
 
       {/* Stats */}
       {data && (
@@ -233,7 +233,8 @@ export default function OrganizationsPage() {
           isLoading={deleteMutation.isPending}
         />
       )}
-    </div>
+      </div>
+    </>
   );
 }
 

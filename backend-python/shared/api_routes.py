@@ -96,6 +96,17 @@ class ContentRoutes:
 
 
 # =============================================================================
+# AUDIT SERVICE ROUTES
+# =============================================================================
+class AuditRoutes:
+    """Audit trail & activity logging"""
+    BASE = f"{API_V1}/audit-logs"
+
+    LIST = BASE
+    GET = f"{BASE}/{{log_id}}"
+
+
+# =============================================================================
 # ANALYTICS SERVICE ROUTES
 # =============================================================================
 class AnalyticsRoutes:
@@ -147,6 +158,7 @@ def get_all_routes():
         "auth": {k: v for k, v in vars(AuthRoutes).items() if not k.startswith("_")},
         "organizations": {k: v for k, v in vars(OrganizationRoutes).items() if not k.startswith("_")},
         "users": {k: v for k, v in vars(UserRoutes).items() if not k.startswith("_")},
+        "audit": {k: v for k, v in vars(AuditRoutes).items() if not k.startswith("_")},
         "devices": {k: v for k, v in vars(DeviceRoutes).items() if not k.startswith("_")},
         "content": {k: v for k, v in vars(ContentRoutes).items() if not k.startswith("_")},
         "analytics": {k: v for k, v in vars(AnalyticsRoutes).items() if not k.startswith("_")},

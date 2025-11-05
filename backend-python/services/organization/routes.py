@@ -34,9 +34,8 @@ from .repositories.organization_repo import OrganizationRepository
 
 router = APIRouter()
 
-# Initialize loggers
+# Initialize request logger (audit logger will be created per-request)
 request_logger = RequestLogger()
-audit_logger = AuditLogger()
 
 
 # =============================================================================
@@ -46,6 +45,23 @@ audit_logger = AuditLogger()
 def get_organization_repository(db: Session = Depends(get_db)) -> OrganizationRepository:
     """Get organization repository instance"""
     return OrganizationRepository(db)
+
+
+def get_audit_log_repository(db: Session = Depends(get_db)):
+    """Get audit log repository instance"""
+    from services.audit.repositories.audit_log_repo import AuditLogRepository
+    return AuditLogRepository(db)
+
+
+def get_create_audit_log_use_case(audit_repo = Depends(get_audit_log_repository)):
+    """Get create audit log use case"""
+    from services.audit.use_cases.create_audit_log import CreateAuditLogUseCase
+    return CreateAuditLogUseCase(audit_repo)
+
+
+def get_audit_logger(create_audit_use_case = Depends(get_create_audit_log_use_case)) -> AuditLogger:
+    """Get audit logger with database persistence"""
+    return AuditLogger(create_audit_log_use_case=create_audit_use_case)
 
 
 def get_create_org_use_case(
@@ -91,7 +107,7 @@ def get_delete_org_use_case(
 @handle_errors
 def list_organizations(
     http_request: Request,
-    active_only: bool = Query(False, description="Only show active organizations"),
+    active_only: bool = Query(False, description="Show all organizations (set true for active only)"),
     use_case: ListOrganizationsUseCase = Depends(get_list_orgs_use_case)
 ):
     """
@@ -136,7 +152,8 @@ def list_organizations(
 def create_organization(
     request_body: CreateOrganizationRequest,
     http_request: Request,
-    use_case: CreateOrganizationUseCase = Depends(get_create_org_use_case)
+    use_case: CreateOrganizationUseCase = Depends(get_create_org_use_case),
+    audit_logger: AuditLogger = Depends(get_audit_logger)
 ):
     """
     Create new organization
@@ -148,7 +165,12 @@ def create_organization(
     # Execute use case
     organization = use_case.execute(
         name=request_body.name,
-        pin=request_body.organization_pin
+        pin=request_body.organization_pin,
+        description=request_body.description,
+        address=request_body.address,
+        contact_email=request_body.contact_email,
+        contact_phone=request_body.contact_phone,
+        logo_url=request_body.logo_url
     )
 
     # Convert to response
@@ -180,10 +202,7 @@ def create_organization(
         }
     )
 
-    return success_response(
-        data=response,
-        message=f"Organization '{organization.name}' berhasil dibuat dengan PIN: {organization.organization_pin}"
-    )
+    return response
 
 
 @router.get(OrganizationRoutes.GET.replace("{org_id}", "{org_id:int}"), response_model=OrganizationResponse)
@@ -233,7 +252,8 @@ def update_organization(
     request_body: UpdateOrganizationRequest,
     http_request: Request,
     use_case: UpdateOrganizationUseCase = Depends(get_update_org_use_case),
-    list_use_case: ListOrganizationsUseCase = Depends(get_list_orgs_use_case)
+    list_use_case: ListOrganizationsUseCase = Depends(get_list_orgs_use_case),
+    audit_logger: AuditLogger = Depends(get_audit_logger)
 ):
     """
     Update organization
@@ -245,7 +265,13 @@ def update_organization(
     # Execute use case
     organization = use_case.execute(
         org_id=org_id,
-        name=request_body.name
+        name=request_body.name,
+        description=request_body.description,
+        address=request_body.address,
+        contact_email=request_body.contact_email,
+        contact_phone=request_body.contact_phone,
+        logo_url=request_body.logo_url,
+        is_active=request_body.is_active
     )
 
     # Get stats
@@ -279,10 +305,7 @@ def update_organization(
         }
     )
 
-    return success_response(
-        data=response,
-        message=f"Organization '{organization.name}' berhasil diupdate"
-    )
+    return response
 
 
 @router.delete(OrganizationRoutes.DELETE.replace("{org_id}", "{org_id:int}"), status_code=status.HTTP_204_NO_CONTENT)
@@ -290,10 +313,13 @@ def update_organization(
 def delete_organization(
     org_id: int,
     http_request: Request,
-    use_case: DeleteOrganizationUseCase = Depends(get_delete_org_use_case)
+    use_case: DeleteOrganizationUseCase = Depends(get_delete_org_use_case),
+    audit_logger: AuditLogger = Depends(get_audit_logger)
 ):
     """
-    Delete organization (soft delete)
+    Delete organization (hard delete - permanent removal)
+
+    Note: To disable/archive organization without deleting, use PUT with is_active=false
 
     Permission: Admin only (TODO: Add auth middleware)
     """

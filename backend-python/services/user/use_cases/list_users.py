@@ -1,15 +1,15 @@
 """List Users Use Case"""
 
 from typing import List, Dict, Any, Optional
-from sqlalchemy.orm import Session
-from services.auth.repositories.models import UserModel, OrganizationModel
+from ..domain.user import User
+from ..domain.interfaces import IUserRepository
 
 
 class ListUsersUseCase:
     """Use case for listing users"""
 
-    def __init__(self, db: Session):
-        self.db = db
+    def __init__(self, user_repo: IUserRepository):
+        self.user_repo = user_repo
 
     def execute(
         self,
@@ -29,19 +29,11 @@ class ListUsersUseCase:
             Dictionary with users list and stats
         """
 
-        query = self.db.query(UserModel)
-
-        # Apply filters
-        if organization_id:
-            query = query.filter(UserModel.organization_id == organization_id)
-
-        if role:
-            query = query.filter(UserModel.role == role)
-
-        if active_only:
-            query = query.filter(UserModel.is_active == True)
-
-        users = query.order_by(UserModel.created_at.desc()).all()
+        users = self.user_repo.get_all(
+            organization_id=organization_id,
+            role=role,
+            active_only=active_only
+        )
 
         # Calculate stats
         total = len(users)
@@ -55,10 +47,4 @@ class ListUsersUseCase:
 
     def get_user_organization_name(self, user_id: int) -> Optional[str]:
         """Get organization name for user"""
-        user = self.db.query(UserModel).filter(UserModel.id == user_id).first()
-        if user and user.organization_id:
-            org = self.db.query(OrganizationModel).filter(
-                OrganizationModel.id == user.organization_id
-            ).first()
-            return org.name if org else None
-        return None
+        return self.user_repo.get_organization_name(user_id)

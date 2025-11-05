@@ -9,6 +9,7 @@ import { Outlet } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import Topbar from './Topbar';
 import { useUIStore } from '@/lib/stores/uiStore';
+import { ToastContainer } from '@/lib/notifications/ToastContainer';
 
 export default function DashboardLayout() {
   const { sidebarOpen } = useUIStore();
@@ -19,11 +20,7 @@ export default function DashboardLayout() {
       <Sidebar />
 
       {/* Main Content */}
-      <div
-        className={`transition-all duration-300 ${
-          sidebarOpen ? 'lg:ml-64' : 'lg:ml-20'
-        }`}
-      >
+      <div className="lg:ml-64 transition-all duration-300">
         {/* Topbar */}
         <Topbar />
 
@@ -32,6 +29,9 @@ export default function DashboardLayout() {
           <Outlet />
         </main>
       </div>
+
+      {/* Toast Notifications */}
+      <ToastContainer />
     </div>
   );
 }

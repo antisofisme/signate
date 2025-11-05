@@ -173,45 +173,76 @@ class ErrorLogger:
 class AuditLogger:
     """
     Logger for audit trail (user actions, data changes)
+
+    Logs to both console/file AND database (if use_case provided)
     """
 
-    def __init__(self, logger: Optional[logging.Logger] = None):
+    def __init__(
+        self,
+        logger: Optional[logging.Logger] = None,
+        create_audit_log_use_case = None  # Optional: CreateAuditLogUseCase for DB persistence
+    ):
         self.logger = logger or logging.getLogger("audit")
+        self.create_audit_log_use_case = create_audit_log_use_case
 
     def log_action(
         self,
-        user_id: int,
+        user_id: Optional[int],
         action: str,
         resource_type: str,
         resource_id: Optional[int] = None,
         details: Optional[dict] = None,
-        ip_address: Optional[str] = None
+        ip_address: Optional[str] = None,
+        user_agent: Optional[str] = None,
+        organization_id: Optional[int] = None
     ):
         """
-        Log user action for audit trail
+        Log user action for audit trail (console + database if configured)
 
         Args:
-            user_id: User ID performing the action
-            action: Action performed (CREATE, UPDATE, DELETE, etc.)
-            resource_type: Type of resource (USER, DEVICE, CONTENT, etc.)
+            user_id: User ID performing the action (None for system actions)
+            action: Action performed (e.g., 'user.create', 'org.update')
+            resource_type: Type of resource ('user', 'organization', 'device', etc.)
             resource_id: Optional resource ID
-            details: Optional additional details
+            details: Optional additional details dictionary
             ip_address: Optional IP address
+            user_agent: Optional user agent string
+            organization_id: Optional organization context
         """
         audit_data = {
             "timestamp": datetime.utcnow().isoformat(),
             "user_id": user_id,
+            "organization_id": organization_id,
             "action": action,
             "resource_type": resource_type,
             "resource_id": resource_id,
             "details": details or {},
-            "ip_address": ip_address
+            "ip_address": ip_address,
+            "user_agent": user_agent
         }
 
+        # Log to console/file
         self.logger.info(
             f"User {user_id} {action} {resource_type} {resource_id}",
             extra=audit_data
         )
+
+        # Persist to database if use case provided
+        if self.create_audit_log_use_case:
+            try:
+                self.create_audit_log_use_case.execute(
+                    user_id=user_id,
+                    organization_id=organization_id,
+                    action=action,
+                    resource_type=resource_type,
+                    resource_id=resource_id,
+                    details=details,
+                    ip_address=ip_address,
+                    user_agent=user_agent
+                )
+            except Exception as e:
+                # Don't fail the main request if audit logging fails
+                self.logger.error(f"Failed to persist audit log to database: {str(e)}")
 
 
 # =============================================================================

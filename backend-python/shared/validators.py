@@ -12,6 +12,21 @@ from datetime import datetime
 # STRING VALIDATORS
 # =============================================================================
 
+def sanitize_string(text: str) -> str:
+    """
+    Sanitize string by stripping whitespace
+
+    Args:
+        text: String to sanitize
+
+    Returns:
+        Sanitized string
+    """
+    if not text:
+        return ""
+    return text.strip()
+
+
 def validate_email(email: str) -> bool:
     """
     Validate email format

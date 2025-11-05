@@ -6,6 +6,29 @@ import { showToast } from '../../utils/toast'
 import { Button } from '../shared'
 
 /**
+ * TypeScript Interfaces
+ */
+interface User {
+  id: number
+  username: string
+  email: string
+  full_name?: string
+  role: string
+  organization_id: number
+  organization_name?: string
+  is_active: boolean
+  created_at: string
+  updated_at?: string | null
+  last_login?: string | null
+}
+
+interface UsersResponse {
+  users: User[]
+  total: number
+  active: number
+}
+
+/**
  * UsersTab Component
  * User management interface for Settings page
  *
@@ -19,36 +42,36 @@ import { Button } from '../shared'
  */
 export default function UsersTab() {
   const queryClient = useQueryClient()
-  const [showCreateModal, setShowCreateModal] = useState(false)
-  const [showEditModal, setShowEditModal] = useState(false)
-  const [selectedUser, setSelectedUser] = useState(null)
+  const [showCreateModal, setShowCreateModal] = useState<boolean>(false)
+  const [showEditModal, setShowEditModal] = useState<boolean>(false)
+  const [selectedUser, setSelectedUser] = useState<User | null>(null)
 
   // Fetch users
-  const { data: usersData, isLoading } = useQuery({
+  const { data: usersData, isLoading } = useQuery<UsersResponse>({
     queryKey: ['users'],
-    queryFn: () => usersAPI.list().then(res => res.data),
+    queryFn: () => usersAPI.list().then((res: any) => res.data),
   })
 
   // Delete user mutation
   const deleteMutation = useMutation({
     mutationFn: usersAPI.delete,
     onSuccess: () => {
-      queryClient.invalidateQueries(['users'])
+      queryClient.invalidateQueries({ queryKey: ['users'] })
       showToast.success('User deleted successfully!')
     },
-    onError: (error) => {
+    onError: (error: any) => {
       showToast.error(error.response?.data?.detail || 'Failed to delete user')
     }
   })
 
-  const handleDelete = (id, username) => {
+  const handleDelete = (id: number, username: string): void => {
     if (confirm(`Delete user "${username}"?\n\nThis action cannot be undone.`)) {
       deleteMutation.mutate(id)
     }
   }
 
-  const getRoleBadge = (role) => {
-    const styles = {
+  const getRoleBadge = (role: string): string => {
+    const styles: Record<string, string> = {
       admin: 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300',
       editor: 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300',
       viewer: 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
@@ -81,7 +104,7 @@ export default function UsersTab() {
       )}
 
       {/* Users Table */}
-      {!isLoading && usersData?.items && (
+      {!isLoading && usersData?.users && (
         <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
           <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
             <thead className="bg-gray-50 dark:bg-gray-900">
@@ -95,7 +118,7 @@ export default function UsersTab() {
               </tr>
             </thead>
             <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-              {usersData.items.map((user) => (
+              {usersData.users.map((user) => (
                 <tr key={user.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
                   {/* User Info */}
                   <td className="px-6 py-4">
@@ -174,7 +197,7 @@ export default function UsersTab() {
                         variant="danger"
                         size="sm"
                         onClick={() => handleDelete(user.id, user.username)}
-                        disabled={user.role === 'admin' && usersData.items.filter(u => u.role === 'admin').length === 1}
+                        disabled={user.role === 'admin' && usersData.users.filter(u => u.role === 'admin').length === 1}
                         title={user.role === 'admin' ? 'Cannot delete last admin' : 'Delete user'}
                       >
                         <Trash2 className="w-4 h-4" />
@@ -189,7 +212,7 @@ export default function UsersTab() {
       )}
 
       {/* Empty State */}
-      {!isLoading && (!usersData?.items || usersData.items.length === 0) && (
+      {!isLoading && (!usersData?.users || usersData.users.length === 0) && (
         <div className="text-center py-12 bg-gray-50 dark:bg-gray-800 dark:bg-gray-900 rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-600">
           <Shield className="w-12 h-12 text-gray-400 dark:text-gray-500 mx-auto mb-3" />
           <p className="text-gray-600 dark:text-gray-400 font-medium">No users found</p>

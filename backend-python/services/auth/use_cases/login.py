@@ -12,7 +12,7 @@ from ..repositories.organization_repo import OrganizationRepository
 from passlib.context import CryptContext
 from jose import jwt
 from datetime import datetime, timedelta
-from shared.errors import AuthenticationError, ErrorCodes
+from shared.errors import AuthenticationError
 
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -56,22 +56,19 @@ class LoginUseCase:
         user = self.user_repository.find_by_username(credentials.username)
         if not user:
             raise AuthenticationError(
-                message="Username atau password salah",
-                code=ErrorCodes.INVALID_CREDENTIALS
+                message="Username atau password salah"
             )
 
         # Verify password
         if not pwd_context.verify(credentials.password, user.password_hash):
             raise AuthenticationError(
-                message="Username atau password salah",
-                code=ErrorCodes.INVALID_CREDENTIALS
+                message="Username atau password salah"
             )
 
         # Check if user is active
         if not user.is_active:
             raise AuthenticationError(
-                message="Akun Anda telah dinonaktifkan",
-                code=ErrorCodes.ACCOUNT_DISABLED
+                message="Akun Anda telah dinonaktifkan"
             )
 
         # Generate JWT token with organization_id

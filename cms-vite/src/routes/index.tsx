@@ -15,6 +15,7 @@ import RegisterPage from '@/pages/RegisterPage';
 import DashboardPage from '@/pages/DashboardPage';
 import SelectOrganizationPage from '@/pages/SelectOrganizationPage';
 import SettingsPage from '@/pages/SettingsPage';
+import AuditLogsPage from '@/pages/AuditLogsPage';
 // import DevicesPage from '@/pages/DevicesPage'; // TODO: Create DevicesPage
 
 export const router = createBrowserRouter([
@@ -72,8 +73,8 @@ export const router = createBrowserRouter([
         element: <div className="p-8">Tags Page - Coming Soon</div>,
       },
       {
-        path: 'activities',
-        element: <div className="p-8">Activity Logs - Coming Soon</div>,
+        path: 'audit-logs',
+        element: <AuditLogsPage />,
       },
       {
         path: 'widgets',

@@ -33,8 +33,7 @@ class GetOrganizationUseCase:
         if not organization:
             raise NotFoundError(
                 message=f"Organization dengan ID {org_id} tidak ditemukan",
-                resource_type="organization",
-                resource_id=org_id
+                details={"resource_type": "organization", "resource_id": org_id}
             )
 
         return organization

@@ -1,8 +1,8 @@
 """Change User Password Use Case"""
 
-from sqlalchemy.orm import Session
 from passlib.context import CryptContext
-from services.auth.repositories.models import UserModel
+from ..domain.user import User
+from ..domain.interfaces import IUserRepository
 from shared.errors import ValidationError, NotFoundError, ErrorCodes
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -11,10 +11,10 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 class ChangePasswordUseCase:
     """Use case for changing user password"""
 
-    def __init__(self, db: Session):
-        self.db = db
+    def __init__(self, user_repo: IUserRepository):
+        self.user_repo = user_repo
 
-    def execute(self, user_id: int, new_password: str) -> UserModel:
+    def execute(self, user_id: int, new_password: str) -> User:
         """
         Change user password
 
@@ -23,7 +23,7 @@ class ChangePasswordUseCase:
             new_password: New password (plain text, will be hashed)
 
         Returns:
-            Updated UserModel
+            Updated User entity
 
         Raises:
             NotFoundError: If user not found
@@ -31,9 +31,7 @@ class ChangePasswordUseCase:
         """
 
         # Get user
-        user = self.db.query(UserModel).filter(
-            UserModel.id == user_id
-        ).first()
+        user = self.user_repo.find_by_id(user_id)
 
         if not user:
             raise NotFoundError(
@@ -54,9 +52,5 @@ class ChangePasswordUseCase:
         # Hash new password
         password_hash = pwd_context.hash(new_password)
 
-        # Update password
-        user.password_hash = password_hash
-        self.db.commit()
-        self.db.refresh(user)
-
-        return user
+        # Change password via repository
+        return self.user_repo.change_password(user_id, password_hash)

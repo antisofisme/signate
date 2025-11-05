@@ -15,6 +15,11 @@ class Organization:
     id: Optional[int]
     name: str
     organization_pin: str
+    description: Optional[str] = None
+    address: Optional[str] = None
+    contact_email: Optional[str] = None
+    contact_phone: Optional[str] = None
+    logo_url: Optional[str] = None
     is_active: bool = True
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
@@ -24,11 +29,8 @@ class Organization:
         if not self.name or len(self.name.strip()) == 0:
             raise ValueError("Organization name is required")
 
-        if not self.organization_pin or len(self.organization_pin) < 4:
-            raise ValueError("Organization PIN must be at least 4 characters")
-
-        if len(self.organization_pin) > 6:
-            raise ValueError("Organization PIN must be maximum 6 characters")
+        if not self.organization_pin or len(self.organization_pin) != 8:
+            raise ValueError("Organization PIN must be exactly 8 characters")
 
     def activate(self):
         """Activate organization"""

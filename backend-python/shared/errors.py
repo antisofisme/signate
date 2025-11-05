@@ -165,39 +165,73 @@ class ErrorCodes:
 def handle_errors(func):
     """
     Decorator to handle errors and convert to HTTPException
+    Supports both sync and async functions
     Usage:
         @handle_errors
-        async def my_endpoint():
+        def my_endpoint():  # or async def
             ...
     """
     from functools import wraps
+    import inspect
 
-    @wraps(func)
-    async def wrapper(*args, **kwargs):
-        try:
-            return await func(*args, **kwargs)
-        except AppException as e:
-            raise HTTPException(
-                status_code=e.status_code,
-                detail={
-                    "message": e.message,
-                    "code": e.code,
-                    "details": e.details
-                }
-            )
-        except HTTPException:
-            raise
-        except Exception as e:
-            # Log unexpected errors
-            import traceback
-            traceback.print_exc()
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail={
-                    "message": "An unexpected error occurred",
-                    "code": ErrorCodes.INTERNAL_ERROR,
-                    "details": {"error": str(e)}
-                }
-            )
+    # Check if function is async
+    is_async = inspect.iscoroutinefunction(func)
 
-    return wrapper
+    if is_async:
+        @wraps(func)
+        async def async_wrapper(*args, **kwargs):
+            try:
+                return await func(*args, **kwargs)
+            except AppException as e:
+                raise HTTPException(
+                    status_code=e.status_code,
+                    detail={
+                        "message": e.message,
+                        "code": e.code,
+                        "details": e.details
+                    }
+                )
+            except HTTPException:
+                raise
+            except Exception as e:
+                # Log unexpected errors
+                import traceback
+                traceback.print_exc()
+                raise HTTPException(
+                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    detail={
+                        "message": "An unexpected error occurred",
+                        "code": ErrorCodes.INTERNAL_ERROR,
+                        "details": {"error": str(e)}
+                    }
+                )
+        return async_wrapper
+    else:
+        @wraps(func)
+        def sync_wrapper(*args, **kwargs):
+            try:
+                return func(*args, **kwargs)
+            except AppException as e:
+                raise HTTPException(
+                    status_code=e.status_code,
+                    detail={
+                        "message": e.message,
+                        "code": e.code,
+                        "details": e.details
+                    }
+                )
+            except HTTPException:
+                raise
+            except Exception as e:
+                # Log unexpected errors
+                import traceback
+                traceback.print_exc()
+                raise HTTPException(
+                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    detail={
+                        "message": "An unexpected error occurred",
+                        "code": ErrorCodes.INTERNAL_ERROR,
+                        "details": {"error": str(e)}
+                    }
+                )
+        return sync_wrapper

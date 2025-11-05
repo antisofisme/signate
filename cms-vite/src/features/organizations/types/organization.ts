@@ -8,6 +8,11 @@ export interface Organization {
   id: number;
   name: string;
   organization_pin: string;
+  description?: string;
+  address?: string;
+  contact_email?: string;
+  contact_phone?: string;
+  logo_url?: string;
   is_active: boolean;
   created_at: string;
   updated_at: string;
@@ -18,11 +23,22 @@ export interface Organization {
 
 export interface CreateOrganizationRequest {
   name: string;
-  organization_pin?: string; // Optional, auto-generated if not provided
+  organization_pin?: string; // Optional, 8-digit, auto-generated if not provided
+  description?: string;
+  address?: string;
+  contact_email?: string;
+  contact_phone?: string;
+  logo_url?: string;
 }
 
 export interface UpdateOrganizationRequest {
   name: string;
+  description?: string;
+  address?: string;
+  contact_email?: string;
+  contact_phone?: string;
+  logo_url?: string;
+  is_active: boolean;
 }
 
 export interface OrganizationListData {

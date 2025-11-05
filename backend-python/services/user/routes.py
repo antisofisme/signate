@@ -35,43 +35,74 @@ from .use_cases.change_password import ChangePasswordUseCase
 
 router = APIRouter()
 
-# Initialize loggers
+# Initialize request logger (audit logger will be created per-request)
 request_logger = RequestLogger()
-audit_logger = AuditLogger()
 
 
 # =============================================================================
 # DEPENDENCY INJECTION
 # =============================================================================
 
-def get_create_user_use_case(db: Session = Depends(get_db)) -> CreateUserUseCase:
+def get_user_repository(db: Session = Depends(get_db)):
+    """Get user repository instance"""
+    from .repositories.user_repo import UserRepository
+    return UserRepository(db)
+
+
+def get_organization_repository(db: Session = Depends(get_db)):
+    """Get organization repository instance"""
+    from services.organization.repositories.organization_repo import OrganizationRepository
+    return OrganizationRepository(db)
+
+
+def get_audit_log_repository(db: Session = Depends(get_db)):
+    """Get audit log repository instance"""
+    from services.audit.repositories.audit_log_repo import AuditLogRepository
+    return AuditLogRepository(db)
+
+
+def get_create_audit_log_use_case(audit_repo = Depends(get_audit_log_repository)):
+    """Get create audit log use case"""
+    from services.audit.use_cases.create_audit_log import CreateAuditLogUseCase
+    return CreateAuditLogUseCase(audit_repo)
+
+
+def get_audit_logger(create_audit_use_case = Depends(get_create_audit_log_use_case)) -> AuditLogger:
+    """Get audit logger with database persistence"""
+    return AuditLogger(create_audit_log_use_case=create_audit_use_case)
+
+
+def get_create_user_use_case(
+    user_repo = Depends(get_user_repository),
+    org_repo = Depends(get_organization_repository)
+) -> CreateUserUseCase:
     """Get create user use case"""
-    return CreateUserUseCase(db)
+    return CreateUserUseCase(user_repo, org_repo)
 
 
-def get_list_users_use_case(db: Session = Depends(get_db)) -> ListUsersUseCase:
+def get_list_users_use_case(user_repo = Depends(get_user_repository)) -> ListUsersUseCase:
     """Get list users use case"""
-    return ListUsersUseCase(db)
+    return ListUsersUseCase(user_repo)
 
 
-def get_get_user_use_case(db: Session = Depends(get_db)) -> GetUserUseCase:
+def get_get_user_use_case(user_repo = Depends(get_user_repository)) -> GetUserUseCase:
     """Get single user use case"""
-    return GetUserUseCase(db)
+    return GetUserUseCase(user_repo)
 
 
-def get_update_user_use_case(db: Session = Depends(get_db)) -> UpdateUserUseCase:
+def get_update_user_use_case(user_repo = Depends(get_user_repository)) -> UpdateUserUseCase:
     """Get update user use case"""
-    return UpdateUserUseCase(db)
+    return UpdateUserUseCase(user_repo)
 
 
-def get_delete_user_use_case(db: Session = Depends(get_db)) -> DeleteUserUseCase:
+def get_delete_user_use_case(user_repo = Depends(get_user_repository)) -> DeleteUserUseCase:
     """Get delete user use case"""
-    return DeleteUserUseCase(db)
+    return DeleteUserUseCase(user_repo)
 
 
-def get_change_password_use_case(db: Session = Depends(get_db)) -> ChangePasswordUseCase:
+def get_change_password_use_case(user_repo = Depends(get_user_repository)) -> ChangePasswordUseCase:
     """Get change password use case"""
-    return ChangePasswordUseCase(db)
+    return ChangePasswordUseCase(user_repo)
 
 
 # =============================================================================
@@ -134,7 +165,8 @@ def create_user(
     request_body: CreateUserRequest,
     http_request: Request,
     use_case: CreateUserUseCase = Depends(get_create_user_use_case),
-    list_use_case: ListUsersUseCase = Depends(get_list_users_use_case)
+    list_use_case: ListUsersUseCase = Depends(get_list_users_use_case),
+    audit_logger: AuditLogger = Depends(get_audit_logger)
 ):
     """
     Create new user
@@ -184,10 +216,7 @@ def create_user(
         }
     )
 
-    return success_response(
-        data=response,
-        message=f"User '{user.username}' berhasil dibuat"
-    )
+    return response
 
 
 @router.get(UserRoutes.GET.replace("{user_id}", "{user_id:int}"), response_model=UserResponse)
@@ -234,7 +263,8 @@ def update_user(
     request_body: UpdateUserRequest,
     http_request: Request,
     use_case: UpdateUserUseCase = Depends(get_update_user_use_case),
-    list_use_case: ListUsersUseCase = Depends(get_list_users_use_case)
+    list_use_case: ListUsersUseCase = Depends(get_list_users_use_case),
+    audit_logger: AuditLogger = Depends(get_audit_logger)
 ):
     """
     Update user
@@ -283,10 +313,7 @@ def update_user(
         }
     )
 
-    return success_response(
-        data=response,
-        message=f"User '{user.username}' berhasil diupdate"
-    )
+    return response
 
 
 @router.put(UserRoutes.CHANGE_PASSWORD.replace("{user_id}", "{user_id:int}"), response_model=UserResponse)
@@ -296,7 +323,8 @@ def change_password(
     request_body: ChangePasswordRequest,
     http_request: Request,
     use_case: ChangePasswordUseCase = Depends(get_change_password_use_case),
-    list_use_case: ListUsersUseCase = Depends(get_list_users_use_case)
+    list_use_case: ListUsersUseCase = Depends(get_list_users_use_case),
+    audit_logger: AuditLogger = Depends(get_audit_logger)
 ):
     """
     Change user password
@@ -339,10 +367,7 @@ def change_password(
         }
     )
 
-    return success_response(
-        data=response,
-        message=f"Password untuk user '{user.username}' berhasil diubah"
-    )
+    return response
 
 
 @router.delete(UserRoutes.DELETE.replace("{user_id}", "{user_id:int}"), status_code=status.HTTP_204_NO_CONTENT)
@@ -350,10 +375,13 @@ def change_password(
 def delete_user(
     user_id: int,
     http_request: Request,
-    use_case: DeleteUserUseCase = Depends(get_delete_user_use_case)
+    use_case: DeleteUserUseCase = Depends(get_delete_user_use_case),
+    audit_logger: AuditLogger = Depends(get_audit_logger)
 ):
     """
-    Delete user (soft delete)
+    Delete user (hard delete - permanent removal)
+
+    Note: To disable/archive user without deleting, use PUT with is_active=false
 
     Permission: Admin (any user) or Manager (own org only) - TODO: Add auth middleware
     """

@@ -17,7 +17,7 @@ import {
   Settings,
   Menu,
   X,
-  Clock,
+  FileText,
   Building2,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
@@ -39,7 +39,7 @@ export default function Sidebar() {
     { name: t('navigation.contents'), href: '/contents', icon: FileImage },
     { name: t('navigation.playlists'), href: '/playlists', icon: ListVideo },
     { name: t('navigation.tags'), href: '/tags', icon: Tag },
-    { name: t('navigation.activityLogs'), href: '/activities', icon: Clock },
+    { name: 'Audit Logs', href: '/audit-logs', icon: FileText },
     { name: t('navigation.widgets'), href: '/widgets', icon: Puzzle },
     { name: t('navigation.settings'), href: '/settings', icon: Settings },
   ];

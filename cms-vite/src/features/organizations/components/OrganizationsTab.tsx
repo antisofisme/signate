@@ -105,27 +105,47 @@ function OrganizationModal({
 }: OrganizationModalProps) {
   const [name, setName] = useState(organization?.name || '');
   const [pin, setPin] = useState(organization?.organization_pin || '');
+  const [description, setDescription] = useState(organization?.description || '');
+  const [address, setAddress] = useState(organization?.address || '');
+  const [contactEmail, setContactEmail] = useState(organization?.contact_email || '');
+  const [contactPhone, setContactPhone] = useState(organization?.contact_phone || '');
+  const [logoUrl, setLogoUrl] = useState(organization?.logo_url || '');
   const [autoGeneratePin, setAutoGeneratePin] = useState(!organization);
+  const [isActive, setIsActive] = useState(organization?.is_active ?? true);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
     if (organization) {
-      // Update - only name
-      onSubmit({ name });
+      // Update - all fields except PIN
+      const data: UpdateOrganizationRequest = {
+        name,
+        description: description || undefined,
+        address: address || undefined,
+        contact_email: contactEmail || undefined,
+        contact_phone: contactPhone || undefined,
+        logo_url: logoUrl || undefined,
+        is_active: isActive,
+      };
+      onSubmit(data);
     } else {
-      // Create - name and optional PIN
+      // Create - all fields including optional PIN
       const data: CreateOrganizationRequest = {
         name,
         ...(autoGeneratePin ? {} : { organization_pin: pin }),
+        description: description || undefined,
+        address: address || undefined,
+        contact_email: contactEmail || undefined,
+        contact_phone: contactPhone || undefined,
+        logo_url: logoUrl || undefined,
       };
       onSubmit(data);
     }
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-md">
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 overflow-y-auto">
+      <div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-2xl my-8">
         <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
           {organization ? 'Edit Organization' : 'Create Organization'}
         </h3>
@@ -134,7 +154,7 @@ function OrganizationModal({
           {/* Name */}
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Name *
+              Organization Name *
             </label>
             <input
               type="text"
@@ -160,26 +180,128 @@ function OrganizationModal({
                   htmlFor="autoPin"
                   className="text-sm text-gray-700 dark:text-gray-300"
                 >
-                  Auto-generate PIN
+                  Auto-generate 8-digit PIN
                 </label>
               </div>
 
               {!autoGeneratePin && (
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Organization PIN (max 6 characters)
+                    Organization PIN (exactly 8 digits)
                   </label>
                   <input
                     type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]{8}"
                     value={pin}
-                    onChange={(e) => setPin(e.target.value)}
-                    maxLength={6}
+                    onChange={(e) => {
+                      const value = e.target.value.replace(/\D/g, '');
+                      setPin(value);
+                    }}
+                    maxLength={8}
+                    minLength={8}
                     required={!autoGeneratePin}
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                    placeholder="12345678"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white font-mono"
                   />
                 </div>
               )}
             </>
+          )}
+
+          {/* Description */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Description
+            </label>
+            <textarea
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              rows={3}
+              maxLength={500}
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+              placeholder="Brief description of the organization"
+            />
+          </div>
+
+          {/* Address */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Address
+            </label>
+            <textarea
+              value={address}
+              onChange={(e) => setAddress(e.target.value)}
+              rows={2}
+              maxLength={500}
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+              placeholder="Physical address"
+            />
+          </div>
+
+          {/* Contact Info - Grid */}
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Contact Email
+              </label>
+              <input
+                type="email"
+                value={contactEmail}
+                onChange={(e) => setContactEmail(e.target.value)}
+                maxLength={100}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                placeholder="email@example.com"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Contact Phone
+              </label>
+              <input
+                type="tel"
+                value={contactPhone}
+                onChange={(e) => setContactPhone(e.target.value)}
+                maxLength={20}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                placeholder="+62 xxx xxx xxx"
+              />
+            </div>
+          </div>
+
+          {/* Logo URL */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Logo URL
+            </label>
+            <input
+              type="url"
+              value={logoUrl}
+              onChange={(e) => setLogoUrl(e.target.value)}
+              maxLength={500}
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+              placeholder="https://example.com/logo.png"
+            />
+          </div>
+
+          {/* Active Status - only for Edit */}
+          {organization && (
+            <div className="flex items-center gap-2 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+              <input
+                type="checkbox"
+                id="isActive"
+                checked={isActive}
+                onChange={(e) => setIsActive(e.target.checked)}
+                className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+              />
+              <label
+                htmlFor="isActive"
+                className="text-sm font-medium text-gray-700 dark:text-gray-300 cursor-pointer"
+              >
+                Organization is Active
+              </label>
+            </div>
           )}
 
           {/* Action Buttons */}

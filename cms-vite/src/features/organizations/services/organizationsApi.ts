@@ -28,10 +28,10 @@ export const organizationsApi = {
       params.append('active_only', 'true');
     }
 
-    const { data } = await apiClient.get<OrganizationListResponse>(
+    const { data } = await apiClient.get<OrganizationListData>(
       `${API_ENDPOINTS.ORGANIZATIONS.LIST}?${params.toString()}`
     );
-    return data.data;
+    return data;
   },
 
   /**
@@ -40,10 +40,10 @@ export const organizationsApi = {
    * @returns Organization with stats
    */
   get: async (id: number): Promise<Organization> => {
-    const { data } = await apiClient.get<OrganizationResponse>(
+    const { data } = await apiClient.get<Organization>(
       API_ENDPOINTS.ORGANIZATIONS.GET(id)
     );
-    return data.data;
+    return data;
   },
 
   /**
@@ -54,11 +54,11 @@ export const organizationsApi = {
   create: async (
     orgData: CreateOrganizationRequest
   ): Promise<Organization> => {
-    const { data } = await apiClient.post<OrganizationResponse>(
+    const { data } = await apiClient.post<Organization>(
       API_ENDPOINTS.ORGANIZATIONS.CREATE,
       orgData
     );
-    return data.data;
+    return data;
   },
 
   /**
@@ -71,11 +71,11 @@ export const organizationsApi = {
     id: number,
     orgData: UpdateOrganizationRequest
   ): Promise<Organization> => {
-    const { data } = await apiClient.put<OrganizationResponse>(
+    const { data } = await apiClient.put<Organization>(
       API_ENDPOINTS.ORGANIZATIONS.UPDATE(id),
       orgData
     );
-    return data.data;
+    return data;
   },
 
   /**

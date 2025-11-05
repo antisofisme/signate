@@ -54,6 +54,11 @@ class OrganizationRepository(IOrganizationRepository):
         org_model = OrganizationModel(
             name=organization.name,
             organization_pin=organization.organization_pin,
+            description=organization.description,
+            address=organization.address,
+            contact_email=organization.contact_email,
+            contact_phone=organization.contact_phone,
+            logo_url=organization.logo_url,
             is_active=organization.is_active
         )
         self.db.add(org_model)
@@ -71,6 +76,11 @@ class OrganizationRepository(IOrganizationRepository):
             raise ValueError(f"Organization with id {organization.id} not found")
 
         org_model.name = organization.name
+        org_model.description = organization.description
+        org_model.address = organization.address
+        org_model.contact_email = organization.contact_email
+        org_model.contact_phone = organization.contact_phone
+        org_model.logo_url = organization.logo_url
         org_model.is_active = organization.is_active
         # Note: PIN tidak bisa diubah setelah dibuat (security)
 
@@ -79,7 +89,7 @@ class OrganizationRepository(IOrganizationRepository):
         return self._to_entity(org_model)
 
     def delete(self, org_id: int) -> bool:
-        """Delete organization (soft delete via is_active)"""
+        """Delete organization (hard delete - permanently remove)"""
         org_model = self.db.query(OrganizationModel).filter(
             OrganizationModel.id == org_id
         ).first()
@@ -87,8 +97,8 @@ class OrganizationRepository(IOrganizationRepository):
         if not org_model:
             return False
 
-        # Soft delete - set inactive instead of hard delete
-        org_model.is_active = False
+        # Hard delete - permanently remove from database
+        self.db.delete(org_model)
         self.db.commit()
         return True
 
@@ -114,6 +124,11 @@ class OrganizationRepository(IOrganizationRepository):
             id=model.id,
             name=model.name,
             organization_pin=model.organization_pin,
+            description=model.description,
+            address=model.address,
+            contact_email=model.contact_email,
+            contact_phone=model.contact_phone,
+            logo_url=model.logo_url,
             is_active=model.is_active,
             created_at=model.created_at,
             updated_at=model.updated_at

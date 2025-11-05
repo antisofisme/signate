@@ -22,6 +22,7 @@ import type {
   UserListFilters,
 } from '@/features/users/types/user';
 import type { UserRole } from '@/lib/auth/permissions';
+import { PageHeader } from '@/shared/components';
 
 export default function UsersPage() {
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -86,25 +87,24 @@ export default function UsersPage() {
   };
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-            Users
-          </h1>
-          <p className="text-gray-600 dark:text-gray-400 mt-1">
-            Manage user accounts and permissions
-          </p>
-        </div>
-        <button
-          onClick={() => setShowCreateModal(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-        >
-          <Plus className="w-5 h-5" />
-          Create User
-        </button>
-      </div>
+    <>
+      {/* Sticky Page Header */}
+      <PageHeader
+        title="Users"
+        description="Manage user accounts and permissions"
+        actions={
+          <button
+            onClick={() => setShowCreateModal(true)}
+            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            <Plus className="w-5 h-5" />
+            Create User
+          </button>
+        }
+      />
+
+      {/* Content */}
+      <div className="space-y-6">
 
       {/* Filters */}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
@@ -361,7 +361,8 @@ export default function UsersPage() {
           isLoading={deleteMutation.isPending}
         />
       )}
-    </div>
+      </div>
+    </>
   );
 }
 

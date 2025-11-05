@@ -1,10 +1,10 @@
 """
 Delete Organization Use Case
-Soft delete organization (set inactive)
+Hard delete organization (permanently remove from database)
 """
 
 from ..domain.interfaces import IOrganizationRepository
-from shared.errors import ValidationError, NotFoundError, ErrorCodes
+from shared.errors import ValidationError, NotFoundError
 
 
 class DeleteOrganizationUseCase:
@@ -15,7 +15,7 @@ class DeleteOrganizationUseCase:
 
     def execute(self, org_id: int) -> bool:
         """
-        Delete organization (soft delete - set inactive)
+        Delete organization (hard delete - permanently remove)
 
         Args:
             org_id: Organization ID
@@ -33,8 +33,7 @@ class DeleteOrganizationUseCase:
         if not organization:
             raise NotFoundError(
                 message=f"Organization dengan ID {org_id} tidak ditemukan",
-                resource_type="organization",
-                resource_id=org_id
+                details={"resource_type": "organization", "resource_id": org_id}
             )
 
         # Check if organization has users
@@ -42,7 +41,6 @@ class DeleteOrganizationUseCase:
         if user_count > 0:
             raise ValidationError(
                 message=f"Tidak bisa menghapus organization yang masih memiliki {user_count} user(s)",
-                code=ErrorCodes.VALIDATION_ERROR,
                 details={"user_count": user_count}
             )
 
@@ -51,11 +49,10 @@ class DeleteOrganizationUseCase:
         if device_count > 0:
             raise ValidationError(
                 message=f"Tidak bisa menghapus organization yang masih memiliki {device_count} device(s)",
-                code=ErrorCodes.VALIDATION_ERROR,
                 details={"device_count": device_count}
             )
 
-        # Soft delete
+        # Hard delete - permanently remove from database
         success = self.org_repo.delete(org_id)
 
         return success

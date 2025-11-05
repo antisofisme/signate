@@ -37,10 +37,10 @@ export const usersApi = {
       params.append('active_only', 'true');
     }
 
-    const { data } = await apiClient.get<UserListResponse>(
+    const { data } = await apiClient.get<UserListData>(
       `${API_ENDPOINTS.USERS.LIST}?${params.toString()}`
     );
-    return data.data;
+    return data;
   },
 
   /**
@@ -49,10 +49,10 @@ export const usersApi = {
    * @returns User with organization name
    */
   get: async (id: number): Promise<User> => {
-    const { data } = await apiClient.get<UserResponse>(
+    const { data } = await apiClient.get<User>(
       API_ENDPOINTS.USERS.GET(id)
     );
-    return data.data;
+    return data;
   },
 
   /**
@@ -61,11 +61,11 @@ export const usersApi = {
    * @returns Created user
    */
   create: async (userData: CreateUserRequest): Promise<User> => {
-    const { data } = await apiClient.post<UserResponse>(
+    const { data } = await apiClient.post<User>(
       API_ENDPOINTS.USERS.CREATE,
       userData
     );
-    return data.data;
+    return data;
   },
 
   /**
@@ -75,11 +75,11 @@ export const usersApi = {
    * @returns Updated user
    */
   update: async (id: number, userData: UpdateUserRequest): Promise<User> => {
-    const { data } = await apiClient.put<UserResponse>(
+    const { data } = await apiClient.put<User>(
       API_ENDPOINTS.USERS.UPDATE(id),
       userData
     );
-    return data.data;
+    return data;
   },
 
   /**
@@ -92,11 +92,11 @@ export const usersApi = {
     id: number,
     passwordData: ChangePasswordRequest
   ): Promise<User> => {
-    const { data } = await apiClient.put<UserResponse>(
+    const { data } = await apiClient.put<User>(
       API_ENDPOINTS.USERS.CHANGE_PASSWORD(id),
       passwordData
     );
-    return data.data;
+    return data;
   },
 
   /**

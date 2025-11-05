@@ -1,55 +1,51 @@
 """Delete User Use Case"""
 
-from sqlalchemy.orm import Session
-from services.auth.repositories.models import UserModel
-from shared.errors import ValidationError, NotFoundError, ErrorCodes
+from ..domain.user import User
+from ..domain.interfaces import IUserRepository
+from shared.errors import ValidationError, NotFoundError
 
 
 class DeleteUserUseCase:
-    """Use case for deleting user (soft delete)"""
+    """Use case for deleting user (hard delete - permanently remove)"""
 
-    def __init__(self, db: Session):
-        self.db = db
+    def __init__(self, user_repo: IUserRepository):
+        self.user_repo = user_repo
 
-    def execute(self, user_id: int) -> UserModel:
+    def execute(self, user_id: int) -> User:
         """
-        Soft delete user (set is_active=False)
+        Hard delete user (permanently remove from database)
 
         Args:
             user_id: User ID to delete
 
         Returns:
-            Deleted UserModel
+            User entity BEFORE deletion (for audit logging)
 
         Raises:
             NotFoundError: If user not found
             ValidationError: If user cannot be deleted
         """
 
-        # Get user
-        user = self.db.query(UserModel).filter(
-            UserModel.id == user_id
-        ).first()
+        # Get user before deletion
+        user = self.user_repo.find_by_id(user_id)
 
         if not user:
             raise NotFoundError(
                 message=f"User dengan ID {user_id} tidak ditemukan",
-                code=ErrorCodes.NOT_FOUND,
-                resource="User",
-                resource_id=str(user_id)
+                details={"resource_type": "user", "resource_id": user_id}
             )
 
-        # Check if already deleted
-        if not user.is_active:
+        # TODO: Check if user has devices before deleting
+        # For now, we'll allow deletion
+
+        # Hard delete via repository
+        success = self.user_repo.delete(user_id)
+
+        if not success:
             raise ValidationError(
-                message=f"User '{user.username}' sudah tidak aktif",
-                code=ErrorCodes.VALIDATION_ERROR,
-                details={"user_id": user_id, "username": user.username}
+                message="Gagal menghapus user",
+                details={"user_id": user_id}
             )
 
-        # Soft delete
-        user.is_active = False
-        self.db.commit()
-        self.db.refresh(user)
-
+        # Return the user data before deletion
         return user

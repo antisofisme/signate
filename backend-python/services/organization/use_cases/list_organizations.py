@@ -18,7 +18,7 @@ class ListOrganizationsUseCase:
         List all organizations
 
         Args:
-            active_only: Only return active organizations
+            active_only: Only return active organizations (default: False - show all)
 
         Returns:
             Dictionary with organizations list and stats

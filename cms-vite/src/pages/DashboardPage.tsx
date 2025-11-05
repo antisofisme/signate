@@ -6,24 +6,22 @@
 
 import { useTranslation } from 'react-i18next';
 import { useAuthStore } from '@/lib/stores/authStore';
+import { PageHeader } from '@/shared/components';
 
 export default function DashboardPage() {
   const { t } = useTranslation();
   const { user } = useAuthStore();
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-            {t('dashboard.title')}
-          </h1>
-          <p className="text-gray-600 dark:text-gray-400 mt-1">
-            {t('dashboard.welcome')}, {user?.full_name || user?.username}!
-          </p>
-        </div>
-      </div>
+    <>
+      {/* Sticky Page Header */}
+      <PageHeader
+        title={t('dashboard.title')}
+        description={`${t('dashboard.welcome')}, ${user?.full_name || user?.username}!`}
+      />
+
+      {/* Content */}
+      <div className="space-y-6">
 
         {/* Stats Grid - Placeholder */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -97,6 +95,7 @@ export default function DashboardPage() {
             </div>
           </dl>
         </div>
-    </div>
+      </div>
+    </>
   );
 }

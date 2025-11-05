@@ -6,9 +6,10 @@
  */
 
 import { useState } from 'react';
-import { Building, Users, Settings as SettingsIcon } from 'lucide-react';
+import { Building, Users } from 'lucide-react';
 import OrganizationsTab from '@/features/organizations/components/OrganizationsTab';
 import UsersTab from '@/features/users/components/UsersTab';
+import { PageHeader } from '@/shared/components';
 
 type TabType = 'organizations' | 'users';
 
@@ -33,19 +34,15 @@ export default function SettingsPage() {
   const ActiveComponent = tabs.find((tab) => tab.id === activeTab)?.component;
 
   return (
-    <div className="p-8">
-      {/* Page Header */}
-      <div className="mb-6">
-        <div className="flex items-center gap-3">
-          <SettingsIcon className="w-8 h-8 text-blue-600 dark:text-blue-400" />
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-            Settings
-          </h1>
-        </div>
-        <p className="text-gray-600 dark:text-gray-400 mt-2">
-          Manage system settings, organizations, and users (HMR enabled ✅)
-        </p>
-      </div>
+    <>
+      {/* Sticky Page Header */}
+      <PageHeader
+        title="Settings"
+        description="Manage system settings, organizations, and users"
+      />
+
+      {/* Content */}
+      <div className="space-y-6">
 
       {/* Tabs */}
       <div className="border-b border-gray-200 dark:border-gray-700 mb-6">
@@ -74,6 +71,7 @@ export default function SettingsPage() {
 
       {/* Tab Content */}
       <div className="mt-6">{ActiveComponent && <ActiveComponent />}</div>
-    </div>
+      </div>
+    </>
   );
 }
