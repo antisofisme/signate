@@ -15,6 +15,7 @@ from shared.api_routes import UserRoutes
 from shared.errors import handle_errors
 from shared.responses import success_response
 from shared.logging import RequestLogger, AuditLogger
+from shared.middleware import get_current_active_user, require_admin, require_admin_or_manager
 from typing import Optional
 import time
 
@@ -116,13 +117,17 @@ def list_users(
     organization_id: Optional[int] = Query(None, description="Filter by organization"),
     role: Optional[str] = Query(None, description="Filter by role"),
     active_only: bool = Query(False, description="Only show active users"),
-    use_case: ListUsersUseCase = Depends(get_list_users_use_case)
+    use_case: ListUsersUseCase = Depends(get_list_users_use_case),
+    current_user: dict = Depends(get_current_active_user)
 ):
     """
     List all users with filters
 
-    Permission: Admin (all orgs) or Manager (own org only) - TODO: Add auth middleware
+    Permission: Admin (all orgs) or Manager (own org only)
     """
+    # If manager, can only see users from own organization
+    if current_user["role"] == "manager":
+        organization_id = current_user["organization_id"]
     start_time = time.time()
 
     # Execute use case
@@ -166,13 +171,22 @@ def create_user(
     http_request: Request,
     use_case: CreateUserUseCase = Depends(get_create_user_use_case),
     list_use_case: ListUsersUseCase = Depends(get_list_users_use_case),
-    audit_logger: AuditLogger = Depends(get_audit_logger)
+    audit_logger: AuditLogger = Depends(get_audit_logger),
+    current_user: dict = Depends(require_admin_or_manager)
 ):
     """
     Create new user
 
-    Permission: Admin or Manager (can only create in own org) - TODO: Add auth middleware
+    Permission: Admin or Manager (can only create in own org)
     """
+    # If manager, can only create users in own organization
+    if current_user["role"] == "manager":
+        if request_body.organization_id != current_user["organization_id"]:
+            from fastapi import HTTPException
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Manager can only create users in their own organization"
+            )
     start_time = time.time()
 
     # Execute use case
@@ -203,7 +217,7 @@ def create_user(
 
     # Audit log
     audit_logger.log_action(
-        user_id=None,  # TODO: Get from JWT token
+        user_id=current_user["user_id"],
         action="user.create",
         resource_type="user",
         resource_id=user.id,
@@ -225,13 +239,34 @@ def get_user(
     user_id: int,
     http_request: Request,
     use_case: GetUserUseCase = Depends(get_get_user_use_case),
-    list_use_case: ListUsersUseCase = Depends(get_list_users_use_case)
+    list_use_case: ListUsersUseCase = Depends(get_list_users_use_case),
+    current_user: dict = Depends(get_current_active_user)
 ):
     """
     Get user by ID
 
-    Permission: Admin (any user) or Manager (own org only) or Self - TODO: Add auth middleware
+    Permission: Admin (any user) or Manager (own org only) or Self
     """
+    # Get target user to check permissions
+    target_user = use_case.execute(user_id)
+
+    # Check permissions
+    if current_user["role"] != "admin":
+        # Manager can view users in own org
+        if current_user["role"] == "manager":
+            if target_user.organization_id != current_user["organization_id"]:
+                from fastapi import HTTPException
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="You can only view users in your organization"
+                )
+        # Regular user can only view self
+        elif current_user["user_id"] != user_id:
+            from fastapi import HTTPException
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You can only view your own profile"
+            )
     start_time = time.time()
 
     # Execute use case
@@ -264,13 +299,54 @@ def update_user(
     http_request: Request,
     use_case: UpdateUserUseCase = Depends(get_update_user_use_case),
     list_use_case: ListUsersUseCase = Depends(get_list_users_use_case),
-    audit_logger: AuditLogger = Depends(get_audit_logger)
+    audit_logger: AuditLogger = Depends(get_audit_logger),
+    current_user: dict = Depends(get_current_active_user),
+    user_repo = Depends(get_user_repository)
 ):
     """
     Update user
 
-    Permission: Admin (any user) or Manager (own org only) or Self (limited fields) - TODO: Add auth middleware
+    Permission: Admin (any user) or Manager (own org only) or Self (limited fields)
     """
+    # Get target user to check permissions
+    target_user = user_repo.find_by_id(user_id)
+
+    if not target_user:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=404, detail="User not found")
+
+    # Check permissions
+    if current_user["role"] != "admin":
+        # Manager can update users in own org (except role changes)
+        if current_user["role"] == "manager":
+            if target_user.organization_id != current_user["organization_id"]:
+                from fastapi import HTTPException
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="You can only update users in your organization"
+                )
+            # Manager cannot change roles
+            if request_body.role and request_body.role != target_user.role:
+                from fastapi import HTTPException
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Manager cannot change user roles"
+                )
+        # Regular user can only update self (limited fields)
+        elif current_user["user_id"] != user_id:
+            from fastapi import HTTPException
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You can only update your own profile"
+            )
+        else:
+            # User cannot change role or is_active
+            if request_body.role or request_body.is_active is not None:
+                from fastapi import HTTPException
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="You cannot change role or active status"
+                )
     start_time = time.time()
 
     # Execute use case
@@ -300,7 +376,7 @@ def update_user(
 
     # Audit log
     audit_logger.log_action(
-        user_id=None,  # TODO: Get from JWT token
+        user_id=current_user["user_id"],
         action="user.update",
         resource_type="user",
         resource_id=user_id,
@@ -324,13 +400,21 @@ def change_password(
     http_request: Request,
     use_case: ChangePasswordUseCase = Depends(get_change_password_use_case),
     list_use_case: ListUsersUseCase = Depends(get_list_users_use_case),
-    audit_logger: AuditLogger = Depends(get_audit_logger)
+    audit_logger: AuditLogger = Depends(get_audit_logger),
+    current_user: dict = Depends(get_current_active_user)
 ):
     """
     Change user password
 
-    Permission: Admin (any user) or Self - TODO: Add auth middleware
+    Permission: Admin (any user) or Self
     """
+    # Check permissions - only admin or self can change password
+    if current_user["role"] != "admin" and current_user["user_id"] != user_id:
+        from fastapi import HTTPException
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You can only change your own password"
+        )
     start_time = time.time()
 
     # Execute use case
@@ -357,7 +441,7 @@ def change_password(
 
     # Audit log
     audit_logger.log_action(
-        user_id=None,  # TODO: Get from JWT token
+        user_id=current_user["user_id"],
         action="user.change_password",
         resource_type="user",
         resource_id=user_id,
@@ -376,15 +460,27 @@ def delete_user(
     user_id: int,
     http_request: Request,
     use_case: DeleteUserUseCase = Depends(get_delete_user_use_case),
-    audit_logger: AuditLogger = Depends(get_audit_logger)
+    audit_logger: AuditLogger = Depends(get_audit_logger),
+    current_user: dict = Depends(require_admin_or_manager)
 ):
     """
     Delete user (hard delete - permanent removal)
 
     Note: To disable/archive user without deleting, use PUT with is_active=false
 
-    Permission: Admin (any user) or Manager (own org only) - TODO: Add auth middleware
+    Permission: Admin (any user) or Manager (own org only)
     """
+    # Get target user to check permissions
+    user = use_case.execute(user_id)
+
+    # Manager can only delete users in own organization
+    if current_user["role"] == "manager":
+        if user.organization_id != current_user["organization_id"]:
+            from fastapi import HTTPException
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Manager can only delete users in their own organization"
+            )
     start_time = time.time()
 
     # Execute use case
@@ -403,7 +499,7 @@ def delete_user(
 
     # Audit log
     audit_logger.log_action(
-        user_id=None,  # TODO: Get from JWT token
+        user_id=current_user["user_id"],
         action="user.delete",
         resource_type="user",
         resource_id=user_id,
