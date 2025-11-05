@@ -16,6 +16,7 @@ from shared.api_routes import AuthRoutes
 from shared.errors import handle_errors
 from shared.responses import success_response
 from shared.logging import RequestLogger, AuditLogger
+from shared.rate_limiter import rate_limit
 import time
 
 from .dtos import (
@@ -75,6 +76,7 @@ def get_register_use_case(
 # =============================================================================
 
 @router.post(AuthRoutes.LOGIN)
+@rate_limit(max_requests=5, window_seconds=300)  # 5 login attempts per 5 minutes
 @handle_errors
 def login(
     request_body: LoginRequest,
@@ -147,6 +149,7 @@ def login(
 
 
 @router.post(AuthRoutes.REGISTER, status_code=status.HTTP_201_CREATED)
+@rate_limit(max_requests=3, window_seconds=3600)  # 3 registration attempts per hour
 @handle_errors
 def register(
     request_body: RegisterRequest,
