@@ -1,11 +1,19 @@
 """
 Shared Validators
 Common validation functions and rules
+
+Enhanced with security validators:
+- XSS prevention (HTML sanitization)
+- Path traversal prevention
+- URL validation
+- SQL injection prevention (via parameterized queries)
 """
 
 import re
+import html
 from typing import Optional, Any
 from datetime import datetime
+from urllib.parse import urlparse
 
 
 # =============================================================================
@@ -25,6 +33,110 @@ def sanitize_string(text: str) -> str:
     if not text:
         return ""
     return text.strip()
+
+
+def sanitize_html(text: str) -> str:
+    """
+    Sanitize HTML to prevent XSS attacks
+
+    Escapes HTML special characters to prevent script injection
+
+    Args:
+        text: String that may contain HTML
+
+    Returns:
+        HTML-escaped string safe for display
+
+    Example:
+        >>> sanitize_html("<script>alert('XSS')</script>")
+        "&lt;script&gt;alert('XSS')&lt;/script&gt;"
+        >>> sanitize_html("Normal text")
+        "Normal text"
+    """
+    if not text:
+        return ""
+    return html.escape(text)
+
+
+def contains_html_tags(text: str) -> bool:
+    """
+    Check if string contains HTML tags
+
+    Args:
+        text: String to check
+
+    Returns:
+        True if HTML tags detected
+
+    Example:
+        >>> contains_html_tags("<b>Bold</b>")
+        True
+        >>> contains_html_tags("Plain text")
+        False
+    """
+    if not text:
+        return False
+    # Match HTML tags like <tag>, </tag>, <tag/>
+    html_pattern = r'<[^>]+>'
+    return bool(re.search(html_pattern, text))
+
+
+def contains_script_tags(text: str) -> bool:
+    """
+    Check if string contains potentially dangerous script tags
+
+    Args:
+        text: String to check
+
+    Returns:
+        True if script tags detected (case-insensitive)
+
+    Example:
+        >>> contains_script_tags("<script>alert('XSS')</script>")
+        True
+        >>> contains_script_tags("Normal text")
+        False
+    """
+    if not text:
+        return False
+    dangerous_tags = [
+        r'<script[^>]*>',
+        r'<iframe[^>]*>',
+        r'<object[^>]*>',
+        r'<embed[^>]*>',
+        r'javascript:',
+        r'on\w+\s*=',  # Event handlers like onclick=, onerror=
+    ]
+    return any(re.search(pattern, text, re.IGNORECASE) for pattern in dangerous_tags)
+
+
+def validate_safe_string(text: str, max_length: int = 1000) -> tuple[bool, Optional[str]]:
+    """
+    Validate string is safe (no HTML/script injection)
+
+    Args:
+        text: String to validate
+        max_length: Maximum allowed length
+
+    Returns:
+        Tuple of (is_valid, error_message)
+
+    Example:
+        >>> validate_safe_string("Normal text")
+        (True, None)
+        >>> validate_safe_string("<script>alert('XSS')</script>")
+        (False, "Input contains potentially dangerous content")
+    """
+    if not text:
+        return True, None
+
+    if len(text) > max_length:
+        return False, f"Input must not exceed {max_length} characters"
+
+    if contains_script_tags(text):
+        return False, "Input contains potentially dangerous content"
+
+    return True, None
 
 
 def validate_email(email: str) -> bool:
@@ -366,5 +478,182 @@ def validate_file_size(size_bytes: int, max_size_mb: int = 10) -> tuple[bool, Op
 
     if size_bytes > max_bytes:
         return False, f"File size must not exceed {max_size_mb} MB"
+
+    return True, None
+
+
+# =============================================================================
+# SECURITY VALIDATORS
+# =============================================================================
+
+def validate_url(url: str, allowed_schemes: list[str] = None) -> tuple[bool, Optional[str]]:
+    """
+    Validate URL format and scheme
+
+    Args:
+        url: URL to validate
+        allowed_schemes: List of allowed schemes (default: ['http', 'https'])
+
+    Returns:
+        Tuple of (is_valid, error_message)
+
+    Example:
+        >>> validate_url("https://example.com")
+        (True, None)
+        >>> validate_url("javascript:alert('XSS')")
+        (False, "URL scheme not allowed")
+        >>> validate_url("ftp://example.com", allowed_schemes=['http', 'https'])
+        (False, "URL scheme not allowed. Allowed: http, https")
+    """
+    if not url:
+        return False, "URL cannot be empty"
+
+    if allowed_schemes is None:
+        allowed_schemes = ['http', 'https']
+
+    try:
+        parsed = urlparse(url)
+
+        # Check if scheme is present
+        if not parsed.scheme:
+            return False, "Invalid URL format"
+
+        # Check if scheme is allowed
+        if parsed.scheme.lower() not in [s.lower() for s in allowed_schemes]:
+            return False, f"URL scheme not allowed. Allowed: {', '.join(allowed_schemes)}"
+
+        # Check if netloc (domain) is present
+        if not parsed.netloc:
+            return False, "Invalid URL format - missing domain"
+
+        return True, None
+    except Exception as e:
+        return False, f"Invalid URL format: {str(e)}"
+
+
+def validate_path_safe(path: str) -> tuple[bool, Optional[str]]:
+    """
+    Validate path is safe (no directory traversal)
+
+    Prevents path traversal attacks like ../../etc/passwd
+
+    Args:
+        path: File path to validate
+
+    Returns:
+        Tuple of (is_valid, error_message)
+
+    Example:
+        >>> validate_path_safe("uploads/image.jpg")
+        (True, None)
+        >>> validate_path_safe("../../etc/passwd")
+        (False, "Path contains directory traversal")
+        >>> validate_path_safe("/etc/passwd")
+        (False, "Absolute paths not allowed")
+    """
+    if not path:
+        return False, "Path cannot be empty"
+
+    # Check for directory traversal patterns
+    dangerous_patterns = [
+        r'\.\.',      # Parent directory reference
+        r'\/\/+',     # Multiple slashes
+        r'^/',        # Absolute path
+        r'^\\',       # Windows absolute path
+        r'[A-Z]:',    # Windows drive letter
+    ]
+
+    for pattern in dangerous_patterns:
+        if re.search(pattern, path):
+            if pattern == r'\.\':
+                return False, "Path contains directory traversal"
+            elif pattern in [r'^/', r'^\\', r'[A-Z]:']:
+                return False, "Absolute paths not allowed"
+            else:
+                return False, "Invalid path format"
+
+    # Check for null bytes (path truncation attack)
+    if '\0' in path:
+        return False, "Path contains invalid characters"
+
+    return True, None
+
+
+def validate_no_sql_injection(text: str) -> tuple[bool, Optional[str]]:
+    """
+    Validate input doesn't contain SQL injection patterns
+
+    Note: This is a secondary defense. Primary defense is using
+    parameterized queries (which SQLAlchemy ORM does automatically).
+
+    Args:
+        text: Input text to validate
+
+    Returns:
+        Tuple of (is_valid, error_message)
+
+    Example:
+        >>> validate_no_sql_injection("Normal text")
+        (True, None)
+        >>> validate_no_sql_injection("'; DROP TABLE users--")
+        (False, "Input contains potentially dangerous SQL patterns")
+    """
+    if not text:
+        return True, None
+
+    # Common SQL injection patterns
+    sql_patterns = [
+        r'(\b(SELECT|INSERT|UPDATE|DELETE|DROP|CREATE|ALTER|EXEC|EXECUTE)\b)',
+        r'(--|#|\/\*|\*\/)',  # SQL comments
+        r'(\bUNION\b.*\bSELECT\b)',
+        r'(\bOR\b.*=.*)',
+        r'(\'.*--)',
+        r'(;.*\b(DROP|DELETE|UPDATE)\b)',
+    ]
+
+    for pattern in sql_patterns:
+        if re.search(pattern, text, re.IGNORECASE):
+            return False, "Input contains potentially dangerous SQL patterns"
+
+    return True, None
+
+
+def validate_alphanumeric(text: str, allow_spaces: bool = False, allow_special: str = "") -> tuple[bool, Optional[str]]:
+    """
+    Validate text contains only alphanumeric characters
+
+    Args:
+        text: Text to validate
+        allow_spaces: Allow spaces (default: False)
+        allow_special: String of additional allowed special characters (default: "")
+
+    Returns:
+        Tuple of (is_valid, error_message)
+
+    Example:
+        >>> validate_alphanumeric("Test123")
+        (True, None)
+        >>> validate_alphanumeric("Test 123", allow_spaces=True)
+        (True, None)
+        >>> validate_alphanumeric("Test-123", allow_special="-")
+        (True, None)
+        >>> validate_alphanumeric("Test<script>")
+        (False, "Input contains invalid characters")
+    """
+    if not text:
+        return True, None
+
+    # Build allowed pattern
+    pattern = r'^[a-zA-Z0-9'
+    if allow_spaces:
+        pattern += r'\s'
+    if allow_special:
+        # Escape special regex characters
+        escaped_special = re.escape(allow_special)
+        pattern += escaped_special
+    pattern += r']+$'
+
+    if not re.match(pattern, text):
+        return False, "Input contains invalid characters"
 
     return True, None
