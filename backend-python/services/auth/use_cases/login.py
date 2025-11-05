@@ -2,20 +2,15 @@
 Login Use Case
 Handles user authentication
 
-Updated to use centralized error handling
+Updated to use centralized error handling and JWT utilities
 """
 
 from typing import Dict, Any
 from ..domain.interfaces import IUserRepository
 from ..domain.user import Credentials
 from ..repositories.organization_repo import OrganizationRepository
-from passlib.context import CryptContext
-from jose import jwt
-from datetime import datetime, timedelta
 from shared.errors import AuthenticationError
-
-
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+from shared.auth import verify_password, create_access_token, create_token_payload
 
 
 class LoginUseCase:
@@ -25,15 +20,12 @@ class LoginUseCase:
         self,
         user_repository: IUserRepository,
         organization_repository: OrganizationRepository,
-        secret_key: str,
+        secret_key: str = None,  # Kept for backward compatibility, but uses shared auth
         algorithm: str = "HS256",
         token_expire_minutes: int = 30
     ):
         self.user_repository = user_repository
         self.organization_repository = organization_repository
-        self.secret_key = secret_key
-        self.algorithm = algorithm
-        self.token_expire_minutes = token_expire_minutes
 
     def execute(self, username: str, password: str) -> Dict[str, Any]:
         """
@@ -59,8 +51,8 @@ class LoginUseCase:
                 message="Username atau password salah"
             )
 
-        # Verify password
-        if not pwd_context.verify(credentials.password, user.password_hash):
+        # Verify password using shared auth utility
+        if not verify_password(credentials.password, user.password_hash):
             raise AuthenticationError(
                 message="Username atau password salah"
             )
@@ -71,13 +63,14 @@ class LoginUseCase:
                 message="Akun Anda telah dinonaktifkan"
             )
 
-        # Generate JWT token with organization_id
-        token = self._create_access_token(
-            user.id,
-            user.username,
-            user.role,
-            user.organization_id
+        # Generate JWT token with organization_id using shared auth utility
+        payload = create_token_payload(
+            user_id=user.id,
+            username=user.username,
+            role=user.role,
+            organization_id=user.organization_id
         )
+        token = create_access_token(payload)
 
         # Get user's accessible organizations
         organizations = self.organization_repository.get_user_organizations(user.id)
@@ -87,23 +80,3 @@ class LoginUseCase:
             "token": token,
             "organizations": organizations
         }
-
-    def _create_access_token(
-        self,
-        user_id: int,
-        username: str,
-        role: str,
-        organization_id: int = None
-    ) -> str:
-        """Create JWT access token"""
-        expire = datetime.utcnow() + timedelta(minutes=self.token_expire_minutes)
-
-        payload = {
-            "sub": str(user_id),
-            "username": username,
-            "role": role,
-            "organization_id": organization_id,
-            "exp": expire
-        }
-
-        return jwt.encode(payload, self.secret_key, algorithm=self.algorithm)
