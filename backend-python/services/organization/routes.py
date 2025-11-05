@@ -8,13 +8,14 @@ Updated to use centralized utilities:
 - shared.logging for request logging
 """
 
-from fastapi import APIRouter, Depends, Request, status, Query
+from fastapi import APIRouter, Depends, Request, status, Query, HTTPException
 from sqlalchemy.orm import Session
 from shared.database import get_db
 from shared.api_routes import OrganizationRoutes
 from shared.errors import handle_errors
 from shared.responses import success_response
 from shared.logging import RequestLogger, AuditLogger
+from shared.middleware import get_current_active_user, require_admin
 from typing import Optional
 import time
 
@@ -108,17 +109,27 @@ def get_delete_org_use_case(
 def list_organizations(
     http_request: Request,
     active_only: bool = Query(False, description="Show all organizations (set true for active only)"),
-    use_case: ListOrganizationsUseCase = Depends(get_list_orgs_use_case)
+    use_case: ListOrganizationsUseCase = Depends(get_list_orgs_use_case),
+    current_user: dict = Depends(get_current_active_user)
 ):
     """
     List all organizations
 
-    Permission: Admin only (TODO: Add auth middleware)
+    Permission: Admin (all orgs) or Manager (own org only)
     """
     start_time = time.time()
 
     # Execute use case
     result = use_case.execute(active_only=active_only)
+
+    # If manager, filter to only show their organization
+    if current_user["role"] == "manager":
+        result["organizations"] = [
+            org for org in result["organizations"]
+            if org.id == current_user["organization_id"]
+        ]
+        result["total"] = len(result["organizations"])
+        result["active"] = len([org for org in result["organizations"] if org.is_active])
 
     # Convert to response with stats
     org_responses = []
@@ -153,12 +164,13 @@ def create_organization(
     request_body: CreateOrganizationRequest,
     http_request: Request,
     use_case: CreateOrganizationUseCase = Depends(get_create_org_use_case),
-    audit_logger: AuditLogger = Depends(get_audit_logger)
+    audit_logger: AuditLogger = Depends(get_audit_logger),
+    current_user: dict = Depends(require_admin)
 ):
     """
     Create new organization
 
-    Permission: Admin only (TODO: Add auth middleware)
+    Permission: Admin only
     """
     start_time = time.time()
 
@@ -191,7 +203,7 @@ def create_organization(
 
     # Audit log
     audit_logger.log_action(
-        user_id=None,  # TODO: Get from JWT token
+        user_id=current_user["user_id"],
         action="organization.create",
         resource_type="organization",
         resource_id=organization.id,
@@ -211,13 +223,22 @@ def get_organization(
     org_id: int,
     http_request: Request,
     use_case: GetOrganizationUseCase = Depends(get_get_org_use_case),
-    list_use_case: ListOrganizationsUseCase = Depends(get_list_orgs_use_case)
+    list_use_case: ListOrganizationsUseCase = Depends(get_list_orgs_use_case),
+    current_user: dict = Depends(get_current_active_user)
 ):
     """
     Get organization by ID
 
-    Permission: Admin or Manager of that org (TODO: Add auth middleware)
+    Permission: Admin (any org) or Manager (own org only)
     """
+    # Check permissions - Manager can only view their own organization
+    if current_user["role"] != "admin":
+        if current_user["organization_id"] != org_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You can only view your own organization"
+            )
+
     start_time = time.time()
 
     # Execute use case
@@ -253,12 +274,13 @@ def update_organization(
     http_request: Request,
     use_case: UpdateOrganizationUseCase = Depends(get_update_org_use_case),
     list_use_case: ListOrganizationsUseCase = Depends(get_list_orgs_use_case),
-    audit_logger: AuditLogger = Depends(get_audit_logger)
+    audit_logger: AuditLogger = Depends(get_audit_logger),
+    current_user: dict = Depends(require_admin)
 ):
     """
     Update organization
 
-    Permission: Admin only (TODO: Add auth middleware)
+    Permission: Admin only
     """
     start_time = time.time()
 
@@ -295,7 +317,7 @@ def update_organization(
 
     # Audit log
     audit_logger.log_action(
-        user_id=None,  # TODO: Get from JWT token
+        user_id=current_user["user_id"],
         action="organization.update",
         resource_type="organization",
         resource_id=org_id,
@@ -314,14 +336,15 @@ def delete_organization(
     org_id: int,
     http_request: Request,
     use_case: DeleteOrganizationUseCase = Depends(get_delete_org_use_case),
-    audit_logger: AuditLogger = Depends(get_audit_logger)
+    audit_logger: AuditLogger = Depends(get_audit_logger),
+    current_user: dict = Depends(require_admin)
 ):
     """
     Delete organization (hard delete - permanent removal)
 
     Note: To disable/archive organization without deleting, use PUT with is_active=false
 
-    Permission: Admin only (TODO: Add auth middleware)
+    Permission: Admin only
     """
     start_time = time.time()
 
@@ -341,7 +364,7 @@ def delete_organization(
 
     # Audit log
     audit_logger.log_action(
-        user_id=None,  # TODO: Get from JWT token
+        user_id=current_user["user_id"],
         action="organization.delete",
         resource_type="organization",
         resource_id=org_id,

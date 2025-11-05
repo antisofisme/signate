@@ -3,12 +3,13 @@ Audit Log API Routes
 HTTP endpoints for viewing audit trail
 """
 
-from fastapi import APIRouter, Depends, Request, Query
+from fastapi import APIRouter, Depends, Request, Query, HTTPException, status
 from sqlalchemy.orm import Session
 from shared.database import get_db
 from shared.api_routes import AuditRoutes
 from shared.errors import handle_errors
 from shared.logging import RequestLogger
+from shared.middleware import get_current_active_user
 from typing import Optional
 from datetime import datetime
 import time
@@ -80,13 +81,18 @@ def list_audit_logs(
     offset: int = Query(0, ge=0, description="Results to skip"),
     use_case: ListAuditLogsUseCase = Depends(get_list_audit_logs_use_case),
     user_repo = Depends(get_user_repository),
-    org_repo = Depends(get_organization_repository)
+    org_repo = Depends(get_organization_repository),
+    current_user: dict = Depends(get_current_active_user)
 ):
     """
     List audit logs with filters and pagination
 
-    Permission: Admin only - TODO: Add auth middleware
+    Permission: Admin (all logs) or Manager (own org logs only)
     """
+    # If manager or regular user, force filter to their organization only
+    if current_user["role"] != "admin":
+        organization_id = current_user["organization_id"]
+
     start_time = time.time()
 
     # Execute use case
@@ -151,17 +157,26 @@ def get_audit_log(
     http_request: Request,
     use_case: GetAuditLogUseCase = Depends(get_get_audit_log_use_case),
     user_repo = Depends(get_user_repository),
-    org_repo = Depends(get_organization_repository)
+    org_repo = Depends(get_organization_repository),
+    current_user: dict = Depends(get_current_active_user)
 ):
     """
     Get single audit log by ID
 
-    Permission: Admin only - TODO: Add auth middleware
+    Permission: Admin (any log) or Manager (own org logs only)
     """
     start_time = time.time()
 
     # Execute use case
     audit_log = use_case.execute(log_id)
+
+    # Check permissions - Manager can only view logs from their organization
+    if current_user["role"] != "admin":
+        if audit_log.organization_id != current_user["organization_id"]:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You can only view audit logs from your organization"
+            )
 
     # Convert to response
     response = AuditLogResponse.model_validate(audit_log)
