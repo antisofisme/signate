@@ -18,6 +18,8 @@ class AuthRoutes:
     REGISTER = f"{BASE}/register"
     ME = f"{BASE}/me"
     REFRESH = f"{BASE}/refresh"
+    FORGOT_PASSWORD = f"{BASE}/forgot-password"
+    RESET_PASSWORD = f"{BASE}/reset-password"
 
 
 # =============================================================================

@@ -26,6 +26,17 @@ class RegisterRequest(BaseModel):
     organization_id: Optional[int] = None
 
 
+class ForgotPasswordRequest(BaseModel):
+    """Forgot password request"""
+    email: EmailStr
+
+
+class ResetPasswordRequest(BaseModel):
+    """Reset password request"""
+    token: str = Field(..., min_length=1)
+    new_password: str = Field(..., min_length=6, description="New password (min 6 characters)")
+
+
 # =============================================================================
 # RESPONSE DTOs
 # =============================================================================
@@ -73,3 +84,15 @@ class TokenResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
     expires_in: int
+
+
+class ForgotPasswordResponse(BaseModel):
+    """Forgot password response"""
+    message: str
+    reset_token: Optional[str] = None  # Only included in development mode (no email configured)
+    expires_in_minutes: int = 60
+
+
+class ResetPasswordResponse(BaseModel):
+    """Reset password response"""
+    message: str

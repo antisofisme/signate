@@ -21,10 +21,14 @@ import time
 
 from .dtos import (
     LoginRequest, RegisterRequest, LoginResponse, UserResponse,
-    OrganizationResponse, UserResponse as UserResponseDTO
+    OrganizationResponse, UserResponse as UserResponseDTO,
+    ForgotPasswordRequest, ForgotPasswordResponse,
+    ResetPasswordRequest, ResetPasswordResponse
 )
 from .use_cases.login import LoginUseCase
 from .use_cases.register import RegisterUseCase
+from .use_cases.forgot_password import ForgotPasswordUseCase
+from .use_cases.reset_password import ResetPasswordUseCase
 from .repositories.user_repo import UserRepository
 from .repositories.organization_repo import OrganizationRepository
 
@@ -69,6 +73,20 @@ def get_register_use_case(
 ) -> RegisterUseCase:
     """Get register use case instance"""
     return RegisterUseCase(user_repository=user_repo)
+
+
+def get_forgot_password_use_case(
+    user_repo: UserRepository = Depends(get_user_repository)
+) -> ForgotPasswordUseCase:
+    """Get forgot password use case instance"""
+    return ForgotPasswordUseCase(user_repository=user_repo)
+
+
+def get_reset_password_use_case(
+    user_repo: UserRepository = Depends(get_user_repository)
+) -> ResetPasswordUseCase:
+    """Get reset password use case instance"""
+    return ResetPasswordUseCase(user_repository=user_repo)
 
 
 # =============================================================================
@@ -213,4 +231,83 @@ def register(
     return success_response(
         data=user_response,
         message="Registrasi berhasil! Silakan login."
+    )
+
+
+@router.post(AuthRoutes.FORGOT_PASSWORD, response_model=ForgotPasswordResponse)
+@rate_limit(max_requests=3, window_seconds=3600)  # 3 attempts per hour
+@handle_errors
+def forgot_password(
+    request_body: ForgotPasswordRequest,
+    http_request: Request,
+    use_case: ForgotPasswordUseCase = Depends(get_forgot_password_use_case)
+):
+    """
+    Forgot password endpoint
+
+    Initiates password reset process. Generates a reset token.
+    In production, this would send an email with the reset link.
+    For development/testing, the token is returned in the response.
+
+    Security: Returns same message regardless of whether email exists (prevents email enumeration)
+    """
+    start_time = time.time()
+
+    # Execute use case
+    result = use_case.execute(email=request_body.email)
+
+    # Calculate duration
+    duration_ms = (time.time() - start_time) * 1000
+
+    # Log request (don't log user_id since we don't want to reveal if email exists)
+    request_logger.log_request(
+        method="POST",
+        path=AuthRoutes.FORGOT_PASSWORD,
+        status_code=200,
+        duration_ms=duration_ms
+    )
+
+    # Return response
+    return ForgotPasswordResponse(
+        message=result["message"],
+        reset_token=result.get("reset_token")  # Only included in development
+    )
+
+
+@router.post(AuthRoutes.RESET_PASSWORD, response_model=ResetPasswordResponse)
+@rate_limit(max_requests=5, window_seconds=3600)  # 5 attempts per hour
+@handle_errors
+def reset_password(
+    request_body: ResetPasswordRequest,
+    http_request: Request,
+    use_case: ResetPasswordUseCase = Depends(get_reset_password_use_case)
+):
+    """
+    Reset password endpoint
+
+    Completes password reset using a valid token.
+    Validates token and updates user's password.
+    """
+    start_time = time.time()
+
+    # Execute use case (will raise ValidationError if token invalid)
+    result = use_case.execute(
+        token=request_body.token,
+        new_password=request_body.new_password
+    )
+
+    # Calculate duration
+    duration_ms = (time.time() - start_time) * 1000
+
+    # Log request
+    request_logger.log_request(
+        method="POST",
+        path=AuthRoutes.RESET_PASSWORD,
+        status_code=200,
+        duration_ms=duration_ms
+    )
+
+    # Return response
+    return ResetPasswordResponse(
+        message=result["message"]
     )
