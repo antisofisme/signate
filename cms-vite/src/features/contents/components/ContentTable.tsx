@@ -27,6 +27,9 @@ import {
 import type { Content, ContentType, ContentFilters } from '../types/content';
 import { formatFileSize, downloadContent } from '../services/contentApi';
 import { UploadModal } from './UploadModal';
+import { EditContentModal } from './EditContentModal';
+import { BulkEditModal } from './BulkEditModal';
+import { BulkTagModal } from './BulkTagModal';
 import { toast } from 'sonner';
 
 // Delete Confirmation Modal
@@ -240,6 +243,12 @@ export function ContentTable() {
   const [contentToDelete, setContentToDelete] = useState<Content | null>(null);
   const [showPreview, setShowPreview] = useState(false);
 
+  // Selection state
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [showBulkEditModal, setShowBulkEditModal] = useState(false);
+  const [showBulkTagModal, setShowBulkTagModal] = useState(false);
+
   // Hooks
   const { data: contentData, isLoading } = useContentList(filters);
   const deleteMutation = useDeleteContent();
@@ -274,6 +283,63 @@ export function ContentTable() {
 
   const clearFilters = () => {
     setFilters({ skip: 0, limit: 20 });
+  };
+
+  // Selection handlers
+  const toggleSelection = (id: number) => {
+    setSelectedIds((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(id)) {
+        newSet.delete(id);
+      } else {
+        newSet.add(id);
+      }
+      return newSet;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedIds.size === contentData?.data.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(contentData?.data.map((c) => c.id) || []));
+    }
+  };
+
+  const handleEdit = (content: Content) => {
+    setSelectedContent(content);
+    setShowEditModal(true);
+  };
+
+  const handleBulkEdit = () => {
+    if (selectedIds.size === 0) {
+      toast.error('Please select at least one content item');
+      return;
+    }
+    setShowBulkEditModal(true);
+  };
+
+  const handleBulkTag = () => {
+    if (selectedIds.size === 0) {
+      toast.error('Please select at least one content item');
+      return;
+    }
+    setShowBulkTagModal(true);
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedIds.size === 0) {
+      toast.error('Please select at least one content item');
+      return;
+    }
+    if (confirm(`Are you sure you want to delete ${selectedIds.size} content items?`)) {
+      await bulkDeleteMutation.mutateAsync(Array.from(selectedIds));
+      setSelectedIds(new Set());
+    }
+  };
+
+  const getSelectedContent = (): Content[] => {
+    return contentData?.data.filter((c) => selectedIds.has(c.id)) || [];
   };
 
   // Pagination handlers
@@ -395,6 +461,38 @@ export function ContentTable() {
         </div>
       )}
 
+      {/* Bulk Actions Toolbar */}
+      {selectedIds.size > 0 && (
+        <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 flex items-center justify-between">
+          <p className="text-sm font-medium text-blue-900 dark:text-blue-300">
+            {selectedIds.size} item(s) selected
+          </p>
+          <div className="flex gap-2">
+            <button
+              onClick={handleBulkEdit}
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2"
+            >
+              <Edit className="w-4 h-4" />
+              Bulk Edit
+            </button>
+            <button
+              onClick={handleBulkTag}
+              className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 flex items-center gap-2"
+            >
+              <Filter className="w-4 h-4" />
+              Bulk Tag
+            </button>
+            <button
+              onClick={handleBulkDelete}
+              className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 flex items-center gap-2"
+            >
+              <Trash2 className="w-4 h-4" />
+              Delete Selected
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Table */}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
         {isLoading ? (
@@ -407,6 +505,14 @@ export function ContentTable() {
               <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
                 <thead className="bg-gray-50 dark:bg-gray-900">
                   <tr>
+                    <th className="px-6 py-3 text-center w-12">
+                      <input
+                        type="checkbox"
+                        checked={selectedIds.size > 0 && selectedIds.size === contentData?.data.length}
+                        onChange={toggleSelectAll}
+                        className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
+                      />
+                    </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                       Content
                     </th>
@@ -430,6 +536,14 @@ export function ContentTable() {
                 <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                   {contentData.data.map((content) => (
                     <tr key={content.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
+                      <td className="px-6 py-3 text-center">
+                        <input
+                          type="checkbox"
+                          checked={selectedIds.has(content.id)}
+                          onChange={() => toggleSelection(content.id)}
+                          className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
+                        />
+                      </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center">
                           {content.thumbnail_url ? (
@@ -480,6 +594,13 @@ export function ContentTable() {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm">
                         <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => handleEdit(content)}
+                            className="text-green-600 hover:text-green-700 dark:text-green-400"
+                            title="Edit"
+                          >
+                            <Edit className="w-4 h-4" />
+                          </button>
                           <button
                             onClick={() => handlePreview(content)}
                             className="text-blue-600 hover:text-blue-700 dark:text-blue-400"
@@ -572,6 +693,30 @@ export function ContentTable() {
           setShowPreview(false);
           setSelectedContent(null);
         }}
+      />
+
+      {/* Edit Content Modal */}
+      <EditContentModal
+        isOpen={showEditModal}
+        onClose={() => {
+          setShowEditModal(false);
+          setSelectedContent(null);
+        }}
+        content={selectedContent}
+      />
+
+      {/* Bulk Edit Modal */}
+      <BulkEditModal
+        isOpen={showBulkEditModal}
+        onClose={() => setShowBulkEditModal(false)}
+        selectedContent={getSelectedContent()}
+      />
+
+      {/* Bulk Tag Modal */}
+      <BulkTagModal
+        isOpen={showBulkTagModal}
+        onClose={() => setShowBulkTagModal(false)}
+        selectedContent={getSelectedContent()}
       />
     </div>
   );
