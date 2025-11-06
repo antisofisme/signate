@@ -11,6 +11,7 @@ from shared.database import get_db
 from shared.api_routes import ContentRoutes
 from shared.responses import success_response, error_response, paginated_response, created_response
 from shared.auth import CurrentUser, get_current_user
+from shared.logging import AuditLogger
 
 from .repositories.content_repo import get_content_repository
 from .infrastructure.storage.local_storage import get_storage_service
@@ -47,6 +48,23 @@ def get_get_content_use_case(
     content_repo: IContentRepository = Depends(get_content_repository)
 ) -> GetContentUseCase:
     return GetContentUseCase(content_repo)
+
+
+def get_audit_log_repository(db: Session = Depends(get_db)):
+    """Get audit log repository instance"""
+    from services.audit.repositories.audit_log_repo import AuditLogRepository
+    return AuditLogRepository(db)
+
+
+def get_create_audit_log_use_case(audit_repo = Depends(get_audit_log_repository)):
+    """Get create audit log use case"""
+    from services.audit.use_cases.create_audit_log import CreateAuditLogUseCase
+    return CreateAuditLogUseCase(audit_repo)
+
+
+def get_audit_logger(create_audit_use_case = Depends(get_create_audit_log_use_case)) -> AuditLogger:
+    """Get audit logger with database persistence"""
+    return AuditLogger(create_audit_log_use_case=create_audit_use_case)
 
 
 # API Endpoints
@@ -153,16 +171,37 @@ async def get_content(
 @router.delete("/{content_id}", status_code=204)
 async def delete_content(
     content_id: int,
+    request: Request,
     content_repo: IContentRepository = Depends(get_content_repository),
+    get_use_case: GetContentUseCase = Depends(get_get_content_use_case),
+    audit_logger: AuditLogger = Depends(get_audit_logger),
     current_user: CurrentUser = Depends(get_current_user)
 ):
     """Delete content (soft delete - sets deleted_at timestamp)"""
     try:
+        # Get content first for audit log (before deletion)
+        content = get_use_case.execute(content_id, current_user.organization_id)
+
         # Soft delete - automatically checks organization ownership
         deleted = content_repo.soft_delete(content_id, current_user.organization_id)
 
         if not deleted:
             raise HTTPException(status_code=404, detail="Content not found or access denied")
+
+        # Audit log
+        audit_logger.log_action(
+            user_id=current_user.id,
+            action="content.delete",
+            resource_type="content",
+            resource_id=content_id,
+            details={
+                "title": content.title,
+                "content_type": content.content_type,
+                "file_url": content.file_url,
+                "organization_id": content.organization_id,
+                "ip_address": request.client.host if request.client else None
+            }
+        )
 
         return None  # 204 No Content
 
