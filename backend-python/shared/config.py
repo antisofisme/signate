@@ -4,6 +4,7 @@ Loaded from .env file (root level)
 """
 
 from pydantic_settings import BaseSettings
+from pydantic import ConfigDict
 from typing import List
 
 
@@ -53,9 +54,11 @@ class Settings(BaseSettings):
     # Logging
     LOG_LEVEL: str = "INFO"
 
-    class Config:
-        env_file = ".env"
-        case_sensitive = True
+    model_config = ConfigDict(
+        env_file=".env",
+        case_sensitive=True,
+        extra="ignore"  # Ignore unknown env vars (prevents errors)
+    )
 
     def get_cors_origins_list(self) -> List[str]:
         """Parse CORS_ORIGINS string to list"""

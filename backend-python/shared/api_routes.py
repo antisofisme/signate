@@ -92,7 +92,7 @@ class TagRoutes:
 # =============================================================================
 class ContentRoutes:
     """Content & Playlist management"""
-    BASE = f"{API_V1}/content"
+    BASE = f"{API_V1}/contents"
     PLAYLISTS = f"{API_V1}/playlists"
 
     # Content
@@ -102,6 +102,7 @@ class ContentRoutes:
     UPDATE = f"{BASE}/{{content_id}}"
     DELETE = f"{BASE}/{{content_id}}"
     PREVIEW = f"{BASE}/{{content_id}}/preview"
+    STATS = f"{BASE}/stats"  # Storage statistics
 
     # Playlists
     PLAYLIST_LIST = PLAYLISTS

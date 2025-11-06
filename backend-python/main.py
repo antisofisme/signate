@@ -6,7 +6,9 @@ Centralized API with Clean Architecture
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from shared.config import settings
 from shared.database import check_db_connection, init_db
@@ -19,6 +21,7 @@ from services.organization.routes import router as organization_router
 from services.user.routes import router as user_router
 from services.audit.routes import router as audit_router
 from services.tag.routes import router as tag_router
+from services.content.routes import router as content_router
 
 
 # =============================================================================
@@ -138,6 +141,20 @@ app.include_router(organization_router, tags=["Organization Management"])
 app.include_router(user_router, tags=["User Management"])
 app.include_router(audit_router, tags=["Audit Logging"])
 app.include_router(tag_router, tags=["Tag Management"])
+app.include_router(content_router, tags=["Content Management"])
+
+
+# =============================================================================
+# STATIC FILES SERVING (for content uploads)
+# =============================================================================
+
+# Mount static files for content serving
+CONTENT_DIR = Path("/data/signage/content/uploads")
+if CONTENT_DIR.exists():
+    app.mount("/content", StaticFiles(directory=str(CONTENT_DIR)), name="content")
+    print(f"✓ Static files mounted: /content -> {CONTENT_DIR}")
+else:
+    print(f"⚠ Content directory not found: {CONTENT_DIR}")
 
 
 # =============================================================================

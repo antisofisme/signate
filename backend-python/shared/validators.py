@@ -565,7 +565,7 @@ def validate_path_safe(path: str) -> tuple[bool, Optional[str]]:
 
     for pattern in dangerous_patterns:
         if re.search(pattern, path):
-            if pattern == r'\.\':
+            if pattern == r'\.\.':
                 return False, "Path contains directory traversal"
             elif pattern in [r'^/', r'^\\', r'[A-Z]:']:
                 return False, "Absolute paths not allowed"

@@ -54,10 +54,32 @@ apiClient.interceptors.request.use(
 );
 
 /**
- * Response interceptor - Handle errors globally
+ * Response interceptor - Handle errors globally & unwrap response data
  */
 apiClient.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    // Unwrap backend standard response format intelligently
+    // Backend returns: { success: true, data: {...}, message?, timestamp, pagination? }
+
+    // Don't unwrap if response has pagination or other important fields
+    const hasImportantFields = response.data && (
+      'pagination' in response.data ||
+      'total' in response.data ||
+      'organizations' in response.data
+    );
+
+    if (hasImportantFields) {
+      // Keep the whole response structure for paginated/complex responses
+      return response;
+    }
+
+    // For simple responses, unwrap the 'data' field
+    if (response.data && typeof response.data === 'object' && 'data' in response.data) {
+      response.data = response.data.data;
+    }
+
+    return response;
+  },
   (error: AxiosError) => {
     // Handle 401 Unauthorized - Auto logout
     if (error.response?.status === 401) {

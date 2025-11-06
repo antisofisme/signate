@@ -1,490 +1,776 @@
-# Analisis Integrasi Backend-Frontend
-**Tanggal**: 2025-11-05
-**Status**: Complete Analysis
+# Backend Python - Frontend CMS Vite Integration Analysis Report
 
-## 🎯 Ringkasan Eksekutif
-
-Analisis dilakukan terhadap semua fitur yang sudah diimplementasikan di backend-python dan cms-vite untuk memastikan:
-1. ✅ Konsistensi API endpoints
-2. ✅ Integrasi yang benar
-3. ⚠️  Tidak ada hardcode values (ditemukan beberapa)
-4. ✅ Best practices
+**Generated**: 2025-11-06  
+**Analysis Scope**: Full architecture, module structure, API integration, and error patterns
 
 ---
 
-## 📊 Status Integrasi Per Service
+## EXECUTIVE SUMMARY
 
-### 1. ✅ **AUTH SERVICE** - Fully Integrated
+**Status**: Multiple critical integration issues identified
 
-#### Backend Endpoints (backend-python/services/auth/routes.py)
+The project has a **Dual-Module Architecture Conflict** in the `shared/auth` layer that causes ImportError when the backend tries to use password verification functions. Additionally, there are endpoint definition mismatches and incomplete authentication integration in the frontend.
+
+**Critical Issues**: 3  
+**High Priority**: 4  
+**Medium Priority**: 3
+
+---
+
+## ISSUE #1: CRITICAL - Dual Auth Module Architecture Conflict
+
+### Problem Description
+The `shared/` directory contains **both**:
+1. `/shared/auth.py` - A monolithic module with password hashing functions
+2. `/shared/auth/` - A package directory with submodules
+
+This creates a Python module naming conflict.
+
+### Root Cause Analysis
+
+**File Structure Issue**:
+```
+/shared/
+  ├── auth.py              <-- Functions: verify_password, create_access_token, etc.
+  └── auth/                <-- Package with __init__.py, jwt.py, permissions.py
+      ├── __init__.py
+      ├── jwt.py
+      └── permissions.py
+```
+
+**Import Path Problem**:
 ```python
-POST /api/v1/auth/login              # Line 96
-POST /api/v1/auth/register           # Line 169
-POST /api/v1/auth/forgot-password    # Line 237
-POST /api/v1/auth/reset-password     # Line 277
+# In services/auth/use_cases/login.py (line 13)
+from shared.auth import verify_password, create_access_token, create_token_payload
+
+# Attempts to import from:
+# 1. /shared/auth.py (CORRECT - these functions exist here)
+# 2. BUT Python finds /shared/auth/__init__.py instead (WRONG)
+
+# shared/auth/__init__.py exports:
+# - CurrentUser, get_current_user, get_optional_user, decode_token
+# - Role, PermissionChecker, require_role, etc.
+# - Does NOT export: verify_password, create_access_token, create_token_payload
 ```
 
-#### Frontend API (cms-vite/src/features/auth/services/authApi.ts)
-```typescript
-✅ login()            - Integrated
-✅ register()         - Integrated
-✅ me()               - Integrated
-✅ logout()           - Integrated
-✅ refresh()          - Integrated
-✅ forgotPassword()   - Integrated (NEW)
-✅ resetPassword()    - Integrated (NEW)
-```
+### Why It Fails
 
-#### Frontend Pages
-```
-✅ LoginPage.tsx
-✅ RegisterPage.tsx
-✅ ForgotPasswordPage.tsx      (NEW)
-✅ ResetPasswordPage.tsx       (NEW)
-✅ SelectOrganizationPage.tsx
-```
+When Python encounters `from shared.auth import verify_password`:
+1. It checks `/shared/auth/__init__.py` first (package takes precedence)
+2. Finds no `verify_password` export
+3. Raises `ImportError: cannot import 'verify_password' from 'shared.auth'`
 
-#### Status: ✅ **100% Terintegrasi**
+The monolithic file `/shared/auth.py` is **shadowed** by the package directory `/shared/auth/`
 
----
+### Where This Error Manifests
 
-### 2. ✅ **ORGANIZATION SERVICE** - Fully Integrated
-
-#### Backend Endpoints (backend-python/services/organization/routes.py)
+**File**: `/mnt/g/khoirul/signate/backend-python/services/auth/use_cases/login.py`  
+**Line**: 13  
+**Code**:
 ```python
-GET    /api/v1/organizations           # Line 107 - List
-POST   /api/v1/organizations           # Line 161 - Create
-GET    /api/v1/organizations/{id}      # Line 220 - Get
-PUT    /api/v1/organizations/{id}      # Line 269 - Update
-DELETE /api/v1/organizations/{id}      # Line 333 - Delete
+from shared.auth import verify_password, create_access_token, create_token_payload
 ```
 
-#### Frontend API (cms-vite/src/features/organizations/services/organizationsApi.ts)
-```typescript
-✅ list()      - Integrated
-✅ get()       - Integrated
-✅ create()    - Integrated
-✅ update()    - Integrated
-✅ delete()    - Integrated
-```
-
-#### Frontend Pages
-```
-✅ OrganizationsPage.tsx
-✅ SettingsPage.tsx (includes OrganizationsTab)
-```
-
-#### Status: ✅ **100% Terintegrasi**
-
----
-
-### 3. ✅ **USER SERVICE** - Fully Integrated
-
-#### Backend Endpoints (backend-python/services/user/routes.py)
+**Other Affected Location**:  
+**File**: `/mnt/g/khoirul/signate/backend-python/shared/middleware.py`  
+**Line**: 10  
 ```python
-GET    /api/v1/users                   # Line 113 - List
-POST   /api/v1/users                   # Line 167 - Create
-GET    /api/v1/users/{id}              # Line 236 - Get
-PUT    /api/v1/users/{id}              # Line 294 - Update
-PUT    /api/v1/users/{id}/change-password  # Line 395 - Change Password
-DELETE /api/v1/users/{id}              # Line 457 - Delete
+from shared.auth import extract_user_from_token
 ```
 
-#### Frontend API (cms-vite/src/features/users/services/usersApi.ts)
-```typescript
-✅ list()            - Integrated
-✅ get()             - Integrated
-✅ create()          - Integrated
-✅ update()          - Integrated
-✅ changePassword()  - Integrated
-✅ delete()          - Integrated
-```
-
-#### Frontend Pages
-```
-✅ UsersPage.tsx
-✅ SettingsPage.tsx (includes UsersTab)
-```
-
-#### Status: ✅ **100% Terintegrasi**
+### Impact
+- Login fails with ImportError during module initialization
+- Backend startup crashes
+- API cannot handle authentication requests
+- Organizations API, User API dependent on auth fail
 
 ---
 
-### 4. ✅ **AUDIT SERVICE** - Fully Integrated
+## ISSUE #2: HIGH - Missing Password Verification in Frontend
 
-#### Backend Endpoints (backend-python/services/audit/routes.py)
+### Problem Description
+Frontend has **no password verification** during login - relying entirely on backend.
+
+### Current State
+
+**Frontend**:
+- Login form in `/cms-vite/src/features/auth/components/LoginForm.tsx`
+- Uses `authApi.login()` which sends credentials to backend
+- No local password validation
+
+**Expected Flow**:
+```
+Frontend         Backend
+  |                |
+  +-- POST /login -->|
+       credentials   |
+                 [verify_password()]
+                 [create_access_token()]
+                     |
+  |<-- 200 + token --+
+```
+
+**Current Issue**:
+- If backend password verification fails, frontend shows generic error
+- No client-side validation of password requirements
+- No strength indicator for password during registration
+
+### Files Involved
+- `/cms-vite/src/features/auth/services/authApi.ts` (lines 31-36)
+- `/cms-vite/src/features/auth/components/LoginForm.tsx`
+- `/cms-vite/src/features/auth/components/RegisterForm.tsx`
+
+---
+
+## ISSUE #3: HIGH - Content Upload Hardcoded Mock Auth
+
+### Problem Description
+Content upload route uses **hardcoded mock user** instead of real authentication.
+
+**File**: `/mnt/g/khoirul/signate/backend-python/services/content/routes.py`  
+**Lines**: 51-58
+
 ```python
-GET /api/v1/audit-logs           # Line 69 - List
-GET /api/v1/audit-logs/{id}      # Line 153 - Get Detail
+# Temporary mock auth - REPLACE with real auth middleware
+def get_current_user():
+    """TODO: Replace with real auth middleware"""
+    return {
+        "id": 9,  # Real admin user_id from database
+        "organization_id": 4,  # HARDCODED for testing
+        "username": "admin"
+    }
 ```
 
-#### Frontend API (cms-vite/src/features/audit/services/auditApi.ts)
-```typescript
-✅ list()  - Integrated
-✅ get()   - Integrated (jika diperlukan)
-```
+### Issues
+1. **Hardcoded user ID (9)** - Only user 9 can upload
+2. **Hardcoded org ID (4)** - Only org 4 is authorized
+3. **No actual JWT validation**
+4. **All frontend upload requests authenticated as same user**
 
-#### Frontend Pages
-```
-✅ AuditLogsPage.tsx
-```
-
-#### Status: ✅ **100% Terintegrasi**
+### Impact
+- Multi-tenant isolation violated
+- Content uploaded under wrong user/organization
+- Audit logs will show user 9 for all uploads
+- Security risk - no real permission checking
 
 ---
 
-### 5. ⚠️ **DEVICE SERVICE** - Backend Ready, Frontend Incomplete
+## ISSUE #4: HIGH - Organization Routes Not Using Middleware Auth
 
-#### Backend Endpoints (backend-python/services/device/routes.py)
+### Problem Description
+Organization routes use older authentication middleware pattern.
+
+**File**: `/mnt/g/khoirul/signate/backend-python/services/organization/routes.py`  
+**Line**: 18
+
 ```python
-POST   /api/v1/devices/request-code           # Line 96
-POST   /api/v1/devices/heartbeat               # Line 122
-GET    /api/v1/devices/check-activation/{code} # Line 159
-POST   /api/v1/devices/activate                # Line 202
-GET    /api/v1/devices                         # Line 260
-GET    /api/v1/devices/{id}                    # Line 302
-PUT    /api/v1/devices/{id}                    # Line 333
-DELETE /api/v1/devices/{id}                    # Line 393
+from shared.middleware import get_current_active_user, require_admin
 ```
 
-#### Frontend API Status
-```
-❌ NO API SERVICE FILE
-❌ src/features/devices/services/devicesApi.ts - NOT FOUND
-```
+**Issue**: Mixes two auth patterns:
+1. Some routes: `from shared.middleware` (older pattern)
+2. Other routes: `from shared.auth` (newer pattern from auth.__init__.py)
 
-#### Frontend Pages
-```
-⚠️  Route exists but placeholder:
-    /devices → "Devices Page - Coming Soon"
-```
-
-#### Status: ⚠️ **Backend Ready, Frontend Not Implemented**
-
-**Action Required**: Create devicesApi.ts service
+### Why It's a Problem
+- `/shared/middleware.py` tries to import from the broken `shared.auth`
+- Results in cascading import failures
+- Routes never execute due to initialization error
 
 ---
 
-### 6. ❌ **CONTENT SERVICE** - Not Implemented
+## ISSUE #5: MEDIUM - Endpoint Definition Mismatch
 
-#### Backend Status
-```
-❌ Backend routes NOT found in services/
-❌ Content management not yet implemented
-```
+### Problem: Frontend vs Backend Endpoint Names
 
-#### Frontend Status
-```
-❌ NO API SERVICE FILE
-❌ src/features/content/services/ - Empty
-⚠️  Route exists: /contents → placeholder
-```
-
-#### Status: ❌ **Not Implemented**
-
----
-
-### 7. ❌ **PLAYLIST SERVICE** - Not Implemented
-
-#### Backend Status
-```
-❌ Backend routes NOT found in services/
-❌ Playlist management not yet implemented
-```
-
-#### Frontend Status
-```
-❌ NO API SERVICE FILE
-❌ src/features/playlists/services/ - Empty
-⚠️  Route exists: /playlists → placeholder
-```
-
-#### Status: ❌ **Not Implemented**
-
----
-
-## ⚠️ Hardcoded Values Analysis
-
-### 1. Frontend API Client (cms-vite/src/lib/api/client.ts)
-
-**Line 14: Fallback URL Hardcoded**
+**Frontend** (`/cms-vite/src/lib/api/endpoints.ts`):
 ```typescript
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://192.168.5.12:8001';
+AUTH: {
+  FORGOT_PASSWORD: '/auth/forgot-password',      // kebab-case
+  RESET_PASSWORD: '/auth/reset-password',
+}
 ```
 
-**Analysis**:
-- ✅ Uses environment variable first (VITE_API_URL)
-- ⚠️  Fallback is hardcoded
-- ✅ .env file exists dengan value yang benar
+**Backend** (`/backend-python/shared/api_routes.py`):
+```python
+class AuthRoutes:
+    FORGOT_PASSWORD = f"{BASE}/forgot-password"   # Same ✓
+    RESET_PASSWORD = f"{BASE}/reset-password"     # Same ✓
+```
 
-**Recommendation**: ⚠️  **Minor Issue**
-- Fallback sebenarnya OK untuk development
-- Production HARUS set VITE_API_URL
+**Current Status**: These match (Good!)
 
-### 2. Environment Files
+**However**:
+- Organization endpoints use `{org_id}` placeholder
+- Frontend hardcodes IDs in request
+- No validation of ID format
 
-**.env dan .env.example**
-```bash
-VITE_API_URL=http://192.168.5.12:8001     # Server IP
+---
+
+## ISSUE #6: MEDIUM - Missing Organization Route in Frontend
+
+### Problem
+Frontend's `organizationsApi.list()` expects response structure mismatch.
+
+**Frontend** (`/cms-vite/src/features/organizations/services/organizationsApi.ts`):
+```typescript
+const { data } = await apiClient.get<OrganizationListData>(
+  `${API_ENDPOINTS.ORGANIZATIONS.LIST}?${params.toString()}`
+);
+return data;  // Expects data.organizations
+```
+
+**Backend** (`/backend-python/services/organization/routes.py`):
+```python
+return OrganizationListResponse(
+    organizations=org_responses,
+    total=result["total"],
+    active=result["active"]
+)  # Returns { organizations, total, active }
+```
+
+**Issue**: Frontend tries to destructure incorrectly  
+**Root Cause**: Axios response wrapping adds extra layer
+
+---
+
+## ISSUE #7: MEDIUM - Database Models Not Matching DTO
+
+### Problem
+Some database models don't match DTOs used in API responses.
+
+**Example**: User Model vs UserResponse DTO
+- Database may have fields frontend doesn't expect
+- Response DTOs missing validation
+- Type safety lost in conversions
+
+**Files**:
+- `/backend-python/services/user/repositories/models.py`
+- `/backend-python/services/user/dtos.py`
+
+---
+
+## DETAILED FILE STRUCTURE ANALYSIS
+
+### Backend Python Structure
+
+```
+/backend-python/
+├── main.py                           # FastAPI app initialization
+├── shared/                           # PROBLEM ZONE
+│   ├── auth.py                       # ← Monolithic module
+│   ├── auth/                         # ← Package shadows auth.py
+│   │   ├── __init__.py
+│   │   ├── jwt.py
+│   │   └── permissions.py
+│   ├── config.py                     # Settings (Pydantic)
+│   ├── database.py                   # SQLAlchemy session
+│   ├── api_routes.py                 # Route constants
+│   ├── middleware.py                 # FastAPI dependencies
+│   ├── errors.py                     # Custom exceptions
+│   ├── responses.py                  # Response wrappers
+│   └── validators.py
+│
+├── services/
+│   ├── auth/
+│   │   ├── routes.py
+│   │   ├── use_cases/
+│   │   │   ├── login.py              # ← IMPORTS verify_password FROM shared.auth
+│   │   │   ├── register.py
+│   │   │   └── ...
+│   │   └── repositories/
+│   │
+│   ├── organization/
+│   │   ├── routes.py                 # ← IMPORTS get_current_active_user
+│   │   └── ...
+│   │
+│   ├── content/
+│   │   ├── routes.py                 # ← USES HARDCODED MOCK AUTH
+│   │   └── ...
+│   │
+│   └── [audit, device, tag, user]
+```
+
+### Frontend CMS Vite Structure
+
+```
+/cms-vite/
+├── src/
+│   ├── lib/
+│   │   ├── api/
+│   │   │   ├── client.ts             # Axios instance with interceptors
+│   │   │   ├── endpoints.ts          # ALL routes defined here
+│   │   │   └── errors.ts
+│   │   └── errors/
+│   │
+│   ├── features/
+│   │   ├── auth/
+│   │   │   ├── services/
+│   │   │   │   └── authApi.ts        # Uses API_ENDPOINTS
+│   │   │   ├── hooks/
+│   │   │   │   └── useAuth.ts
+│   │   │   └── components/
+│   │   │       ├── LoginForm.tsx
+│   │   │       ├── RegisterForm.tsx
+│   │   │       └── ...
+│   │   │
+│   │   ├── organizations/
+│   │   │   ├── services/
+│   │   │   │   └── organizationsApi.ts
+│   │   │   └── ...
+│   │   │
+│   │   ├── contents/
+│   │   │   ├── services/
+│   │   │   │   └── contentApi.ts
+│   │   │   └── ...
+│   │   │
+│   │   └── [audit, devices, tags, users]
+│   │
+│   └── App.tsx
+```
+
+---
+
+## DEPENDENCY ANALYSIS
+
+### Backend Service Dependencies
+
+```
+login.py (auth/use_cases)
+  ├── shared.auth                    # ✗ BROKEN - import error
+  ├── shared.errors                  # ✓
+  └── OrganizationRepository         # ✓
+
+organization/routes.py
+  ├── shared.middleware              # ⚠ imports from shared.auth
+  ├── shared.api_routes              # ✓
+  ├── shared.database                # ✓
+  └── services.auth.*                # ✗ BROKEN chain
+
+content/routes.py
+  ├── shared.api_routes              # ✓
+  ├── shared.responses               # ✓
+  └── Hardcoded mock auth            # ✗ SECURITY ISSUE
+```
+
+### Frontend Service Dependencies
+
+```
+authApi.ts
+  ├── apiClient                      # ✓ (axios instance)
+  ├── API_ENDPOINTS                  # ✓
+  └── Backend: /api/v1/auth/*        # ✓ (routes match)
+
+organizationsApi.ts
+  ├── apiClient                      # ✓
+  ├── API_ENDPOINTS                  # ✓
+  └── Backend: /api/v1/organizations # ⚠ Response structure mismatch
+
+contentApi.ts
+  ├── apiClient                      # ✓
+  ├── API_ENDPOINTS                  # ✓
+  └── Backend: /api/v1/contents      # ✗ Mock auth, multi-tenant broken
+```
+
+---
+
+## SHARED UTILITIES AUDIT
+
+### What's in shared/auth.py
+
+```python
+verify_password()              # Password verification (bcrypt)
+get_password_hash()            # Password hashing
+create_access_token()          # JWT token creation
+create_refresh_token()         # JWT refresh token
+decode_token()                 # JWT decoding
+verify_access_token()          # Token validation + type checking
+verify_refresh_token()         # Refresh token validation
+create_token_payload()         # Standardized payload
+extract_user_from_token()      # Extract user info from token
+```
+
+### What's in shared/auth/__init__.py
+
+```python
+# From jwt.py:
+CurrentUser                    # Pydantic model
+get_current_user()            # FastAPI dependency
+get_optional_user()           # Optional user dependency
+decode_token()                # Token decoding
+
+# From permissions.py:
+Role                          # Enum
+PermissionChecker             # Role-based checker
+require_role()                # Decorator
+require_super_admin()         # Admin decorator
+require_admin()               # Admin check
+require_manager()             # Manager check
+require_same_organization()   # Org isolation
+```
+
+### What's MISSING from Exports
+
+- `verify_password` - NOT in `__init__.py`
+- `create_access_token` - NOT in `__init__.py`
+- `create_token_payload` - NOT in `__init__.py`
+- `get_password_hash` - NOT in `__init__.py`
+
+This is the ROOT CAUSE of import failures.
+
+---
+
+## CONFIGURATION ANALYSIS
+
+### Backend Config Issues
+
+**File**: `/backend-python/shared/config.py`
+
+Uses Pydantic v2 Settings with `extra=forbid`:
+```python
+class Settings(BaseSettings):
+    model_config = ConfigDict(extra="forbid")  # Very strict
+```
+
+This rejects **all** environment variables not explicitly defined.
+
+**Current .env Variables**: 102 different variables  
+**Potential Impact**: Config initialization fails if ANY env var is missing
+
+---
+
+### Frontend Config Issues
+
+**File**: `/cms-vite/.env`
+
+```env
+VITE_API_URL=http://192.168.5.12:8001
+VITE_API_VERSION=v1
+VITE_PORT=3000
 VITE_PROXY_TARGET=http://192.168.5.12:8001
 ```
 
-**Analysis**:
-- ⚠️  Server IP di-hardcode di .env (acceptable untuk development)
-- ✅ Semua values menggunakan environment variables
-- ✅ Tidak ada hardcode langsung di source code
+**During Development**:
+- Vite proxy translates `/api/v1/*` → `http://192.168.5.12:8001/api/v1/*`
+- axios baseURL: `/api/v1` (relative)
+- Works fine ✓
 
-**Recommendation**: ✅ **Acceptable**
-- Development: OK untuk hardcode di .env
-- Production: HARUS di-configure via environment
+**During Production**:
+- No proxy available
+- axios baseURL needs to be absolute URL
+- Will fail with CORS if not configured correctly
 
-### 3. Cek Hardcode di Frontend Components
+---
 
-Hasil scan untuk `http://|https://|192.168.|localhost`:
+## IMPORT CHAIN ANALYSIS
+
+### Broken Import Chain #1: Login Use Case
+
 ```
-Found in 8 files - MOSTLY IN COMMENTS/DOCUMENTATION
+services/auth/use_cases/login.py
+  │
+  └─ from shared.auth import verify_password
+       │
+       └─ Python loader checks:
+            1. /shared/auth/__init__.py  ← FOUND (package)
+            2. Looks for 'verify_password' in exports
+            3. NOT FOUND ✗
+            4. ImportError raised
+
+The actual function is in /shared/auth.py (file) which is shadowed by /shared/auth/ (directory)
 ```
 
-**Verified Files**:
-1. ✅ ResetPasswordForm.tsx - Only in comments
-2. ✅ ForgotPasswordForm.tsx - Only in comments  
-3. ✅ OrganizationsTab.tsx - Only in comments
-4. ⚠️  client.ts - Fallback URL (already noted above)
-5. ✅ Other files - Documentation only
+### Broken Import Chain #2: Middleware
 
-**Status**: ✅ **No Critical Hardcoding**
+```
+shared/middleware.py
+  │
+  └─ from shared.auth import extract_user_from_token
+       │
+       └─ Python loader:
+            1. Finds /shared/auth/__init__.py
+            2. Looks for 'extract_user_from_token'
+            3. IS FOUND ✓ (exported from jwt.py)
+            4. Load successful
 
----
-
-## 🔄 API Endpoints Consistency Check
-
-### Backend Routes (shared/api_routes.py) vs Frontend Endpoints (lib/api/endpoints.ts)
-
-| Service | Backend Route | Frontend Endpoint | Status |
-|---------|--------------|-------------------|---------|
-| **AUTH** |
-| Login | `/api/v1/auth/login` | `/auth/login` | ✅ Match |
-| Register | `/api/v1/auth/register` | `/auth/register` | ✅ Match |
-| Forgot Password | `/api/v1/auth/forgot-password` | `/auth/forgot-password` | ✅ Match |
-| Reset Password | `/api/v1/auth/reset-password` | `/auth/reset-password` | ✅ Match |
-| **ORGANIZATIONS** |
-| List | `/api/v1/organizations` | `/organizations` | ✅ Match |
-| Get | `/api/v1/organizations/{id}` | `/organizations/${id}` | ✅ Match |
-| Create | `/api/v1/organizations` | `/organizations` | ✅ Match |
-| Update | `/api/v1/organizations/{id}` | `/organizations/${id}` | ✅ Match |
-| Delete | `/api/v1/organizations/{id}` | `/organizations/${id}` | ✅ Match |
-| Validate PIN | `/api/v1/organizations/{id}/validate-pin` | `/organizations/validate-pin` | ⚠️  Different |
-| **USERS** |
-| List | `/api/v1/users` | `/users` | ✅ Match |
-| Get | `/api/v1/users/{id}` | `/users/${id}` | ✅ Match |
-| Create | `/api/v1/users` | `/users` | ✅ Match |
-| Update | `/api/v1/users/{id}` | `/users/${id}` | ✅ Match |
-| Change Password | `/api/v1/users/{id}/change-password` | `/users/${id}/change-password` | ✅ Match |
-| Delete | `/api/v1/users/{id}` | `/users/${id}` | ✅ Match |
-| **AUDIT** |
-| List | `/api/v1/audit-logs` | (Not defined yet) | ⚠️  Missing |
-| Get | `/api/v1/audit-logs/{id}` | (Not defined yet) | ⚠️  Missing |
-| **DEVICES** |
-| List | `/api/v1/devices` | `/devices` | ✅ Defined |
-| Get | `/api/v1/devices/{id}` | `/devices/${id}` | ✅ Defined |
-| Others | Various | Various | ✅ Defined |
-
-### ⚠️ Inconsistencies Found:
-
-1. **Organization VALIDATE_PIN**:
-   - Backend: `/api/v1/organizations/{id}/validate-pin`
-   - Frontend: `/organizations/validate-pin` (missing {id})
-   - **Impact**: Medium - May cause routing issues
-   - **Fix Required**: Update frontend endpoint
-
-2. **Audit Endpoints Missing**:
-   - Frontend endpoints.ts tidak mendefinisikan audit routes
-   - Backend: AuditRoutes.LIST, AuditRoutes.GET
-   - **Impact**: Low - Already works via direct path in components
-   - **Fix Recommended**: Add to endpoints.ts for consistency
+services/organization/routes.py
+  │
+  └─ from shared.middleware import get_current_active_user
+       │
+       └─ middleware.py tries to import extract_user_from_token
+            │
+            └─ shared/auth.py context needed (for create_token_payload, etc.)
+                 │
+                 └─ BREAKS due to Issue #1
+```
 
 ---
 
-## 🔍 Missing Frontend Implementations
+## VALIDATION & SECURITY ISSUES
 
-### Critical Missing Features:
+### Password Validation Missing
 
-1. **Device API Service**
-   ```
-   ❌ src/features/devices/services/devicesApi.ts
-   ```
-   **Impact**: HIGH
-   - Backend sudah ready dengan 8 endpoints
-   - Frontend hanya placeholder
-   - Device management tidak bisa digunakan
+1. **Frontend**: No password strength validation
+2. **Backend**: No password policy enforcement in registration
 
-2. **Content API Service**
-   ```
-   ❌ src/features/content/services/contentApi.ts
-   ```
-   **Impact**: MEDIUM (jika backend belum ready)
-   - Backend belum diimplementasi
-   - Frontend struktur folder ada tapi kosong
+**Required**:
+- Min length check (8 chars)
+- Complexity requirements (mix of upper/lower/numbers/symbols)
+- Rate limiting on login attempts
 
-3. **Playlist API Service**
-   ```
-   ❌ src/features/playlists/services/playlistsApi.ts
-   ```
-   **Impact**: MEDIUM (jika backend belum ready)
-   - Backend belum diimplementasi
-   - Frontend struktur folder ada tapi kosong
+### Multi-Tenant Isolation Broken
 
----
+**Content Upload**:
+- Uses hardcoded `user_id=9` and `org_id=4`
+- All uploads attributed to same user
+- Audit logs compromised
 
-## 📋 Action Items
+**Expected Behavior**:
+```python
+current_user = get_current_active_user()  # From JWT token
+org_id = current_user["organization_id"]  # From token
+user_id = current_user["user_id"]         # From token
 
-### 🔴 Priority 1 - Critical
+# Verify user belongs to this org
+# Verify upload within quota
+# Log action with correct user/org
+```
 
-1. **Fix Organization VALIDATE_PIN endpoint**
-   ```typescript
-   // File: cms-vite/src/lib/api/endpoints.ts
-   // Current:
-   VALIDATE_PIN: '/organizations/validate-pin',
-   
-   // Should be:
-   VALIDATE_PIN: (id: number) => `/organizations/${id}/validate-pin`,
-   ```
+### CORS Configuration
 
-2. **Create Device API Service**
-   ```
-   Create: cms-vite/src/features/devices/services/devicesApi.ts
-   Implement all 8 backend endpoints
-   ```
+**Backend**: `/main.py` lines 81-101  
+**Issue**: Hardcoded origins, doesn't use .env properly
 
-### 🟡 Priority 2 - Recommended
-
-3. **Add Audit Routes to endpoints.ts**
-   ```typescript
-   // Add to cms-vite/src/lib/api/endpoints.ts
-   AUDIT: {
-     LIST: '/audit-logs',
-     GET: (id: number) => `/audit-logs/${id}`,
-   },
-   ```
-
-4. **Remove Hardcoded Fallback URL**
-   ```typescript
-   // File: cms-vite/src/lib/api/client.ts
-   // Replace:
-   const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://192.168.5.12:8001';
-   
-   // With:
-   const API_BASE_URL = import.meta.env.VITE_API_URL;
-   if (!API_BASE_URL) {
-     throw new Error('VITE_API_URL is not defined in environment variables');
-   }
-   ```
-
-### 🟢 Priority 3 - Future
-
-5. **Implement Content Service** (when backend ready)
-6. **Implement Playlist Service** (when backend ready)
+```python
+if settings.ENABLE_CORS:
+    cors_origins = settings.get_cors_origins_list()
+    
+    if not cors_origins:  # Falls back to hardcoded
+        cors_origins = [
+            "http://localhost:3000",
+            "http://localhost:5173",
+            "http://192.168.5.12:8080",
+            "http://192.168.5.12:3000"
+        ]
+```
 
 ---
 
-## ✅ Best Practices Compliance
+## RECOMMENDATIONS & SOLUTIONS
 
-### ✅ Good Practices Found:
+### Priority 1: Fix Auth Module Structure (CRITICAL)
 
-1. **Centralized Route Definitions**
-   - Backend: `shared/api_routes.py`
-   - Frontend: `lib/api/endpoints.ts`
-   - Both menggunakan single source of truth
+**Problem**: Dual auth.py vs auth/ package
 
-2. **Environment Variables**
-   - Semua configuration menggunakan env vars
-   - .env.example provided
-   - No secrets in code
+**Solution**: Consolidate into single structure
 
-3. **Type Safety**
-   - Frontend menggunakan TypeScript interfaces
-   - Backend menggunakan Pydantic models
-   - Strong typing di kedua sisi
+**Option A - Recommended: Keep Package Structure**
+1. Delete `/shared/auth.py`
+2. Move all functions to `/shared/auth/jwt.py`
+3. Export from `/shared/auth/__init__.py`
 
-4. **Consistent Naming**
-   - Endpoint naming conventions consistent
-   - RESTful patterns followed
-   - Clear separation of concerns
+**Files to modify**:
+- Delete: `/backend-python/shared/auth.py`
+- Update: `/backend-python/shared/auth/__init__.py`
+- Update: `/backend-python/shared/auth/jwt.py`
+- Update imports in:
+  - `services/auth/use_cases/login.py` (line 13)
+  - `shared/middleware.py` (line 10)
 
-5. **Security**
-   - JWT authentication implemented
-   - Rate limiting on auth endpoints
-   - Input validation di backend
-   - Password hashing dengan bcrypt
-   - CORS configured properly
+**Option B - Keep File Module**
+1. Delete `/shared/auth/` directory
+2. Keep `/shared/auth.py` as single file
+3. Update route middleware dependencies
 
-6. **Error Handling**
-   - Centralized error handlers
-   - Consistent error responses
-   - User-friendly error messages
-
-### ⚠️ Areas for Improvement:
-
-1. Hardcoded fallback URL di client.ts
-2. Incomplete device management frontend
-3. Missing audit endpoints definition di frontend
-4. Organization VALIDATE_PIN inconsistency
+**Recommendation**: Choose Option A (cleaner architecture)
 
 ---
 
-## 📈 Integration Completeness Score
+### Priority 2: Fix Content Upload Authentication
 
-| Category | Score | Status |
-|----------|-------|--------|
-| Auth Service | 100% | ✅ Complete |
-| Organization Service | 95% | ⚠️  Minor fix needed |
-| User Service | 100% | ✅ Complete |
-| Audit Service | 90% | ⚠️  Minor improvement |
-| Device Service | 40% | ⚠️  Backend ready, frontend missing |
-| Content Service | 0% | ❌ Not implemented |
-| Playlist Service | 0% | ❌ Not implemented |
-| **Overall** | **75%** | ⚠️  **Good, needs completion** |
+**Problem**: Hardcoded mock user and org
 
----
+**Solution**: Use real JWT authentication
 
-## 🎯 Recommendations
+**File**: `/backend-python/services/content/routes.py` (lines 51-58)
 
-### Immediate Actions:
-1. Fix VALIDATE_PIN endpoint inconsistency
-2. Create devicesApi.ts service
-3. Add audit routes to endpoints.ts
+**Change**:
+```python
+# FROM:
+def get_current_user():
+    """TODO: Replace with real auth middleware"""
+    return {
+        "id": 9,
+        "organization_id": 4,
+        "username": "admin"
+    }
 
-### Short Term:
-4. Remove hardcoded fallback URL
-5. Complete device management UI
-6. Add comprehensive error handling
+# TO:
+from shared.middleware import get_current_active_user
 
-### Long Term:
-7. Implement content management (when backend ready)
-8. Implement playlist management (when backend ready)
-9. Add automated API integration tests
+# Use it in route decorator:
+@router.post(...)
+async def upload_content(
+    current_user: dict = Depends(get_current_active_user),
+    ...
+):
+```
 
 ---
 
-## 📝 Conclusion
+### Priority 3: Add Frontend Password Validation
 
-**Status**: System sudah terintegrasi dengan baik untuk fitur-fitur core (Auth, Organization, User, Audit).
+**Files to update**:
+- `/cms-vite/src/features/auth/components/RegisterForm.tsx`
+- `/cms-vite/src/features/auth/types/auth.ts`
 
-**Strengths**:
-- ✅ Konsistensi API endpoints
-- ✅ Environment variable usage
-- ✅ Type safety di kedua sisi
-- ✅ Security best practices
+**Add validation function**:
+```typescript
+interface PasswordValidation {
+  isValid: boolean;
+  errors: string[];
+  strength: 'weak' | 'fair' | 'good' | 'strong';
+}
 
-**Weaknesses**:
-- ⚠️  Device frontend incomplete
-- ⚠️  Minor endpoint inconsistencies
-- ⚠️  Content/Playlist not yet implemented
-
-**Overall**: 75% Complete - System production-ready untuk fitur yang sudah diimplementasi, tapi perlu completion untuk device management.
+function validatePassword(password: string): PasswordValidation {
+  const errors: string[] = [];
+  
+  if (password.length < 8) errors.push('Min 8 characters');
+  if (!/[A-Z]/.test(password)) errors.push('Needs uppercase');
+  if (!/[a-z]/.test(password)) errors.push('Needs lowercase');
+  if (!/[0-9]/.test(password)) errors.push('Needs number');
+  
+  return {
+    isValid: errors.length === 0,
+    errors,
+    strength: calculateStrength(password)
+  };
+}
+```
 
 ---
 
-**Prepared by**: AI Analysis
-**Date**: 2025-11-05
-**Version**: 1.0
+### Priority 4: Fix Backend .env Configuration
+
+**Issue**: `extra="forbid"` in config rejects unknown env vars
+
+**Solution**: Change Pydantic settings
+
+**File**: `/backend-python/shared/config.py`
+
+```python
+class Settings(BaseSettings):
+    # Change from:
+    # model_config = ConfigDict(extra="forbid")
+    
+    # To:
+    model_config = ConfigDict(extra="ignore")  # Ignore unknown vars
+```
+
+---
+
+### Priority 5: Update API Response Types
+
+**Frontend endpoint expectations**:
+
+```typescript
+// For organizationsApi.list()
+interface OrganizationListData {
+  organizations: Organization[];
+  total: number;
+  active: number;
+}
+
+// For contentApi.list()
+interface ContentListResponse {
+  success: boolean;
+  data: {
+    contents: Content[];
+    total: number;
+    page: number;
+  };
+}
+```
+
+**Ensure backend responses match these structures exactly**
+
+---
+
+## IMPLEMENTATION PLAN
+
+### Phase 1: Fix Core Auth (Day 1)
+1. Consolidate auth modules
+2. Export all functions from `__init__.py`
+3. Test imports: `python -m pytest tests/unit/shared/test_auth.py`
+
+### Phase 2: Fix Services (Day 1-2)
+1. Update content upload to use real auth
+2. Fix organization routes auth dependency
+3. Test service endpoints
+
+### Phase 3: Frontend Updates (Day 2)
+1. Add password validation
+2. Handle response type changes
+3. Test with real backend
+
+### Phase 4: Configuration (Day 3)
+1. Update .env handling
+2. Test with different environments
+3. Document env variables
+
+---
+
+## FILE CHECKLIST
+
+### Critical Files to Review
+
+- [ ] `/backend-python/shared/auth.py` - Consolidate
+- [ ] `/backend-python/shared/auth/__init__.py` - Update exports
+- [ ] `/backend-python/services/auth/use_cases/login.py` - Fix imports
+- [ ] `/backend-python/services/content/routes.py` - Fix auth
+- [ ] `/backend-python/services/organization/routes.py` - Fix imports
+- [ ] `/backend-python/shared/middleware.py` - Update auth references
+- [ ] `/cms-vite/src/features/auth/components/RegisterForm.tsx` - Add validation
+- [ ] `/cms-vite/src/features/organizations/services/organizationsApi.ts` - Fix types
+- [ ] `/backend-python/shared/config.py` - Fix extra="forbid"
+
+---
+
+## TESTING RECOMMENDATIONS
+
+### Unit Tests Needed
+
+1. **Auth Module Tests**
+   - Test `verify_password()` functionality
+   - Test token creation/validation
+   - Test permission checkers
+
+2. **Integration Tests**
+   - Test login flow end-to-end
+   - Test organization CRUD with auth
+   - Test content upload with correct user/org
+
+### E2E Tests Needed
+
+1. **User Flow**
+   - Register → Login → View orgs → Upload content
+   - Test permission denial scenarios
+
+2. **API Contract Tests**
+   - Verify request/response formats match
+   - Test error responses
+
+---
+
+## SUMMARY TABLE
+
+| Issue | Severity | Type | Files | Root Cause |
+|-------|----------|------|-------|-----------|
+| Auth module conflict | CRITICAL | Architecture | auth.py + auth/ | Package shadows file |
+| Content hardcoded auth | HIGH | Security | content/routes.py | Mock user never replaced |
+| Middleware import chain | HIGH | Dependency | middleware.py | Depends on broken auth |
+| Frontend password validation | HIGH | Feature | LoginForm.tsx | Not implemented |
+| Response type mismatch | MEDIUM | Integration | organizationsApi.ts | Axios wrapping |
+| .env extra="forbid" | MEDIUM | Config | config.py | Too strict validation |
+| CORS hardcoded | MEDIUM | Config | main.py | Doesn't use settings |
+| Database DTO mismatch | MEDIUM | Type Safety | models.py + dtos.py | Inconsistent definitions |
+

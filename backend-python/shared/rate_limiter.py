@@ -10,9 +10,11 @@ Features:
 """
 
 from datetime import datetime, timedelta
-from typing import Dict, Optional
+from typing import Dict, Optional, Callable
 from fastapi import HTTPException, Request, status
 import threading
+import functools
+import inspect
 
 
 class RateLimiter:
@@ -142,7 +144,7 @@ def get_client_ip(request: Request) -> str:
 def rate_limit(
     max_requests: int = 5,
     window_seconds: int = 60,
-    identifier_func: callable = None
+    identifier_func: Callable = None
 ):
     """
     Rate limiting decorator for FastAPI endpoints
@@ -171,49 +173,97 @@ def rate_limit(
         ...     # Your login logic
         ...     pass
     """
-    def decorator(func):
-        async def wrapper(*args, **kwargs):
-            # Find Request object in args/kwargs
-            request = None
-            for arg in args:
-                if isinstance(arg, Request):
-                    request = arg
-                    break
-            if not request and "request" in kwargs:
-                request = kwargs["request"]
-            if not request and "http_request" in kwargs:
-                request = kwargs["http_request"]
+    def decorator(func: Callable) -> Callable:
+        # Check if function is async
+        is_async = inspect.iscoroutinefunction(func)
 
-            if not request:
-                # If no request found, skip rate limiting (shouldn't happen in normal use)
-                return await func(*args, **kwargs) if hasattr(func, '__call__') else func(*args, **kwargs)
+        if is_async:
+            @functools.wraps(func)
+            async def async_wrapper(*args, **kwargs):
+                # Find Request object in args/kwargs
+                request = None
+                for arg in args:
+                    if isinstance(arg, Request):
+                        request = arg
+                        break
+                if not request:
+                    for key in ["request", "http_request"]:
+                        if key in kwargs and isinstance(kwargs[key], Request):
+                            request = kwargs[key]
+                            break
 
-            # Get identifier (default: IP address)
-            if identifier_func:
-                identifier = identifier_func(request)
-            else:
-                identifier = get_client_ip(request)
+                if not request:
+                    # If no request found, skip rate limiting
+                    return await func(*args, **kwargs)
 
-            # Check rate limit
-            is_allowed, retry_after = _rate_limiter.check_rate_limit(
-                identifier=identifier,
-                max_requests=max_requests,
-                window_seconds=window_seconds
-            )
+                # Get identifier (default: IP address)
+                if identifier_func:
+                    identifier = identifier_func(request)
+                else:
+                    identifier = get_client_ip(request)
 
-            if not is_allowed:
-                raise HTTPException(
-                    status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-                    detail=f"Too many requests. Please try again in {retry_after} seconds.",
-                    headers={"Retry-After": str(retry_after)}
+                # Check rate limit
+                is_allowed, retry_after = _rate_limiter.check_rate_limit(
+                    identifier=identifier,
+                    max_requests=max_requests,
+                    window_seconds=window_seconds
                 )
 
-            # Call the original function
-            if hasattr(func, '__call__'):
-                return await func(*args, **kwargs)
-            return func(*args, **kwargs)
+                if not is_allowed:
+                    raise HTTPException(
+                        status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                        detail=f"Too many requests. Please try again in {retry_after} seconds.",
+                        headers={"Retry-After": str(retry_after)}
+                    )
 
-        return wrapper
+                # Call the original function
+                return await func(*args, **kwargs)
+
+            return async_wrapper
+        else:
+            @functools.wraps(func)
+            def sync_wrapper(*args, **kwargs):
+                # Find Request object in args/kwargs
+                request = None
+                for arg in args:
+                    if isinstance(arg, Request):
+                        request = arg
+                        break
+                if not request:
+                    for key in ["request", "http_request"]:
+                        if key in kwargs and isinstance(kwargs[key], Request):
+                            request = kwargs[key]
+                            break
+
+                if not request:
+                    # If no request found, skip rate limiting
+                    return func(*args, **kwargs)
+
+                # Get identifier (default: IP address)
+                if identifier_func:
+                    identifier = identifier_func(request)
+                else:
+                    identifier = get_client_ip(request)
+
+                # Check rate limit
+                is_allowed, retry_after = _rate_limiter.check_rate_limit(
+                    identifier=identifier,
+                    max_requests=max_requests,
+                    window_seconds=window_seconds
+                )
+
+                if not is_allowed:
+                    raise HTTPException(
+                        status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                        detail=f"Too many requests. Please try again in {retry_after} seconds.",
+                        headers={"Retry-After": str(retry_after)}
+                    )
+
+                # Call the original function
+                return func(*args, **kwargs)
+
+            return sync_wrapper
+
     return decorator
 
 

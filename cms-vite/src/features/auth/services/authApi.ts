@@ -29,11 +29,12 @@ export const authApi = {
    * @returns User, token, and organizations
    */
   login: async (credentials: LoginRequest): Promise<LoginResponse['data']> => {
-    const { data } = await apiClient.post<LoginResponse>(
+    const { data } = await apiClient.post<LoginResponse['data']>(
       API_ENDPOINTS.AUTH.LOGIN,
       credentials
     );
-    return data.data;
+    // Response interceptor already unwraps { success, data } -> data
+    return data;
   },
 
   /**
@@ -42,11 +43,12 @@ export const authApi = {
    * @returns Created user
    */
   register: async (userData: RegisterRequest): Promise<User> => {
-    const { data } = await apiClient.post(
+    const { data } = await apiClient.post<User>(
       API_ENDPOINTS.AUTH.REGISTER,
       userData
     );
-    return data.data;
+    // Response interceptor already unwraps
+    return data;
   },
 
   /**
@@ -54,8 +56,9 @@ export const authApi = {
    * @returns Current user
    */
   me: async (): Promise<User> => {
-    const { data } = await apiClient.get(API_ENDPOINTS.AUTH.ME);
-    return data.data;
+    const { data } = await apiClient.get<User>(API_ENDPOINTS.AUTH.ME);
+    // Response interceptor already unwraps
+    return data;
   },
 
   /**
@@ -70,8 +73,9 @@ export const authApi = {
    * @returns New token
    */
   refresh: async (): Promise<string> => {
-    const { data } = await apiClient.post(API_ENDPOINTS.AUTH.REFRESH);
-    return data.data.token;
+    const { data } = await apiClient.post<{ token: string }>(API_ENDPOINTS.AUTH.REFRESH);
+    // Response interceptor already unwraps
+    return data.token;
   },
 
   /**

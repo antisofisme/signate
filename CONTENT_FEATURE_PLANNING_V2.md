@@ -1316,6 +1316,1039 @@ class MinIOStorage(IStorageService):
 
 ---
 
+## 🏗️ BACKEND SERVICE STRUCTURE (Clean Architecture)
+
+**Following Backend-Python README patterns exactly:**
+
+### Directory Structure
+
+```
+backend-python/services/content/
+├── domain/                         # 📦 CORE - Business Logic (No dependencies)
+│   ├── __init__.py
+│   ├── content.py                 # Content entity (pure Python dataclass)
+│   └── interfaces.py              # IContentRepository interface
+├── use_cases/                     # 🎯 APPLICATION LOGIC (1 file = 1 use case)
+│   ├── __init__.py
+│   ├── upload_content.py          # Upload & save content
+│   ├── list_content.py            # List content with filters
+│   ├── get_content.py             # Get single content by ID
+│   ├── update_content.py          # Update content metadata
+│   ├── delete_content.py          # Soft delete content
+│   └── get_content_stats.py       # Get storage statistics
+├── repositories/                  # 🔧 INFRASTRUCTURE - Database
+│   ├── __init__.py
+│   ├── models.py                  # SQLAlchemy ContentModel
+│   └── content_repo.py            # ContentRepository implementation
+├── infrastructure/                # 🔧 INFRASTRUCTURE - Storage
+│   ├── __init__.py
+│   └── storage/
+│       ├── __init__.py
+│       ├── interfaces.py          # IStorageService interface
+│       ├── local_storage.py       # LocalFilesystemStorage
+│       └── metadata_extractor.py  # FFprobe metadata extraction
+├── dtos.py                        # 📝 Request/Response DTOs (Pydantic)
+└── routes.py                      # 🌐 HTTP - FastAPI endpoints with DI
+```
+
+**Dependency Flow:**
+```
+routes.py → use_cases/ → domain/ interfaces
+              ↓
+          repositories/ + infrastructure/
+```
+
+### Integration with Shared Utilities
+
+#### 1. API Routes Registration
+
+**Add to:** `backend-python/shared/api_routes.py`
+
+```python
+# shared/api_routes.py
+
+API_V1 = "/api/v1"
+
+# ... existing routes ...
+
+class ContentRoutes:
+    """Content endpoints"""
+    BASE = f"{API_V1}/content"
+    LIST = f"{API_V1}/content"                          # GET - List content
+    GET = lambda id: f"{API_V1}/content/{id}"           # GET - Get by ID
+    UPLOAD = f"{API_V1}/content/upload"                 # POST - Upload file
+    UPDATE = lambda id: f"{API_V1}/content/{id}"        # PUT - Update metadata
+    DELETE = lambda id: f"{API_V1}/content/{id}"        # DELETE - Soft delete
+    STATS = f"{API_V1}/content/stats"                   # GET - Storage stats
+
+    # File serving (via backend - optional)
+    SERVE = lambda id: f"{API_V1}/content/{id}/serve"   # GET - Serve file
+```
+
+#### 2. Error Handling with Shared Utilities
+
+**Use existing:** `backend-python/shared/errors.py`
+
+```python
+# In use_cases/upload_content.py
+from shared.errors import ValidationError, DuplicateError, StorageException
+
+class UploadContentUseCase:
+    def execute(self, ...):
+        # Validate file type
+        if ext not in self.SUPPORTED_EXTENSIONS:
+            raise ValidationError(
+                f"File type {ext} not supported",
+                details={"supported": list(self.SUPPORTED_EXTENSIONS)}
+            )
+
+        # Check duplicate
+        if existing_content:
+            raise DuplicateError(
+                f"File already exists",
+                details={"existing_id": existing_content.id}
+            )
+```
+
+#### 3. Response Formatting
+
+**Use existing:** `backend-python/shared/responses.py`
+
+```python
+# In routes.py
+from shared.responses import success_response, error_response, paginated_response
+
+@router.post(ContentRoutes.UPLOAD)
+async def upload_content(
+    file: UploadFile,
+    title: str = Form(...),
+    # ... other params
+):
+    try:
+        content = await upload_use_case.execute(...)
+
+        return success_response(
+            data=ContentResponse.from_entity(content),
+            message="Content uploaded successfully",
+            status_code=201
+        )
+    except ValidationError as e:
+        return error_response(
+            message=str(e),
+            details=e.details,
+            status_code=400
+        )
+
+@router.get(ContentRoutes.LIST)
+async def list_content(
+    skip: int = 0,
+    limit: int = 20,
+    content_type: Optional[str] = None
+):
+    contents, total = list_use_case.execute(skip, limit, content_type)
+
+    return paginated_response(
+        data=[ContentResponse.from_entity(c) for c in contents],
+        total=total,
+        skip=skip,
+        limit=limit
+    )
+```
+
+#### 4. Audit Logging Integration
+
+**Use existing:** `backend-python/shared/logging.py` + `services/audit/`
+
+```python
+# In routes.py
+from shared.logging import AuditLogger
+from services.audit.use_cases.create_audit_log import CreateAuditLogUseCase
+from services.audit.repositories.audit_log_repo import get_audit_log_repository
+
+# Dependency injection for audit logger
+def get_audit_logger(
+    create_audit_log_use_case = Depends(get_create_audit_log_use_case)
+) -> AuditLogger:
+    return AuditLogger(create_audit_log_use_case=create_audit_log_use_case)
+
+@router.post(ContentRoutes.UPLOAD)
+async def upload_content(
+    # ... params
+    audit_logger: AuditLogger = Depends(get_audit_logger),
+    request: Request
+):
+    content = await upload_use_case.execute(...)
+
+    # Log audit trail
+    await audit_logger.log_action(
+        user_id=current_user["id"],
+        organization_id=current_user["organization_id"],
+        action="content.upload",
+        resource_type="content",
+        resource_id=content.id,
+        details={
+            "title": content.title,
+            "content_type": content.content_type,
+            "file_size": content.file_size,
+            "mime_type": content.mime_type
+        },
+        ip_address=request.client.host,
+        user_agent=request.headers.get("user-agent")
+    )
+
+    return success_response(...)
+```
+
+### Domain Layer Example
+
+```python
+# domain/content.py
+
+from dataclasses import dataclass
+from datetime import datetime
+from typing import Optional
+from shared.errors import ValidationError
+
+@dataclass
+class Content:
+    """Content domain entity - Pure business logic"""
+
+    id: Optional[int]
+    title: str
+    description: Optional[str]
+    content_type: str  # 'image', 'video', 'audio'
+
+    # Storage fields (custom system)
+    file_path: str
+    file_url: str
+    storage_key: str
+    file_hash: str
+    file_size: int
+
+    # Display settings
+    duration: int
+    is_active: bool
+
+    # File metadata
+    mime_type: str
+    original_filename: str
+    file_extension: str
+    resolution: Optional[str] = None
+    width: Optional[int] = None
+    height: Optional[int] = None
+
+    # Multi-tenant
+    organization_id: int
+    uploaded_by: int
+
+    # Timestamps
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
+    deleted_at: Optional[datetime] = None
+
+    # Valid types
+    VALID_TYPES = ['image', 'video', 'audio']
+
+    def __post_init__(self):
+        """Validate business rules"""
+        if not self.title or len(self.title.strip()) == 0:
+            raise ValidationError("Title is required")
+
+        if len(self.title) > 200:
+            raise ValidationError("Title must be <= 200 characters")
+
+        if self.content_type not in self.VALID_TYPES:
+            raise ValidationError(
+                f"Content type must be one of: {', '.join(self.VALID_TYPES)}"
+            )
+
+        if self.duration < 1:
+            raise ValidationError("Duration must be at least 1 second")
+
+        if self.file_size < 0:
+            raise ValidationError("File size cannot be negative")
+
+    def is_image(self) -> bool:
+        return self.content_type == 'image'
+
+    def is_video(self) -> bool:
+        return self.content_type == 'video'
+
+    def is_audio(self) -> bool:
+        return self.content_type == 'audio'
+
+    def is_deleted(self) -> bool:
+        return self.deleted_at is not None
+```
+
+```python
+# domain/interfaces.py
+
+from abc import ABC, abstractmethod
+from typing import List, Optional, Tuple
+from .content import Content
+
+class IContentRepository(ABC):
+    """Content repository interface"""
+
+    @abstractmethod
+    def create(self, content: Content) -> Content:
+        """Create new content"""
+        pass
+
+    @abstractmethod
+    def find_by_id(self, content_id: int, organization_id: int) -> Optional[Content]:
+        """Find content by ID (org-scoped)"""
+        pass
+
+    @abstractmethod
+    def find_all(
+        self,
+        organization_id: int,
+        skip: int = 0,
+        limit: int = 20,
+        content_type: Optional[str] = None,
+        is_active: Optional[bool] = None
+    ) -> Tuple[List[Content], int]:
+        """List content with filters (returns items + total count)"""
+        pass
+
+    @abstractmethod
+    def find_by_hash(self, file_hash: str, organization_id: int) -> Optional[Content]:
+        """Find content by file hash (deduplication check)"""
+        pass
+
+    @abstractmethod
+    def update(self, content: Content) -> Content:
+        """Update content metadata"""
+        pass
+
+    @abstractmethod
+    def soft_delete(self, content_id: int, organization_id: int) -> bool:
+        """Soft delete content (set deleted_at)"""
+        pass
+
+    @abstractmethod
+    def get_storage_stats(self, organization_id: int) -> dict:
+        """Get storage statistics"""
+        pass
+```
+
+### Dependency Injection in Routes
+
+```python
+# routes.py
+
+from fastapi import APIRouter, Depends, UploadFile, File, Form, Request
+from sqlalchemy.orm import Session
+from shared.database import get_db
+from shared.api_routes import ContentRoutes
+from shared.responses import success_response, error_response, paginated_response
+from shared.errors import ValidationError, NotFoundError
+
+from .repositories.content_repo import ContentRepository
+from .infrastructure.storage.local_storage import LocalFilesystemStorage
+from .infrastructure.storage.metadata_extractor import MetadataExtractor
+from .use_cases.upload_content import UploadContentUseCase
+from .use_cases.list_content import ListContentUseCase
+from .use_cases.get_content import GetContentUseCase
+from .use_cases.update_content import UpdateContentUseCase
+from .use_cases.delete_content import DeleteContentUseCase
+from .dtos import ContentResponse, ContentUpdateRequest
+
+router = APIRouter(prefix="/api/v1/content", tags=["content"])
+
+# Dependency injection functions
+def get_content_repository(db: Session = Depends(get_db)) -> ContentRepository:
+    return ContentRepository(db)
+
+def get_storage_service() -> LocalFilesystemStorage:
+    return LocalFilesystemStorage(
+        base_path="/data/signage/content",
+        base_url="http://192.168.5.12:8001"
+    )
+
+def get_metadata_extractor() -> MetadataExtractor:
+    return MetadataExtractor()
+
+def get_upload_content_use_case(
+    content_repo: ContentRepository = Depends(get_content_repository),
+    storage_service: LocalFilesystemStorage = Depends(get_storage_service),
+    metadata_extractor: MetadataExtractor = Depends(get_metadata_extractor)
+) -> UploadContentUseCase:
+    return UploadContentUseCase(content_repo, storage_service, metadata_extractor)
+
+def get_list_content_use_case(
+    content_repo: ContentRepository = Depends(get_content_repository)
+) -> ListContentUseCase:
+    return ListContentUseCase(content_repo)
+
+# Endpoints
+@router.post("/upload", response_model=dict)
+async def upload_content(
+    file: UploadFile = File(...),
+    title: str = Form(...),
+    description: Optional[str] = Form(None),
+    duration: int = Form(10),
+    is_active: bool = Form(True),
+    upload_use_case: UploadContentUseCase = Depends(get_upload_content_use_case),
+    current_user: dict = Depends(get_current_user),  # From auth service
+    request: Request
+):
+    """Upload content file"""
+    try:
+        content = await upload_use_case.execute(
+            file=file,
+            title=title,
+            description=description,
+            organization_id=current_user["organization_id"],
+            uploaded_by=current_user["id"],
+            duration=duration,
+            is_active=is_active
+        )
+
+        return success_response(
+            data=ContentResponse.from_entity(content),
+            message="Content uploaded successfully",
+            status_code=201
+        )
+    except ValidationError as e:
+        return error_response(str(e), status_code=400, details=e.details)
+    except Exception as e:
+        return error_response(f"Upload failed: {str(e)}", status_code=500)
+
+@router.get("", response_model=dict)
+async def list_content(
+    skip: int = 0,
+    limit: int = 20,
+    content_type: Optional[str] = None,
+    is_active: Optional[bool] = None,
+    list_use_case: ListContentUseCase = Depends(get_list_content_use_case),
+    current_user: dict = Depends(get_current_user)
+):
+    """List content with filters"""
+    contents, total = list_use_case.execute(
+        organization_id=current_user["organization_id"],
+        skip=skip,
+        limit=limit,
+        content_type=content_type,
+        is_active=is_active
+    )
+
+    return paginated_response(
+        data=[ContentResponse.from_entity(c) for c in contents],
+        total=total,
+        skip=skip,
+        limit=limit
+    )
+```
+
+### DTOs Example
+
+```python
+# dtos.py
+
+from pydantic import BaseModel, Field, validator
+from typing import Optional, Dict, Any
+from datetime import datetime
+
+class ContentUploadRequest(BaseModel):
+    """Upload content request"""
+    title: str = Field(..., min_length=1, max_length=200)
+    description: Optional[str] = Field(None, max_length=1000)
+    duration: int = Field(10, ge=1, le=3600)
+    is_active: bool = True
+
+class ContentUpdateRequest(BaseModel):
+    """Update content metadata request"""
+    title: Optional[str] = Field(None, min_length=1, max_length=200)
+    description: Optional[str] = Field(None, max_length=1000)
+    duration: Optional[int] = Field(None, ge=1, le=3600)
+    is_active: Optional[bool] = None
+
+class ContentResponse(BaseModel):
+    """Content response"""
+    id: int
+    title: str
+    description: Optional[str]
+    content_type: str
+
+    file_url: str
+    thumbnail_url: Optional[str]
+    hls_master_playlist_url: Optional[str]
+
+    duration: int
+    is_active: bool
+
+    file_size: int
+    mime_type: str
+    original_filename: str
+    resolution: Optional[str]
+
+    organization_id: int
+    uploaded_by: int
+
+    created_at: datetime
+    updated_at: datetime
+
+    @staticmethod
+    def from_entity(content) -> "ContentResponse":
+        """Convert domain entity to response DTO"""
+        return ContentResponse(
+            id=content.id,
+            title=content.title,
+            description=content.description,
+            content_type=content.content_type,
+            file_url=content.file_url,
+            thumbnail_url=content.thumbnail_url,
+            hls_master_playlist_url=content.hls_master_playlist_url,
+            duration=content.duration,
+            is_active=content.is_active,
+            file_size=content.file_size,
+            mime_type=content.mime_type,
+            original_filename=content.original_filename,
+            resolution=content.resolution,
+            organization_id=content.organization_id,
+            uploaded_by=content.uploaded_by,
+            created_at=content.created_at,
+            updated_at=content.updated_at
+        )
+
+class ContentStatsResponse(BaseModel):
+    """Storage statistics response"""
+    total_files: int
+    total_size_bytes: int
+    total_size_readable: str
+    by_type: Dict[str, Dict[str, Any]]
+```
+
+---
+
+## 🎨 FRONTEND FEATURE STRUCTURE (Modular + Clean + Centralized)
+
+**Following CMS-Vite README patterns exactly:**
+
+### Directory Structure
+
+```
+cms-vite/src/features/content/
+├── components/                    # Feature-specific UI components
+│   ├── ContentTable.tsx          # Main content list table
+│   ├── ContentCard.tsx           # Grid view card
+│   ├── ContentModal.tsx          # View/Edit content modal
+│   ├── UploadModal.tsx           # Upload content modal
+│   ├── ContentFilters.tsx        # Filter controls (type, active, search)
+│   ├── ContentActions.tsx        # Bulk actions (delete, activate)
+│   ├── ContentTypeBadge.tsx      # Type indicator badge
+│   ├── ContentStatusBadge.tsx    # Active/Inactive badge
+│   ├── ContentPreview.tsx        # Image/video preview
+│   ├── UploadProgress.tsx        # Upload progress bar
+│   └── ContentStats.tsx          # Storage statistics widget
+├── hooks/                        # React Query + custom hooks
+│   ├── useContent.ts            # Query: List content
+│   ├── useContentById.ts        # Query: Get single content
+│   ├── useUploadContent.ts      # Mutation: Upload file
+│   ├── useUpdateContent.ts      # Mutation: Update metadata
+│   ├── useDeleteContent.ts      # Mutation: Delete content
+│   ├── useContentStats.ts       # Query: Storage stats
+│   └── useContentFilters.ts     # Custom: Filter state management
+├── services/                     # API calls (feature-specific)
+│   └── contentApi.ts            # Content API client
+└── types/                        # TypeScript types
+    └── content.ts               # Content interfaces
+```
+
+### Integration with Centralized API
+
+#### 1. Add Endpoints to Centralized Config
+
+**Update:** `cms-vite/src/lib/api/endpoints.ts`
+
+```typescript
+// lib/api/endpoints.ts
+
+export const API_ENDPOINTS = {
+  // ... existing endpoints ...
+
+  // Content
+  CONTENT: {
+    LIST: `${API_V1}/content`,                              // GET
+    GET: (id: number) => `${API_V1}/content/${id}`,        // GET
+    UPLOAD: `${API_V1}/content/upload`,                    // POST (multipart)
+    UPDATE: (id: number) => `${API_V1}/content/${id}`,     // PUT
+    DELETE: (id: number) => `${API_V1}/content/${id}`,     // DELETE
+    STATS: `${API_V1}/content/stats`,                      // GET
+  },
+} as const;
+```
+
+#### 2. Content API Service
+
+```typescript
+// features/content/services/contentApi.ts
+
+import { apiClient } from '@/lib/api/client';
+import { API_ENDPOINTS } from '@/lib/api/endpoints';
+import type { Content, ContentUpload, ContentUpdate, ContentStats } from '../types/content';
+
+export const contentApi = {
+  /**
+   * List content with filters
+   */
+  getAll: async (params?: {
+    skip?: number;
+    limit?: number;
+    content_type?: 'image' | 'video' | 'audio';
+    is_active?: boolean;
+  }) => {
+    const response = await apiClient.get(API_ENDPOINTS.CONTENT.LIST, { params });
+    return response.data;
+  },
+
+  /**
+   * Get content by ID
+   */
+  getById: async (id: number) => {
+    const response = await apiClient.get(API_ENDPOINTS.CONTENT.GET(id));
+    return response.data.data;
+  },
+
+  /**
+   * Upload content file
+   */
+  upload: async (data: ContentUpload, onUploadProgress?: (progress: number) => void) => {
+    const formData = new FormData();
+    formData.append('file', data.file);
+    formData.append('title', data.title);
+    if (data.description) formData.append('description', data.description);
+    formData.append('duration', data.duration.toString());
+    formData.append('is_active', data.is_active.toString());
+
+    const response = await apiClient.post(API_ENDPOINTS.CONTENT.UPLOAD, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+      onUploadProgress: (progressEvent) => {
+        if (progressEvent.total) {
+          const progress = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+          onUploadProgress?.(progress);
+        }
+      },
+    });
+
+    return response.data.data;
+  },
+
+  /**
+   * Update content metadata
+   */
+  update: async (id: number, data: ContentUpdate) => {
+    const response = await apiClient.put(API_ENDPOINTS.CONTENT.UPDATE(id), data);
+    return response.data.data;
+  },
+
+  /**
+   * Delete content (soft delete)
+   */
+  delete: async (id: number) => {
+    const response = await apiClient.delete(API_ENDPOINTS.CONTENT.DELETE(id));
+    return response.data;
+  },
+
+  /**
+   * Get storage statistics
+   */
+  getStats: async () => {
+    const response = await apiClient.get(API_ENDPOINTS.CONTENT.STATS);
+    return response.data.data;
+  },
+};
+```
+
+#### 3. React Query Hooks
+
+```typescript
+// features/content/hooks/useContent.ts
+
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { contentApi } from '../services/contentApi';
+import { useToast } from '@/lib/notifications/toast';
+import type { ContentUpload, ContentUpdate } from '../types/content';
+
+const QUERY_KEY = 'content';
+
+/**
+ * List content with filters
+ */
+export function useContent(params?: {
+  skip?: number;
+  limit?: number;
+  content_type?: 'image' | 'video' | 'audio';
+  is_active?: boolean;
+}) {
+  return useQuery({
+    queryKey: [QUERY_KEY, 'list', params],
+    queryFn: () => contentApi.getAll(params),
+    staleTime: 30000, // 30 seconds
+  });
+}
+
+/**
+ * Get single content by ID
+ */
+export function useContentById(id: number) {
+  return useQuery({
+    queryKey: [QUERY_KEY, 'detail', id],
+    queryFn: () => contentApi.getById(id),
+    enabled: !!id,
+  });
+}
+
+/**
+ * Upload content mutation
+ */
+export function useUploadContent() {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: (data: { upload: ContentUpload; onProgress?: (progress: number) => void }) =>
+      contentApi.upload(data.upload, data.onProgress),
+
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEY] });
+      toast({
+        title: 'Upload berhasil',
+        description: 'Content berhasil diupload',
+        variant: 'success',
+      });
+    },
+
+    onError: (error: any) => {
+      toast({
+        title: 'Upload gagal',
+        description: error.response?.data?.message || 'Terjadi kesalahan saat upload',
+        variant: 'destructive',
+      });
+    },
+  });
+}
+
+/**
+ * Update content mutation
+ */
+export function useUpdateContent() {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: ({ id, data }: { id: number; data: ContentUpdate }) =>
+      contentApi.update(id, data),
+
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEY] });
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEY, 'detail', variables.id] });
+      toast({
+        title: 'Update berhasil',
+        description: 'Content berhasil diupdate',
+        variant: 'success',
+      });
+    },
+
+    onError: (error: any) => {
+      toast({
+        title: 'Update gagal',
+        description: error.response?.data?.message || 'Terjadi kesalahan',
+        variant: 'destructive',
+      });
+    },
+  });
+}
+
+/**
+ * Delete content mutation
+ */
+export function useDeleteContent() {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: (id: number) => contentApi.delete(id),
+
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEY] });
+      toast({
+        title: 'Hapus berhasil',
+        description: 'Content berhasil dihapus',
+        variant: 'success',
+      });
+    },
+
+    onError: (error: any) => {
+      toast({
+        title: 'Hapus gagal',
+        description: error.response?.data?.message || 'Terjadi kesalahan',
+        variant: 'destructive',
+      });
+    },
+  });
+}
+
+/**
+ * Get storage statistics
+ */
+export function useContentStats() {
+  return useQuery({
+    queryKey: [QUERY_KEY, 'stats'],
+    queryFn: () => contentApi.getStats(),
+    staleTime: 60000, // 1 minute
+  });
+}
+```
+
+#### 4. TypeScript Types
+
+```typescript
+// features/content/types/content.ts
+
+export interface Content {
+  id: number;
+  title: string;
+  description?: string;
+  content_type: 'image' | 'video' | 'audio';
+
+  file_url: string;
+  thumbnail_url?: string;
+  hls_master_playlist_url?: string;
+
+  duration: number;
+  is_active: boolean;
+
+  file_size: number;
+  mime_type: string;
+  original_filename: string;
+  resolution?: string;
+
+  organization_id: number;
+  uploaded_by: number;
+
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ContentUpload {
+  file: File;
+  title: string;
+  description?: string;
+  duration: number;
+  is_active: boolean;
+}
+
+export interface ContentUpdate {
+  title?: string;
+  description?: string;
+  duration?: number;
+  is_active?: boolean;
+}
+
+export interface ContentStats {
+  total_files: number;
+  total_size_bytes: number;
+  total_size_readable: string;
+  by_type: {
+    [key: string]: {
+      count: number;
+      size_bytes: number;
+      size_readable: string;
+    };
+  };
+}
+
+export interface ContentListParams {
+  skip?: number;
+  limit?: number;
+  content_type?: 'image' | 'video' | 'audio';
+  is_active?: boolean;
+}
+```
+
+#### 5. Component Example (Upload Modal)
+
+```typescript
+// features/content/components/UploadModal.tsx
+
+import { useState } from 'react';
+import { useForm } from 'react-hook-form';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/shared/components/ui/dialog';
+import { Button } from '@/shared/components/ui/button';
+import { Input } from '@/shared/components/ui/input';
+import { Textarea } from '@/shared/components/ui/textarea';
+import { useUploadContent } from '../hooks/useContent';
+import { UploadProgress } from './UploadProgress';
+import type { ContentUpload } from '../types/content';
+
+interface UploadModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+}
+
+export function UploadModal({ isOpen, onClose }: UploadModalProps) {
+  const [file, setFile] = useState<File | null>(null);
+  const [uploadProgress, setUploadProgress] = useState(0);
+
+  const { register, handleSubmit, reset, formState: { errors } } = useForm<Omit<ContentUpload, 'file'>>();
+  const uploadMutation = useUploadContent();
+
+  const onSubmit = async (data: Omit<ContentUpload, 'file'>) => {
+    if (!file) return;
+
+    await uploadMutation.mutateAsync({
+      upload: { ...data, file },
+      onProgress: setUploadProgress,
+    });
+
+    reset();
+    setFile(null);
+    setUploadProgress(0);
+    onClose();
+  };
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="max-w-2xl">
+        <DialogHeader>
+          <DialogTitle>Upload Content</DialogTitle>
+        </DialogHeader>
+
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+          {/* File input */}
+          <div>
+            <Input
+              type="file"
+              accept="image/*,video/*,audio/*"
+              onChange={(e) => setFile(e.target.files?.[0] || null)}
+            />
+          </div>
+
+          {/* Title */}
+          <div>
+            <Input
+              placeholder="Content title"
+              {...register('title', { required: 'Title is required' })}
+            />
+            {errors.title && <p className="text-red-500 text-sm">{errors.title.message}</p>}
+          </div>
+
+          {/* Description */}
+          <div>
+            <Textarea
+              placeholder="Description (optional)"
+              {...register('description')}
+            />
+          </div>
+
+          {/* Duration */}
+          <div>
+            <Input
+              type="number"
+              placeholder="Duration (seconds)"
+              defaultValue={10}
+              {...register('duration', { required: true, min: 1 })}
+            />
+          </div>
+
+          {/* Upload progress */}
+          {uploadMutation.isPending && (
+            <UploadProgress progress={uploadProgress} />
+          )}
+
+          {/* Actions */}
+          <div className="flex justify-end gap-2">
+            <Button type="button" variant="outline" onClick={onClose}>
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              disabled={!file || uploadMutation.isPending}
+            >
+              {uploadMutation.isPending ? 'Uploading...' : 'Upload'}
+            </Button>
+          </div>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+```
+
+#### 6. Page Component
+
+```typescript
+// pages/content/ContentPage.tsx
+
+import { useState } from 'react';
+import { Button } from '@/shared/components/ui/button';
+import { ContentTable } from '@/features/content/components/ContentTable';
+import { ContentFilters } from '@/features/content/components/ContentFilters';
+import { UploadModal } from '@/features/content/components/UploadModal';
+import { ContentStats } from '@/features/content/components/ContentStats';
+import { useContent } from '@/features/content/hooks/useContent';
+import { Upload } from 'lucide-react';
+
+export default function ContentPage() {
+  const [uploadModalOpen, setUploadModalOpen] = useState(false);
+  const [filters, setFilters] = useState({
+    skip: 0,
+    limit: 20,
+    content_type: undefined,
+    is_active: undefined,
+  });
+
+  const { data, isLoading, error } = useContent(filters);
+
+  return (
+    <div className="p-6 space-y-6">
+      {/* Header */}
+      <div className="flex justify-between items-center">
+        <div>
+          <h1 className="text-3xl font-bold">Content Management</h1>
+          <p className="text-gray-500">Upload and manage media content</p>
+        </div>
+        <Button onClick={() => setUploadModalOpen(true)}>
+          <Upload className="mr-2 h-4 w-4" />
+          Upload Content
+        </Button>
+      </div>
+
+      {/* Storage Stats */}
+      <ContentStats />
+
+      {/* Filters */}
+      <ContentFilters filters={filters} onFiltersChange={setFilters} />
+
+      {/* Content Table */}
+      <ContentTable
+        data={data?.data || []}
+        isLoading={isLoading}
+        error={error}
+        pagination={{
+          total: data?.total || 0,
+          skip: filters.skip,
+          limit: filters.limit,
+          onPageChange: (skip) => setFilters({ ...filters, skip }),
+        }}
+      />
+
+      {/* Upload Modal */}
+      <UploadModal
+        isOpen={uploadModalOpen}
+        onClose={() => setUploadModalOpen(false)}
+      />
+    </div>
+  );
+}
+```
+
+---
+
 **Next Action:** Start Phase 0 - Implement Storage Service Layer
 
 **Questions?** Review this document and start coding! 🚀

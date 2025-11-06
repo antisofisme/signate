@@ -6,6 +6,7 @@
 import { useState, FormEvent } from 'react';
 import { useRegister } from '@/features/auth/hooks/useAuth';
 import { validators } from '@/lib/validation/schemas';
+import { PasswordStrengthIndicator } from './PasswordStrengthIndicator';
 
 export function RegisterForm() {
   const [formData, setFormData] = useState({
@@ -232,6 +233,9 @@ export function RegisterForm() {
         {errors.password && (
           <p className="mt-1 text-sm text-red-600">{errors.password}</p>
         )}
+
+        {/* Password Strength Indicator */}
+        <PasswordStrengthIndicator password={formData.password} showRequirements={true} />
       </div>
 
       {/* Confirm Password Field */}
