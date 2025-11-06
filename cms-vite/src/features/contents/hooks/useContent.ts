@@ -9,6 +9,7 @@ import {
   getContentList,
   getContent,
   uploadContent,
+  bulkUploadContent,
   updateContent,
   deleteContent,
   bulkDeleteContent,
@@ -69,6 +70,45 @@ export const useUploadContent = () => {
     },
     onError: (error: any) => {
       const message = error?.response?.data?.detail || 'Failed to upload content';
+      toast.error(message);
+    },
+  });
+};
+
+/**
+ * Bulk upload multiple content files
+ */
+export const useBulkUploadContent = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      files,
+      duration,
+      is_active,
+      onProgress,
+    }: {
+      files: File[];
+      duration?: number;
+      is_active?: boolean;
+      onProgress?: (progress: number) => void;
+    }) => bulkUploadContent(files, duration, is_active, onProgress),
+    onSuccess: (response) => {
+      // Invalidate content list to refetch
+      queryClient.invalidateQueries({ queryKey: contentKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: contentKeys.stats() });
+
+      const { summary } = response.data;
+      if (summary.failed > 0) {
+        toast.warning(
+          `${summary.successful} uploaded, ${summary.failed} failed. Check results for details.`
+        );
+      } else {
+        toast.success(`${summary.successful} files uploaded successfully`);
+      }
+    },
+    onError: (error: any) => {
+      const message = error?.response?.data?.detail || 'Failed to upload files';
       toast.error(message);
     },
   });

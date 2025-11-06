@@ -4,7 +4,7 @@ FastAPI endpoints with dependency injection
 """
 
 from fastapi import APIRouter, Depends, UploadFile, File, Form, Request, HTTPException
-from typing import Optional
+from typing import Optional, List
 from sqlalchemy.orm import Session
 
 from shared.database import get_db
@@ -106,6 +106,81 @@ async def upload_content(
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Upload failed: {str(e)}")
+
+
+@router.post("/bulk-upload", response_model=dict)
+async def bulk_upload_content(
+    files: List[UploadFile] = File(...),
+    duration: int = Form(10),
+    is_active: bool = Form(True),
+    upload_use_case: UploadContentUseCase = Depends(get_upload_content_use_case),
+    current_user: CurrentUser = Depends(get_current_user),
+    request: Request = None
+):
+    """
+    Upload multiple content files at once
+
+    - Files: Multiple files (image/video/audio)
+    - Default duration: 10 seconds per file
+    - Default active: true
+    - Title: Auto-generated from filename
+    - Description: Optional (empty by default)
+
+    Returns:
+    - List of uploaded content with success/error status per file
+    """
+    results = []
+    successful = 0
+    failed = 0
+
+    for file in files:
+        try:
+            # Auto-generate title from filename (remove extension)
+            title = file.filename.rsplit('.', 1)[0] if '.' in file.filename else file.filename
+
+            content = await upload_use_case.execute(
+                file=file,
+                title=title,
+                description=None,  # No description for bulk upload
+                organization_id=current_user.organization_id,
+                uploaded_by=current_user.id,
+                duration=duration,
+                is_active=is_active
+            )
+
+            results.append({
+                "filename": file.filename,
+                "status": "success",
+                "content": ContentResponse.from_entity(content).dict()
+            })
+            successful += 1
+
+        except ValueError as e:
+            results.append({
+                "filename": file.filename,
+                "status": "error",
+                "error": str(e)
+            })
+            failed += 1
+        except Exception as e:
+            results.append({
+                "filename": file.filename,
+                "status": "error",
+                "error": f"Upload failed: {str(e)}"
+            })
+            failed += 1
+
+    return created_response(
+        data={
+            "results": results,
+            "summary": {
+                "total": len(files),
+                "successful": successful,
+                "failed": failed
+            }
+        },
+        message=f"Bulk upload completed: {successful} successful, {failed} failed"
+    )
 
 
 @router.get("", response_model=dict)

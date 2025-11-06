@@ -5,20 +5,19 @@
  */
 
 import { useState } from 'react';
-import { X, Upload, Loader2, FileImage, FileVideo, FileAudio } from 'lucide-react';
-import { useUploadContent } from '../hooks/useContent';
-import type { ContentUploadData } from '../types/content';
+import { X, Upload, Loader2, FileImage, FileVideo, FileAudio, Trash2 } from 'lucide-react';
+import { useBulkUploadContent } from '../hooks/useContent';
 
 interface UploadModalProps {
   isOpen: boolean;
   onClose: () => void;
 }
 
-// File type validation
+// File type validation - Match backend support
 const ALLOWED_TYPES = {
-  image: ['image/jpeg', 'image/png', 'image/webp', 'image/gif'],
-  video: ['video/mp4', 'video/webm', 'video/quicktime'],
-  audio: ['audio/mpeg', 'audio/mp3', 'audio/wav', 'audio/aac'],
+  image: ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/bmp'],
+  video: ['video/mp4', 'video/webm', 'video/quicktime', 'video/x-msvideo', 'video/x-matroska', 'video/x-m4v', 'video/x-flv'],
+  audio: ['audio/mpeg', 'audio/mp3', 'audio/aac', 'audio/mp4', 'audio/ogg', 'audio/wav', 'audio/flac', 'audio/x-ms-wma', 'audio/x-m4a'],
 };
 
 const MAX_FILE_SIZE = {
@@ -28,92 +27,87 @@ const MAX_FILE_SIZE = {
 };
 
 export function UploadModal({ isOpen, onClose }: UploadModalProps) {
-  const [file, setFile] = useState<File | null>(null);
-  const [title, setTitle] = useState('');
-  const [description, setDescription] = useState('');
+  const [files, setFiles] = useState<File[]>([]);
   const [duration, setDuration] = useState(10);
   const [isActive, setIsActive] = useState(true);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
 
-  const uploadMutation = useUploadContent();
+  const uploadMutation = useBulkUploadContent();
 
   if (!isOpen) return null;
 
   // Reset form
   const resetForm = () => {
-    setFile(null);
-    setTitle('');
-    setDescription('');
+    setFiles([]);
     setDuration(10);
     setIsActive(true);
     setUploadProgress(0);
     setError(null);
   };
 
-  // Handle file selection
+  // Handle file selection (multiple files)
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const selectedFile = e.target.files?.[0];
-    if (!selectedFile) return;
+    const selectedFiles = Array.from(e.target.files || []);
+    if (selectedFiles.length === 0) return;
 
     setError(null);
 
-    // Detect file type
-    const fileType = selectedFile.type;
-    let contentType: 'image' | 'video' | 'audio' | null = null;
+    const validFiles: File[] = [];
+    const errors: string[] = [];
 
-    if (ALLOWED_TYPES.image.includes(fileType)) contentType = 'image';
-    else if (ALLOWED_TYPES.video.includes(fileType)) contentType = 'video';
-    else if (ALLOWED_TYPES.audio.includes(fileType)) contentType = 'audio';
+    selectedFiles.forEach((file) => {
+      // Detect file type
+      const fileType = file.type;
+      let contentType: 'image' | 'video' | 'audio' | null = null;
 
-    if (!contentType) {
-      setError('Invalid file type. Please upload an image, video, or audio file.');
-      return;
+      if (ALLOWED_TYPES.image.includes(fileType)) contentType = 'image';
+      else if (ALLOWED_TYPES.video.includes(fileType)) contentType = 'video';
+      else if (ALLOWED_TYPES.audio.includes(fileType)) contentType = 'audio';
+
+      if (!contentType) {
+        errors.push(`${file.name}: Invalid file type`);
+        return;
+      }
+
+      // Check file size
+      const maxSize = MAX_FILE_SIZE[contentType];
+      if (file.size > maxSize) {
+        errors.push(
+          `${file.name}: Too large (max ${Math.round(maxSize / 1024 / 1024)}MB)`
+        );
+        return;
+      }
+
+      validFiles.push(file);
+    });
+
+    if (errors.length > 0) {
+      setError(errors.join(', '));
     }
 
-    // Check file size
-    const maxSize = MAX_FILE_SIZE[contentType];
-    if (selectedFile.size > maxSize) {
-      setError(
-        `File too large. Max size for ${contentType} is ${Math.round(
-          maxSize / 1024 / 1024
-        )}MB`
-      );
-      return;
-    }
+    setFiles((prev) => [...prev, ...validFiles]);
+  };
 
-    setFile(selectedFile);
-    // Auto-fill title from filename
-    if (!title) {
-      setTitle(selectedFile.name.replace(/\.[^/.]+$/, ''));
-    }
+  // Remove file from list
+  const handleRemoveFile = (index: number) => {
+    setFiles((prev) => prev.filter((_, i) => i !== index));
   };
 
   // Handle upload
   const handleUpload = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!file) {
-      setError('Please select a file to upload');
+    if (files.length === 0) {
+      setError('Please select at least one file to upload');
       return;
     }
-
-    if (!title.trim()) {
-      setError('Please enter a title');
-      return;
-    }
-
-    const uploadData: ContentUploadData = {
-      file,
-      title: title.trim(),
-      description: description.trim() || undefined,
-      duration,
-      is_active: isActive,
-    };
 
     try {
       await uploadMutation.mutateAsync({
-        data: uploadData,
+        files,
+        duration,
+        is_active: isActive,
         onProgress: setUploadProgress,
       });
 
@@ -137,14 +131,14 @@ export function UploadModal({ isOpen, onClose }: UploadModalProps) {
   };
 
   // Get file icon
-  const getFileIcon = () => {
-    if (!file) return <Upload className="w-12 h-12" />;
+  const getFileIcon = (file?: File) => {
+    if (!file) return <Upload className="w-6 h-6" />;
 
-    if (file.type.startsWith('image/')) return <FileImage className="w-12 h-12" />;
-    if (file.type.startsWith('video/')) return <FileVideo className="w-12 h-12" />;
-    if (file.type.startsWith('audio/')) return <FileAudio className="w-12 h-12" />;
+    if (file.type.startsWith('image/')) return <FileImage className="w-6 h-6 text-green-600" />;
+    if (file.type.startsWith('video/')) return <FileVideo className="w-6 h-6 text-blue-600" />;
+    if (file.type.startsWith('audio/')) return <FileAudio className="w-6 h-6 text-purple-600" />;
 
-    return <Upload className="w-12 h-12" />;
+    return <Upload className="w-6 h-6" />;
   };
 
   return (
@@ -204,15 +198,9 @@ export function UploadModal({ isOpen, onClose }: UploadModalProps) {
           {/* File Upload Area */}
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              File *
+              Files * (multiple files supported)
             </label>
-            <div
-              className={`border-2 border-dashed rounded-lg p-8 text-center ${
-                file
-                  ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
-                  : 'border-gray-300 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500'
-              }`}
-            >
+            <div className="border-2 border-dashed rounded-lg p-6 text-center border-gray-300 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500">
               <input
                 type="file"
                 accept="image/*,video/*,audio/*"
@@ -220,6 +208,7 @@ export function UploadModal({ isOpen, onClose }: UploadModalProps) {
                 disabled={uploadMutation.isPending}
                 className="hidden"
                 id="file-upload"
+                multiple
               />
               <label
                 htmlFor="file-upload"
@@ -228,26 +217,53 @@ export function UploadModal({ isOpen, onClose }: UploadModalProps) {
                 }`}
               >
                 <div className="flex flex-col items-center">
-                  <div className="text-gray-400 dark:text-gray-500 mb-4">
-                    {getFileIcon()}
+                  <div className="text-gray-400 dark:text-gray-500 mb-3">
+                    <Upload className="w-12 h-12" />
                   </div>
-                  {file ? (
-                    <>
-                      <p className="text-sm font-medium text-gray-900 dark:text-white mb-1">
-                        {file.name}
-                      </p>
-                      <p className="text-xs text-gray-500 dark:text-gray-400">
-                        {(file.size / 1024 / 1024).toFixed(2)} MB
-                      </p>
-                    </>
-                  ) : (
-                    <p className="text-sm font-medium text-gray-900 dark:text-white">
-                      Click to upload or drag and drop
-                    </p>
-                  )}
+                  <p className="text-sm font-medium text-gray-900 dark:text-white mb-1">
+                    Click to select files or drag and drop
+                  </p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                    Select one or multiple files at once
+                  </p>
                 </div>
               </label>
             </div>
+
+            {/* Selected Files List */}
+            {files.length > 0 && (
+              <div className="mt-4 space-y-2 max-h-60 overflow-y-auto">
+                <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Selected Files ({files.length})
+                </p>
+                {files.map((file, index) => (
+                  <div
+                    key={`${file.name}-${index}`}
+                    className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg"
+                  >
+                    <div className="flex items-center gap-3 flex-1 min-w-0">
+                      {getFileIcon(file)}
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                          {file.name}
+                        </p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">
+                          {(file.size / 1024 / 1024).toFixed(2)} MB
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveFile(index)}
+                      disabled={uploadMutation.isPending}
+                      className="text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 disabled:opacity-50"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Error Message */}
@@ -256,37 +272,6 @@ export function UploadModal({ isOpen, onClose }: UploadModalProps) {
               {error}
             </div>
           )}
-
-          {/* Title */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Title *
-            </label>
-            <input
-              type="text"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              disabled={uploadMutation.isPending}
-              className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white disabled:opacity-50"
-              placeholder="Enter content title"
-              required
-            />
-          </div>
-
-          {/* Description */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Description
-            </label>
-            <textarea
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              disabled={uploadMutation.isPending}
-              className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white disabled:opacity-50"
-              placeholder="Enter content description (optional)"
-              rows={3}
-            />
-          </div>
 
           {/* Duration */}
           <div>
@@ -358,18 +343,18 @@ export function UploadModal({ isOpen, onClose }: UploadModalProps) {
             </button>
             <button
               type="submit"
-              disabled={!file || !title.trim() || uploadMutation.isPending}
+              disabled={files.length === 0 || uploadMutation.isPending}
               className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
             >
               {uploadMutation.isPending ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin" />
-                  Uploading...
+                  Uploading {files.length} file(s)...
                 </>
               ) : (
                 <>
                   <Upload className="w-4 h-4" />
-                  Upload
+                  Upload {files.length > 0 && `(${files.length})`}
                 </>
               )}
             </button>

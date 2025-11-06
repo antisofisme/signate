@@ -84,6 +84,62 @@ export const uploadContent = async (
 };
 
 /**
+ * Bulk upload multiple content files
+ */
+export const bulkUploadContent = async (
+  files: File[],
+  duration: number = 10,
+  is_active: boolean = true,
+  onProgress?: (progress: number) => void
+): Promise<{
+  success: boolean;
+  data: {
+    results: Array<{
+      filename: string;
+      status: 'success' | 'error';
+      content?: Content;
+      error?: string;
+    }>;
+    summary: {
+      total: number;
+      successful: number;
+      failed: number;
+    };
+  };
+  message: string;
+}> => {
+  const formData = new FormData();
+
+  // Append all files
+  files.forEach((file) => {
+    formData.append('files', file);
+  });
+
+  formData.append('duration', duration.toString());
+  formData.append('is_active', is_active.toString());
+
+  const response = await apiClient.post(
+    API_ENDPOINTS.CONTENT.BULK_UPLOAD,
+    formData,
+    {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+      onUploadProgress: (progressEvent) => {
+        if (onProgress && progressEvent.total) {
+          const percentCompleted = Math.round(
+            (progressEvent.loaded * 100) / progressEvent.total
+          );
+          onProgress(percentCompleted);
+        }
+      },
+    }
+  );
+
+  return response.data;
+};
+
+/**
  * Update content metadata
  */
 export const updateContent = async (
