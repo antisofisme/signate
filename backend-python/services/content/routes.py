@@ -243,6 +243,42 @@ async def get_content(
         raise HTTPException(status_code=500, detail=f"Get failed: {str(e)}")
 
 
+@router.get("/{content_id}/download")
+async def download_content(
+    content_id: int,
+    get_use_case: GetContentUseCase = Depends(get_get_content_use_case),
+    current_user: CurrentUser = Depends(get_current_user)
+):
+    """Download content file (forces download instead of displaying in browser)"""
+    from fastapi.responses import FileResponse
+    from pathlib import Path
+
+    try:
+        # Get content
+        content = get_use_case.execute(content_id, current_user.organization_id)
+
+        # Get file path
+        file_path = Path(content.file_path)
+
+        if not file_path.exists():
+            raise HTTPException(status_code=404, detail="File not found on disk")
+
+        # Return file with Content-Disposition header to force download
+        return FileResponse(
+            path=str(file_path),
+            filename=content.original_filename,
+            media_type=content.mime_type,
+            headers={
+                "Content-Disposition": f'attachment; filename="{content.original_filename}"'
+            }
+        )
+
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Download failed: {str(e)}")
+
+
 @router.delete("/{content_id}", status_code=204)
 async def delete_content(
     content_id: int,

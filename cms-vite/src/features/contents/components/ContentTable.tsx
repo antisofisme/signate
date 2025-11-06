@@ -25,8 +25,9 @@ import {
   useBulkDeleteContent,
 } from '../hooks/useContent';
 import type { Content, ContentType, ContentFilters } from '../types/content';
-import { formatFileSize } from '../services/contentApi';
+import { formatFileSize, downloadContent } from '../services/contentApi';
 import { UploadModal } from './UploadModal';
+import { toast } from 'sonner';
 
 // Delete Confirmation Modal
 interface DeleteConfirmModalProps {
@@ -245,6 +246,16 @@ export function ContentTable() {
   const bulkDeleteMutation = useBulkDeleteContent();
 
   // Handlers
+  const handleDownload = async (content: Content) => {
+    try {
+      await downloadContent(content.id, content.original_filename);
+      toast.success('Download started');
+    } catch (error: any) {
+      const message = error?.response?.data?.detail || 'Failed to download file';
+      toast.error(message);
+    }
+  };
+
   const handleFilterChange = (key: keyof ContentFilters, value: any) => {
     setFilters((prev) => ({ ...prev, [key]: value, skip: 0 }));
   };
@@ -476,16 +487,13 @@ export function ContentTable() {
                           >
                             <Eye className="w-4 h-4" />
                           </button>
-                          <a
-                            href={content.file_url}
-                            download={content.original_filename}
-                            target="_blank"
-                            rel="noopener noreferrer"
+                          <button
+                            onClick={() => handleDownload(content)}
                             className="text-gray-600 hover:text-gray-700 dark:text-gray-400"
                             title="Download"
                           >
                             <Download className="w-4 h-4" />
-                          </a>
+                          </button>
                           <button
                             onClick={() => setContentToDelete(content)}
                             className="text-red-600 hover:text-red-700 dark:text-red-400"

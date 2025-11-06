@@ -162,6 +162,27 @@ export const deleteContent = async (id: number): Promise<void> => {
 };
 
 /**
+ * Download content file
+ * Fetches file with auth header and triggers browser download
+ */
+export const downloadContent = async (id: number, filename: string): Promise<void> => {
+  const response = await apiClient.get(API_ENDPOINTS.CONTENT.DOWNLOAD(id), {
+    responseType: 'blob',
+  });
+
+  // Create blob URL and trigger download
+  const blob = new Blob([response.data]);
+  const url = window.URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  window.URL.revokeObjectURL(url);
+};
+
+/**
  * Bulk delete content
  */
 export const bulkDeleteContent = async (ids: number[]): Promise<void> => {

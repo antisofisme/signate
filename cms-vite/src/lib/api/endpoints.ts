@@ -62,6 +62,7 @@ export const API_ENDPOINTS = {
     BULK_UPLOAD: '/contents/bulk-upload',
     UPDATE: (id: number) => `/contents/${id}`,
     DELETE: (id: number) => `/contents/${id}`,
+    DOWNLOAD: (id: number) => `/contents/${id}/download`,
     BULK_DELETE: '/contents/bulk-delete',
     BULK_UPDATE: '/contents/bulk-update',
     STATS: '/contents/stats',
