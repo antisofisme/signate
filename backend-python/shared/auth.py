@@ -187,13 +187,11 @@ def decode_token(token: str) -> Dict[str, Any]:
     except jwt.ExpiredSignatureError:
         raise AuthenticationError(
             message="Token sudah expired",
-            code=ErrorCodes.INVALID_TOKEN,
             details={"error": "Token expired"}
         )
     except JWTError as e:
         raise AuthenticationError(
             message="Token tidak valid atau sudah expired",
-            code=ErrorCodes.INVALID_TOKEN,
             details={"error": str(e)}
         )
 
@@ -217,7 +215,6 @@ def verify_access_token(token: str) -> Dict[str, Any]:
     if payload.get("type") != "access":
         raise AuthenticationError(
             message="Invalid token type",
-            code=ErrorCodes.INVALID_TOKEN,
             details={"expected": "access", "got": payload.get("type")}
         )
 
@@ -243,7 +240,6 @@ def verify_refresh_token(token: str) -> Dict[str, Any]:
     if payload.get("type") != "refresh":
         raise AuthenticationError(
             message="Invalid token type",
-            code=ErrorCodes.INVALID_TOKEN,
             details={"expected": "refresh", "got": payload.get("type")}
         )
 
@@ -333,8 +329,7 @@ def get_current_user(
     """
     if not credentials:
         raise AuthenticationError(
-            message="Token tidak ditemukan",
-            code=ErrorCodes.MISSING_TOKEN
+            message="Token tidak ditemukan"
         )
 
     # Decode token
@@ -348,8 +343,7 @@ def get_current_user(
 
     if not user_id or not username or not role:
         raise AuthenticationError(
-            message="Token tidak valid - data user tidak lengkap",
-            code=ErrorCodes.INVALID_TOKEN
+            message="Token tidak valid - data user tidak lengkap"
         )
 
     return CurrentUser(

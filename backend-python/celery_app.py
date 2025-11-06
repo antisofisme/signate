@@ -18,6 +18,16 @@ app = Celery(
     include=['tasks.content_tasks']  # Import task modules
 )
 
+# Import all models to register in SQLAlchemy metadata
+# This must be done AFTER app creation to avoid circular imports
+def register_models():
+    """Import all models to register them in Base.metadata"""
+    from services.auth.repositories.models import UserModel, OrganizationModel, AuditLogModel
+    from services.content.repositories.models import ContentModel
+    # Add other models as needed
+
+register_models()
+
 # Celery Configuration
 app.conf.update(
     # Task settings

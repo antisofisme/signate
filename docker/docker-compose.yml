@@ -77,6 +77,7 @@ services:
       LOG_LEVEL: info
     volumes:
       - ../backend-python:/app
+      - content-data:/data/signage/content
     networks:
       - signage-network
     depends_on:
@@ -91,6 +92,43 @@ services:
       start_period: 40s
       retries: 3
 
+  # ============================================
+  # Celery Worker (Background Tasks)
+  # ============================================
+  celery-worker:
+    container_name: signage-celery-worker
+    build:
+      context: ../backend-python
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    command: celery -A celery_app worker --loglevel=info -Q celery,video_processing,image_processing
+    environment:
+      # Database
+      DATABASE_URL: postgresql://signage_user:signage_pass@postgres:5432/signage_db
+
+      # Redis
+      REDIS_URL: redis://redis:6379/0
+
+      # Security
+      SECRET_KEY: your-secret-key-change-in-production
+      JWT_SECRET: your-jwt-secret-change-in-production
+      ENCRYPTION_KEY: your-encryption-key-32-chars-long
+
+      # App settings
+      ENVIRONMENT: production
+      DEBUG: "false"
+      LOG_LEVEL: info
+    volumes:
+      - ../backend-python:/app
+      - content-data:/data/signage/content
+    networks:
+      - signage-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
 networks:
   signage-network:
     driver: bridge
@@ -98,3 +136,4 @@ networks:
 volumes:
   postgres-data:
   redis-data:
+  content-data:

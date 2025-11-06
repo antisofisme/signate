@@ -161,6 +161,47 @@ else:
 # ERROR HANDLERS
 # =============================================================================
 
+from shared.errors import AppException, AuthenticationError, AuthorizationError
+
+@app.exception_handler(AppException)
+async def app_exception_handler(request, exc: AppException):
+    """Handle custom AppException and convert to HTTP response"""
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={
+            "message": exc.message,
+            "code": exc.code,
+            "details": exc.details
+        }
+    )
+
+
+@app.exception_handler(AuthenticationError)
+async def auth_exception_handler(request, exc: AuthenticationError):
+    """Handle AuthenticationError specifically"""
+    return JSONResponse(
+        status_code=401,
+        content={
+            "message": exc.message,
+            "code": exc.code,
+            "details": exc.details
+        }
+    )
+
+
+@app.exception_handler(AuthorizationError)
+async def authz_exception_handler(request, exc: AuthorizationError):
+    """Handle AuthorizationError specifically"""
+    return JSONResponse(
+        status_code=403,
+        content={
+            "message": exc.message,
+            "code": exc.code,
+            "details": exc.details
+        }
+    )
+
+
 @app.exception_handler(404)
 async def not_found_handler(request, exc):
     """Custom 404 handler"""
