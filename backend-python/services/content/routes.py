@@ -20,8 +20,9 @@ from .infrastructure.storage.metadata_extractor import get_metadata_extractor
 from .use_cases.upload_content import UploadContentUseCase
 from .use_cases.list_content import ListContentUseCase
 from .use_cases.get_content import GetContentUseCase
+from .use_cases.update_content import UpdateContentUseCase
 
-from .dtos import ContentResponse, PaginatedContentResponse
+from .dtos import ContentResponse, PaginatedContentResponse, ContentUpdateRequest
 from .domain.interfaces import IContentRepository
 from .infrastructure.storage.interfaces import IStorageService
 from .infrastructure.storage.metadata_extractor import MetadataExtractor
@@ -48,6 +49,12 @@ def get_get_content_use_case(
     content_repo: IContentRepository = Depends(get_content_repository)
 ) -> GetContentUseCase:
     return GetContentUseCase(content_repo)
+
+
+def get_update_content_use_case(
+    content_repo: IContentRepository = Depends(get_content_repository)
+) -> UpdateContentUseCase:
+    return UpdateContentUseCase(content_repo)
 
 
 def get_audit_log_repository(db: Session = Depends(get_db)):
@@ -241,6 +248,57 @@ async def get_content(
         raise HTTPException(status_code=404, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Get failed: {str(e)}")
+
+
+@router.put("/{content_id}", response_model=dict)
+async def update_content(
+    content_id: int,
+    request_body: ContentUpdateRequest,
+    request: Request,
+    update_use_case: UpdateContentUseCase = Depends(get_update_content_use_case),
+    audit_logger: AuditLogger = Depends(get_audit_logger),
+    current_user: CurrentUser = Depends(get_current_user)
+):
+    """
+    Update content metadata
+
+    - Updates title, description, duration, is_active
+    - Validates organization ownership
+    - Logs audit trail
+    """
+    try:
+        updated_content = update_use_case.execute(
+            content_id=content_id,
+            organization_id=current_user.organization_id,
+            title=request_body.title,
+            description=request_body.description,
+            duration=request_body.duration,
+            is_active=request_body.is_active
+        )
+
+        # Audit log
+        audit_logger.log_action(
+            user_id=current_user.id,
+            action="content.update",
+            resource_type="content",
+            resource_id=content_id,
+            details={
+                "title": updated_content.title,
+                "duration": updated_content.duration,
+                "is_active": updated_content.is_active,
+                "ip_address": request.client.host if request.client else None
+            }
+        )
+
+        return success_response(
+            data=ContentResponse.from_entity(updated_content).dict(),
+            message="Content updated successfully"
+        )
+
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Update failed: {str(e)}")
 
 
 @router.get("/{content_id}/download")
