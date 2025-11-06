@@ -12,10 +12,13 @@ import DashboardLayout from '@/shared/components/layout/DashboardLayout';
 // Pages
 import LoginPage from '@/pages/LoginPage';
 import RegisterPage from '@/pages/RegisterPage';
+import ForgotPasswordPage from '@/pages/ForgotPasswordPage';
+import ResetPasswordPage from '@/pages/ResetPasswordPage';
 import DashboardPage from '@/pages/DashboardPage';
 import SelectOrganizationPage from '@/pages/SelectOrganizationPage';
 import SettingsPage from '@/pages/SettingsPage';
 import AuditLogsPage from '@/pages/AuditLogsPage';
+import TagsPage from '@/pages/TagsPage';
 // import DevicesPage from '@/pages/DevicesPage'; // TODO: Create DevicesPage
 
 export const router = createBrowserRouter([
@@ -27,6 +30,14 @@ export const router = createBrowserRouter([
   {
     path: '/register',
     element: <RegisterPage />,
+  },
+  {
+    path: '/forgot-password',
+    element: <ForgotPasswordPage />,
+  },
+  {
+    path: '/reset-password',
+    element: <ResetPasswordPage />,
   },
 
   // Protected Routes
@@ -70,7 +81,7 @@ export const router = createBrowserRouter([
       },
       {
         path: 'tags',
-        element: <div className="p-8">Tags Page - Coming Soon</div>,
+        element: <TagsPage />,
       },
       {
         path: 'audit-logs',

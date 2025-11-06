@@ -11,7 +11,12 @@ import type {
   LoginRequest,
   LoginResponse,
   RegisterRequest,
+  RegisterResponse,
   User,
+  ForgotPasswordRequest,
+  ForgotPasswordResponse,
+  ResetPasswordRequest,
+  ResetPasswordResponse,
 } from '@/features/auth/types/auth';
 
 /**
@@ -67,5 +72,35 @@ export const authApi = {
   refresh: async (): Promise<string> => {
     const { data } = await apiClient.post(API_ENDPOINTS.AUTH.REFRESH);
     return data.data.token;
+  },
+
+  /**
+   * Request password reset
+   * @param email - User's email address
+   * @returns Message and reset token (in development mode)
+   */
+  forgotPassword: async (
+    email: ForgotPasswordRequest
+  ): Promise<ForgotPasswordResponse> => {
+    const { data } = await apiClient.post<ForgotPasswordResponse>(
+      API_ENDPOINTS.AUTH.FORGOT_PASSWORD,
+      email
+    );
+    return data;
+  },
+
+  /**
+   * Reset password with token
+   * @param resetData - Token and new password
+   * @returns Success message
+   */
+  resetPassword: async (
+    resetData: ResetPasswordRequest
+  ): Promise<ResetPasswordResponse> => {
+    const { data } = await apiClient.post<ResetPasswordResponse>(
+      API_ENDPOINTS.AUTH.RESET_PASSWORD,
+      resetData
+    );
+    return data;
   },
 };

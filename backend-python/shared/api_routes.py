@@ -73,6 +73,21 @@ class DeviceRoutes:
 
 
 # =============================================================================
+# TAG SERVICE ROUTES
+# =============================================================================
+class TagRoutes:
+    """Tag management endpoints"""
+    BASE = f"{API_V1}/tags"
+
+    LIST = BASE
+    CREATE = BASE
+    GET = f"{BASE}/{{tag_id}}"
+    UPDATE = f"{BASE}/{{tag_id}}"
+    DELETE = f"{BASE}/{{tag_id}}"
+    USAGE = f"{BASE}/{{tag_id}}/usage"
+
+
+# =============================================================================
 # CONTENT SERVICE ROUTES
 # =============================================================================
 class ContentRoutes:
@@ -162,6 +177,7 @@ def get_all_routes():
         "users": {k: v for k, v in vars(UserRoutes).items() if not k.startswith("_")},
         "audit": {k: v for k, v in vars(AuditRoutes).items() if not k.startswith("_")},
         "devices": {k: v for k, v in vars(DeviceRoutes).items() if not k.startswith("_")},
+        "tags": {k: v for k, v in vars(TagRoutes).items() if not k.startswith("_")},
         "content": {k: v for k, v in vars(ContentRoutes).items() if not k.startswith("_")},
         "analytics": {k: v for k, v in vars(AnalyticsRoutes).items() if not k.startswith("_")},
         "client": {k: v for k, v in vars(ClientRoutes).items() if not k.startswith("_")},

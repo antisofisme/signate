@@ -39,6 +39,16 @@ export default function LoginPage() {
         {/* Login Form Component */}
         <LoginForm />
 
+        {/* Forgot Password Link */}
+        <div className="mt-4 text-center">
+          <Link
+            to="/forgot-password"
+            className="text-sm text-blue-600 dark:text-blue-400 hover:underline"
+          >
+            Lupa password?
+          </Link>
+        </div>
+
         {/* Register Link */}
         <div className="mt-6 text-center">
           <p className="text-sm text-gray-600 dark:text-gray-400">

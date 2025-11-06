@@ -18,6 +18,8 @@ export const API_ENDPOINTS = {
     LOGOUT: '/auth/logout',
     ME: '/auth/me',
     REFRESH: '/auth/refresh',
+    FORGOT_PASSWORD: '/auth/forgot-password',
+    RESET_PASSWORD: '/auth/reset-password',
   },
 
   // ========================================
@@ -29,7 +31,7 @@ export const API_ENDPOINTS = {
     CREATE: '/organizations',
     UPDATE: (id: number) => `/organizations/${id}`,
     DELETE: (id: number) => `/organizations/${id}`,
-    VALIDATE_PIN: '/organizations/validate-pin',
+    VALIDATE_PIN: (id: number) => `/organizations/${id}/validate-pin`,
   },
 
   // ========================================
@@ -92,6 +94,14 @@ export const API_ENDPOINTS = {
   },
 
   // ========================================
+  // AUDIT LOGS
+  // ========================================
+  AUDIT: {
+    LIST: '/audit-logs',
+    GET: (id: number) => `/audit-logs/${id}`,
+  },
+
+  // ========================================
   // TAGS
   // ========================================
   TAGS: {
@@ -100,6 +110,7 @@ export const API_ENDPOINTS = {
     CREATE: '/tags',
     UPDATE: (id: number) => `/tags/${id}`,
     DELETE: (id: number) => `/tags/${id}`,
+    USAGE: (id: number) => `/tags/${id}/usage`,
   },
 
   // ========================================

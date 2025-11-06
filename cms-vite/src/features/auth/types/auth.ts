@@ -1,20 +1,20 @@
 /**
- * Authentication Domain Types
+ * Auth Types & Interfaces
+ * Maps to backend DTOs from services/auth/dtos.py
  */
 
-import type { SuccessResponse } from '@/lib/api/responseTypes';
-import type { UserRole } from '@/lib/auth/permissions';
+// =============================================================================
+// USER & ORGANIZATION TYPES
+// =============================================================================
 
 export interface User {
   id: number;
   username: string;
   email: string;
   full_name: string;
-  role: UserRole;
+  role: 'admin' | 'manager' | 'user';
+  organization_id: number | null;
   is_active: boolean;
-  organization_id?: number;
-  created_at: string;
-  updated_at: string;
 }
 
 export interface Organization {
@@ -22,35 +22,122 @@ export interface Organization {
   name: string;
   organization_pin: string;
   is_active: boolean;
-  created_at: string;
-  updated_at: string;
+  created_at?: string;
+  updated_at?: string;
 }
+
+// =============================================================================
+// AUTH STATE
+// =============================================================================
+
+export interface AuthState {
+  user: User | null;
+  token: string | null;
+  organizations: Organization[];
+  isAuthenticated: boolean;
+  isLoading: boolean;
+}
+
+// =============================================================================
+// LOGIN
+// =============================================================================
 
 export interface LoginRequest {
   username: string;
   password: string;
 }
 
-export interface LoginData {
-  user: User;
-  token: string;
-  organizations: Organization[];
+export interface LoginResponse {
+  success: boolean;
+  data: {
+    user: User;
+    token: string;
+    organizations: Organization[];
+  };
+  message: string;
 }
 
-export type LoginResponse = SuccessResponse<LoginData>;
+// =============================================================================
+// REGISTER
+// =============================================================================
 
 export interface RegisterRequest {
   username: string;
   email: string;
   password: string;
   full_name: string;
-  organization_id?: number;
+  organization_id?: number | null;
 }
 
-export interface AuthState {
-  user: User | null;
-  token: string | null;
-  organizations: Organization[];
-  selectedOrgId: number | null;
-  isAuthenticated: boolean;
+export interface RegisterResponse {
+  success: boolean;
+  data: User;
+  message: string;
+}
+
+// =============================================================================
+// FORGOT PASSWORD
+// =============================================================================
+
+export interface ForgotPasswordRequest {
+  email: string;
+}
+
+export interface ForgotPasswordResponse {
+  message: string;
+  reset_token?: string;  // Only included in development mode
+  expires_in_minutes?: number;
+}
+
+// =============================================================================
+// RESET PASSWORD
+// =============================================================================
+
+export interface ResetPasswordRequest {
+  token: string;
+  new_password: string;
+}
+
+export interface ResetPasswordResponse {
+  message: string;
+}
+
+// =============================================================================
+// ERROR RESPONSE
+// =============================================================================
+
+export interface AuthError {
+  success: false;
+  error: {
+    code: string;
+    message: string;
+    details?: Record<string, unknown>;
+  };
+}
+
+// =============================================================================
+// FORM VALIDATION
+// =============================================================================
+
+export interface LoginFormErrors {
+  username?: string;
+  password?: string;
+}
+
+export interface RegisterFormErrors {
+  username?: string;
+  email?: string;
+  password?: string;
+  full_name?: string;
+  organization_id?: string;
+}
+
+export interface ForgotPasswordFormErrors {
+  email?: string;
+}
+
+export interface ResetPasswordFormErrors {
+  token?: string;
+  new_password?: string;
+  confirm_password?: string;
 }

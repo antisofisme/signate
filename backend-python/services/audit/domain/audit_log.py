@@ -29,11 +29,12 @@ class AuditLog:
         'organization.create', 'organization.update', 'organization.delete',
         'device.create', 'device.update', 'device.delete', 'device.activate',
         'content.upload', 'content.delete', 'content.assign',
+        'tag.create', 'tag.update', 'tag.delete', 'tag.list',
         'auth.login', 'auth.logout', 'auth.register'
     ]
 
     # Valid resource types
-    VALID_RESOURCE_TYPES = ['user', 'organization', 'device', 'content', 'auth']
+    VALID_RESOURCE_TYPES = ['user', 'organization', 'device', 'content', 'tag', 'auth']
 
     def __post_init__(self):
         """Validate audit log data"""
@@ -59,6 +60,10 @@ class AuditLog:
     def is_device_action(self) -> bool:
         """Check if this is a device-related action"""
         return self.resource_type == 'device'
+
+    def is_tag_action(self) -> bool:
+        """Check if this is a tag-related action"""
+        return self.resource_type == 'tag'
 
     def is_system_action(self) -> bool:
         """Check if this is a system action (no user_id)"""

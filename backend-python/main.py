@@ -18,6 +18,7 @@ from services.device.routes import router as device_router
 from services.organization.routes import router as organization_router
 from services.user.routes import router as user_router
 from services.audit.routes import router as audit_router
+from services.tag.routes import router as tag_router
 
 
 # =============================================================================
@@ -126,7 +127,7 @@ def health_check():
 
 
 # =============================================================================
-# API ROUTERS (Phase 3: Auth + Device + Organizations + Users + Audit)
+# API ROUTERS (Phase 4: + Tags)
 # =============================================================================
 
 # Note: Routes already include full path from Route classes
@@ -136,6 +137,7 @@ app.include_router(device_router, tags=["Device Management"])
 app.include_router(organization_router, tags=["Organization Management"])
 app.include_router(user_router, tags=["User Management"])
 app.include_router(audit_router, tags=["Audit Logging"])
+app.include_router(tag_router, tags=["Tag Management"])
 
 
 # =============================================================================
@@ -149,7 +151,7 @@ async def not_found_handler(request, exc):
         status_code=404,
         content={
             "detail": "Endpoint not found",
-            "phase": "Phase 3: Auth + Device + Organizations + Users",
+            "phase": "Phase 4: + Tags",
             "available_routes": [
                 "/docs",
                 "/health",
@@ -160,7 +162,8 @@ async def not_found_handler(request, exc):
                 f"{API_V1}/devices/heartbeat",
                 f"{API_V1}/devices",
                 f"{API_V1}/organizations",
-                f"{API_V1}/users"
+                f"{API_V1}/users",
+                f"{API_V1}/tags"
             ]
         }
     )

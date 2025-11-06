@@ -11,7 +11,12 @@ import { authApi } from '@/features/auth/services/authApi';
 import { useAuthStore } from '@/lib/stores/authStore';
 import { handleAPIError } from '@/lib/errors/errorHandler';
 import { toast } from '@/lib/notifications/toast';
-import type { LoginRequest, RegisterRequest } from '@/features/auth/types/auth';
+import type {
+  LoginRequest,
+  RegisterRequest,
+  ForgotPasswordRequest,
+  ResetPasswordRequest,
+} from '@/features/auth/types/auth';
 
 /**
  * Get current user
@@ -148,4 +153,50 @@ export function useSelectOrganization() {
     selectOrganization(orgId);
     navigate('/dashboard');
   };
+}
+
+/**
+ * Forgot password mutation
+ */
+export function useForgotPassword() {
+  return useMutation({
+    mutationFn: (email: ForgotPasswordRequest) => authApi.forgotPassword(email),
+    onSuccess: (data) => {
+      // Show success toast
+      toast.success(data.message);
+
+      // In development, also log the token for testing
+      if (data.reset_token && import.meta.env.DEV) {
+        console.log('Reset Token (DEV ONLY):', data.reset_token);
+        toast.info('Check console for reset token (dev mode)');
+      }
+    },
+    onError: (error) => {
+      const appError = handleAPIError(error);
+      toast.error(appError.message);
+    },
+  });
+}
+
+/**
+ * Reset password mutation
+ */
+export function useResetPassword() {
+  const navigate = useNavigate();
+
+  return useMutation({
+    mutationFn: (resetData: ResetPasswordRequest) =>
+      authApi.resetPassword(resetData),
+    onSuccess: (data) => {
+      // Show success toast
+      toast.success(data.message);
+
+      // Redirect to login
+      navigate('/login');
+    },
+    onError: (error) => {
+      const appError = handleAPIError(error);
+      toast.error(appError.message);
+    },
+  });
 }

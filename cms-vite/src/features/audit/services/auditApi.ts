@@ -6,6 +6,7 @@
  */
 
 import { apiClient } from '@/lib/api/client';
+import { API_ENDPOINTS } from '@/lib/api/endpoints';
 import type { AuditLog, AuditLogListResponse, AuditLogFilters } from '../types/auditLog';
 
 export const auditApi = {
@@ -29,7 +30,7 @@ export const auditApi = {
     params.append('offset', ((page - 1) * per_page).toString());
 
     const queryString = params.toString();
-    const url = `/audit-logs${queryString ? `?${queryString}` : ''}`;
+    const url = `${API_ENDPOINTS.AUDIT.LIST}${queryString ? `?${queryString}` : ''}`;
 
     const { data } = await apiClient.get<AuditLogListResponse>(url);
     return data;
@@ -39,7 +40,7 @@ export const auditApi = {
    * Get single audit log by ID
    */
   getAuditLog: async (id: number): Promise<AuditLog> => {
-    const { data } = await apiClient.get<AuditLog>(`/audit-logs/${id}`);
+    const { data } = await apiClient.get<AuditLog>(API_ENDPOINTS.AUDIT.GET(id));
     return data;
   },
 };
