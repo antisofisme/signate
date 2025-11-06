@@ -459,6 +459,7 @@ def change_password(
 def delete_user(
     user_id: int,
     http_request: Request,
+    db: Session = Depends(get_db),
     use_case: DeleteUserUseCase = Depends(get_delete_user_use_case),
     audit_logger: AuditLogger = Depends(get_audit_logger),
     current_user: dict = Depends(require_admin_or_manager)
@@ -471,7 +472,8 @@ def delete_user(
     Permission: Admin (any user) or Manager (own org only)
     """
     # Get target user to check permissions
-    user = use_case.execute(user_id)
+    get_use_case = get_get_user_use_case(db)
+    user = get_use_case.execute(user_id)
 
     # Manager can only delete users in own organization
     if current_user["role"] == "manager":
@@ -483,8 +485,8 @@ def delete_user(
             )
     start_time = time.time()
 
-    # Execute use case
-    user = use_case.execute(user_id)
+    # Execute delete use case
+    use_case.execute(user_id)
 
     # Calculate duration
     duration_ms = (time.time() - start_time) * 1000

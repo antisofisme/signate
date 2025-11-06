@@ -145,7 +145,7 @@ app.include_router(content_router, tags=["Content Management"])
 
 
 # =============================================================================
-# STATIC FILES SERVING (for content uploads)
+# STATIC FILES SERVING (for content uploads and thumbnails)
 # =============================================================================
 
 # Mount static files for content serving
@@ -155,6 +155,14 @@ if CONTENT_DIR.exists():
     print(f"✓ Static files mounted: /content -> {CONTENT_DIR}")
 else:
     print(f"⚠ Content directory not found: {CONTENT_DIR}")
+
+# Mount static files for thumbnails
+THUMBNAILS_DIR = Path("/data/signage/content/thumbnails")
+if THUMBNAILS_DIR.exists():
+    app.mount("/thumbnails", StaticFiles(directory=str(THUMBNAILS_DIR)), name="thumbnails")
+    print(f"✓ Static files mounted: /thumbnails -> {THUMBNAILS_DIR}")
+else:
+    print(f"⚠ Thumbnails directory not found: {THUMBNAILS_DIR}")
 
 
 # =============================================================================

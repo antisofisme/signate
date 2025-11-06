@@ -148,3 +148,25 @@ async def get_content(
         raise HTTPException(status_code=404, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Get failed: {str(e)}")
+
+
+@router.delete("/{content_id}", status_code=204)
+async def delete_content(
+    content_id: int,
+    content_repo: IContentRepository = Depends(get_content_repository),
+    current_user: CurrentUser = Depends(get_current_user)
+):
+    """Delete content (soft delete - sets deleted_at timestamp)"""
+    try:
+        # Soft delete - automatically checks organization ownership
+        deleted = content_repo.soft_delete(content_id, current_user.organization_id)
+
+        if not deleted:
+            raise HTTPException(status_code=404, detail="Content not found or access denied")
+
+        return None  # 204 No Content
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Delete failed: {str(e)}")
