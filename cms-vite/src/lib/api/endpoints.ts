@@ -69,6 +69,23 @@ export const API_ENDPOINTS = {
   },
 
   // ========================================
+  // TAGS
+  // ========================================
+  TAGS: {
+    LIST: '/tags',
+    GET: (id: number) => `/tags/${id}`,
+    CREATE: '/tags',
+    UPDATE: (id: number) => `/tags/${id}`,
+    DELETE: (id: number) => `/tags/${id}`,
+    USAGE: (id: number) => `/tags/${id}/usage`,
+    ASSIGN_TO_CONTENT: (tagId: number) => `/tags/${tagId}/assign-content`,
+    ASSIGN_TO_CONTENTS: (tagId: number) => `/tags/${tagId}/assign-contents`,
+    UNASSIGN_FROM_CONTENT: (tagId: number) => `/tags/${tagId}/unassign-content`,
+    UNASSIGN_FROM_CONTENTS: (tagId: number) => `/tags/${tagId}/unassign-contents`,
+    GET_CONTENT_TAGS: (contentId: number) => `/contents/${contentId}/tags`,
+  },
+
+  // ========================================
   // PLAYLISTS
   // ========================================
   PLAYLISTS: {

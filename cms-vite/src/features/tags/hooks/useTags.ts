@@ -119,3 +119,79 @@ export function useDeleteTag() {
     },
   });
 }
+
+/**
+ * Assign tag to contents mutation (bulk)
+ */
+export function useAssignTagToContents() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ tagId, contentIds }: { tagId: number; contentIds: number[] }) =>
+      tagsApi.assignToContents(tagId, contentIds),
+    onSuccess: (result, variables) => {
+      // Invalidate tag queries to update usage counts
+      queryClient.invalidateQueries({ queryKey: ['tags'] });
+      queryClient.invalidateQueries({ queryKey: ['tags', variables.tagId] });
+
+      // Invalidate content tags for all affected content
+      variables.contentIds.forEach(contentId => {
+        queryClient.invalidateQueries({ queryKey: ['content', contentId, 'tags'] });
+      });
+
+      // Show success toast with details
+      if (result.failed > 0) {
+        toast.warning(`${result.assigned} content tagged, ${result.skipped} already tagged, ${result.failed} failed`);
+      } else if (result.skipped > 0) {
+        toast.info(`${result.assigned} content tagged, ${result.skipped} already tagged`);
+      } else {
+        toast.success(`Successfully tagged ${result.assigned} content items`);
+      }
+    },
+    onError: (error) => {
+      const appError = handleAPIError(error);
+      toast.error(appError.message);
+    },
+  });
+}
+
+/**
+ * Unassign tag from contents mutation (bulk)
+ */
+export function useUnassignTagFromContents() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ tagId, contentIds }: { tagId: number; contentIds: number[] }) =>
+      tagsApi.unassignFromContents(tagId, contentIds),
+    onSuccess: (result, variables) => {
+      // Invalidate tag queries to update usage counts
+      queryClient.invalidateQueries({ queryKey: ['tags'] });
+      queryClient.invalidateQueries({ queryKey: ['tags', variables.tagId] });
+
+      // Invalidate content tags for all affected content
+      variables.contentIds.forEach(contentId => {
+        queryClient.invalidateQueries({ queryKey: ['content', contentId, 'tags'] });
+      });
+
+      // Show success toast
+      toast.success(`Untagged ${result.unassigned} content items`);
+    },
+    onError: (error) => {
+      const appError = handleAPIError(error);
+      toast.error(appError.message);
+    },
+  });
+}
+
+/**
+ * Get content tags query
+ */
+export function useContentTags(contentId: number) {
+  return useQuery({
+    queryKey: ['content', contentId, 'tags'],
+    queryFn: () => tagsApi.getContentTags(contentId),
+    staleTime: 2 * 60 * 1000, // 2 minutes
+    enabled: !!contentId,
+  });
+}

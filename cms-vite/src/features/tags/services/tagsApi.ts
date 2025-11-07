@@ -97,4 +97,90 @@ export const tagsApi = {
     const params = force ? '?force=true' : '';
     await apiClient.delete(`${API_ENDPOINTS.TAGS.DELETE(id)}${params}`);
   },
+
+  /**
+   * Assign tag to a single content item
+   * @param tagId - Tag ID
+   * @param contentId - Content ID
+   */
+  assignToContent: async (tagId: number, contentId: number): Promise<{success: boolean; message: string}> => {
+    const response = await apiClient.post<{success: boolean; message: string}>(
+      API_ENDPOINTS.TAGS.ASSIGN_TO_CONTENT(tagId),
+      { content_id: contentId }
+    );
+    return response.data;
+  },
+
+  /**
+   * Bulk assign tag to multiple content items
+   * @param tagId - Tag ID
+   * @param contentIds - Array of content IDs
+   */
+  assignToContents: async (tagId: number, contentIds: number[]): Promise<{
+    success: boolean;
+    assigned: number;
+    skipped: number;
+    failed: number;
+    message: string;
+  }> => {
+    const response = await apiClient.post<{
+      success: boolean;
+      assigned: number;
+      skipped: number;
+      failed: number;
+      message: string;
+    }>(
+      API_ENDPOINTS.TAGS.ASSIGN_TO_CONTENTS(tagId),
+      { content_ids: contentIds }
+    );
+    return response.data;
+  },
+
+  /**
+   * Unassign tag from a single content item
+   * @param tagId - Tag ID
+   * @param contentId - Content ID
+   */
+  unassignFromContent: async (tagId: number, contentId: number): Promise<{success: boolean; message: string}> => {
+    const response = await apiClient.delete<{success: boolean; message: string}>(
+      API_ENDPOINTS.TAGS.UNASSIGN_FROM_CONTENT(tagId),
+      { data: { content_id: contentId } }
+    );
+    return response.data;
+  },
+
+  /**
+   * Bulk unassign tag from multiple content items
+   * @param tagId - Tag ID
+   * @param contentIds - Array of content IDs
+   */
+  unassignFromContents: async (tagId: number, contentIds: number[]): Promise<{
+    success: boolean;
+    unassigned: number;
+    not_found: number;
+    message: string;
+  }> => {
+    const response = await apiClient.delete<{
+      success: boolean;
+      unassigned: number;
+      not_found: number;
+      message: string;
+    }>(
+      API_ENDPOINTS.TAGS.UNASSIGN_FROM_CONTENTS(tagId),
+      { data: { content_ids: contentIds } }
+    );
+    return response.data;
+  },
+
+  /**
+   * Get all tags assigned to a content item
+   * @param contentId - Content ID
+   * @returns List of tags
+   */
+  getContentTags: async (contentId: number): Promise<Tag[]> => {
+    const response = await apiClient.get<{success: boolean; data: Tag[]; total: number}>(
+      API_ENDPOINTS.TAGS.GET_CONTENT_TAGS(contentId)
+    );
+    return response.data.data;
+  },
 };
