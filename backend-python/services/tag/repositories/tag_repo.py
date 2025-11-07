@@ -156,7 +156,7 @@ class TagRepository(ITagRepository):
     def assign_to_content(self, tag_id: int, content_id: int, organization_id: int) -> bool:
         """Assign tag to a content item"""
         from services.tag.models import ContentTag
-        from services.content.models import Content
+        from services.content.repositories.models import ContentModel as Content
 
         # Verify tag belongs to organization
         tag = self.find_by_id(tag_id, organization_id)
@@ -223,7 +223,7 @@ class TagRepository(ITagRepository):
     def assign_to_contents(self, tag_id: int, content_ids: List[int], organization_id: int) -> dict:
         """Bulk assign tag to multiple content items"""
         from services.tag.models import ContentTag
-        from services.content.models import Content
+        from services.content.repositories.models import ContentModel as Content
 
         # Verify tag belongs to organization
         tag = self.find_by_id(tag_id, organization_id)
@@ -299,7 +299,7 @@ class TagRepository(ITagRepository):
     def get_content_tags(self, content_id: int, organization_id: int) -> List[Tag]:
         """Get all tags assigned to a content item"""
         from services.tag.models import ContentTag
-        from services.content.models import Content
+        from services.content.repositories.models import ContentModel as Content
 
         # Verify content belongs to organization
         content = (
