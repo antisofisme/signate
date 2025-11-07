@@ -121,18 +121,6 @@ export const API_ENDPOINTS = {
   },
 
   // ========================================
-  // TAGS
-  // ========================================
-  TAGS: {
-    LIST: '/tags',
-    GET: (id: number) => `/tags/${id}`,
-    CREATE: '/tags',
-    UPDATE: (id: number) => `/tags/${id}`,
-    DELETE: (id: number) => `/tags/${id}`,
-    USAGE: (id: number) => `/tags/${id}/usage`,
-  },
-
-  // ========================================
   // ANALYTICS
   // ========================================
   ANALYTICS: {
