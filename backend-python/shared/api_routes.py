@@ -192,3 +192,42 @@ def get_all_routes():
         "health": {k: v for k, v in vars(HealthRoutes).items() if not k.startswith("_")},
         "websocket": {k: v for k, v in vars(WebSocketRoutes).items() if not k.startswith("_")},
     }
+
+
+# =============================================================================
+# PLAYLIST SERVICE ROUTES
+# =============================================================================
+class PlaylistRoutes:
+    """Playlist management endpoints"""
+    BASE = f"{API_V1}/playlists"
+
+    # Playlist CRUD
+    LIST = BASE
+    CREATE = BASE
+    GET = f"{BASE}/{{playlist_id}}"
+    UPDATE = f"{BASE}/{{playlist_id}}"
+    DELETE = f"{BASE}/{{playlist_id}}"
+
+    # Content Management
+    GET_CONTENT = f"{BASE}/{{playlist_id}}/content"
+    ADD_CONTENT = f"{BASE}/{{playlist_id}}/content"
+    REMOVE_CONTENT = f"{BASE}/{{playlist_id}}/content/{{content_item_id}}"
+    REORDER_CONTENT = f"{BASE}/{{playlist_id}}/reorder"
+
+    # Device/Tag Assignments
+    GET_ASSIGNMENTS = f"{BASE}/{{playlist_id}}/assignments"
+    ASSIGN_TO_DEVICES = f"{BASE}/{{playlist_id}}/assign/devices"
+    ASSIGN_TO_TAGS = f"{BASE}/{{playlist_id}}/assign/tags"
+    UNASSIGN_FROM_DEVICES = f"{BASE}/{{playlist_id}}/assign/devices"
+    UNASSIGN_FROM_TAGS = f"{BASE}/{{playlist_id}}/assign/tags"
+
+
+# =============================================================================
+# AUDIT SERVICE ROUTES  
+# =============================================================================
+class AuditRoutes:
+    """Audit logging endpoints"""
+    BASE = f"{API_V1}/audit-logs"
+
+    LIST = BASE
+    GET = f"{BASE}/{{log_id}}"

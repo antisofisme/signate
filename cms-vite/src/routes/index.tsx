@@ -20,6 +20,7 @@ import SettingsPage from '@/pages/SettingsPage';
 import AuditLogsPage from '@/pages/AuditLogsPage';
 import TagsPage from '@/pages/TagsPage';
 import ContentPage from '@/pages/ContentPage';
+import PlaylistsPage from '@/pages/PlaylistsPage';
 // import DevicesPage from '@/pages/DevicesPage'; // TODO: Create DevicesPage
 
 export const router = createBrowserRouter([
@@ -78,7 +79,7 @@ export const router = createBrowserRouter([
       },
       {
         path: 'playlists',
-        element: <div className="p-8">Playlists Page - Coming Soon</div>,
+        element: <PlaylistsPage />,
       },
       {
         path: 'tags',

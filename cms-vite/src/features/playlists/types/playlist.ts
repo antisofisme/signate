@@ -5,16 +5,24 @@
 export interface Playlist {
   id: number;
   name: string;
-  description?: string;
+  description?: string | null;
   is_active: boolean;
-  priority?: number;
-  created_at: string;
-  updated_at: string;
+  priority: number;
+  schedule?: Record<string, any> | null;
   organization_id: number;
+  created_by?: number | null;
+  created_at: string;
+  updated_at?: string | null;
+  deleted_at?: string | null;
+
+  // Computed fields
+  content_count: number;
+  total_duration: number;
 
   // Relationships
   contents?: PlaylistContent[];
   devices?: PlaylistDevice[];
+  tags?: PlaylistTag[];
 }
 
 export interface PlaylistContent {
@@ -35,7 +43,13 @@ export interface PlaylistDevice {
   id: number;
   device_id: number;
   device_name?: string;
-  assigned_at: string;
+  location?: string;
+}
+
+export interface PlaylistTag {
+  id: number;
+  name: string;
+  color: string;
 }
 
 export interface CreatePlaylistRequest {
@@ -43,7 +57,7 @@ export interface CreatePlaylistRequest {
   description?: string;
   is_active?: boolean;
   priority?: number;
-  content_ids?: number[];
+  schedule?: Record<string, any>;
 }
 
 export interface UpdatePlaylistRequest {
@@ -51,19 +65,45 @@ export interface UpdatePlaylistRequest {
   description?: string;
   is_active?: boolean;
   priority?: number;
+  schedule?: Record<string, any>;
 }
 
-export interface ReorderPlaylistRequest {
-  content_orders: Array<{
-    content_id: number;
+export interface AddContentRequest {
+  content_ids: number[];
+}
+
+export interface ReorderContentRequest {
+  content_items: Array<{
+    id: number;
     order_index: number;
+    duration?: number;
   }>;
 }
 
-export interface AssignDeviceRequest {
+export interface AssignDevicesRequest {
   device_ids: number[];
 }
 
-export interface UnassignDeviceRequest {
-  device_ids: number[];
+export interface AssignTagsRequest {
+  tag_ids: number[];
+}
+
+export interface PlaylistAssignmentsResponse {
+  devices: PlaylistDevice[];
+  tags: PlaylistTag[];
+}
+
+export interface BulkOperationResponse {
+  success: boolean;
+  message: string;
+  added?: number;
+  assigned?: number;
+  skipped_missing?: number[];
+  skipped_duplicate?: number[];
+}
+
+export interface RemoveOperationResponse {
+  success: boolean;
+  message: string;
+  removed?: number;
 }

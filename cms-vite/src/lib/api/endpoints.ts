@@ -89,15 +89,25 @@ export const API_ENDPOINTS = {
   // PLAYLISTS
   // ========================================
   PLAYLISTS: {
+    // CRUD
     LIST: '/playlists',
     GET: (id: number) => `/playlists/${id}`,
     CREATE: '/playlists',
     UPDATE: (id: number) => `/playlists/${id}`,
     DELETE: (id: number) => `/playlists/${id}`,
-    DUPLICATE: (id: number) => `/playlists/${id}/duplicate`,
-    ASSIGN_DEVICE: (id: number) => `/playlists/${id}/assign`,
-    UNASSIGN_DEVICE: (id: number) => `/playlists/${id}/unassign`,
-    REORDER: (id: number) => `/playlists/${id}/reorder`,
+
+    // Content Management
+    GET_CONTENT: (id: number) => `/playlists/${id}/content`,
+    ADD_CONTENT: (id: number) => `/playlists/${id}/content`,
+    REMOVE_CONTENT: (playlistId: number, itemId: number) => `/playlists/${playlistId}/content/${itemId}`,
+    REORDER_CONTENT: (id: number) => `/playlists/${id}/reorder`,
+
+    // Assignments
+    GET_ASSIGNMENTS: (id: number) => `/playlists/${id}/assignments`,
+    ASSIGN_DEVICES: (id: number) => `/playlists/${id}/assign/devices`,
+    ASSIGN_TAGS: (id: number) => `/playlists/${id}/assign/tags`,
+    UNASSIGN_DEVICES: (id: number) => `/playlists/${id}/assign/devices`,
+    UNASSIGN_TAGS: (id: number) => `/playlists/${id}/assign/tags`,
   },
 
   // ========================================

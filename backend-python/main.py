@@ -22,6 +22,7 @@ from services.user.routes import router as user_router
 from services.audit.routes import router as audit_router
 from services.tag.routes import router as tag_router
 from services.content.routes import router as content_router
+from services.playlist.routes import router as playlist_router
 
 
 # =============================================================================
@@ -142,6 +143,7 @@ app.include_router(user_router, tags=["User Management"])
 app.include_router(audit_router, tags=["Audit Logging"])
 app.include_router(tag_router, tags=["Tag Management"])
 app.include_router(content_router, tags=["Content Management"])
+app.include_router(playlist_router, tags=["Playlist Management"])
 
 
 # =============================================================================
