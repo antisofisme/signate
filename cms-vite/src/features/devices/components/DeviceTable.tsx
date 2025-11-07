@@ -22,6 +22,8 @@ import {
   Tag,
   FileText,
   List,
+  Wifi,
+  Play,
 } from 'lucide-react';
 import {
   useDeviceList,
@@ -40,6 +42,8 @@ import { SendCommandModal } from './modals/SendCommandModal';
 import { TagAssignmentModal } from './modals/TagAssignmentModal';
 import { ContentAssignmentModal } from './modals/ContentAssignmentModal';
 import { PlaylistAssignmentModal } from './modals/PlaylistAssignmentModal';
+import { SpeedHistoryModal } from './modals/SpeedHistoryModal';
+import { PendingDeviceCard } from './PendingDeviceCard';
 
 // Delete Confirmation Modal
 interface DeleteConfirmModalProps {
@@ -142,6 +146,10 @@ export function DeviceTable() {
     device: Device | null;
   }>({ isOpen: false, device: null });
   const [playlistAssignmentModal, setPlaylistAssignmentModal] = useState<{
+    isOpen: boolean;
+    device: Device | null;
+  }>({ isOpen: false, device: null });
+  const [speedHistoryModal, setSpeedHistoryModal] = useState<{
     isOpen: boolean;
     device: Device | null;
   }>({ isOpen: false, device: null });
@@ -309,6 +317,28 @@ export function DeviceTable() {
         )}
       </div>
 
+      {/* Pending Devices Section */}
+      {devices.filter((d) => d.status === 'pending').length > 0 && (
+        <div className="space-y-4">
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+            Pending Devices Awaiting Activation
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {devices
+              .filter((d) => d.status === 'pending')
+              .map((device) => (
+                <PendingDeviceCard
+                  key={device.id}
+                  device={device}
+                  onActivated={() => {
+                    // Refresh will happen automatically via React Query
+                  }}
+                />
+              ))}
+          </div>
+        </div>
+      )}
+
       {/* Table */}
       <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
         {isLoading ? (
@@ -448,6 +478,24 @@ export function DeviceTable() {
                         </button>
                         <button
                           onClick={() =>
+                            setSpeedHistoryModal({ isOpen: true, device })
+                          }
+                          className="text-cyan-600 hover:text-cyan-800 dark:text-cyan-400 dark:hover:text-cyan-300"
+                          title="Speed test history"
+                        >
+                          <Wifi className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() =>
+                            window.open(`/devices/${device.id}/preview`, '_blank')
+                          }
+                          className="text-orange-600 hover:text-orange-800 dark:text-orange-400 dark:hover:text-orange-300"
+                          title="Preview device content"
+                        >
+                          <Play className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() =>
                             setDeleteModal({ isOpen: true, device })
                           }
                           className="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"
@@ -560,6 +608,13 @@ export function DeviceTable() {
         isOpen={playlistAssignmentModal.isOpen}
         device={playlistAssignmentModal.device}
         onClose={() => setPlaylistAssignmentModal({ isOpen: false, device: null })}
+      />
+
+      {/* Speed History Modal */}
+      <SpeedHistoryModal
+        isOpen={speedHistoryModal.isOpen}
+        device={speedHistoryModal.device}
+        onClose={() => setSpeedHistoryModal({ isOpen: false, device: null })}
       />
     </>
   );

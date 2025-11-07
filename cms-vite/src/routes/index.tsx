@@ -22,6 +22,7 @@ import TagsPage from '@/pages/TagsPage';
 import ContentPage from '@/pages/ContentPage';
 import PlaylistsPage from '@/pages/PlaylistsPage';
 import DevicesPage from '@/pages/DevicesPage';
+import DevicePreviewPage from '@/pages/DevicePreviewPage';
 
 export const router = createBrowserRouter([
   // Public Routes
@@ -94,6 +95,16 @@ export const router = createBrowserRouter([
         element: <div className="p-8">Widgets Page - Coming Soon</div>,
       },
     ],
+  },
+
+  // Device Preview - Full Screen (Protected but no layout)
+  {
+    path: '/devices/:deviceId/preview',
+    element: (
+      <ProtectedRoute>
+        <DevicePreviewPage />
+      </ProtectedRoute>
+    ),
   },
 
   // 404 Catch-all

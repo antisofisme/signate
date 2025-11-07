@@ -453,4 +453,18 @@ export const deviceApi = {
   unassignPlaylist: async (id: number, playlistId: number): Promise<void> => {
     await apiClient.delete(`/api/v1/devices/${id}/playlists/${playlistId}`);
   },
+
+  // ========================================
+  // Speed Tests
+  // ========================================
+
+  /**
+   * Get speed test history for device
+   * @param id - Device ID
+   * @returns Speed test history
+   */
+  getSpeedTests: async (id: number): Promise<{ total: number; items: any[] }> => {
+    const response = await apiClient.get(`/api/v1/devices/${id}/speed-tests`);
+    return unwrapResponse<{ total: number; items: any[] }>(response);
+  },
 };
