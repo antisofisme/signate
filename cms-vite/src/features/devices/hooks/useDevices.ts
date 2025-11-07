@@ -263,3 +263,170 @@ export const useSendCommand = () => {
     },
   });
 };
+
+// ========================================
+// Device Assignments
+// ========================================
+
+/**
+ * Get tags assigned to device
+ */
+export const useDeviceTags = (deviceId: number, enabled = true) => {
+  return useQuery({
+    queryKey: [...deviceKeys.all, 'tags', deviceId],
+    queryFn: () => deviceApi.getTags(deviceId),
+    enabled: enabled && deviceId > 0,
+    staleTime: 30000,
+  });
+};
+
+/**
+ * Assign tag to device
+ */
+export const useAssignTag = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ deviceId, tagId }: { deviceId: number; tagId: number }) =>
+      deviceApi.assignTag(deviceId, tagId),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: [...deviceKeys.all, 'tags', variables.deviceId] });
+      toast.success('Tag assigned successfully');
+    },
+    onError: (error: any) => {
+      const message = error?.response?.data?.detail || 'Failed to assign tag';
+      toast.error(message);
+    },
+  });
+};
+
+/**
+ * Unassign tag from device
+ */
+export const useUnassignTag = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ deviceId, tagId }: { deviceId: number; tagId: number }) =>
+      deviceApi.unassignTag(deviceId, tagId),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: [...deviceKeys.all, 'tags', variables.deviceId] });
+      toast.success('Tag removed successfully');
+    },
+    onError: (error: any) => {
+      const message = error?.response?.data?.detail || 'Failed to remove tag';
+      toast.error(message);
+    },
+  });
+};
+
+/**
+ * Get content assigned to device
+ */
+export const useDeviceContents = (deviceId: number, enabled = true) => {
+  return useQuery({
+    queryKey: [...deviceKeys.all, 'contents', deviceId],
+    queryFn: () => deviceApi.getContents(deviceId),
+    enabled: enabled && deviceId > 0,
+    staleTime: 30000,
+  });
+};
+
+/**
+ * Assign content to device
+ */
+export const useAssignContent = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      deviceId,
+      contentId,
+      priority,
+    }: {
+      deviceId: number;
+      contentId: number;
+      priority?: number;
+    }) => deviceApi.assignContent(deviceId, contentId, priority),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: [...deviceKeys.all, 'contents', variables.deviceId] });
+      toast.success('Content assigned successfully');
+    },
+    onError: (error: any) => {
+      const message = error?.response?.data?.detail || 'Failed to assign content';
+      toast.error(message);
+    },
+  });
+};
+
+/**
+ * Unassign content from device
+ */
+export const useUnassignContent = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ deviceId, contentId }: { deviceId: number; contentId: number }) =>
+      deviceApi.unassignContent(deviceId, contentId),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: [...deviceKeys.all, 'contents', variables.deviceId] });
+      toast.success('Content removed successfully');
+    },
+    onError: (error: any) => {
+      const message = error?.response?.data?.detail || 'Failed to remove content';
+      toast.error(message);
+    },
+  });
+};
+
+/**
+ * Get playlists assigned to device
+ */
+export const useDevicePlaylists = (deviceId: number, enabled = true) => {
+  return useQuery({
+    queryKey: [...deviceKeys.all, 'playlists', deviceId],
+    queryFn: () => deviceApi.getPlaylists(deviceId),
+    enabled: enabled && deviceId > 0,
+    staleTime: 30000,
+  });
+};
+
+/**
+ * Assign playlist to device
+ */
+export const useAssignPlaylist = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ deviceId, playlistId }: { deviceId: number; playlistId: number }) =>
+      deviceApi.assignPlaylist(deviceId, playlistId),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: [...deviceKeys.all, 'playlists', variables.deviceId] });
+      toast.success('Playlist assigned successfully');
+    },
+    onError: (error: any) => {
+      const message = error?.response?.data?.detail || 'Failed to assign playlist';
+      toast.error(message);
+    },
+  });
+};
+
+/**
+ * Unassign playlist from device
+ */
+export const useUnassignPlaylist = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ deviceId, playlistId }: { deviceId: number; playlistId: number }) =>
+      deviceApi.unassignPlaylist(deviceId, playlistId),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: [...deviceKeys.all, 'playlists', variables.deviceId] });
+      toast.success('Playlist removed successfully');
+    },
+    onError: (error: any) => {
+      const message = error?.response?.data?.detail || 'Failed to remove playlist';
+      toast.error(message);
+    },
+  });
+};

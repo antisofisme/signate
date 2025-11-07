@@ -19,6 +19,9 @@ import {
   Eye,
   Terminal,
   Send,
+  Tag,
+  FileText,
+  List,
 } from 'lucide-react';
 import {
   useDeviceList,
@@ -34,6 +37,9 @@ import { DeviceDetailModal } from './modals/DeviceDetailModal';
 import { DeviceEditModal } from './modals/DeviceEditModal';
 import { DeviceLogsModal } from './modals/DeviceLogsModal';
 import { SendCommandModal } from './modals/SendCommandModal';
+import { TagAssignmentModal } from './modals/TagAssignmentModal';
+import { ContentAssignmentModal } from './modals/ContentAssignmentModal';
+import { PlaylistAssignmentModal } from './modals/PlaylistAssignmentModal';
 
 // Delete Confirmation Modal
 interface DeleteConfirmModalProps {
@@ -124,6 +130,18 @@ export function DeviceTable() {
     device: Device | null;
   }>({ isOpen: false, device: null });
   const [commandModal, setCommandModal] = useState<{
+    isOpen: boolean;
+    device: Device | null;
+  }>({ isOpen: false, device: null });
+  const [tagAssignmentModal, setTagAssignmentModal] = useState<{
+    isOpen: boolean;
+    device: Device | null;
+  }>({ isOpen: false, device: null });
+  const [contentAssignmentModal, setContentAssignmentModal] = useState<{
+    isOpen: boolean;
+    device: Device | null;
+  }>({ isOpen: false, device: null });
+  const [playlistAssignmentModal, setPlaylistAssignmentModal] = useState<{
     isOpen: boolean;
     device: Device | null;
   }>({ isOpen: false, device: null });
@@ -403,6 +421,33 @@ export function DeviceTable() {
                         </button>
                         <button
                           onClick={() =>
+                            setTagAssignmentModal({ isOpen: true, device })
+                          }
+                          className="text-yellow-600 hover:text-yellow-800 dark:text-yellow-400 dark:hover:text-yellow-300"
+                          title="Manage tags"
+                        >
+                          <Tag className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() =>
+                            setContentAssignmentModal({ isOpen: true, device })
+                          }
+                          className="text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300"
+                          title="Manage content"
+                        >
+                          <FileText className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() =>
+                            setPlaylistAssignmentModal({ isOpen: true, device })
+                          }
+                          className="text-pink-600 hover:text-pink-800 dark:text-pink-400 dark:hover:text-pink-300"
+                          title="Manage playlists"
+                        >
+                          <List className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() =>
                             setDeleteModal({ isOpen: true, device })
                           }
                           className="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"
@@ -494,6 +539,27 @@ export function DeviceTable() {
         onSuccess={() => {
           // Command sent successfully
         }}
+      />
+
+      {/* Tag Assignment Modal */}
+      <TagAssignmentModal
+        isOpen={tagAssignmentModal.isOpen}
+        device={tagAssignmentModal.device}
+        onClose={() => setTagAssignmentModal({ isOpen: false, device: null })}
+      />
+
+      {/* Content Assignment Modal */}
+      <ContentAssignmentModal
+        isOpen={contentAssignmentModal.isOpen}
+        device={contentAssignmentModal.device}
+        onClose={() => setContentAssignmentModal({ isOpen: false, device: null })}
+      />
+
+      {/* Playlist Assignment Modal */}
+      <PlaylistAssignmentModal
+        isOpen={playlistAssignmentModal.isOpen}
+        device={playlistAssignmentModal.device}
+        onClose={() => setPlaylistAssignmentModal({ isOpen: false, device: null })}
       />
     </>
   );
