@@ -349,4 +349,108 @@ export const deviceApi = {
     );
     return unwrapResponse<DeviceCommand>(response);
   },
+
+  // ========================================
+  // Device Assignments
+  // ========================================
+
+  /**
+   * Get tags assigned to device
+   * @param id - Device ID
+   * @returns List of assigned tags
+   */
+  getTags: async (id: number): Promise<{ total: number; items: any[] }> => {
+    const response = await apiClient.get(`/api/v1/devices/${id}/tags`);
+    return unwrapResponse<{ total: number; items: any[] }>(response);
+  },
+
+  /**
+   * Assign tag to device
+   * @param id - Device ID
+   * @param tagId - Tag ID
+   * @returns Assignment result
+   */
+  assignTag: async (id: number, tagId: number): Promise<any> => {
+    const response = await apiClient.post(`/api/v1/devices/${id}/tags`, { tag_id: tagId });
+    return unwrapResponse<any>(response);
+  },
+
+  /**
+   * Unassign tag from device
+   * @param id - Device ID
+   * @param tagId - Tag ID
+   */
+  unassignTag: async (id: number, tagId: number): Promise<void> => {
+    await apiClient.delete(`/api/v1/devices/${id}/tags/${tagId}`);
+  },
+
+  /**
+   * Get content assigned to device
+   * @param id - Device ID
+   * @returns List of assigned content
+   */
+  getContents: async (id: number): Promise<{ total: number; items: any[] }> => {
+    const response = await apiClient.get(`/api/v1/devices/${id}/contents`);
+    return unwrapResponse<{ total: number; items: any[] }>(response);
+  },
+
+  /**
+   * Assign content to device
+   * @param id - Device ID
+   * @param contentId - Content ID
+   * @param priority - Assignment priority
+   * @returns Assignment result
+   */
+  assignContent: async (
+    id: number,
+    contentId: number,
+    priority?: number
+  ): Promise<any> => {
+    const response = await apiClient.post(`/api/v1/devices/${id}/contents`, {
+      content_id: contentId,
+      priority: priority || 1,
+    });
+    return unwrapResponse<any>(response);
+  },
+
+  /**
+   * Unassign content from device
+   * @param id - Device ID
+   * @param contentId - Content ID
+   */
+  unassignContent: async (id: number, contentId: number): Promise<void> => {
+    await apiClient.delete(`/api/v1/devices/${id}/contents/${contentId}`);
+  },
+
+  /**
+   * Get playlists assigned to device
+   * @param id - Device ID
+   * @returns List of assigned playlists
+   */
+  getPlaylists: async (id: number): Promise<{ total: number; items: any[] }> => {
+    const response = await apiClient.get(`/api/v1/devices/${id}/playlists`);
+    return unwrapResponse<{ total: number; items: any[] }>(response);
+  },
+
+  /**
+   * Assign playlist to device
+   * @param id - Device ID
+   * @param playlistId - Playlist ID
+   * @returns Assignment result
+   */
+  assignPlaylist: async (id: number, playlistId: number): Promise<any> => {
+    const response = await apiClient.post(`/api/v1/devices/${id}/playlists`, {
+      playlist_id: playlistId,
+    });
+    return unwrapResponse<any>(response);
+  },
+
+  /**
+   * Unassign playlist from device
+   * @param id - Device ID
+   * @param playlistId - Playlist ID
+   */
+  unassignPlaylist: async (id: number, playlistId: number): Promise<void> => {
+    await apiClient.delete(`/api/v1/devices/${id}/playlists/${playlistId}`);
+  },
 };

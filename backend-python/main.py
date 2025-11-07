@@ -17,6 +17,7 @@ from shared.api_routes import API_V1
 # Import service routers
 from services.auth.routes import router as auth_router
 from services.device.routes import router as device_router
+from services.device.assignment_routes import router as device_assignment_router
 from services.organization.routes import router as organization_router
 from services.user.routes import router as user_router
 from services.audit.routes import router as audit_router
@@ -138,6 +139,7 @@ def health_check():
 # So we don't add prefix here
 app.include_router(auth_router, tags=["Authentication"])
 app.include_router(device_router, tags=["Device Management"])
+app.include_router(device_assignment_router, prefix="/api/v1", tags=["Device Assignments"])
 app.include_router(organization_router, tags=["Organization Management"])
 app.include_router(user_router, tags=["User Management"])
 app.include_router(audit_router, tags=["Audit Logging"])
