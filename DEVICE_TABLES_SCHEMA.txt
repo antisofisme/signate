@@ -1,0 +1,299 @@
+DEVICE IMPLEMENTATION DATABASE SCHEMA
+======================================
+
+┌─────────────────────────────────────────────────────────────────┐
+│                    CORE DEVICE TABLE                             │
+├─────────────────────────────────────────────────────────────────┤
+│ devices                                                           │
+├─────────────────────────────────────────────────────────────────┤
+│ Column               │ Type      │ Key │ Notes                   │
+├─────────────────────┼───────────┼─────┼─────────────────────────┤
+│ id                  │ INT       │ PK  │ Auto increment          │
+│ device_type         │ VARCHAR   │ IDX │ 'tv' or 'monitor'       │
+│ device_name         │ VARCHAR   │     │ Display name            │
+│ ip_address          │ VARCHAR   │     │ IPv4 or IPv6            │
+│ passphrase          │ VARCHAR   │     │ WebOS pairing (TV only) │
+│ unique_code         │ VARCHAR   │ UNQ │ 6-char activation code  │
+│ code_expires_at     │ DATETIME  │     │ Code expiry timestamp   │
+│ device_uuid         │ VARCHAR   │ UNQ │ Permanent UUID v4       │
+│ platform            │ VARCHAR   │     │ webOS, browser, etc     │
+│ model_name          │ VARCHAR   │     │ Device model            │
+│ firmware_version    │ VARCHAR   │     │ OS version              │
+│ status              │ VARCHAR   │ IDX │ pending/active/...      │
+│ last_seen           │ DATETIME  │ IDX │ Last heartbeat time     │
+│ screen_width        │ INT       │     │ Display width (pixels)  │
+│ screen_height       │ INT       │     │ Display height (pixels) │
+│ viewport_width      │ INT       │     │ Viewport width          │
+│ viewport_height     │ INT       │     │ Viewport height         │
+│ device_pixel_ratio  │ FLOAT     │     │ DPR for scaling         │
+│ user_agent          │ TEXT      │     │ Client user agent       │
+│ connection_type     │ VARCHAR   │     │ wifi/ethernet/4g/etc    │
+│ connection_speed    │ FLOAT     │     │ Speed in Mbps           │
+│ rotation            │ INT       │     │ 0/90/180/270 degrees    │
+│ volume_enabled      │ BOOLEAN   │     │ Audio enabled flag      │
+│ room_number         │ VARCHAR   │     │ Hotel room (optional)   │
+│ location_type       │ VARCHAR   │     │ guest_room/public/etc   │
+│ supports_pers...    │ BOOLEAN   │     │ Guest personalization   │
+│ privacy_mode        │ VARCHAR   │     │ full/limited/none       │
+│ organization_id     │ INT       │ FK* │ Multi-tenant org        │
+│ created_by          │ INT       │ FK* │ User who created        │
+│ created_at          │ DATETIME  │     │ Registration timestamp  │
+│ updated_at          │ DATETIME  │     │ Last update timestamp   │
+│ released_at         │ DATETIME  │     │ Release timestamp       │
+└─────────────────────┴───────────┴─────┴─────────────────────────┘
+
+RELATIONSHIPS:
+  devices.organization_id ──FK──> organizations.id (CASCADE)
+  devices.created_by ──FK──> users.id (SET NULL)
+  devices.id <──1:N──> device_logs.device_id
+  devices.id <──1:N──> device_commands.device_id
+  devices.id <──1:N──> device_speed_tests.device_id
+  devices.id <──N:M──> tags.id (via device_tags)
+  devices.id <──1:N──> playlist_assignments.device_id
+  devices.id <──1:N──> content_assignments.device_id
+
+
+┌─────────────────────────────────────────────────────────────────┐
+│              DEVICE TAGS (N:M JUNCTION TABLE)                    │
+├─────────────────────────────────────────────────────────────────┤
+│ device_tags                                                       │
+├─────────────────────────────────────────────────────────────────┤
+│ Column      │ Type     │ Key       │ Notes                       │
+├─────────────┼──────────┼───────────┼─────────────────────────────┤
+│ device_id   │ INT      │ FK*, PK   │ → devices.id (CASCADE)      │
+│ tag_id      │ INT      │ FK*, PK   │ → tags.id (CASCADE)         │
+│ assigned_at │ DATETIME │           │ When tag assigned           │
+└─────────────┴──────────┴───────────┴─────────────────────────────┘
+
+RELATIONSHIPS:
+  device_tags.device_id <──N──> devices.id
+  device_tags.tag_id <──N──> tags.id
+  
+
+┌─────────────────────────────────────────────────────────────────┐
+│                 DEVICE LOGS (REMOTE DEBUGGING)                   │
+├─────────────────────────────────────────────────────────────────┤
+│ device_logs                                                       │
+├─────────────────────────────────────────────────────────────────┤
+│ Column    │ Type    │ Key    │ Notes                             │
+├───────────┼─────────┼────────┼───────────────────────────────────┤
+│ id        │ INT     │ PK     │ Log entry ID                      │
+│ device_id │ INT     │ FK*, I │ → devices.id (CASCADE)            │
+│ log_level │ VARCHAR │ IDX    │ log/warn/error/info               │
+│ message   │ TEXT    │        │ Log message content               │
+│ source    │ VARCHAR │        │ File/function origin (optional)   │
+│ timestamp │ DATETIME│ IDX    │ When log was recorded             │
+└───────────┴─────────┴────────┴───────────────────────────────────┘
+
+PURPOSE: Remote console logs from device for debugging
+
+
+┌─────────────────────────────────────────────────────────────────┐
+│           DEVICE COMMANDS (REMOTE INSTRUCTION QUEUE)             │
+├─────────────────────────────────────────────────────────────────┤
+│ device_commands                                                   │
+├─────────────────────────────────────────────────────────────────┤
+│ Column      │ Type    │ Key    │ Notes                           │
+├─────────────┼─────────┼────────┼─────────────────────────────────┤
+│ id          │ INT     │ PK     │ Command ID                      │
+│ device_id   │ INT     │ FK*, I │ → devices.id (CASCADE)          │
+│ command_type│ VARCHAR │ IDX    │ reset/refresh/reload/speed_test │
+│ reason      │ VARCHAR │        │ Why command was issued          │
+│ status      │ VARCHAR │ IDX    │ pending/executed/expired        │
+│ created_at  │ DATETIME│        │ When command queued             │
+│ executed_at │ DATETIME│        │ When device executed            │
+│ expires_at  │ DATETIME│ IDX    │ Auto-expire (7 days default)    │
+└─────────────┴─────────┴────────┴─────────────────────────────────┘
+
+WORKFLOW:
+  1. Admin queues command (status = "pending")
+  2. Device polls GET /commands/pending
+  3. Device executes command
+  4. Device calls POST /commands/{id}/execute
+  5. Command status → "executed" OR auto-expire → "expired"
+
+
+┌─────────────────────────────────────────────────────────────────┐
+│            DEVICE SPEED TESTS (NETWORK MONITORING)               │
+├─────────────────────────────────────────────────────────────────┤
+│ device_speed_tests                                                │
+├─────────────────────────────────────────────────────────────────┤
+│ Column          │ Type        │ Key │ Notes                      │
+├─────────────────┼─────────────┼─────┼────────────────────────────┤
+│ id              │ INT         │ PK  │ Test record ID             │
+│ device_id       │ INT         │ FK* │ → devices.id (CASCADE)     │
+│ download_speed  │ DECIMAL(10,2)│    │ Speed in Mbps              │
+│ upload_speed    │ DECIMAL(10,2)│    │ Speed in Mbps              │
+│ latency         │ INT         │     │ Ping in milliseconds       │
+│ jitter          │ INT         │     │ Network jitter (ms)        │
+│ packet_loss     │ DECIMAL(5,2)│     │ Loss percentage (0-100)    │
+│ dns_server      │ VARCHAR     │     │ DNS server IP (optional)   │
+│ quality         │ VARCHAR     │ IDX │ good/fair/poor             │
+│ tested_at       │ DATETIME    │ IDX │ Test timestamp             │
+│ test_duration_ms│ INT         │     │ Test duration (ms)         │
+│ server_endpoint │ VARCHAR     │     │ Test server used           │
+│ error_message   │ TEXT        │     │ Failure info (optional)    │
+└─────────────────┴─────────────┴─────┴────────────────────────────┘
+
+QUALITY THRESHOLDS:
+  GOOD: DL >= 25 Mbps AND UL >= 10 Mbps
+  FAIR: DL >= 10 Mbps AND UL >= 5 Mbps
+  POOR: Below fair
+
+RETENTION: Keep last 100 tests per device (auto-cleanup)
+
+
+┌─────────────────────────────────────────────────────────────────┐
+│      PLAYLIST ASSIGNMENTS (Playlist to Device/Tag)               │
+├─────────────────────────────────────────────────────────────────┤
+│ playlist_assignments                                              │
+├─────────────────────────────────────────────────────────────────┤
+│ Column      │ Type    │ Key      │ Notes                         │
+├─────────────┼─────────┼──────────┼───────────────────────────────┤
+│ id          │ INT     │ PK       │ Assignment ID                 │
+│ playlist_id │ INT     │ FK*, I   │ → playlists.id (CASCADE)      │
+│ device_id   │ INT     │ FK*, I   │ → devices.id (CASCADE, NULL) │
+│ tag_id      │ INT     │ FK*, I   │ → tags.id (CASCADE, NULL)    │
+│ created_at  │ DATETIME│          │ When assigned                 │
+└─────────────┴─────────┴──────────┴───────────────────────────────┘
+
+CONSTRAINT: EITHER device_id OR tag_id (XOR), not both
+EXAMPLE:
+  - Assign playlist to device 5 → device 5 plays playlist
+  - Assign playlist to tag 12 → all devices with tag 12 play playlist
+
+
+┌─────────────────────────────────────────────────────────────────┐
+│      CONTENT ASSIGNMENTS (Content to Device/Tag)                 │
+├─────────────────────────────────────────────────────────────────┤
+│ content_assignments                                               │
+├─────────────────────────────────────────────────────────────────┤
+│ Column        │ Type        │ Key │ Notes                        │
+├───────────────┼─────────────┼─────┼────────────────────────────┤
+│ id            │ INT         │ PK  │ Assignment ID              │
+│ content_id    │ INT         │ FK* │ → contents.id (CASCADE)    │
+│ device_id     │ INT         │ FK* │ → devices.id (CASCADE)     │
+│ tag_id        │ INT         │ FK* │ → tags.id (CASCADE)        │
+│ priority      │ INT         │     │ Display priority (higher=+)│
+│ display_order │ INT         │     │ Order within group         │
+│ is_active     │ BOOLEAN     │     │ Soft delete flag           │
+│ start_date    │ DATETIME(TZ)│     │ Schedule start (optional)  │
+│ end_date      │ DATETIME(TZ)│     │ Schedule end (optional)    │
+│ notes         │ TEXT        │     │ Admin notes                │
+│ created_at    │ DATETIME(TZ)│     │ When assigned              │
+│ updated_at    │ DATETIME(TZ)│     │ Last updated               │
+└───────────────┴─────────────┴─────┴────────────────────────────┘
+
+CONSTRAINT: EITHER device_id OR tag_id (XOR)
+SOFT DELETE: is_active=false instead of physical delete
+
+
+┌─────────────────────────────────────────────────────────────────┐
+│              DEVICE STATUS TRANSITIONS                            │
+├─────────────────────────────────────────────────────────────────┤
+│ pending     -> active      [admin approves via PUT]              │
+│ active      -> inactive    [admin releases via POST /release]    │
+│ inactive    -> active      [admin re-activates, or device       │
+│                             receives new code via                │
+│                             /replace-with-pending]              │
+│ active      -> deleted     [admin deletes via DELETE]           │
+│ any         -> maintenance [admin manually sets status]         │
+└─────────────────────────────────────────────────────────────────┘
+
+
+┌─────────────────────────────────────────────────────────────────┐
+│                MULTI-TENANCY ORGANIZATION ISOLATION               │
+├─────────────────────────────────────────────────────────────────┤
+│ All device queries filtered by:                                  │
+│   WHERE devices.organization_id = current_user.organization_id   │
+│                                                                  │
+│ Device Registration:                                             │
+│   - TV devices: organization_id = authenticated user's org       │
+│   - Monitor devices: organization_id = org with matching PIN    │
+│                                                                  │
+│ Cross-Org Access:                                               │
+│   User from Org A + Device from Org B                           │
+│   → GET /devices/{org_b_device_id} returns 404 (not found)     │
+└─────────────────────────────────────────────────────────────────┘
+
+
+QUERY OPTIMIZATION INDEXES
+===========================
+
+devices table indexes:
+  ├─ PRIMARY KEY (id)
+  ├─ UNIQUE (device_uuid)
+  ├─ UNIQUE (unique_code)
+  ├─ INDEX (device_type) - Filter by TV/monitor
+  ├─ INDEX (status) - Filter by pending/active/inactive
+  ├─ INDEX (last_seen) - Find online/offline devices
+  ├─ INDEX (organization_id) - Multi-tenant filtering
+  └─ INDEX (created_by) - Find devices by creator
+
+device_tags indexes:
+  ├─ PRIMARY KEY (device_id, tag_id)
+  └─ INDEX (tag_id) - Find all devices with tag
+
+device_commands indexes:
+  ├─ PRIMARY KEY (id)
+  ├─ FOREIGN KEY INDEX (device_id) - Find commands for device
+  ├─ INDEX (status) - Find pending/expired commands
+  └─ INDEX (expires_at) - Find expired commands
+
+device_speed_tests indexes:
+  ├─ PRIMARY KEY (id)
+  ├─ INDEX (device_id) - Find test history for device
+  ├─ INDEX (tested_at) - Find tests in time range
+  └─ INDEX (quality) - Analyze connection quality
+
+
+DISK SPACE ESTIMATIONS
+=======================
+(Per 1000 devices, assuming MySQL InnoDB)
+
+devices              ~  500 KB
+device_tags          ~  100 KB (avg 3 tags per device)
+device_logs          ~  5-10 MB (1KB per log, assuming moderate usage)
+device_commands      ~  200 KB (avg 5 commands, 7-day retention)
+device_speed_tests   ~  500 KB (100 tests per device)
+playlist_assignments ~  100 KB (avg 2 playlists per device)
+content_assignments  ~  200 KB (avg 5 content items per device)
+
+TOTAL: ~7-17 MB per 1000 devices (grows with logging volume)
+
+
+COMMON QUERIES
+==============
+
+Find online devices:
+  SELECT * FROM devices 
+  WHERE status = 'active' 
+  AND last_seen > NOW() - INTERVAL 5 MINUTE;
+
+Find devices by tag:
+  SELECT d.* FROM devices d
+  JOIN device_tags dt ON d.id = dt.device_id
+  WHERE dt.tag_id = ?;
+
+Find content assigned to device (including tags/playlists):
+  SELECT c.* FROM contents c
+  JOIN content_assignments ca ON c.id = ca.content_id
+  WHERE (ca.device_id = ? OR ca.tag_id IN (
+    SELECT tag_id FROM device_tags WHERE device_id = ?
+  ))
+  AND ca.is_active = true
+  ORDER BY ca.priority DESC, ca.display_order ASC;
+
+Find pending commands for device:
+  SELECT * FROM device_commands
+  WHERE device_id = ?
+  AND status = 'pending'
+  AND expires_at > NOW()
+  ORDER BY created_at ASC;
+
+Count devices by status:
+  SELECT status, COUNT(*) as count
+  FROM devices
+  WHERE organization_id = ?
+  GROUP BY status;
+

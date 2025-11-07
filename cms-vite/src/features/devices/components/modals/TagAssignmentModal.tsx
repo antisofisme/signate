@@ -7,7 +7,7 @@
 import { useState } from 'react';
 import { X, Tag as TagIcon, Plus, Trash2, Loader2 } from 'lucide-react';
 import { useDeviceTags, useAssignTag, useUnassignTag } from '../../hooks/useDevices';
-import { useTagList } from '@/features/tags/hooks/useTags';
+import { useTags } from '@/features/tags/hooks/useTags';
 import type { Device } from '../../types/device';
 
 interface TagAssignmentModalProps {
@@ -30,10 +30,7 @@ export function TagAssignmentModal({
   );
 
   // Fetch all available tags
-  const { data: allTagsData, isLoading: loadingAllTags } = useTagList(
-    {},
-    isOpen
-  );
+  const { data: allTagsData, isLoading: loadingAllTags } = useTags();
 
   // Mutations
   const assignTag = useAssignTag();

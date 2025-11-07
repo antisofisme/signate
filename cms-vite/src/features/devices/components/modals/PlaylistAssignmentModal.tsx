@@ -30,10 +30,7 @@ export function PlaylistAssignmentModal({
   );
 
   // Fetch all available playlists
-  const { data: allPlaylistsData, isLoading: loadingAllPlaylists } = usePlaylistList(
-    {},
-    isOpen
-  );
+  const { data: allPlaylistsData, isLoading: loadingAllPlaylists } = usePlaylistList();
 
   // Mutations
   const assignPlaylist = useAssignPlaylist();

@@ -31,10 +31,7 @@ export function ContentAssignmentModal({
   );
 
   // Fetch all available content
-  const { data: allContentData, isLoading: loadingAllContent } = useContentList(
-    {},
-    isOpen
-  );
+  const { data: allContentData, isLoading: loadingAllContent } = useContentList();
 
   // Mutations
   const assignContent = useAssignContent();
