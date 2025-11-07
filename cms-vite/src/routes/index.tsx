@@ -21,7 +21,7 @@ import AuditLogsPage from '@/pages/AuditLogsPage';
 import TagsPage from '@/pages/TagsPage';
 import ContentPage from '@/pages/ContentPage';
 import PlaylistsPage from '@/pages/PlaylistsPage';
-// import DevicesPage from '@/pages/DevicesPage'; // TODO: Create DevicesPage
+import DevicesPage from '@/pages/DevicesPage';
 
 export const router = createBrowserRouter([
   // Public Routes
@@ -71,7 +71,7 @@ export const router = createBrowserRouter([
       // Device Management
       {
         path: 'devices',
-        element: <div className="p-8">Devices Page - Coming Soon</div>,
+        element: <DevicesPage />,
       },
       {
         path: 'contents',

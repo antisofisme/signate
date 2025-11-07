@@ -1,0 +1,343 @@
+/**
+ * Device Table Component
+ *
+ * LAYER 1: PRESENTATION
+ * Device management table with filters and actions
+ */
+
+import { useState } from 'react';
+import {
+  Monitor,
+  Tv,
+  Trash2,
+  Loader2,
+  Edit,
+  Filter,
+  X,
+  Circle,
+} from 'lucide-react';
+import {
+  useDeviceList,
+  useDeleteDevice,
+  useUpdateDevice,
+} from '../hooks/useDevices';
+import type { Device, DeviceStatus, DeviceType } from '../types/device';
+import { toast } from 'sonner';
+
+// Delete Confirmation Modal
+interface DeleteConfirmModalProps {
+  isOpen: boolean;
+  device: Device | null;
+  onClose: () => void;
+  onConfirm: () => void;
+  isLoading: boolean;
+}
+
+function DeleteConfirmModal({
+  isOpen,
+  device,
+  onClose,
+  onConfirm,
+  isLoading,
+}: DeleteConfirmModalProps) {
+  if (!isOpen || !device) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-md">
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+          Delete Device
+        </h3>
+        <p className="text-gray-700 dark:text-gray-300 mb-2">
+          Are you sure you want to delete this device?
+        </p>
+        <p className="text-gray-900 dark:text-white font-semibold mb-6">
+          {device.device_name}
+        </p>
+
+        <div className="flex justify-end gap-3">
+          <button
+            onClick={onClose}
+            disabled={isLoading}
+            className="px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg disabled:opacity-50"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={onConfirm}
+            disabled={isLoading}
+            className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 flex items-center gap-2"
+          >
+            {isLoading ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Deleting...
+              </>
+            ) : (
+              'Delete'
+            )}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export function DeviceTable() {
+  // Filters
+  const [statusFilter, setStatusFilter] = useState<DeviceStatus | 'all'>('all');
+  const [typeFilter, setTypeFilter] = useState<DeviceType | 'all'>('all');
+  const [showFilters, setShowFilters] = useState(false);
+
+  // Modals
+  const [deleteModal, setDeleteModal] = useState<{
+    isOpen: boolean;
+    device: Device | null;
+  }>({ isOpen: false, device: null });
+
+  // Build filters for API
+  const apiFilters = {
+    ...(statusFilter !== 'all' && { status: statusFilter }),
+    ...(typeFilter !== 'all' && { device_type: typeFilter }),
+  };
+
+  // Fetch devices
+  const { data, isLoading, error } = useDeviceList(apiFilters);
+  const devices = data?.items || [];
+  const total = data?.total || 0;
+
+  // Mutations
+  const deleteMutation = useDeleteDevice();
+
+  // Delete handler
+  const handleDelete = async () => {
+    if (!deleteModal.device) return;
+
+    try {
+      await deleteMutation.mutateAsync(deleteModal.device.id);
+      setDeleteModal({ isOpen: false, device: null });
+    } catch (error) {
+      // Error handled by mutation
+    }
+  };
+
+  // Status badge
+  const getStatusBadge = (device: Device) => {
+    const isOnline = device.last_seen
+      ? new Date().getTime() - new Date(device.last_seen).getTime() < 5 * 60 * 1000
+      : false;
+
+    if (device.status === 'pending') {
+      return (
+        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200">
+          <Circle className="w-2 h-2 fill-current" />
+          Pending
+        </span>
+      );
+    }
+
+    if (device.status === 'inactive') {
+      return (
+        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300">
+          <Circle className="w-2 h-2 fill-current" />
+          Inactive
+        </span>
+      );
+    }
+
+    return isOnline ? (
+      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
+        <Circle className="w-2 h-2 fill-current" />
+        Online
+      </span>
+    ) : (
+      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200">
+        <Circle className="w-2 h-2 fill-current" />
+        Offline
+      </span>
+    );
+  };
+
+  // Device type icon
+  const getTypeIcon = (type: DeviceType) => {
+    return type === 'tv' ? (
+      <Tv className="w-4 h-4" />
+    ) : (
+      <Monitor className="w-4 h-4" />
+    );
+  };
+
+  return (
+    <>
+      {/* Toolbar */}
+      <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+              Devices
+            </h2>
+            <span className="text-sm text-gray-500 dark:text-gray-400">
+              {total} {total === 1 ? 'device' : 'devices'}
+            </span>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowFilters(!showFilters)}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg border transition-colors ${
+                showFilters
+                  ? 'bg-blue-50 dark:bg-blue-900 border-blue-200 dark:border-blue-700 text-blue-700 dark:text-blue-200'
+                  : 'border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
+              }`}
+            >
+              <Filter className="w-4 h-4" />
+              Filters
+            </button>
+          </div>
+        </div>
+
+        {/* Filters */}
+        {showFilters && (
+          <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {/* Status Filter */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Status
+                </label>
+                <select
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value as any)}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                >
+                  <option value="all">All Statuses</option>
+                  <option value="pending">Pending</option>
+                  <option value="active">Active</option>
+                  <option value="inactive">Inactive</option>
+                </select>
+              </div>
+
+              {/* Type Filter */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Device Type
+                </label>
+                <select
+                  value={typeFilter}
+                  onChange={(e) => setTypeFilter(e.target.value as any)}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                >
+                  <option value="all">All Types</option>
+                  <option value="tv">TV</option>
+                  <option value="monitor">Monitor</option>
+                </select>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Table */}
+      <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+        {isLoading ? (
+          <div className="flex items-center justify-center py-12">
+            <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+          </div>
+        ) : error ? (
+          <div className="text-center py-12 text-red-600">
+            Error loading devices
+          </div>
+        ) : devices.length === 0 ? (
+          <div className="text-center py-12 text-gray-500 dark:text-gray-400">
+            No devices found
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                    Device
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                    Type
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                    Status
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                    IP Address
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                    Last Seen
+                  </th>
+                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                    Actions
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                {devices.map((device) => (
+                  <tr
+                    key={device.id}
+                    className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
+                  >
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm font-medium text-gray-900 dark:text-white">
+                        {device.device_name}
+                      </div>
+                      {device.model_name && (
+                        <div className="text-sm text-gray-500 dark:text-gray-400">
+                          {device.model_name}
+                        </div>
+                      )}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+                        {getTypeIcon(device.device_type)}
+                        <span className="capitalize">{device.device_type}</span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      {getStatusBadge(device)}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300">
+                      {device.ip_address || '-'}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300">
+                      {device.last_seen
+                        ? new Date(device.last_seen).toLocaleString()
+                        : '-'}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                      <div className="flex items-center justify-end gap-2">
+                        <button
+                          onClick={() =>
+                            setDeleteModal({ isOpen: true, device })
+                          }
+                          className="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"
+                          title="Delete device"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {/* Delete Confirmation Modal */}
+      <DeleteConfirmModal
+        isOpen={deleteModal.isOpen}
+        device={deleteModal.device}
+        onClose={() => setDeleteModal({ isOpen: false, device: null })}
+        onConfirm={handleDelete}
+        isLoading={deleteMutation.isPending}
+      />
+    </>
+  );
+}

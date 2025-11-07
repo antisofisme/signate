@@ -58,10 +58,16 @@ class DeviceModel(Base):
     supports_personalization = Column(Boolean, default=True, nullable=False)
     privacy_mode = Column(String(20), default='limited', nullable=False)  # 'none', 'limited', 'full'
 
+    # Audit tracking
+    created_by = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
+    updated_by = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
+
     # Metadata
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
     released_at = Column(DateTime(timezone=True), nullable=True)  # When device was released/deactivated
 
-    # Relationship (optional - if you need to access organization data)
+    # Relationships
     # organization = relationship("OrganizationModel", back_populates="devices")
+    creator = relationship("UserModel", foreign_keys=[created_by])
+    updater = relationship("UserModel", foreign_keys=[updated_by])
