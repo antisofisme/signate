@@ -15,6 +15,7 @@ import {
   Filter,
   X,
   Circle,
+  Plus,
 } from 'lucide-react';
 import {
   useDeviceList,
@@ -23,6 +24,9 @@ import {
 } from '../hooks/useDevices';
 import type { Device, DeviceStatus, DeviceType } from '../types/device';
 import { toast } from 'sonner';
+import { TVRegisterModal } from './modals/TVRegisterModal';
+import { MonitorRegisterModal } from './modals/MonitorRegisterModal';
+import { ActivationCodeModal } from './modals/ActivationCodeModal';
 
 // Delete Confirmation Modal
 interface DeleteConfirmModalProps {
@@ -91,6 +95,12 @@ export function DeviceTable() {
 
   // Modals
   const [deleteModal, setDeleteModal] = useState<{
+    isOpen: boolean;
+    device: Device | null;
+  }>({ isOpen: false, device: null });
+  const [tvRegisterModal, setTvRegisterModal] = useState(false);
+  const [monitorRegisterModal, setMonitorRegisterModal] = useState(false);
+  const [activationCodeModal, setActivationCodeModal] = useState<{
     isOpen: boolean;
     device: Device | null;
   }>({ isOpen: false, device: null });
@@ -182,6 +192,27 @@ export function DeviceTable() {
           </div>
 
           <div className="flex items-center gap-2">
+            {/* Register TV Button */}
+            <button
+              onClick={() => setTvRegisterModal(true)}
+              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              <Plus className="w-4 h-4" />
+              <Tv className="w-4 h-4" />
+              Register TV
+            </button>
+
+            {/* Register Monitor Button */}
+            <button
+              onClick={() => setMonitorRegisterModal(true)}
+              className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+            >
+              <Plus className="w-4 h-4" />
+              <Monitor className="w-4 h-4" />
+              Register Monitor
+            </button>
+
+            {/* Filter Button */}
             <button
               onClick={() => setShowFilters(!showFilters)}
               className={`flex items-center gap-2 px-4 py-2 rounded-lg border transition-colors ${
@@ -337,6 +368,31 @@ export function DeviceTable() {
         onClose={() => setDeleteModal({ isOpen: false, device: null })}
         onConfirm={handleDelete}
         isLoading={deleteMutation.isPending}
+      />
+
+      {/* TV Registration Modal */}
+      <TVRegisterModal
+        isOpen={tvRegisterModal}
+        onClose={() => setTvRegisterModal(false)}
+        onSuccess={(device) => {
+          setActivationCodeModal({ isOpen: true, device });
+        }}
+      />
+
+      {/* Monitor Registration Modal */}
+      <MonitorRegisterModal
+        isOpen={monitorRegisterModal}
+        onClose={() => setMonitorRegisterModal(false)}
+        onSuccess={() => {
+          // Refresh device list after successful registration
+        }}
+      />
+
+      {/* Activation Code Modal */}
+      <ActivationCodeModal
+        isOpen={activationCodeModal.isOpen}
+        device={activationCodeModal.device}
+        onClose={() => setActivationCodeModal({ isOpen: false, device: null })}
       />
     </>
   );
