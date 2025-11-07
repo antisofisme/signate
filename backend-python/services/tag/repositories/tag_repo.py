@@ -136,19 +136,193 @@ class TagRepository(ITagRepository):
     def get_tag_usage_count(self, tag_id: int, organization_id: int) -> dict:
         """
         Get usage statistics for a tag
-        Returns device_count from device_tags table
-
-        TODO: Implement actual device count when DeviceTagModel is available
+        Returns device_count and content_count
         """
-        # STUB: DeviceTagModel not yet implemented
-        # from services.auth.repositories.models import DeviceTagModel
-        # device_count = (
-        #     self.db.query(func.count(DeviceTagModel.device_id))
-        #     .filter(DeviceTagModel.tag_id == tag_id)
-        #     .scalar()
-        # ) or 0
+        # Import content_tags model
+        from services.tag.models import ContentTag
+
+        # Count content assignments
+        content_count = (
+            self.db.query(func.count(ContentTag.id))
+            .filter(ContentTag.tag_id == tag_id)
+            .scalar()
+        ) or 0
 
         return {
             "device_count": 0,  # TODO: Implement when DeviceTagModel is available
-            "content_count": 0,  # Placeholder for future content feature
+            "content_count": content_count,
         }
+
+    def assign_to_content(self, tag_id: int, content_id: int, organization_id: int) -> bool:
+        """Assign tag to a content item"""
+        from services.tag.models import ContentTag
+        from services.content.models import Content
+
+        # Verify tag belongs to organization
+        tag = self.find_by_id(tag_id, organization_id)
+        if not tag:
+            raise ValueError(f"Tag {tag_id} not found or access denied")
+
+        # Verify content belongs to organization
+        content = (
+            self.db.query(Content)
+            .filter(
+                Content.id == content_id,
+                Content.organization_id == organization_id,
+                Content.deleted_at.is_(None)
+            )
+            .first()
+        )
+        if not content:
+            raise ValueError(f"Content {content_id} not found or access denied")
+
+        # Check if already assigned
+        existing = (
+            self.db.query(ContentTag)
+            .filter(
+                ContentTag.content_id == content_id,
+                ContentTag.tag_id == tag_id
+            )
+            .first()
+        )
+        if existing:
+            return False  # Already assigned
+
+        # Create assignment
+        assignment = ContentTag(content_id=content_id, tag_id=tag_id)
+        self.db.add(assignment)
+        self.db.commit()
+        return True
+
+    def unassign_from_content(self, tag_id: int, content_id: int, organization_id: int) -> bool:
+        """Unassign tag from a content item"""
+        from services.tag.models import ContentTag
+
+        # Verify tag belongs to organization
+        tag = self.find_by_id(tag_id, organization_id)
+        if not tag:
+            raise ValueError(f"Tag {tag_id} not found or access denied")
+
+        # Find and delete assignment
+        assignment = (
+            self.db.query(ContentTag)
+            .filter(
+                ContentTag.content_id == content_id,
+                ContentTag.tag_id == tag_id
+            )
+            .first()
+        )
+
+        if not assignment:
+            return False  # Not assigned
+
+        self.db.delete(assignment)
+        self.db.commit()
+        return True
+
+    def assign_to_contents(self, tag_id: int, content_ids: List[int], organization_id: int) -> dict:
+        """Bulk assign tag to multiple content items"""
+        from services.tag.models import ContentTag
+        from services.content.models import Content
+
+        # Verify tag belongs to organization
+        tag = self.find_by_id(tag_id, organization_id)
+        if not tag:
+            raise ValueError(f"Tag {tag_id} not found or access denied")
+
+        # Get valid content IDs (belong to organization and not deleted)
+        valid_content_ids = (
+            self.db.query(Content.id)
+            .filter(
+                Content.id.in_(content_ids),
+                Content.organization_id == organization_id,
+                Content.deleted_at.is_(None)
+            )
+            .all()
+        )
+        valid_ids = [c[0] for c in valid_content_ids]
+
+        # Get already assigned content IDs
+        already_assigned = (
+            self.db.query(ContentTag.content_id)
+            .filter(
+                ContentTag.tag_id == tag_id,
+                ContentTag.content_id.in_(valid_ids)
+            )
+            .all()
+        )
+        assigned_ids = set([c[0] for c in already_assigned])
+
+        # Calculate new assignments
+        new_assignments = [cid for cid in valid_ids if cid not in assigned_ids]
+
+        # Bulk insert new assignments
+        if new_assignments:
+            assignments = [
+                ContentTag(content_id=cid, tag_id=tag_id)
+                for cid in new_assignments
+            ]
+            self.db.bulk_save_objects(assignments)
+            self.db.commit()
+
+        return {
+            "assigned": len(new_assignments),
+            "skipped": len(assigned_ids),
+            "failed": len(content_ids) - len(valid_ids)
+        }
+
+    def unassign_from_contents(self, tag_id: int, content_ids: List[int], organization_id: int) -> dict:
+        """Bulk unassign tag from multiple content items"""
+        from services.tag.models import ContentTag
+
+        # Verify tag belongs to organization
+        tag = self.find_by_id(tag_id, organization_id)
+        if not tag:
+            raise ValueError(f"Tag {tag_id} not found or access denied")
+
+        # Delete assignments
+        result = (
+            self.db.query(ContentTag)
+            .filter(
+                ContentTag.tag_id == tag_id,
+                ContentTag.content_id.in_(content_ids)
+            )
+            .delete(synchronize_session=False)
+        )
+        self.db.commit()
+
+        return {
+            "unassigned": result,
+            "not_found": len(content_ids) - result
+        }
+
+    def get_content_tags(self, content_id: int, organization_id: int) -> List[Tag]:
+        """Get all tags assigned to a content item"""
+        from services.tag.models import ContentTag
+        from services.content.models import Content
+
+        # Verify content belongs to organization
+        content = (
+            self.db.query(Content)
+            .filter(
+                Content.id == content_id,
+                Content.organization_id == organization_id,
+                Content.deleted_at.is_(None)
+            )
+            .first()
+        )
+        if not content:
+            raise ValueError(f"Content {content_id} not found or access denied")
+
+        # Get tags
+        tags = (
+            self.db.query(TagModel)
+            .join(ContentTag, ContentTag.tag_id == TagModel.id)
+            .filter(
+                ContentTag.content_id == content_id,
+                TagModel.organization_id == organization_id
+            )
+            .all()
+        )
+
+        return [self._model_to_entity(tag) for tag in tags]

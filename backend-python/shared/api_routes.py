@@ -86,6 +86,13 @@ class TagRoutes:
     DELETE = f"{BASE}/{{tag_id}}"
     USAGE = f"{BASE}/{{tag_id}}/usage"
 
+    # Content-Tag Assignment
+    ASSIGN_TO_CONTENT = f"{BASE}/{{tag_id}}/assign-content"
+    ASSIGN_TO_CONTENTS = f"{BASE}/{{tag_id}}/assign-contents"
+    UNASSIGN_FROM_CONTENT = f"{BASE}/{{tag_id}}/unassign-content"
+    UNASSIGN_FROM_CONTENTS = f"{BASE}/{{tag_id}}/unassign-contents"
+    GET_CONTENT_TAGS = f"{API_V1}/contents/{{content_id}}/tags"
+
 
 # =============================================================================
 # CONTENT SERVICE ROUTES

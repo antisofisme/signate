@@ -34,6 +34,26 @@ class ListTagsQuery(BaseModel):
         use_enum_values = True
 
 
+class AssignTagRequest(BaseModel):
+    """Assign tag to single content request"""
+    content_id: int = Field(..., description="Content ID to assign tag to")
+
+
+class AssignTagToContentsRequest(BaseModel):
+    """Bulk assign tag to multiple contents request"""
+    content_ids: List[int] = Field(..., min_length=1, description="List of content IDs to assign tag to")
+
+
+class UnassignTagRequest(BaseModel):
+    """Unassign tag from single content request"""
+    content_id: int = Field(..., description="Content ID to unassign tag from")
+
+
+class UnassignTagFromContentsRequest(BaseModel):
+    """Bulk unassign tag from multiple contents request"""
+    content_ids: List[int] = Field(..., min_length=1, description="List of content IDs to unassign tag from")
+
+
 # =============================================================================
 # RESPONSE DTOs
 # =============================================================================
@@ -86,3 +106,33 @@ class TagDeleteResponse(BaseModel):
     """Tag deletion response"""
     success: bool = True
     message: str
+
+
+class TagAssignmentResponse(BaseModel):
+    """Tag assignment response"""
+    success: bool
+    message: str
+
+
+class BulkTagAssignmentResponse(BaseModel):
+    """Bulk tag assignment response"""
+    success: bool = True
+    assigned: int
+    skipped: int
+    failed: int
+    message: str
+
+
+class BulkTagUnassignmentResponse(BaseModel):
+    """Bulk tag unassignment response"""
+    success: bool = True
+    unassigned: int
+    not_found: int
+    message: str
+
+
+class ContentTagsResponse(BaseModel):
+    """Content tags list response"""
+    success: bool = True
+    data: List[TagResponse]
+    total: int

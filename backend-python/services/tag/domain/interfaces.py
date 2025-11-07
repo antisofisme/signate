@@ -61,7 +61,45 @@ class ITagRepository(ABC):
         Get usage statistics for a tag
         Returns: {
             "device_count": int,
-            "content_count": int (future),
+            "content_count": int,
         }
         """
+        pass
+
+    @abstractmethod
+    def assign_to_content(self, tag_id: int, content_id: int, organization_id: int) -> bool:
+        """Assign tag to a content item"""
+        pass
+
+    @abstractmethod
+    def unassign_from_content(self, tag_id: int, content_id: int, organization_id: int) -> bool:
+        """Unassign tag from a content item"""
+        pass
+
+    @abstractmethod
+    def assign_to_contents(self, tag_id: int, content_ids: List[int], organization_id: int) -> dict:
+        """
+        Bulk assign tag to multiple content items
+        Returns: {
+            "assigned": int (count of successful assignments),
+            "skipped": int (count of items already tagged),
+            "failed": int (count of failed assignments)
+        }
+        """
+        pass
+
+    @abstractmethod
+    def unassign_from_contents(self, tag_id: int, content_ids: List[int], organization_id: int) -> dict:
+        """
+        Bulk unassign tag from multiple content items
+        Returns: {
+            "unassigned": int (count of successful unassignments),
+            "not_found": int (count of items not tagged)
+        }
+        """
+        pass
+
+    @abstractmethod
+    def get_content_tags(self, content_id: int, organization_id: int) -> List[Tag]:
+        """Get all tags assigned to a content item"""
         pass

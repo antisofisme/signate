@@ -23,6 +23,14 @@ from .dtos import (
     TagWithUsageDetailResponse,
     TagDeleteResponse,
     TagUsageResponse,
+    AssignTagRequest,
+    AssignTagToContentsRequest,
+    UnassignTagRequest,
+    UnassignTagFromContentsRequest,
+    TagAssignmentResponse,
+    BulkTagAssignmentResponse,
+    BulkTagUnassignmentResponse,
+    ContentTagsResponse,
 )
 from .use_cases import (
     CreateTagUseCase,
@@ -30,6 +38,11 @@ from .use_cases import (
     GetTagUseCase,
     UpdateTagUseCase,
     DeleteTagUseCase,
+    AssignTagToContentUseCase,
+    AssignTagToContentsUseCase,
+    UnassignTagFromContentUseCase,
+    UnassignTagFromContentsUseCase,
+    GetContentTagsUseCase,
 )
 from .repositories.tag_repo import TagRepository
 
@@ -99,6 +112,41 @@ def get_delete_tag_use_case(
 ) -> DeleteTagUseCase:
     """Get delete tag use case instance"""
     return DeleteTagUseCase(tag_repo)
+
+
+def get_assign_tag_to_content_use_case(
+    tag_repo: TagRepository = Depends(get_tag_repository)
+) -> AssignTagToContentUseCase:
+    """Get assign tag to content use case instance"""
+    return AssignTagToContentUseCase(tag_repo)
+
+
+def get_assign_tag_to_contents_use_case(
+    tag_repo: TagRepository = Depends(get_tag_repository)
+) -> AssignTagToContentsUseCase:
+    """Get bulk assign tag to contents use case instance"""
+    return AssignTagToContentsUseCase(tag_repo)
+
+
+def get_unassign_tag_from_content_use_case(
+    tag_repo: TagRepository = Depends(get_tag_repository)
+) -> UnassignTagFromContentUseCase:
+    """Get unassign tag from content use case instance"""
+    return UnassignTagFromContentUseCase(tag_repo)
+
+
+def get_unassign_tag_from_contents_use_case(
+    tag_repo: TagRepository = Depends(get_tag_repository)
+) -> UnassignTagFromContentsUseCase:
+    """Get bulk unassign tag from contents use case instance"""
+    return UnassignTagFromContentsUseCase(tag_repo)
+
+
+def get_get_content_tags_use_case(
+    tag_repo: TagRepository = Depends(get_tag_repository)
+) -> GetContentTagsUseCase:
+    """Get content tags use case instance"""
+    return GetContentTagsUseCase(tag_repo)
 
 
 # =============================================================================
@@ -417,4 +465,272 @@ def delete_tag(
     return {
         "success": True,
         "message": result["message"]
+    }
+
+
+# =============================================================================
+# CONTENT-TAG ASSIGNMENT ENDPOINTS
+# =============================================================================
+
+@router.post(
+    TagRoutes.ASSIGN_TO_CONTENT,
+    response_model=TagAssignmentResponse,
+    status_code=status.HTTP_200_OK
+)
+@handle_errors
+def assign_tag_to_content(
+    tag_id: int,
+    request_body: AssignTagRequest,
+    use_case: AssignTagToContentUseCase = Depends(get_assign_tag_to_content_use_case),
+    current_user: dict = Depends(get_current_active_user),
+    audit_logger: AuditLogger = Depends(get_audit_logger)
+):
+    """
+    Assign a tag to a single content item
+
+    Requires authentication. Both tag and content must belong to the same organization.
+    """
+    start_time = time.time()
+
+    # Execute use case
+    result = use_case.execute(
+        tag_id=tag_id,
+        content_id=request_body.content_id,
+        organization_id=current_user["organization_id"]
+    )
+
+    # Calculate duration
+    duration_ms = (time.time() - start_time) * 1000
+
+    # Log request
+    request_logger.log_request(
+        method="POST",
+        path=TagRoutes.ASSIGN_TO_CONTENT,
+        status_code=200,
+        duration_ms=duration_ms,
+        user_id=current_user["user_id"]
+    )
+
+    # Audit log
+    if result["success"]:
+        audit_logger.log_action(
+            user_id=current_user["user_id"],
+            action="tag.assign_content",
+            resource_type="tag",
+            resource_id=tag_id,
+            details={"content_id": request_body.content_id},
+            organization_id=current_user["organization_id"]
+        )
+
+    return result
+
+
+@router.post(
+    TagRoutes.ASSIGN_TO_CONTENTS,
+    response_model=BulkTagAssignmentResponse,
+    status_code=status.HTTP_200_OK
+)
+@handle_errors
+def assign_tag_to_contents(
+    tag_id: int,
+    request_body: AssignTagToContentsRequest,
+    use_case: AssignTagToContentsUseCase = Depends(get_assign_tag_to_contents_use_case),
+    current_user: dict = Depends(get_current_active_user),
+    audit_logger: AuditLogger = Depends(get_audit_logger)
+):
+    """
+    Bulk assign a tag to multiple content items
+
+    Requires authentication. Returns counts of successful/skipped/failed assignments.
+    """
+    start_time = time.time()
+
+    # Execute use case
+    result = use_case.execute(
+        tag_id=tag_id,
+        content_ids=request_body.content_ids,
+        organization_id=current_user["organization_id"]
+    )
+
+    # Calculate duration
+    duration_ms = (time.time() - start_time) * 1000
+
+    # Log request
+    request_logger.log_request(
+        method="POST",
+        path=TagRoutes.ASSIGN_TO_CONTENTS,
+        status_code=200,
+        duration_ms=duration_ms,
+        user_id=current_user["user_id"]
+    )
+
+    # Audit log
+    audit_logger.log_action(
+        user_id=current_user["user_id"],
+        action="tag.bulk_assign_contents",
+        resource_type="tag",
+        resource_id=tag_id,
+        details={
+            "content_count": len(request_body.content_ids),
+            "assigned": result["assigned"],
+            "skipped": result["skipped"],
+            "failed": result["failed"]
+        },
+        organization_id=current_user["organization_id"]
+    )
+
+    return result
+
+
+@router.delete(
+    TagRoutes.UNASSIGN_FROM_CONTENT,
+    response_model=TagAssignmentResponse,
+    status_code=status.HTTP_200_OK
+)
+@handle_errors
+def unassign_tag_from_content(
+    tag_id: int,
+    request_body: UnassignTagRequest,
+    use_case: UnassignTagFromContentUseCase = Depends(get_unassign_tag_from_content_use_case),
+    current_user: dict = Depends(get_current_active_user),
+    audit_logger: AuditLogger = Depends(get_audit_logger)
+):
+    """
+    Unassign a tag from a single content item
+
+    Requires authentication. Both tag and content must belong to the same organization.
+    """
+    start_time = time.time()
+
+    # Execute use case
+    result = use_case.execute(
+        tag_id=tag_id,
+        content_id=request_body.content_id,
+        organization_id=current_user["organization_id"]
+    )
+
+    # Calculate duration
+    duration_ms = (time.time() - start_time) * 1000
+
+    # Log request
+    request_logger.log_request(
+        method="DELETE",
+        path=TagRoutes.UNASSIGN_FROM_CONTENT,
+        status_code=200,
+        duration_ms=duration_ms,
+        user_id=current_user["user_id"]
+    )
+
+    # Audit log
+    if result["success"]:
+        audit_logger.log_action(
+            user_id=current_user["user_id"],
+            action="tag.unassign_content",
+            resource_type="tag",
+            resource_id=tag_id,
+            details={"content_id": request_body.content_id},
+            organization_id=current_user["organization_id"]
+        )
+
+    return result
+
+
+@router.delete(
+    TagRoutes.UNASSIGN_FROM_CONTENTS,
+    response_model=BulkTagUnassignmentResponse,
+    status_code=status.HTTP_200_OK
+)
+@handle_errors
+def unassign_tag_from_contents(
+    tag_id: int,
+    request_body: UnassignTagFromContentsRequest,
+    use_case: UnassignTagFromContentsUseCase = Depends(get_unassign_tag_from_contents_use_case),
+    current_user: dict = Depends(get_current_active_user),
+    audit_logger: AuditLogger = Depends(get_audit_logger)
+):
+    """
+    Bulk unassign a tag from multiple content items
+
+    Requires authentication. Returns counts of successful/not found unassignments.
+    """
+    start_time = time.time()
+
+    # Execute use case
+    result = use_case.execute(
+        tag_id=tag_id,
+        content_ids=request_body.content_ids,
+        organization_id=current_user["organization_id"]
+    )
+
+    # Calculate duration
+    duration_ms = (time.time() - start_time) * 1000
+
+    # Log request
+    request_logger.log_request(
+        method="DELETE",
+        path=TagRoutes.UNASSIGN_FROM_CONTENTS,
+        status_code=200,
+        duration_ms=duration_ms,
+        user_id=current_user["user_id"]
+    )
+
+    # Audit log
+    audit_logger.log_action(
+        user_id=current_user["user_id"],
+        action="tag.bulk_unassign_contents",
+        resource_type="tag",
+        resource_id=tag_id,
+        details={
+            "content_count": len(request_body.content_ids),
+            "unassigned": result["unassigned"],
+            "not_found": result["not_found"]
+        },
+        organization_id=current_user["organization_id"]
+    )
+
+    return result
+
+
+@router.get(
+    TagRoutes.GET_CONTENT_TAGS,
+    response_model=ContentTagsResponse
+)
+@handle_errors
+def get_content_tags(
+    content_id: int,
+    use_case: GetContentTagsUseCase = Depends(get_get_content_tags_use_case),
+    current_user: dict = Depends(get_current_active_user)
+):
+    """
+    Get all tags assigned to a content item
+
+    Requires authentication. Content must belong to the user's organization.
+    """
+    start_time = time.time()
+
+    # Execute use case
+    tags = use_case.execute(
+        content_id=content_id,
+        organization_id=current_user["organization_id"]
+    )
+
+    # Convert to response
+    tag_responses = [TagResponse.model_validate(tag) for tag in tags]
+
+    # Calculate duration
+    duration_ms = (time.time() - start_time) * 1000
+
+    # Log request
+    request_logger.log_request(
+        method="GET",
+        path=TagRoutes.GET_CONTENT_TAGS,
+        status_code=200,
+        duration_ms=duration_ms,
+        user_id=current_user["user_id"]
+    )
+
+    return {
+        "success": True,
+        "data": tag_responses,
+        "total": len(tag_responses)
     }
