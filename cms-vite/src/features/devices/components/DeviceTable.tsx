@@ -16,6 +16,9 @@ import {
   X,
   Circle,
   Plus,
+  Eye,
+  Terminal,
+  Send,
 } from 'lucide-react';
 import {
   useDeviceList,
@@ -27,6 +30,10 @@ import { toast } from 'sonner';
 import { TVRegisterModal } from './modals/TVRegisterModal';
 import { MonitorRegisterModal } from './modals/MonitorRegisterModal';
 import { ActivationCodeModal } from './modals/ActivationCodeModal';
+import { DeviceDetailModal } from './modals/DeviceDetailModal';
+import { DeviceEditModal } from './modals/DeviceEditModal';
+import { DeviceLogsModal } from './modals/DeviceLogsModal';
+import { SendCommandModal } from './modals/SendCommandModal';
 
 // Delete Confirmation Modal
 interface DeleteConfirmModalProps {
@@ -101,6 +108,22 @@ export function DeviceTable() {
   const [tvRegisterModal, setTvRegisterModal] = useState(false);
   const [monitorRegisterModal, setMonitorRegisterModal] = useState(false);
   const [activationCodeModal, setActivationCodeModal] = useState<{
+    isOpen: boolean;
+    device: Device | null;
+  }>({ isOpen: false, device: null });
+  const [detailModal, setDetailModal] = useState<{
+    isOpen: boolean;
+    device: Device | null;
+  }>({ isOpen: false, device: null });
+  const [editModal, setEditModal] = useState<{
+    isOpen: boolean;
+    device: Device | null;
+  }>({ isOpen: false, device: null });
+  const [logsModal, setLogsModal] = useState<{
+    isOpen: boolean;
+    device: Device | null;
+  }>({ isOpen: false, device: null });
+  const [commandModal, setCommandModal] = useState<{
     isOpen: boolean;
     device: Device | null;
   }>({ isOpen: false, device: null });
@@ -344,6 +367,42 @@ export function DeviceTable() {
                       <div className="flex items-center justify-end gap-2">
                         <button
                           onClick={() =>
+                            setDetailModal({ isOpen: true, device })
+                          }
+                          className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
+                          title="View details"
+                        >
+                          <Eye className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() =>
+                            setEditModal({ isOpen: true, device })
+                          }
+                          className="text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-300"
+                          title="Edit device"
+                        >
+                          <Edit className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() =>
+                            setLogsModal({ isOpen: true, device })
+                          }
+                          className="text-purple-600 hover:text-purple-800 dark:text-purple-400 dark:hover:text-purple-300"
+                          title="View logs"
+                        >
+                          <Terminal className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() =>
+                            setCommandModal({ isOpen: true, device })
+                          }
+                          className="text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-300"
+                          title="Send command"
+                        >
+                          <Send className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() =>
                             setDeleteModal({ isOpen: true, device })
                           }
                           className="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"
@@ -393,6 +452,48 @@ export function DeviceTable() {
         isOpen={activationCodeModal.isOpen}
         device={activationCodeModal.device}
         onClose={() => setActivationCodeModal({ isOpen: false, device: null })}
+      />
+
+      {/* Device Detail Modal */}
+      <DeviceDetailModal
+        isOpen={detailModal.isOpen}
+        device={detailModal.device}
+        onClose={() => setDetailModal({ isOpen: false, device: null })}
+        onEdit={(device) => {
+          setDetailModal({ isOpen: false, device: null });
+          setEditModal({ isOpen: true, device });
+        }}
+        onShowLogs={(device) => {
+          setDetailModal({ isOpen: false, device: null });
+          setLogsModal({ isOpen: true, device });
+        }}
+      />
+
+      {/* Device Edit Modal */}
+      <DeviceEditModal
+        isOpen={editModal.isOpen}
+        device={editModal.device}
+        onClose={() => setEditModal({ isOpen: false, device: null })}
+        onSuccess={() => {
+          // Refresh will happen automatically via React Query
+        }}
+      />
+
+      {/* Device Logs Modal */}
+      <DeviceLogsModal
+        isOpen={logsModal.isOpen}
+        device={logsModal.device}
+        onClose={() => setLogsModal({ isOpen: false, device: null })}
+      />
+
+      {/* Send Command Modal */}
+      <SendCommandModal
+        isOpen={commandModal.isOpen}
+        device={commandModal.device}
+        onClose={() => setCommandModal({ isOpen: false, device: null })}
+        onSuccess={() => {
+          // Command sent successfully
+        }}
       />
     </>
   );
