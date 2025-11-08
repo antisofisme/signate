@@ -1,8 +1,8 @@
 """
 Tag Service
-Business logic and API endpoints for tag management
+Tag management and content-tag assignment
 """
 
-from .routes import router as tag_router
+from .routes import router
 
-__all__ = ["tag_router"]
+__all__ = ["router"]

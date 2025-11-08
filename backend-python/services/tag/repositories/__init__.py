@@ -1,6 +1,8 @@
-"""Tag Repository Layer"""
+"""
+Tag Repositories
+Data access layer for tag domain
+"""
 
-from .models import TagModel
 from .tag_repo import TagRepository
 
-__all__ = ["TagModel", "TagRepository"]
+__all__ = ["TagRepository"]
