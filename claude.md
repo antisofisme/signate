@@ -107,6 +107,18 @@ cms-vite/
 - **IP Address**: 192.168.5.12
 - **SSH User**: gzjbbk
 - **SSH Password**: Password@2021
+- **Project Directory**: `/home/gzjbbk/signate/` (CHANGED from prototipe2)
+
+## Directory Structure on Server
+```
+/home/gzjbbk/signate/
+├── backend-python/          # FastAPI backend
+├── cms-vite/                # React frontend (future)
+├── player-vanillajs/        # Vanilla JS player/viewer
+├── docker/                  # Docker compose configs
+│   └── docker-compose.yml
+└── .env                     # Environment variables
+```
 
 ## Service Ports (ALL ON SERVER)
 - **Port 8000**: Anthias (Digital Signage CMS)
@@ -199,11 +211,11 @@ sshpass -p 'Password@2021' ssh gzjbbk@192.168.5.12 "cd /home/gzjbbk/prototipe2 &
 
 ```bash
 # ✅ CORRECT - Environment variables akan terload dengan benar
-cd /home/gzjbbk/prototipe2
+cd /home/gzjbbk/signate
 docker-compose -f docker/docker-compose.yml up -d
 
 # ❌ WRONG - CORS_ORIGINS dan env vars lainnya TIDAK akan terload!
-cd /home/gzjbbk/prototipe2/docker
+cd /home/gzjbbk/signate/docker
 docker-compose up -d
 ```
 
@@ -249,7 +261,7 @@ docker exec signage-postgres psql -U signage_user -d signage_db -c "SELECT usern
 **Jika perlu reset database dari awal:**
 ```bash
 # Stop all services
-cd /home/gzjbbk/prototipe2
+cd /home/gzjbbk/signate
 docker-compose -f docker/docker-compose.yml down --volumes
 
 # Remove all data (HATI-HATI! Data akan hilang)
