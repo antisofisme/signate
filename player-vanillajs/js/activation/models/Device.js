@@ -63,6 +63,7 @@
      * @param {('pending'|'active'|'inactive')} [data.status='pending'] - Device status
      * @param {number} [data.organization_id=null] - Organization/tenant ID
      * @param {string} [data.platform='Browser'] - Platform type (Browser, WebOS, Android, etc.)
+     * @param {string} [data.device_token=null] - JWT token for authenticated API calls
      * @param {string} [data.last_seen=null] - ISO timestamp of last heartbeat
      * @param {string} [data.created_at=null] - ISO timestamp of device creation
      * @param {string} [data.updated_at=null] - ISO timestamp of last update
@@ -85,6 +86,9 @@
 
       /** @type {string} Platform type (Browser, WebOS, Android, etc.) */
       this.platform = data.platform || 'Browser';
+
+      /** @type {string|null} JWT token for authenticated API calls (persisted) */
+      this.device_token = data.device_token || null;
 
       /** @type {string|null} ISO timestamp of last heartbeat */
       this.last_seen = data.last_seen || null;
@@ -186,7 +190,8 @@
         device_name: this.name,
         device_status: this.status,
         organization_id: this.organization_id,
-        platform: this.platform
+        platform: this.platform,
+        device_token: this.device_token
       };
     }
 
@@ -201,6 +206,7 @@
       const status = localStorage.getItem('device_status');
       const organization_id = localStorage.getItem('organization_id');
       const platform = localStorage.getItem('platform');
+      const device_token = localStorage.getItem('device_token');
 
       if (!id) return null;
 
@@ -210,7 +216,8 @@
         name: name,
         status: status,
         organization_id: organization_id ? parseInt(organization_id) : null,
-        platform: platform
+        platform: platform,
+        device_token: device_token
       });
     }
 

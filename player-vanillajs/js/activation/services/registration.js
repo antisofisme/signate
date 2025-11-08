@@ -118,12 +118,6 @@ window.ShellRegistration = {
             // ✅ SUCCESS - Server online, registration created
             console.log('[Shell/Registration] ✅ Registration successful');
 
-            // 🔑 Save device token for authenticated API calls
-            if (data.device_token) {
-                localStorage.setItem('device_token', data.device_token);
-                console.log('[Shell/Registration] 🔑 Device token saved for authenticated requests');
-            }
-
             // ✅ Use Device model and deviceState (Phase 3)
             const device = new window.Device({
                 id: data.id,
@@ -131,11 +125,16 @@ window.ShellRegistration = {
                 name: deviceName,
                 status: 'pending',
                 organization_id: data.organization_id,
-                platform: platform
+                platform: platform,
+                device_token: data.device_token  // 🔑 Pass token to Device model
             });
 
-            // Save device using state management (auto saves to localStorage)
+            // Save device using state management (auto saves to localStorage including token)
             window.deviceState.setDevice(device);
+
+            if (data.device_token) {
+                console.log('[Shell/Registration] 🔑 Device token saved via Device model');
+            }
 
             // Update legacy state for backward compatibility
             state.deviceId = data.id;

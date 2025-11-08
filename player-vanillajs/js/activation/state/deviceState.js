@@ -158,14 +158,15 @@
     clearDevice() {
       _currentDevice = null;
 
-      // Clear localStorage
+      // Clear localStorage (including device_token)
       [
         'device_id',
         'device_code',
         'device_name',
         'device_status',
         'organization_id',
-        'platform'
+        'platform',
+        'device_token'
       ].forEach(key => localStorage.removeItem(key));
 
       // Emit event

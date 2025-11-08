@@ -73,10 +73,23 @@ window.ShellInit = {
                     window.ShellRegistration.onActivated();
                     return; // Exit early
                 } else if (verifyData.expired && !verifyData.device_id) {
-                    // Code expired AND device deleted - clear and re-register
-                    console.warn('[Shell/Init] ⚠️ Device code expired and deleted - clearing localStorage');
-                    localStorage.clear();
-                    console.log('[Shell/Init] 🔄 Reloading to register as new device...');
+                    // Code expired AND device deleted - clear device data but KEEP token
+                    console.warn('[Shell/Init] ⚠️ Device code expired and deleted - clearing device data');
+
+                    // Selective removal - KEEP device_token and organization_id
+                    const preservedToken = localStorage.getItem('device_token');
+                    const preservedOrgId = localStorage.getItem('organization_id');
+
+                    // Clear only device-specific data
+                    ['device_id', 'device_code', 'device_name', 'device_status', 'platform'].forEach(key => {
+                        localStorage.removeItem(key);
+                    });
+
+                    // Restore preserved data (for re-registration)
+                    if (preservedToken) localStorage.setItem('device_token', preservedToken);
+                    if (preservedOrgId) localStorage.setItem('organization_id', preservedOrgId);
+
+                    console.log('[Shell/Init] 🔄 Reloading to register as new device (keeping token & org_id)...');
                     window.location.reload();
                     return; // Exit early
                 } else if (verifyData.expired && verifyData.device_id) {
