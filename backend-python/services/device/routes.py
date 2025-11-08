@@ -8,13 +8,14 @@ Updated to use centralized utilities:
 - shared.logging for request logging
 """
 
-from fastapi import APIRouter, Depends, Request, status, Query
+from fastapi import APIRouter, Depends, Request, status, Query, HTTPException
 from sqlalchemy.orm import Session
 from shared.database import get_db
 from shared.api_routes import DeviceRoutes
 from shared.errors import handle_errors, NotFoundError, ValidationError
 from shared.responses import success_response
 from shared.logging import RequestLogger, AuditLogger
+from shared.auth import get_current_user, CurrentUser
 from typing import Optional
 import time
 
@@ -23,6 +24,7 @@ from .dtos import (
     ActivateDeviceRequest,
     HeartbeatRequest,
     UpdateDeviceRequest,
+    DeviceLogsRequest,
     ActivationCodeResponse,
     DeviceResponse,
     DeviceListResponse,
@@ -90,10 +92,57 @@ def get_update_device_use_case(
 
 
 # =============================================================================
+# HELPER FUNCTIONS
+# =============================================================================
+
+def device_to_response(device) -> DeviceResponse:
+    """
+    Convert Device domain model to DeviceResponse DTO
+    Computes is_online field from device.is_online() method
+    """
+    from .domain.device import Device
+
+    # Build dict with all fields + computed is_online
+    return DeviceResponse(
+        id=device.id,
+        device_type=device.device_type,
+        device_name=device.device_name,
+        organization_id=device.organization_id,
+        unique_code=device.unique_code,
+        code_expires_at=device.code_expires_at,
+        device_uuid=device.device_uuid,
+        ip_address=device.ip_address,
+        platform=device.platform,
+        screen_width=device.screen_width,
+        screen_height=device.screen_height,
+        viewport_width=device.viewport_width,
+        viewport_height=device.viewport_height,
+        device_pixel_ratio=device.device_pixel_ratio,
+        user_agent=device.user_agent,
+        connection_type=device.connection_type,
+        connection_speed=device.connection_speed,
+        model_name=device.model_name,
+        firmware_version=device.firmware_version,
+        status=device.status,
+        last_seen=device.last_seen,
+        is_online=device.is_online(),  # Compute is_online boolean value
+        rotation=device.rotation,
+        volume_enabled=device.volume_enabled,
+        location_type=device.location_type,
+        room_number=device.room_number,
+        supports_personalization=device.supports_personalization,
+        privacy_mode=device.privacy_mode,
+        created_at=device.created_at,
+        updated_at=device.updated_at,
+        released_at=device.released_at
+    )
+
+
+# =============================================================================
 # PLAYER ENDPOINTS (PUBLIC - NO AUTH)
 # =============================================================================
 
-@router.post("/devices/request-code", response_model=ActivationCodeResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/api/devices/request-code", response_model=ActivationCodeResponse, status_code=status.HTTP_201_CREATED)
 def request_activation_code(
     request: RequestActivationCodeRequest,
     use_case: RequestActivationCodeUseCase = Depends(get_request_activation_code_use_case)
@@ -119,8 +168,9 @@ def request_activation_code(
         )
 
 
-@router.post("/devices/heartbeat", response_model=HeartbeatResponse)
+@router.post(DeviceRoutes.HEARTBEAT, response_model=HeartbeatResponse)
 def device_heartbeat(
+    device_id: int,
     request: HeartbeatRequest,
     use_case: DeviceHeartbeatUseCase = Depends(get_heartbeat_use_case)
 ):
@@ -156,7 +206,7 @@ def device_heartbeat(
         )
 
 
-@router.get("/devices/check-activation/{unique_code}", response_model=ActivationStatusResponse)
+@router.get("/api/devices/check-activation/{unique_code}", response_model=ActivationStatusResponse)
 def check_activation_status(
     unique_code: str,
     device_repo: DeviceRepository = Depends(get_device_repository)
@@ -165,28 +215,40 @@ def check_activation_status(
     Check activation status (called by player to poll activation)
 
     Returns activation status and device info if activated
+    IMPORTANT: For active devices, always return device info regardless of code expiration
     """
     try:
         device = device_repo.find_by_code(unique_code)
 
         if not device:
             return ActivationStatusResponse(
-                is_activated=False,
+                activated=False,
+                expired=False,
                 message="Device not found"
             )
 
+        # Check if device is activated
+        # IMPORTANT: Return device info for active devices even if code expired!
+        # Player needs device_id to persist across reloads
         if device.is_active():
             return ActivationStatusResponse(
-                is_activated=True,
+                activated=True,
+                expired=False,  # Don't set expired for active devices
                 device_id=device.id,
                 device_name=device.device_name,
+                organization_id=device.organization_id,
                 message="Device is activated"
             )
-        else:
-            return ActivationStatusResponse(
-                is_activated=False,
-                message=f"Device status: {device.status}"
-            )
+
+        # Device is pending - check if code expired
+        is_expired = not device.can_activate()
+
+        return ActivationStatusResponse(
+            activated=False,
+            expired=is_expired,
+            device_id=device.id if not is_expired else None,
+            message=f"Device status: {device.status}" + (" (code expired)" if is_expired else "")
+        )
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -204,27 +266,30 @@ def check_activation_status(
 def activate_device(
     request_body: ActivateDeviceRequest,
     http_request: Request,
-    use_case: ActivateDeviceUseCase = Depends(get_activate_device_use_case)
+    use_case: ActivateDeviceUseCase = Depends(get_activate_device_use_case),
+    current_user: CurrentUser = Depends(get_current_user)
 ):
     """
     Activate device with code (called by CMS admin)
 
     Admin enters the 6-digit code shown on screen to activate device
+    Device is assigned to admin's organization automatically
     Uses centralized error handling and logging
     """
     start_time = time.time()
 
     # Execute activation use case (will raise ValidationError if fails)
+    # Pass admin's organization_id from JWT token
     device = use_case.execute(
         unique_code=request_body.unique_code,
+        organization_id=current_user.organization_id,
         device_name=request_body.device_name,
         room_number=request_body.room_number,
         location_type=request_body.location_type
     )
 
     # Convert to response with is_online computed field
-    response = DeviceResponse.model_validate(device)
-    response.is_online = device.is_online()
+    response = device_to_response(device)
 
     # Calculate duration
     duration_ms = (time.time() - start_time) * 1000
@@ -239,13 +304,14 @@ def activate_device(
 
     # Audit log
     audit_logger.log_action(
-        user_id=None,  # TODO: Get from JWT token when auth is implemented
+        user_id=current_user.id,
         action="device.activate",
         resource_type="device",
         resource_id=device.id,
         details={
             "unique_code": request_body.unique_code,
             "device_name": request_body.device_name,
+            "organization_id": current_user.organization_id,
             "ip_address": http_request.client.host if http_request.client else None
         }
     )
@@ -259,17 +325,26 @@ def activate_device(
 
 @router.get(DeviceRoutes.LIST, response_model=DeviceListResponse)
 def list_devices(
-    organization_id: int,
     status_filter: Optional[str] = Query(None, description="Filter by status: active, pending, inactive"),
     online_only: bool = Query(False, description="Show only online devices"),
-    use_case: ListDevicesUseCase = Depends(get_list_devices_use_case)
+    use_case: ListDevicesUseCase = Depends(get_list_devices_use_case),
+    current_user: CurrentUser = Depends(get_current_user)
 ):
     """
     List all devices (called by CMS)
 
-    Returns all devices with online/offline status
+    Returns all devices for current user's organization (from JWT token)
     """
     try:
+        # Get organization_id from JWT token (more secure than query param)
+        organization_id = current_user.organization_id
+
+        if not organization_id:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="User must belong to an organization"
+            )
+
         devices = use_case.execute(
             organization_id=organization_id,
             status_filter=status_filter,
@@ -279,8 +354,7 @@ def list_devices(
         # Convert to response models with is_online computed field
         device_responses = []
         for device in devices:
-            response = DeviceResponse.model_validate(device)
-            response.is_online = device.is_online()
+            response = device_to_response(device)
             device_responses.append(response)
 
         # Get counts
@@ -288,7 +362,7 @@ def list_devices(
         online = use_case.count_online_devices(organization_id)
 
         return DeviceListResponse(
-            devices=device_responses,
+            items=device_responses,  # Changed from 'devices' to 'items'
             total=total,
             online=online
         )
@@ -317,8 +391,7 @@ def get_device(
             )
 
         # Convert to response with is_online computed field
-        response = DeviceResponse.model_validate(device)
-        response.is_online = device.is_online()
+        response = device_to_response(device)
 
         return response
     except HTTPException:
@@ -357,8 +430,7 @@ def update_device(
     )
 
     # Convert to response with is_online computed field
-    response = DeviceResponse.model_validate(device)
-    response.is_online = device.is_online()
+    response = device_to_response(device)
 
     # Calculate duration
     duration_ms = (time.time() - start_time) * 1000
@@ -436,3 +508,69 @@ def delete_device(
     )
 
     return None
+
+
+@router.post("/api/client/logs/batch", status_code=status.HTTP_204_NO_CONTENT)
+def receive_device_logs(
+    request_body: DeviceLogsRequest,
+    device_repo: DeviceRepository = Depends(get_device_repository)
+):
+    """
+    Receive batch logs from player (called by player)
+
+    Logs are sent from player for debugging purposes.
+    Currently just logged to console, can be stored to database later.
+    """
+    try:
+        # Verify device exists
+        device = device_repo.find_by_id(request_body.device_id)
+
+        if not device:
+            # Device not found - silently ignore (player might be deleted)
+            return None
+
+        # Log to console for debugging
+        print(f"[Device Logs] Device ID: {request_body.device_id} ({device.device_name})")
+        for log_entry in request_body.logs:
+            print(f"  [{log_entry.level.upper()}] {log_entry.timestamp}: {log_entry.message}")
+
+        # TODO: Store logs to database if needed
+        # For now, just acknowledge receipt
+
+        return None
+
+    except Exception as e:
+        # Silently ignore errors - don't break player functionality
+        print(f"[Device Logs] Error processing logs: {e}")
+        return None
+
+
+# NOTE: get_resolved_content endpoint moved to extended_routes.py to avoid duplication
+# The extended_routes version includes full 3-tier priority implementation
+
+
+@router.post(DeviceRoutes.VALIDATE_RESET_PASSWORD)
+def validate_reset_password(
+    password: str
+):
+    """
+    Validate device reset password (called by player)
+
+    Player sends password to validate before performing hard reset.
+    Password is stored in environment variable for security.
+    """
+    import os
+
+    # Get reset password from environment variable
+    reset_password = os.getenv('DEVICE_RESET_PASSWORD', 'admin123')
+
+    if password == reset_password:
+        return {
+            "valid": True,
+            "message": "Password correct"
+        }
+    else:
+        return {
+            "valid": False,
+            "message": "Incorrect password"
+        }

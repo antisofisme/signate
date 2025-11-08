@@ -28,14 +28,7 @@ class CreateOrganizationRequest(BaseModel):
             raise ValueError('Organization name cannot be empty')
         return v.strip()
 
-    @validator('organization_pin')
-    def validate_pin(cls, v):
-        if v:
-            if not v.isdigit():
-                raise ValueError('Organization PIN must be numeric (8 digits)')
-            if len(v) != 8:
-                raise ValueError('Organization PIN must be exactly 8 digits')
-        return v if v else None
+    # REMOVED: Organization PIN validation (No-PIN flow)
 
     @validator('contact_email')
     def validate_email(cls, v):
@@ -75,7 +68,7 @@ class OrganizationResponse(BaseModel):
     """Organization response model"""
     id: int
     name: str
-    organization_pin: str
+    organization_pin: Optional[str] = None  # REMOVED: Organization PIN (No-PIN flow)
     description: Optional[str] = None
     address: Optional[str] = None
     contact_email: Optional[str] = None

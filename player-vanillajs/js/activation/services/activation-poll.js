@@ -94,8 +94,8 @@ window.ActivationPoll = {
                 // Stop polling
                 this.stopPolling();
 
-                // Clear localStorage (preserve Organization PIN)
-                window.clearLocalStoragePreservePIN();
+                // Clear localStorage
+                localStorage.clear();
 
                 // Delete IndexedDB cache
                 const dbName = 'signage_media_cache';
@@ -153,12 +153,20 @@ window.ActivationPoll = {
                     // Also update legacy localStorage for backward compatibility
                     localStorage.setItem('device_id', newDeviceId);
                     localStorage.setItem('device_status', 'active');
+
+                    // 🆕 Save organization_id for re-registration (if device gets released)
+                    if (data.organization_id) {
+                        localStorage.setItem('organization_id', data.organization_id);
+                        console.log('[Shell/ActivationPoll] 🏢 Organization ID saved:', data.organization_id);
+                    }
+
                     // Keep the activation code for reference
                     // device_code already exists from registration
 
                     console.log('[Shell/ActivationPoll] ✅ Device activated with model', {
                         device_id: newDeviceId,
                         status: 'active',
+                        organization_id: data.organization_id,
                         model: window.deviceState.getDevice()?.toJSON()
                     });
                 } catch (storageError) {
@@ -209,8 +217,8 @@ window.ActivationPoll = {
                 // Stop polling
                 this.stopPolling();
 
-                // Clear localStorage (preserve Organization PIN)
-                window.clearLocalStoragePreservePIN();
+                // Clear localStorage
+                localStorage.clear();
 
                 // Delete IndexedDB cache
                 const dbName = 'signage_media_cache';

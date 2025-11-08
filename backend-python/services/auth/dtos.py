@@ -45,7 +45,7 @@ class OrganizationResponse(BaseModel):
     """Organization response"""
     id: int
     name: str
-    organization_pin: str
+    organization_pin: Optional[str] = None  # REMOVED: Organization PIN (No-PIN flow)
     is_active: bool
 
     class Config:

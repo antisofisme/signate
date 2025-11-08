@@ -115,7 +115,7 @@ window.ShellHeartbeat = {
 
                 // Use APIClient for standardized response handling
                 const data = await window.APIClient.post(
-                    window.getFullURL(window.API_ENDPOINTS.DEVICES.HEARTBEAT),
+                    window.getFullURL(window.API_ENDPOINTS.DEVICES.HEARTBEAT(device.id)),
                     {
                         device_id: parseInt(device.id),
                         platform: this.detectPlatform(),           // 'webOS', 'Chrome', etc (backend schema)
@@ -145,13 +145,52 @@ window.ShellHeartbeat = {
                     await window.ShellDisplaySettings.checkAndApplyChanges(data);
                 }
             } catch (error) {
+                // Handle 403 - Device released (soft delete)
+                if (error.status === 403 && error.message?.includes('released')) {
+                    console.warn('[Shell/Heartbeat] ⚠️ Device released (403) - Re-registering with saved organization');
+
+                    // Stop heartbeat
+                    this.stop();
+
+                    // Clear device_id and device_token (but KEEP organization_id for re-registration)
+                    localStorage.removeItem('device_id');
+                    localStorage.removeItem('device_token');
+                    localStorage.removeItem('device_status');
+                    localStorage.removeItem('device_code');
+                    // Keep: organization_id (for auto-assign to same org)
+
+                    console.log('[Shell/Heartbeat] 🔄 Triggering re-registration with saved organization_id...');
+
+                    // Delete IndexedDB cache
+                    const dbName = 'signage_media_cache';
+                    try {
+                        await new Promise((resolve) => {
+                            const deleteRequest = indexedDB.deleteDatabase(dbName);
+                            deleteRequest.onsuccess = () => resolve();
+                            deleteRequest.onerror = () => resolve();
+                            deleteRequest.onblocked = () => resolve();
+                        });
+                    } catch (cacheError) {
+                        console.error('[Shell/Heartbeat] Error deleting cache:', cacheError);
+                    }
+
+                    // Reload to trigger registration with saved organization_id
+                    window.location.reload();
+                    return;
+                }
+
                 // Handle 404 - Device deleted from backend
                 if (error.status === 404) {
                     console.warn('[Shell/Heartbeat] ⚠️ Device not found (404) - Device was deleted from backend');
                     console.log('[Shell/Heartbeat] 🔄 Auto-resetting viewer to show new activation code...');
 
-                    // Clear localStorage (preserve Organization PIN)
-                    window.clearLocalStoragePreservePIN();
+                    // Clear localStorage (preserve organization_id for re-registration)
+                    const orgId = localStorage.getItem('organization_id');
+                    localStorage.clear();
+                    if (orgId) {
+                        localStorage.setItem('organization_id', orgId);
+                        console.log('[Shell/Heartbeat] 🏢 Preserved organization_id for re-registration');
+                    }
 
                     // Delete IndexedDB cache
                     const dbName = 'signage_media_cache';

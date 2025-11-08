@@ -50,9 +50,9 @@ export function useCreateOrganization() {
       // Invalidate organization list
       queryClient.invalidateQueries({ queryKey: ['organizations'] });
 
-      // Show success toast with PIN
+      // REMOVED: Organization PIN from toast message (No-PIN flow)
       toast.success(
-        `Organization "${data.name}" berhasil dibuat dengan PIN: ${data.organization_pin}`
+        `Organization "${data.name}" berhasil dibuat`
       );
     },
     onError: (error) => {

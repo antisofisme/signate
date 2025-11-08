@@ -21,8 +21,14 @@
   window.API_ENDPOINTS = {
     // Device Management
     DEVICES: {
-      REGISTER: `${API_V1}/devices/monitor/register`,
-      HEARTBEAT: `${API_V1}/devices/heartbeat`,
+      REGISTER: `${API_V1}/devices/monitor`,
+      HEARTBEAT: (deviceId) => `${API_V1}/devices/${deviceId}/heartbeat`,
+      CONTENT_RESOLVED: (deviceId) => `${API_V1}/devices/${deviceId}/content/resolved`,
+      COMMANDS_PENDING: (deviceId) => `${API_V1}/devices/${deviceId}/commands/pending`,
+      COMMANDS_EXECUTE: (deviceId, commandId) => `${API_V1}/devices/${deviceId}/commands/${commandId}/execute`,
+      LOGS: (deviceId) => `${API_V1}/devices/${deviceId}/logs`,
+      RELEASE: (deviceId) => `${API_V1}/devices/${deviceId}/release`,
+      VALIDATE_RESET_PASSWORD: `${API_V1}/devices/validate-reset-password`,
     },
 
     // Playlist Management

@@ -115,6 +115,12 @@ window.APIClient = {
             'Content-Type': 'application/json'
         };
 
+        // 🔑 Add Authorization header if device token exists
+        const deviceToken = localStorage.getItem('device_token');
+        if (deviceToken) {
+            defaultHeaders['Authorization'] = `Bearer ${deviceToken}`;
+        }
+
         // Merge options with defaults
         const requestOptions = {
             ...options,

@@ -209,7 +209,7 @@ def create_organization(
         resource_id=organization.id,
         details={
             "name": organization.name,
-            "pin": organization.organization_pin,
+            # REMOVED: organization_pin from audit logs (security fix, No-PIN flow)
             "ip_address": http_request.client.host if http_request.client else None
         }
     )

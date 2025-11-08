@@ -15,7 +15,7 @@ class OrganizationModel(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String(200), unique=True, nullable=False)
-    organization_pin = Column(String(8), unique=True, nullable=False, index=True)  # Fixed: 8 digits
+    organization_pin = Column(String(8), unique=False, nullable=True, index=True)  # DEPRECATED: Now optional (No-PIN flow)
     description = Column(String(500), nullable=True)
     address = Column(String(500), nullable=True)
     contact_email = Column(String(100), nullable=True)

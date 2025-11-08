@@ -37,9 +37,11 @@ class TVRegisterRequest(BaseModel):
 
 class MonitorRegisterRequest(BaseModel):
     """Monitor device registration"""
-    organization_id: int
+    organization_id: Optional[int] = None  # Optional - for re-registration
+    activation_code: str
     device_name: Optional[str] = None
     platform: Optional[str] = "browser"
+    device_type: str = "monitor"
 
 class SpeedTestRequest(BaseModel):
     """Request to run speed test"""
@@ -158,11 +160,11 @@ def register_monitor_device(
     """
     Register monitor device (browser-based)
 
-    Generates activation code that expires in 10 minutes.
+    Uses activation code provided by player (6-digit).
     Device status is 'pending' until admin activates.
     """
-    # Generate unique code
-    code = generate_activation_code()
+    # Use code from player, or generate if not provided
+    code = request.activation_code or generate_activation_code()
     code_expires = datetime.now() + timedelta(minutes=10)
     device_name = request.device_name or f"Monitor-{code}"
 
@@ -175,7 +177,7 @@ def register_monitor_device(
             'monitor', :device_name, :unique_code, :code_expires_at,
             :platform, :organization_id, 'pending', NOW()
         )
-        RETURNING id, device_name, unique_code, code_expires_at, status, created_at
+        RETURNING id, device_name, unique_code, code_expires_at, status, created_at, organization_id
     """)
 
     result = db.execute(query, {
@@ -195,6 +197,7 @@ def register_monitor_device(
             "device_name": result.device_name,
             "unique_code": result.unique_code,
             "code_expires_at": result.code_expires_at,
+            "organization_id": result.organization_id,
             "status": result.status,
             "created_at": result.created_at
         },

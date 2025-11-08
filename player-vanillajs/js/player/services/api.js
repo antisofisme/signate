@@ -8,8 +8,12 @@ window.PlayerAPI = {
      * Load playlist from backend
      */
     loadPlaylist: async function() {
-        // ✅ STATE MIGRATION: Prefer NEW reactive state, fallback to OLD for compatibility
-        const state = window.PlayerState; // Keep for backward compatibility
+        // ✅ STATE MIGRATION: Initialize PlayerState if it doesn't exist
+        if (!window.PlayerState) {
+            window.PlayerState = {};
+        }
+
+        const state = window.PlayerState;
         const apiBaseUrl = window.Config?.API_BASE_URL || window.ENV?.API_BASE_URL || state?.API_BASE_URL;
         const deviceId = state?.deviceId;
 
@@ -29,13 +33,34 @@ window.PlayerAPI = {
                 window.PlayerUI.showLoading('Loading playlist...');
             }
 
-            // Use APIClient for standardized response handling
-            const data = await window.APIClient.get(
-                `${apiBaseUrl}/api/client/playlist?device_id=${deviceId}`
+            // 🆕 Use resolved content endpoint (3-tier priority system)
+            const response = await window.APIClient.get(
+                window.getFullURL(window.API_ENDPOINTS.DEVICES.CONTENT_RESOLVED(deviceId))
             );
 
-            if (!data.playlist || data.playlist.length === 0) {
-                console.log('[Player] Playlist is empty');
+            // Unwrap response: backend returns { success: true, data: { ... } }
+            const data = response.data || response;
+
+            // Transform backend response to playlist format
+            const playlist = {
+                id: data.device_id,
+                name: `Device ${deviceId} Content`,
+                contents: (data.items || []).map(item => ({
+                    content_id: item.id,
+                    title: item.title,
+                    type: item.content_type,
+                    url: item.hls_master_playlist_url || item.file_url,
+                    duration: item.duration,
+                    file_size: item.file_size,
+                    thumbnail_url: item.thumbnail_url,
+                    width: item.width,
+                    height: item.height,
+                    metadata: item.metadata || {}
+                }))
+            };
+
+            if (!playlist.contents || playlist.contents.length === 0) {
+                console.log('[Player] No content assigned yet');
                 if (window.PlayerUI) {
                     window.PlayerUI.showWaiting('⏳ No content assigned yet...');
                 }
@@ -47,14 +72,14 @@ window.PlayerAPI = {
 
             // ✅ STATE MIGRATION: Use NEW playerState for reactive playlist management
             if (window.playerState && window.playerState.setPlaylist) {
-                window.playerState.setPlaylist(data.playlist);
-                console.log('[Player/API] Playlist set reactively via playerState');
+                window.playerState.setPlaylist(playlist);
+                console.log('[Player/API] ✅ Resolved content loaded via playerState:', playlist.contents.length, 'items');
             } else {
                 // Fallback to OLD pattern
                 if (state) {
-                    state.playlist = data.playlist;
+                    state.playlist = playlist;
                 }
-                console.log('[Player/API] Playlist loaded (fallback):', data.playlist.length, 'items');
+                console.log('[Player/API] ✅ Resolved content loaded (fallback):', playlist.contents.length, 'items');
             }
 
             // Sync cache with playlist (download new, delete old)
@@ -169,29 +194,32 @@ window.PlayerAPI = {
         }
 
         try {
-            // Use APIClient for standardized response handling
-            const data = await window.APIClient.get(
-                `${apiBaseUrl}/api/client/playlist?device_id=${deviceId}`
+            // 🆕 Use resolved content endpoint
+            const response = await window.APIClient.get(
+                window.getFullURL(window.API_ENDPOINTS.DEVICES.CONTENT_RESOLVED(deviceId))
             );
 
-            // ✅ NULL CHECK: Ensure response has playlist
-            if (!data || !data.playlist) {
-                console.debug('[Player/API] No playlist in response');
+            // Unwrap response: backend returns { success: true, data: { ... } }
+            const data = response.data || response;
+
+            // ✅ NULL CHECK: Ensure response has items
+            if (!data || !data.items) {
+                console.debug('[Player/API] No content items in response');
                 return;
             }
 
-            // Compare playlist (simple check - compare length and first item)
+            // Compare content (simple check - compare length and first item)
             const currentArray = Array.isArray(currentPlaylist) ? currentPlaylist : currentPlaylist.contents || [];
-            if (data.playlist.length !== currentArray.length ||
-                (data.playlist[0] && currentArray[0] && data.playlist[0].content_id !== currentArray[0].content_id)) {
+            if (data.items.length !== currentArray.length ||
+                (data.items[0] && currentArray[0] && data.items[0].id !== currentArray[0].content_id)) {
 
-                console.log('[Player] Playlist updated! Reloading...');
+                console.log('[Player] Content updated! Reloading...');
                 await this.loadPlaylist();
             }
 
         } catch (error) {
             // Silently ignore errors (don't spam console during periodic checks)
-            console.debug('[Player] Playlist refresh check failed:', error.message);
+            console.debug('[Player] Content refresh check failed:', error.message);
         }
     }
 };

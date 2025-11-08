@@ -17,7 +17,7 @@ interface TVRegisterModalProps {
 
 export function TVRegisterModal({ isOpen, onClose, onSuccess }: TVRegisterModalProps) {
   const [formData, setFormData] = useState({
-    organization_pin: '',
+    activation_code: '',
     device_name: '',
     platform: 'webOS',
     model_name: '',
@@ -27,12 +27,26 @@ export function TVRegisterModal({ isOpen, onClose, onSuccess }: TVRegisterModalP
 
   const registerMutation = useTVRegister();
 
+  // Helper to format error messages
+  const formatErrorMessage = (err: any): string => {
+    if (typeof err?.response?.data?.detail === 'string') {
+      return err.response.data.detail;
+    }
+    if (Array.isArray(err?.response?.data?.detail)) {
+      // Pydantic validation errors
+      return err.response.data.detail
+        .map((e: any) => `${e.loc?.join('.') || 'Field'}: ${e.msg}`)
+        .join(', ');
+    }
+    return 'Failed to activate TV device';
+  };
+
   if (!isOpen) return null;
 
   // Reset form
   const resetForm = () => {
     setFormData({
-      organization_pin: '',
+      activation_code: '',
       device_name: '',
       platform: 'webOS',
       model_name: '',
@@ -55,8 +69,8 @@ export function TVRegisterModal({ isOpen, onClose, onSuccess }: TVRegisterModalP
     setError(null);
 
     // Validation
-    if (!formData.organization_pin || formData.organization_pin.length !== 8) {
-      setError('Organization PIN must be 8 digits');
+    if (!formData.activation_code || formData.activation_code.length !== 6) {
+      setError('Activation code must be 6 digits');
       return;
     }
 
@@ -67,18 +81,15 @@ export function TVRegisterModal({ isOpen, onClose, onSuccess }: TVRegisterModalP
 
     try {
       const device = await registerMutation.mutateAsync({
-        organization_pin: formData.organization_pin,
+        unique_code: formData.activation_code,
         device_name: formData.device_name.trim(),
-        platform: formData.platform,
-        model_name: formData.model_name.trim() || undefined,
-        firmware_version: formData.firmware_version.trim() || undefined,
       });
 
       resetForm();
       onSuccess?.(device);
       onClose();
     } catch (err: any) {
-      setError(err?.response?.data?.detail || 'Failed to register TV device');
+      setError(formatErrorMessage(err));
     }
   };
 
@@ -118,27 +129,27 @@ export function TVRegisterModal({ isOpen, onClose, onSuccess }: TVRegisterModalP
             </div>
           )}
 
-          {/* Organization PIN */}
+          {/* Activation Code */}
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Organization PIN <span className="text-red-500">*</span>
+              Activation Code <span className="text-red-500">*</span>
             </label>
             <input
               type="text"
-              value={formData.organization_pin}
+              value={formData.activation_code}
               onChange={(e) => {
-                const value = e.target.value.replace(/\D/g, '').slice(0, 8);
-                setFormData((prev) => ({ ...prev, organization_pin: value }));
+                const value = e.target.value.replace(/\D/g, '').slice(0, 6);
+                setFormData((prev) => ({ ...prev, activation_code: value }));
                 setError(null);
               }}
-              placeholder="Enter 8-digit PIN"
-              maxLength={8}
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              placeholder="Enter 6-digit code"
+              maxLength={6}
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white font-mono text-lg tracking-widest text-center focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               disabled={registerMutation.isPending}
               required
             />
             <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-              8-digit organization PIN from admin
+              6-digit code displayed on TV screen
             </p>
           </div>
 
@@ -162,67 +173,10 @@ export function TVRegisterModal({ isOpen, onClose, onSuccess }: TVRegisterModalP
             />
           </div>
 
-          {/* Platform */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Platform
-            </label>
-            <select
-              value={formData.platform}
-              onChange={(e) =>
-                setFormData((prev) => ({ ...prev, platform: e.target.value }))
-              }
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              disabled={registerMutation.isPending}
-            >
-              <option value="webOS">LG webOS</option>
-              <option value="tizen">Samsung Tizen</option>
-              <option value="android">Android TV</option>
-              <option value="native">Native App</option>
-            </select>
-          </div>
-
-          {/* Model Name (Optional) */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Model Name (Optional)
-            </label>
-            <input
-              type="text"
-              value={formData.model_name}
-              onChange={(e) =>
-                setFormData((prev) => ({ ...prev, model_name: e.target.value }))
-              }
-              placeholder="e.g., LG 55UN7300, Samsung QN55Q80A"
-              maxLength={100}
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              disabled={registerMutation.isPending}
-            />
-          </div>
-
-          {/* Firmware Version (Optional) */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Firmware Version (Optional)
-            </label>
-            <input
-              type="text"
-              value={formData.firmware_version}
-              onChange={(e) =>
-                setFormData((prev) => ({ ...prev, firmware_version: e.target.value }))
-              }
-              placeholder="e.g., 5.0.0, 6.2.1"
-              maxLength={50}
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              disabled={registerMutation.isPending}
-            />
-          </div>
-
           {/* Info Box */}
           <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
             <p className="text-sm text-blue-700 dark:text-blue-300">
-              <strong>Next Step:</strong> After registration, you'll receive a 6-digit
-              activation code. Enter this code on your TV to complete the setup.
+              <strong>How it works:</strong> Enter the 6-digit activation code shown on the TV screen. The device will be automatically assigned to your organization.
             </p>
           </div>
 
@@ -244,12 +198,12 @@ export function TVRegisterModal({ isOpen, onClose, onSuccess }: TVRegisterModalP
               {registerMutation.isPending ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin" />
-                  Registering...
+                  Activating...
                 </>
               ) : (
                 <>
                   <Tv className="w-4 h-4" />
-                  Register TV
+                  Activate TV
                 </>
               )}
             </button>

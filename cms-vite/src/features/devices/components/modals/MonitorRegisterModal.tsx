@@ -20,7 +20,6 @@ export function MonitorRegisterModal({
   onSuccess,
 }: MonitorRegisterModalProps) {
   const [formData, setFormData] = useState({
-    organization_pin: '',
     activation_code: '',
     device_name: '',
     platform: 'browser',
@@ -29,12 +28,25 @@ export function MonitorRegisterModal({
 
   const registerMutation = useMonitorRegister();
 
+  // Helper to format error messages
+  const formatErrorMessage = (err: any): string => {
+    if (typeof err?.response?.data?.detail === 'string') {
+      return err.response.data.detail;
+    }
+    if (Array.isArray(err?.response?.data?.detail)) {
+      // Pydantic validation errors
+      return err.response.data.detail
+        .map((e: any) => `${e.loc?.join('.') || 'Field'}: ${e.msg}`)
+        .join(', ');
+    }
+    return 'Failed to activate device';
+  };
+
   if (!isOpen) return null;
 
   // Reset form
   const resetForm = () => {
     setFormData({
-      organization_pin: '',
       activation_code: '',
       device_name: '',
       platform: 'browser',
@@ -56,11 +68,6 @@ export function MonitorRegisterModal({
     setError(null);
 
     // Validation
-    if (!formData.organization_pin || formData.organization_pin.length !== 8) {
-      setError('Organization PIN must be 8 digits');
-      return;
-    }
-
     if (!formData.activation_code || formData.activation_code.length !== 6) {
       setError('Activation code must be 6 digits');
       return;
@@ -73,17 +80,15 @@ export function MonitorRegisterModal({
 
     try {
       await registerMutation.mutateAsync({
-        organization_pin: formData.organization_pin,
-        activation_code: formData.activation_code,
+        unique_code: formData.activation_code,
         device_name: formData.device_name.trim(),
-        platform: formData.platform,
       });
 
       resetForm();
       onSuccess?.();
       onClose();
     } catch (err: any) {
-      setError(err?.response?.data?.detail || 'Failed to register monitor device');
+      setError(formatErrorMessage(err));
     }
   };
 
@@ -122,30 +127,6 @@ export function MonitorRegisterModal({
               <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
             </div>
           )}
-
-          {/* Organization PIN */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Organization PIN <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="text"
-              value={formData.organization_pin}
-              onChange={(e) => {
-                const value = e.target.value.replace(/\D/g, '').slice(0, 8);
-                setFormData((prev) => ({ ...prev, organization_pin: value }));
-                setError(null);
-              }}
-              placeholder="Enter 8-digit PIN"
-              maxLength={8}
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-              disabled={registerMutation.isPending}
-              required
-            />
-            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-              8-digit organization PIN from admin
-            </p>
-          </div>
 
           {/* Activation Code */}
           <div>
@@ -215,8 +196,7 @@ export function MonitorRegisterModal({
           {/* Info Box */}
           <div className="bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-lg p-3">
             <p className="text-sm text-purple-700 dark:text-purple-300">
-              <strong>Before registering:</strong> Open the viewer URL on your monitor
-              and note the 6-digit activation code displayed on screen.
+              <strong>How it works:</strong> Enter the 6-digit activation code shown on the monitor screen. The device will be automatically assigned to your organization.
             </p>
           </div>
 
@@ -238,12 +218,12 @@ export function MonitorRegisterModal({
               {registerMutation.isPending ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin" />
-                  Registering...
+                  Activating...
                 </>
               ) : (
                 <>
                   <Monitor className="w-4 h-4" />
-                  Register Monitor
+                  Activate Monitor
                 </>
               )}
             </button>

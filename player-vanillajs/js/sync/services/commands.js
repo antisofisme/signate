@@ -27,7 +27,7 @@ window.ShellCommands = {
         try {
             // Use APIClient for standardized response handling
             const data = await window.APIClient.get(
-                `${apiBaseUrl}/api/devices/${deviceId}/commands/pending`
+                window.getFullURL(window.API_ENDPOINTS.DEVICES.COMMANDS_PENDING(deviceId))
             );
 
             if (!data.commands || data.commands.length === 0) {
@@ -218,7 +218,7 @@ window.ShellCommands = {
         try {
             // Use APIClient for standardized response handling
             await window.APIClient.post(
-                `${apiBaseUrl}/api/devices/${deviceId}/commands/${commandId}/execute`
+                window.getFullURL(window.API_ENDPOINTS.DEVICES.COMMANDS_EXECUTE(deviceId, commandId))
             );
 
             console.log(`[Shell/Commands] ✅ Command ${commandId} marked as executed`);

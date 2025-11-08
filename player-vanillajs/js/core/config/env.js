@@ -37,9 +37,6 @@ window.ENV = {
   WEBSOCKET_MAX_RECONNECT_DELAY: 30000,
   WEBSOCKET_HEARTBEAT_INTERVAL: 30000,
 
-  // Reset Configuration
-  RESET_PASSWORD: 'admin123',
-
   // Build Info
   BUILD_TIME: '2025-10-27T11:47:18Z',
   ENVIRONMENT: 'production',

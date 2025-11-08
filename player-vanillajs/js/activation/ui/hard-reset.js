@@ -42,10 +42,10 @@
                 deviceId: localStorage.getItem('device_id'),
                 status: localStorage.getItem('device_status'),
                 code: localStorage.getItem('device_code'),
-                organizationPIN: localStorage.getItem('organization_pin')
+                organizationId: localStorage.getItem('organization_id')
             });
 
-            // Clear localStorage (includes device data AND organization PIN)
+            // Clear localStorage (includes device data)
             localStorage.clear();
 
             // Verify cleared
@@ -53,9 +53,9 @@
                 deviceId: localStorage.getItem('device_id'),
                 status: localStorage.getItem('device_status'),
                 code: localStorage.getItem('device_code'),
-                organizationPIN: localStorage.getItem('organization_pin')
+                organizationId: localStorage.getItem('organization_id')
             });
-            console.log('[Shell] localStorage cleared (device data + organization PIN removed)');
+            console.log('[Shell] localStorage cleared (all device data removed)');
 
             // Clear IndexedDB cache (if PlayerCache available)
             let reloadExecuted = false; // Prevent multiple reloads
@@ -106,6 +106,32 @@
         },
 
         /**
+         * Validate password via backend API and execute reset if valid
+         * @private
+         * @param {string} password - Password to validate
+         */
+        validatePasswordAndReset: async function(password) {
+            try {
+                // Call backend API to validate password
+                const response = await window.APIClient.post(
+                    window.getFullURL(window.API_ENDPOINTS.DEVICES.VALIDATE_RESET_PASSWORD),
+                    { password: password }
+                );
+
+                if (response.valid) {
+                    console.log('[Shell] Password validated by backend');
+                    this.executeReset();
+                } else {
+                    window.Toast.error('Incorrect Password', 'Reset cancelled. Please try again.');
+                    console.error('[Shell] Hard reset failed - wrong password');
+                }
+            } catch (error) {
+                console.error('[Shell] Error validating password:', error);
+                window.Toast.error('Validation Error', 'Could not validate password. Please try again.');
+            }
+        },
+
+        /**
          * Setup hard reset button click handler
          * Prompts for password before executing reset
          *
@@ -141,17 +167,8 @@
                         return;
                     }
 
-                    // Simple password check (loaded from ENV config)
-                    const RESET_PASSWORD = window.ENV?.RESET_PASSWORD || 'admin123';
-
-                    if (password !== RESET_PASSWORD) {
-                        window.Toast.error('Incorrect Password', 'Reset cancelled. Please try again.');
-                        console.error('[Shell] Hard reset failed - wrong password');
-                        return;
-                    }
-
-                    // Execute the reset
-                    this.executeReset();
+                    // Validate password via backend API
+                    this.validatePasswordAndReset(password);
                 });
 
                 console.log('[Shell] Hard reset button listener attached');

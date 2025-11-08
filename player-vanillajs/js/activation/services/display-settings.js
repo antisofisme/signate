@@ -50,8 +50,8 @@ window.ShellDisplaySettings = {
                 console.warn('[Shell/DisplaySettings] ⚠️ Device not found (404) - Device was deleted');
                 console.log('[Shell/DisplaySettings] 🔄 Resetting viewer...');
 
-                // Clear localStorage (preserve Organization PIN)
-                window.clearLocalStoragePreservePIN();
+                // Clear localStorage
+                localStorage.clear();
 
                 // Delete IndexedDB cache
                 const dbName = 'signage_media_cache';

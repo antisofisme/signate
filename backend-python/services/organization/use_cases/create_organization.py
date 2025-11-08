@@ -58,25 +58,13 @@ class CreateOrganizationUseCase:
                 details={"field": "name"}
             )
 
-        # Generate PIN if not provided
-        if not pin:
-            pin = self._generate_pin()
-        else:
-            pin = pin.upper()
-
-        # Check if PIN already exists
-        existing_pin = self.org_repo.find_by_pin(pin)
-        if existing_pin:
-            raise ValidationError(
-                message=f"Organization PIN '{pin}' sudah digunakan",
-                details={"field": "organization_pin"}
-            )
+        # REMOVED: Organization PIN generation and validation (No-PIN flow)
 
         # Create organization domain entity
         organization = Organization(
             id=None,
             name=name,
-            organization_pin=pin,
+            organization_pin=None,  # REMOVED: Organization PIN (No-PIN flow)
             description=description,
             address=address,
             contact_email=contact_email,
@@ -90,12 +78,4 @@ class CreateOrganizationUseCase:
 
         return created_org
 
-    def _generate_pin(self) -> str:
-        """Generate random 8-digit numeric PIN"""
-        pin = ''.join(secrets.choice(string.digits) for _ in range(8))
-
-        # Ensure PIN is unique
-        if self.org_repo.find_by_pin(pin):
-            return self._generate_pin()  # Retry if collision
-
-        return pin
+    # REMOVED: _generate_pin() method (No-PIN flow)

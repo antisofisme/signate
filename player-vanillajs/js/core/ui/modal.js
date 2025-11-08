@@ -1,10 +1,9 @@
 /**
  * Modal Dialog Systems
- * Provides password modal and organization PIN modal
+ * Provides password modal for confirming sensitive actions
  *
  * Usage:
  *   window.PasswordModal.show('Title', 'Message')
- *   window.OrganizationPINModal.show()
  */
 
 (function() {
@@ -87,194 +86,10 @@
         }
     };
 
-    /**
-     * Organization PIN modal for linking devices to organizations
-     * @type {Object}
-     */
-    window.OrganizationPINModal = {
-        /**
-         * Show organization PIN input modal and return a Promise
-         *
-         * @param {string|null} errorMessage - Optional error message to display
-         * @param {boolean} skipValidation - Skip server validation (for registration flow)
-         * @returns {Promise<string>} Promise resolving to PIN string, rejecting on cancel
-         */
-        show: function(errorMessage = null, skipValidation = false) {
-            return new Promise((resolve, reject) => {
-                const modal = document.getElementById('org-pin-modal');
-                const input = document.getElementById('org-pin-input');
-                const cancelBtn = document.getElementById('org-pin-cancel');
-                const saveBtn = document.getElementById('org-pin-save');
-                const currentPinDisplay = document.getElementById('current-pin-display');
-                const currentPinValue = document.getElementById('current-pin-value');
-                const errorDisplay = document.getElementById('org-pin-error');
-
-                // Display error message if provided
-                if (errorMessage && errorDisplay) {
-                    errorDisplay.textContent = errorMessage;
-                    errorDisplay.style.display = 'block';
-                } else if (errorDisplay) {
-                    errorDisplay.style.display = 'none';
-                }
-
-                // Check if PIN already exists (only show if validation is not skipped)
-                const existingPIN = !skipValidation ? localStorage.getItem('organization_pin') : null;
-                if (existingPIN && !skipValidation) {
-                    currentPinDisplay.style.display = 'block';
-                    currentPinValue.textContent = existingPIN;
-                    input.placeholder = 'Enter new PIN to change';
-                } else {
-                    if (currentPinDisplay) currentPinDisplay.style.display = 'none';
-                    input.placeholder = 'Enter 8-digit Organization PIN';
-                }
-
-                // Reset input
-                input.value = '';
-
-                // Show modal
-                modal.classList.add('show');
-                input.focus();
-
-                /**
-                 * Cancel button click handler
-                 * @private
-                 */
-                const handleCancel = () => {
-                    modal.classList.remove('show');
-                    reject('cancelled');
-                    cleanup();
-                };
-
-                /**
-                 * Save button click handler
-                 * Validates PIN with server before saving (unless skipValidation=true)
-                 * @private
-                 */
-                const handleSave = async () => {
-                    const pin = input.value.trim();
-
-                    // Validate PIN length
-                    if (pin && pin.length < 8) {
-                        window.Toast.error('Invalid PIN', 'Organization PIN must be at least 8 characters');
-                        return;
-                    }
-
-                    // If skipValidation is true, return PIN immediately without server validation
-                    // This is used by registration flow where validation happens separately
-                    if (skipValidation) {
-                        if (!pin) {
-                            window.Toast.error('PIN Required', 'Please enter Organization PIN');
-                            return;
-                        }
-                        console.log('[Shell/OrganizationPIN] Returning PIN without validation (skipValidation=true)');
-                        modal.classList.remove('show');
-                        resolve(pin);
-                        cleanup();
-                        return;
-                    }
-
-                    // Normal flow: validate with server before saving
-                    // This is used by org-pin-btn (manual PIN change from UI)
-                    if (pin) {
-                        // Disable button while validating
-                        saveBtn.disabled = true;
-                        saveBtn.textContent = 'Validating...';
-
-                        try {
-                            const state = window.ShellState;
-                            const response = await fetch(
-                                `${state.API_BASE_URL}/api/organizations/validate-pin?pin=${encodeURIComponent(pin)}`
-                            );
-
-                            if (!response.ok) {
-                                // PIN validation failed
-                                if (response.status === 404) {
-                                    window.Toast.error('Invalid PIN', 'Organization PIN not found. Please check and try again.');
-                                } else {
-                                    window.Toast.error('Validation Failed', 'Could not validate PIN. Please try again.');
-                                }
-                                saveBtn.disabled = false;
-                                saveBtn.textContent = 'Save';
-                                return;
-                            }
-
-                            // PIN is valid, get organization name
-                            const data = await response.json();
-                            console.log('[Shell/OrganizationPIN] PIN validated successfully:', data);
-
-                            // Save new PIN
-                            localStorage.setItem('organization_pin', pin);
-                            localStorage.setItem('organization_pin_validated', 'true');
-                            window.Toast.success('PIN Saved', `Organization: ${data.details?.organization_name || 'Unknown'}`);
-                            console.log('[Shell/OrganizationPIN] PIN saved:', pin);
-
-                        } catch (error) {
-                            console.error('[Shell/OrganizationPIN] Validation error:', error);
-                            window.Toast.error('Network Error', 'Could not connect to server. Please check your connection.');
-                            saveBtn.disabled = false;
-                            saveBtn.textContent = 'Save';
-                            return;
-                        }
-                    }
-
-                    // Close modal and resolve
-                    modal.classList.remove('show');
-                    resolve(pin || existingPIN);
-                    cleanup();
-                };
-
-                /**
-                 * Keyboard event handler for Enter and Escape keys
-                 * @private
-                 */
-                const handleKeyPress = (e) => {
-                    if (e.key === 'Enter') {
-                        handleSave();
-                    } else if (e.key === 'Escape') {
-                        handleCancel();
-                    }
-                };
-
-                /**
-                 * Remove all event listeners
-                 * @private
-                 */
-                const cleanup = () => {
-                    cancelBtn.removeEventListener('click', handleCancel);
-                    saveBtn.removeEventListener('click', handleSave);
-                    input.removeEventListener('keypress', handleKeyPress);
-                };
-
-                // Attach listeners
-                cancelBtn.addEventListener('click', handleCancel);
-                saveBtn.addEventListener('click', handleSave);
-                input.addEventListener('keypress', handleKeyPress);
-            });
-        }
-    };
-
-    /**
-     * Initialize organization PIN button click handler
-     * @private
-     */
-    document.addEventListener('DOMContentLoaded', function() {
-        const orgPinBtn = document.getElementById('org-pin-btn');
-
-        if (orgPinBtn) {
-            orgPinBtn.addEventListener('click', function() {
-                console.log('[Shell/OrganizationPIN] Opening PIN modal');
-                window.OrganizationPINModal.show().catch(err => {
-                    console.log('[Shell/OrganizationPIN] Modal cancelled');
-                });
-            });
-        }
-    });
-
     // Export for ES6 modules if needed
     if (typeof module !== 'undefined' && module.exports) {
         module.exports = {
-            PasswordModal: window.PasswordModal,
-            OrganizationPINModal: window.OrganizationPINModal
+            PasswordModal: window.PasswordModal
         };
     }
 })();

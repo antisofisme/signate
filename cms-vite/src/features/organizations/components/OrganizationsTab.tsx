@@ -104,13 +104,12 @@ function OrganizationModal({
   isLoading,
 }: OrganizationModalProps) {
   const [name, setName] = useState(organization?.name || '');
-  const [pin, setPin] = useState(organization?.organization_pin || '');
+  // REMOVED: Organization PIN state (No-PIN flow)
   const [description, setDescription] = useState(organization?.description || '');
   const [address, setAddress] = useState(organization?.address || '');
   const [contactEmail, setContactEmail] = useState(organization?.contact_email || '');
   const [contactPhone, setContactPhone] = useState(organization?.contact_phone || '');
   const [logoUrl, setLogoUrl] = useState(organization?.logo_url || '');
-  const [autoGeneratePin, setAutoGeneratePin] = useState(!organization);
   const [isActive, setIsActive] = useState(organization?.is_active ?? true);
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -129,10 +128,9 @@ function OrganizationModal({
       };
       onSubmit(data);
     } else {
-      // Create - all fields including optional PIN
+      // Create - REMOVED: Organization PIN (No-PIN flow)
       const data: CreateOrganizationRequest = {
         name,
-        ...(autoGeneratePin ? {} : { organization_pin: pin }),
         description: description || undefined,
         address: address || undefined,
         contact_email: contactEmail || undefined,
@@ -165,49 +163,7 @@ function OrganizationModal({
             />
           </div>
 
-          {/* PIN - only for create */}
-          {!organization && (
-            <>
-              <div className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  id="autoPin"
-                  checked={autoGeneratePin}
-                  onChange={(e) => setAutoGeneratePin(e.target.checked)}
-                  className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                />
-                <label
-                  htmlFor="autoPin"
-                  className="text-sm text-gray-700 dark:text-gray-300"
-                >
-                  Auto-generate 8-digit PIN
-                </label>
-              </div>
-
-              {!autoGeneratePin && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Organization PIN (exactly 8 digits)
-                  </label>
-                  <input
-                    type="text"
-                    inputMode="numeric"
-                    pattern="[0-9]{8}"
-                    value={pin}
-                    onChange={(e) => {
-                      const value = e.target.value.replace(/\D/g, '');
-                      setPin(value);
-                    }}
-                    maxLength={8}
-                    minLength={8}
-                    required={!autoGeneratePin}
-                    placeholder="12345678"
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white font-mono"
-                  />
-                </div>
-              )}
-            </>
-          )}
+          {/* REMOVED: Organization PIN input section (No-PIN flow) */}
 
           {/* Description */}
           <div>
@@ -452,9 +408,7 @@ export default function OrganizationsTab() {
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                 Name
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                PIN
-              </th>
+              {/* REMOVED: PIN table header (No-PIN flow) */}
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                 Users
               </th>
@@ -480,11 +434,7 @@ export default function OrganizationsTab() {
                     </span>
                   </div>
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <span className="text-sm text-gray-600 dark:text-gray-400 font-mono">
-                    {org.organization_pin}
-                  </span>
-                </td>
+                {/* REMOVED: PIN table cell (No-PIN flow) */}
                 <td className="px-6 py-4 whitespace-nowrap">
                   <div className="flex items-center text-sm text-gray-600 dark:text-gray-400">
                     <Users className="w-4 h-4 mr-1" />

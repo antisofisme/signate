@@ -225,47 +225,10 @@ body:not(.is-fullscreen) #exit-fullscreen-btn {
     display: none;
 }
 
-/* Organization PIN Button */
-#org-pin-btn {
-    position: fixed;
-    top: 86px;  /* Below fullscreen button */
-    right: 20px;
-    width: 56px;
-    height: 56px;
-    background: rgba(15, 23, 42, 0.9);
-    color: white;
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    border-radius: 50%;
-    font-size: 24px;
-    cursor: pointer;
-    z-index: 100000;
-    opacity: 0;
-    transition: opacity 0.3s ease, background 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-weight: bold;
-    pointer-events: auto;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-}
-
-/* Button hover effect */
-#org-pin-btn:hover {
-    background: rgba(59, 130, 246, 0.9);
-    border-color: rgba(59, 130, 246, 0.5);
-    transform: scale(1.1);
-    box-shadow: 0 6px 20px rgba(59, 130, 246, 0.4);
-}
-
-/* Show button class (triggered by JS) */
-#org-pin-btn.show {
-    opacity: 1;
-}
-
 /* Hard Reset Button */
 #hard-reset-btn {
     position: fixed;
-    top: 152px;  /* Below org-pin button */
+    top: 86px;  /* Below fullscreen button */
     right: 20px;
     width: 56px;
     height: 56px;
@@ -421,60 +384,6 @@ body:not(.is-fullscreen) #exit-fullscreen-btn {
 
 .toast.info .toast-icon {
     color: #3b82f6;
-}
-
-/* Organization PIN Modal */
-#org-pin-modal {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0, 0, 0, 0.8);
-    backdrop-filter: blur(8px);
-    display: none;
-    align-items: center;
-    justify-content: center;
-    z-index: 100000;
-}
-
-#org-pin-modal.show {
-    display: flex;
-}
-
-#org-pin-modal .modal-icon {
-    color: #3b82f6;
-}
-
-.current-pin-display {
-    display: none;
-    margin-bottom: 16px;
-    padding: 12px;
-    background: rgba(59, 130, 246, 0.1);
-    border: 1px solid rgba(59, 130, 246, 0.3);
-    border-radius: 8px;
-    text-align: center;
-}
-
-.current-pin-label {
-    font-size: 13px;
-    opacity: 0.8;
-    margin-bottom: 4px;
-}
-
-.current-pin-value {
-    font-size: 24px;
-    font-weight: 600;
-    letter-spacing: 2px;
-    color: #3b82f6;
-}
-
-.org-pin-save {
-    background: #3b82f6 !important;
-}
-
-.org-pin-save:hover {
-    background: #2563eb !important;
 }
 
 /* Password Input Modal */

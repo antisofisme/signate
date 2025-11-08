@@ -76,18 +76,13 @@ export interface DeviceCommand {
 }
 
 export interface MonitorRegisterRequest {
-  organization_pin: string;
-  activation_code: string;
+  unique_code: string;
   device_name: string;
-  platform: string;
 }
 
 export interface TVRegisterRequest {
-  organization_pin: string;
+  unique_code: string;
   device_name: string;
-  platform: string;
-  model_name?: string;
-  firmware_version?: string;
 }
 
 export interface ActivateDeviceRequest {

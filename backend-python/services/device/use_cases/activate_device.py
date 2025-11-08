@@ -5,7 +5,7 @@ Activate device using 6-digit code from CMS
 Updated to use centralized validators and error handling
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Dict, Optional
 
 from ..domain.device import Device, ActivationCode
@@ -26,6 +26,7 @@ class ActivateDeviceUseCase:
     def execute(
         self,
         unique_code: str,
+        organization_id: int,
         device_name: Optional[str] = None,
         room_number: Optional[str] = None,
         location_type: Optional[str] = None
@@ -35,6 +36,7 @@ class ActivateDeviceUseCase:
 
         Args:
             unique_code: 6-digit activation code
+            organization_id: Organization ID from admin's JWT (assigns device to admin's org)
             device_name: Optional custom name
             room_number: Optional room number
             location_type: Optional location type
@@ -52,7 +54,6 @@ class ActivateDeviceUseCase:
         if not is_valid_code:
             raise ValidationError(
                 message=error_msg,
-                code=ErrorCodes.VALIDATION_ERROR,
                 details={"field": "unique_code"}
             )
 
@@ -73,7 +74,6 @@ class ActivateDeviceUseCase:
         if device.is_active():
             raise ValidationError(
                 message="Device sudah diaktivasi sebelumnya",
-                code=ErrorCodes.ALREADY_EXISTS,
                 details={"device_id": device.id, "status": device.status}
             )
 
@@ -81,13 +81,13 @@ class ActivateDeviceUseCase:
         if not device.can_activate():
             raise ValidationError(
                 message="Kode aktivasi sudah kadaluarsa. Silakan request kode baru dari device.",
-                code=ErrorCodes.EXPIRED_CODE,
-                details={"expires_at": device.expires_at.isoformat() if device.expires_at else None}
+                details={"expires_at": device.code_expires_at.isoformat() if device.code_expires_at else None}
             )
 
-        # Update device
+        # 🆕 Assign device to admin's organization (from JWT token)
+        device.organization_id = organization_id
         device.status = 'active'
-        device.last_seen = datetime.utcnow()
+        device.last_seen = datetime.now(timezone.utc)
 
         if device_name:
             device.device_name = device_name

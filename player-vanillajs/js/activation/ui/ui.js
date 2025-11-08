@@ -8,8 +8,11 @@ window.ShellUI = {
      * Update UI based on status
      */
     updateUI: function(status, code = null) {
+        console.log('[Shell/UI] updateUI called - status:', status, 'code:', code);
+
         const statusElement = document.getElementById('status-message');
         const codeElement = document.getElementById('activation-code');
+        const instructionElement = document.getElementById('activation-instruction');
         const activationScreen = document.getElementById('activation-screen');
         const playerContainer = document.getElementById('player-container');
 
@@ -25,6 +28,27 @@ window.ShellUI = {
             // ✅ NULL CHECK: Only update if element exists
             if (codeElement) {
                 codeElement.textContent = code;
+            }
+
+            // Update instruction based on organization_id
+            if (instructionElement) {
+                const organizationId = localStorage.getItem('organization_id');
+                console.log('[Shell/UI] Updating instruction text - organization_id:', organizationId, 'type:', typeof organizationId);
+
+                // Check if organization_id exists AND is not string "null"
+                if (organizationId && organizationId !== 'null' && organizationId !== 'undefined') {
+                    // Re-registration (device sudah punya organization)
+                    const newText = 'Admin will approve this device in the Web Admin panel';
+                    instructionElement.textContent = newText;
+                    console.log('[Shell/UI] Set instruction (re-registration):', newText);
+                } else {
+                    // First-time registration (device belum punya organization)
+                    const newText = 'Daftarkan kode ini di CMS untuk menambahkan device ke organisasi Anda';
+                    instructionElement.textContent = newText;
+                    console.log('[Shell/UI] Set instruction (first-time):', newText);
+                }
+            } else {
+                console.error('[Shell/UI] activation-instruction element not found!');
             }
 
             // Ensure activation screen is visible and player is hidden

@@ -14,7 +14,7 @@ from datetime import datetime
 
 class RequestActivationCodeRequest(BaseModel):
     """Request activation code - called by player"""
-    organization_id: int = Field(..., gt=0)
+    organization_id: Optional[int] = Field(None, gt=0)  # Optional for new devices, provided for re-registration
     device_type: str = Field(default='monitor', pattern='^(tv|monitor)$')
     device_name: str = Field(default='New Device', max_length=200)
     device_uuid: Optional[str] = Field(None, max_length=100)
@@ -52,6 +52,19 @@ class UpdateDeviceRequest(BaseModel):
     volume_enabled: Optional[bool] = None
     supports_personalization: Optional[bool] = None
     privacy_mode: Optional[str] = Field(None, pattern='^(none|limited|full)$')
+
+
+class DeviceLogEntry(BaseModel):
+    """Single log entry from player"""
+    level: str = Field(..., pattern='^(log|warn|error|info)$')
+    message: str = Field(..., max_length=1000)
+    timestamp: str  # ISO format from player
+
+
+class DeviceLogsRequest(BaseModel):
+    """Batch logs from player - sent periodically"""
+    device_id: int = Field(..., gt=0)
+    logs: list[DeviceLogEntry] = Field(..., min_items=1, max_items=100)
 
 
 # =============================================================================
@@ -124,7 +137,7 @@ class DeviceResponse(BaseModel):
 
 class DeviceListResponse(BaseModel):
     """List of devices - for CMS dashboard"""
-    devices: list[DeviceResponse]
+    items: list[DeviceResponse]  # Changed from 'devices' to 'items' to match frontend
     total: int
     online: int
 
@@ -143,9 +156,11 @@ class HeartbeatResponse(BaseModel):
 
 class ActivationStatusResponse(BaseModel):
     """Check activation status - for player polling"""
-    is_activated: bool
+    activated: bool  # Player expects 'activated' not 'is_activated'
+    expired: bool = False  # True if activation code has expired
     device_id: Optional[int] = None
     device_name: Optional[str] = None
+    organization_id: Optional[int] = None  # For player to know which org it belongs to
     message: str
 
     class Config:

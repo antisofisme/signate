@@ -68,8 +68,11 @@ class DeviceRoutes:
     # Device actions
     ACTIVATE = f"{BASE}/activate"
     HEARTBEAT = f"{BASE}/{{device_id}}/heartbeat"
+    CONTENT_RESOLVED = f"{BASE}/{{device_id}}/content/resolved"
+    COMMANDS_PENDING = f"{BASE}/{{device_id}}/commands/pending"
     COMMAND = f"{BASE}/{{device_id}}/command"
     LOGS = f"{BASE}/{{device_id}}/logs"
+    VALIDATE_RESET_PASSWORD = f"{BASE}/validate-reset-password"
 
 
 # =============================================================================

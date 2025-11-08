@@ -20,7 +20,7 @@ export interface User {
 export interface Organization {
   id: number;
   name: string;
-  organization_pin: string;
+  organization_pin?: string; // REMOVED: Organization PIN (No-PIN flow)
   is_active: boolean;
   created_at?: string;
   updated_at?: string;

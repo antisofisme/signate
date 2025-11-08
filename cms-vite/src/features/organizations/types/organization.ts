@@ -7,7 +7,7 @@ import type { SuccessResponse } from '@/lib/api/responseTypes';
 export interface Organization {
   id: number;
   name: string;
-  organization_pin: string;
+  organization_pin?: string; // REMOVED: Organization PIN (No-PIN flow)
   description?: string;
   address?: string;
   contact_email?: string;

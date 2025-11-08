@@ -40,16 +40,20 @@ export const API_ENDPOINTS = {
   DEVICES: {
     LIST: '/devices',
     GET: (id: number) => `/devices/${id}`,
-    TV_REGISTER: '/devices/tv/register',
-    MONITOR_REGISTER: '/devices/monitor/register',
+    TV_REGISTER: '/devices/tv',
+    MONITOR_REGISTER: '/devices/monitor',
     ACTIVATE: '/devices/activate',
     UPDATE: (id: number) => `/devices/${id}`,
     DELETE: (id: number) => `/devices/${id}`,
-    HEARTBEAT: '/devices/heartbeat',
+    HEARTBEAT: (id: number) => `/devices/${id}/heartbeat`,
     CHECK_ACTIVATION: (code: string) => `/devices/check-activation/${code}`,
     LOGS: (id: number) => `/devices/${id}/logs`,
     COMMANDS: (id: number) => `/devices/${id}/commands`,
     SEND_COMMAND: (id: number) => `/devices/${id}/commands`,
+    CONTENT_RESOLVED: (id: number) => `/devices/${id}/content/resolved`,
+    RELEASE: (id: number) => `/devices/${id}/release`,
+    SPEED_TEST: (id: number) => `/devices/${id}/speed-test`,
+    SPEED_TESTS: (id: number) => `/devices/${id}/speed-tests`,
   },
 
   // ========================================

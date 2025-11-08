@@ -4,7 +4,7 @@ Pure business object, no framework dependencies
 """
 
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 
 
@@ -51,7 +51,7 @@ class Device:
         """Check if device is online (heartbeat in last 5 minutes)"""
         if not self.last_seen:
             return False
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         diff = (now - self.last_seen).total_seconds()
         return diff < 300  # 5 minutes
 
@@ -67,7 +67,7 @@ class Device:
         """Check if device can be activated"""
         if not self.code_expires_at:
             return False
-        return datetime.utcnow() < self.code_expires_at
+        return datetime.now(timezone.utc) < self.code_expires_at
 
     def needs_heartbeat(self) -> bool:
         """Check if device needs heartbeat (offline > 5 min)"""

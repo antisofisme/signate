@@ -177,26 +177,26 @@ export const deviceApi = {
   // ========================================
 
   /**
-   * Register a TV device (WebOS/native)
-   * @param registerData - TV registration data
-   * @returns Registered device with activation code
+   * Activate a TV device (WebOS/native)
+   * @param registerData - TV activation data (unique_code + device_name)
+   * @returns Activated device
    */
   tvRegister: async (registerData: TVRegisterRequest): Promise<Device> => {
     const response = await apiClient.post<DetailResponse>(
-      API_ENDPOINTS.DEVICES.TV_REGISTER,
+      API_ENDPOINTS.DEVICES.ACTIVATE,
       registerData
     );
     return unwrapResponse<Device>(response);
   },
 
   /**
-   * Register a monitor device (browser-based)
-   * @param registerData - Monitor registration data
-   * @returns Registered device
+   * Activate a monitor device (browser-based)
+   * @param registerData - Monitor activation data (unique_code + device_name)
+   * @returns Activated device
    */
   monitorRegister: async (registerData: MonitorRegisterRequest): Promise<Device> => {
     const response = await apiClient.post<DetailResponse>(
-      API_ENDPOINTS.DEVICES.MONITOR_REGISTER,
+      API_ENDPOINTS.DEVICES.ACTIVATE,
       registerData
     );
     return unwrapResponse<Device>(response);
