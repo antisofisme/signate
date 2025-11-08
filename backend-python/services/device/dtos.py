@@ -67,6 +67,11 @@ class DeviceLogsRequest(BaseModel):
     logs: list[DeviceLogEntry] = Field(..., min_items=1, max_items=100)
 
 
+class ValidateResetPasswordRequest(BaseModel):
+    """Validate reset password - called by player before hard reset"""
+    password: str = Field(..., min_length=1, max_length=100)
+
+
 # =============================================================================
 # RESPONSE DTOs
 # =============================================================================

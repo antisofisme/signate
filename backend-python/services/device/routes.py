@@ -25,6 +25,7 @@ from .dtos import (
     HeartbeatRequest,
     UpdateDeviceRequest,
     DeviceLogsRequest,
+    ValidateResetPasswordRequest,
     ActivationCodeResponse,
     DeviceResponse,
     DeviceListResponse,
@@ -551,20 +552,22 @@ def receive_device_logs(
 
 @router.post(DeviceRoutes.VALIDATE_RESET_PASSWORD)
 def validate_reset_password(
-    password: str
+    request: ValidateResetPasswordRequest
 ):
     """
     Validate device reset password (called by player)
 
     Player sends password to validate before performing hard reset.
     Password is stored in environment variable for security.
+
+    Request body: { "password": "admin123" }
     """
     import os
 
     # Get reset password from environment variable
     reset_password = os.getenv('DEVICE_RESET_PASSWORD', 'admin123')
 
-    if password == reset_password:
+    if request.password == reset_password:
         return {
             "valid": True,
             "message": "Password correct"
