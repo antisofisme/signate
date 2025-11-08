@@ -27,7 +27,7 @@ from .domain.interfaces import IContentRepository
 from .infrastructure.storage.interfaces import IStorageService
 from .infrastructure.storage.metadata_extractor import MetadataExtractor
 
-router = APIRouter(prefix="/api/v1/contents", tags=["content"])
+router = APIRouter(tags=["content"])
 
 
 # Dependency injection functions
@@ -75,7 +75,7 @@ def get_audit_logger(create_audit_use_case = Depends(get_create_audit_log_use_ca
 
 
 # API Endpoints
-@router.post("/upload", response_model=dict)
+@router.post(ContentRoutes.UPLOAD, response_model=dict)
 async def upload_content(
     file: UploadFile = File(...),
     title: str = Form(...),
@@ -115,7 +115,7 @@ async def upload_content(
         raise HTTPException(status_code=500, detail=f"Upload failed: {str(e)}")
 
 
-@router.post("/bulk-upload", response_model=dict)
+@router.post(ContentRoutes.BULK_UPLOAD, response_model=dict)
 async def bulk_upload_content(
     files: List[UploadFile] = File(...),
     duration: int = Form(10),
@@ -190,7 +190,7 @@ async def bulk_upload_content(
     )
 
 
-@router.get("", response_model=dict)
+@router.get(ContentRoutes.LIST, response_model=dict)
 async def list_content(
     skip: int = 0,
     limit: int = 20,
@@ -231,7 +231,7 @@ async def list_content(
         raise HTTPException(status_code=500, detail=f"List failed: {str(e)}")
 
 
-@router.get("/{content_id}", response_model=dict)
+@router.get(ContentRoutes.GET, response_model=dict)
 async def get_content(
     content_id: int,
     get_use_case: GetContentUseCase = Depends(get_get_content_use_case),
@@ -250,7 +250,7 @@ async def get_content(
         raise HTTPException(status_code=500, detail=f"Get failed: {str(e)}")
 
 
-@router.put("/{content_id}", response_model=dict)
+@router.put(ContentRoutes.UPDATE, response_model=dict)
 async def update_content(
     content_id: int,
     request_body: ContentUpdateRequest,
@@ -301,7 +301,7 @@ async def update_content(
         raise HTTPException(status_code=500, detail=f"Update failed: {str(e)}")
 
 
-@router.get("/{content_id}/download")
+@router.get(ContentRoutes.DOWNLOAD)
 async def download_content(
     content_id: int,
     get_use_case: GetContentUseCase = Depends(get_get_content_use_case),

@@ -2,6 +2,7 @@
  * API Endpoints - Single Source of Truth
  *
  * ⚠️ CENTRALIZED - All API routes defined here
+ * ⚠️ All endpoints include full path with /api/v1 prefix
  *
  * Usage:
  *   import { API_ENDPOINTS } from '@/lib/api/endpoints';
@@ -13,80 +14,80 @@ export const API_ENDPOINTS = {
   // AUTH
   // ========================================
   AUTH: {
-    LOGIN: '/auth/login',
-    REGISTER: '/auth/register',
-    LOGOUT: '/auth/logout',
-    ME: '/auth/me',
-    REFRESH: '/auth/refresh',
-    FORGOT_PASSWORD: '/auth/forgot-password',
-    RESET_PASSWORD: '/auth/reset-password',
+    LOGIN: '/api/v1/auth/login',
+    REGISTER: '/api/v1/auth/register',
+    LOGOUT: '/api/v1/auth/logout',
+    ME: '/api/v1/auth/me',
+    REFRESH: '/api/v1/auth/refresh',
+    FORGOT_PASSWORD: '/api/v1/auth/forgot-password',
+    RESET_PASSWORD: '/api/v1/auth/reset-password',
   },
 
   // ========================================
   // ORGANIZATIONS
   // ========================================
   ORGANIZATIONS: {
-    LIST: '/organizations',
-    GET: (id: number) => `/organizations/${id}`,
-    CREATE: '/organizations',
-    UPDATE: (id: number) => `/organizations/${id}`,
-    DELETE: (id: number) => `/organizations/${id}`,
-    VALIDATE_PIN: (id: number) => `/organizations/${id}/validate-pin`,
+    LIST: '/api/v1/organizations',
+    GET: (id: number) => `/api/v1/organizations/${id}`,
+    CREATE: '/api/v1/organizations',
+    UPDATE: (id: number) => `/api/v1/organizations/${id}`,
+    DELETE: (id: number) => `/api/v1/organizations/${id}`,
+    VALIDATE_PIN: (id: number) => `/api/v1/organizations/${id}/validate-pin`,
   },
 
   // ========================================
   // DEVICES
   // ========================================
   DEVICES: {
-    LIST: '/devices',
-    GET: (id: number) => `/devices/${id}`,
-    TV_REGISTER: '/devices/tv',
-    MONITOR_REGISTER: '/devices/monitor',
-    ACTIVATE: '/devices/activate',
-    UPDATE: (id: number) => `/devices/${id}`,
-    DELETE: (id: number) => `/devices/${id}`,
-    HEARTBEAT: (id: number) => `/devices/${id}/heartbeat`,
-    CHECK_ACTIVATION: (code: string) => `/devices/check-activation/${code}`,
-    LOGS: (id: number) => `/devices/${id}/logs`,
-    COMMANDS: (id: number) => `/devices/${id}/commands`,
-    SEND_COMMAND: (id: number) => `/devices/${id}/commands`,
-    CONTENT_RESOLVED: (id: number) => `/devices/${id}/content/resolved`,
-    RELEASE: (id: number) => `/devices/${id}/release`,
-    SPEED_TEST: (id: number) => `/devices/${id}/speed-test`,
-    SPEED_TESTS: (id: number) => `/devices/${id}/speed-tests`,
+    LIST: '/api/v1/devices',
+    GET: (id: number) => `/api/v1/devices/${id}`,
+    TV_REGISTER: '/api/v1/devices/tv',
+    MONITOR_REGISTER: '/api/v1/devices/monitor',
+    ACTIVATE: '/api/v1/devices/activate',
+    UPDATE: (id: number) => `/api/v1/devices/${id}`,
+    DELETE: (id: number) => `/api/v1/devices/${id}`,
+    HEARTBEAT: (id: number) => `/api/v1/devices/${id}/heartbeat`,
+    CHECK_ACTIVATION: (code: string) => `/api/v1/devices/check-activation/${code}`,
+    LOGS: (id: number) => `/api/v1/devices/${id}/logs`,
+    COMMANDS: (id: number) => `/api/v1/devices/${id}/commands`,
+    SEND_COMMAND: (id: number) => `/api/v1/devices/${id}/commands`,
+    CONTENT_RESOLVED: (id: number) => `/api/v1/devices/${id}/content/resolved`,
+    RELEASE: (id: number) => `/api/v1/devices/${id}/release`,
+    SPEED_TEST: (id: number) => `/api/v1/devices/${id}/speed-test`,
+    SPEED_TESTS: (id: number) => `/api/v1/devices/${id}/speed-tests`,
   },
 
   // ========================================
   // CONTENT
   // ========================================
   CONTENT: {
-    LIST: '/contents',
-    GET: (id: number) => `/contents/${id}`,
-    UPLOAD: '/contents/upload',
-    BULK_UPLOAD: '/contents/bulk-upload',
-    UPDATE: (id: number) => `/contents/${id}`,
-    DELETE: (id: number) => `/contents/${id}`,
-    DOWNLOAD: (id: number) => `/contents/${id}/download`,
-    BULK_DELETE: '/contents/bulk-delete',
-    BULK_UPDATE: '/contents/bulk-update',
-    STATS: '/contents/stats',
+    LIST: '/api/v1/contents',
+    GET: (id: number) => `/api/v1/contents/${id}`,
+    UPLOAD: '/api/v1/contents/upload',
+    BULK_UPLOAD: '/api/v1/contents/bulk-upload',
+    UPDATE: (id: number) => `/api/v1/contents/${id}`,
+    DELETE: (id: number) => `/api/v1/contents/${id}`,
+    DOWNLOAD: (id: number) => `/api/v1/contents/${id}/download`,
+    BULK_DELETE: '/api/v1/contents/bulk-delete',
+    BULK_UPDATE: '/api/v1/contents/bulk-update',
+    STATS: '/api/v1/contents/stats',
   },
 
   // ========================================
   // TAGS
   // ========================================
   TAGS: {
-    LIST: '/tags',
-    GET: (id: number) => `/tags/${id}`,
-    CREATE: '/tags',
-    UPDATE: (id: number) => `/tags/${id}`,
-    DELETE: (id: number) => `/tags/${id}`,
-    USAGE: (id: number) => `/tags/${id}/usage`,
-    ASSIGN_TO_CONTENT: (tagId: number) => `/tags/${tagId}/assign-content`,
-    ASSIGN_TO_CONTENTS: (tagId: number) => `/tags/${tagId}/assign-contents`,
-    UNASSIGN_FROM_CONTENT: (tagId: number) => `/tags/${tagId}/unassign-content`,
-    UNASSIGN_FROM_CONTENTS: (tagId: number) => `/tags/${tagId}/unassign-contents`,
-    GET_CONTENT_TAGS: (contentId: number) => `/contents/${contentId}/tags`,
+    LIST: '/api/v1/tags',
+    GET: (id: number) => `/api/v1/tags/${id}`,
+    CREATE: '/api/v1/tags',
+    UPDATE: (id: number) => `/api/v1/tags/${id}`,
+    DELETE: (id: number) => `/api/v1/tags/${id}`,
+    USAGE: (id: number) => `/api/v1/tags/${id}/usage`,
+    ASSIGN_TO_CONTENT: (tagId: number) => `/api/v1/tags/${tagId}/assign-content`,
+    ASSIGN_TO_CONTENTS: (tagId: number) => `/api/v1/tags/${tagId}/assign-contents`,
+    UNASSIGN_FROM_CONTENT: (tagId: number) => `/api/v1/tags/${tagId}/unassign-content`,
+    UNASSIGN_FROM_CONTENTS: (tagId: number) => `/api/v1/tags/${tagId}/unassign-contents`,
+    GET_CONTENT_TAGS: (contentId: number) => `/api/v1/contents/${contentId}/tags`,
   },
 
   // ========================================
@@ -94,62 +95,62 @@ export const API_ENDPOINTS = {
   // ========================================
   PLAYLISTS: {
     // CRUD
-    LIST: '/playlists',
-    GET: (id: number) => `/playlists/${id}`,
-    CREATE: '/playlists',
-    UPDATE: (id: number) => `/playlists/${id}`,
-    DELETE: (id: number) => `/playlists/${id}`,
+    LIST: '/api/v1/playlists',
+    GET: (id: number) => `/api/v1/playlists/${id}`,
+    CREATE: '/api/v1/playlists',
+    UPDATE: (id: number) => `/api/v1/playlists/${id}`,
+    DELETE: (id: number) => `/api/v1/playlists/${id}`,
 
     // Content Management
-    GET_CONTENT: (id: number) => `/playlists/${id}/content`,
-    ADD_CONTENT: (id: number) => `/playlists/${id}/content`,
-    REMOVE_CONTENT: (playlistId: number, itemId: number) => `/playlists/${playlistId}/content/${itemId}`,
-    REORDER_CONTENT: (id: number) => `/playlists/${id}/reorder`,
+    GET_CONTENT: (id: number) => `/api/v1/playlists/${id}/content`,
+    ADD_CONTENT: (id: number) => `/api/v1/playlists/${id}/content`,
+    REMOVE_CONTENT: (playlistId: number, itemId: number) => `/api/v1/playlists/${playlistId}/content/${itemId}`,
+    REORDER_CONTENT: (id: number) => `/api/v1/playlists/${id}/reorder`,
 
     // Assignments
-    GET_ASSIGNMENTS: (id: number) => `/playlists/${id}/assignments`,
-    ASSIGN_DEVICES: (id: number) => `/playlists/${id}/assign/devices`,
-    ASSIGN_TAGS: (id: number) => `/playlists/${id}/assign/tags`,
-    UNASSIGN_DEVICES: (id: number) => `/playlists/${id}/assign/devices`,
-    UNASSIGN_TAGS: (id: number) => `/playlists/${id}/assign/tags`,
+    GET_ASSIGNMENTS: (id: number) => `/api/v1/playlists/${id}/assignments`,
+    ASSIGN_DEVICES: (id: number) => `/api/v1/playlists/${id}/assign/devices`,
+    ASSIGN_TAGS: (id: number) => `/api/v1/playlists/${id}/assign/tags`,
+    UNASSIGN_DEVICES: (id: number) => `/api/v1/playlists/${id}/assign/devices`,
+    UNASSIGN_TAGS: (id: number) => `/api/v1/playlists/${id}/assign/tags`,
   },
 
   // ========================================
   // USERS
   // ========================================
   USERS: {
-    LIST: '/users',
-    GET: (id: number) => `/users/${id}`,
-    CREATE: '/users',
-    UPDATE: (id: number) => `/users/${id}`,
-    DELETE: (id: number) => `/users/${id}`,
-    CHANGE_PASSWORD: (id: number) => `/users/${id}/change-password`,
+    LIST: '/api/v1/users',
+    GET: (id: number) => `/api/v1/users/${id}`,
+    CREATE: '/api/v1/users',
+    UPDATE: (id: number) => `/api/v1/users/${id}`,
+    DELETE: (id: number) => `/api/v1/users/${id}`,
+    CHANGE_PASSWORD: (id: number) => `/api/v1/users/${id}/change-password`,
   },
 
   // ========================================
   // AUDIT LOGS
   // ========================================
   AUDIT: {
-    LIST: '/audit-logs',
-    GET: (id: number) => `/audit-logs/${id}`,
+    LIST: '/api/v1/audit-logs',
+    GET: (id: number) => `/api/v1/audit-logs/${id}`,
   },
 
   // ========================================
   // ANALYTICS
   // ========================================
   ANALYTICS: {
-    DASHBOARD: '/analytics/dashboard',
-    DEVICE_STATS: '/analytics/devices/stats',
-    CONTENT_STATS: '/analytics/content/stats',
-    DEVICE_LOGS: (deviceId: number) => `/analytics/devices/${deviceId}/logs`,
-    ACTIVITY_TIMELINE: '/analytics/activity',
+    DASHBOARD: '/api/v1/analytics/dashboard',
+    DEVICE_STATS: '/api/v1/analytics/devices/stats',
+    CONTENT_STATS: '/api/v1/analytics/content/stats',
+    DEVICE_LOGS: (deviceId: number) => `/api/v1/analytics/devices/${deviceId}/logs`,
+    ACTIVITY_TIMELINE: '/api/v1/analytics/activity',
   },
 
   // ========================================
   // PREVIEW
   // ========================================
   PREVIEW: {
-    DEVICE: (deviceId: number) => `/preview/device/${deviceId}`,
-    PLAYLIST: (playlistId: number) => `/preview/playlist/${playlistId}`,
+    DEVICE: (deviceId: number) => `/api/v1/preview/device/${deviceId}`,
+    PLAYLIST: (playlistId: number) => `/api/v1/preview/playlist/${playlistId}`,
   },
 } as const;

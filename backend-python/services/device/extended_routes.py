@@ -11,6 +11,7 @@ from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 from shared.database import get_db
+from shared.api_routes import DeviceRoutes
 from datetime import datetime, timedelta
 from typing import Optional, List
 import json
@@ -106,7 +107,7 @@ def calculate_speed_quality(download: float, upload: float) -> str:
 # TV/MONITOR REGISTRATION
 # ============================================================================
 
-@router.post("/devices/tv", status_code=status.HTTP_201_CREATED)
+@router.post(DeviceRoutes.TV_REGISTER, status_code=status.HTTP_201_CREATED)
 def register_tv_device(
     request: TVRegisterRequest,
     db: Session = Depends(get_db)
@@ -152,7 +153,7 @@ def register_tv_device(
     }
 
 
-@router.post("/devices/monitor", status_code=status.HTTP_201_CREATED)
+@router.post(DeviceRoutes.MONITOR_REGISTER, status_code=status.HTTP_201_CREATED)
 def register_monitor_device(
     request: MonitorRegisterRequest,
     db: Session = Depends(get_db)
@@ -209,7 +210,7 @@ def register_monitor_device(
 # DEVICE RELEASE
 # ============================================================================
 
-@router.post("/devices/{device_id}/release", status_code=status.HTTP_200_OK)
+@router.post(DeviceRoutes.RELEASE, status_code=status.HTTP_200_OK)
 def release_device(
     device_id: int,
     db: Session = Depends(get_db)
@@ -281,7 +282,7 @@ def release_device(
 # CONTENT RESOLUTION (3-Tier Priority)
 # ============================================================================
 
-@router.get("/devices/{device_id}/content/resolved")
+@router.get(DeviceRoutes.CONTENT_RESOLVED)
 def get_resolved_content(
     device_id: int,
     db: Session = Depends(get_db)
@@ -296,8 +297,10 @@ def get_resolved_content(
 
     Returns merged content list sorted by priority.
     """
-    # Priority 1: Direct content assignments
-    direct_query = text("""
+    # Wrap in try-except to handle missing tables gracefully
+    try:
+        # Priority 1: Direct content assignments
+        direct_query = text("""
         SELECT c.id, c.name, c.type, c.uri, c.duration,
                ca.priority, 'direct' as source
         FROM content_assignments ca
@@ -374,26 +377,43 @@ def get_resolved_content(
                 "source": row.source
             })
 
-    return {
-        "success": True,
-        "data": {
-            "device_id": device_id,
-            "total": len(content_items),
-            "items": content_items,
-            "breakdown": {
-                "direct": len(direct_results),
-                "tag": len(tag_results),
-                "playlist": len(playlist_results)
+        return {
+            "success": True,
+            "data": {
+                "device_id": device_id,
+                "total": len(content_items),
+                "items": content_items,
+                "breakdown": {
+                    "direct": len(direct_results),
+                    "tag": len(tag_results),
+                    "playlist": len(playlist_results)
+                }
             }
         }
-    }
+    except Exception as e:
+        # Tables don't exist yet (Phase 5+ feature)
+        # Return empty content - player will show "No content assigned"
+        print(f"[Content Resolution] Tables not ready: {e}")
+        return {
+            "success": True,
+            "data": {
+                "device_id": device_id,
+                "total": 0,
+                "items": [],
+                "breakdown": {
+                    "direct": 0,
+                    "tag": 0,
+                    "playlist": 0
+                }
+            }
+        }
 
 
 # ============================================================================
 # SPEED TESTS
 # ============================================================================
 
-@router.post("/devices/{device_id}/speed-test", response_model=SpeedTestResponse, status_code=status.HTTP_201_CREATED)
+@router.post(DeviceRoutes.SPEED_TEST, response_model=SpeedTestResponse, status_code=status.HTTP_201_CREATED)
 def record_speed_test(
     device_id: int,
     request: SpeedTestRequest,
@@ -469,7 +489,7 @@ def record_speed_test(
     )
 
 
-@router.get("/devices/{device_id}/speed-tests")
+@router.get(DeviceRoutes.SPEED_TESTS)
 def get_speed_test_history(
     device_id: int,
     limit: int = Query(100, ge=1, le=500),

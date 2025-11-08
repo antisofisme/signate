@@ -142,7 +142,7 @@ def device_to_response(device) -> DeviceResponse:
 # PLAYER ENDPOINTS (PUBLIC - NO AUTH)
 # =============================================================================
 
-@router.post("/api/devices/request-code", response_model=ActivationCodeResponse, status_code=status.HTTP_201_CREATED)
+@router.post(DeviceRoutes.REQUEST_CODE, response_model=ActivationCodeResponse, status_code=status.HTTP_201_CREATED)
 def request_activation_code(
     request: RequestActivationCodeRequest,
     use_case: RequestActivationCodeUseCase = Depends(get_request_activation_code_use_case)
@@ -206,7 +206,7 @@ def device_heartbeat(
         )
 
 
-@router.get("/api/devices/check-activation/{unique_code}", response_model=ActivationStatusResponse)
+@router.get(DeviceRoutes.CHECK_ACTIVATION, response_model=ActivationStatusResponse)
 def check_activation_status(
     unique_code: str,
     device_repo: DeviceRepository = Depends(get_device_repository)
@@ -510,7 +510,7 @@ def delete_device(
     return None
 
 
-@router.post("/api/client/logs/batch", status_code=status.HTTP_204_NO_CONTENT)
+@router.post(DeviceRoutes.DEVICE_LOGS_BATCH, status_code=status.HTTP_204_NO_CONTENT)
 def receive_device_logs(
     request_body: DeviceLogsRequest,
     device_repo: DeviceRepository = Depends(get_device_repository)

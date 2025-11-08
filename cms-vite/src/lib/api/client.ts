@@ -18,11 +18,14 @@ const IS_DEV = import.meta.env.DEV;
 /**
  * Axios client instance
  *
- * Development: Uses relative URL /api/v1 (proxied by Vite to http://192.168.5.12:8001)
- * Production: Uses absolute URL http://192.168.5.12:8001/api/v1
+ * ⚠️ UPDATED: baseURL no longer includes /api/v1 prefix
+ * All endpoints in endpoints.ts now include full path with /api/v1
+ *
+ * Development: Empty baseURL (endpoints have full paths, Vite proxy handles routing)
+ * Production: Uses server URL only (endpoints include /api/v1 already)
  */
 export const apiClient = axios.create({
-  baseURL: IS_DEV ? `/api/${API_VERSION}` : `${API_BASE_URL}/api/${API_VERSION}`,
+  baseURL: IS_DEV ? '' : API_BASE_URL,
   timeout: 30000,
   headers: {
     'Content-Type': 'application/json',

@@ -59,19 +59,41 @@ class DeviceRoutes:
     """Device management endpoints"""
     BASE = f"{API_V1}/devices"
 
+    # Basic CRUD
     LIST = BASE
     CREATE = BASE
     GET = f"{BASE}/{{device_id}}"
     UPDATE = f"{BASE}/{{device_id}}"
     DELETE = f"{BASE}/{{device_id}}"
 
-    # Device actions
-    ACTIVATE = f"{BASE}/activate"
+    # Registration endpoints
+    REQUEST_CODE = "/api/devices/request-code"  # Player endpoint (public)
+    TV_REGISTER = f"{BASE}/tv"  # TV device registration
+    MONITOR_REGISTER = f"{BASE}/monitor"  # Monitor device registration
+    ACTIVATE = f"{BASE}/activate"  # CMS activation
+    CHECK_ACTIVATION = "/api/devices/check-activation/{{unique_code}}"  # Player polling (public)
+
+    # Device lifecycle
     HEARTBEAT = f"{BASE}/{{device_id}}/heartbeat"
+    RELEASE = f"{BASE}/{{device_id}}/release"
+
+    # Content resolution
     CONTENT_RESOLVED = f"{BASE}/{{device_id}}/content/resolved"
-    COMMANDS_PENDING = f"{BASE}/{{device_id}}/commands/pending"
-    COMMAND = f"{BASE}/{{device_id}}/command"
+
+    # Commands
+    COMMANDS = f"{BASE}/{{device_id}}/commands"  # GET pending commands
+    SEND_COMMAND = f"{BASE}/{{device_id}}/commands"  # POST to send command
+    COMMAND_STATUS = f"{BASE}/{{device_id}}/commands/{{command_id}}"
+
+    # Network testing
+    SPEED_TEST = f"{BASE}/{{device_id}}/speed-test"  # POST to record test
+    SPEED_TESTS = f"{BASE}/{{device_id}}/speed-tests"  # GET test history
+
+    # Logging & monitoring
     LOGS = f"{BASE}/{{device_id}}/logs"
+    DEVICE_LOGS_BATCH = "/api/client/logs/batch"  # Player batch logs (public)
+
+    # Security
     VALIDATE_RESET_PASSWORD = f"{BASE}/validate-reset-password"
 
 
@@ -105,12 +127,18 @@ class ContentRoutes:
     BASE = f"{API_V1}/contents"
     PLAYLISTS = f"{API_V1}/playlists"
 
-    # Content
+    # Content CRUD
     LIST = BASE
     UPLOAD = f"{BASE}/upload"
+    BULK_UPLOAD = f"{BASE}/bulk-upload"
     GET = f"{BASE}/{{content_id}}"
     UPDATE = f"{BASE}/{{content_id}}"
     DELETE = f"{BASE}/{{content_id}}"
+    BULK_DELETE = f"{BASE}/bulk-delete"
+    BULK_UPDATE = f"{BASE}/bulk-update"
+    DOWNLOAD = f"{BASE}/{{content_id}}/download"
+
+    # Content metadata & stats
     PREVIEW = f"{BASE}/{{content_id}}/preview"
     STATS = f"{BASE}/stats"  # Storage statistics
 
