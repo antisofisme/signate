@@ -22,7 +22,7 @@ from .use_cases.list_content import ListContentUseCase
 from .use_cases.get_content import GetContentUseCase
 from .use_cases.update_content import UpdateContentUseCase
 
-from .dtos import ContentResponse, PaginatedContentResponse, ContentUpdateRequest
+from .dtos import ContentResponse, PaginatedContentResponse, ContentUpdateRequest, BulkDeleteRequest, BulkUpdateRequest
 from .domain.interfaces import IContentRepository
 from .infrastructure.storage.interfaces import IStorageService
 from .infrastructure.storage.metadata_extractor import MetadataExtractor
@@ -378,3 +378,132 @@ async def delete_content(
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Delete failed: {str(e)}")
+
+
+@router.post(ContentRoutes.BULK_DELETE, response_model=dict)
+async def bulk_delete_content(
+    request_body: BulkDeleteRequest,
+    http_request: Request,
+    content_repo: IContentRepository = Depends(get_content_repository),
+    get_use_case: GetContentUseCase = Depends(get_get_content_use_case),
+    audit_logger: AuditLogger = Depends(get_audit_logger),
+    current_user: CurrentUser = Depends(get_current_user)
+):
+    """
+    Bulk delete content (soft delete)
+
+    - Deletes multiple content items at once
+    - Max 100 items per request
+    - Validates organization ownership for each item
+    - Logs audit trail for each deletion
+    """
+    deleted_count = 0
+    failed_count = 0
+    errors = []
+
+    for content_id in request_body.content_ids:
+        try:
+            # Get content first for audit log
+            content = get_use_case.execute(content_id, current_user.organization_id)
+
+            # Soft delete
+            deleted = content_repo.soft_delete(content_id, current_user.organization_id)
+
+            if deleted:
+                deleted_count += 1
+
+                # Audit log
+                audit_logger.log_action(
+                    user_id=current_user.id,
+                    action="content.bulk_delete",
+                    resource_type="content",
+                    resource_id=content_id,
+                    details={
+                        "title": content.title,
+                        "content_type": content.content_type,
+                        "ip_address": http_request.client.host if http_request.client else None
+                    }
+                )
+            else:
+                failed_count += 1
+                errors.append({"content_id": content_id, "error": "Not found or access denied"})
+
+        except ValueError as e:
+            failed_count += 1
+            errors.append({"content_id": content_id, "error": str(e)})
+        except Exception as e:
+            failed_count += 1
+            errors.append({"content_id": content_id, "error": f"Delete failed: {str(e)}"})
+
+    return success_response(
+        data={
+            "deleted": deleted_count,
+            "failed": failed_count,
+            "errors": errors if errors else None
+        },
+        message=f"Bulk delete completed: {deleted_count} deleted, {failed_count} failed"
+    )
+
+
+@router.post(ContentRoutes.BULK_UPDATE, response_model=dict)
+async def bulk_update_content(
+    request_body: BulkUpdateRequest,
+    http_request: Request,
+    update_use_case: UpdateContentUseCase = Depends(get_update_content_use_case),
+    audit_logger: AuditLogger = Depends(get_audit_logger),
+    current_user: CurrentUser = Depends(get_current_user)
+):
+    """
+    Bulk update content metadata
+
+    - Updates multiple content items at once
+    - Max 100 items per request
+    - Applies same updates to all items
+    - Validates organization ownership for each item
+    """
+    updated_count = 0
+    failed_count = 0
+    errors = []
+
+    for content_id in request_body.content_ids:
+        try:
+            updated_content = update_use_case.execute(
+                content_id=content_id,
+                organization_id=current_user.organization_id,
+                title=request_body.updates.title,
+                description=request_body.updates.description,
+                duration=request_body.updates.duration,
+                is_active=request_body.updates.is_active
+            )
+
+            updated_count += 1
+
+            # Audit log
+            audit_logger.log_action(
+                user_id=current_user.id,
+                action="content.bulk_update",
+                resource_type="content",
+                resource_id=content_id,
+                details={
+                    "title": updated_content.title,
+                    "duration": updated_content.duration,
+                    "is_active": updated_content.is_active,
+                    "ip_address": http_request.client.host if http_request.client else None
+                }
+            )
+
+        except ValueError as e:
+            failed_count += 1
+            errors.append({"content_id": content_id, "error": str(e)})
+        except Exception as e:
+            failed_count += 1
+            errors.append({"content_id": content_id, "error": f"Update failed: {str(e)}"})
+
+    return success_response(
+        data={
+            "updated": updated_count,
+            "failed": failed_count,
+            "errors": errors if errors else None
+        },
+        message=f"Bulk update completed: {updated_count} updated, {failed_count} failed"
+    )

@@ -4,7 +4,7 @@ Request/Response models for API
 """
 
 from pydantic import BaseModel, Field
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 from datetime import datetime
 
 
@@ -22,6 +22,17 @@ class ContentUpdateRequest(BaseModel):
     description: Optional[str] = Field(None, max_length=1000)
     duration: Optional[int] = Field(None, ge=1, le=86400)
     is_active: Optional[bool] = None
+
+
+class BulkDeleteRequest(BaseModel):
+    """Bulk delete content request"""
+    content_ids: List[int] = Field(..., min_items=1, max_items=100)
+
+
+class BulkUpdateRequest(BaseModel):
+    """Bulk update content request"""
+    content_ids: List[int] = Field(..., min_items=1, max_items=100)
+    updates: ContentUpdateRequest
 
 
 class ContentResponse(BaseModel):
