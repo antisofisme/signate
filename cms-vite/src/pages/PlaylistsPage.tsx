@@ -4,7 +4,7 @@
  */
 
 import { useState } from 'react';
-import { Plus, Pencil, Trash2, Play, Clock, FileText, Loader2, List, Monitor, Tag } from 'lucide-react';
+import { Plus, Pencil, Trash2, Clock, FileText, Loader2, List, Monitor } from 'lucide-react';
 import {
   usePlaylistList,
   useCreatePlaylist,
