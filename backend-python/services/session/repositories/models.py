@@ -5,7 +5,7 @@ Maps to database tables created by migration 011
 from sqlalchemy import Column, Integer, String, ForeignKey, TIMESTAMP, text, CheckConstraint
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import relationship
-from datetime import datetime
+from datetime import datetime, timezone
 from shared.database import Base
 
 
@@ -60,7 +60,7 @@ class UserSession(Base):
     @property
     def is_active(self) -> bool:
         """Check if session is active (not revoked and not expired)"""
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         return self.revoked_at is None and self.expires_at > now
 
     def to_dict(self):
