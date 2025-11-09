@@ -135,7 +135,7 @@ class ShellConnectionStatusClass {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), this.pingTimeoutDuration);
 
-      const response = await fetch(`${config.api.baseURL}/api/health`, {
+      const response = await fetch(`${config.api.baseURL}/health`, {
         method: 'GET',
         signal: controller.signal,
         cache: 'no-cache',

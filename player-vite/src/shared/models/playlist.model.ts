@@ -13,7 +13,7 @@
  */
 
 import { SharedLogger } from '@shared/logger';
-import type { Content } from './content.model';
+// Content will be imported at runtime via getter methods to avoid circular deps
 
 /**
  * Playlist data interface

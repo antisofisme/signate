@@ -109,8 +109,12 @@ class FullscreenManagerClass {
    * Shows/hides fullscreen and action buttons based on cursor position
    */
   private setupMouseHover(): void {
+    let hoverTimeout: number | null = null;
+    let isInArea = false;
+
     document.addEventListener('mousemove', (e: MouseEvent) => {
       const screenWidth = window.innerWidth;
+      const screenHeight = window.innerHeight;
       const mouseX = e.clientX;
       const mouseY = e.clientY;
 
@@ -119,28 +123,49 @@ class FullscreenManagerClass {
       const orgPinBtn = document.getElementById('org-pin-btn');
       const resetBtn = document.getElementById('hard-reset-btn');
 
-      // Define hover area: right 150px, top 220px (increased for more buttons)
-      const hoverAreaRight = 150;
-      const hoverAreaTop = 220;
+      // Define smaller hover area: right 100px, top 150px (reduced from 150x220)
+      const hoverAreaRight = 100;
+      const hoverAreaTop = 150;
 
-      const isInHoverArea = mouseX > screenWidth - hoverAreaRight && mouseY < hoverAreaTop;
+      const isNowInHoverArea = mouseX > screenWidth - hoverAreaRight && mouseY < hoverAreaTop;
 
-      if (isInHoverArea) {
-        // Show buttons based on fullscreen state
-        if (document.fullscreenElement) {
-          // In fullscreen - show exit and reset buttons
-          exitBtn?.classList.add('show');
-          enterBtn?.classList.remove('show');
-        } else {
-          // Not in fullscreen - show enter and reset buttons
-          enterBtn?.classList.add('show');
-          exitBtn?.classList.remove('show');
+      // If entering hover area
+      if (isNowInHoverArea && !isInArea) {
+        isInArea = true;
+
+        // Clear any existing timeout
+        if (hoverTimeout) {
+          clearTimeout(hoverTimeout);
         }
-        // Always show org-pin and reset buttons in hover area
-        orgPinBtn?.classList.add('show');
-        resetBtn?.classList.add('show');
-      } else {
-        // Hide all buttons when cursor outside hover area
+
+        // Show buttons after 300ms hover (prevents accidental triggers)
+        hoverTimeout = window.setTimeout(() => {
+          // Show buttons based on fullscreen state
+          if (document.fullscreenElement) {
+            // In fullscreen - show exit and reset buttons
+            exitBtn?.classList.add('show');
+            enterBtn?.classList.remove('show');
+          } else {
+            // Not in fullscreen - show enter and reset buttons
+            enterBtn?.classList.add('show');
+            exitBtn?.classList.remove('show');
+          }
+          // Always show org-pin and reset buttons in hover area
+          orgPinBtn?.classList.add('show');
+          resetBtn?.classList.add('show');
+        }, 300); // Require 300ms hover before showing buttons
+      }
+      // If leaving hover area
+      else if (!isNowInHoverArea && isInArea) {
+        isInArea = false;
+
+        // Clear timeout if user moves away before buttons show
+        if (hoverTimeout) {
+          clearTimeout(hoverTimeout);
+          hoverTimeout = null;
+        }
+
+        // Hide all buttons immediately when leaving area
         enterBtn?.classList.remove('show');
         exitBtn?.classList.remove('show');
         orgPinBtn?.classList.remove('show');

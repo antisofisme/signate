@@ -100,7 +100,7 @@ export abstract class BaseCommand {
    * @param parameters - Command parameters
    * @throws Error if validation fails
    */
-  validate(parameters?: any): void {
+  validate(_parameters?: any): void {
     // Default: no validation
     // Subclasses should override this
   }

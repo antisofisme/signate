@@ -13,7 +13,6 @@
 
 import { SharedLogger } from '@shared/logger';
 import { SharedEventBus, EventNames } from '@shared/events/shared-event-bus';
-import { SharedToast } from './shared-toast';
 
 /**
  * Shared Offline Handler Class

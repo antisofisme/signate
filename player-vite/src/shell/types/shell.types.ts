@@ -4,10 +4,11 @@
  */
 
 export interface RegistrationResponse {
-  success: boolean;
+  success?: boolean; // Optional for backward compatibility
   device_id: number;
-  code: string;
-  organization_id: number | null;
+  unique_code: string; // Backend returns unique_code, not code
+  expires_at: string; // ISO timestamp when code expires (10 minutes from registration)
+  organization_id?: number | null;
   device_token?: string;
   message?: string;
 }

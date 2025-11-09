@@ -157,6 +157,37 @@ For current server configuration, credentials, and operational procedures, see *
 
 ---
 
-**Last Updated:** 2025-10-29
+## 🆕 Recently Added Documentation
+
+### Database Schema Review ⭐ **CRITICAL**
+**File:** `database/DATABASE_SCHEMA_REVIEW.md`
+**Date:** 2025-01-09
+
+Comprehensive database schema analysis with **8.5/10 health score**. Includes:
+- Multi-tenant architecture evaluation
+- RBAC system recommendations (CRITICAL - Missing `roles` table)
+- Session management recommendations (CRITICAL - Missing `user_sessions` table)
+- Analytics & playback tracking recommendations
+- 17 new migration files needed (010-026)
+- ERD diagrams and optimization strategies
+
+**Action Required:**
+- [ ] Migration 010: Create `roles` table (RBAC)
+- [ ] Migration 011: Create `user_sessions` table
+- [ ] Migration 012-013: Fix consistency issues
+- [ ] Migration 014-017: Add analytics & grouping
+
+### New Category Folders (2025-01-09)
+- **`database/`** - Database schema documentation
+- **`architecture/`** - System architecture & deployment
+- **`device/`** - Device management system
+- **`player/`** - Player/viewer documentation
+- **`content/`** - Content management
+- **`refactoring/`** - Code quality & refactoring
+- **`security/`** - Security documentation
+
+---
+
+**Last Updated:** 2025-01-09
 **Project:** Smart TV Digital Signage
 **Version:** 1.0.0

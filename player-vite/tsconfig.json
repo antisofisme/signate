@@ -19,10 +19,8 @@
     "esModuleInterop": true,
     "skipLibCheck": true,
 
-    // Output
-    "declaration": true,
-    "declarationMap": true,
-    "sourceMap": true,
+    // Output - Vite handles all compilation, tsc only for type checking
+    "noEmit": true,
     "removeComments": false,
 
     // Path aliases for clean imports

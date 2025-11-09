@@ -32,6 +32,19 @@ class ShellFullscreenHandlerClass {
   private autoEnterOnLoad = true;
 
   /**
+   * Check if running on TV platform (webOS, Tizen, Android TV)
+   */
+  private isTVPlatform(): boolean {
+    const ua = navigator.userAgent.toLowerCase();
+    return (
+      ua.includes('webos') ||
+      ua.includes('web0s') ||
+      ua.includes('tizen') ||
+      ua.includes('android tv')
+    );
+  }
+
+  /**
    * Initialize fullscreen handler
    */
   init(autoEnter = true): void {
@@ -54,12 +67,15 @@ class ShellFullscreenHandlerClass {
     SharedEventBus.on('fullscreen:exit', () => this.exit(), 'fullscreen-handler');
     SharedEventBus.on('fullscreen:toggle', () => this.toggle(), 'fullscreen-handler');
 
-    // Auto-enter fullscreen on load
-    if (this.autoEnterOnLoad) {
+    // Auto-enter fullscreen on load (only for TV platforms)
+    if (this.autoEnterOnLoad && this.isTVPlatform()) {
       // Delay to allow page to fully load
       setTimeout(() => {
+        SharedLogger.log('[FullscreenHandler] Auto-entering fullscreen for TV platform...');
         this.enter();
       }, 1000);
+    } else if (this.autoEnterOnLoad) {
+      SharedLogger.log('[FullscreenHandler] Auto-enter disabled for browser (requires user gesture)');
     }
 
     SharedLogger.log('[FullscreenHandler] Initialized - Auto-enter:', autoEnter);

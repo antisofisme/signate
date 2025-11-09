@@ -62,6 +62,9 @@ const initApp = async () => {
   // Render activation screen (will be shown if device is not activated)
   ShellActivationScreen.render('shell-container');
 
+  // Expose ShellActivationScreen globally for updates after registration
+  window.ShellActivationScreen = ShellActivationScreen;
+
   // Initialize UI components
   SharedLogger.log('🎮 Initializing UI components...');
   FullscreenManager.init();

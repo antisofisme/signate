@@ -33,8 +33,17 @@ export * from './ui';
 // Utils
 export { cn } from './utils/cn';
 
-// Models
-export * from './models';
+// Models - Explicit exports to avoid conflicts with storage schema
+export { Content, Playlist, Segment, Device } from './models';
+export type {
+  ContentData,
+  ContentMetadata,
+  PlaylistData,
+  SegmentData,
+  DeviceData,
+  DeviceStorage,
+  ValidationResult,
+} from './models';
 
 // Storage
 export * from './storage';

@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite",
     "dev:watch": "node dev-watch.js",
-    "build": "tsc && vite build",
+    "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
     "type-check": "tsc --noEmit",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0"

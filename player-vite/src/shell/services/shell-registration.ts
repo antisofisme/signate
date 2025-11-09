@@ -161,10 +161,23 @@ class ShellRegistrationClass implements IShellRegistration {
       // Use existing pending code or generate new one
       let activationCode = this.getPendingCode();
 
+      // Validate pending code format - should be pure numeric (6 digits)
+      if (activationCode && !/^\d{6}$/.test(activationCode)) {
+        SharedLogger.warn('[ShellRegistration] Invalid pending code format (contains letters), clearing:', activationCode);
+        this.setPendingCode(null);
+        activationCode = null;
+      }
+
       if (!activationCode) {
         activationCode = this.generateActivationCode();
         this.setPendingCode(activationCode);
         SharedLogger.log('[ShellRegistration] Generated new activation code:', activationCode);
+
+        // Update UI immediately with generated code (before API call)
+        if (window.ShellActivationScreen) {
+          SharedLogger.log('[ShellRegistration] Updating UI with generated code...');
+          window.ShellActivationScreen.updateCode(activationCode);
+        }
       } else {
         SharedLogger.log('[ShellRegistration] Using existing pending code:', activationCode);
       }
@@ -181,9 +194,9 @@ class ShellRegistrationClass implements IShellRegistration {
 
       SharedLogger.log('[ShellRegistration] Registering device...');
 
-      // Register device
+      // Request activation code (register device)
       const data = await SharedAPIClient.post<RegistrationResponse>(
-        `${config.api.baseURL}/api/devices/register`,
+        `${config.api.baseURL}/api/v1/devices/request-code`,
         requestBody
       );
 
@@ -191,8 +204,13 @@ class ShellRegistrationClass implements IShellRegistration {
 
       // Store device data using SharedDeviceState
       SharedDeviceState.setDeviceId(data.device_id);
-      SharedDeviceState.setDeviceCode(data.code);
+      SharedDeviceState.setDeviceCode(data.unique_code);
       SharedDeviceState.setDeviceStatus('pending');
+
+      // Store expiration timestamp for countdown timer persistence
+      if (data.expires_at) {
+        SharedDeviceState.setCodeExpiresAt(data.expires_at);
+      }
 
       if (data.organization_id) {
         SharedDeviceState.setOrganizationId(data.organization_id);
@@ -205,8 +223,22 @@ class ShellRegistrationClass implements IShellRegistration {
       // Clear retry count on success
       this.clearRetryCount();
 
-      // UI update would go here
-      SharedLogger.log('[ShellRegistration] 🎯 Activation code:', data.code);
+      // Update UI with new activation code and start countdown
+      SharedLogger.log('[ShellRegistration] 🎯 Activation code:', data.unique_code);
+      if (window.ShellActivationScreen) {
+        SharedLogger.log('[ShellRegistration] Updating UI with new code...');
+        window.ShellActivationScreen.updateCode(data.unique_code);
+
+        // Start countdown timer if expires_at is provided
+        if (data.expires_at) {
+          SharedLogger.log('[ShellRegistration] Starting countdown timer, expires at:', data.expires_at);
+          window.ShellActivationScreen.startCountdown(data.expires_at);
+        }
+
+        SharedLogger.log('[ShellRegistration] ✅ UI updated with code:', data.unique_code);
+      } else {
+        SharedLogger.error('[ShellRegistration] ❌ window.ShellActivationScreen not available!');
+      }
 
       // Start activation polling
       if (window.ShellActivationPoll) {
@@ -215,7 +247,22 @@ class ShellRegistrationClass implements IShellRegistration {
     } catch (error) {
       SharedLogger.error('[ShellRegistration] ❌ Registration failed:', error);
 
-      // Increment retry count
+      // Check if error is due to duplicate code (code already in use)
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const isDuplicateCode = errorMessage.includes('already in use') || errorMessage.includes('duplicate');
+
+      if (isDuplicateCode) {
+        SharedLogger.warn('[ShellRegistration] ⚠️ Code collision detected, generating new code...');
+        // Clear pending code to force new code generation on retry
+        this.setPendingCode(null);
+        // Don't increment retry count for duplicate code - just retry immediately
+        this.retryTimeout = window.setTimeout(() => {
+          void this.registerDevice();
+        }, 1000); // Retry after 1 second
+        return;
+      }
+
+      // Increment retry count for other errors
       const retryCount = this.incrementRetryCount();
 
       // Check if max retries exceeded

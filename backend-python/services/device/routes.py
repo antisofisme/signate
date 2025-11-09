@@ -156,10 +156,12 @@ def request_activation_code(
     - First-time: org_id assigned during activation by admin
     - Re-registration: org_id extracted from device_token JWT
 
-    Generates 6-digit cryptographically secure code that expires in 10 minutes
+    Accepts 6-digit code from frontend (generated client-side) and validates uniqueness
+    Code expires in 10 minutes
     """
     try:
         result = use_case.execute(
+            code=request.code,  # 6-digit code from frontend
             device_token=request.device_token,  # 🔒 JWT token instead of org_id
             device_type=request.device_type,
             device_name=request.device_name,

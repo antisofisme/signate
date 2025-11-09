@@ -75,7 +75,7 @@ class ShellActivationPollClass implements IShellActivationPoll {
     try {
       // Check activation status
       const data = await SharedAPIClient.get<ActivationCheckResponse>(
-        `${config.api.baseURL}/api/devices/check-activation/${activationCode}`
+        `${config.api.baseURL}/api/v1/devices/check-activation/${activationCode}`
       );
 
       SharedLogger.log('[ShellActivationPoll] 📊 Activation status:', data);

@@ -28,9 +28,12 @@ function getEnvBoolean(key: string, defaultValue: boolean): boolean {
 
 /**
  * Parse environment variable as string
+ * IMPORTANT: Treats empty string as valid value (for dev proxy)
  */
 function getEnvString(key: string, defaultValue: string): string {
-  return import.meta.env[key] || defaultValue;
+  const value = import.meta.env[key];
+  // Check if key exists (even if empty string)
+  return value !== undefined ? value : defaultValue;
 }
 
 /**

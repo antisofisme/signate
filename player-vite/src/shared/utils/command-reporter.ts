@@ -20,7 +20,7 @@
  * ```
  */
 
-import { apiClient } from '@/lib/api/client';
+import { SharedAPIClient } from '@shared/api';
 
 /**
  * Command status types
@@ -77,7 +77,7 @@ export async function reportCommandStatus(
 
   try {
     // Use API client for standardized response handling
-    await apiClient.post(
+    await SharedAPIClient.post(
       `/devices/${deviceId}/commands/${commandId}/report`,
       report
     );

@@ -1,0 +1,57 @@
+# ============================================================================
+# PgBouncer User List (Authentication File)
+# ============================================================================
+# Format: "username" "password"
+#
+# Password formats:
+# 1. Plain text: "username" "mypassword"
+# 2. MD5 hash:   "username" "md5<32_char_hash>"
+# 3. SCRAM:      "username" "SCRAM-SHA-256$<hash>"
+#
+# IMPORTANT: Use MD5 hash for production!
+# Generate MD5 hash: echo -n "passwordusername" | md5sum
+# Example: echo -n "Password@2021signage_user" | md5sum
+# ============================================================================
+
+# Main database user (replace <HASH> with actual MD5 hash)
+# To generate: echo -n "Password@2021signage_user" | md5sum
+# Then prepend "md5" to the result
+"signage_user" "md5<REPLACE_WITH_ACTUAL_HASH>"
+
+# Admin user for PgBouncer console access
+# To generate: echo -n "AdminPass123signage_admin" | md5sum
+"signage_admin" "md5<REPLACE_WITH_ACTUAL_HASH>"
+
+# Stats user (read-only access to PgBouncer stats)
+"signage_stats" "md5<REPLACE_WITH_ACTUAL_HASH>"
+
+# ============================================================================
+# HOW TO GENERATE MD5 HASH
+# ============================================================================
+#
+# Method 1: Using echo (Linux/Mac)
+# ----------------------------------
+# echo -n "PASSWORD + USERNAME" | md5sum
+# Example: echo -n "Password@2021signage_user" | md5sum
+# Result: abc123def456... (copy this)
+# Final: "signage_user" "md5abc123def456..."
+#
+# Method 2: Using Python
+# ----------------------------------
+# python3 -c "import hashlib; print('md5' + hashlib.md5(b'Password@2021signage_user').hexdigest())"
+#
+# Method 3: Using PostgreSQL
+# ----------------------------------
+# SELECT 'md5' || md5('Password@2021' || 'signage_user');
+#
+# ============================================================================
+# IMPORTANT SECURITY NOTES
+# ============================================================================
+#
+# 1. NEVER commit actual passwords to Git!
+# 2. Use environment variables in production
+# 3. Rotate passwords regularly
+# 4. Use strong passwords (min 12 characters, mixed case, numbers, symbols)
+# 5. Restrict file permissions: chmod 600 userlist.txt
+#
+# ============================================================================

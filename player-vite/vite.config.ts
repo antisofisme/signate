@@ -48,9 +48,9 @@ export default defineConfig({
 
   // Development server
   server: {
-    port: 8080,
+    port: 5174, // Changed from 8080 (conflict with viewer)
     host: true, // Listen on all addresses (0.0.0.0)
-    strictPort: true,
+    strictPort: false, // Allow fallback to next available port
 
     // HMR configuration
     hmr: {

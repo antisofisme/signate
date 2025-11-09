@@ -18,9 +18,14 @@ export interface ModalOptions {
 
 class SharedModalClass {
   private modalElement: HTMLElement | null = null;
+  private isProcessing: boolean = false; // Prevent rapid consecutive calls
 
   show(options: ModalOptions): void {
-    this.close(); // Close any existing modal
+    // Silently remove existing modal without triggering close() checks
+    if (this.modalElement) {
+      this.modalElement.remove();
+      this.modalElement = null;
+    }
 
     const {
       title,
@@ -81,12 +86,118 @@ class SharedModalClass {
   }
 
   close(): void {
+    // Don't close if currently processing (prevent race condition)
+    if (this.isProcessing) {
+      SharedLogger.warn('[Modal] Cannot close - modal is processing');
+      return;
+    }
+
     if (this.modalElement) {
+      // Remove immediately without animation to prevent flicker
       this.modalElement.remove();
-      this.modalElement = null;
       SharedEventBus.emit(EventNames.UI_MODAL_CLOSE);
       SharedLogger.log('[Modal] Closed');
+      this.modalElement = null;
     }
+  }
+
+  /**
+   * Show confirm modal with Yes/No buttons
+   * Returns Promise that resolves with true (confirmed) or false (cancelled)
+   */
+  async confirm(
+    title: string,
+    message: string,
+    confirmText: string = 'Yes',
+    cancelText: string = 'No'
+  ): Promise<boolean> {
+    SharedLogger.log('[Modal] 🔵 confirm() called, isProcessing:', this.isProcessing, 'modalElement exists:', !!this.modalElement);
+
+    // CRITICAL FIX: Wait for existing modal instead of returning false
+    if (this.isProcessing) {
+      SharedLogger.warn('[Modal] ⚠️ Already showing modal, waiting for completion...');
+
+      // Wait for current modal to finish (max 30 seconds)
+      return new Promise((resolve) => {
+        const startTime = Date.now();
+        const checkInterval = setInterval(() => {
+          if (!this.isProcessing || Date.now() - startTime > 30000) {
+            clearInterval(checkInterval);
+            SharedLogger.log('[Modal] ⏳ Wait completed, returning false');
+            resolve(false); // Timeout or completed
+          }
+        }, 100);
+      });
+    }
+
+    SharedLogger.log('[Modal] 🟢 Setting isProcessing = true');
+    this.isProcessing = true;
+
+    // CRITICAL FIX: Don't close existing modal - just replace it
+    // Calling close() causes flicker (remove old → create new)
+    // Instead, remove old modal silently if exists
+    if (this.modalElement) {
+      SharedLogger.log('[Modal] 🗑️ Removing existing modal element...');
+      this.modalElement.remove();
+      this.modalElement = null;
+      SharedLogger.log('[Modal] ✅ Existing modal removed');
+    }
+
+    return new Promise((resolve) => {
+      const modal = document.createElement('div');
+      modal.className = 'modal-overlay';
+      modal.innerHTML = `
+        <div class="modal-container modal-warning">
+          <div class="modal-header">
+            <h3>${title}</h3>
+          </div>
+          <div class="modal-body">
+            <p>${message}</p>
+          </div>
+          <div class="modal-footer">
+            <button class="modal-btn modal-cancel">${cancelText}</button>
+            <button class="modal-btn modal-confirm">${confirmText}</button>
+          </div>
+        </div>
+      `;
+
+      this.injectStyles();
+
+      const confirmBtn = modal.querySelector('.modal-confirm') as HTMLButtonElement;
+      const cancelBtn = modal.querySelector('.modal-cancel') as HTMLButtonElement;
+
+      const handleCancel = () => {
+        SharedLogger.log('[Modal] 🔴 Cancel clicked');
+        this.isProcessing = false; // Reset FIRST
+        this.close();
+        resolve(false); // User cancelled
+      };
+
+      const handleConfirm = () => {
+        SharedLogger.log('[Modal] 🟢 Confirm clicked');
+        this.isProcessing = false; // Reset FIRST
+        this.close();
+        resolve(true); // User confirmed
+      };
+
+      confirmBtn?.addEventListener('click', handleConfirm);
+      cancelBtn?.addEventListener('click', handleCancel);
+      SharedLogger.log('[Modal] 📌 Event listeners attached');
+      // Disable click outside to close for confirm modal (force user to make a choice)
+      // modal.addEventListener('click', (e) => {
+      //   if (e.target === modal) handleClose();
+      // });
+
+      SharedLogger.log('[Modal] 🏗️ Appending modal to DOM...');
+
+      // Append to DOM immediately (no requestAnimationFrame nesting)
+      document.body.appendChild(modal);
+      this.modalElement = modal;
+      SharedLogger.log('[Modal] ✅ Modal appended to DOM');
+
+      SharedEventBus.emit(EventNames.UI_MODAL_OPEN, { title, message });
+      SharedLogger.log('[Modal] 📢 Confirm opened:', title);
+    });
   }
 
   /**
@@ -94,7 +205,11 @@ class SharedModalClass {
    * Returns Promise that resolves with password or rejects if cancelled
    */
   async prompt(title: string, message: string, inputType: 'text' | 'password' = 'password'): Promise<string> {
-    this.close(); // Close any existing modal
+    // Silently remove existing modal without triggering close() checks
+    if (this.modalElement) {
+      this.modalElement.remove();
+      this.modalElement = null;
+    }
 
     return new Promise((resolve, reject) => {
       const modal = document.createElement('div');
@@ -182,12 +297,14 @@ class SharedModalClass {
         left: 0;
         right: 0;
         bottom: 0;
-        background: rgba(0, 0, 0, 0.8);
-        backdrop-filter: blur(8px);
+        background: rgba(0, 0, 0, 0.9);
         display: flex;
         align-items: center;
         justify-content: center;
         z-index: 10000;
+        transform: translateZ(0);
+        backface-visibility: hidden;
+        -webkit-font-smoothing: antialiased;
       }
       .modal-container {
         background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
@@ -197,6 +314,8 @@ class SharedModalClass {
         max-width: 500px;
         width: 90%;
         color: white;
+        transform: translateZ(0);
+        backface-visibility: hidden;
       }
       .modal-header {
         display: flex;
@@ -216,7 +335,6 @@ class SharedModalClass {
         font-size: 2rem;
         cursor: pointer;
         color: rgba(255, 255, 255, 0.7);
-        transition: color 0.2s;
       }
       .modal-close:hover {
         color: white;
@@ -240,7 +358,6 @@ class SharedModalClass {
         border-radius: 8px;
         font-size: 1rem;
         cursor: pointer;
-        transition: all 0.2s;
         font-weight: 500;
       }
       .modal-confirm {
@@ -257,9 +374,6 @@ class SharedModalClass {
       .modal-cancel:hover {
         background: rgba(255, 255, 255, 0.15);
       }
-      .modal-btn:hover {
-        transform: translateY(-1px);
-      }
       .modal-input {
         width: 100%;
         padding: 0.75rem;
@@ -268,7 +382,6 @@ class SharedModalClass {
         border-radius: 8px;
         font-size: 1rem;
         color: white;
-        transition: border-color 0.2s;
       }
       .modal-input::placeholder {
         color: rgba(255, 255, 255, 0.5);

@@ -88,8 +88,9 @@ class ShellBootstrapClass implements IShellBootstrap {
     }
 
     try {
+      // Get device info to verify existence (use GET /api/v1/devices/{device_id})
       const data = await SharedAPIClient.get<VerifyDeviceResponse>(
-        `${config.api.baseURL}/api/devices/${deviceId}/verify`
+        `${config.api.baseURL}/api/v1/devices/${deviceId}`
       );
 
       SharedLogger.log('[ShellBootstrap] Verification response:', data);

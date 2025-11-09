@@ -67,11 +67,11 @@ class DeviceRoutes:
     DELETE = f"{BASE}/{{device_id}}"
 
     # Registration endpoints
-    REQUEST_CODE = "/api/devices/request-code"  # Player endpoint (public)
+    REQUEST_CODE = f"{BASE}/request-code"  # Player endpoint (public)
     TV_REGISTER = f"{BASE}/tv"  # TV device registration
     MONITOR_REGISTER = f"{BASE}/monitor"  # Monitor device registration
     ACTIVATE = f"{BASE}/activate"  # CMS activation
-    CHECK_ACTIVATION = "/api/devices/check-activation/{{unique_code}}"  # Player polling (public)
+    CHECK_ACTIVATION = f"{BASE}/check-activation/{{unique_code}}"  # Player polling (public)
 
     # Device lifecycle
     HEARTBEAT = f"{BASE}/{{device_id}}/heartbeat"

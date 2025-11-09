@@ -12,6 +12,7 @@ import type { SharedWebSocketClass } from './shared/websocket/shared-websocket';
 import type { ShellRegistrationClass } from './shell/services/shell-registration';
 import type { ShellActivationPollClass } from './shell/services/shell-activation-poll';
 import type { ShellBootstrapClass } from './shell/services/shell-bootstrap';
+import type { ShellActivationScreenClass } from './shell/ui/shell-activation-screen';
 
 declare global {
   interface Window {
@@ -29,6 +30,7 @@ declare global {
     ShellRegistration?: ShellRegistrationClass;
     ShellActivationPoll?: ShellActivationPollClass;
     ShellBootstrap?: ShellBootstrapClass;
+    ShellActivationScreen?: ShellActivationScreenClass;
     ShellHeartbeat?: {
       stop(): void;
     };

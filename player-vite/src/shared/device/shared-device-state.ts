@@ -94,6 +94,13 @@ class SharedDeviceStateClass implements DeviceState {
     return localStorage.getItem('platform');
   }
 
+  /**
+   * Get code expiration timestamp from localStorage
+   */
+  getCodeExpiresAt(): string | null {
+    return localStorage.getItem('code_expires_at');
+  }
+
   // ==========================================================================
   // DEVICE CORE DATA SETTERS
   // ==========================================================================
@@ -160,6 +167,14 @@ class SharedDeviceStateClass implements DeviceState {
   setDeviceName(name: string): void {
     localStorage.setItem('device_name', name);
     SharedLogger.log(`[SharedDeviceState] Device name set: ${name}`);
+  }
+
+  /**
+   * Set code expiration timestamp to localStorage (with logging)
+   */
+  setCodeExpiresAt(expiresAt: string): void {
+    localStorage.setItem('code_expires_at', expiresAt);
+    SharedLogger.log(`[SharedDeviceState] Code expires at: ${expiresAt}`);
   }
 
   /**

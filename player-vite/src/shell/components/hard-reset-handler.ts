@@ -71,7 +71,8 @@ class HardResetHandlerManager {
       if (!reloadExecuted) {
         reloadExecuted = true;
         SharedLogger.log('[HardReset] Reloading page to complete hard reset...');
-        setTimeout(() => location.reload(), 100); // Small delay for logs
+        // Use location.replace() to prevent browser from restoring localStorage from cache
+        setTimeout(() => location.replace(location.href), 100); // Small delay for logs
       }
     };
 
