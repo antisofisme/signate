@@ -38,10 +38,8 @@ CREATE TABLE IF NOT EXISTS user_sessions (
     session_type VARCHAR(20) DEFAULT 'web' NOT NULL
         CHECK (session_type IN ('web', 'api', 'mobile', 'device')),
 
-    -- Security flags
-    is_active BOOLEAN GENERATED ALWAYS AS (
-        revoked_at IS NULL AND expires_at > NOW()
-    ) STORED,
+    -- Security flags (removed generated column - will use view instead)
+    -- is_active computed in application or via view
 
     -- Constraints
     CONSTRAINT check_refresh_token_expires CHECK (
@@ -69,9 +67,9 @@ CREATE INDEX idx_sessions_refresh ON user_sessions(refresh_token) WHERE refresh_
 CREATE INDEX idx_sessions_expires ON user_sessions(expires_at)
     WHERE revoked_at IS NULL;
 
--- Active sessions lookup
+-- Active sessions lookup (removed NOW() from WHERE - will filter in application)
 CREATE INDEX idx_sessions_active ON user_sessions(user_id, created_at DESC)
-    WHERE revoked_at IS NULL AND expires_at > NOW();
+    WHERE revoked_at IS NULL;
 
 -- Last activity tracking
 CREATE INDEX idx_sessions_last_activity ON user_sessions(last_activity DESC);
@@ -158,7 +156,7 @@ COMMENT ON COLUMN user_sessions.session_token IS 'SHA256 hash of JWT access toke
 COMMENT ON COLUMN user_sessions.refresh_token IS 'SHA256 hash of refresh token (optional)';
 COMMENT ON COLUMN user_sessions.device_info IS 'JSONB: {"browser": "Chrome", "os": "Windows 10", "device": "Desktop"}';
 COMMENT ON COLUMN user_sessions.session_type IS 'Session type: web (browser), api (API client), mobile (app), device (TV)';
-COMMENT ON COLUMN user_sessions.is_active IS 'Computed: TRUE if not revoked and not expired';
+-- COMMENT ON COLUMN user_sessions.is_active - Column removed, computed in application layer
 COMMENT ON COLUMN user_sessions.last_activity IS 'Last API request timestamp (updated on each token verification)';
 COMMENT ON COLUMN user_sessions.revoked_at IS 'Manual logout timestamp (NULL = active)';
 

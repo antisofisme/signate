@@ -27,6 +27,8 @@ from services.audit.routes import router as audit_router
 from services.tag.routes import router as tag_router
 from services.content.routes import router as content_router
 from services.playlist.routes import router as playlist_router
+from services.rbac.routes import router as rbac_router
+from services.session.routes import router as session_router
 
 
 # =============================================================================
@@ -38,7 +40,7 @@ async def lifespan(app: FastAPI):
     """Startup and shutdown events"""
     # Startup
     print("=" * 80)
-    print("🚀 Starting Digital Signage Backend - Phase 3: Auth + Device + Organizations + Users")
+    print("🚀 Starting Digital Signage Backend - Phase 1 Day 2: RBAC + Session Management")
     print("=" * 80)
     print(f"Environment: {settings.ENVIRONMENT}")
     print(f"Debug Mode: {settings.DEBUG}")
@@ -71,8 +73,8 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="Digital Signage API",
-    description="Clean Architecture FastAPI Backend - Phase 3: Auth + Device + Organization + User Management",
-    version="1.0.0-phase3",
+    description="Clean Architecture FastAPI Backend - Phase 1 Day 2: RBAC + Session Management",
+    version="1.0.0-phase1-day2",
     docs_url="/docs" if settings.ENABLE_API_DOCS else None,
     redoc_url="/redoc" if settings.ENABLE_API_DOCS else None,
     lifespan=lifespan
@@ -115,9 +117,9 @@ def root():
     """Root endpoint - Health check"""
     return {
         "service": "Digital Signage API",
-        "version": "1.0.0-phase3",
+        "version": "1.0.0-phase1-day2",
         "status": "running",
-        "phase": "Phase 3: Auth + Device + Organizations + Users",
+        "phase": "Phase 1 Day 2: RBAC + Session Management",
         "environment": settings.ENVIRONMENT
     }
 
@@ -130,12 +132,12 @@ def health_check():
     return {
         "status": "healthy" if db_healthy else "unhealthy",
         "database": "connected" if db_healthy else "disconnected",
-        "phase": "Phase 3: Auth + Device + Organizations + Users"
+        "phase": "Phase 1 Day 2: RBAC + Session Management"
     }
 
 
 # =============================================================================
-# API ROUTERS (Phase 4: + Tags)
+# API ROUTERS (Phase 1 Day 2: + RBAC + Session)
 # =============================================================================
 
 # Note: Routes already include full path from Route classes
@@ -152,6 +154,8 @@ app.include_router(audit_router, tags=["Audit Logging"])
 app.include_router(tag_router, tags=["Tag Management"])
 app.include_router(content_router, tags=["Content Management"])
 app.include_router(playlist_router, tags=["Playlist Management"])
+app.include_router(rbac_router, tags=["RBAC - Role Management"])
+app.include_router(session_router, tags=["Session Management"])
 
 
 # =============================================================================
@@ -227,7 +231,7 @@ async def not_found_handler(request, exc):
         status_code=404,
         content={
             "detail": "Endpoint not found",
-            "phase": "Phase 4: + Tags",
+            "phase": "Phase 1 Day 2: RBAC + Session",
             "available_routes": [
                 "/docs",
                 "/health",
@@ -239,7 +243,9 @@ async def not_found_handler(request, exc):
                 f"{API_V1}/devices",
                 f"{API_V1}/organizations",
                 f"{API_V1}/users",
-                f"{API_V1}/tags"
+                f"{API_V1}/tags",
+                f"{API_V1}/roles",
+                f"{API_V1}/sessions"
             ]
         }
     )

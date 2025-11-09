@@ -254,7 +254,56 @@ class PlaylistRoutes:
 
 
 # =============================================================================
-# AUDIT SERVICE ROUTES  
+# RBAC (ROLES) SERVICE ROUTES
+# =============================================================================
+class RBACRoutes:
+    """Role-Based Access Control endpoints"""
+    BASE = f"{API_V1}/roles"
+
+    # Role CRUD
+    LIST = BASE
+    CREATE = BASE
+    GET = f"{BASE}/{{role_id}}"
+    UPDATE = f"{BASE}/{{role_id}}"
+    DELETE = f"{BASE}/{{role_id}}"
+
+    # System roles
+    SYSTEM_ROLES = f"{BASE}/system"
+
+    # Organization roles
+    ORG_ROLES = f"{API_V1}/organizations/{{org_id}}/roles"
+
+    # Permission management
+    CHECK_PERMISSION = f"{BASE}/{{role_id}}/permissions/check"
+    GET_PERMISSIONS = f"{BASE}/{{role_id}}/permissions"
+    ADD_PERMISSION = f"{BASE}/{{role_id}}/permissions"
+    REMOVE_PERMISSION = f"{BASE}/{{role_id}}/permissions"
+
+
+# =============================================================================
+# SESSION SERVICE ROUTES
+# =============================================================================
+class SessionRoutes:
+    """User session management endpoints"""
+    BASE = f"{API_V1}/sessions"
+
+    # Session management
+    LIST = BASE  # GET user's sessions
+    GET = f"{BASE}/{{session_id}}"
+    REVOKE = f"{BASE}/{{session_id}}"  # DELETE - logout from specific session
+    REVOKE_ALL = f"{BASE}/revoke-all"  # POST - logout from all devices
+
+    # Session stats
+    STATS = f"{BASE}/stats"
+    ACTIVE = f"{BASE}/active"
+
+    # Admin endpoints
+    BY_USER = f"{BASE}/user/{{user_id}}"  # Admin: get user's sessions
+    BY_IP = f"{BASE}/ip/{{ip_address}}"  # Admin: get sessions by IP
+
+
+# =============================================================================
+# AUDIT SERVICE ROUTES
 # =============================================================================
 class AuditRoutes:
     """Audit logging endpoints"""
