@@ -29,8 +29,11 @@ from .use_cases.login import LoginUseCase
 from .use_cases.register import RegisterUseCase
 from .use_cases.forgot_password import ForgotPasswordUseCase
 from .use_cases.reset_password import ResetPasswordUseCase
+from .use_cases.logout import LogoutUseCase
 from .repositories.user_repo import UserRepository
 from .repositories.organization_repo import OrganizationRepository
+from services.session.repositories.session_repo import SessionRepository
+from shared.auth import get_current_user, CurrentUser
 
 
 router = APIRouter()
@@ -54,14 +57,21 @@ def get_organization_repository(db: Session = Depends(get_db)) -> OrganizationRe
     return OrganizationRepository(db)
 
 
+def get_session_repository(db: Session = Depends(get_db)) -> SessionRepository:
+    """Get session repository instance"""
+    return SessionRepository(db)
+
+
 def get_login_use_case(
     user_repo: UserRepository = Depends(get_user_repository),
-    org_repo: OrganizationRepository = Depends(get_organization_repository)
+    org_repo: OrganizationRepository = Depends(get_organization_repository),
+    session_repo: SessionRepository = Depends(get_session_repository)
 ) -> LoginUseCase:
     """Get login use case instance"""
     return LoginUseCase(
         user_repository=user_repo,
         organization_repository=org_repo,
+        session_repository=session_repo,
         secret_key=settings.SECRET_KEY,
         algorithm=settings.ALGORITHM,
         token_expire_minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES
@@ -89,6 +99,13 @@ def get_reset_password_use_case(
     return ResetPasswordUseCase(user_repository=user_repo)
 
 
+def get_logout_use_case(
+    session_repo: SessionRepository = Depends(get_session_repository)
+) -> LogoutUseCase:
+    """Get logout use case instance"""
+    return LogoutUseCase(session_repository=session_repo)
+
+
 # =============================================================================
 # ENDPOINTS
 # =============================================================================
@@ -109,10 +126,37 @@ def login(
     """
     start_time = time.time()
 
+    # Extract client information for session tracking
+    ip_address = http_request.client.host if http_request.client else "unknown"
+    user_agent = http_request.headers.get("user-agent", "unknown")
+
+    # Parse device info from user agent (simple parsing)
+    device_info = {
+        "user_agent": user_agent,
+        "platform": "unknown"
+    }
+
+    # Simple platform detection
+    if user_agent:
+        ua_lower = user_agent.lower()
+        if "windows" in ua_lower:
+            device_info["platform"] = "Windows"
+        elif "mac" in ua_lower or "darwin" in ua_lower:
+            device_info["platform"] = "macOS"
+        elif "linux" in ua_lower:
+            device_info["platform"] = "Linux"
+        elif "android" in ua_lower:
+            device_info["platform"] = "Android"
+        elif "ios" in ua_lower or "iphone" in ua_lower or "ipad" in ua_lower:
+            device_info["platform"] = "iOS"
+
     # Execute login use case (will raise AuthenticationError if fails)
     result = use_case.execute(
         username=request_body.username,
-        password=request_body.password
+        password=request_body.password,
+        ip_address=ip_address,
+        user_agent=user_agent,
+        device_info=device_info
     )
 
     # Convert to response models
@@ -309,5 +353,60 @@ def reset_password(
 
     # Return response
     return ResetPasswordResponse(
+        message=result["message"]
+    )
+
+
+@router.post(AuthRoutes.LOGOUT)
+@handle_errors
+def logout(
+    http_request: Request,
+    current_user: CurrentUser = Depends(get_current_user),
+    use_case: LogoutUseCase = Depends(get_logout_use_case)
+):
+    """
+    Logout endpoint
+
+    Revokes current session by invalidating the JWT token.
+    After logout, the token cannot be used for authentication until re-login.
+
+    Requires valid JWT token in Authorization header.
+    """
+    start_time = time.time()
+
+    # Extract token from Authorization header
+    auth_header = http_request.headers.get("authorization", "")
+    token = auth_header.replace("Bearer ", "")
+
+    # Execute logout use case
+    result = use_case.execute(token)
+
+    # Calculate duration
+    duration_ms = (time.time() - start_time) * 1000
+
+    # Log successful logout request
+    request_logger.log_request(
+        method="POST",
+        path=AuthRoutes.LOGOUT,
+        status_code=200,
+        duration_ms=duration_ms,
+        user_id=current_user.id
+    )
+
+    # Audit log
+    audit_logger.log_action(
+        user_id=current_user.id,
+        action="auth.logout",
+        resource_type="user",
+        resource_id=current_user.id,
+        details={
+            "username": current_user.username,
+            "ip_address": http_request.client.host if http_request.client else None
+        }
+    )
+
+    # Return standardized success response
+    return success_response(
+        data=result,
         message=result["message"]
     )
