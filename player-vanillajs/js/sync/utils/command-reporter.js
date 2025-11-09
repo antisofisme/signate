@@ -36,18 +36,18 @@ const CommandReporter = {
    */
   reportStatus: async function(commandId, status, result = null, error = null) {
     // Get deviceId from deviceState, fallback to ShellState
-    const device = window.deviceState ? window.deviceState.getDevice() : null;
+    const device = window.SharedDeviceState ? window.SharedDeviceState.getDevice() : null;
     const deviceId = device ? device.id : window.ShellState?.deviceId;
 
     if (!deviceId) {
-      console.warn('[CommandReporter] No device ID, cannot report status');
+      SharedLogger.warn('[CommandReporter] No device ID, cannot report status');
       return;
     }
 
     // Get API_BASE_URL from Config/ENV
-    const apiBaseUrl = window.Config?.API_BASE_URL || window.ENV?.API_BASE_URL;
+    const apiBaseUrl = window.Config?.API_BASE_URL || window.SharedENV?.API_BASE_URL;
     if (!apiBaseUrl) {
-      console.error('[CommandReporter] No API_BASE_URL configured');
+      SharedLogger.error('[CommandReporter] No API_BASE_URL configured');
       return;
     }
 
@@ -59,19 +59,19 @@ const CommandReporter = {
       error: error
     };
 
-    console.log(`[CommandReporter] Reporting status: ${status}`);
+    SharedLogger.log(`[CommandReporter] Reporting status: ${status}`);
 
     try {
       // Use APIClient for standardized response handling
-      await window.APIClient.post(
+      await window.SharedAPIClient.post(
         `${apiBaseUrl}/api/devices/${deviceId}/commands/${commandId}/report`,
         report
       );
 
-      console.log(`[CommandReporter] ✅ Status reported: ${status}`);
+      SharedLogger.log(`[CommandReporter] ✅ Status reported: ${status}`);
 
     } catch (reportError) {
-      console.error(`[CommandReporter] ❌ Failed to report status:`, reportError);
+      SharedLogger.error(`[CommandReporter] ❌ Failed to report status:`, reportError);
       // Don't throw - reporting failure shouldn't break command execution
     }
   }

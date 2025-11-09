@@ -6,13 +6,96 @@
 window.ShellRegistration = {
     retryTimeout: null, // Store retry timeout for cancellation
     isRegistering: false, // Prevent concurrent registrations
-    pendingCode: null, // Store generated code for retry (avoid re-generating on each retry)
+
+    // FIX 4: Add retry limit and backoff configuration
+    MAX_RETRIES: 20,  // Maximum 20 retries = ~3.3 minutes
+    INITIAL_RETRY_DELAY_MS: 5000,  // Start at 5 seconds
+    MAX_RETRY_DELAY_MS: 30000,  // Cap at 30 seconds
+    RETRY_BACKOFF_MULTIPLIER: 1.5,  // Exponential: 5s → 7.5s → 11.25s → ...
 
     /**
      * Generate 6-digit activation code
      */
     generateActivationCode: function() {
         return Math.floor(100000 + Math.random() * 900000).toString();
+    },
+
+    // FIX 3: Use localStorage for pendingCode persistence
+    /**
+     * Get pending code from localStorage
+     */
+    getPendingCode: function() {
+        return localStorage.getItem('pending_activation_code');
+    },
+
+    /**
+     * Set pending code in localStorage
+     */
+    setPendingCode: function(code) {
+        if (code) {
+            localStorage.setItem('pending_activation_code', code);
+            SharedLogger.log('[Shell/Registration] Pending code saved to localStorage:', code);
+        } else {
+            localStorage.removeItem('pending_activation_code');
+            SharedLogger.log('[Shell/Registration] Pending code cleared from localStorage');
+        }
+    },
+
+    // FIX 4: Retry limit helpers
+    /**
+     * Get retry count from localStorage
+     */
+    getRetryCount: function() {
+        const count = localStorage.getItem('registration_retry_count');
+        return count ? parseInt(count) : 0;
+    },
+
+    /**
+     * Increment retry count
+     */
+    incrementRetryCount: function() {
+        const count = this.getRetryCount() + 1;
+        localStorage.setItem('registration_retry_count', count.toString());
+        return count;
+    },
+
+    /**
+     * Clear retry count (on success or manual reset)
+     */
+    clearRetryCount: function() {
+        localStorage.removeItem('registration_retry_count');
+    },
+
+    /**
+     * Calculate next retry delay with exponential backoff
+     */
+    calculateRetryDelay: function(retryCount) {
+        // Calculate exponential backoff: initialDelay * (multiplier ^ retryCount)
+        const exponentialDelay = this.INITIAL_RETRY_DELAY_MS *
+            Math.pow(this.RETRY_BACKOFF_MULTIPLIER, retryCount);
+
+        // Cap at MAX_RETRY_DELAY_MS
+        const cappedDelay = Math.min(exponentialDelay, this.MAX_RETRY_DELAY_MS);
+
+        // Add jitter (+/- 20%) to prevent thundering herd
+        const jitter = cappedDelay * 0.2 * (Math.random() * 2 - 1);
+        const finalDelay = Math.max(1000, cappedDelay + jitter);
+
+        return Math.floor(finalDelay);
+    },
+
+    /**
+     * Calculate total elapsed time for retries
+     * @private
+     */
+    _calculateElapsedTime: function(retryCount) {
+        let totalMs = 0;
+        for (let i = 0; i < retryCount; i++) {
+            totalMs += this.calculateRetryDelay(i);
+        }
+        const seconds = Math.floor(totalMs / 1000);
+        const minutes = Math.floor(seconds / 60);
+        return `${minutes}m ${seconds % 60}s`;
     },
 
     /**
@@ -36,67 +119,63 @@ window.ShellRegistration = {
     },
 
     /**
-     * Get organization ID from localStorage (if previously activated)
-     * Returns null for first-time registration
-     */
-    getOrganizationID: function() {
-        const orgId = localStorage.getItem('organization_id');
-        if (orgId) {
-            console.log('[Shell/Registration] ✅ Found organization ID from previous activation:', orgId);
-            return parseInt(orgId);
-        }
-        console.log('[Shell/Registration] 📌 No organization ID found (first-time registration)');
-        return null;
-    },
-
-
-    /**
      * Register device to backend (No-PIN Flow)
      * Auto-displays 6-digit code, organization assigned by admin during activation
      *
-     * Flow:
-     * 1. First-time registration → No org_id, admin activates from their org
-     * 2. Re-registration (after release) → Sends saved org_id, auto-assigns to same org
+     * 🔒 SECURITY FLOW:
+     * 1. First-time registration → No device_token, admin activates from their org
+     * 2. Re-registration (after release) → Sends device_token JWT, backend extracts org_id
      */
     registerDevice: async function() {
         const state = window.ShellState;
 
         // 🛡️ GUARD 1: Prevent concurrent registrations
         if (this.isRegistering) {
-            console.warn('[Shell/Registration] ⚠️ Registration already in progress, skipping...');
+            SharedLogger.warn('[Shell/Registration] ⚠️ Registration already in progress, skipping...');
             return;
         }
 
-        // 🛡️ GUARD 2: Check if already registered (localStorage check)
-        const existingDeviceId = localStorage.getItem('device_id');
+        // 🛡️ GUARD 2: Check if already registered (using SharedDeviceState)
+        const existingDeviceId = SharedDeviceState.getDeviceId();
         if (existingDeviceId) {
-            console.warn('[Shell/Registration] ⚠️ Device already registered (device_id exists in localStorage), skipping registration');
-            console.log('[Shell/Registration] Existing device_id:', existingDeviceId);
+            SharedLogger.warn('[Shell/Registration] ⚠️ Device already registered (device_id exists), skipping registration');
+            SharedLogger.log('[Shell/Registration] Existing device_id:', existingDeviceId);
+
+            // FIX 3: Don't orphan the pending code - clear it since device is already registered
+            const orphanedCode = this.getPendingCode();
+            if (orphanedCode) {
+                SharedLogger.warn('[Shell/Registration] ⚠️ Clearing orphaned pending code:', orphanedCode);
+                this.setPendingCode(null);
+            }
+
             return;
         }
 
         this.isRegistering = true;
 
         try {
-            // 🆕 NO-PIN FLOW: Get organization ID if previously activated (re-registration)
-            const organizationId = this.getOrganizationID();
+            // 🔒 SECURITY: Get device_token using SharedDeviceState for re-registration
+            const deviceToken = SharedDeviceState.getDeviceToken();
 
-            // 🔑 Use existing code if retrying, otherwise generate new one
-            if (!this.pendingCode) {
-                this.pendingCode = this.generateActivationCode();
-                console.log('[Shell/Registration] 🆕 Generated new activation code:', this.pendingCode);
+            // FIX 3: Check localStorage for existing pending code (survives page reload)
+            let pendingCode = this.getPendingCode();
+            if (!pendingCode) {
+                pendingCode = this.generateActivationCode();
+                this.setPendingCode(pendingCode);
+                SharedLogger.log('[Shell/Registration] 🆕 Generated new activation code:', pendingCode);
             } else {
-                console.log('[Shell/Registration] 🔄 Reusing existing code for retry:', this.pendingCode);
+                SharedLogger.log('[Shell/Registration] 🔄 Reusing existing code for retry:', pendingCode);
             }
-            const code = this.pendingCode;
+            const code = pendingCode;
 
             // Detect platform (use ShellHeartbeat if available, otherwise detect here)
             const platform = window.ShellHeartbeat?.detectPlatform() || this.detectPlatformSimple();
             const deviceName = `${platform} - ${code}`;
 
-            console.log('[Shell/Registration] 📡 Registering device with code:', code, 'platform:', platform, 'org_id:', organizationId || 'first-time');
+            SharedLogger.log('[Shell/Registration] 📡 Registering device with code:', code, 'platform:', platform, 'token:', deviceToken ? 'exists (re-registration)' : 'none (first-time)');
 
-            // 🆕 Send optional organization_id (for re-registration)
+            // 🔒 SECURITY: Send device_token instead of organization_id
+            // Backend extracts org_id from JWT token (prevents org hijacking)
             const requestBody = {
                 activation_code: code,
                 device_name: deviceName,
@@ -104,19 +183,19 @@ window.ShellRegistration = {
                 device_type: 'monitor'
             };
 
-            // Only include organization_id if exists (re-registration)
-            if (organizationId) {
-                requestBody.organization_id = organizationId;
+            // Only include device_token if exists (re-registration)
+            if (deviceToken) {
+                requestBody.device_token = deviceToken;
             }
 
             // Use APIClient for standardized response handling
-            const data = await window.APIClient.post(
+            const data = await window.SharedAPIClient.post(
                 window.getFullURL(window.API_ENDPOINTS.DEVICES.REGISTER),
                 requestBody
             );
 
             // ✅ SUCCESS - Server online, registration created
-            console.log('[Shell/Registration] ✅ Registration successful');
+            SharedLogger.log('[Shell/Registration] ✅ Registration successful');
 
             // ✅ Use Device model and deviceState (Phase 3)
             const device = new window.Device({
@@ -130,20 +209,20 @@ window.ShellRegistration = {
             });
 
             // Save device using state management (auto saves to localStorage including token)
-            window.deviceState.setDevice(device);
+            window.SharedDeviceState.setDevice(device);
 
             if (data.device_token) {
-                console.log('[Shell/Registration] 🔑 Device token saved via Device model');
+                SharedLogger.log('[Shell/Registration] 🔑 Device token saved via Device model');
             }
 
             // Update legacy state for backward compatibility
             state.deviceId = data.id;
             state.deviceCode = code;
 
-            // Clear pending code (registration succeeded)
-            this.pendingCode = null;
+            // FIX 3: Clear pending code from localStorage (registration succeeded)
+            this.setPendingCode(null);
 
-            console.log('[Shell/Registration] ✅ Device registered with model', device.toJSON());
+            SharedLogger.log('[Shell/Registration] ✅ Device registered with model', device.toJSON());
 
             // Show WiFi online icon (registration succeeded)
             if (window.ShellWiFiStatus) {
@@ -154,35 +233,38 @@ window.ShellRegistration = {
             if (this.retryTimeout) {
                 clearTimeout(this.retryTimeout);
                 this.retryTimeout = null;
-                console.log('[Shell/Registration] ✅ Cancelled retry timeout (registration succeeded)');
+                SharedLogger.log('[Shell/Registration] ✅ Cancelled retry timeout (registration succeeded)');
             }
+
+            // FIX 4: Clear retry count on success
+            this.clearRetryCount();
 
             // Update UI (wrapped in try-catch to prevent UI errors from triggering retry)
             try {
                 window.ShellUI.updateUI('pending', code);
             } catch (uiError) {
-                console.error('[Shell/Registration] ⚠️ UI update failed (non-critical):', uiError);
+                SharedLogger.error('[Shell/Registration] ⚠️ UI update failed (non-critical):', uiError);
                 // Don't throw - UI error shouldn't trigger re-registration
             }
 
             // Show success toast (context-aware message)
-            if (window.Toast) {
+            if (window.SharedToast) {
                 if (organizationId) {
                     // Re-registration (device sudah punya organization)
-                    window.Toast.success('Device Re-registered', 'Waiting for admin approval to re-activate device...', 5000);
+                    window.SharedToast.success('Device Re-registered', 'Waiting for admin approval to re-activate device...', 5000);
                 } else {
                     // First-time registration
-                    window.Toast.success('Activation Code Generated', 'Enter this code in CMS to register device to your organization.', 5000);
+                    window.SharedToast.success('Activation Code Generated', 'Enter this code in CMS to register device to your organization.', 5000);
                 }
             }
 
             // Start activation polling (wrapped in try-catch)
             try {
-                if (window.ActivationPoll && window.ActivationPoll.startPolling) {
-                    window.ActivationPoll.startPolling();
+                if (window.ActivationPoll && window.ShellActivationPoll.startPolling) {
+                    window.ShellActivationPoll.startPolling();
                 }
             } catch (pollError) {
-                console.error('[Shell/Registration] ⚠️ Polling start failed (non-critical):', pollError);
+                SharedLogger.error('[Shell/Registration] ⚠️ Polling start failed (non-critical):', pollError);
                 // Don't throw - polling error shouldn't trigger re-registration
             }
 
@@ -194,18 +276,19 @@ window.ShellRegistration = {
             this.isRegistering = false;
 
             // ⏳ Network error (server offline/unreachable)
-            console.error('[Shell/Registration] ❌ Network error (server unreachable):', error.message);
+            SharedLogger.error('[Shell/Registration] ❌ Network error (server unreachable):', error.message);
 
             // Show WiFi offline icon
             if (window.ShellWiFiStatus) {
                 window.ShellWiFiStatus.updateStatus('offline');
             }
 
-            // Update UI with pending code (already generated at start of registerDevice)
+            // Update UI with pending code
             try {
-                window.ShellUI.updateUI('pending', this.pendingCode);
+                const pendingCode = this.getPendingCode();
+                window.ShellUI.updateUI('pending', pendingCode);
             } catch (uiError) {
-                console.error('[Shell/Registration] ⚠️ UI update failed:', uiError);
+                SharedLogger.error('[Shell/Registration] ⚠️ UI update failed:', uiError);
             }
 
             // Update UI status message
@@ -216,29 +299,73 @@ window.ShellRegistration = {
             }
 
             // Show toast notification
-            if (window.Toast) {
-                window.Toast.warning('Server Offline', 'Cannot connect to server. Retrying when connection is restored.', 8000);
+            if (window.SharedToast) {
+                window.SharedToast.warning('Server Offline', 'Cannot connect to server. Retrying when connection is restored.', 8000);
             }
 
             // 🛡️ GUARD 3: Only retry if device NOT already registered
             // Check again before retry (maybe succeeded but response parsing failed)
-            const deviceIdAfterError = localStorage.getItem('device_id');
+            const deviceIdAfterError = SharedDeviceState.getDeviceId();
             if (deviceIdAfterError) {
-                console.warn('[Shell/Registration] ⚠️ Device already registered despite error, skipping retry');
+                SharedLogger.warn('[Shell/Registration] ⚠️ Device already registered despite error, skipping retry');
+                this.clearRetryCount();
                 return;
             }
 
             // Cancel existing retry timeout
             if (this.retryTimeout) {
                 clearTimeout(this.retryTimeout);
+                this.retryTimeout = null;
             }
 
-            // Schedule retry
-            console.log('[Shell/Registration] 🔄 Scheduling retry in 10 seconds...');
+            // FIX 4: Check retry limit before scheduling next retry
+            const currentRetry = this.getRetryCount();
+            if (currentRetry >= this.MAX_RETRIES) {
+                console.error('[Shell/Registration] ❌ Max retries exceeded!', {
+                    maxRetries: this.MAX_RETRIES,
+                    totalAttempts: currentRetry + 1,
+                    elapsedTime: this._calculateElapsedTime(currentRetry)
+                });
+
+                // Show error message to user
+                if (statusMessage) {
+                    statusMessage.textContent = 'Unable to reach server. Check your network connection and refresh the page.';
+                    statusMessage.style.color = '#ef4444';
+                }
+
+                // Show error toast
+                if (window.SharedToast) {
+                    window.SharedToast.error('Connection Failed', 'Unable to connect to server after multiple attempts. Please check your network and refresh the page.', 10000);
+                }
+
+                // Clear retry count for next manual attempt
+                this.clearRetryCount();
+
+                return;  // Stop retrying
+            }
+
+            // FIX 4: Calculate retry delay with exponential backoff
+            const nextRetry = this.incrementRetryCount();
+            const retryDelay = this.calculateRetryDelay(nextRetry - 1);  // -1 because we already incremented
+
+            console.log('[Shell/Registration] 🔄 Scheduling retry', {
+                attempt: nextRetry,
+                maxRetries: this.MAX_RETRIES,
+                delay: retryDelay,
+                nextRetryTime: new Date(Date.now() + retryDelay).toLocaleTimeString()
+            });
+
+            // Update status message with retry countdown
+            if (statusMessage) {
+                const countdownSeconds = Math.floor(retryDelay / 1000);
+                statusMessage.textContent = `Retrying in ${countdownSeconds} seconds...`;
+            }
+
+            // Schedule retry with exponential backoff
             this.retryTimeout = setTimeout(() => {
-                console.log('[Shell/Registration] 🔄 Retrying registration...');
+                SharedLogger.log('[Shell/Registration] 🔄 Retrying registration (attempt ' + nextRetry + ')...');
                 this.registerDevice();
-            }, 10000);
+            }, retryDelay);
         }
     },
 

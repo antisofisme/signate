@@ -12,7 +12,7 @@
 
   // Base API URL (from env.js)
   const getBaseURL = () => {
-    return window.ENV?.API_BASE_URL || 'http://192.168.5.12:8001';
+    return window.SharedENV?.API_BASE_URL || 'http://192.168.5.12:8001';
   };
 
   const API_V1 = '/api/v1';
@@ -47,6 +47,6 @@
     return `${baseURL}${endpoint}`;
   };
 
-  console.log('[API/Endpoints] Centralized endpoints loaded');
+  SharedLogger.log('[API/Endpoints] Centralized endpoints loaded');
 })();
 

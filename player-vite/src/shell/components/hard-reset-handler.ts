@@ -11,7 +11,7 @@
 
 import { SharedLogger } from '@shared/logger';
 import { SharedToast, SharedModal } from '@shared/ui';
-import { SharedAPIClient } from '@shared/api';
+import { SharedDeviceState } from '@shared/device';
 
 /**
  * Hard Reset Handler Manager Class
@@ -109,22 +109,32 @@ class HardResetHandlerManager {
   }
 
   /**
-   * Validate password via backend API and execute reset if valid
+   * Validate password locally and execute reset if valid
+   *
+   * Logic:
+   * - If device has organization_pin → use organization PIN (6 digits)
+   * - If no organization_pin → use default password 'admin123'
    */
   private async validatePasswordAndReset(password: string): Promise<void> {
     try {
-      // Call backend API to validate password
-      const response = await SharedAPIClient.post<{ valid: boolean }>(
-        '/api/devices/validate-reset-password',
-        { password }
-      );
+      // Get organization PIN from localStorage
+      const organizationPin = SharedDeviceState.getOrganizationPin();
 
-      if (response.valid) {
-        SharedLogger.log('[HardReset] Password validated by backend');
+      // Determine correct password
+      const correctPassword = organizationPin || 'admin123';
+
+      SharedLogger.log('[HardReset] Validating password...', {
+        hasOrgPin: !!organizationPin,
+        expectedPasswordType: organizationPin ? 'Organization PIN' : 'Default (admin123)'
+      });
+
+      // Validate password
+      if (password === correctPassword) {
+        SharedLogger.log('[HardReset] ✅ Password validated locally');
         this.executeReset();
       } else {
         SharedToast.error('Incorrect Password. Reset cancelled. Please try again.');
-        SharedLogger.error('[HardReset] Hard reset failed - wrong password');
+        SharedLogger.error('[HardReset] ❌ Hard reset failed - wrong password');
         this.isResetting = false; // Reset flag
       }
     } catch (error) {

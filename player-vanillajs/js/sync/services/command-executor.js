@@ -84,7 +84,7 @@ window.ShellCommandExecutor = {
    */
   init: function() {
     // Lazy initialize command classes when needed
-    console.log('[CommandExecutor] Initialized with Command Pattern architecture');
+    SharedLogger.log('[CommandExecutor] Initialized with Command Pattern architecture');
   },
 
   /**
@@ -100,11 +100,11 @@ window.ShellCommandExecutor = {
   executeCommand: async function(commandData) {
     const { id, command_type, parameters = {}, reason } = commandData;
 
-    console.log(`[CommandExecutor] Executing: ${command_type} (ID: ${id})`);
+    SharedLogger.log(`[CommandExecutor] Executing: ${command_type} (ID: ${id})`);
     if (reason) {
-      console.log(`[CommandExecutor] Reason: ${reason}`);
+      SharedLogger.log(`[CommandExecutor] Reason: ${reason}`);
     }
-    console.log(`[CommandExecutor] Parameters:`, parameters);
+    SharedLogger.log(`[CommandExecutor] Parameters:`, parameters);
 
     // Update current command
     this.currentCommand = {
@@ -125,14 +125,14 @@ window.ShellCommandExecutor = {
 
       result = await Promise.race([executePromise, timeoutPromise]);
 
-      console.log(`[CommandExecutor] Command ${command_type} completed`);
-      console.log(`[CommandExecutor] Result:`, result);
+      SharedLogger.log(`[CommandExecutor] Command ${command_type} completed`);
+      SharedLogger.log(`[CommandExecutor] Result:`, result);
 
       // Report success
       await CommandReporter.reportStatus(id, 'completed', result);
 
     } catch (error) {
-      console.error(`[CommandExecutor] Command ${command_type} failed:`, error);
+      SharedLogger.error(`[CommandExecutor] Command ${command_type} failed:`, error);
 
       // Report failure
       await CommandReporter.reportStatus(id, 'failed', null, error.message);
@@ -290,5 +290,5 @@ window.ShellCommandExecutor = {
   }
 };
 
-console.log('[CommandExecutor] Loaded - Command Pattern architecture active');
-console.log(`[CommandExecutor] Shell whitelist: ${window.ShellCommandExecutor.SHELL_WHITELIST.length} commands`);
+SharedLogger.log('[CommandExecutor] Loaded - Command Pattern architecture active');
+SharedLogger.log(`[CommandExecutor] Shell whitelist: ${window.ShellCommandExecutor.SHELL_WHITELIST.length} commands`);

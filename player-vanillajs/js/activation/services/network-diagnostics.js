@@ -57,7 +57,7 @@ window.ShellNetworkDiagnostics = {
         console[level](`${message}`);
 
         // ✅ STATE MIGRATION: Get deviceId from deviceState, fallback to ShellState
-        const device = window.deviceState ? window.deviceState.getDevice() : null;
+        const device = window.SharedDeviceState ? window.SharedDeviceState.getDevice() : null;
         const deviceId = device ? device.id : window.ShellState?.deviceId;
 
         // If device not activated yet, skip backend sending
@@ -67,9 +67,9 @@ window.ShellNetworkDiagnostics = {
         }
 
         // ✅ STATE MIGRATION: Get API_BASE_URL from Config/ENV (config, not state)
-        const apiBaseUrl = window.Config?.API_BASE_URL || window.ENV?.API_BASE_URL;
+        const apiBaseUrl = window.Config?.API_BASE_URL || window.SharedENV?.API_BASE_URL;
         if (!apiBaseUrl) {
-            console.error('[Shell/Network] No API_BASE_URL configured');
+            SharedLogger.error('[Shell/Network] No API_BASE_URL configured');
             return;
         }
 
@@ -88,7 +88,7 @@ window.ShellNetworkDiagnostics = {
                 })
             });
         } catch (error) {
-            console.error('[Shell/Network] Failed to send direct log:', error);
+            SharedLogger.error('[Shell/Network] Failed to send direct log:', error);
         }
     },
 
@@ -98,7 +98,7 @@ window.ShellNetworkDiagnostics = {
      */
     testPing: async function() {
         // ✅ STATE MIGRATION: Get API_BASE_URL from Config/ENV (config, not state)
-        const apiBaseUrl = window.Config?.API_BASE_URL || window.ENV?.API_BASE_URL;
+        const apiBaseUrl = window.Config?.API_BASE_URL || window.SharedENV?.API_BASE_URL;
         if (!apiBaseUrl) {
             throw new Error('No API_BASE_URL configured');
         }
@@ -242,7 +242,7 @@ window.ShellNetworkDiagnostics = {
         this.sendDirectLog('info', '[Shell/Network] Testing upload speed to BACKEND...');
 
         // ✅ STATE MIGRATION: Get API_BASE_URL from Config/ENV (config, not state)
-        const apiBaseUrl = window.Config?.API_BASE_URL || window.ENV?.API_BASE_URL;
+        const apiBaseUrl = window.Config?.API_BASE_URL || window.SharedENV?.API_BASE_URL;
         if (!apiBaseUrl) {
             throw new Error('No API_BASE_URL configured');
         }
@@ -318,7 +318,7 @@ window.ShellNetworkDiagnostics = {
      */
     sendResults: async function(results) {
         // ✅ STATE MIGRATION: Get deviceId from deviceState, fallback to ShellState
-        const device = window.deviceState ? window.deviceState.getDevice() : null;
+        const device = window.SharedDeviceState ? window.SharedDeviceState.getDevice() : null;
         const deviceId = device ? device.id : window.ShellState?.deviceId;
 
         if (!deviceId) {
@@ -327,7 +327,7 @@ window.ShellNetworkDiagnostics = {
         }
 
         // ✅ STATE MIGRATION: Get API_BASE_URL from Config/ENV (config, not state)
-        const apiBaseUrl = window.Config?.API_BASE_URL || window.ENV?.API_BASE_URL;
+        const apiBaseUrl = window.Config?.API_BASE_URL || window.SharedENV?.API_BASE_URL;
         if (!apiBaseUrl) {
             this.sendDirectLog('error', '[Shell/Network] ❌ No API_BASE_URL configured');
             return;
@@ -382,9 +382,9 @@ window.ShellNetworkDiagnostics = {
      */
     quickPing: async function() {
         // ✅ STATE MIGRATION: Get API_BASE_URL from Config/ENV (config, not state)
-        const apiBaseUrl = window.Config?.API_BASE_URL || window.ENV?.API_BASE_URL;
+        const apiBaseUrl = window.Config?.API_BASE_URL || window.SharedENV?.API_BASE_URL;
         if (!apiBaseUrl) {
-            console.warn('[Shell/Network] No API_BASE_URL configured');
+            SharedLogger.warn('[Shell/Network] No API_BASE_URL configured');
             return null;
         }
 
@@ -401,7 +401,7 @@ window.ShellNetworkDiagnostics = {
                 return Math.round(endTime - startTime);
             }
         } catch (error) {
-            console.warn('[Shell/Network] Quick ping failed:', error.message);
+            SharedLogger.warn('[Shell/Network] Quick ping failed:', error.message);
         }
 
         return null;

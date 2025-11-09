@@ -8,7 +8,7 @@
  *   - Page reload to complete reset
  *
  * Usage:
- *   window.HardResetHandler.init()
+ *   window.ShellHardResetHandler.init()
  */
 
 (function() {
@@ -18,7 +18,7 @@
      * Hard reset handler system
      * @type {Object}
      */
-    window.HardResetHandler = {
+    window.ShellHardResetHandler = {
         /**
          * Flag to prevent double-click during reset process
          * @private
@@ -35,7 +35,7 @@
         executeReset: function() {
             // Set flag to prevent double execution
             this.isResetting = true;
-            console.log('[Shell] Password verified, executing hard reset...');
+            SharedLogger.log('[Shell] Password verified, executing hard reset...');
 
             // Log BEFORE clear
             console.log('[Shell] BEFORE clear - localStorage:', {
@@ -55,7 +55,7 @@
                 code: localStorage.getItem('device_code'),
                 organizationId: localStorage.getItem('organization_id')
             });
-            console.log('[Shell] localStorage cleared (all device data removed)');
+            SharedLogger.log('[Shell] localStorage cleared (all device data removed)');
 
             // Clear IndexedDB cache (if PlayerCache available)
             let reloadExecuted = false; // Prevent multiple reloads
@@ -67,7 +67,7 @@
             const executeReload = () => {
                 if (!reloadExecuted) {
                     reloadExecuted = true;
-                    console.log('[Shell] Reloading page to complete hard reset...');
+                    SharedLogger.log('[Shell] Reloading page to complete hard reset...');
                     setTimeout(() => location.reload(), 100); // Small delay for logs
                 }
             };
@@ -78,29 +78,29 @@
                 const deleteRequest = indexedDB.deleteDatabase(dbName);
 
                 deleteRequest.onsuccess = () => {
-                    console.log('[Shell] IndexedDB cache deleted');
+                    SharedLogger.log('[Shell] IndexedDB cache deleted');
                     executeReload();
                 };
 
                 deleteRequest.onerror = () => {
-                    console.error('[Shell] IndexedDB delete failed, reloading anyway');
+                    SharedLogger.error('[Shell] IndexedDB delete failed, reloading anyway');
                     executeReload();
                 };
 
                 deleteRequest.onblocked = () => {
-                    console.warn('[Shell] IndexedDB delete blocked, reloading anyway');
+                    SharedLogger.warn('[Shell] IndexedDB delete blocked, reloading anyway');
                     executeReload();
                 };
 
                 // Fallback: If nothing happens in 2 seconds, reload anyway
                 setTimeout(() => {
                     if (!reloadExecuted) {
-                        console.warn('[Shell] IndexedDB delete timeout, reloading...');
+                        SharedLogger.warn('[Shell] IndexedDB delete timeout, reloading...');
                         executeReload();
                     }
                 }, 2000);
             } catch (error) {
-                console.error('[Shell] Error deleting IndexedDB:', error);
+                SharedLogger.error('[Shell] Error deleting IndexedDB:', error);
                 executeReload();
             }
         },
@@ -113,21 +113,21 @@
         validatePasswordAndReset: async function(password) {
             try {
                 // Call backend API to validate password
-                const response = await window.APIClient.post(
+                const response = await window.SharedAPIClient.post(
                     window.getFullURL(window.API_ENDPOINTS.DEVICES.VALIDATE_RESET_PASSWORD),
                     { password: password }
                 );
 
                 if (response.valid) {
-                    console.log('[Shell] Password validated by backend');
+                    SharedLogger.log('[Shell] Password validated by backend');
                     this.executeReset();
                 } else {
-                    window.Toast.error('Incorrect Password', 'Reset cancelled. Please try again.');
-                    console.error('[Shell] Hard reset failed - wrong password');
+                    window.SharedToast.error('Incorrect Password', 'Reset cancelled. Please try again.');
+                    SharedLogger.error('[Shell] Hard reset failed - wrong password');
                 }
             } catch (error) {
-                console.error('[Shell] Error validating password:', error);
-                window.Toast.error('Validation Error', 'Could not validate password. Please try again.');
+                SharedLogger.error('[Shell] Error validating password:', error);
+                window.SharedToast.error('Validation Error', 'Could not validate password. Please try again.');
             }
         },
 
@@ -144,26 +144,26 @@
                 resetBtn.addEventListener('click', async () => {
                     // Prevent double-click during reset
                     if (this.isResetting) {
-                        console.warn('[Shell] Hard reset already in progress, ignoring click');
+                        SharedLogger.warn('[Shell] Hard reset already in progress, ignoring click');
                         return;
                     }
 
-                    console.log('[Shell] Hard reset button clicked');
+                    SharedLogger.log('[Shell] Hard reset button clicked');
 
                     // Prompt for password using modal
                     let password;
                     try {
-                        password = await window.PasswordModal.show(
+                        password = await window.SharedModal.show(
                             'Hard Reset Device',
                             'This will ERASE ALL DATA and require re-activation. Enter admin password to confirm:'
                         );
                     } catch (err) {
-                        console.log('[Shell] Hard reset cancelled (modal closed)');
+                        SharedLogger.log('[Shell] Hard reset cancelled (modal closed)');
                         return;
                     }
 
                     if (!password) {
-                        console.log('[Shell] Hard reset cancelled (no password)');
+                        SharedLogger.log('[Shell] Hard reset cancelled (no password)');
                         return;
                     }
 
@@ -171,9 +171,9 @@
                     this.validatePasswordAndReset(password);
                 });
 
-                console.log('[Shell] Hard reset button listener attached');
+                SharedLogger.log('[Shell] Hard reset button listener attached');
             } else {
-                console.error('[Shell] Hard reset button not found!');
+                SharedLogger.error('[Shell] Hard reset button not found!');
             }
         },
 
@@ -182,11 +182,11 @@
          * Call once on page load
          */
         init: function() {
-            console.log('[Shell] Initializing Hard Reset Handler');
+            SharedLogger.log('[Shell] Initializing Hard Reset Handler');
 
             this.setupResetButton();
 
-            console.log('[Shell] Hard Reset Handler initialized');
+            SharedLogger.log('[Shell] Hard Reset Handler initialized');
         }
     };
 

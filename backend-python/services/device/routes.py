@@ -151,11 +151,16 @@ def request_activation_code(
     """
     Request activation code (called by player)
 
-    Generates 6-digit code that expires in 10 minutes
+    🔒 SECURITY CHANGES:
+    - organization_id NO LONGER accepted from player (prevents org hijacking)
+    - First-time: org_id assigned during activation by admin
+    - Re-registration: org_id extracted from device_token JWT
+
+    Generates 6-digit cryptographically secure code that expires in 10 minutes
     """
     try:
         result = use_case.execute(
-            organization_id=request.organization_id,
+            device_token=request.device_token,  # 🔒 JWT token instead of org_id
             device_type=request.device_type,
             device_name=request.device_name,
             device_uuid=request.device_uuid,
@@ -173,14 +178,45 @@ def request_activation_code(
 def device_heartbeat(
     device_id: int,
     request: HeartbeatRequest,
-    use_case: DeviceHeartbeatUseCase = Depends(get_heartbeat_use_case)
+    use_case: DeviceHeartbeatUseCase = Depends(get_heartbeat_use_case),
+    http_request: Request = None
 ):
     """
     Device heartbeat (called by player every 30 seconds)
 
+    🔒 SECURITY: Optional JWT validation for device authentication
+    - If Authorization header present → validate device JWT token
+    - If not present → fallback to unique_code validation (backward compatible)
+
     Updates last_seen timestamp and device metadata
     """
     try:
+        # 🔒 SECURITY: Optional JWT validation (backward compatible)
+        auth_header = http_request.headers.get("Authorization") if http_request else None
+        if auth_header and auth_header.startswith("Bearer "):
+            token = auth_header.replace("Bearer ", "")
+            try:
+                from shared.auth import extract_device_from_token
+                device_info = extract_device_from_token(token)
+
+                # Verify device_id matches JWT token
+                if device_info['device_id'] != device_id:
+                    raise HTTPException(
+                        status_code=status.HTTP_403_FORBIDDEN,
+                        detail=f"Device ID mismatch: JWT contains {device_info['device_id']}, request has {device_id}"
+                    )
+
+                print(f"[Heartbeat] ✅ Device {device_id} authenticated via JWT token")
+            except Exception as e:
+                # JWT validation failed - reject heartbeat
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail=f"Invalid device token: {str(e)}"
+                )
+        else:
+            # No JWT token - fallback to unique_code validation (legacy devices)
+            print(f"[Heartbeat] ⚠️ Device {device_id} using legacy auth (unique_code only)")
+
         heartbeat_data = DeviceHeartbeat(
             unique_code=request.unique_code,
             device_uuid=request.device_uuid,
@@ -210,7 +246,8 @@ def device_heartbeat(
 @router.get(DeviceRoutes.CHECK_ACTIVATION, response_model=ActivationStatusResponse)
 def check_activation_status(
     unique_code: str,
-    device_repo: DeviceRepository = Depends(get_device_repository)
+    device_repo: DeviceRepository = Depends(get_device_repository),
+    db: Session = Depends(get_db)
 ):
     """
     Check activation status (called by player to poll activation)
@@ -228,6 +265,16 @@ def check_activation_status(
                 message="Device not found"
             )
 
+        # Fetch organization PIN if device has organization_id
+        organization_pin = None
+        if device.organization_id:
+            from services.auth.repositories.models import OrganizationModel
+            org = db.query(OrganizationModel).filter(
+                OrganizationModel.id == device.organization_id
+            ).first()
+            if org:
+                organization_pin = org.organization_pin
+
         # Check if device is activated
         # IMPORTANT: Return device info for active devices even if code expired!
         # Player needs device_id to persist across reloads
@@ -238,6 +285,7 @@ def check_activation_status(
                 device_id=device.id,
                 device_name=device.device_name,
                 organization_id=device.organization_id,
+                organization_pin=organization_pin,  # 🆕 Include organization PIN
                 message="Device is activated"
             )
 
@@ -248,6 +296,7 @@ def check_activation_status(
             activated=False,
             expired=is_expired,
             device_id=device.id if not is_expired else None,
+            organization_pin=None,  # Don't send PIN for pending devices
             message=f"Device status: {device.status}" + (" (code expired)" if is_expired else "")
         )
     except Exception as e:

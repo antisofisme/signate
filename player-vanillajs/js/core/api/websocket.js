@@ -22,7 +22,7 @@
  */
 
 class SignageWebSocket {
-    constructor(deviceId, baseUrl = window.ENV?.API_BASE_URL || 'http://localhost:8001') {
+    constructor(deviceId, baseUrl = window.SharedENV?.API_BASE_URL || 'http://localhost:8001') {
         this.deviceId = deviceId;
         this.baseUrl = baseUrl;
         this.wsUrl = this._buildWebSocketUrl(baseUrl);
@@ -35,10 +35,10 @@ class SignageWebSocket {
         this.reconnectAttempts = 0;
         this.maxReconnectAttempts = 10;
         this.reconnectDelay = 1000; // Start at 1 second
-        this.maxReconnectDelay = window.ENV?.WEBSOCKET_MAX_RECONNECT_DELAY || 30000; // Max 30 seconds
+        this.maxReconnectDelay = window.SharedENV?.WEBSOCKET_MAX_RECONNECT_DELAY || 30000; // Max 30 seconds
 
         // Heartbeat
-        this.heartbeatInterval = window.ENV?.WEBSOCKET_HEARTBEAT_INTERVAL || 30000; // 30 seconds
+        this.heartbeatInterval = window.SharedENV?.WEBSOCKET_HEARTBEAT_INTERVAL || 30000; // 30 seconds
         this.heartbeatTimer = null;
         this.lastPongTime = null;
         this.missedPongs = 0;
@@ -86,14 +86,14 @@ class SignageWebSocket {
      */
     connect() {
         if (this.state === 'connected' || this.state === 'connecting') {
-            console.warn('[WebSocket] Already connected or connecting');
+            SharedLogger.warn('[WebSocket] Already connected or connecting');
             return;
         }
 
         this.state = 'connecting';
         this.stats.connectionAttempts++;
 
-        console.log(`[WebSocket] Connecting to ${this.wsUrl}...`);
+        SharedLogger.log(`[WebSocket] Connecting to ${this.wsUrl}...`);
 
         try {
             this.ws = new WebSocket(this.wsUrl);
@@ -105,7 +105,7 @@ class SignageWebSocket {
             this.ws.addEventListener('close', this._onClose);
 
         } catch (error) {
-            console.error('[WebSocket] Failed to create WebSocket:', error);
+            SharedLogger.error('[WebSocket] Failed to create WebSocket:', error);
             this.stats.errors++;
             this._scheduleReconnect();
         }
@@ -115,7 +115,7 @@ class SignageWebSocket {
      * Disconnect from WebSocket server
      */
     disconnect() {
-        console.log('[WebSocket] Disconnecting...');
+        SharedLogger.log('[WebSocket] Disconnecting...');
 
         // Stop heartbeat
         this._stopHeartbeat();
@@ -150,7 +150,7 @@ class SignageWebSocket {
      */
     send(type, data = {}) {
         if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
-            console.warn('[WebSocket] Cannot send message - not connected');
+            SharedLogger.warn('[WebSocket] Cannot send message - not connected');
             return false;
         }
 
@@ -165,7 +165,7 @@ class SignageWebSocket {
 
             return true;
         } catch (error) {
-            console.error('[WebSocket] Failed to send message:', error);
+            SharedLogger.error('[WebSocket] Failed to send message:', error);
             this.stats.errors++;
             return false;
         }
@@ -225,7 +225,7 @@ class SignageWebSocket {
      * @private
      */
     _onOpen() {
-        console.log('[WebSocket] ✅ Connected');
+        SharedLogger.log('[WebSocket] ✅ Connected');
 
         this.state = 'connected';
         this.reconnectAttempts = 0;
@@ -259,7 +259,7 @@ class SignageWebSocket {
 
             // Log message (debug mode)
             if (this._isDebugMode()) {
-                console.log('[WebSocket] ← Message:', type, data);
+                SharedLogger.log('[WebSocket] ← Message:', type, data);
             }
 
             // Emit type-specific event
@@ -269,7 +269,7 @@ class SignageWebSocket {
             this._emit('message', message);
 
         } catch (error) {
-            console.error('[WebSocket] Failed to parse message:', error);
+            SharedLogger.error('[WebSocket] Failed to parse message:', error);
             this.stats.errors++;
         }
     }
@@ -279,7 +279,7 @@ class SignageWebSocket {
      * @private
      */
     _onError(event) {
-        console.error('[WebSocket] ❌ Error:', event);
+        SharedLogger.error('[WebSocket] ❌ Error:', event);
         this.stats.errors++;
 
         // Emit error event
@@ -291,7 +291,7 @@ class SignageWebSocket {
      * @private
      */
     _onClose(event) {
-        console.log(`[WebSocket] 🔌 Closed (code: ${event.code}, reason: ${event.reason || 'none'})`);
+        SharedLogger.log(`[WebSocket] 🔌 Closed (code: ${event.code}, reason: ${event.reason || 'none'})`);
 
         // Stop heartbeat
         this._stopHeartbeat();
@@ -325,7 +325,7 @@ class SignageWebSocket {
         // Clear existing heartbeat
         this._stopHeartbeat();
 
-        console.log(`[WebSocket] ❤️ Starting heartbeat (${this.heartbeatInterval}ms)`);
+        SharedLogger.log(`[WebSocket] ❤️ Starting heartbeat (${this.heartbeatInterval}ms)`);
 
         this.heartbeatTimer = setInterval(() => {
             // Check if still connected
@@ -336,7 +336,7 @@ class SignageWebSocket {
 
             // Check missed pongs
             if (this.lastPongTime && this.missedPongs >= this.maxMissedPongs) {
-                console.warn(`[WebSocket] ⚠️ Missed ${this.missedPongs} pongs - connection may be dead`);
+                SharedLogger.warn(`[WebSocket] ⚠️ Missed ${this.missedPongs} pongs - connection may be dead`);
                 this._stopHeartbeat();
                 this.ws.close(1006, 'Heartbeat timeout');
                 return;
@@ -367,7 +367,7 @@ class SignageWebSocket {
     _scheduleReconnect() {
         // Check if max retries reached
         if (this.reconnectAttempts >= this.maxReconnectAttempts) {
-            console.error(`[WebSocket] ⛔ Max reconnect attempts (${this.maxReconnectAttempts}) reached`);
+            SharedLogger.error(`[WebSocket] ⛔ Max reconnect attempts (${this.maxReconnectAttempts}) reached`);
             this.state = 'failed';
             this._emit('failed');
             return;
@@ -383,7 +383,7 @@ class SignageWebSocket {
             this.maxReconnectDelay
         );
 
-        console.log(`[WebSocket] 🔄 Reconnecting in ${delay}ms (attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts})`);
+        SharedLogger.log(`[WebSocket] 🔄 Reconnecting in ${delay}ms (attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts})`);
 
         // Emit reconnecting event
         this._emit('reconnecting', {
@@ -410,7 +410,7 @@ class SignageWebSocket {
             try {
                 handler(data);
             } catch (error) {
-                console.error(`[WebSocket] Error in ${event} handler:`, error);
+                SharedLogger.error(`[WebSocket] Error in ${event} handler:`, error);
             }
         });
     }
@@ -435,12 +435,12 @@ window.SignageWebSocket = SignageWebSocket;
 // Debug helpers
 window.enableWSDebug = function() {
     localStorage.setItem('WS_DEBUG', 'true');
-    console.log('[WebSocket] Debug mode enabled');
+    SharedLogger.log('[WebSocket] Debug mode enabled');
 };
 
 window.disableWSDebug = function() {
     localStorage.removeItem('WS_DEBUG');
-    console.log('[WebSocket] Debug mode disabled');
+    SharedLogger.log('[WebSocket] Debug mode disabled');
 };
 
-console.log('[WebSocket] SignageWebSocket loaded (v1.0.0)');
+SharedLogger.log('[WebSocket] SignageWebSocket loaded (v1.0.0)');

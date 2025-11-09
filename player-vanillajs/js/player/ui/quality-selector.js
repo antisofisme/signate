@@ -8,7 +8,7 @@ window.QualitySelector = {
      * Initialize quality selector
      */
     init: function() {
-        console.log('[QualitySelector] Initializing...');
+        SharedLogger.log('[QualitySelector] Initializing...');
 
         // Close button handler
         const closeBtn = document.querySelector('.quality-close');
@@ -37,7 +37,7 @@ window.QualitySelector = {
             }
         });
 
-        console.log('[QualitySelector] Ready ✅');
+        SharedLogger.log('[QualitySelector] Ready ✅');
     },
 
     /**
@@ -47,7 +47,7 @@ window.QualitySelector = {
         const selector = document.getElementById('quality-selector');
         if (selector) {
             selector.classList.add('visible');
-            console.log('[QualitySelector] Shown');
+            SharedLogger.log('[QualitySelector] Shown');
         }
     },
 
@@ -58,7 +58,7 @@ window.QualitySelector = {
         const selector = document.getElementById('quality-selector');
         if (selector) {
             selector.classList.remove('visible');
-            console.log('[QualitySelector] Hidden');
+            SharedLogger.log('[QualitySelector] Hidden');
         }
     },
 
@@ -89,7 +89,7 @@ window.QualitySelector = {
         container.innerHTML = '';
 
         // Get saved preference
-        const savedQuality = localStorage.getItem('preferredQuality') || 'auto';
+        const savedQuality = SharedDeviceState.getPreference('preferredQuality') || 'auto';
 
         // Add "Auto" option
         const autoOption = this.createQualityOption({
@@ -124,7 +124,7 @@ window.QualitySelector = {
             container.appendChild(option);
         });
 
-        console.log(`[QualitySelector] Populated ${levels.length} quality levels`);
+        SharedLogger.log(`[QualitySelector] Populated ${levels.length} quality levels`);
     },
 
     /**

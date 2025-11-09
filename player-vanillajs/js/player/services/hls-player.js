@@ -43,7 +43,7 @@ window.HLSPlayer = class {
      * @param {Object} options - Player options
      */
     loadSource(masterPlaylistUrl, options = {}) {
-        console.log('[HLS] Loading source:', masterPlaylistUrl);
+        SharedLogger.log('[HLS] Loading source:', masterPlaylistUrl);
 
         // Clean up existing instance
         this.destroy();
@@ -66,7 +66,7 @@ window.HLSPlayer = class {
         // No HLS support
         else {
             const error = 'HLS playback is not supported in this browser';
-            console.error('[HLS]', error);
+            SharedLogger.error('[HLS]', error);
             throw new Error(error);
         }
     }
@@ -75,10 +75,10 @@ window.HLSPlayer = class {
      * Load with HLS.js library
      */
     _loadWithHLSjs(url, options) {
-        console.log('[HLS] Using HLS.js for playback');
+        SharedLogger.log('[HLS] Using HLS.js for playback');
 
         // Get saved quality preference
-        const savedQuality = localStorage.getItem('preferredQuality');
+        const savedQuality = SharedDeviceState.getPreference('preferredQuality');
         const startLevel = savedQuality === 'auto' || !savedQuality ? -1 : parseInt(savedQuality);
 
         // Create HLS instance with optimized config
@@ -133,7 +133,7 @@ window.HLSPlayer = class {
      * Load with native HLS support (Safari, iOS)
      */
     _loadWithNativeHLS(url, options) {
-        console.log('[HLS] Using native HLS playback');
+        SharedLogger.log('[HLS] Using native HLS playback');
 
         this.video.src = url;
         this.video.autoplay = options.autoplay;
@@ -141,15 +141,15 @@ window.HLSPlayer = class {
 
         // Native HLS doesn't provide quality control
         // Hide quality selector
-        console.log('[HLS] Quality selection not available in native mode');
+        SharedLogger.log('[HLS] Quality selection not available in native mode');
 
         // Basic event handlers
         this.video.addEventListener('loadedmetadata', () => {
-            console.log('[HLS] Native HLS loaded');
+            SharedLogger.log('[HLS] Native HLS loaded');
         });
 
         this.video.addEventListener('error', (e) => {
-            console.error('[HLS] Native HLS error:', e);
+            SharedLogger.error('[HLS] Native HLS error:', e);
             this.analytics.errors++;
         });
 
@@ -165,13 +165,13 @@ window.HLSPlayer = class {
 
         // Manifest loaded - quality levels available
         this.hls.on(Hls.Events.MANIFEST_PARSED, (event, data) => {
-            console.log(`[HLS] Manifest loaded: ${data.levels.length} quality levels`);
+            SharedLogger.log(`[HLS] Manifest loaded: ${data.levels.length} quality levels`);
 
             this.levels = data.levels;
 
             // Log available qualities
             data.levels.forEach((level, index) => {
-                console.log(`[HLS] Level ${index}: ${level.width}x${level.height} @ ${(level.bitrate / 1000000).toFixed(2)} Mbps`);
+                SharedLogger.log(`[HLS] Level ${index}: ${level.width}x${level.height} @ ${(level.bitrate / 1000000).toFixed(2)} Mbps`);
             });
 
             // Populate quality selector
@@ -182,7 +182,7 @@ window.HLSPlayer = class {
             }
 
             // Apply saved quality preference
-            const savedQuality = localStorage.getItem('preferredQuality');
+            const savedQuality = SharedDeviceState.getPreference('preferredQuality');
             if (savedQuality && savedQuality !== 'auto') {
                 this.setQuality(parseInt(savedQuality));
             }
@@ -191,7 +191,7 @@ window.HLSPlayer = class {
         // Quality level switching
         this.hls.on(Hls.Events.LEVEL_SWITCHING, (event, data) => {
             const level = this.levels[data.level];
-            console.log(`[HLS] Switching to quality: ${level.height}p @ ${(level.bitrate / 1000000).toFixed(2)} Mbps`);
+            SharedLogger.log(`[HLS] Switching to quality: ${level.height}p @ ${(level.bitrate / 1000000).toFixed(2)} Mbps`);
         });
 
         // Quality level switched
@@ -199,7 +199,7 @@ window.HLSPlayer = class {
             const level = this.levels[data.level];
             const qualityText = window.QualitySelector.getQualityLabel(level.height);
 
-            console.log(`[HLS] Quality switched: ${qualityText} (${level.width}x${level.height})`);
+            SharedLogger.log(`[HLS] Quality switched: ${qualityText} (${level.width}x${level.height})`);
 
             this.analytics.qualityChanges++;
 
@@ -232,7 +232,7 @@ window.HLSPlayer = class {
 
         // Buffer stalled - show loading
         this.hls.on(Hls.Events.BUFFER_STALLED, () => {
-            console.warn('[HLS] Buffer stalled');
+            SharedLogger.warn('[HLS] Buffer stalled');
             this.analytics.bufferingEvents++;
             this._showBufferingIndicator();
             this._updateDebugStats();
@@ -240,12 +240,12 @@ window.HLSPlayer = class {
 
         // Buffer flushing (quality change)
         this.hls.on(Hls.Events.BUFFER_FLUSHING, () => {
-            console.log('[HLS] Buffer flushing (quality change)');
+            SharedLogger.log('[HLS] Buffer flushing (quality change)');
         });
 
         // FPS drop detected
         this.hls.on(Hls.Events.FPS_DROP, (event, data) => {
-            console.warn('[HLS] FPS drop detected:', data.currentDropped, 'frames');
+            SharedLogger.warn('[HLS] FPS drop detected:', data.currentDropped, 'frames');
         });
 
         // Error handling
@@ -263,7 +263,7 @@ window.HLSPlayer = class {
     _handleError(data) {
         if (this.isDestroyed) return;
 
-        console.error('[HLS] Error:', data.type, data.details, data.fatal);
+        SharedLogger.error('[HLS] Error:', data.type, data.details, data.fatal);
         this.analytics.errors++;
         this._updateDebugStats();
 
@@ -281,7 +281,7 @@ window.HLSPlayer = class {
             }
         } else {
             // Non-fatal error, log and continue
-            console.warn('[HLS] Non-fatal error, continuing playback');
+            SharedLogger.warn('[HLS] Non-fatal error, continuing playback');
         }
     }
 
@@ -289,22 +289,22 @@ window.HLSPlayer = class {
      * Handle network errors with retry
      */
     _handleNetworkError(data) {
-        console.error('[HLS] Fatal network error:', data.details);
+        SharedLogger.error('[HLS] Fatal network error:', data.details);
 
         if (this.retryCount < this.maxRetries) {
             this.retryCount++;
             const delay = this.retryDelay * Math.pow(2, this.retryCount - 1); // Exponential backoff
 
-            console.log(`[HLS] Retry ${this.retryCount}/${this.maxRetries} in ${delay}ms...`);
+            SharedLogger.log(`[HLS] Retry ${this.retryCount}/${this.maxRetries} in ${delay}ms...`);
 
             setTimeout(() => {
                 if (!this.isDestroyed && this.hls) {
-                    console.log('[HLS] Attempting to recover from network error...');
+                    SharedLogger.log('[HLS] Attempting to recover from network error...');
                     this.hls.startLoad();
                 }
             }, delay);
         } else {
-            console.error('[HLS] Max retries reached for network error');
+            SharedLogger.error('[HLS] Max retries reached for network error');
             this._handleFatalError(data);
         }
     }
@@ -313,17 +313,17 @@ window.HLSPlayer = class {
      * Handle media errors with recovery
      */
     _handleMediaError(data) {
-        console.error('[HLS] Fatal media error:', data.details);
+        SharedLogger.error('[HLS] Fatal media error:', data.details);
 
         if (this.retryCount < this.maxRetries) {
             this.retryCount++;
-            console.log(`[HLS] Attempting to recover from media error (${this.retryCount}/${this.maxRetries})...`);
+            SharedLogger.log(`[HLS] Attempting to recover from media error (${this.retryCount}/${this.maxRetries})...`);
 
             if (this.hls) {
                 this.hls.recoverMediaError();
             }
         } else {
-            console.error('[HLS] Max retries reached for media error');
+            SharedLogger.error('[HLS] Max retries reached for media error');
             this._handleFatalError(data);
         }
     }
@@ -332,7 +332,7 @@ window.HLSPlayer = class {
      * Handle unrecoverable fatal errors
      */
     _handleFatalError(data) {
-        console.error('[HLS] Unrecoverable error:', data.type, data.details);
+        SharedLogger.error('[HLS] Unrecoverable error:', data.type, data.details);
 
         // Show error to user
         if (window.PlayerUI) {
@@ -347,7 +347,7 @@ window.HLSPlayer = class {
      * Fallback to direct MP4 playback
      */
     _fallbackToDirectPlayback() {
-        console.log('[HLS] Attempting fallback to direct MP4 playback...');
+        SharedLogger.log('[HLS] Attempting fallback to direct MP4 playback...');
 
         // This will be handled by the playback module
         // Emit custom event for fallback
@@ -363,29 +363,29 @@ window.HLSPlayer = class {
      */
     setQuality(quality) {
         if (!this.hls) {
-            console.warn('[HLS] Cannot set quality: HLS.js not initialized');
+            SharedLogger.warn('[HLS] Cannot set quality: HLS.js not initialized');
             return;
         }
 
         if (quality === 'auto' || quality === -1) {
-            console.log('[HLS] Setting quality to AUTO');
+            SharedLogger.log('[HLS] Setting quality to AUTO');
             this.hls.currentLevel = -1;
             this.currentQuality = 'auto';
         } else {
             const levelIndex = parseInt(quality);
             if (levelIndex >= 0 && levelIndex < this.levels.length) {
                 const level = this.levels[levelIndex];
-                console.log(`[HLS] Setting quality to level ${levelIndex}: ${level.height}p`);
+                SharedLogger.log(`[HLS] Setting quality to level ${levelIndex}: ${level.height}p`);
                 this.hls.currentLevel = levelIndex;
                 this.currentQuality = levelIndex;
             } else {
-                console.warn('[HLS] Invalid quality level:', quality);
+                SharedLogger.warn('[HLS] Invalid quality level:', quality);
                 return;
             }
         }
 
         // Save preference
-        localStorage.setItem('preferredQuality', quality.toString());
+        SharedDeviceState.setPreference('preferredQuality', quality.toString());
     }
 
     /**
@@ -465,7 +465,7 @@ window.HLSPlayer = class {
      * Destroy HLS instance and cleanup
      */
     destroy() {
-        console.log('[HLS] Destroying player...');
+        SharedLogger.log('[HLS] Destroying player...');
 
         this.isDestroyed = true;
 
@@ -489,7 +489,7 @@ window.HLSPlayer = class {
         // Hide buffering indicator
         this._hideBufferingIndicator();
 
-        console.log('[HLS] Player destroyed');
+        SharedLogger.log('[HLS] Player destroyed');
     }
 
     /**

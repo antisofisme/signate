@@ -27,12 +27,12 @@
  * // Validate device data
  * const validation = device.validate();
  * if (!validation.valid) {
- *   console.error('Validation errors:', validation.errors);
+ *   SharedLogger.error('Validation errors:', validation.errors);
  * }
  *
  * // Check online status
  * if (device.isOnline()) {
- *   console.log('Device is online');
+ *   SharedLogger.log('Device is online');
  * }
  *
  * // Save to localStorage
@@ -235,6 +235,6 @@
   // Export to window (Vanilla JS pattern)
   window.Device = Device;
 
-  console.log('[Models/Device] Device model loaded');
+  SharedLogger.log('[Models/Device] Device model loaded');
 
 })();

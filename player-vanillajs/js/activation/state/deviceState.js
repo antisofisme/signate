@@ -25,12 +25,12 @@
  * ```javascript
  * // Subscribe to device events
  * eventBus.on('device:loaded', (device) => {
- *   console.log('Device registered:', device);
+ *   SharedLogger.log('Device registered:', device);
  *   document.querySelector('#device-name').textContent = device.name;
  * });
  *
  * // Set device after registration
- * deviceState.setDevice({
+ * SharedDeviceState.setDevice({
  *   id: 123,
  *   code: '123456',
  *   name: 'Lobby Display',
@@ -38,15 +38,15 @@
  * });
  *
  * // Update status after activation
- * deviceState.setStatus('active');
+ * SharedDeviceState.setStatus('active');
  *
  * // Check device state
- * if (deviceState.isActive()) {
- *   console.log('Device is active');
+ * if (SharedDeviceState.isActive()) {
+ *   SharedLogger.log('Device is active');
  * }
  *
  * // Send heartbeat
- * deviceState.updateLastSeen();
+ * SharedDeviceState.updateLastSeen();
  * ```
  *
  * @persistence
@@ -73,10 +73,10 @@
 
   /**
    * Device State Manager
-   * @namespace deviceState
+   * @namespace SharedDeviceState
    * @global
    */
-  const deviceState = {
+  const SharedDeviceState = {
     /**
      * Get current device
      * @returns {Device|null}
@@ -100,7 +100,7 @@
       // Validate device
       const validation = _currentDevice.validate();
       if (!validation.valid) {
-        console.error('[DeviceState] Invalid device data:', validation.errors);
+        SharedLogger.error('[DeviceState] Invalid device data:', validation.errors);
       }
 
       // Save to localStorage
@@ -111,7 +111,7 @@
         window.eventBus.emit('device:loaded', _currentDevice);
       }
 
-      console.log('[DeviceState] Device set:', _currentDevice.toJSON());
+      SharedLogger.log('[DeviceState] Device set:', _currentDevice.toJSON());
     },
 
     /**
@@ -120,7 +120,7 @@
      */
     setStatus(status) {
       if (!_currentDevice) {
-        console.warn('[DeviceState] No device loaded');
+        SharedLogger.warn('[DeviceState] No device loaded');
         return;
       }
 
@@ -135,7 +135,7 @@
         });
       }
 
-      console.log('[DeviceState] Status changed:', status);
+      SharedLogger.log('[DeviceState] Status changed:', status);
     },
 
     /**
@@ -174,7 +174,7 @@
         window.eventBus.emit('device:cleared');
       }
 
-      console.log('[DeviceState] Device cleared');
+      SharedLogger.log('[DeviceState] Device cleared');
     },
 
     /**
@@ -192,7 +192,7 @@
           window.eventBus.emit('device:restored', device);
         }
 
-        console.log('[DeviceState] Device restored from storage');
+        SharedLogger.log('[DeviceState] Device restored from storage');
       }
 
       return device;
@@ -220,12 +220,289 @@
      */
     isOnline() {
       return _currentDevice !== null && _currentDevice.isOnline();
+    },
+
+    // ==========================================================================
+    // PREFERENCES & SETTINGS (Player-specific, but accessed via device state)
+    // ==========================================================================
+
+    /**
+     * Get player preference from localStorage
+     * @param {string} key - Preference key (volume_preference, brightness_preference, preferredQuality)
+     * @param {any} defaultValue - Default value if not set
+     * @returns {any}
+     */
+    getPreference(key, defaultValue = null) {
+      const value = localStorage.getItem(key);
+      return value !== null ? value : defaultValue;
+    },
+
+    /**
+     * Set player preference to localStorage
+     * @param {string} key - Preference key
+     * @param {any} value - Preference value
+     */
+    setPreference(key, value) {
+      localStorage.setItem(key, value);
+      SharedLogger.log(`[SharedDeviceState] Preference set: ${key} = ${value}`);
+    },
+
+    /**
+     * Remove player preference from localStorage
+     * @param {string} key - Preference key
+     */
+    removePreference(key) {
+      localStorage.removeItem(key);
+      SharedLogger.log(`[SharedDeviceState] Preference removed: ${key}`);
+    },
+
+    // ==========================================================================
+    // DEVICE CORE DATA ACCESSORS (Phase 2: Bootstrap/Activation)
+    // ==========================================================================
+
+    /**
+     * Get device ID from localStorage
+     * @returns {string|null}
+     */
+    getDeviceId() {
+      return localStorage.getItem('device_id');
+    },
+
+    /**
+     * Get device status from localStorage
+     * @returns {string|null} - 'pending', 'active', or 'inactive'
+     */
+    getDeviceStatus() {
+      return localStorage.getItem('device_status');
+    },
+
+    /**
+     * Get device activation code from localStorage
+     * @returns {string|null}
+     */
+    getDeviceCode() {
+      return localStorage.getItem('device_code');
+    },
+
+    /**
+     * Get organization ID from localStorage
+     * @returns {string|null}
+     */
+    getOrganizationId() {
+      return localStorage.getItem('organization_id');
+    },
+
+    /**
+     * Get device JWT token from localStorage
+     * @returns {string|null}
+     */
+    getDeviceToken() {
+      return localStorage.getItem('device_token');
+    },
+
+    /**
+     * Get device name from localStorage
+     * @returns {string|null}
+     */
+    getDeviceName() {
+      return localStorage.getItem('device_name');
+    },
+
+    /**
+     * Set device ID to localStorage (with logging)
+     * @param {string|number} id - Device ID
+     */
+    setDeviceId(id) {
+      localStorage.setItem('device_id', String(id));
+      SharedLogger.log(`[SharedDeviceState] Device ID set: ${id}`);
+    },
+
+    /**
+     * Set device status to localStorage (with validation and logging)
+     * @param {string} status - 'pending', 'active', or 'inactive'
+     */
+    setDeviceStatus(status) {
+      const validStatuses = ['pending', 'active', 'inactive'];
+      if (!validStatuses.includes(status)) {
+        SharedLogger.error(`[SharedDeviceState] Invalid status: ${status}. Valid: ${validStatuses.join(', ')}`);
+        return;
+      }
+      localStorage.setItem('device_status', status);
+      SharedLogger.log(`[SharedDeviceState] Device status set: ${status}`);
+    },
+
+    /**
+     * Set device activation code to localStorage (with logging)
+     * @param {string} code - 6-digit activation code
+     */
+    setDeviceCode(code) {
+      localStorage.setItem('device_code', code);
+      SharedLogger.log(`[SharedDeviceState] Device code set: ${code}`);
+    },
+
+    /**
+     * Set organization ID to localStorage (with logging)
+     * @param {string|number} orgId - Organization ID
+     */
+    setOrganizationId(orgId) {
+      localStorage.setItem('organization_id', String(orgId));
+      SharedLogger.log(`[SharedDeviceState] Organization ID set: ${orgId}`);
+    },
+
+    /**
+     * Set device JWT token to localStorage (with logging)
+     * @param {string} token - JWT token
+     */
+    setDeviceToken(token) {
+      localStorage.setItem('device_token', token);
+      SharedLogger.log('[SharedDeviceState] Device token set');
+    },
+
+    /**
+     * Set device name to localStorage (with logging)
+     * @param {string} name - Device name
+     */
+    setDeviceName(name) {
+      localStorage.setItem('device_name', name);
+      SharedLogger.log(`[SharedDeviceState] Device name set: ${name}`);
+    },
+
+    // ==========================================================================
+    // ATOMIC OPERATIONS (Phase 2: Complex state transitions)
+    // ==========================================================================
+
+    /**
+     * Mark device as activated (atomic operation)
+     * Sets device_id, status=active, and optional device_name + organization_id
+     *
+     * @param {string|number} deviceId - Device ID
+     * @param {string} [deviceName] - Device name (optional)
+     * @param {string|number} [orgId] - Organization ID (optional)
+     */
+    markAsActivated(deviceId, deviceName = null, orgId = null) {
+      this.setDeviceId(deviceId);
+      this.setDeviceStatus('active');
+
+      if (deviceName) {
+        this.setDeviceName(deviceName);
+      }
+
+      if (orgId) {
+        this.setOrganizationId(orgId);
+      }
+
+      SharedLogger.log('[SharedDeviceState] ✅ Device marked as activated', {
+        deviceId,
+        deviceName,
+        orgId
+      });
+    },
+
+    /**
+     * Clear device data from localStorage (atomic operation)
+     *
+     * @param {Object} [options] - Options
+     * @param {boolean} [options.preserveAuth=false] - If true, preserve device_token and organization_id
+     */
+    clearDeviceData({ preserveAuth = false } = {}) {
+      const keysToRemove = ['device_id', 'device_code', 'device_name', 'device_status', 'platform'];
+
+      if (preserveAuth) {
+        // Preserve auth data for re-registration
+        const preservedToken = this.getDeviceToken();
+        const preservedOrgId = this.getOrganizationId();
+
+        SharedLogger.log('[SharedDeviceState] Clearing device data (preserving auth)...', {
+          hasToken: !!preservedToken,
+          hasOrgId: !!preservedOrgId
+        });
+
+        // Clear device-specific data
+        keysToRemove.forEach(key => localStorage.removeItem(key));
+
+        // Restore auth data
+        if (preservedToken) {
+          this.setDeviceToken(preservedToken);
+        }
+        if (preservedOrgId) {
+          this.setOrganizationId(preservedOrgId);
+        }
+
+        SharedLogger.log('[SharedDeviceState] ✅ Device data cleared (auth preserved)');
+      } else {
+        // Clear everything including auth
+        keysToRemove.forEach(key => localStorage.removeItem(key));
+        localStorage.removeItem('device_token');
+        localStorage.removeItem('organization_id');
+
+        SharedLogger.log('[SharedDeviceState] ✅ Device data cleared (including auth)');
+      }
+    },
+
+    // ==========================================================================
+    // VERIFICATION HELPERS (Phase 2: Cleaner boolean checks)
+    // ==========================================================================
+
+    /**
+     * Check if device has an ID (is registered)
+     * @returns {boolean}
+     */
+    hasDeviceId() {
+      return !!this.getDeviceId();
+    },
+
+    /**
+     * Check if device is activated
+     * @returns {boolean}
+     */
+    isActivated() {
+      return this.getDeviceStatus() === 'active';
+    },
+
+    /**
+     * Check if device has auth token
+     * @returns {boolean}
+     */
+    hasDeviceToken() {
+      return !!this.getDeviceToken();
+    },
+
+    // ==========================================================================
+    // DIRECT LOCALSTORAGE ACCESSORS (for migration compatibility)
+    // ==========================================================================
+
+    /**
+     * Generic localStorage getter (use sparingly, prefer specific methods)
+     * @param {string} key - Storage key
+     * @param {any} defaultValue - Default value
+     * @returns {any}
+     */
+    get(key, defaultValue = null) {
+      const value = localStorage.getItem(key);
+      return value !== null ? value : defaultValue;
+    },
+
+    /**
+     * Generic localStorage setter (use sparingly, prefer specific methods)
+     * @param {string} key - Storage key
+     * @param {any} value - Storage value
+     */
+    set(key, value) {
+      localStorage.setItem(key, value);
+    },
+
+    /**
+     * Generic localStorage remover (use sparingly, prefer specific methods)
+     * @param {string} key - Storage key
+     */
+    remove(key) {
+      localStorage.removeItem(key);
     }
   };
 
   // Export to window
-  window.deviceState = deviceState;
+  window.SharedDeviceState = SharedDeviceState;
 
-  console.log('[State/DeviceState] Device state manager loaded');
+  SharedLogger.log('[State/SharedDeviceState] Device state manager loaded');
 
 })();

@@ -14,11 +14,13 @@ from datetime import datetime
 
 class RequestActivationCodeRequest(BaseModel):
     """Request activation code - called by player"""
-    organization_id: Optional[int] = Field(None, gt=0)  # Optional for new devices, provided for re-registration
+    # 🔒 SECURITY: organization_id removed - should come from device_token JWT or be assigned during activation
+    # 🚫 DO NOT allow player to send organization_id - prevents org hijacking attack
     device_type: str = Field(default='monitor', pattern='^(tv|monitor)$')
     device_name: str = Field(default='New Device', max_length=200)
     device_uuid: Optional[str] = Field(None, max_length=100)
     platform: str = Field(default='browser', max_length=50)
+    device_token: Optional[str] = Field(None, max_length=500)  # JWT token for re-registration
 
 
 class ActivateDeviceRequest(BaseModel):
@@ -81,6 +83,7 @@ class ActivationCodeResponse(BaseModel):
     unique_code: str
     expires_at: str  # ISO format
     device_id: int
+    device_token: Optional[str] = None  # 🔑 JWT token for re-registration (only if org assigned)
 
     class Config:
         from_attributes = True
@@ -166,6 +169,7 @@ class ActivationStatusResponse(BaseModel):
     device_id: Optional[int] = None
     device_name: Optional[str] = None
     organization_id: Optional[int] = None  # For player to know which org it belongs to
+    organization_pin: Optional[str] = None  # 6-digit PIN for hard reset (if org assigned)
     message: str
 
     class Config:

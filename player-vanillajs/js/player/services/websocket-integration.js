@@ -37,20 +37,20 @@ window.PlayerWebSocket = {
 
         // ✅ NULL CHECK: Ensure deviceId exists
         if (!deviceId) {
-            console.warn('[Player/WebSocket] No device ID - skipping WebSocket initialization');
+            SharedLogger.warn('[Player/WebSocket] No device ID - skipping WebSocket initialization');
             return;
         }
 
         // ✅ STATE MIGRATION: Get API_BASE_URL from Config/ENV (config, not state)
-        const apiBaseUrl = window.Config?.API_BASE_URL || window.ENV?.API_BASE_URL;
+        const apiBaseUrl = window.Config?.API_BASE_URL || window.SharedENV?.API_BASE_URL;
 
         // ✅ NULL CHECK: Ensure API_BASE_URL exists
         if (!apiBaseUrl) {
-            console.error('[Player/WebSocket] No API_BASE_URL configured');
+            SharedLogger.error('[Player/WebSocket] No API_BASE_URL configured');
             return;
         }
 
-        console.log('[Player/WebSocket] Initializing WebSocket for device:', deviceId);
+        SharedLogger.log('[Player/WebSocket] Initializing WebSocket for device:', deviceId);
 
         try {
             // Create WebSocket client
@@ -63,7 +63,7 @@ window.PlayerWebSocket = {
             this.ws.connect();
 
         } catch (error) {
-            console.error('[Player/WebSocket] Failed to initialize WebSocket:', error);
+            SharedLogger.error('[Player/WebSocket] Failed to initialize WebSocket:', error);
             this._enableFallbackPolling();
         }
     },
@@ -75,7 +75,7 @@ window.PlayerWebSocket = {
     _registerHandlers: function() {
         // Connection events
         this.ws.on('connected', () => {
-            console.log('[Player/WebSocket] ✅ Connected - Real-time updates enabled');
+            SharedLogger.log('[Player/WebSocket] ✅ Connected - Real-time updates enabled');
             this.isWebSocketActive = true;
 
             // Disable fallback polling if active
@@ -88,25 +88,25 @@ window.PlayerWebSocket = {
         });
 
         this.ws.on('disconnected', () => {
-            console.log('[Player/WebSocket] 🔌 Disconnected');
+            SharedLogger.log('[Player/WebSocket] 🔌 Disconnected');
             this.isWebSocketActive = false;
             this._showConnectionStatus('disconnected');
         });
 
         this.ws.on('reconnecting', (data) => {
-            console.log(`[Player/WebSocket] 🔄 Reconnecting (${data.attempt}/${data.maxAttempts})...`);
+            SharedLogger.log(`[Player/WebSocket] 🔄 Reconnecting (${data.attempt}/${data.maxAttempts})...`);
             this._showConnectionStatus('reconnecting', data);
         });
 
         this.ws.on('failed', () => {
-            console.error('[Player/WebSocket] ⛔ Connection failed - falling back to HTTP polling');
+            SharedLogger.error('[Player/WebSocket] ⛔ Connection failed - falling back to HTTP polling');
             this.isWebSocketActive = false;
             this._showConnectionStatus('failed');
             this._enableFallbackPolling();
         });
 
         this.ws.on('error', (error) => {
-            console.error('[Player/WebSocket] ❌ Error:', error);
+            SharedLogger.error('[Player/WebSocket] ❌ Error:', error);
         });
 
         // Message type handlers
@@ -125,7 +125,7 @@ window.PlayerWebSocket = {
         // Generic message handler (for debugging)
         this.ws.on('message', (message) => {
             if (this._isDebugMode()) {
-                console.log('[Player/WebSocket] Message received:', message);
+                SharedLogger.log('[Player/WebSocket] Message received:', message);
             }
         });
     },
@@ -136,7 +136,7 @@ window.PlayerWebSocket = {
      * @private
      */
     _handlePlaylistUpdate: async function(data) {
-        console.log('[Player/WebSocket] 📋 Playlist update received:', data);
+        SharedLogger.log('[Player/WebSocket] 📋 Playlist update received:', data);
 
         try {
             // Show notification
@@ -145,11 +145,11 @@ window.PlayerWebSocket = {
             // Reload playlist
             if (window.PlayerAPI && window.PlayerAPI.loadPlaylist) {
                 await window.PlayerAPI.loadPlaylist();
-                console.log('[Player/WebSocket] ✅ Playlist reloaded successfully');
+                SharedLogger.log('[Player/WebSocket] ✅ Playlist reloaded successfully');
             }
 
         } catch (error) {
-            console.error('[Player/WebSocket] Failed to reload playlist:', error);
+            SharedLogger.error('[Player/WebSocket] Failed to reload playlist:', error);
         }
     },
 
@@ -159,7 +159,7 @@ window.PlayerWebSocket = {
      * @private
      */
     _handleContentReady: async function(data) {
-        console.log('[Player/WebSocket] 📦 Content ready:', data);
+        SharedLogger.log('[Player/WebSocket] 📦 Content ready:', data);
 
         try {
             const { content_id, content_type } = data;
@@ -173,7 +173,7 @@ window.PlayerWebSocket = {
             }
 
         } catch (error) {
-            console.error('[Player/WebSocket] Failed to handle content ready:', error);
+            SharedLogger.error('[Player/WebSocket] Failed to handle content ready:', error);
         }
     },
 
@@ -183,7 +183,7 @@ window.PlayerWebSocket = {
      * @private
      */
     _handleCommand: async function(data) {
-        console.log('[Player/WebSocket] 🎮 Command received:', data);
+        SharedLogger.log('[Player/WebSocket] 🎮 Command received:', data);
 
         const { command, params = {} } = data;
 
@@ -191,14 +191,14 @@ window.PlayerWebSocket = {
             switch (command) {
                 case 'reload':
                     // Reload entire viewer
-                    console.log('[Player/WebSocket] Executing: Reload viewer');
+                    SharedLogger.log('[Player/WebSocket] Executing: Reload viewer');
                     this._showNotification('🔄 Reloading viewer...');
                     setTimeout(() => window.location.reload(), 1000);
                     break;
 
                 case 'refresh':
                     // Refresh playlist and cache
-                    console.log('[Player/WebSocket] Executing: Refresh playlist');
+                    SharedLogger.log('[Player/WebSocket] Executing: Refresh playlist');
                     this._showNotification('🔄 Refreshing content...');
                     if (window.PlayerAPI && window.PlayerAPI.loadPlaylist) {
                         await window.PlayerAPI.loadPlaylist();
@@ -207,7 +207,7 @@ window.PlayerWebSocket = {
 
                 case 'reset':
                     // Reset device (clear cache and re-register)
-                    console.log('[Player/WebSocket] Executing: Reset device');
+                    SharedLogger.log('[Player/WebSocket] Executing: Reset device');
                     this._showNotification('🔄 Resetting device...');
                     localStorage.clear();
                     setTimeout(() => window.location.reload(), 1000);
@@ -215,7 +215,7 @@ window.PlayerWebSocket = {
 
                 case 'clear_cache':
                     // Clear media cache
-                    console.log('[Player/WebSocket] Executing: Clear cache');
+                    SharedLogger.log('[Player/WebSocket] Executing: Clear cache');
                     this._showNotification('🗑️ Clearing cache...');
                     if (window.PlayerCache && window.PlayerCache.clearAll) {
                         await window.PlayerCache.clearAll();
@@ -225,18 +225,18 @@ window.PlayerWebSocket = {
                 case 'volume':
                     // Set volume
                     const { level = 50 } = params;
-                    console.log('[Player/WebSocket] Executing: Set volume to', level);
+                    SharedLogger.log('[Player/WebSocket] Executing: Set volume to', level);
                     if (window.PlayerPlayback && window.PlayerPlayback.setVolume) {
                         window.PlayerPlayback.setVolume(level);
                     }
                     break;
 
                 default:
-                    console.warn('[Player/WebSocket] Unknown command:', command);
+                    SharedLogger.warn('[Player/WebSocket] Unknown command:', command);
             }
 
         } catch (error) {
-            console.error('[Player/WebSocket] Failed to execute command:', error);
+            SharedLogger.error('[Player/WebSocket] Failed to execute command:', error);
         }
     },
 
@@ -247,11 +247,11 @@ window.PlayerWebSocket = {
      */
     _enableFallbackPolling: function() {
         if (this.pollingEnabled) {
-            console.warn('[Player/WebSocket] Polling already enabled');
+            SharedLogger.warn('[Player/WebSocket] Polling already enabled');
             return;
         }
 
-        console.log('[Player/WebSocket] 📡 Enabling fallback HTTP polling (60s interval)');
+        SharedLogger.log('[Player/WebSocket] 📡 Enabling fallback HTTP polling (60s interval)');
         this.pollingEnabled = true;
 
         // Poll every 60 seconds (less frequent than original 30s to reduce server load)
@@ -272,7 +272,7 @@ window.PlayerWebSocket = {
                 }
 
             } catch (error) {
-                console.error('[Player/WebSocket] Polling error:', error);
+                SharedLogger.error('[Player/WebSocket] Polling error:', error);
             }
         }, pollInterval);
 
@@ -287,7 +287,7 @@ window.PlayerWebSocket = {
     _disableFallbackPolling: function() {
         if (!this.pollingEnabled) return;
 
-        console.log('[Player/WebSocket] Disabling fallback HTTP polling');
+        SharedLogger.log('[Player/WebSocket] Disabling fallback HTTP polling');
         this.pollingEnabled = false;
 
         if (this.pollingInterval) {
@@ -359,7 +359,7 @@ window.PlayerWebSocket = {
             }, 3000);
         } else {
             // Fallback to console
-            console.log('[Player/WebSocket]', message);
+            SharedLogger.log('[Player/WebSocket]', message);
         }
     },
 
@@ -407,4 +407,4 @@ window.PlayerWebSocket = {
     }
 };
 
-console.log('[Player/WebSocket] Integration module loaded (v1.0.0)');
+SharedLogger.log('[Player/WebSocket] Integration module loaded (v1.0.0)');

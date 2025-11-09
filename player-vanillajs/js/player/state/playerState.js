@@ -31,8 +31,8 @@
  * ```javascript
  * // Subscribe to playlist events
  * eventBus.on('playlist:loaded', (data) => {
- *   console.log('Playlist loaded:', data.playlist.name);
- *   console.log('Total contents:', data.contentCount);
+ *   SharedLogger.log('Playlist loaded:', data.playlist.name);
+ *   SharedLogger.log('Total contents:', data.contentCount);
  * });
  *
  * // Load playlist from API
@@ -93,7 +93,7 @@
    * @namespace playerState
    * @global
    */
-  const playerState = {
+  const PlayerState = {
     /**
      * Get current playlist
      * @returns {Playlist|null}
@@ -117,7 +117,7 @@
       // Validate playlist
       const validation = _currentPlaylist.validate();
       if (!validation.valid) {
-        console.error('[PlayerState] Invalid playlist data:', validation.errors);
+        SharedLogger.error('[PlayerState] Invalid playlist data:', validation.errors);
       }
 
       // Reset index
@@ -132,7 +132,7 @@
         });
       }
 
-      console.log('[PlayerState] Playlist loaded:', _currentPlaylist.name);
+      SharedLogger.log('[PlayerState] Playlist loaded:', _currentPlaylist.name);
     },
 
     /**
@@ -179,7 +179,7 @@
         });
       }
 
-      console.log(`[PlayerState] Index changed: ${_currentIndex}/${maxIndex}`);
+      SharedLogger.log(`[PlayerState] Index changed: ${_currentIndex}/${maxIndex}`);
     },
 
     /**
@@ -238,7 +238,7 @@
         });
       }
 
-      console.log(`[PlayerState] Playing: ${playing}`);
+      SharedLogger.log(`[PlayerState] Playing: ${playing}`);
     },
 
     /**
@@ -269,7 +269,7 @@
         window.eventBus.emit('player:volume-changed', _volume);
       }
 
-      console.log(`[PlayerState] Volume: ${_volume}`);
+      SharedLogger.log(`[PlayerState] Volume: ${_volume}`);
     },
 
     /**
@@ -340,7 +340,7 @@
         window.eventBus.emit('playlist:cleared');
       }
 
-      console.log('[PlayerState] Playlist cleared');
+      SharedLogger.log('[PlayerState] Playlist cleared');
     },
 
     /**
@@ -361,8 +361,8 @@
   };
 
   // Export to window
-  window.playerState = playerState;
+  window.PlayerState = PlayerState;
 
-  console.log('[State/PlayerState] Player state manager loaded');
+  SharedLogger.log('[State/PlayerState Player state manager loaded');
 
 })();

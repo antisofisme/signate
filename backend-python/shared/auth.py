@@ -95,7 +95,7 @@ def get_password_hash(password: str) -> str:
 
 
 # =============================================================================
-# JWT TOKEN GENERATION
+# JWT TOKEN GENERATION - USER TOKENS
 # =============================================================================
 
 def create_access_token(
@@ -158,6 +158,99 @@ def create_refresh_token(
 
     encoded_jwt = jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
     return encoded_jwt
+
+
+# =============================================================================
+# JWT TOKEN GENERATION - DEVICE TOKENS
+# =============================================================================
+
+def create_device_token(
+    device_id: int,
+    organization_id: int,
+    expires_delta: Optional[timedelta] = None
+) -> str:
+    """
+    Create JWT token for device authentication
+
+    Device tokens are long-lived (365 days) and used by players to:
+    - Re-register after release without user interaction
+    - Authenticate heartbeat requests
+    - Prove device ownership during activation polling
+
+    Args:
+        device_id: Device ID
+        organization_id: Organization ID that device belongs to
+        expires_delta: Optional custom expiration (default 365 days)
+
+    Returns:
+        JWT device token string
+    """
+    to_encode = {
+        "sub": str(device_id),  # Subject (device ID)
+        "organization_id": organization_id,
+        "type": "device"
+    }
+
+    if expires_delta:
+        expire = datetime.utcnow() + expires_delta
+    else:
+        expire = datetime.utcnow() + timedelta(days=365)  # 1 year default for devices
+
+    to_encode.update({
+        "exp": expire,
+        "iat": datetime.utcnow()
+    })
+
+    encoded_jwt = jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
+    return encoded_jwt
+
+
+def verify_device_token(token: str) -> Dict[str, Any]:
+    """
+    Verify device token and return payload
+
+    Args:
+        token: JWT device token
+
+    Returns:
+        Token payload with device_id and organization_id
+
+    Raises:
+        AuthenticationError: If token is invalid, expired, or not a device token
+    """
+    payload = decode_token(token)
+
+    # Verify token type
+    if payload.get("type") != "device":
+        raise AuthenticationError(
+            message="Invalid token type - expected device token",
+            details={"expected": "device", "got": payload.get("type")}
+        )
+
+    return payload
+
+
+def extract_device_from_token(token: str) -> Dict[str, Any]:
+    """
+    Extract device information from valid device token
+
+    Args:
+        token: JWT device token
+
+    Returns:
+        Device information dictionary with:
+        - device_id: int
+        - organization_id: int
+
+    Raises:
+        AuthenticationError: If token is invalid
+    """
+    payload = verify_device_token(token)
+
+    return {
+        "device_id": int(payload["sub"]),
+        "organization_id": payload["organization_id"]
+    }
 
 
 # =============================================================================
@@ -656,16 +749,21 @@ __all__ = [
     "verify_password",
     "get_password_hash",
 
-    # Token generation
+    # Token generation - User
     "create_access_token",
     "create_refresh_token",
     "create_token_payload",
+
+    # Token generation - Device
+    "create_device_token",
 
     # Token validation
     "decode_token",
     "verify_access_token",
     "verify_refresh_token",
+    "verify_device_token",
     "extract_user_from_token",
+    "extract_device_from_token",
 
     # FastAPI dependencies - Authentication
     "get_current_user",

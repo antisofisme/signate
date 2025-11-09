@@ -3,7 +3,7 @@
  * Handles fullscreen toggle, button interactions, and display rotation updates
  *
  * Usage:
- *   window.FullscreenManager.init()
+ *   window.ShellFullscreenManager.init()
  */
 
 (function() {
@@ -13,7 +13,7 @@
      * Fullscreen management system
      * @type {Object}
      */
-    window.FullscreenManager = {
+    window.ShellFullscreenManager = {
         /**
          * Update fullscreen state in DOM and apply display settings
          * Called when entering or exiting fullscreen
@@ -24,52 +24,52 @@
             const playerContainer = document.getElementById('player-container');
 
             const isFullscreen = !!document.fullscreenElement;
-            console.log('[Shell] Fullscreen state changed:', isFullscreen);
+            SharedLogger.log('[Shell] Fullscreen state changed:', isFullscreen);
 
             if (isFullscreen) {
-                console.log('[Shell] Entering fullscreen mode');
+                SharedLogger.log('[Shell] Entering fullscreen mode');
                 playerContainer.classList.add('fullscreen');
                 document.body.classList.add('is-fullscreen');
 
                 // Wait for browser to finish fullscreen transition, then update
                 setTimeout(() => {
                     // Recalculate rotation with new viewport dimensions
-                    console.log('[Shell] Recalculating rotation for fullscreen viewport...');
+                    SharedLogger.log('[Shell] Recalculating rotation for fullscreen viewport...');
                     if (window.ShellDisplaySettings && window.ShellDisplaySettings.applyRotation) {
                         window.ShellDisplaySettings.applyRotation();
                     }
 
                     // Reload player to update viewport size (ONLY if device is activated)
                     if (window.ShellState && window.ShellState.isActivated) {
-                        console.log('[Shell] Reloading player for new viewport size...');
+                        SharedLogger.log('[Shell] Reloading player for new viewport size...');
                         if (window.ShellUI && window.ShellUI.loadPlayer) {
                             window.ShellUI.loadPlayer();
                         }
                     } else {
-                        console.log('[Shell] Device not activated yet, skip player reload');
+                        SharedLogger.log('[Shell] Device not activated yet, skip player reload');
                     }
                 }, 100); // Small delay for browser to complete fullscreen
             } else {
-                console.log('[Shell] Exiting fullscreen mode');
+                SharedLogger.log('[Shell] Exiting fullscreen mode');
                 playerContainer.classList.remove('fullscreen');
                 document.body.classList.remove('is-fullscreen');
 
                 // Wait for browser to finish fullscreen exit, then update
                 setTimeout(() => {
                     // Recalculate rotation with normal viewport dimensions
-                    console.log('[Shell] Recalculating rotation for normal viewport...');
+                    SharedLogger.log('[Shell] Recalculating rotation for normal viewport...');
                     if (window.ShellDisplaySettings && window.ShellDisplaySettings.applyRotation) {
                         window.ShellDisplaySettings.applyRotation();
                     }
 
                     // Reload player to restore normal viewport size (ONLY if device is activated)
                     if (window.ShellState && window.ShellState.isActivated) {
-                        console.log('[Shell] Reloading player for normal viewport size...');
+                        SharedLogger.log('[Shell] Reloading player for normal viewport size...');
                         if (window.ShellUI && window.ShellUI.loadPlayer) {
                             window.ShellUI.loadPlayer();
                         }
                     } else {
-                        console.log('[Shell] Device not activated yet, skip player reload');
+                        SharedLogger.log('[Shell] Device not activated yet, skip player reload');
                     }
                 }, 100); // Small delay for browser to complete fullscreen exit
             }
@@ -144,9 +144,9 @@
             const enterBtn = document.getElementById('enter-fullscreen-btn');
             if (enterBtn) {
                 enterBtn.addEventListener('click', () => {
-                    console.log('[Shell] Enter button clicked');
+                    SharedLogger.log('[Shell] Enter button clicked');
                     if (!document.fullscreenElement) {
-                        console.log('[Shell] Entering fullscreen via button...');
+                        SharedLogger.log('[Shell] Entering fullscreen via button...');
                         const elem = document.documentElement;
                         const requestFullscreen = elem.requestFullscreen ||
                                                  elem.webkitRequestFullscreen ||
@@ -155,18 +155,18 @@
 
                         if (requestFullscreen) {
                             requestFullscreen.call(elem).then(() => {
-                                console.log('[Shell] Fullscreen entered successfully');
+                                SharedLogger.log('[Shell] Fullscreen entered successfully');
                             }).catch(err => {
-                                console.error('[Shell] Fullscreen error:', err);
+                                SharedLogger.error('[Shell] Fullscreen error:', err);
                             });
                         }
                     } else {
-                        console.log('[Shell] Already in fullscreen');
+                        SharedLogger.log('[Shell] Already in fullscreen');
                     }
                 });
-                console.log('[Shell] Enter button listener attached');
+                SharedLogger.log('[Shell] Enter button listener attached');
             } else {
-                console.error('[Shell] Enter button not found!');
+                SharedLogger.error('[Shell] Enter button not found!');
             }
         },
 
@@ -179,17 +179,17 @@
             const exitBtn = document.getElementById('exit-fullscreen-btn');
             if (exitBtn) {
                 exitBtn.addEventListener('click', () => {
-                    console.log('[Shell] Exit button clicked');
+                    SharedLogger.log('[Shell] Exit button clicked');
                     if (document.fullscreenElement) {
-                        console.log('[Shell] Exiting fullscreen via button...');
+                        SharedLogger.log('[Shell] Exiting fullscreen via button...');
                         document.exitFullscreen();
                     } else {
-                        console.log('[Shell] Already not in fullscreen');
+                        SharedLogger.log('[Shell] Already not in fullscreen');
                     }
                 });
-                console.log('[Shell] Exit button listener attached');
+                SharedLogger.log('[Shell] Exit button listener attached');
             } else {
-                console.error('[Shell] Exit button not found!');
+                SharedLogger.error('[Shell] Exit button not found!');
             }
         },
 
@@ -198,7 +198,7 @@
          * Call once on page load
          */
         init: function() {
-            console.log('[Shell] Initializing Fullscreen Manager');
+            SharedLogger.log('[Shell] Initializing Fullscreen Manager');
 
             // Setup all listeners and handlers
             this.setupMouseHover();
@@ -209,7 +209,7 @@
             // Set initial state
             this.updateFullscreenState();
 
-            console.log('[Shell] Fullscreen Manager initialized');
+            SharedLogger.log('[Shell] Fullscreen Manager initialized');
         }
     };
 

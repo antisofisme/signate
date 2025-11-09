@@ -31,7 +31,7 @@
  *
  * // Subscribe to event
  * const unsubscribe = eventBus.on('playlist:loaded', (playlist) => {
- *   console.log('Playlist loaded:', playlist);
+ *   SharedLogger.log('Playlist loaded:', playlist);
  * });
  *
  * // Emit event
@@ -100,7 +100,7 @@ class EventBus {
    * @returns {Function} Unsubscribe function (for manual early cancellation)
    * @example
    * eventBus.once('device:activated', (device) => {
-   *   console.log('Device activated (will only log once):', device);
+   *   SharedLogger.log('Device activated (will only log once):', device);
    * });
    */
   once(event, callback) {
@@ -142,7 +142,7 @@ class EventBus {
       try {
         callback(data);
       } catch (error) {
-        console.error(`Error in event handler for ${event}:`, error);
+        SharedLogger.error(`Error in event handler for ${event}:`, error);
       }
     });
   }
@@ -176,7 +176,7 @@ const eventBusInstance = new EventBus();
 if (typeof window !== 'undefined') {
   window.eventBus = eventBusInstance;
   window.EventBus = EventBus;
-  console.log('[EventBus] Initialized and exposed to window');
+  SharedLogger.log('[EventBus] Initialized and exposed to window');
 }
 
 // For CommonJS environments (Node.js, testing)

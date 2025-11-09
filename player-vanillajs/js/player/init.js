@@ -11,9 +11,9 @@ window.PlayerInit = {
      * Initialize player
      */
     init: async function() {
-        console.log('='.repeat(60));
-        console.log('[Player/Init] Content Player Starting...');
-        console.log('='.repeat(60));
+        SharedLogger.log('='.repeat(60));
+        SharedLogger.log('[Player/Init] Content Player Starting...');
+        SharedLogger.log('='.repeat(60));
 
         try {
             // 1. Parse URL parameters (passed from Shell)
@@ -28,7 +28,7 @@ window.PlayerInit = {
 
             // 2. Validate deviceId
             if (!deviceId) {
-                console.error('[Player/Init] ❌ No deviceId provided in URL');
+                SharedLogger.error('[Player/Init] ❌ No deviceId provided in URL');
                 window.PlayerUI.showError('⚠️ Configuration Error\n\nNo device ID provided');
                 return;
             }
@@ -38,21 +38,21 @@ window.PlayerInit = {
             if (window.PlayerState) {
                 window.PlayerState.deviceId = deviceId;
                 window.PlayerState.API_BASE_URL = window.Config.API_BASE_URL;
-                console.log('[Player/Init] ✅ OLD PlayerState initialized (backward compatibility)');
+                SharedLogger.log('[Player/Init] ✅ OLD PlayerState initialized (backward compatibility)');
             }
 
             // 4. Setup volume (mute if disabled by admin)
             const initialVolume = volumeEnabled ? 1.0 : 0.0;
-            if (window.playerState) {
-                window.playerState.setVolume(initialVolume);
-                console.log('[Player/Init] Volume set:', volumeEnabled ? 'Enabled (1.0)' : 'Muted (0.0)');
+            if (window.PlayerState) {
+                window.PlayerState.setVolume(initialVolume);
+                SharedLogger.log('[Player/Init] Volume set:', volumeEnabled ? 'Enabled (1.0)' : 'Muted (0.0)');
             }
 
             // 5. Setup event listeners for reactive updates (Phase 3)
             this.setupEventListeners();
 
             // 6. Load playlist from API
-            console.log('[Player/Init] 🔄 Loading playlist for device:', deviceId);
+            SharedLogger.log('[Player/Init] 🔄 Loading playlist for device:', deviceId);
             await window.PlayerAPI.loadPlaylist();
 
             // 7. Setup periodic playlist check (check for updates every 60 seconds)
@@ -60,22 +60,22 @@ window.PlayerInit = {
                 if (window.PlayerAPI && window.PlayerAPI.checkPlaylistUpdate) {
                     window.PlayerAPI.checkPlaylistUpdate();
                 }
-            }, window.ENV?.PLAYLIST_CHECK_INTERVAL || 60000);
+            }, window.SharedENV?.PLAYLIST_CHECK_INTERVAL || 60000);
 
             // 8. Setup keyboard shortcuts (debug mode)
             this.setupKeyboardShortcuts();
 
-            console.log('[Player/Init] ✅ Player initialized successfully');
-            console.log('='.repeat(60));
+            SharedLogger.log('[Player/Init] ✅ Player initialized successfully');
+            SharedLogger.log('='.repeat(60));
 
         } catch (error) {
-            console.error('[Player/Init] ❌ Initialization failed:', error);
+            SharedLogger.error('[Player/Init] ❌ Initialization failed:', error);
             window.PlayerUI.showError(`⚠️ Initialization Error\n\n${error.message}\n\nReloading in 10 seconds...`);
 
             // Retry initialization after configured interval
             setTimeout(() => {
                 window.location.reload();
-            }, window.ENV?.RETRY_INTERVAL || 10000);
+            }, window.SharedENV?.RETRY_INTERVAL || 10000);
         }
     },
 
@@ -85,7 +85,7 @@ window.PlayerInit = {
      */
     setupEventListeners: function() {
         if (!window.eventBus) {
-            console.warn('[Player/Init] EventBus not available - skipping reactive listeners');
+            SharedLogger.warn('[Player/Init] EventBus not available - skipping reactive listeners');
             return;
         }
 
@@ -111,28 +111,28 @@ window.PlayerInit = {
 
         // Listen for playback state changes
         const unsubPlaying = window.eventBus.on('player:playing', (data) => {
-            console.log('[Player/Init] ▶️ Playing:', data.content ? data.content.name : 'unknown');
+            SharedLogger.log('[Player/Init] ▶️ Playing:', data.content ? data.content.name : 'unknown');
         });
         this.eventUnsubscribers.push(unsubPlaying);
 
         const unsubPaused = window.eventBus.on('player:paused', (data) => {
-            console.log('[Player/Init] ⏸️ Paused:', data.content ? data.content.name : 'unknown');
+            SharedLogger.log('[Player/Init] ⏸️ Paused:', data.content ? data.content.name : 'unknown');
         });
         this.eventUnsubscribers.push(unsubPaused);
 
         // Listen for content ended (auto advance)
         const unsubContentEnded = window.eventBus.on('player:content-ended', (data) => {
-            console.log('[Player/Init] ✅ Content ended, advancing to next...');
+            SharedLogger.log('[Player/Init] ✅ Content ended, advancing to next...');
         });
         this.eventUnsubscribers.push(unsubContentEnded);
 
         // Listen for download progress
         const unsubDownloadProgress = window.eventBus.on('player:download-progress', (data) => {
-            console.log('[Player/Init] 📥 Download progress:', `${data.progress}%`);
+            SharedLogger.log('[Player/Init] 📥 Download progress:', `${data.progress}%`);
         });
         this.eventUnsubscribers.push(unsubDownloadProgress);
 
-        console.log('[Player/Init] ✅ EventBus listeners registered:', this.eventUnsubscribers.length);
+        SharedLogger.log('[Player/Init] ✅ EventBus listeners registered:', this.eventUnsubscribers.length);
     },
 
     /**
@@ -140,7 +140,7 @@ window.PlayerInit = {
      * ✅ MEMORY LEAK FIX: Call all unsubscribe functions
      */
     cleanup: function() {
-        console.log('[Player/Init] 🧹 Cleaning up event listeners...');
+        SharedLogger.log('[Player/Init] 🧹 Cleaning up event listeners...');
 
         // Call all unsubscribe functions
         this.eventUnsubscribers.forEach(unsub => {
@@ -152,7 +152,7 @@ window.PlayerInit = {
         // Clear array
         this.eventUnsubscribers = [];
 
-        console.log('[Player/Init] ✅ Event listeners cleaned up');
+        SharedLogger.log('[Player/Init] ✅ Event listeners cleaned up');
     },
 
     /**
@@ -166,18 +166,18 @@ window.PlayerInit = {
                 return;
             }
 
-            const playlist = window.playerState ? window.playerState.getPlaylist() : null;
+            const playlist = window.PlayerState ? window.PlayerState.getPlaylist() : null;
 
             switch(e.key) {
                 case 'ArrowRight':
                 case 'n':
                     // Next content
-                    if (window.playerState) {
-                        console.log('[Player/Init] ⏭️ Keyboard: Next');
-                        window.playerState.playNext();
-                        const content = window.playerState.getCurrentContent();
+                    if (window.PlayerState) {
+                        SharedLogger.log('[Player/Init] ⏭️ Keyboard: Next');
+                        window.PlayerState.playNext();
+                        const content = window.PlayerState.getCurrentContent();
                         if (content && window.PlayerPlayback) {
-                            window.PlayerPlayback.playContent(window.playerState.getCurrentIndex());
+                            window.PlayerPlayback.playContent(window.PlayerState.getCurrentIndex());
                         }
                     }
                     e.preventDefault();
@@ -186,12 +186,12 @@ window.PlayerInit = {
                 case 'ArrowLeft':
                 case 'p':
                     // Previous content
-                    if (window.playerState) {
-                        console.log('[Player/Init] ⏮️ Keyboard: Previous');
-                        window.playerState.playPrevious();
-                        const content = window.playerState.getCurrentContent();
+                    if (window.PlayerState) {
+                        SharedLogger.log('[Player/Init] ⏮️ Keyboard: Previous');
+                        window.PlayerState.playPrevious();
+                        const content = window.PlayerState.getCurrentContent();
                         if (content && window.PlayerPlayback) {
-                            window.PlayerPlayback.playContent(window.playerState.getCurrentIndex());
+                            window.PlayerPlayback.playContent(window.PlayerState.getCurrentIndex());
                         }
                     }
                     e.preventDefault();
@@ -199,7 +199,7 @@ window.PlayerInit = {
 
                 case 'r':
                     // Reload playlist
-                    console.log('[Player/Init] 🔄 Keyboard: Reload playlist');
+                    SharedLogger.log('[Player/Init] 🔄 Keyboard: Reload playlist');
                     if (window.PlayerAPI) {
                         window.PlayerAPI.loadPlaylist();
                     }
@@ -208,7 +208,7 @@ window.PlayerInit = {
 
                 case 'i':
                     // Show info
-                    console.log('[Player/Init] 📊 Keyboard: Toggle debug info');
+                    SharedLogger.log('[Player/Init] 📊 Keyboard: Toggle debug info');
                     const debugInfo = document.getElementById('player-info');
                     if (debugInfo) {
                         debugInfo.style.display = debugInfo.style.display === 'none' ? 'block' : 'none';
@@ -218,32 +218,32 @@ window.PlayerInit = {
 
                 case 'd':
                     // Dump state
-                    console.log('[Player/Init] 🔍 Keyboard: Dump state');
-                    if (window.playerState) {
+                    SharedLogger.log('[Player/Init] 🔍 Keyboard: Dump state');
+                    if (window.PlayerState) {
                         console.log('Player State:', {
-                            playlist: window.playerState.getPlaylist(),
-                            currentIndex: window.playerState.getCurrentIndex(),
-                            currentContent: window.playerState.getCurrentContent(),
-                            isPlaying: window.playerState.isPlaying(),
-                            volume: window.playerState.getVolume(),
-                            downloadedIds: window.playerState.getDownloadedContentIds(),
-                            downloadProgress: window.playerState.getDownloadProgress()
+                            playlist: window.PlayerState.getPlaylist(),
+                            currentIndex: window.PlayerState.getCurrentIndex(),
+                            currentContent: window.PlayerState.getCurrentContent(),
+                            isPlaying: window.PlayerState.isPlaying(),
+                            volume: window.PlayerState.getVolume(),
+                            downloadedIds: window.PlayerState.getDownloadedContentIds(),
+                            downloadProgress: window.PlayerState.getDownloadProgress()
                         });
                     }
                     if (window.PlayerState) {
-                        console.log('OLD PlayerState:', window.PlayerState);
+                        SharedLogger.log('OLD PlayerState:', window.PlayerState);
                     }
                     e.preventDefault();
                     break;
             }
         });
 
-        console.log('[Player/Init] ⌨️ Keyboard shortcuts enabled (debug mode):');
-        console.log('  → / n : Next content');
-        console.log('  ← / p : Previous content');
-        console.log('  r     : Reload playlist');
-        console.log('  i     : Toggle debug info');
-        console.log('  d     : Dump state to console');
+        SharedLogger.log('[Player/Init] ⌨️ Keyboard shortcuts enabled (debug mode):');
+        SharedLogger.log('  → / n : Next content');
+        SharedLogger.log('  ← / p : Previous content');
+        SharedLogger.log('  r     : Reload playlist');
+        SharedLogger.log('  i     : Toggle debug info');
+        SharedLogger.log('  d     : Dump state to console');
     }
 };
 

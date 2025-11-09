@@ -1,7 +1,7 @@
 /**
  * API Client Wrapper for Viewer
  *
- * @namespace APIClient
+ * @namespace SharedAPIClient
  * @global
  * @description
  * Lightweight wrapper for standardized backend API responses with automatic response unwrapping.
@@ -34,31 +34,31 @@
  * @usage
  * ```javascript
  * // GET request
- * const device = await APIClient.get('/api/devices/123');
- * console.log(device.name); // Direct access to data
+ * const device = await SharedAPIClient.get('/api/devices/123');
+ * SharedLogger.log(device.name); // Direct access to data
  *
  * // POST request
- * const result = await APIClient.post('/api/devices', {
+ * const result = await SharedAPIClient.post('/api/devices', {
  *   code: '123456',
  *   name: 'Lobby Display'
  * });
  *
  * // PUT request
- * await APIClient.put('/api/devices/123', {
+ * await SharedAPIClient.put('/api/devices/123', {
  *   name: 'Updated Name'
  * });
  *
  * // DELETE request
- * await APIClient.delete('/api/devices/123');
+ * await SharedAPIClient.delete('/api/devices/123');
  *
  * // Error handling
  * try {
- *   const data = await APIClient.get('/api/playlist');
+ *   const data = await SharedAPIClient.get('/api/playlist');
  * } catch (error) {
  *   if (error.status === 404) {
- *     console.log('Playlist not found');
+ *     SharedLogger.log('Playlist not found');
  *   } else if (error.isNetworkError) {
- *     console.log('Network error:', error.message);
+ *     SharedLogger.log('Network error:', error.message);
  *   }
  * }
  * ```
@@ -97,7 +97,7 @@
  * @author Generated for Smart TV Digital Signage System
  * @version 2.0.0
  */
-window.APIClient = {
+window.SharedAPIClient = {
     /**
      * Execute fetch request with automatic response unwrapping
      *
@@ -282,7 +282,7 @@ window.APIClient = {
             }
         } catch (parseError) {
             // Unable to parse error body - use status text
-            console.warn('[APIClient] Failed to parse error response:', parseError);
+            SharedLogger.warn('[SharedAPIClient] Failed to parse error response:', parseError);
         }
 
         // Create enhanced error
@@ -356,7 +356,7 @@ window.APIClient = {
     _logRequest: function(requestId, url, options) {
         if (!this._isDebugMode()) return;
 
-        console.log(`[APIClient] → ${options.method || 'GET'} ${url}`, {
+        console.log(`[SharedAPIClient] → ${options.method || 'GET'} ${url}`, {
             requestId,
             headers: options.headers,
             bodyLength: options.body ? options.body.length : 0
@@ -378,7 +378,7 @@ window.APIClient = {
         // Check if response was unwrapped
         const wasUnwrapped = data && typeof data === 'object' && 'success' in data && 'data' in data;
 
-        console.log(`[APIClient] ← ${status} (${duration}ms)`, {
+        SharedLogger.log(`[SharedAPIClient] ← ${status} (${duration}ms)`, {
             requestId,
             unwrapped: wasUnwrapped,
             dataType: Array.isArray(data) ? 'array' : typeof data
@@ -393,7 +393,7 @@ window.APIClient = {
      * @private
      */
     _logError: function(requestId, error) {
-        console.error(`[APIClient] ✗ Error (${error.duration || 0}ms)`, {
+        SharedLogger.error(`[SharedAPIClient] ✗ Error (${error.duration || 0}ms)`, {
             requestId,
             message: error.message,
             status: error.status,
@@ -436,12 +436,12 @@ window.APIClient = {
 // Usage: enableAPIDebug() / disableAPIDebug()
 window.enableAPIDebug = function() {
     localStorage.setItem('API_DEBUG', 'true');
-    console.log('[APIClient] Debug mode enabled');
+    SharedLogger.log('[SharedAPIClient] Debug mode enabled');
 };
 
 window.disableAPIDebug = function() {
     localStorage.removeItem('API_DEBUG');
-    console.log('[APIClient] Debug mode disabled');
+    SharedLogger.log('[SharedAPIClient] Debug mode disabled');
 };
 
-console.log('[APIClient] Loaded (v2.0.0) - Standardized response format support enabled');
+SharedLogger.log('[SharedAPIClient] Loaded (v2.0.0) - Standardized response format support enabled');

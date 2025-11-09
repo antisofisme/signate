@@ -106,7 +106,7 @@ class VolumeCommand extends BaseCommand {
    */
   _executeBrowser(level) {
     this.log('Browser detected - storing volume preference');
-    localStorage.setItem('volume_preference', level);
+    SharedDeviceState.setPreference('volume_preference', level);
 
     // Try to control video element volume
     const videoElements = document.querySelectorAll('video');

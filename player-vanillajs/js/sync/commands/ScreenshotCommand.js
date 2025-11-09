@@ -150,7 +150,7 @@ class ScreenshotCommand extends BaseCommand {
    */
   async _uploadScreenshot(canvas, screenshotSize, quality) {
     try {
-      const apiBaseUrl = window.Config?.API_BASE_URL || window.ENV?.API_BASE_URL;
+      const apiBaseUrl = window.Config?.API_BASE_URL || window.SharedENV?.API_BASE_URL;
       if (!apiBaseUrl) {
         throw new Error('No API_BASE_URL configured');
       }

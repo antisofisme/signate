@@ -3,10 +3,10 @@
  * Provides non-intrusive notifications with automatic dismiss
  *
  * Usage:
- *   window.Toast.success('Title', 'Message')
- *   window.Toast.error('Title', 'Message')
- *   window.Toast.warning('Title', 'Message')
- *   window.Toast.info('Title', 'Message')
+ *   window.SharedToast.success('Title', 'Message')
+ *   window.SharedToast.error('Title', 'Message')
+ *   window.SharedToast.warning('Title', 'Message')
+ *   window.SharedToast.info('Title', 'Message')
  */
 
 (function() {
@@ -16,7 +16,7 @@
      * Toast notification system with support for success, error, warning, and info types
      * @type {Object}
      */
-    window.Toast = {
+    window.SharedToast = {
         /**
          * SVG icons for different toast types
          * @type {Object}
@@ -158,6 +158,6 @@
 
     // Export for ES6 modules if needed
     if (typeof module !== 'undefined' && module.exports) {
-        module.exports = window.Toast;
+        module.exports = window.SharedToast;
     }
 })();

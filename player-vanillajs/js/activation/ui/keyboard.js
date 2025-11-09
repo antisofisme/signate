@@ -9,7 +9,7 @@
  *   'Esc' - Exit fullscreen
  *
  * Usage:
- *   window.KeyboardShortcuts.init()
+ *   window.ShellKeyboardShortcuts.init()
  */
 
 (function() {
@@ -19,7 +19,7 @@
      * Keyboard shortcuts system
      * @type {Object}
      */
-    window.KeyboardShortcuts = {
+    window.ShellKeyboardShortcuts = {
         /**
          * Handle 's' key - Toggle shell debug info
          *
@@ -51,11 +51,11 @@
          * @private
          */
         handleFullscreenToggle: function() {
-            console.log('[Shell] F key pressed, current fullscreen state:', !!document.fullscreenElement);
+            SharedLogger.log('[Shell] F key pressed, current fullscreen state:', !!document.fullscreenElement);
 
             if (!document.fullscreenElement) {
                 // Enter fullscreen
-                console.log('[Shell] Attempting to enter fullscreen...');
+                SharedLogger.log('[Shell] Attempting to enter fullscreen...');
 
                 const elem = document.documentElement;
                 const requestFullscreen = elem.requestFullscreen ||
@@ -65,22 +65,22 @@
 
                 if (requestFullscreen) {
                     requestFullscreen.call(elem).then(() => {
-                        console.log('[Shell] Fullscreen entered successfully');
+                        SharedLogger.log('[Shell] Fullscreen entered successfully');
                     }).catch(err => {
-                        console.error('[Shell] Fullscreen error:', err);
-                        if (window.Toast) {
-                            window.Toast.error('Fullscreen Failed', err.message);
+                        SharedLogger.error('[Shell] Fullscreen error:', err);
+                        if (window.SharedToast) {
+                            window.SharedToast.error('Fullscreen Failed', err.message);
                         }
                     });
                 } else {
-                    console.error('[Shell] Fullscreen API not supported');
-                    if (window.Toast) {
-                        window.Toast.error('Fullscreen Not Supported', 'Your browser does not support fullscreen mode');
+                    SharedLogger.error('[Shell] Fullscreen API not supported');
+                    if (window.SharedToast) {
+                        window.SharedToast.error('Fullscreen Not Supported', 'Your browser does not support fullscreen mode');
                     }
                 }
             } else {
                 // Exit fullscreen
-                console.log('[Shell] Exiting fullscreen...');
+                SharedLogger.log('[Shell] Exiting fullscreen...');
                 document.exitFullscreen();
             }
         },
@@ -101,7 +101,7 @@
          * Call once on page load
          */
         init: function() {
-            console.log('[Shell] Initializing Keyboard Shortcuts');
+            SharedLogger.log('[Shell] Initializing Keyboard Shortcuts');
 
             document.addEventListener('keydown', (e) => {
                 // Press 's' to toggle shell debug info
@@ -125,7 +125,7 @@
                 }
             });
 
-            console.log('[Shell] Keyboard Shortcuts initialized');
+            SharedLogger.log('[Shell] Keyboard Shortcuts initialized');
         }
     };
 

@@ -94,11 +94,11 @@ window.ShellHeartbeat = {
     start: function() {
         const state = window.ShellState;
 
-        console.log('[Shell/Heartbeat] ⏰ Starting heartbeat (every 30 seconds)');
+        SharedLogger.log('[Shell/Heartbeat] ⏰ Starting heartbeat (every 30 seconds)');
 
         state.heartbeatInterval = setInterval(async () => {
             // ✅ Use deviceState (Phase 3)
-            const device = window.deviceState.getDevice();
+            const device = window.SharedDeviceState.getDevice();
             if (!device || !device.id) return;
 
             try {
@@ -114,7 +114,7 @@ window.ShellHeartbeat = {
                 }
 
                 // Use APIClient for standardized response handling
-                const data = await window.APIClient.post(
+                const data = await window.SharedAPIClient.post(
                     window.getFullURL(window.API_ENDPOINTS.DEVICES.HEARTBEAT(device.id)),
                     {
                         device_id: parseInt(device.id),
@@ -126,9 +126,9 @@ window.ShellHeartbeat = {
                 );
 
                 // ✅ Update last_seen using deviceState (Phase 3)
-                window.deviceState.updateLastSeen();
+                window.SharedDeviceState.updateLastSeen();
 
-                console.log('[Shell/Heartbeat] ✅ Heartbeat sent');
+                SharedLogger.log('[Shell/Heartbeat] ✅ Heartbeat sent');
 
                 // Show WiFi online icon
                 if (window.ShellWiFiStatus) {
@@ -147,7 +147,7 @@ window.ShellHeartbeat = {
             } catch (error) {
                 // Handle 403 - Device released (soft delete)
                 if (error.status === 403 && error.message?.includes('released')) {
-                    console.warn('[Shell/Heartbeat] ⚠️ Device released (403) - Re-registering with saved organization');
+                    SharedLogger.warn('[Shell/Heartbeat] ⚠️ Device released (403) - Re-registering with saved organization');
 
                     // Stop heartbeat
                     this.stop();
@@ -159,7 +159,7 @@ window.ShellHeartbeat = {
                     localStorage.removeItem('device_code');
                     // Keep: organization_id (for auto-assign to same org)
 
-                    console.log('[Shell/Heartbeat] 🔄 Triggering re-registration with saved organization_id...');
+                    SharedLogger.log('[Shell/Heartbeat] 🔄 Triggering re-registration with saved organization_id...');
 
                     // Delete IndexedDB cache
                     const dbName = 'signage_media_cache';
@@ -171,7 +171,7 @@ window.ShellHeartbeat = {
                             deleteRequest.onblocked = () => resolve();
                         });
                     } catch (cacheError) {
-                        console.error('[Shell/Heartbeat] Error deleting cache:', cacheError);
+                        SharedLogger.error('[Shell/Heartbeat] Error deleting cache:', cacheError);
                     }
 
                     // Reload to trigger registration with saved organization_id
@@ -181,15 +181,15 @@ window.ShellHeartbeat = {
 
                 // Handle 404 - Device deleted from backend
                 if (error.status === 404) {
-                    console.warn('[Shell/Heartbeat] ⚠️ Device not found (404) - Device was deleted from backend');
-                    console.log('[Shell/Heartbeat] 🔄 Auto-resetting viewer to show new activation code...');
+                    SharedLogger.warn('[Shell/Heartbeat] ⚠️ Device not found (404) - Device was deleted from backend');
+                    SharedLogger.log('[Shell/Heartbeat] 🔄 Auto-resetting viewer to show new activation code...');
 
                     // Clear localStorage (preserve organization_id for re-registration)
                     const orgId = localStorage.getItem('organization_id');
                     localStorage.clear();
                     if (orgId) {
                         localStorage.setItem('organization_id', orgId);
-                        console.log('[Shell/Heartbeat] 🏢 Preserved organization_id for re-registration');
+                        SharedLogger.log('[Shell/Heartbeat] 🏢 Preserved organization_id for re-registration');
                     }
 
                     // Delete IndexedDB cache
@@ -202,7 +202,7 @@ window.ShellHeartbeat = {
                             deleteRequest.onblocked = () => resolve(); // Continue anyway
                         });
                     } catch (cacheError) {
-                        console.error('[Shell/Heartbeat] Error deleting cache:', cacheError);
+                        SharedLogger.error('[Shell/Heartbeat] Error deleting cache:', cacheError);
                     }
 
                     // Reload to show activation screen
@@ -212,7 +212,7 @@ window.ShellHeartbeat = {
 
                 // Network error (server down/unreachable)
                 // DON'T clear localStorage or re-register - just show WiFi offline
-                console.error('[Shell/Heartbeat] ❌ Network error (server unreachable):', error.message);
+                SharedLogger.error('[Shell/Heartbeat] ❌ Network error (server unreachable):', error.message);
 
                 // Show WiFi offline icon
                 if (window.ShellWiFiStatus) {
@@ -220,7 +220,7 @@ window.ShellHeartbeat = {
                 }
 
                 // Continue retrying in next heartbeat cycle (don't stop heartbeat)
-                console.log('[Shell/Heartbeat] ⏳ Will retry in next heartbeat cycle...');
+                SharedLogger.log('[Shell/Heartbeat] ⏳ Will retry in next heartbeat cycle...');
             }
         }, state.HEARTBEAT_INTERVAL);
     },
@@ -234,7 +234,7 @@ window.ShellHeartbeat = {
         if (state.heartbeatInterval) {
             clearInterval(state.heartbeatInterval);
             state.heartbeatInterval = null;
-            console.log('[Shell/Heartbeat] ⏹️ Heartbeat stopped');
+            SharedLogger.log('[Shell/Heartbeat] ⏹️ Heartbeat stopped');
         }
     }
 };

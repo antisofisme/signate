@@ -34,7 +34,7 @@
  *
  * // Check if downloaded
  * if (segment.isDownloaded()) {
- *   console.log('Segment ready for offline playback');
+ *   SharedLogger.log('Segment ready for offline playback');
  * }
  * ```
  *
@@ -255,6 +255,6 @@
   // Export to window (Vanilla JS pattern)
   window.Segment = Segment;
 
-  console.log('[Models/Segment] Segment model loaded');
+  SharedLogger.log('[Models/Segment] Segment model loaded');
 
 })();

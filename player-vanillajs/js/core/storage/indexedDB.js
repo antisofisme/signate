@@ -24,13 +24,13 @@ class IndexedDBManager {
       
       request.onsuccess = () => {
         this.db = request.result;
-        console.log('IndexedDB opened successfully');
+        SharedLogger.log('IndexedDB opened successfully');
         resolve(this.db);
       };
 
       request.onupgradeneeded = (event) => {
         const db = event.target.result;
-        console.log('Upgrading IndexedDB schema...');
+        SharedLogger.log('Upgrading IndexedDB schema...');
         this.createStores(db);
       };
     });
@@ -44,7 +44,7 @@ class IndexedDBManager {
     Object.entries(SCHEMA).forEach(([storeName, config]) => {
       // Skip if store already exists
       if (db.objectStoreNames.contains(storeName)) {
-        console.log(`Store ${storeName} already exists`);
+        SharedLogger.log(`Store ${storeName} already exists`);
         return;
       }
 
@@ -60,11 +60,11 @@ class IndexedDBManager {
           store.createIndex(index.name, index.keyPath, {
             unique: index.unique || false,
           });
-          console.log(`Created index ${index.name} on ${storeName}`);
+          SharedLogger.log(`Created index ${index.name} on ${storeName}`);
         });
       }
 
-      console.log(`Created store: ${storeName}`);
+      SharedLogger.log(`Created store: ${storeName}`);
     });
   }
 
@@ -259,12 +259,12 @@ class IndexedDBManager {
       // Transaction completion
       tx.oncomplete = () => {
         const duration = Math.round(performance.now() - startTime);
-        console.log(`[IndexedDB] Batch put ${insertCount} records to ${storeName} (${duration}ms)`);
+        SharedLogger.log(`[IndexedDB] Batch put ${insertCount} records to ${storeName} (${duration}ms)`);
         resolve(insertCount);
       };
 
       tx.onerror = () => {
-        console.error('[IndexedDB] Batch put failed:', tx.error);
+        SharedLogger.error('[IndexedDB] Batch put failed:', tx.error);
         reject(tx.error);
       };
     });
@@ -298,12 +298,12 @@ class IndexedDBManager {
       // Transaction completion
       tx.oncomplete = () => {
         const duration = Math.round(performance.now() - startTime);
-        console.log(`[IndexedDB] Batch delete ${deleteCount} records from ${storeName} (${duration}ms)`);
+        SharedLogger.log(`[IndexedDB] Batch delete ${deleteCount} records from ${storeName} (${duration}ms)`);
         resolve(deleteCount);
       };
 
       tx.onerror = () => {
-        console.error('[IndexedDB] Batch delete failed:', tx.error);
+        SharedLogger.error('[IndexedDB] Batch delete failed:', tx.error);
         reject(tx.error);
       };
     });
@@ -334,7 +334,7 @@ class IndexedDBManager {
     if (this.db) {
       this.db.close();
       this.db = null;
-      console.log('IndexedDB closed');
+      SharedLogger.log('IndexedDB closed');
     }
   }
 
@@ -347,7 +347,7 @@ class IndexedDBManager {
     return new Promise((resolve, reject) => {
       const request = indexedDB.deleteDatabase(DB_NAME);
       request.onsuccess = () => {
-        console.log('Database deleted');
+        SharedLogger.log('Database deleted');
         resolve();
       };
       request.onerror = () => reject(request.error);

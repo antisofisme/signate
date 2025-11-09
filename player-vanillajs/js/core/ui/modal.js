@@ -3,7 +3,7 @@
  * Provides password modal for confirming sensitive actions
  *
  * Usage:
- *   window.PasswordModal.show('Title', 'Message')
+ *   window.SharedModal.show('Title', 'Message')
  */
 
 (function() {
@@ -13,7 +13,7 @@
      * Password modal for confirming sensitive actions
      * @type {Object}
      */
-    window.PasswordModal = {
+    window.SharedModal = {
         /**
          * Show password input modal and return a Promise
          *
@@ -89,7 +89,7 @@
     // Export for ES6 modules if needed
     if (typeof module !== 'undefined' && module.exports) {
         module.exports = {
-            PasswordModal: window.PasswordModal
+            SharedModal: window.SharedModal
         };
     }
 })();

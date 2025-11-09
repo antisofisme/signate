@@ -9,9 +9,17 @@
     <link rel="stylesheet" href="styles/shell.css?v=20251103-refactored">
 </head>
 <body>
-    <!-- WiFi Status Icon (Top Right Corner) -->
-    <div id="wifi-icon" class="online">
-        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h.01"/><path d="M8.5 16.429a5 5 0 0 1 7 0"/><path d="M5 12.859a10 10 0 0 1 14 0"/><path d="M2 8.82a15 15 0 0 1 20 0"/></svg>
+    <!-- Connection Status Icons (Top Right Corner) -->
+    <div id="connection-status-container">
+        <!-- Internet Status (WiFi) -->
+        <div id="internet-icon" class="status-icon online" title="Internet: Online">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h.01"/><path d="M8.5 16.429a5 5 0 0 1 7 0"/><path d="M5 12.859a10 10 0 0 1 14 0"/><path d="M2 8.82a15 15 0 0 1 20 0"/></svg>
+        </div>
+
+        <!-- Server Status (Database) -->
+        <div id="server-icon" class="status-icon connected" title="Server: Connected">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="8" x="2" y="2" rx="2" ry="2"/><rect width="20" height="8" x="2" y="14" rx="2" ry="2"/><line x1="6" x2="6.01" y1="6" y2="6"/><line x1="6" x2="6.01" y1="18" y2="18"/></svg>
+        </div>
     </div>
 
     <!-- Activation Screen (pending approval) -->
@@ -122,7 +130,7 @@
     <!-- Shell Modules (STABLE CORE) - Load in correct order -->
     <script src="js/core/config/config.js?v=20251025-27"></script>
     <script src="js/core/utils/logger.js?v=20251025-27"></script>
-    <script src="js/activation/services/wifi-status.js?v=20251026-lucide-svg"></script>
+    <script src="js/activation/services/connection-status.js?v=20251108-dual-icons"></script>
     <script src="js/activation/services/network-diagnostics.js?v=20251025-27"></script>
     <script src="js/activation/services/registration.js?v=20251030-org-pin"></script>
     <script src="js/sync/services/heartbeat.js?v=20251027-api-client"></script>
@@ -143,18 +151,18 @@
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             // Initialize fullscreen manager
-            if (window.FullscreenManager) {
-                window.FullscreenManager.init();
+            if (window.ShellFullscreenManager) {
+                window.ShellFullscreenManager.init();
             }
 
             // Initialize keyboard shortcuts
-            if (window.KeyboardShortcuts) {
-                window.KeyboardShortcuts.init();
+            if (window.ShellKeyboardShortcuts) {
+                window.ShellKeyboardShortcuts.init();
             }
 
             // Initialize hard reset handler
-            if (window.HardResetHandler) {
-                window.HardResetHandler.init();
+            if (window.ShellHardResetHandler) {
+                window.ShellHardResetHandler.init();
             }
 
             console.log('[Shell] UI modules initialized');

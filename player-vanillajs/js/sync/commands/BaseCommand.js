@@ -141,9 +141,9 @@ class BaseCommand {
   log(message, data) {
     const prefix = `[Command:${this.name}]`;
     if (data) {
-      console.log(prefix, message, data);
+      SharedLogger.log(prefix, message, data);
     } else {
-      console.log(prefix, message);
+      SharedLogger.log(prefix, message);
     }
   }
 
@@ -156,9 +156,9 @@ class BaseCommand {
   logError(message, error) {
     const prefix = `[Command:${this.name}]`;
     if (error) {
-      console.error(prefix, message, error);
+      SharedLogger.error(prefix, message, error);
     } else {
-      console.error(prefix, message);
+      SharedLogger.error(prefix, message);
     }
   }
 }

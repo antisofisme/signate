@@ -1,0 +1,45 @@
+{
+  "compilerOptions": {
+    // Target ES2015 for WebOS TV compatibility
+    "target": "ES2015",
+    "lib": ["ES2015", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+
+    // Strict type checking
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true,
+    "noImplicitReturns": true,
+
+    // Module resolution
+    "resolveJsonModule": true,
+    "allowSyntheticDefaultImports": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+
+    // Output
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
+    "removeComments": false,
+
+    // Path aliases for clean imports
+    "baseUrl": ".",
+    "paths": {
+      "@shared/*": ["src/shared/*"],
+      "@shell": ["src/shell/index.ts"],
+      "@shell/*": ["src/shell/*"],
+      "@player/*": ["src/player/*"]
+    },
+
+    // JSX support (if needed later)
+    "jsx": "preserve",
+
+    // Type checking
+    "forceConsistentCasingInFileNames": true
+  },
+  "include": ["src/**/*"],
+  "exclude": ["node_modules", "dist"]
+}

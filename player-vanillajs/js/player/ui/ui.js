@@ -34,7 +34,7 @@ window.PlayerUI = {
      * Show waiting state (yellow spinner)
      */
     showWaiting: function(message) {
-        console.log('[Player] Waiting:', message);
+        SharedLogger.log('[Player] Waiting:', message);
 
         this.hideError();
         const loading = document.getElementById('loading');
@@ -60,7 +60,7 @@ window.PlayerUI = {
      * Show error message
      */
     showError: function(message) {
-        console.error('[Player] Error:', message);
+        SharedLogger.error('[Player] Error:', message);
 
         this.hideLoading();
         const error = document.getElementById('error');
@@ -93,7 +93,7 @@ window.PlayerUI = {
         }
 
         // ✅ STATE MIGRATION: Get playlist from playerState
-        const playlistObj = window.playerState ? window.playerState.getPlaylist() : null;
+        const playlistObj = window.PlayerState ? window.PlayerState.getPlaylist() : null;
         const playlist = playlistObj ? (playlistObj.contents || playlistObj) : window.PlayerState?.playlist;
 
         // ✅ NULL CHECK: Update debug elements only if they exist
@@ -130,10 +130,10 @@ window.PlayerUI = {
             if (e.key === 'n' || e.key === 'N') {
                 // ✅ NULL CHECK: Ensure PlayerPlayback exists
                 if (window.PlayerPlayback && window.PlayerPlayback.playContent) {
-                    console.log('[Player] Manual skip to next');
+                    SharedLogger.log('[Player] Manual skip to next');
 
                     // ✅ STATE MIGRATION: Get current index from playerState
-                    const currentIndex = window.playerState ? window.playerState.getCurrentIndex() :
+                    const currentIndex = window.PlayerState ? window.PlayerState.getCurrentIndex() :
                                         (window.PlayerState?.currentIndex || 0);
                     window.PlayerPlayback.playContent(currentIndex + 1);
                 }
@@ -143,7 +143,7 @@ window.PlayerUI = {
             if (e.key === 'r' || e.key === 'R') {
                 // ✅ NULL CHECK: Ensure PlayerAPI exists
                 if (window.PlayerAPI && window.PlayerAPI.loadPlaylist) {
-                    console.log('[Player] Manual reload playlist');
+                    SharedLogger.log('[Player] Manual reload playlist');
                     window.PlayerAPI.loadPlaylist();
                 }
             }

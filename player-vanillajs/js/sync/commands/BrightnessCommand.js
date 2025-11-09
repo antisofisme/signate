@@ -114,7 +114,7 @@ class BrightnessCommand extends BaseCommand {
     document.body.style.filter = `brightness(${brightness})`;
 
     // Store preference
-    localStorage.setItem('brightness_preference', level);
+    SharedDeviceState.setPreference('brightness_preference', level);
 
     return {
       brightness: level,

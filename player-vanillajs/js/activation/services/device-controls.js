@@ -32,9 +32,9 @@ window.ShellDeviceControls = {
         this.isWebOS = ['webOS'].includes(this.platform);
         this.isBrowser = ['Chrome', 'Firefox', 'Safari', 'Edge', 'Browser'].includes(this.platform);
 
-        console.log('[DeviceControls] Platform detected:', this.platform);
-        console.log('[DeviceControls] WebOS:', this.isWebOS);
-        console.log('[DeviceControls] Browser:', this.isBrowser);
+        SharedLogger.log('[DeviceControls] Platform detected:', this.platform);
+        SharedLogger.log('[DeviceControls] WebOS:', this.isWebOS);
+        SharedLogger.log('[DeviceControls] Browser:', this.isBrowser);
     },
 
     /**
@@ -82,7 +82,7 @@ window.ShellDeviceControls = {
             }
 
             // Browser fallback
-            localStorage.setItem('volume_preference', level);
+            SharedDeviceState.setPreference('volume_preference', level);
 
             // Control video elements
             const videos = document.querySelectorAll('video');
@@ -112,7 +112,7 @@ window.ShellDeviceControls = {
             }
 
             // Browser fallback
-            const saved = localStorage.getItem('volume_preference');
+            const saved = SharedDeviceState.getPreference('volume_preference');
             if (saved) return parseInt(saved);
 
             const video = document.querySelector('video');
@@ -182,7 +182,7 @@ window.ShellDeviceControls = {
             // Browser fallback: CSS filter
             const brightness = level / 100;
             document.body.style.filter = `brightness(${brightness})`;
-            localStorage.setItem('brightness_preference', level);
+            SharedDeviceState.setPreference('brightness_preference', level);
 
             return { level, success: true, api: 'css_filter' };
         },
@@ -206,7 +206,7 @@ window.ShellDeviceControls = {
             }
 
             // Browser fallback
-            const saved = localStorage.getItem('brightness_preference');
+            const saved = SharedDeviceState.getPreference('brightness_preference');
             return saved ? parseInt(saved) : 100;
         }
     },
@@ -222,7 +222,7 @@ window.ShellDeviceControls = {
          * @returns {Promise<Object>} - Result
          */
         reboot: async function(delay = 1) {
-            console.log(`[DeviceControls] Reboot requested (delay: ${delay}s)`);
+            SharedLogger.log(`[DeviceControls] Reboot requested (delay: ${delay}s)`);
 
             // WebOS TV
             if (window.ShellDeviceControls.isWebOS && window.webOS && window.webOS.service) {
@@ -249,7 +249,7 @@ window.ShellDeviceControls = {
          * @returns {Promise<Object>} - Result
          */
         powerOff: async function() {
-            console.log('[DeviceControls] Power off requested');
+            SharedLogger.log('[DeviceControls] Power off requested');
 
             // WebOS TV only
             if (window.ShellDeviceControls.isWebOS && window.webOS && window.webOS.service) {
@@ -377,7 +377,7 @@ window.ShellDeviceControls = {
          * @param {string} url - URL to ping
          * @returns {Promise<number>} - Latency in ms
          */
-        ping: async function(url = window.Config?.API_BASE_URL || window.ENV?.API_BASE_URL || 'http://localhost:8001') {
+        ping: async function(url = window.Config?.API_BASE_URL || window.SharedENV?.API_BASE_URL || 'http://localhost:8001') {
             const startTime = performance.now();
 
             try {
@@ -449,4 +449,4 @@ window.ShellDeviceControls = {
 // Auto-initialize
 window.ShellDeviceControls.init();
 
-console.log('[DeviceControls] Loaded - Platform:', window.ShellDeviceControls.platform);
+SharedLogger.log('[DeviceControls] Loaded - Platform:', window.ShellDeviceControls.platform);

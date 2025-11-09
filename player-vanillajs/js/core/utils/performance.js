@@ -23,7 +23,7 @@
  *
  * // Get performance stats
  * const stats = PerformanceMonitor.getStats();
- * console.log('Page load time:', stats.pageLoad.total);
+ * SharedLogger.log('Page load time:', stats.pageLoad.total);
  *
  * // Monitor specific operation
  * const timer = PerformanceMonitor.startTimer('cache-sync');
@@ -86,7 +86,7 @@
 
           lcpObserver.observe({ entryTypes: ['largest-contentful-paint'] });
         } catch (error) {
-          console.warn('[Performance] LCP monitoring not supported:', error);
+          SharedLogger.warn('[Performance] LCP monitoring not supported:', error);
         }
       }
     }
@@ -96,7 +96,7 @@
      */
     recordPageLoadMetrics() {
       if (!performance || !performance.timing) {
-        console.warn('[Performance] Navigation Timing API not available');
+        SharedLogger.warn('[Performance] Navigation Timing API not available');
         return;
       }
 
@@ -126,7 +126,7 @@
         lcp: this.metrics.pageLoad.lcp || null
       };
 
-      console.log('[Performance] Page load metrics recorded:', this.metrics.pageLoad);
+      SharedLogger.log('[Performance] Page load metrics recorded:', this.metrics.pageLoad);
     }
 
     /**
@@ -170,7 +170,7 @@
      */
     endMark(name, label) {
       if (!this.customMarks[name]) {
-        console.warn(`[Performance] Mark "${name}" not found`);
+        SharedLogger.warn(`[Performance] Mark "${name}" not found`);
         return 0;
       }
 
@@ -188,7 +188,7 @@
         timestamp: new Date().toISOString()
       });
 
-      console.log(`[Performance] ${label || name}: ${duration}ms`);
+      SharedLogger.log(`[Performance] ${label || name}: ${duration}ms`);
 
       return duration;
     }
@@ -202,7 +202,7 @@
      */
     measure(startMark, endMark, measureName) {
       if (!this.customMarks[startMark] || !this.customMarks[endMark]) {
-        console.warn('[Performance] Marks not found for measurement');
+        SharedLogger.warn('[Performance] Marks not found for measurement');
         return 0;
       }
 
@@ -330,7 +330,7 @@
         customTimings: []
       };
 
-      console.log('[Performance] Metrics cleared');
+      SharedLogger.log('[Performance] Metrics cleared');
     }
 
     /**
@@ -354,6 +354,6 @@
   // Expose to window (Vanilla JS pattern)
   window.PerformanceMonitor = performanceMonitor;
 
-  console.log('[Performance] Performance monitor initialized');
+  SharedLogger.log('[Performance] Performance monitor initialized');
 
 })();

@@ -8,7 +8,7 @@ window.ShellUI = {
      * Update UI based on status
      */
     updateUI: function(status, code = null) {
-        console.log('[Shell/UI] updateUI called - status:', status, 'code:', code);
+        SharedLogger.log('[Shell/UI] updateUI called - status:', status, 'code:', code);
 
         const statusElement = document.getElementById('status-message');
         const codeElement = document.getElementById('activation-code');
@@ -18,7 +18,7 @@ window.ShellUI = {
 
         // ✅ NULL CHECK: Defensive programming to prevent crashes
         if (!statusElement) {
-            console.error('[Shell/UI] Status element not found');
+            SharedLogger.error('[Shell/UI] Status element not found');
             return;
         }
 
@@ -33,22 +33,22 @@ window.ShellUI = {
             // Update instruction based on organization_id
             if (instructionElement) {
                 const organizationId = localStorage.getItem('organization_id');
-                console.log('[Shell/UI] Updating instruction text - organization_id:', organizationId, 'type:', typeof organizationId);
+                SharedLogger.log('[Shell/UI] Updating instruction text - organization_id:', organizationId, 'type:', typeof organizationId);
 
                 // Check if organization_id exists AND is not string "null"
                 if (organizationId && organizationId !== 'null' && organizationId !== 'undefined') {
                     // Re-registration (device sudah punya organization)
                     const newText = 'Admin will approve this device in the Web Admin panel';
                     instructionElement.textContent = newText;
-                    console.log('[Shell/UI] Set instruction (re-registration):', newText);
+                    SharedLogger.log('[Shell/UI] Set instruction (re-registration):', newText);
                 } else {
                     // First-time registration (device belum punya organization)
                     const newText = 'Daftarkan kode ini di CMS untuk menambahkan device ke organisasi Anda';
                     instructionElement.textContent = newText;
-                    console.log('[Shell/UI] Set instruction (first-time):', newText);
+                    SharedLogger.log('[Shell/UI] Set instruction (first-time):', newText);
                 }
             } else {
-                console.error('[Shell/UI] activation-instruction element not found!');
+                SharedLogger.error('[Shell/UI] activation-instruction element not found!');
             }
 
             // Ensure activation screen is visible and player is hidden
@@ -75,7 +75,7 @@ window.ShellUI = {
      * Show activation success message
      */
     showActivationSuccess: function(deviceName) {
-        console.log(`[Shell/UI] 🎉 Activation successful! Device: ${deviceName}`);
+        SharedLogger.log(`[Shell/UI] 🎉 Activation successful! Device: ${deviceName}`);
         const statusElement = document.getElementById('status-message');
         if (statusElement) {
             statusElement.textContent = `✅ Activated as: ${deviceName}`;
@@ -87,7 +87,7 @@ window.ShellUI = {
      */
     loadPlayer: function() {
         // ✅ STATE MIGRATION: Use NEW deviceState instead of OLD ShellState
-        const device = window.deviceState ? window.deviceState.getDevice() : null;
+        const device = window.SharedDeviceState ? window.SharedDeviceState.getDevice() : null;
         const deviceId = device ? device.id : window.ShellState?.deviceId; // Fallback for backward compatibility
 
         const timestamp = Date.now();
@@ -99,11 +99,11 @@ window.ShellUI = {
             const volumeParam = playerParams.volume_enabled;
 
             iframe.src = `player.html?t=${timestamp}&deviceId=${deviceId}&volume=${volumeParam}`;
-            console.log('[Shell] Loading player iframe with deviceId:', deviceId, 'volume:', volumeParam);
+            SharedLogger.log('[Shell] Loading player iframe with deviceId:', deviceId, 'volume:', volumeParam);
 
             // Listen for player errors
             iframe.onerror = () => {
-                console.error('[Shell] Player iframe failed to load');
+                SharedLogger.error('[Shell] Player iframe failed to load');
 
                 // ✅ NULL CHECK: Ensure error element exists before updating
                 const errorElement = document.getElementById('error-message');
@@ -112,12 +112,12 @@ window.ShellUI = {
                 }
 
                 // Show toast notification
-                if (window.Toast) {
-                    window.Toast.error('Player Error', 'Player failed to load. Retrying in 5 seconds...', 4000);
+                if (window.SharedToast) {
+                    window.SharedToast.error('Player Error', 'Player failed to load. Retrying in 5 seconds...', 4000);
                 }
 
                 // Retry after configured interval
-                setTimeout(() => this.loadPlayer(), window.ENV?.PLAYER_RETRY_INTERVAL || 5000);
+                setTimeout(() => this.loadPlayer(), window.SharedENV?.PLAYER_RETRY_INTERVAL || 5000);
             };
 
             // Hide activation screen, show player
@@ -130,7 +130,7 @@ window.ShellUI = {
      * Reload player (force refresh without clearing shell)
      */
     reloadPlayer: function() {
-        console.log('[Shell] Reloading player...');
+        SharedLogger.log('[Shell] Reloading player...');
         this.loadPlayer();
     }
 };

@@ -1,0 +1,40 @@
+{
+  "name": "player-vite",
+  "version": "1.0.0",
+  "description": "Smart TV Digital Signage Player - TypeScript + Vite",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "dev:watch": "node dev-watch.js",
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "type-check": "tsc --noEmit",
+    "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0"
+  },
+  "dependencies": {
+    "clsx": "^2.1.1",
+    "hls.js": "^1.5.8",
+    "lucide-react": "^0.553.0",
+    "tailwind-merge": "^3.3.1"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.6",
+    "@typescript-eslint/eslint-plugin": "^6.16.0",
+    "@typescript-eslint/parser": "^6.16.0",
+    "autoprefixer": "^10.4.21",
+    "chokidar": "^4.0.3",
+    "eslint": "^8.56.0",
+    "nodemon": "^3.1.10",
+    "postcss": "^8.5.6",
+    "tailwindcss": "^4.1.17",
+    "terser": "^5.44.1",
+    "typescript": "^5.3.3",
+    "vite": "^5.0.10"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=9.0.0"
+  },
+  "author": "Khoirul",
+  "license": "MIT"
+}

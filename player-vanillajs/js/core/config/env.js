@@ -10,7 +10,7 @@
  * The generated env.js file will be loaded by the viewer application.
  */
 
-window.ENV = {
+window.SharedENV = {
   // API Configuration
   API_BASE_URL: 'http://192.168.5.12:8001',
   WEBSOCKET_URL: 'ws://192.168.5.12:8001',
@@ -43,7 +43,7 @@ window.ENV = {
 };
 
 // Freeze the config to prevent modifications
-Object.freeze(window.ENV);
+Object.freeze(window.SharedENV);
 
-console.log('[Config] Environment loaded:', window.ENV.ENVIRONMENT);
-console.log('[Config] API Base URL:', window.ENV.API_BASE_URL);
+SharedLogger.log('[Config] Environment loaded:', window.SharedENV.ENVIRONMENT);
+SharedLogger.log('[Config] API Base URL:', window.SharedENV.API_BASE_URL);

@@ -14,7 +14,7 @@ window.PlayerAPI = {
         }
 
         const state = window.PlayerState;
-        const apiBaseUrl = window.Config?.API_BASE_URL || window.ENV?.API_BASE_URL || state?.API_BASE_URL;
+        const apiBaseUrl = window.Config?.API_BASE_URL || window.SharedENV?.API_BASE_URL || state?.API_BASE_URL;
         const deviceId = state?.deviceId;
 
         // ✅ NULL CHECK: Ensure required config exists
@@ -34,7 +34,7 @@ window.PlayerAPI = {
             }
 
             // 🆕 Use resolved content endpoint (3-tier priority system)
-            const response = await window.APIClient.get(
+            const response = await window.SharedAPIClient.get(
                 window.getFullURL(window.API_ENDPOINTS.DEVICES.CONTENT_RESOLVED(deviceId))
             );
 
@@ -60,26 +60,26 @@ window.PlayerAPI = {
             };
 
             if (!playlist.contents || playlist.contents.length === 0) {
-                console.log('[Player] No content assigned yet');
+                SharedLogger.log('[Player] No content assigned yet');
                 if (window.PlayerUI) {
                     window.PlayerUI.showWaiting('⏳ No content assigned yet...');
                 }
 
                 // Retry after configured interval
-                setTimeout(() => this.loadPlaylist(), window.ENV?.RETRY_INTERVAL || 10000);
+                setTimeout(() => this.loadPlaylist(), window.SharedENV?.RETRY_INTERVAL || 10000);
                 return;
             }
 
             // ✅ STATE MIGRATION: Use NEW playerState for reactive playlist management
-            if (window.playerState && window.playerState.setPlaylist) {
-                window.playerState.setPlaylist(playlist);
-                console.log('[Player/API] ✅ Resolved content loaded via playerState:', playlist.contents.length, 'items');
+            if (window.PlayerState && window.PlayerState.setPlaylist) {
+                window.PlayerState.setPlaylist(playlist);
+                SharedLogger.log('[Player/API] ✅ Resolved content loaded via playerState:', playlist.contents.length, 'items');
             } else {
                 // Fallback to OLD pattern
                 if (state) {
                     state.playlist = playlist;
                 }
-                console.log('[Player/API] ✅ Resolved content loaded (fallback):', playlist.contents.length, 'items');
+                SharedLogger.log('[Player/API] ✅ Resolved content loaded (fallback):', playlist.contents.length, 'items');
             }
 
             // Sync cache with playlist (download new, delete old)
@@ -87,19 +87,19 @@ window.PlayerAPI = {
             if (window.PlayerCache && window.PlayerCache.syncCacheWithPlaylist) {
                 try {
                     // ✅ STATE MIGRATION: Get playlist from playerState
-                    const playlist = window.playerState ? window.playerState.getPlaylist() : state?.playlist;
+                    const playlist = window.PlayerState ? window.PlayerState.getPlaylist() : state?.playlist;
                     if (playlist) {
                         await window.PlayerCache.syncCacheWithPlaylist(playlist.contents || playlist);
                     }
                 } catch (error) {
-                    console.error('❌ Cache sync error:', error);
+                    SharedLogger.error('❌ Cache sync error:', error);
 
                     // ✅ ERROR RECOVERY: Notify user about cache failure
-                    if (window.Toast) {
-                        window.Toast.warning(
+                    if (window.SharedToast) {
+                        window.SharedToast.warning(
                             'Cache Warning',
                             'Failed to cache content. Offline mode may not work properly.',
-                            window.ENV?.TOAST_DURATION || 5000
+                            window.SharedENV?.TOAST_DURATION || 5000
                         );
                     }
 
@@ -127,26 +127,26 @@ window.PlayerAPI = {
             if (window.PlayerPlayback && window.PlayerPlayback.playContent) {
                 window.PlayerPlayback.playContent(0);
             } else {
-                console.error('[Player/API] PlayerPlayback not available');
+                SharedLogger.error('[Player/API] PlayerPlayback not available');
             }
 
         } catch (error) {
             // Handle 404 - No content assigned yet (normal, not an error)
             if (error.status === 404) {
-                console.log('[Player] No content assigned yet (404)');
+                SharedLogger.log('[Player] No content assigned yet (404)');
                 if (window.PlayerUI) {
                     window.PlayerUI.showWaiting('⏳ Waiting for content assignment...');
                 }
 
                 // Retry after configured interval
-                setTimeout(() => this.loadPlaylist(), window.ENV?.RETRY_INTERVAL || 10000);
+                setTimeout(() => this.loadPlaylist(), window.SharedENV?.RETRY_INTERVAL || 10000);
                 return;
             }
 
-            console.error('[Player] Failed to load playlist:', error);
+            SharedLogger.error('[Player] Failed to load playlist:', error);
 
             // ✅ ERROR RECOVERY: Show user-friendly error message
-            const retryDelay = window.ENV?.RETRY_INTERVAL || 10000;
+            const retryDelay = window.SharedENV?.RETRY_INTERVAL || 10000;
             const retrySeconds = Math.round(retryDelay / 1000);
 
             if (window.PlayerUI) {
@@ -174,7 +174,7 @@ window.PlayerAPI = {
     checkPlaylistUpdate: async function() {
         // ✅ STATE MIGRATION: Prefer NEW reactive state, fallback to OLD
         const state = window.PlayerState; // Keep for backward compatibility
-        const apiBaseUrl = window.Config?.API_BASE_URL || window.ENV?.API_BASE_URL || state?.API_BASE_URL;
+        const apiBaseUrl = window.Config?.API_BASE_URL || window.SharedENV?.API_BASE_URL || state?.API_BASE_URL;
         const deviceId = state?.deviceId;
 
         // ✅ NULL CHECK: Ensure required config exists
@@ -184,7 +184,7 @@ window.PlayerAPI = {
         }
 
         // ✅ STATE MIGRATION: Get current playlist from playerState
-        const currentPlaylistObj = window.playerState ? window.playerState.getPlaylist() : null;
+        const currentPlaylistObj = window.PlayerState ? window.PlayerState.getPlaylist() : null;
         const currentPlaylist = currentPlaylistObj ? (currentPlaylistObj.contents || currentPlaylistObj) : state?.playlist;
 
         // ✅ NULL CHECK: Ensure current playlist exists to compare
@@ -195,7 +195,7 @@ window.PlayerAPI = {
 
         try {
             // 🆕 Use resolved content endpoint
-            const response = await window.APIClient.get(
+            const response = await window.SharedAPIClient.get(
                 window.getFullURL(window.API_ENDPOINTS.DEVICES.CONTENT_RESOLVED(deviceId))
             );
 
@@ -213,7 +213,7 @@ window.PlayerAPI = {
             if (data.items.length !== currentArray.length ||
                 (data.items[0] && currentArray[0] && data.items[0].id !== currentArray[0].content_id)) {
 
-                console.log('[Player] Content updated! Reloading...');
+                SharedLogger.log('[Player] Content updated! Reloading...');
                 await this.loadPlaylist();
             }
 

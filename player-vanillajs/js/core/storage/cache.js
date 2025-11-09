@@ -23,7 +23,7 @@ window.PlayerCache = {
             const request = indexedDB.open(self.DB_NAME, self.DB_VERSION);
 
             request.onerror = () => {
-                console.error('❌ IndexedDB failed to open:', request.error);
+                SharedLogger.error('❌ IndexedDB failed to open:', request.error);
                 reject(request.error);
             };
 
@@ -36,7 +36,7 @@ window.PlayerCache = {
                     window.PlayerState.cacheDb = self.cacheDb;
                 }
 
-                console.log('✅ IndexedDB opened successfully');
+                SharedLogger.log('✅ IndexedDB opened successfully');
                 resolve(self.cacheDb);
             };
 
@@ -47,7 +47,7 @@ window.PlayerCache = {
                 // If upgrading from version 1 to 2, delete old store to force re-download
                 if (oldVersion === 1 && dbInstance.objectStoreNames.contains(self.STORE_NAME)) {
                     dbInstance.deleteObjectStore(self.STORE_NAME);
-                    console.log('🗑️  Deleted old cache (v1) - will re-download with MIME type fix');
+                    SharedLogger.log('🗑️  Deleted old cache (v1) - will re-download with MIME type fix');
                 }
 
                 // Create object store for media files
@@ -55,7 +55,7 @@ window.PlayerCache = {
                     const objectStore = dbInstance.createObjectStore(self.STORE_NAME, { keyPath: 'content_id' });
                     objectStore.createIndex('url', 'url', { unique: false });
                     objectStore.createIndex('timestamp', 'timestamp', { unique: false });
-                    console.log('📦 Created media cache object store (v2)');
+                    SharedLogger.log('📦 Created media cache object store (v2)');
                 }
             };
         });
@@ -116,7 +116,7 @@ window.PlayerCache = {
         const self = this;
 
         try {
-            console.log('⬇️  Downloading content ' + content.content_id + ': ' + content.title);
+            SharedLogger.log('⬇️  Downloading content ' + content.content_id + ': ' + content.title);
 
             // Fetch content from URL
             const response = await fetch(content.url);
@@ -143,11 +143,11 @@ window.PlayerCache = {
 
             await self.saveToCache(cacheEntry);
 
-            console.log('✅ Cached content ' + content.content_id + ' (' + (blob.size / 1024 / 1024).toFixed(2) + ' MB)');
+            SharedLogger.log('✅ Cached content ' + content.content_id + ' (' + (blob.size / 1024 / 1024).toFixed(2) + ' MB)');
             return cacheEntry;
 
         } catch (error) {
-            console.error('❌ Failed to cache content ' + content.content_id + ':', error);
+            SharedLogger.error('❌ Failed to cache content ' + content.content_id + ':', error);
             return null;
         }
     },
@@ -189,7 +189,7 @@ window.PlayerCache = {
             const request = objectStore.delete(contentId);
 
             request.onsuccess = () => {
-                console.log('🗑️  Removed content ' + contentId + ' from cache');
+                SharedLogger.log('🗑️  Removed content ' + contentId + ' from cache');
                 resolve();
             };
 
@@ -253,10 +253,10 @@ window.PlayerCache = {
                 }
             }
 
-            console.log('🔄 Cache synced: +' + idsToDownload.length + ' downloaded, -' + idsToRemove.length + ' removed');
+            SharedLogger.log('🔄 Cache synced: +' + idsToDownload.length + ' downloaded, -' + idsToRemove.length + ' removed');
 
         } catch (error) {
-            console.error('❌ Cache sync failed:', error);
+            SharedLogger.error('❌ Cache sync failed:', error);
         }
     },
 
@@ -282,7 +282,7 @@ window.PlayerCache = {
             return blobUrl;
 
         } catch (error) {
-            console.error('❌ Failed to get cached blob URL for ' + contentId + ':', error);
+            SharedLogger.error('❌ Failed to get cached blob URL for ' + contentId + ':', error);
             return null;
         }
     },
@@ -300,7 +300,7 @@ window.PlayerCache = {
             const request = objectStore.clear();
 
             request.onsuccess = () => {
-                console.log('🗑️  All cache cleared');
+                SharedLogger.log('🗑️  All cache cleared');
                 resolve();
             };
 

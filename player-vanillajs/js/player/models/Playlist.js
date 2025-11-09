@@ -27,16 +27,16 @@
  *
  * // Check if currently active
  * if (playlist.isActive()) {
- *   console.log('Playlist is active now');
+ *   SharedLogger.log('Playlist is active now');
  * }
  *
  * // Get total duration
- * console.log('Total duration:', playlist.getTotalDuration(), 'seconds');
+ * SharedLogger.log('Total duration:', playlist.getTotalDuration(), 'seconds');
  *
  * // Track download progress
  * const downloadedIds = [1, 2, 3];
  * const progress = playlist.getDownloadProgress(downloadedIds);
- * console.log('Download progress:', progress + '%');
+ * SharedLogger.log('Download progress:', progress + '%');
  * ```
  *
  * @scheduling
@@ -253,6 +253,6 @@
   // Export to window (Vanilla JS pattern)
   window.Playlist = Playlist;
 
-  console.log('[Models/Playlist] Playlist model loaded');
+  SharedLogger.log('[Models/Playlist] Playlist model loaded');
 
 })();

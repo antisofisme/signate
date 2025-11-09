@@ -156,27 +156,57 @@ h1 {
     opacity: 1;
 }
 
-/* WiFi Status Icon (Top Left Corner) */
-#wifi-icon {
+/* Connection Status Icons Container (Top Left Corner) */
+#connection-status-container {
     position: fixed;
     top: 20px;
     left: 20px;
-    width: 40px;
-    height: 40px;
     z-index: 10001;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+/* Individual Status Icons */
+.status-icon {
+    width: 36px;
+    height: 36px;
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: color 0.3s ease;
-    font-size: 20px;
+    background: rgba(0, 0, 0, 0.5);
+    border-radius: 8px;
+    backdrop-filter: blur(8px);
+    transition: all 0.3s ease;
+    cursor: help;
 }
 
-#wifi-icon.online {
+/* Internet Icon States */
+.status-icon.online {
     color: #22c55e; /* green */
+    border: 1px solid rgba(34, 197, 94, 0.3);
 }
 
-#wifi-icon.offline {
+.status-icon.offline {
     color: #ef4444; /* red */
+    border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+/* Server Icon States */
+.status-icon.connected {
+    color: #3b82f6; /* blue */
+    border: 1px solid rgba(59, 130, 246, 0.3);
+}
+
+.status-icon.disconnected {
+    color: #f59e0b; /* orange */
+    border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+/* Hover effects */
+.status-icon:hover {
+    transform: scale(1.1);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
 
 /* Exit Fullscreen Button */

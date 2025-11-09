@@ -59,7 +59,7 @@
             window.addEventListener('online', () => this.handleOnline());
             window.addEventListener('offline', () => this.handleOffline());
 
-            console.log('[OfflineHandler] Initialized');
+            SharedLogger.log('[OfflineHandler] Initialized');
         },
 
         /**
@@ -147,6 +147,6 @@
     // Export to window
     window.OfflineHandler = OfflineHandler;
 
-    console.log('[OfflineHandler] Module loaded');
+    SharedLogger.log('[OfflineHandler] Module loaded');
 
 })();

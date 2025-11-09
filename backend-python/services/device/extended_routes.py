@@ -301,59 +301,46 @@ def get_resolved_content(
     try:
         # Priority 1: Direct content assignments
         direct_query = text("""
-        SELECT c.id, c.name, c.type, c.uri, c.duration,
-               ca.priority, 'direct' as source
-        FROM content_assignments ca
-        JOIN contents c ON c.id = ca.content_id
-        WHERE ca.device_id = :device_id
-          AND (ca.expires_at IS NULL OR ca.expires_at > NOW())
-        ORDER BY ca.priority DESC
-    """)
+            SELECT c.id, c.name, c.type, c.uri, c.duration,
+                   ca.priority, 'direct' as source
+            FROM content_assignments ca
+            JOIN contents c ON c.id = ca.content_id
+            WHERE ca.device_id = :device_id
+              AND (ca.expires_at IS NULL OR ca.expires_at > NOW())
+            ORDER BY ca.priority DESC
+        """)
 
-    direct_results = db.execute(direct_query, {"device_id": device_id}).fetchall()
+        direct_results = db.execute(direct_query, {"device_id": device_id}).fetchall()
 
-    # Priority 2: Tag-based content
-    tag_query = text("""
-        SELECT DISTINCT c.id, c.name, c.type, c.uri, c.duration,
-               0 as priority, 'tag' as source
-        FROM device_tags dt
-        JOIN content_tags ct ON ct.tag_id = dt.tag_id
-        JOIN contents c ON c.id = ct.content_id
-        WHERE dt.device_id = :device_id
-    """)
+        # Priority 2: Tag-based content
+        tag_query = text("""
+            SELECT DISTINCT c.id, c.name, c.type, c.uri, c.duration,
+                   0 as priority, 'tag' as source
+            FROM device_tags dt
+            JOIN content_tags ct ON ct.tag_id = dt.tag_id
+            JOIN contents c ON c.id = ct.content_id
+            WHERE dt.device_id = :device_id
+        """)
 
-    tag_results = db.execute(tag_query, {"device_id": device_id}).fetchall()
+        tag_results = db.execute(tag_query, {"device_id": device_id}).fetchall()
 
-    # Priority 3: Playlist content
-    playlist_query = text("""
-        SELECT DISTINCT c.id, c.name, c.type, c.uri, c.duration,
-               0 as priority, 'playlist' as source
-        FROM playlist_devices pd
-        JOIN playlist_items pi ON pi.playlist_id = pd.playlist_id
-        JOIN contents c ON c.id = pi.content_id
-        WHERE pd.device_id = :device_id
-        ORDER BY pi.order_index ASC
-    """)
+        # Priority 3: Playlist content
+        playlist_query = text("""
+            SELECT DISTINCT c.id, c.name, c.type, c.uri, c.duration,
+                   0 as priority, 'playlist' as source
+            FROM playlist_devices pd
+            JOIN playlist_items pi ON pi.playlist_id = pd.playlist_id
+            JOIN contents c ON c.id = pi.content_id
+            WHERE pd.device_id = :device_id
+            ORDER BY pi.order_index ASC
+        """)
 
-    playlist_results = db.execute(playlist_query, {"device_id": device_id}).fetchall()
+        playlist_results = db.execute(playlist_query, {"device_id": device_id}).fetchall()
 
-    # Merge all results
-    content_items = []
+        # Merge all results
+        content_items = []
 
-    for row in direct_results:
-        content_items.append({
-            "id": row.id,
-            "name": row.name,
-            "type": row.type,
-            "uri": row.uri,
-            "duration": row.duration,
-            "priority": row.priority,
-            "source": row.source
-        })
-
-    for row in tag_results:
-        # Avoid duplicates from direct assignments
-        if not any(item['id'] == row.id for item in content_items):
+        for row in direct_results:
             content_items.append({
                 "id": row.id,
                 "name": row.name,
@@ -364,18 +351,31 @@ def get_resolved_content(
                 "source": row.source
             })
 
-    for row in playlist_results:
-        # Avoid duplicates
-        if not any(item['id'] == row.id for item in content_items):
-            content_items.append({
-                "id": row.id,
-                "name": row.name,
-                "type": row.type,
-                "uri": row.uri,
-                "duration": row.duration,
-                "priority": row.priority,
-                "source": row.source
-            })
+        for row in tag_results:
+            # Avoid duplicates from direct assignments
+            if not any(item['id'] == row.id for item in content_items):
+                content_items.append({
+                    "id": row.id,
+                    "name": row.name,
+                    "type": row.type,
+                    "uri": row.uri,
+                    "duration": row.duration,
+                    "priority": row.priority,
+                    "source": row.source
+                })
+
+        for row in playlist_results:
+            # Avoid duplicates
+            if not any(item['id'] == row.id for item in content_items):
+                content_items.append({
+                    "id": row.id,
+                    "name": row.name,
+                    "type": row.type,
+                    "uri": row.uri,
+                    "duration": row.duration,
+                    "priority": row.priority,
+                    "source": row.source
+                })
 
         return {
             "success": True,

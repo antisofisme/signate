@@ -28,17 +28,17 @@
  *
  * // Check content type
  * if (content.isVideo()) {
- *   console.log('This is a video');
+ *   SharedLogger.log('This is a video');
  * }
  *
  * // Check if HLS
  * if (content.isHLS()) {
- *   console.log('Use HLS player');
+ *   SharedLogger.log('Use HLS player');
  * }
  *
  * // Get formatted duration and size
- * console.log('Duration:', content.getFormattedDuration()); // "2:00"
- * console.log('Size:', content.getFormattedSize()); // "15.0 MB"
+ * SharedLogger.log('Duration:', content.getFormattedDuration()); // "2:00"
+ * SharedLogger.log('Size:', content.getFormattedSize()); // "15.0 MB"
  * ```
  *
  * @content_types
@@ -291,6 +291,6 @@
   // Export to window (Vanilla JS pattern)
   window.Content = Content;
 
-  console.log('[Models/Content] Content model loaded');
+  SharedLogger.log('[Models/Content] Content model loaded');
 
 })();

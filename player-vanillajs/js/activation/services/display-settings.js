@@ -15,40 +15,40 @@ window.ShellDisplaySettings = {
      */
     fetchSettings: async function() {
         // ✅ STATE MIGRATION: Use NEW deviceState, fallback to OLD ShellState
-        const device = window.deviceState ? window.deviceState.getDevice() : null;
+        const device = window.SharedDeviceState ? window.SharedDeviceState.getDevice() : null;
         const deviceId = device ? device.id : window.ShellState?.deviceId;
 
         // ✅ NULL CHECK: Ensure deviceId exists
         if (!deviceId) {
-            console.warn('[Shell/DisplaySettings] No device ID, using defaults');
+            SharedLogger.warn('[Shell/DisplaySettings] No device ID, using defaults');
             return this.settings;
         }
 
         // ✅ STATE MIGRATION: Get API_BASE_URL from Config/ENV (config, not state)
-        const apiBaseUrl = window.Config?.API_BASE_URL || window.ENV?.API_BASE_URL;
+        const apiBaseUrl = window.Config?.API_BASE_URL || window.SharedENV?.API_BASE_URL;
 
         // ✅ NULL CHECK: Ensure API_BASE_URL exists
         if (!apiBaseUrl) {
-            console.error('[Shell/DisplaySettings] No API_BASE_URL configured');
+            SharedLogger.error('[Shell/DisplaySettings] No API_BASE_URL configured');
             return this.settings;
         }
 
         try {
             // ✅ USE APICLIENT: Standardized API calls with automatic error handling
-            const device = await window.APIClient.get(`${apiBaseUrl}/api/devices/${deviceId}`);
+            const device = await window.SharedAPIClient.get(`${apiBaseUrl}/api/devices/${deviceId}`);
 
             // Update settings from backend
             this.settings.rotation = device.rotation || 0;
             this.settings.volume_enabled = device.volume_enabled !== undefined ? device.volume_enabled : true;
 
-            console.log('[Shell/DisplaySettings] Settings fetched:', this.settings);
+            SharedLogger.log('[Shell/DisplaySettings] Settings fetched:', this.settings);
             return this.settings;
 
         } catch (error) {
             // Handle 404 - Device deleted from backend
             if (error.status === 404) {
-                console.warn('[Shell/DisplaySettings] ⚠️ Device not found (404) - Device was deleted');
-                console.log('[Shell/DisplaySettings] 🔄 Resetting viewer...');
+                SharedLogger.warn('[Shell/DisplaySettings] ⚠️ Device not found (404) - Device was deleted');
+                SharedLogger.log('[Shell/DisplaySettings] 🔄 Resetting viewer...');
 
                 // Clear localStorage
                 localStorage.clear();
@@ -63,7 +63,7 @@ window.ShellDisplaySettings = {
                         deleteRequest.onblocked = () => resolve();
                     });
                 } catch (err) {
-                    console.error('[Shell/DisplaySettings] Error deleting cache:', err);
+                    SharedLogger.error('[Shell/DisplaySettings] Error deleting cache:', err);
                 }
 
                 // Reload to show activation screen
@@ -72,7 +72,7 @@ window.ShellDisplaySettings = {
             }
 
             // Handle other errors
-            console.error('[Shell/DisplaySettings] Failed to fetch settings:', error);
+            SharedLogger.error('[Shell/DisplaySettings] Failed to fetch settings:', error);
             // Return defaults on error
             return this.settings;
         }
@@ -86,7 +86,7 @@ window.ShellDisplaySettings = {
         const playerContainer = document.getElementById('player-container');
 
         if (!playerContainer) {
-            console.warn('[Shell/DisplaySettings] Player container not found');
+            SharedLogger.warn('[Shell/DisplaySettings] Player container not found');
             return;
         }
 
@@ -101,7 +101,7 @@ window.ShellDisplaySettings = {
 
         if (rotation === 0) {
             // Normal landscape - no rotation needed
-            console.log('[Shell/DisplaySettings] Rotation: 0° (Landscape)');
+            SharedLogger.log('[Shell/DisplaySettings] Rotation: 0° (Landscape)');
         } else if (rotation === 90 || rotation === 270) {
             // Portrait mode - swap dimensions
             // Container needs to be sized for portrait, then rotated
@@ -117,11 +117,11 @@ window.ShellDisplaySettings = {
                 playerContainer.style.transform = `translate(${(screenWidth - screenHeight) / 2}px, ${(screenHeight - screenWidth) / 2}px) rotate(270deg)`;
             }
 
-            console.log('[Shell/DisplaySettings] Rotation:', rotation + '° (Portrait) - Viewport swapped to', screenHeight + 'x' + screenWidth);
+            SharedLogger.log('[Shell/DisplaySettings] Rotation:', rotation + '° (Portrait) - Viewport swapped to', screenHeight + 'x' + screenWidth);
         } else if (rotation === 180) {
             // Upside down landscape
             playerContainer.style.transform = 'rotate(180deg)';
-            console.log('[Shell/DisplaySettings] Rotation: 180° (Upside Down Landscape)');
+            SharedLogger.log('[Shell/DisplaySettings] Rotation: 180° (Upside Down Landscape)');
         }
     },
 
@@ -143,11 +143,11 @@ window.ShellDisplaySettings = {
                 await element.msRequestFullscreen();
             }
 
-            console.log('[Shell/DisplaySettings] ✅ Fullscreen entered');
+            SharedLogger.log('[Shell/DisplaySettings] ✅ Fullscreen entered');
             return true;
         } catch (error) {
             // Fullscreen may fail if not user-initiated, log but don't block
-            console.warn('[Shell/DisplaySettings] Fullscreen request failed (may need user interaction):', error.message);
+            SharedLogger.warn('[Shell/DisplaySettings] Fullscreen request failed (may need user interaction):', error.message);
             return false;
         }
     },
@@ -187,14 +187,14 @@ window.ShellDisplaySettings = {
             hasChanges = true;
 
             // Reload player with new volume setting
-            console.log('[Shell/DisplaySettings] Volume changed, reloading player...');
+            SharedLogger.log('[Shell/DisplaySettings] Volume changed, reloading player...');
             if (window.ShellUI && window.ShellUI.loadPlayer) {
                 window.ShellUI.loadPlayer();
             }
         }
 
         if (hasChanges) {
-            console.log('[Shell/DisplaySettings] Settings auto-updated:', changes.join(', '));
+            SharedLogger.log('[Shell/DisplaySettings] Settings auto-updated:', changes.join(', '));
         }
     },
 
@@ -203,7 +203,7 @@ window.ShellDisplaySettings = {
      * Called when device is activated
      */
     init: async function() {
-        console.log('[Shell/DisplaySettings] Initializing...');
+        SharedLogger.log('[Shell/DisplaySettings] Initializing...');
 
         // Fetch settings from backend
         await this.fetchSettings();
@@ -211,15 +211,15 @@ window.ShellDisplaySettings = {
         // Apply rotation
         this.applyRotation();
 
-        console.log('[Shell/DisplaySettings] ✅ Initialization complete');
-        console.log('[Shell/DisplaySettings] Use F key or hover exit button for manual fullscreen');
+        SharedLogger.log('[Shell/DisplaySettings] ✅ Initialization complete');
+        SharedLogger.log('[Shell/DisplaySettings] Use F key or hover exit button for manual fullscreen');
     },
 
     /**
      * Refresh settings from backend and reapply
      */
     refresh: async function() {
-        console.log('[Shell/DisplaySettings] Refreshing settings...');
+        SharedLogger.log('[Shell/DisplaySettings] Refreshing settings...');
         await this.fetchSettings();
         this.applyRotation();
         // Don't re-enter fullscreen on refresh
