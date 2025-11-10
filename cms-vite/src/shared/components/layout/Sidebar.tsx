@@ -19,6 +19,7 @@ import {
   X,
   FileText,
   Building2,
+  BarChart3,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useUIStore } from '@/lib/stores/uiStore';
@@ -39,7 +40,8 @@ export default function Sidebar() {
     { name: t('navigation.contents'), href: '/contents', icon: FileImage },
     { name: t('navigation.playlists'), href: '/playlists', icon: ListVideo },
     { name: t('navigation.tags'), href: '/tags', icon: Tag },
-    { name: 'Audit Logs', href: '/audit-logs', icon: FileText },
+    { name: t('navigation.analytics'), href: '/analytics', icon: BarChart3 },
+    { name: t('navigation.auditLogs'), href: '/audit-logs', icon: FileText },
     { name: t('navigation.widgets'), href: '/widgets', icon: Puzzle },
     { name: t('navigation.settings'), href: '/settings', icon: Settings },
   ];

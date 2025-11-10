@@ -23,6 +23,7 @@ import ContentPage from '@/pages/ContentPage';
 import PlaylistsPage from '@/pages/PlaylistsPage';
 import DevicesPage from '@/pages/DevicesPage';
 import DevicePreviewPage from '@/pages/DevicePreviewPage';
+import { AnalyticsPage } from '@/pages/AnalyticsPage';
 
 export const router = createBrowserRouter([
   // Public Routes
@@ -89,6 +90,10 @@ export const router = createBrowserRouter([
       {
         path: 'audit-logs',
         element: <AuditLogsPage />,
+      },
+      {
+        path: 'analytics',
+        element: <AnalyticsPage />,
       },
       {
         path: 'widgets',

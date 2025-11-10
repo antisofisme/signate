@@ -54,7 +54,9 @@
     "organizations": "Organizations",
     "reports": "Reports",
     "tags": "Tags",
+    "analytics": "Analytics",
     "activityLogs": "Activity Logs",
+    "auditLogs": "Audit Logs",
     "widgets": "Widgets",
     "settings": "Settings"
   },

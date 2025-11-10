@@ -14,6 +14,7 @@ export { PlayerMediaCache } from './services/player-media-cache';
 export { PlayerPlaylistSync } from './services/player-playlist-sync';
 export { PlayerHeartbeat } from './services/player-heartbeat';
 export { PlayerCommandExecutor } from './services/player-command-executor';
+export { PlayerPlaybackLogger } from './services/player-playback-logger';
 
 // Types
 export type {

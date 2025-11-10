@@ -54,7 +54,9 @@
     "organizations": "Organisasi",
     "reports": "Laporan",
     "tags": "Tag",
+    "analytics": "Analitik",
     "activityLogs": "Log Aktivitas",
+    "auditLogs": "Log Audit",
     "widgets": "Widget",
     "settings": "Pengaturan"
   },

@@ -12,6 +12,7 @@
 
 import Hls from 'hls.js';
 import { SharedLogger } from '@shared/logger';
+import { PlayerPlaybackLogger } from './player-playback-logger';
 import type {
   PlayerHLS as IPlayerHLS,
   Playlist,
@@ -111,6 +112,11 @@ class PlayerHLSClass implements IPlayerHLS {
     if (index < 0 || index >= this.state.playlist.items.length) {
       SharedLogger.warn('[PlayerHLS] Invalid item index:', index);
       return;
+    }
+
+    // Log playback end for previous item (if switching items)
+    if (PlayerPlaybackLogger.hasActiveLog()) {
+      await PlayerPlaybackLogger.logPlaybackEnd(false); // Not completed (skipped)
     }
 
     const item = this.state.playlist.items[index];
@@ -227,8 +233,15 @@ class PlayerHLSClass implements IPlayerHLS {
     // Add to DOM
     this.videoElement.parentElement?.appendChild(imageElement);
 
+    // Log playback start for analytics (images)
+    if (this.state.playlist) {
+      void PlayerPlaybackLogger.logPlaybackStart(item, this.state.playlist.id);
+    }
+
     // Set timer for duration
     this.itemTimer = window.setTimeout(() => {
+      // Log playback end (completed)
+      void PlayerPlaybackLogger.logPlaybackEnd(true);
       void this.next();
     }, item.duration * 1000);
 
@@ -255,8 +268,15 @@ class PlayerHLSClass implements IPlayerHLS {
     // Add to DOM
     this.videoElement.parentElement?.appendChild(iframeElement);
 
+    // Log playback start for analytics (URLs)
+    if (this.state.playlist) {
+      void PlayerPlaybackLogger.logPlaybackStart(item, this.state.playlist.id);
+    }
+
     // Set timer for duration
     this.itemTimer = window.setTimeout(() => {
+      // Log playback end (completed)
+      void PlayerPlaybackLogger.logPlaybackEnd(true);
       void this.next();
     }, item.duration * 1000);
 
@@ -359,6 +379,9 @@ class PlayerHLSClass implements IPlayerHLS {
 
     // Video ended - play next
     this.videoElement.addEventListener('ended', () => {
+      // Log playback end for analytics (completed)
+      void PlayerPlaybackLogger.logPlaybackEnd(true);
+
       void this.next();
     });
 
@@ -372,6 +395,14 @@ class PlayerHLSClass implements IPlayerHLS {
     this.videoElement.addEventListener('playing', () => {
       this.state.isPlaying = true;
       SharedLogger.log('[PlayerHLS] Playback started');
+
+      // Log playback start for analytics
+      if (this.state.currentItem && this.state.playlist) {
+        void PlayerPlaybackLogger.logPlaybackStart(
+          this.state.currentItem,
+          this.state.playlist.id
+        );
+      }
     });
 
     // Playback paused
