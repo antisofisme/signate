@@ -22,8 +22,13 @@ import TagsPage from '@/pages/TagsPage';
 import ContentPage from '@/pages/ContentPage';
 import PlaylistsPage from '@/pages/PlaylistsPage';
 import DevicesPage from '@/pages/DevicesPage';
+import DeviceGroupsPage from '@/pages/DeviceGroupsPage';
 import DevicePreviewPage from '@/pages/DevicePreviewPage';
 import { AnalyticsPage } from '@/pages/AnalyticsPage';
+import WidgetsPage from '@/features/widgets/pages/WidgetsPage';
+import TemplatesPage from '@/features/templates/pages/TemplatesPage';
+import TranslationsPage from '@/features/translations/pages/TranslationsPage';
+import SchedulesPage from '@/features/schedules/pages/SchedulesPage';
 
 export const router = createBrowserRouter([
   // Public Routes
@@ -76,6 +81,10 @@ export const router = createBrowserRouter([
         element: <DevicesPage />,
       },
       {
+        path: 'device-groups',
+        element: <DeviceGroupsPage />,
+      },
+      {
         path: 'contents',
         element: <ContentPage />,
       },
@@ -97,7 +106,19 @@ export const router = createBrowserRouter([
       },
       {
         path: 'widgets',
-        element: <div className="p-8">Widgets Page - Coming Soon</div>,
+        element: <WidgetsPage />,
+      },
+      {
+        path: 'templates',
+        element: <TemplatesPage />,
+      },
+      {
+        path: 'translations',
+        element: <TranslationsPage />,
+      },
+      {
+        path: 'schedules',
+        element: <SchedulesPage />,
       },
     ],
   },

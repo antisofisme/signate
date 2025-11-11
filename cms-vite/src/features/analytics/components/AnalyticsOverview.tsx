@@ -34,41 +34,51 @@ export function AnalyticsOverview({ stats, isLoading }: AnalyticsOverviewProps) 
     return `${hours.toFixed(1)}h`
   }
 
+  // Add null safety for all stats
+  const safeStats = {
+    total_plays: stats?.total_plays || 0,
+    completed_plays: stats?.completed_plays || 0,
+    unique_content: stats?.unique_content || 0,
+    unique_devices: stats?.unique_devices || 0,
+    total_watch_time_hours: stats?.total_watch_time_hours || 0,
+    total_watch_time_seconds: stats?.total_watch_time_seconds || 0,
+  }
+
   return (
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
       <StatCard
         title="Total Plays"
-        value={formatNumber(stats.total_plays)}
+        value={formatNumber(safeStats.total_plays)}
         icon={Play}
         description="Total content playback"
       />
 
       <StatCard
         title="Completed"
-        value={formatNumber(stats.completed_plays)}
+        value={formatNumber(safeStats.completed_plays)}
         icon={CheckCircle}
         description="Completed playback"
       />
 
       <StatCard
         title="Unique Content"
-        value={formatNumber(stats.unique_content)}
+        value={formatNumber(safeStats.unique_content)}
         icon={FileVideo}
         description="Different content played"
       />
 
       <StatCard
         title="Active Devices"
-        value={formatNumber(stats.unique_devices)}
+        value={formatNumber(safeStats.unique_devices)}
         icon={Monitor}
         description="Devices with playback"
       />
 
       <StatCard
         title="Watch Time"
-        value={formatHours(stats.total_watch_time_hours)}
+        value={formatHours(safeStats.total_watch_time_hours)}
         icon={Clock}
-        description={`${formatNumber(stats.total_watch_time_seconds)}s total`}
+        description={`${formatNumber(safeStats.total_watch_time_seconds)}s total`}
       />
     </div>
   )

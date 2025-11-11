@@ -47,9 +47,13 @@
   "navigation": {
     "dashboard": "Dashboard",
     "devices": "Perangkat",
+    "deviceGroups": "Grup Perangkat",
     "contents": "Konten",
     "playlists": "Playlist",
     "schedules": "Jadwal",
+    "widgets": "Widget",
+    "templates": "Template",
+    "translations": "Terjemahan",
     "users": "Pengguna",
     "organizations": "Organisasi",
     "reports": "Laporan",
@@ -57,7 +61,6 @@
     "analytics": "Analitik",
     "activityLogs": "Log Aktivitas",
     "auditLogs": "Log Audit",
-    "widgets": "Widget",
     "settings": "Pengaturan"
   },
   "devices": {

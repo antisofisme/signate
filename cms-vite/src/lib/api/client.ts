@@ -18,14 +18,13 @@ const IS_DEV = import.meta.env.DEV;
 /**
  * Axios client instance
  *
- * ⚠️ UPDATED: baseURL no longer includes /api/v1 prefix
- * All endpoints in endpoints.ts now include full path with /api/v1
- *
- * Development: Empty baseURL (endpoints have full paths, Vite proxy handles routing)
- * Production: Uses server URL only (endpoints include /api/v1 already)
+ * ⚠️ IMPORTANT:
+ * - In production with nginx proxy: baseURL is empty because endpoints include full path
+ * - Endpoints in endpoints.ts include /api/v1 prefix
+ * - Nginx proxy forwards /api/* to backend
  */
 export const apiClient = axios.create({
-  baseURL: IS_DEV ? '' : API_BASE_URL,
+  baseURL: '',  // Always empty - endpoints include full path
   timeout: 30000,
   headers: {
     'Content-Type': 'application/json',

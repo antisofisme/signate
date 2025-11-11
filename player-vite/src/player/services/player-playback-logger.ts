@@ -79,7 +79,7 @@ class PlayerPlaybackLoggerClass {
 
       // Send to backend
       const response = await SharedAPIClient.post<PlaybackStartResponse>(
-        `${config.API_BASE_URL}/api/v1/analytics/playback/start`,
+        `${config.api.baseURL}/api/v1/analytics/playback/start`,
         {
           body: JSON.stringify(payload),
         }
@@ -90,7 +90,7 @@ class PlayerPlaybackLoggerClass {
         logId: response.log_id,
         contentId: item.content_id,
         playlistId: playlistId,
-        deviceId: deviceId,
+        deviceId: parseInt(deviceId, 10),
         startedAt: response.started_at,
         endedAt: null,
         durationSeconds: null,
@@ -136,7 +136,7 @@ class PlayerPlaybackLoggerClass {
 
       // Send to backend
       await SharedAPIClient.put(
-        `${config.API_BASE_URL}/api/v1/analytics/playback/${this.currentLog.logId}/end`,
+        `${config.api.baseURL}/api/v1/analytics/playback/${this.currentLog.logId}/end`,
         {
           body: JSON.stringify(payload),
         }
@@ -192,5 +192,5 @@ export const PlayerPlaybackLogger = new PlayerPlaybackLoggerClass();
 
 // Make available globally for debugging
 if (typeof window !== 'undefined') {
-  window.PlayerPlaybackLogger = PlayerPlaybackLogger;
+  // window.PlayerPlaybackLogger = PlayerPlaybackLogger;
 }

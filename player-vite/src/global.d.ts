@@ -8,6 +8,7 @@ import type { PlayerPlaylistSyncClass } from './player/services/player-playlist-
 import type { PlayerMediaCacheClass } from './player/services/player-media-cache';
 import type { PlayerHeartbeatClass } from './player/services/player-heartbeat';
 import type { PlayerCommandExecutorClass } from './player/services/player-command-executor';
+import type { PlayerHealthReporterClass } from './player/services/player-health-reporter';
 import type { SharedWebSocketClass } from './shared/websocket/shared-websocket';
 import type { ShellRegistrationClass } from './shell/services/shell-registration';
 import type { ShellActivationPollClass } from './shell/services/shell-activation-poll';
@@ -22,6 +23,7 @@ declare global {
     PlayerMediaCache?: PlayerMediaCacheClass;
     PlayerHeartbeat?: PlayerHeartbeatClass;
     PlayerCommandExecutor?: PlayerCommandExecutorClass;
+    PlayerHealthReporter?: PlayerHealthReporterClass;
 
     // Shared services
     SharedWebSocket?: SharedWebSocketClass;

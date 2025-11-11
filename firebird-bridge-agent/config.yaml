@@ -1,0 +1,32 @@
+# Firebird Bridge Agent Configuration
+# Copy this file to each hotel's local server and customize
+
+# Cloud Backend Configuration
+cloud:
+  api_url: "http://192.168.5.12:8001/api/v1"
+  organization_id: 1
+  api_key: "your-unique-api-key-here"  # Unique per organization
+  verify_ssl: false  # Set true in production with proper SSL
+
+# Firebird Database Configuration (Local PMS)
+firebird:
+  host: "localhost"
+  port: 3050
+  database_path: "/path/to/hotel.fdb"
+  username: "SYSDBA"
+  password: "masterkey"
+  charset: "UTF8"
+
+# Sync Configuration
+sync:
+  interval_minutes: 5  # Sync every 5 minutes
+  batch_size: 100      # Process 100 records per batch
+  retry_attempts: 3
+  retry_delay_seconds: 10
+
+# Logging
+logging:
+  level: "INFO"
+  file: "/var/log/firebird-bridge/agent.log"
+  max_size_mb: 50
+  backup_count: 5

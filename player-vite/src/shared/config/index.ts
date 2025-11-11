@@ -75,6 +75,11 @@ export const config: AppConfig = {
     apiDebug: getEnvBoolean('VITE_API_DEBUG', false),
     wsDebug: getEnvBoolean('VITE_WS_DEBUG', false),
   },
+
+  // Player Configuration
+  player: {
+    version: getEnvString('VITE_PLAYER_VERSION', '1.0.0'),
+  },
 };
 
 /**
@@ -86,6 +91,7 @@ Object.freeze(config.device);
 Object.freeze(config.retry);
 Object.freeze(config.log);
 Object.freeze(config.debug);
+Object.freeze(config.player);
 
 // Log config in development (for debugging)
 if (import.meta.env.DEV) {

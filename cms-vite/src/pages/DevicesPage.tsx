@@ -7,8 +7,13 @@
 
 import { PageHeader } from '@/shared/components';
 import { DeviceTable } from '@/features/devices/components/DeviceTable';
+import { OrganizationHealthSummary } from '@/features/devices/components/OrganizationHealthSummary';
 
 export default function DevicesPage() {
+  // Get organization ID from localStorage (set during login)
+  const orgId = localStorage.getItem('selected-org-id');
+  const organizationId = orgId ? parseInt(orgId, 10) : 0;
+
   return (
     <>
       {/* Sticky Page Header */}
@@ -17,8 +22,14 @@ export default function DevicesPage() {
         description="Monitor and manage TV and monitor devices for digital signage"
       />
 
-      {/* Device Table */}
+      {/* Content */}
       <div className="space-y-6">
+        {/* Organization Health Summary Widget */}
+        {organizationId > 0 && (
+          <OrganizationHealthSummary organizationId={organizationId} />
+        )}
+
+        {/* Device Table */}
         <DeviceTable />
       </div>
     </>

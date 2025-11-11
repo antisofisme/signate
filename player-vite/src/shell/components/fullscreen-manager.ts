@@ -114,7 +114,7 @@ class FullscreenManagerClass {
 
     document.addEventListener('mousemove', (e: MouseEvent) => {
       const screenWidth = window.innerWidth;
-      const screenHeight = window.innerHeight;
+      // const screenHeight = window.innerHeight;
       const mouseX = e.clientX;
       const mouseY = e.clientY;
 

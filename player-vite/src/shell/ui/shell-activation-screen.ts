@@ -511,12 +511,6 @@ export const ShellActivationScreen = new ShellActivationScreenClass();
 export type { ShellActivationScreenClass };
 
 // Make available globally for compatibility
-declare global {
-  interface Window {
-    ShellActivationScreen: typeof ShellActivationScreen;
-  }
-}
-
 if (typeof window !== 'undefined') {
-  window.ShellActivationScreen = ShellActivationScreen;
+  (window as any).ShellActivationScreen = ShellActivationScreen;
 }

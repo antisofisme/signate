@@ -24,6 +24,7 @@ import {
   List,
   Wifi,
   Play,
+  Activity,
 } from 'lucide-react';
 import {
   useDeviceList,
@@ -43,6 +44,7 @@ import { TagAssignmentModal } from './modals/TagAssignmentModal';
 import { ContentAssignmentModal } from './modals/ContentAssignmentModal';
 import { PlaylistAssignmentModal } from './modals/PlaylistAssignmentModal';
 import { SpeedHistoryModal } from './modals/SpeedHistoryModal';
+import { DeviceHealthModal } from './modals/DeviceHealthModal';
 import { PendingDeviceCard } from './PendingDeviceCard';
 
 // Delete Confirmation Modal
@@ -150,6 +152,10 @@ export function DeviceTable() {
     device: Device | null;
   }>({ isOpen: false, device: null });
   const [speedHistoryModal, setSpeedHistoryModal] = useState<{
+    isOpen: boolean;
+    device: Device | null;
+  }>({ isOpen: false, device: null });
+  const [healthModal, setHealthModal] = useState<{
     isOpen: boolean;
     device: Device | null;
   }>({ isOpen: false, device: null });
@@ -415,9 +421,18 @@ export function DeviceTable() {
                       <div className="flex items-center justify-end gap-2">
                         <button
                           onClick={() =>
-                            setDetailModal({ isOpen: true, device })
+                            setHealthModal({ isOpen: true, device })
                           }
                           className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
+                          title="Health & Commands"
+                        >
+                          <Activity className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() =>
+                            setDetailModal({ isOpen: true, device })
+                          }
+                          className="text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-300"
                           title="View details"
                         >
                           <Eye className="w-4 h-4" />
@@ -615,6 +630,13 @@ export function DeviceTable() {
         isOpen={speedHistoryModal.isOpen}
         device={speedHistoryModal.device}
         onClose={() => setSpeedHistoryModal({ isOpen: false, device: null })}
+      />
+
+      {/* Device Health & Commands Modal */}
+      <DeviceHealthModal
+        isOpen={healthModal.isOpen}
+        device={healthModal.device}
+        onClose={() => setHealthModal({ isOpen: false, device: null })}
       />
     </>
   );

@@ -165,6 +165,12 @@ class ShellBootstrapClass implements IShellBootstrap {
         SharedLogger.log('[ShellBootstrap] ✅ Heartbeat started');
       }
 
+      // 6. Start Health Reporter (Phase 4)
+      if (window.PlayerHealthReporter) {
+        window.PlayerHealthReporter.start();
+        SharedLogger.log('[ShellBootstrap] ✅ HealthReporter started');
+      }
+
       SharedLogger.log('[ShellBootstrap] 🎉 All player services initialized');
     } catch (error) {
       SharedLogger.error('[ShellBootstrap] ❌ Failed to initialize player services:', error);

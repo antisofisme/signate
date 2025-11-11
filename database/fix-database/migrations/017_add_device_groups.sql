@@ -195,7 +195,7 @@ SELECT
     count(DISTINCT dgm.device_id) FILTER (WHERE d.status = 'offline') as offline_devices
 FROM device_groups dg
 LEFT JOIN device_group_members dgm ON dgm.group_id = dg.id
-LEFT JOIN devices d ON d.id = dgm.device_id AND d.deleted_at IS NULL
+LEFT JOIN devices d ON d.id = dgm.device_id
 WHERE dg.deleted_at IS NULL
 GROUP BY dg.id, dg.name, dg.organization_id;
 

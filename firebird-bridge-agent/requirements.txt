@@ -1,0 +1,7 @@
+# Firebird Bridge Agent Dependencies
+fdb==2.0.2           # Firebird database driver
+requests==2.31.0     # HTTP client
+PyYAML==6.0.1        # YAML config parser
+urllib3==2.0.7       # HTTP retry logic
+Flask==3.0.0         # Web UI framework
+websockets==12.0     # WebSocket client for real-time sync

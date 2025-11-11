@@ -71,3 +71,138 @@ class DeviceModel(Base):
     # organization = relationship("OrganizationModel", back_populates="devices")
     creator = relationship("UserModel", foreign_keys=[created_by])
     updater = relationship("UserModel", foreign_keys=[updated_by])
+
+
+class DeviceCommandModel(Base):
+    """Device Command database model"""
+    __tablename__ = "device_commands"
+
+    # Primary key
+    id = Column(Integer, primary_key=True, index=True)
+
+    # Foreign keys
+    device_id = Column(Integer, ForeignKey("devices.id", ondelete="CASCADE"), nullable=False, index=True)
+    organization_id = Column(Integer, ForeignKey("organizations.id", ondelete="CASCADE"), nullable=False, index=True)
+
+    # Command details
+    command_type = Column(String(50), nullable=False)
+    command_data = Column("command_data", type_=__import__('sqlalchemy').dialects.postgresql.JSONB, default={})
+
+    # Status tracking
+    status = Column(String(20), nullable=False, default='pending', index=True)
+    priority = Column(Integer, nullable=False, default=5)
+
+    # Execution tracking
+    sent_at = Column(DateTime(timezone=True), nullable=True)
+    executed_at = Column(DateTime(timezone=True), nullable=True)
+    failed_at = Column(DateTime(timezone=True), nullable=True)
+    result = Column("result", type_=__import__('sqlalchemy').dialects.postgresql.JSONB, nullable=True)
+    error_message = Column(String, nullable=True)
+    retry_count = Column(Integer, default=0, nullable=False)
+    max_retries = Column(Integer, default=3, nullable=False)
+
+    # Audit tracking
+    created_by = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    expires_at = Column(DateTime(timezone=True), nullable=True)
+
+
+class DeviceHealthMetricModel(Base):
+    """Device Health Metric database model"""
+    __tablename__ = "device_health_metrics"
+
+    # Primary key
+    id = Column(Integer, primary_key=True, index=True)
+
+    # Foreign keys
+    device_id = Column(Integer, ForeignKey("devices.id", ondelete="CASCADE"), nullable=False, index=True)
+    organization_id = Column(Integer, ForeignKey("organizations.id", ondelete="CASCADE"), nullable=False, index=True)
+
+    # System metrics
+    cpu_usage = Column(__import__('sqlalchemy').Numeric(5, 2), nullable=True)
+    memory_usage = Column(__import__('sqlalchemy').Numeric(5, 2), nullable=True)
+    memory_total_mb = Column(Integer, nullable=True)
+    memory_used_mb = Column(Integer, nullable=True)
+    disk_usage = Column(__import__('sqlalchemy').Numeric(5, 2), nullable=True)
+    disk_total_gb = Column(Integer, nullable=True)
+    disk_used_gb = Column(Integer, nullable=True)
+
+    # Network metrics
+    network_latency_ms = Column(Integer, nullable=True)
+    network_download_mbps = Column(__import__('sqlalchemy').Numeric(10, 2), nullable=True)
+    network_upload_mbps = Column(__import__('sqlalchemy').Numeric(10, 2), nullable=True)
+    connection_quality = Column(String(20), nullable=True)
+
+    # Display metrics
+    display_resolution = Column(String(20), nullable=True)
+    display_refresh_rate = Column(Integer, nullable=True)
+    gpu_usage = Column(__import__('sqlalchemy').Numeric(5, 2), nullable=True)
+
+    # Player metrics
+    player_version = Column(String(50), nullable=True)
+    player_uptime_hours = Column(Integer, nullable=True)
+    content_errors_count = Column(Integer, default=0, nullable=False)
+    last_error_message = Column(String, nullable=True)
+    last_error_at = Column(DateTime(timezone=True), nullable=True)
+
+    # Health status
+    overall_status = Column(String(20), default='healthy', nullable=False, index=True)
+    alert_triggered = Column(Boolean, default=False, nullable=False, index=True)
+    alert_message = Column(String, nullable=True)
+
+    # Additional data (use extra_data to avoid SQLAlchemy reserved name)
+    extra_data = Column("metadata", type_=__import__('sqlalchemy').dialects.postgresql.JSONB, default={})
+
+    # Timestamps
+    recorded_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False, index=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+
+
+class DeviceGroupModel(Base):
+    """Device Group database model"""
+    __tablename__ = "device_groups"
+
+    # Primary key
+    id = Column(Integer, primary_key=True, index=True)
+
+    # Group info
+    name = Column(String(100), nullable=False)
+    description = Column(String(500), nullable=True)
+
+    # Hierarchy
+    parent_group_id = Column(Integer, ForeignKey("device_groups.id"), nullable=True, index=True)
+
+    # Multi-tenant
+    organization_id = Column(Integer, ForeignKey("organizations.id"), nullable=False, index=True)
+
+    # Metadata
+    group_type = Column(String(50), nullable=True)  # 'chain', 'hotel', 'floor', 'location', 'custom'
+    sort_order = Column(Integer, default=0, nullable=False)
+
+    # Settings
+    default_playlist_id = Column(Integer, ForeignKey("playlists.id"), nullable=True)
+
+    # Soft delete
+    deleted_at = Column(DateTime(timezone=True), nullable=True, index=True)
+
+    # Audit
+    created_by = Column(Integer, ForeignKey("users.id"), nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now(), nullable=True)
+
+
+class DeviceGroupMemberModel(Base):
+    """Device Group Member database model (Many-to-Many)"""
+    __tablename__ = "device_group_members"
+
+    # Primary key
+    id = Column(Integer, primary_key=True, index=True)
+
+    # Relations
+    device_id = Column(Integer, ForeignKey("devices.id"), nullable=False, index=True)
+    group_id = Column(Integer, ForeignKey("device_groups.id"), nullable=False, index=True)
+
+    # Membership metadata
+    joined_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    added_by = Column(Integer, ForeignKey("users.id"), nullable=True)

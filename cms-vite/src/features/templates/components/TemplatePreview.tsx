@@ -1,0 +1,175 @@
+/**
+ * Template Preview Component
+ * Live preview of rendered template with test data
+ */
+
+import { useState, useEffect } from 'react'
+import { DEFAULT_PREVIEW_DATA } from '../types/template.types'
+
+interface TemplatePreviewProps {
+  content: string
+  variables: Record<string, string>
+  previewData?: Record<string, any>
+  onPreviewDataChange?: (data: Record<string, any>) => void
+  onRender?: (data: Record<string, any>) => void
+  renderedContent?: string
+  isRendering?: boolean
+}
+
+export const TemplatePreview = ({
+  content,
+  variables,
+  previewData,
+  onPreviewDataChange,
+  onRender,
+  renderedContent,
+  isRendering = false
+}: TemplatePreviewProps) => {
+  const [testData, setTestData] = useState<Record<string, any>>(previewData || {})
+  const [showDataEditor, setShowDataEditor] = useState(false)
+
+  // Initialize test data with defaults
+  useEffect(() => {
+    if (Object.keys(testData).length === 0 && Object.keys(variables).length > 0) {
+      const initialData: Record<string, any> = {}
+      Object.keys(variables).forEach(varName => {
+        initialData[varName] = DEFAULT_PREVIEW_DATA[varName] || ''
+      })
+      setTestData(initialData)
+    }
+  }, [variables])
+
+  const handleDataChange = (varName: string, value: any) => {
+    const newData = { ...testData, [varName]: value }
+    setTestData(newData)
+    onPreviewDataChange?.(newData)
+  }
+
+  const handleRenderClick = () => {
+    onRender?.(testData)
+  }
+
+  // Client-side preview (simple replacement)
+  const getClientPreview = () => {
+    let preview = content
+    Object.entries(testData).forEach(([key, value]) => {
+      const regex = new RegExp(`{{\\s*${key}\\s*}}`, 'g')
+      preview = preview.replace(regex, String(value || ''))
+    })
+    return preview
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <label className="text-sm font-medium text-gray-700">Template Preview</label>
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={() => setShowDataEditor(!showDataEditor)}
+            className="text-xs px-3 py-1.5 border border-gray-300 rounded hover:bg-gray-50"
+          >
+            {showDataEditor ? '👁️ Show Preview' : '✏️ Edit Data'}
+          </button>
+          {onRender && (
+            <button
+              type="button"
+              onClick={handleRenderClick}
+              disabled={isRendering}
+              className="text-xs px-3 py-1.5 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
+            >
+              {isRendering ? '⏳ Rendering...' : '🚀 Render'}
+            </button>
+          )}
+        </div>
+      </div>
+
+      {showDataEditor ? (
+        /* Test Data Editor */
+        <div className="space-y-3">
+          <div className="bg-yellow-50 border border-yellow-200 rounded p-3">
+            <p className="text-xs text-yellow-800">
+              💡 Enter test data for variables to preview the rendered template
+            </p>
+          </div>
+
+          {Object.keys(variables).length > 0 ? (
+            <div className="space-y-3">
+              {Object.keys(variables).map(varName => {
+                const varType = variables[varName]
+                return (
+                  <div key={varName}>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      <code className="bg-gray-100 px-2 py-0.5 rounded">
+                        {'{{'}{varName}{'}}'}
+                      </code>
+                      <span className="ml-2 text-xs text-gray-500">({varType})</span>
+                    </label>
+                    {varType === 'boolean' ? (
+                      <input
+                        type="checkbox"
+                        checked={testData[varName] || false}
+                        onChange={(e) => handleDataChange(varName, e.target.checked)}
+                        className="w-4 h-4"
+                      />
+                    ) : (
+                      <input
+                        type={varType === 'number' ? 'number' : varType === 'date' ? 'date' : 'text'}
+                        value={testData[varName] || ''}
+                        onChange={(e) => handleDataChange(varName, e.target.value)}
+                        placeholder={`Enter ${varName}...`}
+                        className="w-full px-3 py-2 border border-gray-300 rounded text-sm"
+                      />
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          ) : (
+            <div className="text-center py-8 border-2 border-dashed border-gray-300 rounded bg-gray-50">
+              <p className="text-sm text-gray-600">No variables defined</p>
+              <p className="text-xs text-gray-500 mt-1">Add variables to enable test data</p>
+            </div>
+          )}
+        </div>
+      ) : (
+        /* Preview Panel */
+        <div className="border-2 border-gray-300 rounded-lg overflow-hidden">
+          {/* Preview Tabs */}
+          <div className="bg-gray-50 border-b border-gray-300 px-4 py-2 flex gap-2">
+            <span className="text-xs font-medium text-gray-700">Preview:</span>
+            <span className="text-xs text-gray-500">
+              {renderedContent ? 'Server Rendered' : 'Client Preview'}
+            </span>
+          </div>
+
+          {/* Preview Content */}
+          <div className="p-4 bg-white min-h-[200px] max-h-[400px] overflow-auto">
+            {renderedContent ? (
+              <div className="prose prose-sm max-w-none">
+                <pre className="whitespace-pre-wrap break-words bg-gray-50 p-4 rounded border border-gray-200">
+                  {renderedContent}
+                </pre>
+              </div>
+            ) : (
+              <div className="prose prose-sm max-w-none">
+                <pre className="whitespace-pre-wrap break-words">
+                  {getClientPreview() || 'Enter template content to see preview...'}
+                </pre>
+              </div>
+            )}
+          </div>
+
+          {/* Preview Footer */}
+          <div className="bg-gray-50 border-t border-gray-300 px-4 py-2">
+            <p className="text-xs text-gray-600">
+              💡 This is a preview. Click "Render" to see server-rendered output with Jinja2.
+            </p>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+export default TemplatePreview

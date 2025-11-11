@@ -55,6 +55,21 @@ export const API_ENDPOINTS = {
     RELEASE: (id: number) => `/api/v1/devices/${id}/release`,
     SPEED_TEST: (id: number) => `/api/v1/devices/${id}/speed-test`,
     SPEED_TESTS: (id: number) => `/api/v1/devices/${id}/speed-tests`,
+
+    // Device Groups
+    GROUPS: {
+      LIST: '/api/v1/devices/groups',
+      ROOTS: '/api/v1/devices/groups/roots',
+      GET: (id: number) => `/api/v1/devices/groups/${id}`,
+      CHILDREN: (id: number) => `/api/v1/devices/groups/${id}/children`,
+      DEVICES: (id: number) => `/api/v1/devices/groups/${id}/devices`,
+      STATS: (id: number) => `/api/v1/devices/groups/${id}/stats`,
+      CREATE: '/api/v1/devices/groups',
+      UPDATE: (id: number) => `/api/v1/devices/groups/${id}`,
+      DELETE: (id: number) => `/api/v1/devices/groups/${id}`,
+      ADD_DEVICE: (groupId: number) => `/api/v1/devices/groups/${groupId}/devices`,
+      REMOVE_DEVICE: (groupId: number, deviceId: number) => `/api/v1/devices/groups/${groupId}/devices/${deviceId}`,
+    },
   },
 
   // ========================================

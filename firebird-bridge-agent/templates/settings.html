@@ -1,0 +1,337 @@
+{% extends "base.html" %}
+
+{% block title %}Settings - Firebird Bridge Agent{% endblock %}
+
+{% block content %}
+<div class="card">
+    <h2>🌐 Cloud Backend Settings</h2>
+
+    <form id="cloud-form">
+        <div class="form-group">
+            <label>API URL</label>
+            <input type="text" name="api_url" value="{{ config.cloud.api_url }}" placeholder="http://192.168.5.12:8001/api/v1">
+        </div>
+
+        <div class="form-group">
+            <label>Organization ID</label>
+            <input type="number" name="organization_id" value="{{ config.cloud.organization_id }}" placeholder="1">
+        </div>
+
+        <div class="form-group">
+            <label>API Key</label>
+            <input type="password" name="api_key" value="{{ config.cloud.api_key }}" placeholder="your-api-key-from-backend">
+            <small style="color: #718096; display: block; margin-top: 0.5rem;">
+                Get API key from: POST /api/v1/pms/config
+            </small>
+        </div>
+
+        <div class="form-group">
+            <label>
+                <input type="checkbox" name="verify_ssl" {% if config.cloud.verify_ssl %}checked{% endif %}>
+                Verify SSL Certificate
+            </label>
+        </div>
+
+        <button type="button" class="btn btn-secondary" onclick="testCloudConnection()">Test Connection</button>
+        <button type="submit" class="btn btn-primary">Save Cloud Settings</button>
+    </form>
+
+    <div id="cloud-message" style="margin-top: 1rem;"></div>
+</div>
+
+<div class="card">
+    <h2>🔥 Firebird Database Settings</h2>
+
+    <form id="firebird-form">
+        <div class="grid">
+            <div class="form-group">
+                <label>Host</label>
+                <input type="text" name="host" value="{{ config.firebird.host }}" placeholder="localhost">
+            </div>
+
+            <div class="form-group">
+                <label>Port</label>
+                <input type="number" name="port" value="{{ config.firebird.port }}" placeholder="3050">
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label>Database Path</label>
+            <input type="text" name="database_path" value="{{ config.firebird.database_path }}" placeholder="/path/to/hotel.fdb">
+            <small style="color: #718096; display: block; margin-top: 0.5rem;">
+                Examples: /mnt/g/khoirul/signate/powerbo.gdb or C:\Database\hotel.fdb
+            </small>
+        </div>
+
+        <div class="grid">
+            <div class="form-group">
+                <label>Username</label>
+                <input type="text" name="username" value="{{ config.firebird.username }}" placeholder="SYSDBA">
+                <small style="color: #718096; display: block; margin-top: 0.5rem;">
+                    Default: SYSDBA
+                </small>
+            </div>
+
+            <div class="form-group">
+                <label>Password</label>
+                <input type="password" name="password" value="{{ config.firebird.password }}" placeholder="masterkey">
+                <small style="color: #718096; display: block; margin-top: 0.5rem;">
+                    Default: masterkey
+                </small>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label>Charset</label>
+            <input type="text" name="charset" value="{{ config.firebird.charset }}" placeholder="UTF8">
+        </div>
+
+        <button type="button" class="btn btn-secondary" onclick="testFirebirdConnection()">Test Connection</button>
+        <button type="button" class="btn btn-secondary" onclick="listTables()">List Tables</button>
+        <button type="submit" class="btn btn-primary">Save Firebird Settings</button>
+    </form>
+
+    <div id="firebird-message" style="margin-top: 1rem;"></div>
+    <div id="tables-list" style="margin-top: 1rem;"></div>
+</div>
+
+<div class="card">
+    <h2>⏱️ Sync Settings</h2>
+
+    <form id="sync-form">
+        <div class="grid">
+            <div class="form-group">
+                <label>Sync Interval (minutes)</label>
+                <input type="number" name="interval_minutes" value="{{ config.sync.interval_minutes }}" min="1" max="60">
+            </div>
+
+            <div class="form-group">
+                <label>Batch Size</label>
+                <input type="number" name="batch_size" value="{{ config.sync.batch_size }}" min="10" max="1000">
+            </div>
+        </div>
+
+        <div class="grid">
+            <div class="form-group">
+                <label>Retry Attempts</label>
+                <input type="number" name="retry_attempts" value="{{ config.sync.retry_attempts }}" min="1" max="10">
+            </div>
+
+            <div class="form-group">
+                <label>Retry Delay (seconds)</label>
+                <input type="number" name="retry_delay_seconds" value="{{ config.sync.retry_delay_seconds }}" min="1" max="60">
+            </div>
+        </div>
+
+        <button type="submit" class="btn btn-primary">Save Sync Settings</button>
+    </form>
+
+    <div id="sync-message" style="margin-top: 1rem;"></div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Cloud settings form
+document.getElementById('cloud-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const formData = new FormData(e.target);
+    const data = {
+        cloud: {
+            api_url: formData.get('api_url'),
+            organization_id: parseInt(formData.get('organization_id')),
+            api_key: formData.get('api_key'),
+            verify_ssl: formData.get('verify_ssl') === 'on'
+        }
+    };
+
+    await saveConfig(data, 'cloud-message');
+});
+
+// Firebird settings form
+document.getElementById('firebird-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const formData = new FormData(e.target);
+    const data = {
+        firebird: {
+            host: formData.get('host'),
+            port: parseInt(formData.get('port')),
+            database_path: formData.get('database_path'),
+            username: formData.get('username'),
+            password: formData.get('password'),
+            charset: formData.get('charset')
+        }
+    };
+
+    await saveConfig(data, 'firebird-message');
+});
+
+// Sync settings form
+document.getElementById('sync-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const formData = new FormData(e.target);
+    const data = {
+        sync: {
+            interval_minutes: parseInt(formData.get('interval_minutes')),
+            batch_size: parseInt(formData.get('batch_size')),
+            retry_attempts: parseInt(formData.get('retry_attempts')),
+            retry_delay_seconds: parseInt(formData.get('retry_delay_seconds'))
+        }
+    };
+
+    await saveConfig(data, 'sync-message');
+});
+
+async function saveConfig(data, messageDivId) {
+    const messageDiv = document.getElementById(messageDivId);
+
+    try {
+        const response = await fetch('/api/config', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            messageDiv.innerHTML = `<div class="alert alert-success">${result.message}</div>`;
+        } else {
+            messageDiv.innerHTML = `<div class="alert alert-error">${result.message}</div>`;
+        }
+    } catch (error) {
+        messageDiv.innerHTML = `<div class="alert alert-error">Error: ${error.message}</div>`;
+    }
+}
+
+async function testCloudConnection() {
+    const messageDiv = document.getElementById('cloud-message');
+    const formData = new FormData(document.getElementById('cloud-form'));
+
+    const data = {
+        api_url: formData.get('api_url'),
+        organization_id: parseInt(formData.get('organization_id')),
+        api_key: formData.get('api_key'),
+        verify_ssl: formData.get('verify_ssl') === 'on'
+    };
+
+    messageDiv.innerHTML = '<div class="alert alert-info">Testing connection...</div>';
+
+    try {
+        const response = await fetch('/api/test-cloud', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            messageDiv.innerHTML = `<div class="alert alert-success">✅ ${result.message}</div>`;
+        } else {
+            messageDiv.innerHTML = `<div class="alert alert-error">❌ ${result.message}</div>`;
+        }
+    } catch (error) {
+        messageDiv.innerHTML = `<div class="alert alert-error">❌ Error: ${error.message}</div>`;
+    }
+}
+
+async function testFirebirdConnection() {
+    const messageDiv = document.getElementById('firebird-message');
+    const formData = new FormData(document.getElementById('firebird-form'));
+
+    const data = {
+        host: formData.get('host'),
+        port: parseInt(formData.get('port')),
+        database_path: formData.get('database_path'),
+        username: formData.get('username'),
+        password: formData.get('password'),
+        charset: formData.get('charset')
+    };
+
+    messageDiv.innerHTML = '<div class="alert alert-info">Testing connection...</div>';
+
+    try {
+        const response = await fetch('/api/test-firebird', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            messageDiv.innerHTML = `<div class="alert alert-success">✅ ${result.message}</div>`;
+        } else {
+            messageDiv.innerHTML = `<div class="alert alert-error">❌ ${result.message}</div>`;
+        }
+    } catch (error) {
+        messageDiv.innerHTML = `<div class="alert alert-error">❌ Error: ${error.message}</div>`;
+    }
+}
+
+async function listTables() {
+    const tablesDiv = document.getElementById('tables-list');
+    const formData = new FormData(document.getElementById('firebird-form'));
+
+    const data = {
+        host: formData.get('host'),
+        port: parseInt(formData.get('port')),
+        database_path: formData.get('database_path'),
+        username: formData.get('username'),
+        password: formData.get('password'),
+        charset: formData.get('charset')
+    };
+
+    tablesDiv.innerHTML = '<div class="alert alert-info">Loading tables...</div>';
+
+    try {
+        const response = await fetch('/api/list-tables', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            let html = '<div class="card" style="background: #f7fafc; padding: 1.5rem;">';
+            html += `<h3 style="margin-bottom: 1rem;">Found ${result.total} tables</h3>`;
+
+            if (result.guest_tables.length > 0) {
+                html += '<h4 style="color: #48bb78; margin-top: 1rem;">Guest/Reservation Tables:</h4>';
+                html += '<ul style="margin-left: 1.5rem; margin-top: 0.5rem;">';
+                result.guest_tables.forEach(table => {
+                    html += `<li style="margin: 0.25rem 0; color: #2d3748;">${table}</li>`;
+                });
+                html += '</ul>';
+            }
+
+            if (result.room_tables.length > 0) {
+                html += '<h4 style="color: #4299e1; margin-top: 1rem;">Room Tables:</h4>';
+                html += '<ul style="margin-left: 1.5rem; margin-top: 0.5rem;">';
+                result.room_tables.forEach(table => {
+                    html += `<li style="margin: 0.25rem 0; color: #2d3748;">${table}</li>`;
+                });
+                html += '</ul>';
+            }
+
+            html += '<details style="margin-top: 1rem;"><summary style="cursor: pointer; font-weight: 500;">Show all tables</summary>';
+            html += '<ul style="margin-left: 1.5rem; margin-top: 0.5rem; columns: 2;">';
+            result.tables.forEach(table => {
+                html += `<li style="margin: 0.25rem 0; color: #718096;">${table}</li>`;
+            });
+            html += '</ul></details>';
+
+            html += '</div>';
+
+            tablesDiv.innerHTML = html;
+        } else {
+            tablesDiv.innerHTML = `<div class="alert alert-error">❌ ${result.message}</div>`;
+        }
+    } catch (error) {
+        tablesDiv.innerHTML = `<div class="alert alert-error">❌ Error: ${error.message}</div>`;
+    }
+}
+</script>
+{% endblock %}

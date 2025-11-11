@@ -20,6 +20,10 @@ import {
   FileText,
   Building2,
   BarChart3,
+  Folder,
+  Calendar,
+  Languages,
+  FileCode,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useUIStore } from '@/lib/stores/uiStore';
@@ -37,12 +41,16 @@ export default function Sidebar() {
   const navigation = [
     { name: t('navigation.dashboard'), href: '/dashboard', icon: LayoutDashboard },
     { name: t('navigation.devices'), href: '/devices', icon: Monitor },
+    { name: t('navigation.deviceGroups'), href: '/device-groups', icon: Folder },
     { name: t('navigation.contents'), href: '/contents', icon: FileImage },
     { name: t('navigation.playlists'), href: '/playlists', icon: ListVideo },
+    { name: t('navigation.schedules'), href: '/schedules', icon: Calendar },
+    { name: t('navigation.widgets'), href: '/widgets', icon: Puzzle },
+    { name: t('navigation.templates'), href: '/templates', icon: FileCode },
+    { name: t('navigation.translations'), href: '/translations', icon: Languages },
     { name: t('navigation.tags'), href: '/tags', icon: Tag },
     { name: t('navigation.analytics'), href: '/analytics', icon: BarChart3 },
     { name: t('navigation.auditLogs'), href: '/audit-logs', icon: FileText },
-    { name: t('navigation.widgets'), href: '/widgets', icon: Puzzle },
     { name: t('navigation.settings'), href: '/settings', icon: Settings },
   ];
 

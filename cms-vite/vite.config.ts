@@ -16,6 +16,7 @@ export default defineConfig(({ mode }) => {
     },
     server: {
       port: parseInt(env.VITE_PORT || '3000'),  // From .env
+      host: true, // Bind to all network interfaces
       // HMR configuration for better hot reload
       hmr: {
         overlay: true, // Show errors in overlay

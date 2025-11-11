@@ -1,0 +1,148 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Firebird Bridge Agent{% endblock %}
+
+{% block content %}
+<div class="card">
+    <h2>📊 Sync Status</h2>
+
+    <div class="grid">
+        <div class="stat-card">
+            <h3>Last Sync</h3>
+            <div class="value" id="last-sync">
+                {% if state.last_sync %}
+                    {{ state.last_sync }}
+                {% else %}
+                    Never
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="stat-card">
+            <h3>Guests Synced</h3>
+            <div class="value" id="guest-count">{{ state.guest_count or 0 }}</div>
+        </div>
+
+        <div class="stat-card">
+            <h3>Rooms Synced</h3>
+            <div class="value" id="room-count">{{ state.room_count or 0 }}</div>
+        </div>
+
+        <div class="stat-card">
+            <h3>Total Syncs</h3>
+            <div class="value" id="sync-count">{{ state.sync_count or 0 }}</div>
+        </div>
+    </div>
+
+    {% if state.last_error %}
+    <div class="alert alert-error" style="margin-top: 1.5rem;">
+        <strong>Last Error:</strong> {{ state.last_error }}
+    </div>
+    {% endif %}
+
+    <div style="margin-top: 2rem;">
+        <button class="btn btn-primary" onclick="syncNow()">
+            <span id="sync-btn-text">Sync Now</span>
+        </button>
+        <button class="btn btn-secondary" onclick="refreshState()">
+            Refresh Status
+        </button>
+    </div>
+
+    <div id="sync-message" style="margin-top: 1rem;"></div>
+</div>
+
+<div class="card">
+    <h2>⚙️ Configuration Summary</h2>
+
+    <table style="width: 100%; border-collapse: collapse;">
+        <tr style="border-bottom: 1px solid #e2e8f0;">
+            <td style="padding: 1rem; font-weight: 500;">Cloud API URL</td>
+            <td style="padding: 1rem;">{{ config.cloud.api_url }}</td>
+        </tr>
+        <tr style="border-bottom: 1px solid #e2e8f0;">
+            <td style="padding: 1rem; font-weight: 500;">Organization ID</td>
+            <td style="padding: 1rem;">{{ config.cloud.organization_id }}</td>
+        </tr>
+        <tr style="border-bottom: 1px solid #e2e8f0;">
+            <td style="padding: 1rem; font-weight: 500;">API Key</td>
+            <td style="padding: 1rem;">
+                {% if config.cloud.api_key %}
+                    ***{{ config.cloud.api_key[-4:] if config.cloud.api_key|length > 4 else '****' }}
+                {% else %}
+                    <span style="color: #f56565;">Not configured</span>
+                {% endif %}
+            </td>
+        </tr>
+        <tr style="border-bottom: 1px solid #e2e8f0;">
+            <td style="padding: 1rem; font-weight: 500;">Firebird Host</td>
+            <td style="padding: 1rem;">{{ config.firebird.host }}:{{ config.firebird.port }}</td>
+        </tr>
+        <tr style="border-bottom: 1px solid #e2e8f0;">
+            <td style="padding: 1rem; font-weight: 500;">Database Path</td>
+            <td style="padding: 1rem;">{{ config.firebird.database_path }}</td>
+        </tr>
+        <tr style="border-bottom: 1px solid #e2e8f0;">
+            <td style="padding: 1rem; font-weight: 500;">Database User</td>
+            <td style="padding: 1rem;">{{ config.firebird.username }}</td>
+        </tr>
+        <tr>
+            <td style="padding: 1rem; font-weight: 500;">Sync Interval</td>
+            <td style="padding: 1rem;">{{ config.sync.interval_minutes }} minutes</td>
+        </tr>
+    </table>
+
+    <div style="margin-top: 1.5rem;">
+        <a href="{{ url_for('settings') }}" class="btn btn-secondary">Edit Configuration</a>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+async function syncNow() {
+    const btn = document.getElementById('sync-btn-text');
+    const messageDiv = document.getElementById('sync-message');
+
+    btn.innerHTML = '<span class="loading"></span> Syncing...';
+    messageDiv.innerHTML = '';
+
+    try {
+        const response = await fetch('/api/sync-now', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            messageDiv.innerHTML = `<div class="alert alert-success">${data.message}</div>`;
+            refreshState();
+        } else {
+            messageDiv.innerHTML = `<div class="alert alert-error">${data.message}</div>`;
+        }
+    } catch (error) {
+        messageDiv.innerHTML = `<div class="alert alert-error">Error: ${error.message}</div>`;
+    } finally {
+        btn.textContent = 'Sync Now';
+    }
+}
+
+async function refreshState() {
+    try {
+        const response = await fetch('/api/state');
+        const state = await response.json();
+
+        document.getElementById('last-sync').textContent = state.last_sync || 'Never';
+        document.getElementById('guest-count').textContent = state.guest_count || 0;
+        document.getElementById('room-count').textContent = state.room_count || 0;
+        document.getElementById('sync-count').textContent = state.sync_count || 0;
+    } catch (error) {
+        console.error('Failed to refresh state:', error);
+    }
+}
+
+// Auto-refresh every 30 seconds
+setInterval(refreshState, 30000);
+</script>
+{% endblock %}

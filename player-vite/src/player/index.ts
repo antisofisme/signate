@@ -15,6 +15,7 @@ export { PlayerPlaylistSync } from './services/player-playlist-sync';
 export { PlayerHeartbeat } from './services/player-heartbeat';
 export { PlayerCommandExecutor } from './services/player-command-executor';
 export { PlayerPlaybackLogger } from './services/player-playback-logger';
+export { PlayerHealthReporter } from './services/player-health-reporter';
 
 // Types
 export type {

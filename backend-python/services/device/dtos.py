@@ -175,3 +175,286 @@ class ActivationStatusResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+# =============================================================================
+# DEVICE COMMANDS DTOs
+# =============================================================================
+
+class DeviceCommandCreate(BaseModel):
+    """Create device command - called by CMS"""
+    command_type: str = Field(..., pattern='^(reboot|refresh_content|update_settings|clear_cache|screenshot|update_playlist)$')
+    command_data: Optional[dict] = Field(default={})
+    priority: int = Field(default=5, ge=1, le=10)
+    expires_in_minutes: int = Field(default=60, ge=5, le=1440)
+
+
+class BulkDeviceCommandCreate(BaseModel):
+    """Create command for multiple devices"""
+    device_ids: list[int] = Field(..., min_items=1, max_items=100)
+    command_type: str = Field(..., pattern='^(reboot|refresh_content|update_settings|clear_cache|screenshot|update_playlist)$')
+    command_data: Optional[dict] = Field(default={})
+    priority: int = Field(default=5, ge=1, le=10)
+    expires_in_minutes: int = Field(default=60, ge=5, le=1440)
+
+
+class DeviceCommandResponse(BaseModel):
+    """Device command response"""
+    id: int
+    device_id: int
+    organization_id: int
+    command_type: str
+    command_data: dict
+    status: str
+    priority: int
+    sent_at: Optional[datetime]
+    executed_at: Optional[datetime]
+    failed_at: Optional[datetime]
+    result: Optional[dict]
+    error_message: Optional[str]
+    retry_count: int
+    max_retries: int
+    created_by: Optional[int]
+    created_at: datetime
+    updated_at: Optional[datetime]
+    expires_at: Optional[datetime]
+
+    class Config:
+        from_attributes = True
+
+
+class PendingCommandsResponse(BaseModel):
+    """Pending commands response - for player"""
+    commands: list[DeviceCommandResponse]
+    count: int
+
+
+class CommandExecutionRequest(BaseModel):
+    """Mark command as executed - from player"""
+    result: Optional[dict] = Field(default={"status": "success"})
+
+
+class CommandFailureRequest(BaseModel):
+    """Mark command as failed - from player"""
+    error_message: str = Field(..., max_length=500)
+
+
+# =============================================================================
+# DEVICE HEALTH METRICS DTOs
+# =============================================================================
+
+class DeviceHealthMetricsCreate(BaseModel):
+    """Record health metrics - called by player"""
+    # System metrics
+    cpu_usage: Optional[float] = Field(None, ge=0, le=100)
+    memory_usage: Optional[float] = Field(None, ge=0, le=100)
+    memory_total_mb: Optional[int] = Field(None, gt=0)
+    memory_used_mb: Optional[int] = Field(None, ge=0)
+    disk_usage: Optional[float] = Field(None, ge=0, le=100)
+    disk_total_gb: Optional[int] = Field(None, gt=0)
+    disk_used_gb: Optional[int] = Field(None, ge=0)
+
+    # Network metrics
+    network_latency_ms: Optional[int] = Field(None, ge=0)
+    network_download_mbps: Optional[float] = Field(None, ge=0)
+    network_upload_mbps: Optional[float] = Field(None, ge=0)
+
+    # Display metrics
+    display_resolution: Optional[str] = Field(None, max_length=20)
+    display_refresh_rate: Optional[int] = Field(None, gt=0)
+    gpu_usage: Optional[float] = Field(None, ge=0, le=100)
+
+    # Player metrics
+    player_version: Optional[str] = Field(None, max_length=50)
+    player_uptime_hours: Optional[int] = Field(None, ge=0)
+    content_errors_count: int = Field(default=0, ge=0)
+    last_error_message: Optional[str] = Field(None, max_length=500)
+
+    # Additional metadata
+    metadata: Optional[dict] = Field(default={})
+
+
+class DeviceHealthResponse(BaseModel):
+    """Device health response"""
+    id: int
+    device_id: int
+    organization_id: int
+
+    # System metrics
+    cpu_usage: Optional[float]
+    memory_usage: Optional[float]
+    memory_total_mb: Optional[int]
+    memory_used_mb: Optional[int]
+    disk_usage: Optional[float]
+    disk_total_gb: Optional[int]
+    disk_used_gb: Optional[int]
+
+    # Network metrics
+    network_latency_ms: Optional[int]
+    network_download_mbps: Optional[float]
+    network_upload_mbps: Optional[float]
+    connection_quality: Optional[str]
+
+    # Display metrics
+    display_resolution: Optional[str]
+    display_refresh_rate: Optional[int]
+    gpu_usage: Optional[float]
+
+    # Player metrics
+    player_version: Optional[str]
+    player_uptime_hours: Optional[int]
+    content_errors_count: int
+    last_error_message: Optional[str]
+    last_error_at: Optional[datetime]
+
+    # Health status
+    overall_status: str
+    alert_triggered: bool
+    alert_message: Optional[str]
+
+    # Metadata
+    metadata: dict
+    recorded_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class HealthAlertResponse(BaseModel):
+    """Health alert response"""
+    alert_type: str
+    alert_level: str
+    alert_message: str
+    metric_value: float
+    threshold_value: float
+    recorded_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class DeviceHealthWithAlertsResponse(BaseModel):
+    """Device health with alerts"""
+    health: Optional[DeviceHealthResponse]
+    alerts: list[HealthAlertResponse]
+
+
+class HealthHistoryResponse(BaseModel):
+    """Health history response"""
+    history: list[DeviceHealthResponse]
+    count: int
+
+
+class OrganizationHealthSummaryResponse(BaseModel):
+    """Organization health summary"""
+    total_devices: int
+    healthy_devices: int
+    warning_devices: int
+    critical_devices: int
+    offline_devices: int
+    avg_cpu_usage: Optional[float]
+    avg_memory_usage: Optional[float]
+    avg_disk_usage: Optional[float]
+    devices_with_errors: int
+
+    class Config:
+        from_attributes = True
+
+
+# =============================================================================
+# DEVICE GROUPS DTOs
+# =============================================================================
+
+class CreateDeviceGroupRequest(BaseModel):
+    """Create device group - called by CMS"""
+    name: str = Field(..., min_length=1, max_length=100)
+    description: Optional[str] = Field(None, max_length=500)
+    parent_group_id: Optional[int] = Field(None, gt=0)
+    group_type: Optional[str] = Field(None, pattern='^(chain|hotel|floor|location|custom)$')
+    sort_order: int = Field(default=0, ge=0)
+    default_playlist_id: Optional[int] = Field(None, gt=0)
+
+
+class UpdateDeviceGroupRequest(BaseModel):
+    """Update device group - called by CMS"""
+    name: Optional[str] = Field(None, min_length=1, max_length=100)
+    description: Optional[str] = Field(None, max_length=500)
+    parent_group_id: Optional[int] = Field(None, gt=0)
+    group_type: Optional[str] = Field(None, pattern='^(chain|hotel|floor|location|custom)$')
+    sort_order: Optional[int] = Field(None, ge=0)
+    default_playlist_id: Optional[int] = Field(None, gt=0)
+
+
+class AddDeviceToGroupRequest(BaseModel):
+    """Add device to group - called by CMS"""
+    device_id: int = Field(..., gt=0)
+
+
+class RemoveDeviceFromGroupRequest(BaseModel):
+    """Remove device from group - called by CMS"""
+    device_id: int = Field(..., gt=0)
+
+
+class DeviceGroupResponse(BaseModel):
+    """Device group response"""
+    id: int
+    name: str
+    description: Optional[str]
+    parent_group_id: Optional[int]
+    organization_id: int
+    group_type: Optional[str]
+    sort_order: int
+    default_playlist_id: Optional[int]
+    device_count: int  # Computed field
+    parent_name: Optional[str]  # Computed field
+    full_path: Optional[str]  # Computed field
+    created_by: Optional[int]
+    created_at: datetime
+    updated_at: Optional[datetime]
+
+    class Config:
+        from_attributes = True
+
+
+class DeviceGroupListResponse(BaseModel):
+    """List of device groups"""
+    items: list[DeviceGroupResponse]
+    total: int
+
+    class Config:
+        from_attributes = True
+
+
+class DeviceGroupStatsResponse(BaseModel):
+    """Device group statistics"""
+    group_id: int
+    total_devices: int
+    online_devices: int
+    offline_devices: int
+
+    class Config:
+        from_attributes = True
+
+
+class DeviceGroupMemberResponse(BaseModel):
+    """Device group member response"""
+    id: int
+    device_id: int
+    group_id: int
+    device_name: Optional[str]
+    group_name: Optional[str]
+    joined_at: datetime
+    added_by: Optional[int]
+
+    class Config:
+        from_attributes = True
+
+
+class GroupDevicesResponse(BaseModel):
+    """Devices in group response"""
+    group_id: int
+    devices: list[int]  # List of device IDs
+    count: int
+
+    class Config:
+        from_attributes = True

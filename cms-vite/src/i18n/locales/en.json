@@ -47,9 +47,13 @@
   "navigation": {
     "dashboard": "Dashboard",
     "devices": "Devices",
+    "deviceGroups": "Device Groups",
     "contents": "Contents",
     "playlists": "Playlists",
     "schedules": "Schedules",
+    "widgets": "Widgets",
+    "templates": "Templates",
+    "translations": "Translations",
     "users": "Users",
     "organizations": "Organizations",
     "reports": "Reports",
@@ -57,7 +61,6 @@
     "analytics": "Analytics",
     "activityLogs": "Activity Logs",
     "auditLogs": "Audit Logs",
-    "widgets": "Widgets",
     "settings": "Settings"
   },
   "devices": {

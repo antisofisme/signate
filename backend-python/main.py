@@ -19,8 +19,10 @@ from services.auth.routes import router as auth_router
 from services.device.routes import router as device_router
 from services.device.assignment_routes import router as device_assignment_router
 from services.device.command_routes import router as device_command_router
+from services.device.health_routes import router as device_health_router
 from services.device.log_routes import router as device_log_router
 from services.device.extended_routes import router as device_extended_router
+from services.device.group_routes import router as device_group_router
 from services.organization.routes import router as organization_router
 from services.user.routes import router as user_router
 from services.audit.routes import router as audit_router
@@ -29,6 +31,13 @@ from services.content.routes import router as content_router
 from services.playlist.routes import router as playlist_router
 from services.rbac.routes import router as rbac_router
 from services.session.routes import router as session_router
+from services.analytics.routes import router as analytics_router
+from services.pms.sync_routes import router as pms_router
+from services.pms.websocket_routes import router as pms_websocket_router
+from services.widget.routes import router as widget_router
+from services.template.routes import router as template_router
+from services.translation.routes import router as translation_router
+from services.schedule.routes import router as schedule_router
 
 
 # =============================================================================
@@ -143,9 +152,13 @@ def health_check():
 # Note: Routes already include full path from Route classes
 # So we don't add prefix here
 app.include_router(auth_router, tags=["Authentication"])
+# IMPORTANT: Device Groups must be registered BEFORE Device Management
+# to avoid /devices/groups being caught by /devices/{device_id}
+app.include_router(device_group_router, prefix="/api/v1/devices", tags=["Device Groups"])
 app.include_router(device_router, tags=["Device Management"])
 app.include_router(device_assignment_router, prefix="/api/v1", tags=["Device Assignments"])
 app.include_router(device_command_router, prefix="/api/v1", tags=["Device Commands"])
+app.include_router(device_health_router, prefix="/api/v1", tags=["Device Health"])
 app.include_router(device_log_router, prefix="/api/v1", tags=["Device Logs"])
 app.include_router(device_extended_router, prefix="/api/v1", tags=["Device Extended"])
 app.include_router(organization_router, tags=["Organization Management"])
@@ -156,6 +169,13 @@ app.include_router(content_router, tags=["Content Management"])
 app.include_router(playlist_router, tags=["Playlist Management"])
 app.include_router(rbac_router, tags=["RBAC - Role Management"])
 app.include_router(session_router, tags=["Session Management"])
+app.include_router(analytics_router, prefix="/api/v1/analytics", tags=["Analytics & Reporting"])
+app.include_router(pms_router, prefix="/api/v1", tags=["PMS Integration"])
+app.include_router(pms_websocket_router, tags=["PMS WebSocket"])
+app.include_router(widget_router, prefix="/api/v1", tags=["Widget System"])
+app.include_router(template_router, prefix="/api/v1", tags=["Template System"])
+app.include_router(translation_router, prefix="/api/v1", tags=["Translation System"])
+app.include_router(schedule_router, prefix="/api/v1", tags=["Schedule System"])
 
 
 # =============================================================================

@@ -33,10 +33,15 @@ export interface DebugConfig {
   wsDebug: boolean;
 }
 
+export interface PlayerConfig {
+  version: string;
+}
+
 export interface AppConfig {
   api: ApiConfig;
   device: DeviceConfig;
   retry: RetryConfig;
   log: LogConfig;
   debug: DebugConfig;
+  player: PlayerConfig;
 }
