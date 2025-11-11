@@ -5,7 +5,8 @@ This directory contains the database migration files for the Digital Signage Sys
 ## Migration Files
 
 ### Complete Schema
-- `001_complete_schema.sql` - Complete database schema with all 29 tables
+- `001_complete_schema.sql` - Original complete database schema with 29 tables
+- `001_complete_schema_updated.sql` - Updated complete schema with 33 tables (includes analytics tables)
 
 ### Incremental Migrations
 The following files are incremental migrations that were applied during development:
@@ -31,6 +32,8 @@ The following files are incremental migrations that were applied during developm
 | `018_add_schedules.sql` | Add advanced scheduling | Applied |
 | `019_add_widgets.sql` | Add widgets tables | Applied |
 | `020_add_audit_logs.sql` | Add audit logs table | Applied |
+| `021_add_analytics_tables.sql` | Add analytics tables | Applied |
+| `022_add_device_group_enhancements.sql` | Add device group hierarchy and stats | Applied |
 
 ### Archived Migrations
 The following files have been archived as they are duplicates or were superseded:
@@ -56,7 +59,9 @@ For existing installations, run only the migrations newer than your current vers
 
 ## Current Schema Version
 
-The complete schema (001_complete_schema.sql) includes all tables up to migration 020.
+The complete schema includes:
+- Original: `001_complete_schema.sql` - 29 tables (up to migration 020)
+- Updated: `001_complete_schema_updated.sql` - 33 tables (includes analytics, up to migration 022)
 
 ## Tables Overview
 
@@ -79,4 +84,8 @@ The complete schema (001_complete_schema.sql) includes all tables up to migratio
    - templates, translations, widgets
    - pms_configurations, pms_rooms, pms_guests
 
-Total: 29 tables with proper indexes and constraints.
+6. **Analytics Tables** (4 tables)
+   - content_performance, device_engagement
+   - device_group_hierarchy, device_group_stats
+
+Total: 33 tables with proper indexes and constraints.
