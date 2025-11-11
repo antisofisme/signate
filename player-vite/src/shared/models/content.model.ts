@@ -18,7 +18,7 @@ import { SharedLogger } from '@shared/logger';
 /**
  * Content type enumeration
  */
-export type ContentType = 'video' | 'image' | 'webpage';
+export type ContentType = 'video' | 'image' | 'webpage' | 'widget';
 
 /**
  * Content metadata interface
@@ -45,6 +45,7 @@ export interface ContentData {
   thumbnail_url?: string | null;
   order?: number;
   metadata?: ContentMetadata;
+  widget_data?: any; // Widget configuration data
   created_at?: string | null;
   updated_at?: string | null;
 }
@@ -70,6 +71,7 @@ export class Content {
   thumbnail_url: string | null;
   order: number;
   metadata: ContentMetadata;
+  widget_data?: any;
   created_at: string | null;
   updated_at: string | null;
 
@@ -83,6 +85,7 @@ export class Content {
     this.thumbnail_url = data.thumbnail_url ?? null;
     this.order = data.order ?? 0;
     this.metadata = data.metadata ?? {};
+    this.widget_data = data.widget_data;
     this.created_at = data.created_at ?? null;
     this.updated_at = data.updated_at ?? null;
   }
@@ -101,8 +104,8 @@ export class Content {
       errors.push('Content title is required');
     }
 
-    if (!['video', 'image', 'webpage'].includes(this.type)) {
-      errors.push('Invalid content type (must be: video, image, or webpage)');
+    if (!['video', 'image', 'webpage', 'widget'].includes(this.type)) {
+      errors.push('Invalid content type (must be: video, image, webpage, or widget)');
     }
 
     if (!this.url || this.url.trim().length === 0) {
@@ -212,6 +215,8 @@ export class Content {
         return 'image-icon';
       case 'webpage':
         return 'web-icon';
+      case 'widget':
+        return 'widget-icon';
       default:
         return 'file-icon';
     }
@@ -231,6 +236,7 @@ export class Content {
       thumbnail_url: this.thumbnail_url,
       order: this.order,
       metadata: this.metadata,
+      widget_data: this.widget_data,
       created_at: this.created_at,
       updated_at: this.updated_at,
     };
@@ -250,6 +256,7 @@ export class Content {
       thumbnail_url: data.thumbnail_url,
       order: data.order || data.sequence || 0,
       metadata: data.metadata || {},
+      widget_data: data.widget_data,
       created_at: data.created_at,
       updated_at: data.updated_at,
     });

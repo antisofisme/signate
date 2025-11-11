@@ -21,3 +21,24 @@ export type {
 
 // Re-export validation result type (used by all models)
 export type { ValidationResult } from './device.model';
+
+// Widget models
+export type {
+  Widget,
+  WidgetType,
+  WidgetPosition,
+  BaseWidget,
+  ClockWidget,
+  ClockConfig,
+  WeatherWidget,
+  WeatherConfig,
+  TextWidget,
+  TextConfig,
+  CalendarWidget,
+  CalendarConfig,
+  HtmlWidget,
+  HtmlConfig,
+  WidgetContent,
+  WidgetRenderContext,
+  IWidgetRenderer,
+} from './widget.model';

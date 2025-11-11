@@ -13,6 +13,7 @@
 import Hls from 'hls.js';
 import { SharedLogger } from '@shared/logger';
 import { PlayerPlaybackLogger } from './player-playback-logger';
+import { playerWidgetRenderer } from './player-widget-renderer';
 import type {
   PlayerHLS as IPlayerHLS,
   Playlist,
@@ -143,6 +144,9 @@ class PlayerHLSClass implements IPlayerHLS {
         break;
       case 'url':
         await this.playURL(item);
+        break;
+      case 'widget':
+        await this.playWidget(item);
         break;
       default:
         SharedLogger.warn('[PlayerHLS] Unsupported content type:', item.content.type);
@@ -281,6 +285,41 @@ class PlayerHLSClass implements IPlayerHLS {
     }, item.duration * 1000);
 
     SharedLogger.log('[PlayerHLS] Playing URL for', item.duration, 'seconds');
+  }
+
+  /**
+   * Play widget content
+   */
+  private async playWidget(item: PlaylistItem): Promise<void> {
+    if (!this.videoElement) return;
+
+    // Hide video element
+    this.videoElement.style.display = 'none';
+
+    // Initialize widget renderer if not already
+    if (!this.videoElement.parentElement?.querySelector('#widget-overlay')) {
+      playerWidgetRenderer.initialize(this.videoElement.parentElement!);
+    }
+
+    // Render widgets
+    await playerWidgetRenderer.renderWidgets(item.content);
+
+    // Log playback start for analytics (widgets)
+    if (this.state.playlist) {
+      void PlayerPlaybackLogger.logPlaybackStart(item, this.state.playlist.id);
+    }
+
+    // Set timer for duration
+    this.itemTimer = window.setTimeout(() => {
+      // Clear widgets
+      playerWidgetRenderer.clearWidgets();
+      
+      // Log playback end (completed)
+      void PlayerPlaybackLogger.logPlaybackEnd(true);
+      void this.next();
+    }, item.duration * 1000);
+
+    SharedLogger.log('[PlayerHLS] Playing widgets for', item.duration, 'seconds');
   }
 
   /**
@@ -442,11 +481,14 @@ class PlayerHLSClass implements IPlayerHLS {
   }
 
   /**
-   * Cleanup temporary elements (images, iframes)
+   * Cleanup temporary elements (images, iframes, widgets)
    */
   private cleanupTemporaryElements(): void {
     document.getElementById('temp-image')?.remove();
     document.getElementById('temp-iframe')?.remove();
+    
+    // Clear widgets
+    playerWidgetRenderer.clearWidgets();
 
     if (this.videoElement) {
       this.videoElement.style.display = 'block';
@@ -463,6 +505,9 @@ class PlayerHLSClass implements IPlayerHLS {
       this.hls.destroy();
       this.hls = null;
     }
+    
+    // Destroy widget renderer
+    playerWidgetRenderer.destroy();
 
     this.state = {
       currentItemIndex: 0,
