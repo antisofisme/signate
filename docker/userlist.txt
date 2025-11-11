@@ -13,10 +13,8 @@
 # Example: echo -n "Password@2021signage_user" | md5sum
 # ============================================================================
 
-# Main database user (replace <HASH> with actual MD5 hash)
-# To generate: echo -n "Password@2021signage_user" | md5sum
-# Then prepend "md5" to the result
-"signage_user" "md5<REPLACE_WITH_ACTUAL_HASH>"
+# Main database user
+"signage_user" "md55e22da6cd201b71c209ee83bedf42fec"
 
 # Admin user for PgBouncer console access
 # To generate: echo -n "AdminPass123signage_admin" | md5sum

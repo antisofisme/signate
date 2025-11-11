@@ -11,6 +11,7 @@
  */
 
 import { SharedLogger } from '@shared/logger';
+import { i18n } from '@shared/services/i18n';
 
 /**
  * Player UI Manager Class
@@ -36,13 +37,13 @@ class PlayerUIManager {
   /**
    * Show loading screen
    */
-  public showLoading(message: string = 'Loading...'): void {
+  public showLoading(message?: string): void {
     this.hideError();
     const loading = document.getElementById('loading');
     if (loading) {
       const paragraph = loading.querySelector('p');
       if (paragraph) {
-        paragraph.textContent = message;
+        paragraph.textContent = message || i18n.t('player.loading');
       }
       loading.style.display = 'block';
     }
@@ -179,6 +180,13 @@ class PlayerUIManager {
       if (e.key === 'r' || e.key === 'R') {
         SharedLogger.log('[PlayerUI] Manual reload playlist');
         onReload();
+      }
+
+      // Press 's' to toggle schedule info
+      if (e.key === 's' || e.key === 'S') {
+        SharedLogger.log('[PlayerUI] Toggle schedule info');
+        // Dispatch event for schedule info toggle
+        window.dispatchEvent(new Event('toggle-schedule-info'));
       }
     });
   }

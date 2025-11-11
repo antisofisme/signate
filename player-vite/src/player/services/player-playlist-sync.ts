@@ -13,6 +13,8 @@ import { config } from '@shared/config';
 import { SharedLogger } from '@shared/logger';
 import { SharedAPIClient } from '@shared/api';
 import { SharedDeviceState } from '@shared/device';
+import { SharedEventBus } from '@shared/events/shared-event-bus';
+import { playerScheduleManager } from './player-schedule-manager';
 import type { PlaylistSync as IPlaylistSync, PlaylistSyncResponse, Playlist } from '../types/player.types';
 
 /**
@@ -24,6 +26,8 @@ class PlayerPlaylistSyncClass implements IPlaylistSync {
   private readonly syncIntervalMs = 60000; // Sync every 60 seconds
   private currentPlaylistVersion: string | null = null;
   private _isRunning = false;
+  private scheduledPlaylistId: number | null = null;
+  private useScheduling = true; // Feature flag for scheduling
 
   /**
    * Start periodic playlist sync
@@ -42,6 +46,12 @@ class PlayerPlaylistSyncClass implements IPlaylistSync {
 
     SharedLogger.log('[PlayerPlaylistSync] 🔄 Starting playlist sync...');
     this._isRunning = true;
+
+    // Initialize schedule manager if scheduling is enabled
+    if (this.useScheduling) {
+      playerScheduleManager.initialize();
+      this.setupScheduleListeners();
+    }
 
     // Sync immediately
     void this.syncNow();
@@ -65,6 +75,11 @@ class PlayerPlaylistSyncClass implements IPlaylistSync {
       this.syncInterval = null;
     }
 
+    // Stop schedule manager
+    if (this.useScheduling) {
+      playerScheduleManager.stop();
+    }
+
     this._isRunning = false;
     SharedLogger.log('[PlayerPlaylistSync] ⏹️ Playlist sync stopped');
   }
@@ -83,10 +98,8 @@ class PlayerPlaylistSyncClass implements IPlaylistSync {
     try {
       SharedLogger.log('[PlayerPlaylistSync] 📥 Syncing playlist from backend...');
 
-      // Fetch current playlist from backend
-      const data = await SharedAPIClient.get<PlaylistSyncResponse>(
-        `${config.api.baseURL}/api/client/playlist?device_id=${deviceId}`
-      );
+      // Fetch current playlist from backend (with schedule support)
+      const data = await this.fetchPlaylist(deviceId);
 
       SharedLogger.log('[PlayerPlaylistSync] 📊 Sync response:', {
         hasPlaylist: !!data.playlist,
@@ -194,6 +207,64 @@ class PlayerPlaylistSyncClass implements IPlaylistSync {
     SharedLogger.log('[PlayerPlaylistSync] 🔄 Forcing playlist reload...');
     this.currentPlaylistVersion = null;
     void this.syncNow();
+  }
+
+  /**
+   * Setup schedule event listeners
+   */
+  private setupScheduleListeners(): void {
+    // Listen for schedule changes
+    SharedEventBus.on('schedule:changed', (event: any) => {
+      const { schedule, playlist_id } = event;
+      
+      SharedLogger.log('[PlayerPlaylistSync] 📅 Schedule changed:', {
+        schedule: schedule?.name,
+        playlist_id,
+        previous_playlist_id: this.scheduledPlaylistId,
+      });
+
+      // If scheduled playlist changed, force sync
+      if (playlist_id !== this.scheduledPlaylistId) {
+        this.scheduledPlaylistId = playlist_id;
+        
+        // Clear version to force reload
+        this.currentPlaylistVersion = null;
+        
+        // Sync immediately
+        void this.syncNow();
+      }
+    });
+  }
+
+  /**
+   * Get playlist ID to sync (considers scheduling)
+   */
+  private async getTargetPlaylistId(): Promise<number | null> {
+    // If scheduling is enabled and we have a scheduled playlist, use it
+    if (this.useScheduling && this.scheduledPlaylistId !== null) {
+      SharedLogger.debug('[PlayerPlaylistSync] Using scheduled playlist:', this.scheduledPlaylistId);
+      return this.scheduledPlaylistId;
+    }
+
+    // Otherwise, let backend decide based on device assignment
+    return null;
+  }
+
+  /**
+   * Fetch playlist with schedule support
+   */
+  private async fetchPlaylist(deviceId: string): Promise<PlaylistSyncResponse> {
+    const targetPlaylistId = await this.getTargetPlaylistId();
+    
+    // Build API URL
+    let url = `${config.api.baseURL}/api/client/playlist?device_id=${deviceId}`;
+    
+    // If we have a specific playlist from schedule, request it
+    if (targetPlaylistId !== null) {
+      url += `&playlist_id=${targetPlaylistId}`;
+    }
+
+    return await SharedAPIClient.get<PlaylistSyncResponse>(url);
   }
 }
 

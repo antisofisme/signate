@@ -4,11 +4,11 @@
 
 import { TextWidget, WidgetRenderContext, IWidgetRenderer } from '../../models/widget.model';
 import { logger } from '../../logger';
+import { templateProcessor } from '../template-processor';
 
 export class TextRenderer implements IWidgetRenderer {
   private container?: HTMLElement;
   private scrollAnimation?: Animation;
-  private templateProcessor?: (text: string, variables: Record<string, any>) => string;
 
   async render(widget: TextWidget, context: WidgetRenderContext): Promise<void> {
     this.container = context.container;
@@ -94,23 +94,14 @@ export class TextRenderer implements IWidgetRenderer {
   }
 
   private processTemplates(text: string, variables: Record<string, any>): string {
-    // Simple template replacement for {{variable}}
-    return text.replace(/\{\{(\w+)\}\}/g, (match, key) => {
-      const value = variables[key];
-      if (value !== undefined) {
-        return String(value);
-      }
-      return match;
-    });
+    // Use the template processor for consistent variable handling
+    return templateProcessor.processTemplate(text, variables);
   }
 
   private sanitizeHtml(html: string): string {
     // Basic HTML sanitization - in production, use a proper sanitizer like DOMPurify
     const div = document.createElement('div');
     div.textContent = html;
-    
-    // Allow basic formatting tags
-    const allowedTags = ['b', 'i', 'u', 'strong', 'em', 'br', 'span', 'p'];
     const tempDiv = document.createElement('div');
     tempDiv.innerHTML = html;
     

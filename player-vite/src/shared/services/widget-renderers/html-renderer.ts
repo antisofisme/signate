@@ -4,6 +4,7 @@
 
 import { HtmlWidget, WidgetRenderContext, IWidgetRenderer } from '../../models/widget.model';
 import { logger } from '../../logger';
+import { templateProcessor } from '../template-processor';
 
 export class HtmlRenderer implements IWidgetRenderer {
   private container?: HTMLElement;
@@ -57,7 +58,7 @@ export class HtmlRenderer implements IWidgetRenderer {
     logger.debug('[HtmlRenderer] Destroyed');
   }
 
-  private renderIframe(widget: HtmlWidget, context: WidgetRenderContext): void {
+  private renderIframe(widget: HtmlWidget, _context: WidgetRenderContext): void {
     const { config } = widget;
 
     this.iframe = document.createElement('iframe');
@@ -182,17 +183,13 @@ export class HtmlRenderer implements IWidgetRenderer {
   }
 
   private processTemplateVariables(html: string, variables: Record<string, any>): string {
-    // Replace {{variable}} patterns with actual values
-    return html.replace(/\{\{(\w+)\}\}/g, (match, key) => {
-      if (key in variables) {
-        const value = variables[key];
-        // HTML escape the value for security
-        const div = document.createElement('div');
-        div.textContent = String(value);
-        return div.innerHTML;
-      }
-      return match;
-    });
+    // Use the template processor for consistent variable handling
+    const processed = templateProcessor.processTemplate(html, variables);
+    
+    // HTML escape for security (template processor returns plain text)
+    const div = document.createElement('div');
+    div.textContent = processed;
+    return div.innerHTML;
   }
 
   private sanitizeHtml(html: string): string {

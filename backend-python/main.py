@@ -38,6 +38,7 @@ from services.widget.routes import router as widget_router
 from services.template.routes import router as template_router
 from services.translation.routes import router as translation_router
 from services.schedule.routes import router as schedule_router
+from services.weather.routes import router as weather_router
 
 
 # =============================================================================
@@ -176,6 +177,7 @@ app.include_router(widget_router, prefix="/api/v1", tags=["Widget System"])
 app.include_router(template_router, prefix="/api/v1", tags=["Template System"])
 app.include_router(translation_router, prefix="/api/v1", tags=["Translation System"])
 app.include_router(schedule_router, prefix="/api/v1", tags=["Schedule System"])
+app.include_router(weather_router, prefix="/api/v1", tags=["Weather Service"])
 
 
 # =============================================================================

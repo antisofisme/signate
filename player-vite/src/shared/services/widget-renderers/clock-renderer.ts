@@ -4,6 +4,7 @@
 
 import { ClockWidget, WidgetRenderContext, IWidgetRenderer } from '../../models/widget.model';
 import { logger } from '../../logger';
+import { i18n } from '../i18n';
 
 export class ClockRenderer implements IWidgetRenderer {
   private container?: HTMLElement;
@@ -45,7 +46,7 @@ export class ClockRenderer implements IWidgetRenderer {
     logger.debug('[ClockRenderer] Destroyed');
   }
 
-  private async renderDigitalClock(widget: ClockWidget, context: WidgetRenderContext): Promise<void> {
+  private async renderDigitalClock(widget: ClockWidget, _context: WidgetRenderContext): Promise<void> {
     const { config } = widget;
 
     // Create clock element
@@ -71,7 +72,7 @@ export class ClockRenderer implements IWidgetRenderer {
     this.container!.appendChild(clockEl);
   }
 
-  private async renderAnalogClock(widget: ClockWidget, context: WidgetRenderContext): Promise<void> {
+  private async renderAnalogClock(widget: ClockWidget, _context: WidgetRenderContext): Promise<void> {
     const { config } = widget;
     const size = Math.min(widget.position.width, widget.position.height);
 
@@ -158,34 +159,31 @@ export class ClockRenderer implements IWidgetRenderer {
     return hand;
   }
 
-  private updateDigitalClock(element: HTMLElement, config: ClockConfig): void {
+  private updateDigitalClock(element: HTMLElement, config: ClockWidget['config']): void {
     const now = this.getTime(config.timezone);
     
-    let hours = now.getHours();
-    const minutes = now.getMinutes();
-    const seconds = now.getSeconds();
-
-    let timeString = '';
-
-    if (config.format === '12h') {
-      const period = hours >= 12 ? 'PM' : 'AM';
-      hours = hours % 12 || 12;
-      timeString = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
-      if (config.show_seconds) {
-        timeString += `:${seconds.toString().padStart(2, '0')}`;
-      }
-      timeString += ` ${period}`;
-    } else {
-      timeString = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
-      if (config.show_seconds) {
-        timeString += `:${seconds.toString().padStart(2, '0')}`;
-      }
+    // Use i18n for time formatting based on locale
+    const locale = i18n.getLocale();
+    const options: Intl.DateTimeFormatOptions = {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: config.format === '12h'
+    };
+    
+    if (config.show_seconds) {
+      options.second = '2-digit';
     }
-
+    
+    // Add timezone if specified
+    if (config.timezone) {
+      options.timeZone = config.timezone;
+    }
+    
+    const timeString = now.toLocaleTimeString(locale, options);
     element.textContent = timeString;
   }
 
-  private updateAnalogClock(svg: SVGElement, config: ClockConfig): void {
+  private updateAnalogClock(svg: SVGElement, config: ClockWidget['config']): void {
     const now = this.getTime(config.timezone);
     
     const hours = now.getHours() % 12;
@@ -201,13 +199,13 @@ export class ClockRenderer implements IWidgetRenderer {
     const secondHand = svg.querySelector('#second-hand');
 
     if (hourHand) {
-      hourHand.style.transform = `rotate(${hourAngle}deg)`;
+      (hourHand as any).style.transform = `rotate(${hourAngle}deg)`;
     }
     if (minuteHand) {
-      minuteHand.style.transform = `rotate(${minuteAngle}deg)`;
+      (minuteHand as any).style.transform = `rotate(${minuteAngle}deg)`;
     }
     if (secondHand && config.show_seconds) {
-      secondHand.style.transform = `rotate(${secondAngle}deg)`;
+      (secondHand as any).style.transform = `rotate(${secondAngle}deg)`;
     }
   }
 

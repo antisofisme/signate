@@ -84,6 +84,20 @@ class PMSRepository:
             )
             .all()
         )
+    
+    def get_guests_by_room(self, room_number: str, organization_id: int) -> List[PMSGuest]:
+        """Get guests by room number"""
+        return (
+            self.db.query(PMSGuest)
+            .filter(
+                and_(
+                    PMSGuest.organization_id == organization_id,
+                    PMSGuest.room_number == room_number,
+                )
+            )
+            .order_by(PMSGuest.checkin_date.desc())
+            .all()
+        )
 
     # ========================================================================
     # Room Methods
@@ -165,6 +179,19 @@ class PMSRepository:
             "occupied_rooms": occupied or 0,
             "available_rooms": available or 0,
         }
+    
+    def get_room_by_number(self, room_number: str, organization_id: int) -> Optional[PMSRoom]:
+        """Get room by number"""
+        return (
+            self.db.query(PMSRoom)
+            .filter(
+                and_(
+                    PMSRoom.organization_id == organization_id,
+                    PMSRoom.room_number == room_number,
+                )
+            )
+            .first()
+        )
 
     # ========================================================================
     # Configuration Methods

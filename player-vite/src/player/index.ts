@@ -16,6 +16,7 @@ export { PlayerHeartbeat } from './services/player-heartbeat';
 export { PlayerCommandExecutor } from './services/player-command-executor';
 export { PlayerPlaybackLogger } from './services/player-playback-logger';
 export { PlayerHealthReporter } from './services/player-health-reporter';
+export { playerScheduleManager } from './services/player-schedule-manager';
 
 // Types
 export type {

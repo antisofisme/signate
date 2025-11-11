@@ -3,10 +3,13 @@
  * Integrates widget rendering with the HLS player
  */
 
-import { Widget, WidgetContent, ContentType } from '@/shared/models';
-import { widgetRenderer } from '@/shared/services/widget-renderer';
-import { logger } from '@/shared/logger';
-import { eventBus } from '@/shared/events/shared-event-bus';
+import { Widget } from '@shared/models';
+import { widgetRenderer } from '@shared/services/widget-renderer';
+import { logger } from '@shared/logger';
+import { SharedEventBus as eventBus } from '@shared/events/shared-event-bus';
+import { templateProcessor } from '@shared/services/template-processor';
+import { SharedDeviceState } from '@shared/device';
+import { i18n } from '@shared/services/i18n';
 
 export class PlayerWidgetRenderer {
   private widgetContainer?: HTMLElement;
@@ -40,6 +43,23 @@ export class PlayerWidgetRenderer {
 
     playerContainer.style.position = 'relative';
     playerContainer.appendChild(this.widgetContainer);
+
+    // Initialize template processor and i18n with device ID
+    const deviceId = SharedDeviceState.getDeviceId();
+    if (deviceId) {
+      // Initialize template processor
+      templateProcessor.initialize(deviceId).catch(error => {
+        logger.error('[PlayerWidgetRenderer] Failed to initialize template processor:', error);
+      });
+      
+      // Initialize i18n with organization context
+      const device = SharedDeviceState.getDevice();
+      if (device?.organization_id) {
+        i18n.initialize(device.organization_id).catch(error => {
+          logger.error('[PlayerWidgetRenderer] Failed to initialize i18n:', error);
+        });
+      }
+    }
 
     logger.info('[PlayerWidgetRenderer] Widget container initialized');
   }
@@ -149,7 +169,7 @@ export class PlayerWidgetRenderer {
     if (!this.widgetContainer) return;
 
     // Destroy all widget renderers
-    this.currentWidgets.forEach((widget, widgetId) => {
+    this.currentWidgets.forEach((_widget, widgetId) => {
       widgetRenderer.destroyWidget(widgetId);
     });
 
@@ -165,58 +185,21 @@ export class PlayerWidgetRenderer {
    * Get template variables from various sources
    */
   private async getTemplateVariables(): Promise<Record<string, any>> {
-    const variables: Record<string, any> = {};
-
     try {
-      // System variables
-      const now = new Date();
-      variables.current_time = now.toLocaleTimeString();
-      variables.current_date = now.toLocaleDateString();
-      variables.day_of_week = now.toLocaleDateString('en-US', { weekday: 'long' });
-
-      // Device variables from state
-      const deviceState = eventBus.emit('device:state:get');
-      if (deviceState) {
-        variables.device_id = deviceState.device_id;
-        variables.device_name = deviceState.name;
-        variables.location = deviceState.location;
-      }
-
-      // PMS variables (if available)
-      const pmsData = eventBus.emit('pms:data:get');
-      if (pmsData) {
-        Object.assign(variables, pmsData);
-      }
-
-      // Custom variables from backend
-      const customVars = await this.fetchCustomVariables();
-      Object.assign(variables, customVars);
-
+      // Get all variables from template processor
+      return templateProcessor.getAllVariables();
     } catch (error) {
       logger.error('[PlayerWidgetRenderer] Error getting template variables:', error);
-    }
-
-    return variables;
-  }
-
-  /**
-   * Fetch custom variables from backend
-   */
-  private async fetchCustomVariables(): Promise<Record<string, any>> {
-    try {
-      // TODO: Implement API call to fetch custom variables
-      return {};
-    } catch (error) {
-      logger.error('[PlayerWidgetRenderer] Error fetching custom variables:', error);
       return {};
     }
   }
+
 
   /**
    * Get current locale
    */
   private getLocale(): string {
-    return navigator.language || 'en-US';
+    return i18n.getLocale();
   }
 
   /**
@@ -248,10 +231,8 @@ export class PlayerWidgetRenderer {
     setInterval(() => {
       if (this.isActive) {
         // Only update time-sensitive widgets
-        this.currentWidgets.forEach((widget) => {
-          if (widget.type === 'clock' || widget.type === 'text') {
-            // These are handled by their own intervals
-          }
+        this.currentWidgets.forEach(() => {
+          // Clock and text widgets are handled by their own intervals
         });
       }
     }, 1000);

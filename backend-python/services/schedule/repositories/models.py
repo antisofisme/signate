@@ -55,10 +55,11 @@ class Schedule(Base):
     created_at = Column(TIMESTAMP, default=datetime.utcnow)
     updated_at = Column(TIMESTAMP, default=datetime.utcnow, onupdate=datetime.utcnow)
 
-    # Relationships
-    playlist = relationship("Playlist", backref="schedules")
-    organization = relationship("Organization", backref="schedules")
-    creator = relationship("User", backref="created_schedules", foreign_keys=[created_by])
+    # Relationships - Commented out to avoid circular imports
+    # TODO: Fix circular imports and re-enable relationships
+    # playlist = relationship("Playlist", backref="schedules")
+    # organization = relationship("Organization", backref="schedules") 
+    # creator = relationship("User", backref="created_schedules", foreign_keys=[created_by])
 
     def __repr__(self):
         return f"<Schedule {self.id}: {self.name} ({self.recurrence_type})>"

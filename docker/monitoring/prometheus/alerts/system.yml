@@ -1,0 +1,89 @@
+groups:
+  - name: system_alerts
+    interval: 30s
+    rules:
+      # High CPU usage
+      - alert: HighCPUUsage
+        expr: 100 - (avg by (instance) (rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 80
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High CPU usage detected"
+          description: "CPU usage is above 80% (current value: {{ $value }}%)"
+
+      # High Memory usage
+      - alert: HighMemoryUsage
+        expr: (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100 > 85
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High memory usage detected"
+          description: "Memory usage is above 85% (current value: {{ $value }}%)"
+
+      # Disk space low
+      - alert: LowDiskSpace
+        expr: (node_filesystem_avail_bytes{mountpoint="/"} / node_filesystem_size_bytes{mountpoint="/"}) * 100 < 15
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Low disk space"
+          description: "Disk space is below 15% (current value: {{ $value }}%)"
+
+  - name: service_alerts
+    interval: 30s
+    rules:
+      # Backend API down
+      - alert: BackendAPIDown
+        expr: up{job="backend-api"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Backend API is down"
+          description: "Backend API has been down for more than 1 minute"
+
+      # Database down
+      - alert: PostgreSQLDown
+        expr: up{job="postgresql"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "PostgreSQL is down"
+          description: "PostgreSQL database has been down for more than 1 minute"
+
+      # High response time
+      - alert: HighResponseTime
+        expr: histogram_quantile(0.95, http_request_duration_seconds_bucket) > 2
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High API response time"
+          description: "95th percentile response time is above 2 seconds"
+
+  - name: player_alerts
+    interval: 30s
+    rules:
+      # Too many offline devices
+      - alert: ManyOfflineDevices
+        expr: (count(device_last_seen < time() - 300) / count(device_last_seen)) > 0.2
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Many devices offline"
+          description: "More than 20% of devices are offline"
+
+      # No heartbeat from device
+      - alert: DeviceNoHeartbeat
+        expr: time() - device_last_heartbeat > 600
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Device not sending heartbeat"
+          description: "Device {{ $labels.device_id }} has not sent heartbeat for 10 minutes"

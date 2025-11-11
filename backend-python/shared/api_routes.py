@@ -311,3 +311,37 @@ class AuditRoutes:
 
     LIST = BASE
     GET = f"{BASE}/{{log_id}}"
+
+
+# =============================================================================
+# PMS (Property Management System) SERVICE ROUTES
+# =============================================================================
+class PMSRoutes:
+    """PMS Integration endpoints"""
+    BASE = f"{API_V1}/pms"
+    
+    # Configuration
+    CONFIG = f"{BASE}/config"
+    GET_CONFIG = f"{BASE}/config"
+    UPDATE_CONFIG = f"{BASE}/config"
+    
+    # Guest data
+    GUESTS = f"{BASE}/guests"
+    CURRENT_GUESTS = f"{BASE}/guests/current"
+    DEVICE_CURRENT_GUEST = f"{BASE}/device/{{device_id}}/current-guest"
+    
+    # Room data
+    ROOMS = f"{BASE}/rooms"
+    
+    # Stats
+    STATS = f"{BASE}/stats"
+    
+    # Sync endpoints (for Bridge Agent)
+    SYNC_GUESTS = f"{BASE}/sync/guests"
+    SYNC_ROOMS = f"{BASE}/sync/rooms"
+    
+    # WebSocket
+    WEBSOCKET_SYNC = "/ws/pms/sync"
+    
+    # Trigger sync
+    TRIGGER_SYNC = f"{BASE}/trigger-sync/{{organization_id}}"

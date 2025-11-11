@@ -1,405 +1,131 @@
-# Smart TV Digital Signage System
+# Digital Signage System
 
-Sistem digital signage terintegrasi untuk Smart TV WebOS dan Monitor Browser dengan manajemen konten terpusat menggunakan Anthias sebagai file storage.
+Enterprise-grade digital signage platform with advanced features and multi-device support.
 
-## 🎯 Overview
+## Overview
 
-Project ini menyediakan solusi lengkap digital signage dengan komponen:
-- **Backend API** (FastAPI + PostgreSQL) - Control plane & metadata management
-- **Web Admin** (React + Vite) - Dashboard manajemen konten dan device
-- **Browser Viewer** (HTML/JS) - Viewer untuk monitor browser (port 8080)
-- **WebOS Viewer** (HTML/JS) - Viewer untuk WebOS TV (port 8081)
-- **WebOS App** (IPK Package) - Hosted app untuk LG WebOS TV
-- **Anthias Integration** - File storage & serving (port 8000)
+Complete digital signage solution with:
+- **Backend API** (FastAPI + PostgreSQL) - RESTful API with Clean Architecture
+- **CMS** (React + Vite + TypeScript) - Admin dashboard  
+- **Player** (TypeScript + Vite) - Advanced digital signage player
+- **Database** (PostgreSQL 15 + PgBouncer) - High-performance data storage
+- **Cache** (Redis) - Session and API caching
+- **Monitoring** (Prometheus + Grafana) - Production monitoring
 
-## 📁 Struktur Project
+## Project Structure
 
 ```
 signate/
-├── backend/                    # Backend API (Python FastAPI)
-│   ├── app/
-│   │   ├── api/               # REST API endpoints
-│   │   ├── models/            # SQLAlchemy models
-│   │   ├── services/          # Business logic (Anthias integration)
-│   │   ├── core/              # Config, security, database
-│   │   └── main.py
-│   ├── Dockerfile
-│   └── requirements.txt
+├── backend-python/        # FastAPI backend with Clean Architecture
+│   ├── services/         # Modular services (auth, device, content)
+│   ├── shared/          # Shared utilities and configurations
+│   └── migrations/      # Database migrations
 │
-├── web-admin/                  # Web Admin Dashboard (React + Vite)
+├── cms-vite/            # React + TypeScript admin dashboard
 │   ├── src/
-│   │   ├── components/        # Reusable UI components
-│   │   ├── pages/             # Page components
-│   │   └── services/          # API clients
-│   └── package.json
+│   │   ├── features/    # Feature-based modules
+│   │   ├── shared/      # Shared components and utilities
+│   │   └── stores/      # Zustand state management
+│   └── dist/            # Production build
 │
-├── browser-viewer/             # Monitor Browser Viewer (Port 8080)
-│   ├── index.html
-│   ├── js/                    # ES6 modules
-│   │   ├── app.js             # Main app
-│   │   ├── api.js             # API client
-│   │   ├── player.js          # Content player
-│   │   └── activation.js      # 6-digit code activation
-│   └── css/
+├── player-vite/         # TypeScript digital signage player
+│   ├── src/
+│   │   ├── player/      # Video playback engine
+│   │   ├── shell/       # Device activation & management
+│   │   └── shared/      # Core services
+│   └── dist/            # Production build
 │
-├── webos-viewer/               # WebOS TV Viewer (Port 8081)
-│   ├── index.html
-│   └── js/                    # ES6 modules (UUID-based identity)
-│
-├── webos-app/                  # WebOS IPK Package
-│   ├── appinfo.json           # App metadata
-│   ├── icon.png
-│   └── index.html → ../webos-viewer/
-│
-├── anthias/                    # Anthias (Digital Signage Platform)
-│   └── docker/nginx/          # Nginx config with CORS for /screenly_assets/
-│
-├── database/
-│   └── migrations/
-│
-├── docs/
-│   ├── archive/               # Outdated documentation
-│   └── SISTEM_LAUNCHER_SMART_TV_SIGNAGE_DOCUMENTATION.md
-│
-├── docker-compose.yml
-├── .env.example
-├── CLAUDE.md                  # 🔴 IMPORTANT: Server info & project guidelines
-├── REBUILD-GUIDE.md
-└── SUPPORTED_FORMATS.md
+├── database/            # Database schemas and migrations
+├── docker/              # Docker configurations
+├── scripts/             # Utility and maintenance scripts
+├── firebird-bridge-agent/  # PMS integration service
+└── docs/                # Documentation
 ```
 
-## 🚀 Quick Start
+## Quick Start
 
-### Prerequisites
-- Docker & Docker Compose
-- Node.js 18+ (untuk development)
-- Python 3.12+ (untuk development)
-
-### 1. Setup Environment
-
+### Production Deployment
 ```bash
-# Clone project
-cd /path/to/signate
-
-# Copy environment template
-cp .env.example .env
-
-# Edit .env sesuai environment Anda
-# Lihat CLAUDE.md untuk server credentials
-```
-
-### 2. Start Services (All on Server 192.168.5.12)
-
-```bash
-# SSH ke server
-ssh gzjbbk@192.168.5.12
-
-# Start all services
-cd /home/gzjbbk/signage
+cd docker
 docker-compose up -d
 ```
 
-### 3. Access Points
+### Development Setup
 
-| Service | URL | Purpose |
-|---------|-----|---------|
-| **Web Admin** | http://localhost:3000 | Admin dashboard (dev mode, proxy ke server) |
-| **Backend API** | http://192.168.5.12:8001 | REST API server |
-| **API Docs** | http://192.168.5.12:8001/docs | Swagger documentation |
-| **Anthias** | http://192.168.5.12:8000 | File storage & management |
-| **Browser Viewer** | http://192.168.5.12:8080 | Viewer untuk monitor browser |
-| **WebOS Viewer** | http://192.168.5.12:8081 | Viewer untuk WebOS TV |
-| **PostgreSQL** | 192.168.5.12:5433 | Database |
-
-## 🏗️ Architecture
-
-### Data Flow Architecture
-
-```
-┌─────────────────────────────────────────────────────────────────────────┐
-│                         192.168.5.12 Server                              │
-│                                                                          │
-│  ┌────────────────┐  ┌──────────────┐  ┌─────────────┐  ┌────────────┐ │
-│  │ Anthias        │  │ Backend API  │  │ PostgreSQL  │  │ Redis      │ │
-│  │ Port 8000      │  │ Port 8001    │  │ Port 5433   │  │ Port 6379  │ │
-│  │                │  │              │  │             │  │            │ │
-│  │ - File storage │◄─┤ - REST API   │◄─┤ - Metadata  │  │ - Cache    │ │
-│  │ - /screenly_   │  │ - Playlist   │  │ - Devices   │  │            │ │
-│  │   assets/      │  │   generator  │  │ - Content   │  │            │ │
-│  │   (CORS ✓)     │  │ - Auth       │  │ - Tags      │  │            │ │
-│  └────────────────┘  └──────────────┘  └─────────────┘  └────────────┘ │
-│         ▲                    ▲                                          │
-└─────────┼────────────────────┼──────────────────────────────────────────┘
-          │                    │
-          │                    │ Playlist API
-          │ Direct             │ (returns direct URLs)
-          │ Binary             │
-          │ Files              │
-          │                    │
-    ┌─────┴────────┐    ┌─────┴──────┐    ┌──────────────┐
-    │ Monitor      │    │ WebOS TV   │    │ Web Admin    │
-    │ Browser      │    │ Viewer     │    │ Dashboard    │
-    │ Port 8080    │    │ Port 8081  │    │ localhost:   │
-    │              │    │            │    │ 3000         │
-    │ 6-digit code │    │ UUID-based │    │              │
-    │ activation   │    │ persistent │    │ Auth required│
-    └──────────────┘    └────────────┘    └──────────────┘
-```
-
-### Content Serving Pattern
-
-**Control Plane / Data Plane Separation:**
-
-```
-┌──────────────────────────────────────────────────────────────────┐
-│ CONTROL PLANE (Backend API - Port 8001)                          │
-│                                                                   │
-│ - Device registration & activation                               │
-│ - Playlist generation (smart logic, tags, priorities)            │
-│ - Content metadata management                                    │
-│ - Authentication & authorization                                 │
-│ - Returns direct URLs to viewers                                 │
-└──────────────────────────────────────────────────────────────────┘
-                             │
-                             │ GET /api/client/playlist?device_id=X
-                             ▼
-                    {
-                      "playlist": [
-                        {
-                          "url": "http://192.168.5.12:8000/screenly_assets/51ef3ffb..."
-                        }
-                      ]
-                    }
-                             │
-                             ▼
-┌──────────────────────────────────────────────────────────────────┐
-│ DATA PLANE (Anthias - Port 8000)                                 │
-│                                                                   │
-│ - Direct binary file serving                                     │
-│ - CORS enabled for cross-origin access                          │
-│ - Browser caching support                                       │
-│ - High-performance static file delivery                         │
-│ - No authentication required (files served directly)            │
-└──────────────────────────────────────────────────────────────────┘
-```
-
-**Benefits:**
-- ✅ **Fast**: Direct binary streaming, no proxy overhead
-- ✅ **Cacheable**: Browser can cache files directly
-- ✅ **Scalable**: Control plane and data plane can scale independently
-- ✅ **Simple**: Viewers just fetch URLs, no complex logic needed
-
-## 🔧 Development
-
-### Backend Development
-
+**Backend:**
 ```bash
-cd backend
-
-# Create virtual environment
-python3 -m venv venv
-source venv/bin/activate  # Linux/Mac
-# atau
-venv\Scripts\activate     # Windows
-
-# Install dependencies
+cd backend-python
 pip install -r requirements.txt
-
-# Run development server
-uvicorn app.main:app --reload --host 0.0.0.0 --port 8001
+uvicorn main:app --reload
 ```
 
-### Web Admin Development
-
+**Frontend:**
 ```bash
-cd web-admin
-
-# Install dependencies
+cd cms-vite
 npm install
-
-# Run development server (proxies API to server)
 npm run dev
-# Access at http://localhost:3000
 ```
 
-### Viewer Development
-
-Viewers are static HTML/JS, served via simple HTTP server:
-
+**Player:**
 ```bash
-# Browser viewer (port 8080)
-cd browser-viewer
-python3 -m http.server 8080
-
-# WebOS viewer (port 8081)
-cd webos-viewer
-python3 -m http.server 8081
+cd player-vite
+npm install
+npm run dev
 ```
 
-## 📊 Database Schema
+### Access URLs
 
-PostgreSQL stores metadata only (NOT media files):
+| Service | URL |
+|---------|-----|
+| **CMS** | http://localhost:3000 |
+| **API** | http://localhost:8001 |
+| **API Docs** | http://localhost:8001/docs |
+| **Player** | http://localhost:8080 |
+| **Prometheus** | http://localhost:9091 |
+| **Grafana** | http://localhost:3001 |
 
-**Core Tables:**
-- `users` - Admin accounts (authentication)
-- `devices` - TV/Monitor registry (status, last_seen)
-- `content` - Media metadata (title, anthias_asset_id, duration, MIME type)
-- `tags` - Device groups
-- `device_tags` - Many-to-many: devices ↔ tags
-- `content_assignments` - Content → Device/Tag mapping with priority
-- `schedules` - Time-based content scheduling (future)
-- `firebird_config` - External API configuration (hotel guest data)
+## Key Features
 
-**Media Files:** Stored in Anthias at `/data/screenly_assets/` (inside Docker container)
+- **Multi-tenant Architecture** - Organization-based data isolation
+- **Real-time Updates** - WebSocket for instant content changes
+- **Advanced Scheduling** - Recurring schedules with priorities
+- **Multi-language Support** - 6 languages (EN, ID, ZH, JA, KO, AR)
+- **Template Engine** - Dynamic content with variables
+- **Widget System** - Clock, Weather, Text, Calendar, etc.
+- **PMS Integration** - Firebird database connectivity
+- **Comprehensive Analytics** - Usage tracking and reporting
+- **Role-based Access Control** - Super Admin, Admin, User roles
+- **High Performance** - PgBouncer pooling, Redis caching
 
-## 🔐 Security & Authentication
+## Default Credentials
 
-### Web Admin
-- **JWT Authentication** required
-- **Token-based** API calls
-- **CORS** enabled for localhost:3000
+- Username: `admin`  
+- Password: `admin123`
 
-### Viewers (Browser/WebOS)
-- **No authentication** on playlist endpoints (public)
-- **Activation required** before device can fetch playlist
-  - Browser: 6-digit code activation
-  - WebOS: UUID-based persistent identity
-- **CORS** enabled on Anthias for direct file access
+## Documentation
 
-### Content Files
-- Served **directly from Anthias** (no auth)
-- **Network-restricted** (allow 192.168.x.x, 172.16.x.x, 10.x.x.x)
-- CORS headers enabled for cross-origin access
+All documentation has been organized in `/docs` folder:
 
-## 📝 Key Configuration Files
+- `/docs/phases/` - Implementation phase documentation
+- `/docs/01-anthias/` - Anthias integration docs
+- `/docs/02-api/` - API documentation
+- `/docs/03-sprints/` - Sprint documentation
+- `/docs/04-architecture/` - Architecture decisions
+- `/docs/05-deployment/` - Deployment guides
+- `/docs/06-features/` - Feature documentation
+- `/docs/07-development/` - Development guides
+- `/docs/08-operations/` - Operational procedures
 
-### 1. CLAUDE.md (🔴 MOST IMPORTANT)
-Contains:
-- Server credentials (SSH, database)
-- Port assignments
-- Service URLs
-- Important operational notes
-- Code synchronization protocol
+## Technology Stack
 
-### 2. .env (Backend Configuration)
-```env
-# Database
-DATABASE_URL=postgresql://signage_user:password@postgres:5433/signage_db
+- **Backend**: FastAPI, SQLAlchemy, Pydantic, Celery
+- **Frontend**: React 18, TypeScript, Vite, TanStack Query, Zustand
+- **Player**: TypeScript, HLS.js, Service Worker, IndexedDB
+- **Database**: PostgreSQL 15, PgBouncer, Redis
+- **Infrastructure**: Docker, Nginx, Prometheus, Grafana
+- **UI**: Tailwind CSS, shadcn/ui, Radix UI
 
-# Anthias
-ANTHIAS_API_URL=http://192.168.5.12:8000
-ANTHIAS_PUBLIC_URL=http://192.168.5.12:8000
+## License
 
-# API
-API_BASE_URL=http://192.168.5.12:8001
+Proprietary - All rights reserved
 
-# Security
-JWT_SECRET=your_super_secret_key
-JWT_ACCESS_TOKEN_EXPIRE_MINUTES=15
-
-# CORS Origins
-CORS_ORIGINS=http://localhost:3000,http://192.168.5.12:8080,http://192.168.5.12:8081
-```
-
-### 3. docker-compose.yml
-Orchestrates all services:
-- `postgres` - PostgreSQL database (port 5433)
-- `redis` - Cache server (port 6379)
-- `backend-api` - FastAPI server (port 8001)
-- `anthias-*` - Anthias digital signage (port 8000)
-
-## 🎨 Supported Media Formats
-
-**Images:**
-- JPEG (.jpg, .jpeg)
-- PNG (.png)
-- GIF (.gif)
-
-**Videos:**
-- MP4 (.mp4)
-- MPEG (.mpeg, .mpg)
-- QuickTime (.mov)
-
-See `SUPPORTED_FORMATS.md` for detailed codec information.
-
-## 🔄 Deployment Workflow
-
-### Local Development → Server Deployment
-
-```bash
-# 1. Develop & test locally
-cd /mnt/g/khoirul/signate
-# ... make changes ...
-
-# 2. Test locally
-npm run dev  # frontend
-uvicorn app.main:app --reload  # backend
-
-# 3. Sync to server
-sshpass -p 'Password@2021' scp -r changed_files gzjbbk@192.168.5.12:/home/gzjbbk/signage/
-
-# 4. Rebuild on server (if needed)
-sshpass -p 'Password@2021' ssh gzjbbk@192.168.5.12 "cd /home/gzjbbk/signage && docker-compose up -d --build backend-api"
-
-# 5. Commit changes
-git add .
-git commit -m "Description of changes"
-```
-
-**⚠️ IMPORTANT:** Always sync local ↔ server to avoid conflicts. See CLAUDE.md for detailed protocol.
-
-## 📚 Additional Documentation
-
-- **CLAUDE.md** - Server credentials & operational guidelines (🔴 READ FIRST)
-- **REBUILD-GUIDE.md** - Docker rebuild procedures
-- **SUPPORTED_FORMATS.md** - Media format specifications
-- **docs/archive/** - Historical documentation (reference only)
-- **docs/SISTEM_LAUNCHER_SMART_TV_SIGNAGE_DOCUMENTATION.md** - Original system design
-
-## 🆘 Troubleshooting
-
-### Backend tidak bisa diakses
-```bash
-# Check container status
-docker ps --filter name=backend
-
-# Restart backend
-docker-compose restart backend-api
-
-# Check logs
-docker logs signage-backend --tail 50
-```
-
-### Viewer tidak tampil content
-```bash
-# Check nginx CORS config
-cat anthias/docker/nginx/nginx.development.conf | grep -A 5 screenly_assets
-
-# Test direct file access
-curl -I http://192.168.5.12:8000/screenly_assets/FILENAME
-
-# Check playlist API
-curl "http://192.168.5.12:8001/api/client/playlist?device_id=1"
-```
-
-### Database connection error
-```bash
-# Check PostgreSQL container
-docker ps --filter name=postgres
-
-# Test connection
-docker exec signage-postgres psql -U signage_user -d signage_db -c "\dt"
-```
-
-## 📞 Support
-
-**Credentials & Access:** See `CLAUDE.md`
-**Development:** Check `docs/` folder
-**Issues:** Git commit history & logs
-
----
-
-**Version:** 2.0
-**Last Updated:** October 24, 2025
-**Architecture:** Control Plane / Data Plane Separation
-**Status:** Production Ready ✅

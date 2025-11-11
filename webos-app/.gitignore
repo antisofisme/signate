@@ -1,0 +1,14 @@
+# WebOS App Build Files
+*.ipk
+build/
+
+# Icon working files (jika pakai PSD/AI)
+*.psd
+*.ai
+*.sketch
+
+# Temporary files
+*.tmp
+*.log
+.DS_Store
+Thumbs.db

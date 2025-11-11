@@ -29,6 +29,7 @@ from services.pms.use_cases.get_pms_stats import GetPMSStatsUseCase
 from services.pms.repositories.pms_repo import PMSRepository
 
 import secrets
+from datetime import datetime
 
 router = APIRouter(prefix="/pms", tags=["PMS Integration"])
 
@@ -202,6 +203,102 @@ def get_rooms(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to get rooms: {str(e)}"
+        )
+
+
+@router.get("/device/{device_id}/current-guest")
+def get_device_current_guest(
+    device_id: str,
+    db: Session = Depends(get_db)
+):
+    """
+    Get current guest data for a specific device (by room association)
+    
+    This endpoint is used by the player to fetch PMS data for template processing
+    """
+    try:
+        # Get device info
+        from services.device.repositories.device_repo import DeviceRepository
+        device_repo = DeviceRepository(db)
+        device = device_repo.get_by_device_id(device_id)
+        
+        if not device:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Device not found"
+            )
+        
+        # Extract room number from device location or metadata
+        room_number = None
+        if device.location:
+            # Assume location contains room number (e.g., "Room 301" -> "301")
+            import re
+            match = re.search(r'(\d+)', device.location)
+            if match:
+                room_number = match.group(1)
+        
+        if not room_number and device.metadata:
+            # Check metadata for room_number field
+            room_number = device.metadata.get('room_number')
+        
+        if not room_number:
+            # No room association
+            return {
+                "guest_name": None,
+                "room_number": None,
+                "message": "Device not associated with a room"
+            }
+        
+        # Get PMS repo and find guest by room
+        pms_repo = PMSRepository(db)
+        
+        # Get room info
+        room = pms_repo.get_room_by_number(room_number, device.organization_id)
+        if not room or room.status != 'occupied':
+            return {
+                "guest_name": None,
+                "room_number": room_number,
+                "room_status": room.status if room else "not_found",
+                "message": "Room not occupied"
+            }
+        
+        # Get current guest in this room
+        guests = pms_repo.get_guests_by_room(room_number, device.organization_id)
+        current_guest = None
+        
+        for guest in guests:
+            if guest.checkout_date is None or guest.checkout_date >= datetime.now().date():
+                current_guest = guest
+                break
+        
+        if not current_guest:
+            return {
+                "guest_name": None,
+                "room_number": room_number,
+                "room_status": "occupied",
+                "message": "No active guest found"
+            }
+        
+        # Return guest data for template processing
+        return {
+            "guest_name": current_guest.guest_name,
+            "guest_title": current_guest.title,
+            "room_number": room_number,
+            "check_in_date": current_guest.checkin_date.isoformat() if current_guest.checkin_date else None,
+            "check_out_date": current_guest.checkout_date.isoformat() if current_guest.checkout_date else None,
+            "balance": float(current_guest.balance) if current_guest.balance else 0,
+            "loyalty_level": current_guest.loyalty_level,
+            "language": current_guest.language,
+            "country": current_guest.country,
+            "special_requests": current_guest.special_requests,
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to get guest data: {str(e)}"
         )
 
 

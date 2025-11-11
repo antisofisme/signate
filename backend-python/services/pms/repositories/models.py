@@ -3,7 +3,7 @@ PMS Integration Models
 SQLAlchemy models for Firebird PMS integration
 """
 
-from sqlalchemy import Column, Integer, String, DateTime, Boolean, ForeignKey, UniqueConstraint
+from sqlalchemy import Column, Integer, String, DateTime, Boolean, ForeignKey, UniqueConstraint, Numeric, Text
 from sqlalchemy.sql import func
 from shared.database import Base
 
@@ -18,6 +18,7 @@ class PMSGuest(Base):
 
     # Guest Information
     guest_name = Column(String(255), nullable=False)
+    title = Column(String(50))  # Mr., Mrs., Ms., Dr., etc.
     room_number = Column(String(50), nullable=False)
     checkin_date = Column(DateTime, nullable=False)
     checkout_date = Column(DateTime, nullable=False)
@@ -25,6 +26,12 @@ class PMSGuest(Base):
     phone = Column(String(50))
     country = Column(String(100))
     reservation_no = Column(String(100))
+    
+    # Additional fields for template processing
+    balance = Column(Numeric(10, 2), default=0)
+    loyalty_level = Column(String(50))  # Gold, Silver, Bronze, etc.
+    language = Column(String(10))  # en, id, zh, etc.
+    special_requests = Column(Text)
 
     # Sync Metadata
     synced_at = Column(DateTime, server_default=func.now())
@@ -37,14 +44,20 @@ class PMSGuest(Base):
         return {
             "id": self.id,
             "organization_id": self.organization_id,
+            "name": self.guest_name,  # For consistency with API
             "guest_name": self.guest_name,
+            "title": self.title,
             "room_number": self.room_number,
-            "checkin_date": self.checkin_date.isoformat() if self.checkin_date else None,
-            "checkout_date": self.checkout_date.isoformat() if self.checkout_date else None,
+            "check_in_date": self.checkin_date.isoformat() if self.checkin_date else None,
+            "check_out_date": self.checkout_date.isoformat() if self.checkout_date else None,
             "email": self.email,
             "phone": self.phone,
             "country": self.country,
             "reservation_no": self.reservation_no,
+            "balance": float(self.balance) if self.balance else 0,
+            "loyalty_level": self.loyalty_level,
+            "language": self.language,
+            "special_requests": self.special_requests,
             "synced_at": self.synced_at.isoformat() if self.synced_at else None,
             "last_updated": self.last_updated.isoformat() if self.last_updated else None,
         }

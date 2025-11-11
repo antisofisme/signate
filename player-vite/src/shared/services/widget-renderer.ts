@@ -6,11 +6,6 @@
 import {
   Widget,
   WidgetType,
-  ClockWidget,
-  WeatherWidget,
-  TextWidget,
-  CalendarWidget,
-  HtmlWidget,
   WidgetRenderContext,
   IWidgetRenderer,
 } from '../models/widget.model';
@@ -91,11 +86,11 @@ export class WidgetRendererService {
    * Destroy all widgets
    */
   destroyAll(): void {
-    this.renderers.forEach((renderer, widgetId) => {
+    this.renderers.forEach((renderer) => {
       try {
         renderer.destroy();
       } catch (error) {
-        logger.error(`[WidgetRenderer] Error destroying widget ${widgetId}:`, error);
+        logger.error(`[WidgetRenderer] Error destroying widget:`, error);
       }
     });
     this.renderers.clear();
@@ -186,7 +181,7 @@ export class WidgetRendererService {
 
     this.renderInterval = window.setInterval(() => {
       // Update time-based widgets (clock, weather, etc.)
-      this.renderers.forEach((renderer, widgetId) => {
+      this.renderers.forEach((renderer) => {
         if (renderer.constructor.name === 'ClockRenderer') {
           // Clock renderer has its own interval, skip
           return;

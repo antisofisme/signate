@@ -394,7 +394,7 @@ export class CalendarRenderer implements IWidgetRenderer {
     });
   }
 
-  private addWeekNumbers(grid: HTMLElement, year: number, month: number): void {
+  private addWeekNumbers(_grid: HTMLElement, _year: number, _month: number): void {
     // Implementation for week numbers
     // This would require more complex calculation
     logger.debug('[CalendarRenderer] Week numbers not implemented yet');

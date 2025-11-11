@@ -6,6 +6,7 @@
 // Player UI Components
 export { PlayerUI } from './player-ui';
 export { QualitySelector } from './quality-selector';
+export { scheduleInfo } from './schedule-info';
 
 // Types
 export type {
