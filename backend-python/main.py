@@ -9,10 +9,13 @@ from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from contextlib import asynccontextmanager
 from pathlib import Path
+from prometheus_client import make_asgi_app
 
 from shared.config import settings
 from shared.database import check_db_connection, init_db
 from shared.api_routes import API_V1
+from shared.cache import cache
+from shared.metrics import init_app_metrics, MetricsMiddleware
 
 # Import service routers
 from services.auth.routes import router as auth_router
@@ -50,7 +53,7 @@ async def lifespan(app: FastAPI):
     """Startup and shutdown events"""
     # Startup
     print("=" * 80)
-    print("🚀 Starting Digital Signage Backend - Phase 1 Day 2: RBAC + Session Management")
+    print("🚀 Starting Digital Signage Backend - Phase 6: Performance & Production")
     print("=" * 80)
     print(f"Environment: {settings.ENVIRONMENT}")
     print(f"Debug Mode: {settings.DEBUG}")
@@ -68,6 +71,19 @@ async def lifespan(app: FastAPI):
             print(f"⚠ Database initialization warning: {e}")
     else:
         print("✗ Database connection: FAILED")
+    
+    # Check Redis connection
+    redis_health = cache.health_check()
+    if redis_health["status"] == "healthy":
+        print("✓ Redis cache: OK")
+        print(f"  - Connected clients: {redis_health.get('connected_clients', 0)}")
+        print(f"  - Memory used: {redis_health.get('used_memory_human', 'N/A')}")
+    else:
+        print(f"⚠ Redis cache: {redis_health.get('message', 'Not connected')}")
+    
+    # Initialize metrics
+    init_app_metrics(version="1.0.0", environment=settings.ENVIRONMENT)
+    print("✓ Prometheus metrics: Initialized")
 
     print("=" * 80)
 
@@ -83,12 +99,19 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="Digital Signage API",
-    description="Clean Architecture FastAPI Backend - Phase 1 Day 2: RBAC + Session Management",
-    version="1.0.0-phase1-day2",
+    description="Clean Architecture FastAPI Backend - Phase 6: Performance & Production",
+    version="1.0.0",
     docs_url="/docs" if settings.ENABLE_API_DOCS else None,
     redoc_url="/redoc" if settings.ENABLE_API_DOCS else None,
     lifespan=lifespan
 )
+
+# Add metrics middleware
+app.add_middleware(MetricsMiddleware)
+
+# Mount Prometheus metrics endpoint
+metrics_app = make_asgi_app()
+app.mount("/metrics", metrics_app)
 
 
 # =============================================================================
@@ -127,9 +150,9 @@ def root():
     """Root endpoint - Health check"""
     return {
         "service": "Digital Signage API",
-        "version": "1.0.0-phase1-day2",
+        "version": "1.0.0",
         "status": "running",
-        "phase": "Phase 1 Day 2: RBAC + Session Management",
+        "phase": "Phase 6: Performance & Production",
         "environment": settings.ENVIRONMENT
     }
 
@@ -138,11 +161,16 @@ def root():
 def health_check():
     """Health check endpoint"""
     db_healthy = check_db_connection()
+    redis_health = cache.health_check()
+    
+    overall_healthy = db_healthy and redis_health["status"] == "healthy"
 
     return {
-        "status": "healthy" if db_healthy else "unhealthy",
+        "status": "healthy" if overall_healthy else "unhealthy",
         "database": "connected" if db_healthy else "disconnected",
-        "phase": "Phase 1 Day 2: RBAC + Session Management"
+        "cache": redis_health["status"],
+        "phase": "Phase 6: Performance & Production",
+        "metrics": "/metrics"
     }
 
 

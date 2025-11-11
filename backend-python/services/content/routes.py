@@ -12,6 +12,8 @@ from shared.api_routes import ContentRoutes
 from shared.responses import success_response, error_response, paginated_response, created_response
 from shared.auth import CurrentUser, get_current_user
 from shared.logging import AuditLogger
+from shared.cache import cache, content_cache_key, list_cache_key
+from shared.metrics import track_cache_operation
 
 from .repositories.content_repo import get_content_repository
 from .infrastructure.storage.local_storage import get_storage_service
@@ -208,6 +210,24 @@ async def list_content(
     - content_type: Filter by type (image/video/audio)
     - is_active: Filter by active status (true/false)
     """
+    # Generate cache key
+    cache_key = list_cache_key(
+        entity="contents",
+        org_id=current_user.organization_id,
+        page=(skip // limit) + 1 if limit > 0 else 1,
+        limit=limit,
+        content_type=content_type,
+        is_active=is_active
+    )
+    
+    # Try cache first
+    cached_result = cache.get(cache_key)
+    if cached_result:
+        track_cache_operation("get", hit=True)
+        return cached_result
+    
+    track_cache_operation("get", hit=False)
+    
     try:
         contents, total = list_use_case.execute(
             organization_id=current_user.organization_id,
@@ -221,12 +241,17 @@ async def list_content(
         page = (skip // limit) + 1 if limit > 0 else 1
         page_size = limit
 
-        return paginated_response(
+        result = paginated_response(
             data=[ContentResponse.from_entity(c).dict() for c in contents],
             total=total,
             page=page,
             page_size=page_size
         )
+        
+        # Cache for 5 minutes
+        cache.set(cache_key, result, ttl=300)
+        
+        return result
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"List failed: {str(e)}")
 
@@ -238,12 +263,31 @@ async def get_content(
     current_user: CurrentUser = Depends(get_current_user)
 ):
     """Get single content by ID"""
+    # Generate cache key
+    cache_key = content_cache_key(content_id)
+    
+    # Try cache first
+    cached_result = cache.get(cache_key)
+    if cached_result:
+        track_cache_operation("get", hit=True)
+        # Verify organization access
+        if cached_result['data']['organization_id'] != current_user.organization_id:
+            raise HTTPException(status_code=404, detail="Content not found")
+        return cached_result
+    
+    track_cache_operation("get", hit=False)
+    
     try:
         content = get_use_case.execute(content_id, current_user.organization_id)
 
-        return success_response(
+        result = success_response(
             data=ContentResponse.from_entity(content).dict()
         )
+        
+        # Cache for 5 minutes
+        cache.set(cache_key, result, ttl=300)
+        
+        return result
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
     except Exception as e:
@@ -275,6 +319,9 @@ async def update_content(
             duration=request_body.duration,
             is_active=request_body.is_active
         )
+
+        # Invalidate cache
+        cache.invalidate_content(content_id, current_user.organization_id)
 
         # Audit log
         audit_logger.log_action(
@@ -353,6 +400,10 @@ async def delete_content(
 
         # Soft delete - automatically checks organization ownership
         deleted = content_repo.soft_delete(content_id, current_user.organization_id)
+        
+        # Invalidate cache
+        if deleted:
+            cache.invalidate_content(content_id, current_user.organization_id)
 
         if not deleted:
             raise HTTPException(status_code=404, detail="Content not found or access denied")

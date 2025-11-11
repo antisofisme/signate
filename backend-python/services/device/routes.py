@@ -16,6 +16,8 @@ from shared.errors import handle_errors, NotFoundError, ValidationError
 from shared.responses import success_response
 from shared.logging import RequestLogger, AuditLogger
 from shared.auth import get_current_user, CurrentUser
+from shared.cache import cache, device_cache_key, list_cache_key
+from shared.metrics import track_cache_operation, update_device_metrics
 from typing import Optional
 import time
 
@@ -354,6 +356,9 @@ def activate_device(
         duration_ms=duration_ms
     )
 
+    # Invalidate device cache
+    cache.invalidate_device(device.id, current_user.organization_id)
+    
     # Audit log
     audit_logger.log_action(
         user_id=current_user.id,
@@ -387,6 +392,22 @@ def list_devices(
 
     Returns all devices for current user's organization (from JWT token)
     """
+    # Generate cache key
+    cache_key = list_cache_key(
+        entity="devices",
+        org_id=current_user.organization_id,
+        status_filter=status_filter,
+        online_only=online_only
+    )
+    
+    # Try cache first
+    cached_result = cache.get(cache_key)
+    if cached_result:
+        track_cache_operation("get", hit=True)
+        return cached_result
+    
+    track_cache_operation("get", hit=False)
+    
     try:
         # Get organization_id from JWT token (more secure than query param)
         organization_id = current_user.organization_id
@@ -412,12 +433,20 @@ def list_devices(
         # Get counts
         total = use_case.count_devices(organization_id)
         online = use_case.count_online_devices(organization_id)
+        
+        # Update metrics
+        update_device_metrics(organization_id, online, total - online)
 
-        return DeviceListResponse(
+        result = DeviceListResponse(
             items=device_responses,  # Changed from 'devices' to 'items'
             total=total,
             online=online
         )
+        
+        # Cache for 1 minute (devices change frequently)
+        cache.set(cache_key, result.dict(), ttl=60)
+        
+        return result
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -428,11 +457,29 @@ def list_devices(
 @router.get(DeviceRoutes.GET, response_model=DeviceResponse)
 def get_device(
     device_id: int,
-    device_repo: DeviceRepository = Depends(get_device_repository)
+    device_repo: DeviceRepository = Depends(get_device_repository),
+    current_user: CurrentUser = Depends(get_current_user)
 ):
     """
     Get device details (called by CMS)
     """
+    # Generate cache key
+    cache_key = device_cache_key(device_id)
+    
+    # Try cache first
+    cached_result = cache.get(cache_key)
+    if cached_result:
+        track_cache_operation("get", hit=True)
+        # Verify organization access
+        if cached_result.get('organization_id') != current_user.organization_id:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Device with ID {device_id} not found"
+            )
+        return DeviceResponse(**cached_result)
+    
+    track_cache_operation("get", hit=False)
+    
     try:
         device = device_repo.find_by_id(device_id)
 
@@ -441,9 +488,19 @@ def get_device(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"Device with ID {device_id} not found"
             )
+            
+        # Verify organization access
+        if device.organization_id != current_user.organization_id:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Device with ID {device_id} not found"
+            )
 
         # Convert to response with is_online computed field
         response = device_to_response(device)
+        
+        # Cache for 1 minute
+        cache.set(cache_key, response.dict(), ttl=60)
 
         return response
     except HTTPException:
@@ -495,6 +552,9 @@ def update_device(
         duration_ms=duration_ms
     )
 
+    # Invalidate device cache
+    cache.invalidate_device(device_id, device.organization_id)
+    
     # Audit log
     audit_logger.log_action(
         user_id=None,  # TODO: Get from JWT token
