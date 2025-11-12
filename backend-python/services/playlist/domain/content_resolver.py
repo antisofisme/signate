@@ -12,6 +12,8 @@ from typing import List, Dict, Optional, Tuple, TYPE_CHECKING
 from datetime import datetime, time, timezone
 from dataclasses import dataclass
 import logging
+import html
+import re
 
 if TYPE_CHECKING:
     from services.playlist.domain.playlist import Playlist
@@ -397,16 +399,54 @@ class ContentResolver:
     def _replace_variables(self, text: str, data: Dict) -> str:
         """
         Replace template variables with actual data
+        
+        SECURITY: Sanitizes all user input to prevent XSS attacks
         """
         replacements = {
-            '{guest_name}': data.get('guest_name', 'Guest'),
-            '{room_number}': data.get('room_number', ''),
-            '{check_in}': data.get('check_in', ''),
-            '{check_out}': data.get('check_out', ''),
-            '{welcome_message}': data.get('welcome_message', 'Welcome!')
+            '{guest_name}': self._sanitize_template_value(data.get('guest_name', 'Guest')),
+            '{room_number}': self._sanitize_template_value(data.get('room_number', '')),
+            '{check_in}': self._sanitize_template_value(data.get('check_in', '')),
+            '{check_out}': self._sanitize_template_value(data.get('check_out', '')),
+            '{welcome_message}': self._sanitize_template_value(data.get('welcome_message', 'Welcome!'))
         }
         
         for var, value in replacements.items():
-            text = text.replace(var, str(value))
+            text = text.replace(var, value)
             
         return text
+    
+    def _sanitize_template_value(self, value: any) -> str:
+        """
+        Sanitize template values to prevent XSS attacks
+        
+        Args:
+            value: Raw value from data source
+            
+        Returns:
+            Sanitized string safe for HTML display
+        """
+        if value is None:
+            return ''
+            
+        # Convert to string
+        str_value = str(value)
+        
+        # HTML escape to prevent XSS
+        escaped = html.escape(str_value, quote=True)
+        
+        # Additional sanitization for common attack patterns
+        # Remove script tags
+        escaped = re.sub(r'<script[^>]*>.*?</script>', '', escaped, flags=re.IGNORECASE | re.DOTALL)
+        
+        # Remove javascript: URLs
+        escaped = re.sub(r'javascript:', '', escaped, flags=re.IGNORECASE)
+        
+        # Remove on* event handlers
+        escaped = re.sub(r'\bon\w+\s*=', '', escaped, flags=re.IGNORECASE)
+        
+        # Limit length to prevent buffer overflow attacks
+        max_length = 1000
+        if len(escaped) > max_length:
+            escaped = escaped[:max_length] + '...'
+        
+        return escaped

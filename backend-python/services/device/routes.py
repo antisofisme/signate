@@ -486,7 +486,8 @@ def get_device(
     track_cache_operation("get", hit=False)
     
     try:
-        device = device_repo.find_by_id(device_id)
+        # SECURITY FIX: Add organization isolation
+        device = device_repo.find_by_id(device_id, organization_id=current_user.organization_id)
 
         if not device:
             raise HTTPException(
@@ -639,12 +640,19 @@ def receive_device_logs(
     Currently just logged to console, can be stored to database later.
     """
     try:
-        # Verify device exists
-        device = device_repo.find_by_id(request_body.device_id)
+        # SECURITY FIX: Verify device exists and belongs to organization
+        device = device_repo.find_by_id(
+            request_body.device_id, 
+            organization_id=current_user.organization_id
+        )
 
         if not device:
-            # Device not found - silently ignore (player might be deleted)
-            return None
+            # Device not found - return success but log the issue
+            return {
+                "status": "ignored", 
+                "message": "Device not found or not accessible",
+                "processed_logs": 0
+            }
 
         # Log to console for debugging
         print(f"[Device Logs] Device ID: {request_body.device_id} ({device.device_name})")
@@ -653,13 +661,23 @@ def receive_device_logs(
 
         # TODO: Store logs to database if needed
         # For now, just acknowledge receipt
-
-        return None
+        
+        return {
+            "status": "success",
+            "message": "Logs received and processed",
+            "processed_logs": len(request_body.logs),
+            "device_id": request_body.device_id
+        }
 
     except Exception as e:
-        # Silently ignore errors - don't break player functionality
+        # Return error response but don't break player functionality
         print(f"[Device Logs] Error processing logs: {e}")
-        return None
+        return {
+            "status": "error",
+            "message": "Failed to process logs",
+            "processed_logs": 0,
+            "error": str(e)
+        }
 
 
 # NOTE: get_resolved_content endpoint moved to extended_routes.py to avoid duplication

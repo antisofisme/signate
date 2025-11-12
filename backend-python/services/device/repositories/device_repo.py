@@ -17,28 +17,53 @@ class DeviceRepository(IDeviceRepository):
     def __init__(self, db: Session):
         self.db = db
 
-    def find_by_id(self, device_id: int) -> Optional[Device]:
-        """Find device by ID"""
-        device_model = self.db.query(DeviceModel).options(
+    def find_by_id(self, device_id: int, organization_id: Optional[int] = None) -> Optional[Device]:
+        """
+        Find device by ID with organization isolation
+        
+        Args:
+            device_id: Device ID
+            organization_id: Organization ID for multi-tenant isolation
+        """
+        query = self.db.query(DeviceModel).options(
             selectinload(DeviceModel.assigned_playlist),
             selectinload(DeviceModel.tags),
             selectinload(DeviceModel.commands),
             selectinload(DeviceModel.health_metrics)
-        ).filter(DeviceModel.id == device_id).first()
+        ).filter(DeviceModel.id == device_id)
+        
+        # SECURITY: Always filter by organization_id to prevent cross-tenant access
+        if organization_id is not None:
+            query = query.filter(DeviceModel.organization_id == organization_id)
+            
+        device_model = query.first()
         return self._to_entity(device_model) if device_model else None
 
     def find_by_code(self, unique_code: str) -> Optional[Device]:
-        """Find device by unique activation code"""
+        """
+        Find device by unique activation code
+        Note: Activation codes are globally unique so no org filtering needed
+        """
         device_model = self.db.query(DeviceModel).filter(
             DeviceModel.unique_code == unique_code.upper()
         ).first()
         return self._to_entity(device_model) if device_model else None
 
-    def find_by_uuid(self, device_uuid: str) -> Optional[Device]:
-        """Find device by UUID (for WebOS)"""
-        device_model = self.db.query(DeviceModel).filter(
-            DeviceModel.device_uuid == device_uuid
-        ).first()
+    def find_by_uuid(self, device_uuid: str, organization_id: Optional[int] = None) -> Optional[Device]:
+        """
+        Find device by UUID (for WebOS) with organization isolation
+        
+        Args:
+            device_uuid: Device UUID
+            organization_id: Organization ID for multi-tenant isolation
+        """
+        query = self.db.query(DeviceModel).filter(DeviceModel.device_uuid == device_uuid)
+        
+        # SECURITY: Filter by organization_id if provided
+        if organization_id is not None:
+            query = query.filter(DeviceModel.organization_id == organization_id)
+            
+        device_model = query.first()
         return self._to_entity(device_model) if device_model else None
 
     def list_by_organization(self, organization_id: int) -> List[Device]:

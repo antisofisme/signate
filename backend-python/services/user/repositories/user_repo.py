@@ -17,25 +17,55 @@ class UserRepository(IUserRepository):
     def __init__(self, db: Session):
         self.db = db
 
-    def find_by_id(self, user_id: int) -> Optional[User]:
-        """Find user by ID"""
-        user_model = self.db.query(UserModel).filter(
-            UserModel.id == user_id
-        ).first()
+    def find_by_id(self, user_id: int, organization_id: Optional[int] = None) -> Optional[User]:
+        """
+        Find user by ID with optional organization isolation
+        
+        Args:
+            user_id: User ID
+            organization_id: Organization ID for isolation (recommended for security)
+        """
+        query = self.db.query(UserModel).filter(UserModel.id == user_id)
+        
+        # SECURITY: Add organization filtering if provided
+        if organization_id is not None:
+            query = query.filter(UserModel.organization_id == organization_id)
+        
+        user_model = query.first()
         return self._to_entity(user_model) if user_model else None
 
-    def find_by_username(self, username: str) -> Optional[User]:
-        """Find user by username"""
-        user_model = self.db.query(UserModel).filter(
-            UserModel.username == username
-        ).first()
+    def find_by_username(self, username: str, organization_id: Optional[int] = None) -> Optional[User]:
+        """
+        Find user by username with optional organization isolation
+        
+        Args:
+            username: Username
+            organization_id: Organization ID for isolation (recommended for security)
+        """
+        query = self.db.query(UserModel).filter(UserModel.username == username)
+        
+        # SECURITY: Add organization filtering if provided
+        if organization_id is not None:
+            query = query.filter(UserModel.organization_id == organization_id)
+        
+        user_model = query.first()
         return self._to_entity(user_model) if user_model else None
 
-    def find_by_email(self, email: str) -> Optional[User]:
-        """Find user by email"""
-        user_model = self.db.query(UserModel).filter(
-            UserModel.email == email
-        ).first()
+    def find_by_email(self, email: str, organization_id: Optional[int] = None) -> Optional[User]:
+        """
+        Find user by email with optional organization isolation
+        
+        Args:
+            email: Email address
+            organization_id: Organization ID for isolation (recommended for security)
+        """
+        query = self.db.query(UserModel).filter(UserModel.email == email)
+        
+        # SECURITY: Add organization filtering if provided
+        if organization_id is not None:
+            query = query.filter(UserModel.organization_id == organization_id)
+        
+        user_model = query.first()
         return self._to_entity(user_model) if user_model else None
 
     def get_all(
@@ -75,14 +105,21 @@ class UserRepository(IUserRepository):
         self.db.refresh(user_model)
         return self._to_entity(user_model)
 
-    def update(self, user: User) -> User:
-        """Update existing user"""
-        user_model = self.db.query(UserModel).filter(
-            UserModel.id == user.id
-        ).first()
-
+    def update(self, user: User, organization_id: Optional[int] = None) -> User:
+        """Update existing user with organization isolation"""
+        query = self.db.query(UserModel).filter(UserModel.id == user.id)
+        
+        # SECURITY: Add organization filtering if provided
+        if organization_id is not None:
+            query = query.filter(UserModel.organization_id == organization_id)
+        
+        user_model = query.first()
+        
         if not user_model:
-            raise ValueError(f"User with id {user.id} not found")
+            if organization_id is not None:
+                raise ValueError(f"User with id {user.id} not found in organization {organization_id}")
+            else:
+                raise ValueError(f"User with id {user.id} not found")
 
         user_model.email = user.email
         user_model.full_name = user.full_name
@@ -95,12 +132,16 @@ class UserRepository(IUserRepository):
         self.db.refresh(user_model)
         return self._to_entity(user_model)
 
-    def delete(self, user_id: int) -> bool:
-        """Delete user (hard delete - permanently remove)"""
-        user_model = self.db.query(UserModel).filter(
-            UserModel.id == user_id
-        ).first()
-
+    def delete(self, user_id: int, organization_id: Optional[int] = None) -> bool:
+        """Delete user (hard delete - permanently remove) with organization isolation"""
+        query = self.db.query(UserModel).filter(UserModel.id == user_id)
+        
+        # SECURITY: Add organization filtering if provided
+        if organization_id is not None:
+            query = query.filter(UserModel.organization_id == organization_id)
+        
+        user_model = query.first()
+        
         if not user_model:
             return False
 
@@ -109,28 +150,40 @@ class UserRepository(IUserRepository):
         self.db.commit()
         return True
 
-    def change_password(self, user_id: int, password_hash: str) -> User:
-        """Change user password"""
-        user_model = self.db.query(UserModel).filter(
-            UserModel.id == user_id
-        ).first()
-
+    def change_password(self, user_id: int, password_hash: str, organization_id: Optional[int] = None) -> User:
+        """Change user password with organization isolation"""
+        query = self.db.query(UserModel).filter(UserModel.id == user_id)
+        
+        # SECURITY: Add organization filtering if provided
+        if organization_id is not None:
+            query = query.filter(UserModel.organization_id == organization_id)
+        
+        user_model = query.first()
+        
         if not user_model:
-            raise ValueError(f"User with id {user_id} not found")
+            if organization_id is not None:
+                raise ValueError(f"User with id {user_id} not found in organization {organization_id}")
+            else:
+                raise ValueError(f"User with id {user_id} not found")
 
         user_model.password_hash = password_hash
         self.db.commit()
         self.db.refresh(user_model)
         return self._to_entity(user_model)
 
-    def get_organization_name(self, user_id: int) -> Optional[str]:
-        """Get organization name for user"""
-        result = self.db.query(OrganizationModel.name).join(
+    def get_organization_name(self, user_id: int, organization_id: Optional[int] = None) -> Optional[str]:
+        """Get organization name for user with organization isolation"""
+        query = self.db.query(OrganizationModel.name).join(
             UserModel, UserModel.organization_id == OrganizationModel.id
         ).filter(
             UserModel.id == user_id
-        ).first()
-
+        )
+        
+        # SECURITY: Add organization filtering if provided
+        if organization_id is not None:
+            query = query.filter(UserModel.organization_id == organization_id)
+        
+        result = query.first()
         return result[0] if result else None
 
     def count_by_status(self, active_only: bool = False) -> int:

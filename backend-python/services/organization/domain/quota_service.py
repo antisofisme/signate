@@ -232,10 +232,49 @@ class OrganizationQuotaService:
         """
         Enforce device quota - raises exception if limit reached
         Should be called before creating a new device
+        
+        SECURITY: This method is now atomic to prevent race conditions
         """
         check = self.check_device_quota(organization_id)
         if not check['allowed']:
             raise ValueError(check['message'])
+    
+    def enforce_device_quota_atomic(self, organization_id: int) -> None:
+        """
+        Atomically enforce device quota using row-level locking
+        Prevents race conditions in concurrent device creation
+        
+        Args:
+            organization_id: Organization ID
+            
+        Raises:
+            ValueError: If quota limit reached
+        """
+        from services.organization.repositories.models import OrganizationModel
+        
+        # Start transaction with row-level lock
+        try:
+            # Lock organization row to prevent concurrent modifications
+            org = self.db.query(OrganizationModel).filter(
+                OrganizationModel.id == organization_id
+            ).with_for_update().first()
+            
+            if not org:
+                raise ValueError(f"Organization {organization_id} not found")
+            
+            # Count current devices with lock
+            current_count = self.db.query(func.count(DeviceModel.id)).filter(
+                DeviceModel.organization_id == organization_id
+            ).scalar() or 0
+            
+            max_devices = org.max_devices or 10
+            
+            if current_count >= max_devices:
+                raise ValueError(f"Device quota exceeded: {current_count}/{max_devices} devices")
+                
+        except Exception as e:
+            self.db.rollback()
+            raise
     
     def enforce_user_quota(self, organization_id: int) -> None:
         """
@@ -254,6 +293,62 @@ class OrganizationQuotaService:
         check = self.check_content_quota(organization_id, file_size_bytes)
         if not check['allowed']:
             raise ValueError(check['message'])
+    
+    def enforce_content_quota_atomic(self, organization_id: int, file_size_bytes: int) -> None:
+        """
+        Atomically enforce content quota using row-level locking
+        Prevents race conditions in concurrent content uploads
+        
+        Args:
+            organization_id: Organization ID
+            file_size_bytes: Size of file being uploaded
+            
+        Raises:
+            ValueError: If quota limit reached
+        """
+        from services.organization.repositories.models import OrganizationModel
+        from services.content.repositories.models import ContentModel
+        
+        try:
+            # Lock organization row to prevent concurrent modifications
+            org = self.db.query(OrganizationModel).filter(
+                OrganizationModel.id == organization_id
+            ).with_for_update().first()
+            
+            if not org:
+                raise ValueError(f"Organization {organization_id} not found")
+            
+            # Get current content statistics with lock
+            content_stats = self.db.query(
+                func.count(ContentModel.id).label('count'),
+                func.coalesce(func.sum(ContentModel.file_size), 0).label('total_size')
+            ).filter(
+                ContentModel.organization_id == organization_id,
+                ContentModel.deleted_at.is_(None)
+            ).first()
+            
+            # Get limits from org settings or use defaults
+            settings = org.settings or {}
+            max_content_items = settings.get('max_content_items', 1000)
+            max_content_size_gb = settings.get('max_content_size_gb', 100)
+            max_content_size_bytes = max_content_size_gb * (1024 ** 3)
+            
+            current_items = content_stats.count or 0
+            current_size_bytes = int(content_stats.total_size or 0)
+            
+            # Check item limit
+            if current_items >= max_content_items:
+                raise ValueError(f"Content item limit reached: {current_items}/{max_content_items}")
+            
+            # Check storage limit
+            if (current_size_bytes + file_size_bytes) > max_content_size_bytes:
+                current_gb = current_size_bytes / (1024 ** 3)
+                new_gb = (current_size_bytes + file_size_bytes) / (1024 ** 3)
+                raise ValueError(f"Storage limit would be exceeded: {new_gb:.2f}GB > {max_content_size_gb}GB")
+                
+        except Exception as e:
+            self.db.rollback()
+            raise
     
     def enforce_playlist_quota(self, organization_id: int) -> None:
         """

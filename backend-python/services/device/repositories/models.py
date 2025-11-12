@@ -3,7 +3,7 @@ SQLAlchemy Models
 Database representation for Device
 """
 
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, Float, ForeignKey
+from sqlalchemy import Column, Integer, String, Boolean, DateTime, Float, ForeignKey, UniqueConstraint, Index
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
 from shared.database import Base
@@ -70,10 +70,47 @@ class DeviceModel(Base):
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
     released_at = Column(DateTime(timezone=True), nullable=True)  # When device was released/deactivated
 
-    # Relationships
-    # organization = relationship("OrganizationModel", back_populates="devices")
+    # Relationships (using string references to avoid circular imports)
+    organization = relationship("OrganizationModel", foreign_keys=[organization_id])
+    assigned_playlist = relationship("PlaylistModel", foreign_keys=[assigned_playlist_id])
     creator = relationship("UserModel", foreign_keys=[created_by])
     updater = relationship("UserModel", foreign_keys=[updated_by])
+    
+    # Many-to-many relationships
+    tags = relationship("TagModel", secondary="device_tags", back_populates="devices")
+    commands = relationship("DeviceCommandModel", back_populates="device", cascade="all, delete-orphan")
+    health_metrics = relationship("DeviceHealthMetricModel", back_populates="device", cascade="all, delete-orphan")
+    
+    # Group membership
+    group_memberships = relationship("DeviceGroupMemberModel", back_populates="device", cascade="all, delete-orphan")
+
+
+class DeviceTagModel(Base):
+    """Device Tag Association database model (Many-to-Many)"""
+    __tablename__ = "device_tags"
+
+    # Primary key
+    id = Column(Integer, primary_key=True, index=True)
+
+    # Foreign keys
+    device_id = Column(Integer, ForeignKey("devices.id", ondelete="CASCADE"), nullable=False)
+    tag_id = Column(Integer, ForeignKey("tags.id", ondelete="CASCADE"), nullable=False)
+
+    # Association metadata
+    assigned_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    assigned_by = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+
+    # Constraints
+    __table_args__ = (
+        UniqueConstraint('device_id', 'tag_id', name='uix_device_tag'),
+        Index('ix_device_tags_device_id', 'device_id'),
+        Index('ix_device_tags_tag_id', 'tag_id'),
+    )
+
+    # Relationships
+    device = relationship("DeviceModel")
+    tag = relationship("TagModel")
+    assigned_by_user = relationship("UserModel", foreign_keys=[assigned_by])
 
 
 class DeviceCommandModel(Base):
@@ -109,6 +146,11 @@ class DeviceCommandModel(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
     expires_at = Column(DateTime(timezone=True), nullable=True)
+
+    # Relationships
+    device = relationship("DeviceModel", back_populates="commands")
+    organization = relationship("OrganizationModel", foreign_keys=[organization_id])
+    created_by_user = relationship("UserModel", foreign_keys=[created_by])
 
 
 class DeviceHealthMetricModel(Base):
@@ -161,6 +203,10 @@ class DeviceHealthMetricModel(Base):
     recorded_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False, index=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
 
+    # Relationships
+    device = relationship("DeviceModel", back_populates="health_metrics")
+    organization = relationship("OrganizationModel", foreign_keys=[organization_id])
+
 
 class DeviceGroupModel(Base):
     """Device Group database model"""
@@ -209,3 +255,15 @@ class DeviceGroupMemberModel(Base):
     # Membership metadata
     joined_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     added_by = Column(Integer, ForeignKey("users.id"), nullable=True)
+
+    # Constraints
+    __table_args__ = (
+        UniqueConstraint('device_id', 'group_id', name='uix_device_group_member'),
+        Index('ix_device_group_members_device_id', 'device_id'),
+        Index('ix_device_group_members_group_id', 'group_id'),
+    )
+
+    # Relationships
+    device = relationship("DeviceModel", back_populates="group_memberships")
+    group = relationship("DeviceGroupModel")
+    added_by_user = relationship("UserModel", foreign_keys=[added_by])

@@ -5,6 +5,7 @@ Maps to existing 'tags' table in database
 
 from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey
 from sqlalchemy.sql import func
+from sqlalchemy.orm import relationship
 from shared.database import Base
 
 
@@ -34,6 +35,11 @@ class TagModel(Base):
 
     # Timestamps
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+
+    # Relationships (using string references to avoid circular imports)
+    organization = relationship("OrganizationModel", foreign_keys=[organization_id])
+    assigned_playlist = relationship("PlaylistModel", foreign_keys=[assigned_playlist_id])
+    devices = relationship("DeviceModel", secondary="device_tags", back_populates="tags")
 
     def __repr__(self):
         return f"<TagModel(id={self.id}, name='{self.tag_name}', org={self.organization_id})>"

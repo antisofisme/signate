@@ -12,8 +12,8 @@ class IDeviceRepository(ABC):
     """Interface for device repository"""
 
     @abstractmethod
-    def find_by_id(self, device_id: int) -> Optional[Device]:
-        """Find device by ID"""
+    def find_by_id(self, device_id: int, organization_id: Optional[int] = None) -> Optional[Device]:
+        """Find device by ID with optional organization isolation"""
         pass
 
     @abstractmethod
@@ -22,8 +22,8 @@ class IDeviceRepository(ABC):
         pass
 
     @abstractmethod
-    def find_by_uuid(self, device_uuid: str) -> Optional[Device]:
-        """Find device by UUID (for WebOS)"""
+    def find_by_uuid(self, device_uuid: str, organization_id: Optional[int] = None) -> Optional[Device]:
+        """Find device by UUID (for WebOS) with optional organization isolation"""
         pass
 
     @abstractmethod

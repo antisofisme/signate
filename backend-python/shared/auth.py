@@ -792,12 +792,16 @@ async def get_device_by_token_ws(
     try:
         device_info = extract_device_from_token(token)
         
-        # Get device from database to verify it exists
+        # Get device from database to verify it exists and belongs to the organization
         from services.device.infrastructure.sqlalchemy_device_repository import SQLAlchemyDeviceRepository
         from services.device.dtos import DeviceResponse
         
         device_repo = SQLAlchemyDeviceRepository()
-        device = device_repo.find_by_id(device_info["device_id"])
+        # SECURITY: Verify device belongs to the organization from token
+        device = device_repo.find_by_id(
+            device_info["device_id"], 
+            organization_id=device_info.get("organization_id")
+        )
         
         if not device:
             return None

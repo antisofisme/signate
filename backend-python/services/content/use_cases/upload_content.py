@@ -95,9 +95,9 @@ class UploadContentUseCase:
         db_session = self.content_repo.db
         quota_service = OrganizationQuotaService(db_session)
         
-        # Enforce content quota
+        # Enforce content quota atomically to prevent race conditions
         try:
-            quota_service.enforce_content_quota(organization_id, file_size)
+            quota_service.enforce_content_quota_atomic(organization_id, file_size)
         except ValueError as e:
             raise ValueError(f"Quota exceeded: {str(e)}")
 

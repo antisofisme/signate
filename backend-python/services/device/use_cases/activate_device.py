@@ -93,9 +93,9 @@ class ActivateDeviceUseCase:
         db_session = self.device_repo.db
         quota_service = OrganizationQuotaService(db_session)
         
-        # Enforce device quota
+        # Enforce device quota atomically to prevent race conditions
         try:
-            quota_service.enforce_device_quota(organization_id)
+            quota_service.enforce_device_quota_atomic(organization_id)
         except ValueError as e:
             raise ValidationError(
                 message=str(e),

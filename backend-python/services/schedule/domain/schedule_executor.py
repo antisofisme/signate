@@ -47,6 +47,7 @@ class ScheduleExecutor:
         self.check_interval = 60  # Check every minute
         self._active_schedules: Dict[int, Set[int]] = {}  # schedule_id -> device_ids
         self._last_check = None
+        self._lock = asyncio.Lock()  # Thread safety for concurrent operations
         
     async def start(self):
         """Start the schedule execution service"""
@@ -129,13 +130,24 @@ class ScheduleExecutor:
         # Get current active schedule IDs
         current_active_ids = {s.id for s in active_schedules}
         
-        # Get previously active schedule IDs for this org
-        prev_active_ids = set()
-        for sched_id, devices in self._active_schedules.items():
-            # Check if schedule belongs to this org
-            schedule = next((s for s in active_schedules if s.id == sched_id), None)
-            if schedule or self._was_org_schedule(db, sched_id, organization_id):
-                prev_active_ids.add(sched_id)
+        # Get previously active schedule IDs for this org (thread-safe read)
+        async with self._lock:
+            prev_active_ids = set()
+            unknown_schedule_ids = []
+            
+            for sched_id, devices in self._active_schedules.items():
+                # Check if schedule belongs to this org (first check current active list)
+                schedule = next((s for s in active_schedules if s.id == sched_id), None)
+                if schedule:
+                    prev_active_ids.add(sched_id)
+                else:
+                    # Schedule not in current active list, need to check in DB
+                    unknown_schedule_ids.append(sched_id)
+            
+            # Bulk query for unknown schedules to avoid N+1 problem
+            if unknown_schedule_ids:
+                org_schedule_ids = self._get_org_schedules_bulk(db, unknown_schedule_ids, organization_id)
+                prev_active_ids.update(org_schedule_ids)
         
         # Detect newly activated schedules
         newly_activated = current_active_ids - prev_active_ids
@@ -162,8 +174,9 @@ class ScheduleExecutor:
         affected_devices = self._get_affected_devices(db, schedule)
         device_ids = [d.id for d in affected_devices]
         
-        # Store active schedule state
-        self._active_schedules[schedule.id] = set(device_ids)
+        # Store active schedule state (thread-safe)
+        async with self._lock:
+            self._active_schedules[schedule.id] = set(device_ids)
         
         # Clear content resolution cache for affected devices
         for device_id in device_ids:
@@ -207,11 +220,10 @@ class ScheduleExecutor:
         """
         logger.info(f"Deactivating schedule {schedule_id}")
         
-        # Get previously affected devices
-        device_ids = list(self._active_schedules.get(schedule_id, []))
-        
-        # Remove from active schedules
-        self._active_schedules.pop(schedule_id, None)
+        # Get previously affected devices and remove from active schedules (thread-safe)
+        async with self._lock:
+            device_ids = list(self._active_schedules.get(schedule_id, []))
+            self._active_schedules.pop(schedule_id, None)
         
         # Clear content resolution cache for affected devices
         for device_id in device_ids:
@@ -287,9 +299,37 @@ class ScheduleExecutor:
         
         return affected_devices
     
+    def _get_org_schedules_bulk(self, db: Session, schedule_ids: List[int], organization_id: int) -> Set[int]:
+        """
+        Bulk check which schedules belong to an organization
+        Optimized to prevent N+1 queries
+        
+        Args:
+            db: Database session
+            schedule_ids: List of schedule IDs to check
+            organization_id: Organization ID
+            
+        Returns:
+            Set of schedule IDs that belong to the organization
+        """
+        from services.schedule.repositories.models import Schedule
+        
+        if not schedule_ids:
+            return set()
+        
+        # Single query to check all schedule IDs
+        org_schedules = db.query(Schedule.id).filter(
+            Schedule.id.in_(schedule_ids),
+            Schedule.organization_id == organization_id
+        ).all()
+        
+        return {schedule_id for (schedule_id,) in org_schedules}
+    
     def _was_org_schedule(self, db: Session, schedule_id: int, organization_id: int) -> bool:
         """
         Check if a schedule belongs to an organization
+        
+        DEPRECATED: Use _get_org_schedules_bulk for better performance
         """
         from services.schedule.repositories.models import Schedule
         
