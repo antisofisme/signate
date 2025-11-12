@@ -6,6 +6,7 @@
  */
 
 import { useState } from 'react';
+import { ClipboardList, Calendar, Plus } from 'lucide-react';
 import {
   useSchedules,
   useOccurrences,
@@ -133,23 +134,25 @@ export const SchedulesPage = () => {
         <div className="inline-flex rounded-lg border border-gray-200 dark:border-gray-700">
           <button
             onClick={() => setViewMode('list')}
-            className={`px-4 py-2 text-sm font-medium rounded-l-lg ${
+            className={`px-4 py-2 text-sm font-medium rounded-l-lg flex items-center gap-2 ${
               viewMode === 'list'
                 ? 'bg-purple-600 text-white'
                 : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
             }`}
           >
-            📋 List
+            <ClipboardList className="w-4 h-4" />
+            List
           </button>
           <button
             onClick={() => setViewMode('calendar')}
-            className={`px-4 py-2 text-sm font-medium rounded-r-lg ${
+            className={`px-4 py-2 text-sm font-medium rounded-r-lg flex items-center gap-2 ${
               viewMode === 'calendar'
                 ? 'bg-purple-600 text-white'
                 : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
             }`}
           >
-            📅 Calendar
+            <Calendar className="w-4 h-4" />
+            Calendar
           </button>
         </div>
 
@@ -158,7 +161,7 @@ export const SchedulesPage = () => {
           onClick={handleCreate}
           className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 flex items-center gap-2"
         >
-          <span>➕</span>
+          <Plus className="w-5 h-5" />
           <span>Create Schedule</span>
         </button>
       </div>

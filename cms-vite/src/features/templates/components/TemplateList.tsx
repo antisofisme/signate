@@ -4,6 +4,7 @@
  */
 
 import { useState } from 'react'
+import { FileText, Eye, Edit, Trash2 } from 'lucide-react'
 import { TEMPLATE_TYPES, type Template, type TemplateType } from '../types/template.types'
 import { formatDateTime } from '@/shared/utils/formatters'
 
@@ -37,7 +38,7 @@ export const TemplateList = ({
     return (
       <div className="space-y-3">
         {[...Array(3)].map((_, i) => (
-          <div key={i} className="h-24 bg-gray-100 rounded-lg animate-pulse" />
+          <div key={i} className="h-24 bg-gray-100 dark:bg-gray-700 rounded-lg animate-pulse" />
         ))}
       </div>
     )
@@ -45,10 +46,10 @@ export const TemplateList = ({
 
   if (templates.length === 0) {
     return (
-      <div className="text-center py-12 bg-gray-50 dark:bg-gray-700 rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-600">
-        <div className="text-4xl mb-4">📝</div>
+      <div className="text-center py-12 bg-gray-50 dark:bg-gray-800 rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-600">
+        <FileText className="w-16 h-16 mx-auto mb-4 text-gray-400 dark:text-gray-500" />
         <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">No templates yet</h3>
-        <p className="text-gray-600 dark:text-gray-300 mb-4">
+        <p className="text-gray-600 dark:text-gray-400 mb-4">
           Create your first template to get started
         </p>
       </div>
@@ -88,7 +89,7 @@ export const TemplateList = ({
       </div>
 
       {/* Results count */}
-      <div className="text-sm text-gray-600 dark:text-gray-300">
+      <div className="text-sm text-gray-600 dark:text-gray-400">
         Showing {filteredTemplates.length} of {templates.length} templates
       </div>
 
@@ -111,7 +112,7 @@ export const TemplateList = ({
                     <div>
                       <h3 className="font-semibold text-gray-900 dark:text-white">{template.name}</h3>
                       <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
-                        <span className="px-2 py-0.5 bg-green-100 text-green-700 rounded text-xs font-medium">
+                        <span className="px-2 py-0.5 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded text-xs font-medium">
                           {typeInfo.label}
                         </span>
                         <span>•</span>
@@ -132,7 +133,7 @@ export const TemplateList = ({
                       {Object.keys(template.variables).slice(0, 5).map((varName) => (
                         <span
                           key={varName}
-                          className="text-xs bg-blue-50 dark:bg-blue-950 text-blue-700 dark:text-blue-300 px-2 py-0.5 rounded font-mono"
+                          className="text-xs bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 px-2 py-0.5 rounded font-mono"
                         >
                           {'{{'}{varName}{'}}'}
                         </span>
@@ -164,24 +165,27 @@ export const TemplateList = ({
                 <div className="flex items-center gap-2 ml-4">
                   <button
                     onClick={() => onPreview(template)}
-                    className="px-3 py-1.5 text-sm bg-purple-50 text-purple-700 rounded hover:bg-purple-100"
+                    className="px-3 py-1.5 text-sm bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 rounded hover:bg-purple-100 dark:hover:bg-purple-900/50 flex items-center gap-1"
                     title="Preview Template"
                   >
-                    👁️ Preview
+                    <Eye className="w-4 h-4" />
+                    Preview
                   </button>
                   <button
                     onClick={() => onEdit(template)}
-                    className="px-3 py-1.5 text-sm bg-blue-50 text-blue-700 rounded hover:bg-blue-100"
+                    className="px-3 py-1.5 text-sm bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded hover:bg-blue-100 dark:hover:bg-blue-900/50 flex items-center gap-1"
                     title="Edit Template"
                   >
-                    ✏️ Edit
+                    <Edit className="w-4 h-4" />
+                    Edit
                   </button>
                   <button
                     onClick={() => onDelete(template)}
-                    className="px-3 py-1.5 text-sm bg-red-50 text-red-700 rounded hover:bg-red-100"
+                    className="px-3 py-1.5 text-sm bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300 rounded hover:bg-red-100 dark:hover:bg-red-900/50 flex items-center gap-1"
                     title="Delete Template"
                   >
-                    🗑️ Delete
+                    <Trash2 className="w-4 h-4" />
+                    Delete
                   </button>
                 </div>
               </div>
@@ -192,14 +196,14 @@ export const TemplateList = ({
 
       {/* No results */}
       {filteredTemplates.length === 0 && (
-        <div className="text-center py-8 bg-gray-50 dark:bg-gray-700 rounded-lg">
-          <p className="text-gray-600 dark:text-gray-300">No templates match your filters</p>
+        <div className="text-center py-8 bg-gray-50 dark:bg-gray-800 rounded-lg">
+          <p className="text-gray-600 dark:text-gray-400">No templates match your filters</p>
           <button
             onClick={() => {
               setSearchQuery('')
               setFilterType('all')
             }}
-            className="mt-2 text-sm text-blue-600 hover:underline"
+            className="mt-2 text-sm text-blue-600 dark:text-blue-400 hover:underline"
           >
             Clear filters
           </button>

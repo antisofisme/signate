@@ -4,6 +4,7 @@
  */
 
 import { useState, useEffect } from 'react'
+import { Eye, Edit, Rocket, Clock, Lightbulb } from 'lucide-react'
 import { DEFAULT_PREVIEW_DATA } from '../types/template.types'
 
 interface TemplatePreviewProps {
@@ -67,18 +68,38 @@ export const TemplatePreview = ({
           <button
             type="button"
             onClick={() => setShowDataEditor(!showDataEditor)}
-            className="text-xs px-3 py-1.5 border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-900 dark:text-gray-100"
+            className="text-xs px-3 py-1.5 border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-900 dark:text-gray-100 flex items-center gap-1"
           >
-            {showDataEditor ? '👁️ Show Preview' : '✏️ Edit Data'}
+            {showDataEditor ? (
+              <>
+                <Eye className="w-3 h-3" />
+                Show Preview
+              </>
+            ) : (
+              <>
+                <Edit className="w-3 h-3" />
+                Edit Data
+              </>
+            )}
           </button>
           {onRender && (
             <button
               type="button"
               onClick={handleRenderClick}
               disabled={isRendering}
-              className="text-xs px-3 py-1.5 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
+              className="text-xs px-3 py-1.5 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 flex items-center gap-1"
             >
-              {isRendering ? '⏳ Rendering...' : '🚀 Render'}
+              {isRendering ? (
+                <>
+                  <Clock className="w-3 h-3 animate-spin" />
+                  Rendering...
+                </>
+              ) : (
+                <>
+                  <Rocket className="w-3 h-3" />
+                  Render
+                </>
+              )}
             </button>
           )}
         </div>
@@ -87,10 +108,13 @@ export const TemplatePreview = ({
       {showDataEditor ? (
         /* Test Data Editor */
         <div className="space-y-3">
-          <div className="bg-yellow-50 dark:bg-yellow-950 border border-yellow-200 dark:border-yellow-900 rounded p-3">
-            <p className="text-xs text-yellow-800 dark:text-yellow-200">
-              💡 Enter test data for variables to preview the rendered template
-            </p>
+          <div className="bg-yellow-50 dark:bg-yellow-900/30 border border-yellow-200 dark:border-yellow-800 rounded p-3">
+            <div className="flex items-start gap-2">
+              <Lightbulb className="w-4 h-4 text-yellow-800 dark:text-yellow-200 flex-shrink-0 mt-0.5" />
+              <p className="text-xs text-yellow-800 dark:text-yellow-200">
+                Enter test data for variables to preview the rendered template
+              </p>
+            </div>
           </div>
 
           {Object.keys(variables).length > 0 ? (
@@ -126,9 +150,9 @@ export const TemplatePreview = ({
               })}
             </div>
           ) : (
-            <div className="text-center py-8 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded bg-gray-50 dark:bg-gray-700">
-              <p className="text-sm text-gray-600 dark:text-gray-300">No variables defined</p>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Add variables to enable test data</p>
+            <div className="text-center py-8 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded bg-gray-50 dark:bg-gray-800">
+              <p className="text-sm text-gray-600 dark:text-gray-400">No variables defined</p>
+              <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">Add variables to enable test data</p>
             </div>
           )}
         </div>
@@ -162,9 +186,12 @@ export const TemplatePreview = ({
 
           {/* Preview Footer */}
           <div className="bg-gray-50 dark:bg-gray-700 border-t border-gray-300 dark:border-gray-600 px-4 py-2">
-            <p className="text-xs text-gray-600 dark:text-gray-400">
-              💡 This is a preview. Click "Render" to see server-rendered output with Jinja2.
-            </p>
+            <div className="flex items-start gap-2">
+              <Lightbulb className="w-3 h-3 text-gray-600 dark:text-gray-400 flex-shrink-0 mt-0.5" />
+              <p className="text-xs text-gray-600 dark:text-gray-400">
+                This is a preview. Click "Render" to see server-rendered output with Jinja2.
+              </p>
+            </div>
           </div>
         </div>
       )}
