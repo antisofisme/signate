@@ -4,6 +4,7 @@
  */
 
 import { WIDGET_TYPES, type WidgetType } from '../types/widget.types'
+import { renderIcon } from '@/shared/utils/iconHelper'
 
 interface WidgetTypeSelectorProps {
   value: WidgetType
@@ -56,7 +57,7 @@ export const WidgetTypeSelector = ({
             )}
 
             {/* Icon */}
-            <div className="text-3xl mb-2">{widgetType.icon}</div>
+            <div className="mb-2">{renderIcon(widgetType.icon, { className: 'w-12 h-12 mx-auto' })}</div>
 
             {/* Label */}
             <h3 className="font-semibold text-gray-900 mb-1">

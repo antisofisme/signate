@@ -20,6 +20,7 @@ import {
   type PriorityLevel,
 } from '../types/schedule.types'
 import axios from 'axios'
+import { renderIcon } from '@/shared/utils/iconHelper'
 
 // Validation schema
 const scheduleFormSchema = z.object({
@@ -465,7 +466,7 @@ export const ScheduleForm = ({
                 `}
               >
                 <div className="flex flex-col items-center gap-1">
-                  <span className="text-2xl">{priority.icon}</span>
+                  {renderIcon(priority.icon, { className: 'w-8 h-8' })}
                   <span className="text-xs font-semibold text-gray-900 dark:text-white">
                     {priority.label}
                   </span>

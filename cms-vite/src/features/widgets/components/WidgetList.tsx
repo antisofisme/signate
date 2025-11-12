@@ -6,6 +6,7 @@
 import { useState } from 'react'
 import { WIDGET_TYPES, type Widget, type WidgetType } from '../types/widget.types'
 import { formatDateTime } from '@/shared/utils/formatters'
+import { renderIcon } from '@/shared/utils/iconHelper'
 
 interface WidgetListProps {
   widgets: Widget[]
@@ -83,7 +84,7 @@ export const WidgetList = ({
             <option value="all">All Types</option>
             {Object.values(WIDGET_TYPES).map((type) => (
               <option key={type.type} value={type.type}>
-                {type.icon} {type.label}
+                {type.label}
               </option>
             ))}
           </select>
@@ -109,7 +110,7 @@ export const WidgetList = ({
                 {/* Widget info */}
                 <div className="flex-1">
                   <div className="flex items-center gap-3 mb-2">
-                    <span className="text-2xl">{typeInfo.icon}</span>
+                    {renderIcon(typeInfo.icon, { className: 'w-8 h-8' })}
                     <div>
                       <h3 className="font-semibold text-gray-900">{widget.name}</h3>
                       <div className="flex items-center gap-2 text-sm text-gray-600">

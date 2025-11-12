@@ -12,6 +12,7 @@ import listPlugin from '@fullcalendar/list'
 import { EventInput, EventClickArg, DateSelectArg, EventDropArg, EventResizeDoneArg } from '@fullcalendar/core'
 import type { Schedule, ScheduleOccurrence } from '../types/schedule.types'
 import { PRIORITY_LEVELS } from '../types/schedule.types'
+import { renderIcon } from '@/shared/utils/iconHelper'
 
 interface FullCalendarViewProps {
   schedules: Schedule[]
@@ -250,7 +251,7 @@ export function FullCalendarView({
               </div>
               <div className="fc-event-title-container">
                 <div className="fc-event-title fc-sticky text-sm font-medium flex items-center gap-1">
-                  <span>{priorityIcon}</span>
+                  {renderIcon(priorityIcon, { className: 'w-4 h-4' })}
                   <span className="truncate">{eventInfo.event.title}</span>
                 </div>
                 {isTimeGrid && (
@@ -305,8 +306,9 @@ export function FullCalendarView({
                 className="w-4 h-4 rounded"
                 style={{ backgroundColor: getPriorityColor(priority.level) }}
               />
-              <span className="text-gray-600 dark:text-gray-400">
-                {priority.icon} {priority.label}
+              <span className="text-gray-600 dark:text-gray-400 flex items-center gap-1">
+                {renderIcon(priority.icon, { className: 'w-4 h-4' })}
+                <span>{priority.label}</span>
               </span>
             </div>
           ))}

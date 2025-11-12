@@ -4,6 +4,7 @@
  */
 
 import { RECURRENCE_TYPES, DAYS_OF_WEEK, type RecurrenceType, type RecurrencePattern, type DayOfWeek } from '../types/schedule.types'
+import { renderIcon } from '@/shared/utils/iconHelper'
 
 interface RecurrenceBuilderProps {
   recurrenceType: RecurrenceType
@@ -83,7 +84,7 @@ export const RecurrenceBuilder = ({
                 `}
               >
                 <div className="flex flex-col items-center gap-1">
-                  <span className="text-2xl">{type.icon}</span>
+                  {renderIcon(type.icon, { className: 'w-8 h-8' })}
                   <span className="text-xs font-semibold text-gray-900 dark:text-white">
                     {type.label}
                   </span>

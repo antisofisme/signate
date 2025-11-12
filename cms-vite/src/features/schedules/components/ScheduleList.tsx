@@ -14,6 +14,7 @@ import {
   type RecurrenceType,
 } from '../types/schedule.types'
 import { formatDateTime } from '@/shared/utils/formatters'
+import { renderIcon } from '@/shared/utils/iconHelper'
 
 interface ScheduleListProps {
   schedules: Schedule[]
@@ -111,7 +112,7 @@ export const ScheduleList = ({
           <option value="all">All Priority</option>
           {Object.values(PRIORITY_LEVELS).map((priority) => (
             <option key={priority.level} value={priority.level}>
-              {priority.icon} {priority.label}
+              {priority.label}
             </option>
           ))}
         </select>
@@ -125,7 +126,7 @@ export const ScheduleList = ({
           <option value="all">All Types</option>
           {Object.values(RECURRENCE_TYPES).map((type) => (
             <option key={type.type} value={type.type}>
-              {type.icon} {type.label}
+              {type.label}
             </option>
           ))}
         </select>
@@ -204,21 +205,21 @@ export const ScheduleList = ({
                   <div className="flex flex-wrap items-center gap-2 mb-3">
                     {/* Priority */}
                     <div className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm ${
-                      priority.color === 'red' 
-                        ? 'bg-red-100 text-red-700' 
-                        : priority.color === 'orange' 
-                        ? 'bg-orange-100 text-orange-700' 
-                        : priority.color === 'blue' 
-                        ? 'bg-blue-100 text-blue-700' 
+                      priority.color === 'red'
+                        ? 'bg-red-100 text-red-700'
+                        : priority.color === 'orange'
+                        ? 'bg-orange-100 text-orange-700'
+                        : priority.color === 'blue'
+                        ? 'bg-blue-100 text-blue-700'
                         : 'bg-gray-100 text-gray-700'
                     }`}>
-                      <span>{priority.icon}</span>
+                      {renderIcon(priority.icon, { className: 'w-4 h-4' })}
                       <span>{priority.label}</span>
                     </div>
 
                     {/* Recurrence */}
                     <div className="inline-flex items-center gap-1 px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-sm">
-                      <span>{recurrenceType.icon}</span>
+                      {renderIcon(recurrenceType.icon, { className: 'w-4 h-4' })}
                       <span>{recurrenceType.label}</span>
                     </div>
 
