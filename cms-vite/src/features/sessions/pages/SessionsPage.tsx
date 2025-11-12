@@ -75,11 +75,11 @@ export default function SessionsPage() {
       <div className="space-y-6">
         {/* Stats Cards */}
         <SessionStats
-        total={sessionsData?.total || 0}
-        desktop={stats?.sessions_by_device.desktop || 0}
-        mobile={stats?.sessions_by_device.mobile || 0}
-        tablet={stats?.sessions_by_device.tablet || 0}
-      />
+          total={sessionsData?.total || 0}
+          desktop={stats?.sessions_by_device?.desktop || 0}
+          mobile={stats?.sessions_by_device?.mobile || 0}
+          tablet={stats?.sessions_by_device?.tablet || 0}
+        />
 
       {/* Security Warning */}
       <SecurityWarning
