@@ -4,7 +4,7 @@
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { deviceApi } from '../services/deviceApi';
+import { deviceApi } from '../api/deviceApi';
 import type {
   Device,
   MonitorRegisterRequest,

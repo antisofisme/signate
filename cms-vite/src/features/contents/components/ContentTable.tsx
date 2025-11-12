@@ -25,7 +25,7 @@ import {
   useBulkDeleteContent,
 } from '../hooks/useContent';
 import type { Content, ContentType, ContentFilters } from '../types/content';
-import { formatFileSize, downloadContent } from '../services/contentApi';
+import { formatFileSize, downloadContent } from '../api/contentApi';
 import { UploadModal } from './UploadModal';
 import { EditContentModal } from './EditContentModal';
 import { BulkEditModal } from './BulkEditModal';

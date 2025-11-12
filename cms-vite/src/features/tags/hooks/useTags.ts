@@ -6,7 +6,7 @@
  */
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { tagsApi } from '@/features/tags/services/tagsApi';
+import { tagsApi } from '@/features/tags/api/tagsApi';
 import { handleAPIError } from '@/lib/errors/errorHandler';
 import { toast } from '@/lib/notifications/toast';
 import type {

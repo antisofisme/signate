@@ -6,7 +6,7 @@
 
 import { X, Wifi, TrendingUp, TrendingDown, Activity } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
-import { deviceApi } from '../../services/deviceApi';
+import { deviceApi } from '../../api/deviceApi';
 import type { Device } from '../../types/device';
 
 interface SpeedHistoryModalProps {

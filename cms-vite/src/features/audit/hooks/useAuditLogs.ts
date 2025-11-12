@@ -6,7 +6,7 @@
  */
 
 import { useQuery } from '@tanstack/react-query';
-import { auditApi } from '../services/auditApi';
+import { auditApi } from '../api/auditApi';
 import type { AuditLogFilters } from '../types/auditLog';
 
 export const AUDIT_LOGS_QUERY_KEY = 'auditLogs';

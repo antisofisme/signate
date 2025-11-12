@@ -4,7 +4,7 @@
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { playlistApi } from '../services/playlistApi';
+import { playlistApi } from '../api/playlistApi';
 import type {
   CreatePlaylistRequest,
   UpdatePlaylistRequest,

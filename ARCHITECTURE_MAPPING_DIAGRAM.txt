@@ -1,0 +1,308 @@
+╔════════════════════════════════════════════════════════════════════════════════╗
+║                 SIGNATE CMS ARCHITECTURE MAPPING DIAGRAM                       ║
+║                   Backend-to-Frontend Service Alignment                        ║
+╚════════════════════════════════════════════════════════════════════════════════╝
+
+
+BACKEND SERVICES (Python - FastAPI)          FRONTEND FEATURES (React - Vite)
+────────────────────────────────────         ────────────────────────────────────
+
+                                   ┌─ /features/auth/
+┌──────────────────┐              │  ├─ components/
+│  AUTH SERVICE    │──────────────┼─ ├─ hooks/
+│  (5 endpoints)   │✅ COMPLETE  │  ├─ services/
+└──────────────────┘              │  └─ types/
+                                   │
+                                   ├─ PAGES: Login, Register, ForgotPassword,
+                                   │          Reset, SelectOrganization
+                                   └─
+
+
+┌──────────────────┐              ┌─ /features/contents/
+│ CONTENT SERVICE  │──────────────┼─ ├─ components/
+│  (9 endpoints)   │✅ COMPLETE   │  ├─ hooks/
+└──────────────────┘              │  ├─ services/
+                                   │  └─ types/
+                                   │
+                                   ├─ PAGE: ContentPage ✅
+                                   └─
+
+
+┌──────────────────┐              ┌─ /features/devices/
+│ DEVICE SERVICE   │──────────────┼─ ├─ api/ (deviceApi, groupsApi, etc)
+│  (7 routes,      │✅ COMPLETE   │  ├─ components/
+│  48+ endpoints)  │              │  ├─ hooks/
+└──────────────────┘              │  └─ types/
+                                   │
+                                   ├─ PAGES: DevicesPage ✅
+                                   │         DeviceGroupsPage ✅
+                                   │         DevicePreviewPage ✅
+                                   └─
+
+
+┌──────────────────┐              ┌─ /features/playlists/
+│ PLAYLIST SERVICE │──────────────┼─ ├─ api/
+│ (15 endpoints)   │✅ COMPLETE   │  ├─ components/
+└──────────────────┘              │  ├─ hooks/
+                                   │  └─ types/
+                                   │
+                                   ├─ PAGE: PlaylistsPage ✅
+                                   └─
+
+
+┌──────────────────┐              ┌─ /features/users/
+│  USER SERVICE    │──────────────┼─ ├─ components/
+│  (6 endpoints)   │✅ COMPLETE   │  ├─ hooks/
+└──────────────────┘              │  ├─ services/
+                                   │  └─ types/
+                                   │
+                                   ├─ PAGE: UsersPage (in SettingsPage) ✅
+                                   └─
+
+
+┌──────────────────┐              ┌─ /features/organizations/
+│ORGANIZATION SERV │──────────────┼─ ├─ components/
+│ (11 endpoints)   │✅ COMPLETE   │  ├─ hooks/
+└──────────────────┘              │  ├─ services/
+                                   │  └─ types/
+                                   │
+                                   ├─ PAGE: OrganizationsPage ✅
+                                   └─
+
+
+┌──────────────────┐              ┌─ /features/rbac/
+│  RBAC SERVICE    │──────────────┼─ ├─ api/
+│ (10 endpoints)   │✅ COMPLETE   │  ├─ components/
+└──────────────────┘              │  ├─ hooks/
+                                   │  └─ types/
+                                   │
+                                   ├─ PAGE: RolesPage ✅
+                                   └─
+
+
+┌──────────────────┐              ┌─ /features/tags/
+│  TAG SERVICE     │──────────────┼─ ├─ components/
+│ (10 endpoints)   │✅ COMPLETE   │  ├─ hooks/
+└──────────────────┘              │  ├─ services/
+                                   │  └─ types/
+                                   │
+                                   ├─ PAGE: TagsPage ✅
+                                   └─
+
+
+┌──────────────────┐              ┌─ /features/sessions/
+│ SESSION SERVICE  │──────────────┼─ ├─ api/
+│  (8 endpoints)   │✅ COMPLETE   │  ├─ components/
+└──────────────────┘              │  ├─ hooks/
+                                   │  └─ types/
+                                   │
+                                   ├─ PAGE: SessionsPage ✅
+                                   └─
+
+
+┌──────────────────┐              ┌─ /features/analytics/
+│ANALYTICS SERVICE │──────────────┼─ ├─ api/
+│  (7 endpoints)   │✅ COMPLETE   │  ├─ components/
+└──────────────────┘              │  ├─ hooks/
+                                   │  └─ types/
+                                   │
+                                   ├─ PAGE: AnalyticsPage ✅
+                                   └─
+
+
+┌──────────────────┐              ┌─ /features/audit/
+│  AUDIT SERVICE   │──────────────┼─ ├─ api/
+│  (2 endpoints)   │✅ COMPLETE   │  ├─ components/
+└──────────────────┘              │  ├─ hooks/
+                                   │  └─ types/
+                                   │
+                                   ├─ PAGE: AuditLogsPage ✅
+                                   └─
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+PARTIALLY IMPLEMENTED SERVICES (5) - CRITICAL GAPS
+
+┌──────────────────┐              ┌─ /features/schedules/
+│ SCHEDULE SERVICE │──────────────┼─ ├─ api/ ✓
+│ (10 endpoints)   │⚠️ PARTIAL    │  ├─ hooks/ ✓
+│  100% BACKEND    │              │  ├─ types/ ✓
+│  0% PAGE         │              │  └─ COMPONENTS: MISSING
+└──────────────────┘              │
+                                   ├─ PAGE: SchedulesPage ❌ NEEDED
+                                   │  - Schedule CRUD form
+                                   │  - Recurrence rule builder
+                                   │  - Time zone picker
+                                   │  - Conflict preview
+                                   │
+                                   ├─ EFFORT: 40-60 hours
+                                   └─ PRIORITY: HIGH
+
+
+┌──────────────────┐              ┌─ /features/templates/
+│ TEMPLATE SERVICE │──────────────┼─ ├─ api/ ✓
+│  (8 endpoints)   │⚠️ PARTIAL    │  ├─ hooks/ ✓
+│  100% BACKEND    │              │  ├─ types/ ✓
+│  0% PAGE         │              │  └─ COMPONENTS: MISSING
+└──────────────────┘              │
+                                   ├─ PAGE: TemplatesPage ❌ NEEDED
+                                   │  - Template editor
+                                   │  - Syntax highlighting
+                                   │  - Preview pane
+                                   │  - Variable extraction
+                                   │
+                                   ├─ EFFORT: 30-50 hours
+                                   └─ PRIORITY: HIGH
+
+
+┌──────────────────┐              ┌─ /features/widgets/
+│ WIDGET SERVICE   │──────────────┼─ ├─ api/ ✓
+│  (9 endpoints)   │⚠️ PARTIAL    │  ├─ hooks/ ✓
+│  100% BACKEND    │              │  ├─ types/ ✓
+│  0% PAGE         │              │  └─ COMPONENTS: MINIMAL
+└──────────────────┘              │
+                                   ├─ PAGE: WidgetsPage ❌ NEEDED
+                                   │  - Widget gallery
+                                   │  - Config UI
+                                   │  - Preview
+                                   │
+                                   ├─ EFFORT: 25-40 hours
+                                   └─ PRIORITY: MEDIUM
+
+
+┌──────────────────┐              ┌─ /features/translations/
+│TRANSLATION SERV  │──────────────┼─ ├─ api/ ✓
+│  (9 endpoints)   │⚠️ PARTIAL    │  ├─ hooks/ ?
+│  100% BACKEND    │ (UNCLEAR)    │  ├─ types/ ?
+└──────────────────┘              │  └─ pages/ ?
+                                   │
+                                   ├─ PAGE: UNCLEAR STATUS
+                                   │  Question: Standalone or embedded?
+                                   │
+                                   ├─ EFFORT: 10-20 hours
+                                   └─ PRIORITY: MEDIUM
+
+
+┌──────────────────┐              ┌─ /features/weather/
+│ WEATHER SERVICE  │──────────────┼─ ├─ api/ ✓
+│  (2 endpoints)   │⚠️ PARTIAL    │  ├─ hooks/ ?
+│  50% BACKEND     │  (MINIMAL)   │  └─ types/ ?
+│  (GET only)      │              │
+└──────────────────┘              ├─ PAGE: UNCLEAR IF NEEDED
+                                   │  Question: User-facing or internal?
+                                   │
+                                   ├─ EFFORT: 0-15 hours
+                                   └─ PRIORITY: LOW
+
+
+┌──────────────────┐              ┌─ /features/pms/
+│   PMS SERVICE    │──────────────┼─ ├─ api/ (WebSocket + REST)
+│ (1 REST +        │⚠️ PARTIAL    │  ├─ hooks/ ?
+│  WebSocket)      │              │  └─ types/ ?
+└──────────────────┘              │
+                                   ├─ PAGE: UNCLEAR IF NEEDED
+                                   │  Question: Manual sync needed?
+                                   │
+                                   ├─ EFFORT: 0-20 hours
+                                   └─ PRIORITY: LOW
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+SUMMARY STATISTICS
+════════════════════════════════════════════════════════════════════════════════
+
+Backend Services:              17 services
+├── Fully Implemented:          12 ✅ (70.6%)
+├── Partially Implemented:       5 ⚠️  (29.4%)
+└── Not Implemented:             0
+
+Frontend Pages:                19 pages
+├── Implemented:               14 ✅ (73.7%)
+├── Missing:                    5 ❌ (26.3%)
+│   └── Schedule (1), Template (1), Widget (1), Weather (?), PMS (?)
+└── Unclear:                    1 ? (5.3%)
+    └── Translation integration
+
+Feature Folders:               17 folders
+└── All have basic API layer
+
+Frontend API Organization:     INCONSISTENT
+├── Uses /api/: 11 features
+└── Uses /services/: 6 features
+
+
+RECOMMENDED NEXT STEPS
+════════════════════════════════════════════════════════════════════════════════
+
+PHASE 1 (2-3 weeks) - HIGH PRIORITY:
+  [1] Create SchedulesPage
+      - Build schedule form with react-hook-form
+      - Add recurrence rule builder (rrule.js)
+      - Add time picker and time zone selector
+      - Implement conflict preview
+
+  [2] Create TemplatesPage
+      - Build template editor (Monaco or CodeMirror)
+      - Add syntax highlighting for template language
+      - Implement template preview pane
+      - Display variable extraction results
+
+PHASE 2 (1-2 weeks) - MEDIUM PRIORITY:
+  [3] Create WidgetsPage
+      - Build widget gallery/library view
+      - Implement widget configuration UI (type-specific)
+      - Add widget preview
+      - Integrate with playlist page
+
+  [4] Clarify Translation integration
+      - Determine if user-facing or internal
+      - Decide on standalone vs embedded architecture
+      - Finalize implementation approach
+
+PHASE 3 (as needed) - LOW PRIORITY:
+  [5] Clarify Weather purpose
+      - Determine if user-facing, widget, or internal
+      - Implement UI if required
+
+  [6] Clarify PMS scope
+      - Determine if manual sync needed
+      - Implement UI if required
+
+
+ESTIMATED EFFORT
+════════════════════════════════════════════════════════════════════════════════
+
+To Complete All Missing Features:     75-150 hours
+├── SchedulesPage:                    40-60 hours
+├── TemplatesPage:                    30-50 hours
+├── WidgetsPage:                      25-40 hours
+├── Translation clarification:        10-20 hours
+├── Weather (if needed):               5-15 hours
+└── PMS (if needed):                  10-20 hours
+
+
+ARCHITECTURE OBSERVATIONS
+════════════════════════════════════════════════════════════════════════════════
+
+STRENGTHS:
+  ✅ Clean Architecture consistently applied
+  ✅ Feature-based folder structure
+  ✅ Good separation of concerns (API, components, hooks)
+  ✅ TypeScript for type safety
+  ✅ Centralized error handling
+
+AREAS TO IMPROVE:
+  ⚠️  Standardize API folder naming (/api/ vs /services/)
+  ⚠️  Clarify purpose of secondary services (weather, PMS, translation)
+  ⚠️  Add comprehensive testing framework
+  ⚠️  Document API design patterns
+
+
+═════════════════════════════════════════════════════════════════════════════════
+Generated: 2024-11-12
+Project: signate CMS-Vite
+Status: Core system complete (70.6%), secondary features 29.4% complete
+═════════════════════════════════════════════════════════════════════════════════

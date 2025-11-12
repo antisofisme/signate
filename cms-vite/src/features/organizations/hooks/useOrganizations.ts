@@ -6,7 +6,7 @@
  */
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { organizationsApi } from '@/features/organizations/services/organizationsApi';
+import { organizationsApi } from '@/features/organizations/api/organizationsApi';
 import { handleAPIError } from '@/lib/errors/errorHandler';
 import { toast } from '@/lib/notifications/toast';
 import type {

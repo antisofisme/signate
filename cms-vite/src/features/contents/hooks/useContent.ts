@@ -14,7 +14,7 @@ import {
   deleteContent,
   bulkDeleteContent,
   getContentStats,
-} from '../services/contentApi';
+} from '../api/contentApi';
 
 // Query keys
 export const contentKeys = {
