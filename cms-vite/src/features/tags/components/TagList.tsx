@@ -1,0 +1,102 @@
+/**
+ * Tag List Component
+ * Table display of tags with actions
+ */
+
+import { Pencil, Trash2, Loader2, Tag as TagIcon } from 'lucide-react';
+import { TagBadge } from './TagBadge';
+import type { Tag } from '../types/tag';
+
+interface TagListProps {
+  tags: Tag[];
+  isLoading: boolean;
+  searchQuery: string;
+  onEdit: (tag: Tag) => void;
+  onDelete: (tag: Tag) => void;
+}
+
+export function TagList({
+  tags,
+  isLoading,
+  searchQuery,
+  onEdit,
+  onDelete,
+}: TagListProps) {
+  if (isLoading) {
+    return (
+      <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-12 text-center">
+        <Loader2 className="w-8 h-8 animate-spin text-blue-600 mx-auto mb-4" />
+        <p className="text-gray-600 dark:text-gray-400">Loading tags...</p>
+      </div>
+    );
+  }
+
+  if (tags.length === 0) {
+    return (
+      <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-12 text-center">
+        <TagIcon className="w-12 h-12 mx-auto mb-4 text-gray-400" />
+        <p className="text-gray-600 dark:text-gray-400">
+          {searchQuery ? 'Tidak ada tag yang cocok' : 'Belum ada tag'}
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+      <table className="w-full">
+        <thead className="bg-gray-50 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600">
+          <tr>
+            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+              Tag
+            </th>
+            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+              Deskripsi
+            </th>
+            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+              Dibuat
+            </th>
+            <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+              Aksi
+            </th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+          {tags.map((tag) => (
+            <tr key={tag.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
+              <td className="px-6 py-4 whitespace-nowrap">
+                <TagBadge tag={tag} />
+              </td>
+              <td className="px-6 py-4 text-gray-700 dark:text-gray-300">
+                {tag.description || '-'}
+              </td>
+              <td className="px-6 py-4 text-gray-600 dark:text-gray-400">
+                {new Date(tag.created_at).toLocaleDateString('id-ID')}
+              </td>
+              <td className="px-6 py-4 whitespace-nowrap text-right">
+                <div className="flex items-center justify-end gap-2">
+                  <button
+                    onClick={() => onEdit(tag)}
+                    className="p-1.5 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded"
+                    title="Edit"
+                  >
+                    <Pencil className="h-4 w-4" />
+                  </button>
+                  <button
+                    onClick={() => onDelete(tag)}
+                    className="p-1.5 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded"
+                    title="Delete"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                </div>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+export default TagList;
