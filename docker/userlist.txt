@@ -17,11 +17,10 @@
 "signage_user" "md55e22da6cd201b71c209ee83bedf42fec"
 
 # Admin user for PgBouncer console access
-# To generate: echo -n "AdminPass123signage_admin" | md5sum
-"signage_admin" "md5<REPLACE_WITH_ACTUAL_HASH>"
+"signage_admin" "signage_admin_pass"
 
 # Stats user (read-only access to PgBouncer stats)
-"signage_stats" "md5<REPLACE_WITH_ACTUAL_HASH>"
+"signage_stats" "signage_stats_pass"
 
 # ============================================================================
 # HOW TO GENERATE MD5 HASH
