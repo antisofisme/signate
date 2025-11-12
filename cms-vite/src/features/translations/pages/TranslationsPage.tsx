@@ -41,17 +41,10 @@ export const TranslationsPage = () => {
   } = useTranslationState();
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-8">
-      {/* Header */}
-      <div className="mb-8">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Translation Manager</h1>
-            <p className="mt-2 text-gray-600 dark:text-gray-400">
-              Manage translations for multi-language support
-            </p>
-          </div>
-          <div className="flex gap-3">
+    <>
+      {/* Action Bar */}
+      <div className="mb-6 flex justify-between items-center">
+        <div className="flex gap-3">
             <button
               onClick={() => setShowStats(!showStats)}
               className="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center gap-2"
@@ -73,15 +66,16 @@ export const TranslationsPage = () => {
               <Plus className="w-4 h-4" />
               Create Translation
             </button>
-          </div>
         </div>
       </div>
 
-      {/* Stats */}
-      {showStats && <TranslationStats translations={translations} />}
+      {/* Content */}
+      <div className="space-y-6">
+        {/* Stats */}
+        {showStats && <TranslationStats translations={translations} />}
 
-      {/* Translation List */}
-      <TranslationList
+        {/* Translation List */}
+        <TranslationList
         translations={translations}
         isLoading={isLoading}
         onEdit={handleEdit}
@@ -90,7 +84,8 @@ export const TranslationsPage = () => {
         onReject={handleReject}
         isApproving={isApproving}
         isRejecting={isRejecting}
-      />
+        />
+      </div>
 
       {/* Form Modal */}
       {modalMode && (
@@ -121,7 +116,7 @@ export const TranslationsPage = () => {
 
       {/* Bulk Import Modal */}
       {showBulkImport && <BulkImportModal onClose={() => setShowBulkImport(false)} />}
-    </div>
+    </>
   );
 };
 

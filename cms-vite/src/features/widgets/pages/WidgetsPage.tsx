@@ -32,34 +32,28 @@ export const WidgetsPage = () => {
   } = useWidgetState();
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-8">
-      {/* Header */}
-      <div className="mb-8">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Widget Manager</h1>
-            <p className="mt-2 text-gray-600 dark:text-gray-400">
-              Configure and manage display widgets for your screens
-            </p>
-          </div>
-          <button
-            onClick={handleCreate}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2"
-          >
-            <Plus className="w-4 h-4" />
-            Create Widget
-          </button>
-        </div>
+    <>
+      {/* Action Bar */}
+      <div className="mb-6 flex justify-end">
+        <button
+          onClick={handleCreate}
+          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2"
+        >
+          <Plus className="w-4 h-4" />
+          Create Widget
+        </button>
       </div>
 
       {/* Widget List */}
-      <WidgetList
+      <div className="space-y-6">
+        <WidgetList
         widgets={widgets}
         isLoading={isLoading}
         onEdit={handleEdit}
         onDelete={handleDelete}
         onAssign={handleAssign}
-      />
+        />
+      </div>
 
       {/* Form Modal */}
       {(modalMode === 'create' || modalMode === 'edit') && (
@@ -87,7 +81,7 @@ export const WidgetsPage = () => {
           isLoading={isDeleting}
         />
       )}
-    </div>
+    </>
   );
 };
 

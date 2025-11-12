@@ -65,17 +65,7 @@ export default function PlaylistsPage() {
   };
 
   return (
-    <div className="p-6">
-      {/* Header */}
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
-          Playlist Management
-        </h1>
-        <p className="text-gray-600 dark:text-gray-400">
-          Kelola playlist konten untuk perangkat Anda
-        </p>
-      </div>
-
+    <>
       {/* Actions & Filters */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
         <div className="flex gap-2">
@@ -120,8 +110,10 @@ export default function PlaylistsPage() {
         </button>
       </div>
 
-      {/* Playlists List */}
-      <PlaylistList
+      {/* Content */}
+      <div className="space-y-6">
+        {/* Playlists List */}
+        <PlaylistList
         playlists={playlistsData?.items || []}
         isLoading={isLoading}
         onEdit={setEditingPlaylist}
@@ -129,14 +121,15 @@ export default function PlaylistsPage() {
         onManageContent={setContentModalPlaylist}
         onManageAssignments={setAssignmentModalPlaylist}
         onCreateNew={() => setShowCreateModal(true)}
-      />
+        />
 
-      {/* Total Count */}
-      {playlistsData && playlistsData.total > 0 && (
-        <div className="mt-4 text-sm text-gray-600 dark:text-gray-400">
-          Total: {playlistsData.total} playlist
-        </div>
-      )}
+        {/* Total Count */}
+        {playlistsData && playlistsData.total > 0 && (
+          <div className="mt-4 text-sm text-gray-600 dark:text-gray-400">
+            Total: {playlistsData.total} playlist
+          </div>
+        )}
+      </div>
 
       {/* Modals */}
       {showCreateModal && (
@@ -187,6 +180,6 @@ export default function PlaylistsPage() {
           onClose={() => setAssignmentModalPlaylist(null)}
         />
       )}
-    </div>
+    </>
   );
 }

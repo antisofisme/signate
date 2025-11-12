@@ -32,34 +32,25 @@ export function AnalyticsPage() {
   }
 
   return (
-    <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
-      {/* Header */}
-      <div className="flex items-center justify-between space-y-2">
-        <div>
-          <h2 className="text-3xl font-bold tracking-tight flex items-center gap-2">
-            <BarChart3 className="h-8 w-8" />
-            Analytics & Reports
-          </h2>
-          <p className="text-gray-600 dark:text-gray-400">
-            Track content performance and device engagement
-          </p>
-        </div>
-        <div className="flex items-center space-x-2">
-          <button
-            onClick={handleRefresh}
-            className="flex items-center gap-2 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-          >
-            <RefreshCw className="h-4 w-4" />
-            Refresh
-          </button>
-        </div>
+    <>
+      {/* Action Bar */}
+      <div className="mb-6 flex justify-end">
+        <button
+          onClick={handleRefresh}
+          className="flex items-center gap-2 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+        >
+          <RefreshCw className="h-4 w-4" />
+          Refresh
+        </button>
       </div>
 
-      {/* Stats Overview */}
-      <AnalyticsOverview stats={stats!} isLoading={statsLoading} />
+      {/* Content */}
+      <div className="space-y-6">
+        {/* Stats Overview */}
+        <AnalyticsOverview stats={stats!} isLoading={statsLoading} />
 
-      {/* Charts Section */}
-      <div className="grid gap-4 md:grid-cols-2">
+        {/* Charts Section */}
+        <div className="grid gap-4 md:grid-cols-2">
         <ContentPerformanceChart data={contentPerformance || []} isLoading={contentLoading} />
 
         <div className="space-y-4">
@@ -84,10 +75,10 @@ export function AnalyticsPage() {
             variant="area"
           />
         </div>
-      </div>
+        </div>
 
-      {/* Additional Info */}
-      <div className="rounded-lg border p-4">
+        {/* Additional Info */}
+        <div className="rounded-lg border p-4">
         <div className="flex items-center justify-between">
           <div>
             <h3 className="font-semibold">Auto-refresh enabled</h3>
@@ -103,7 +94,8 @@ export function AnalyticsPage() {
             )}
           </div>
         </div>
+        </div>
       </div>
-    </div>
+    </>
   )
 }

@@ -64,17 +64,9 @@ export default function TagsPage() {
   };
 
   return (
-    <div className="p-6 space-y-6">
-      {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Tags</h1>
-        <p className="text-gray-600 dark:text-gray-400 mt-1">
-          Kelola tags untuk mengorganisir devices dan content
-        </p>
-      </div>
-
+    <>
       {/* Toolbar */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+      <div className="mb-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div className="flex items-center gap-4 flex-1 w-full sm:w-auto">
           {/* Search */}
           <div className="relative flex-1 max-w-sm">
@@ -111,14 +103,16 @@ export default function TagsPage() {
         </button>
       </div>
 
-      {/* Tag List */}
-      <TagList
+      {/* Content */}
+      <div className="space-y-6">
+        <TagList
         tags={filteredTags}
         isLoading={isLoading}
         searchQuery={searchQuery}
         onEdit={setEditingTag}
         onDelete={setDeletingTag}
-      />
+        />
+      </div>
 
       {/* Modals */}
       {isCreateModalOpen && (
@@ -149,6 +143,6 @@ export default function TagsPage() {
           isLoading={deleteTagMutation.isPending}
         />
       )}
-    </div>
+    </>
   );
 }

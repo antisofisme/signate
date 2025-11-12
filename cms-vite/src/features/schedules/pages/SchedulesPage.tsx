@@ -126,77 +126,69 @@ export const SchedulesPage = () => {
   const schedules = data?.schedules || [];
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-8">
-      {/* Header */}
-      <div className="mb-8">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Schedule Manager</h1>
-            <p className="mt-2 text-gray-600 dark:text-gray-400">
-              Create and manage automated content playback schedules
-            </p>
-          </div>
-          <div className="flex gap-3">
-            {/* View Mode Toggle */}
-            <div className="inline-flex rounded-lg border border-gray-200 dark:border-gray-700">
-              <button
-                onClick={() => setViewMode('list')}
-                className={`px-4 py-2 text-sm font-medium rounded-l-lg ${
-                  viewMode === 'list'
-                    ? 'bg-purple-600 text-white'
-                    : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
-                }`}
-              >
-                📋 List
-              </button>
-              <button
-                onClick={() => setViewMode('calendar')}
-                className={`px-4 py-2 text-sm font-medium rounded-r-lg ${
-                  viewMode === 'calendar'
-                    ? 'bg-purple-600 text-white'
-                    : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
-                }`}
-              >
-                📅 Calendar
-              </button>
-            </div>
-
-            {/* Create Button */}
-            <button
-              onClick={handleCreate}
-              className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 flex items-center gap-2"
-            >
-              <span>➕</span>
-              <span>Create Schedule</span>
-            </button>
-          </div>
+    <>
+      {/* Action Bar */}
+      <div className="mb-6 flex justify-between items-center">
+        {/* View Mode Toggle */}
+        <div className="inline-flex rounded-lg border border-gray-200 dark:border-gray-700">
+          <button
+            onClick={() => setViewMode('list')}
+            className={`px-4 py-2 text-sm font-medium rounded-l-lg ${
+              viewMode === 'list'
+                ? 'bg-purple-600 text-white'
+                : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
+            }`}
+          >
+            📋 List
+          </button>
+          <button
+            onClick={() => setViewMode('calendar')}
+            className={`px-4 py-2 text-sm font-medium rounded-r-lg ${
+              viewMode === 'calendar'
+                ? 'bg-purple-600 text-white'
+                : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
+            }`}
+          >
+            📅 Calendar
+          </button>
         </div>
+
+        {/* Create Button */}
+        <button
+          onClick={handleCreate}
+          className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 flex items-center gap-2"
+        >
+          <span>➕</span>
+          <span>Create Schedule</span>
+        </button>
       </div>
 
       {/* Content */}
-      {viewMode === 'list' ? (
-        <ScheduleList
-          schedules={schedules}
-          isLoading={isLoading}
-          onView={handleView}
-          onEdit={handleEdit}
-          onDelete={handleDelete}
-          onActivate={handleActivate}
-          onDeactivate={handleDeactivate}
-          onPause={handlePause}
-        />
-      ) : (
-        <CalendarView
-          events={calendarEvents}
-          selectedDate={selectedDate}
-          onDateSelect={setSelectedDate}
-          onEventClick={(event) => {
-            const schedule = schedules.find((s) => s.id === event.schedule.id);
-            if (schedule) handleView(schedule);
-          }}
-          isLoading={occurrencesQuery.isLoading}
-        />
-      )}
+      <div className="space-y-6">
+        {viewMode === 'list' ? (
+          <ScheduleList
+            schedules={schedules}
+            isLoading={isLoading}
+            onView={handleView}
+            onEdit={handleEdit}
+            onDelete={handleDelete}
+            onActivate={handleActivate}
+            onDeactivate={handleDeactivate}
+            onPause={handlePause}
+          />
+        ) : (
+          <CalendarView
+            events={calendarEvents}
+            selectedDate={selectedDate}
+            onDateSelect={setSelectedDate}
+            onEventClick={(event) => {
+              const schedule = schedules.find((s) => s.id === event.schedule.id);
+              if (schedule) handleView(schedule);
+            }}
+            isLoading={occurrencesQuery.isLoading}
+          />
+        )}
+      </div>
 
       {/* Modals */}
       {(modalMode === 'create' || modalMode === 'edit') && (
@@ -234,7 +226,7 @@ export const SchedulesPage = () => {
           onConfirm={confirmDelete}
         />
       )}
-    </div>
+    </>
   );
 };
 

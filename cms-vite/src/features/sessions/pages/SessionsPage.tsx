@@ -71,9 +71,10 @@ export default function SessionsPage() {
   }
 
   return (
-    <div className="space-y-6">
-      {/* Stats Cards */}
-      <SessionStats
+    <>
+      <div className="space-y-6">
+        {/* Stats Cards */}
+        <SessionStats
         total={sessionsData?.total || 0}
         desktop={stats?.sessions_by_device.desktop || 0}
         mobile={stats?.sessions_by_device.mobile || 0}
@@ -140,6 +141,7 @@ export default function SessionsPage() {
           </p>
         </div>
       )}
+      </div>
 
       {/* Revoke All Confirmation Modal */}
       <RevokeAllModal
@@ -149,6 +151,6 @@ export default function SessionsPage() {
         onClose={() => setShowRevokeAllModal(false)}
         onConfirm={handleRevokeAll}
       />
-    </div>
+    </>
   );
 }
