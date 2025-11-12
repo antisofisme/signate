@@ -117,7 +117,6 @@ export default function RolesPage() {
       <PageHeader
         title="Roles & Permissions"
         description="Manage user roles and their permissions"
-        icon={Shield}
       />
 
       <div className="space-y-6">

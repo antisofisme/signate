@@ -22,6 +22,8 @@ interface TranslationListProps {
   onDelete: (translation: Translation) => void
   onApprove: (translation: Translation) => void
   onReject: (translation: Translation) => void
+  isApproving?: boolean
+  isRejecting?: boolean
 }
 
 export const TranslationList = ({

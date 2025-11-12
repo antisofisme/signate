@@ -60,7 +60,6 @@ export const TemplatesPage = () => {
       {(modalMode === 'create' || modalMode === 'edit') && (
         <TemplateForm
           template={selectedTemplate || undefined}
-          mode={modalMode}
           onSubmit={handleSubmit}
           onCancel={closeModal}
           isLoading={isSaving}
@@ -69,7 +68,29 @@ export const TemplatesPage = () => {
 
       {/* Preview Modal */}
       {modalMode === 'preview' && selectedTemplate && (
-        <TemplatePreview template={selectedTemplate} onClose={closeModal} />
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="bg-white dark:bg-gray-800 rounded-lg max-w-4xl w-full max-h-[90vh] overflow-hidden">
+            <div className="p-6 border-b border-gray-200 dark:border-gray-700">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                  Preview: {selectedTemplate.name}
+                </h3>
+                <button
+                  onClick={closeModal}
+                  className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
+            <div className="p-6 overflow-y-auto max-h-[calc(90vh-100px)]">
+              <TemplatePreview
+                content={selectedTemplate.content}
+                variables={selectedTemplate.variables || {}}
+              />
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Delete Confirmation */}

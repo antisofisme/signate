@@ -72,7 +72,7 @@ export const TranslationsPage = () => {
       {/* Content */}
       <div className="space-y-6">
         {/* Stats */}
-        {showStats && <TranslationStats translations={translations} />}
+        {showStats && <TranslationStats />}
 
         {/* Translation List */}
         <TranslationList
@@ -91,7 +91,6 @@ export const TranslationsPage = () => {
       {modalMode && (
         <TranslationForm
           translation={selectedTranslation || undefined}
-          mode={modalMode}
           onSubmit={handleSubmit}
           onCancel={closeModal}
           isLoading={isSaving}
@@ -104,7 +103,7 @@ export const TranslationsPage = () => {
           isOpen={showDeleteConfirm}
           title="Delete Translation"
           message="Are you sure you want to delete this translation?"
-          itemName={selectedTranslation.key}
+          itemName={selectedTranslation.field_name}
           onClose={() => {
             setShowDeleteConfirm(false);
             setSelectedTranslation(null);
@@ -115,7 +114,7 @@ export const TranslationsPage = () => {
       )}
 
       {/* Bulk Import Modal */}
-      {showBulkImport && <BulkImportModal onClose={() => setShowBulkImport(false)} />}
+      {showBulkImport && <BulkImportModal isOpen={showBulkImport} onClose={() => setShowBulkImport(false)} />}
     </>
   );
 };

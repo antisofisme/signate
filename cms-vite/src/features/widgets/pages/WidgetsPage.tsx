@@ -59,7 +59,6 @@ export const WidgetsPage = () => {
       {(modalMode === 'create' || modalMode === 'edit') && (
         <WidgetForm
           widget={selectedWidget || undefined}
-          mode={modalMode}
           onSubmit={handleSubmit}
           onCancel={closeModal}
           isLoading={isSaving}
