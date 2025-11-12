@@ -56,8 +56,8 @@ export default function Sidebar() {
     { name: t('navigation.auditLogs'), href: '/audit-logs', icon: FileText },
     { name: 'Active Sessions', href: '/sessions', icon: Shield },
     { name: 'Roles & Permissions', href: '/roles', icon: Shield },
-    { name: 'PMS Integration', href: '/pms', icon: Hotel },
-    { name: 'Weather Service', href: '/weather', icon: CloudRain },
+    { name: 'PMS Integration', href: '/integrations/pms', icon: Hotel },
+    { name: 'Weather Service', href: '/integrations/weather', icon: CloudRain },
     { name: t('navigation.settings'), href: '/settings', icon: Settings },
   ];
 
