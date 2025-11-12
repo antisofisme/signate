@@ -54,10 +54,20 @@ services:
     restart: unless-stopped
     ports:
       - "6432:6432"
+    environment:
+      DATABASES_HOST: signage-postgres
+      DATABASES_PORT: 5432
+      DATABASES_USER: signage_user
+      DATABASES_PASSWORD: signage_pass
+      DATABASES_DBNAME: signage_db
+      POOL_MODE: transaction
+      ADMIN_USERS: signage_admin
+      STATS_USERS: signage_stats,signage_user
+      MAX_CLIENT_CONN: 1000
+      DEFAULT_POOL_SIZE: 25
     volumes:
       - ./pgbouncer.ini:/etc/pgbouncer/pgbouncer.ini:ro
       - ./userlist.txt:/etc/pgbouncer/userlist.txt:ro
-    command: ["/opt/pgbouncer/pgbouncer", "/etc/pgbouncer/pgbouncer.ini"]
     depends_on:
       postgres:
         condition: service_healthy
