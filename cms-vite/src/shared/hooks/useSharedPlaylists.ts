@@ -5,7 +5,13 @@
  * Used by: devices feature
  */
 
-import { usePlaylistList } from '@/features/playlists/hooks/usePlaylist';
+import {
+  usePlaylistList,
+  usePlaylist,
+  useCreatePlaylist,
+  useUpdatePlaylist,
+  useDeletePlaylist,
+} from '@/features/playlists/hooks/usePlaylist';
 
 /**
  * Shared hook to access playlist list from any feature
@@ -15,4 +21,11 @@ export function useSharedPlaylists(filters?: any) {
   return usePlaylistList(filters);
 }
 
-export { usePlaylistList };
+// Re-export all playlist hooks
+export {
+  usePlaylistList,
+  usePlaylist,
+  useCreatePlaylist,
+  useUpdatePlaylist,
+  useDeletePlaylist,
+};

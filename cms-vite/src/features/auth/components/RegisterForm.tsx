@@ -4,7 +4,7 @@
  */
 
 import { useState, FormEvent } from 'react';
-import { useRegister } from '@/features/auth/hooks/useAuth';
+import { useRegister } from '../hooks/useAuth';
 import { validators } from '@/lib/validation/schemas';
 import { PasswordStrengthIndicator } from './PasswordStrengthIndicator';
 

@@ -7,7 +7,7 @@
 import { useState } from 'react';
 import { X, FileText, Plus, Trash2, Loader2, Star } from 'lucide-react';
 import { useDeviceContents, useAssignContent, useUnassignContent } from '../../hooks/useDevices';
-import { useContentList } from '@/features/contents/hooks/useContent';
+import { useContentList } from '@/shared/hooks/useSharedContents';
 import type { Device } from '../../types/device';
 
 interface ContentAssignmentModalProps {

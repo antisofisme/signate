@@ -5,7 +5,13 @@
  * Used by: contents, devices features
  */
 
-import { useTags } from '@/features/tags/hooks/useTags';
+import {
+  useTags,
+  useCreateTag,
+  useUpdateTag,
+  useDeleteTag,
+  useAssignTagToContents,
+} from '@/features/tags/hooks/useTags';
 
 /**
  * Shared hook to access tags from any feature
@@ -15,4 +21,11 @@ export function useSharedTags() {
   return useTags();
 }
 
-export { useTags };
+// Re-export all tag hooks
+export {
+  useTags,
+  useCreateTag,
+  useUpdateTag,
+  useDeleteTag,
+  useAssignTagToContents,
+};

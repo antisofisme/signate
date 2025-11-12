@@ -23,7 +23,7 @@ import {
   useChangePassword,
   useDeleteUser,
 } from '../hooks/useUsers';
-import { useOrganizations } from '@/features/organizations/hooks/useOrganizations';
+import { useOrganizations } from '@/shared/hooks/useSharedOrganizations';
 import type {
   User,
   UserRole,

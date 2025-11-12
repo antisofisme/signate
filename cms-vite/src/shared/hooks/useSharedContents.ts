@@ -5,7 +5,15 @@
  * Used by: devices, playlists features
  */
 
-import { useContentList } from '@/features/contents/hooks/useContent';
+import {
+  useContentList,
+  useContent,
+  useUploadContent,
+  useUpdateContent,
+  useDeleteContent,
+  useBulkDeleteContent,
+  useContentStats,
+} from '@/features/contents/hooks/useContent';
 
 /**
  * Shared hook to access content list from any feature
@@ -15,4 +23,13 @@ export function useSharedContents(filters?: any) {
   return useContentList(filters);
 }
 
-export { useContentList };
+// Re-export all content hooks
+export {
+  useContentList,
+  useContent,
+  useUploadContent,
+  useUpdateContent,
+  useDeleteContent,
+  useBulkDeleteContent,
+  useContentStats,
+};

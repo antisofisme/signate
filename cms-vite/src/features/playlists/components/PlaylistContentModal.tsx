@@ -18,7 +18,7 @@ import {
   useRemoveContentFromPlaylist,
   useReorderPlaylistContent,
 } from '../hooks/usePlaylist';
-import { useContentList } from '@/features/contents/hooks/useContent';
+import { useContentList } from '@/shared/hooks/useSharedContents';
 
 interface PlaylistContentModalProps {
   playlistId: number;

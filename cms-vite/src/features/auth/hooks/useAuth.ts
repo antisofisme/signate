@@ -7,7 +7,7 @@
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
-import { authApi } from '@/features/auth/api/authApi';
+import { authApi } from '../api/authApi';
 import { useAuthStore } from '@/lib/stores/authStore';
 import { handleAPIError } from '@/lib/errors/errorHandler';
 import { toast } from '@/lib/notifications/toast';
@@ -16,7 +16,7 @@ import type {
   RegisterRequest,
   ForgotPasswordRequest,
   ResetPasswordRequest,
-} from '@/features/auth/types/auth';
+} from '../types/auth';
 
 /**
  * Get current user

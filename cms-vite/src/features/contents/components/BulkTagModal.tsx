@@ -5,7 +5,7 @@
 
 import { useState } from 'react';
 import { X, Tag, Plus, Loader2 } from 'lucide-react';
-import { useTags, useAssignTagToContents } from '@/features/tags/hooks/useTags';
+import { useTags, useAssignTagToContents } from '@/shared/hooks/useSharedTags';
 import type { Content } from '../types/content';
 
 interface BulkTagModalProps {

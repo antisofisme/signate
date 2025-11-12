@@ -3,7 +3,7 @@
  * Menampilkan daftar organisasi untuk dipilih user
  */
 
-import { useSelectOrganization } from '@/features/auth/hooks/useAuth';
+import { useSelectOrganization } from '../hooks/useAuth';
 import { useAuthStore } from '@/lib/stores/authStore';
 import { formatDate } from '@/lib/utils/dateTime';
 

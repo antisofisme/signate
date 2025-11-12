@@ -7,7 +7,7 @@
 import { useState } from 'react';
 import { X, Tag as TagIcon, Plus, Trash2, Loader2 } from 'lucide-react';
 import { useDeviceTags, useAssignTag, useUnassignTag } from '../../hooks/useDevices';
-import { useTags } from '@/features/tags/hooks/useTags';
+import { useTags } from '@/shared/hooks/useSharedTags';
 import type { Device } from '../../types/device';
 
 interface TagAssignmentModalProps {

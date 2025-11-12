@@ -5,7 +5,7 @@
 
 import { useState, FormEvent } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { useResetPassword } from '@/features/auth/hooks/useAuth';
+import { useResetPassword } from '../hooks/useAuth';
 import { validators } from '@/lib/validation/schemas';
 
 export function ResetPasswordForm() {

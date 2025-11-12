@@ -4,7 +4,7 @@
  */
 
 import { useState, FormEvent } from 'react';
-import { useLogin } from '@/features/auth/hooks/useAuth';
+import { useLogin } from '../hooks/useAuth';
 import { validators } from '@/lib/validation/schemas';
 
 export function LoginForm() {

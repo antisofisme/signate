@@ -7,7 +7,7 @@
 import { useState } from 'react';
 import { X, List, Plus, Trash2, Loader2 } from 'lucide-react';
 import { useDevicePlaylists, useAssignPlaylist, useUnassignPlaylist } from '../../hooks/useDevices';
-import { usePlaylistList } from '@/features/playlists/hooks/usePlaylist';
+import { usePlaylistList } from '@/shared/hooks/useSharedPlaylists';
 import type { Device } from '../../types/device';
 
 interface PlaylistAssignmentModalProps {

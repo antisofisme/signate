@@ -5,7 +5,7 @@
 
 import { useState, FormEvent } from 'react';
 import { Link } from 'react-router-dom';
-import { useForgotPassword } from '@/features/auth/hooks/useAuth';
+import { useForgotPassword } from '../hooks/useAuth';
 import { validators } from '@/lib/validation/schemas';
 
 export function ForgotPasswordForm() {
