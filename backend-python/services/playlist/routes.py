@@ -33,6 +33,7 @@ from .use_cases.manage_playlist_assignments import (
     UnassignPlaylistFromDevicesUseCase,
     UnassignPlaylistFromTagsUseCase,
 )
+from .domain.content_resolver import ContentResolver, ContentResolution
 from .dtos import (
     PlaylistCreateRequest,
     PlaylistUpdateRequest,
@@ -671,3 +672,83 @@ def unassign_from_tags(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+
+
+# ========== Content Resolution Endpoints ==========
+
+@router.get("/resolve/{device_id}", response_model=ContentResolution)
+def resolve_content_for_device(
+    device_id: int,
+    playlist_repo: IPlaylistRepository = Depends(get_playlist_repository),
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Resolve what content should play on a device
+    
+    This endpoint determines the playlist based on:
+    1. Active schedules (highest priority)
+    2. Direct device assignments
+    3. Tag-based assignments
+    4. PMS content (for hotel rooms)
+    5. Default playlist
+    
+    Returns the resolved playlist with content items
+    """
+    try:
+        # Import dependencies here to avoid circular imports
+        from services.device.repositories.device_repo import DeviceRepository
+        from services.tag.repositories.tag_repo import TagRepository
+        from services.content.repositories.content_repo import ContentRepository
+        from services.schedule.repositories.schedule_repo import ScheduleRepository
+        from services.pms.repositories.pms_repo import PMSRepository
+        
+        # Initialize repositories
+        device_repo = DeviceRepository(db)
+        tag_repo = TagRepository(db)
+        content_repo = ContentRepository(db)
+        schedule_repo = ScheduleRepository(db)
+        pms_repo = PMSRepository(db)
+        
+        # Verify device belongs to user's organization
+        device = device_repo.find_by_id(device_id)
+        if not device:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Device {device_id} not found"
+            )
+            
+        if device.organization_id != current_user["organization_id"]:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Cannot access devices from other organizations"
+            )
+        
+        # Initialize content resolver
+        resolver = ContentResolver(
+            playlist_repo=playlist_repo,
+            device_repo=device_repo,
+            tag_repo=tag_repo,
+            schedule_repo=schedule_repo,
+            content_repo=content_repo,
+            pms_repo=pms_repo
+        )
+        
+        # Resolve content
+        resolution = resolver.resolve_content_for_device(device_id)
+        
+        if not resolution:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="No content available for this device"
+            )
+            
+        return resolution
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to resolve content: {str(e)}"
+        )

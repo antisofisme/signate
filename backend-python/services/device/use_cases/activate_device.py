@@ -12,6 +12,10 @@ from ..domain.device import Device, ActivationCode
 from ..domain.interfaces import IDeviceRepository
 from shared.errors import ValidationError, NotFoundError, ErrorCodes
 from shared.validators import validate_activation_code
+from shared.websocket_manager import websocket_manager, WebSocketEventType
+from shared.auth import create_device_token
+from services.organization.domain.quota_service import OrganizationQuotaService
+import asyncio
 
 
 class ActivateDeviceUseCase:
@@ -30,7 +34,7 @@ class ActivateDeviceUseCase:
         device_name: Optional[str] = None,
         room_number: Optional[str] = None,
         location_type: Optional[str] = None
-    ) -> Device:
+    ) -> Dict[str, any]:
         """
         Activate device with unique code
 
@@ -42,7 +46,7 @@ class ActivateDeviceUseCase:
             location_type: Optional location type
 
         Returns:
-            Activated Device
+            Dict with device and JWT token
 
         Raises:
             ValidationError: If code invalid or expired
@@ -84,6 +88,20 @@ class ActivateDeviceUseCase:
                 details={"expires_at": device.code_expires_at.isoformat() if device.code_expires_at else None}
             )
 
+        # 🆕 Check organization device quota before activation
+        # Get database session from repository (assumes repository has db attribute)
+        db_session = self.device_repo.db
+        quota_service = OrganizationQuotaService(db_session)
+        
+        # Enforce device quota
+        try:
+            quota_service.enforce_device_quota(organization_id)
+        except ValueError as e:
+            raise ValidationError(
+                message=str(e),
+                details={"organization_id": organization_id}
+            )
+        
         # 🆕 Assign device to admin's organization (from JWT token)
         device.organization_id = organization_id
         device.status = 'active'
@@ -100,5 +118,31 @@ class ActivateDeviceUseCase:
 
         # Save changes
         updated_device = self.device_repo.update(device)
+        
+        # Generate JWT token for device
+        device_token = create_device_token(
+            device_id=updated_device.id,
+            organization_id=updated_device.organization_id
+        )
+        
+        # Send WebSocket notification to organization admins
+        # Run in background to not block the response
+        loop = asyncio.get_event_loop()
+        loop.create_task(
+            websocket_manager.broadcast_to_organization(
+                organization_id=updated_device.organization_id,
+                event_type=WebSocketEventType.DEVICE_ACTIVATED,
+                data={
+                    "device_id": updated_device.id,
+                    "device_name": updated_device.device_name or updated_device.name,
+                    "location": updated_device.location,
+                    "room_number": updated_device.room_number,
+                    "location_type": updated_device.location_type
+                }
+            )
+        )
 
-        return updated_device
+        return {
+            "device": updated_device,
+            "token": device_token
+        }

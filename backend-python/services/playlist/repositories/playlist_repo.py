@@ -4,7 +4,7 @@ Database access for playlist management with organization isolation
 """
 
 from typing import List, Optional, Dict, Any, Tuple
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload, selectinload
 from sqlalchemy import func, and_
 
 from ..domain.playlist import Playlist, PlaylistContent, PlaylistAssignment
@@ -30,6 +30,8 @@ class PlaylistRepository(IPlaylistRepository):
             is_active=model.is_active,
             priority=model.priority,
             schedule=model.schedule,
+            is_default=model.is_default,
+            is_pms_template=model.is_pms_template,
             organization_id=model.organization_id,
             created_by=model.created_by,
             created_at=model.created_at,
@@ -76,6 +78,8 @@ class PlaylistRepository(IPlaylistRepository):
             is_active=playlist.is_active,
             priority=playlist.priority,
             schedule=playlist.schedule,
+            is_default=playlist.is_default,
+            is_pms_template=playlist.is_pms_template,
             organization_id=playlist.organization_id,
             created_by=playlist.created_by,
         )
@@ -122,7 +126,10 @@ class PlaylistRepository(IPlaylistRepository):
 
     def find_by_id(self, playlist_id: int, organization_id: int) -> Optional[Playlist]:
         """Find playlist by ID with organization filter"""
-        playlist_model = self.db.query(PlaylistModel).filter(
+        playlist_model = self.db.query(PlaylistModel).options(
+            selectinload(PlaylistModel.contents),
+            selectinload(PlaylistModel.assignments)
+        ).filter(
             and_(
                 PlaylistModel.id == playlist_id,
                 PlaylistModel.organization_id == organization_id,
@@ -153,6 +160,8 @@ class PlaylistRepository(IPlaylistRepository):
         db_playlist.is_active = playlist.is_active
         db_playlist.priority = playlist.priority
         db_playlist.schedule = playlist.schedule
+        db_playlist.is_default = playlist.is_default
+        db_playlist.is_pms_template = playlist.is_pms_template
         db_playlist.updated_at = playlist.updated_at
 
         self.db.commit()
@@ -566,3 +575,47 @@ class PlaylistRepository(IPlaylistRepository):
             "content_count": content_count,
             "total_duration": total_duration
         }
+    
+    def find_default_playlist(self, organization_id: int) -> Optional[Playlist]:
+        """Find default playlist for organization"""
+        # Look for a playlist named "Default" or with is_default flag
+        model = self.db.query(PlaylistModel).filter(
+            and_(
+                PlaylistModel.organization_id == organization_id,
+                PlaylistModel.is_active == True,
+                or_(
+                    PlaylistModel.name.ilike('%default%'),
+                    PlaylistModel.is_default == True  # Assuming we add this field
+                )
+            )
+        ).first()
+        
+        if model:
+            return self._model_to_entity(model)
+        
+        # If no default playlist exists, return the first active playlist
+        model = self.db.query(PlaylistModel).filter(
+            and_(
+                PlaylistModel.organization_id == organization_id,
+                PlaylistModel.is_active == True
+            )
+        ).order_by(PlaylistModel.created_at).first()
+        
+        return self._model_to_entity(model) if model else None
+    
+    def find_pms_template(self, organization_id: int) -> Optional[Playlist]:
+        """Find PMS template playlist for organization"""
+        # Look for playlist with PMS template flag or name
+        model = self.db.query(PlaylistModel).filter(
+            and_(
+                PlaylistModel.organization_id == organization_id,
+                PlaylistModel.is_active == True,
+                or_(
+                    PlaylistModel.name.ilike('%pms%'),
+                    PlaylistModel.name.ilike('%guest%'),
+                    PlaylistModel.is_pms_template == True  # Assuming we add this field
+                )
+            )
+        ).first()
+        
+        return self._model_to_entity(model) if model else None

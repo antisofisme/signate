@@ -36,6 +36,7 @@ class Device:
     firmware_version: Optional[str]
     last_seen: Optional[datetime]
     room_number: Optional[str]
+    assigned_playlist_id: Optional[int]
     created_at: Optional[datetime]
     updated_at: Optional[datetime]
     released_at: Optional[datetime]

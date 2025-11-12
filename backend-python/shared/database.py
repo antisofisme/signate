@@ -62,4 +62,26 @@ def check_db_connection() -> bool:
 def init_db():
     """Initialize database - create all tables"""
     Base.metadata.create_all(bind=engine)
-    print(" Database tables created")
+    print(" Database tables created")
+
+
+def get_db_context():
+    """
+    Context manager for database sessions (for background tasks)
+    
+    Usage:
+        with get_db_context() as db:
+            # Use db session
+            pass
+    """
+    from contextlib import contextmanager
+    
+    @contextmanager
+    def db_context():
+        db = SessionLocal()
+        try:
+            yield db
+        finally:
+            db.close()
+    
+    return db_context

@@ -4,7 +4,7 @@ Implements ITagRepository using SQLAlchemy
 """
 
 from typing import List, Optional
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 from sqlalchemy import func, select
 from ..domain.interfaces import ITagRepository
 from ..domain.tag import Tag
@@ -28,6 +28,8 @@ class TagRepository(ITagRepository):
             color=model.color,
             organization_id=model.organization_id,
             created_at=model.created_at,
+            priority=model.priority,
+            assigned_playlist_id=model.assigned_playlist_id,
         )
 
     def _entity_to_model(self, entity: Tag) -> TagModel:
@@ -39,6 +41,8 @@ class TagRepository(ITagRepository):
             color=entity.color,
             organization_id=entity.organization_id,
             created_at=entity.created_at,
+            priority=entity.priority,
+            assigned_playlist_id=entity.assigned_playlist_id,
         )
 
     def create(self, tag: Tag) -> Tag:
@@ -75,7 +79,10 @@ class TagRepository(ITagRepository):
 
     def find_all(self, organization_id: int, sort_by: str = "newest") -> List[Tag]:
         """Find all tags for organization with sorting"""
-        query = self.db.query(TagModel).filter(
+        query = self.db.query(TagModel).options(
+            selectinload(TagModel.devices),
+            selectinload(TagModel.assigned_playlist)
+        ).filter(
             TagModel.organization_id == organization_id
         )
 
@@ -325,4 +332,22 @@ class TagRepository(ITagRepository):
             .all()
         )
 
+        return [self._model_to_entity(tag) for tag in tags]
+    
+    def find_by_device_id(self, device_id: int) -> List[Tag]:
+        """Find all tags assigned to a device"""
+        from services.device.repositories.models import device_tags
+        
+        # Query tags through device_tags junction table using ORM
+        tags = (
+            self.db.query(TagModel)
+            .options(
+                selectinload(TagModel.assigned_playlist)
+            )
+            .join(device_tags, device_tags.c.tag_id == TagModel.id)
+            .filter(device_tags.c.device_id == device_id)
+            .order_by(TagModel.tag_name)
+            .all()
+        )
+        
         return [self._model_to_entity(tag) for tag in tags]

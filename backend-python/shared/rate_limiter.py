@@ -19,16 +19,20 @@ import inspect
 
 class RateLimiter:
     """
-    Simple in-memory rate limiter
+    Simple in-memory rate limiter with automatic cleanup
 
     Tracks request counts per IP address and enforces limits
+    Includes protection against memory exhaustion attacks
 
     For production with multiple workers, consider using Redis
     """
 
-    def __init__(self):
+    def __init__(self, max_tracked_ips: int = 10000):
         self._requests: Dict[str, list] = {}  # {identifier: [timestamps]}
         self._lock = threading.Lock()
+        self._max_tracked_ips = max_tracked_ips
+        self._cleanup_counter = 0
+        self._cleanup_interval = 1000  # Cleanup every N requests
 
     def check_rate_limit(
         self,
@@ -81,6 +85,16 @@ class RateLimiter:
             # Add current request timestamp
             self._requests[identifier] = [ts for ts in self._requests[identifier]]
             self._requests[identifier].append(now)
+            
+            # Increment cleanup counter and perform periodic cleanup
+            self._cleanup_counter += 1
+            if self._cleanup_counter >= self._cleanup_interval:
+                self._cleanup_counter = 0
+                self._perform_cleanup()
+            
+            # Check if we're tracking too many IPs (potential DoS)
+            if len(self._requests) > self._max_tracked_ips:
+                self._evict_oldest_entries()
 
             return True, None
 
@@ -110,6 +124,41 @@ class RateLimiter:
             # Remove empty entries
             for identifier in identifiers_to_remove:
                 del self._requests[identifier]
+    
+    def _perform_cleanup(self):
+        """Internal cleanup method called periodically"""
+        now = datetime.utcnow()
+        cutoff_time = now - timedelta(seconds=300)  # 5 minutes
+        
+        identifiers_to_remove = []
+        for identifier, timestamps in list(self._requests.items()):
+            # Remove old timestamps
+            filtered = [ts for ts in timestamps if ts > cutoff_time]
+            if filtered:
+                self._requests[identifier] = filtered
+            else:
+                identifiers_to_remove.append(identifier)
+        
+        # Remove empty entries
+        for identifier in identifiers_to_remove:
+            del self._requests[identifier]
+    
+    def _evict_oldest_entries(self, keep_percentage: float = 0.75):
+        """Evict oldest entries when max capacity reached"""
+        if not self._requests:
+            return
+            
+        # Sort identifiers by their oldest timestamp
+        sorted_identifiers = sorted(
+            self._requests.items(),
+            key=lambda x: min(x[1]) if x[1] else datetime.utcnow()
+        )
+        
+        # Keep only the specified percentage of newest entries
+        keep_count = int(len(sorted_identifiers) * keep_percentage)
+        identifiers_to_keep = dict(sorted_identifiers[-keep_count:])
+        
+        self._requests = identifiers_to_keep
 
 
 # Global rate limiter instance

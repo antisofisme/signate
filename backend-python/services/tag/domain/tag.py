@@ -25,6 +25,8 @@ class Tag:
         color: str,
         organization_id: int,
         created_at: Optional[datetime] = None,
+        priority: Optional[int] = None,
+        assigned_playlist_id: Optional[int] = None,
     ):
         self.id = id
         self.tag_name = tag_name
@@ -32,6 +34,8 @@ class Tag:
         self.color = color
         self.organization_id = organization_id
         self.created_at = created_at or datetime.utcnow()
+        self.priority = priority or 50  # Default priority
+        self.assigned_playlist_id = assigned_playlist_id
 
         # Business validation
         self._validate()
@@ -72,6 +76,8 @@ class Tag:
             "color": self.color,
             "organization_id": self.organization_id,
             "created_at": self.created_at.isoformat() if self.created_at else None,
+            "priority": self.priority,
+            "assigned_playlist_id": self.assigned_playlist_id,
         }
 
     def __repr__(self):

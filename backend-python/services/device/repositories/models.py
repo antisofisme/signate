@@ -51,6 +51,9 @@ class DeviceModel(Base):
     # Display settings
     rotation = Column(Integer, default=0, nullable=False)  # 0, 90, 180, 270
     volume_enabled = Column(Boolean, default=True, nullable=False)
+    
+    # Content assignment
+    assigned_playlist_id = Column(Integer, ForeignKey("playlists.id", ondelete="SET NULL"), nullable=True)
 
     # Hotel-specific
     room_number = Column(String(50), nullable=True, index=True)

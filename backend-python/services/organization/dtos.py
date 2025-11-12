@@ -90,3 +90,98 @@ class OrganizationListResponse(BaseModel):
     organizations: list[OrganizationResponse]
     total: int
     active: int
+
+
+# ============================================================================
+# QUOTA MODELS
+# ============================================================================
+
+class QuotaInfo(BaseModel):
+    """Quota information for a resource"""
+    max: int
+    current: int
+    available: int
+    
+    @property
+    def percentage_used(self) -> float:
+        """Percentage of quota used"""
+        if self.max == 0:
+            return 0
+        return (self.current / self.max) * 100
+
+
+class StorageQuotaInfo(BaseModel):
+    """Storage quota information"""
+    max_items: int
+    current_items: int
+    available_items: int
+    max_size_gb: float
+    current_size_gb: float
+    available_size_gb: float
+    
+    @property
+    def items_percentage_used(self) -> float:
+        """Percentage of item quota used"""
+        if self.max_items == 0:
+            return 0
+        return (self.current_items / self.max_items) * 100
+    
+    @property
+    def size_percentage_used(self) -> float:
+        """Percentage of size quota used"""
+        if self.max_size_gb == 0:
+            return 0
+        return (self.current_size_gb / self.max_size_gb) * 100
+
+
+class OrganizationQuotaResponse(BaseModel):
+    """Organization quota status"""
+    devices: QuotaInfo
+    users: QuotaInfo
+    content: StorageQuotaInfo
+    playlists: QuotaInfo
+    
+    # Summary
+    total_percentage_used: float = 0
+    warnings: list[str] = []
+    
+    def calculate_summary(self):
+        """Calculate summary statistics"""
+        # Average percentage across all quotas
+        percentages = [
+            self.devices.percentage_used,
+            self.users.percentage_used,
+            self.content.items_percentage_used,
+            self.content.size_percentage_used,
+            self.playlists.percentage_used
+        ]
+        self.total_percentage_used = sum(percentages) / len(percentages)
+        
+        # Generate warnings for quotas over 80%
+        self.warnings = []
+        if self.devices.percentage_used >= 80:
+            self.warnings.append(f"Device quota at {self.devices.percentage_used:.0f}%")
+        if self.users.percentage_used >= 80:
+            self.warnings.append(f"User quota at {self.users.percentage_used:.0f}%")
+        if self.content.items_percentage_used >= 80:
+            self.warnings.append(f"Content item quota at {self.content.items_percentage_used:.0f}%")
+        if self.content.size_percentage_used >= 80:
+            self.warnings.append(f"Storage quota at {self.content.size_percentage_used:.0f}%")
+        if self.playlists.percentage_used >= 80:
+            self.warnings.append(f"Playlist quota at {self.playlists.percentage_used:.0f}%")
+
+
+class QuotaCheckResponse(BaseModel):
+    """Response for quota check"""
+    allowed: bool
+    quota: dict
+    message: Optional[str] = None
+
+
+class UpdateOrganizationQuotaRequest(BaseModel):
+    """Request to update organization quotas (admin only)"""
+    max_devices: Optional[int] = Field(None, ge=1, le=10000, description="Maximum devices allowed")
+    max_users: Optional[int] = Field(None, ge=1, le=1000, description="Maximum users allowed")
+    max_content_size_gb: Optional[int] = Field(None, ge=1, le=10000, description="Maximum content storage in GB")
+    max_content_items: Optional[int] = Field(None, ge=1, le=100000, description="Maximum content items allowed")
+    max_playlists: Optional[int] = Field(None, ge=1, le=1000, description="Maximum playlists allowed")

@@ -11,6 +11,7 @@ import hashlib
 import uuid
 
 from .interfaces import IStorageService
+from shared.file_security import SecureFileHandler
 
 
 class LocalFilesystemStorage(IStorageService):
@@ -77,9 +78,15 @@ class LocalFilesystemStorage(IStorageService):
                 'file_size': int
             }
         """
+        # Sanitize filename first
+        try:
+            safe_filename = SecureFileHandler.sanitize_filename(file.filename)
+        except ValueError as e:
+            raise ValueError(f"Invalid filename: {str(e)}")
+        
         # Generate unique filename
         unique_id = str(uuid.uuid4())
-        file_extension = Path(file.filename).suffix.lower()
+        file_extension = Path(safe_filename).suffix.lower()
 
         # Build organized directory structure
         now = datetime.now()
@@ -92,9 +99,17 @@ class LocalFilesystemStorage(IStorageService):
         target_dir = self.uploads_dir / type_folder / year_folder / month_folder / org_folder
         target_dir.mkdir(parents=True, exist_ok=True)
 
-        # Full file path
+        # Full file path with secure filename
         filename = f"{unique_id}{file_extension}"
         file_path = target_dir / filename
+        
+        # Verify path is within allowed directory
+        file_path = SecureFileHandler.generate_safe_path(
+            self.uploads_dir, 
+            filename, 
+            organization_id, 
+            content_type
+        )
 
         # Storage key (relative path from uploads/)
         storage_key = f"{type_folder}/{year_folder}/{month_folder}/{org_folder}/{filename}"
@@ -112,6 +127,14 @@ class LocalFilesystemStorage(IStorageService):
 
         # Reset file pointer for potential re-reading
         await file.seek(0)
+        
+        # Validate file content matches expected type
+        try:
+            SecureFileHandler.validate_file_content(file_path, content_type)
+        except ValueError as e:
+            # Delete invalid file
+            file_path.unlink(missing_ok=True)
+            raise ValueError(f"File validation failed: {str(e)}")
 
         # Generate public URL
         file_url = f"{self.base_url}/content/{storage_key}"

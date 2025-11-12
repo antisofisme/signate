@@ -23,14 +23,19 @@ from .dtos import (
     CreateOrganizationRequest,
     UpdateOrganizationRequest,
     OrganizationResponse,
-    OrganizationListResponse
+    OrganizationListResponse,
+    OrganizationQuotaResponse,
+    QuotaCheckResponse,
+    UpdateOrganizationQuotaRequest
 )
 from .use_cases.create_organization import CreateOrganizationUseCase
 from .use_cases.list_organizations import ListOrganizationsUseCase
 from .use_cases.get_organization import GetOrganizationUseCase
 from .use_cases.update_organization import UpdateOrganizationUseCase
 from .use_cases.delete_organization import DeleteOrganizationUseCase
+from .use_cases.get_organization_quota import get_organization_quota_use_case
 from .repositories.organization_repo import OrganizationRepository
+from .domain.quota_service import OrganizationQuotaService
 
 
 router = APIRouter()
@@ -374,3 +379,233 @@ def delete_organization(
     )
 
     return None
+
+
+# =============================================================================
+# QUOTA ENDPOINTS
+# =============================================================================
+
+@router.get("/organizations/{org_id:int}/quota", response_model=OrganizationQuotaResponse)
+@handle_errors
+def get_organization_quota(
+    org_id: int,
+    http_request: Request,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_active_user)
+):
+    """
+    Get organization quota status
+    
+    Shows current usage and limits for:
+    - Devices
+    - Users
+    - Content (items and storage)
+    - Playlists
+    
+    Permission: Admin (any org) or Manager/User (own org only)
+    """
+    # Check permissions
+    if current_user["role"] not in ["admin", "super_admin"]:
+        if current_user["organization_id"] != org_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You can only view your own organization's quota"
+            )
+    
+    start_time = time.time()
+    
+    # Get quota status
+    quota_response = get_organization_quota_use_case(org_id, db)
+    
+    # Calculate duration
+    duration_ms = (time.time() - start_time) * 1000
+    
+    # Log request
+    request_logger.log_request(
+        method="GET",
+        path=f"/organizations/{org_id}/quota",
+        status_code=200,
+        duration_ms=duration_ms
+    )
+    
+    return quota_response
+
+
+@router.get("/organizations/{org_id:int}/quota/check/device", response_model=QuotaCheckResponse)
+@handle_errors
+def check_device_quota(
+    org_id: int,
+    http_request: Request,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_active_user)
+):
+    """
+    Check if organization can add more devices
+    
+    Permission: Manager/Admin
+    """
+    # Check permissions
+    if current_user["role"] not in ["admin", "super_admin", "manager"]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only managers and admins can check device quota"
+        )
+    
+    if current_user["role"] == "manager" and current_user["organization_id"] != org_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You can only check your own organization's quota"
+        )
+    
+    # Check quota
+    quota_service = OrganizationQuotaService(db)
+    result = quota_service.check_device_quota(org_id)
+    
+    return QuotaCheckResponse(**result)
+
+
+@router.get("/organizations/{org_id:int}/quota/check/user", response_model=QuotaCheckResponse)
+@handle_errors
+def check_user_quota(
+    org_id: int,
+    http_request: Request,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_active_user)
+):
+    """
+    Check if organization can add more users
+    
+    Permission: Manager/Admin
+    """
+    # Check permissions
+    if current_user["role"] not in ["admin", "super_admin", "manager"]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only managers and admins can check user quota"
+        )
+    
+    if current_user["role"] == "manager" and current_user["organization_id"] != org_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You can only check your own organization's quota"
+        )
+    
+    # Check quota
+    quota_service = OrganizationQuotaService(db)
+    result = quota_service.check_user_quota(org_id)
+    
+    return QuotaCheckResponse(**result)
+
+
+@router.get("/organizations/{org_id:int}/quota/check/content", response_model=QuotaCheckResponse)
+@handle_errors
+def check_content_quota(
+    org_id: int,
+    file_size_bytes: int = Query(..., description="File size in bytes to check"),
+    http_request: Request = None,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_active_user)
+):
+    """
+    Check if organization can add content with specified size
+    
+    Permission: Any authenticated user (own org only)
+    """
+    # Check permissions
+    if current_user["role"] not in ["admin", "super_admin"]:
+        if current_user["organization_id"] != org_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You can only check your own organization's quota"
+            )
+    
+    # Check quota
+    quota_service = OrganizationQuotaService(db)
+    result = quota_service.check_content_quota(org_id, file_size_bytes)
+    
+    return QuotaCheckResponse(**result)
+
+
+@router.put("/organizations/{org_id:int}/quota", response_model=OrganizationQuotaResponse)
+@handle_errors
+def update_organization_quota(
+    org_id: int,
+    request_body: UpdateOrganizationQuotaRequest,
+    http_request: Request,
+    db: Session = Depends(get_db),
+    audit_logger: AuditLogger = Depends(get_audit_logger),
+    current_user: dict = Depends(require_admin)
+):
+    """
+    Update organization quota limits
+    
+    Permission: Admin only
+    """
+    from services.organization.repositories.models import OrganizationModel
+    
+    start_time = time.time()
+    
+    # Get organization
+    org = db.query(OrganizationModel).filter(
+        OrganizationModel.id == org_id
+    ).first()
+    
+    if not org:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Organization {org_id} not found"
+        )
+    
+    # Update limits
+    if request_body.max_devices is not None:
+        org.max_devices = request_body.max_devices
+    
+    if request_body.max_users is not None:
+        org.max_users = request_body.max_users
+    
+    # Update settings JSON for extended quotas
+    settings = org.settings or {}
+    
+    if request_body.max_content_size_gb is not None:
+        settings['max_content_size_gb'] = request_body.max_content_size_gb
+        
+    if request_body.max_content_items is not None:
+        settings['max_content_items'] = request_body.max_content_items
+        
+    if request_body.max_playlists is not None:
+        settings['max_playlists'] = request_body.max_playlists
+    
+    org.settings = settings
+    db.commit()
+    
+    # Get updated quota status
+    quota_response = get_organization_quota_use_case(org_id, db)
+    
+    # Calculate duration
+    duration_ms = (time.time() - start_time) * 1000
+    
+    # Log request
+    request_logger.log_request(
+        method="PUT",
+        path=f"/organizations/{org_id}/quota",
+        status_code=200,
+        duration_ms=duration_ms
+    )
+    
+    # Audit log
+    audit_logger.log_action(
+        user_id=current_user["user_id"],
+        action="organization.update_quota",
+        resource_type="organization",
+        resource_id=org_id,
+        details={
+            "max_devices": request_body.max_devices,
+            "max_users": request_body.max_users,
+            "max_content_size_gb": request_body.max_content_size_gb,
+            "max_content_items": request_body.max_content_items,
+            "max_playlists": request_body.max_playlists,
+            "ip_address": http_request.client.host if http_request.client else None
+        }
+    )
+    
+    return quota_response

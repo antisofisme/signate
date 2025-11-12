@@ -32,7 +32,8 @@ from .dtos import (
     DeviceResponse,
     DeviceListResponse,
     HeartbeatResponse,
-    ActivationStatusResponse
+    ActivationStatusResponse,
+    DeviceActivationResponse
 )
 from .use_cases.request_activation_code import RequestActivationCodeUseCase
 from .use_cases.activate_device import ActivateDeviceUseCase
@@ -315,7 +316,7 @@ def check_activation_status(
 # TODO: Add authentication middleware
 # =============================================================================
 
-@router.post(DeviceRoutes.ACTIVATE)
+@router.post(DeviceRoutes.ACTIVATE, response_model=DeviceActivationResponse)
 @handle_errors
 def activate_device(
     request_body: ActivateDeviceRequest,
@@ -334,13 +335,16 @@ def activate_device(
 
     # Execute activation use case (will raise ValidationError if fails)
     # Pass admin's organization_id from JWT token
-    device = use_case.execute(
+    result = use_case.execute(
         unique_code=request_body.unique_code,
         organization_id=current_user.organization_id,
         device_name=request_body.device_name,
         room_number=request_body.room_number,
         location_type=request_body.location_type
     )
+    
+    device = result["device"]
+    device_token = result["token"]
 
     # Convert to response with is_online computed field
     response = device_to_response(device)
@@ -373,9 +377,10 @@ def activate_device(
         }
     )
 
-    # Return standardized success response
-    return success_response(
-        data=response,
+    # Return activation response with JWT token
+    return DeviceActivationResponse(
+        device=response,
+        token=device_token,
         message=f"Device '{device.device_name}' berhasil diaktivasi"
     )
 

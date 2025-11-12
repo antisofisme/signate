@@ -11,6 +11,10 @@ from ..domain.content import Content
 from ..domain.interfaces import IContentRepository
 from ..infrastructure.storage.interfaces import IStorageService
 from ..infrastructure.storage.metadata_extractor import MetadataExtractor
+from shared.file_security import SecureFileHandler
+from shared.websocket_manager import websocket_manager, WebSocketEventType
+from services.organization.domain.quota_service import OrganizationQuotaService
+import asyncio
 
 
 class UploadContentUseCase:
@@ -81,6 +85,22 @@ class UploadContentUseCase:
         # 1. Validate file
         content_type = self._validate_file(file)
 
+        # 1.5. Check organization content quota
+        # Get file size first
+        file.file.seek(0, 2)  # Seek to end
+        file_size = file.file.tell()
+        file.file.seek(0)  # Reset to beginning
+        
+        # Get database session from repository
+        db_session = self.content_repo.db
+        quota_service = OrganizationQuotaService(db_session)
+        
+        # Enforce content quota
+        try:
+            quota_service.enforce_content_quota(organization_id, file_size)
+        except ValueError as e:
+            raise ValueError(f"Quota exceeded: {str(e)}")
+
         # 2. Save file to storage
         storage_result = await self.storage.save_file(
             file=file,
@@ -130,8 +150,8 @@ class UploadContentUseCase:
 
             # File metadata
             mime_type=file.content_type or 'application/octet-stream',
-            original_filename=file.filename,
-            file_extension=os.path.splitext(file.filename)[1].lower(),
+            original_filename=file.filename,  # Original filename
+            file_extension=os.path.splitext(file.filename)[1].lower() if file.filename else '',
             resolution=metadata.get('resolution'),
             width=metadata.get('width'),
             height=metadata.get('height'),
@@ -169,6 +189,23 @@ class UploadContentUseCase:
         if content_type in ['video', 'image']:
             from tasks.content_tasks import generate_thumbnail
             generate_thumbnail.delay(saved_content.id)
+            
+        # 9. Send WebSocket notification
+        loop = asyncio.get_event_loop()
+        loop.create_task(
+            websocket_manager.broadcast_to_organization(
+                organization_id=saved_content.organization_id,
+                event_type=WebSocketEventType.CONTENT_UPLOADED,
+                data={
+                    "content_id": saved_content.id,
+                    "title": saved_content.title,
+                    "content_type": saved_content.content_type,
+                    "file_size": saved_content.file_size,
+                    "duration": saved_content.duration,
+                    "uploaded_by": saved_content.uploaded_by
+                }
+            )
+        )
 
         return saved_content
 
@@ -185,7 +222,13 @@ class UploadContentUseCase:
         if not file.filename:
             raise ValueError("Filename is required")
 
-        filename = file.filename.lower()
+        # Sanitize filename to prevent path traversal
+        try:
+            safe_filename = SecureFileHandler.sanitize_filename(file.filename)
+        except ValueError as e:
+            raise ValueError(f"Invalid filename: {str(e)}")
+        
+        filename = safe_filename.lower()
         ext = os.path.splitext(filename)[1]
 
         # Determine content type

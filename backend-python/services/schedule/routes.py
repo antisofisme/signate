@@ -10,6 +10,7 @@ from datetime import date, time
 
 from shared.database import get_db
 from shared.auth import get_current_user, CurrentUser
+from .domain.schedule_executor import get_schedule_executor
 from services.schedule.dtos import (
     CreateScheduleRequest,
     UpdateScheduleRequest,
@@ -263,3 +264,49 @@ def check_schedule_conflicts(
         exclude_schedule_id=request.exclude_schedule_id,
         db=db
     )
+
+
+# ============================================================================
+# Schedule Execution Control
+# ============================================================================
+
+@router.post("/schedules/refresh", status_code=status.HTTP_200_OK)
+async def refresh_schedules(
+    current_user: dict = Depends(get_current_user),
+    organization_id: Optional[int] = Query(None, description="Refresh specific organization (admin only)")
+):
+    """
+    Force immediate schedule refresh
+    
+    Manually triggers schedule check without waiting for next interval.
+    Useful after creating/updating schedules to see immediate effect.
+    
+    - Regular users: Can only refresh their own organization
+    - Admins: Can refresh any organization or all organizations
+    """
+    # Check permissions
+    if organization_id and organization_id != current_user["organization_id"]:
+        # Only admins can refresh other organizations
+        if current_user["role"] not in ["admin", "super_admin"]:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You can only refresh schedules for your own organization"
+            )
+    
+    # Use user's organization if not specified
+    target_org_id = organization_id or current_user["organization_id"]
+    
+    try:
+        executor = get_schedule_executor()
+        await executor.force_refresh(target_org_id)
+        
+        return {
+            "message": f"Schedule refresh triggered for organization {target_org_id}",
+            "organization_id": target_org_id
+        }
+        
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to refresh schedules: {str(e)}"
+        )

@@ -19,6 +19,8 @@ class Playlist:
         is_active: bool = True,
         priority: int = 0,
         schedule: Optional[Dict[str, Any]] = None,
+        is_default: bool = False,
+        is_pms_template: bool = False,
         created_by: Optional[int] = None,
         created_at: Optional[datetime] = None,
         updated_at: Optional[datetime] = None,
@@ -33,6 +35,8 @@ class Playlist:
         self.is_active = is_active
         self.priority = priority
         self.schedule = schedule or {}
+        self.is_default = is_default
+        self.is_pms_template = is_pms_template
         self.organization_id = organization_id
         self.created_by = created_by
         self.created_at = created_at

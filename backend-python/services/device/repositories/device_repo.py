@@ -5,7 +5,7 @@ Implements IDeviceRepository using SQLAlchemy
 
 from typing import Optional, List
 from datetime import datetime, timedelta
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 from ..domain.device import Device
 from ..domain.interfaces import IDeviceRepository
 from .models import DeviceModel
@@ -19,7 +19,12 @@ class DeviceRepository(IDeviceRepository):
 
     def find_by_id(self, device_id: int) -> Optional[Device]:
         """Find device by ID"""
-        device_model = self.db.query(DeviceModel).filter(DeviceModel.id == device_id).first()
+        device_model = self.db.query(DeviceModel).options(
+            selectinload(DeviceModel.assigned_playlist),
+            selectinload(DeviceModel.tags),
+            selectinload(DeviceModel.commands),
+            selectinload(DeviceModel.health_metrics)
+        ).filter(DeviceModel.id == device_id).first()
         return self._to_entity(device_model) if device_model else None
 
     def find_by_code(self, unique_code: str) -> Optional[Device]:
@@ -38,7 +43,12 @@ class DeviceRepository(IDeviceRepository):
 
     def list_by_organization(self, organization_id: int) -> List[Device]:
         """List all devices for an organization"""
-        device_models = self.db.query(DeviceModel).filter(
+        device_models = self.db.query(DeviceModel).options(
+            selectinload(DeviceModel.assigned_playlist),
+            selectinload(DeviceModel.tags),
+            selectinload(DeviceModel.commands),
+            selectinload(DeviceModel.health_metrics)
+        ).filter(
             DeviceModel.organization_id == organization_id
         ).order_by(DeviceModel.created_at.desc()).all()
 
@@ -72,7 +82,8 @@ class DeviceRepository(IDeviceRepository):
             room_number=device.room_number,
             location_type=device.location_type,
             supports_personalization=device.supports_personalization,
-            privacy_mode=device.privacy_mode
+            privacy_mode=device.privacy_mode,
+            assigned_playlist_id=device.assigned_playlist_id
         )
         self.db.add(device_model)
         self.db.commit()
@@ -112,6 +123,7 @@ class DeviceRepository(IDeviceRepository):
         device_model.location_type = device.location_type
         device_model.supports_personalization = device.supports_personalization
         device_model.privacy_mode = device.privacy_mode
+        device_model.assigned_playlist_id = device.assigned_playlist_id
 
         self.db.commit()
         self.db.refresh(device_model)
@@ -147,7 +159,12 @@ class DeviceRepository(IDeviceRepository):
         """Find online devices (last_seen < 5 minutes ago)"""
         five_minutes_ago = datetime.utcnow() - timedelta(minutes=5)
 
-        device_models = self.db.query(DeviceModel).filter(
+        device_models = self.db.query(DeviceModel).options(
+            selectinload(DeviceModel.assigned_playlist),
+            selectinload(DeviceModel.tags),
+            selectinload(DeviceModel.commands),
+            selectinload(DeviceModel.health_metrics)
+        ).filter(
             DeviceModel.organization_id == organization_id,
             DeviceModel.status == 'active',
             DeviceModel.last_seen >= five_minutes_ago
@@ -185,6 +202,7 @@ class DeviceRepository(IDeviceRepository):
             location_type=model.location_type,
             supports_personalization=model.supports_personalization,
             privacy_mode=model.privacy_mode,
+            assigned_playlist_id=model.assigned_playlist_id,
             created_at=model.created_at,
             updated_at=model.updated_at,
             released_at=model.released_at

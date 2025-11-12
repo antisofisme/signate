@@ -22,6 +22,12 @@ class TagModel(Base):
     tag_name = Column(String(100), nullable=False)
     description = Column(Text, nullable=True)
     color = Column(String(7), default="#3B82F6", nullable=False)
+    
+    # Priority for tag-based playlist resolution
+    priority = Column(Integer, default=50, nullable=False)
+    
+    # Assigned playlist (for tag-based routing)
+    assigned_playlist_id = Column(Integer, ForeignKey("playlists.id", ondelete="SET NULL"), nullable=True)
 
     # Multi-tenant
     organization_id = Column(Integer, ForeignKey("organizations.id"), nullable=False, index=True)

@@ -4,6 +4,7 @@ Create Playlist Use Case
 
 from ..domain.playlist import Playlist
 from ..domain.interfaces import IPlaylistRepository
+from services.organization.domain.quota_service import OrganizationQuotaService
 
 
 class CreatePlaylistUseCase:
@@ -28,6 +29,16 @@ class CreatePlaylistUseCase:
         Raises:
             ValueError: If validation fails
         """
+        # Check organization playlist quota
+        db_session = self.playlist_repo.db
+        quota_service = OrganizationQuotaService(db_session)
+        
+        # Enforce playlist quota
+        try:
+            quota_service.enforce_playlist_quota(organization_id)
+        except ValueError as e:
+            raise ValueError(f"Quota exceeded: {str(e)}")
+        
         # Create domain entity (with validation)
         playlist = Playlist(
             name=name,

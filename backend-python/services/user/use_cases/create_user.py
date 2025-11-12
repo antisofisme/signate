@@ -7,6 +7,7 @@ from services.organization.repositories.organization_repo import OrganizationRep
 from sqlalchemy.orm import Session
 from shared.errors import ValidationError, NotFoundError
 from shared.validators import sanitize_string, validate_email
+from services.organization.domain.quota_service import OrganizationQuotaService
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
@@ -53,6 +54,19 @@ class CreateUserUseCase:
             raise NotFoundError(
                 message=f"Organization dengan ID {organization_id} tidak ditemukan",
                 details={"resource_type": "organization", "resource_id": organization_id}
+            )
+
+        # Check organization user quota
+        db_session = self.org_repo.db
+        quota_service = OrganizationQuotaService(db_session)
+        
+        # Enforce user quota
+        try:
+            quota_service.enforce_user_quota(organization_id)
+        except ValueError as e:
+            raise ValidationError(
+                message=str(e),
+                details={"organization_id": organization_id}
             )
 
         # Sanitize username

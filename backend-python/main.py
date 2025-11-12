@@ -16,6 +16,10 @@ from shared.database import check_db_connection, init_db
 from shared.api_routes import API_V1
 from shared.cache import cache
 from shared.metrics import init_app_metrics, MetricsMiddleware
+from shared.security_headers import configure_security_headers
+from shared.rate_limiter import cleanup_rate_limiter
+from shared.websocket_manager import websocket_manager
+from services.schedule.domain.schedule_executor import init_schedule_executor, get_schedule_executor
 
 # Import service routers
 from services.auth.routes import router as auth_router
@@ -42,6 +46,7 @@ from services.template.routes import router as template_router
 from services.translation.routes import router as translation_router
 from services.schedule.routes import router as schedule_router
 from services.weather.routes import router as weather_router
+from shared.websocket_routes import router as websocket_router
 
 
 # =============================================================================
@@ -84,6 +89,11 @@ async def lifespan(app: FastAPI):
     # Initialize metrics
     init_app_metrics(version="1.0.0", environment=settings.ENVIRONMENT)
     print("✓ Prometheus metrics: Initialized")
+    
+    # Initialize schedule executor
+    from shared.database import get_db_context
+    schedule_executor = init_schedule_executor(get_db_context)
+    print("✓ Schedule executor: Initialized")
 
     print("=" * 80)
 
@@ -91,6 +101,13 @@ async def lifespan(app: FastAPI):
 
     # Shutdown
     print("👋 Shutting down Digital Signage Backend")
+    
+    # Stop schedule executor
+    try:
+        schedule_executor = get_schedule_executor()
+        await schedule_executor.stop()
+    except:
+        pass
 
 
 # =============================================================================
@@ -109,9 +126,33 @@ app = FastAPI(
 # Add metrics middleware
 app.add_middleware(MetricsMiddleware)
 
+# Configure security headers
+configure_security_headers(app)
+
 # Mount Prometheus metrics endpoint
 metrics_app = make_asgi_app()
 app.mount("/metrics", metrics_app)
+
+# Schedule periodic cleanup of rate limiter
+import asyncio
+from contextlib import suppress
+
+async def periodic_cleanup():
+    """Run periodic cleanup tasks"""
+    while True:
+        with suppress(Exception):
+            cleanup_rate_limiter()
+        await asyncio.sleep(300)  # Every 5 minutes
+
+# Start background tasks
+@app.on_event("startup")
+async def startup_background_tasks():
+    asyncio.create_task(periodic_cleanup())
+    # Start WebSocket ping task
+    await websocket_manager.start_ping_task()
+    # Start schedule executor
+    schedule_executor = get_schedule_executor()
+    asyncio.create_task(schedule_executor.start())
 
 
 # =============================================================================
@@ -206,6 +247,7 @@ app.include_router(template_router, prefix="/api/v1", tags=["Template System"])
 app.include_router(translation_router, prefix="/api/v1", tags=["Translation System"])
 app.include_router(schedule_router, prefix="/api/v1", tags=["Schedule System"])
 app.include_router(weather_router, prefix="/api/v1", tags=["Weather Service"])
+app.include_router(websocket_router, tags=["WebSocket"])
 
 
 # =============================================================================

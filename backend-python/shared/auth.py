@@ -741,6 +741,83 @@ class PermissionChecker:
 
 
 # =============================================================================
+# WEBSOCKET AUTHENTICATION DEPENDENCIES
+# =============================================================================
+
+async def get_current_user_ws(
+    token: Optional[str] = None
+) -> Optional[CurrentUser]:
+    """
+    WebSocket-specific authentication dependency
+    
+    WebSockets can't use standard HTTP headers, so token is passed as query param
+    
+    Args:
+        token: JWT token from query parameter
+        
+    Returns:
+        CurrentUser if authenticated, None otherwise
+    """
+    if not token:
+        return None
+        
+    try:
+        payload = verify_access_token(token)
+        
+        return CurrentUser(
+            id=int(payload.get("sub")),
+            username=payload.get("username"),
+            role=payload.get("role"),
+            organization_id=payload.get("organization_id")
+        )
+    except:
+        return None
+
+
+async def get_device_by_token_ws(
+    token: Optional[str] = None
+) -> Optional[Dict[str, Any]]:
+    """
+    WebSocket-specific device authentication dependency
+    
+    Args:
+        token: Device JWT token from query parameter
+        
+    Returns:
+        Device info dict if authenticated, None otherwise
+    """
+    if not token:
+        return None
+        
+    try:
+        device_info = extract_device_from_token(token)
+        
+        # Get device from database to verify it exists
+        from services.device.infrastructure.sqlalchemy_device_repository import SQLAlchemyDeviceRepository
+        from services.device.dtos import DeviceResponse
+        
+        device_repo = SQLAlchemyDeviceRepository()
+        device = device_repo.find_by_id(device_info["device_id"])
+        
+        if not device:
+            return None
+            
+        return DeviceResponse(
+            id=device.id,
+            activation_code=device.activation_code,
+            name=device.name,
+            location=device.location,
+            status=device.status,
+            organization_id=device.organization_id,
+            registered_at=device.registered_at,
+            last_seen=device.last_seen
+        )
+        
+    except:
+        return None
+
+
+# =============================================================================
 # EXPORTS
 # =============================================================================
 
@@ -768,6 +845,8 @@ __all__ = [
     # FastAPI dependencies - Authentication
     "get_current_user",
     "get_optional_user",
+    "get_current_user_ws",
+    "get_device_by_token_ws",
 
     # Models
     "CurrentUser",

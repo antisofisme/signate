@@ -23,6 +23,8 @@ class PlaylistModel(Base):
     is_active = Column(Boolean, default=True, nullable=False)
     priority = Column(Integer, default=0, nullable=False)
     schedule = Column(JSON, nullable=True)  # JSONB in PostgreSQL
+    is_default = Column(Boolean, default=False, nullable=False)
+    is_pms_template = Column(Boolean, default=False, nullable=False)
 
     # Multi-tenancy & User tracking
     organization_id = Column(Integer, ForeignKey("organizations.id", ondelete="CASCADE"), nullable=False, index=True)

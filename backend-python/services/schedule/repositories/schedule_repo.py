@@ -4,7 +4,7 @@ Data access layer for schedule operations
 """
 
 from typing import List, Optional, Tuple
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 from sqlalchemy import and_, or_, func
 from datetime import date, time, datetime
 
@@ -58,7 +58,9 @@ class ScheduleRepository:
         organization_id: int
     ) -> Optional[Schedule]:
         """Get schedule by ID"""
-        return self.db.query(Schedule).filter(
+        return self.db.query(Schedule).options(
+            selectinload(Schedule.playlist)
+        ).filter(
             and_(
                 Schedule.id == schedule_id,
                 Schedule.organization_id == organization_id
@@ -75,7 +77,9 @@ class ScheduleRepository:
         limit: int = 100
     ) -> Tuple[List[Schedule], int]:
         """Get schedules with filters"""
-        query = self.db.query(Schedule).filter(
+        query = self.db.query(Schedule).options(
+            selectinload(Schedule.playlist)
+        ).filter(
             Schedule.organization_id == organization_id
         )
 
@@ -137,7 +141,9 @@ class ScheduleRepository:
         Get active schedules at specific date/time
         Returns schedules ordered by priority (highest first)
         """
-        query = self.db.query(Schedule).filter(
+        query = self.db.query(Schedule).options(
+            selectinload(Schedule.playlist)
+        ).filter(
             and_(
                 Schedule.organization_id == organization_id,
                 Schedule.is_active == True,
@@ -177,7 +183,9 @@ class ScheduleRepository:
         exclude_schedule_id: Optional[int] = None
     ) -> List[Schedule]:
         """Find schedules that conflict with given parameters"""
-        query = self.db.query(Schedule).filter(
+        query = self.db.query(Schedule).options(
+            selectinload(Schedule.playlist)
+        ).filter(
             and_(
                 Schedule.organization_id == organization_id,
                 Schedule.playlist_id == playlist_id,
@@ -218,7 +226,9 @@ class ScheduleRepository:
         playlist_id: int
     ) -> List[Schedule]:
         """Get all schedules for a playlist"""
-        return self.db.query(Schedule).filter(
+        return self.db.query(Schedule).options(
+            selectinload(Schedule.playlist)
+        ).filter(
             and_(
                 Schedule.organization_id == organization_id,
                 Schedule.playlist_id == playlist_id
@@ -238,3 +248,32 @@ class ScheduleRepository:
         schedule.is_active = False
         self.db.commit()
         return True
+    
+    def find_active_schedules(
+        self,
+        organization_id: int,
+        current_time: datetime
+    ) -> List[Schedule]:
+        """Find all active schedules for an organization at current time"""
+        current_date = current_time.date()
+        
+        # Query active schedules
+        query = self.db.query(Schedule).options(
+            selectinload(Schedule.playlist)
+        ).filter(
+            and_(
+                Schedule.organization_id == organization_id,
+                Schedule.is_active == True,
+                # Date range check
+                or_(
+                    Schedule.start_date == None,
+                    Schedule.start_date <= current_date
+                ),
+                or_(
+                    Schedule.end_date == None,
+                    Schedule.end_date >= current_date
+                )
+            )
+        )
+        
+        return query.order_by(Schedule.priority.desc()).all()

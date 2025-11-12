@@ -49,6 +49,11 @@ class Schedule(Base):
     # Priority & Status
     priority = Column(Integer, default=0, index=True)    # Higher = more important
     is_active = Column(Boolean, default=True, index=True)
+    
+    # Targeting
+    device_ids = Column(JSONB, nullable=True)           # [1, 2, 3] - specific devices
+    tag_ids = Column(JSONB, nullable=True)              # [1, 2] - devices with these tags
+    apply_to_all = Column(Boolean, default=False)       # Apply to all org devices
 
     # Metadata
     created_by = Column(Integer, ForeignKey("users.id"), nullable=True)

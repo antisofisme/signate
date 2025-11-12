@@ -144,6 +144,13 @@ class DeviceResponse(BaseModel):
         from_attributes = True
 
 
+class DeviceActivationResponse(BaseModel):
+    """Response when device is activated - includes JWT token"""
+    device: DeviceResponse
+    token: str = Field(..., description="JWT token for device authentication")
+    message: Optional[str] = None
+
+
 class DeviceListResponse(BaseModel):
     """List of devices - for CMS dashboard"""
     items: list[DeviceResponse]  # Changed from 'devices' to 'items' to match frontend
