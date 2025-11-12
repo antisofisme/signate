@@ -85,8 +85,8 @@ export const TemplatesPage = () => {
       <div className="mb-8">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Template Editor</h1>
-            <p className="mt-2 text-gray-600">
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Template Editor</h1>
+            <p className="mt-2 text-gray-600 dark:text-gray-400">
               Create and manage dynamic content templates with variable substitution
             </p>
           </div>
@@ -112,9 +112,9 @@ export const TemplatesPage = () => {
       {/* Create/Edit Modal */}
       {(modalMode === 'create' || modalMode === 'edit') && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 overflow-y-auto">
-          <div className="bg-white rounded-lg max-w-6xl w-full my-8">
-            <div className="sticky top-0 bg-white border-b px-6 py-4 rounded-t-lg">
-              <h2 className="text-xl font-semibold text-gray-900">
+          <div className="bg-white dark:bg-gray-800 rounded-lg max-w-6xl w-full my-8">
+            <div className="sticky top-0 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-4 rounded-t-lg">
+              <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
                 {modalMode === 'create' ? 'Create Template' : 'Edit Template'}
               </h2>
             </div>
@@ -136,14 +136,14 @@ export const TemplatesPage = () => {
       {/* Preview Modal */}
       {modalMode === 'preview' && selectedTemplate && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="sticky top-0 bg-white border-b px-6 py-4 rounded-t-lg">
+          <div className="bg-white dark:bg-gray-800 rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="sticky top-0 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-4 rounded-t-lg">
               <div className="flex items-center justify-between">
                 <div>
-                  <h2 className="text-xl font-semibold text-gray-900">
+                  <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
                     Preview: {selectedTemplate.name}
                   </h2>
-                  <p className="text-sm text-gray-600 mt-1">
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
                     {selectedTemplate.description || 'No description'}
                   </p>
                 </div>
@@ -152,7 +152,7 @@ export const TemplatesPage = () => {
                     setModalMode(null)
                     setSelectedTemplate(null)
                   }}
-                  className="text-gray-500 hover:text-gray-700"
+                  className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
                 >
                   <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -163,9 +163,9 @@ export const TemplatesPage = () => {
             <div className="p-6">
               {/* Template Content */}
               <div className="mb-6">
-                <h3 className="text-sm font-semibold text-gray-700 mb-2">Template Content:</h3>
-                <div className="bg-gray-50 rounded p-4 border border-gray-200">
-                  <pre className="text-sm whitespace-pre-wrap break-words font-mono">
+                <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Template Content:</h3>
+                <div className="bg-gray-50 dark:bg-gray-700 rounded p-4 border border-gray-200 dark:border-gray-600">
+                  <pre className="text-sm whitespace-pre-wrap break-words font-mono text-gray-900 dark:text-gray-100">
                     {selectedTemplate.content}
                   </pre>
                 </div>
@@ -174,14 +174,14 @@ export const TemplatesPage = () => {
               {/* Variables */}
               {Object.keys(selectedTemplate.variables || {}).length > 0 && (
                 <div className="mb-6">
-                  <h3 className="text-sm font-semibold text-gray-700 mb-2">Variables:</h3>
+                  <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Variables:</h3>
                   <div className="flex flex-wrap gap-2">
                     {Object.entries(selectedTemplate.variables).map(([name, type]) => (
-                      <div key={name} className="bg-blue-50 border border-blue-200 rounded px-3 py-2">
-                        <code className="text-sm text-blue-700 font-mono">
+                      <div key={name} className="bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-900 rounded px-3 py-2">
+                        <code className="text-sm text-blue-700 dark:text-blue-300 font-mono">
                           {'{{'}{name}{'}}'}
                         </code>
-                        <span className="text-xs text-blue-600 ml-2">({type})</span>
+                        <span className="text-xs text-blue-600 dark:text-blue-400 ml-2">({type})</span>
                       </div>
                     ))}
                   </div>
@@ -202,11 +202,11 @@ export const TemplatesPage = () => {
       {/* Delete Confirmation */}
       {showDeleteConfirm && selectedTemplate && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg max-w-md w-full p-6">
-            <h2 className="text-xl font-semibold text-gray-900 mb-4">Delete Template</h2>
-            <p className="text-gray-600 mb-6">
+          <div className="bg-white dark:bg-gray-800 rounded-lg max-w-md w-full p-6">
+            <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">Delete Template</h2>
+            <p className="text-gray-600 dark:text-gray-300 mb-6">
               Are you sure you want to delete{' '}
-              <strong className="text-gray-900">{selectedTemplate.name}</strong>? This action
+              <strong className="text-gray-900 dark:text-white">{selectedTemplate.name}</strong>? This action
               cannot be undone.
             </p>
             <div className="flex justify-end gap-3">
@@ -216,7 +216,7 @@ export const TemplatesPage = () => {
                   setSelectedTemplate(null)
                 }}
                 disabled={deleteMutation.isPending}
-                className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
+                className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
               >
                 Cancel
               </button>

@@ -65,7 +65,7 @@ export function LoginForm() {
     <form onSubmit={handleSubmit} className="space-y-6">
       {/* Username Field */}
       <div>
-        <label htmlFor="username" className="block text-sm font-medium text-gray-700">
+        <label htmlFor="username" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
           Username
         </label>
         <input
@@ -78,8 +78,8 @@ export function LoginForm() {
           className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${
             errors.username
               ? 'border-red-500 focus:ring-red-500'
-              : 'border-gray-300 focus:ring-blue-500'
-          } ${isPending ? 'bg-gray-100 cursor-not-allowed' : 'bg-white'}`}
+              : 'border-gray-300 dark:border-gray-600 focus:ring-blue-500'
+          } ${isPending ? 'bg-gray-100 dark:bg-gray-700 cursor-not-allowed' : 'bg-white dark:bg-gray-800'}`}
           placeholder="Masukkan username"
         />
         {errors.username && (
@@ -89,7 +89,7 @@ export function LoginForm() {
 
       {/* Password Field */}
       <div>
-        <label htmlFor="password" className="block text-sm font-medium text-gray-700">
+        <label htmlFor="password" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
           Password
         </label>
         <input
@@ -102,8 +102,8 @@ export function LoginForm() {
           className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${
             errors.password
               ? 'border-red-500 focus:ring-red-500'
-              : 'border-gray-300 focus:ring-blue-500'
-          } ${isPending ? 'bg-gray-100 cursor-not-allowed' : 'bg-white'}`}
+              : 'border-gray-300 dark:border-gray-600 focus:ring-blue-500'
+          } ${isPending ? 'bg-gray-100 dark:bg-gray-700 cursor-not-allowed' : 'bg-white dark:bg-gray-800'}`}
           placeholder="Masukkan password"
         />
         {errors.password && (

@@ -74,21 +74,21 @@ export const TemplateEditor = ({
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between">
-        <label className="text-sm font-medium text-gray-700">Template Content</label>
-        <div className="flex items-center gap-2 text-xs text-gray-500">
+        <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Template Content</label>
+        <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
           <span>{lineCount} lines</span>
           <span>•</span>
           <span>{value.length} characters</span>
         </div>
       </div>
 
-      <div className="relative border-2 border-gray-300 rounded-lg overflow-hidden bg-white">
+      <div className="relative border-2 border-gray-300 dark:border-gray-600 rounded-lg overflow-hidden bg-white dark:bg-gray-800">
         {/* Line numbers */}
         <div
-          className="absolute left-0 top-0 w-12 bg-gray-50 border-r border-gray-300 text-right pr-2 select-none"
+          className="absolute left-0 top-0 w-12 bg-gray-50 dark:bg-gray-700 border-r border-gray-300 dark:border-gray-600 text-right pr-2 select-none"
           style={{ height }}
         >
-          <div className="font-mono text-xs text-gray-500 p-4 leading-6">
+          <div className="font-mono text-xs text-gray-500 dark:text-gray-400 p-4 leading-6">
             {Array.from({ length: lineCount }, (_, i) => (
               <div key={i}>{i + 1}</div>
             ))}
@@ -107,7 +107,7 @@ export const TemplateEditor = ({
           onChange={(e) => onChange(e.target.value)}
           onKeyDown={handleKeyDown}
           disabled={disabled}
-          className="relative w-full font-mono text-sm p-4 pl-14 resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 leading-6 bg-transparent"
+          className="relative w-full font-mono text-sm p-4 pl-14 resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 leading-6 bg-transparent text-gray-900 dark:text-gray-100"
           style={{ height }}
           placeholder="Enter your template here...&#10;Use {{variable_name}} for variables"
           spellCheck={false}
@@ -115,9 +115,9 @@ export const TemplateEditor = ({
       </div>
 
       {/* Syntax hints */}
-      <div className="bg-blue-50 border border-blue-200 rounded p-3">
-        <h4 className="text-xs font-semibold text-blue-900 mb-2">💡 Syntax Tips:</h4>
-        <ul className="text-xs text-blue-800 space-y-1">
+      <div className="bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-900 rounded p-3">
+        <h4 className="text-xs font-semibold text-blue-900 dark:text-blue-200 mb-2">💡 Syntax Tips:</h4>
+        <ul className="text-xs text-blue-800 dark:text-blue-300 space-y-1">
           <li>• Use <code className="bg-blue-100 px-1 rounded">{'{{variable_name}}'}</code> for variable substitution</li>
           <li>• Variables are highlighted in <span className="bg-blue-200 px-1 rounded">blue</span></li>
           <li>• Press Tab to indent (2 spaces)</li>

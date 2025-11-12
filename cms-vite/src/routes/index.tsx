@@ -29,6 +29,10 @@ import WidgetsPage from '@/features/widgets/pages/WidgetsPage';
 import TemplatesPage from '@/features/templates/pages/TemplatesPage';
 import TranslationsPage from '@/features/translations/pages/TranslationsPage';
 import SchedulesPage from '@/features/schedules/pages/SchedulesPage';
+import RolesPage from '@/pages/RolesPage';
+import SessionsPage from '@/pages/SessionsPage';
+import PMSConfigPage from '@/features/pms/pages/PMSConfigPage';
+import WeatherConfigPage from '@/features/weather/pages/WeatherConfigPage';
 
 export const router = createBrowserRouter([
   // Public Routes
@@ -119,6 +123,22 @@ export const router = createBrowserRouter([
       {
         path: 'schedules',
         element: <SchedulesPage />,
+      },
+      {
+        path: 'roles',
+        element: <RolesPage />,
+      },
+      {
+        path: 'sessions',
+        element: <SessionsPage />,
+      },
+      {
+        path: 'pms',
+        element: <PMSConfigPage />,
+      },
+      {
+        path: 'weather',
+        element: <WeatherConfigPage />,
       },
     ],
   },

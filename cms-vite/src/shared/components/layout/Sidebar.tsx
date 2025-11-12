@@ -24,6 +24,9 @@ import {
   Calendar,
   Languages,
   FileCode,
+  Shield,
+  Hotel,
+  CloudRain,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useUIStore } from '@/lib/stores/uiStore';
@@ -51,6 +54,10 @@ export default function Sidebar() {
     { name: t('navigation.tags'), href: '/tags', icon: Tag },
     { name: t('navigation.analytics'), href: '/analytics', icon: BarChart3 },
     { name: t('navigation.auditLogs'), href: '/audit-logs', icon: FileText },
+    { name: 'Active Sessions', href: '/sessions', icon: Shield },
+    { name: 'Roles & Permissions', href: '/roles', icon: Shield },
+    { name: 'PMS Integration', href: '/pms', icon: Hotel },
+    { name: 'Weather Service', href: '/weather', icon: CloudRain },
     { name: t('navigation.settings'), href: '/settings', icon: Settings },
   ];
 

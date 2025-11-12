@@ -87,11 +87,11 @@ export const CalendarView = ({
 
   if (isLoading) {
     return (
-      <div className="bg-white rounded-lg border border-gray-200 p-4">
-        <div className="h-8 bg-gray-200 rounded animate-pulse mb-4"></div>
+      <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
+        <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded animate-pulse mb-4"></div>
         <div className="grid grid-cols-7 gap-1">
           {[...Array(42)].map((_, i) => (
-            <div key={i} className="h-24 bg-gray-100 rounded animate-pulse" />
+            <div key={i} className="h-24 bg-gray-100 dark:bg-gray-700 rounded animate-pulse" />
           ))}
         </div>
       </div>
@@ -99,20 +99,20 @@ export const CalendarView = ({
   }
 
   return (
-    <div className="bg-white rounded-lg border border-gray-200">
+    <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
       {/* Calendar Header */}
-      <div className="flex items-center justify-between p-4 border-b">
-        <h3 className="text-lg font-semibold text-gray-900">{monthYear}</h3>
+      <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{monthYear}</h3>
         <div className="flex gap-2">
           <button
             onClick={() => setCurrentMonth(new Date())}
-            className="px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-100 rounded-md"
+            className="px-3 py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md"
           >
             Today
           </button>
           <button
             onClick={() => navigateMonth('prev')}
-            className="p-1.5 text-gray-600 hover:bg-gray-100 rounded-md"
+            className="p-1.5 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -120,7 +120,7 @@ export const CalendarView = ({
           </button>
           <button
             onClick={() => navigateMonth('next')}
-            className="p-1.5 text-gray-600 hover:bg-gray-100 rounded-md"
+            className="p-1.5 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
@@ -130,10 +130,10 @@ export const CalendarView = ({
       </div>
 
       {/* Days of Week Header */}
-      <div className="grid grid-cols-7 border-b">
+      <div className="grid grid-cols-7 border-b border-gray-200 dark:border-gray-700">
         {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day) => (
           <div key={day} className="p-2 text-center">
-            <span className="text-xs font-medium text-gray-700">{day}</span>
+            <span className="text-xs font-medium text-gray-700 dark:text-gray-300">{day}</span>
           </div>
         ))}
       </div>
@@ -152,10 +152,10 @@ export const CalendarView = ({
               key={index}
               onClick={() => onDateSelect?.(date)}
               className={`
-                min-h-[100px] p-2 border-r border-b cursor-pointer transition-colors
-                ${!inCurrentMonth ? 'bg-gray-50' : 'bg-white hover:bg-gray-50'}
-                ${today ? 'bg-blue-50' : ''}
-                ${selected ? 'bg-purple-50 ring-2 ring-purple-500' : ''}
+                min-h-[100px] p-2 border-r border-b border-gray-200 dark:border-gray-700 cursor-pointer transition-colors
+                ${!inCurrentMonth ? 'bg-gray-50 dark:bg-gray-700' : 'bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700'}
+                ${today ? 'bg-blue-50 dark:bg-blue-900' : ''}
+                ${selected ? 'bg-purple-50 dark:bg-purple-900 ring-2 ring-purple-500' : ''}
               `}
             >
               {/* Date Number */}
@@ -163,14 +163,14 @@ export const CalendarView = ({
                 <span
                   className={`
                     text-sm font-medium
-                    ${!inCurrentMonth ? 'text-gray-400' : 'text-gray-900'}
+                    ${!inCurrentMonth ? 'text-gray-400 dark:text-gray-600' : 'text-gray-900 dark:text-white'}
                     ${today ? 'bg-blue-500 text-white px-2 py-0.5 rounded-full' : ''}
                   `}
                 >
                   {date.getDate()}
                 </span>
                 {hasEvents && (
-                  <span className="text-xs text-gray-500">
+                  <span className="text-xs text-gray-500 dark:text-gray-400">
                     {dateEvents.length}
                   </span>
                 )}
@@ -193,7 +193,7 @@ export const CalendarView = ({
                         ${priority.color === 'red' ? 'bg-red-100 text-red-700 hover:bg-red-200' : ''}
                         ${priority.color === 'orange' ? 'bg-orange-100 text-orange-700 hover:bg-orange-200' : ''}
                         ${priority.color === 'blue' ? 'bg-blue-100 text-blue-700 hover:bg-blue-200' : ''}
-                        ${priority.color === 'gray' ? 'bg-gray-100 text-gray-700 hover:bg-gray-200' : ''}
+                        ${priority.color === 'gray' ? 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600' : ''}
                         ${event.isException ? 'line-through opacity-50' : ''}
                       `}
                       title={event.title}
@@ -203,7 +203,7 @@ export const CalendarView = ({
                   )
                 })}
                 {dateEvents.length > 3 && (
-                  <div className="text-xs text-gray-500 text-center">
+                  <div className="text-xs text-gray-500 dark:text-gray-400 text-center">
                     +{dateEvents.length - 3} more
                   </div>
                 )}
@@ -214,13 +214,13 @@ export const CalendarView = ({
       </div>
 
       {/* Legend */}
-      <div className="p-4 border-t bg-gray-50">
+      <div className="p-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700">
         <div className="flex flex-wrap gap-4 text-xs">
           <div className="flex items-center gap-2">
-            <span className="font-medium text-gray-700">Priority:</span>
+            <span className="font-medium text-gray-700 dark:text-gray-300">Priority:</span>
             {Object.values(PRIORITY_LEVELS).map((priority) => (
               <div key={priority.level} className="flex items-center gap-1">
-                <div 
+                <div
                   className={`w-3 h-3 rounded
                     ${priority.color === 'red' ? 'bg-red-500' : ''}
                     ${priority.color === 'orange' ? 'bg-orange-500' : ''}
@@ -228,13 +228,13 @@ export const CalendarView = ({
                     ${priority.color === 'gray' ? 'bg-gray-500' : ''}
                   `}
                 />
-                <span className="text-gray-600">{priority.label}</span>
+                <span className="text-gray-600 dark:text-gray-300">{priority.label}</span>
               </div>
             ))}
           </div>
           <div className="flex items-center gap-2">
-            <div className="w-3 h-3 bg-gray-300 rounded line-through"></div>
-            <span className="text-gray-600">Exception date</span>
+            <div className="w-3 h-3 bg-gray-300 dark:bg-gray-500 rounded line-through"></div>
+            <span className="text-gray-600 dark:text-gray-300">Exception date</span>
           </div>
         </div>
       </div>

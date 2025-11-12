@@ -141,7 +141,7 @@ export function RegisterForm() {
     <form onSubmit={handleSubmit} className="space-y-6">
       {/* Username Field */}
       <div>
-        <label htmlFor="username" className="block text-sm font-medium text-gray-700">
+        <label htmlFor="username" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
           Username
         </label>
         <input
@@ -154,8 +154,8 @@ export function RegisterForm() {
           className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${
             errors.username
               ? 'border-red-500 focus:ring-red-500'
-              : 'border-gray-300 focus:ring-blue-500'
-          } ${isPending ? 'bg-gray-100 cursor-not-allowed' : 'bg-white'}`}
+              : 'border-gray-300 dark:border-gray-600 focus:ring-blue-500'
+          } ${isPending ? 'bg-gray-100 dark:bg-gray-700 cursor-not-allowed' : 'bg-white dark:bg-gray-800'}`}
           placeholder="Masukkan username"
         />
         {errors.username && (
@@ -165,7 +165,7 @@ export function RegisterForm() {
 
       {/* Email Field */}
       <div>
-        <label htmlFor="email" className="block text-sm font-medium text-gray-700">
+        <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
           Email
         </label>
         <input
@@ -178,8 +178,8 @@ export function RegisterForm() {
           className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${
             errors.email
               ? 'border-red-500 focus:ring-red-500'
-              : 'border-gray-300 focus:ring-blue-500'
-          } ${isPending ? 'bg-gray-100 cursor-not-allowed' : 'bg-white'}`}
+              : 'border-gray-300 dark:border-gray-600 focus:ring-blue-500'
+          } ${isPending ? 'bg-gray-100 dark:bg-gray-700 cursor-not-allowed' : 'bg-white dark:bg-gray-800'}`}
           placeholder="Masukkan email"
         />
         {errors.email && (
@@ -189,7 +189,7 @@ export function RegisterForm() {
 
       {/* Full Name Field */}
       <div>
-        <label htmlFor="full_name" className="block text-sm font-medium text-gray-700">
+        <label htmlFor="full_name" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
           Nama Lengkap
         </label>
         <input
@@ -202,8 +202,8 @@ export function RegisterForm() {
           className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${
             errors.full_name
               ? 'border-red-500 focus:ring-red-500'
-              : 'border-gray-300 focus:ring-blue-500'
-          } ${isPending ? 'bg-gray-100 cursor-not-allowed' : 'bg-white'}`}
+              : 'border-gray-300 dark:border-gray-600 focus:ring-blue-500'
+          } ${isPending ? 'bg-gray-100 dark:bg-gray-700 cursor-not-allowed' : 'bg-white dark:bg-gray-800'}`}
           placeholder="Masukkan nama lengkap"
         />
         {errors.full_name && (
@@ -213,7 +213,7 @@ export function RegisterForm() {
 
       {/* Password Field */}
       <div>
-        <label htmlFor="password" className="block text-sm font-medium text-gray-700">
+        <label htmlFor="password" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
           Password
         </label>
         <input
@@ -226,8 +226,8 @@ export function RegisterForm() {
           className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${
             errors.password
               ? 'border-red-500 focus:ring-red-500'
-              : 'border-gray-300 focus:ring-blue-500'
-          } ${isPending ? 'bg-gray-100 cursor-not-allowed' : 'bg-white'}`}
+              : 'border-gray-300 dark:border-gray-600 focus:ring-blue-500'
+          } ${isPending ? 'bg-gray-100 dark:bg-gray-700 cursor-not-allowed' : 'bg-white dark:bg-gray-800'}`}
           placeholder="Masukkan password"
         />
         {errors.password && (
@@ -240,7 +240,7 @@ export function RegisterForm() {
 
       {/* Confirm Password Field */}
       <div>
-        <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700">
+        <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
           Konfirmasi Password
         </label>
         <input
@@ -253,8 +253,8 @@ export function RegisterForm() {
           className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${
             errors.confirmPassword
               ? 'border-red-500 focus:ring-red-500'
-              : 'border-gray-300 focus:ring-blue-500'
-          } ${isPending ? 'bg-gray-100 cursor-not-allowed' : 'bg-white'}`}
+              : 'border-gray-300 dark:border-gray-600 focus:ring-blue-500'
+          } ${isPending ? 'bg-gray-100 dark:bg-gray-700 cursor-not-allowed' : 'bg-white dark:bg-gray-800'}`}
           placeholder="Konfirmasi password"
         />
         {errors.confirmPassword && (

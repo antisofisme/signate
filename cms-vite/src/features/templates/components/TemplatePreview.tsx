@@ -62,12 +62,12 @@ export const TemplatePreview = ({
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <label className="text-sm font-medium text-gray-700">Template Preview</label>
+        <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Template Preview</label>
         <div className="flex gap-2">
           <button
             type="button"
             onClick={() => setShowDataEditor(!showDataEditor)}
-            className="text-xs px-3 py-1.5 border border-gray-300 rounded hover:bg-gray-50"
+            className="text-xs px-3 py-1.5 border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-900 dark:text-gray-100"
           >
             {showDataEditor ? '👁️ Show Preview' : '✏️ Edit Data'}
           </button>
@@ -87,8 +87,8 @@ export const TemplatePreview = ({
       {showDataEditor ? (
         /* Test Data Editor */
         <div className="space-y-3">
-          <div className="bg-yellow-50 border border-yellow-200 rounded p-3">
-            <p className="text-xs text-yellow-800">
+          <div className="bg-yellow-50 dark:bg-yellow-950 border border-yellow-200 dark:border-yellow-900 rounded p-3">
+            <p className="text-xs text-yellow-800 dark:text-yellow-200">
               💡 Enter test data for variables to preview the rendered template
             </p>
           </div>
@@ -99,11 +99,11 @@ export const TemplatePreview = ({
                 const varType = variables[varName]
                 return (
                   <div key={varName}>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      <code className="bg-gray-100 px-2 py-0.5 rounded">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      <code className="bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded text-gray-900 dark:text-gray-100">
                         {'{{'}{varName}{'}}'}
                       </code>
-                      <span className="ml-2 text-xs text-gray-500">({varType})</span>
+                      <span className="ml-2 text-xs text-gray-500 dark:text-gray-400">({varType})</span>
                     </label>
                     {varType === 'boolean' ? (
                       <input
@@ -118,7 +118,7 @@ export const TemplatePreview = ({
                         value={testData[varName] || ''}
                         onChange={(e) => handleDataChange(varName, e.target.value)}
                         placeholder={`Enter ${varName}...`}
-                        className="w-full px-3 py-2 border border-gray-300 rounded text-sm"
+                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
                       />
                     )}
                   </div>
@@ -126,33 +126,33 @@ export const TemplatePreview = ({
               })}
             </div>
           ) : (
-            <div className="text-center py-8 border-2 border-dashed border-gray-300 rounded bg-gray-50">
-              <p className="text-sm text-gray-600">No variables defined</p>
-              <p className="text-xs text-gray-500 mt-1">Add variables to enable test data</p>
+            <div className="text-center py-8 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded bg-gray-50 dark:bg-gray-700">
+              <p className="text-sm text-gray-600 dark:text-gray-300">No variables defined</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Add variables to enable test data</p>
             </div>
           )}
         </div>
       ) : (
         /* Preview Panel */
-        <div className="border-2 border-gray-300 rounded-lg overflow-hidden">
+        <div className="border-2 border-gray-300 dark:border-gray-600 rounded-lg overflow-hidden">
           {/* Preview Tabs */}
-          <div className="bg-gray-50 border-b border-gray-300 px-4 py-2 flex gap-2">
-            <span className="text-xs font-medium text-gray-700">Preview:</span>
-            <span className="text-xs text-gray-500">
+          <div className="bg-gray-50 dark:bg-gray-700 border-b border-gray-300 dark:border-gray-600 px-4 py-2 flex gap-2">
+            <span className="text-xs font-medium text-gray-700 dark:text-gray-300">Preview:</span>
+            <span className="text-xs text-gray-500 dark:text-gray-400">
               {renderedContent ? 'Server Rendered' : 'Client Preview'}
             </span>
           </div>
 
           {/* Preview Content */}
-          <div className="p-4 bg-white min-h-[200px] max-h-[400px] overflow-auto">
+          <div className="p-4 bg-white dark:bg-gray-800 min-h-[200px] max-h-[400px] overflow-auto">
             {renderedContent ? (
               <div className="prose prose-sm max-w-none">
-                <pre className="whitespace-pre-wrap break-words bg-gray-50 p-4 rounded border border-gray-200">
+                <pre className="whitespace-pre-wrap break-words bg-gray-50 dark:bg-gray-700 p-4 rounded border border-gray-200 dark:border-gray-600 text-gray-900 dark:text-gray-100">
                   {renderedContent}
                 </pre>
               </div>
             ) : (
-              <div className="prose prose-sm max-w-none">
+              <div className="prose prose-sm max-w-none text-gray-900 dark:text-gray-100">
                 <pre className="whitespace-pre-wrap break-words">
                   {getClientPreview() || 'Enter template content to see preview...'}
                 </pre>
@@ -161,8 +161,8 @@ export const TemplatePreview = ({
           </div>
 
           {/* Preview Footer */}
-          <div className="bg-gray-50 border-t border-gray-300 px-4 py-2">
-            <p className="text-xs text-gray-600">
+          <div className="bg-gray-50 dark:bg-gray-700 border-t border-gray-300 dark:border-gray-600 px-4 py-2">
+            <p className="text-xs text-gray-600 dark:text-gray-400">
               💡 This is a preview. Click "Render" to see server-rendered output with Jinja2.
             </p>
           </div>

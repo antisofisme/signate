@@ -3,6 +3,8 @@ import ReactDOM from 'react-dom/client'
 import { RouterProvider } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
+import { Toaster } from 'sonner'
+import { WebSocketProvider } from '@/lib/websocket'
 import { router } from './routes'
 import './i18n' // Initialize i18n
 import './styles/globals.css'
@@ -19,8 +21,11 @@ const queryClient = new QueryClient({
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <QueryClientProvider client={queryClient}>
-      <RouterProvider router={router} />
-      <ReactQueryDevtools initialIsOpen={false} />
+      <WebSocketProvider debug={false}>
+        <RouterProvider router={router} />
+        <Toaster position="top-right" richColors />
+        <ReactQueryDevtools initialIsOpen={false} />
+      </WebSocketProvider>
     </QueryClientProvider>
   </React.StrictMode>,
 )

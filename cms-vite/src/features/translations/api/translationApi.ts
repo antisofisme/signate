@@ -3,7 +3,8 @@
  * API functions for translation management
  */
 
-import axios from 'axios'
+import { apiClient } from '@/lib/api/client'
+import { API_ENDPOINTS } from '@/lib/api/endpoints'
 import type {
   Translation,
   TranslationFilters,
@@ -17,15 +18,13 @@ import type {
   BulkImportResponse,
 } from '../types/translation.types'
 
-const API_BASE = '/api/v1'
-
 /**
  * Get list of translations with optional filters
  */
 export const getTranslations = async (
   filters?: TranslationFilters
 ): Promise<TranslationListResponse> => {
-  const response = await axios.get(`${API_BASE}/translations`, {
+  const response = await apiClient.get(API_ENDPOINTS.TRANSLATIONS.LIST, {
     params: filters,
   })
   return response.data
@@ -35,7 +34,7 @@ export const getTranslations = async (
  * Get single translation by ID
  */
 export const getTranslation = async (id: number): Promise<Translation> => {
-  const response = await axios.get(`${API_BASE}/translations/${id}`)
+  const response = await apiClient.get(API_ENDPOINTS.TRANSLATIONS.GET(id))
   return response.data
 }
 
@@ -45,7 +44,7 @@ export const getTranslation = async (id: number): Promise<Translation> => {
 export const createTranslation = async (
   data: CreateTranslationRequest
 ): Promise<Translation> => {
-  const response = await axios.post(`${API_BASE}/translations`, data)
+  const response = await apiClient.post(API_ENDPOINTS.TRANSLATIONS.CREATE, data)
   return response.data
 }
 
@@ -56,7 +55,7 @@ export const updateTranslation = async (
   id: number,
   data: UpdateTranslationRequest
 ): Promise<Translation> => {
-  const response = await axios.put(`${API_BASE}/translations/${id}`, data)
+  const response = await apiClient.put(API_ENDPOINTS.TRANSLATIONS.UPDATE(id), data)
   return response.data
 }
 
@@ -64,7 +63,7 @@ export const updateTranslation = async (
  * Delete translation
  */
 export const deleteTranslation = async (id: number): Promise<void> => {
-  await axios.delete(`${API_BASE}/translations/${id}`)
+  await apiClient.delete(API_ENDPOINTS.TRANSLATIONS.DELETE(id))
 }
 
 /**
@@ -74,8 +73,8 @@ export const getEntityTranslations = async (
   entityType: string,
   entityId: number
 ): Promise<EntityTranslationsResponse> => {
-  const response = await axios.get(
-    `${API_BASE}/translations/${entityType}/${entityId}`
+  const response = await apiClient.get(
+    API_ENDPOINTS.TRANSLATIONS.GET_ENTITY_TRANSLATIONS(entityType, entityId)
   )
   return response.data
 }
@@ -86,7 +85,7 @@ export const getEntityTranslations = async (
 export const bulkCreateTranslations = async (
   data: BulkTranslationRequest
 ): Promise<{ created: number }> => {
-  const response = await axios.post(`${API_BASE}/translations/bulk`, data)
+  const response = await apiClient.post(API_ENDPOINTS.TRANSLATIONS.BULK_CREATE, data)
   return response.data
 }
 
@@ -96,7 +95,7 @@ export const bulkCreateTranslations = async (
 export const bulkImportTranslations = async (
   data: BulkImportRequest
 ): Promise<BulkImportResponse> => {
-  const response = await axios.post(`${API_BASE}/translations/import`, data)
+  const response = await apiClient.post(API_ENDPOINTS.TRANSLATIONS.BULK_IMPORT, data)
   return response.data
 }
 
@@ -104,7 +103,7 @@ export const bulkImportTranslations = async (
  * Get translation statistics
  */
 export const getTranslationStats = async (): Promise<TranslationStatsResponse> => {
-  const response = await axios.get(`${API_BASE}/translations/stats`)
+  const response = await apiClient.get(API_ENDPOINTS.TRANSLATIONS.STATS)
   return response.data
 }
 
@@ -112,7 +111,7 @@ export const getTranslationStats = async (): Promise<TranslationStatsResponse> =
  * Approve translation
  */
 export const approveTranslation = async (id: number): Promise<Translation> => {
-  const response = await axios.post(`${API_BASE}/translations/${id}/approve`)
+  const response = await apiClient.post(API_ENDPOINTS.TRANSLATIONS.APPROVE(id))
   return response.data
 }
 
@@ -120,6 +119,6 @@ export const approveTranslation = async (id: number): Promise<Translation> => {
  * Reject translation
  */
 export const rejectTranslation = async (id: number): Promise<Translation> => {
-  const response = await axios.post(`${API_BASE}/translations/${id}/reject`)
+  const response = await apiClient.post(API_ENDPOINTS.TRANSLATIONS.REJECT(id))
   return response.data
 }

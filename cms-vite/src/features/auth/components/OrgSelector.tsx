@@ -14,14 +14,14 @@ export function OrgSelector() {
   if (organizations.length === 0) {
     return (
       <div className="text-center py-8">
-        <p className="text-gray-600">Tidak ada organisasi tersedia</p>
+        <p className="text-gray-600 dark:text-gray-400">Tidak ada organisasi tersedia</p>
       </div>
     );
   }
 
   return (
     <div className="space-y-4">
-      <h2 className="text-2xl font-bold text-gray-900 mb-6">Pilih Organisasi</h2>
+      <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">Pilih Organisasi</h2>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {organizations.map((org) => (
@@ -33,14 +33,14 @@ export function OrgSelector() {
               p-6 rounded-lg border-2 text-left transition-all
               ${
                 org.is_active
-                  ? 'border-gray-300 hover:border-blue-500 hover:shadow-lg cursor-pointer bg-white'
-                  : 'border-gray-200 bg-gray-50 cursor-not-allowed opacity-60'
+                  ? 'border-gray-300 dark:border-gray-600 hover:border-blue-500 hover:shadow-lg cursor-pointer bg-white dark:bg-gray-800'
+                  : 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 cursor-not-allowed opacity-60'
               }
             `}
           >
             {/* Organization Name */}
             <div className="flex items-center justify-between mb-2">
-              <h3 className="text-lg font-semibold text-gray-900">{org.name}</h3>
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{org.name}</h3>
               {!org.is_active && (
                 <span className="px-2 py-1 text-xs font-medium rounded-full bg-red-100 text-red-800">
                   Inactive
@@ -50,13 +50,13 @@ export function OrgSelector() {
 
             {/* Organization PIN */}
             <div className="mb-4">
-              <p className="text-sm text-gray-600">
+              <p className="text-sm text-gray-600 dark:text-gray-400">
                 PIN: <span className="font-mono font-semibold">{org.organization_pin}</span>
               </p>
             </div>
 
             {/* Created Date */}
-            <div className="text-xs text-gray-500">
+            <div className="text-xs text-gray-500 dark:text-gray-400">
               Dibuat: {formatDate(org.created_at)}
             </div>
 

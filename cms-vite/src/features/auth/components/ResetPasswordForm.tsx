@@ -107,7 +107,7 @@ export function ResetPasswordForm() {
 
       {/* Token Field */}
       <div>
-        <label htmlFor="token" className="block text-sm font-medium text-gray-700">
+        <label htmlFor="token" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
           Token Reset
         </label>
         <input
@@ -120,8 +120,8 @@ export function ResetPasswordForm() {
           className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${
             errors.token
               ? 'border-red-500 focus:ring-red-500'
-              : 'border-gray-300 focus:ring-blue-500'
-          } ${isPending ? 'bg-gray-100 cursor-not-allowed' : 'bg-white'}`}
+              : 'border-gray-300 dark:border-gray-600 focus:ring-blue-500'
+          } ${isPending ? 'bg-gray-100 dark:bg-gray-700 cursor-not-allowed' : 'bg-white dark:bg-gray-800'}`}
           placeholder="Masukkan token dari email"
         />
         {errors.token && <p className="mt-1 text-sm text-red-600">{errors.token}</p>}
@@ -129,7 +129,7 @@ export function ResetPasswordForm() {
 
       {/* New Password Field */}
       <div>
-        <label htmlFor="newPassword" className="block text-sm font-medium text-gray-700">
+        <label htmlFor="newPassword" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
           Password Baru
         </label>
         <input
@@ -142,8 +142,8 @@ export function ResetPasswordForm() {
           className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${
             errors.newPassword
               ? 'border-red-500 focus:ring-red-500'
-              : 'border-gray-300 focus:ring-blue-500'
-          } ${isPending ? 'bg-gray-100 cursor-not-allowed' : 'bg-white'}`}
+              : 'border-gray-300 dark:border-gray-600 focus:ring-blue-500'
+          } ${isPending ? 'bg-gray-100 dark:bg-gray-700 cursor-not-allowed' : 'bg-white dark:bg-gray-800'}`}
           placeholder="Minimal 6 karakter"
         />
         {errors.newPassword && (
@@ -153,7 +153,7 @@ export function ResetPasswordForm() {
 
       {/* Confirm Password Field */}
       <div>
-        <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700">
+        <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
           Konfirmasi Password Baru
         </label>
         <input
@@ -166,8 +166,8 @@ export function ResetPasswordForm() {
           className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${
             errors.confirmPassword
               ? 'border-red-500 focus:ring-red-500'
-              : 'border-gray-300 focus:ring-blue-500'
-          } ${isPending ? 'bg-gray-100 cursor-not-allowed' : 'bg-white'}`}
+              : 'border-gray-300 dark:border-gray-600 focus:ring-blue-500'
+          } ${isPending ? 'bg-gray-100 dark:bg-gray-700 cursor-not-allowed' : 'bg-white dark:bg-gray-800'}`}
           placeholder="Ulangi password baru"
         />
         {errors.confirmPassword && (

@@ -168,4 +168,162 @@ export const API_ENDPOINTS = {
     DEVICE: (deviceId: number) => `/api/v1/preview/device/${deviceId}`,
     PLAYLIST: (playlistId: number) => `/api/v1/preview/playlist/${playlistId}`,
   },
+
+  // ========================================
+  // WIDGETS
+  // ========================================
+  WIDGETS: {
+    LIST: '/api/v1/widgets',
+    GET: (id: number) => `/api/v1/widgets/${id}`,
+    CREATE: '/api/v1/widgets',
+    UPDATE: (id: number) => `/api/v1/widgets/${id}`,
+    DELETE: (id: number) => `/api/v1/widgets/${id}`,
+
+    // Playlist Widget Assignment
+    GET_PLAYLIST_WIDGETS: (playlistId: number) => `/api/v1/widgets/playlists/${playlistId}/widgets`,
+    ASSIGN_TO_PLAYLIST: (playlistId: number) => `/api/v1/widgets/playlists/${playlistId}/widgets`,
+    UPDATE_PLAYLIST_WIDGET: (id: number) => `/api/v1/widgets/playlist-widgets/${id}`,
+    REMOVE_FROM_PLAYLIST: (playlistId: number, widgetId: number) => `/api/v1/widgets/playlists/${playlistId}/widgets/${widgetId}`,
+  },
+
+  // ========================================
+  // TEMPLATES
+  // ========================================
+  TEMPLATES: {
+    LIST: '/api/v1/templates',
+    GET: (id: number) => `/api/v1/templates/${id}`,
+    CREATE: '/api/v1/templates',
+    UPDATE: (id: number) => `/api/v1/templates/${id}`,
+    DELETE: (id: number) => `/api/v1/templates/${id}`,
+    PREVIEW: (id: number) => `/api/v1/templates/${id}/preview`,
+    RENDER: (id: number) => `/api/v1/templates/${id}/render`,
+    VALIDATE: '/api/v1/templates/validate',
+    EXTRACT_VARIABLES: '/api/v1/templates/extract-variables',
+  },
+
+  // ========================================
+  // SCHEDULES
+  // ========================================
+  SCHEDULES: {
+    LIST: '/api/v1/schedules',
+    GET: (id: number) => `/api/v1/schedules/${id}`,
+    CREATE: '/api/v1/schedules',
+    UPDATE: (id: number) => `/api/v1/schedules/${id}`,
+    DELETE: (id: number) => `/api/v1/schedules/${id}`,
+    GET_BY_PLAYLIST: (playlistId: number) => `/api/v1/schedules/playlist/${playlistId}`,
+    GET_BY_DEVICE: (deviceId: number) => `/api/v1/schedules/device/${deviceId}`,
+    ACTIVATE: (id: number) => `/api/v1/schedules/${id}/activate`,
+    DEACTIVATE: (id: number) => `/api/v1/schedules/${id}/deactivate`,
+    PAUSE: (id: number) => `/api/v1/schedules/${id}/pause`,
+    CHECK_CONFLICTS: '/api/v1/schedules/check-conflicts',
+    GET_OCCURRENCES: '/api/v1/schedules/occurrences',
+  },
+
+  // ========================================
+  // TRANSLATIONS
+  // ========================================
+  TRANSLATIONS: {
+    LIST: '/api/v1/translations',
+    GET: (id: number) => `/api/v1/translations/${id}`,
+    CREATE: '/api/v1/translations',
+    UPDATE: (id: number) => `/api/v1/translations/${id}`,
+    DELETE: (id: number) => `/api/v1/translations/${id}`,
+    GET_BY_LOCALE: (locale: string) => `/api/v1/translations/locale/${locale}`,
+    GET_BY_KEY: (key: string) => `/api/v1/translations/key/${key}`,
+    GET_ENTITY_TRANSLATIONS: (entityType: string, entityId: number) => `/api/v1/translations/${entityType}/${entityId}`,
+    BULK_CREATE: '/api/v1/translations/bulk',
+    BULK_IMPORT: '/api/v1/translations/import',
+    STATS: '/api/v1/translations/stats',
+    APPROVE: (id: number) => `/api/v1/translations/${id}/approve`,
+    REJECT: (id: number) => `/api/v1/translations/${id}/reject`,
+  },
+
+  // ========================================
+  // SESSIONS
+  // ========================================
+  SESSIONS: {
+    LIST: '/api/v1/sessions',
+    GET: (id: string) => `/api/v1/sessions/${id}`,
+    DELETE: (id: string) => `/api/v1/sessions/${id}`,
+    REVOKE_ALL: '/api/v1/sessions/revoke-all',
+    STATS: '/api/v1/sessions/stats',
+    ACTIVE: '/api/v1/sessions/active',
+    USER_SESSIONS: (userId: number) => `/api/v1/sessions/user/${userId}`,
+    IP_SESSIONS: (ip: string) => `/api/v1/sessions/ip/${ip}`,
+  },
+
+  // ========================================
+  // RBAC (Role-Based Access Control)
+  // ========================================
+  RBAC: {
+    // Roles
+    ROLES: {
+      LIST: '/api/v1/roles',
+      GET: (id: number) => `/api/v1/roles/${id}`,
+      CREATE: '/api/v1/roles',
+      UPDATE: (id: number) => `/api/v1/roles/${id}`,
+      DELETE: (id: number) => `/api/v1/roles/${id}`,
+      SYSTEM: '/api/v1/roles/system',
+      GET_PERMISSIONS: (id: number) => `/api/v1/roles/${id}/permissions`,
+      ADD_PERMISSIONS: (id: number) => `/api/v1/roles/${id}/permissions`,
+      REMOVE_PERMISSIONS: (id: number) => `/api/v1/roles/${id}/permissions`,
+      GET_USERS: (id: number) => `/api/v1/roles/${id}/users`,
+      ASSIGN_USERS: (id: number) => `/api/v1/roles/${id}/users`,
+      REMOVE_USERS: (id: number) => `/api/v1/roles/${id}/users`,
+    },
+    // Permissions
+    PERMISSIONS: {
+      LIST: '/api/v1/permissions',
+      GET: (id: number) => `/api/v1/permissions/${id}`,
+      CREATE: '/api/v1/permissions',
+      UPDATE: (id: number) => `/api/v1/permissions/${id}`,
+      DELETE: (id: number) => `/api/v1/permissions/${id}`,
+      BY_RESOURCE: (resource: string) => `/api/v1/permissions/resource/${resource}`,
+    },
+    // User Permissions
+    USER_PERMISSIONS: {
+      GET: (userId: number) => `/api/v1/users/${userId}/permissions`,
+      CHECK: (userId: number) => `/api/v1/users/${userId}/check-permission`,
+      GET_ROLES: (userId: number) => `/api/v1/users/${userId}/roles`,
+      ASSIGN_ROLE: (userId: number) => `/api/v1/users/${userId}/roles`,
+      REMOVE_ROLE: (userId: number, roleId: number) => `/api/v1/users/${userId}/roles/${roleId}`,
+    },
+  },
+
+  // ========================================
+  // PMS (Property Management System)
+  // ========================================
+  PMS: {
+    CONFIG: '/api/v1/pms/config',
+    TEST_CONNECTION: '/api/v1/pms/test-connection',
+    SYNC_STATUS: '/api/v1/pms/sync/status',
+    TRIGGER_SYNC: '/api/v1/pms/sync/trigger',
+    STATS: '/api/v1/pms/stats',
+
+    // Guests
+    GUESTS: '/api/v1/pms/guests',
+    CURRENT_GUESTS: '/api/v1/pms/guests/current',
+    GUEST: (id: number) => `/api/v1/pms/guests/${id}`,
+    SYNC_GUESTS: '/api/v1/pms/sync/guests',
+
+    // Rooms
+    ROOMS: '/api/v1/pms/rooms',
+    ROOM: (id: number) => `/api/v1/pms/rooms/${id}`,
+    SYNC_ROOMS: '/api/v1/pms/sync/rooms',
+    MAP_ROOM_DEVICE: '/api/v1/pms/rooms/map-device',
+    UNMAP_ROOM_DEVICE: (roomId: number) => `/api/v1/pms/rooms/${roomId}/unmap-device`,
+  },
+
+  // ========================================
+  // WEATHER
+  // ========================================
+  WEATHER: {
+    CONFIG: '/api/v1/weather/config',
+    TEST_API: '/api/v1/weather/test-api',
+    LOCATIONS: '/api/v1/weather/locations',
+    LOCATION: (id: number) => `/api/v1/weather/locations/${id}`,
+    DATA: (locationId: number) => `/api/v1/weather/data/${locationId}`,
+    BY_COORDS: '/api/v1/weather/data/coords',
+    GEOCODING: '/api/v1/weather/geocoding',
+  },
 } as const;

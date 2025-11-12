@@ -3,7 +3,8 @@
  * API functions for schedule management
  */
 
-import axios from 'axios'
+import { apiClient } from '@/lib/api/client'
+import { API_ENDPOINTS } from '@/lib/api/endpoints'
 import type {
   Schedule,
   ScheduleFilters,
@@ -16,15 +17,13 @@ import type {
   GetOccurrencesResponse,
 } from '../types/schedule.types'
 
-const API_BASE = '/api/v1'
-
 /**
  * Get list of schedules with optional filters
  */
 export const getSchedules = async (
   filters?: ScheduleFilters
 ): Promise<ScheduleListResponse> => {
-  const response = await axios.get(`${API_BASE}/schedules`, {
+  const response = await apiClient.get(API_ENDPOINTS.SCHEDULES.LIST, {
     params: filters,
   })
   return response.data
@@ -34,7 +33,7 @@ export const getSchedules = async (
  * Get single schedule by ID
  */
 export const getSchedule = async (id: number): Promise<Schedule> => {
-  const response = await axios.get(`${API_BASE}/schedules/${id}`)
+  const response = await apiClient.get(API_ENDPOINTS.SCHEDULES.GET(id))
   return response.data
 }
 
@@ -44,7 +43,7 @@ export const getSchedule = async (id: number): Promise<Schedule> => {
 export const createSchedule = async (
   data: CreateScheduleRequest
 ): Promise<Schedule> => {
-  const response = await axios.post(`${API_BASE}/schedules`, data)
+  const response = await apiClient.post(API_ENDPOINTS.SCHEDULES.CREATE, data)
   return response.data
 }
 
@@ -55,7 +54,7 @@ export const updateSchedule = async (
   id: number,
   data: UpdateScheduleRequest
 ): Promise<Schedule> => {
-  const response = await axios.put(`${API_BASE}/schedules/${id}`, data)
+  const response = await apiClient.put(API_ENDPOINTS.SCHEDULES.UPDATE(id), data)
   return response.data
 }
 
@@ -63,14 +62,14 @@ export const updateSchedule = async (
  * Delete schedule
  */
 export const deleteSchedule = async (id: number): Promise<void> => {
-  await axios.delete(`${API_BASE}/schedules/${id}`)
+  await apiClient.delete(API_ENDPOINTS.SCHEDULES.DELETE(id))
 }
 
 /**
  * Activate schedule
  */
 export const activateSchedule = async (id: number): Promise<Schedule> => {
-  const response = await axios.post(`${API_BASE}/schedules/${id}/activate`)
+  const response = await apiClient.post(API_ENDPOINTS.SCHEDULES.ACTIVATE(id))
   return response.data
 }
 
@@ -78,7 +77,7 @@ export const activateSchedule = async (id: number): Promise<Schedule> => {
  * Deactivate schedule
  */
 export const deactivateSchedule = async (id: number): Promise<Schedule> => {
-  const response = await axios.post(`${API_BASE}/schedules/${id}/deactivate`)
+  const response = await apiClient.post(API_ENDPOINTS.SCHEDULES.DEACTIVATE(id))
   return response.data
 }
 
@@ -86,7 +85,7 @@ export const deactivateSchedule = async (id: number): Promise<Schedule> => {
  * Pause schedule
  */
 export const pauseSchedule = async (id: number): Promise<Schedule> => {
-  const response = await axios.post(`${API_BASE}/schedules/${id}/pause`)
+  const response = await apiClient.post(API_ENDPOINTS.SCHEDULES.PAUSE(id))
   return response.data
 }
 
@@ -96,7 +95,7 @@ export const pauseSchedule = async (id: number): Promise<Schedule> => {
 export const checkConflicts = async (
   data: ConflictCheckRequest
 ): Promise<ConflictCheckResponse> => {
-  const response = await axios.post(`${API_BASE}/schedules/check-conflicts`, data)
+  const response = await apiClient.post(API_ENDPOINTS.SCHEDULES.CHECK_CONFLICTS, data)
   return response.data
 }
 
@@ -106,7 +105,7 @@ export const checkConflicts = async (
 export const getOccurrences = async (
   data: GetOccurrencesRequest
 ): Promise<GetOccurrencesResponse> => {
-  const response = await axios.post(`${API_BASE}/schedules/occurrences`, data)
+  const response = await apiClient.post(API_ENDPOINTS.SCHEDULES.GET_OCCURRENCES, data)
   return response.data
 }
 
@@ -114,7 +113,7 @@ export const getOccurrences = async (
  * Get schedules for specific device
  */
 export const getDeviceSchedules = async (deviceId: number): Promise<ScheduleListResponse> => {
-  const response = await axios.get(`${API_BASE}/schedules/device/${deviceId}`)
+  const response = await apiClient.get(API_ENDPOINTS.SCHEDULES.GET_BY_DEVICE(deviceId))
   return response.data
 }
 
@@ -122,6 +121,6 @@ export const getDeviceSchedules = async (deviceId: number): Promise<ScheduleList
  * Get schedules for specific playlist
  */
 export const getPlaylistSchedules = async (playlistId: number): Promise<ScheduleListResponse> => {
-  const response = await axios.get(`${API_BASE}/schedules/playlist/${playlistId}`)
+  const response = await apiClient.get(API_ENDPOINTS.SCHEDULES.GET_BY_PLAYLIST(playlistId))
   return response.data
 }

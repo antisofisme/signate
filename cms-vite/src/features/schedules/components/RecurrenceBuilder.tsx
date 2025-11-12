@@ -59,7 +59,7 @@ export const RecurrenceBuilder = ({
     <div className="space-y-4">
       {/* Recurrence Type Selector */}
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-3">
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
           Recurrence Type
         </label>
         <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
@@ -76,15 +76,15 @@ export const RecurrenceBuilder = ({
                   p-3 rounded-lg border-2 transition-all
                   ${
                     selected
-                      ? 'border-purple-500 bg-purple-50 shadow-md'
-                      : 'border-gray-200 bg-white hover:border-purple-300 hover:bg-purple-50'
+                      ? 'border-purple-500 bg-purple-50 dark:bg-purple-900 shadow-md'
+                      : 'border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 hover:border-purple-300 dark:hover:border-purple-500 hover:bg-purple-50 dark:hover:bg-purple-900'
                   }
                   ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
                 `}
               >
                 <div className="flex flex-col items-center gap-1">
                   <span className="text-2xl">{type.icon}</span>
-                  <span className="text-xs font-semibold text-gray-900">
+                  <span className="text-xs font-semibold text-gray-900 dark:text-white">
                     {type.label}
                   </span>
                 </div>
@@ -92,18 +92,18 @@ export const RecurrenceBuilder = ({
             )
           })}
         </div>
-        <p className="mt-2 text-xs text-gray-500">
+        <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
           {RECURRENCE_TYPES[recurrenceType].description}
         </p>
       </div>
 
       {/* Pattern Configuration */}
       {recurrenceType !== 'once' && (
-        <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+        <div className="bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg p-4">
           {/* Daily Pattern */}
           {recurrenceType === 'daily' && (
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Repeat every
               </label>
               <div className="flex items-center gap-2">
@@ -117,9 +117,9 @@ export const RecurrenceBuilder = ({
                     interval: parseInt(e.target.value) || 1,
                   })}
                   disabled={disabled}
-                  className="w-20 px-3 py-2 border border-gray-300 rounded-md"
+                  className="w-20 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
                 />
-                <span className="text-sm text-gray-700">
+                <span className="text-sm text-gray-700 dark:text-gray-300">
                   {(recurrencePattern.interval || 1) === 1 ? 'day' : 'days'}
                 </span>
               </div>
@@ -129,13 +129,13 @@ export const RecurrenceBuilder = ({
           {/* Weekly Pattern */}
           {recurrenceType === 'weekly' && (
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-3">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
                 Repeat on days
               </label>
               <div className="grid grid-cols-7 gap-2">
                 {Object.entries(DAYS_OF_WEEK).map(([key, day]) => {
                   const selected = recurrencePattern.days_of_week?.includes(key as DayOfWeek)
-                  
+
                   return (
                     <button
                       key={key}
@@ -147,7 +147,7 @@ export const RecurrenceBuilder = ({
                         ${
                           selected
                             ? 'bg-purple-500 text-white'
-                            : 'bg-white border border-gray-300 text-gray-700 hover:bg-purple-100'
+                            : 'bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-purple-100 dark:hover:bg-purple-900'
                         }
                         ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
                       `}
@@ -158,7 +158,7 @@ export const RecurrenceBuilder = ({
                 })}
               </div>
               {recurrencePattern.days_of_week && recurrencePattern.days_of_week.length > 0 && (
-                <p className="mt-2 text-xs text-gray-600">
+                <p className="mt-2 text-xs text-gray-600 dark:text-gray-400">
                   Repeats on: {recurrencePattern.days_of_week
                     .map(d => DAYS_OF_WEEK[d].label)
                     .join(', ')}
@@ -170,10 +170,10 @@ export const RecurrenceBuilder = ({
           {/* Monthly Pattern */}
           {recurrenceType === 'monthly' && (
             <div className="space-y-3">
-              <label className="block text-sm font-medium text-gray-700">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                 Repeat on
               </label>
-              
+
               <div className="space-y-2">
                 <label className="flex items-center gap-3">
                   <input
@@ -186,7 +186,7 @@ export const RecurrenceBuilder = ({
                     disabled={disabled}
                     className="w-4 h-4"
                   />
-                  <span className="text-sm text-gray-700">Day</span>
+                  <span className="text-sm text-gray-700 dark:text-gray-300">Day</span>
                   <input
                     type="number"
                     min="1"
@@ -197,9 +197,9 @@ export const RecurrenceBuilder = ({
                       last_day_of_month: false,
                     })}
                     disabled={disabled || recurrencePattern.last_day_of_month}
-                    className="w-16 px-2 py-1 border border-gray-300 rounded-md"
+                    className="w-16 px-2 py-1 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
                   />
-                  <span className="text-sm text-gray-700">of the month</span>
+                  <span className="text-sm text-gray-700 dark:text-gray-300">of the month</span>
                 </label>
 
                 <label className="flex items-center gap-3">
@@ -212,7 +212,7 @@ export const RecurrenceBuilder = ({
                     disabled={disabled}
                     className="w-4 h-4"
                   />
-                  <span className="text-sm text-gray-700">Last day of the month</span>
+                  <span className="text-sm text-gray-700 dark:text-gray-300">Last day of the month</span>
                 </label>
               </div>
             </div>
@@ -221,7 +221,7 @@ export const RecurrenceBuilder = ({
           {/* Custom Pattern */}
           {recurrenceType === 'custom' && (
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Cron Expression
               </label>
               <input
@@ -233,15 +233,15 @@ export const RecurrenceBuilder = ({
                 })}
                 placeholder="0 9 * * *"
                 disabled={disabled}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md font-mono text-sm"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md font-mono text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
               />
-              <div className="mt-2 text-xs text-gray-600 space-y-1">
+              <div className="mt-2 text-xs text-gray-600 dark:text-gray-400 space-y-1">
                 <p>Format: minute hour day month weekday</p>
                 <p>Examples:</p>
                 <ul className="list-disc list-inside ml-2">
-                  <li><code className="bg-gray-200 px-1">0 9 * * *</code> - Every day at 9:00 AM</li>
-                  <li><code className="bg-gray-200 px-1">0 */2 * * *</code> - Every 2 hours</li>
-                  <li><code className="bg-gray-200 px-1">0 9 * * 1-5</code> - Weekdays at 9:00 AM</li>
+                  <li><code className="bg-gray-200 dark:bg-gray-600 px-1">0 9 * * *</code> - Every day at 9:00 AM</li>
+                  <li><code className="bg-gray-200 dark:bg-gray-600 px-1">0 */2 * * *</code> - Every 2 hours</li>
+                  <li><code className="bg-gray-200 dark:bg-gray-600 px-1">0 9 * * 1-5</code> - Weekdays at 9:00 AM</li>
                 </ul>
               </div>
             </div>
@@ -251,8 +251,8 @@ export const RecurrenceBuilder = ({
 
       {/* Recurrence Summary */}
       {recurrenceType !== 'once' && (
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-          <p className="text-sm text-blue-900">
+        <div className="bg-blue-50 dark:bg-blue-900 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
+          <p className="text-sm text-blue-900 dark:text-blue-200">
             <span className="font-medium">Schedule will repeat:</span>{' '}
             {getRecurrenceSummary(recurrenceType, recurrencePattern)}
           </p>

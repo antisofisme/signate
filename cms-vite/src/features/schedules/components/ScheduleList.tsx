@@ -65,10 +65,10 @@ export const ScheduleList = ({
 
   if (schedules.length === 0) {
     return (
-      <div className="text-center py-12 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
+      <div className="text-center py-12 bg-gray-50 dark:bg-gray-700 rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-600">
         <div className="text-4xl mb-4">📅</div>
-        <h3 className="text-lg font-semibold text-gray-900 mb-2">No schedules yet</h3>
-        <p className="text-gray-600 mb-4">Create your first schedule to start automating content playback</p>
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">No schedules yet</h3>
+        <p className="text-gray-600 dark:text-gray-400 mb-4">Create your first schedule to start automating content playback</p>
       </div>
     )
   }
@@ -84,7 +84,7 @@ export const ScheduleList = ({
             placeholder="Search schedules or playlists..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+            className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
           />
         </div>
 
@@ -92,7 +92,7 @@ export const ScheduleList = ({
         <select
           value={filterStatus}
           onChange={(e) => setFilterStatus(e.target.value as ScheduleStatus | 'all')}
-          className="px-4 py-2 border border-gray-300 rounded-lg"
+          className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
         >
           <option value="all">All Status</option>
           <option value="active">✅ Active</option>
@@ -105,7 +105,7 @@ export const ScheduleList = ({
         <select
           value={filterPriority}
           onChange={(e) => setFilterPriority(e.target.value as PriorityLevel | 'all')}
-          className="px-4 py-2 border border-gray-300 rounded-lg"
+          className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
         >
           <option value="all">All Priority</option>
           {Object.values(PRIORITY_LEVELS).map((priority) => (
@@ -119,7 +119,7 @@ export const ScheduleList = ({
         <select
           value={filterRecurrence}
           onChange={(e) => setFilterRecurrence(e.target.value as RecurrenceType | 'all')}
-          className="px-4 py-2 border border-gray-300 rounded-lg"
+          className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
         >
           <option value="all">All Types</option>
           {Object.values(RECURRENCE_TYPES).map((type) => (
@@ -131,7 +131,7 @@ export const ScheduleList = ({
       </div>
 
       {/* Results count */}
-      <div className="text-sm text-gray-600">
+      <div className="text-sm text-gray-600 dark:text-gray-400">
         Showing {filteredSchedules.length} of {schedules.length} schedules
       </div>
 
@@ -144,7 +144,7 @@ export const ScheduleList = ({
           return (
             <div
               key={schedule.id}
-              className="bg-white border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow"
+              className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-6 hover:shadow-md transition-shadow"
             >
               <div className="flex items-start justify-between">
                 {/* Schedule info */}
@@ -152,11 +152,11 @@ export const ScheduleList = ({
                   {/* Header */}
                   <div className="flex items-start gap-3 mb-3">
                     <div className="flex-1">
-                      <h3 className="text-lg font-semibold text-gray-900">
+                      <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
                         {schedule.name}
                       </h3>
                       {schedule.description && (
-                        <p className="text-sm text-gray-600 mt-1">
+                        <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
                           {schedule.description}
                         </p>
                       )}
@@ -217,7 +217,7 @@ export const ScheduleList = ({
                   </div>
 
                   {/* Schedule details */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm text-gray-600">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm text-gray-600 dark:text-gray-400">
                     <div>
                       <span className="font-medium">Time:</span>{' '}
                       {schedule.start_time} - {schedule.end_time}
@@ -237,7 +237,7 @@ export const ScheduleList = ({
                   </div>
 
                   {/* Additional info */}
-                  <div className="flex items-center gap-4 mt-3 text-xs text-gray-500">
+                  <div className="flex items-center gap-4 mt-3 text-xs text-gray-500 dark:text-gray-400">
                     {schedule.last_run && (
                       <span>Last run: {formatDateTime(schedule.last_run)}</span>
                     )}
@@ -248,10 +248,10 @@ export const ScheduleList = ({
 
                   {/* Exception dates */}
                   {schedule.exception_dates && schedule.exception_dates.length > 0 && (
-                    <div className="mt-3 p-2 bg-red-50 border border-red-200 rounded text-xs">
-                      <span className="font-medium text-red-900">Exception dates:</span>{' '}
-                      <span className="text-red-700">
-                        {schedule.exception_dates.slice(0, 3).map(d => 
+                    <div className="mt-3 p-2 bg-red-50 dark:bg-red-900 border border-red-200 dark:border-red-800 rounded text-xs">
+                      <span className="font-medium text-red-900 dark:text-red-200">Exception dates:</span>{' '}
+                      <span className="text-red-700 dark:text-red-300">
+                        {schedule.exception_dates.slice(0, 3).map(d =>
                           new Date(d).toLocaleDateString()
                         ).join(', ')}
                         {schedule.exception_dates.length > 3 && ` +${schedule.exception_dates.length - 3} more`}
@@ -264,7 +264,7 @@ export const ScheduleList = ({
                 <div className="flex flex-col gap-2 ml-4">
                   <button
                     onClick={() => onView(schedule)}
-                    className="px-3 py-1.5 text-sm bg-gray-50 text-gray-700 rounded hover:bg-gray-100"
+                    className="px-3 py-1.5 text-sm bg-gray-50 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-100 dark:hover:bg-gray-600"
                     title="View Details"
                   >
                     👁️ View
@@ -312,7 +312,7 @@ export const ScheduleList = ({
                   {schedule.status !== 'expired' && (
                     <button
                       onClick={() => onEdit(schedule)}
-                      className="px-3 py-1.5 text-sm bg-blue-50 text-blue-700 rounded hover:bg-blue-100"
+                      className="px-3 py-1.5 text-sm bg-blue-50 dark:bg-blue-900 text-blue-700 dark:text-blue-300 rounded hover:bg-blue-100 dark:hover:bg-blue-800"
                       title="Edit Schedule"
                     >
                       ✏️ Edit
@@ -321,7 +321,7 @@ export const ScheduleList = ({
 
                   <button
                     onClick={() => onDelete(schedule)}
-                    className="px-3 py-1.5 text-sm bg-gray-50 text-gray-700 rounded hover:bg-gray-100"
+                    className="px-3 py-1.5 text-sm bg-gray-50 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-100 dark:hover:bg-gray-600"
                     title="Delete Schedule"
                   >
                     🗑️ Delete
@@ -335,8 +335,8 @@ export const ScheduleList = ({
 
       {/* No results */}
       {filteredSchedules.length === 0 && (
-        <div className="text-center py-8 bg-gray-50 rounded-lg">
-          <p className="text-gray-600">No schedules match your filters</p>
+        <div className="text-center py-8 bg-gray-50 dark:bg-gray-700 rounded-lg">
+          <p className="text-gray-600 dark:text-gray-400">No schedules match your filters</p>
           <button
             onClick={() => {
               setSearchQuery('')

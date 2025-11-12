@@ -149,20 +149,20 @@ export const SchedulesPage = () => {
       <div className="mb-8">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Schedule Manager</h1>
-            <p className="mt-2 text-gray-600">
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Schedule Manager</h1>
+            <p className="mt-2 text-gray-600 dark:text-gray-400">
               Create and manage automated content playback schedules
             </p>
           </div>
           <div className="flex gap-3">
             {/* View Mode Toggle */}
-            <div className="inline-flex rounded-lg border border-gray-200">
+            <div className="inline-flex rounded-lg border border-gray-200 dark:border-gray-700">
               <button
                 onClick={() => setViewMode('list')}
                 className={`px-4 py-2 text-sm font-medium rounded-l-lg ${
                   viewMode === 'list'
                     ? 'bg-purple-600 text-white'
-                    : 'bg-white text-gray-700 hover:bg-gray-50'
+                    : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
                 }`}
               >
                 📋 List
@@ -172,7 +172,7 @@ export const SchedulesPage = () => {
                 className={`px-4 py-2 text-sm font-medium rounded-r-lg ${
                   viewMode === 'calendar'
                     ? 'bg-purple-600 text-white'
-                    : 'bg-white text-gray-700 hover:bg-gray-50'
+                    : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
                 }`}
               >
                 📅 Calendar
@@ -219,9 +219,9 @@ export const SchedulesPage = () => {
       {/* Create/Edit Modal */}
       {(modalMode === 'create' || modalMode === 'edit') && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 overflow-y-auto">
-          <div className="bg-white rounded-lg max-w-5xl w-full my-8">
-            <div className="sticky top-0 bg-white border-b px-6 py-4 rounded-t-lg">
-              <h2 className="text-xl font-semibold text-gray-900">
+          <div className="bg-white dark:bg-gray-800 rounded-lg max-w-5xl w-full my-8">
+            <div className="sticky top-0 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-4 rounded-t-lg">
+              <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
                 {modalMode === 'create' ? 'Create Schedule' : 'Edit Schedule'}
               </h2>
             </div>
@@ -243,15 +243,15 @@ export const SchedulesPage = () => {
       {/* View Modal */}
       {modalMode === 'view' && selectedSchedule && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg max-w-3xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="sticky top-0 bg-white border-b px-6 py-4 rounded-t-lg flex items-center justify-between">
-              <h2 className="text-xl font-semibold text-gray-900">Schedule Details</h2>
+          <div className="bg-white dark:bg-gray-800 rounded-lg max-w-3xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="sticky top-0 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-4 rounded-t-lg flex items-center justify-between">
+              <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Schedule Details</h2>
               <button
                 onClick={() => {
                   setModalMode(null)
                   setSelectedSchedule(null)
                 }}
-                className="text-gray-500 hover:text-gray-700"
+                className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
               >
                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -262,27 +262,27 @@ export const SchedulesPage = () => {
             <div className="p-6 space-y-6">
               {/* Basic Info */}
               <div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-3">Basic Information</h3>
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">Basic Information</h3>
                 <dl className="grid grid-cols-1 gap-3">
                   <div>
-                    <dt className="text-sm font-medium text-gray-500">Name</dt>
-                    <dd className="mt-1 text-sm text-gray-900">{selectedSchedule.name}</dd>
+                    <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">Name</dt>
+                    <dd className="mt-1 text-sm text-gray-900 dark:text-white">{selectedSchedule.name}</dd>
                   </div>
                   {selectedSchedule.description && (
                     <div>
-                      <dt className="text-sm font-medium text-gray-500">Description</dt>
-                      <dd className="mt-1 text-sm text-gray-900">{selectedSchedule.description}</dd>
+                      <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">Description</dt>
+                      <dd className="mt-1 text-sm text-gray-900 dark:text-white">{selectedSchedule.description}</dd>
                     </div>
                   )}
                   <div>
-                    <dt className="text-sm font-medium text-gray-500">Status</dt>
+                    <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">Status</dt>
                     <dd className="mt-1">
                       <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
                         selectedSchedule.status === 'active'
                           ? 'bg-green-100 text-green-800'
                           : selectedSchedule.status === 'paused'
                           ? 'bg-yellow-100 text-yellow-800'
-                          : 'bg-gray-100 text-gray-800'
+                          : 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-300'
                       }`}>
                         {selectedSchedule.status}
                       </span>
@@ -293,43 +293,43 @@ export const SchedulesPage = () => {
 
               {/* Timing */}
               <div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-3">Timing</h3>
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">Timing</h3>
                 <dl className="grid grid-cols-2 gap-3">
                   <div>
-                    <dt className="text-sm font-medium text-gray-500">Start Date</dt>
-                    <dd className="mt-1 text-sm text-gray-900">
+                    <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">Start Date</dt>
+                    <dd className="mt-1 text-sm text-gray-900 dark:text-white">
                       {new Date(selectedSchedule.start_date).toLocaleDateString()}
                     </dd>
                   </div>
                   <div>
-                    <dt className="text-sm font-medium text-gray-500">End Date</dt>
-                    <dd className="mt-1 text-sm text-gray-900">
+                    <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">End Date</dt>
+                    <dd className="mt-1 text-sm text-gray-900 dark:text-white">
                       {selectedSchedule.end_date
                         ? new Date(selectedSchedule.end_date).toLocaleDateString()
                         : 'No end date'}
                     </dd>
                   </div>
                   <div>
-                    <dt className="text-sm font-medium text-gray-500">Daily Time</dt>
-                    <dd className="mt-1 text-sm text-gray-900">
+                    <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">Daily Time</dt>
+                    <dd className="mt-1 text-sm text-gray-900 dark:text-white">
                       {selectedSchedule.start_time} - {selectedSchedule.end_time}
                     </dd>
                   </div>
                   <div>
-                    <dt className="text-sm font-medium text-gray-500">Timezone</dt>
-                    <dd className="mt-1 text-sm text-gray-900">{selectedSchedule.timezone}</dd>
+                    <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">Timezone</dt>
+                    <dd className="mt-1 text-sm text-gray-900 dark:text-white">{selectedSchedule.timezone}</dd>
                   </div>
                 </dl>
               </div>
 
               {/* Recurrence */}
               <div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-3">Recurrence</h3>
-                <p className="text-sm text-gray-900">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">Recurrence</h3>
+                <p className="text-sm text-gray-900 dark:text-white">
                   Type: <strong className="capitalize">{selectedSchedule.recurrence_type}</strong>
                 </p>
                 {selectedSchedule.recurrence_pattern && (
-                  <pre className="mt-2 p-3 bg-gray-100 rounded text-xs overflow-x-auto">
+                  <pre className="mt-2 p-3 bg-gray-100 dark:bg-gray-700 rounded text-xs overflow-x-auto text-gray-900 dark:text-white">
                     {JSON.stringify(selectedSchedule.recurrence_pattern, null, 2)}
                   </pre>
                 )}
@@ -337,17 +337,17 @@ export const SchedulesPage = () => {
 
               {/* Assigned Resources */}
               <div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-3">Assigned Resources</h3>
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">Assigned Resources</h3>
                 <dl className="space-y-2">
                   <div>
-                    <dt className="text-sm font-medium text-gray-500">Playlist</dt>
-                    <dd className="mt-1 text-sm text-gray-900">
+                    <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">Playlist</dt>
+                    <dd className="mt-1 text-sm text-gray-900 dark:text-white">
                       {selectedSchedule.playlist_name || `Playlist #${selectedSchedule.playlist_id}`}
                     </dd>
                   </div>
                   <div>
-                    <dt className="text-sm font-medium text-gray-500">Devices</dt>
-                    <dd className="mt-1 text-sm text-gray-900">
+                    <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">Devices</dt>
+                    <dd className="mt-1 text-sm text-gray-900 dark:text-white">
                       {selectedSchedule.device_ids.length} device(s) assigned
                     </dd>
                   </div>
@@ -355,7 +355,7 @@ export const SchedulesPage = () => {
               </div>
 
               {/* Actions */}
-              <div className="flex justify-end gap-3 pt-4 border-t">
+              <div className="flex justify-end gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
                 <button
                   onClick={() => {
                     setModalMode('edit')
@@ -369,7 +369,7 @@ export const SchedulesPage = () => {
                     setModalMode(null)
                     setSelectedSchedule(null)
                   }}
-                  className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
+                  className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
                 >
                   Close
                 </button>
@@ -382,14 +382,14 @@ export const SchedulesPage = () => {
       {/* Delete Confirmation */}
       {showDeleteConfirm && selectedSchedule && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg max-w-md w-full p-6">
-            <h2 className="text-xl font-semibold text-gray-900 mb-4">Delete Schedule</h2>
-            <p className="text-gray-600 mb-6">
+          <div className="bg-white dark:bg-gray-800 rounded-lg max-w-md w-full p-6">
+            <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">Delete Schedule</h2>
+            <p className="text-gray-600 dark:text-gray-400 mb-6">
               Are you sure you want to delete this schedule? This action cannot be undone.
             </p>
-            <div className="bg-gray-50 border border-gray-200 rounded p-3 mb-6">
-              <p className="text-sm font-medium text-gray-900">{selectedSchedule.name}</p>
-              <p className="text-xs text-gray-600 mt-1">
+            <div className="bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded p-3 mb-6">
+              <p className="text-sm font-medium text-gray-900 dark:text-white">{selectedSchedule.name}</p>
+              <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
                 {selectedSchedule.recurrence_type} • {selectedSchedule.device_ids.length} device(s)
               </p>
             </div>
@@ -400,7 +400,7 @@ export const SchedulesPage = () => {
                   setSelectedSchedule(null)
                 }}
                 disabled={deleteMutation.isPending}
-                className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50"
               >
                 Cancel
               </button>

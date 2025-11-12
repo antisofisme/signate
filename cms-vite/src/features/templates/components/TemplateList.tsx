@@ -45,10 +45,10 @@ export const TemplateList = ({
 
   if (templates.length === 0) {
     return (
-      <div className="text-center py-12 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
+      <div className="text-center py-12 bg-gray-50 dark:bg-gray-700 rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-600">
         <div className="text-4xl mb-4">📝</div>
-        <h3 className="text-lg font-semibold text-gray-900 mb-2">No templates yet</h3>
-        <p className="text-gray-600 mb-4">
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">No templates yet</h3>
+        <p className="text-gray-600 dark:text-gray-300 mb-4">
           Create your first template to get started
         </p>
       </div>
@@ -66,7 +66,7 @@ export const TemplateList = ({
             placeholder="Search templates..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+            className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
           />
         </div>
 
@@ -75,7 +75,7 @@ export const TemplateList = ({
           <select
             value={filterType}
             onChange={(e) => setFilterType(e.target.value as TemplateType | 'all')}
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+            className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
           >
             <option value="all">All Types</option>
             {Object.values(TEMPLATE_TYPES).map((type) => (
@@ -88,7 +88,7 @@ export const TemplateList = ({
       </div>
 
       {/* Results count */}
-      <div className="text-sm text-gray-600">
+      <div className="text-sm text-gray-600 dark:text-gray-300">
         Showing {filteredTemplates.length} of {templates.length} templates
       </div>
 
@@ -101,7 +101,7 @@ export const TemplateList = ({
           return (
             <div
               key={template.id}
-              className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow"
+              className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4 hover:shadow-md transition-shadow"
             >
               <div className="flex items-start justify-between">
                 {/* Template info */}
@@ -109,8 +109,8 @@ export const TemplateList = ({
                   <div className="flex items-center gap-3 mb-2">
                     <span className="text-2xl">{typeInfo.icon}</span>
                     <div>
-                      <h3 className="font-semibold text-gray-900">{template.name}</h3>
-                      <div className="flex items-center gap-2 text-sm text-gray-600">
+                      <h3 className="font-semibold text-gray-900 dark:text-white">{template.name}</h3>
+                      <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
                         <span className="px-2 py-0.5 bg-green-100 text-green-700 rounded text-xs font-medium">
                           {typeInfo.label}
                         </span>
@@ -123,7 +123,7 @@ export const TemplateList = ({
                   </div>
 
                   {template.description && (
-                    <p className="text-sm text-gray-600 mb-2">{template.description}</p>
+                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">{template.description}</p>
                   )}
 
                   {/* Variables preview */}
@@ -132,13 +132,13 @@ export const TemplateList = ({
                       {Object.keys(template.variables).slice(0, 5).map((varName) => (
                         <span
                           key={varName}
-                          className="text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded font-mono"
+                          className="text-xs bg-blue-50 dark:bg-blue-950 text-blue-700 dark:text-blue-300 px-2 py-0.5 rounded font-mono"
                         >
                           {'{{'}{varName}{'}}'}
                         </span>
                       ))}
                       {variableCount > 5 && (
-                        <span className="text-xs text-gray-500">
+                        <span className="text-xs text-gray-500 dark:text-gray-400">
                           +{variableCount - 5} more
                         </span>
                       )}
@@ -146,13 +146,13 @@ export const TemplateList = ({
                   )}
 
                   {/* Content preview */}
-                  <div className="bg-gray-50 rounded p-2 mb-2">
-                    <pre className="text-xs text-gray-700 whitespace-pre-wrap line-clamp-2 font-mono">
+                  <div className="bg-gray-50 dark:bg-gray-700 rounded p-2 mb-2">
+                    <pre className="text-xs text-gray-700 dark:text-gray-300 whitespace-pre-wrap line-clamp-2 font-mono">
                       {template.content}
                     </pre>
                   </div>
 
-                  <div className="text-xs text-gray-500">
+                  <div className="text-xs text-gray-500 dark:text-gray-400">
                     Created {formatDateTime(template.created_at)}
                     {template.updated_at !== template.created_at && (
                       <> • Updated {formatDateTime(template.updated_at)}</>
@@ -192,8 +192,8 @@ export const TemplateList = ({
 
       {/* No results */}
       {filteredTemplates.length === 0 && (
-        <div className="text-center py-8 bg-gray-50 rounded-lg">
-          <p className="text-gray-600">No templates match your filters</p>
+        <div className="text-center py-8 bg-gray-50 dark:bg-gray-700 rounded-lg">
+          <p className="text-gray-600 dark:text-gray-300">No templates match your filters</p>
           <button
             onClick={() => {
               setSearchQuery('')
