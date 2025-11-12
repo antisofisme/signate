@@ -8,7 +8,7 @@
 import { useState } from 'react';
 import { Building, Users } from 'lucide-react';
 import OrganizationsTab from '@/features/organizations/pages/OrganizationsPage';
-import UsersTab from '@/features/users/components/UsersTab';
+import UsersTab from '@/features/users/pages/UsersPage';
 import { PageHeader } from '@/shared/components';
 
 type TabType = 'organizations' | 'users';

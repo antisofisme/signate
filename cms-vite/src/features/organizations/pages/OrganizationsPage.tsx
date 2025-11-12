@@ -15,7 +15,7 @@ import {
 } from '../hooks/useOrganizations';
 import { OrganizationList } from '../components/OrganizationList';
 import { OrganizationForm } from '../components/OrganizationForm';
-import { DeleteConfirmModal } from '../components/DeleteConfirmModal';
+import { DeleteConfirmModal } from '@/shared/components/DeleteConfirmModal';
 import type {
   Organization,
   CreateOrganizationRequest,
