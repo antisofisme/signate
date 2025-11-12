@@ -122,7 +122,7 @@ export class WebSocketClient {
   }
 
   private handleOpen(): void {
-    this.log('✅ Connected')
+    this.log('Connected')
     this.state = 'connected'
     this.reconnectAttempts = 0
 
@@ -131,7 +131,7 @@ export class WebSocketClient {
   }
 
   private handleClose(event: CloseEvent): void {
-    this.log('❌ Disconnected', event.code, event.reason)
+    this.log('Disconnected', event.code, event.reason)
     this.state = 'disconnected'
 
     this.clearTimers()
@@ -144,7 +144,7 @@ export class WebSocketClient {
   }
 
   private handleError(error: Event): void {
-    this.log('🔴 WebSocket error:', error)
+    this.log('WebSocket error:', error)
     this.state = 'error'
     this.globalHandlers.onError?.(error)
   }
@@ -152,7 +152,7 @@ export class WebSocketClient {
   private handleMessage(event: MessageEvent): void {
     try {
       const message: WebSocketMessage = JSON.parse(event.data)
-      this.log('📨 Message received:', message.type)
+      this.log('Message received:', message.type)
 
       // Call global message handler
       this.globalHandlers.onMessage?.(message)
@@ -195,7 +195,7 @@ export class WebSocketClient {
       }
 
       this.ws!.send(JSON.stringify(message))
-      this.log('📤 Message sent:', type)
+      this.log('Message sent:', type)
       return true
 
     } catch (error) {
@@ -252,7 +252,7 @@ export class WebSocketClient {
     if (!this.config.reconnect) return
 
     if (this.reconnectAttempts >= this.config.maxReconnectAttempts) {
-      this.log('❌ Max reconnect attempts reached')
+      this.log('Max reconnect attempts reached')
       this.state = 'error'
       return
     }
@@ -260,7 +260,7 @@ export class WebSocketClient {
     this.reconnectAttempts++
     const delay = this.config.reconnectInterval * Math.min(this.reconnectAttempts, 5)
 
-    this.log(`🔄 Reconnecting in ${delay}ms (attempt ${this.reconnectAttempts}/${this.config.maxReconnectAttempts})`)
+    this.log(`Reconnecting in ${delay}ms (attempt ${this.reconnectAttempts}/${this.config.maxReconnectAttempts})`)
 
     this.reconnectTimer = setTimeout(() => {
       this.connect()

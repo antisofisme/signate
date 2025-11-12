@@ -4,6 +4,7 @@
  */
 
 import { useEffect } from 'react'
+import { AlertTriangle, Ban, AlertCircle, Clock, Zap } from 'lucide-react'
 import { useCheckConflicts } from '../hooks/useSchedules'
 import type { RecurrenceType, RecurrencePattern } from '../types/schedule.types'
 
@@ -64,7 +65,7 @@ export const ConflictDetector = ({
     return (
       <div className="bg-red-50 border border-red-200 rounded-lg p-4">
         <div className="flex items-start gap-3">
-          <span className="text-xl">❌</span>
+          <Ban className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
           <div>
             <h4 className="text-sm font-semibold text-red-900">Error checking conflicts</h4>
             <p className="text-xs text-red-700 mt-1">
@@ -86,7 +87,7 @@ export const ConflictDetector = ({
     return (
       <div className="bg-green-50 border border-green-200 rounded-lg p-4">
         <div className="flex items-center gap-3">
-          <span className="text-xl">✅</span>
+          <AlertCircle className="w-5 h-5 text-green-600 flex-shrink-0" />
           <div>
             <h4 className="text-sm font-semibold text-green-900">No conflicts detected</h4>
             <p className="text-xs text-green-700 mt-1">
@@ -107,7 +108,7 @@ export const ConflictDetector = ({
     <div className="space-y-4">
       <div className="bg-red-50 border border-red-200 rounded-lg p-4">
         <div className="flex items-start gap-3">
-          <span className="text-xl">⚠️</span>
+          <AlertTriangle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
           <div className="flex-1">
             <h4 className="text-sm font-semibold text-red-900">
               {data.conflicts.length} conflict{data.conflicts.length > 1 ? 's' : ''} detected
@@ -123,7 +124,7 @@ export const ConflictDetector = ({
       {timeOverlaps.length > 0 && (
         <div className="space-y-2">
           <h5 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
-            <span>🕐</span>
+            <Clock className="w-4 h-4" />
             Time Overlaps ({timeOverlaps.length})
           </h5>
           {timeOverlaps.map((conflict, index) => (
@@ -136,7 +137,7 @@ export const ConflictDetector = ({
       {deviceOverlaps.length > 0 && (
         <div className="space-y-2">
           <h5 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
-            <span>📱</span>
+            <AlertCircle className="w-4 h-4" />
             Device Conflicts ({deviceOverlaps.length})
           </h5>
           {deviceOverlaps.map((conflict, index) => (
@@ -149,7 +150,7 @@ export const ConflictDetector = ({
       {priorityConflicts.length > 0 && (
         <div className="space-y-2">
           <h5 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
-            <span>⚡</span>
+            <Zap className="w-4 h-4" />
             Priority Conflicts ({priorityConflicts.length})
           </h5>
           {priorityConflicts.map((conflict, index) => (
@@ -170,7 +171,11 @@ const ConflictCard = ({ conflict }: { conflict: any }) => {
       isWarning ? 'bg-yellow-50 border-yellow-200' : 'bg-red-50 border-red-200'
     }`}>
       <div className="flex items-start gap-3">
-        <span className={`text-lg ${isWarning ? '⚠️' : '🚫'}`}></span>
+        {isWarning ? (
+          <AlertTriangle className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" />
+        ) : (
+          <Ban className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+        )}
         <div className="flex-1">
           <p className={`text-sm ${isWarning ? 'text-yellow-900' : 'text-red-900'}`}>
             {conflict.message}
@@ -182,7 +187,7 @@ const ConflictCard = ({ conflict }: { conflict: any }) => {
           )}
           {conflict.resolution_suggestion && (
             <p className={`text-xs mt-2 ${isWarning ? 'text-yellow-600' : 'text-red-600'}`}>
-              💡 {conflict.resolution_suggestion}
+              {conflict.resolution_suggestion}
             </p>
           )}
         </div>

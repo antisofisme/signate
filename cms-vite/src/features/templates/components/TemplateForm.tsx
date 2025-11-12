@@ -132,9 +132,9 @@ export const TemplateForm = ({
     try {
       const result = await validateMutation.mutateAsync({ content })
       if (result.is_valid) {
-        alert('✅ Template syntax is valid!')
+        alert('Template syntax is valid!')
       } else {
-        alert('❌ Template has errors:\n' + result.errors.join('\n'))
+        alert('Template has errors:\n' + result.errors.join('\n'))
       }
     } catch (error) {
       console.error('Validate error:', error)

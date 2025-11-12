@@ -4,6 +4,7 @@
  */
 
 import { useState } from 'react'
+import { CheckCircle, XCircle, Clock } from 'lucide-react'
 import {
   PRIORITY_LEVELS,
   RECURRENCE_TYPES,
@@ -95,10 +96,10 @@ export const ScheduleList = ({
           className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
         >
           <option value="all">All Status</option>
-          <option value="active">✅ Active</option>
-          <option value="inactive">❌ Inactive</option>
-          <option value="paused">⏸️ Paused</option>
-          <option value="expired">⏰ Expired</option>
+          <option value="active">Active</option>
+          <option value="inactive">Inactive</option>
+          <option value="paused">Paused</option>
+          <option value="expired">Expired</option>
         </select>
 
         {/* Priority filter */}
@@ -163,7 +164,7 @@ export const ScheduleList = ({
                     </div>
 
                     {/* Status badge */}
-                    <div className={`px-3 py-1 rounded-full text-sm font-medium ${
+                    <div className={`px-3 py-1 rounded-full text-sm font-medium flex items-center gap-1.5 ${
                       schedule.status === 'active'
                         ? 'bg-green-100 text-green-700'
                         : schedule.status === 'inactive'
@@ -172,10 +173,30 @@ export const ScheduleList = ({
                         ? 'bg-yellow-100 text-yellow-700'
                         : 'bg-red-100 text-red-700'
                     }`}>
-                      {schedule.status === 'active' && '✅ Active'}
-                      {schedule.status === 'inactive' && '❌ Inactive'}
-                      {schedule.status === 'paused' && '⏸️ Paused'}
-                      {schedule.status === 'expired' && '⏰ Expired'}
+                      {schedule.status === 'active' && (
+                        <>
+                          <CheckCircle className="w-4 h-4" />
+                          <span>Active</span>
+                        </>
+                      )}
+                      {schedule.status === 'inactive' && (
+                        <>
+                          <XCircle className="w-4 h-4" />
+                          <span>Inactive</span>
+                        </>
+                      )}
+                      {schedule.status === 'paused' && (
+                        <>
+                          <Clock className="w-4 h-4" />
+                          <span>Paused</span>
+                        </>
+                      )}
+                      {schedule.status === 'expired' && (
+                        <>
+                          <Clock className="w-4 h-4" />
+                          <span>Expired</span>
+                        </>
+                      )}
                     </div>
                   </div>
 

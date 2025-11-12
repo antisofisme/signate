@@ -91,7 +91,7 @@ export const TEMPLATE_TYPES: Record<TemplateType, TemplateTypeInfo> = {
     type: 'text',
     label: 'Text Template',
     description: 'Plain text with variable substitution',
-    icon: '📝',
+    icon: 'FileEdit',
     exampleContent: 'Welcome {{guest_name}} to {{hotel_name}}!\n\nYour room: {{room_number}}\nCheck-in: {{checkin_date}}\nCheck-out: {{checkout_date}}',
     exampleVariables: {
       guest_name: 'string',
@@ -105,7 +105,7 @@ export const TEMPLATE_TYPES: Record<TemplateType, TemplateTypeInfo> = {
     type: 'image',
     label: 'Image Template',
     description: 'Image with text overlay',
-    icon: '🖼️',
+    icon: 'ImageIcon',
     exampleContent: '<div class="image-overlay">\n  <h1>{{title}}</h1>\n  <p>{{subtitle}}</p>\n</div>',
     exampleVariables: {
       title: 'string',
@@ -117,7 +117,7 @@ export const TEMPLATE_TYPES: Record<TemplateType, TemplateTypeInfo> = {
     type: 'video',
     label: 'Video Template',
     description: 'Video with text overlay',
-    icon: '🎥',
+    icon: 'Video',
     exampleContent: '<div class="video-overlay">\n  <h2>{{message}}</h2>\n  <span>{{timestamp}}</span>\n</div>',
     exampleVariables: {
       message: 'string',
@@ -129,7 +129,7 @@ export const TEMPLATE_TYPES: Record<TemplateType, TemplateTypeInfo> = {
     type: 'html',
     label: 'HTML Template',
     description: 'Full HTML template with styling',
-    icon: '🌐',
+    icon: 'Globe2',
     exampleContent: '<!DOCTYPE html>\n<html>\n<head>\n  <title>{{page_title}}</title>\n</head>\n<body>\n  <h1>{{heading}}</h1>\n  <p>{{content}}</p>\n</body>\n</html>',
     exampleVariables: {
       page_title: 'string',
@@ -141,7 +141,7 @@ export const TEMPLATE_TYPES: Record<TemplateType, TemplateTypeInfo> = {
     type: 'greeting',
     label: 'Greeting Message',
     description: 'Welcome/greeting messages for guests',
-    icon: '👋',
+    icon: 'WavingHand',
     exampleContent: 'Good {{time_of_day}}, {{guest_name}}!\n\nWelcome to {{hotel_name}}.\nYour room {{room_number}} is ready.\n\nEnjoy your stay!',
     exampleVariables: {
       time_of_day: 'string',

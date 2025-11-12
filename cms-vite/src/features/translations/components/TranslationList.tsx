@@ -4,6 +4,7 @@
  */
 
 import { useState } from 'react'
+import { CheckCircle, XCircle } from 'lucide-react'
 import {
   LANGUAGES,
   ENTITY_TYPES,
@@ -123,9 +124,9 @@ export const TranslationList = ({
           className="px-4 py-2 border border-gray-300 rounded-lg"
         >
           <option value="all">All Status</option>
-          <option value="pending">⏳ Pending</option>
-          <option value="approved">✅ Approved</option>
-          <option value="rejected">❌ Rejected</option>
+          <option value="pending">Pending</option>
+          <option value="approved">Approved</option>
+          <option value="rejected">Rejected</option>
         </select>
       </div>
 
@@ -168,7 +169,7 @@ export const TranslationList = ({
 
                     {/* Status badge */}
                     <div
-                      className={`px-3 py-1 rounded-full text-sm font-medium ${
+                      className={`px-3 py-1 rounded-full text-sm font-medium flex items-center gap-1.5 ${
                         translation.status === 'approved'
                           ? 'bg-green-100 text-green-700'
                           : translation.status === 'rejected'
@@ -176,9 +177,21 @@ export const TranslationList = ({
                           : 'bg-yellow-100 text-yellow-700'
                       }`}
                     >
-                      {translation.status === 'approved' && '✅ Approved'}
-                      {translation.status === 'rejected' && '❌ Rejected'}
-                      {translation.status === 'pending' && '⏳ Pending'}
+                      {translation.status === 'approved' && (
+                        <>
+                          <CheckCircle className="w-4 h-4" />
+                          <span>Approved</span>
+                        </>
+                      )}
+                      {translation.status === 'rejected' && (
+                        <>
+                          <XCircle className="w-4 h-4" />
+                          <span>Rejected</span>
+                        </>
+                      )}
+                      {translation.status === 'pending' && (
+                        <span>Pending</span>
+                      )}
                     </div>
                   </div>
 

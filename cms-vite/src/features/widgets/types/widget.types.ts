@@ -130,7 +130,7 @@ export const WIDGET_TYPES: Record<WidgetType, WidgetTypeInfo> = {
     type: 'clock',
     label: 'Digital Clock',
     description: 'Display current time with customizable format',
-    icon: '🕐',
+    icon: 'Clock',
     defaultConfig: {
       format: '24h',
       timezone: 'Asia/Jakarta',
@@ -152,7 +152,7 @@ export const WIDGET_TYPES: Record<WidgetType, WidgetTypeInfo> = {
     type: 'weather',
     label: 'Weather',
     description: 'Display current weather and forecast',
-    icon: '🌤️',
+    icon: 'CloudSun',
     defaultConfig: {
       location: 'Jakarta',
       units: 'metric',
@@ -170,7 +170,7 @@ export const WIDGET_TYPES: Record<WidgetType, WidgetTypeInfo> = {
     type: 'news',
     label: 'News Ticker',
     description: 'Scrolling news ticker from RSS feed',
-    icon: '📰',
+    icon: 'Newspaper',
     defaultConfig: {
       rss_feed_url: '',
       scroll_speed: 50,
@@ -188,7 +188,7 @@ export const WIDGET_TYPES: Record<WidgetType, WidgetTypeInfo> = {
     type: 'hotel_info',
     label: 'Hotel Information',
     description: 'Display hotel information from PMS',
-    icon: '🏨',
+    icon: 'Hotel',
     defaultConfig: {
       fields: ['guest_name', 'room_number', 'checkout_date'],
       refresh_interval: 60,
@@ -206,7 +206,7 @@ export const WIDGET_TYPES: Record<WidgetType, WidgetTypeInfo> = {
     type: 'custom',
     label: 'Custom Widget',
     description: 'Custom HTML/CSS/JS widget',
-    icon: '🔧',
+    icon: 'Wrench',
     defaultConfig: {
       html_content: '<div>Custom Widget</div>',
       css_styles: '',
