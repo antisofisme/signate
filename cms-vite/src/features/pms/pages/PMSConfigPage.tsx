@@ -49,9 +49,10 @@ export default function PMSConfigPage() {
         description="Configure Property Management System integration for hotel signage"
       />
 
-      {/* Stats Cards */}
-      {stats && (
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+      <div className="space-y-6">
+        {/* Stats Cards */}
+        {stats && (
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <StatsCard icon={Users} iconColor="blue" value={stats.current_guests} label="Current Guests" />
           <StatsCard icon={DoorOpen} iconColor="green" value={stats.occupied_rooms} label="Occupied Rooms" />
           <StatsCard icon={DoorOpen} iconColor="gray" value={stats.vacant_rooms} label="Vacant Rooms" />
@@ -61,11 +62,11 @@ export default function PMSConfigPage() {
             value={`${stats.mapped_devices}/${stats.total_rooms}`}
             label="Mapped Devices"
           />
-        </div>
-      )}
+          </div>
+        )}
 
-      {/* Tabs */}
-      <div className="flex gap-2 mb-6 border-b border-gray-200 dark:border-gray-700">
+        {/* Tabs */}
+        <div className="flex gap-2 border-b border-gray-200 dark:border-gray-700">
         <button
           onClick={() => setActiveTab('config')}
           className={`px-4 py-2 font-medium transition-colors ${
@@ -129,13 +130,14 @@ export default function PMSConfigPage() {
         </div>
       )}
 
-      {/* Room Mapping Tab */}
-      {activeTab === 'rooms' && (
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-          <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">Room to Device Mapping</h2>
-          <RoomMappingTable devices={devices} />
-        </div>
-      )}
+        {/* Room Mapping Tab */}
+        {activeTab === 'rooms' && (
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+            <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">Room to Device Mapping</h2>
+            <RoomMappingTable devices={devices} />
+          </div>
+        )}
+      </div>
     </>
   );
 }

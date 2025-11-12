@@ -108,8 +108,9 @@ export default function WeatherConfigPage() {
         description="Configure weather API integration for digital signage"
       />
 
-      {/* Tabs */}
-      <div className="flex gap-2 mb-6 border-b border-gray-200 dark:border-gray-700">
+      <div className="space-y-6">
+        {/* Tabs */}
+        <div className="flex gap-2 border-b border-gray-200 dark:border-gray-700">
         <button
           onClick={() => setActiveTab('config')}
           className={`px-4 py-2 font-medium transition-colors ${
@@ -176,16 +177,17 @@ export default function WeatherConfigPage() {
         />
       )}
 
-      {/* Preview Tab */}
-      {activeTab === 'preview' && (
-        <WeatherPreview
-          locations={locations}
-          selectedLocationId={previewLocationId}
-          weatherData={weatherData}
-          onLocationSelect={setPreviewLocationId}
-          isLoading={false}
-        />
-      )}
+        {/* Preview Tab */}
+        {activeTab === 'preview' && (
+          <WeatherPreview
+            locations={locations}
+            selectedLocationId={previewLocationId}
+            weatherData={weatherData}
+            onLocationSelect={setPreviewLocationId}
+            isLoading={false}
+          />
+        )}
+      </div>
     </>
   );
 }
