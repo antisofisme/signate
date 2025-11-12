@@ -55,16 +55,16 @@ services:
     ports:
       - "6432:6432"
     environment:
-      DB_HOST: signage-postgres
-      DB_PORT: 5432
-      DB_USER: signage_user
-      DB_PASSWORD: signage_pass
-      DB_NAME: signage_db
-      POOL_MODE: transaction
-      MAX_CLIENT_CONN: 1000
-      DEFAULT_POOL_SIZE: 25
-      SERVER_IDLE_TIMEOUT: 600
-      AUTH_TYPE: md5
+      DB_HOST: ${POSTGRES_HOST:-signage-postgres}
+      DB_PORT: ${POSTGRES_PORT:-5432}
+      DB_USER: ${POSTGRES_USER:-signage_user}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-signage_pass}
+      DB_NAME: ${POSTGRES_DB:-signage_db}
+      POOL_MODE: ${PGBOUNCER_POOL_MODE:-transaction}
+      MAX_CLIENT_CONN: ${PGBOUNCER_MAX_CLIENT_CONN:-1000}
+      DEFAULT_POOL_SIZE: ${PGBOUNCER_DEFAULT_POOL_SIZE:-25}
+      SERVER_IDLE_TIMEOUT: ${PGBOUNCER_SERVER_IDLE_TIMEOUT:-600}
+      AUTH_TYPE: ${PGBOUNCER_AUTH_TYPE:-md5}
     depends_on:
       postgres:
         condition: service_healthy
