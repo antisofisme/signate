@@ -111,41 +111,41 @@ export default function WeatherConfigPage() {
       <div className="space-y-6">
         {/* Tabs */}
         <div className="flex gap-2 border-b border-gray-200 dark:border-gray-700">
-        <button
-          onClick={() => setActiveTab('config')}
-          className={`px-4 py-2 font-medium transition-colors ${
-            activeTab === 'config'
-              ? 'text-blue-600 dark:text-blue-400 border-b-2 border-blue-600'
-              : 'text-gray-600 dark:text-gray-400'
-          }`}
-        >
-          Configuration
-        </button>
-        <button
-          onClick={() => setActiveTab('locations')}
-          className={`px-4 py-2 font-medium transition-colors ${
-            activeTab === 'locations'
-              ? 'text-blue-600 dark:text-blue-400 border-b-2 border-blue-600'
-              : 'text-gray-600 dark:text-gray-400'
-          }`}
-        >
-          Locations
-        </button>
-        <button
-          onClick={() => setActiveTab('preview')}
-          className={`px-4 py-2 font-medium transition-colors ${
-            activeTab === 'preview'
-              ? 'text-blue-600 dark:text-blue-400 border-b-2 border-blue-600'
-              : 'text-gray-600 dark:text-gray-400'
-          }`}
-          disabled={!locations || locations.length === 0}
-        >
-          Preview
-        </button>
-      </div>
+          <button
+            onClick={() => setActiveTab('config')}
+            className={`px-4 py-2 font-medium transition-colors ${
+              activeTab === 'config'
+                ? 'text-blue-600 dark:text-blue-400 border-b-2 border-blue-600'
+                : 'text-gray-600 dark:text-gray-400'
+            }`}
+          >
+            Configuration
+          </button>
+          <button
+            onClick={() => setActiveTab('locations')}
+            className={`px-4 py-2 font-medium transition-colors ${
+              activeTab === 'locations'
+                ? 'text-blue-600 dark:text-blue-400 border-b-2 border-blue-600'
+                : 'text-gray-600 dark:text-gray-400'
+            }`}
+          >
+            Locations
+          </button>
+          <button
+            onClick={() => setActiveTab('preview')}
+            className={`px-4 py-2 font-medium transition-colors ${
+              activeTab === 'preview'
+                ? 'text-blue-600 dark:text-blue-400 border-b-2 border-blue-600'
+                : 'text-gray-600 dark:text-gray-400'
+            }`}
+            disabled={!locations || locations.length === 0}
+          >
+            Preview
+          </button>
+        </div>
 
-      {/* Config Tab */}
-      {activeTab === 'config' && (
+        {/* Config Tab */}
+        {activeTab === 'config' && (
         <WeatherProviderForm
           provider={provider}
           apiKey={apiKey}
@@ -164,18 +164,18 @@ export default function WeatherConfigPage() {
         />
       )}
 
-      {/* Locations Tab */}
-      {activeTab === 'locations' && (
-        <LocationManager
-          locations={locations}
-          searchQuery={locationSearch}
-          searchResults={searchResults}
-          onSearchChange={setLocationSearch}
-          onAddLocation={handleAddLocation}
-          onDeleteLocation={(id) => deleteLocation.mutate(id)}
-          isSearching={false}
-        />
-      )}
+        {/* Locations Tab */}
+        {activeTab === 'locations' && (
+          <LocationManager
+            locations={locations}
+            searchQuery={locationSearch}
+            searchResults={searchResults}
+            onSearchChange={setLocationSearch}
+            onAddLocation={handleAddLocation}
+            onDeleteLocation={(id) => deleteLocation.mutate(id)}
+            isSearching={false}
+          />
+        )}
 
         {/* Preview Tab */}
         {activeTab === 'preview' && (

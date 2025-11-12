@@ -53,44 +53,44 @@ export default function PMSConfigPage() {
         {/* Stats Cards */}
         {stats && (
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <StatsCard icon={Users} iconColor="blue" value={stats.current_guests} label="Current Guests" />
-          <StatsCard icon={DoorOpen} iconColor="green" value={stats.occupied_rooms} label="Occupied Rooms" />
-          <StatsCard icon={DoorOpen} iconColor="gray" value={stats.vacant_rooms} label="Vacant Rooms" />
-          <StatsCard
-            icon={Building2}
-            iconColor="purple"
-            value={`${stats.mapped_devices}/${stats.total_rooms}`}
-            label="Mapped Devices"
-          />
+            <StatsCard icon={Users} iconColor="blue" value={stats.current_guests} label="Current Guests" />
+            <StatsCard icon={DoorOpen} iconColor="green" value={stats.occupied_rooms} label="Occupied Rooms" />
+            <StatsCard icon={DoorOpen} iconColor="gray" value={stats.vacant_rooms} label="Vacant Rooms" />
+            <StatsCard
+              icon={Building2}
+              iconColor="purple"
+              value={`${stats.mapped_devices}/${stats.total_rooms}`}
+              label="Mapped Devices"
+            />
           </div>
         )}
 
         {/* Tabs */}
         <div className="flex gap-2 border-b border-gray-200 dark:border-gray-700">
-        <button
-          onClick={() => setActiveTab('config')}
-          className={`px-4 py-2 font-medium transition-colors ${
-            activeTab === 'config'
-              ? 'text-blue-600 dark:text-blue-400 border-b-2 border-blue-600 dark:border-blue-400'
-              : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
-          }`}
-        >
-          Configuration
-        </button>
-        <button
-          onClick={() => setActiveTab('rooms')}
-          className={`px-4 py-2 font-medium transition-colors ${
-            activeTab === 'rooms'
-              ? 'text-blue-600 dark:text-blue-400 border-b-2 border-blue-600 dark:border-blue-400'
-              : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
-          }`}
-        >
-          Room Mapping
-        </button>
-      </div>
+          <button
+            onClick={() => setActiveTab('config')}
+            className={`px-4 py-2 font-medium transition-colors ${
+              activeTab === 'config'
+                ? 'text-blue-600 dark:text-blue-400 border-b-2 border-blue-600 dark:border-blue-400'
+                : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+            }`}
+          >
+            Configuration
+          </button>
+          <button
+            onClick={() => setActiveTab('rooms')}
+            className={`px-4 py-2 font-medium transition-colors ${
+              activeTab === 'rooms'
+                ? 'text-blue-600 dark:text-blue-400 border-b-2 border-blue-600 dark:border-blue-400'
+                : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+            }`}
+          >
+            Room Mapping
+          </button>
+        </div>
 
-      {/* Config Tab */}
-      {activeTab === 'config' && (
+        {/* Config Tab */}
+        {activeTab === 'config' && (
         <div className="space-y-6">
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
             <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">PMS Provider</h2>
@@ -128,7 +128,7 @@ export default function PMSConfigPage() {
             </button>
           </div>
         </div>
-      )}
+        )}
 
         {/* Room Mapping Tab */}
         {activeTab === 'rooms' && (
