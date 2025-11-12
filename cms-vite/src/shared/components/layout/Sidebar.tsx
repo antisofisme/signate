@@ -2,9 +2,10 @@
  * Sidebar Component
  *
  * LAYER 1: PRESENTATION
- * Main navigation sidebar
+ * Main navigation sidebar with collapsible grouped navigation
  */
 
+import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import {
   Monitor,
@@ -27,12 +28,27 @@ import {
   Shield,
   Hotel,
   CloudRain,
+  ChevronDown,
+  ChevronRight,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useUIStore } from '@/lib/stores/uiStore';
 import { useAuthStore } from '@/lib/stores/authStore';
 import { useLogout } from '@/features/auth/hooks/useAuth';
 import { ThemeSwitcher, LanguageSwitcher } from '@/shared/components';
+
+interface NavItem {
+  name: string;
+  href: string;
+  icon: any;
+}
+
+interface NavGroup {
+  name: string;
+  icon: any;
+  items: NavItem[];
+  defaultOpen?: boolean;
+}
 
 export default function Sidebar() {
   const location = useLocation();
@@ -41,25 +57,92 @@ export default function Sidebar() {
   const { user } = useAuthStore();
   const logoutMutation = useLogout();
 
-  const navigation = [
+  // Track which groups are open (using group name as key)
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({
+    devices: true,
+    content: true,
+    customization: false,
+    integrations: false,
+    insights: false,
+    security: false,
+  });
+
+  const toggleGroup = (groupKey: string) => {
+    setOpenGroups((prev) => ({
+      ...prev,
+      [groupKey]: !prev[groupKey],
+    }));
+  };
+
+  // Single menu items (always visible)
+  const singleItems: NavItem[] = [
     { name: t('navigation.dashboard'), href: '/dashboard', icon: LayoutDashboard },
-    { name: t('navigation.devices'), href: '/devices', icon: Monitor },
-    { name: t('navigation.deviceGroups'), href: '/device-groups', icon: Folder },
-    { name: t('navigation.contents'), href: '/contents', icon: FileImage },
-    { name: t('navigation.playlists'), href: '/playlists', icon: ListVideo },
-    { name: t('navigation.schedules'), href: '/schedules', icon: Calendar },
-    { name: t('navigation.widgets'), href: '/widgets', icon: Puzzle },
-    { name: t('navigation.templates'), href: '/templates', icon: FileCode },
-    { name: t('navigation.translations'), href: '/translations', icon: Languages },
-    { name: t('navigation.tags'), href: '/tags', icon: Tag },
-    { name: t('navigation.analytics'), href: '/analytics', icon: BarChart3 },
-    { name: t('navigation.auditLogs'), href: '/audit-logs', icon: FileText },
-    { name: 'Active Sessions', href: '/sessions', icon: Shield },
-    { name: 'Roles & Permissions', href: '/roles', icon: Shield },
-    { name: 'PMS Integration', href: '/integrations/pms', icon: Hotel },
-    { name: 'Weather Service', href: '/integrations/weather', icon: CloudRain },
+  ];
+
+  // Grouped navigation
+  const navigationGroups: NavGroup[] = [
+    {
+      name: 'Devices',
+      icon: Monitor,
+      items: [
+        { name: t('navigation.devices'), href: '/devices', icon: Monitor },
+        { name: t('navigation.deviceGroups'), href: '/device-groups', icon: Folder },
+      ],
+    },
+    {
+      name: 'Content',
+      icon: FileImage,
+      items: [
+        { name: t('navigation.contents'), href: '/contents', icon: FileImage },
+        { name: t('navigation.playlists'), href: '/playlists', icon: ListVideo },
+        { name: t('navigation.schedules'), href: '/schedules', icon: Calendar },
+        { name: t('navigation.tags'), href: '/tags', icon: Tag },
+      ],
+    },
+    {
+      name: 'Customization',
+      icon: Puzzle,
+      items: [
+        { name: t('navigation.widgets'), href: '/widgets', icon: Puzzle },
+        { name: t('navigation.templates'), href: '/templates', icon: FileCode },
+        { name: t('navigation.translations'), href: '/translations', icon: Languages },
+      ],
+    },
+    {
+      name: 'Integrations',
+      icon: CloudRain,
+      items: [
+        { name: 'PMS Integration', href: '/integrations/pms', icon: Hotel },
+        { name: 'Weather Service', href: '/integrations/weather', icon: CloudRain },
+      ],
+    },
+    {
+      name: 'Insights',
+      icon: BarChart3,
+      items: [
+        { name: t('navigation.analytics'), href: '/analytics', icon: BarChart3 },
+        { name: t('navigation.auditLogs'), href: '/audit-logs', icon: FileText },
+      ],
+    },
+    {
+      name: 'Security',
+      icon: Shield,
+      items: [
+        { name: 'Active Sessions', href: '/sessions', icon: Shield },
+        { name: 'Roles & Permissions', href: '/roles', icon: Shield },
+      ],
+    },
+  ];
+
+  // Bottom menu items (always visible)
+  const bottomItems: NavItem[] = [
     { name: t('navigation.settings'), href: '/settings', icon: Settings },
   ];
+
+  // Check if any item in a group is active
+  const isGroupActive = (items: NavItem[]) => {
+    return items.some((item) => location.pathname === item.href);
+  };
 
   return (
     <>
@@ -112,8 +195,9 @@ export default function Sidebar() {
           )}
 
           {/* Navigation */}
-          <nav className="flex-1 px-4 py-6 space-y-2 overflow-y-auto">
-            {navigation.map((item) => {
+          <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
+            {/* Single Items */}
+            {singleItems.map((item) => {
               const Icon = item.icon;
               const isActive = location.pathname === item.href;
 
@@ -122,7 +206,92 @@ export default function Sidebar() {
                   key={item.name}
                   to={item.href}
                   onClick={toggleSidebar}
-                  className={`flex items-center px-4 py-3 rounded-lg transition-colors ${
+                  className={`flex items-center px-3 py-2.5 rounded-lg transition-colors ${
+                    isActive
+                      ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400'
+                      : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                  }`}
+                >
+                  <Icon className="w-5 h-5 mr-3" />
+                  <span className="font-medium">{item.name}</span>
+                </Link>
+              );
+            })}
+
+            {/* Grouped Navigation */}
+            {navigationGroups.map((group, index) => {
+              const groupKey = group.name.toLowerCase().replace(/\s+/g, '-');
+              const isOpen = openGroups[groupKey];
+              const hasActiveItem = isGroupActive(group.items);
+              const GroupIcon = group.icon;
+
+              return (
+                <div key={group.name} className="space-y-1">
+                  {/* Group Header */}
+                  <button
+                    onClick={() => toggleGroup(groupKey)}
+                    className={`flex items-center justify-between w-full px-3 py-2.5 rounded-lg transition-colors ${
+                      hasActiveItem
+                        ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400'
+                        : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                    }`}
+                  >
+                    <div className="flex items-center">
+                      <GroupIcon className="w-5 h-5 mr-3" />
+                      <span className="font-medium text-sm">{group.name}</span>
+                    </div>
+                    {isOpen ? (
+                      <ChevronDown className="w-4 h-4" />
+                    ) : (
+                      <ChevronRight className="w-4 h-4" />
+                    )}
+                  </button>
+
+                  {/* Group Items */}
+                  {isOpen && (
+                    <div className="ml-4 space-y-1">
+                      {group.items.map((item) => {
+                        const Icon = item.icon;
+                        const isActive = location.pathname === item.href;
+
+                        return (
+                          <Link
+                            key={item.name}
+                            to={item.href}
+                            onClick={toggleSidebar}
+                            className={`flex items-center px-3 py-2 rounded-lg transition-colors text-sm ${
+                              isActive
+                                ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400'
+                                : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-gray-200'
+                            }`}
+                          >
+                            <Icon className="w-4 h-4 mr-3" />
+                            <span>{item.name}</span>
+                          </Link>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+
+            {/* Divider */}
+            <div className="py-2">
+              <div className="border-t border-gray-200 dark:border-gray-700" />
+            </div>
+
+            {/* Bottom Items */}
+            {bottomItems.map((item) => {
+              const Icon = item.icon;
+              const isActive = location.pathname === item.href;
+
+              return (
+                <Link
+                  key={item.name}
+                  to={item.href}
+                  onClick={toggleSidebar}
+                  className={`flex items-center px-3 py-2.5 rounded-lg transition-colors ${
                     isActive
                       ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400'
                       : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
