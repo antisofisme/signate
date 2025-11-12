@@ -99,7 +99,7 @@ export default function PMSConfigPage() {
 
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
             <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">Connection Settings</h2>
-            <PMSConnectionForm value={connectionConfig} onChange={setConnectionConfig} provider={provider} />
+            <PMSConnectionForm config={connectionConfig} onChange={setConnectionConfig} provider={provider} />
           </div>
 
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
