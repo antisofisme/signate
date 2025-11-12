@@ -2,98 +2,83 @@
  * Dashboard Page
  *
  * LAYER 1: PRESENTATION
+ * Main dashboard with comprehensive system overview
  */
 
 import { useTranslation } from 'react-i18next';
 import { useAuthStore } from '@/lib/stores/authStore';
 import { PageHeader } from '@/shared/components';
+import {
+  useDashboardStats,
+  useDeviceHealth,
+  useLiveDevices,
+  useContentPerformance,
+  useActivePlaylistAssignments,
+  useRecentActivity,
+  useSystemAlerts,
+  useSystemInfo,
+} from '@/features/dashboard/api/dashboard.api';
+import OverviewMetrics from '@/features/dashboard/components/OverviewMetrics';
+import DeviceHealthOverview from '@/features/dashboard/components/DeviceHealthOverview';
+import LiveDeviceMonitor from '@/features/dashboard/components/LiveDeviceMonitor';
+import ContentPerformanceAnalytics from '@/features/dashboard/components/ContentPerformanceAnalytics';
+import ActivePlaylistsTable from '@/features/dashboard/components/ActivePlaylistsTable';
+import RecentActivityFeed from '@/features/dashboard/components/RecentActivityFeed';
+import SystemAlertsPanel from '@/features/dashboard/components/SystemAlertsPanel';
+import SystemInfoPanel from '@/features/dashboard/components/SystemInfoPanel';
 
 export default function DashboardPage() {
   const { t } = useTranslation();
   const { user } = useAuthStore();
 
+  // Fetch all dashboard data
+  const { data: stats, isLoading: statsLoading } = useDashboardStats();
+  const { data: deviceHealth, isLoading: healthLoading } = useDeviceHealth();
+  const { data: liveDevices, isLoading: devicesLoading } = useLiveDevices();
+  const { data: contentPerformance, isLoading: contentLoading } = useContentPerformance(10);
+  const { data: playlists, isLoading: playlistsLoading } = useActivePlaylistAssignments();
+  const { data: recentActivity, isLoading: activityLoading } = useRecentActivity(20);
+  const { data: systemAlerts, isLoading: alertsLoading } = useSystemAlerts();
+  const { data: systemInfo, isLoading: systemInfoLoading } = useSystemInfo();
+
   return (
     <>
-      {/* Sticky Page Header */}
+      {/* Page Header */}
       <PageHeader
         title={t('dashboard.title')}
         description={`${t('dashboard.welcome')}, ${user?.full_name || user?.username}!`}
       />
 
-      {/* Content */}
+      {/* Dashboard Content */}
       <div className="space-y-6">
+        {/* Section 1: Overview Metrics */}
+        <OverviewMetrics stats={stats} isLoading={statsLoading} />
 
-        {/* Stats Grid - Placeholder */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-            <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400">
-              {t('dashboard.totalDevices')}
-            </h3>
-            <p className="text-3xl font-bold text-gray-900 dark:text-white mt-2">
-              0
-            </p>
-          </div>
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-            <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400">
-              {t('dashboard.activeContent')}
-            </h3>
-            <p className="text-3xl font-bold text-gray-900 dark:text-white mt-2">
-              0
-            </p>
-          </div>
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-            <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400">
-              {t('navigation.playlists')}
-            </h3>
-            <p className="text-3xl font-bold text-gray-900 dark:text-white mt-2">
-              0
-            </p>
-          </div>
+        {/* Section 2: Device Health Overview */}
+        <DeviceHealthOverview data={deviceHealth} isLoading={healthLoading} />
+
+        {/* Section 3: Live Device Monitor */}
+        <LiveDeviceMonitor devices={liveDevices} isLoading={devicesLoading} />
+
+        {/* Two Column Layout */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Section 4: Content Performance Analytics */}
+          <ContentPerformanceAnalytics data={contentPerformance} isLoading={contentLoading} />
+
+          {/* Section 7: Recent Activity Feed */}
+          <RecentActivityFeed data={recentActivity} isLoading={activityLoading} />
         </div>
 
-        {/* User Info */}
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 mt-6">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-            {t('dashboard.userInfo')}
-          </h2>
-          <dl className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">
-                {t('dashboard.username')}
-              </dt>
-              <dd className="text-sm text-gray-900 dark:text-white mt-1">
-                {user?.username}
-              </dd>
-            </div>
-            <div>
-              <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">
-                {t('dashboard.email')}
-              </dt>
-              <dd className="text-sm text-gray-900 dark:text-white mt-1">
-                {user?.email || t('dashboard.notAvailable')}
-              </dd>
-            </div>
-            <div>
-              <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">
-                {t('dashboard.role')}
-              </dt>
-              <dd className="text-sm text-gray-900 dark:text-white mt-1">
-                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200">
-                  {user?.role}
-                </span>
-              </dd>
-            </div>
-            <div>
-              <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">
-                {t('dashboard.status')}
-              </dt>
-              <dd className="text-sm text-gray-900 dark:text-white mt-1">
-                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200">
-                  {user?.is_active ? t('dashboard.active') : t('dashboard.inactive')}
-                </span>
-              </dd>
-            </div>
-          </dl>
+        {/* Section 5: Active Playlists & Assignments */}
+        <ActivePlaylistsTable data={playlists} isLoading={playlistsLoading} />
+
+        {/* Two Column Layout */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Section 9: System Alerts */}
+          <SystemAlertsPanel data={systemAlerts} isLoading={alertsLoading} />
+
+          {/* Section 10: Storage & System Info */}
+          <SystemInfoPanel data={systemInfo} isLoading={systemInfoLoading} />
         </div>
       </div>
     </>
