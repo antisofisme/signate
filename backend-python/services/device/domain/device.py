@@ -15,7 +15,7 @@ class Device:
     id: Optional[int]
     device_type: str  # 'tv' or 'monitor'
     device_name: str
-    organization_id: int
+    organization_id: Optional[int]  # None for unassigned devices
     status: str  # 'pending', 'active', 'inactive'
 
     # Optional fields (no defaults)

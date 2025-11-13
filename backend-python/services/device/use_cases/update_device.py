@@ -119,11 +119,7 @@ class UpdateDeviceUseCase:
             device_id: Device ID to delete
 
         Returns:
-            True if deleted successfully
+            True if deleted successfully, False if device not found
         """
-        device = self.device_repo.find_by_id(device_id)
-
-        if not device:
-            raise ValueError(f"Device with ID {device_id} not found")
-
+        # Repository delete() handles device not found case
         return self.device_repo.delete(device_id)

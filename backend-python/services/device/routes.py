@@ -8,7 +8,7 @@ Updated to use centralized utilities:
 - shared.logging for request logging
 """
 
-from fastapi import APIRouter, Depends, Request, status, Query, HTTPException
+from fastapi import APIRouter, Depends, Request, status, Query, HTTPException, BackgroundTasks
 from sqlalchemy.orm import Session
 from shared.database import get_db
 from shared.api_routes import DeviceRoutes
@@ -43,12 +43,32 @@ from .use_cases.update_device import UpdateDeviceUseCase
 from .repositories.device_repo import DeviceRepository
 from .domain.device import DeviceHeartbeat
 
+# WebSocket imports
+from shared.websocket_manager import websocket_manager
+import asyncio
+
 
 router = APIRouter()
 
 # Initialize loggers
 request_logger = RequestLogger()
 audit_logger = AuditLogger()
+
+# Helper function for WebSocket broadcast
+async def broadcast_device_event(organization_id: int, event_type: str, data: dict):
+    """
+    Broadcast device event to organization members via WebSocket
+    Runs in background task to not block HTTP response
+    """
+    try:
+        await websocket_manager.broadcast_to_organization(
+            organization_id=organization_id,
+            event_type=event_type,
+            data=data
+        )
+        print(f"[WebSocket] ✅ Broadcasted {event_type} to org {organization_id}")
+    except Exception as e:
+        print(f"[WebSocket] ⚠️ Broadcast failed: {e}")
 
 
 # =============================================================================
@@ -318,9 +338,10 @@ def check_activation_status(
 
 @router.post(DeviceRoutes.ACTIVATE, response_model=DeviceActivationResponse)
 @handle_errors
-def activate_device(
+async def activate_device(
     request_body: ActivateDeviceRequest,
     http_request: Request,
+    background_tasks: BackgroundTasks,
     use_case: ActivateDeviceUseCase = Depends(get_activate_device_use_case),
     current_user: CurrentUser = Depends(get_current_user)
 ):
@@ -342,7 +363,7 @@ def activate_device(
         room_number=request_body.room_number,
         location_type=request_body.location_type
     )
-    
+
     device = result["device"]
     device_token = result["token"]
 
@@ -362,7 +383,7 @@ def activate_device(
 
     # Invalidate device cache
     cache.invalidate_device(device.id, current_user.organization_id)
-    
+
     # Audit log
     audit_logger.log_action(
         user_id=current_user.id,
@@ -377,6 +398,15 @@ def activate_device(
         }
     )
 
+    # WebSocket broadcast - Schedule as background task
+    if hasattr(use_case, '_broadcast_data') and use_case._broadcast_data:
+        background_tasks.add_task(
+            broadcast_device_event,
+            use_case._broadcast_data["organization_id"],
+            use_case._broadcast_data["event_type"],
+            use_case._broadcast_data["data"]
+        )
+
     # Return activation response with JWT token
     return DeviceActivationResponse(
         device=response,
@@ -387,46 +417,73 @@ def activate_device(
 
 @router.get(DeviceRoutes.LIST, response_model=DeviceListResponse)
 def list_devices(
+    scope: str = Query("my_org", description="Scope: my_org (default), unassigned, or all"),
     status_filter: Optional[str] = Query(None, description="Filter by status: active, pending, inactive"),
     online_only: bool = Query(False, description="Show only online devices"),
     use_case: ListDevicesUseCase = Depends(get_list_devices_use_case),
     current_user: CurrentUser = Depends(get_current_user)
 ):
     """
-    List all devices (called by CMS)
+    List devices with scope filter (called by CMS)
 
-    Returns all devices for current user's organization (from JWT token)
+    Scopes:
+    - my_org (default): Devices assigned to current user's organization
+    - unassigned: Devices with organization_id = NULL (global pool for claiming)
+    - all: All devices (super admin only)
     """
-    # Generate cache key
+    # Validate scope
+    valid_scopes = ["my_org", "unassigned", "all"]
+    if scope not in valid_scopes:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid scope. Must be one of: {valid_scopes}"
+        )
+
+    # Check super admin for 'all' scope
+    if scope == "all" and current_user.role != "super_admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only super admins can view all devices"
+        )
+
+    # Generate cache key with scope
     cache_key = list_cache_key(
         entity="devices",
-        org_id=current_user.organization_id,
+        org_id=current_user.organization_id if scope == "my_org" else "global",
         status_filter=status_filter,
-        online_only=online_only
+        online_only=online_only,
+        scope=scope
     )
-    
+
     # Try cache first
     cached_result = cache.get(cache_key)
     if cached_result:
         track_cache_operation("get", hit=True)
         return cached_result
-    
-    track_cache_operation("get", hit=False)
-    
-    try:
-        # Get organization_id from JWT token (more secure than query param)
-        organization_id = current_user.organization_id
 
-        if not organization_id:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="User must belong to an organization"
-            )
+    track_cache_operation("get", hit=False)
+
+    try:
+        # Determine organization_id based on scope
+        if scope == "my_org":
+            organization_id = current_user.organization_id
+            if not organization_id:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="User must belong to an organization"
+                )
+        elif scope == "unassigned":
+            # Query devices with organization_id = NULL
+            organization_id = None
+        else:  # all
+            # Super admin - query all devices
+            organization_id = "all"
 
         devices = use_case.execute(
             organization_id=organization_id,
             status_filter=status_filter,
-            online_only=online_only
+            online_only=online_only,
+            scope=scope
         )
 
         # Convert to response models with is_online computed field

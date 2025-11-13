@@ -107,6 +107,9 @@ function DeleteConfirmModal({
 }
 
 export function DeviceTable() {
+  // Scope filter (my_org or unassigned)
+  const [scope, setScope] = useState<'my_org' | 'unassigned'>('my_org');
+
   // Filters
   const [statusFilter, setStatusFilter] = useState<DeviceStatus | 'all'>('all');
   const [typeFilter, setTypeFilter] = useState<DeviceType | 'all'>('all');
@@ -162,6 +165,7 @@ export function DeviceTable() {
 
   // Build filters for API
   const apiFilters = {
+    scope,
     ...(statusFilter !== 'all' && { status: statusFilter }),
     ...(typeFilter !== 'all' && { device_type: typeFilter }),
   };
@@ -234,12 +238,38 @@ export function DeviceTable() {
 
   return (
     <>
+      {/* Scope Tabs */}
+      <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 mb-4">
+        <div className="flex border-b border-gray-200 dark:border-gray-700">
+          <button
+            onClick={() => setScope('my_org')}
+            className={`flex-1 px-6 py-3 text-sm font-medium transition-colors ${
+              scope === 'my_org'
+                ? 'text-blue-600 dark:text-blue-400 border-b-2 border-blue-600 dark:border-blue-400'
+                : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
+            }`}
+          >
+            My Devices
+          </button>
+          <button
+            onClick={() => setScope('unassigned')}
+            className={`flex-1 px-6 py-3 text-sm font-medium transition-colors ${
+              scope === 'unassigned'
+                ? 'text-blue-600 dark:text-blue-400 border-b-2 border-blue-600 dark:border-blue-400'
+                : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
+            }`}
+          >
+            Unassigned Pool
+          </button>
+        </div>
+      </div>
+
       {/* Toolbar */}
       <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
             <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-              Devices
+              {scope === 'my_org' ? 'My Devices' : 'Unassigned Devices'}
             </h2>
             <span className="text-sm text-gray-500 dark:text-gray-400">
               {total} {total === 1 ? 'device' : 'devices'}

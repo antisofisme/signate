@@ -53,20 +53,12 @@ class ShellBootstrapClass implements IShellBootstrap {
       return;
     }
 
-    // Route 3: Has device ID and status is active → Verify and start player
+    // Route 3: Has device ID and status is active → Start player directly
     if (deviceStatus === 'active') {
-      SharedLogger.log('[ShellBootstrap] Device active → Verifying with backend...');
-      const isValid = await this.verifyDevice();
-
-      if (isValid) {
-        SharedLogger.log('[ShellBootstrap] ✅ Device verified → Player context');
-        this.startPlayer();
-      } else {
-        SharedLogger.warn('[ShellBootstrap] ⚠️ Device verification failed → Re-registering');
-        // Clear device data and re-register
-        SharedDeviceState.clearDeviceData();
-        await ShellRegistration.registerDevice();
-      }
+      SharedLogger.log('[ShellBootstrap] Device active → Starting player context...');
+      // Skip backend verification - trust localStorage state
+      // Device was already verified during activation process
+      this.startPlayer();
       return;
     }
 

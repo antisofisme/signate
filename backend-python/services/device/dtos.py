@@ -95,7 +95,7 @@ class DeviceResponse(BaseModel):
     id: int
     device_type: str
     device_name: str
-    organization_id: int
+    organization_id: Optional[int]  # None for unassigned devices
 
     # Activation info
     unique_code: Optional[str]

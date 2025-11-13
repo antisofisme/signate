@@ -6,6 +6,7 @@
 import React, { createContext, useContext, useEffect, useState, useRef } from 'react'
 import { WebSocketClient } from './WebSocketClient'
 import type { WebSocketState } from './types'
+import { useAuthStore } from '../stores/authStore'
 
 // ============================================================================
 // Context Types
@@ -42,9 +43,16 @@ export function WebSocketProvider({
 }: WebSocketProviderProps) {
   const [state, setState] = useState<WebSocketState>('disconnected')
   const clientRef = useRef<WebSocketClient | null>(null)
+  const { token, isAuthenticated, _hasHydrated } = useAuthStore()
 
   useEffect(() => {
     if (!enabled) {
+      return
+    }
+
+    // Wait for Zustand hydration to complete
+    if (!_hasHydrated) {
+      console.log('[WebSocket] Waiting for store hydration...')
       return
     }
 
@@ -55,12 +63,13 @@ export function WebSocketProvider({
       return
     }
 
-    // Get auth token
-    const token = localStorage.getItem('auth-token')
-    if (!token) {
-      console.warn('[WebSocket] No auth token found')
+    // Get auth token from Zustand store (not localStorage)
+    if (!token || !isAuthenticated) {
+      console.warn('[WebSocket] No auth token found or not authenticated')
       return
     }
+
+    console.log('[WebSocket] Store hydrated, token present:', token ? 'YES' : 'NO')
 
     // Create WebSocket client
     const client = new WebSocketClient({
@@ -98,15 +107,13 @@ export function WebSocketProvider({
       client.destroy()
       clientRef.current = null
     }
-  }, [url, enabled, debug])
+  }, [url, enabled, debug, token, isAuthenticated, _hasHydrated])
 
   // Reconnect function
   const reconnect = () => {
-    if (clientRef.current) {
-      const token = localStorage.getItem('auth-token')
-      if (token) {
-        clientRef.current.connect(token)
-      }
+    const currentToken = useAuthStore.getState().token
+    if (clientRef.current && currentToken) {
+      clientRef.current.connect(currentToken)
     }
   }
 

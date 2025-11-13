@@ -243,14 +243,14 @@ class OrganizationQuotaService:
         """
         Atomically enforce device quota using row-level locking
         Prevents race conditions in concurrent device creation
-        
+
         Args:
             organization_id: Organization ID
-            
+
         Raises:
             ValueError: If quota limit reached
         """
-        from services.organization.repositories.models import OrganizationModel
+        from services.auth.repositories.models import OrganizationModel
         
         # Start transaction with row-level lock
         try:
@@ -298,15 +298,15 @@ class OrganizationQuotaService:
         """
         Atomically enforce content quota using row-level locking
         Prevents race conditions in concurrent content uploads
-        
+
         Args:
             organization_id: Organization ID
             file_size_bytes: Size of file being uploaded
-            
+
         Raises:
             ValueError: If quota limit reached
         """
-        from services.organization.repositories.models import OrganizationModel
+        from services.auth.repositories.models import OrganizationModel
         from services.content.repositories.models import ContentModel
         
         try:

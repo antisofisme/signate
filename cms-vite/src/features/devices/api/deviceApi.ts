@@ -83,10 +83,11 @@ export const deviceApi = {
 
   /**
    * Get all devices with optional filters
-   * @param filters - Filter options (status, device_type, skip, limit)
+   * @param filters - Filter options (scope, status, device_type, skip, limit)
    * @returns List of devices
    */
   list: async (filters?: {
+    scope?: string;
     status?: string;
     device_type?: string;
     skip?: number;
@@ -95,6 +96,9 @@ export const deviceApi = {
     try {
       const params = new URLSearchParams();
 
+      if (filters?.scope) {
+        params.append('scope', filters.scope);
+      }
       if (filters?.status) {
         params.append('status', filters.status);
       }

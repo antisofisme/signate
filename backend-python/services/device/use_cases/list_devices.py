@@ -20,27 +20,37 @@ class ListDevicesUseCase:
 
     def execute(
         self,
-        organization_id: int,
+        organization_id: Optional[int] = None,
         status_filter: Optional[str] = None,
-        online_only: bool = False
+        online_only: bool = False,
+        scope: str = "my_org"
     ) -> List[Device]:
         """
-        List all devices for organization
+        List devices with scope support
 
         Args:
-            organization_id: Organization ID
+            organization_id: Organization ID (None for unassigned, "all" for super admin)
             status_filter: Optional filter by status ('active', 'pending', 'inactive')
             online_only: If True, only return online devices
+            scope: Query scope ('my_org', 'unassigned', 'all')
 
         Returns:
             List of Device entities
         """
 
-        # Get all devices for organization
-        if online_only:
-            devices = self.device_repo.find_online_devices(organization_id)
-        else:
-            devices = self.device_repo.list_by_organization(organization_id)
+        # Handle different scopes
+        if scope == "unassigned":
+            # Query devices with organization_id = NULL (unassigned pool)
+            devices = self.device_repo.list_by_organization(None)
+        elif scope == "all":
+            # Super admin - get all devices regardless of organization
+            devices = self.device_repo.list_all()
+        else:  # my_org
+            # Get devices for specific organization
+            if online_only:
+                devices = self.device_repo.find_online_devices(organization_id)
+            else:
+                devices = self.device_repo.list_by_organization(organization_id)
 
         # Filter by status if specified
         if status_filter:

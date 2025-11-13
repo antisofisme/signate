@@ -17,6 +17,7 @@ export const deviceKeys = {
   all: ['devices'] as const,
   lists: () => [...deviceKeys.all, 'list'] as const,
   list: (filters?: {
+    scope?: string;
     status?: string;
     device_type?: string;
     skip?: number;
@@ -40,7 +41,8 @@ export const useDeviceList = (filters?: {
   return useQuery({
     queryKey: deviceKeys.list(filters),
     queryFn: () => deviceApi.list(filters),
-    staleTime: 30000, // 30 seconds
+    staleTime: 10000, // 10 seconds
+    refetchInterval: 10000, // Auto-refresh every 10 seconds for real-time updates
   });
 };
 
@@ -85,14 +87,47 @@ export const useDeleteDevice = () => {
 
   return useMutation({
     mutationFn: (id: number) => deviceApi.delete(id),
-    onSuccess: () => {
-      // Invalidate device list to refetch
-      queryClient.invalidateQueries({ queryKey: deviceKeys.lists() });
+    onMutate: async (deletedId) => {
+      // Cancel outgoing refetches to avoid overwriting optimistic update
+      await queryClient.cancelQueries({ queryKey: deviceKeys.lists() });
+
+      // Snapshot previous values for rollback
+      const previousData = queryClient.getQueriesData({ queryKey: deviceKeys.lists() });
+
+      // Optimistically update all device list queries by removing the deleted device
+      queryClient.setQueriesData(
+        { queryKey: deviceKeys.lists() },
+        (old: any) => {
+          if (!old?.items) return old;
+          return {
+            ...old,
+            items: old.items.filter((device: Device) => device.id !== deletedId),
+            total: old.total - 1,
+          };
+        }
+      );
+
+      // Return context with previous data for potential rollback
+      return { previousData };
+    },
+    onSuccess: async () => {
+      // Invalidate to ensure server state is correct
+      await queryClient.invalidateQueries({ queryKey: deviceKeys.all });
       toast.success('Device deleted successfully');
     },
-    onError: (error: any) => {
+    onError: (error: any, deletedId, context) => {
+      // Rollback optimistic update on error
+      if (context?.previousData) {
+        context.previousData.forEach(([queryKey, data]) => {
+          queryClient.setQueryData(queryKey, data);
+        });
+      }
       const message = error?.response?.data?.detail || 'Failed to delete device';
       toast.error(message);
+    },
+    onSettled: () => {
+      // Always refetch after error or success to sync with server
+      queryClient.invalidateQueries({ queryKey: deviceKeys.lists() });
     },
   });
 };

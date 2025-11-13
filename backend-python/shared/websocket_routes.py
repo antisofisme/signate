@@ -21,23 +21,38 @@ router = APIRouter()
 @router.websocket("/ws/admin")
 async def admin_websocket(
     websocket: WebSocket,
-    token: Optional[str] = Query(None),
-    current_user: UserResponse = Depends(get_current_user_ws)
+    token: Optional[str] = Query(None)
 ):
     """
     Admin WebSocket endpoint for real-time updates
-    
+
     Connect with: ws://host/ws/admin?token=JWT_TOKEN
-    
+
     Receives events for:
     - Device status changes
     - Content updates
     - Playlist changes
     - System notifications
     """
+    # Accept connection first, then authenticate
+    await websocket.accept()
+
+    # Debug: log full URL and query params
+    logger.info(f"[WebSocket] Connection accepted from {websocket.client}")
+    logger.info(f"[WebSocket] URL path: {websocket.url.path}")
+    logger.info(f"[WebSocket] Query params: {dict(websocket.query_params)}")
+    logger.info(f"[WebSocket] Token parameter: {token[:20] if token else 'None'}...")
+
+    # Authenticate user
+    current_user = await get_current_user_ws(token)
+
     if not current_user:
+        logger.warning(f"[WebSocket] Authentication failed - token: {token[:20] if token else 'None'}...")
+        await websocket.send_json({"error": "Unauthorized", "code": 1008})
         await websocket.close(code=1008, reason="Unauthorized")
         return
+
+    logger.info(f"[WebSocket] User authenticated: {current_user.username} (ID: {current_user.id}, Org: {current_user.organization_id})")
     
     try:
         # Connect admin to WebSocket manager

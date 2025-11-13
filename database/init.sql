@@ -190,6 +190,9 @@ CREATE TABLE tags (
     tag_name VARCHAR(100) NOT NULL UNIQUE,
     description TEXT,
     color VARCHAR(7) DEFAULT '#3B82F6', -- Hex color for UI
+    priority INTEGER DEFAULT 50 NOT NULL, -- Priority for tag-based playlist resolution
+    assigned_playlist_id INTEGER REFERENCES playlists(id) ON DELETE SET NULL, -- Playlist assigned to this tag
+    organization_id INTEGER NOT NULL REFERENCES organizations(id), -- Multi-tenant support
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 

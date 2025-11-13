@@ -61,6 +61,28 @@ def check_db_connection() -> bool:
 
 def init_db():
     """Initialize database - create all tables"""
+    # Import all models to register them with SQLAlchemy
+    # This ensures relationships are properly configured
+    try:
+        from services.auth.repositories.models import UserModel, OrganizationModel
+        from services.device.repositories.models import DeviceModel, DeviceTagModel, DeviceCommandModel, DeviceHealthMetricModel
+        from services.device.repositories.group_models import DeviceGroupModel, DeviceGroupMemberModel
+        from services.tag.repositories.models import TagModel
+        from services.content.repositories.models import ContentModel
+        from services.playlist.repositories.models import PlaylistModel, PlaylistItemModel, PlaylistDeviceModel, PlaylistTagModel
+        from services.audit.repositories.models import AuditLogModel
+        from services.rbac.repositories.models import RoleModel, PermissionModel, RolePermissionModel
+        from services.session.repositories.models import SessionModel
+        from services.analytics.repositories.models import AnalyticsEventModel
+        from services.pms.repositories.models import PMSConnectionModel, PMSSyncLogModel, PMSRoomMappingModel
+        from services.widget.repositories.models import WidgetModel
+        from services.template.repositories.models import TemplateModel
+        from services.translation.repositories.models import TranslationModel
+        from services.schedule.repositories.models import ScheduleModel, ScheduleDeviceModel, ScheduleTagModel
+        from services.weather.repositories.models import WeatherLocationModel, WeatherDataModel
+    except ImportError as e:
+        print(f"⚠ Warning: Could not import some models: {e}")
+
     Base.metadata.create_all(bind=engine)
     print(" Database tables created")
 

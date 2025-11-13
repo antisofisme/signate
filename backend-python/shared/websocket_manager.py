@@ -121,23 +121,23 @@ class ConnectionManager:
         )
     
     async def connect_admin(
-        self, 
-        websocket: WebSocket, 
-        user_id: int, 
+        self,
+        websocket: WebSocket,
+        user_id: int,
         organization_id: int,
         permissions: List[str] = None
     ):
         """
         Connect an admin user WebSocket
-        
+
         Args:
-            websocket: WebSocket connection
+            websocket: WebSocket connection (already accepted by route)
             user_id: User ID
             organization_id: Organization ID
             permissions: User permissions list
         """
-        await websocket.accept()
-        
+        # Note: websocket.accept() already called in route for authentication
+
         async with self._lock:
             # Store admin connection
             self._admin_connections[user_id] = {

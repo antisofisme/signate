@@ -247,7 +247,7 @@ app.include_router(template_router, prefix="/api/v1", tags=["Template System"])
 app.include_router(translation_router, prefix="/api/v1", tags=["Translation System"])
 app.include_router(schedule_router, prefix="/api/v1", tags=["Schedule System"])
 app.include_router(weather_router, prefix="/api/v1", tags=["Weather Service"])
-app.include_router(websocket_router, tags=["WebSocket"])
+app.include_router(websocket_router, prefix="/api", tags=["WebSocket"])
 
 
 # =============================================================================

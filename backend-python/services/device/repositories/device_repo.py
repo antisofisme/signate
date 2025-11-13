@@ -66,15 +66,46 @@ class DeviceRepository(IDeviceRepository):
         device_model = query.first()
         return self._to_entity(device_model) if device_model else None
 
-    def list_by_organization(self, organization_id: int) -> List[Device]:
-        """List all devices for an organization"""
+    def list_by_organization(self, organization_id: Optional[int]) -> List[Device]:
+        """
+        List all devices for an organization
+
+        Args:
+            organization_id: Organization ID, or None for unassigned devices
+
+        Returns:
+            List of Device entities
+        """
+        query = self.db.query(DeviceModel).options(
+            selectinload(DeviceModel.assigned_playlist),
+            selectinload(DeviceModel.tags),
+            selectinload(DeviceModel.commands),
+            selectinload(DeviceModel.health_metrics)
+        )
+
+        # Handle NULL organization_id for unassigned devices
+        if organization_id is None:
+            # Filter unassigned devices: show only those created/expired within last 24 hours
+            # This prevents showing thousands of old expired devices
+            twenty_four_hours_ago = datetime.utcnow() - timedelta(hours=24)
+            query = query.filter(
+                DeviceModel.organization_id == None,
+                DeviceModel.created_at >= twenty_four_hours_ago
+            )
+        else:
+            query = query.filter(DeviceModel.organization_id == organization_id)
+
+        device_models = query.order_by(DeviceModel.created_at.desc()).all()
+
+        return [self._to_entity(model) for model in device_models]
+
+    def list_all(self) -> List[Device]:
+        """List all devices regardless of organization (super admin only)"""
         device_models = self.db.query(DeviceModel).options(
             selectinload(DeviceModel.assigned_playlist),
             selectinload(DeviceModel.tags),
             selectinload(DeviceModel.commands),
             selectinload(DeviceModel.health_metrics)
-        ).filter(
-            DeviceModel.organization_id == organization_id
         ).order_by(DeviceModel.created_at.desc()).all()
 
         return [self._to_entity(model) for model in device_models]

@@ -89,18 +89,18 @@ class ActivateDeviceUseCase:
             )
 
         # 🆕 Check organization device quota before activation
-        # Get database session from repository (assumes repository has db attribute)
-        db_session = self.device_repo.db
-        quota_service = OrganizationQuotaService(db_session)
-        
-        # Enforce device quota atomically to prevent race conditions
-        try:
-            quota_service.enforce_device_quota_atomic(organization_id)
-        except ValueError as e:
-            raise ValidationError(
-                message=str(e),
-                details={"organization_id": organization_id}
-            )
+        # TODO: Re-enable when organizations table has quota columns (max_devices, settings)
+        # db_session = self.device_repo.db
+        # quota_service = OrganizationQuotaService(db_session)
+        #
+        # # Enforce device quota atomically to prevent race conditions
+        # try:
+        #     quota_service.enforce_device_quota_atomic(organization_id)
+        # except ValueError as e:
+        #     raise ValidationError(
+        #         message=str(e),
+        #         details={"organization_id": organization_id}
+        #     )
         
         # 🆕 Assign device to admin's organization (from JWT token)
         device.organization_id = organization_id
@@ -125,22 +125,19 @@ class ActivateDeviceUseCase:
             organization_id=updated_device.organization_id
         )
         
-        # Send WebSocket notification to organization admins
-        # Run in background to not block the response
-        loop = asyncio.get_event_loop()
-        loop.create_task(
-            websocket_manager.broadcast_to_organization(
-                organization_id=updated_device.organization_id,
-                event_type=WebSocketEventType.DEVICE_ACTIVATED,
-                data={
-                    "device_id": updated_device.id,
-                    "device_name": updated_device.device_name or updated_device.name,
-                    "location": updated_device.location,
-                    "room_number": updated_device.room_number,
-                    "location_type": updated_device.location_type
-                }
-            )
-        )
+        # WebSocket broadcast akan dilakukan di route layer (FastAPI background task)
+        # Data di-return untuk diteruskan ke broadcast
+        self._broadcast_data = {
+            "organization_id": updated_device.organization_id,
+            "event_type": "device:activated",
+            "data": {
+                "device_id": updated_device.id,
+                "device_name": updated_device.device_name,
+                "room_number": updated_device.room_number,
+                "location_type": updated_device.location_type,
+                "status": updated_device.status
+            }
+        }
 
         return {
             "device": updated_device,

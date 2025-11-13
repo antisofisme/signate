@@ -15,6 +15,10 @@ import { persist } from 'zustand/middleware';
 import type { User, Organization, AuthState } from '@/features/auth/types/auth';
 
 interface AuthStore extends AuthState {
+  // Hydration status
+  _hasHydrated: boolean;
+  setHasHydrated: (state: boolean) => void;
+
   // Actions
   setAuth: (user: User, token: string, organizations: Organization[]) => void;
   selectOrganization: (orgId: number) => void;
@@ -32,6 +36,12 @@ export const useAuthStore = create<AuthStore>()(
       organizations: [],
       selectedOrgId: null,
       isAuthenticated: false,
+      _hasHydrated: false,
+
+      // Set hydration status
+      setHasHydrated: (state) => {
+        set({ _hasHydrated: state });
+      },
 
       // Set auth after login
       setAuth: (user, token, organizations) => {
@@ -98,6 +108,10 @@ export const useAuthStore = create<AuthStore>()(
         selectedOrgId: state.selectedOrgId,
         isAuthenticated: state.isAuthenticated,
       }),
+      onRehydrateStorage: () => (state) => {
+        // Called when hydration is complete
+        state?.setHasHydrated(true);
+      },
     }
   )
 );
