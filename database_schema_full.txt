@@ -1,0 +1,982 @@
+=== USERS TABLE ===
+                                         Table "public.users"
+     Column      |           Type           | Collation | Nullable |              Default              
+-----------------+--------------------------+-----------+----------+-----------------------------------
+ id              | integer                  |           | not null | nextval('users_id_seq'::regclass)
+ username        | character varying(50)    |           | not null | 
+ email           | character varying(100)   |           | not null | 
+ password_hash   | character varying(255)   |           | not null | 
+ full_name       | character varying(100)   |           | not null | 
+ role            | character varying(20)    |           |          | 
+ organization_id | integer                  |           |          | 
+ is_active       | boolean                  |           | not null | 
+ created_at      | timestamp with time zone |           |          | now()
+ updated_at      | timestamp with time zone |           |          | 
+ role_id         | integer                  |           |          | 
+Indexes:
+    "users_pkey" PRIMARY KEY, btree (id)
+    "idx_users_role" btree (role_id)
+    "ix_users_email" UNIQUE, btree (email)
+    "ix_users_id" btree (id)
+    "ix_users_username" UNIQUE, btree (username)
+Foreign-key constraints:
+    "users_organization_id_fkey" FOREIGN KEY (organization_id) REFERENCES organizations(id)
+    "users_role_id_fkey" FOREIGN KEY (role_id) REFERENCES roles(id) ON DELETE SET NULL
+Referenced by:
+    TABLE "audit_logs" CONSTRAINT "audit_logs_user_id_fkey" FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
+    TABLE "content_assignments" CONSTRAINT "content_assignments_assigned_by_fkey" FOREIGN KEY (assigned_by) REFERENCES users(id) ON DELETE SET NULL
+    TABLE "contents" CONSTRAINT "contents_uploaded_by_fkey" FOREIGN KEY (uploaded_by) REFERENCES users(id) ON DELETE SET NULL
+    TABLE "device_commands" CONSTRAINT "device_commands_created_by_fkey" FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL
+    TABLE "device_group_members" CONSTRAINT "device_group_members_added_by_fkey" FOREIGN KEY (added_by) REFERENCES users(id) ON DELETE SET NULL
+    TABLE "device_groups" CONSTRAINT "device_groups_created_by_fkey" FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL
+    TABLE "device_tags" CONSTRAINT "device_tags_assigned_by_fkey" FOREIGN KEY (assigned_by) REFERENCES users(id) ON DELETE SET NULL
+    TABLE "devices" CONSTRAINT "devices_created_by_fkey" FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL
+    TABLE "devices" CONSTRAINT "devices_updated_by_fkey" FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL
+    TABLE "playlists" CONSTRAINT "playlists_created_by_fkey" FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL
+    TABLE "pms_configurations" CONSTRAINT "pms_configurations_created_by_fkey" FOREIGN KEY (created_by) REFERENCES users(id)
+    TABLE "schedules" CONSTRAINT "schedules_created_by_fkey" FOREIGN KEY (created_by) REFERENCES users(id)
+    TABLE "templates" CONSTRAINT "templates_created_by_fkey" FOREIGN KEY (created_by) REFERENCES users(id)
+    TABLE "user_sessions" CONSTRAINT "user_sessions_user_id_fkey" FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    TABLE "widgets" CONSTRAINT "widgets_created_by_fkey" FOREIGN KEY (created_by) REFERENCES users(id)
+
+
+=== ORGANIZATIONS TABLE ===
+                                          Table "public.organizations"
+      Column      |           Type           | Collation | Nullable |                  Default                  
+------------------+--------------------------+-----------+----------+-------------------------------------------
+ id               | integer                  |           | not null | nextval('organizations_id_seq'::regclass)
+ name             | character varying(200)   |           | not null | 
+ organization_pin | character varying(8)     |           |          | 
+ description      | character varying(500)   |           |          | 
+ address          | character varying(500)   |           |          | 
+ contact_email    | character varying(100)   |           |          | 
+ contact_phone    | character varying(20)    |           |          | 
+ logo_url         | character varying(500)   |           |          | 
+ is_active        | boolean                  |           | not null | 
+ created_at       | timestamp with time zone |           |          | now()
+ updated_at       | timestamp with time zone |           |          | 
+ max_devices      | integer                  |           | not null | 10
+ max_users        | integer                  |           | not null | 5
+ settings         | jsonb                    |           |          | '{}'::jsonb
+Indexes:
+    "organizations_pkey" PRIMARY KEY, btree (id)
+    "ix_organizations_id" btree (id)
+    "organizations_name_key" UNIQUE CONSTRAINT, btree (name)
+Referenced by:
+    TABLE "audit_logs" CONSTRAINT "audit_logs_organization_id_fkey" FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE SET NULL
+    TABLE "content_playback_logs" CONSTRAINT "content_playback_logs_organization_id_fkey" FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE
+    TABLE "contents" CONSTRAINT "contents_organization_id_fkey" FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE
+    TABLE "device_commands" CONSTRAINT "device_commands_organization_id_fkey" FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE
+    TABLE "device_groups" CONSTRAINT "device_groups_organization_id_fkey" FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE
+    TABLE "device_health_metrics" CONSTRAINT "device_health_metrics_organization_id_fkey" FOREIGN KEY (organization_id) REFERENCES organizations(id)
+    TABLE "device_logs" CONSTRAINT "device_logs_organization_id_fkey" FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE
+    TABLE "device_speed_tests" CONSTRAINT "device_speed_tests_organization_id_fkey" FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE
+    TABLE "devices" CONSTRAINT "devices_organization_id_fkey" FOREIGN KEY (organization_id) REFERENCES organizations(id)
+    TABLE "playlists" CONSTRAINT "playlists_organization_id_fkey" FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE
+    TABLE "pms_configurations" CONSTRAINT "pms_configurations_organization_id_fkey" FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE
+    TABLE "pms_guests" CONSTRAINT "pms_guests_organization_id_fkey" FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE
+    TABLE "pms_rooms" CONSTRAINT "pms_rooms_organization_id_fkey" FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE
+    TABLE "roles" CONSTRAINT "roles_organization_id_fkey" FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE
+    TABLE "schedules" CONSTRAINT "schedules_organization_id_fkey" FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE
+    TABLE "tags" CONSTRAINT "tags_organization_id_fkey" FOREIGN KEY (organization_id) REFERENCES organizations(id)
+    TABLE "templates" CONSTRAINT "templates_organization_id_fkey" FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE
+    TABLE "translations" CONSTRAINT "translations_organization_id_fkey" FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE
+    TABLE "user_sessions" CONSTRAINT "user_sessions_organization_id_fkey" FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE
+    TABLE "users" CONSTRAINT "users_organization_id_fkey" FOREIGN KEY (organization_id) REFERENCES organizations(id)
+    TABLE "widgets" CONSTRAINT "widgets_organization_id_fkey" FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE
+
+
+=== ROLES TABLE ===
+                                         Table "public.roles"
+     Column      |           Type           | Collation | Nullable |              Default              
+-----------------+--------------------------+-----------+----------+-----------------------------------
+ id              | integer                  |           | not null | nextval('roles_id_seq'::regclass)
+ name            | character varying(50)    |           | not null | 
+ description     | character varying(200)   |           |          | 
+ organization_id | integer                  |           |          | 
+ is_system_role  | boolean                  |           | not null | false
+ permissions     | jsonb                    |           | not null | '{}'::jsonb
+ created_at      | timestamp with time zone |           | not null | now()
+ updated_at      | timestamp with time zone |           |          | 
+Indexes:
+    "roles_pkey" PRIMARY KEY, btree (id)
+    "idx_roles_org_name" btree (organization_id, name)
+    "idx_roles_organization" btree (organization_id)
+    "idx_roles_system" btree (is_system_role) WHERE is_system_role = true
+    "unique_role_name_per_org" UNIQUE CONSTRAINT, btree (organization_id, name)
+Check constraints:
+    "check_system_role_no_org" CHECK (is_system_role = true AND organization_id IS NULL OR is_system_role = false AND organization_id IS NOT NULL OR is_system_role = false AND organization_id IS NULL)
+Foreign-key constraints:
+    "roles_organization_id_fkey" FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE
+Referenced by:
+    TABLE "users" CONSTRAINT "users_role_id_fkey" FOREIGN KEY (role_id) REFERENCES roles(id) ON DELETE SET NULL
+
+
+=== DEVICES TABLE ===
+                                              Table "public.devices"
+          Column          |           Type           | Collation | Nullable |               Default               
+--------------------------+--------------------------+-----------+----------+-------------------------------------
+ id                       | integer                  |           | not null | nextval('devices_id_seq'::regclass)
+ device_type              | character varying(20)    |           | not null | 
+ device_name              | character varying(200)   |           | not null | 
+ organization_id          | integer                  |           |          | 
+ unique_code              | character varying(6)     |           |          | 
+ code_expires_at          | timestamp with time zone |           |          | 
+ device_uuid              | character varying(100)   |           |          | 
+ ip_address               | character varying(45)    |           |          | 
+ platform                 | character varying(50)    |           |          | 
+ screen_width             | integer                  |           |          | 
+ screen_height            | integer                  |           |          | 
+ viewport_width           | integer                  |           |          | 
+ viewport_height          | integer                  |           |          | 
+ device_pixel_ratio       | double precision         |           |          | 
+ user_agent               | character varying(500)   |           |          | 
+ connection_type          | character varying(50)    |           |          | 
+ connection_speed         | double precision         |           |          | 
+ model_name               | character varying(100)   |           |          | 
+ firmware_version         | character varying(50)    |           |          | 
+ status                   | character varying(20)    |           | not null | 
+ last_seen                | timestamp with time zone |           |          | 
+ rotation                 | integer                  |           | not null | 0
+ volume_enabled           | boolean                  |           | not null | true
+ room_number              | character varying(50)    |           |          | 
+ location_type            | character varying(50)    |           | not null | 'guest_room'::character varying
+ supports_personalization | boolean                  |           | not null | true
+ privacy_mode             | character varying(20)    |           | not null | 'limited'::character varying
+ created_at               | timestamp with time zone |           | not null | now()
+ updated_at               | timestamp with time zone |           |          | 
+ released_at              | timestamp with time zone |           |          | 
+ created_by               | integer                  |           |          | 
+ updated_by               | integer                  |           |          | 
+ assigned_playlist_id     | integer                  |           |          | 
+Indexes:
+    "devices_pkey" PRIMARY KEY, btree (id)
+    "idx_devices_created_by" btree (created_by)
+    "idx_devices_device_uuid" btree (device_uuid)
+    "idx_devices_last_seen" btree (last_seen)
+    "idx_devices_org_location_name" btree (organization_id, location_type, device_name)
+    "idx_devices_org_status_seen" btree (organization_id, status, last_seen DESC)
+    "idx_devices_organization" btree (organization_id)
+    "idx_devices_room_number" btree (room_number)
+    "idx_devices_status" btree (status)
+    "idx_devices_unique_code" btree (unique_code)
+    "idx_devices_updated_by" btree (updated_by)
+    "ix_devices_device_uuid" UNIQUE, btree (device_uuid)
+    "ix_devices_id" btree (id)
+    "ix_devices_organization_id" btree (organization_id)
+    "ix_devices_room_number" btree (room_number)
+    "ix_devices_status" btree (status)
+    "ix_devices_unique_code" UNIQUE, btree (unique_code)
+Foreign-key constraints:
+    "devices_assigned_playlist_id_fkey" FOREIGN KEY (assigned_playlist_id) REFERENCES playlists(id) ON DELETE SET NULL
+    "devices_created_by_fkey" FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL
+    "devices_organization_id_fkey" FOREIGN KEY (organization_id) REFERENCES organizations(id)
+    "devices_updated_by_fkey" FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL
+Referenced by:
+    TABLE "content_assignments" CONSTRAINT "content_assignments_device_id_fkey" FOREIGN KEY (device_id) REFERENCES devices(id) ON DELETE CASCADE
+    TABLE "content_playback_logs" CONSTRAINT "content_playback_logs_device_id_fkey" FOREIGN KEY (device_id) REFERENCES devices(id) ON DELETE CASCADE
+    TABLE "device_commands" CONSTRAINT "device_commands_device_id_fkey" FOREIGN KEY (device_id) REFERENCES devices(id) ON DELETE CASCADE
+    TABLE "device_group_members" CONSTRAINT "device_group_members_device_id_fkey" FOREIGN KEY (device_id) REFERENCES devices(id) ON DELETE CASCADE
+    TABLE "device_health_metrics" CONSTRAINT "device_health_metrics_device_id_fkey" FOREIGN KEY (device_id) REFERENCES devices(id) ON DELETE CASCADE
+    TABLE "device_logs" CONSTRAINT "device_logs_device_id_fkey" FOREIGN KEY (device_id) REFERENCES devices(id) ON DELETE CASCADE
+    TABLE "device_speed_tests" CONSTRAINT "device_speed_tests_device_id_fkey" FOREIGN KEY (device_id) REFERENCES devices(id) ON DELETE CASCADE
+    TABLE "device_tags" CONSTRAINT "device_tags_device_id_fkey" FOREIGN KEY (device_id) REFERENCES devices(id) ON DELETE CASCADE
+    TABLE "playlist_assignments" CONSTRAINT "playlist_assignments_device_id_fkey" FOREIGN KEY (device_id) REFERENCES devices(id) ON DELETE CASCADE
+
+
+=== DEVICE_TAGS TABLE ===
+                                       Table "public.device_tags"
+   Column    |           Type           | Collation | Nullable |                 Default                 
+-------------+--------------------------+-----------+----------+-----------------------------------------
+ id          | integer                  |           | not null | nextval('device_tags_id_seq'::regclass)
+ device_id   | integer                  |           | not null | 
+ tag_id      | integer                  |           | not null | 
+ assigned_at | timestamp with time zone |           | not null | now()
+ assigned_by | integer                  |           |          | 
+Indexes:
+    "device_tags_pkey" PRIMARY KEY, btree (id)
+    "idx_device_tags_assigned_by" btree (assigned_by)
+    "idx_device_tags_both" btree (device_id, tag_id)
+    "idx_device_tags_device" btree (device_id)
+    "idx_device_tags_tag" btree (tag_id)
+    "unique_device_tag" UNIQUE CONSTRAINT, btree (device_id, tag_id)
+Foreign-key constraints:
+    "device_tags_assigned_by_fkey" FOREIGN KEY (assigned_by) REFERENCES users(id) ON DELETE SET NULL
+    "device_tags_device_id_fkey" FOREIGN KEY (device_id) REFERENCES devices(id) ON DELETE CASCADE
+    "device_tags_tag_id_fkey" FOREIGN KEY (tag_id) REFERENCES tags(id) ON DELETE CASCADE
+
+
+=== DEVICE_GROUPS TABLE ===
+                                           Table "public.device_groups"
+       Column        |           Type           | Collation | Nullable |                  Default                  
+---------------------+--------------------------+-----------+----------+-------------------------------------------
+ id                  | integer                  |           | not null | nextval('device_groups_id_seq'::regclass)
+ name                | character varying(100)   |           | not null | 
+ description         | character varying(500)   |           |          | 
+ parent_group_id     | integer                  |           |          | 
+ organization_id     | integer                  |           | not null | 
+ group_type          | character varying(50)    |           |          | 
+ sort_order          | integer                  |           |          | 0
+ default_playlist_id | integer                  |           |          | 
+ deleted_at          | timestamp with time zone |           |          | 
+ created_by          | integer                  |           |          | 
+ created_at          | timestamp with time zone |           | not null | now()
+ updated_at          | timestamp with time zone |           |          | 
+Indexes:
+    "device_groups_pkey" PRIMARY KEY, btree (id)
+    "idx_device_groups_org" btree (organization_id, deleted_at)
+    "idx_device_groups_parent" btree (parent_group_id) WHERE parent_group_id IS NOT NULL
+    "idx_device_groups_type" btree (organization_id, group_type) WHERE deleted_at IS NULL
+    "unique_group_name_per_org" UNIQUE CONSTRAINT, btree (organization_id, name, deleted_at)
+Foreign-key constraints:
+    "device_groups_created_by_fkey" FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL
+    "device_groups_default_playlist_id_fkey" FOREIGN KEY (default_playlist_id) REFERENCES playlists(id) ON DELETE SET NULL
+    "device_groups_organization_id_fkey" FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE
+    "device_groups_parent_group_id_fkey" FOREIGN KEY (parent_group_id) REFERENCES device_groups(id) ON DELETE CASCADE
+Referenced by:
+    TABLE "device_group_members" CONSTRAINT "device_group_members_group_id_fkey" FOREIGN KEY (group_id) REFERENCES device_groups(id) ON DELETE CASCADE
+    TABLE "device_groups" CONSTRAINT "device_groups_parent_group_id_fkey" FOREIGN KEY (parent_group_id) REFERENCES device_groups(id) ON DELETE CASCADE
+Policies:
+    POLICY "device_groups_isolation"
+      USING (((EXISTS ( SELECT 1
+   FROM current_setting('app.is_super_admin'::text, true) current_setting(current_setting)
+  WHERE ((current_setting('app.is_super_admin'::text, true))::boolean = true))) OR (organization_id = (current_setting('app.current_organization_id'::text, true))::integer)))
+
+
+=== DEVICE_GROUP_MEMBERS TABLE ===
+                                      Table "public.device_group_members"
+  Column   |           Type           | Collation | Nullable |                     Default                      
+-----------+--------------------------+-----------+----------+--------------------------------------------------
+ id        | integer                  |           | not null | nextval('device_group_members_id_seq'::regclass)
+ device_id | integer                  |           | not null | 
+ group_id  | integer                  |           | not null | 
+ joined_at | timestamp with time zone |           | not null | now()
+ added_by  | integer                  |           |          | 
+Indexes:
+    "device_group_members_pkey" PRIMARY KEY, btree (id)
+    "idx_device_group_members_device" btree (device_id)
+    "idx_device_group_members_group" btree (group_id)
+    "unique_device_per_group" UNIQUE CONSTRAINT, btree (device_id, group_id)
+Foreign-key constraints:
+    "device_group_members_added_by_fkey" FOREIGN KEY (added_by) REFERENCES users(id) ON DELETE SET NULL
+    "device_group_members_device_id_fkey" FOREIGN KEY (device_id) REFERENCES devices(id) ON DELETE CASCADE
+    "device_group_members_group_id_fkey" FOREIGN KEY (group_id) REFERENCES device_groups(id) ON DELETE CASCADE
+Policies:
+    POLICY "device_group_members_isolation"
+      USING (((EXISTS ( SELECT 1
+   FROM current_setting('app.is_super_admin'::text, true) current_setting(current_setting)
+  WHERE ((current_setting('app.is_super_admin'::text, true))::boolean = true))) OR (EXISTS ( SELECT 1
+   FROM device_groups
+  WHERE ((device_groups.id = device_group_members.group_id) AND (device_groups.organization_id = (current_setting('app.current_organization_id'::text, true))::integer))))))
+
+
+=== DEVICE_COMMANDS TABLE ===
+                                         Table "public.device_commands"
+     Column      |           Type           | Collation | Nullable |                   Default                   
+-----------------+--------------------------+-----------+----------+---------------------------------------------
+ id              | integer                  |           | not null | nextval('device_commands_id_seq'::regclass)
+ device_id       | integer                  |           | not null | 
+ organization_id | integer                  |           | not null | 
+ command_type    | character varying(50)    |           | not null | 
+ parameters      | jsonb                    |           |          | 
+ reason          | character varying(200)   |           |          | 
+ status          | character varying(20)    |           | not null | 'pending'::character varying
+ sent_at         | timestamp with time zone |           |          | 
+ executed_at     | timestamp with time zone |           |          | 
+ error_message   | character varying(500)   |           |          | 
+ created_by      | integer                  |           |          | 
+ expires_at      | timestamp with time zone |           |          | 
+ created_at      | timestamp with time zone |           | not null | now()
+ command_data    | jsonb                    |           |          | 
+ priority        | integer                  |           |          | 5
+ failed_at       | timestamp with time zone |           |          | 
+ result          | jsonb                    |           |          | 
+ retry_count     | integer                  |           |          | 0
+ max_retries     | integer                  |           |          | 3
+ updated_at      | timestamp with time zone |           |          | 
+Indexes:
+    "device_commands_pkey" PRIMARY KEY, btree (id)
+    "idx_commands_device" btree (device_id)
+    "idx_commands_device_status" btree (device_id, status)
+    "idx_commands_expires" btree (expires_at)
+    "idx_commands_organization" btree (organization_id)
+    "idx_commands_status" btree (status)
+Check constraints:
+    "device_commands_command_type_check" CHECK (command_type::text = ANY (ARRAY['reset'::character varying, 'refresh'::character varying, 'reload'::character varying, 'speed_test'::character varying, 'update_content'::character varying, 'reboot'::character varying, 'screenshot'::character varying, 'volume'::character varying, 'brightness'::character varying]::text[]))
+    "device_commands_status_check" CHECK (status::text = ANY (ARRAY['pending'::character varying, 'sent'::character varying, 'executed'::character varying, 'failed'::character varying, 'expired'::character varying]::text[]))
+Foreign-key constraints:
+    "device_commands_created_by_fkey" FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL
+    "device_commands_device_id_fkey" FOREIGN KEY (device_id) REFERENCES devices(id) ON DELETE CASCADE
+    "device_commands_organization_id_fkey" FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE
+
+
+=== DEVICE_HEALTH_METRICS TABLE ===
+                                              Table "public.device_health_metrics"
+        Column         |            Type             | Collation | Nullable |                      Default                      
+-----------------------+-----------------------------+-----------+----------+---------------------------------------------------
+ id                    | integer                     |           | not null | nextval('device_health_metrics_id_seq'::regclass)
+ device_id             | integer                     |           | not null | 
+ organization_id       | integer                     |           | not null | 
+ cpu_usage             | numeric(5,2)                |           |          | 
+ memory_usage          | numeric(5,2)                |           |          | 
+ disk_usage            | numeric(5,2)                |           |          | 
+ temperature           | numeric(5,2)                |           |          | 
+ network_status        | character varying(20)       |           |          | 
+ bandwidth_up          | integer                     |           |          | 
+ bandwidth_down        | integer                     |           |          | 
+ latency               | integer                     |           |          | 
+ display_status        | character varying(20)       |           |          | 
+ resolution            | character varying(20)       |           |          | 
+ refresh_rate          | integer                     |           |          | 
+ browser_version       | character varying(100)      |           |          | 
+ user_agent            | text                        |           |          | 
+ recorded_at           | timestamp without time zone |           |          | now()
+ memory_total_mb       | integer                     |           |          | 
+ memory_used_mb        | integer                     |           |          | 
+ disk_total_gb         | integer                     |           |          | 
+ disk_used_gb          | integer                     |           |          | 
+ network_latency_ms    | integer                     |           |          | 
+ network_download_mbps | numeric(10,2)               |           |          | 
+ network_upload_mbps   | numeric(10,2)               |           |          | 
+ connection_quality    | character varying(20)       |           |          | 
+ display_resolution    | character varying(20)       |           |          | 
+ display_refresh_rate  | integer                     |           |          | 
+ gpu_usage             | numeric(5,2)                |           |          | 
+ player_version        | character varying(50)       |           |          | 
+ player_uptime_hours   | integer                     |           |          | 
+ content_errors_count  | integer                     |           |          | 0
+ last_error_message    | text                        |           |          | 
+ last_error_at         | timestamp with time zone    |           |          | 
+ overall_status        | character varying(20)       |           |          | 'healthy'::character varying
+ alert_triggered       | boolean                     |           |          | false
+ alert_message         | text                        |           |          | 
+ metadata              | jsonb                       |           |          | 
+ created_at            | timestamp with time zone    |           |          | now()
+Indexes:
+    "device_health_metrics_pkey" PRIMARY KEY, btree (id)
+    "idx_device_health_cpu" btree (cpu_usage DESC) WHERE cpu_usage > 80::numeric
+    "idx_device_health_device_time" btree (device_id, recorded_at DESC)
+    "idx_device_health_memory" btree (memory_usage DESC) WHERE memory_usage > 80::numeric
+    "idx_device_health_org" btree (organization_id)
+    "idx_device_health_time" btree (recorded_at DESC)
+Foreign-key constraints:
+    "device_health_metrics_device_id_fkey" FOREIGN KEY (device_id) REFERENCES devices(id) ON DELETE CASCADE
+    "device_health_metrics_organization_id_fkey" FOREIGN KEY (organization_id) REFERENCES organizations(id)
+
+
+=== DEVICE_LOGS TABLE ===
+                                         Table "public.device_logs"
+     Column      |           Type           | Collation | Nullable |                 Default                 
+-----------------+--------------------------+-----------+----------+-----------------------------------------
+ id              | integer                  |           | not null | nextval('device_logs_id_seq'::regclass)
+ device_id       | integer                  |           | not null | 
+ organization_id | integer                  |           | not null | 
+ log_level       | character varying(20)    |           | not null | 
+ message         | text                     |           | not null | 
+ source          | character varying(500)   |           |          | 
+ stack_trace     | text                     |           |          | 
+ user_agent      | character varying(500)   |           |          | 
+ url             | character varying(1000)  |           |          | 
+ timestamp       | timestamp with time zone |           | not null | now()
+Indexes:
+    "device_logs_pkey" PRIMARY KEY, btree (id)
+    "idx_logs_device" btree (device_id)
+    "idx_logs_device_level_timestamp" btree (device_id, log_level, "timestamp" DESC)
+    "idx_logs_level" btree (log_level)
+    "idx_logs_organization" btree (organization_id)
+    "idx_logs_timestamp" btree ("timestamp" DESC)
+Check constraints:
+    "device_logs_log_level_check" CHECK (log_level::text = ANY (ARRAY['log'::character varying, 'info'::character varying, 'warn'::character varying, 'error'::character varying, 'debug'::character varying]::text[]))
+Foreign-key constraints:
+    "device_logs_device_id_fkey" FOREIGN KEY (device_id) REFERENCES devices(id) ON DELETE CASCADE
+    "device_logs_organization_id_fkey" FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE
+
+
+=== DEVICE_SPEED_TESTS TABLE ===
+                                          Table "public.device_speed_tests"
+      Column      |           Type           | Collation | Nullable |                    Default                     
+------------------+--------------------------+-----------+----------+------------------------------------------------
+ id               | integer                  |           | not null | nextval('device_speed_tests_id_seq'::regclass)
+ device_id        | integer                  |           | not null | 
+ organization_id  | integer                  |           | not null | 
+ download_speed   | numeric(10,2)            |           |          | 
+ upload_speed     | numeric(10,2)            |           |          | 
+ latency          | integer                  |           |          | 
+ jitter           | integer                  |           |          | 
+ packet_loss      | numeric(5,2)             |           |          | 
+ dns_server       | character varying(45)    |           |          | 
+ server_endpoint  | character varying(255)   |           |          | 
+ quality          | character varying(20)    |           |          | 
+ test_duration_ms | integer                  |           |          | 
+ error_message    | text                     |           |          | 
+ tested_at        | timestamp with time zone |           | not null | now()
+Indexes:
+    "device_speed_tests_pkey" PRIMARY KEY, btree (id)
+    "idx_speed_device" btree (device_id)
+    "idx_speed_device_tested" btree (device_id, tested_at DESC)
+    "idx_speed_organization" btree (organization_id)
+    "idx_speed_quality" btree (quality)
+    "idx_speed_tested" btree (tested_at DESC)
+Check constraints:
+    "device_speed_tests_quality_check" CHECK (quality::text = ANY (ARRAY['good'::character varying, 'fair'::character varying, 'poor'::character varying]::text[]))
+Foreign-key constraints:
+    "device_speed_tests_device_id_fkey" FOREIGN KEY (device_id) REFERENCES devices(id) ON DELETE CASCADE
+    "device_speed_tests_organization_id_fkey" FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE
+
+
+=== CONTENTS TABLE ===
+                                              Table "public.contents"
+          Column          |           Type           | Collation | Nullable |               Default                
+--------------------------+--------------------------+-----------+----------+--------------------------------------
+ id                       | integer                  |           | not null | nextval('contents_id_seq'::regclass)
+ title                    | character varying(200)   |           | not null | 
+ description              | text                     |           |          | 
+ content_type             | character varying(20)    |           | not null | 
+ file_path                | character varying(500)   |           | not null | 
+ file_url                 | character varying(500)   |           | not null | 
+ storage_key              | character varying(255)   |           | not null | 
+ file_hash                | character varying(64)    |           | not null | 
+ duration                 | integer                  |           | not null | 10
+ is_active                | boolean                  |           | not null | true
+ file_size                | bigint                   |           | not null | 
+ mime_type                | character varying(100)   |           | not null | 
+ original_filename        | character varying(255)   |           | not null | 
+ file_extension           | character varying(20)    |           | not null | 
+ resolution               | character varying(50)    |           |          | 
+ width                    | integer                  |           |          | 
+ height                   | integer                  |           |          | 
+ codec                    | character varying(50)    |           |          | 
+ fps                      | double precision         |           |          | 
+ bitrate                  | integer                  |           |          | 
+ media_duration           | double precision         |           |          | 
+ video_start_time         | double precision         |           | not null | 0.0
+ video_end_time           | double precision         |           |          | 
+ audio_codec              | character varying(50)    |           |          | 
+ audio_bitrate            | integer                  |           |          | 
+ audio_sample_rate        | integer                  |           |          | 
+ audio_channels           | integer                  |           | not null | 2
+ transcoding_status       | character varying(50)    |           | not null | 'pending'::character varying
+ transcoding_job_id       | character varying(200)   |           |          | 
+ transcoding_progress     | integer                  |           | not null | 0
+ transcoding_error        | text                     |           |          | 
+ hls_master_playlist_path | character varying(500)   |           |          | 
+ hls_master_playlist_url  | character varying(500)   |           |          | 
+ hls_variants             | jsonb                    |           |          | 
+ thumbnail_path           | character varying(500)   |           |          | 
+ thumbnail_url            | character varying(500)   |           |          | 
+ thumbnail_generated_at   | timestamp with time zone |           |          | 
+ upload_status            | character varying(20)    |           | not null | 'pending'::character varying
+ organization_id          | integer                  |           | not null | 
+ uploaded_by              | integer                  |           |          | 
+ created_at               | timestamp with time zone |           |          | now()
+ updated_at               | timestamp with time zone |           |          | 
+ deleted_at               | timestamp with time zone |           |          | 
+Indexes:
+    "contents_pkey" PRIMARY KEY, btree (id)
+    "contents_storage_key_key" UNIQUE CONSTRAINT, btree (storage_key)
+    "idx_content_hash_org" btree (file_hash, organization_id)
+    "idx_content_org_active" btree (organization_id, is_active)
+    "idx_content_org_created" btree (organization_id, created_at)
+    "idx_content_org_type" btree (organization_id, content_type)
+    "idx_content_storage_key" btree (storage_key)
+    "idx_contents_org_active" btree (organization_id, is_active, created_at DESC) WHERE deleted_at IS NULL
+    "idx_contents_org_type" btree (organization_id, content_type, created_at DESC) WHERE deleted_at IS NULL
+Foreign-key constraints:
+    "contents_organization_id_fkey" FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE
+    "contents_uploaded_by_fkey" FOREIGN KEY (uploaded_by) REFERENCES users(id) ON DELETE SET NULL
+Referenced by:
+    TABLE "content_assignments" CONSTRAINT "content_assignments_content_id_fkey" FOREIGN KEY (content_id) REFERENCES contents(id) ON DELETE CASCADE
+    TABLE "content_playback_logs" CONSTRAINT "content_playback_logs_content_id_fkey" FOREIGN KEY (content_id) REFERENCES contents(id) ON DELETE CASCADE
+    TABLE "content_tags" CONSTRAINT "content_tags_content_id_fkey" FOREIGN KEY (content_id) REFERENCES contents(id) ON DELETE CASCADE
+    TABLE "playlist_contents" CONSTRAINT "playlist_contents_content_id_fkey" FOREIGN KEY (content_id) REFERENCES contents(id) ON DELETE CASCADE
+
+
+=== CONTENT_TAGS TABLE ===
+                                       Table "public.content_tags"
+   Column   |           Type           | Collation | Nullable |                 Default                  
+------------+--------------------------+-----------+----------+------------------------------------------
+ id         | integer                  |           | not null | nextval('content_tags_id_seq'::regclass)
+ content_id | integer                  |           | not null | 
+ tag_id     | integer                  |           | not null | 
+ created_at | timestamp with time zone |           |          | now()
+Indexes:
+    "content_tags_pkey" PRIMARY KEY, btree (id)
+    "idx_content_tags_both" btree (content_id, tag_id)
+    "idx_content_tags_content" btree (content_id)
+    "idx_content_tags_tag" btree (tag_id)
+    "unique_content_tag" UNIQUE CONSTRAINT, btree (content_id, tag_id)
+Foreign-key constraints:
+    "content_tags_content_id_fkey" FOREIGN KEY (content_id) REFERENCES contents(id) ON DELETE CASCADE
+    "content_tags_tag_id_fkey" FOREIGN KEY (tag_id) REFERENCES tags(id) ON DELETE CASCADE
+
+
+=== CONTENT_ASSIGNMENTS TABLE ===
+                                       Table "public.content_assignments"
+   Column    |           Type           | Collation | Nullable |                     Default                     
+-------------+--------------------------+-----------+----------+-------------------------------------------------
+ id          | integer                  |           | not null | nextval('content_assignments_id_seq'::regclass)
+ device_id   | integer                  |           | not null | 
+ content_id  | integer                  |           | not null | 
+ priority    | integer                  |           | not null | 1
+ schedule    | jsonb                    |           |          | 
+ assigned_at | timestamp with time zone |           | not null | now()
+ assigned_by | integer                  |           |          | 
+ expires_at  | timestamp with time zone |           |          | 
+Indexes:
+    "content_assignments_pkey" PRIMARY KEY, btree (id)
+    "idx_content_assignments_assigned_by" btree (assigned_by)
+    "idx_content_assignments_both" btree (device_id, content_id)
+    "idx_content_assignments_content" btree (content_id)
+    "idx_content_assignments_device" btree (device_id)
+    "idx_content_assignments_expires" btree (expires_at) WHERE expires_at IS NOT NULL
+    "idx_content_assignments_priority" btree (device_id, priority DESC)
+    "unique_device_content" UNIQUE CONSTRAINT, btree (device_id, content_id)
+Foreign-key constraints:
+    "content_assignments_assigned_by_fkey" FOREIGN KEY (assigned_by) REFERENCES users(id) ON DELETE SET NULL
+    "content_assignments_content_id_fkey" FOREIGN KEY (content_id) REFERENCES contents(id) ON DELETE CASCADE
+    "content_assignments_device_id_fkey" FOREIGN KEY (device_id) REFERENCES devices(id) ON DELETE CASCADE
+
+
+=== CONTENT_PLAYBACK_LOGS TABLE ===
+                                          Table "public.content_playback_logs"
+      Column      |           Type           | Collation | Nullable |                      Default                      
+------------------+--------------------------+-----------+----------+---------------------------------------------------
+ id               | integer                  |           | not null | nextval('content_playback_logs_id_seq'::regclass)
+ content_id       | integer                  |           | not null | 
+ playlist_id      | integer                  |           |          | 
+ device_id        | integer                  |           | not null | 
+ organization_id  | integer                  |           | not null | 
+ started_at       | timestamp with time zone |           | not null | 
+ ended_at         | timestamp with time zone |           |          | 
+ duration_seconds | integer                  |           |          | 
+ completed        | boolean                  |           | not null | false
+ skip_reason      | character varying(50)    |           |          | 
+ source           | character varying(50)    |           |          | 
+ created_at       | timestamp with time zone |           | not null | now()
+Indexes:
+    "content_playback_logs_pkey" PRIMARY KEY, btree (id)
+    "idx_playback_completed" btree (content_id, completed) WHERE completed = true
+    "idx_playback_content" btree (content_id, started_at DESC)
+    "idx_playback_date" btree (started_at DESC)
+    "idx_playback_device" btree (device_id, started_at DESC)
+    "idx_playback_logs_content_date" btree (content_id, started_at DESC)
+    "idx_playback_logs_device_date" btree (device_id, started_at DESC)
+    "idx_playback_logs_org_date" btree (organization_id, started_at DESC)
+    "idx_playback_organization" btree (organization_id, started_at DESC)
+    "idx_playback_playlist" btree (playlist_id, started_at DESC) WHERE playlist_id IS NOT NULL
+Foreign-key constraints:
+    "content_playback_logs_content_id_fkey" FOREIGN KEY (content_id) REFERENCES contents(id) ON DELETE CASCADE
+    "content_playback_logs_device_id_fkey" FOREIGN KEY (device_id) REFERENCES devices(id) ON DELETE CASCADE
+    "content_playback_logs_organization_id_fkey" FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE
+    "content_playback_logs_playlist_id_fkey" FOREIGN KEY (playlist_id) REFERENCES playlists(id) ON DELETE SET NULL
+
+
+=== PLAYLISTS TABLE ===
+                                         Table "public.playlists"
+     Column      |           Type           | Collation | Nullable |                Default                
+-----------------+--------------------------+-----------+----------+---------------------------------------
+ id              | integer                  |           | not null | nextval('playlists_id_seq'::regclass)
+ name            | character varying(255)   |           | not null | 
+ description     | text                     |           |          | 
+ is_active       | boolean                  |           | not null | true
+ priority        | integer                  |           | not null | 0
+ schedule        | jsonb                    |           |          | 
+ organization_id | integer                  |           | not null | 
+ created_by      | integer                  |           |          | 
+ created_at      | timestamp with time zone |           | not null | now()
+ updated_at      | timestamp with time zone |           |          | 
+ deleted_at      | timestamp with time zone |           |          | 
+ is_default      | boolean                  |           | not null | false
+ is_pms_template | boolean                  |           | not null | false
+Indexes:
+    "playlists_pkey" PRIMARY KEY, btree (id)
+    "idx_playlists_created_by" btree (created_by)
+    "idx_playlists_deleted_at" btree (deleted_at)
+    "idx_playlists_is_active" btree (is_active)
+    "idx_playlists_org_active_created" btree (organization_id, is_active, created_at DESC) WHERE deleted_at IS NULL
+    "idx_playlists_org_priority_name" btree (organization_id, priority DESC, name) WHERE deleted_at IS NULL AND is_active = true
+    "idx_playlists_organization" btree (organization_id)
+    "unique_playlist_name_per_org" UNIQUE CONSTRAINT, btree (organization_id, name, deleted_at)
+Foreign-key constraints:
+    "playlists_created_by_fkey" FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL
+    "playlists_organization_id_fkey" FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE
+Referenced by:
+    TABLE "content_playback_logs" CONSTRAINT "content_playback_logs_playlist_id_fkey" FOREIGN KEY (playlist_id) REFERENCES playlists(id) ON DELETE SET NULL
+    TABLE "device_groups" CONSTRAINT "device_groups_default_playlist_id_fkey" FOREIGN KEY (default_playlist_id) REFERENCES playlists(id) ON DELETE SET NULL
+    TABLE "devices" CONSTRAINT "devices_assigned_playlist_id_fkey" FOREIGN KEY (assigned_playlist_id) REFERENCES playlists(id) ON DELETE SET NULL
+    TABLE "playlist_assignments" CONSTRAINT "playlist_assignments_playlist_id_fkey" FOREIGN KEY (playlist_id) REFERENCES playlists(id) ON DELETE CASCADE
+    TABLE "playlist_contents" CONSTRAINT "playlist_contents_playlist_id_fkey" FOREIGN KEY (playlist_id) REFERENCES playlists(id) ON DELETE CASCADE
+    TABLE "playlist_widgets" CONSTRAINT "playlist_widgets_playlist_id_fkey" FOREIGN KEY (playlist_id) REFERENCES playlists(id) ON DELETE CASCADE
+    TABLE "schedules" CONSTRAINT "schedules_playlist_id_fkey" FOREIGN KEY (playlist_id) REFERENCES playlists(id) ON DELETE CASCADE
+    TABLE "tags" CONSTRAINT "tags_assigned_playlist_id_fkey" FOREIGN KEY (assigned_playlist_id) REFERENCES playlists(id) ON DELETE SET NULL
+
+
+=== PLAYLIST_CONTENTS TABLE ===
+                                       Table "public.playlist_contents"
+   Column    |           Type           | Collation | Nullable |                    Default                    
+-------------+--------------------------+-----------+----------+-----------------------------------------------
+ id          | integer                  |           | not null | nextval('playlist_contents_id_seq'::regclass)
+ playlist_id | integer                  |           | not null | 
+ content_id  | integer                  |           | not null | 
+ order_index | integer                  |           | not null | 0
+ duration    | integer                  |           |          | 
+ created_at  | timestamp with time zone |           | not null | now()
+Indexes:
+    "playlist_contents_pkey" PRIMARY KEY, btree (id)
+    "idx_playlist_contents_content" btree (content_id)
+    "idx_playlist_contents_order" btree (playlist_id, order_index)
+    "idx_playlist_contents_playlist" btree (playlist_id)
+    "unique_playlist_content" UNIQUE CONSTRAINT, btree (playlist_id, content_id)
+Foreign-key constraints:
+    "playlist_contents_content_id_fkey" FOREIGN KEY (content_id) REFERENCES contents(id) ON DELETE CASCADE
+    "playlist_contents_playlist_id_fkey" FOREIGN KEY (playlist_id) REFERENCES playlists(id) ON DELETE CASCADE
+
+
+=== PLAYLIST_WIDGETS TABLE ===
+                                           Table "public.playlist_widgets"
+      Column      |            Type             | Collation | Nullable |                   Default                    
+------------------+-----------------------------+-----------+----------+----------------------------------------------
+ id               | integer                     |           | not null | nextval('playlist_widgets_id_seq'::regclass)
+ playlist_id      | integer                     |           | not null | 
+ widget_id        | integer                     |           | not null | 
+ position         | integer                     |           |          | 0
+ display_duration | integer                     |           |          | 
+ z_index          | integer                     |           |          | 100
+ created_at       | timestamp without time zone |           |          | CURRENT_TIMESTAMP
+Indexes:
+    "playlist_widgets_pkey" PRIMARY KEY, btree (id)
+    "idx_playlist_widgets_playlist" btree (playlist_id)
+    "idx_playlist_widgets_widget" btree (widget_id)
+    "playlist_widgets_playlist_id_widget_id_key" UNIQUE CONSTRAINT, btree (playlist_id, widget_id)
+Foreign-key constraints:
+    "playlist_widgets_playlist_id_fkey" FOREIGN KEY (playlist_id) REFERENCES playlists(id) ON DELETE CASCADE
+    "playlist_widgets_widget_id_fkey" FOREIGN KEY (widget_id) REFERENCES widgets(id) ON DELETE CASCADE
+
+
+=== PLAYLIST_ASSIGNMENTS TABLE ===
+                                       Table "public.playlist_assignments"
+   Column    |           Type           | Collation | Nullable |                     Default                      
+-------------+--------------------------+-----------+----------+--------------------------------------------------
+ id          | integer                  |           | not null | nextval('playlist_assignments_id_seq'::regclass)
+ playlist_id | integer                  |           | not null | 
+ device_id   | integer                  |           |          | 
+ tag_id      | integer                  |           |          | 
+ created_at  | timestamp with time zone |           | not null | now()
+Indexes:
+    "playlist_assignments_pkey" PRIMARY KEY, btree (id)
+    "idx_playlist_assignments_device" btree (device_id)
+    "idx_playlist_assignments_playlist" btree (playlist_id)
+    "idx_playlist_assignments_tag" btree (tag_id)
+    "unique_playlist_device" UNIQUE CONSTRAINT, btree (playlist_id, device_id)
+    "unique_playlist_tag" UNIQUE CONSTRAINT, btree (playlist_id, tag_id)
+Check constraints:
+    "check_assignment_type" CHECK (device_id IS NOT NULL AND tag_id IS NULL OR device_id IS NULL AND tag_id IS NOT NULL)
+Foreign-key constraints:
+    "playlist_assignments_device_id_fkey" FOREIGN KEY (device_id) REFERENCES devices(id) ON DELETE CASCADE
+    "playlist_assignments_playlist_id_fkey" FOREIGN KEY (playlist_id) REFERENCES playlists(id) ON DELETE CASCADE
+    "playlist_assignments_tag_id_fkey" FOREIGN KEY (tag_id) REFERENCES tags(id) ON DELETE CASCADE
+
+
+=== SCHEDULES TABLE ===
+                                            Table "public.schedules"
+       Column       |            Type             | Collation | Nullable |                Default                
+--------------------+-----------------------------+-----------+----------+---------------------------------------
+ id                 | integer                     |           | not null | nextval('schedules_id_seq'::regclass)
+ organization_id    | integer                     |           | not null | 
+ name               | character varying(255)      |           | not null | 
+ description        | text                        |           |          | 
+ playlist_id        | integer                     |           |          | 
+ start_date         | date                        |           | not null | 
+ end_date           | date                        |           |          | 
+ start_time         | time without time zone      |           |          | 
+ end_time           | time without time zone      |           |          | 
+ recurrence_type    | character varying(20)       |           |          | 
+ recurrence_pattern | jsonb                       |           |          | 
+ exceptions         | jsonb                       |           |          | 
+ priority           | integer                     |           |          | 0
+ is_active          | boolean                     |           |          | true
+ created_by         | integer                     |           |          | 
+ created_at         | timestamp without time zone |           |          | CURRENT_TIMESTAMP
+ updated_at         | timestamp without time zone |           |          | CURRENT_TIMESTAMP
+ device_ids         | jsonb                       |           |          | 
+ tag_ids            | jsonb                       |           |          | 
+ apply_to_all       | boolean                     |           |          | false
+Indexes:
+    "schedules_pkey" PRIMARY KEY, btree (id)
+    "idx_schedules_active" btree (is_active)
+    "idx_schedules_dates" btree (start_date, end_date)
+    "idx_schedules_org" btree (organization_id)
+    "idx_schedules_playlist" btree (playlist_id)
+    "idx_schedules_priority" btree (priority DESC)
+Foreign-key constraints:
+    "schedules_created_by_fkey" FOREIGN KEY (created_by) REFERENCES users(id)
+    "schedules_organization_id_fkey" FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE
+    "schedules_playlist_id_fkey" FOREIGN KEY (playlist_id) REFERENCES playlists(id) ON DELETE CASCADE
+Triggers:
+    schedules_updated_at BEFORE UPDATE ON schedules FOR EACH ROW EXECUTE FUNCTION update_schedules_updated_at()
+
+
+=== TAGS TABLE ===
+                                            Table "public.tags"
+        Column        |           Type           | Collation | Nullable |             Default              
+----------------------+--------------------------+-----------+----------+----------------------------------
+ id                   | integer                  |           | not null | nextval('tags_id_seq'::regclass)
+ tag_name             | character varying(100)   |           | not null | 
+ description          | text                     |           |          | 
+ color                | character varying(7)     |           | not null | 
+ organization_id      | integer                  |           | not null | 
+ created_at           | timestamp with time zone |           | not null | now()
+ priority             | integer                  |           | not null | 50
+ assigned_playlist_id | integer                  |           |          | 
+Indexes:
+    "tags_pkey" PRIMARY KEY, btree (id)
+    "idx_tags_org_tagname_lookup" btree (organization_id, tag_name)
+    "idx_tags_organization" btree (organization_id)
+    "ix_tags_id" btree (id)
+    "ix_tags_organization_id" btree (organization_id)
+    "unique_tag_name_per_org" UNIQUE CONSTRAINT, btree (organization_id, tag_name)
+Foreign-key constraints:
+    "tags_assigned_playlist_id_fkey" FOREIGN KEY (assigned_playlist_id) REFERENCES playlists(id) ON DELETE SET NULL
+    "tags_organization_id_fkey" FOREIGN KEY (organization_id) REFERENCES organizations(id)
+Referenced by:
+    TABLE "content_tags" CONSTRAINT "content_tags_tag_id_fkey" FOREIGN KEY (tag_id) REFERENCES tags(id) ON DELETE CASCADE
+    TABLE "device_tags" CONSTRAINT "device_tags_tag_id_fkey" FOREIGN KEY (tag_id) REFERENCES tags(id) ON DELETE CASCADE
+    TABLE "playlist_assignments" CONSTRAINT "playlist_assignments_tag_id_fkey" FOREIGN KEY (tag_id) REFERENCES tags(id) ON DELETE CASCADE
+
+
+=== TEMPLATES TABLE ===
+                                           Table "public.templates"
+     Column      |            Type             | Collation | Nullable |                Default                
+-----------------+-----------------------------+-----------+----------+---------------------------------------
+ id              | integer                     |           | not null | nextval('templates_id_seq'::regclass)
+ organization_id | integer                     |           | not null | 
+ name            | character varying(255)      |           | not null | 
+ description     | text                        |           |          | 
+ template_type   | character varying(50)       |           | not null | 
+ content         | text                        |           | not null | 
+ variables       | jsonb                       |           |          | 
+ preview_data    | jsonb                       |           |          | 
+ is_active       | boolean                     |           |          | true
+ created_by      | integer                     |           |          | 
+ created_at      | timestamp without time zone |           |          | CURRENT_TIMESTAMP
+ updated_at      | timestamp without time zone |           |          | CURRENT_TIMESTAMP
+Indexes:
+    "templates_pkey" PRIMARY KEY, btree (id)
+    "idx_templates_active" btree (is_active)
+    "idx_templates_org" btree (organization_id)
+    "idx_templates_type" btree (template_type)
+    "templates_organization_id_name_key" UNIQUE CONSTRAINT, btree (organization_id, name)
+Foreign-key constraints:
+    "templates_created_by_fkey" FOREIGN KEY (created_by) REFERENCES users(id)
+    "templates_organization_id_fkey" FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE
+Triggers:
+    templates_updated_at BEFORE UPDATE ON templates FOR EACH ROW EXECUTE FUNCTION update_templates_updated_at()
+
+
+=== TRANSLATIONS TABLE ===
+                                           Table "public.translations"
+      Column      |            Type             | Collation | Nullable |                 Default                  
+------------------+-----------------------------+-----------+----------+------------------------------------------
+ id               | integer                     |           | not null | nextval('translations_id_seq'::regclass)
+ organization_id  | integer                     |           | not null | 
+ entity_type      | character varying(50)       |           | not null | 
+ entity_id        | integer                     |           | not null | 
+ language_code    | character varying(5)        |           | not null | 
+ field_name       | character varying(100)      |           | not null | 
+ translated_value | text                        |           | not null | 
+ created_at       | timestamp without time zone |           |          | CURRENT_TIMESTAMP
+ updated_at       | timestamp without time zone |           |          | CURRENT_TIMESTAMP
+Indexes:
+    "translations_pkey" PRIMARY KEY, btree (id)
+    "idx_translations_entity" btree (entity_type, entity_id)
+    "idx_translations_lang" btree (language_code)
+    "idx_translations_org" btree (organization_id)
+    "translations_entity_type_entity_id_language_code_field_name_key" UNIQUE CONSTRAINT, btree (entity_type, entity_id, language_code, field_name)
+Foreign-key constraints:
+    "translations_organization_id_fkey" FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE
+Triggers:
+    translations_updated_at BEFORE UPDATE ON translations FOR EACH ROW EXECUTE FUNCTION update_translations_updated_at()
+
+
+=== WIDGETS TABLE ===
+                                           Table "public.widgets"
+     Column      |            Type             | Collation | Nullable |               Default               
+-----------------+-----------------------------+-----------+----------+-------------------------------------
+ id              | integer                     |           | not null | nextval('widgets_id_seq'::regclass)
+ organization_id | integer                     |           | not null | 
+ name            | character varying(255)      |           | not null | 
+ description     | text                        |           |          | 
+ widget_type     | character varying(50)       |           | not null | 
+ config          | jsonb                       |           | not null | 
+ layout          | jsonb                       |           |          | 
+ is_active       | boolean                     |           |          | true
+ created_by      | integer                     |           |          | 
+ created_at      | timestamp without time zone |           |          | CURRENT_TIMESTAMP
+ updated_at      | timestamp without time zone |           |          | CURRENT_TIMESTAMP
+Indexes:
+    "widgets_pkey" PRIMARY KEY, btree (id)
+    "idx_widgets_active" btree (is_active)
+    "idx_widgets_org" btree (organization_id)
+    "idx_widgets_type" btree (widget_type)
+    "widgets_organization_id_name_key" UNIQUE CONSTRAINT, btree (organization_id, name)
+Foreign-key constraints:
+    "widgets_created_by_fkey" FOREIGN KEY (created_by) REFERENCES users(id)
+    "widgets_organization_id_fkey" FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE
+Referenced by:
+    TABLE "playlist_widgets" CONSTRAINT "playlist_widgets_widget_id_fkey" FOREIGN KEY (widget_id) REFERENCES widgets(id) ON DELETE CASCADE
+Triggers:
+    widgets_updated_at BEFORE UPDATE ON widgets FOR EACH ROW EXECUTE FUNCTION update_widgets_updated_at()
+
+
+=== USER_SESSIONS TABLE ===
+                                         Table "public.user_sessions"
+     Column      |           Type           | Collation | Nullable |                  Default                  
+-----------------+--------------------------+-----------+----------+-------------------------------------------
+ id              | integer                  |           | not null | nextval('user_sessions_id_seq'::regclass)
+ user_id         | integer                  |           | not null | 
+ organization_id | integer                  |           | not null | 
+ session_token   | character varying(64)    |           | not null | 
+ refresh_token   | character varying(64)    |           |          | 
+ ip_address      | character varying(45)    |           | not null | 
+ user_agent      | character varying(500)   |           |          | 
+ device_info     | jsonb                    |           |          | 
+ created_at      | timestamp with time zone |           | not null | now()
+ last_activity   | timestamp with time zone |           | not null | now()
+ expires_at      | timestamp with time zone |           | not null | 
+ revoked_at      | timestamp with time zone |           |          | 
+ session_type    | character varying(20)    |           | not null | 'web'::character varying
+Indexes:
+    "user_sessions_pkey" PRIMARY KEY, btree (id)
+    "idx_sessions_active" btree (user_id, created_at DESC) WHERE revoked_at IS NULL
+    "idx_sessions_expires" btree (expires_at) WHERE revoked_at IS NULL
+    "idx_sessions_ip" btree (ip_address)
+    "idx_sessions_last_activity" btree (last_activity DESC)
+    "idx_sessions_organization" btree (organization_id)
+    "idx_sessions_refresh" btree (refresh_token) WHERE refresh_token IS NOT NULL
+    "idx_sessions_token" btree (session_token)
+    "idx_sessions_user" btree (user_id)
+    "user_sessions_refresh_token_key" UNIQUE CONSTRAINT, btree (refresh_token)
+    "user_sessions_session_token_key" UNIQUE CONSTRAINT, btree (session_token)
+Check constraints:
+    "check_refresh_token_expires" CHECK (refresh_token IS NULL OR expires_at > created_at)
+    "user_sessions_session_type_check" CHECK (session_type::text = ANY (ARRAY['web'::character varying, 'api'::character varying, 'mobile'::character varying, 'device'::character varying]::text[]))
+Foreign-key constraints:
+    "user_sessions_organization_id_fkey" FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE
+    "user_sessions_user_id_fkey" FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+
+
+=== AUDIT_LOGS TABLE ===
+                                         Table "public.audit_logs"
+     Column      |           Type           | Collation | Nullable |                Default                 
+-----------------+--------------------------+-----------+----------+----------------------------------------
+ id              | integer                  |           | not null | nextval('audit_logs_id_seq'::regclass)
+ user_id         | integer                  |           |          | 
+ organization_id | integer                  |           |          | 
+ action          | character varying(100)   |           | not null | 
+ resource_type   | character varying(50)    |           | not null | 
+ resource_id     | integer                  |           |          | 
+ details         | json                     |           |          | 
+ ip_address      | character varying(45)    |           |          | 
+ user_agent      | text                     |           |          | 
+ created_at      | timestamp with time zone |           | not null | now()
+Indexes:
+    "audit_logs_pkey" PRIMARY KEY, btree (id)
+    "ix_audit_logs_action" btree (action)
+    "ix_audit_logs_created_at" btree (created_at)
+    "ix_audit_logs_id" btree (id)
+    "ix_audit_logs_organization_id" btree (organization_id)
+    "ix_audit_logs_resource_id" btree (resource_id)
+    "ix_audit_logs_resource_type" btree (resource_type)
+    "ix_audit_logs_user_id" btree (user_id)
+Foreign-key constraints:
+    "audit_logs_organization_id_fkey" FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE SET NULL
+    "audit_logs_user_id_fkey" FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
+
+
+=== PMS_CONFIGURATIONS TABLE ===
+                                              Table "public.pms_configurations"
+        Column         |            Type             | Collation | Nullable |                    Default                     
+-----------------------+-----------------------------+-----------+----------+------------------------------------------------
+ id                    | integer                     |           | not null | nextval('pms_configurations_id_seq'::regclass)
+ organization_id       | integer                     |           | not null | 
+ api_key               | character varying(255)      |           | not null | 
+ is_active             | boolean                     |           |          | true
+ last_sync             | timestamp without time zone |           |          | 
+ sync_interval_minutes | integer                     |           |          | 5
+ created_by            | integer                     |           |          | 
+ created_at            | timestamp without time zone |           |          | CURRENT_TIMESTAMP
+ updated_at            | timestamp without time zone |           |          | CURRENT_TIMESTAMP
+Indexes:
+    "pms_configurations_pkey" PRIMARY KEY, btree (id)
+    "pms_configurations_api_key_key" UNIQUE CONSTRAINT, btree (api_key)
+    "pms_configurations_organization_id_key" UNIQUE CONSTRAINT, btree (organization_id)
+Foreign-key constraints:
+    "pms_configurations_created_by_fkey" FOREIGN KEY (created_by) REFERENCES users(id)
+    "pms_configurations_organization_id_fkey" FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE
+Triggers:
+    pms_configurations_updated_at BEFORE UPDATE ON pms_configurations FOR EACH ROW EXECUTE FUNCTION update_pms_updated_at()
+
+
+=== PMS_GUESTS TABLE ===
+                                           Table "public.pms_guests"
+      Column      |            Type             | Collation | Nullable |                Default                 
+------------------+-----------------------------+-----------+----------+----------------------------------------
+ id               | integer                     |           | not null | nextval('pms_guests_id_seq'::regclass)
+ organization_id  | integer                     |           | not null | 
+ guest_name       | character varying(255)      |           | not null | 
+ room_number      | character varying(50)       |           | not null | 
+ checkin_date     | timestamp without time zone |           | not null | 
+ checkout_date    | timestamp without time zone |           | not null | 
+ email            | character varying(255)      |           |          | 
+ phone            | character varying(50)       |           |          | 
+ country          | character varying(100)      |           |          | 
+ reservation_no   | character varying(100)      |           |          | 
+ synced_at        | timestamp without time zone |           |          | CURRENT_TIMESTAMP
+ last_updated     | timestamp without time zone |           |          | CURRENT_TIMESTAMP
+ created_at       | timestamp without time zone |           |          | CURRENT_TIMESTAMP
+ updated_at       | timestamp without time zone |           |          | CURRENT_TIMESTAMP
+ title            | character varying(50)       |           |          | 
+ balance          | numeric(10,2)               |           |          | 0
+ loyalty_level    | character varying(50)       |           |          | 
+ language         | character varying(10)       |           |          | 
+ special_requests | text                        |           |          | 
+Indexes:
+    "pms_guests_pkey" PRIMARY KEY, btree (id)
+    "idx_pms_guests_checkin" btree (checkin_date)
+    "idx_pms_guests_language" btree (language)
+    "idx_pms_guests_loyalty" btree (loyalty_level)
+    "idx_pms_guests_org" btree (organization_id)
+    "idx_pms_guests_room" btree (room_number)
+Foreign-key constraints:
+    "pms_guests_organization_id_fkey" FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE
+Triggers:
+    pms_guests_updated_at BEFORE UPDATE ON pms_guests FOR EACH ROW EXECUTE FUNCTION update_pms_updated_at()
+
+
+=== PMS_ROOMS TABLE ===
+                                           Table "public.pms_rooms"
+     Column      |            Type             | Collation | Nullable |                Default                
+-----------------+-----------------------------+-----------+----------+---------------------------------------
+ id              | integer                     |           | not null | nextval('pms_rooms_id_seq'::regclass)
+ organization_id | integer                     |           | not null | 
+ room_number     | character varying(50)       |           | not null | 
+ room_type       | character varying(100)      |           |          | 
+ status          | character varying(50)       |           | not null | 
+ floor           | character varying(20)       |           |          | 
+ bed_type        | character varying(50)       |           |          | 
+ max_occupancy   | integer                     |           |          | 
+ synced_at       | timestamp without time zone |           |          | CURRENT_TIMESTAMP
+ last_updated    | timestamp without time zone |           |          | CURRENT_TIMESTAMP
+ created_at      | timestamp without time zone |           |          | CURRENT_TIMESTAMP
+ updated_at      | timestamp without time zone |           |          | CURRENT_TIMESTAMP
+Indexes:
+    "pms_rooms_pkey" PRIMARY KEY, btree (id)
+    "idx_pms_rooms_number" btree (room_number)
+    "idx_pms_rooms_org" btree (organization_id)
+    "idx_pms_rooms_status" btree (status)
+    "pms_rooms_organization_id_room_number_key" UNIQUE CONSTRAINT, btree (organization_id, room_number)
+Foreign-key constraints:
+    "pms_rooms_organization_id_fkey" FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE
+Triggers:
+    pms_rooms_updated_at BEFORE UPDATE ON pms_rooms FOR EACH ROW EXECUTE FUNCTION update_pms_updated_at()
+

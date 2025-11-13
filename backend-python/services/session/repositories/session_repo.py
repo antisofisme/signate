@@ -141,7 +141,7 @@ class SessionRepository:
         if not session:
             return False
 
-        session.last_activity = datetime.utcnow()
+        session.last_activity_at = datetime.utcnow()
         self.db.commit()
         return True
 
@@ -224,7 +224,7 @@ class SessionRepository:
                 UserSession.revoked_at.is_(None),
                 UserSession.expires_at > now
             )
-        ).order_by(UserSession.last_activity.desc()).all()
+        ).order_by(UserSession.last_activity_at.desc()).all()
 
     def get_user_sessions(
         self,
@@ -251,7 +251,7 @@ class SessionRepository:
         if not include_expired:
             query = query.filter(UserSession.expires_at > datetime.utcnow())
 
-        return query.order_by(UserSession.last_activity.desc()).all()
+        return query.order_by(UserSession.last_activity_at.desc()).all()
 
     def cleanup_expired_sessions(self, days_old: int = 30) -> int:
         """
@@ -356,4 +356,4 @@ class SessionRepository:
                 )
             )
 
-        return query.order_by(UserSession.last_activity.desc()).all()
+        return query.order_by(UserSession.last_activity_at.desc()).all()

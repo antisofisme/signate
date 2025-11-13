@@ -65,7 +65,7 @@ class AddDeviceToGroupUseCase:
 
         # Add device to group
         member = self.group_repo.add_device_to_group(
-            device_id=device_id, group_id=group_id, added_by=added_by
+            device_id=device_id, group_id=group_id, added_by_id=added_by
         )
 
         return member

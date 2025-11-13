@@ -15,13 +15,19 @@ class OrganizationModel(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String(200), unique=True, nullable=False)
-    organization_pin = Column(String(6), unique=False, nullable=True, index=True)  # 6-digit PIN for device hard reset (optional)
+    pin = Column(String(6), unique=False, nullable=True, index=True)  # 6-digit PIN for device hard reset (optional)
     description = Column(String(500), nullable=True)
     address = Column(String(500), nullable=True)
     contact_email = Column(String(100), nullable=True)
     contact_phone = Column(String(20), nullable=True)
     logo_url = Column(String(500), nullable=True)
     is_active = Column(Boolean, default=True, nullable=False)
+
+    # Quota limits
+    max_devices = Column(Integer, default=10, nullable=False)
+    max_users = Column(Integer, default=5, nullable=False)
+    settings = Column(JSON, default={}, nullable=True)  # JSONB for additional settings
+
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
@@ -38,14 +44,15 @@ class UserModel(Base):
     email = Column(String(100), unique=True, nullable=False, index=True)
     password_hash = Column(String(255), nullable=False)
     full_name = Column(String(100), nullable=False)
-    role = Column(String(20), nullable=False, default="ADMIN")
+    role_id = Column(Integer, ForeignKey("roles.id"), nullable=False)
     organization_id = Column(Integer, ForeignKey("organizations.id"), nullable=True)
     is_active = Column(Boolean, default=True, nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
-    # Relationship
+    # Relationships
     organization = relationship("OrganizationModel", back_populates="users")
+    role = relationship("Role", foreign_keys=[role_id])
 
 
 class AuditLogModel(Base):

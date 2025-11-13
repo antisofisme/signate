@@ -41,7 +41,7 @@ class WidgetRepository:
             config=request.config,
             layout=request.layout,
             is_active=request.is_active,
-            created_by=user_id
+            created_by_id=user_id
         )
         self.db.add(widget)
         self.db.commit()

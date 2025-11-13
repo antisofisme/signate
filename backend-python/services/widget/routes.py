@@ -55,8 +55,8 @@ def create_widget(
     Permissions: admin, manager
     """
     return create_widget_use_case(
-        organization_id=current_user["organization_id"],
-        user_id=current_user["id"],
+        organization_id=current_user.organization_id,
+        user_id=current_user.id,
         request=request,
         db=db
     )
@@ -79,7 +79,7 @@ def get_widgets(
     - is_active: true/false
     """
     return get_widgets_use_case(
-        organization_id=current_user["organization_id"],
+        organization_id=current_user.organization_id,
         widget_type=widget_type,
         is_active=is_active,
         skip=skip,
@@ -97,7 +97,7 @@ def get_widget(
     """Get widget by ID"""
     return get_widget_by_id_use_case(
         widget_id=widget_id,
-        organization_id=current_user["organization_id"],
+        organization_id=current_user.organization_id,
         db=db
     )
 
@@ -116,7 +116,7 @@ def update_widget(
     """
     return update_widget_use_case(
         widget_id=widget_id,
-        organization_id=current_user["organization_id"],
+        organization_id=current_user.organization_id,
         request=request,
         db=db
     )
@@ -136,7 +136,7 @@ def delete_widget(
     """
     return delete_widget_use_case(
         widget_id=widget_id,
-        organization_id=current_user["organization_id"],
+        organization_id=current_user.organization_id,
         db=db
     )
 
@@ -159,7 +159,7 @@ def assign_widget_to_playlist(
     """
     return assign_widget_to_playlist_use_case(
         playlist_id=playlist_id,
-        organization_id=current_user["organization_id"],
+        organization_id=current_user.organization_id,
         request=request,
         db=db
     )

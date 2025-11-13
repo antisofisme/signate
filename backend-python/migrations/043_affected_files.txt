@@ -1,0 +1,222 @@
+MIGRATION 043: BOOLEAN COLUMN STANDARDIZATION - AFFECTED FILES
+================================================================
+
+Migration Date: 2025-11-13
+Columns Renamed: 3 (device_commands.completed does NOT exist in schema)
+Tables Affected: 2 (devices, device_health_metrics)
+
+================================================================
+COLUMN CHANGES
+================================================================
+
+1. devices.volume_enabled → is_volume_enabled
+2. devices.supports_personalization → is_personalization_supported
+3. device_health_metrics.alert_triggered → is_alert_triggered
+
+================================================================
+BACKEND PYTHON FILES AFFECTED
+================================================================
+
+CRITICAL - Models & Domain Entities (7 files)
+----------------------------------------------
+1. /mnt/g/khoirul/signate/backend-python/services/device/repositories/models.py
+   - Line 53: volume_enabled = Column(Boolean, ...)
+   - Line 61: supports_personalization = Column(Boolean, ...)
+   - Line 196: alert_triggered = Column(Boolean, ...)
+   Changes: Update 3 column definitions
+
+2. /mnt/g/khoirul/signate/backend-python/services/device/domain/device.py
+   - Line 46: volume_enabled: bool = True
+   - Line 48: supports_personalization: bool = True
+   Changes: Rename 2 attributes in Device dataclass
+
+3. /mnt/g/khoirul/signate/backend-python/services/device/domain/device_health.py
+   - Line 50: alert_triggered: bool = False
+   Changes: Rename 1 attribute in DeviceHealth dataclass
+
+
+HIGH PRIORITY - DTOs (1 file)
+------------------------------
+4. /mnt/g/khoirul/signate/backend-python/services/device/dtos.py
+   - Line 55: volume_enabled: Optional[bool] = None (DeviceUpdateDTO)
+   - Line 56: supports_personalization: Optional[bool] = None (DeviceUpdateDTO)
+   - Line 130: volume_enabled: bool (DeviceDTO)
+   - Line 135: supports_personalization: bool (DeviceDTO)
+   - Line 319: alert_triggered: bool (HealthMetricDTO)
+   Changes: Update 5 DTO field names across 3 classes
+
+
+HIGH PRIORITY - Repositories (2 files)
+---------------------------------------
+5. /mnt/g/khoirul/signate/backend-python/services/device/repositories/device_repo.py
+   - Line 137: volume_enabled=device.volume_enabled
+   - Line 140: supports_personalization=device.supports_personalization
+   - Line 177: device_model.volume_enabled = device.volume_enabled
+   - Line 180: device_model.supports_personalization = device.supports_personalization
+   - Line 256: volume_enabled=model.volume_enabled
+   - Line 259: supports_personalization=model.supports_personalization
+   Changes: Update 6 attribute mappings between domain and model
+
+6. /mnt/g/khoirul/signate/backend-python/services/device/repositories/device_health_repo.py
+   - Line 61: alert_triggered=health_metric.alert_triggered
+   - Line 232: alert_triggered=db_metric.alert_triggered
+   - Line 265: alert_triggered=row.alert_triggered
+   Changes: Update 3 attribute mappings
+
+
+MEDIUM PRIORITY - Use Cases (2 files)
+--------------------------------------
+7. /mnt/g/khoirul/signate/backend-python/services/device/use_cases/update_device.py
+   - Lines 28-29: Function parameters volume_enabled, supports_personalization
+   - Lines 41-42: Docstring references
+   - Lines 78-82: Conditional assignments to device object
+   Changes: Update parameter names, docstring, assignments (8 lines total)
+
+8. /mnt/g/khoirul/signate/backend-python/services/device/use_cases/request_activation_code.py
+   - Line 94: volume_enabled=True
+   - Line 96: supports_personalization=True
+   Changes: Update 2 default initialization values
+
+
+MEDIUM PRIORITY - Routes (1 file)
+----------------------------------
+9. /mnt/g/khoirul/signate/backend-python/services/device/routes.py
+   - Line 154: volume_enabled=device.volume_enabled
+   - Line 157: supports_personalization=device.supports_personalization
+   - Line 599: volume_enabled=request_body.volume_enabled
+   - Line 600: supports_personalization=request_body.supports_personalization
+   Changes: Update 4 attribute references in API endpoints
+
+
+================================================================
+FRONTEND TYPESCRIPT FILES AFFECTED
+================================================================
+
+10. /mnt/g/khoirul/signate/cms-vite/src/features/devices/types/device.ts
+    Changes: Update TypeScript interface definitions
+
+11. /mnt/g/khoirul/signate/cms-vite/src/features/devices/types/health.ts
+    Changes: Update health metric type definitions
+
+12. /mnt/g/khoirul/signate/cms-vite/src/features/devices/components/modals/DeviceEditModal.tsx
+    Changes: Update form field names
+
+13. /mnt/g/khoirul/signate/cms-vite/src/features/devices/components/modals/DeviceDetailModal.tsx
+    Changes: Update display field names
+
+
+================================================================
+DOCUMENTATION FILES TO UPDATE
+================================================================
+
+14. /mnt/g/khoirul/signate/docs/device/DEVICE_QUICK_REFERENCE.md
+15. /mnt/g/khoirul/signate/docs/device/DEVICE_IMPLEMENTATION_ANALYSIS.md
+16. /mnt/g/khoirul/signate/docs/database/DATABASE_SCHEMA_REVIEW.md
+17. /mnt/g/khoirul/signate/docs/02-api/API_ENDPOINTS_DOCUMENTATION.md
+
+
+================================================================
+FILES THAT REFERENCE BUT DON'T NEED CHANGES
+================================================================
+
+These files contain the old column names but are archived/documentation:
+- DATABASE_STANDARDIZATION_MASTER_PLAN.md (this plan document)
+- DATABASE_NAMING_ANALYSIS_REPORT.txt (analysis report)
+- database_schema_full.txt (schema snapshot)
+- backups/signage_db_backup_20251113_185252.sql (database backup)
+- backend-python/migrations/006_create_devices_table.sql (historical migration)
+- backend-python/migrations/014_add_device_health_metrics.sql (historical migration)
+- _archived/* (all archived files can be ignored)
+- docs/* (documentation - update separately)
+
+
+================================================================
+ESTIMATED CODE CHANGES
+================================================================
+
+Backend Python:
+- Models/Domain: 6 attribute definitions
+- DTOs: 5 field definitions
+- Repositories: 9 mappings
+- Use Cases: 10 references
+- Routes: 4 references
+Total Backend: ~34 lines to change
+
+Frontend TypeScript:
+- Type definitions: ~5 interfaces
+- Components: ~10 references
+Total Frontend: ~15 lines to change
+
+Documentation:
+- API docs: ~5 endpoints
+- Schema docs: ~3 tables
+Total Docs: ~8 sections to update
+
+GRAND TOTAL: ~57 code changes required
+
+
+================================================================
+MIGRATION EXECUTION PLAN
+================================================================
+
+1. Apply SQL migration (043_standardize_boolean_prefix.sql)
+2. Update backend Python files (in order listed above)
+3. Update frontend TypeScript files
+4. Run backend tests
+5. Run integration tests
+6. Update documentation
+7. Deploy to staging
+8. Verify API endpoints
+9. Deploy to production
+
+
+================================================================
+TESTING CHECKLIST
+================================================================
+
+Backend Tests:
+[ ] Test device creation with new field names
+[ ] Test device update with new field names
+[ ] Test device retrieval returns new field names
+[ ] Test health metrics recording with new field names
+[ ] Test health metrics retrieval returns new field names
+[ ] Test API endpoint serialization/deserialization
+
+Frontend Tests:
+[ ] Test device edit modal
+[ ] Test device detail modal
+[ ] Test device list display
+[ ] Test health metrics display
+
+Integration Tests:
+[ ] Test end-to-end device activation flow
+[ ] Test device settings update via API
+[ ] Test health metrics recording and display
+
+
+================================================================
+ROLLBACK PLAN
+================================================================
+
+If issues arise after deployment:
+1. Revert backend code changes (git revert)
+2. Rollback database migration (see SQL comments in migration file)
+3. Revert frontend code changes (git revert)
+4. Restart backend services
+5. Clear frontend cache (hard refresh)
+
+
+================================================================
+NOTES
+================================================================
+
+- device_commands.completed does NOT exist in current schema
+  The table uses status VARCHAR('pending'|'sent'|'executed'|'failed')
+  instead of a boolean completed field. This was mentioned in the
+  master plan but is not applicable to current schema.
+
+- The migration includes verification queries to ensure all boolean
+  columns follow the is_* naming convention.
+
+- Some exceptions are acceptable (e.g., 'active', 'deleted', 'read')
+  as they are well-understood status fields.

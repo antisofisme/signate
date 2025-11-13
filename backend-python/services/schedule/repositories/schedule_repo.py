@@ -44,7 +44,7 @@ class ScheduleRepository:
             exceptions=request.exceptions,
             priority=request.priority,
             is_active=request.is_active,
-            created_by=created_by
+            created_by_id=created_by
         )
 
         self.db.add(schedule)

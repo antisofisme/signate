@@ -62,7 +62,7 @@ def add_translation(
     - Scoped to current user's organization
     """
     return add_translation_use_case(
-        organization_id=current_user["organization_id"],
+        organization_id=current_user.organization_id,
         request=request,
         db=db
     )
@@ -88,7 +88,7 @@ def get_translations(
     - Pagination with skip/limit
     """
     return get_translations_use_case(
-        organization_id=current_user["organization_id"],
+        organization_id=current_user.organization_id,
         entity_type=entity_type,
         entity_id=entity_id,
         language_code=language_code,
@@ -107,7 +107,7 @@ def get_translation(
     """Get translation by ID"""
     return get_translation_by_id_use_case(
         translation_id=translation_id,
-        organization_id=current_user["organization_id"],
+        organization_id=current_user.organization_id,
         db=db
     )
 
@@ -121,83 +121,7 @@ def delete_translation(
     """Delete translation by ID"""
     return delete_translation_use_case(
         translation_id=translation_id,
-        organization_id=current_user["organization_id"],
-        db=db
-    )
-
-
-# ============================================================================
-# Entity Translation Endpoints
-# ============================================================================
-
-@router.get("/translations/{entity_type}/{entity_id}", response_model=EntityTranslationsResponse)
-def get_entity_translations(
-    entity_type: str,
-    entity_id: int,
-    language_code: str = Query(..., description="Language code (en, id, zh, etc.)"),
-    current_user: CurrentUser = Depends(get_current_user),
-    db: Session = Depends(get_db)
-):
-    """
-    Get all translations for specific entity and language
-
-    Returns a dictionary of field_name -> translated_value
-    Example: {"title": "Welcome", "description": "Welcome message"}
-    """
-    return get_entity_translations_use_case(
-        entity_type=entity_type,
-        entity_id=entity_id,
-        language_code=language_code,
-        organization_id=current_user["organization_id"],
-        db=db
-    )
-
-
-@router.delete("/translations/{entity_type}/{entity_id}", status_code=status.HTTP_200_OK)
-def delete_entity_translations(
-    entity_type: str,
-    entity_id: int,
-    language_code: Optional[str] = Query(None, description="Delete only specific language (optional)"),
-    current_user: CurrentUser = Depends(get_current_user),
-    db: Session = Depends(get_db)
-):
-    """
-    Delete all translations for entity
-
-    If language_code provided: deletes only that language
-    If language_code omitted: deletes ALL translations for entity
-    """
-    return delete_entity_translations_use_case(
-        entity_type=entity_type,
-        entity_id=entity_id,
-        organization_id=current_user["organization_id"],
-        language_code=language_code,
-        db=db
-    )
-
-
-# ============================================================================
-# Bulk Operations
-# ============================================================================
-
-@router.post("/translations/bulk", response_model=BulkImportResponse)
-def bulk_import_translations(
-    request: BulkImportRequest,
-    current_user: CurrentUser = Depends(get_current_user),
-    db: Session = Depends(get_db)
-):
-    """
-    Bulk import translations
-
-    Business Rules:
-    - Validates each translation before import
-    - Continues on error and reports failed items
-    - Returns count of imported, updated, and failed translations
-    - Existing translations are updated, new ones are created
-    """
-    return bulk_import_translations_use_case(
-        organization_id=current_user["organization_id"],
-        request=request,
+        organization_id=current_user.organization_id,
         db=db
     )
 
@@ -239,7 +163,84 @@ def get_organization_languages(
     Returns list of language codes that have translations in the system
     """
     return get_organization_languages_use_case(
-        organization_id=current_user["organization_id"],
+        organization_id=current_user.organization_id,
+        db=db
+    )
+
+
+# ============================================================================
+
+# Entity Translation Endpoints
+# ============================================================================
+
+@router.get("/translations/{entity_type}/{entity_id}", response_model=EntityTranslationsResponse)
+def get_entity_translations(
+    entity_type: str,
+    entity_id: int,
+    language_code: str = Query(..., description="Language code (en, id, zh, etc.)"),
+    current_user: CurrentUser = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Get all translations for specific entity and language
+
+    Returns a dictionary of field_name -> translated_value
+    Example: {"title": "Welcome", "description": "Welcome message"}
+    """
+    return get_entity_translations_use_case(
+        entity_type=entity_type,
+        entity_id=entity_id,
+        language_code=language_code,
+        organization_id=current_user.organization_id,
+        db=db
+    )
+
+
+@router.delete("/translations/{entity_type}/{entity_id}", status_code=status.HTTP_200_OK)
+def delete_entity_translations(
+    entity_type: str,
+    entity_id: int,
+    language_code: Optional[str] = Query(None, description="Delete only specific language (optional)"),
+    current_user: CurrentUser = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Delete all translations for entity
+
+    If language_code provided: deletes only that language
+    If language_code omitted: deletes ALL translations for entity
+    """
+    return delete_entity_translations_use_case(
+        entity_type=entity_type,
+        entity_id=entity_id,
+        organization_id=current_user.organization_id,
+        language_code=language_code,
+        db=db
+    )
+
+
+# ============================================================================
+# Bulk Operations
+# ============================================================================
+
+@router.post("/translations/bulk", response_model=BulkImportResponse)
+def bulk_import_translations(
+    request: BulkImportRequest,
+    current_user: CurrentUser = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Bulk import translations
+
+    Business Rules:
+    - Validates each translation before import
+    - Continues on error and reports failed items
+    - Returns count of imported, updated, and failed translations
+    - Existing translations are updated, new ones are created
+    """
+    return bulk_import_translations_use_case(
+        organization_id=current_user.organization_id,
+        request=request,
         db=db
     )
 
@@ -263,6 +264,6 @@ def get_translation_stats(
     - Completion rate per language
     """
     return get_translation_stats_use_case(
-        organization_id=current_user["organization_id"],
+        organization_id=current_user.organization_id,
         db=db
     )

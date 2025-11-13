@@ -38,7 +38,7 @@ class Playlist:
         self.is_default = is_default
         self.is_pms_template = is_pms_template
         self.organization_id = organization_id
-        self.created_by = created_by
+        self.created_by_id = created_by
         self.created_at = created_at
         self.updated_at = updated_at
         self.deleted_at = deleted_at
@@ -122,7 +122,7 @@ class Playlist:
             "priority": self.priority,
             "schedule": self.schedule,
             "organization_id": self.organization_id,
-            "created_by": self.created_by,
+            "created_by": self.created_by_id,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,
             "deleted_at": self.deleted_at.isoformat() if self.deleted_at else None,

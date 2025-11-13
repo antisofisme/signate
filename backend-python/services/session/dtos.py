@@ -45,7 +45,7 @@ class SessionResponse(BaseModel):
     device_info: Optional[Dict]
     session_type: str
     created_at: datetime
-    last_activity: datetime
+    last_activity_at: datetime
     expires_at: datetime
     revoked_at: Optional[datetime]
     is_active: bool

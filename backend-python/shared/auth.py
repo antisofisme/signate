@@ -814,8 +814,7 @@ async def get_device_by_token_ws(
             status=device.status,
             organization_id=device.organization_id,
             registered_at=device.registered_at,
-            last_seen=device.last_seen
-        )
+            last_seen_at=device.last_seen_at)
         
     except:
         return None

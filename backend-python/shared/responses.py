@@ -59,14 +59,14 @@ def success_response(
             "success": True,
             "data": {"id": 1, "name": "Device 1"},
             "message": "Device created successfully",
-            "timestamp": "2025-01-04T12:00:00.000000"
+            "recorded_at": "2025-01-04T12:00:00.000000"
         }
     """
     return {
         "success": True,
         "data": data,
         "message": message,
-        "timestamp": datetime.utcnow().isoformat()
+        "recorded_at": datetime.utcnow().isoformat()
     }
 
 
@@ -97,7 +97,7 @@ def error_response(
                 "code": "NOT_FOUND",
                 "details": {}
             },
-            "timestamp": "2025-01-04T12:00:00.000000"
+            "recorded_at": "2025-01-04T12:00:00.000000"
         }
     """
     return {
@@ -108,7 +108,7 @@ def error_response(
             "details": details or {},
             "status_code": status_code
         },
-        "timestamp": datetime.utcnow().isoformat()
+        "recorded_at": datetime.utcnow().isoformat()
     }
 
 
@@ -143,7 +143,7 @@ def paginated_response(
                 "has_next": True,
                 "has_prev": False
             },
-            "timestamp": "2025-01-04T12:00:00.000000"
+            "recorded_at": "2025-01-04T12:00:00.000000"
         }
     """
     import math
@@ -161,7 +161,7 @@ def paginated_response(
             "has_next": page < total_pages,
             "has_prev": page > 1
         },
-        "timestamp": datetime.utcnow().isoformat()
+        "recorded_at": datetime.utcnow().isoformat()
     }
 
 
@@ -243,7 +243,7 @@ def validation_error_response(
                     "errors": [{"field": "email", "message": "Invalid email format"}]
                 }
             },
-            "timestamp": "2025-01-04T12:00:00.000000"
+            "recorded_at": "2025-01-04T12:00:00.000000"
         }
     """
     return error_response(

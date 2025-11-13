@@ -102,7 +102,7 @@ class OrganizationQuotaService:
     
     def get_organization_quota(self, organization_id: int) -> OrganizationQuota:
         """Get organization quota limits and current usage"""
-        from services.organization.repositories.models import OrganizationModel
+        from services.auth.repositories.models import OrganizationModel
         
         # Get organization limits
         org = self.db.query(OrganizationModel).filter(

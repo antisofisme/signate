@@ -182,7 +182,7 @@ def create_organization(
     # Execute use case
     organization = use_case.execute(
         name=request_body.name,
-        pin=request_body.organization_pin,
+        pin=request_body.pin,
         description=request_body.description,
         address=request_body.address,
         contact_email=request_body.contact_email,
@@ -538,10 +538,10 @@ def update_organization_quota(
 ):
     """
     Update organization quota limits
-    
+
     Permission: Admin only
     """
-    from services.organization.repositories.models import OrganizationModel
+    from services.auth.repositories.models import OrganizationModel
     
     start_time = time.time()
     

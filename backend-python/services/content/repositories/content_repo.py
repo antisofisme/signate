@@ -51,8 +51,7 @@ class ContentRepository(IContentRepository):
             transcoding_status=content.transcoding_status,
             upload_status=content.upload_status,
             organization_id=content.organization_id,
-            uploaded_by=content.uploaded_by
-        )
+            uploaded_by_id=content.uploaded_by_id)
 
         self.db.add(db_content)
         self.db.commit()
@@ -335,7 +334,7 @@ class ContentRepository(IContentRepository):
             thumbnail_generated_at=db_content.thumbnail_generated_at,
             upload_status=db_content.upload_status,
             organization_id=db_content.organization_id,
-            uploaded_by=db_content.uploaded_by,
+            uploaded_by_id=db_content.uploaded_by_id,
             created_at=db_content.created_at,
             updated_at=db_content.updated_at,
             deleted_at=db_content.deleted_at

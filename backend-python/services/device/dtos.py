@@ -52,8 +52,8 @@ class UpdateDeviceRequest(BaseModel):
     room_number: Optional[str] = Field(None, max_length=50)
     location_type: Optional[str] = Field(None, pattern='^(guest_room|lobby|conference_room|restaurant|other)$')
     rotation: Optional[int] = Field(None, pattern='^(0|90|180|270)$')
-    volume_enabled: Optional[bool] = None
-    supports_personalization: Optional[bool] = None
+    is_volume_enabled: Optional[bool] = None
+    is_personalization_supported: Optional[bool] = None
     privacy_mode: Optional[str] = Field(None, pattern='^(none|limited|full)$')
 
 
@@ -122,17 +122,17 @@ class DeviceResponse(BaseModel):
 
     # Status
     status: str
-    last_seen: Optional[datetime]
+    last_seen_at: Optional[datetime]
     is_online: bool  # Computed field
 
     # Display settings
     rotation: int
-    volume_enabled: bool
+    is_volume_enabled: bool
 
     # Hotel-specific
     room_number: Optional[str]
     location_type: str
-    supports_personalization: bool
+    is_personalization_supported: bool
     privacy_mode: str
 
     # Metadata
@@ -316,7 +316,7 @@ class DeviceHealthResponse(BaseModel):
 
     # Health status
     overall_status: str
-    alert_triggered: bool
+    is_alert_triggered: bool
     alert_message: Optional[str]
 
     # Metadata

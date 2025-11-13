@@ -35,7 +35,7 @@ class DeviceGroupRepository:
             group_type=group.group_type,
             sort_order=group.sort_order,
             default_playlist_id=group.default_playlist_id,
-            created_by=group.created_by,
+            created_by_id=group.created_by_id,
         )
 
         self.db.add(db_group)
@@ -49,7 +49,7 @@ class DeviceGroupRepository:
     ) -> DeviceGroupMember:
         """Add a device to a group"""
         db_member = DeviceGroupMemberModel(
-            device_id=device_id, group_id=group_id, added_by=added_by
+            device_id=device_id, group_id=group_id, added_by_id=added_by
         )
 
         self.db.add(db_member)
@@ -250,7 +250,7 @@ class DeviceGroupRepository:
             sort_order=db_group.sort_order,
             default_playlist_id=db_group.default_playlist_id,
             deleted_at=db_group.deleted_at,
-            created_by=db_group.created_by,
+            created_by_id=db_group.created_by_id,
             created_at=db_group.created_at,
             updated_at=db_group.updated_at,
         )
@@ -264,5 +264,5 @@ class DeviceGroupRepository:
             device_id=db_member.device_id,
             group_id=db_member.group_id,
             joined_at=db_member.joined_at,
-            added_by=db_member.added_by,
+            added_by_id=db_member.added_by_id,
         )

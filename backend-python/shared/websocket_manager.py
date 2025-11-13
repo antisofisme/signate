@@ -117,7 +117,7 @@ class ConnectionManager:
         await self.broadcast_to_organization(
             organization_id,
             WebSocketEventType.DEVICE_ONLINE,
-            {"device_id": device_id, "timestamp": datetime.utcnow().isoformat()}
+            {"device_id": device_id, "recorded_at": datetime.utcnow().isoformat()}
         )
     
     async def connect_admin(
@@ -179,7 +179,7 @@ class ConnectionManager:
             await self.broadcast_to_organization(
                 org_id,
                 WebSocketEventType.DEVICE_OFFLINE,
-                {"device_id": device_id, "timestamp": datetime.utcnow().isoformat()}
+                {"device_id": device_id, "recorded_at": datetime.utcnow().isoformat()}
             )
     
     async def disconnect_admin(self, user_id: int):
@@ -224,7 +224,7 @@ class ConnectionManager:
         message = {
             "event": event_type.value,
             "data": data,
-            "timestamp": datetime.utcnow().isoformat()
+            "recorded_at": datetime.utcnow().isoformat()
         }
         
         try:
@@ -252,7 +252,7 @@ class ConnectionManager:
         message = {
             "event": event_type.value,
             "data": data,
-            "timestamp": datetime.utcnow().isoformat()
+            "recorded_at": datetime.utcnow().isoformat()
         }
         
         try:

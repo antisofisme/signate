@@ -148,13 +148,13 @@ def device_to_response(device) -> DeviceResponse:
         model_name=device.model_name,
         firmware_version=device.firmware_version,
         status=device.status,
-        last_seen=device.last_seen,
+        last_seen_at=device.last_seen_at,
         is_online=device.is_online(),  # Compute is_online boolean value
         rotation=device.rotation,
-        volume_enabled=device.volume_enabled,
+        is_volume_enabled=device.is_volume_enabled,
         location_type=device.location_type,
         room_number=device.room_number,
-        supports_personalization=device.supports_personalization,
+        is_personalization_supported=device.is_personalization_supported,
         privacy_mode=device.privacy_mode,
         created_at=device.created_at,
         updated_at=device.updated_at,
@@ -213,7 +213,7 @@ def device_heartbeat(
     - If Authorization header present → validate device JWT token
     - If not present → fallback to unique_code validation (backward compatible)
 
-    Updates last_seen timestamp and device metadata
+    Updates last_seen_at timestamp and device metadata
     """
     try:
         # 🔒 SECURITY: Optional JWT validation (backward compatible)
@@ -310,7 +310,7 @@ def check_activation_status(
                 device_id=device.id,
                 device_name=device.device_name,
                 organization_id=device.organization_id,
-                organization_pin=organization_pin,  # 🆕 Include organization PIN
+                pin=organization_pin,  # 🆕 Include organization PIN
                 message="Device is activated"
             )
 
@@ -321,7 +321,7 @@ def check_activation_status(
             activated=False,
             expired=is_expired,
             device_id=device.id if not is_expired else None,
-            organization_pin=None,  # Don't send PIN for pending devices
+            pin=None,  # Don't send PIN for pending devices
             message=f"Device status: {device.status}" + (" (code expired)" if is_expired else "")
         )
     except Exception as e:
@@ -596,8 +596,8 @@ def update_device(
         room_number=request_body.room_number,
         location_type=request_body.location_type,
         rotation=request_body.rotation,
-        volume_enabled=request_body.volume_enabled,
-        supports_personalization=request_body.supports_personalization,
+        is_volume_enabled=request_body.is_volume_enabled,
+        is_personalization_supported=request_body.is_personalization_supported,
         privacy_mode=request_body.privacy_mode
     )
 

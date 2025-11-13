@@ -33,7 +33,7 @@ class TemplateRepository:
             variables=request.variables,
             preview_data=request.preview_data,
             is_active=request.is_active,
-            created_by=user_id
+            created_by_id=user_id
         )
         self.db.add(template)
         self.db.commit()

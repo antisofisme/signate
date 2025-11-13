@@ -339,11 +339,11 @@ class ContentResolver:
             device_tag_ids = [tag.id for tag in device_tags]
             if any(tag_id in device_tag_ids for tag_id in schedule.tag_ids):
                 return True
-                
+
         # Check if schedule applies to all devices
-        if schedule.apply_to_all and not schedule.device_ids and not schedule.tag_ids:
+        if schedule.applies_to_all and not schedule.device_ids and not schedule.tag_ids:
             return True
-            
+
         return False
     
     def _get_playlist_content(self, playlist: "Playlist") -> List[Dict]:

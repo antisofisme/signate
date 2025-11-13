@@ -23,7 +23,7 @@ class OrganizationRepository:
     def find_by_pin(self, pin: str) -> Optional[OrganizationModel]:
         """Find organization by PIN"""
         return self.db.query(OrganizationModel).filter(
-            OrganizationModel.organization_pin == pin
+            OrganizationModel.pin == pin
         ).first()
 
     def get_all_active(self) -> List[OrganizationModel]:

@@ -307,7 +307,7 @@ class LoadTestRunner:
                     "base_url": BASE_URL,
                     "num_users": self.num_users,
                     "duration_seconds": self.duration_seconds,
-                    "timestamp": timestamp
+                    "recorded_at": timestamp
                 },
                 "summary": {
                     "total_requests": len(self.results),

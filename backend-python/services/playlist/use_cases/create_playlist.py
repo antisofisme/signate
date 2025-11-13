@@ -47,7 +47,7 @@ class CreatePlaylistUseCase:
             priority=priority,
             schedule=schedule,
             organization_id=organization_id,
-            created_by=created_by,
+            created_by_id=created_by,
         )
 
         # Persist to database

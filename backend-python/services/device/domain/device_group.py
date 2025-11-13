@@ -41,7 +41,7 @@ class DeviceGroup:
         self.sort_order = sort_order
         self.default_playlist_id = default_playlist_id
         self.deleted_at = deleted_at
-        self.created_by = created_by
+        self.created_by_id = created_by
         self.created_at = created_at
         self.updated_at = updated_at
         self.device_count = device_count
@@ -60,7 +60,7 @@ class DeviceGroup:
             "sort_order": self.sort_order,
             "default_playlist_id": self.default_playlist_id,
             "deleted_at": self.deleted_at.isoformat() if self.deleted_at else None,
-            "created_by": self.created_by,
+            "created_by": self.created_by_id,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,
             "device_count": self.device_count,
@@ -101,7 +101,7 @@ class DeviceGroupMember:
         self.device_id = device_id
         self.group_id = group_id
         self.joined_at = joined_at
-        self.added_by = added_by
+        self.added_by_id = added_by
         self.device_name = device_name
         self.group_name = group_name
 
@@ -112,7 +112,7 @@ class DeviceGroupMember:
             "device_id": self.device_id,
             "group_id": self.group_id,
             "joined_at": self.joined_at.isoformat() if self.joined_at else None,
-            "added_by": self.added_by,
+            "added_by": self.added_by_id,
             "device_name": self.device_name,
             "group_name": self.group_name,
         }

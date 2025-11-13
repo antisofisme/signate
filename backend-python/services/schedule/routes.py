@@ -68,9 +68,9 @@ def create_schedule(
     - Default: 0
     """
     return create_schedule_use_case(
-        organization_id=current_user["organization_id"],
+        organization_id=current_user.organization_id,
         request=request,
-        created_by=current_user["user_id"],
+        created_by_id=current_user.user_id,
         db=db
     )
 
@@ -97,7 +97,7 @@ def get_schedules(
     Results ordered by priority (highest first), then start_date (newest first)
     """
     return get_schedules_use_case(
-        organization_id=current_user["organization_id"],
+        organization_id=current_user.organization_id,
         playlist_id=playlist_id,
         is_active=is_active,
         recurrence_type=recurrence_type,
@@ -116,7 +116,7 @@ def get_schedule(
     """Get schedule by ID"""
     return get_schedule_by_id_use_case(
         schedule_id=schedule_id,
-        organization_id=current_user["organization_id"],
+        organization_id=current_user.organization_id,
         db=db
     )
 
@@ -131,7 +131,7 @@ def update_schedule(
     """Update schedule"""
     return update_schedule_use_case(
         schedule_id=schedule_id,
-        organization_id=current_user["organization_id"],
+        organization_id=current_user.organization_id,
         request=request,
         db=db
     )
@@ -146,7 +146,7 @@ def delete_schedule(
     """Delete schedule (hard delete)"""
     return delete_schedule_use_case(
         schedule_id=schedule_id,
-        organization_id=current_user["organization_id"],
+        organization_id=current_user.organization_id,
         db=db
     )
 
@@ -160,7 +160,7 @@ def deactivate_schedule(
     """Deactivate schedule (soft delete)"""
     return deactivate_schedule_use_case(
         schedule_id=schedule_id,
-        organization_id=current_user["organization_id"],
+        organization_id=current_user.organization_id,
         db=db
     )
 
@@ -181,7 +181,7 @@ def get_active_schedule_now(
     Uses current date/time to determine active schedule.
     """
     return get_active_schedule_use_case(
-        organization_id=current_user["organization_id"],
+        organization_id=current_user.organization_id,
         check_date=None,  # Will use current date
         check_time=None,  # Will use current time
         db=db
@@ -201,7 +201,7 @@ def get_active_schedule_at(
     Useful for previewing schedule behavior.
     """
     return get_active_schedule_use_case(
-        organization_id=current_user["organization_id"],
+        organization_id=current_user.organization_id,
         check_date=request.check_date,
         check_time=request.check_time,
         db=db
@@ -230,7 +230,7 @@ def calculate_next_occurrence(
     """
     return calculate_next_occurrence_use_case(
         schedule_id=schedule_id,
-        organization_id=current_user["organization_id"],
+        organization_id=current_user.organization_id,
         from_date=request.from_date,
         db=db
     )
@@ -255,7 +255,7 @@ def check_schedule_conflicts(
     Note: Higher priority schedules will take precedence in actual playback.
     """
     return check_conflicts_use_case(
-        organization_id=current_user["organization_id"],
+        organization_id=current_user.organization_id,
         playlist_id=request.playlist_id,
         start_date=request.start_date,
         end_date=request.end_date,
@@ -285,16 +285,16 @@ async def refresh_schedules(
     - Admins: Can refresh any organization or all organizations
     """
     # Check permissions
-    if organization_id and organization_id != current_user["organization_id"]:
+    if organization_id and organization_id != current_user.organization_id:
         # Only admins can refresh other organizations
-        if current_user["role"] not in ["admin", "super_admin"]:
+        if current_user.role not in ["admin", "super_admin"]:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="You can only refresh schedules for your own organization"
             )
     
     # Use user's organization if not specified
-    target_org_id = organization_id or current_user["organization_id"]
+    target_org_id = organization_id or current_user.organization_id
     
     try:
         executor = get_schedule_executor()

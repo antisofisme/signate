@@ -132,12 +132,12 @@ class DeviceRepository(IDeviceRepository):
             model_name=device.model_name,
             firmware_version=device.firmware_version,
             status=device.status,
-            last_seen=device.last_seen,
+            last_seen_at=device.last_seen_at,
             rotation=device.rotation,
-            volume_enabled=device.volume_enabled,
+            is_volume_enabled=device.is_volume_enabled,
             room_number=device.room_number,
             location_type=device.location_type,
-            supports_personalization=device.supports_personalization,
+            is_personalization_supported=device.is_personalization_supported,
             privacy_mode=device.privacy_mode,
             assigned_playlist_id=device.assigned_playlist_id
         )
@@ -172,12 +172,12 @@ class DeviceRepository(IDeviceRepository):
         device_model.model_name = device.model_name
         device_model.firmware_version = device.firmware_version
         device_model.status = device.status
-        device_model.last_seen = device.last_seen
+        device_model.last_seen_at = device.last_seen_at
         device_model.rotation = device.rotation
-        device_model.volume_enabled = device.volume_enabled
+        device_model.is_volume_enabled = device.is_volume_enabled
         device_model.room_number = device.room_number
         device_model.location_type = device.location_type
-        device_model.supports_personalization = device.supports_personalization
+        device_model.is_personalization_supported = device.is_personalization_supported
         device_model.privacy_mode = device.privacy_mode
         device_model.assigned_playlist_id = device.assigned_playlist_id
 
@@ -195,12 +195,12 @@ class DeviceRepository(IDeviceRepository):
         self.db.commit()
         return True
 
-    def update_heartbeat(self, unique_code: str, last_seen: datetime) -> bool:
-        """Update device last_seen timestamp (optimized for heartbeat)"""
+    def update_heartbeat(self, unique_code: str, last_seen_at: datetime) -> bool:
+        """Update device last_seen_at timestamp (optimized for heartbeat)"""
         result = self.db.query(DeviceModel).filter(
             DeviceModel.unique_code == unique_code.upper()
         ).update({
-            'last_seen': last_seen
+            'last_seen_at': last_seen_at
         })
         self.db.commit()
         return result > 0
@@ -212,7 +212,7 @@ class DeviceRepository(IDeviceRepository):
         ).count()
 
     def find_online_devices(self, organization_id: int) -> List[Device]:
-        """Find online devices (last_seen < 5 minutes ago)"""
+        """Find online devices (last_seen_at < 5 minutes ago)"""
         five_minutes_ago = datetime.utcnow() - timedelta(minutes=5)
 
         device_models = self.db.query(DeviceModel).options(
@@ -223,7 +223,7 @@ class DeviceRepository(IDeviceRepository):
         ).filter(
             DeviceModel.organization_id == organization_id,
             DeviceModel.status == 'active',
-            DeviceModel.last_seen >= five_minutes_ago
+            DeviceModel.last_seen_at >= five_minutes_ago
         ).all()
 
         return [self._to_entity(model) for model in device_models]
@@ -251,12 +251,12 @@ class DeviceRepository(IDeviceRepository):
             model_name=model.model_name,
             firmware_version=model.firmware_version,
             status=model.status,
-            last_seen=model.last_seen,
+            last_seen_at=model.last_seen_at,
             rotation=model.rotation,
-            volume_enabled=model.volume_enabled,
+            is_volume_enabled=model.is_volume_enabled,
             room_number=model.room_number,
             location_type=model.location_type,
-            supports_personalization=model.supports_personalization,
+            is_personalization_supported=model.is_personalization_supported,
             privacy_mode=model.privacy_mode,
             assigned_playlist_id=model.assigned_playlist_id,
             created_at=model.created_at,

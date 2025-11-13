@@ -172,7 +172,7 @@ class UploadContentUseCase:
 
             # Multi-tenant
             organization_id=organization_id,
-            uploaded_by=uploaded_by
+            uploaded_by_id=uploaded_by
         )
 
         # Validate business rules (raises ValueError if invalid)

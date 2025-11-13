@@ -36,7 +36,7 @@ class GetPMSStatsUseCase:
 
         # Get last sync time
         config = self.repo.get_config_by_organization(organization_id)
-        last_sync = config.last_sync.isoformat() if config and config.last_sync else None
+        last_sync = config.last_synced_at.isoformat() if config and config.last_synced_at else None
 
         return {
             "total_guests": len(current_guests),
@@ -46,5 +46,5 @@ class GetPMSStatsUseCase:
             "total_rooms": room_stats["total_rooms"],
             "available_rooms": room_stats["available_rooms"],
             "occupied_rooms": room_stats["occupied_rooms"],
-            "last_sync": last_sync,
+            "last_synced_at": last_sync,
         }

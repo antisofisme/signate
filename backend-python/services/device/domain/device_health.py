@@ -47,7 +47,7 @@ class DeviceHealthMetric:
 
     # Health status
     overall_status: str = 'healthy'  # 'healthy', 'warning', 'critical', 'offline'
-    alert_triggered: bool = False
+    is_alert_triggered: bool = False
     alert_message: Optional[str] = None
 
     # Additional data

@@ -34,7 +34,7 @@ class Device:
     connection_speed: Optional[float]
     model_name: Optional[str]
     firmware_version: Optional[str]
-    last_seen: Optional[datetime]
+    last_seen_at: Optional[datetime]
     room_number: Optional[str]
     assigned_playlist_id: Optional[int]
     created_at: Optional[datetime]
@@ -43,17 +43,17 @@ class Device:
 
     # Fields WITH defaults - MUST come last
     rotation: int = 0
-    volume_enabled: bool = True
+    is_volume_enabled: bool = True
     location_type: str = 'guest_room'
-    supports_personalization: bool = True
+    is_personalization_supported: bool = True
     privacy_mode: str = 'limited'
 
     def is_online(self) -> bool:
         """Check if device is online (heartbeat in last 5 minutes)"""
-        if not self.last_seen:
+        if not self.last_seen_at:
             return False
         now = datetime.now(timezone.utc)
-        diff = (now - self.last_seen).total_seconds()
+        diff = (now - self.last_seen_at).total_seconds()
         return diff < 300  # 5 minutes
 
     def is_active(self) -> bool:

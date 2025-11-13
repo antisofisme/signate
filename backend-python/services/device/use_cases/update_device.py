@@ -25,8 +25,8 @@ class UpdateDeviceUseCase:
         room_number: Optional[str] = None,
         location_type: Optional[str] = None,
         rotation: Optional[int] = None,
-        volume_enabled: Optional[bool] = None,
-        supports_personalization: Optional[bool] = None,
+        is_volume_enabled: Optional[bool] = None,
+        is_personalization_supported: Optional[bool] = None,
         privacy_mode: Optional[str] = None
     ) -> Device:
         """
@@ -38,8 +38,8 @@ class UpdateDeviceUseCase:
             room_number: Optional new room number
             location_type: Optional new location type
             rotation: Optional screen rotation (0, 90, 180, 270)
-            volume_enabled: Optional volume setting
-            supports_personalization: Optional personalization support
+            is_volume_enabled: Optional volume setting
+            is_personalization_supported: Optional personalization support
             privacy_mode: Optional privacy mode setting
 
         Returns:
@@ -75,11 +75,11 @@ class UpdateDeviceUseCase:
                 raise ValueError("Rotation must be 0, 90, 180, or 270 degrees")
             device.rotation = rotation
 
-        if volume_enabled is not None:
-            device.volume_enabled = volume_enabled
+        if is_volume_enabled is not None:
+            device.is_volume_enabled = is_volume_enabled
 
-        if supports_personalization is not None:
-            device.supports_personalization = supports_personalization
+        if is_personalization_supported is not None:
+            device.is_personalization_supported = is_personalization_supported
 
         if privacy_mode is not None:
             # Validate privacy_mode

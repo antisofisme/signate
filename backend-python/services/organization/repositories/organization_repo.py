@@ -35,7 +35,7 @@ class OrganizationRepository(IOrganizationRepository):
     def find_by_pin(self, pin: str) -> Optional[Organization]:
         """Find organization by PIN"""
         org_model = self.db.query(OrganizationModel).filter(
-            OrganizationModel.organization_pin == pin
+            OrganizationModel.pin == pin
         ).first()
         return self._to_entity(org_model) if org_model else None
 
@@ -53,7 +53,7 @@ class OrganizationRepository(IOrganizationRepository):
         """Create new organization"""
         org_model = OrganizationModel(
             name=organization.name,
-            organization_pin=organization.organization_pin,
+            pin=organization.pin,
             description=organization.description,
             address=organization.address,
             contact_email=organization.contact_email,
@@ -123,7 +123,7 @@ class OrganizationRepository(IOrganizationRepository):
         return Organization(
             id=model.id,
             name=model.name,
-            organization_pin=model.organization_pin,
+            pin=model.pin,
             description=model.description,
             address=model.address,
             contact_email=model.contact_email,

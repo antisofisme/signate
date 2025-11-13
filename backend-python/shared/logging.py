@@ -104,7 +104,7 @@ class RequestLogger:
             ip_address: Optional IP address
         """
         log_data = {
-            "timestamp": datetime.utcnow().isoformat(),
+            "recorded_at": datetime.utcnow().isoformat(),
             "method": method,
             "path": path,
             "status_code": status_code,
@@ -151,7 +151,7 @@ class ErrorLogger:
         import traceback
 
         error_data = {
-            "timestamp": datetime.utcnow().isoformat(),
+            "recorded_at": datetime.utcnow().isoformat(),
             "error_type": type(error).__name__,
             "error_message": str(error),
             "user_id": user_id,
@@ -210,7 +210,7 @@ class AuditLogger:
             organization_id: Optional organization context
         """
         audit_data = {
-            "timestamp": datetime.utcnow().isoformat(),
+            "recorded_at": datetime.utcnow().isoformat(),
             "user_id": user_id,
             "organization_id": organization_id,
             "action": action,
@@ -272,7 +272,7 @@ class PerformanceLogger:
             rows_affected: Number of rows affected
         """
         perf_data = {
-            "timestamp": datetime.utcnow().isoformat(),
+            "recorded_at": datetime.utcnow().isoformat(),
             "query": query[:200],  # Truncate long queries
             "duration_ms": duration_ms,
             "rows_affected": rows_affected

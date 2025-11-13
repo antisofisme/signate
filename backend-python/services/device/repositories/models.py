@@ -46,11 +46,11 @@ class DeviceModel(Base):
 
     # Status
     status = Column(String(20), nullable=False, default='pending', index=True)  # 'pending', 'active', 'inactive'
-    last_seen = Column(DateTime(timezone=True), nullable=True)
+    last_seen_at = Column(DateTime(timezone=True), nullable=True)
 
     # Display settings
     rotation = Column(Integer, default=0, nullable=False)  # 0, 90, 180, 270
-    volume_enabled = Column(Boolean, default=True, nullable=False)
+    is_volume_enabled = Column(Boolean, default=True, nullable=False)
     
     # Content assignment
     assigned_playlist_id = Column(Integer, ForeignKey("playlists.id", ondelete="SET NULL"), nullable=True)
@@ -58,12 +58,12 @@ class DeviceModel(Base):
     # Hotel-specific
     room_number = Column(String(50), nullable=True, index=True)
     location_type = Column(String(50), default='guest_room', nullable=False)
-    supports_personalization = Column(Boolean, default=True, nullable=False)
+    is_personalization_supported = Column(Boolean, default=True, nullable=False)
     privacy_mode = Column(String(20), default='limited', nullable=False)  # 'none', 'limited', 'full'
 
     # Audit tracking
-    created_by = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
-    updated_by = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
+    created_by_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
+    updated_by_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
 
     # Metadata
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
@@ -73,8 +73,8 @@ class DeviceModel(Base):
     # Relationships (using string references to avoid circular imports)
     organization = relationship("OrganizationModel", foreign_keys=[organization_id])
     assigned_playlist = relationship("PlaylistModel", foreign_keys=[assigned_playlist_id])
-    creator = relationship("UserModel", foreign_keys=[created_by])
-    updater = relationship("UserModel", foreign_keys=[updated_by])
+    creator = relationship("UserModel", foreign_keys=[created_by_id])
+    updater = relationship("UserModel", foreign_keys=[updated_by_id])
     
     # Many-to-many relationships
     tags = relationship("TagModel", secondary="device_tags", back_populates="devices")
@@ -98,7 +98,7 @@ class DeviceTagModel(Base):
 
     # Association metadata
     assigned_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
-    assigned_by = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    assigned_by_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
 
     # Constraints
     __table_args__ = (
@@ -110,7 +110,7 @@ class DeviceTagModel(Base):
     # Relationships
     device = relationship("DeviceModel")
     tag = relationship("TagModel")
-    assigned_by_user = relationship("UserModel", foreign_keys=[assigned_by])
+    assigned_by_user = relationship("UserModel", foreign_keys=[assigned_by_id])
 
 
 class DeviceCommandModel(Base):
@@ -142,7 +142,7 @@ class DeviceCommandModel(Base):
     max_retries = Column(Integer, default=3, nullable=False)
 
     # Audit tracking
-    created_by = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    created_by_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
     expires_at = Column(DateTime(timezone=True), nullable=True)
@@ -150,7 +150,7 @@ class DeviceCommandModel(Base):
     # Relationships
     device = relationship("DeviceModel", back_populates="commands")
     organization = relationship("OrganizationModel", foreign_keys=[organization_id])
-    created_by_user = relationship("UserModel", foreign_keys=[created_by])
+    created_by_user = relationship("UserModel", foreign_keys=[created_by_id])
 
 
 class DeviceHealthMetricModel(Base):
@@ -193,7 +193,7 @@ class DeviceHealthMetricModel(Base):
 
     # Health status
     overall_status = Column(String(20), default='healthy', nullable=False, index=True)
-    alert_triggered = Column(Boolean, default=False, nullable=False, index=True)
+    is_alert_triggered = Column(Boolean, default=False, nullable=False, index=True)
     alert_message = Column(String, nullable=True)
 
     # Additional data (use extra_data to avoid SQLAlchemy reserved name)
@@ -236,7 +236,7 @@ class DeviceGroupModel(Base):
     deleted_at = Column(DateTime(timezone=True), nullable=True, index=True)
 
     # Audit
-    created_by = Column(Integer, ForeignKey("users.id"), nullable=True)
+    created_by_id = Column(Integer, ForeignKey("users.id"), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at = Column(DateTime(timezone=True), onupdate=func.now(), nullable=True)
 
@@ -254,7 +254,7 @@ class DeviceGroupMemberModel(Base):
 
     # Membership metadata
     joined_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
-    added_by = Column(Integer, ForeignKey("users.id"), nullable=True)
+    added_by_id = Column(Integer, ForeignKey("users.id"), nullable=True)
 
     # Constraints
     __table_args__ = (
@@ -266,4 +266,4 @@ class DeviceGroupMemberModel(Base):
     # Relationships
     device = relationship("DeviceModel", back_populates="group_memberships")
     group = relationship("DeviceGroupModel")
-    added_by_user = relationship("UserModel", foreign_keys=[added_by])
+    added_by_user = relationship("UserModel", foreign_keys=[added_by_id])

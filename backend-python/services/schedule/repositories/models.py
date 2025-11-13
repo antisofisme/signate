@@ -53,18 +53,17 @@ class Schedule(Base):
     # Targeting
     device_ids = Column(JSONB, nullable=True)           # [1, 2, 3] - specific devices
     tag_ids = Column(JSONB, nullable=True)              # [1, 2] - devices with these tags
-    apply_to_all = Column(Boolean, default=False)       # Apply to all org devices
+    applies_to_all = Column(Boolean, default=False)     # Apply to all org devices
 
     # Metadata
-    created_by = Column(Integer, ForeignKey("users.id"), nullable=True)
+    created_by_id = Column(Integer, ForeignKey("users.id"), nullable=True)
     created_at = Column(TIMESTAMP, default=datetime.utcnow)
     updated_at = Column(TIMESTAMP, default=datetime.utcnow, onupdate=datetime.utcnow)
 
-    # Relationships - Commented out to avoid circular imports
-    # TODO: Fix circular imports and re-enable relationships
-    # playlist = relationship("Playlist", backref="schedules")
-    # organization = relationship("Organization", backref="schedules") 
-    # creator = relationship("User", backref="created_schedules", foreign_keys=[created_by])
+    # Relationships
+    playlist = relationship("PlaylistModel", foreign_keys=[playlist_id])
+    # organization = relationship("OrganizationModel", foreign_keys=[organization_id])
+    # creator = relationship("UserModel", foreign_keys=[created_by])
 
     def __repr__(self):
         return f"<Schedule {self.id}: {self.name} ({self.recurrence_type})>"

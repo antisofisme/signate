@@ -1,0 +1,330 @@
+{
+  "test_date": "2025-11-13T16:01:27.784572",
+  "summary": {
+    "total_tests": 18,
+    "passed": 13,
+    "failed": 2,
+    "warnings": 3,
+    "pass_rate": "72.2%"
+  },
+  "services": {
+    "AUTH": {
+      "pass": 6,
+      "fail": 0,
+      "warn": 0,
+      "tests": [
+        {
+          "timestamp": "2025-11-13T16:01:27.449698",
+          "service": "AUTH",
+          "test": "Login (valid credentials)",
+          "status": "PASS",
+          "details": "Token received, user_id=9, org_id=4",
+          "data": null
+        },
+        {
+          "timestamp": "2025-11-13T16:01:27.639647",
+          "service": "AUTH",
+          "test": "Login (wrong password)",
+          "status": "PASS",
+          "details": "Correctly rejected",
+          "data": null
+        },
+        {
+          "timestamp": "2025-11-13T16:01:27.645621",
+          "service": "AUTH",
+          "test": "Login (non-existent user)",
+          "status": "PASS",
+          "details": "Correctly rejected",
+          "data": null
+        },
+        {
+          "timestamp": "2025-11-13T16:01:27.650922",
+          "service": "AUTH",
+          "test": "Access without token",
+          "status": "PASS",
+          "details": "Correctly blocked",
+          "data": null
+        },
+        {
+          "timestamp": "2025-11-13T16:01:27.659225",
+          "service": "AUTH",
+          "test": "Access with valid token",
+          "status": "PASS",
+          "details": "Token auth works",
+          "data": null
+        },
+        {
+          "timestamp": "2025-11-13T16:01:27.664356",
+          "service": "AUTH",
+          "test": "Invalid token rejection",
+          "status": "PASS",
+          "details": "Invalid token blocked",
+          "data": null
+        }
+      ]
+    },
+    "ORGANIZATION": {
+      "pass": 4,
+      "fail": 0,
+      "warn": 1,
+      "tests": [
+        {
+          "timestamp": "2025-11-13T16:01:27.674204",
+          "service": "ORGANIZATION",
+          "test": "List organizations",
+          "status": "PASS",
+          "details": "Retrieved 0 orgs",
+          "data": null
+        },
+        {
+          "timestamp": "2025-11-13T16:01:27.694817",
+          "service": "ORGANIZATION",
+          "test": "Create organization",
+          "status": "PASS",
+          "details": "Created org_id=9",
+          "data": null
+        },
+        {
+          "timestamp": "2025-11-13T16:01:27.702864",
+          "service": "ORGANIZATION",
+          "test": "Get organization by ID",
+          "status": "PASS",
+          "details": "Name: DeepTest_Org_1763024487",
+          "data": null
+        },
+        {
+          "timestamp": "2025-11-13T16:01:27.717801",
+          "service": "ORGANIZATION",
+          "test": "Update organization",
+          "status": "PASS",
+          "details": "Updated successfully",
+          "data": null
+        },
+        {
+          "timestamp": "2025-11-13T16:01:27.731547",
+          "service": "ORGANIZATION",
+          "test": "Duplicate PIN validation",
+          "status": "WARN",
+          "details": "Should reject duplicate, got 201",
+          "data": null
+        }
+      ]
+    },
+    "USER": {
+      "pass": 1,
+      "fail": 1,
+      "warn": 2,
+      "tests": [
+        {
+          "timestamp": "2025-11-13T16:01:27.739442",
+          "service": "USER",
+          "test": "List users",
+          "status": "PASS",
+          "details": "Retrieved 0 users",
+          "data": null
+        },
+        {
+          "timestamp": "2025-11-13T16:01:27.749586",
+          "service": "USER",
+          "test": "Create user",
+          "status": "FAIL",
+          "details": "HTTP 422: {\"detail\":[{\"type\":\"value_error\",\"loc\":[\"body\",\"email\"],\"msg\":\"value is not a valid email address: The part after the @-sign is a special-use or reserved name that cannot be used with email.\",\"input\":",
+          "data": null
+        },
+        {
+          "timestamp": "2025-11-13T16:01:27.755788",
+          "service": "USER",
+          "test": "Duplicate username validation",
+          "status": "WARN",
+          "details": "Should reject, got 422",
+          "data": null
+        },
+        {
+          "timestamp": "2025-11-13T16:01:27.762243",
+          "service": "USER",
+          "test": "Duplicate email validation",
+          "status": "WARN",
+          "details": "Should reject, got 422",
+          "data": null
+        }
+      ]
+    },
+    "DEVICE": {
+      "pass": 2,
+      "fail": 1,
+      "warn": 0,
+      "tests": [
+        {
+          "timestamp": "2025-11-13T16:01:27.766864",
+          "service": "DEVICE",
+          "test": "Request activation code",
+          "status": "FAIL",
+          "details": "HTTP 422",
+          "data": null
+        },
+        {
+          "timestamp": "2025-11-13T16:01:27.775338",
+          "service": "DEVICE",
+          "test": "List devices (my_org)",
+          "status": "PASS",
+          "details": "Found 0 devices",
+          "data": null
+        },
+        {
+          "timestamp": "2025-11-13T16:01:27.782797",
+          "service": "DEVICE",
+          "test": "List devices (unassigned)",
+          "status": "PASS",
+          "details": "Found 0 unassigned",
+          "data": null
+        }
+      ]
+    }
+  },
+  "all_results": [
+    {
+      "timestamp": "2025-11-13T16:01:27.449698",
+      "service": "AUTH",
+      "test": "Login (valid credentials)",
+      "status": "PASS",
+      "details": "Token received, user_id=9, org_id=4",
+      "data": null
+    },
+    {
+      "timestamp": "2025-11-13T16:01:27.639647",
+      "service": "AUTH",
+      "test": "Login (wrong password)",
+      "status": "PASS",
+      "details": "Correctly rejected",
+      "data": null
+    },
+    {
+      "timestamp": "2025-11-13T16:01:27.645621",
+      "service": "AUTH",
+      "test": "Login (non-existent user)",
+      "status": "PASS",
+      "details": "Correctly rejected",
+      "data": null
+    },
+    {
+      "timestamp": "2025-11-13T16:01:27.650922",
+      "service": "AUTH",
+      "test": "Access without token",
+      "status": "PASS",
+      "details": "Correctly blocked",
+      "data": null
+    },
+    {
+      "timestamp": "2025-11-13T16:01:27.659225",
+      "service": "AUTH",
+      "test": "Access with valid token",
+      "status": "PASS",
+      "details": "Token auth works",
+      "data": null
+    },
+    {
+      "timestamp": "2025-11-13T16:01:27.664356",
+      "service": "AUTH",
+      "test": "Invalid token rejection",
+      "status": "PASS",
+      "details": "Invalid token blocked",
+      "data": null
+    },
+    {
+      "timestamp": "2025-11-13T16:01:27.674204",
+      "service": "ORGANIZATION",
+      "test": "List organizations",
+      "status": "PASS",
+      "details": "Retrieved 0 orgs",
+      "data": null
+    },
+    {
+      "timestamp": "2025-11-13T16:01:27.694817",
+      "service": "ORGANIZATION",
+      "test": "Create organization",
+      "status": "PASS",
+      "details": "Created org_id=9",
+      "data": null
+    },
+    {
+      "timestamp": "2025-11-13T16:01:27.702864",
+      "service": "ORGANIZATION",
+      "test": "Get organization by ID",
+      "status": "PASS",
+      "details": "Name: DeepTest_Org_1763024487",
+      "data": null
+    },
+    {
+      "timestamp": "2025-11-13T16:01:27.717801",
+      "service": "ORGANIZATION",
+      "test": "Update organization",
+      "status": "PASS",
+      "details": "Updated successfully",
+      "data": null
+    },
+    {
+      "timestamp": "2025-11-13T16:01:27.731547",
+      "service": "ORGANIZATION",
+      "test": "Duplicate PIN validation",
+      "status": "WARN",
+      "details": "Should reject duplicate, got 201",
+      "data": null
+    },
+    {
+      "timestamp": "2025-11-13T16:01:27.739442",
+      "service": "USER",
+      "test": "List users",
+      "status": "PASS",
+      "details": "Retrieved 0 users",
+      "data": null
+    },
+    {
+      "timestamp": "2025-11-13T16:01:27.749586",
+      "service": "USER",
+      "test": "Create user",
+      "status": "FAIL",
+      "details": "HTTP 422: {\"detail\":[{\"type\":\"value_error\",\"loc\":[\"body\",\"email\"],\"msg\":\"value is not a valid email address: The part after the @-sign is a special-use or reserved name that cannot be used with email.\",\"input\":",
+      "data": null
+    },
+    {
+      "timestamp": "2025-11-13T16:01:27.755788",
+      "service": "USER",
+      "test": "Duplicate username validation",
+      "status": "WARN",
+      "details": "Should reject, got 422",
+      "data": null
+    },
+    {
+      "timestamp": "2025-11-13T16:01:27.762243",
+      "service": "USER",
+      "test": "Duplicate email validation",
+      "status": "WARN",
+      "details": "Should reject, got 422",
+      "data": null
+    },
+    {
+      "timestamp": "2025-11-13T16:01:27.766864",
+      "service": "DEVICE",
+      "test": "Request activation code",
+      "status": "FAIL",
+      "details": "HTTP 422",
+      "data": null
+    },
+    {
+      "timestamp": "2025-11-13T16:01:27.775338",
+      "service": "DEVICE",
+      "test": "List devices (my_org)",
+      "status": "PASS",
+      "details": "Found 0 devices",
+      "data": null
+    },
+    {
+      "timestamp": "2025-11-13T16:01:27.782797",
+      "service": "DEVICE",
+      "test": "List devices (unassigned)",
+      "status": "PASS",
+      "details": "Found 0 unassigned",
+      "data": null
+    }
+  ]
+}

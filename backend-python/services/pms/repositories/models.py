@@ -35,7 +35,7 @@ class PMSGuest(Base):
 
     # Sync Metadata
     synced_at = Column(DateTime, server_default=func.now())
-    last_updated = Column(DateTime, server_default=func.now(), onupdate=func.now())
+    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
 
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
@@ -59,7 +59,7 @@ class PMSGuest(Base):
             "language": self.language,
             "special_requests": self.special_requests,
             "synced_at": self.synced_at.isoformat() if self.synced_at else None,
-            "last_updated": self.last_updated.isoformat() if self.last_updated else None,
+            "updated_at": self.updated_at.isoformat() if self.updated_at else None,
         }
 
 
@@ -81,7 +81,7 @@ class PMSRoom(Base):
 
     # Sync Metadata
     synced_at = Column(DateTime, server_default=func.now())
-    last_updated = Column(DateTime, server_default=func.now(), onupdate=func.now())
+    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
 
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
@@ -101,7 +101,7 @@ class PMSRoom(Base):
             "bed_type": self.bed_type,
             "max_occupancy": self.max_occupancy,
             "synced_at": self.synced_at.isoformat() if self.synced_at else None,
-            "last_updated": self.last_updated.isoformat() if self.last_updated else None,
+            "updated_at": self.updated_at.isoformat() if self.updated_at else None,
         }
 
 
@@ -118,11 +118,11 @@ class PMSConfiguration(Base):
 
     # Configuration
     is_active = Column(Boolean, default=True)
-    last_sync = Column(DateTime)
+    last_synced_at = Column(DateTime)
     sync_interval_minutes = Column(Integer, default=5)
 
     # Metadata
-    created_by = Column(Integer, ForeignKey("users.id"))
+    created_by_id = Column(Integer, ForeignKey("users.id"))
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
 
@@ -132,9 +132,9 @@ class PMSConfiguration(Base):
             "organization_id": self.organization_id,
             "api_key": self.api_key,
             "is_active": self.is_active,
-            "last_sync": self.last_sync.isoformat() if self.last_sync else None,
+            "last_synced_at": self.last_synced_at.isoformat() if self.last_synced_at else None,
             "sync_interval_minutes": self.sync_interval_minutes,
-            "created_by": self.created_by,
+            "created_by": self.created_by_id,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,
         }

@@ -30,7 +30,7 @@ class UserSession(Base):
 
     # Session lifecycle
     created_at = Column(TIMESTAMP(timezone=True), nullable=False, server_default=text("now()"))
-    last_activity = Column(TIMESTAMP(timezone=True), nullable=False, server_default=text("now()"))
+    last_activity_at = Column(TIMESTAMP(timezone=True), nullable=False, server_default=text("now()"))
     expires_at = Column(TIMESTAMP(timezone=True), nullable=False)
     revoked_at = Column(TIMESTAMP(timezone=True), nullable=True)  # Manual logout/revocation
 
@@ -74,7 +74,7 @@ class UserSession(Base):
             "device_info": self.device_info,
             "session_type": self.session_type,
             "created_at": self.created_at.isoformat() if self.created_at else None,
-            "last_activity": self.last_activity.isoformat() if self.last_activity else None,
+            "last_activity_at": self.last_activity_at.isoformat() if self.last_activity_at else None,
             "expires_at": self.expires_at.isoformat() if self.expires_at else None,
             "revoked_at": self.revoked_at.isoformat() if self.revoked_at else None,
             "is_active": self.is_active,

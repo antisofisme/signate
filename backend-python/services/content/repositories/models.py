@@ -71,7 +71,7 @@ class ContentModel(Base):
 
     # Multi-tenant
     organization_id = Column(Integer, ForeignKey("organizations.id", ondelete="CASCADE"), nullable=False, index=True)
-    uploaded_by = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    uploaded_by_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
 
     # Audit
     created_at = Column(DateTime(timezone=True), server_default=func.now())

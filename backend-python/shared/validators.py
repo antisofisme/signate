@@ -139,7 +139,7 @@ def validate_safe_string(text: str, max_length: int = 1000) -> tuple[bool, Optio
     return True, None
 
 
-def validate_email(email: str) -> bool:
+def validate_email(email: str) -> tuple[bool, Optional[str]]:
     """
     Validate email format
 
@@ -147,16 +147,18 @@ def validate_email(email: str) -> bool:
         email: Email address to validate
 
     Returns:
-        True if valid email format
+        Tuple of (is_valid, error_message)
 
     Example:
         >>> validate_email("user@example.com")
-        True
+        (True, None)
         >>> validate_email("invalid-email")
-        False
+        (False, "Invalid email format")
     """
     pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
-    return bool(re.match(pattern, email))
+    if re.match(pattern, email):
+        return True, None
+    return False, "Invalid email format"
 
 
 def validate_username(username: str, min_length: int = 3, max_length: int = 50) -> tuple[bool, Optional[str]]:

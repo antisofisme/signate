@@ -105,7 +105,7 @@ class ActivateDeviceUseCase:
         # 🆕 Assign device to admin's organization (from JWT token)
         device.organization_id = organization_id
         device.status = 'active'
-        device.last_seen = datetime.now(timezone.utc)
+        device.last_seen_at = datetime.now(timezone.utc)
 
         if device_name:
             device.device_name = device_name

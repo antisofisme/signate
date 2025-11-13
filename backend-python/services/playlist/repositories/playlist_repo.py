@@ -33,7 +33,7 @@ class PlaylistRepository(IPlaylistRepository):
             is_default=model.is_default,
             is_pms_template=model.is_pms_template,
             organization_id=model.organization_id,
-            created_by=model.created_by,
+            created_by_id=model.created_by_id,
             created_at=model.created_at,
             updated_at=model.updated_at,
             deleted_at=model.deleted_at,
@@ -81,7 +81,7 @@ class PlaylistRepository(IPlaylistRepository):
             is_default=playlist.is_default,
             is_pms_template=playlist.is_pms_template,
             organization_id=playlist.organization_id,
-            created_by=playlist.created_by,
+            created_by_id=playlist.created_by_id,
         )
 
         self.db.add(db_playlist)

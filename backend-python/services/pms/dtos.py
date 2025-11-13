@@ -47,7 +47,7 @@ class GuestResponse(BaseModel):
     country: Optional[str] = None
     reservation_no: Optional[str] = None
     synced_at: str
-    last_updated: str
+    updated_at: str
 
 
 class GuestListResponse(BaseModel):
@@ -92,7 +92,7 @@ class RoomResponse(BaseModel):
     bed_type: Optional[str] = None
     max_occupancy: Optional[int] = None
     synced_at: str
-    last_updated: str
+    updated_at: str
 
 
 class RoomListResponse(BaseModel):
@@ -127,7 +127,7 @@ class PMSConfigResponse(BaseModel):
     organization_id: int
     api_key: str
     is_active: bool
-    last_sync: Optional[str] = None
+    last_synced_at: Optional[str] = None
     sync_interval_minutes: int
     created_by: Optional[int] = None
     created_at: str
@@ -149,4 +149,4 @@ class PMSStatsResponse(BaseModel):
     total_rooms: int
     available_rooms: int
     occupied_rooms: int
-    last_sync: Optional[str] = None
+    last_synced_at: Optional[str] = None

@@ -27,7 +27,7 @@ class ContentPlaybackLog(Base):
     ended_at = Column(TIMESTAMP(timezone=True), nullable=True)
     duration_seconds = Column(Integer, nullable=True)  # Actual playback duration
     expected_duration = Column(Integer, nullable=True)  # Expected duration from content
-    completed = Column(Boolean, nullable=False, default=False)  # Watched to completion
+    is_completed = Column(Boolean, nullable=False, default=False)  # Watched to completion
 
     # Metadata
     device_info = Column(JSONB)  # Device details at playback time
@@ -52,7 +52,7 @@ class ContentPlaybackLog(Base):
             "ended_at": self.ended_at.isoformat() if self.ended_at else None,
             "duration_seconds": self.duration_seconds,
             "expected_duration": self.expected_duration,
-            "completed": self.completed,
+            "is_completed": self.is_completed,
             "device_info": self.device_info,
             "playback_quality": self.playback_quality,
             "error_count": self.error_count,

@@ -1,0 +1,155 @@
+{
+  "migration_file": "/mnt/g/khoirul/signate/backend-python/migrations/042_standardize_timestamp_columns.sql",
+  "affected_files_analysis": "/mnt/g/khoirul/signate/backend-python/migrations/042_affected_files.txt",
+  "migration_number": 42,
+  "migration_name": "Standardize Timestamp Column Naming",
+  "created_date": "2025-11-13",
+  "status": "completed",
+
+  "summary": {
+    "columns_renamed": 6,
+    "tables_affected": 6,
+    "affected_python_files": 21,
+    "estimated_code_changes": 85,
+    "estimated_effort_hours": "4-6 hours"
+  },
+
+  "column_renames": [
+    {
+      "table": "devices",
+      "old_name": "last_seen",
+      "new_name": "last_seen_at",
+      "purpose": "Tracks when device last sent heartbeat/communication",
+      "affected_files": 10
+    },
+    {
+      "table": "user_sessions",
+      "old_name": "last_activity",
+      "new_name": "last_activity_at",
+      "purpose": "Tracks most recent user activity in session",
+      "affected_files": 4
+    },
+    {
+      "table": "contents",
+      "old_name": "last_updated",
+      "new_name": "updated_at",
+      "purpose": "Tracks when content metadata was last modified",
+      "affected_files": 0
+    },
+    {
+      "table": "pms_guests",
+      "old_name": "last_updated",
+      "new_name": "updated_at",
+      "purpose": "Tracks when guest record was last modified",
+      "affected_files": 2
+    },
+    {
+      "table": "pms_configurations",
+      "old_name": "last_sync",
+      "new_name": "last_synced_at",
+      "purpose": "Tracks when PMS configuration last synced with external system",
+      "affected_files": 6
+    },
+    {
+      "table": "device_logs",
+      "old_name": "timestamp",
+      "new_name": "recorded_at",
+      "purpose": "Tracks when log entry was recorded",
+      "affected_files": 2
+    }
+  ],
+
+  "affected_files_by_service": {
+    "device_service": {
+      "count": 10,
+      "files": [
+        "services/device/repositories/models.py",
+        "services/device/domain/device.py",
+        "services/device/dtos.py",
+        "services/device/repositories/device_repo.py",
+        "services/device/use_cases/activate_device.py",
+        "services/device/use_cases/heartbeat.py",
+        "services/device/use_cases/request_activation_code.py",
+        "services/device/routes.py",
+        "services/device/domain/interfaces.py",
+        "services/device/log_routes.py"
+      ]
+    },
+    "session_service": {
+      "count": 4,
+      "files": [
+        "services/session/repositories/models.py",
+        "services/session/dtos.py",
+        "services/session/repositories/session_repo.py",
+        "services/session/use_cases/verify_session.py"
+      ]
+    },
+    "pms_service": {
+      "count": 6,
+      "files": [
+        "services/pms/repositories/models.py",
+        "services/pms/dtos.py",
+        "services/pms/repositories/pms_repo.py",
+        "services/pms/use_cases/sync_rooms.py",
+        "services/pms/use_cases/sync_guests.py",
+        "services/pms/use_cases/get_pms_stats.py"
+      ]
+    },
+    "shared_utilities": {
+      "count": 1,
+      "files": [
+        "shared/auth.py"
+      ]
+    }
+  },
+
+  "migration_features": {
+    "verification_block": true,
+    "column_comments": true,
+    "rollback_instructions": true,
+    "data_type_verification": true,
+    "detailed_error_messages": true
+  },
+
+  "breaking_changes": {
+    "is_breaking": true,
+    "impact": "API response field names will change",
+    "affected_systems": [
+      "Backend API responses",
+      "Frontend/CMS (if consuming these fields)",
+      "Viewer (device heartbeat, logs)",
+      "Any external integrations using the API"
+    ],
+    "mitigation": "Coordinate deployment with frontend team, update all client code before deploying"
+  },
+
+  "testing_requirements": [
+    "Device heartbeat functionality",
+    "Device online/offline status detection",
+    "Session validation and expiry",
+    "PMS sync operations",
+    "Device logs recording and retrieval",
+    "API endpoint field name verification",
+    "Frontend integration testing"
+  ],
+
+  "deployment_order": [
+    "1. Run migration 042 on database",
+    "2. Deploy updated backend code",
+    "3. Deploy updated frontend/viewer code (if needed)",
+    "4. Verify all systems operational"
+  ],
+
+  "rollback_available": true,
+  "rollback_sql": "See migration file comments for ALTER TABLE statements to revert",
+
+  "next_steps": [
+    "Review affected files list (042_affected_files.txt)",
+    "Update all Python code referencing old column names",
+    "Update API documentation",
+    "Test all affected endpoints",
+    "Coordinate frontend deployment",
+    "Run migration on production database",
+    "Deploy backend and frontend simultaneously"
+  ]
+}

@@ -1,0 +1,171 @@
+{
+  "agent": "agent_schedule",
+  "test_run_id": "integration_test_20251113_190000",
+  "organization": {
+    "id": 15,
+    "name": "TEST_ORG_SCHEDULE",
+    "code": "org_12"
+  },
+  "admin_user": {
+    "id": 20,
+    "username": "admin_sched",
+    "email": "admin_sched@example.com",
+    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIyMCIsInVzZXJuYW1lIjoiYWRtaW5fc2NoZWQiLCJyb2xlIjoiQURNSU4iLCJvcmdhbml6YXRpb25faWQiOjE1LCJleHAiOjE3NjMwMzkxOTUsImlhdCI6MTc2MzAzNzM5NSwidHlwZSI6ImFjY2VzcyJ9.EDbzWplfWbkBmWibTM_ZsSwfZ4D7Ys18Qs258JgJ_D0"
+  },
+  "test_results": {
+    "tests_run": 6,
+    "tests_passed": 0,
+    "tests_failed": 6,
+    "test_coverage": [
+      {
+        "test": "Basic Schedule Creation",
+        "status": "FAILED",
+        "reason": "backend_bug",
+        "impact": "critical"
+      },
+      {
+        "test": "Schedule Priority Logic",
+        "status": "SKIPPED",
+        "reason": "depends_on_test_1",
+        "impact": "medium"
+      },
+      {
+        "test": "Schedule by Device IDs",
+        "status": "FAILED",
+        "reason": "backend_bug",
+        "impact": "high"
+      },
+      {
+        "test": "Schedule by Tags",
+        "status": "FAILED",
+        "reason": "backend_bug",
+        "impact": "high"
+      },
+      {
+        "test": "Schedule Apply to All",
+        "status": "FAILED",
+        "reason": "backend_bug",
+        "impact": "medium"
+      },
+      {
+        "test": "Audit Logs Verification",
+        "status": "FAILED",
+        "reason": "no_data",
+        "impact": "low"
+      }
+    ]
+  },
+  "critical_bug": {
+    "severity": "CRITICAL",
+    "title": "CurrentUser attribute mismatch in schedule routes",
+    "description": "Backend code references current_user.user_id but CurrentUser model uses 'id' attribute",
+    "error": "AttributeError: 'CurrentUser' object has no attribute 'user_id'",
+    "location": "/app/services/schedule/routes.py:73",
+    "fix": "Change current_user.user_id to current_user.id in all schedule and tag routes",
+    "blocks": [
+      "Schedule creation",
+      "Tag creation",
+      "All schedule assignment features",
+      "Schedule-related audit logs"
+    ]
+  },
+  "working_features": {
+    "authentication": "working",
+    "user_registration": "working",
+    "playlist_crud": "working",
+    "device_registration": "working",
+    "device_activation": "working",
+    "schedule_list": "working",
+    "active_schedule_check": "working"
+  },
+  "broken_features": {
+    "schedule_creation": "backend_bug",
+    "tag_creation": "backend_bug",
+    "schedule_assignment": "blocked_by_bug",
+    "priority_logic": "cannot_test",
+    "device_targeting": "blocked_by_bug",
+    "tag_targeting": "blocked_by_bug"
+  },
+  "created_resources": {
+    "playlists": {
+      "count": 4,
+      "ids": [16, 17, 18, 19],
+      "names": [
+        "Morning Playlist",
+        "Evening Playlist",
+        "Device Specific Playlist",
+        "Global Playlist"
+      ]
+    },
+    "devices": {
+      "count": 2,
+      "ids": [6186, 6187],
+      "names": [
+        "DeviceX_Schedule",
+        "DeviceY_Schedule"
+      ],
+      "status": "active"
+    },
+    "schedules": {
+      "count": 0,
+      "reason": "blocked_by_backend_bug"
+    },
+    "tags": {
+      "count": 0,
+      "reason": "blocked_by_backend_bug"
+    }
+  },
+  "api_endpoints_tested": {
+    "working": [
+      "POST /api/v1/auth/register",
+      "POST /api/v1/auth/login",
+      "POST /api/v1/playlists",
+      "GET /api/v1/playlists",
+      "POST /api/v1/devices/request-code",
+      "POST /api/v1/devices/activate",
+      "GET /api/v1/schedules",
+      "POST /api/v1/schedules/active/check"
+    ],
+    "broken": [
+      "POST /api/v1/schedules (HTTP 500)",
+      "POST /api/v1/tags (HTTP 500)"
+    ],
+    "not_tested": [
+      "PUT /api/v1/schedules/{id}",
+      "DELETE /api/v1/schedules/{id}",
+      "POST /api/v1/schedules/{id}/deactivate"
+    ]
+  },
+  "recommendations": {
+    "immediate": [
+      "Fix backend bug: Change current_user.user_id to current_user.id",
+      "Search all backend services for user_id pattern and fix globally",
+      "Restart backend service after fix",
+      "Rerun agent_schedule tests"
+    ],
+    "after_fix": [
+      "Test schedule creation with all targeting modes",
+      "Test schedule priority resolution",
+      "Test schedule conflict detection",
+      "Test schedule recurrence patterns",
+      "Test schedule exceptions",
+      "Verify audit logs are created correctly"
+    ],
+    "future": [
+      "Add schedule validation rules",
+      "Add schedule preview endpoint",
+      "Add bulk schedule operations",
+      "Add schedule templates",
+      "Add schedule analytics"
+    ]
+  },
+  "test_artifacts": {
+    "test_script": "/mnt/g/khoirul/signate/backups/agent_schedule_test.py",
+    "test_results": "/mnt/g/khoirul/signate/backups/agent_schedule_results.json",
+    "test_report": "/mnt/g/khoirul/signate/backups/AGENT_SCHEDULE_TEST_REPORT.md",
+    "coordination_file": "/mnt/g/khoirul/signate/integration_test_coordinator.json"
+  },
+  "next_agent": "Continue with remaining phase_2_crud agents or fix backend bug first",
+  "status": "completed_with_critical_findings",
+  "timestamp": "2025-11-13T12:45:00Z"
+}

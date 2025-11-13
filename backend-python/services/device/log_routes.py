@@ -42,7 +42,7 @@ class LogResponse(BaseModel):
     stack_trace: Optional[str]
     user_agent: Optional[str]
     url: Optional[str]
-    timestamp: datetime
+    recorded_at: datetime
 
 class LogListResponse(BaseModel):
     """List of logs response"""
@@ -90,14 +90,14 @@ def create_device_log(
     query = text("""
         INSERT INTO device_logs (
             device_id, organization_id, log_level, message, source,
-            stack_trace, user_agent, url, timestamp
+            stack_trace, user_agent, url, recorded_at
         )
         VALUES (
             :device_id, :organization_id, :log_level, :message, :source,
             :stack_trace, :user_agent, :url, NOW()
         )
         RETURNING id, device_id, log_level, message, source,
-                  stack_trace, user_agent, url, timestamp
+                  stack_trace, user_agent, url, recorded_at
     """)
 
     result = db.execute(query, {
@@ -122,8 +122,7 @@ def create_device_log(
         stack_trace=result.stack_trace,
         user_agent=result.user_agent,
         url=result.url,
-        timestamp=result.timestamp
-    )
+        recorded_at=result.recorded_at)
 
 
 @router.get("/devices/{device_id}/logs", response_model=LogListResponse)
@@ -155,10 +154,10 @@ def get_device_logs(
     # Get logs
     query = text(f"""
         SELECT id, device_id, log_level, message, source,
-               stack_trace, user_agent, url, timestamp
+               stack_trace, user_agent, url, recorded_at
         FROM device_logs
         {where_clause}
-        ORDER BY timestamp DESC
+        ORDER BY recorded_at DESC
         LIMIT :limit OFFSET :skip
     """)
 
@@ -175,8 +174,7 @@ def get_device_logs(
             stack_trace=row.stack_trace,
             user_agent=row.user_agent,
             url=row.url,
-            timestamp=row.timestamp
-        ))
+            recorded_at=row.recorded_at))
 
     return LogListResponse(total=total, items=logs)
 
@@ -215,10 +213,10 @@ def get_latest_device_logs(
     """
     query = text("""
         SELECT id, device_id, log_level, message, source,
-               stack_trace, user_agent, url, timestamp
+               stack_trace, user_agent, url, recorded_at
         FROM device_logs
         WHERE device_id = :device_id
-        ORDER BY timestamp DESC
+        ORDER BY recorded_at DESC
         LIMIT :count
     """)
 
@@ -235,7 +233,6 @@ def get_latest_device_logs(
             stack_trace=row.stack_trace,
             user_agent=row.user_agent,
             url=row.url,
-            timestamp=row.timestamp
-        ))
+            recorded_at=row.recorded_at))
 
     return LogListResponse(total=len(logs), items=logs)

@@ -289,9 +289,9 @@ class ScheduleExecutor:
             for row in result:
                 device = device_repo._to_entity(row)
                 affected_devices.append(device)
-        
+
         # Apply to all devices
-        elif schedule.apply_to_all:
+        elif schedule.applies_to_all:
             all_devices = device_repo.list_by_organization(
                 schedule.organization_id
             )

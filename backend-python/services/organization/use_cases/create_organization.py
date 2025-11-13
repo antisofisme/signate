@@ -64,7 +64,7 @@ class CreateOrganizationUseCase:
         organization = Organization(
             id=None,
             name=name,
-            organization_pin=None,  # REMOVED: Organization PIN (No-PIN flow)
+            pin=None,  # REMOVED: Organization PIN (No-PIN flow)
             description=description,
             address=address,
             contact_email=contact_email,

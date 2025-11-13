@@ -47,8 +47,8 @@ class IDeviceRepository(ABC):
         pass
 
     @abstractmethod
-    def update_heartbeat(self, unique_code: str, last_seen) -> bool:
-        """Update device last_seen timestamp"""
+    def update_heartbeat(self, unique_code: str, last_seen_at) -> bool:
+        """Update device last_seen_at timestamp"""
         pass
 
     @abstractmethod
@@ -58,5 +58,5 @@ class IDeviceRepository(ABC):
 
     @abstractmethod
     def find_online_devices(self, organization_id: int) -> List[Device]:
-        """Find online devices (last_seen < 5 minutes ago)"""
+        """Find online devices (last_seen_at < 5 minutes ago)"""
         pass

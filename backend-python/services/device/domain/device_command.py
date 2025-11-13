@@ -131,7 +131,7 @@ class DeviceCommand:
             command_data=command_data or {},
             status='pending',
             priority=priority,
-            created_by=created_by,
+            created_by_id=created_by,
             created_at=now,
             updated_at=now,
             expires_at=now + timedelta(minutes=expires_in_minutes)

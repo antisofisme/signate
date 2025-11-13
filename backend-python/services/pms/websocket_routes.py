@@ -120,7 +120,7 @@ async def websocket_pms_sync(
         'type': 'connected',
         'message': 'WebSocket connection established',
         'organization_id': organization_id,
-        'timestamp': datetime.now().isoformat()
+        'recorded_at': datetime.now().isoformat()
     })
 
     try:
@@ -143,7 +143,7 @@ async def websocket_pms_sync(
                 # Respond to ping
                 await websocket.send_json({
                     'type': 'pong',
-                    'timestamp': datetime.now().isoformat()
+                    'recorded_at': datetime.now().isoformat()
                 })
 
             else:
@@ -187,7 +187,7 @@ async def handle_sync_guests(
             'type': 'ack',
             'message': f'Synced {result["synced"]} guests successfully',
             'data': result,
-            'timestamp': datetime.now().isoformat()
+            'recorded_at': datetime.now().isoformat()
         })
 
     except Exception as e:
@@ -223,7 +223,7 @@ async def handle_sync_rooms(
             'type': 'ack',
             'message': f'Synced {result["created"] + result["updated"]} rooms successfully',
             'data': result,
-            'timestamp': datetime.now().isoformat()
+            'recorded_at': datetime.now().isoformat()
         })
 
     except Exception as e:
@@ -249,7 +249,7 @@ async def trigger_sync(organization_id: int):
     await manager.send_message(organization_id, {
         'type': 'sync_request',
         'message': 'Please sync data now',
-        'timestamp': datetime.now().isoformat()
+        'recorded_at': datetime.now().isoformat()
     })
 
     return {

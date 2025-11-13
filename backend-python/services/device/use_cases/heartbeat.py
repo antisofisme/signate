@@ -1,6 +1,6 @@
 """
 Device Heartbeat Use Case
-Update device last_seen and metadata
+Update device last_seen_at and metadata
 """
 
 from datetime import datetime
@@ -43,8 +43,8 @@ class DeviceHeartbeatUseCase:
         if not device.is_active():
             raise ValueError("Device is not active. Please activate first.")
 
-        # Update last_seen
-        device.last_seen = datetime.utcnow()
+        # Update last_seen_at
+        device.last_seen_at = datetime.utcnow()
 
         # Update device metadata if provided
         if heartbeat_data.screen_width:

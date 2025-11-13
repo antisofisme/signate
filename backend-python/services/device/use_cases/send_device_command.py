@@ -91,7 +91,7 @@ class SendDeviceCommandUseCase:
             command_type=command_type,
             command_data=command_data,
             priority=priority,
-            created_by=created_by,
+            created_by_id=created_by,
             expires_in_minutes=expires_in_minutes
         )
 
@@ -184,7 +184,7 @@ class BulkSendDeviceCommandUseCase:
                 command_type=command_type,
                 command_data=command_data,
                 priority=priority,
-                created_by=created_by,
+                created_by_id=created_by,
                 expires_in_minutes=expires_in_minutes
             )
 

@@ -84,16 +84,16 @@ class RequestActivationCodeUseCase:
             connection_speed=None,
             model_name=None,
             firmware_version=None,
-            last_seen=None,
+            last_seen_at=None,
             room_number=None,
             assigned_playlist_id=None,
             created_at=None,
             updated_at=None,
             released_at=None,
             rotation=0,
-            volume_enabled=True,
+            is_volume_enabled=True,
             location_type='guest_room',
-            supports_personalization=True,
+            is_personalization_supported=True,
             privacy_mode='limited'
         )
 

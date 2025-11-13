@@ -72,7 +72,7 @@ class CreateDeviceGroupUseCase:
             group_type=group_type,
             sort_order=sort_order,
             default_playlist_id=default_playlist_id,
-            created_by=created_by,
+            created_by_id=created_by,
         )
 
         # Persist to database

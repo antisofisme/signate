@@ -56,8 +56,8 @@ def create_template(
     Permissions: All authenticated users
     """
     return create_template_use_case(
-        organization_id=current_user["organization_id"],
-        user_id=current_user["id"],
+        organization_id=current_user.organization_id,
+        user_id=current_user.id,
         request=request,
         db=db
     )
@@ -80,7 +80,7 @@ def get_templates(
     - is_active: true/false
     """
     return get_templates_use_case(
-        organization_id=current_user["organization_id"],
+        organization_id=current_user.organization_id,
         template_type=template_type,
         is_active=is_active,
         skip=skip,
@@ -98,7 +98,7 @@ def get_template(
     """Get template by ID"""
     return get_template_by_id_use_case(
         template_id=template_id,
-        organization_id=current_user["organization_id"],
+        organization_id=current_user.organization_id,
         db=db
     )
 
@@ -117,7 +117,7 @@ def update_template(
     """
     return update_template_use_case(
         template_id=template_id,
-        organization_id=current_user["organization_id"],
+        organization_id=current_user.organization_id,
         request=request,
         db=db
     )
@@ -136,7 +136,7 @@ def delete_template(
     """
     return delete_template_use_case(
         template_id=template_id,
-        organization_id=current_user["organization_id"],
+        organization_id=current_user.organization_id,
         db=db
     )
 
@@ -159,7 +159,7 @@ def render_template(
     """
     return render_template_use_case(
         template_id=template_id,
-        organization_id=current_user["organization_id"],
+        organization_id=current_user.organization_id,
         request=request,
         db=db
     )

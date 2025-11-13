@@ -1,0 +1,326 @@
+================================================================================
+DATABASE NAMING CONVENTION & ARCHITECTURE ANALYSIS
+================================================================================
+
+Total Tables: 29
+
+Tables:
+  - audit_logs
+  - content_assignments
+  - content_playback_logs
+  - content_tags
+  - contents
+  - device_commands
+  - device_group_members
+  - device_groups
+  - device_health_metrics
+  - device_logs
+  - device_speed_tests
+  - device_tags
+  - devices
+  - organizations
+  - playlist_assignments
+  - playlist_contents
+  - playlist_widgets
+  - playlists
+  - pms_configurations
+  - pms_guests
+  - pms_rooms
+  - roles
+  - schedules
+  - tags
+  - templates
+  - translations
+  - user_sessions
+  - users
+  - widgets
+
+================================================================================
+1. TABLE NAMING CONVENTIONS
+================================================================================
+
+Plural table names: 29/29
+  Examples: users, organizations, roles, devices, device_tags
+
+Singular table names: 0/29
+
+Junction tables (many-to-many): 10
+  - device_tags
+  - device_groups
+  - device_commands
+  - device_logs
+  - content_tags
+  - content_assignments
+  - playlist_contents
+  - playlist_widgets
+  - playlist_assignments
+  - user_sessions
+
+Table prefixes:
+  - 'content_*': 3 tables
+      content_tags
+      content_assignments
+      content_playback_logs
+  - 'device_*': 7 tables
+      device_tags
+      device_groups
+      device_group_members
+  - 'playlist_*': 3 tables
+      playlist_contents
+      playlist_widgets
+      playlist_assignments
+  - 'pms_*': 3 tables
+      pms_configurations
+      pms_guests
+      pms_rooms
+
+================================================================================
+2. PRIMARY KEY NAMING CONVENTIONS
+================================================================================
+
+Primary key naming patterns:
+  'id': 29 tables
+
+✅ Consistent: 29 tables use 'id' as PK
+
+================================================================================
+3. FOREIGN KEY NAMING CONVENTIONS
+================================================================================
+
+Total Foreign Keys: 128
+
+FK with '_id' suffix: 102 (79.7%)
+  Examples:
+    ✅ users.organization_id → organizations.id
+    ✅ users.role_id → roles.id
+    ✅ users.user_id → users.id
+    ✅ users.user_id → users.id
+    ✅ organizations.organization_id → organizations.id
+
+FK WITHOUT '_id' suffix: 26 (20.3%)
+  Examples:
+    ⚠️  users.assigned_by → users.id
+    ⚠️  users.uploaded_by → users.id
+    ⚠️  users.created_by → users.id
+    ⚠️  users.added_by → users.id
+    ⚠️  users.created_by → users.id
+    ⚠️  users.assigned_by → users.id
+    ⚠️  users.created_by → users.id
+    ⚠️  users.updated_by → users.id
+    ⚠️  users.created_by → users.id
+    ⚠️  users.created_by → users.id
+
+================================================================================
+4. SPECIAL COLUMN NAMING PATTERNS
+================================================================================
+
+Timestamp columns:
+  'assigned_at': 2 tables
+  'checkin_date': 1 tables
+  'checkout_date': 1 tables
+  'code_expires_at': 1 tables
+  'created_at': 24 tables
+  'deleted_at': 3 tables
+  'ended_at': 1 tables
+  'executed_at': 1 tables
+  'expires_at': 3 tables
+  'failed_at': 1 tables
+  'joined_at': 1 tables
+  'last_activity': 1 tables
+  'last_error_at': 1 tables
+  'last_seen': 1 tables
+  'last_sync': 1 tables
+  'last_updated': 2 tables
+  'recorded_at': 1 tables
+  'released_at': 1 tables
+  'revoked_at': 1 tables
+  'sent_at': 1 tables
+  'started_at': 1 tables
+  'synced_at': 2 tables
+  'tested_at': 1 tables
+  'thumbnail_generated_at': 1 tables
+  'timestamp': 1 tables
+  'updated_at': 15 tables
+
+Boolean columns (top patterns):
+  'is_active': 8 tables
+  'is_system_role': 1 tables
+  'volume_enabled': 1 tables
+  'supports_personalization': 1 tables
+  'alert_triggered': 1 tables
+  'completed': 1 tables
+  'is_default': 1 tables
+  'is_pms_template': 1 tables
+  'apply_to_all': 1 tables
+
+JSONB columns:
+  'command_data': 1 tables - ['device_commands']
+  'config': 1 tables - ['widgets']
+  'device_ids': 1 tables - ['schedules']
+  'device_info': 1 tables - ['user_sessions']
+  'exceptions': 1 tables - ['schedules']
+  'hls_variants': 1 tables - ['contents']
+  'layout': 1 tables - ['widgets']
+  'metadata': 1 tables - ['device_health_metrics']
+  'parameters': 1 tables - ['device_commands']
+  'permissions': 1 tables - ['roles']
+  'preview_data': 1 tables - ['templates']
+  'recurrence_pattern': 1 tables - ['schedules']
+  'result': 1 tables - ['device_commands']
+  'schedule': 2 tables - ['content_assignments', 'playlists']
+  'settings': 1 tables - ['organizations']
+  'tag_ids': 1 tables - ['schedules']
+  'variables': 1 tables - ['templates']
+
+User tracking columns (audit trail):
+  'assigned_by': 2 tables
+      ✅ (FK)
+  'created_by': 8 tables
+      ✅ (FK)
+  'updated_by': 1 tables
+      ✅ (FK)
+  'uploaded_by': 1 tables
+      ✅ (FK)
+
+================================================================================
+5. NAMING INCONSISTENCIES DETECTED
+================================================================================
+
+Found 7 inconsistencies:
+
+1. [MEDIUM] FK column 'created_by' lacks '_id' suffix
+   Current:  created_by
+   Expected: created_by_user_id or created_by_id
+   Impact:   Inconsistent with other FK naming (most use _id suffix)
+
+2. [MEDIUM] FK column 'updated_by' lacks '_id' suffix
+   Current:  updated_by
+   Expected: updated_by_user_id or updated_by_id
+   Impact:   Inconsistent with other FK naming (most use _id suffix)
+
+3. [MEDIUM] FK column 'assigned_by' lacks '_id' suffix
+   Current:  assigned_by
+   Expected: assigned_by_user_id or assigned_by_id
+   Impact:   Inconsistent with other FK naming (most use _id suffix)
+
+4. [MEDIUM] FK column 'uploaded_by' lacks '_id' suffix
+   Current:  uploaded_by
+   Expected: uploaded_by_user_id or uploaded_by_id
+   Impact:   Inconsistent with other FK naming (most use _id suffix)
+
+5. [MEDIUM] FK column 'added_by' lacks '_id' suffix
+   Current:  added_by
+   Expected: added_by_user_id or added_by_id
+   Impact:   Inconsistent with other FK naming (most use _id suffix)
+
+6. [LOW] organizations.organization_pin - redundant prefix
+   Current:  organization_pin
+   Expected: pin or access_pin
+   Impact:   Redundant prefix (already in organizations table)
+
+7. [MEDIUM] users table has BOTH role (string) AND role_id (FK)
+   Current:  Duplicated: role + role_id
+   Expected: Use ONLY role_id (FK to roles table)
+   Impact:   Data redundancy, potential inconsistency
+
+================================================================================
+6. GOOD PRACTICES FOUND ✅
+================================================================================
+  ✅ Comprehensive indexing: 0 indexes across 29 tables
+  ✅ Audit timestamps: 24/29 tables have created_at
+  ✅ Multi-tenancy: 22 tables have organization_id FK
+  ✅ Referential integrity: 80 CASCADE delete rules
+  ✅ Soft delete support: 32 SET NULL delete rules
+
+================================================================================
+7. OVERALL ARCHITECTURE ASSESSMENT
+================================================================================
+
+Domain-Driven Design Structure:
+
+  Core: 4 tables
+    - users                          (11 cols, 17 FKs)
+    - organizations                  (14 cols, 21 FKs)
+    - roles                          (8 cols, 2 FKs)
+    - user_sessions                  (13 cols, 2 FKs)
+
+  Device Management: 8 tables
+    - devices                        (33 cols, 13 FKs)
+    - device_tags                    (5 cols, 3 FKs)
+    - device_groups                  (12 cols, 6 FKs)
+    - device_group_members           (5 cols, 3 FKs)
+    - device_commands                (20 cols, 3 FKs)
+    - device_health_metrics          (38 cols, 2 FKs)
+    - device_logs                    (10 cols, 2 FKs)
+    - device_speed_tests             (14 cols, 2 FKs)
+
+  Content Management: 4 tables
+    - contents                       (43 cols, 6 FKs)
+    - content_tags                   (4 cols, 2 FKs)
+    - content_assignments            (8 cols, 3 FKs)
+    - content_playback_logs          (12 cols, 4 FKs)
+
+  Playlist Management: 4 tables
+    - playlists                      (13 cols, 10 FKs)
+    - playlist_contents              (6 cols, 2 FKs)
+    - playlist_widgets               (7 cols, 2 FKs)
+    - playlist_assignments           (5 cols, 3 FKs)
+
+  Scheduling: 1 tables
+    - schedules                      (20 cols, 3 FKs)
+
+  PMS Integration: 3 tables
+    - pms_configurations             (9 cols, 2 FKs)
+    - pms_guests                     (19 cols, 1 FKs)
+    - pms_rooms                      (12 cols, 1 FKs)
+
+  Support: 5 tables
+    - tags                           (8 cols, 5 FKs)
+    - templates                      (12 cols, 2 FKs)
+    - translations                   (9 cols, 1 FKs)
+    - widgets                        (11 cols, 3 FKs)
+    - audit_logs                     (10 cols, 2 FKs)
+
+================================================================================
+8. NAMING CONVENTION SCORES
+================================================================================
+
+✅ Table Naming: 90/100 (Mostly plural - good)
+✅ PK Naming: 100/100 (Consistent 'id' for all tables)
+⚠️  FK Naming: 60/100 (79.7% use '_id' suffix - inconsistent)
+⚠️  Column Naming: 60/100 (7 issues)
+
+================================================================================
+OVERALL CONSISTENCY SCORE: 62.0/100
+================================================================================
+
+Grade: D (Needs Improvement)
+Assessment: ⚠️  Database design needs refactoring for better consistency
+
+================================================================================
+9. RECOMMENDATIONS FOR IMPROVEMENT
+================================================================================
+
+1. [HIGH] Standardize FK naming: Add _id suffix to created_by, updated_by, etc
+   Effort: MEDIUM
+   Impact: Improves consistency, reduces confusion
+
+2. [HIGH] Remove duplicate role column from users table (keep only role_id FK)
+   Effort: LOW
+   Impact: Eliminates data redundancy
+
+3. [MEDIUM] Rename organization_pin to pin (remove redundant prefix)
+   Effort: LOW
+   Impact: Cleaner naming
+
+4. [LOW] Document naming conventions in CLAUDE.md or DATABASE.md
+   Effort: LOW
+   Impact: Helps new developers
+
+5. [LOW] Add database diagram (ERD) to docs
+   Effort: MEDIUM
+   Impact: Better understanding of relationships
+
+================================================================================
+END OF ANALYSIS
+================================================================================

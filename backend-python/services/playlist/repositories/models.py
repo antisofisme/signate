@@ -28,7 +28,7 @@ class PlaylistModel(Base):
 
     # Multi-tenancy & User tracking
     organization_id = Column(Integer, ForeignKey("organizations.id", ondelete="CASCADE"), nullable=False, index=True)
-    created_by = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
+    created_by_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
 
     # Audit timestamps
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)

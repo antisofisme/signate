@@ -58,7 +58,7 @@ class DeviceHealthRepository:
             last_error_message=health_metric.last_error_message,
             last_error_at=health_metric.last_error_at,
             overall_status=health_metric.overall_status,
-            alert_triggered=health_metric.alert_triggered,
+            is_alert_triggered=health_metric.is_alert_triggered,
             alert_message=health_metric.alert_message,
             extra_data=health_metric.metadata,
             recorded_at=health_metric.recorded_at
@@ -229,7 +229,7 @@ class DeviceHealthRepository:
             last_error_message=db_metric.last_error_message,
             last_error_at=db_metric.last_error_at,
             overall_status=db_metric.overall_status,
-            alert_triggered=db_metric.alert_triggered,
+            is_alert_triggered=db_metric.is_alert_triggered,
             alert_message=db_metric.alert_message,
             metadata=db_metric.extra_data or {},
             recorded_at=db_metric.recorded_at,
@@ -262,7 +262,7 @@ class DeviceHealthRepository:
             last_error_message=row.last_error_message,
             last_error_at=row.last_error_at,
             overall_status=row.overall_status,
-            alert_triggered=row.alert_triggered,
+            is_alert_triggered=row.is_alert_triggered,
             alert_message=row.alert_message,
             metadata=getattr(row, 'metadata', None) or getattr(row, 'extra_data', None) or {},
             recorded_at=row.recorded_at

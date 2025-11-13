@@ -239,5 +239,5 @@ class PMSRepository:
         """Update last sync timestamp"""
         config = self.get_config_by_organization(organization_id)
         if config:
-            config.last_sync = datetime.now()
+            config.last_synced_at = datetime.now()
             self.db.commit()

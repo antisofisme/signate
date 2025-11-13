@@ -38,7 +38,7 @@ class DeviceCommandRepository:
             command_data=command.command_data,
             status=command.status,
             priority=command.priority,
-            created_by=command.created_by,
+            created_by_id=command.created_by_id,
             expires_at=command.expires_at,
             max_retries=command.max_retries
         )
@@ -196,7 +196,7 @@ class DeviceCommandRepository:
             error_message=db_command.error_message,
             retry_count=db_command.retry_count,
             max_retries=db_command.max_retries,
-            created_by=db_command.created_by,
+            created_by_id=db_command.created_by_id,
             created_at=db_command.created_at,
             updated_at=db_command.updated_at,
             expires_at=db_command.expires_at

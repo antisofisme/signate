@@ -102,7 +102,7 @@ async def upload_content(
             title=title,
             description=description,
             organization_id=current_user.organization_id,
-            uploaded_by=current_user.id,
+            uploaded_by_id=current_user.id,
             duration=duration,
             is_active=is_active
         )
@@ -152,7 +152,7 @@ async def bulk_upload_content(
                 title=title,
                 description=None,  # No description for bulk upload
                 organization_id=current_user.organization_id,
-                uploaded_by=current_user.id,
+                uploaded_by_id=current_user.id,
                 duration=duration,
                 is_active=is_active
             )

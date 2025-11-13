@@ -1,0 +1,44 @@
+[
+  {
+    "service": "SCHEDULE",
+    "test": "List schedules",
+    "status": "FAIL",
+    "details": "HTTP 500: Internal Server Error"
+  },
+  {
+    "service": "SCHEDULE",
+    "test": "Create schedule",
+    "status": "FAIL",
+    "details": "HTTP 500: Internal Server Error"
+  },
+  {
+    "service": "SCHEDULE",
+    "test": "Active schedules now",
+    "status": "FAIL",
+    "details": "HTTP 500: Internal Server Error"
+  },
+  {
+    "service": "TEMPLATE",
+    "test": "List templates",
+    "status": "FAIL",
+    "details": "HTTP 500: Internal Server Error"
+  },
+  {
+    "service": "TEMPLATE",
+    "test": "Create template",
+    "status": "FAIL",
+    "details": "HTTP 422: {\"detail\":[{\"type\":\"missing\",\"loc\":[\"body\",\"template_type\"],\"msg\":\"Field required\",\"input\":{\"name\":\"Test_Template_1763030031\",\"description\":\"Test HTML template\",\"html_content\":\"<div>Welcome {{guest_name}}! Room: {{room_number}}</div>\",\"is_active\":true},\"url\":\"https://errors.pydantic.dev/2.5/v/missing\"},{\"type\":\"missing\",\"loc\":[\"body\",\"content\"],\"msg\":\"Field required\",\"input\":{\"name\":\"Test_Template_1763030031\",\"description\":\"Test HTML template\",\"html_content\":\"<div>Welcome {{guest_name}}! Room: {"
+  },
+  {
+    "service": "WIDGET",
+    "test": "List widgets",
+    "status": "FAIL",
+    "details": "HTTP 500: Internal Server Error"
+  },
+  {
+    "service": "WIDGET",
+    "test": "Create widget",
+    "status": "FAIL",
+    "details": "HTTP 500: Internal Server Error"
+  }
+]

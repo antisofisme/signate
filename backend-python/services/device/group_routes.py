@@ -62,7 +62,7 @@ def create_device_group(
             group_type=request.group_type,
             sort_order=request.sort_order,
             default_playlist_id=request.default_playlist_id,
-            created_by=current_user.id,
+            created_by_id=current_user.id,
         )
 
         return DeviceGroupResponse(**group.to_dict())
@@ -295,7 +295,7 @@ def add_device_to_group(
             device_id=request.device_id,
             group_id=group_id,
             organization_id=current_user.organization_id,
-            added_by=current_user.id,
+            added_by_id=current_user.id,
         )
 
         return None
