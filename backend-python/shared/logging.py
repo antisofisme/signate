@@ -6,7 +6,7 @@ Centralized logging setup for the application
 import logging
 import sys
 from typing import Optional
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 
@@ -104,7 +104,7 @@ class RequestLogger:
             ip_address: Optional IP address
         """
         log_data = {
-            "recorded_at": datetime.utcnow().isoformat(),
+            "recorded_at": datetime.now(timezone.utc).isoformat(),
             "method": method,
             "path": path,
             "status_code": status_code,
@@ -151,7 +151,7 @@ class ErrorLogger:
         import traceback
 
         error_data = {
-            "recorded_at": datetime.utcnow().isoformat(),
+            "recorded_at": datetime.now(timezone.utc).isoformat(),
             "error_type": type(error).__name__,
             "error_message": str(error),
             "user_id": user_id,
@@ -210,7 +210,7 @@ class AuditLogger:
             organization_id: Optional organization context
         """
         audit_data = {
-            "recorded_at": datetime.utcnow().isoformat(),
+            "recorded_at": datetime.now(timezone.utc).isoformat(),
             "user_id": user_id,
             "organization_id": organization_id,
             "action": action,
@@ -272,7 +272,7 @@ class PerformanceLogger:
             rows_affected: Number of rows affected
         """
         perf_data = {
-            "recorded_at": datetime.utcnow().isoformat(),
+            "recorded_at": datetime.now(timezone.utc).isoformat(),
             "query": query[:200],  # Truncate long queries
             "duration_ms": duration_ms,
             "rows_affected": rows_affected

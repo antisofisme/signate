@@ -11,7 +11,7 @@ from celery_app import app
 from sqlalchemy.orm import Session
 from PIL import Image
 import hashlib
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from shared.database import SessionLocal
 from services.content.repositories.models import ContentModel
@@ -222,7 +222,7 @@ def cleanup_old_task_results():
     """
     try:
         # Clean up task results older than 7 days
-        cutoff_date = datetime.now() - timedelta(days=7)
+        cutoff_date = datetime.now(timezone.utc) - timedelta(days=7)
 
         print(f"[Cleanup] Cleaning up task results older than {cutoff_date}")
 

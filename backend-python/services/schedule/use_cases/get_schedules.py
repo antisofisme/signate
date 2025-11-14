@@ -6,7 +6,7 @@ Business logic for retrieving schedules
 from typing import Optional
 from sqlalchemy.orm import Session
 from fastapi import HTTPException, status
-from datetime import date, time, datetime
+from datetime import date, time, datetime, timezone
 
 from services.schedule.dtos import (
     ScheduleResponse,
@@ -79,7 +79,7 @@ def get_active_schedule_use_case(
     repo = ScheduleRepository(db)
 
     # Use current date/time if not provided
-    now = datetime.now()
+    now = datetime.now(timezone.utc)
     if check_date is None:
         check_date = now.date()
     if check_time is None:

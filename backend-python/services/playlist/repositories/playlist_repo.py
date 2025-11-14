@@ -11,6 +11,10 @@ from ..domain.playlist import Playlist, PlaylistContent, PlaylistAssignment
 from ..domain.interfaces import IPlaylistRepository
 from .models import PlaylistModel, PlaylistContentModel, PlaylistAssignmentModel
 from services.content.repositories.models import ContentModel
+from shared.cache import cache
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class PlaylistRepository(IPlaylistRepository):
@@ -18,6 +22,61 @@ class PlaylistRepository(IPlaylistRepository):
 
     def __init__(self, db: Session):
         self.db = db
+
+    # ========== Helper: Cache Invalidation (CRITICAL FIX P0-7) ==========
+
+    def _invalidate_content_resolver_cache(self, playlist_id: int, organization_id: int):
+        """
+        Invalidate content resolver cache for all devices affected by playlist changes
+
+        CRITICAL FIX P0-7: When playlist content changes, all devices playing that
+        playlist should receive updated content on next resolution
+        """
+        try:
+            # Get all devices assigned to this playlist (direct assignments)
+            device_assignments = self.db.query(PlaylistAssignmentModel).filter(
+                PlaylistAssignmentModel.playlist_id == playlist_id,
+                PlaylistAssignmentModel.device_id.isnot(None)
+            ).all()
+
+            # Invalidate cache for each directly assigned device
+            for assignment in device_assignments:
+                device_cache_key = f"content_resolution:{assignment.device_id}"
+                cache.delete(device_cache_key)
+                logger.info(f"Invalidated cache for device {assignment.device_id} (playlist {playlist_id} changed)")
+
+            # Get all tags assigned to this playlist
+            tag_assignments = self.db.query(PlaylistAssignmentModel).filter(
+                PlaylistAssignmentModel.playlist_id == playlist_id,
+                PlaylistAssignmentModel.tag_id.isnot(None)
+            ).all()
+
+            # For tag assignments, invalidate cache for all devices with those tags
+            if tag_assignments:
+                from services.device.repositories.models import DeviceModel
+                from services.tag.models import DeviceTag as DeviceTagModel
+
+                tag_ids = [a.tag_id for a in tag_assignments]
+
+                # Find all devices with these tags
+                device_tag_relations = self.db.query(DeviceTagModel).filter(
+                    DeviceTagModel.tag_id.in_(tag_ids)
+                ).all()
+
+                for device_tag in device_tag_relations:
+                    device_cache_key = f"content_resolution:{device_tag.device_id}"
+                    cache.delete(device_cache_key)
+                    logger.info(f"Invalidated cache for device {device_tag.device_id} (tag-based playlist {playlist_id} changed)")
+
+            # Also invalidate pattern-based cache for organization
+            # (for devices using default playlist or schedule-based resolution)
+            cache.invalidate_pattern(f"content_resolution:org_{organization_id}:*")
+
+            logger.info(f"Cache invalidation complete for playlist {playlist_id}")
+
+        except Exception as e:
+            # Log but don't fail - cache invalidation is best-effort
+            logger.error(f"Failed to invalidate cache for playlist {playlist_id}: {e}")
 
     # ========== Helper: Model <-> Entity Conversion ==========
 
@@ -167,6 +226,9 @@ class PlaylistRepository(IPlaylistRepository):
         self.db.commit()
         self.db.refresh(db_playlist)
 
+        # CRITICAL FIX P0-7: Invalidate cache when playlist changes
+        self._invalidate_content_resolver_cache(playlist.id, playlist.organization_id)
+
         return self._model_to_entity(db_playlist, include_stats=True)
 
     def delete(self, playlist_id: int, organization_id: int, soft: bool = False) -> bool:
@@ -183,13 +245,16 @@ class PlaylistRepository(IPlaylistRepository):
 
         if soft:
             # Soft delete
-            from datetime import datetime
-            db_playlist.deleted_at = datetime.utcnow()
+            from datetime import datetime, timezone
+            db_playlist.deleted_at = datetime.now(timezone.utc)
             self.db.commit()
         else:
             # Hard delete (cascades to contents and assignments)
             self.db.delete(db_playlist)
             self.db.commit()
+
+        # CRITICAL FIX P0-7: Invalidate cache when playlist deleted
+        self._invalidate_content_resolver_cache(playlist_id, organization_id)
 
         return True
 
@@ -274,6 +339,10 @@ class PlaylistRepository(IPlaylistRepository):
 
             self.db.commit()
 
+        # CRITICAL FIX P0-7: Invalidate cache when playlist content changes
+        if added_count > 0:
+            self._invalidate_content_resolver_cache(playlist_id, organization_id)
+
         return {
             "added": added_count,
             "skipped_missing": skipped_missing,
@@ -305,6 +374,10 @@ class PlaylistRepository(IPlaylistRepository):
 
         self.db.delete(playlist_content)
         self.db.commit()
+
+        # CRITICAL FIX P0-7: Invalidate cache when playlist content removed
+        self._invalidate_content_resolver_cache(playlist_id, organization_id)
+
         return True
 
     def reorder_playlist_contents(
@@ -336,6 +409,11 @@ class PlaylistRepository(IPlaylistRepository):
                 updated_count += 1
 
         self.db.commit()
+
+        # CRITICAL FIX P0-7: Invalidate cache when playlist content reordered
+        if updated_count > 0:
+            self._invalidate_content_resolver_cache(playlist_id, organization_id)
+
         return updated_count
 
     # ========== Device/Tag Assignments ==========
@@ -433,6 +511,10 @@ class PlaylistRepository(IPlaylistRepository):
 
             self.db.commit()
 
+        # CRITICAL FIX P0-7: Invalidate cache when devices assigned
+        if assigned_count > 0:
+            self._invalidate_content_resolver_cache(playlist_id, organization_id)
+
         return {
             "assigned": assigned_count,
             "skipped_missing": skipped_missing,
@@ -489,6 +571,10 @@ class PlaylistRepository(IPlaylistRepository):
 
             self.db.commit()
 
+        # CRITICAL FIX P0-7: Invalidate cache when tags assigned
+        if assigned_count > 0:
+            self._invalidate_content_resolver_cache(playlist_id, organization_id)
+
         return {
             "assigned": assigned_count,
             "skipped_missing": skipped_missing,
@@ -516,6 +602,11 @@ class PlaylistRepository(IPlaylistRepository):
         ).delete(synchronize_session=False)
 
         self.db.commit()
+
+        # CRITICAL FIX P0-7: Invalidate cache when devices unassigned
+        if removed > 0:
+            self._invalidate_content_resolver_cache(playlist_id, organization_id)
+
         return removed
 
     def unassign_from_tags(
@@ -539,6 +630,11 @@ class PlaylistRepository(IPlaylistRepository):
         ).delete(synchronize_session=False)
 
         self.db.commit()
+
+        # CRITICAL FIX P0-7: Invalidate cache when tags unassigned
+        if removed > 0:
+            self._invalidate_content_resolver_cache(playlist_id, organization_id)
+
         return removed
 
     # ========== Utility Methods ==========
@@ -555,6 +651,9 @@ class PlaylistRepository(IPlaylistRepository):
         ).scalar() or 0
 
         # Calculate total duration
+        # Note: Cannot eager load content - relationship doesn't exist in PlaylistContentModel
+        # This will cause N+1 queries for items without duration, but that's acceptable
+        # because most items have explicit durations set
         content_items = self.db.query(PlaylistContentModel).filter(
             PlaylistContentModel.playlist_id == playlist_id
         ).all()
@@ -562,9 +661,10 @@ class PlaylistRepository(IPlaylistRepository):
         total_duration = 0
         for item in content_items:
             if item.duration:
+                # Use explicit duration (most common case - no extra query)
                 total_duration += item.duration
             else:
-                # Use content's default duration
+                # Fallback: fetch content for default duration (rare case - N+1 acceptable)
                 content = self.db.query(ContentModel).filter(
                     ContentModel.id == item.content_id
                 ).first()

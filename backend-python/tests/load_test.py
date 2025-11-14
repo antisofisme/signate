@@ -9,7 +9,7 @@ import aiohttp
 import time
 import json
 import argparse
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List, Dict, Any
 import statistics
 
@@ -299,7 +299,7 @@ class LoadTestRunner:
                 print(f"95th Percentile: {sorted(all_durations)[int(len(all_durations)*0.95)]*1000:.0f}ms")
         
         # Save detailed results to file
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
         filename = f"load_test_results_{timestamp}.json"
         with open(filename, "w") as f:
             json.dump({

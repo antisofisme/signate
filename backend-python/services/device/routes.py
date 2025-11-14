@@ -581,11 +581,13 @@ def update_device(
     device_id: int,
     request_body: UpdateDeviceRequest,
     http_request: Request,
+    current_user: CurrentUser = Depends(get_current_user),
     use_case: UpdateDeviceUseCase = Depends(get_update_device_use_case)
 ):
     """
     Update device settings (called by CMS)
     Uses centralized error handling and logging
+    ⚠️ SECURITY FIX: Added current_user authorization (CVSS 9.1)
     """
     start_time = time.time()
 
@@ -598,7 +600,8 @@ def update_device(
         rotation=request_body.rotation,
         is_volume_enabled=request_body.is_volume_enabled,
         is_personalization_supported=request_body.is_personalization_supported,
-        privacy_mode=request_body.privacy_mode
+        privacy_mode=request_body.privacy_mode,
+        current_user_org_id=current_user.organization_id
     )
 
     # Convert to response with is_online computed field
@@ -620,7 +623,7 @@ def update_device(
     
     # Audit log
     audit_logger.log_action(
-        user_id=None,  # TODO: Get from JWT token
+        user_id=current_user.id,
         action="device.update",
         resource_type="device",
         resource_id=device_id,
@@ -642,16 +645,18 @@ def update_device(
 def delete_device(
     device_id: int,
     http_request: Request,
+    current_user: CurrentUser = Depends(get_current_user),
     use_case: UpdateDeviceUseCase = Depends(get_update_device_use_case)
 ):
     """
     Delete device (called by CMS)
     Uses centralized error handling and logging
+    ⚠️ SECURITY FIX: Added current_user authorization (CVSS 9.1)
     """
     start_time = time.time()
 
     # Execute delete use case (will raise NotFoundError if device not found)
-    success = use_case.delete_device(device_id)
+    success = use_case.delete_device(device_id, current_user_org_id=current_user.organization_id)
 
     if not success:
         raise NotFoundError(
@@ -673,7 +678,7 @@ def delete_device(
 
     # Audit log
     audit_logger.log_action(
-        user_id=None,  # TODO: Get from JWT token
+        user_id=current_user.id,
         action="device.delete",
         resource_type="device",
         resource_id=device_id,
@@ -691,23 +696,24 @@ def receive_device_logs(
     device_repo: DeviceRepository = Depends(get_device_repository)
 ):
     """
-    Receive batch logs from player (called by player)
+    Receive batch logs from player (called by player device)
 
     Logs are sent from player for debugging purposes.
     Currently just logged to console, can be stored to database later.
+
+    ⚠️ SECURITY NOTE: This is a public endpoint (no auth) because it's called by player devices.
+    The player sends its device_id in the request body. We verify the device exists but don't
+    require JWT authentication.
     """
     try:
-        # SECURITY FIX: Verify device exists and belongs to organization
-        device = device_repo.find_by_id(
-            request_body.device_id, 
-            organization_id=current_user.organization_id
-        )
+        # Verify device exists (no organization filter - public endpoint)
+        device = device_repo.find_by_id(request_body.device_id)
 
         if not device:
             # Device not found - return success but log the issue
             return {
-                "status": "ignored", 
-                "message": "Device not found or not accessible",
+                "status": "ignored",
+                "message": "Device not found",
                 "processed_logs": 0
             }
 

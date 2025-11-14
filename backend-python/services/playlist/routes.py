@@ -10,6 +10,7 @@ from typing import Optional
 from shared.database import get_db
 from shared.responses import success_response
 from shared.logging import AuditLogger
+from shared.auth import get_current_user, CurrentUser  # ⚠️ SECURITY FIX: Use real auth
 from services.auth.domain.interfaces import IUserRepository
 from services.auth.repositories.user_repo import UserRepository
 
@@ -65,20 +66,8 @@ def get_user_repository(db: Session = Depends(get_db)) -> IUserRepository:
     return UserRepository(db)
 
 
-def get_current_user(db: Session = Depends(get_db)):
-    """
-    Get current authenticated user
-    TODO: Replace with proper JWT auth dependency
-    For now, return mock user
-    """
-    # TEMPORARY: Mock user for development
-    # In production, this should decode JWT and return actual user
-    return {
-        "user_id": 9,
-        "username": "admin",
-        "organization_id": 4,
-        "role": "admin"
-    }
+# ⚠️ SECURITY FIX: Removed mock get_current_user() - now imported from shared.auth
+# This was a CRITICAL security vulnerability (CVSS 8.5) - complete authentication bypass!
 
 
 def get_audit_logger() -> AuditLogger:
@@ -189,18 +178,18 @@ def create_playlist(
             is_active=request_body.is_active,
             priority=request_body.priority,
             schedule=request_body.schedule,
-            organization_id=current_user["organization_id"],
-            created_by_id=current_user["user_id"],
+            organization_id=current_user.organization_id,
+            created_by_id=current_user.id,
         )
 
         # Audit log
         audit_logger.log_action(
-            user_id=current_user["user_id"],
+            user_id=current_user.id,
             action="playlist.create",
             resource_type="playlist",
             resource_id=playlist.id,
             details={"name": playlist.name, "is_active": playlist.is_active},
-            organization_id=current_user["organization_id"],
+            organization_id=current_user.organization_id,
         )
 
         return success_response(data=playlist.to_dict())
@@ -222,7 +211,7 @@ def list_playlists(
     """List all playlists for organization"""
     try:
         playlists, total = use_case.execute(
-            organization_id=current_user["organization_id"],
+            organization_id=current_user.organization_id,
             skip=skip,
             limit=limit,
             is_active=is_active,
@@ -249,7 +238,7 @@ def get_playlist(
     try:
         playlist = use_case.execute(
             playlist_id=playlist_id,
-            organization_id=current_user["organization_id"]
+            organization_id=current_user.organization_id
         )
 
         if not playlist:
@@ -275,7 +264,7 @@ def update_playlist(
     try:
         playlist = use_case.execute(
             playlist_id=playlist_id,
-            organization_id=current_user["organization_id"],
+            organization_id=current_user.organization_id,
             name=request_body.name,
             description=request_body.description,
             is_active=request_body.is_active,
@@ -285,7 +274,7 @@ def update_playlist(
 
         # Audit log
         audit_logger.log_action(
-            user_id=current_user["user_id"],
+            user_id=current_user.id,
             action="playlist.update",
             resource_type="playlist",
             resource_id=playlist.id,
@@ -293,7 +282,7 @@ def update_playlist(
                 "name": request_body.name,
                 "is_active": request_body.is_active,
             },
-            organization_id=current_user["organization_id"],
+            organization_id=current_user.organization_id,
         )
 
         return success_response(data=playlist.to_dict())
@@ -315,7 +304,7 @@ def delete_playlist(
     try:
         deleted = use_case.execute(
             playlist_id=playlist_id,
-            organization_id=current_user["organization_id"]
+            organization_id=current_user.organization_id
         )
 
         if not deleted:
@@ -323,12 +312,12 @@ def delete_playlist(
 
         # Audit log
         audit_logger.log_action(
-            user_id=current_user["user_id"],
+            user_id=current_user.id,
             action="playlist.delete",
             resource_type="playlist",
             resource_id=playlist_id,
             details={"deleted": True},
-            organization_id=current_user["organization_id"],
+            organization_id=current_user.organization_id,
         )
 
         return success_response(data={"message": "Playlist deleted successfully"})
@@ -351,7 +340,7 @@ def get_playlist_content(
     try:
         content_items = use_case.execute(
             playlist_id=playlist_id,
-            organization_id=current_user["organization_id"]
+            organization_id=current_user.organization_id
         )
 
         return success_response(
@@ -380,12 +369,12 @@ def add_content_to_playlist(
         result = use_case.execute(
             playlist_id=playlist_id,
             content_ids=request_body.content_ids,
-            organization_id=current_user["organization_id"]
+            organization_id=current_user.organization_id
         )
 
         # Audit log
         audit_logger.log_action(
-            user_id=current_user["user_id"],
+            user_id=current_user.id,
             action="playlist.add_content",
             resource_type="playlist",
             resource_id=playlist_id,
@@ -393,7 +382,7 @@ def add_content_to_playlist(
                 "content_count": len(request_body.content_ids),
                 "added": result["added"],
             },
-            organization_id=current_user["organization_id"],
+            organization_id=current_user.organization_id,
         )
 
         message = f"Added {result['added']} content(s)"
@@ -426,7 +415,7 @@ def remove_content_from_playlist(
         removed = use_case.execute(
             playlist_content_id=content_item_id,
             playlist_id=playlist_id,
-            organization_id=current_user["organization_id"]
+            organization_id=current_user.organization_id
         )
 
         if not removed:
@@ -434,12 +423,12 @@ def remove_content_from_playlist(
 
         # Audit log
         audit_logger.log_action(
-            user_id=current_user["user_id"],
+            user_id=current_user.id,
             action="playlist.remove_content",
             resource_type="playlist",
             resource_id=playlist_id,
             details={"content_item_id": content_item_id},
-            organization_id=current_user["organization_id"],
+            organization_id=current_user.organization_id,
         )
 
         return success_response(data={"message": "Content removed from playlist"})
@@ -465,17 +454,17 @@ def reorder_playlist_content(
         updated_count = use_case.execute(
             playlist_id=playlist_id,
             content_items=request_body.content_items,
-            organization_id=current_user["organization_id"]
+            organization_id=current_user.organization_id
         )
 
         # Audit log
         audit_logger.log_action(
-            user_id=current_user["user_id"],
+            user_id=current_user.id,
             action="playlist.reorder_content",
             resource_type="playlist",
             resource_id=playlist_id,
             details={"updated_count": updated_count},
-            organization_id=current_user["organization_id"],
+            organization_id=current_user.organization_id,
         )
 
         return success_response(
@@ -503,7 +492,7 @@ def get_playlist_assignments(
     try:
         assignments = use_case.execute(
             playlist_id=playlist_id,
-            organization_id=current_user["organization_id"]
+            organization_id=current_user.organization_id
         )
 
         return success_response(data=assignments)
@@ -527,12 +516,12 @@ def assign_to_devices(
         result = use_case.execute(
             playlist_id=playlist_id,
             device_ids=request_body.device_ids,
-            organization_id=current_user["organization_id"]
+            organization_id=current_user.organization_id
         )
 
         # Audit log
         audit_logger.log_action(
-            user_id=current_user["user_id"],
+            user_id=current_user.id,
             action="playlist.assign_devices",
             resource_type="playlist",
             resource_id=playlist_id,
@@ -540,7 +529,7 @@ def assign_to_devices(
                 "device_count": len(request_body.device_ids),
                 "assigned": result["assigned"],
             },
-            organization_id=current_user["organization_id"],
+            organization_id=current_user.organization_id,
         )
 
         message = f"Assigned to {result['assigned']} device(s)"
@@ -568,12 +557,12 @@ def assign_to_tags(
         result = use_case.execute(
             playlist_id=playlist_id,
             tag_ids=request_body.tag_ids,
-            organization_id=current_user["organization_id"]
+            organization_id=current_user.organization_id
         )
 
         # Audit log
         audit_logger.log_action(
-            user_id=current_user["user_id"],
+            user_id=current_user.id,
             action="playlist.assign_tags",
             resource_type="playlist",
             resource_id=playlist_id,
@@ -581,7 +570,7 @@ def assign_to_tags(
                 "tag_count": len(request_body.tag_ids),
                 "assigned": result["assigned"],
             },
-            organization_id=current_user["organization_id"],
+            organization_id=current_user.organization_id,
         )
 
         message = f"Assigned to {result['assigned']} tag(s)"
@@ -609,17 +598,17 @@ def unassign_from_devices(
         removed = use_case.execute(
             playlist_id=playlist_id,
             device_ids=request_body.device_ids,
-            organization_id=current_user["organization_id"]
+            organization_id=current_user.organization_id
         )
 
         # Audit log
         audit_logger.log_action(
-            user_id=current_user["user_id"],
+            user_id=current_user.id,
             action="playlist.unassign_devices",
             resource_type="playlist",
             resource_id=playlist_id,
             details={"removed_count": removed},
-            organization_id=current_user["organization_id"],
+            organization_id=current_user.organization_id,
         )
 
         return success_response(
@@ -648,17 +637,17 @@ def unassign_from_tags(
         removed = use_case.execute(
             playlist_id=playlist_id,
             tag_ids=request_body.tag_ids,
-            organization_id=current_user["organization_id"]
+            organization_id=current_user.organization_id
         )
 
         # Audit log
         audit_logger.log_action(
-            user_id=current_user["user_id"],
+            user_id=current_user.id,
             action="playlist.unassign_tags",
             resource_type="playlist",
             resource_id=playlist_id,
             details={"removed_count": removed},
-            organization_id=current_user["organization_id"],
+            organization_id=current_user.organization_id,
         )
 
         return success_response(
@@ -718,7 +707,7 @@ def resolve_content_for_device(
                 detail=f"Device {device_id} not found"
             )
             
-        if device.organization_id != current_user["organization_id"]:
+        if device.organization_id != current_user.organization_id:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Cannot access devices from other organizations"

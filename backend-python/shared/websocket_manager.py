@@ -5,7 +5,7 @@ Centralized WebSocket connection management and broadcasting
 
 from typing import Dict, Set, Optional, Any, List
 from fastapi import WebSocket, WebSocketDisconnect
-from datetime import datetime
+from datetime import datetime, timezone
 import json
 import asyncio
 import logging
@@ -99,8 +99,8 @@ class ConnectionManager:
             self._device_connections[device_id] = {
                 "websocket": websocket,
                 "org_id": organization_id,
-                "last_ping": datetime.utcnow(),
-                "connected_at": datetime.utcnow()
+                "last_ping": datetime.now(timezone.utc),
+                "connected_at": datetime.now(timezone.utc)
             }
             
             # Add to organization room
@@ -117,7 +117,7 @@ class ConnectionManager:
         await self.broadcast_to_organization(
             organization_id,
             WebSocketEventType.DEVICE_ONLINE,
-            {"device_id": device_id, "recorded_at": datetime.utcnow().isoformat()}
+            {"device_id": device_id, "recorded_at": datetime.now(timezone.utc).isoformat()}
         )
     
     async def connect_admin(
@@ -144,8 +144,8 @@ class ConnectionManager:
                 "websocket": websocket,
                 "org_id": organization_id,
                 "permissions": permissions or [],
-                "last_ping": datetime.utcnow(),
-                "connected_at": datetime.utcnow()
+                "last_ping": datetime.now(timezone.utc),
+                "connected_at": datetime.now(timezone.utc)
             }
             
             # Add to organization room
@@ -179,7 +179,7 @@ class ConnectionManager:
             await self.broadcast_to_organization(
                 org_id,
                 WebSocketEventType.DEVICE_OFFLINE,
-                {"device_id": device_id, "recorded_at": datetime.utcnow().isoformat()}
+                {"device_id": device_id, "recorded_at": datetime.now(timezone.utc).isoformat()}
             )
     
     async def disconnect_admin(self, user_id: int):
@@ -224,7 +224,7 @@ class ConnectionManager:
         message = {
             "event": event_type.value,
             "data": data,
-            "recorded_at": datetime.utcnow().isoformat()
+            "recorded_at": datetime.now(timezone.utc).isoformat()
         }
         
         try:
@@ -252,7 +252,7 @@ class ConnectionManager:
         message = {
             "event": event_type.value,
             "data": data,
-            "recorded_at": datetime.utcnow().isoformat()
+            "recorded_at": datetime.now(timezone.utc).isoformat()
         }
         
         try:
@@ -321,7 +321,7 @@ class ConnectionManager:
         """Handle incoming message from device"""
         # Update last ping time
         if device_id in self._device_connections:
-            self._device_connections[device_id]["last_ping"] = datetime.utcnow()
+            self._device_connections[device_id]["last_ping"] = datetime.now(timezone.utc)
         
         # Handle different message types
         message_type = message.get("type")
@@ -347,7 +347,7 @@ class ConnectionManager:
         """Handle incoming message from admin"""
         # Update last ping time
         if user_id in self._admin_connections:
-            self._admin_connections[user_id]["last_ping"] = datetime.utcnow()
+            self._admin_connections[user_id]["last_ping"] = datetime.now(timezone.utc)
         
         # Handle different message types
         message_type = message.get("type")

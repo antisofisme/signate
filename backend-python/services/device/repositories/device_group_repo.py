@@ -197,7 +197,7 @@ class DeviceGroupRepository:
 
     def soft_delete(self, group_id: int) -> bool:
         """Soft delete a group"""
-        from datetime import datetime
+        from datetime import datetime, timezone
 
         stmt = (
             select(DeviceGroupModel)
@@ -210,7 +210,7 @@ class DeviceGroupRepository:
         if not db_group:
             return False
 
-        db_group.deleted_at = datetime.utcnow()
+        db_group.deleted_at = datetime.now(timezone.utc)
         self.db.commit()
 
         return True

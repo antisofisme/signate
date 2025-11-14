@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 from typing import Dict, Optional
 import json
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 
 from shared.database import get_db
 from services.pms.repositories.pms_repo import PMSRepository
@@ -120,7 +120,7 @@ async def websocket_pms_sync(
         'type': 'connected',
         'message': 'WebSocket connection established',
         'organization_id': organization_id,
-        'recorded_at': datetime.now().isoformat()
+        'recorded_at': datetime.now(timezone.utc).isoformat()
     })
 
     try:
@@ -143,7 +143,7 @@ async def websocket_pms_sync(
                 # Respond to ping
                 await websocket.send_json({
                     'type': 'pong',
-                    'recorded_at': datetime.now().isoformat()
+                    'recorded_at': datetime.now(timezone.utc).isoformat()
                 })
 
             else:
@@ -187,7 +187,7 @@ async def handle_sync_guests(
             'type': 'ack',
             'message': f'Synced {result["synced"]} guests successfully',
             'data': result,
-            'recorded_at': datetime.now().isoformat()
+            'recorded_at': datetime.now(timezone.utc).isoformat()
         })
 
     except Exception as e:
@@ -223,7 +223,7 @@ async def handle_sync_rooms(
             'type': 'ack',
             'message': f'Synced {result["created"] + result["updated"]} rooms successfully',
             'data': result,
-            'recorded_at': datetime.now().isoformat()
+            'recorded_at': datetime.now(timezone.utc).isoformat()
         })
 
     except Exception as e:
@@ -249,7 +249,7 @@ async def trigger_sync(organization_id: int):
     await manager.send_message(organization_id, {
         'type': 'sync_request',
         'message': 'Please sync data now',
-        'recorded_at': datetime.now().isoformat()
+        'recorded_at': datetime.now(timezone.utc).isoformat()
     })
 
     return {

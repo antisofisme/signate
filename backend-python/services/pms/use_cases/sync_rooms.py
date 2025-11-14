@@ -5,7 +5,7 @@ Handle room status sync from Firebird Bridge Agent
 
 from sqlalchemy.orm import Session
 from typing import List, Dict, Any
-from datetime import datetime
+from datetime import datetime, timezone
 
 from services.pms.repositories.pms_repo import PMSRepository
 
@@ -70,5 +70,5 @@ class SyncRoomsUseCase:
             "updated": updated_count,
             "total": len(rooms_data),
             "errors": errors,
-            "synced_at": datetime.now().isoformat()
+            "synced_at": datetime.now(timezone.utc).isoformat()
         }

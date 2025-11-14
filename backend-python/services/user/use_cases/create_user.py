@@ -60,9 +60,9 @@ class CreateUserUseCase:
         db_session = self.org_repo.db
         quota_service = OrganizationQuotaService(db_session)
         
-        # Enforce user quota
+        # Enforce user quota atomically (CRITICAL FIX P0-9)
         try:
-            quota_service.enforce_user_quota(organization_id)
+            quota_service.enforce_user_quota_atomic(organization_id)
         except ValueError as e:
             raise ValidationError(
                 message=str(e),
@@ -79,8 +79,8 @@ class CreateUserUseCase:
                 details={"field": "username"}
             )
 
-        # Check username uniqueness
-        existing_user = self.user_repo.find_by_username(username)
+        # Check username uniqueness within organization (CRITICAL FIX P0-6)
+        existing_user = self.user_repo.find_by_username_in_org(username, organization_id)
 
         if existing_user:
             raise ValidationError(
@@ -97,8 +97,8 @@ class CreateUserUseCase:
                 details={"field": "email", "email": email}
             )
 
-        # Check email uniqueness
-        existing_email = self.user_repo.find_by_email(email)
+        # Check email uniqueness within organization (CRITICAL FIX P0-6)
+        existing_email = self.user_repo.find_by_email_in_org(email, organization_id)
 
         if existing_email:
             raise ValidationError(

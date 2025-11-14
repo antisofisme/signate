@@ -6,7 +6,7 @@ Data access layer for PMS integration
 from sqlalchemy.orm import Session
 from sqlalchemy import and_, func
 from typing import List, Optional
-from datetime import datetime, date
+from datetime import datetime, date, timezone
 
 from .models import PMSGuest, PMSRoom, PMSConfiguration
 
@@ -44,7 +44,7 @@ class PMSRepository:
 
     def get_current_guests(self, organization_id: int) -> List[PMSGuest]:
         """Get currently checked-in guests"""
-        now = datetime.now()
+        now = datetime.now(timezone.utc)
         return (
             self.db.query(PMSGuest)
             .filter(
@@ -120,7 +120,7 @@ class PMSRepository:
             # Update existing
             for key, value in room_data.items():
                 setattr(existing, key, value)
-            existing.synced_at = datetime.now()
+            existing.synced_at = datetime.now(timezone.utc)
             self.db.commit()
             self.db.refresh(existing)
             return existing
@@ -239,5 +239,5 @@ class PMSRepository:
         """Update last sync timestamp"""
         config = self.get_config_by_organization(organization_id)
         if config:
-            config.last_synced_at = datetime.now()
+            config.last_synced_at = datetime.now(timezone.utc)
             self.db.commit()

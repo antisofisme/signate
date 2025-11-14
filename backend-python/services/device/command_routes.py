@@ -17,7 +17,7 @@ from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 from shared.database import get_db
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional, List
 import json
 
@@ -107,7 +107,7 @@ def send_command_to_device(
     """)
 
     params_json = json.dumps(request.parameters) if request.parameters else None
-    expires_at = datetime.now() + timedelta(days=7)
+    expires_at = datetime.now(timezone.utc) + timedelta(days=7)
 
     result = db.execute(query, {
         "device_id": device_id,

@@ -4,7 +4,7 @@ Business logic for analytics and playback tracking
 """
 
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional, Dict, Any
 
 
@@ -149,6 +149,6 @@ class DeviceEngagement:
         if not self.last_playback_at:
             return False
 
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         time_diff = (now - self.last_playback_at).total_seconds() / 60
         return time_diff <= threshold_minutes

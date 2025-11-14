@@ -9,7 +9,7 @@ Features:
 - Automatic cleanup of old records
 """
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Dict, Optional, Callable
 from fastapi import HTTPException, Request, status
 import threading
@@ -58,7 +58,7 @@ class RateLimiter:
             ...     print(f"Rate limit exceeded. Retry after {retry_after} seconds")
         """
         with self._lock:
-            now = datetime.utcnow()
+            now = datetime.now(timezone.utc)
             cutoff_time = now - timedelta(seconds=window_seconds)
 
             # Initialize or get existing request timestamps
@@ -108,7 +108,7 @@ class RateLimiter:
             max_age_seconds: Maximum age of entries to keep (default: 1 hour)
         """
         with self._lock:
-            now = datetime.utcnow()
+            now = datetime.now(timezone.utc)
             cutoff_time = now - timedelta(seconds=max_age_seconds)
 
             # Remove old entries
@@ -127,7 +127,7 @@ class RateLimiter:
     
     def _perform_cleanup(self):
         """Internal cleanup method called periodically"""
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         cutoff_time = now - timedelta(seconds=300)  # 5 minutes
         
         identifiers_to_remove = []
@@ -151,7 +151,7 @@ class RateLimiter:
         # Sort identifiers by their oldest timestamp
         sorted_identifiers = sorted(
             self._requests.items(),
-            key=lambda x: min(x[1]) if x[1] else datetime.utcnow()
+            key=lambda x: min(x[1]) if x[1] else datetime.now(timezone.utc)
         )
         
         # Keep only the specified percentage of newest entries

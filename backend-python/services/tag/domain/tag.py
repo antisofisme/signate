@@ -3,7 +3,7 @@ Tag Domain Entity - CORE BUSINESS LOGIC
 Pure Python class, no framework dependencies
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 
 
@@ -33,7 +33,7 @@ class Tag:
         self.description = description
         self.color = color
         self.organization_id = organization_id
-        self.created_at = created_at or datetime.utcnow()
+        self.created_at = created_at or datetime.now(timezone.utc)
         self.priority = priority or 50  # Default priority
         self.assigned_playlist_id = assigned_playlist_id
 

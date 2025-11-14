@@ -14,14 +14,14 @@ from typing import Optional, List
 class LoginRequest(BaseModel):
     """Login request"""
     username: str = Field(..., min_length=3)
-    password: str = Field(..., min_length=6)
+    password: str = Field(..., min_length=8)
 
 
 class RegisterRequest(BaseModel):
     """Register request"""
     username: str = Field(..., min_length=3, max_length=50)
     email: EmailStr
-    password: str = Field(..., min_length=6)
+    password: str = Field(..., min_length=8)
     full_name: str = Field(..., min_length=1, max_length=100)
     organization_id: Optional[int] = None
 
@@ -34,7 +34,7 @@ class ForgotPasswordRequest(BaseModel):
 class ResetPasswordRequest(BaseModel):
     """Reset password request"""
     token: str = Field(..., min_length=1)
-    new_password: str = Field(..., min_length=6, description="New password (min 6 characters)")
+    new_password: str = Field(..., min_length=8, description="New password (min 8 characters)")
 
 
 # =============================================================================

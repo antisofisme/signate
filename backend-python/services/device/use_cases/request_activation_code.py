@@ -5,7 +5,7 @@ Generate 6-digit code for device activation
 
 import secrets  # 🔒 SECURITY: Use secrets instead of random for cryptographically secure codes
 import string
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Dict, Optional
 
 from ..domain.device import Device
@@ -54,51 +54,87 @@ class RequestActivationCodeUseCase:
         # Organization will be assigned when admin claims the device
         organization_id = None
 
-        # Validate code is unique (check database)
-        existing_device = self.device_repo.find_by_code(code)
-        if existing_device:
-            raise ValueError(f"Activation code {code} is already in use. Please generate a new code.")
+        # CRITICAL FIX P0-8: Handle race condition with retry logic
+        # Database constraint ensures uniqueness, but we need graceful retry
+        max_retries = 3
+        last_error = None
+        created_device = None
 
-        # Code expires in 10 minutes
-        expires_at = datetime.utcnow() + timedelta(minutes=10)
+        for attempt in range(max_retries):
+            try:
+                # Validate code is unique (check database)
+                existing_device = self.device_repo.find_by_code(code)
+                if existing_device:
+                    raise ValueError(f"Activation code {code} is already in use. Please generate a new code.")
 
-        # Create device entity (always unassigned - organization_id = None)
-        device = Device(
-            id=None,
-            device_type=device_type,
-            device_name=device_name,
-            organization_id=None,  # ✨ Always NULL - assigned during admin approval
-            status='pending',
-            unique_code=code,
-            code_expires_at=expires_at,
-            device_uuid=device_uuid,
-            platform=platform,
-            ip_address=None,
-            screen_width=None,
-            screen_height=None,
-            viewport_width=None,
-            viewport_height=None,
-            device_pixel_ratio=None,
-            user_agent=None,
-            connection_type=None,
-            connection_speed=None,
-            model_name=None,
-            firmware_version=None,
-            last_seen_at=None,
-            room_number=None,
-            assigned_playlist_id=None,
-            created_at=None,
-            updated_at=None,
-            released_at=None,
-            rotation=0,
-            is_volume_enabled=True,
-            location_type='guest_room',
-            is_personalization_supported=True,
-            privacy_mode='limited'
-        )
+                # Code expires in 10 minutes
+                expires_at = datetime.now(timezone.utc) + timedelta(minutes=10)
 
-        # Save to database
-        created_device = self.device_repo.create(device)
+                # Create device entity (always unassigned - organization_id = None)
+                device = Device(
+                    id=None,
+                    device_type=device_type,
+                    device_name=device_name,
+                    organization_id=None,  # ✨ Always NULL - assigned during admin approval
+                    status='pending',
+                    unique_code=code,
+                    code_expires_at=expires_at,
+                    device_uuid=device_uuid,
+                    platform=platform,
+                    ip_address=None,
+                    screen_width=None,
+                    screen_height=None,
+                    viewport_width=None,
+                    viewport_height=None,
+                    device_pixel_ratio=None,
+                    user_agent=None,
+                    connection_type=None,
+                    connection_speed=None,
+                    model_name=None,
+                    firmware_version=None,
+                    last_seen_at=None,
+                    room_number=None,
+                    assigned_playlist_id=None,
+                    created_at=None,
+                    updated_at=None,
+                    released_at=None,
+                    rotation=0,
+                    is_volume_enabled=True,
+                    location_type='guest_room',
+                    is_personalization_supported=True,
+                    privacy_mode='limited'
+                )
+
+                # Save to database
+                # If race condition occurs, database unique constraint will raise IntegrityError
+                created_device = self.device_repo.create(device)
+
+                # Success - break out of retry loop
+                break
+
+            except Exception as e:
+                last_error = e
+                error_msg = str(e).lower()
+
+                # Check if it's a unique constraint violation (CRITICAL FIX P0-8)
+                if 'unique' in error_msg or 'duplicate' in error_msg or 'ix_devices_unique_code' in error_msg:
+                    # Race condition detected - code was taken between check and insert
+                    if attempt < max_retries - 1:
+                        # Retry with small delay
+                        import time
+                        time.sleep(0.1)  # 100ms delay
+                        print(f"[Device Registration] ⚠️ Race condition detected (attempt {attempt + 1}), retrying...")
+                        continue
+                    else:
+                        # Max retries reached
+                        raise ValueError(f"Activation code {code} is already in use after {max_retries} attempts. Please generate a new code.")
+                else:
+                    # Different error - re-raise immediately
+                    raise
+
+        # If we exited loop without success, raise last error
+        if not created_device and last_error:
+            raise last_error
 
         # 🔑 Generate device JWT token for future re-registration
         # Token includes organization_id so player can re-register to same org

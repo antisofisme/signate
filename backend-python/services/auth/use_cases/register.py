@@ -8,7 +8,7 @@ Updated to use centralized validators and error handling
 from ..domain.user import User
 from ..domain.interfaces import IUserRepository
 from passlib.context import CryptContext
-from datetime import datetime
+from datetime import datetime, timezone
 from shared.errors import ValidationError, ErrorCodes
 from shared.validators import validate_username, validate_email, validate_password, sanitize_string
 
@@ -83,8 +83,13 @@ class RegisterUseCase:
                 details={"field": "full_name"}
             )
 
-        # Check if username exists
-        existing_user = self.user_repository.find_by_username(username)
+        # Check if username exists within organization (CRITICAL FIX P0-6)
+        if organization_id:
+            existing_user = self.user_repository.find_by_username_in_org(username, organization_id)
+        else:
+            # For super_admin registration without organization
+            existing_user = self.user_repository.find_by_username(username)
+
         if existing_user:
             raise ValidationError(
                 message=f"Username '{username}' sudah digunakan",
@@ -92,8 +97,13 @@ class RegisterUseCase:
                 details={"field": "username"}
             )
 
-        # Check if email exists
-        existing_email = self.user_repository.find_by_email(email)
+        # Check if email exists within organization (CRITICAL FIX P0-6)
+        if organization_id:
+            existing_email = self.user_repository.find_by_email_in_org(email, organization_id)
+        else:
+            # For super_admin registration without organization
+            existing_email = self.user_repository.find_by_email(email)
+
         if existing_email:
             raise ValidationError(
                 message=f"Email '{email}' sudah terdaftar",
@@ -119,8 +129,8 @@ class RegisterUseCase:
             role=role,
             organization_id=organization_id,
             is_active=True,
-            created_at=datetime.utcnow(),
-            updated_at=datetime.utcnow()
+            created_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc)
         )
 
         # Save to repository

@@ -4,7 +4,7 @@ Handles data access for analytics and playback logs
 Phase 2 Day 2 - Analytics Service
 """
 from typing import List, Dict, Any, Optional
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from sqlalchemy.orm import Session
 from sqlalchemy import func, and_, or_, desc, text
 from .models import ContentPlaybackLog
@@ -118,9 +118,9 @@ class AnalyticsRepository:
             Dictionary with playback statistics
         """
         if not start_date:
-            start_date = datetime.utcnow() - timedelta(days=30)
+            start_date = datetime.now(timezone.utc) - timedelta(days=30)
         if not end_date:
-            end_date = datetime.utcnow()
+            end_date = datetime.now(timezone.utc)
 
         # Total plays query
         total_plays = self.db.query(func.count(ContentPlaybackLog.id)).filter(
@@ -193,9 +193,9 @@ class AnalyticsRepository:
             List of timeline data points
         """
         if not start_date:
-            start_date = datetime.utcnow() - timedelta(days=30)
+            start_date = datetime.now(timezone.utc) - timedelta(days=30)
         if not end_date:
-            end_date = datetime.utcnow()
+            end_date = datetime.now(timezone.utc)
 
         # Determine date_trunc format based on interval
         trunc_format = {

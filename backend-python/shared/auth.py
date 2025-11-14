@@ -9,7 +9,7 @@ This module combines:
 - Role-based access control (RBAC)
 """
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional, Dict, Any, Callable
 from enum import Enum
 
@@ -115,13 +115,13 @@ def create_access_token(
     to_encode = data.copy()
 
     if expires_delta:
-        expire = datetime.utcnow() + expires_delta
+        expire = datetime.now(timezone.utc) + expires_delta
     else:
-        expire = datetime.utcnow() + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+        expire = datetime.now(timezone.utc) + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
 
     to_encode.update({
         "exp": expire,
-        "iat": datetime.utcnow(),
+        "iat": datetime.now(timezone.utc),
         "type": "access"
     })
 
@@ -146,13 +146,13 @@ def create_refresh_token(
     to_encode = data.copy()
 
     if expires_delta:
-        expire = datetime.utcnow() + expires_delta
+        expire = datetime.now(timezone.utc) + expires_delta
     else:
-        expire = datetime.utcnow() + timedelta(days=7)  # 7 days default
+        expire = datetime.now(timezone.utc) + timedelta(days=7)  # 7 days default
 
     to_encode.update({
         "exp": expire,
-        "iat": datetime.utcnow(),
+        "iat": datetime.now(timezone.utc),
         "type": "refresh"
     })
 
@@ -192,13 +192,13 @@ def create_device_token(
     }
 
     if expires_delta:
-        expire = datetime.utcnow() + expires_delta
+        expire = datetime.now(timezone.utc) + expires_delta
     else:
-        expire = datetime.utcnow() + timedelta(days=365)  # 1 year default for devices
+        expire = datetime.now(timezone.utc) + timedelta(days=365)  # 1 year default for devices
 
     to_encode.update({
         "exp": expire,
-        "iat": datetime.utcnow()
+        "iat": datetime.now(timezone.utc)
     })
 
     encoded_jwt = jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
@@ -438,6 +438,33 @@ def get_current_user(
         raise AuthenticationError(
             message="Token tidak valid - data user tidak lengkap"
         )
+
+    # CRITICAL FIX: Verify session is still active in database
+    # This prevents revoked tokens from being used
+    # NOTE: This adds a DB query to every request - consider Redis caching for production
+    try:
+        from services.session.repositories.session_repo import SessionRepository
+        from shared.database import SessionLocal
+
+        db = SessionLocal()
+        try:
+            session_repo = SessionRepository(db)
+            session = session_repo.verify_session(credentials.credentials)
+
+            if not session:
+                raise AuthenticationError(
+                    message="Session has been revoked or expired",
+                    code=ErrorCodes.SESSION_REVOKED
+                )
+
+            # Update last activity timestamp
+            session_repo.update_last_activity(session.id)
+        finally:
+            db.close()
+    except ImportError:
+        # Session verification not available - continue without it
+        # This allows backward compatibility during migration
+        pass
 
     return CurrentUser(
         id=int(user_id),

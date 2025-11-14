@@ -5,7 +5,7 @@ Handle guest data sync from Firebird Bridge Agent
 
 from sqlalchemy.orm import Session
 from typing import List, Dict, Any
-from datetime import datetime
+from datetime import datetime, timezone
 
 from services.pms.repositories.pms_repo import PMSRepository
 
@@ -44,7 +44,7 @@ class SyncGuestsUseCase:
                 # Parse dates
                 guest_data["checkin_date"] = datetime.fromisoformat(guest_data["checkin_date"])
                 guest_data["checkout_date"] = datetime.fromisoformat(guest_data["checkout_date"])
-                guest_data["synced_at"] = datetime.now()
+                guest_data["synced_at"] = datetime.now(timezone.utc)
 
                 # Create guest record
                 self.repo.create_guest(guest_data)
@@ -63,5 +63,5 @@ class SyncGuestsUseCase:
             "synced": created_count,
             "total": len(guests_data),
             "errors": errors,
-            "synced_at": datetime.now().isoformat()
+            "synced_at": datetime.now(timezone.utc).isoformat()
         }

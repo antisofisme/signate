@@ -29,7 +29,7 @@ from services.pms.use_cases.get_pms_stats import GetPMSStatsUseCase
 from services.pms.repositories.pms_repo import PMSRepository
 
 import secrets
-from datetime import datetime
+from datetime import datetime, timezone
 
 router = APIRouter(prefix="/pms", tags=["PMS Integration"])
 
@@ -267,7 +267,7 @@ def get_device_current_guest(
         current_guest = None
         
         for guest in guests:
-            if guest.checkout_date is None or guest.checkout_date >= datetime.now().date():
+            if guest.checkout_date is None or guest.checkout_date >= datetime.now(timezone.utc).date():
                 current_guest = guest
                 break
         

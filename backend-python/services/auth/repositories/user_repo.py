@@ -32,6 +32,33 @@ class UserRepository(IUserRepository):
         user_model = self.db.query(UserModel).options(joinedload(UserModel.role)).filter(UserModel.email == email).first()
         return self._to_entity(user_model) if user_model else None
 
+    # CRITICAL FIX P0-6: Multi-tenancy safe methods
+    def find_by_username_in_org(self, username: str, organization_id: int) -> Optional[User]:
+        """
+        Find user by username within specific organization
+
+        SECURITY: Enforces organization isolation to prevent data leaks
+        Use this method instead of find_by_username() when checking uniqueness
+        """
+        user_model = self.db.query(UserModel).options(joinedload(UserModel.role)).filter(
+            UserModel.username == username,
+            UserModel.organization_id == organization_id
+        ).first()
+        return self._to_entity(user_model) if user_model else None
+
+    def find_by_email_in_org(self, email: str, organization_id: int) -> Optional[User]:
+        """
+        Find user by email within specific organization
+
+        SECURITY: Enforces organization isolation to prevent data leaks
+        Use this method instead of find_by_email() when checking uniqueness
+        """
+        user_model = self.db.query(UserModel).options(joinedload(UserModel.role)).filter(
+            UserModel.email == email,
+            UserModel.organization_id == organization_id
+        ).first()
+        return self._to_entity(user_model) if user_model else None
+
     def create(self, user: User) -> User:
         """Create new user"""
         # Find role_id from role name
@@ -74,6 +101,15 @@ class UserRepository(IUserRepository):
         self.db.commit()
         self.db.refresh(user_model)
         return self._to_entity(user_model)
+
+    def save(self, user: User) -> User:
+        """
+        Save/update existing user
+
+        CRITICAL FIX: Added for password reset functionality
+        This method is an alias for update() to maintain compatibility
+        """
+        return self.update(user)
 
     def delete(self, user_id: int) -> bool:
         """Delete user"""

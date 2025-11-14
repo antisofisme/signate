@@ -4,7 +4,7 @@ Business logic for content management
 """
 
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional, Dict, Any
 
 
@@ -35,7 +35,7 @@ class Content:
 
     # Multi-tenant (must be before optional fields!)
     organization_id: int
-    uploaded_by: int
+    uploaded_by_id: int  # 🐛 FIX: Match database column name
 
     # OPTIONAL FIELDS WITH DEFAULTS (must come after required fields)
     description: Optional[str] = None
@@ -187,9 +187,9 @@ class Content:
         """Set thumbnail information"""
         self.thumbnail_path = thumbnail_path
         self.thumbnail_url = thumbnail_url
-        self.thumbnail_generated_at = datetime.now()
+        self.thumbnail_generated_at = datetime.now(timezone.utc)
 
     def soft_delete(self):
         """Mark content as soft-deleted"""
-        self.deleted_at = datetime.now()
+        self.deleted_at = datetime.now(timezone.utc)
         self.is_active = False

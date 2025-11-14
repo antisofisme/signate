@@ -4,7 +4,7 @@ Pure business logic for playlist management
 """
 
 from typing import Optional, Dict, Any
-from datetime import datetime
+from datetime import datetime, timezone
 
 
 class Playlist:
@@ -21,7 +21,7 @@ class Playlist:
         schedule: Optional[Dict[str, Any]] = None,
         is_default: bool = False,
         is_pms_template: bool = False,
-        created_by: Optional[int] = None,
+        created_by_id: Optional[int] = None,  # 🐛 FIX: Match database field name
         created_at: Optional[datetime] = None,
         updated_at: Optional[datetime] = None,
         deleted_at: Optional[datetime] = None,
@@ -38,7 +38,7 @@ class Playlist:
         self.is_default = is_default
         self.is_pms_template = is_pms_template
         self.organization_id = organization_id
-        self.created_by_id = created_by
+        self.created_by_id = created_by_id  # 🐛 FIX: Direct assignment
         self.created_at = created_at
         self.updated_at = updated_at
         self.deleted_at = deleted_at
@@ -92,21 +92,21 @@ class Playlist:
         if schedule is not None:
             self.schedule = schedule
 
-        self.updated_at = datetime.utcnow()
+        self.updated_at = datetime.now(timezone.utc)
 
     def activate(self):
         """Activate playlist"""
         self.is_active = True
-        self.updated_at = datetime.utcnow()
+        self.updated_at = datetime.now(timezone.utc)
 
     def deactivate(self):
         """Deactivate playlist"""
         self.is_active = False
-        self.updated_at = datetime.utcnow()
+        self.updated_at = datetime.now(timezone.utc)
 
     def soft_delete(self):
         """Soft delete playlist"""
-        self.deleted_at = datetime.utcnow()
+        self.deleted_at = datetime.now(timezone.utc)
 
     def is_deleted(self) -> bool:
         """Check if playlist is soft deleted"""

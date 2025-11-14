@@ -12,7 +12,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import text
 from shared.database import get_db
 from shared.api_routes import DeviceRoutes
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional, List
 import json
 import random
@@ -166,7 +166,7 @@ def register_monitor_device(
     """
     # Use code from player, or generate if not provided
     code = request.activation_code or generate_activation_code()
-    code_expires = datetime.now() + timedelta(minutes=10)
+    code_expires = datetime.now(timezone.utc) + timedelta(minutes=10)
     device_name = request.device_name or f"Monitor-{code}"
 
     query = text("""
@@ -261,7 +261,7 @@ def release_device(
     db.execute(command_query, {
         "device_id": device_id,
         "organization_id": device_check.organization_id,
-        "expires_at": datetime.now() + timedelta(days=7)
+        "expires_at": datetime.now(timezone.utc) + timedelta(days=7)
     })
 
     db.commit()

@@ -47,5 +47,5 @@ class Credentials:
         """Validation"""
         if not self.username or len(self.username) < 3:
             raise ValueError("Username must be at least 3 characters")
-        if not self.password or len(self.password) < 6:
-            raise ValueError("Password must be at least 6 characters")
+        if not self.password or len(self.password) < 8:
+            raise ValueError("Password must be at least 8 characters")

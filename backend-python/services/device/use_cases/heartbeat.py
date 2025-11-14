@@ -3,7 +3,7 @@ Device Heartbeat Use Case
 Update device last_seen_at and metadata
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 
 from ..domain.device import DeviceHeartbeat
@@ -44,7 +44,7 @@ class DeviceHeartbeatUseCase:
             raise ValueError("Device is not active. Please activate first.")
 
         # Update last_seen_at
-        device.last_seen_at = datetime.utcnow()
+        device.last_seen_at = datetime.now(timezone.utc)
 
         # Update device metadata if provided
         if heartbeat_data.screen_width:

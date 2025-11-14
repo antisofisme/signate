@@ -4,7 +4,7 @@ Custom storage system (NO Anthias!) with organized directory structure
 """
 
 from pathlib import Path
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Dict, Any, Optional
 from fastapi import UploadFile
 import hashlib
@@ -89,7 +89,7 @@ class LocalFilesystemStorage(IStorageService):
         file_extension = Path(safe_filename).suffix.lower()
 
         # Build organized directory structure
-        now = datetime.now()
+        now = datetime.now(timezone.utc)
         type_folder = f"{content_type}s"  # images, videos, audios
         year_folder = str(now.year)
         month_folder = f"{now.month:02d}"

@@ -12,7 +12,7 @@ Enhanced with security validators:
 import re
 import html
 from typing import Optional, Any
-from datetime import datetime
+from datetime import datetime, timezone
 from urllib.parse import urlparse
 
 
@@ -420,7 +420,7 @@ def validate_future_date(date_string: str, format: str = "%Y-%m-%d") -> tuple[bo
     """
     try:
         date = datetime.strptime(date_string, format)
-        if date <= datetime.now():
+        if date <= datetime.now(timezone.utc):
             return False, "Date must be in the future"
         return True, None
     except ValueError:

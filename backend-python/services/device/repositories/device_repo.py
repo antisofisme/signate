@@ -4,7 +4,7 @@ Implements IDeviceRepository using SQLAlchemy
 """
 
 from typing import Optional, List
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from sqlalchemy.orm import Session, selectinload
 from ..domain.device import Device
 from ..domain.interfaces import IDeviceRepository
@@ -87,7 +87,7 @@ class DeviceRepository(IDeviceRepository):
         if organization_id is None:
             # Filter unassigned devices: show only those created/expired within last 24 hours
             # This prevents showing thousands of old expired devices
-            twenty_four_hours_ago = datetime.utcnow() - timedelta(hours=24)
+            twenty_four_hours_ago = datetime.now(timezone.utc) - timedelta(hours=24)
             query = query.filter(
                 DeviceModel.organization_id == None,
                 DeviceModel.created_at >= twenty_four_hours_ago
@@ -213,7 +213,7 @@ class DeviceRepository(IDeviceRepository):
 
     def find_online_devices(self, organization_id: int) -> List[Device]:
         """Find online devices (last_seen_at < 5 minutes ago)"""
-        five_minutes_ago = datetime.utcnow() - timedelta(minutes=5)
+        five_minutes_ago = datetime.now(timezone.utc) - timedelta(minutes=5)
 
         device_models = self.db.query(DeviceModel).options(
             selectinload(DeviceModel.assigned_playlist),

@@ -27,7 +27,8 @@ class UpdateDeviceUseCase:
         rotation: Optional[int] = None,
         is_volume_enabled: Optional[bool] = None,
         is_personalization_supported: Optional[bool] = None,
-        privacy_mode: Optional[str] = None
+        privacy_mode: Optional[str] = None,
+        current_user_org_id: Optional[int] = None
     ) -> Device:
         """
         Update device settings
@@ -41,12 +42,14 @@ class UpdateDeviceUseCase:
             is_volume_enabled: Optional volume setting
             is_personalization_supported: Optional personalization support
             privacy_mode: Optional privacy mode setting
+            current_user_org_id: Current user's organization ID for authorization
 
         Returns:
             Updated Device entity
 
         Raises:
             ValueError: If device not found or validation fails
+            PermissionError: If user tries to update device from another organization
         """
 
         # Find device
@@ -54,6 +57,13 @@ class UpdateDeviceUseCase:
 
         if not device:
             raise ValueError(f"Device with ID {device_id} not found")
+
+        # SECURITY: Verify user can only update devices in their organization
+        if current_user_org_id is not None and device.organization_id != current_user_org_id:
+            raise PermissionError(
+                f"Cannot update device {device_id}: belongs to organization {device.organization_id}, "
+                f"user belongs to organization {current_user_org_id}"
+            )
 
         # Update fields if provided
         if device_name is not None:
@@ -111,15 +121,28 @@ class UpdateDeviceUseCase:
         device.status = 'inactive'
         return self.device_repo.update(device)
 
-    def delete_device(self, device_id: int) -> bool:
+    def delete_device(self, device_id: int, current_user_org_id: Optional[int] = None) -> bool:
         """
         Delete a device permanently
 
         Args:
             device_id: Device ID to delete
+            current_user_org_id: Current user's organization ID for authorization
 
         Returns:
             True if deleted successfully, False if device not found
+
+        Raises:
+            PermissionError: If user tries to delete device from another organization
         """
+        # SECURITY: Verify user can only delete devices in their organization
+        if current_user_org_id is not None:
+            device = self.device_repo.find_by_id(device_id)
+            if device and device.organization_id != current_user_org_id:
+                raise PermissionError(
+                    f"Cannot delete device {device_id}: belongs to organization {device.organization_id}, "
+                    f"user belongs to organization {current_user_org_id}"
+                )
+
         # Repository delete() handles device not found case
         return self.device_repo.delete(device_id)

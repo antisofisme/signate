@@ -6,7 +6,7 @@ Phase 2 Day 2 - Analytics Service
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 from typing import Optional
-from datetime import datetime
+from datetime import datetime, timezone
 
 from shared.database import get_db
 from shared.auth import get_current_user, CurrentUser
@@ -287,7 +287,7 @@ def start_playback_log(
 
     # Create playback log
     playback_data = request_body.dict()
-    playback_data["started_at"] = datetime.utcnow()
+    playback_data["started_at"] = datetime.now(timezone.utc)
     playback_data["organization_id"] = current_user.organization_id
 
     log = analytics_repo.log_playback(playback_data)
@@ -327,7 +327,7 @@ def end_playback_log(
     # Update playback log
     log = analytics_repo.update_playback_end(
         log_id=log_id,
-        ended_at=datetime.utcnow(),
+        ended_at=datetime.now(timezone.utc),
         duration_seconds=request_body.duration_seconds,
         completed=request_body.completed
     )

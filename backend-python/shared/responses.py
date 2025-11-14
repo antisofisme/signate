@@ -4,7 +4,7 @@ Standardized response format for all API endpoints
 """
 
 from typing import Optional, Any, Dict, List
-from datetime import datetime
+from datetime import datetime, timezone
 from pydantic import BaseModel
 
 
@@ -17,14 +17,14 @@ class SuccessResponse(BaseModel):
     success: bool = True
     data: Any
     message: Optional[str] = None
-    timestamp: str = datetime.utcnow().isoformat()
+    timestamp: str = datetime.now(timezone.utc).isoformat()
 
 
 class ErrorResponse(BaseModel):
     """Standard error response"""
     success: bool = False
     error: Dict[str, Any]
-    timestamp: str = datetime.utcnow().isoformat()
+    timestamp: str = datetime.now(timezone.utc).isoformat()
 
 
 class PaginatedResponse(BaseModel):
@@ -32,7 +32,7 @@ class PaginatedResponse(BaseModel):
     success: bool = True
     data: List[Any]
     pagination: Dict[str, int]
-    timestamp: str = datetime.utcnow().isoformat()
+    timestamp: str = datetime.now(timezone.utc).isoformat()
 
 
 # =============================================================================
@@ -66,7 +66,7 @@ def success_response(
         "success": True,
         "data": data,
         "message": message,
-        "recorded_at": datetime.utcnow().isoformat()
+        "recorded_at": datetime.now(timezone.utc).isoformat()
     }
 
 
@@ -108,7 +108,7 @@ def error_response(
             "details": details or {},
             "status_code": status_code
         },
-        "recorded_at": datetime.utcnow().isoformat()
+        "recorded_at": datetime.now(timezone.utc).isoformat()
     }
 
 
@@ -161,7 +161,7 @@ def paginated_response(
             "has_next": page < total_pages,
             "has_prev": page > 1
         },
-        "recorded_at": datetime.utcnow().isoformat()
+        "recorded_at": datetime.now(timezone.utc).isoformat()
     }
 
 

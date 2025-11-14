@@ -33,9 +33,9 @@ class CreatePlaylistUseCase:
         db_session = self.playlist_repo.db
         quota_service = OrganizationQuotaService(db_session)
         
-        # Enforce playlist quota
+        # Enforce playlist quota atomically (CRITICAL FIX P0-9)
         try:
-            quota_service.enforce_playlist_quota(organization_id)
+            quota_service.enforce_playlist_quota_atomic(organization_id)
         except ValueError as e:
             raise ValueError(f"Quota exceeded: {str(e)}")
         

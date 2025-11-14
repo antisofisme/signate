@@ -182,8 +182,8 @@ class SecureFileHandler:
             Safe absolute path for file storage
         """
         # Create directory structure: /base/org_id/content_type/YYYY/MM/
-        from datetime import datetime
-        now = datetime.now()
+        from datetime import datetime, timezone
+        now = datetime.now(timezone.utc)
         
         dir_path = base_dir / str(organization_id) / content_type / \
                    str(now.year) / f"{now.month:02d}"

@@ -4,7 +4,7 @@ Database access for content
 """
 
 from typing import List, Optional, Tuple, Dict, Any
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 
@@ -59,15 +59,45 @@ class ContentRepository(IContentRepository):
 
         return self._to_entity(db_content)
 
-    def find_by_id(self, content_id: int, organization_id: int) -> Optional[Content]:
-        """Find content by ID (organization-scoped)"""
-        db_content = self.db.query(ContentModel).filter(
+    def find_by_id(self, content_id: int, organization_id: int = None) -> Optional[Content]:
+        """Find content by ID (organization-scoped if org_id provided)"""
+        query = self.db.query(ContentModel).filter(
             ContentModel.id == content_id,
-            ContentModel.organization_id == organization_id,
             ContentModel.deleted_at.is_(None)
-        ).first()
+        )
 
+        if organization_id is not None:
+            query = query.filter(ContentModel.organization_id == organization_id)
+
+        db_content = query.first()
         return self._to_entity(db_content) if db_content else None
+
+    def find_by_ids(self, content_ids: List[int], organization_id: int = None) -> List[Content]:
+        """
+        Batch fetch contents by IDs (performance optimization to prevent N+1 queries)
+
+        ⚡ PERFORMANCE: Use this instead of multiple find_by_id() calls
+
+        Args:
+            content_ids: List of content IDs to fetch
+            organization_id: Optional organization filter
+
+        Returns:
+            List of Content entities (only existing, active contents)
+        """
+        if not content_ids:
+            return []
+
+        query = self.db.query(ContentModel).filter(
+            ContentModel.id.in_(content_ids),
+            ContentModel.deleted_at.is_(None)
+        )
+
+        if organization_id is not None:
+            query = query.filter(ContentModel.organization_id == organization_id)
+
+        db_contents = query.all()
+        return [self._to_entity(c) for c in db_contents]
 
     def find_all(
         self,
@@ -140,7 +170,11 @@ class ContentRepository(IContentRepository):
         return self._to_entity(db_content)
 
     def soft_delete(self, content_id: int, organization_id: int) -> bool:
-        """Soft delete content"""
+        """
+        Soft delete content and cleanup playlist associations
+
+        CRITICAL FIX: Remove content from all playlists to prevent orphaned data
+        """
         db_content = self.db.query(ContentModel).filter(
             ContentModel.id == content_id,
             ContentModel.organization_id == organization_id,
@@ -150,15 +184,40 @@ class ContentRepository(IContentRepository):
         if not db_content:
             return False
 
-        db_content.deleted_at = datetime.now()
+        # CRITICAL FIX: Remove content from all playlists BEFORE soft delete
+        from services.playlist.repositories.models import PlaylistContentModel
+
+        deleted_count = self.db.query(PlaylistContentModel).filter(
+            PlaylistContentModel.content_id == content_id
+        ).delete(synchronize_session=False)
+
+        # Log cleanup for audit trail
+        if deleted_count > 0:
+            from shared.logging import logger
+            logger.info(
+                f"Removed content {content_id} from {deleted_count} playlist(s) during soft delete"
+            )
+
+        # Soft delete the content
+        db_content.deleted_at = datetime.now(timezone.utc)
         db_content.is_active = False
         self.db.commit()
+
+        # CRITICAL FIX: Invalidate content resolver cache for affected devices
+        # This ensures devices fetch updated content immediately
+        try:
+            from shared.cache import cache
+            cache.invalidate_pattern("content_resolution:*")
+            logger.info(f"Invalidated content resolution cache for deleted content {content_id}")
+        except Exception as e:
+            logger.warning(f"Failed to invalidate cache: {e}")
+            # Don't fail the deletion if cache invalidation fails
 
         return True
 
     def find_deleted_content(self, days: int = 30) -> List[Content]:
         """Find soft-deleted content older than specified days"""
-        threshold = datetime.now() - timedelta(days=days)
+        threshold = datetime.now(timezone.utc) - timedelta(days=days)
 
         db_contents = self.db.query(ContentModel).filter(
             ContentModel.deleted_at.isnot(None),
@@ -287,7 +346,7 @@ class ContentRepository(IContentRepository):
 
         db_content.thumbnail_path = thumbnail_path
         db_content.thumbnail_url = thumbnail_url
-        db_content.thumbnail_generated_at = datetime.now()
+        db_content.thumbnail_generated_at = datetime.now(timezone.utc)
 
         self.db.commit()
         return True

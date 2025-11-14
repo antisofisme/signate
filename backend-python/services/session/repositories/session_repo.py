@@ -4,7 +4,7 @@ Data access layer for UserSession model
 """
 
 from typing import Optional, List
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import hashlib
 from sqlalchemy.orm import Session
 from sqlalchemy import and_
@@ -68,7 +68,7 @@ class SessionRepository:
             user_agent=user_agent,
             device_info=device_info or {},
             session_type=session_type,
-            expires_at=datetime.utcnow() + timedelta(minutes=expires_in_minutes)
+            expires_at=datetime.now(timezone.utc) + timedelta(minutes=expires_in_minutes)
         )
 
         self.db.add(session)
@@ -141,7 +141,7 @@ class SessionRepository:
         if not session:
             return False
 
-        session.last_activity_at = datetime.utcnow()
+        session.last_activity_at = datetime.now(timezone.utc)
         self.db.commit()
         return True
 
@@ -159,7 +159,7 @@ class SessionRepository:
         if not session:
             return False
 
-        session.revoked_at = datetime.utcnow()
+        session.revoked_at = datetime.now(timezone.utc)
         self.db.commit()
         return True
 
@@ -177,7 +177,7 @@ class SessionRepository:
         if not session:
             return False
 
-        session.revoked_at = datetime.utcnow()
+        session.revoked_at = datetime.now(timezone.utc)
         self.db.commit()
         return True
 
@@ -199,7 +199,7 @@ class SessionRepository:
         ).all()
 
         count = 0
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         for session in sessions:
             session.revoked_at = now
             count += 1
@@ -217,7 +217,7 @@ class SessionRepository:
         Returns:
             List of active UserSession models
         """
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         return self.db.query(UserSession).filter(
             and_(
                 UserSession.user_id == user_id,
@@ -249,7 +249,7 @@ class SessionRepository:
             query = query.filter(UserSession.revoked_at.is_(None))
 
         if not include_expired:
-            query = query.filter(UserSession.expires_at > datetime.utcnow())
+            query = query.filter(UserSession.expires_at > datetime.now(timezone.utc))
 
         return query.order_by(UserSession.last_activity_at.desc()).all()
 
@@ -263,7 +263,7 @@ class SessionRepository:
         Returns:
             Number of sessions deleted
         """
-        cutoff_date = datetime.utcnow() - timedelta(days=days_old)
+        cutoff_date = datetime.now(timezone.utc) - timedelta(days=days_old)
 
         sessions = self.db.query(UserSession).filter(
             UserSession.expires_at < cutoff_date
@@ -292,7 +292,7 @@ class SessionRepository:
 
         total = query.count()
 
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         active = query.filter(
             and_(
                 UserSession.revoked_at.is_(None),
@@ -348,7 +348,7 @@ class SessionRepository:
             query = query.filter(UserSession.user_id == user_id)
 
         if active_only:
-            now = datetime.utcnow()
+            now = datetime.now(timezone.utc)
             query = query.filter(
                 and_(
                     UserSession.revoked_at.is_(None),

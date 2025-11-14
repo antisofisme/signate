@@ -13,7 +13,7 @@ TODO Production: Move to database table with proper email integration
 
 import secrets
 import threading
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Dict, Optional, Tuple
 
 
@@ -56,14 +56,14 @@ class PasswordResetTokenManager:
             token = secrets.token_urlsafe(32)
 
             # Calculate expiration time
-            expires_at = datetime.utcnow() + timedelta(minutes=self._token_lifetime_minutes)
+            expires_at = datetime.now(timezone.utc) + timedelta(minutes=self._token_lifetime_minutes)
 
             # Store token data
             self._tokens[token] = {
                 "user_id": user_id,
                 "email": email,
                 "expires_at": expires_at,
-                "created_at": datetime.utcnow()
+                "created_at": datetime.now(timezone.utc)
             }
 
             return token
@@ -96,7 +96,7 @@ class PasswordResetTokenManager:
             token_data = self._tokens[token]
 
             # Check if token has expired
-            if datetime.utcnow() > token_data["expires_at"]:
+            if datetime.now(timezone.utc) > token_data["expires_at"]:
                 # Remove expired token
                 del self._tokens[token]
                 return False, None, "Reset token has expired"
@@ -155,7 +155,7 @@ class PasswordResetTokenManager:
         Call this periodically (e.g., via background task) to prevent memory bloat.
         """
         with self._lock:
-            now = datetime.utcnow()
+            now = datetime.now(timezone.utc)
 
             expired_tokens = [
                 token for token, data in self._tokens.items()
@@ -183,7 +183,7 @@ class PasswordResetTokenManager:
     def count_active_tokens(self) -> int:
         """Get count of active (non-expired) tokens"""
         with self._lock:
-            now = datetime.utcnow()
+            now = datetime.now(timezone.utc)
             return sum(
                 1 for data in self._tokens.values()
                 if now <= data["expires_at"]

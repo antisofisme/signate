@@ -309,20 +309,35 @@ class ContentResolver:
             return False
         if schedule.end_date and current_time.date() > schedule.end_date:
             return False
-            
+
         # Check days of week (from recurrence pattern)
         if schedule.recurrence_pattern and schedule.recurrence_pattern.get('days_of_week'):
             current_day = current_time.strftime('%A').lower()
             if current_day not in schedule.recurrence_pattern['days_of_week']:
                 return False
-            
-        # Check time range
+
+        # Check time range (handles midnight-crossing schedules)
         current_time_only = current_time.time()
-        if schedule.start_time and current_time_only < schedule.start_time:
-            return False
-        if schedule.end_time and current_time_only > schedule.end_time:
-            return False
-            
+        if schedule.start_time and schedule.end_time:
+            # 🐛 FIX: Handle midnight-crossing schedules (e.g., 23:00 → 01:00)
+            if schedule.start_time <= schedule.end_time:
+                # Normal case: 09:00 → 17:00
+                if not (schedule.start_time <= current_time_only <= schedule.end_time):
+                    return False
+            else:
+                # Midnight-crossing case: 23:00 → 01:00
+                # Active if: (current >= 23:00) OR (current <= 01:00)
+                if not (current_time_only >= schedule.start_time or current_time_only <= schedule.end_time):
+                    return False
+        elif schedule.start_time:
+            # Only start_time specified
+            if current_time_only < schedule.start_time:
+                return False
+        elif schedule.end_time:
+            # Only end_time specified
+            if current_time_only > schedule.end_time:
+                return False
+
         return True
     
     def _does_schedule_apply_to_device(self, schedule, device) -> bool:
@@ -349,12 +364,28 @@ class ContentResolver:
     def _get_playlist_content(self, playlist: "Playlist") -> List[Dict]:
         """
         Get playlist content items with full details
+
+        ⚡ PERFORMANCE FIX: Batch fetch contents to prevent N+1 queries
         """
+        if not playlist.items:
+            return []
+
+        # Extract all content IDs
+        content_ids = [item.content_id for item in playlist.items]
+
+        # Batch fetch all contents in a single query
+        contents_list = self.content_repo.find_by_ids(content_ids) if hasattr(self.content_repo, 'find_by_ids') else [
+            self.content_repo.find_by_id(cid) for cid in content_ids
+        ]
+
+        # Create lookup dict for O(1) access
+        contents_map = {content.id: content for content in contents_list if content and content.is_active}
+
+        # Build content items using the lookup map
         content_items = []
-        
         for item in playlist.items:
-            content = self.content_repo.find_by_id(item.content_id)
-            if content and content.is_active:
+            content = contents_map.get(item.content_id)
+            if content:
                 content_items.append({
                     'content_id': content.id,
                     'title': content.title,
@@ -369,7 +400,7 @@ class ContentResolver:
                         'file_size': content.file_size
                     }
                 })
-        
+
         # Sort by order
         content_items.sort(key=lambda x: x['order'])
         return content_items

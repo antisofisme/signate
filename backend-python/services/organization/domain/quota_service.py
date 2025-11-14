@@ -280,10 +280,49 @@ class OrganizationQuotaService:
         """
         Enforce user quota - raises exception if limit reached
         Should be called before creating a new user
+
+        ⚠️ DEPRECATED: Use enforce_user_quota_atomic() instead to prevent race conditions
         """
         check = self.check_user_quota(organization_id)
         if not check['allowed']:
             raise ValueError(check['message'])
+
+    def enforce_user_quota_atomic(self, organization_id: int) -> None:
+        """
+        Atomically enforce user quota using row-level locking (CRITICAL FIX P0-9)
+        Prevents race conditions in concurrent user creation
+
+        Args:
+            organization_id: Organization ID
+
+        Raises:
+            ValueError: If quota limit reached
+        """
+        from services.auth.repositories.models import OrganizationModel
+
+        try:
+            # Lock organization row to prevent concurrent modifications
+            org = self.db.query(OrganizationModel).filter(
+                OrganizationModel.id == organization_id
+            ).with_for_update().first()
+
+            if not org:
+                raise ValueError(f"Organization {organization_id} not found")
+
+            # Count current active users with lock
+            current_count = self.db.query(func.count(UserModel.id)).filter(
+                UserModel.organization_id == organization_id,
+                UserModel.is_active == True
+            ).scalar() or 0
+
+            max_users = org.max_users or 5
+
+            if current_count >= max_users:
+                raise ValueError(f"User quota exceeded: {current_count}/{max_users} users")
+
+        except Exception as e:
+            self.db.rollback()
+            raise
     
     def enforce_content_quota(self, organization_id: int, file_size_bytes: int) -> None:
         """
@@ -354,7 +393,48 @@ class OrganizationQuotaService:
         """
         Enforce playlist quota - raises exception if limit reached
         Should be called before creating a new playlist
+
+        ⚠️ DEPRECATED: Use enforce_playlist_quota_atomic() instead to prevent race conditions
         """
         check = self.check_playlist_quota(organization_id)
         if not check['allowed']:
             raise ValueError(check['message'])
+
+    def enforce_playlist_quota_atomic(self, organization_id: int) -> None:
+        """
+        Atomically enforce playlist quota using row-level locking (CRITICAL FIX P0-9)
+        Prevents race conditions in concurrent playlist creation
+
+        Args:
+            organization_id: Organization ID
+
+        Raises:
+            ValueError: If quota limit reached
+        """
+        from services.auth.repositories.models import OrganizationModel
+
+        try:
+            # Lock organization row to prevent concurrent modifications
+            org = self.db.query(OrganizationModel).filter(
+                OrganizationModel.id == organization_id
+            ).with_for_update().first()
+
+            if not org:
+                raise ValueError(f"Organization {organization_id} not found")
+
+            # Count current playlists with lock
+            current_count = self.db.query(func.count(PlaylistModel.id)).filter(
+                PlaylistModel.organization_id == organization_id,
+                PlaylistModel.deleted_at.is_(None)
+            ).scalar() or 0
+
+            # Get limit from org settings or use default
+            settings = org.settings or {}
+            max_playlists = settings.get('max_playlists', 100)
+
+            if current_count >= max_playlists:
+                raise ValueError(f"Playlist quota exceeded: {current_count}/{max_playlists} playlists")
+
+        except Exception as e:
+            self.db.rollback()
+            raise
