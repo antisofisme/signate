@@ -594,3 +594,309 @@ See `docs/DATABASE_ERD.md` for:
 - Deployment reports: `DEPLOYMENT_SUCCESS_REPORT.md`
 - API documentation: `http://192.168.5.12:8001/docs`
 
+---
+
+# Testing & Debugging Tools
+
+## Playwright - Automated Browser Testing
+
+**Installed**: ✅ `/tmp/` (npm install playwright)
+**Purpose**: Automated end-to-end testing untuk web applications
+**Browser Support**: Chromium, Firefox, WebKit
+
+### Use Cases:
+- ✅ Automated UI testing
+- ✅ Toast notification testing
+- ✅ User interaction simulation
+- ✅ Screenshot & video recording
+- ⭐ Basic console log capture
+- ⭐ Network request tracking (basic)
+
+### How to Use:
+
+```javascript
+const { chromium } = require('playwright');
+
+async function testApp() {
+  const browser = await chromium.launch({
+    headless: false,
+    slowMo: 500
+  });
+
+  const page = await browser.newPage();
+
+  // Console monitoring
+  page.on('console', msg => console.log(`Console: ${msg.text()}`));
+
+  // Navigate and test
+  await page.goto('http://192.168.5.12:8080/');
+  await page.waitForTimeout(5000);
+
+  // Take screenshot
+  await page.screenshot({ path: '/tmp/screenshot.png' });
+
+  await browser.close();
+}
+
+testApp();
+```
+
+### Example Test Scripts:
+- `/tmp/test-player-toast.js` - Toast notification testing
+- Run: `cd /tmp && node test-player-toast.js`
+
+### Strengths:
+- ⭐⭐⭐⭐⭐ Fast test execution
+- ⭐⭐⭐⭐⭐ Multi-browser support
+- ⭐⭐⭐⭐⭐ Automated testing
+- ⭐⭐⭐ Screenshot & video
+- ⭐⭐ Console logs (manual filtering)
+
+### Limitations:
+- ⭐⭐ Performance profiling
+- ⭐⭐ Network analysis (basic only)
+- ⭐ Memory profiling (not available)
+- ⭐ Real-time inspection (limited)
+
+---
+
+## Chrome DevTools MCP - Deep Debugging & Analysis
+
+**Installed**: ✅ `/tmp/chrome-devtools-mcp/`
+**Purpose**: AI-powered browser inspection dengan full Chrome DevTools access
+**MCP Server**: Model Context Protocol for AI agents
+
+### Use Cases:
+- ⭐⭐⭐⭐⭐ Real-time console monitoring dengan categorization
+- ⭐⭐⭐⭐⭐ Network waterfall analysis (timing, headers, responses)
+- ⭐⭐⭐⭐⭐ Performance profiling (traces, metrics, memory)
+- ⭐⭐⭐⭐⭐ Live DOM inspection
+- ⭐⭐⭐⭐⭐ JavaScript execution & debugging
+- ⭐⭐⭐⭐⭐ WebSocket monitoring
+
+### Installation:
+
+```bash
+# Clone repository
+cd /tmp
+git clone https://github.com/ChromeDevTools/chrome-devtools-mcp.git
+cd chrome-devtools-mcp
+
+# Install dependencies
+npm install
+
+# Build (skip experimental-strip-types for Node 20)
+npx tsc
+
+# Run post-build script manually (create mocks)
+# (See installation script in /tmp/run-postbuild.mjs)
+```
+
+### How to Use:
+
+#### Method 1: As MCP Server (CLI)
+```bash
+cd /tmp/chrome-devtools-mcp
+node build/src/index.js --help
+
+# Launch with options
+node build/src/index.js --headless=false --viewport=1920x1080
+```
+
+#### Method 2: With Playwright (Hybrid Approach)
+```javascript
+const { chromium } = require('playwright');
+
+async function testWithDevTools() {
+  // Launch with remote debugging
+  const browser = await chromium.launch({
+    headless: false,
+    args: ['--remote-debugging-port=9222']
+  });
+
+  const page = await browser.newPage();
+
+  // Categorized console monitoring
+  const logs = { toast: [], errors: [], warnings: [] };
+
+  page.on('console', msg => {
+    const text = msg.text();
+    if (text.includes('[Toast]')) logs.toast.push(text);
+    if (msg.type() === 'error') logs.errors.push(text);
+  });
+
+  // Network monitoring
+  page.on('response', async response => {
+    const request = response.request();
+    if (request.resourceType() === 'xhr') {
+      console.log(`API: ${request.method()} ${request.url()} - ${response.status()}`);
+    }
+  });
+
+  // Performance metrics
+  const metrics = await page.evaluate(() => {
+    const perf = performance.getEntriesByType('navigation')[0];
+    return {
+      domLoad: perf.domContentLoadedEventEnd - perf.domContentLoadedEventStart,
+      totalTime: perf.loadEventEnd - perf.fetchStart
+    };
+  });
+
+  // Memory usage
+  const memory = await page.evaluate(() => ({
+    usedHeap: (performance.memory.usedJSHeapSize / 1048576).toFixed(2) + ' MB',
+    totalHeap: (performance.memory.totalJSHeapSize / 1048576).toFixed(2) + ' MB'
+  }));
+
+  console.log('Performance:', metrics);
+  console.log('Memory:', memory);
+  console.log('Console Logs:', logs);
+}
+```
+
+### Example Test Scripts:
+- `/tmp/test-player-devtools.js` - Comprehensive DevTools analysis
+- Run: `cd /tmp && node test-player-devtools.js`
+
+### Available Tools (26 total):
+1. **Input Automation** (8 tools): click, type, scroll, etc.
+2. **Navigation** (6 tools): goto, reload, back, forward
+3. **Emulation** (2 tools): viewport, device emulation
+4. **Performance** (3 tools): traces, metrics, profiling
+5. **Network** (2 tools): requests, responses, timing
+6. **Debugging** (5 tools): console, DOM inspection, JS execution
+
+### Strengths:
+- ⭐⭐⭐⭐⭐ Real-time console categorization
+- ⭐⭐⭐⭐⭐ Network waterfall analysis
+- ⭐⭐⭐⭐⭐ Performance profiling
+- ⭐⭐⭐⭐⭐ Memory leak detection
+- ⭐⭐⭐⭐⭐ Live DOM inspection
+- ⭐⭐⭐⭐⭐ Understanding WHY (forensic debugging)
+
+### Comparison: Playwright vs Chrome DevTools MCP
+
+| Feature | Playwright | Chrome DevTools MCP |
+|---------|-----------|---------------------|
+| Automated Testing | ⭐⭐⭐⭐⭐ | ⭐⭐⭐ |
+| Console Debugging | ⭐⭐ (manual) | ⭐⭐⭐⭐⭐ (automatic) |
+| Network Analysis | ⭐⭐ (basic) | ⭐⭐⭐⭐⭐ (detailed) |
+| Performance Profiling | ⭐ | ⭐⭐⭐⭐⭐ |
+| Memory Analysis | ❌ | ⭐⭐⭐⭐⭐ |
+| Real-time Inspection | ⭐ | ⭐⭐⭐⭐⭐ |
+| Multi-browser Support | ⭐⭐⭐⭐⭐ | ⭐⭐⭐ (Chromium only) |
+| Understanding WHY | ⭐⭐ | ⭐⭐⭐⭐⭐ |
+
+### When to Use What:
+
+**Use Playwright when:**
+- Running automated test suites
+- Need multi-browser testing
+- Simple UI interaction testing
+- Screenshot/video recording
+- Fast test execution needed
+
+**Use Chrome DevTools MCP when:**
+- Debugging complex issues
+- Performance optimization needed
+- Memory leak investigation
+- Network timing analysis
+- Need to understand WHY app behaves certain way
+- Real-time inspection of running app
+- WebSocket debugging
+
+**Use Both (Hybrid) when:**
+- Comprehensive testing with deep analysis
+- Test automation + performance profiling
+- Need both WHAT works and WHY it works
+
+### Test Results Example (Player-Vite):
+
+**From Chrome DevTools MCP Analysis:**
+```
+📊 Results Summary:
+- Console Messages: 47 (categorized automatically)
+  - Toast logs: 10
+  - Clear Cache logs: 6
+  - Errors: 1 (non-critical)
+  - Warnings: 0
+
+- Network Requests: 9 total
+  - API calls: 6 (100% success rate)
+  - Resources: 3
+
+- Performance Metrics:
+  - DOM Load: 96ms (excellent)
+  - Memory: 3.07 MB (very light)
+  - Clear Cache Flow: 3.5s total
+
+- Architecture Validation:
+  - Toast z-index: 200000 ✅
+  - Shell/Player separation: ✅
+  - Toast persistence during reload: ✅
+```
+
+### Files Generated:
+- **Test scripts**: `/tmp/test-player-toast.js`, `/tmp/test-player-devtools.js`
+- **Screenshots**: `/tmp/toast-test-screenshot.png`, `/tmp/devtools-test-screenshot.png`
+- **Reports**: `/tmp/TOAST_TEST_REPORT.md`, `/tmp/CHROME_DEVTOOLS_ANALYSIS_REPORT.md`
+
+### Best Practices:
+
+1. **Use Playwright for CI/CD**
+   - Fast automated tests
+   - Multi-browser compatibility
+   - Regression testing
+
+2. **Use Chrome DevTools MCP for Development**
+   - Deep debugging during development
+   - Performance optimization
+   - Understanding complex issues
+
+3. **Combine Both for Quality Assurance**
+   - Playwright: Verify WHAT works
+   - DevTools MCP: Understand WHY it works
+   - Comprehensive test coverage
+
+4. **Console Log Categorization**
+   ```javascript
+   // Auto-categorize logs by prefix
+   const logs = {
+     toast: [],
+     clearCache: [],
+     hardReset: [],
+     shell: [],
+     player: [],
+     errors: [],
+     warnings: []
+   };
+
+   page.on('console', msg => {
+     const text = msg.text();
+     if (text.includes('[Toast]')) logs.toast.push(text);
+     if (text.includes('[ClearCache]')) logs.clearCache.push(text);
+     // etc...
+   });
+   ```
+
+5. **Performance Monitoring**
+   ```javascript
+   // Track performance metrics
+   const metrics = await page.evaluate(() => {
+     const perf = performance.getEntriesByType('navigation')[0];
+     return {
+       domLoad: perf.domContentLoadedEventEnd - perf.domContentLoadedEventStart,
+       totalTime: perf.loadEventEnd - perf.fetchStart,
+       memory: {
+         used: (performance.memory.usedJSHeapSize / 1048576).toFixed(2) + ' MB',
+         total: (performance.memory.totalJSHeapSize / 1048576).toFixed(2) + ' MB'
+       }
+     };
+   });
+   ```
+
+### Resources:
+- Playwright Docs: https://playwright.dev/
+- Chrome DevTools MCP: https://github.com/ChromeDevTools/chrome-devtools-mcp
+- Test Reports: `/tmp/TOAST_TEST_REPORT.md`, `/tmp/CHROME_DEVTOOLS_ANALYSIS_REPORT.md`
+
