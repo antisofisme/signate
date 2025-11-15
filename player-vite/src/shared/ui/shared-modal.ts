@@ -37,12 +37,30 @@ class SharedModalClass {
       onCancel,
     } = options;
 
+    // Get icon based on type
+    const getIcon = (modalType: string) => {
+      switch (modalType) {
+        case 'success':
+          return '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>';
+        case 'warning':
+          return '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>';
+        case 'error':
+          return '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m15 9-6 6"/><path d="m9 9 6 6"/></svg>';
+        case 'info':
+        default:
+          return '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>';
+      }
+    };
+
     const modal = document.createElement('div');
     modal.className = 'modal-overlay';
     modal.innerHTML = `
       <div class="modal-container modal-${type}">
         <div class="modal-header">
-          <h3>${title}</h3>
+          <h3>
+            ${getIcon(type)}
+            ${title}
+          </h3>
           <button class="modal-close">&times;</button>
         </div>
         <div class="modal-body">
@@ -149,7 +167,10 @@ class SharedModalClass {
       modal.innerHTML = `
         <div class="modal-container modal-warning">
           <div class="modal-header">
-            <h3>${title}</h3>
+            <h3>
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
+              ${title}
+            </h3>
           </div>
           <div class="modal-body">
             <p>${message}</p>
@@ -217,7 +238,10 @@ class SharedModalClass {
       modal.innerHTML = `
         <div class="modal-container modal-warning">
           <div class="modal-header">
-            <h3>${title}</h3>
+            <h3>
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
+              ${title}
+            </h3>
             <button class="modal-close">&times;</button>
           </div>
           <div class="modal-body">
@@ -328,6 +352,12 @@ class SharedModalClass {
         margin: 0;
         font-size: 1.5rem;
         color: white;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+      }
+      .modal-header h3 svg {
+        flex-shrink: 0;
       }
       .modal-close {
         background: none;
