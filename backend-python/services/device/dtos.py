@@ -4,7 +4,7 @@ Request/Response models for Device API layer
 """
 
 from pydantic import BaseModel, Field
-from typing import Optional
+from typing import Optional, List, Dict, Any, Literal
 from datetime import datetime
 
 
@@ -51,7 +51,7 @@ class UpdateDeviceRequest(BaseModel):
     device_name: Optional[str] = Field(None, max_length=200)
     room_number: Optional[str] = Field(None, max_length=50)
     location_type: Optional[str] = Field(None, pattern='^(guest_room|lobby|conference_room|restaurant|other)$')
-    rotation: Optional[int] = Field(None, pattern='^(0|90|180|270)$')
+    rotation: Optional[int] = Field(None, ge=0, le=360)  # Rotation in degrees (0, 90, 180, 270)
     is_volume_enabled: Optional[bool] = None
     is_personalization_supported: Optional[bool] = None
     privacy_mode: Optional[str] = Field(None, pattern='^(none|limited|full)$')
@@ -73,6 +73,23 @@ class DeviceLogsRequest(BaseModel):
 class ValidateResetPasswordRequest(BaseModel):
     """Validate reset password - called by player before hard reset"""
     password: str = Field(..., min_length=1, max_length=100)
+
+
+class ConnectionLogEntryDTO(BaseModel):
+    """Single connection log entry from player"""
+    logged_at: datetime = Field(..., description="Timestamp when event occurred on player device")
+    event_type: Literal['network', 'server', 'speed_test'] = Field(..., description="Type of event")
+    status: str = Field(..., max_length=20, description="Event status")
+    latency_ms: Optional[int] = Field(None, ge=0, description="Network latency in milliseconds")
+    error_message: Optional[str] = Field(None, max_length=1000, description="Error details if failed")
+    download_speed_mbps: Optional[float] = Field(None, ge=0, description="Download speed in Mbps")
+    upload_speed_mbps: Optional[float] = Field(None, ge=0, description="Upload speed in Mbps")
+    metadata: Optional[Dict[str, Any]] = Field(default={}, description="Additional metadata")
+
+
+class SaveConnectionLogsDTO(BaseModel):
+    """Batch connection logs from player - sent every 5 minutes"""
+    logs: List[ConnectionLogEntryDTO] = Field(..., min_items=1, max_items=100, description="Connection log entries")
 
 
 # =============================================================================

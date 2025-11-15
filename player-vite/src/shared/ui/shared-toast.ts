@@ -13,6 +13,7 @@
 
 import { SharedLogger } from '@shared/logger';
 import { SharedEventBus, EventNames } from '@shared/events/shared-event-bus';
+import { ServiceRegistry } from '@shared/services/service-registry';
 
 /**
  * Toast notification types
@@ -79,13 +80,38 @@ class SharedToastClass {
   private initContainer(): void {
     if (this.container) return;
 
-    this.container = document.createElement('div');
-    this.container.id = 'toast-container';
-    this.container.className = 'toast-container';
-    document.body.appendChild(this.container);
+    try {
+      if (!document.body) {
+        SharedLogger.error('[Toast] document.body not available - cannot initialize');
+        return;
+      }
 
-    this.injectStyles();
-    SharedLogger.log('[Toast] Container initialized');
+      this.container = document.createElement('div');
+      this.container.id = 'toast-container';
+      this.container.className = 'toast-container';
+      document.body.appendChild(this.container);
+
+      // Verify container was added to DOM
+      if (!document.getElementById('toast-container')) {
+        SharedLogger.error('[Toast] Container creation failed - element not in DOM');
+        this.container = null;
+        return;
+      }
+
+      this.injectStyles();
+      SharedLogger.log('[Toast] ✅ Container initialized successfully');
+    } catch (error) {
+      SharedLogger.error('[Toast] ❌ Failed to initialize container:', error);
+      this.container = null;
+    }
+  }
+
+  /**
+   * Public init method - call at app startup to pre-initialize container
+   */
+  public init(): void {
+    SharedLogger.log('[Toast] Initializing SharedToast...');
+    this.initContainer();
   }
 
   /**
@@ -245,7 +271,7 @@ class SharedToastClass {
         position: fixed;
         bottom: 20px;
         right: 20px;
-        z-index: 10000;
+        z-index: 200000;
         display: flex;
         flex-direction: column-reverse;
         gap: 12px;
@@ -405,5 +431,6 @@ declare global {
 }
 
 if (typeof window !== 'undefined') {
-  window.SharedToast = SharedToast;
+  // Register to ServiceRegistry
+  ServiceRegistry.register('SharedToast', SharedToast);
 }

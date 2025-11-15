@@ -12,6 +12,7 @@
 
 import { SharedLogger } from '@shared/logger';
 import type { PlayerMediaCache as IPlayerMediaCache, CachedMedia, CacheStats } from '../types/player.types';
+import { ServiceRegistry } from '@shared/services/service-registry';
 
 /**
  * Player Media Cache Class
@@ -333,5 +334,6 @@ export const PlayerMediaCache = new PlayerMediaCacheClass();
 
 // Make available globally for compatibility
 if (typeof window !== 'undefined') {
-  window.PlayerMediaCache = PlayerMediaCache;
+  // Register to ServiceRegistry
+  ServiceRegistry.register('PlayerMediaCache', PlayerMediaCache);
 }

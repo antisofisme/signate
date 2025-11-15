@@ -46,6 +46,26 @@ services:
       retries: 5
 
   # ============================================
+  # ClamAV Antivirus Scanner
+  # ============================================
+  clamav:
+    container_name: signage-clamav
+    image: clamav/clamav:latest
+    restart: unless-stopped
+    ports:
+      - "3310:3310"
+    volumes:
+      - clamav-data:/var/lib/clamav
+    networks:
+      - signage-network
+    healthcheck:
+      test: ["CMD", "/usr/bin/clamdscan", "--version"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+      start_period: 300s  # ClamAV needs time to update virus database
+
+  # ============================================
   # PgBouncer Connection Pooler
   # ============================================
   pgbouncer:
@@ -94,6 +114,10 @@ services:
       # Redis
       REDIS_URL: redis://redis:6379/0
 
+      # ClamAV
+      CLAMAV_HOST: clamav
+      CLAMAV_PORT: 3310
+
       # Security
       SECRET_KEY: your-secret-key-change-in-production
       JWT_SECRET: your-jwt-secret-change-in-production
@@ -116,6 +140,8 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      clamav:
+        condition: service_started  # ClamAV may not be fully ready yet
     healthcheck:
       test: ["CMD-SHELL", "python -c \"import httpx; httpx.get('http://localhost:8000/health', timeout=5.0)\" || exit 1"]
       interval: 30s
@@ -269,6 +295,7 @@ networks:
 volumes:
   postgres-data:
   redis-data:
+  clamav-data:
   content-data:
   prometheus-data:
   grafana-data:

@@ -14,6 +14,8 @@
 import { SharedLogger } from '@shared/logger';
 import { SharedEventBus, EventNames } from '@shared/events/shared-event-bus';
 import { config } from '@shared/config';
+import { ConnectionLogger } from '@shared/services/connection-logger';
+import { ServiceRegistry } from '@shared/services/service-registry';
 
 /**
  * Connection status
@@ -78,6 +80,24 @@ class ShellConnectionStatusClass {
   private handleBrowserOnline = (): void => {
     SharedLogger.log('[ConnectionStatus] Browser reports online');
     this.status = 'checking';
+
+    // Get network information
+    const connection = (navigator as any).connection || (navigator as any).mozConnection || (navigator as any).webkitConnection;
+
+    // Log network online event with detailed info
+    ConnectionLogger.log({
+      eventType: 'network',
+      status: 'online',
+      metadata: {
+        event: 'browser_online',
+        connectionType: connection?.type || 'unknown',
+        effectiveType: connection?.effectiveType || 'unknown',
+        downlink: connection?.downlink || 0,
+        rtt: connection?.rtt || 0,
+        saveData: connection?.saveData || false
+      }
+    }).catch(err => SharedLogger.error('[ConnectionStatus] Failed to log:', err));
+
     void this.checkConnection();
   };
 
@@ -86,6 +106,25 @@ class ShellConnectionStatusClass {
    */
   private handleBrowserOffline = (): void => {
     SharedLogger.warn('[ConnectionStatus] Browser reports offline');
+
+    // Get network information
+    const connection = (navigator as any).connection || (navigator as any).mozConnection || (navigator as any).webkitConnection;
+
+    // Log network offline event with detailed info
+    ConnectionLogger.log({
+      eventType: 'network',
+      status: 'offline',
+      errorMessage: 'Browser network disconnected',
+      metadata: {
+        event: 'browser_offline',
+        connectionType: connection?.type || 'unknown',
+        effectiveType: connection?.effectiveType || 'unknown',
+        downlink: connection?.downlink || 0,
+        rtt: connection?.rtt || 0,
+        saveData: connection?.saveData || false
+      }
+    }).catch(err => SharedLogger.error('[ConnectionStatus] Failed to log:', err));
+
     this.setOffline();
   };
 
@@ -146,10 +185,39 @@ class ShellConnectionStatusClass {
       const latency = Date.now() - startTime;
 
       if (response.ok) {
+        // Log successful ping check
+        ConnectionLogger.log({
+          eventType: 'server',
+          status: 'connected',
+          latencyMs: latency,
+          metadata: {
+            event: 'health_check',
+            timestamp: new Date().toISOString(),
+            endpoint: '/health',
+            httpStatus: response.status,
+            responseTime: `${latency}ms`
+          }
+        }).catch(err => SharedLogger.error('[ConnectionStatus] Failed to log:', err));
+
         this.setOnline(latency);
         return { isOnline: true, latency, timestamp: new Date().toISOString() };
       } else {
         SharedLogger.warn('[ConnectionStatus] Backend returned error:', response.status);
+
+        // Log server error
+        ConnectionLogger.log({
+          eventType: 'server',
+          status: 'disconnected',
+          errorMessage: `Server returned status ${response.status}`,
+          metadata: {
+            event: 'health_check_failed',
+            endpoint: '/health',
+            statusCode: response.status,
+            httpStatus: response.status,
+            errorCode: `HTTP_${response.status}`
+          }
+        }).catch(err => SharedLogger.error('[ConnectionStatus] Failed to log:', err));
+
         this.setOffline();
         return { isOnline: false, timestamp: new Date().toISOString() };
       }
@@ -176,10 +244,36 @@ class ShellConnectionStatusClass {
       // Connection restored
       SharedEventBus.emit(EventNames.CONNECTION_RESTORED, { latency });
       SharedLogger.log('[ConnectionStatus] Connection restored - Latency:', latency);
+
+      // Log connection restored event
+      ConnectionLogger.log({
+        eventType: 'server',
+        status: 'connected',
+        latencyMs: latency,
+        metadata: {
+          event: 'connection_restored',
+          endpoint: '/health',
+          httpStatus: 200,
+          responseTime: `${latency}ms`
+        }
+      }).catch(err => SharedLogger.error('[ConnectionStatus] Failed to log:', err));
     } else if (!this.wasOnline) {
       // First time online
       SharedEventBus.emit(EventNames.CONNECTION_ONLINE, { latency });
       SharedLogger.log('[ConnectionStatus] Connection online - Latency:', latency);
+
+      // Log connection online event
+      ConnectionLogger.log({
+        eventType: 'server',
+        status: 'connected',
+        latencyMs: latency,
+        metadata: {
+          event: 'connection_online',
+          endpoint: '/health',
+          httpStatus: 200,
+          responseTime: `${latency}ms`
+        }
+      }).catch(err => SharedLogger.error('[ConnectionStatus] Failed to log:', err));
     }
 
     this.wasOnline = true;
@@ -201,10 +295,26 @@ class ShellConnectionStatusClass {
       // Connection lost
       SharedEventBus.emit(EventNames.CONNECTION_LOST);
       SharedLogger.warn('[ConnectionStatus] Connection lost');
+
+      // Log connection lost event
+      ConnectionLogger.log({
+        eventType: 'server',
+        status: 'disconnected',
+        errorMessage: 'Connection lost to backend server',
+        metadata: { event: 'connection_lost', retryCount: this.retryCount }
+      }).catch(err => SharedLogger.error('[ConnectionStatus] Failed to log:', err));
     } else if (this.wasOnline) {
       // First time offline
       SharedEventBus.emit(EventNames.CONNECTION_OFFLINE);
       SharedLogger.warn('[ConnectionStatus] Connection offline');
+
+      // Log connection offline event
+      ConnectionLogger.log({
+        eventType: 'server',
+        status: 'disconnected',
+        errorMessage: 'Server connection unavailable',
+        metadata: { event: 'connection_offline', retryCount: this.retryCount }
+      }).catch(err => SharedLogger.error('[ConnectionStatus] Failed to log:', err));
     }
 
     this.wasOnline = false;
@@ -308,7 +418,8 @@ declare global {
 }
 
 if (typeof window !== 'undefined') {
-  window.ShellConnectionStatus = ShellConnectionStatus;
+  // Register to ServiceRegistry
+  ServiceRegistry.register('ShellConnectionStatus', ShellConnectionStatus);
 }
 
 // Auto-initialize when module is imported

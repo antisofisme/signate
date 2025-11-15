@@ -5,6 +5,7 @@
 
 import { SharedLogger } from '@shared/logger';
 import { SharedEventBus, EventNames } from '@shared/events/shared-event-bus';
+import { ServiceRegistry } from '@shared/services/service-registry';
 
 export interface ModalOptions {
   title: string;
@@ -14,6 +15,16 @@ export interface ModalOptions {
   cancelText?: string;
   onConfirm?: () => void;
   onCancel?: () => void;
+}
+
+export interface CustomModalOptions {
+  title?: string;
+  content: string | HTMLElement; // Support both HTML string and elements
+  width?: string; // e.g., '800px', '90%'
+  maxWidth?: string;
+  showCloseButton?: boolean;
+  onClose?: () => void;
+  className?: string; // Additional CSS classes
 }
 
 class SharedModalClass {
@@ -99,6 +110,11 @@ class SharedModalClass {
     document.body.appendChild(modal);
     this.modalElement = modal;
 
+    // Trigger fade-in animation
+    requestAnimationFrame(() => {
+      modal.classList.add('show');
+    });
+
     SharedEventBus.emit(EventNames.UI_MODAL_OPEN, options);
     SharedLogger.log('[Modal] Opened:', title);
   }
@@ -111,10 +127,18 @@ class SharedModalClass {
     }
 
     if (this.modalElement) {
-      // Remove immediately without animation to prevent flicker
-      this.modalElement.remove();
-      SharedEventBus.emit(EventNames.UI_MODAL_CLOSE);
-      SharedLogger.log('[Modal] Closed');
+      const modal = this.modalElement;
+
+      // Fade-out animation before removal
+      modal.classList.remove('show');
+
+      // Wait for animation to complete (200ms) before removing
+      setTimeout(() => {
+        modal.remove();
+        SharedEventBus.emit(EventNames.UI_MODAL_CLOSE);
+        SharedLogger.log('[Modal] Closed');
+      }, 200);
+
       this.modalElement = null;
     }
   }
@@ -171,6 +195,7 @@ class SharedModalClass {
               <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
               ${title}
             </h3>
+            <button class="modal-close">&times;</button>
           </div>
           <div class="modal-body">
             <p>${message}</p>
@@ -186,6 +211,7 @@ class SharedModalClass {
 
       const confirmBtn = modal.querySelector('.modal-confirm') as HTMLButtonElement;
       const cancelBtn = modal.querySelector('.modal-cancel') as HTMLButtonElement;
+      const closeBtn = modal.querySelector('.modal-close') as HTMLButtonElement;
 
       const handleCancel = () => {
         SharedLogger.log('[Modal] 🔴 Cancel clicked');
@@ -203,6 +229,7 @@ class SharedModalClass {
 
       confirmBtn?.addEventListener('click', handleConfirm);
       cancelBtn?.addEventListener('click', handleCancel);
+      closeBtn?.addEventListener('click', handleCancel);
       SharedLogger.log('[Modal] 📌 Event listeners attached');
       // Disable click outside to close for confirm modal (force user to make a choice)
       // modal.addEventListener('click', (e) => {
@@ -215,6 +242,11 @@ class SharedModalClass {
       document.body.appendChild(modal);
       this.modalElement = modal;
       SharedLogger.log('[Modal] ✅ Modal appended to DOM');
+
+      // Trigger fade-in animation
+      requestAnimationFrame(() => {
+        modal.classList.add('show');
+      });
 
       SharedEventBus.emit(EventNames.UI_MODAL_OPEN, { title, message });
       SharedLogger.log('[Modal] 📢 Confirm opened:', title);
@@ -301,6 +333,11 @@ class SharedModalClass {
       document.body.appendChild(modal);
       this.modalElement = modal;
 
+      // Trigger fade-in animation
+      requestAnimationFrame(() => {
+        modal.classList.add('show');
+      });
+
       // Focus input after a short delay
       setTimeout(() => input.focus(), 100);
 
@@ -309,9 +346,114 @@ class SharedModalClass {
     });
   }
 
-  private injectStyles(): void {
-    if (document.getElementById('shared-modal-styles')) return;
+  /**
+   * Show custom modal with complex HTML content
+   * Perfect for popups with tabs, tables, forms, etc.
+   */
+  showCustom(options: CustomModalOptions): HTMLElement {
+    // Silently remove existing modal
+    if (this.modalElement) {
+      this.modalElement.remove();
+      this.modalElement = null;
+    }
 
+    const {
+      title,
+      content,
+      width = '90%',
+      maxWidth = '1200px',
+      showCloseButton = true,
+      onClose,
+      className = '',
+    } = options;
+
+    const overlay = document.createElement('div');
+    overlay.className = `modal-overlay modal-custom ${className}`;
+
+    const container = document.createElement('div');
+    container.className = 'modal-container modal-custom-container';
+    container.style.width = width;
+    container.style.maxWidth = maxWidth;
+
+    // Build header if title provided
+    if (title || showCloseButton) {
+      const header = document.createElement('div');
+      header.className = 'modal-header';
+
+      if (title) {
+        const titleElement = document.createElement('h3');
+        titleElement.textContent = title;
+        header.appendChild(titleElement);
+      }
+
+      if (showCloseButton) {
+        const closeBtn = document.createElement('button');
+        closeBtn.className = 'modal-close';
+        closeBtn.innerHTML = '&times;';
+        closeBtn.addEventListener('click', () => {
+          this.close();
+          onClose?.();
+        });
+        header.appendChild(closeBtn);
+      }
+
+      container.appendChild(header);
+    }
+
+    // Build body
+    const body = document.createElement('div');
+    body.className = 'modal-body modal-custom-body';
+
+    if (typeof content === 'string') {
+      body.innerHTML = content;
+    } else {
+      body.appendChild(content);
+    }
+
+    container.appendChild(body);
+    overlay.appendChild(container);
+
+    // Close on overlay click
+    overlay.addEventListener('click', (e) => {
+      if (e.target === overlay) {
+        this.close();
+        onClose?.();
+      }
+    });
+
+    // Close on Escape key
+    const escapeHandler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        this.close();
+        onClose?.();
+        document.removeEventListener('keydown', escapeHandler);
+      }
+    };
+    document.addEventListener('keydown', escapeHandler);
+
+    this.injectStyles();
+
+    document.body.appendChild(overlay);
+    this.modalElement = overlay;
+
+    // Trigger fade-in animation
+    requestAnimationFrame(() => {
+      overlay.classList.add('show');
+    });
+
+    SharedEventBus.emit(EventNames.UI_MODAL_OPEN, { title, custom: true });
+    SharedLogger.log('[Modal] Custom modal opened:', title || 'Untitled');
+
+    return body; // Return body element so caller can manipulate content
+  }
+
+  private injectStyles(): void {
+    if (document.getElementById('shared-modal-styles')) {
+      SharedLogger.log('[Modal] Styles already injected, skipping');
+      return;
+    }
+
+    SharedLogger.log('[Modal] Injecting styles...');
     const style = document.createElement('style');
     style.id = 'shared-modal-styles';
     style.textContent = `
@@ -325,10 +467,14 @@ class SharedModalClass {
         display: flex;
         align-items: center;
         justify-content: center;
-        z-index: 10000;
-        transform: translateZ(0);
-        backface-visibility: hidden;
-        -webkit-font-smoothing: antialiased;
+        z-index: 200000;
+        opacity: 0;
+        visibility: hidden;
+        transition: opacity 0.2s ease, visibility 0.2s ease;
+      }
+      .modal-overlay.show {
+        opacity: 1;
+        visibility: visible;
       }
       .modal-container {
         background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
@@ -338,8 +484,11 @@ class SharedModalClass {
         max-width: 500px;
         width: 90%;
         color: white;
-        transform: translateZ(0);
-        backface-visibility: hidden;
+        transform: scale(0.95);
+        transition: transform 0.2s ease;
+      }
+      .modal-overlay.show .modal-container {
+        transform: scale(1);
       }
       .modal-header {
         display: flex;
@@ -420,8 +569,36 @@ class SharedModalClass {
         outline: none;
         border-color: #3b82f6;
       }
+
+      /* Custom Modal Styles */
+      .modal-custom-container {
+        max-height: 90vh;
+        overflow-y: auto;
+      }
+      .modal-custom-body {
+        padding: 0; /* Let content control its own padding */
+        max-height: 80vh;
+        overflow-y: auto;
+      }
+
+      /* Scrollbar styling for custom modals */
+      .modal-custom-body::-webkit-scrollbar {
+        width: 8px;
+      }
+      .modal-custom-body::-webkit-scrollbar-track {
+        background: rgba(255, 255, 255, 0.05);
+        border-radius: 4px;
+      }
+      .modal-custom-body::-webkit-scrollbar-thumb {
+        background: rgba(255, 255, 255, 0.2);
+        border-radius: 4px;
+      }
+      .modal-custom-body::-webkit-scrollbar-thumb:hover {
+        background: rgba(255, 255, 255, 0.3);
+      }
     `;
     document.head.appendChild(style);
+    SharedLogger.log('[Modal] ✅ Styles injected successfully');
   }
 }
 
@@ -434,5 +611,6 @@ declare global {
 }
 
 if (typeof window !== 'undefined') {
-  window.SharedModal = SharedModal;
+  // Register to ServiceRegistry
+  ServiceRegistry.register('SharedModal', SharedModal);
 }

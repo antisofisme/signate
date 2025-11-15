@@ -39,6 +39,14 @@ class DeviceHeartbeatUseCase:
         if not device:
             raise ValueError("Device not found with this code")
 
+        # Check if device has been released (by CMS admin or hard reset)
+        if device.status == 'released':
+            from fastapi import HTTPException, status
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Device has been released. Please re-register."
+            )
+
         # Only active devices can send heartbeat
         if not device.is_active():
             raise ValueError("Device is not active. Please activate first.")

@@ -11,7 +11,7 @@
 
 import { SharedLogger } from '@shared/logger';
 import { SharedDeviceState } from '@shared/device';
-import { SharedModal } from '@shared/ui';
+import { deviceConfigStorage } from '@shared/storage';
 import { i18n } from '@shared/services/i18n';
 
 /**
@@ -22,30 +22,26 @@ class ShellActivationScreenClass {
   private container: HTMLElement | null = null;
   private codeElement: HTMLElement | null = null;
   private statusElement: HTMLElement | null = null;
-  private countdownElement: HTMLElement | null = null;
-  private countdownInterval: number | null = null;
-  private expiredModalTimeout: number | null = null;
-  private expiresAt: Date | null = null;
-  private isShowingExpiredModal: boolean = false; // SINGLE FLAG to prevent multiple modals
 
   /**
    * Render activation screen
+   * Now async to load activation code from IndexedDB
    */
-  render(containerId = 'shell-container'): void {
+  async render(containerId = 'shell-container'): Promise<void> {
     this.container = document.getElementById(containerId);
     if (!this.container) {
       SharedLogger.error('[ShellActivationScreen] Container not found:', containerId);
       return;
     }
 
-    // Get activation code - try pending code first (during registration), fallback to device_code
-    const pendingCode = localStorage.getItem('pending_activation_code');
+    // Get activation code from IndexedDB (persistent across cache clears)
+    const pendingCode = await deviceConfigStorage.getActivationCode();
     const activationCode = pendingCode || SharedDeviceState.getDeviceCode();
     const deviceId = SharedDeviceState.getDeviceId();
     const platform = SharedDeviceState.getPlatform();
 
     SharedLogger.log('[ShellActivationScreen] Rendering activation screen...', {
-      pendingCode,
+      pendingCode_from_indexeddb: pendingCode,
       activationCode,
       deviceId,
       platform,
@@ -64,16 +60,8 @@ class ShellActivationScreenClass {
           </h1>
 
           <div id="activation-code">
-            ${activationCode || '------'}
+            ${activationCode || '______'}
           </div>
-
-          <p id="code-countdown" style="margin-top: 1rem; font-size: 1rem; opacity: 0.9; color: #f59e0b;">
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display: inline-block; vertical-align: middle; margin-right: 6px;">
-              <circle cx="12" cy="12" r="10"/>
-              <polyline points="12 6 12 12 16 14"/>
-            </svg>
-            ${i18n.t('activation.code_expires')} <span id="countdown-timer">--:--</span>
-          </p>
 
           <div class="spinner"></div>
 
@@ -82,7 +70,7 @@ class ShellActivationScreenClass {
               <circle cx="12" cy="12" r="10"/>
               <polyline points="12 6 12 12 16 14"/>
             </svg>
-            ${i18n.t('common.loading')}
+            ${activationCode ? i18n.t('activation.waiting') : 'Generating activation code...'}
           </p>
 
           <p id="activation-instruction" style="margin-top: 1.5rem; font-size: 1rem; opacity: 0.8;">
@@ -108,14 +96,6 @@ class ShellActivationScreenClass {
     // Store references
     this.codeElement = document.getElementById('activation-code');
     this.statusElement = document.getElementById('status-message');
-    this.countdownElement = document.getElementById('countdown-timer');
-
-    // Restore countdown timer from localStorage if available
-    const savedExpiresAt = SharedDeviceState.getCodeExpiresAt();
-    if (savedExpiresAt) {
-      SharedLogger.log('[ShellActivationScreen] Restoring countdown from localStorage:', savedExpiresAt);
-      this.startCountdown(savedExpiresAt);
-    }
 
     SharedLogger.log('[ShellActivationScreen] ✅ Activation screen rendered');
     
@@ -194,171 +174,6 @@ class ShellActivationScreenClass {
   }
 
   /**
-   * Start countdown timer
-   * @param expiresAt - ISO timestamp when code expires
-   */
-  startCountdown(expiresAt: string): void {
-    try {
-      SharedLogger.log('[ShellActivationScreen] 🕐 startCountdown called with:', expiresAt);
-
-      // Parse and validate date FIRST
-      const newExpiresAt = new Date(expiresAt);
-      if (isNaN(newExpiresAt.getTime())) {
-        SharedLogger.error('[ShellActivationScreen] ❌ Invalid date:', expiresAt);
-        return;
-      }
-
-      // Check if already expired BEFORE starting countdown
-      const now = new Date();
-      if (newExpiresAt.getTime() <= now.getTime()) {
-        SharedLogger.warn('[ShellActivationScreen] ⚠️ Code already expired, not starting countdown');
-        return;
-      }
-
-      // CRITICAL FIX: Stop ANY existing countdown FIRST (prevents multiple intervals)
-      this.stopCountdown();
-
-      // Clear any pending modal timeouts
-      if (this.expiredModalTimeout !== null) {
-        clearTimeout(this.expiredModalTimeout);
-        this.expiredModalTimeout = null;
-      }
-
-      // Reset flag AFTER stopping (not before) - only if not currently showing
-      if (!this.isShowingExpiredModal) {
-        this.isShowingExpiredModal = false;
-      }
-
-      this.expiresAt = newExpiresAt;
-      SharedLogger.log('[ShellActivationScreen] 🕐 Parsed expiresAt:', this.expiresAt);
-
-      // Update immediately
-      SharedLogger.log('[ShellActivationScreen] 🕐 Calling updateCountdown() immediately...');
-      this.updateCountdown();
-
-      // Start new interval
-      this.countdownInterval = window.setInterval(() => {
-        this.updateCountdown();
-      }, 1000);
-
-      SharedLogger.log('[ShellActivationScreen] ✅ Countdown started (single interval), ID:', this.countdownInterval);
-    } catch (error) {
-      SharedLogger.error('[ShellActivationScreen] ❌ Failed to start countdown:', error);
-    }
-  }
-
-  /**
-   * Stop countdown timer
-   */
-  stopCountdown(): void {
-    if (this.countdownInterval !== null) {
-      clearInterval(this.countdownInterval);
-      this.countdownInterval = null;
-      SharedLogger.log('[ShellActivationScreen] Countdown stopped');
-    }
-  }
-
-  /**
-   * Check if countdown is running
-   */
-  isCountdownRunning(): boolean {
-    return this.countdownInterval !== null;
-  }
-
-  /**
-   * Update countdown display
-   */
-  private updateCountdown(): void {
-    // Guard: Don't update if modal is already showing
-    if (this.isShowingExpiredModal) {
-      SharedLogger.warn('[ShellActivationScreen] ⏸️ BLOCKED - Modal already showing, skipping updateCountdown');
-      // Stop countdown to prevent further calls when modal is active
-      this.stopCountdown();
-      return;
-    }
-
-    // Guard: No expiration date set
-    if (!this.expiresAt) {
-      return;
-    }
-
-    // Re-query element if not cached (similar to updateCode)
-    if (!this.countdownElement) {
-      this.countdownElement = document.getElementById('countdown-timer');
-    }
-
-    if (!this.countdownElement) {
-      return;
-    }
-
-    const now = new Date();
-    const diffMs = this.expiresAt.getTime() - now.getTime();
-
-    // If expired
-    if (diffMs <= 0) {
-      // Check if already handled
-      if (this.isShowingExpiredModal) {
-        SharedLogger.warn('[ShellActivationScreen] ⏸️ BLOCKED - Flag already set, not showing modal again');
-        return; // Already handled, don't proceed
-      }
-
-      SharedLogger.error('[ShellActivationScreen] ⏰ CODE EXPIRED! diffMs:', diffMs, 'flag:', this.isShowingExpiredModal);
-
-      // CRITICAL FIX: Set flag FIRST to prevent re-entry
-      this.isShowingExpiredModal = true;
-      SharedLogger.error('[ShellActivationScreen] 🚩 Flag set to TRUE');
-
-      // CRITICAL FIX: Stop countdown IMMEDIATELY BEFORE async call
-      // This prevents interval from triggering updateCountdown() again
-      // while showExpiredModal() is still awaiting user response
-      this.stopCountdown();
-      SharedLogger.error('[ShellActivationScreen] ⏹️ Countdown stopped');
-
-      // Clear expiresAt to prevent any further checks
-      this.expiresAt = null;
-      SharedLogger.error('[ShellActivationScreen] 🗑️ expiresAt cleared');
-
-      // Update UI
-      this.countdownElement.textContent = 'EXPIRED';
-      this.countdownElement.style.color = '#ef4444';
-
-      // CRITICAL FIX: Use setTimeout to break out of interval context
-      // This ensures interval is fully stopped before showing modal
-      setTimeout(() => {
-        SharedLogger.error('[ShellActivationScreen] 🚨 setTimeout fired - Calling showExpiredModal()...');
-        this.showExpiredModal()
-          .catch((error) => {
-            SharedLogger.error('[ShellActivationScreen] ❌ Failed to show modal:', error);
-            setTimeout(() => location.reload(), 2000);
-          });
-      }, 50); // Small delay to ensure interval is fully cleared
-
-      return;
-    }
-
-    // Calculate minutes and seconds
-    const totalSeconds = Math.floor(diffMs / 1000);
-    const minutes = Math.floor(totalSeconds / 60);
-    const seconds = totalSeconds % 60;
-
-    // Format as MM:SS
-    const formatted = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-    this.countdownElement.textContent = formatted;
-
-    // Change color based on time remaining
-    if (totalSeconds < 60) {
-      // Last minute - red
-      this.countdownElement.style.color = '#ef4444';
-    } else if (totalSeconds < 180) {
-      // Last 3 minutes - yellow
-      this.countdownElement.style.color = '#f59e0b';
-    } else {
-      // Normal - orange
-      this.countdownElement.style.color = '#f59e0b';
-    }
-  }
-
-  /**
    * Inject CSS styles
    */
   private injectStyles(): void {
@@ -413,6 +228,12 @@ class ShellActivationScreenClass {
         color: white;
       }
 
+      .loader-icon {
+        display: inline-block;
+        opacity: 0.5;
+        animation: spin 1s linear infinite;
+      }
+
       .spinner {
         width: 60px;
         height: 60px;
@@ -438,25 +259,6 @@ class ShellActivationScreenClass {
         font-size: 1rem;
         opacity: 0.8;
         color: white;
-      }
-
-      /* Countdown Timer */
-      #code-countdown {
-        margin-top: 1rem;
-        font-size: 1rem;
-        opacity: 0.9;
-        color: #f59e0b;
-        font-weight: 500;
-      }
-
-      #countdown-timer {
-        font-family: 'Courier New', monospace;
-        font-weight: bold;
-        font-size: 1.1rem;
-        padding: 0.25rem 0.5rem;
-        background: rgba(245, 158, 11, 0.1);
-        border-radius: 6px;
-        transition: color 0.3s ease;
       }
 
       /* Language Selector Styles */
@@ -534,8 +336,6 @@ class ShellActivationScreenClass {
     if (this.container) {
       this.container.style.display = 'none';
     }
-    // Stop countdown when hiding screen
-    this.stopCountdown();
   }
 
   /**
@@ -544,45 +344,6 @@ class ShellActivationScreenClass {
   show(): void {
     if (this.container) {
       this.container.style.display = 'block';
-    }
-  }
-
-  /**
-   * Show expired code modal with regenerate option
-   * NOTE: Called from setTimeout, so interval is already stopped
-   */
-  private async showExpiredModal(): Promise<void> {
-    SharedLogger.log('[ShellActivationScreen] 📢 Showing expired modal...');
-
-    try {
-      // Show confirmation modal
-      const regenerate = await SharedModal.confirm(
-        i18n.t('activation.expired'),
-        i18n.t('activation.expired.message'),
-        i18n.t('activation.regenerate'),
-        i18n.t('common.no')
-      );
-
-      if (regenerate) {
-        SharedLogger.log('[ShellActivationScreen] User chose to regenerate code');
-
-        // Clear old device data and pending code
-        SharedDeviceState.clearDeviceData({ preserveAuth: false });
-        localStorage.removeItem('pending_activation_code');
-        localStorage.removeItem('code_expires_at');
-
-        // Reset expired modal flag
-        this.isShowingExpiredModal = false;
-
-        // Reload page to trigger new registration
-        SharedLogger.log('[ShellActivationScreen] Reloading page to generate new code...');
-        setTimeout(() => location.reload(), 500);
-      } else {
-        SharedLogger.log('[ShellActivationScreen] User chose NOT to regenerate code');
-        // Don't show status message - user already knows from modal choice
-      }
-    } finally {
-      this.isShowingExpiredModal = false;
     }
   }
 }

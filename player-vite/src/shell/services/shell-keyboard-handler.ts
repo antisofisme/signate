@@ -15,6 +15,7 @@
 
 import { SharedLogger } from '@shared/logger';
 import { SharedEventBus } from '@shared/events/shared-event-bus';
+import { ServiceRegistry } from '@shared/services/service-registry';
 
 /**
  * Keyboard event types
@@ -348,7 +349,8 @@ declare global {
 }
 
 if (typeof window !== 'undefined') {
-  window.ShellKeyboardHandler = ShellKeyboardHandler;
+  // Register to ServiceRegistry
+  ServiceRegistry.register('ShellKeyboardHandler', ShellKeyboardHandler);
 }
 
 // Auto-initialize when module is imported

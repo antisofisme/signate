@@ -72,10 +72,13 @@ class DeviceRoutes:
     MONITOR_REGISTER = f"{BASE}/monitor"  # Monitor device registration
     ACTIVATE = f"{BASE}/activate"  # CMS activation
     CHECK_ACTIVATION = f"{BASE}/check-activation/{{unique_code}}"  # Player polling (public)
+    CHECK_ACTIVATION_BY_UUID = f"{BASE}/check-activation-by-uuid/{{device_uuid}}"  # Player check by fingerprint (public)
+    VERIFY_FINGERPRINT = f"{BASE}/verify-fingerprint/{{device_uuid}}"  # Player cache recovery (public)
 
     # Device lifecycle
     HEARTBEAT = f"{BASE}/{{device_id}}/heartbeat"
-    RELEASE = f"{BASE}/{{device_id}}/release"
+    RELEASE = f"{BASE}/{{device_id}}/release"  # CMS admin release (soft)
+    HARD_RESET = f"{BASE}/{{device_id}}/hard-reset"  # Player factory reset (public)
 
     # Content resolution
     CONTENT_RESOLVED = f"{BASE}/{{device_id}}/content/resolved"
@@ -92,6 +95,7 @@ class DeviceRoutes:
     # Logging & monitoring
     LOGS = f"{BASE}/{{device_id}}/logs"
     DEVICE_LOGS_BATCH = "/api/client/logs/batch"  # Player batch logs (public)
+    CONNECTION_LOGS = f"{BASE}/{{device_id}}/connection-logs"  # Connection activity logs
 
     # Security
     VALIDATE_RESET_PASSWORD = f"{BASE}/validate-reset-password"

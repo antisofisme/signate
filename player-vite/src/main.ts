@@ -7,11 +7,25 @@ import './index.css';
 import { config } from '@shared/config';
 import { SharedLogger } from '@shared/logger';
 import { ShellBootstrap, ShellActivationScreen } from '@shell';
-import { FullscreenManager, HardResetHandler } from '@shell/components';
+import { FullscreenManager, HardResetHandler, ClearCacheHandler } from '@shell/components';
+import { DeviceInfoPopup, ConnectionLogPopup } from '@player/components';
+import { SharedToast } from '@shared/ui';
+
+// Import connection logging services
+import { ConnectionLogger } from '@shared/services/connection-logger';
+import { NetworkSpeedTest } from '@shared/services/network-speed-test';
+
+// Import ServiceRegistry
+import { ServiceRegistry } from '@shared/services';
 
 // Log startup information
 SharedLogger.log('🎬 Player-Vite Started');
 SharedLogger.log('📋 Configuration loaded:', config);
+
+// Force evaluation of connection logging services (ensures window.* is set before bootstrap)
+void ConnectionLogPopup;
+void ConnectionLogger;
+void NetworkSpeedTest;
 
 /**
  * Initialize application
@@ -19,56 +33,48 @@ SharedLogger.log('📋 Configuration loaded:', config);
 const initApp = async () => {
   SharedLogger.log('🔍 Initializing app...');
 
-  // Ensure containers exist
-  let shellContainer = document.getElementById('shell-container');
-  let playerContainer = document.getElementById('player-container');
+  // Verify containers exist (should already be in index.html)
+  const shellContainer = document.getElementById('shell-container');
+  const playerContainer = document.getElementById('player-container');
 
   if (!shellContainer || !playerContainer) {
-    SharedLogger.warn('⚠️ Required containers not found, creating them...');
-
-    // Try to find or create app container
-    let app = document.getElementById('app');
-    if (!app) {
-      SharedLogger.warn('⚠️ App element not found, creating it...');
-      app = document.createElement('div');
-      app.id = 'app';
-      document.body.appendChild(app);
-    }
-
-    // Create containers
-    app.innerHTML = `
-      <div id="shell-container"></div>
-      <div id="player-container" style="display: none;">
-        <video id="player-video" style="width: 100%; height: 100vh;"></video>
-      </div>
-    `;
-
-    // Re-query containers after creation
-    shellContainer = document.getElementById('shell-container');
-    playerContainer = document.getElementById('player-container');
-
-    if (!shellContainer || !playerContainer) {
-      SharedLogger.error('❌ Failed to create containers - cannot proceed');
-      return;
-    }
-
-    SharedLogger.log('✅ Containers created');
-  } else {
-    SharedLogger.log('✅ Containers found');
+    SharedLogger.error('❌ Required containers not found in index.html - cannot proceed');
+    SharedLogger.error('   Make sure #shell-container and #player-container exist in index.html');
+    return;
   }
+
+  SharedLogger.log('✅ Containers found in DOM');
 
   SharedLogger.log('🎨 Rendering activation screen...');
 
   // Render activation screen (will be shown if device is not activated)
-  ShellActivationScreen.render('shell-container');
+  // Now async to load activation code from IndexedDB
+  await ShellActivationScreen.render('shell-container');
 
-  // Expose ShellActivationScreen globally for updates after registration
-  window.ShellActivationScreen = ShellActivationScreen;
+  // Register ShellActivationScreen to ServiceRegistry
+  ServiceRegistry.register('ShellActivationScreen', ShellActivationScreen);
 
   // Initialize UI components
   SharedLogger.log('🎮 Initializing UI components...');
+
+  // Initialize toast system FIRST (other components depend on it)
+  SharedToast.init();
+
   FullscreenManager.init();
   HardResetHandler.init();
+  ClearCacheHandler.init();
+  DeviceInfoPopup.init();
+
+  // Register UI popups to ServiceRegistry
+  ServiceRegistry.register('DeviceInfoPopup', DeviceInfoPopup);
+  ServiceRegistry.register('ConnectionLogPopup', ConnectionLogPopup);
+
+  // Initialize connection logging services EARLY (before bootstrap needs them)
+  SharedLogger.log('📊 Initializing connection logging services...');
+  await ConnectionLogger.init();
+  NetworkSpeedTest.init();
+  ConnectionLogPopup.init();
+  SharedLogger.log('[Main] ✅ Connection logging services initialized');
 
   // Bootstrap device initialization
   SharedLogger.log('🚀 Initializing ShellBootstrap...');

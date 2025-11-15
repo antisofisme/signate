@@ -51,6 +51,9 @@ async def get_current_user(
     # Validate token and extract user info
     user_info = extract_user_from_token(token)
 
+    # Add raw token for session validation (P0-16)
+    user_info["token"] = token
+
     return user_info
 
 
@@ -59,19 +62,21 @@ async def get_current_active_user(
     db: Session = Depends(get_db)
 ) -> dict:
     """
-    Verify that current user is active in database
+    Verify that current user is active in database AND session is not revoked (P0-16)
 
     Args:
-        current_user: User info from token
+        current_user: User info from token (includes 'token' field)
         db: Database session
 
     Returns:
         User information dictionary
 
     Raises:
-        HTTPException: If user is not active or not found
+        HTTPException: If user is not active, not found, or session revoked
     """
     from services.user.repositories.user_repo import UserRepository
+    from services.session.repositories.session_repo import SessionRepository
+    import hashlib
 
     user_repo = UserRepository(db)
     user = user_repo.find_by_id(current_user["user_id"])
@@ -88,6 +93,23 @@ async def get_current_active_user(
             detail="User account is inactive"
         )
 
+    # CRITICAL FIX P0-16: Check if session is revoked
+    if "token" in current_user:
+        token = current_user["token"]
+
+        session_repo = SessionRepository(db)
+        session = session_repo.find_by_token(token)  # find_by_token will hash internally
+
+        if session and session.revoked_at is not None:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail={
+                    "message": "Session has been revoked. Please login again.",
+                    "code": "SESSION_REVOKED",
+                    "details": {}
+                }
+            )
+
     return current_user
 
 
@@ -98,13 +120,16 @@ async def get_current_active_user(
 class RoleChecker:
     """
     Dependency class to check user roles
+    Performs case-insensitive role comparison to handle both
+    UPPERCASE (JWT token) and lowercase (domain) role names
     """
 
     def __init__(self, allowed_roles: List[str]):
-        self.allowed_roles = allowed_roles
+        self.allowed_roles = [role.lower() for role in allowed_roles]
 
     def __call__(self, current_user: dict = Depends(get_current_active_user)):
-        if current_user["role"] not in self.allowed_roles:
+        user_role = current_user["role"].lower() if current_user.get("role") else ""
+        if user_role not in self.allowed_roles:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail=f"Access denied. Required roles: {', '.join(self.allowed_roles)}"
@@ -113,9 +138,9 @@ class RoleChecker:
 
 
 # Predefined role checkers
-require_admin = RoleChecker(["admin"])
-require_admin_or_manager = RoleChecker(["admin", "manager"])
-require_any_role = RoleChecker(["admin", "manager", "user"])
+require_admin = RoleChecker(["super_admin", "admin"])
+require_admin_or_manager = RoleChecker(["super_admin", "admin", "manager"])
+require_any_role = RoleChecker(["super_admin", "admin", "manager", "user"])
 
 
 # =============================================================================

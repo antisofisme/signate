@@ -53,7 +53,7 @@ class OrganizationRepository(IOrganizationRepository):
         """Create new organization"""
         org_model = OrganizationModel(
             name=organization.name,
-            pin=organization.pin,
+            pin=organization.organization_pin,  # Map domain 'organization_pin' to database 'pin'
             description=organization.description,
             address=organization.address,
             contact_email=organization.contact_email,
@@ -123,7 +123,7 @@ class OrganizationRepository(IOrganizationRepository):
         return Organization(
             id=model.id,
             name=model.name,
-            pin=model.pin,
+            organization_pin=model.pin,  # Map database 'pin' to domain 'organization_pin'
             description=model.description,
             address=model.address,
             contact_email=model.contact_email,

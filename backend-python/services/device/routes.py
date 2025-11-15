@@ -298,7 +298,7 @@ def check_activation_status(
                 OrganizationModel.id == device.organization_id
             ).first()
             if org:
-                organization_pin = org.organization_pin
+                organization_pin = org.pin  # Column name is 'pin' not 'organization_pin'
 
         # Check if device is activated
         # IMPORTANT: Return device info for active devices even if code expired!
@@ -324,6 +324,117 @@ def check_activation_status(
             pin=None,  # Don't send PIN for pending devices
             message=f"Device status: {device.status}" + (" (code expired)" if is_expired else "")
         )
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(e)
+        )
+
+
+@router.get(DeviceRoutes.CHECK_ACTIVATION_BY_UUID)
+def check_activation_by_uuid(
+    device_uuid: str,
+    device_repo: DeviceRepository = Depends(get_device_repository),
+    db: Session = Depends(get_db)
+):
+    """
+    Check device activation status by UUID fingerprint
+    Used by player after cache clear to restore device state
+
+    Returns device info if device exists, regardless of activation status
+    """
+    try:
+        device = device_repo.find_by_uuid(device_uuid)
+
+        if not device:
+            return {
+                "device_id": None,
+                "unique_code": None,
+                "status": None,
+                "message": "No device found with this fingerprint"
+            }
+
+        # Fetch organization PIN if device has organization_id
+        organization_pin = None
+        if device.organization_id:
+            from services.auth.repositories.models import OrganizationModel
+            org = db.query(OrganizationModel).filter(
+                OrganizationModel.id == device.organization_id
+            ).first()
+            if org:
+                organization_pin = org.pin
+
+        # Return device info regardless of status
+        return {
+            "device_id": device.id,
+            "unique_code": device.unique_code,
+            "status": device.status,
+            "device_name": device.device_name,
+            "organization_id": device.organization_id,
+            "pin": organization_pin,
+            "message": f"Device found with status: {device.status}"
+        }
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(e)
+        )
+
+
+@router.get(DeviceRoutes.VERIFY_FINGERPRINT)
+def verify_device_by_fingerprint(
+    device_uuid: str,
+    device_repo: DeviceRepository = Depends(get_device_repository)
+):
+    """
+    Verify device by fingerprint UUID (for cache clear scenario)
+
+    Returns device info if device exists and is activated
+    This allows player to restore state after localStorage is cleared
+    """
+    try:
+        device = device_repo.find_by_uuid(device_uuid)
+
+        if not device:
+            return {
+                "device": None,
+                "token": None,
+                "message": "No device found with this fingerprint"
+            }
+
+        if device.status != 'active':
+            return {
+                "device": None,
+                "token": None,
+                "message": f"Device found but not activated (status: {device.status})"
+            }
+
+        # Device is activated - return device info
+        # Generate new device token for authentication
+        from shared.auth import create_device_token
+        device_token = create_device_token(
+            device_id=device.id,
+            organization_id=device.organization_id
+        )
+
+        # Get organization info for PIN
+        from services.organization.repositories.organization_repo import OrganizationRepository
+        org_repo = OrganizationRepository(device_repo.db)
+        org = org_repo.get_by_id(device.organization_id) if device.organization_id else None
+
+        return {
+            "device": {
+                "id": device.id,
+                "unique_code": device.unique_code,
+                "status": device.status,
+                "device_name": device.device_name,
+                "organization_id": device.organization_id,
+                "organization_pin": org.pin if org else None,
+                "device_uuid": device.device_uuid
+            },
+            "token": device_token,
+            "message": "Device verified successfully"
+        }
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -688,6 +799,152 @@ def delete_device(
     )
 
     return None
+
+
+@router.post(DeviceRoutes.RELEASE, response_model=DeviceResponse)
+@handle_errors
+def release_device_by_admin(
+    device_id: int,
+    http_request: Request,
+    current_user: CurrentUser = Depends(get_current_user),
+    device_repo: DeviceRepository = Depends(get_device_repository)
+):
+    """
+    Release device by CMS admin (soft release)
+
+    Flow:
+    1. Admin clicks "Release" button in CMS
+    2. Backend sets status='released'
+    3. Player heartbeat gets 403 error
+    4. Player clears tokens but KEEPS org_id in IndexedDB
+    5. Player requests new activation code (with org_id)
+    6. Device appears in SAME organization's pending list
+
+    This is DIFFERENT from hard reset:
+    - CMS Release: Keep org_id → re-register to SAME org
+    - Hard Reset: Clear org_id → re-register to GLOBAL pending
+    """
+    from datetime import datetime, timezone
+
+    start_time = time.time()
+
+    # Get device
+    device = device_repo.find_by_id(device_id, organization_id=current_user.organization_id)
+
+    if not device:
+        raise NotFoundError(
+            message=f"Device with ID {device_id} not found",
+            resource_type="device",
+            resource_id=device_id
+        )
+
+    # Verify ownership
+    if device.organization_id != current_user.organization_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You don't have permission to release this device"
+        )
+
+    # Update status to released
+    device.status = 'released'
+    device.released_at = datetime.now(timezone.utc)
+
+    updated_device = device_repo.update(device)
+
+    # Convert to response
+    response = device_to_response(updated_device)
+
+    # Calculate duration
+    duration_ms = (time.time() - start_time) * 1000
+
+    # Log successful release
+    request_logger.log_request(
+        method="POST",
+        path=f"/devices/{device_id}/release",
+        status_code=200,
+        duration_ms=duration_ms
+    )
+
+    # Invalidate device cache
+    cache.invalidate_device(device_id, current_user.organization_id)
+
+    # Audit log
+    audit_logger.log_action(
+        user_id=current_user.id,
+        action="device.release",
+        resource_type="device",
+        resource_id=device_id,
+        details={
+            "device_name": device.device_name,
+            "organization_id": device.organization_id,
+            "ip_address": http_request.client.host if http_request.client else None
+        }
+    )
+
+    return response
+
+
+@router.post(DeviceRoutes.HARD_RESET)
+def hard_reset_device(
+    device_id: int,
+    device_repo: DeviceRepository = Depends(get_device_repository)
+):
+    """
+    Hard reset device (factory reset) - called by player after password validation
+
+    Flow:
+    1. Player validates password via /validate-reset-password
+    2. Player calls this endpoint
+    3. Backend sets status='released' (same as CMS release)
+    4. Player clears ALL IndexedDB data (including org_id)
+    5. Player requests new activation code (WITHOUT org_id)
+    6. Device appears in GLOBAL pending list (unassigned)
+
+    This is DIFFERENT from CMS release:
+    - CMS Release: Keep org_id → re-register to SAME org
+    - Hard Reset: Clear org_id → re-register to GLOBAL pending
+
+    NOTE: Public endpoint (no auth required) because:
+    - Player already validated password in previous step
+    - Device is being factory reset anyway
+    - Want to allow reset even if token expired
+    """
+    from datetime import datetime, timezone
+
+    # Get device (no organization filter - public endpoint)
+    device = device_repo.find_by_id(device_id)
+
+    if not device:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Device not found"
+        )
+
+    # Set status to released (same action as CMS release)
+    device.status = 'released'
+    device.released_at = datetime.now(timezone.utc)
+
+    updated_device = device_repo.update(device)
+
+    # Audit log
+    audit_logger.log_action(
+        user_id=None,  # No user - called by player
+        action="device.hard_reset",
+        resource_type="device",
+        resource_id=device_id,
+        details={
+            "device_name": device.device_name,
+            "organization_id": device.organization_id,
+            "note": "Factory reset by player device"
+        }
+    )
+
+    print(f"[Hard Reset] Device {device_id} ({device.device_name}) factory reset completed")
+
+    return {
+        "success": True,
+        "message": "Device factory reset completed"
+    }
 
 
 @router.post(DeviceRoutes.DEVICE_LOGS_BATCH, status_code=status.HTTP_204_NO_CONTENT)

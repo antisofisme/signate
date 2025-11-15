@@ -12,6 +12,7 @@
 
 import { SharedLogger } from '@shared/logger';
 import { SharedEventBus } from '@shared/events/shared-event-bus';
+import { ServiceRegistry } from '@shared/services/service-registry';
 
 /**
  * Volume level (0-100)
@@ -408,7 +409,8 @@ declare global {
 }
 
 if (typeof window !== 'undefined') {
-  window.ShellDeviceControls = ShellDeviceControls;
+  // Register to ServiceRegistry
+  ServiceRegistry.register('ShellDeviceControls', ShellDeviceControls);
 }
 
 // Auto-initialize when module is imported

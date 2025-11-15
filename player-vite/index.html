@@ -111,15 +111,14 @@
       display: flex;
     }
 
-    /* Hard Reset Button */
-    #hard-reset-btn {
+    /* Clear Cache Button (hover to show) */
+    #clear-cache-btn {
       position: fixed;
       top: 86px;
       right: 20px;
       width: 56px;
       height: 56px;
       background: rgba(15, 23, 42, 0.9);
-      color: white;
       border: 1px solid rgba(255, 255, 255, 0.2);
       border-radius: 50%;
       cursor: pointer;
@@ -133,16 +132,105 @@
       box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
     }
 
-    #hard-reset-btn:hover {
+    #clear-cache-btn:hover {
+      background: rgba(245, 158, 11, 0.9);
+      border-color: rgba(245, 158, 11, 0.5);
+      transform: scale(1.1);
+      box-shadow: 0 6px 20px rgba(245, 158, 11, 0.4);
+    }
+
+    #clear-cache-btn.show {
+      opacity: 1;
+    }
+
+    #clear-cache-btn svg {
+      width: 24px;
+      height: 24px;
+      color: white;
+      fill: none;
+      stroke: white;
+    }
+
+    /* Factory Reset Button (hover to show) */
+    #factory-reset-btn {
+      position: fixed;
+      top: 152px;
+      right: 20px;
+      width: 56px;
+      height: 56px;
+      background: rgba(15, 23, 42, 0.9);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 50%;
+      cursor: pointer;
+      z-index: 100000;
+      opacity: 0;
+      transition: opacity 0.3s ease, background 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      pointer-events: auto;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    }
+
+    #factory-reset-btn:hover {
       background: rgba(239, 68, 68, 0.9);
       border-color: rgba(239, 68, 68, 0.5);
       transform: scale(1.1);
       box-shadow: 0 6px 20px rgba(239, 68, 68, 0.4);
     }
 
-    #hard-reset-btn.show {
+    #factory-reset-btn.show {
       opacity: 1;
     }
+
+    #factory-reset-btn svg {
+      width: 24px;
+      height: 24px;
+      color: white;
+      fill: none;
+      stroke: white;
+    }
+
+    /* Device Info Button (hover to show) */
+    #device-info-btn {
+      position: fixed;
+      top: 218px;
+      right: 20px;
+      width: 56px;
+      height: 56px;
+      background: rgba(15, 23, 42, 0.9);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 50%;
+      cursor: pointer;
+      z-index: 100000;
+      opacity: 0;
+      transition: opacity 0.3s ease, background 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      pointer-events: auto;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    }
+
+    #device-info-btn:hover {
+      background: rgba(139, 92, 246, 0.9);
+      border-color: rgba(139, 92, 246, 0.5);
+      transform: scale(1.1);
+      box-shadow: 0 6px 20px rgba(139, 92, 246, 0.4);
+    }
+
+    #device-info-btn.show {
+      opacity: 1;
+    }
+
+    #device-info-btn svg {
+      width: 24px;
+      height: 24px;
+      color: white;
+      fill: none;
+      stroke: white;
+    }
+
 
     /* Connection Status Container */
     #connection-status {
@@ -290,75 +378,7 @@
       padding: 2rem;
     }
 
-    /* Toast Container */
-    #toast-container {
-      position: fixed;
-      bottom: 20px;
-      right: 20px;
-      z-index: 200000;
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-      max-width: 420px;
-    }
-
-    .toast {
-      display: flex;
-      align-items: start;
-      gap: 12px;
-      background: rgba(15, 23, 42, 0.95);
-      backdrop-filter: blur(12px);
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      border-radius: 12px;
-      padding: 16px;
-      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
-      animation: slideIn 0.3s ease-out;
-      transition: all 0.3s ease;
-    }
-
-    .toast.removing {
-      animation: slideOut 0.3s ease-out;
-      opacity: 0;
-      transform: translateX(100%);
-    }
-
-    @keyframes slideIn {
-      from {
-        opacity: 0;
-        transform: translateX(100%);
-      }
-      to {
-        opacity: 1;
-        transform: translateX(0);
-      }
-    }
-
-    @keyframes slideOut {
-      from {
-        opacity: 1;
-        transform: translateX(0);
-      }
-      to {
-        opacity: 0;
-        transform: translateX(100%);
-      }
-    }
-
-    .toast.success {
-      border-left: 3px solid #22c55e;
-    }
-
-    .toast.error {
-      border-left: 3px solid #ef4444;
-    }
-
-    .toast.warning {
-      border-left: 3px solid #f59e0b;
-    }
-
-    .toast.info {
-      border-left: 3px solid #3b82f6;
-    }
+    /* Toast styles are injected by SharedToast - see src/shared/ui/shared-toast.ts */
   </style>
 </head>
 <body>
@@ -382,9 +402,19 @@
     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3v3a2 2 0 0 1-2 2H3"/><path d="M21 8h-3a2 2 0 0 1-2-2V3"/><path d="M3 16h3a2 2 0 0 1 2 2v3"/><path d="M16 21v-3a2 2 0 0 1 2-2h3"/></svg>
   </button>
 
-  <!-- Hard Reset Button (hover to show) - OUTSIDE player container -->
-  <button id="hard-reset-btn" title="Hard Reset Device (Password Required)">
+  <!-- Clear Cache Button (hover to show) - OUTSIDE player container -->
+  <button id="clear-cache-btn" title="Clear Cached Content (Keep Registration)">
+    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>
+  </button>
+
+  <!-- Factory Reset Button (hover to show) - OUTSIDE player container -->
+  <button id="factory-reset-btn" title="Factory Reset - Unregister Device (Password Required)">
     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+  </button>
+
+  <!-- Device Info Button (hover to show) - OUTSIDE player container -->
+  <button id="device-info-btn" title="Device Information">
+    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
   </button>
 
   <!-- Connection Status Indicators (top-left) -->
@@ -421,8 +451,7 @@
     <div id="error-message"></div>
   </div>
 
-  <!-- Toast Notification Container -->
-  <div id="toast-container"></div>
+  <!-- Toast container will be created dynamically by SharedToast -->
 
   <!-- Main TypeScript Entry Point -->
   <script type="module" src="/src/main.ts"></script>

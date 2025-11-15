@@ -81,7 +81,7 @@ class UserResponse(BaseModel):
     email: str
     full_name: str
     role: str
-    organization_id: int
+    organization_id: Optional[int] = None  # Optional untuk backward compatibility dengan data lama
     is_active: bool
     created_at: datetime
     updated_at: Optional[datetime] = None

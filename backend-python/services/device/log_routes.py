@@ -10,6 +10,8 @@ from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 from shared.database import get_db
+from shared.responses import success_response
+from shared.errors import NotFoundError
 from datetime import datetime
 from typing import Optional, List
 
@@ -236,3 +238,80 @@ def get_latest_device_logs(
             recorded_at=row.recorded_at))
 
     return LogListResponse(total=len(logs), items=logs)
+
+
+@router.get("/devices/{device_id}/test-endpoint")
+def test_endpoint(device_id: int):
+    """Simple test endpoint to verify routing works"""
+    return {"message": f"Test endpoint works for device {device_id}", "success": True}
+
+
+# ============================================================================
+# CONNECTION LOG ENDPOINTS
+# ============================================================================
+
+class ConnectionLogEntryDTO(BaseModel):
+    """Single connection log entry from player"""
+    logged_at: datetime = Field(..., description="Timestamp when event occurred on player device")
+    event_type: str = Field(..., description="Type of event: network, server, speed_test")
+    status: str = Field(..., max_length=20, description="Event status")
+    latency_ms: Optional[int] = Field(None, ge=0, description="Network latency in milliseconds")
+    error_message: Optional[str] = Field(None, max_length=1000, description="Error details if failed")
+    download_speed_mbps: Optional[float] = Field(None, ge=0, description="Download speed in Mbps")
+    upload_speed_mbps: Optional[float] = Field(None, ge=0, description="Upload speed in Mbps")
+    metadata: Optional[dict] = Field(default={}, description="Additional metadata")
+
+class SaveConnectionLogsDTO(BaseModel):
+    """Batch connection logs from player - sent every 5 minutes"""
+    logs: List[ConnectionLogEntryDTO] = Field(..., min_items=1, max_items=100, description="Connection log entries")
+
+@router.post("/devices/{device_id}/connection-logs", status_code=status.HTTP_201_CREATED)
+def save_connection_logs(
+    device_id: int,
+    dto: SaveConnectionLogsDTO,
+    db: Session = Depends(get_db)
+):
+    """
+    Save batch of connection logs from player device
+
+    Player automatically sends logs every 5 minutes containing:
+    - Network status changes (online/offline)
+    - Server connectivity (connected/disconnected)
+    - Speed test results (hourly)
+
+    This endpoint is called by the player device after activation.
+    No JWT auth required - device_id verification is sufficient.
+
+    Request body format:
+    ```json
+    {
+      "logs": [
+        {
+          "logged_at": "2025-01-15T10:30:00Z",
+          "event_type": "network",
+          "status": "online",
+          "latency_ms": 45,
+          "error_message": null,
+          "download_speed_mbps": null,
+          "upload_speed_mbps": null,
+          "metadata": {}
+        }
+      ]
+    }
+    ```
+    """
+    from services.device.use_cases.save_connection_logs import SaveConnectionLogs
+
+    try:
+        use_case = SaveConnectionLogs(db)
+        result = use_case.execute(device_id=device_id, dto=dto)
+
+        return success_response(
+            data=result,
+            message=f"Successfully saved {result['count']} connection logs"
+        )
+
+    except NotFoundError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))

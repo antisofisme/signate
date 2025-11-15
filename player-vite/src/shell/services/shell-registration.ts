@@ -14,7 +14,11 @@ import { config } from '@shared/config';
 import { SharedLogger } from '@shared/logger';
 import { SharedAPIClient } from '@shared/api';
 import { SharedDeviceState } from '@shared/device';
+import { deviceConfigStorage } from '@shared/storage';
+import { getOrCreateDeviceUUID } from '@shared/utils/device-fingerprint';
 import type { ShellRegistration as IShellRegistration, RegistrationResponse, PlatformInfo } from '../types/shell.types';
+import { ServiceRegistry } from '@shared/services/service-registry';
+import { getShellBootstrap, getShellActivationPoll, getShellActivationScreen } from '@shared/services';
 
 /**
  * Shell Registration Class
@@ -32,22 +36,22 @@ class ShellRegistrationClass implements IShellRegistration {
   }
 
   /**
-   * Get pending code from localStorage
+   * Get pending code from IndexedDB (persistent across cache clears)
    */
-  getPendingCode(): string | null {
-    return localStorage.getItem('pending_activation_code');
+  async getPendingCode(): Promise<string | null> {
+    return await deviceConfigStorage.getActivationCode();
   }
 
   /**
-   * Set pending code in localStorage
+   * Set pending code in IndexedDB (persistent)
    */
-  setPendingCode(code: string | null): void {
+  async setPendingCode(code: string | null): Promise<void> {
     if (code) {
-      localStorage.setItem('pending_activation_code', code);
-      SharedLogger.log('[ShellRegistration] Pending code saved:', code);
+      await deviceConfigStorage.setActivationCode(code);
+      SharedLogger.log('[ShellRegistration] Pending code saved to IndexedDB:', code);
     } else {
-      localStorage.removeItem('pending_activation_code');
-      SharedLogger.log('[ShellRegistration] Pending code cleared');
+      await deviceConfigStorage.clearActivationCode();
+      SharedLogger.log('[ShellRegistration] Pending code cleared from IndexedDB');
     }
   }
 
@@ -132,6 +136,8 @@ class ShellRegistrationClass implements IShellRegistration {
    * Auto-displays 6-digit code, organization assigned by admin during activation
    */
   async registerDevice(): Promise<void> {
+    SharedLogger.log('[ShellRegistration] 🎯 registerDevice() called');
+
     // Guard 1: Prevent concurrent registrations
     if (this.isRegistering) {
       SharedLogger.warn('[ShellRegistration] Registration already in progress, skipping...');
@@ -140,59 +146,114 @@ class ShellRegistrationClass implements IShellRegistration {
 
     // Guard 2: Check if already registered
     const existingDeviceId = SharedDeviceState.getDeviceId();
+    SharedLogger.log('[ShellRegistration] Checking existing device_id:', existingDeviceId);
+
     if (existingDeviceId) {
       SharedLogger.warn('[ShellRegistration] Device already registered, skipping');
       SharedLogger.log('[ShellRegistration] Existing device_id:', existingDeviceId);
-
-      // Clear orphaned pending code
-      const orphanedCode = this.getPendingCode();
-      if (orphanedCode) {
-        SharedLogger.warn('[ShellRegistration] Clearing orphaned pending code:', orphanedCode);
-        this.setPendingCode(null);
-      }
-
       return;
     }
 
     // Set registration flag
     this.isRegistering = true;
+    SharedLogger.log('[ShellRegistration] ✅ Starting registration process...');
 
     try {
-      // Use existing pending code or generate new one
-      let activationCode = this.getPendingCode();
+      // Get device UUID (fingerprint)
+      const deviceUUID = getOrCreateDeviceUUID();
+      SharedLogger.log('[ShellRegistration] Device UUID (fingerprint):', deviceUUID);
 
-      // Validate pending code format - should be pure numeric (6 digits)
-      if (activationCode && !/^\d{6}$/.test(activationCode)) {
-        SharedLogger.warn('[ShellRegistration] Invalid pending code format (contains letters), clearing:', activationCode);
-        this.setPendingCode(null);
-        activationCode = null;
-      }
+      // CRITICAL: Check if device already exists with this fingerprint FIRST
+      // This prevents race condition when cache is cleared but device is already registered
+      SharedLogger.log('[ShellRegistration] Checking for existing device with this fingerprint...');
 
-      if (!activationCode) {
-        activationCode = this.generateActivationCode();
-        this.setPendingCode(activationCode);
-        SharedLogger.log('[ShellRegistration] Generated new activation code:', activationCode);
+      try {
+        const existingCheck = await SharedAPIClient.get<any>(
+          `${config.api.baseURL}/api/v1/devices/check-activation-by-uuid/${deviceUUID}`
+        );
 
-        // Update UI immediately with generated code (before API call)
-        if (window.ShellActivationScreen) {
-          SharedLogger.log('[ShellRegistration] Updating UI with generated code...');
-          window.ShellActivationScreen.updateCode(activationCode);
+        if (existingCheck && existingCheck.device_id) {
+          SharedLogger.log('[ShellRegistration] ✅ Found existing device!', existingCheck);
+
+          // Restore device state
+          SharedDeviceState.setDeviceId(existingCheck.device_id);
+          SharedDeviceState.setDeviceCode(existingCheck.unique_code);
+          SharedDeviceState.setDeviceStatus(existingCheck.status);
+
+          if (existingCheck.device_name) {
+            SharedDeviceState.setDeviceName(existingCheck.device_name);
+          }
+
+          if (existingCheck.organization_id) {
+            SharedDeviceState.setOrganizationId(existingCheck.organization_id);
+          }
+
+          // Update UI with existing code
+          if (getShellActivationScreen() && existingCheck.unique_code) {
+            getShellActivationScreen().updateCode(existingCheck.unique_code);
+          }
+
+          // If device is active, start player mode
+          if (existingCheck.status === 'active') {
+            SharedLogger.log('[ShellRegistration] Device is already active → Starting player');
+            // Trigger player mode
+            if (getShellBootstrap()) {
+              getShellBootstrap().startPlayer();
+            }
+            return;
+          }
+
+          // If device is pending, start polling
+          if (existingCheck.status === 'pending') {
+            SharedLogger.log('[ShellRegistration] Device is pending → Start polling');
+            if (getShellActivationPoll()) {
+              getShellActivationPoll().startPolling();
+            }
+          }
+
+          return;
         }
-      } else {
-        SharedLogger.log('[ShellRegistration] Using existing pending code:', activationCode);
+      } catch (checkError) {
+        SharedLogger.log('[ShellRegistration] No existing device found (expected for new device)');
       }
+
+      // No existing device - proceed with registration
+      SharedLogger.log('[ShellRegistration] Proceeding with new device registration...');
+
+      // Generate temporary activation code for first-time registration request
+      // Backend will either accept this code OR return existing code for this device
+      const activationCode = this.generateActivationCode();
+      SharedLogger.log('[ShellRegistration] Generated temporary code for registration:', activationCode);
+      SharedLogger.log('[ShellRegistration] Backend may return different code if device already exists');
 
       // Detect platform
       const platformInfo = this.detectPlatform();
       SharedLogger.log('[ShellRegistration] Platform detected:', platformInfo);
 
+      // Check if device has organization (for CMS release scenario)
+      const deviceConfig = await deviceConfigStorage.getDeviceConfig();
+      const hasOrganization = deviceConfig.organization_id !== null;
+
       // Prepare request body
-      const requestBody = {
+      const requestBody: any = {
         code: activationCode,
         platform: platformInfo.type,
+        device_uuid: deviceUUID, // Send fingerprint for code persistence
       };
 
-      SharedLogger.log('[ShellRegistration] Registering device...');
+      // Include organization_id if exists (CMS release scenario)
+      // If org_id exists → device will be assigned to SAME organization
+      // If no org_id → device will go to GLOBAL pending list
+      if (hasOrganization) {
+        requestBody.organization_id = deviceConfig.organization_id;
+        SharedLogger.log('[ShellRegistration] Including organization_id (CMS release):', deviceConfig.organization_id);
+      } else {
+        SharedLogger.log('[ShellRegistration] No organization_id (global pending or first registration)');
+      }
+
+      SharedLogger.log('[ShellRegistration] 📡 Sending registration request to backend...');
+      SharedLogger.log('[ShellRegistration] Request URL:', `${config.api.baseURL}/api/v1/devices/request-code`);
+      SharedLogger.log('[ShellRegistration] Request body:', requestBody);
 
       // Request activation code (register device)
       const data = await SharedAPIClient.post<RegistrationResponse>(
@@ -200,7 +261,20 @@ class ShellRegistrationClass implements IShellRegistration {
         requestBody
       );
 
+      SharedLogger.log('[ShellRegistration] 📥 Response received from backend:', data);
+
       SharedLogger.log('[ShellRegistration] ✅ Registration successful:', data);
+
+      // Check if backend returned different code (existing device reuse)
+      if (data.unique_code !== activationCode) {
+        SharedLogger.warn(
+          `[ShellRegistration] Backend returned different code! Temp: ${activationCode}, Actual: ${data.unique_code}`
+        );
+        SharedLogger.log('[ShellRegistration] ✅ This is CORRECT - backend reused existing code for this device UUID');
+        SharedLogger.log('[ShellRegistration] Code persistence is working!');
+      } else {
+        SharedLogger.log('[ShellRegistration] Backend accepted our generated code (new device)');
+      }
 
       // Store device data using SharedDeviceState
       SharedDeviceState.setDeviceId(data.device_id);
@@ -223,26 +297,19 @@ class ShellRegistrationClass implements IShellRegistration {
       // Clear retry count on success
       this.clearRetryCount();
 
-      // Update UI with new activation code and start countdown
-      SharedLogger.log('[ShellRegistration] 🎯 Activation code:', data.unique_code);
-      if (window.ShellActivationScreen) {
-        SharedLogger.log('[ShellRegistration] Updating UI with new code...');
-        window.ShellActivationScreen.updateCode(data.unique_code);
-
-        // Start countdown timer if expires_at is provided
-        if (data.expires_at) {
-          SharedLogger.log('[ShellRegistration] Starting countdown timer, expires at:', data.expires_at);
-          window.ShellActivationScreen.startCountdown(data.expires_at);
-        }
-
+      // Update UI with activation code from backend
+      SharedLogger.log('[ShellRegistration] 🎯 Activation code from backend:', data.unique_code);
+      if (getShellActivationScreen()) {
+        SharedLogger.log('[ShellRegistration] Updating UI with backend code...');
+        getShellActivationScreen().updateCode(data.unique_code);
         SharedLogger.log('[ShellRegistration] ✅ UI updated with code:', data.unique_code);
       } else {
-        SharedLogger.error('[ShellRegistration] ❌ window.ShellActivationScreen not available!');
+        SharedLogger.error('[ShellRegistration] ❌ getShellActivationScreen() not available!');
       }
 
       // Start activation polling
-      if (window.ShellActivationPoll) {
-        window.ShellActivationPoll.startPolling();
+      if (getShellActivationPoll()) {
+        getShellActivationPoll().startPolling();
       }
     } catch (error) {
       SharedLogger.error('[ShellRegistration] ❌ Registration failed:', error);
@@ -252,13 +319,11 @@ class ShellRegistrationClass implements IShellRegistration {
       const isDuplicateCode = errorMessage.includes('already in use') || errorMessage.includes('duplicate');
 
       if (isDuplicateCode) {
-        SharedLogger.warn('[ShellRegistration] ⚠️ Code collision detected, generating new code...');
-        // Clear pending code to force new code generation on retry
-        this.setPendingCode(null);
+        SharedLogger.warn('[ShellRegistration] ⚠️ Code collision detected, will retry with new random code...');
         // Don't increment retry count for duplicate code - just retry immediately
         this.retryTimeout = window.setTimeout(() => {
           void this.registerDevice();
-        }, 1000); // Retry after 1 second
+        }, 1000); // Retry after 1 second with new random code
         return;
       }
 
@@ -270,8 +335,6 @@ class ShellRegistrationClass implements IShellRegistration {
         SharedLogger.error(
           `[ShellRegistration] ⛔ Max retries (${config.retry.maxRetryCount}) exceeded - STOPPING`
         );
-        // Clear pending code to force new code on manual retry
-        this.setPendingCode(null);
         this.clearRetryCount();
         return;
       }
@@ -307,9 +370,8 @@ class ShellRegistrationClass implements IShellRegistration {
   /**
    * Reset registration state
    */
-  reset(): void {
+  async reset(): Promise<void> {
     this.cancelRetry();
-    this.setPendingCode(null);
     this.clearRetryCount();
     this.isRegistering = false;
     SharedLogger.log('[ShellRegistration] Registration state reset');
@@ -321,5 +383,6 @@ export const ShellRegistration = new ShellRegistrationClass();
 
 // Make available globally for compatibility
 if (typeof window !== 'undefined') {
-  window.ShellRegistration = ShellRegistration;
+  // Register to ServiceRegistry
+  ServiceRegistry.register('ShellRegistration', ShellRegistration);
 }

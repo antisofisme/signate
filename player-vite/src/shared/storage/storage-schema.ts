@@ -4,7 +4,7 @@
  */
 
 export const DB_NAME = 'signage_player';
-export const DB_VERSION = 1;
+export const DB_VERSION = 2; // Incremented for device_config store
 
 /**
  * Index configuration
@@ -29,6 +29,13 @@ export interface StoreConfig {
  * Each object store with its keyPath and indexes
  */
 export const SCHEMA: Record<string, StoreConfig> = {
+  // Device configuration (separate from devices for release flow management)
+  device_config: {
+    keyPath: 'key',
+    autoIncrement: false,
+    indexes: [],
+  },
+
   // Device information
   devices: {
     keyPath: 'id',

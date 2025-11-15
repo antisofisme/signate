@@ -4,11 +4,14 @@ Implements IUserRepository using SQLAlchemy
 """
 
 from typing import List, Optional
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import func
+from sqlalchemy.exc import IntegrityError
 from ..domain.user import User
 from ..domain.interfaces import IUserRepository
 from services.auth.repositories.models import UserModel, OrganizationModel
+from services.rbac.repositories.models import Role as RoleModel
+from shared.errors import ValidationError, ErrorCodes
 
 
 class UserRepository(IUserRepository):
@@ -20,51 +23,51 @@ class UserRepository(IUserRepository):
     def find_by_id(self, user_id: int, organization_id: Optional[int] = None) -> Optional[User]:
         """
         Find user by ID with optional organization isolation
-        
+
         Args:
             user_id: User ID
             organization_id: Organization ID for isolation (recommended for security)
         """
-        query = self.db.query(UserModel).filter(UserModel.id == user_id)
-        
+        query = self.db.query(UserModel).options(joinedload(UserModel.role)).filter(UserModel.id == user_id)
+
         # SECURITY: Add organization filtering if provided
         if organization_id is not None:
             query = query.filter(UserModel.organization_id == organization_id)
-        
+
         user_model = query.first()
         return self._to_entity(user_model) if user_model else None
 
     def find_by_username(self, username: str, organization_id: Optional[int] = None) -> Optional[User]:
         """
         Find user by username with optional organization isolation
-        
+
         Args:
             username: Username
             organization_id: Organization ID for isolation (recommended for security)
         """
-        query = self.db.query(UserModel).filter(UserModel.username == username)
-        
+        query = self.db.query(UserModel).options(joinedload(UserModel.role)).filter(UserModel.username == username)
+
         # SECURITY: Add organization filtering if provided
         if organization_id is not None:
             query = query.filter(UserModel.organization_id == organization_id)
-        
+
         user_model = query.first()
         return self._to_entity(user_model) if user_model else None
 
     def find_by_email(self, email: str, organization_id: Optional[int] = None) -> Optional[User]:
         """
         Find user by email with optional organization isolation
-        
+
         Args:
             email: Email address
             organization_id: Organization ID for isolation (recommended for security)
         """
-        query = self.db.query(UserModel).filter(UserModel.email == email)
-        
+        query = self.db.query(UserModel).options(joinedload(UserModel.role)).filter(UserModel.email == email)
+
         # SECURITY: Add organization filtering if provided
         if organization_id is not None:
             query = query.filter(UserModel.organization_id == organization_id)
-        
+
         user_model = query.first()
         return self._to_entity(user_model) if user_model else None
 
@@ -75,13 +78,14 @@ class UserRepository(IUserRepository):
         active_only: bool = False
     ) -> List[User]:
         """Get all users with filters"""
-        query = self.db.query(UserModel)
+        query = self.db.query(UserModel).options(joinedload(UserModel.role))
 
         if organization_id:
             query = query.filter(UserModel.organization_id == organization_id)
 
         if role:
-            query = query.filter(UserModel.role == role)
+            # Join Role table to filter by role name (case-insensitive)
+            query = query.join(RoleModel).filter(func.lower(RoleModel.name) == role.lower())
 
         if active_only:
             query = query.filter(UserModel.is_active == True)
@@ -90,40 +94,102 @@ class UserRepository(IUserRepository):
         return [self._to_entity(user) for user in user_models]
 
     def create(self, user: User) -> User:
-        """Create new user"""
-        user_model = UserModel(
-            username=user.username,
-            email=user.email,
-            password_hash=user.password_hash,
-            full_name=user.full_name,
-            role=user.role,
-            organization_id=user.organization_id,
-            is_active=user.is_active
-        )
-        self.db.add(user_model)
-        self.db.commit()
-        self.db.refresh(user_model)
-        return self._to_entity(user_model)
+        """Create new user with proper role_id assignment"""
+        # Map domain role name to database role name
+        role_map = {
+            'super_admin': 'SUPER_ADMIN',
+            'admin': 'ADMIN',
+            'manager': 'CONTENT_MANAGER',  # Domain: manager → DB: CONTENT_MANAGER
+            'viewer': 'VIEWER'
+        }
+
+        db_role_name = role_map.get(user.role.lower(), 'VIEWER')
+
+        # Look up role_id from role name
+        role_model = self.db.query(RoleModel).filter(
+            RoleModel.name == db_role_name
+        ).first()
+
+        if not role_model:
+            raise ValidationError(
+                message=f"Invalid role: {user.role}",
+                code=ErrorCodes.VALIDATION_ERROR,
+                field="role"
+            )
+
+        # BUG FIX #2: Catch IntegrityError for duplicate username
+        try:
+            user_model = UserModel(
+                username=user.username,
+                email=user.email,
+                password_hash=user.password_hash,
+                full_name=user.full_name,
+                role_id=role_model.id,  # Use role_id, not role
+                organization_id=user.organization_id,
+                is_active=user.is_active
+            )
+            self.db.add(user_model)
+            self.db.commit()
+            self.db.refresh(user_model)
+            return self._to_entity(user_model)
+        except IntegrityError as e:
+            self.db.rollback()
+            error_str = str(e).lower()
+            if "username" in error_str:
+                raise ValidationError(
+                    message=f"Username '{user.username}' already exists",
+                    code=ErrorCodes.DUPLICATE_RESOURCE,
+                    field="username"
+                )
+            elif "email" in error_str:
+                raise ValidationError(
+                    message=f"Email '{user.email}' already exists",
+                    code=ErrorCodes.DUPLICATE_RESOURCE,
+                    field="email"
+                )
+            raise
 
     def update(self, user: User, organization_id: Optional[int] = None) -> User:
         """Update existing user with organization isolation"""
-        query = self.db.query(UserModel).filter(UserModel.id == user.id)
-        
+        query = self.db.query(UserModel).options(joinedload(UserModel.role)).filter(UserModel.id == user.id)
+
         # SECURITY: Add organization filtering if provided
         if organization_id is not None:
             query = query.filter(UserModel.organization_id == organization_id)
-        
+
         user_model = query.first()
-        
+
         if not user_model:
             if organization_id is not None:
                 raise ValueError(f"User with id {user.id} not found in organization {organization_id}")
             else:
                 raise ValueError(f"User with id {user.id} not found")
 
+        # Map domain role name to database role name
+        role_map = {
+            'super_admin': 'SUPER_ADMIN',
+            'admin': 'ADMIN',
+            'manager': 'CONTENT_MANAGER',
+            'viewer': 'VIEWER'
+        }
+
+        db_role_name = role_map.get(user.role.lower(), 'VIEWER')
+
+        # Look up role_id from role name
+        role_model = self.db.query(RoleModel).filter(
+            RoleModel.name == db_role_name
+        ).first()
+
+        if not role_model:
+            raise ValidationError(
+                message=f"Invalid role: {user.role}",
+                code=ErrorCodes.VALIDATION_ERROR,
+                field="role"
+            )
+
         user_model.email = user.email
         user_model.full_name = user.full_name
-        user_model.role = user.role
+        user_model.role_id = role_model.id  # Use role_id, not role
         user_model.is_active = user.is_active
         # Note: username tidak bisa diubah setelah dibuat
         # Note: password diubah via change_password()
@@ -196,14 +262,27 @@ class UserRepository(IUserRepository):
         return query.scalar() or 0
 
     def _to_entity(self, model: UserModel) -> User:
-        """Convert SQLAlchemy model to domain entity"""
+        """Convert SQLAlchemy model to domain entity with proper role mapping"""
+        # Map database role to domain role (DB is UPPERCASE, domain is lowercase)
+        role_map = {
+            'SUPER_ADMIN': 'super_admin',
+            'ADMIN': 'admin',
+            'CONTENT_MANAGER': 'manager',  # DB: CONTENT_MANAGER → Domain: manager
+            'VIEWER': 'viewer'
+        }
+
+        role_name = 'viewer'  # Default role
+        if model.role and hasattr(model.role, 'name'):
+            db_role_name = model.role.name
+            role_name = role_map.get(db_role_name, 'viewer')
+
         return User(
             id=model.id,
             username=model.username,
             email=model.email,
             password_hash=model.password_hash,
             full_name=model.full_name,
-            role=model.role,
+            role=role_name,  # Mapped domain role name
             organization_id=model.organization_id,
             is_active=model.is_active,
             created_at=model.created_at,

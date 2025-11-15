@@ -12,6 +12,8 @@
 import { SharedLogger } from '@shared/logger';
 import { SharedEventBus, EventNames } from '@shared/events/shared-event-bus';
 import { SharedWebSocket, WSMessageType } from '@shared/websocket/shared-websocket';
+import { ServiceRegistry } from '@shared/services/service-registry';
+import { getPlayerHLS, getPlayerMediaCache, getPlayerPlaylistSync } from '@shared/services';
 
 /**
  * Command types
@@ -233,40 +235,40 @@ class PlayerCommandExecutorClass {
   // ========================================
 
   private async handlePlay(): Promise<any> {
-    if (window.PlayerHLS) {
-      await window.PlayerHLS.play();
+    if (getPlayerHLS()) {
+      await getPlayerHLS().play();
       return { message: 'Playback started' };
     }
     throw new Error('PlayerHLS not available');
   }
 
   private async handlePause(): Promise<any> {
-    if (window.PlayerHLS) {
-      window.PlayerHLS.pause();
+    if (getPlayerHLS()) {
+      getPlayerHLS().pause();
       return { message: 'Playback paused' };
     }
     throw new Error('PlayerHLS not available');
   }
 
   private async handleStop(): Promise<any> {
-    if (window.PlayerHLS) {
-      window.PlayerHLS.stop();
+    if (getPlayerHLS()) {
+      getPlayerHLS().stop();
       return { message: 'Playback stopped' };
     }
     throw new Error('PlayerHLS not available');
   }
 
   private async handleNext(): Promise<any> {
-    if (window.PlayerHLS) {
-      await window.PlayerHLS.next();
+    if (getPlayerHLS()) {
+      await getPlayerHLS().next();
       return { message: 'Skipped to next item' };
     }
     throw new Error('PlayerHLS not available');
   }
 
   private async handlePrevious(): Promise<any> {
-    if (window.PlayerHLS) {
-      await window.PlayerHLS.previous();
+    if (getPlayerHLS()) {
+      await getPlayerHLS().previous();
       return { message: 'Skipped to previous item' };
     }
     throw new Error('PlayerHLS not available');
@@ -297,16 +299,16 @@ class PlayerCommandExecutorClass {
   }
 
   private async handleReloadPlaylist(): Promise<any> {
-    if (window.PlayerPlaylistSync) {
-      window.PlayerPlaylistSync.forceReload();
+    if (getPlayerPlaylistSync()) {
+      getPlayerPlaylistSync().forceReload();
       return { message: 'Playlist reload triggered' };
     }
     throw new Error('PlayerPlaylistSync not available');
   }
 
   private async handleClearCache(): Promise<any> {
-    if (window.PlayerMediaCache) {
-      await window.PlayerMediaCache.clearCache();
+    if (getPlayerMediaCache()) {
+      await getPlayerMediaCache().clearCache();
       return { message: 'Cache cleared' };
     }
     throw new Error('PlayerMediaCache not available');
@@ -339,8 +341,8 @@ class PlayerCommandExecutorClass {
   }
 
   private async handleGetStatus(): Promise<any> {
-    if (window.PlayerHLS) {
-      const state = window.PlayerHLS.getState();
+    if (getPlayerHLS()) {
+      const state = getPlayerHLS().getState();
       return { player_state: state };
     }
     throw new Error('PlayerHLS not available');
@@ -364,5 +366,6 @@ export const PlayerCommandExecutor = new PlayerCommandExecutorClass();
 
 // Make available globally for compatibility
 if (typeof window !== 'undefined') {
-  window.PlayerCommandExecutor = PlayerCommandExecutor;
+  // Register to ServiceRegistry
+  ServiceRegistry.register('PlayerCommandExecutor', PlayerCommandExecutor);
 }

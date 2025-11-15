@@ -16,6 +16,8 @@ import { SharedDeviceState } from '@shared/device';
 import { SharedEventBus } from '@shared/events/shared-event-bus';
 import { playerScheduleManager } from './player-schedule-manager';
 import type { PlaylistSync as IPlaylistSync, PlaylistSyncResponse, Playlist } from '../types/player.types';
+import { ServiceRegistry } from '@shared/services/service-registry';
+import { getPlayerHLS } from '@shared/services';
 
 /**
  * Player Playlist Sync Class
@@ -182,11 +184,11 @@ class PlayerPlaylistSyncClass implements IPlaylistSync {
     window.dispatchEvent(event);
 
     // Also update global player if available
-    if (window.PlayerHLS) {
+    if (getPlayerHLS()) {
       if (playlist) {
-        void window.PlayerHLS.loadPlaylist(playlist);
+        void getPlayerHLS().loadPlaylist(playlist);
       } else {
-        window.PlayerHLS.stop();
+        getPlayerHLS().stop();
       }
     } else {
       SharedLogger.warn('[PlayerPlaylistSync] PlayerHLS not available');
@@ -273,5 +275,6 @@ export const PlayerPlaylistSync = new PlayerPlaylistSyncClass();
 
 // Make available globally for compatibility
 if (typeof window !== 'undefined') {
-  window.PlayerPlaylistSync = PlayerPlaylistSync;
+  // Register to ServiceRegistry
+  ServiceRegistry.register('PlayerPlaylistSync', PlayerPlaylistSync);
 }

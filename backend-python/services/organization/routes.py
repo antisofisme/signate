@@ -182,7 +182,7 @@ def create_organization(
     # Execute use case
     organization = use_case.execute(
         name=request_body.name,
-        pin=request_body.pin,
+        pin=request_body.organization_pin,
         description=request_body.description,
         address=request_body.address,
         contact_email=request_body.contact_email,

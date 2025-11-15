@@ -14,7 +14,9 @@ import { config } from '@shared/config';
 import { SharedLogger } from '@shared/logger';
 import { SharedAPIClient } from '@shared/api';
 import { SharedDeviceState } from '@shared/device';
-import type { Heartbeat as IHeartbeat, HeartbeatPayload, SystemInfo } from '../types/player.types';
+import { deviceConfigStorage } from '@shared/storage';
+import type { Heartbeat as IHeartbeat } from '../types/player.types';
+import { ServiceRegistry } from '@shared/services/service-registry';
 
 /**
  * Player Heartbeat Class
@@ -84,22 +86,30 @@ class PlayerHeartbeatClass implements IHeartbeat {
     }
 
     try {
+      // Get device config for unique_code
+      const deviceConfig = await deviceConfigStorage.getDeviceConfig();
+
       // Prepare heartbeat payload
-      const payload: HeartbeatPayload = {
-        device_id: parseInt(deviceId, 10),
-        status: 'online',
-        current_content_id: this.getCurrentContentId(),
-        system_info: this.collectSystemInfo(),
+      const payload = {
+        unique_code: deviceConfig.unique_code || '',
+        device_uuid: '', // WebOS device UUID if available
+        screen_width: window.screen.width,
+        screen_height: window.screen.height,
+        viewport_width: window.innerWidth,
+        viewport_height: window.innerHeight,
+        device_pixel_ratio: window.devicePixelRatio,
+        user_agent: navigator.userAgent,
+        connection_type: (navigator as any).connection?.effectiveType || null,
+        connection_speed: (navigator as any).connection?.downlink || null,
       };
 
       SharedLogger.log('[PlayerHeartbeat] 💓 Sending heartbeat...', {
-        deviceId: payload.device_id,
-        currentContent: payload.current_content_id,
+        deviceId: deviceId,
       });
 
-      // Send heartbeat
+      // Send heartbeat using correct endpoint
       await SharedAPIClient.post(
-        `${config.api.baseURL}/api/client/heartbeat`,
+        `/api/v1/devices/${deviceId}/heartbeat`,
         payload
       );
 
@@ -107,7 +117,15 @@ class PlayerHeartbeatClass implements IHeartbeat {
       this.consecutiveFailures = 0;
 
       SharedLogger.log('[PlayerHeartbeat] ✅ Heartbeat sent successfully');
-    } catch (error) {
+    } catch (error: any) {
+      // Check if device has been released (403 error)
+      if (error?.response?.status === 403) {
+        SharedLogger.warn('[PlayerHeartbeat] ⚠️ Device has been released (403) - Triggering re-registration');
+        this.stop();
+        await this.handleDeviceReleased();
+        return;
+      }
+
       this.consecutiveFailures++;
 
       SharedLogger.error('[PlayerHeartbeat] ❌ Heartbeat failed:', error, {
@@ -136,54 +154,43 @@ class PlayerHeartbeatClass implements IHeartbeat {
   }
 
   /**
-   * Get current content ID being played
+   * Handle device released by CMS admin (soft release)
+   * Triggered when heartbeat returns 403
+   *
+   * Flow:
+   * 1. Clear tokens but KEEP org_id
+   * 2. Clear media cache
+   * 3. Reload to trigger re-registration
+   * 4. Device will request code WITH org_id
+   * 5. Device appears in SAME organization's pending list
    */
-  private getCurrentContentId(): number | null {
+  private async handleDeviceReleased(): Promise<void> {
     try {
-      // Try to get from global PlayerHLS state
-      if (window.PlayerHLS) {
-        const currentItem = window.PlayerHLS.getCurrentItem();
-        return currentItem?.content_id || null;
-      }
+      SharedLogger.log('[PlayerHeartbeat] 🔄 Handling device release (CMS admin)...');
 
-      return null;
+      // Clear tokens but keep org_id (soft release)
+      await deviceConfigStorage.clearTokens();
+
+      SharedLogger.log('[PlayerHeartbeat] ✅ Tokens cleared, org_id preserved');
+
+      // Dispatch custom event for UI
+      const event = new CustomEvent('device-released', {
+        detail: {
+          timestamp: new Date().toISOString(),
+          releaseType: 'cms_release',
+        },
+      });
+      window.dispatchEvent(event);
+
+      // Reload to show activation screen
+      // Device will request new code WITH org_id parameter
+      SharedLogger.log('[PlayerHeartbeat] 🔄 Reloading to trigger re-registration...');
+      setTimeout(() => {
+        window.location.reload();
+      }, 1000);
     } catch (error) {
-      SharedLogger.error('[PlayerHeartbeat] Failed to get current content:', error);
-      return null;
+      SharedLogger.error('[PlayerHeartbeat] ❌ Failed to handle device released:', error);
     }
-  }
-
-  /**
-   * Collect system information
-   */
-  private collectSystemInfo(): SystemInfo {
-    const platform = SharedDeviceState.getPlatform() || 'Unknown';
-
-    const systemInfo: SystemInfo = {
-      platform,
-    };
-
-    // Try to collect memory info (if available)
-    try {
-      if ('memory' in performance && (performance as any).memory) {
-        const memory = (performance as any).memory;
-        systemInfo.memory_usage = memory.usedJSHeapSize || undefined;
-      }
-    } catch (error) {
-      // Memory info not available
-    }
-
-    // Try to collect uptime (time since page load)
-    try {
-      if ('timing' in performance && performance.timing) {
-        const uptime = Date.now() - performance.timing.navigationStart;
-        systemInfo.uptime = Math.floor(uptime / 1000); // Convert to seconds
-      }
-    } catch (error) {
-      // Uptime not available
-    }
-
-    return systemInfo;
   }
 
   /**
@@ -235,5 +242,6 @@ export const PlayerHeartbeat = new PlayerHeartbeatClass();
 
 // Make available globally for compatibility
 if (typeof window !== 'undefined') {
-  window.PlayerHeartbeat = PlayerHeartbeat;
+  // Register to ServiceRegistry
+  ServiceRegistry.register('PlayerHeartbeat', PlayerHeartbeat);
 }

@@ -11,6 +11,7 @@
  */
 
 import { SharedLogger } from '@shared/logger';
+import { ServiceRegistry } from '@shared/services/service-registry';
 
 /**
  * Event handler function type
@@ -292,7 +293,8 @@ declare global {
 }
 
 if (typeof window !== 'undefined') {
-  window.SharedEventBus = SharedEventBus;
+  // Register to ServiceRegistry
+  ServiceRegistry.register('SharedEventBus', SharedEventBus);
 }
 
 /**

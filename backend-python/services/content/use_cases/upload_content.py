@@ -6,12 +6,16 @@ Main business logic for uploading content files
 from fastapi import UploadFile
 from typing import Optional
 import os
+import logging
+
+logger = logging.getLogger(__name__)
 
 from ..domain.content import Content
 from ..domain.interfaces import IContentRepository
 from ..infrastructure.storage.interfaces import IStorageService
 from ..infrastructure.storage.metadata_extractor import MetadataExtractor
 from shared.file_security import SecureFileHandler
+from shared.virus_scanner import get_virus_scanner
 from shared.websocket_manager import websocket_manager, WebSocketEventType
 from services.organization.domain.quota_service import OrganizationQuotaService
 import asyncio
@@ -108,6 +112,24 @@ class UploadContentUseCase:
             organization_id=organization_id
         )
 
+        # 2.5. Scan for viruses (CRITICAL FIX P0-14)
+        try:
+            scanner = get_virus_scanner()
+            is_clean, scan_result = scanner.scan_file(storage_result['file_path'])
+
+            if not is_clean:
+                # Virus detected - cleanup uploaded file
+                await self.storage.delete_file(storage_result['storage_key'])
+                raise ValueError(f"File rejected: {scan_result}")
+
+            print(f"[Virus Scan] {storage_result['file_path'].name}: {scan_result}")
+
+        except (ConnectionError, TimeoutError) as e:
+            # ClamAV unavailable - log warning but allow upload
+            # This prevents blocking uploads if ClamAV is down
+            logger.warning(f"Virus scan unavailable, allowing upload: {e}")
+            print(f"[Virus Scan] WARNING: Scan unavailable - {e}")
+
         # 3. Check for duplicate files (same hash + org)
         existing = self.content_repo.find_by_hash(
             file_hash=storage_result['file_hash'],
@@ -178,8 +200,19 @@ class UploadContentUseCase:
         # Validate business rules (raises ValueError if invalid)
         content.__post_init__()
 
-        # 7. Save to database
-        saved_content = self.content_repo.create(content)
+        # 7. Save to database (CRITICAL FIX P0-11: Cleanup file on failure)
+        try:
+            saved_content = self.content_repo.create(content)
+        except Exception as e:
+            # Database save failed - cleanup uploaded file to prevent orphans
+            try:
+                await self.storage.delete_file(storage_result['storage_key'])
+                print(f"[Upload Cleanup] Deleted orphaned file: {storage_result['storage_key']}")
+            except Exception as cleanup_error:
+                print(f"[Upload Cleanup] Failed to delete orphaned file: {cleanup_error}")
+
+            # Re-raise original exception
+            raise
 
         # 8. Queue background tasks
         if content_type == 'video':

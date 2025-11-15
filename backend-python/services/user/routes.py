@@ -101,9 +101,14 @@ def get_delete_user_use_case(user_repo = Depends(get_user_repository)) -> Delete
     return DeleteUserUseCase(user_repo)
 
 
-def get_change_password_use_case(user_repo = Depends(get_user_repository)) -> ChangePasswordUseCase:
-    """Get change password use case"""
-    return ChangePasswordUseCase(user_repo)
+def get_change_password_use_case(
+    user_repo = Depends(get_user_repository),
+    db: Session = Depends(get_db)
+) -> ChangePasswordUseCase:
+    """Get change password use case with session repository for revoking sessions (P0-16)"""
+    from services.session.repositories.session_repo import SessionRepository
+    session_repo = SessionRepository(db)
+    return ChangePasswordUseCase(user_repo, session_repo)
 
 
 # =============================================================================

@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Check Icons Status</title>
+    <style>
+        body {
+            font-family: monospace;
+            background: #1a1a1a;
+            color: #fff;
+            padding: 20px;
+        }
+        .result {
+            background: #2a2a2a;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 8px;
+        }
+        .success { color: #4ade80; }
+        .error { color: #f87171; }
+        button {
+            background: #3b82f6;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px 0;
+        }
+        button:hover { background: #2563eb; }
+        img { max-width: 100%; border: 2px solid #444; margin-top: 10px; }
+    </style>
+</head>
+<body>
+    <h1>🔍 Icon Status Checker</h1>
+    <p>Checking http://192.168.5.12:8080/</p>
+
+    <button onclick="checkIcons()">Check Icons</button>
+    <button onclick="takeScreenshot()">Take Screenshot</button>
+
+    <div id="results"></div>
+
+    <script>
+        async function checkIcons() {
+            const results = document.getElementById('results');
+            results.innerHTML = '<p>Loading...</p>';
+
+            try {
+                // Fetch the HTML
+                const response = await fetch('http://192.168.5.12:8080/');
+                const html = await response.text();
+
+                // Check for icons
+                const checks = [
+                    { name: 'network-status', pattern: 'id="network-status"' },
+                    { name: 'server-status', pattern: 'id="server-status"' },
+                    { name: 'device-info-btn', pattern: 'id="device-info-btn"' },
+                    { name: 'enter-fullscreen-btn', pattern: 'id="enter-fullscreen-btn"' },
+                    { name: 'connection-status container', pattern: 'id="connection-status"' },
+                    { name: 'connection-log-popup', pattern: 'id="connection-log-popup"' }
+                ];
+
+                let output = '<div class="result">';
+                output += '<h2>HTML Elements Check:</h2>';
+
+                checks.forEach(check => {
+                    const found = html.includes(check.pattern);
+                    const status = found ? '<span class="success">✅ FOUND</span>' : '<span class="error">❌ NOT FOUND</span>';
+                    output += `<div>${check.name}: ${status}</div>`;
+                });
+
+                output += '</div>';
+
+                // Check CSS for connection-status
+                output += '<div class="result">';
+                output += '<h2>CSS Styles Check:</h2>';
+
+                const cssChecks = [
+                    'position: fixed;',
+                    'top: 20px;',
+                    'left: 20px;',
+                    '#connection-status',
+                    '#network-status',
+                    '#server-status'
+                ];
+
+                cssChecks.forEach(css => {
+                    const found = html.includes(css);
+                    const status = found ? '<span class="success">✅ FOUND</span>' : '<span class="error">❌ NOT FOUND</span>';
+                    output += `<div>"${css}": ${status}</div>`;
+                });
+
+                output += '</div>';
+
+                // Extract connection-status CSS
+                const cssMatch = html.match(/#connection-status\s*{[^}]+}/);
+                if (cssMatch) {
+                    output += '<div class="result">';
+                    output += '<h2>#connection-status CSS:</h2>';
+                    output += '<pre>' + cssMatch[0] + '</pre>';
+                    output += '</div>';
+                }
+
+                // Extract the full connection-status HTML
+                const connectionStatusMatch = html.match(/<div id="connection-status">[\s\S]*?<\/div>\s*<\/div>/);
+                if (connectionStatusMatch) {
+                    output += '<div class="result">';
+                    output += '<h2>Connection Status HTML:</h2>';
+                    output += '<pre>' + connectionStatusMatch[0].substring(0, 500) + '...</pre>';
+                    output += '</div>';
+                }
+
+                results.innerHTML = output;
+
+            } catch (error) {
+                results.innerHTML = `<div class="result error">Error: ${error.message}</div>`;
+            }
+        }
+
+        async function takeScreenshot() {
+            const results = document.getElementById('results');
+            results.innerHTML += '<div class="result">Opening player in new window for screenshot...</div>';
+            window.open('http://192.168.5.12:8080/', '_blank');
+        }
+
+        // Auto-run on load
+        window.onload = checkIcons;
+    </script>
+</body>
+</html>

@@ -7,9 +7,17 @@
 export { dbManager, IndexedDBManager } from './indexed-db-manager';
 export type { StorageEstimate, StoreData, TransactionMode } from './indexed-db.types';
 
+// Device Config Storage
+export { deviceConfigStorage, DeviceConfigStorage } from './device-config-storage';
+export type { DeviceConfig } from './device-config-storage';
+
 // Media Cache
 export { mediaCache, MediaCache } from './media-cache';
 export type { CachedMediaEntry, ContentCacheInfo, CacheSyncResult } from './media-cache.types';
+
+// Connection Log Storage
+export { ConnectionLogStorage } from './connection-log-storage';
+export type { ConnectionLogEntry } from './connection-log-storage';
 
 // Schema and Constants
 export {

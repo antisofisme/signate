@@ -3,7 +3,8 @@ Rate Limiter
 Protects endpoints from brute force attacks and abuse
 
 Features:
-- In-memory rate limiting (can be upgraded to Redis)
+- Redis-backed rate limiting (production-ready, multi-worker safe)
+- In-memory fallback (for development/testing)
 - Configurable rate limits per endpoint
 - IP-based tracking
 - Automatic cleanup of old records
@@ -15,16 +16,83 @@ from fastapi import HTTPException, Request, status
 import threading
 import functools
 import inspect
+import os
+import redis
+import time
+
+
+class RedisRateLimiter:
+    """
+    Redis-backed rate limiter for production multi-worker environments
+
+    Uses Redis sorted sets to track request timestamps
+    Thread-safe and works across multiple processes/workers
+    """
+
+    def __init__(self, redis_url: str = None):
+        """
+        Initialize Redis rate limiter
+
+        Args:
+            redis_url: Redis connection URL (default: from REDIS_URL env var)
+        """
+        url = redis_url or os.getenv('REDIS_URL', 'redis://localhost:6379/0')
+        self.redis = redis.from_url(url, decode_responses=True)
+        self.prefix = "rate_limit:"
+
+    def check_rate_limit(
+        self,
+        identifier: str,
+        max_requests: int,
+        window_seconds: int
+    ) -> tuple[bool, Optional[int]]:
+        """
+        Check if rate limit is exceeded using Redis sorted sets
+
+        Args:
+            identifier: Unique identifier (e.g., IP address)
+            max_requests: Maximum number of requests allowed
+            window_seconds: Time window in seconds
+
+        Returns:
+            Tuple of (is_allowed, retry_after_seconds)
+        """
+        key = f"{self.prefix}{identifier}"
+        now = time.time()
+        cutoff_time = now - window_seconds
+
+        # Remove old entries outside the window
+        self.redis.zremrangebyscore(key, 0, cutoff_time)
+
+        # Count current requests in window
+        current_count = self.redis.zcard(key)
+
+        if current_count >= max_requests:
+            # Get oldest request timestamp
+            oldest = self.redis.zrange(key, 0, 0, withscores=True)
+            if oldest:
+                oldest_time = oldest[0][1]
+                retry_after = int(oldest_time + window_seconds - now)
+                return False, max(1, retry_after)
+            return False, window_seconds
+
+        # Add current request with timestamp as score and value
+        self.redis.zadd(key, {str(now): now})
+
+        # Set expiration to window size to auto-cleanup
+        self.redis.expire(key, window_seconds * 2)
+
+        return True, None
 
 
 class RateLimiter:
     """
-    Simple in-memory rate limiter with automatic cleanup
+    Simple in-memory rate limiter with automatic cleanup (fallback mode)
 
     Tracks request counts per IP address and enforces limits
     Includes protection against memory exhaustion attacks
 
-    For production with multiple workers, consider using Redis
+    Note: Use RedisRateLimiter for production with multiple workers
     """
 
     def __init__(self, max_tracked_ips: int = 10000):
@@ -161,8 +229,31 @@ class RateLimiter:
         self._requests = identifiers_to_keep
 
 
-# Global rate limiter instance
-_rate_limiter = RateLimiter()
+# Global rate limiter instance (auto-detect Redis)
+def _create_rate_limiter():
+    """
+    Create rate limiter instance based on environment
+
+    Uses Redis if REDIS_URL is available, otherwise falls back to in-memory
+    """
+    redis_url = os.getenv('REDIS_URL')
+
+    if redis_url:
+        try:
+            limiter = RedisRateLimiter(redis_url)
+            # Test connection
+            limiter.redis.ping()
+            print(f"[Rate Limiter] Using Redis backend: {redis_url}")
+            return limiter
+        except Exception as e:
+            print(f"[Rate Limiter] Redis connection failed: {e}, falling back to in-memory")
+    else:
+        print(f"[Rate Limiter] REDIS_URL not set, using in-memory fallback")
+
+    return RateLimiter()
+
+
+_rate_limiter = _create_rate_limiter()
 
 
 def get_client_ip(request: Request) -> str:

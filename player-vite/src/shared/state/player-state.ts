@@ -69,6 +69,7 @@ import { SharedLogger } from '@shared/logger';
 import { SharedEventBus } from '@shared/events/shared-event-bus';
 import { Playlist, Content } from '@shared/models';
 import type { PlaylistData } from '@shared/models';
+import { ServiceRegistry } from '@shared/services/service-registry';
 
 /**
  * Player state interface
@@ -370,7 +371,8 @@ declare global {
 }
 
 if (typeof window !== 'undefined') {
-  window.PlayerState = PlayerState;
+  // Register to ServiceRegistry
+  ServiceRegistry.register('PlayerState', PlayerState);
 }
 
 SharedLogger.log('[State/PlayerState] Player state manager loaded');

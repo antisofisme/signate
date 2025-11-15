@@ -113,11 +113,16 @@ def transcode_to_hls(self, content_id: int):
     except Exception as e:
         print(f"[Transcode] Error: {str(e)}")
 
-        # Update status to failed
+        # CRITICAL FIX P0-15: Mark content as failed and consider cleanup
         if content:
             content.transcoding_status = 'failed'
             content.transcoding_progress = 0
+            content.upload_status = 'failed'  # Mark upload as failed
             db.commit()
+
+            print(f"[Transcode] Content {content_id} marked as failed")
+            print(f"[Transcode] File path: {content.file_path}")
+            print(f"[Transcode] Note: File kept for debugging. Manual cleanup may be needed.")
 
         raise
 
@@ -208,6 +213,14 @@ def generate_thumbnail(self, content_id: int):
 
     except Exception as e:
         print(f"[Thumbnail] Error: {str(e)}")
+
+        # CRITICAL FIX P0-15: Mark content as failed on thumbnail generation failure
+        if content:
+            # For thumbnail failures, don't mark upload as failed (it's not critical)
+            # Just log the error - content can still be used without thumbnail
+            print(f"[Thumbnail] Thumbnail generation failed for content {content_id}")
+            print(f"[Thumbnail] Content is still usable without thumbnail")
+
         raise
 
     finally:

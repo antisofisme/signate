@@ -250,7 +250,7 @@ class DeviceGroupRepository:
             sort_order=db_group.sort_order,
             default_playlist_id=db_group.default_playlist_id,
             deleted_at=db_group.deleted_at,
-            created_by_id=db_group.created_by_id,
+            created_by=db_group.created_by_id,
             created_at=db_group.created_at,
             updated_at=db_group.updated_at,
         )
@@ -264,5 +264,5 @@ class DeviceGroupRepository:
             device_id=db_member.device_id,
             group_id=db_member.group_id,
             joined_at=db_member.joined_at,
-            added_by_id=db_member.added_by_id,
+            added_by=db_member.added_by_id,
         )

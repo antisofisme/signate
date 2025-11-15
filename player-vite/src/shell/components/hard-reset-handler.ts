@@ -11,7 +11,8 @@
 
 import { SharedLogger } from '@shared/logger';
 import { SharedToast, SharedModal } from '@shared/ui';
-import { SharedDeviceState } from '@shared/device';
+import { deviceConfigStorage } from '@shared/storage';
+import { SharedAPIClient } from '@shared/api';
 
 /**
  * Hard Reset Handler Manager Class
@@ -36,112 +37,102 @@ class HardResetHandlerManager {
   }
 
   /**
-   * Clear localStorage and IndexedDB, then reload page
-   * Called after password validation
+   * Clear ALL device config and IndexedDB, then reload page
+   * Called after backend confirms hard reset
+   *
+   * Flow (Factory Reset):
+   * 1. Clear ALL device config (including org_id)
+   * 2. Clear media cache
+   * 3. Reload page
+   * 4. Device requests code WITHOUT org_id
+   * 5. Device appears in GLOBAL pending list
    */
-  private executeReset(): void {
+  private async executeReset(): Promise<void> {
     // Set flag to prevent double execution
     this.isResetting = true;
-    SharedLogger.log('[HardReset] Password verified, executing hard reset...');
-
-    // Log BEFORE clear
-    console.log('[HardReset] BEFORE clear - localStorage:', {
-      deviceId: localStorage.getItem('device_id'),
-      status: localStorage.getItem('device_status'),
-      code: localStorage.getItem('device_code'),
-      organizationId: localStorage.getItem('organization_id'),
-    });
-
-    // Clear localStorage (includes device data)
-    localStorage.clear();
-
-    // Verify cleared
-    console.log('[HardReset] AFTER clear - localStorage:', {
-      deviceId: localStorage.getItem('device_id'),
-      status: localStorage.getItem('device_status'),
-      code: localStorage.getItem('device_code'),
-      organizationId: localStorage.getItem('organization_id'),
-    });
-    SharedLogger.log('[HardReset] localStorage cleared (all device data removed)');
-
-    // Clear IndexedDB cache
-    let reloadExecuted = false; // Prevent multiple reloads
-
-    const executeReload = (): void => {
-      if (!reloadExecuted) {
-        reloadExecuted = true;
-        SharedLogger.log('[HardReset] Reloading page to complete hard reset...');
-        // Use location.replace() to prevent browser from restoring localStorage from cache
-        setTimeout(() => location.replace(location.href), 100); // Small delay for logs
-      }
-    };
+    SharedLogger.log('[HardReset] Backend confirmed, executing hard reset...');
 
     try {
-      // Try to open PlayerCache DB and clear it
-      const dbName = 'signage_media_cache';
-      const deleteRequest = indexedDB.deleteDatabase(dbName);
+      // Clear ALL device config (including org_id)
+      await deviceConfigStorage.hardReset();
+      SharedLogger.log('[HardReset] ✅ Device config cleared (ALL data including org_id)');
 
-      deleteRequest.onsuccess = () => {
-        SharedLogger.log('[HardReset] IndexedDB cache deleted');
-        executeReload();
-      };
+      // Clear localStorage for backward compatibility
+      localStorage.clear();
+      SharedLogger.log('[HardReset] ✅ localStorage cleared');
 
-      deleteRequest.onerror = () => {
-        SharedLogger.error('[HardReset] IndexedDB delete failed, reloading anyway');
-        executeReload();
-      };
-
-      deleteRequest.onblocked = () => {
-        SharedLogger.warn('[HardReset] IndexedDB delete blocked, reloading anyway');
-        executeReload();
-      };
-
-      // Fallback: If nothing happens in 2 seconds, reload anyway
+      // Reload to trigger re-registration WITHOUT org_id
+      SharedLogger.log('[HardReset] 🔄 Reloading page to trigger re-registration (global pending)...');
       setTimeout(() => {
-        if (!reloadExecuted) {
-          SharedLogger.warn('[HardReset] IndexedDB delete timeout, reloading...');
-          executeReload();
-        }
-      }, 2000);
+        location.replace(location.href);
+      }, 500);
     } catch (error) {
-      SharedLogger.error('[HardReset] Error deleting IndexedDB:', error);
-      executeReload();
+      SharedLogger.error('[HardReset] ❌ Failed to clear device config:', error);
+      SharedToast.error('Hard reset failed. Please try again.');
+      this.isResetting = false;
     }
   }
 
   /**
-   * Validate password locally and execute reset if valid
+   * Validate password via backend API and execute reset if valid
    *
-   * Logic:
-   * - If device has organization_pin → use organization PIN (6 digits)
-   * - If no organization_pin → use default password 'admin123'
+   * Flow:
+   * 1. Send password to backend for validation
+   * 2. If valid, backend sets status='released'
+   * 3. Backend returns success
+   * 4. Clear ALL device config (including org_id)
+   * 5. Reload → device requests code WITHOUT org_id
+   * 6. Device appears in GLOBAL pending list
    */
   private async validatePasswordAndReset(password: string): Promise<void> {
     try {
-      // Get organization PIN from localStorage
-      const organizationPin = SharedDeviceState.getOrganizationPin();
+      // Get device ID
+      const deviceConfig = await deviceConfigStorage.getDeviceConfig();
+      const deviceId = deviceConfig.device_id;
 
-      // Determine correct password
-      const correctPassword = organizationPin || 'admin123';
-
-      SharedLogger.log('[HardReset] Validating password...', {
-        hasOrgPin: !!organizationPin,
-        expectedPasswordType: organizationPin ? 'Organization PIN' : 'Default (admin123)'
-      });
-
-      // Validate password
-      if (password === correctPassword) {
-        SharedLogger.log('[HardReset] ✅ Password validated locally');
-        this.executeReset();
-      } else {
-        SharedToast.error('Incorrect Password. Reset cancelled. Please try again.');
-        SharedLogger.error('[HardReset] ❌ Hard reset failed - wrong password');
-        this.isResetting = false; // Reset flag
+      if (!deviceId) {
+        SharedToast.error('Device not configured. Cannot perform hard reset.');
+        SharedLogger.error('[HardReset] No device_id found');
+        this.isResetting = false;
+        return;
       }
-    } catch (error) {
-      SharedLogger.error('[HardReset] Error validating password:', error);
-      SharedToast.error('Could not validate password. Please try again.');
-      this.isResetting = false; // Reset flag
+
+      SharedLogger.log('[HardReset] Validating password with backend...', { deviceId });
+
+      // Step 1: Validate password via backend
+      const validation = await SharedAPIClient.post<{ valid: boolean; message: string }>(
+        '/api/v1/devices/validate-reset-password',
+        {
+          password,
+          device_id: deviceId,
+        }
+      );
+
+      if (!validation.valid) {
+        SharedToast.error('Incorrect password. Hard reset cancelled.');
+        SharedLogger.error('[HardReset] ❌ Password validation failed');
+        this.isResetting = false;
+        return;
+      }
+
+      SharedLogger.log('[HardReset] ✅ Password validated by backend');
+
+      // Step 2: Call backend hard reset endpoint
+      await SharedAPIClient.post(`/api/v1/devices/${deviceId}/hard-reset`);
+      SharedLogger.log('[HardReset] ✅ Backend hard reset endpoint called');
+
+      // Step 3: Clear ALL local data and reload
+      await this.executeReset();
+    } catch (error: any) {
+      SharedLogger.error('[HardReset] Error during hard reset:', error);
+
+      if (error?.response?.status === 404) {
+        SharedToast.error('Device not found. Please contact administrator.');
+      } else {
+        SharedToast.error('Hard reset failed. Please try again.');
+      }
+
+      this.isResetting = false;
     }
   }
 
@@ -150,7 +141,7 @@ class HardResetHandlerManager {
    * Prompts for password before executing reset
    */
   private setupResetButton(): void {
-    const resetBtn = document.getElementById('hard-reset-btn');
+    const resetBtn = document.getElementById('factory-reset-btn');
 
     if (resetBtn) {
       resetBtn.addEventListener('click', async () => {
@@ -166,11 +157,20 @@ class HardResetHandlerManager {
         let password: string;
         try {
           password = await SharedModal.prompt(
-            'Hard Reset Device',
+            'Factory Reset Device',
             'This will ERASE ALL DATA and require re-activation. Enter admin password to confirm:'
           );
-        } catch (err) {
-          SharedLogger.log('[HardReset] Hard reset cancelled (modal closed)');
+        } catch (err: any) {
+          // User cancelled or didn't enter password
+          const errorMsg = err?.message || 'Unknown error';
+
+          if (errorMsg === 'No input provided') {
+            SharedToast.warning('Password required for factory reset.');
+            SharedLogger.log('[HardReset] Hard reset cancelled - no password provided');
+          } else {
+            SharedLogger.log('[HardReset] Hard reset cancelled (modal closed)');
+          }
+
           return;
         }
 

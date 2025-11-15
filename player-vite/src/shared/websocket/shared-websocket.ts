@@ -14,6 +14,7 @@ import { config } from '@shared/config';
 import { SharedLogger } from '@shared/logger';
 import { SharedDeviceState } from '@shared/device';
 import { SharedEventBus, EventNames } from '@shared/events/shared-event-bus';
+import { ServiceRegistry } from '@shared/services/service-registry';
 
 /**
  * WebSocket message types
@@ -422,5 +423,6 @@ export const SharedWebSocket = new SharedWebSocketClass();
 
 // Make available globally for compatibility
 if (typeof window !== 'undefined') {
-  window.SharedWebSocket = SharedWebSocket;
+  // Register to ServiceRegistry
+  ServiceRegistry.register('SharedWebSocket', SharedWebSocket);
 }

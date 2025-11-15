@@ -121,11 +121,13 @@ class FullscreenManagerClass {
       const enterBtn = document.getElementById('enter-fullscreen-btn');
       const exitBtn = document.getElementById('exit-fullscreen-btn');
       const orgPinBtn = document.getElementById('org-pin-btn');
-      const resetBtn = document.getElementById('hard-reset-btn');
+      const clearCacheBtn = document.getElementById('clear-cache-btn');
+      const factoryResetBtn = document.getElementById('factory-reset-btn');
+      const deviceInfoBtn = document.getElementById('device-info-btn');
 
-      // Define smaller hover area: right 100px, top 150px (reduced from 150x220)
+      // Define hover area: right 100px, top 300px (untuk mencakup semua tombol sampai device info)
       const hoverAreaRight = 100;
-      const hoverAreaTop = 150;
+      const hoverAreaTop = 300;
 
       const isNowInHoverArea = mouseX > screenWidth - hoverAreaRight && mouseY < hoverAreaTop;
 
@@ -142,17 +144,19 @@ class FullscreenManagerClass {
         hoverTimeout = window.setTimeout(() => {
           // Show buttons based on fullscreen state
           if (document.fullscreenElement) {
-            // In fullscreen - show exit and reset buttons
+            // In fullscreen - show exit button
             exitBtn?.classList.add('show');
             enterBtn?.classList.remove('show');
           } else {
-            // Not in fullscreen - show enter and reset buttons
+            // Not in fullscreen - show enter button
             enterBtn?.classList.add('show');
             exitBtn?.classList.remove('show');
           }
-          // Always show org-pin and reset buttons in hover area
+          // Always show all utility buttons in hover area
           orgPinBtn?.classList.add('show');
-          resetBtn?.classList.add('show');
+          clearCacheBtn?.classList.add('show');
+          factoryResetBtn?.classList.add('show');
+          deviceInfoBtn?.classList.add('show');
         }, 300); // Require 300ms hover before showing buttons
       }
       // If leaving hover area
@@ -169,7 +173,9 @@ class FullscreenManagerClass {
         enterBtn?.classList.remove('show');
         exitBtn?.classList.remove('show');
         orgPinBtn?.classList.remove('show');
-        resetBtn?.classList.remove('show');
+        clearCacheBtn?.classList.remove('show');
+        factoryResetBtn?.classList.remove('show');
+        deviceInfoBtn?.classList.remove('show');
       }
     });
   }

@@ -19,8 +19,11 @@ export interface ActivationCheckResponse {
   device_name?: string;
   organization_id?: number;
   organization_pin?: string; // 6-digit PIN for hard reset
-  expired?: boolean;
   message?: string;
+  access_token?: string;
+  refresh_token?: string;
+  token_expires_at?: number;
+  unique_code?: string;
 }
 
 export interface VerifyDeviceResponse {
@@ -47,8 +50,8 @@ export interface RetryConfig {
 export interface ShellRegistration {
   generateActivationCode(): string;
   registerDevice(): Promise<void>;
-  getPendingCode(): string | null;
-  setPendingCode(code: string | null): void;
+  getPendingCode(): Promise<string | null>;
+  setPendingCode(code: string | null): Promise<void>;
   getRetryCount(): number;
   incrementRetryCount(): number;
   clearRetryCount(): void;

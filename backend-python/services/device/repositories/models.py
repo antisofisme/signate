@@ -3,9 +3,10 @@ SQLAlchemy Models
 Database representation for Device
 """
 
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, Float, ForeignKey, UniqueConstraint, Index
+from sqlalchemy import Column, Integer, String, Boolean, DateTime, Float, ForeignKey, UniqueConstraint, Index, Text
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
+from sqlalchemy.dialects.postgresql import JSONB
 from shared.database import Base
 
 
@@ -267,3 +268,42 @@ class DeviceGroupMemberModel(Base):
     device = relationship("DeviceModel", back_populates="group_memberships")
     group = relationship("DeviceGroupModel")
     added_by_user = relationship("UserModel", foreign_keys=[added_by_id])
+
+
+class DeviceConnectionLogModel(Base):
+    """Device Connection Log database model"""
+    __tablename__ = "device_connection_logs"
+
+    # Primary key
+    id = Column(Integer, primary_key=True, index=True)
+
+    # Foreign key
+    device_id = Column(Integer, ForeignKey("devices.id", ondelete="CASCADE"), nullable=False, index=True)
+
+    # Log data
+    logged_at = Column(DateTime(timezone=True), nullable=False, index=True)
+    event_type = Column(String(50), nullable=False, index=True)  # 'network', 'server', 'speed_test'
+    status = Column(String(20), nullable=False)  # 'online', 'offline', 'connected', 'disconnected', 'tested'
+
+    # Optional metrics
+    latency_ms = Column(Integer, nullable=True)
+    error_message = Column(Text, nullable=True)
+    download_speed_mbps = Column(__import__('sqlalchemy').Numeric(10, 2), nullable=True)
+    upload_speed_mbps = Column(__import__('sqlalchemy').Numeric(10, 2), nullable=True)
+
+    # Dedicated columns for frequently queried fields (added in migration 046)
+    connection_type = Column(String(20), nullable=True)  # Network connection type
+    effective_type = Column(String(10), nullable=True)  # Effective network type
+    rtt_ms = Column(Integer, nullable=True)  # Round-trip time
+    endpoint = Column(String(200), nullable=True)  # API endpoint accessed
+    http_status = Column(Integer, nullable=True)  # HTTP status code
+    test_trigger = Column(String(10), nullable=True)  # Speed test trigger (auto/manual)
+    test_duration_ms = Column(Integer, nullable=True)  # Speed test duration
+
+    extra_metadata = Column("metadata", type_=JSONB, nullable=True)  # Use 'metadata' as column name in DB, 'extra_metadata' in Python
+
+    # Audit trail
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+
+    # Relationships
+    device = relationship("DeviceModel", foreign_keys=[device_id])

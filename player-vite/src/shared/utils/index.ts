@@ -50,3 +50,9 @@ export {
   getDeviceInfo,
   type Platform,
 } from './device-info';
+
+// Device fingerprinting
+export {
+  generateDeviceFingerprint,
+  getOrCreateDeviceUUID,
+} from './device-fingerprint';

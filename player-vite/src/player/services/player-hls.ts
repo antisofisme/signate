@@ -14,6 +14,7 @@ import Hls from 'hls.js';
 import { SharedLogger } from '@shared/logger';
 import { PlayerPlaybackLogger } from './player-playback-logger';
 import { playerWidgetRenderer } from './player-widget-renderer';
+import { ServiceRegistry } from '@shared/services/service-registry';
 import type {
   PlayerHLS as IPlayerHLS,
   Playlist,
@@ -524,7 +525,7 @@ class PlayerHLSClass implements IPlayerHLS {
 // Export singleton instance
 export const PlayerHLS = new PlayerHLSClass();
 
-// Make available globally for compatibility
+// Register to ServiceRegistry (replaces window.*)
 if (typeof window !== 'undefined') {
-  window.PlayerHLS = PlayerHLS;
+  ServiceRegistry.register('PlayerHLS', PlayerHLS);
 }

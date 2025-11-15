@@ -94,7 +94,7 @@ class ContentResponse(BaseModel):
             transcoding_progress=content.transcoding_progress,
             upload_status=content.upload_status,
             organization_id=content.organization_id,
-            uploaded_by_id=content.uploaded_by_id,
+            uploaded_by=content.uploaded_by_id,
             created_at=content.created_at,
             updated_at=content.updated_at
         )

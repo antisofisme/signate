@@ -13,6 +13,7 @@
 
 import { SharedLogger } from '@shared/logger';
 import { SharedEventBus, EventNames } from '@shared/events/shared-event-bus';
+import { ServiceRegistry } from '@shared/services/service-registry';
 
 /**
  * Shared Offline Handler Class
@@ -282,7 +283,8 @@ declare global {
 }
 
 if (typeof window !== 'undefined') {
-  window.SharedOfflineHandler = SharedOfflineHandler;
+  // Register to ServiceRegistry
+  ServiceRegistry.register('SharedOfflineHandler', SharedOfflineHandler);
 }
 
 // Auto-initialize when module is imported

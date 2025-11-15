@@ -80,7 +80,7 @@ class CreateUserUseCase:
             )
 
         # Check username uniqueness within organization (CRITICAL FIX P0-6)
-        existing_user = self.user_repo.find_by_username_in_org(username, organization_id)
+        existing_user = self.user_repo.find_by_username(username, organization_id)
 
         if existing_user:
             raise ValidationError(
@@ -98,7 +98,7 @@ class CreateUserUseCase:
             )
 
         # Check email uniqueness within organization (CRITICAL FIX P0-6)
-        existing_email = self.user_repo.find_by_email_in_org(email, organization_id)
+        existing_email = self.user_repo.find_by_email(email, organization_id)
 
         if existing_email:
             raise ValidationError(

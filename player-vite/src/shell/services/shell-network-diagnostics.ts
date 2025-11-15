@@ -14,6 +14,7 @@ import { SharedLogger } from '@shared/logger';
 import { SharedEventBus } from '@shared/events/shared-event-bus';
 import { config } from '@shared/config';
 import { SharedAPIClient } from '@shared/api/shared-api-client';
+import { ServiceRegistry } from '@shared/services/service-registry';
 
 /**
  * Speed test result
@@ -379,5 +380,6 @@ declare global {
 }
 
 if (typeof window !== 'undefined') {
-  window.ShellNetworkDiagnostics = ShellNetworkDiagnostics;
+  // Register to ServiceRegistry
+  ServiceRegistry.register('ShellNetworkDiagnostics', ShellNetworkDiagnostics);
 }

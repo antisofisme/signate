@@ -28,6 +28,7 @@ from services.device.assignment_routes import router as device_assignment_router
 from services.device.command_routes import router as device_command_router
 from services.device.health_routes import router as device_health_router
 from services.device.log_routes import router as device_log_router
+from services.device.connection_log_routes import router as device_connection_log_router
 from services.device.extended_routes import router as device_extended_router
 from services.device.group_routes import router as device_group_router
 from services.organization.routes import router as organization_router
@@ -230,6 +231,7 @@ app.include_router(device_assignment_router, prefix="/api/v1", tags=["Device Ass
 app.include_router(device_command_router, prefix="/api/v1", tags=["Device Commands"])
 app.include_router(device_health_router, prefix="/api/v1", tags=["Device Health"])
 app.include_router(device_log_router, prefix="/api/v1", tags=["Device Logs"])
+app.include_router(device_connection_log_router, prefix="/api/v1", tags=["Device Connection Logs"])
 app.include_router(device_extended_router, prefix="/api/v1", tags=["Device Extended"])
 app.include_router(organization_router, tags=["Organization Management"])
 app.include_router(user_router, tags=["User Management"])

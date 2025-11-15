@@ -21,10 +21,6 @@ export const defaultTranslations = {
     'activation.title': 'Digital Signage',
     'activation.instruction': 'Register this code in CMS to add device to your organization',
     'activation.waiting': 'Waiting for activation...',
-    'activation.expired': 'Activation Code Expired',
-    'activation.expired.message': 'Your activation code has expired. Would you like to generate a new one?',
-    'activation.regenerate': 'Generate New Code',
-    'activation.code_expires': 'Code expires in:',
     
     // Player
     'player.loading': 'Loading content...',
@@ -84,10 +80,6 @@ export const defaultTranslations = {
     'activation.title': 'Digital Signage',
     'activation.instruction': 'Daftarkan kode ini di CMS untuk menambahkan perangkat ke organisasi Anda',
     'activation.waiting': 'Menunggu aktivasi...',
-    'activation.expired': 'Kode Aktivasi Kedaluwarsa',
-    'activation.expired.message': 'Kode aktivasi Anda telah kedaluwarsa. Apakah Anda ingin membuat yang baru?',
-    'activation.regenerate': 'Buat Kode Baru',
-    'activation.code_expires': 'Kode kedaluwarsa dalam:',
     
     // Player
     'player.loading': 'Memuat konten...',
@@ -147,10 +139,6 @@ export const defaultTranslations = {
     'activation.title': '数字标牌',
     'activation.instruction': '在CMS中注册此代码以将设备添加到您的组织',
     'activation.waiting': '等待激活...',
-    'activation.expired': '激活码已过期',
-    'activation.expired.message': '您的激活码已过期。您想生成一个新的吗？',
-    'activation.regenerate': '生成新代码',
-    'activation.code_expires': '代码过期时间：',
     
     // Player
     'player.loading': '正在加载内容...',
@@ -200,10 +188,6 @@ export const defaultTranslations = {
     'activation.title': 'デジタルサイネージ',
     'activation.instruction': 'このコードをCMSに登録して、デバイスを組織に追加してください',
     'activation.waiting': 'アクティベーション待機中...',
-    'activation.expired': 'アクティベーションコードの有効期限が切れました',
-    'activation.expired.message': 'アクティベーションコードの有効期限が切れました。新しいコードを生成しますか？',
-    'activation.regenerate': '新しいコードを生成',
-    'activation.code_expires': 'コードの有効期限：',
     
     // Player
     'player.loading': 'コンテンツを読み込み中...',
@@ -253,10 +237,6 @@ export const defaultTranslations = {
     'activation.title': '디지털 사이니지',
     'activation.instruction': 'CMS에 이 코드를 등록하여 조직에 장치를 추가하세요',
     'activation.waiting': '활성화 대기 중...',
-    'activation.expired': '활성화 코드 만료',
-    'activation.expired.message': '활성화 코드가 만료되었습니다. 새 코드를 생성하시겠습니까?',
-    'activation.regenerate': '새 코드 생성',
-    'activation.code_expires': '코드 만료 시간:',
     
     // Player
     'player.loading': '콘텐츠 로딩 중...',

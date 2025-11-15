@@ -179,7 +179,7 @@ def create_playlist(
             priority=request_body.priority,
             schedule=request_body.schedule,
             organization_id=current_user.organization_id,
-            created_by_id=current_user.id,
+            created_by=current_user.id,
         )
 
         # Audit log

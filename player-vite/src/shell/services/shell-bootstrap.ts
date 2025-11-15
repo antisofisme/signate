@@ -16,6 +16,8 @@ import { SharedDeviceState } from '@shared/device';
 import { ShellRegistration } from './shell-registration';
 import { ShellActivationPoll } from './shell-activation-poll';
 import type { ShellBootstrap as IShellBootstrap, VerifyDeviceResponse } from '../types/shell.types';
+import { ServiceRegistry } from '@shared/services/service-registry';
+import { getPlayerMediaCache, getPlayerHeartbeat, getPlayerPlaylistSync, getPlayerCommandExecutor, getPlayerHealthReporter, getSharedWebSocket, getDeviceInfoPopup } from '@shared/services';
 
 /**
  * Shell Bootstrap Class
@@ -66,6 +68,55 @@ class ShellBootstrapClass implements IShellBootstrap {
     SharedLogger.warn('[ShellBootstrap] Unknown device status → Re-registering');
     SharedDeviceState.clearDeviceData();
     await ShellRegistration.registerDevice();
+  }
+
+  /**
+   * Verify device by fingerprint (for cache clear scenario)
+   * Check if device with this fingerprint already exists and is activated
+   */
+  async verifyDeviceByFingerprint(): Promise<boolean> {
+    try {
+      // Import fingerprint utility
+      const { getOrCreateDeviceUUID } = await import('@shared/utils/device-fingerprint');
+      const deviceUUID = getOrCreateDeviceUUID();
+
+      SharedLogger.log('[ShellBootstrap] Device UUID (fingerprint):', deviceUUID);
+
+      // Check backend for device with this UUID
+      const response = await SharedAPIClient.get<any>(
+        `${config.api.baseURL}/api/v1/devices/verify-fingerprint/${deviceUUID}`
+      );
+
+      SharedLogger.log('[ShellBootstrap] Fingerprint verification response:', response);
+
+      if (response.device && response.device.status === 'active') {
+        SharedLogger.log('[ShellBootstrap] ✅ Found activated device from fingerprint');
+
+        // Restore device state to localStorage
+        SharedDeviceState.setDeviceId(response.device.id);
+        SharedDeviceState.setDeviceCode(response.device.unique_code);
+        SharedDeviceState.setDeviceStatus(response.device.status);
+        SharedDeviceState.setDeviceName(response.device.device_name);
+        SharedDeviceState.setOrganizationId(response.device.organization_id);
+
+        if (response.device.organization_pin) {
+          SharedDeviceState.setOrganizationPin(response.device.organization_pin);
+        }
+
+        if (response.token) {
+          SharedDeviceState.setDeviceToken(response.token);
+        }
+
+        SharedLogger.log('[ShellBootstrap] ✅ Device state restored from backend');
+        return true;
+      }
+
+      SharedLogger.log('[ShellBootstrap] No activated device found with this fingerprint');
+      return false;
+    } catch (error) {
+      SharedLogger.warn('[ShellBootstrap] ⚠️ Fingerprint verification failed:', error);
+      return false;
+    }
   }
 
   /**
@@ -123,49 +174,129 @@ class ShellBootstrapClass implements IShellBootstrap {
   }
 
   /**
+   * Stop all player services
+   */
+  private stopPlayerServices(): void {
+    try {
+      SharedLogger.log('[ShellBootstrap] 🛑 Stopping player services...');
+
+      // Stop services in reverse order
+      if (getPlayerHealthReporter()?.stop) {
+        getPlayerHealthReporter().stop();
+        SharedLogger.log('[ShellBootstrap] ✅ HealthReporter stopped');
+      }
+
+      if (getPlayerHeartbeat()?.stop) {
+        getPlayerHeartbeat().stop();
+        SharedLogger.log('[ShellBootstrap] ✅ Heartbeat stopped');
+      }
+
+      if (getPlayerPlaylistSync()?.stop) {
+        getPlayerPlaylistSync().stop();
+        SharedLogger.log('[ShellBootstrap] ✅ PlaylistSync stopped');
+      }
+
+      if (getSharedWebSocket()?.disconnect) {
+        getSharedWebSocket().disconnect();
+        SharedLogger.log('[ShellBootstrap] ✅ WebSocket disconnected');
+      }
+
+      if (getPlayerCommandExecutor()?.destroy) {
+        getPlayerCommandExecutor().destroy();
+        SharedLogger.log('[ShellBootstrap] ✅ CommandExecutor destroyed');
+      }
+
+      // Clear video element
+      const videoElement = document.getElementById('player-video') as HTMLVideoElement;
+      if (videoElement) {
+        videoElement.pause();
+        videoElement.src = '';
+        videoElement.load();
+        SharedLogger.log('[ShellBootstrap] ✅ Video element cleared');
+      }
+
+      SharedLogger.log('[ShellBootstrap] 🛑 All player services stopped');
+    } catch (error) {
+      SharedLogger.error('[ShellBootstrap] ❌ Failed to stop player services:', error);
+    }
+  }
+
+  /**
    * Initialize all player services
    */
   private async initializePlayerServices(): Promise<void> {
     try {
       // 1. Initialize MediaCache
-      if (window.PlayerMediaCache) {
-        await window.PlayerMediaCache.init();
+      if (getPlayerMediaCache()) {
+        await getPlayerMediaCache().init();
         SharedLogger.log('[ShellBootstrap] ✅ MediaCache initialized');
       }
 
-      // 2. Initialize Command Executor
-      if (window.PlayerCommandExecutor) {
-        window.PlayerCommandExecutor.init();
+      // 2-4. Connection logging services already initialized in main.ts
+      // (ConnectionLogger, NetworkSpeedTest, ConnectionLogPopup)
+
+      // 5. Initialize Command Executor
+      if (getPlayerCommandExecutor()) {
+        getPlayerCommandExecutor().init();
         SharedLogger.log('[ShellBootstrap] ✅ CommandExecutor initialized');
       }
 
-      // 3. Connect WebSocket
-      if (window.SharedWebSocket) {
-        window.SharedWebSocket.connect();
+      // 6. Connect WebSocket
+      if (getSharedWebSocket()) {
+        getSharedWebSocket().connect();
         SharedLogger.log('[ShellBootstrap] ✅ WebSocket connected');
       }
 
-      // 4. Start PlaylistSync
-      if (window.PlayerPlaylistSync) {
-        window.PlayerPlaylistSync.start();
+      // 7. Start PlaylistSync
+      if (getPlayerPlaylistSync()) {
+        getPlayerPlaylistSync().start();
         SharedLogger.log('[ShellBootstrap] ✅ PlaylistSync started');
       }
 
-      // 5. Start Heartbeat
-      if (window.PlayerHeartbeat) {
-        window.PlayerHeartbeat.start();
+      // 8. Start Heartbeat
+      if (getPlayerHeartbeat()) {
+        getPlayerHeartbeat().start();
         SharedLogger.log('[ShellBootstrap] ✅ Heartbeat started');
       }
 
-      // 6. Start Health Reporter (Phase 4)
-      if (window.PlayerHealthReporter) {
-        window.PlayerHealthReporter.start();
+      // 9. Start Health Reporter (Phase 4)
+      if (getPlayerHealthReporter()) {
+        getPlayerHealthReporter().start();
         SharedLogger.log('[ShellBootstrap] ✅ HealthReporter started');
+      }
+
+      // 10. Initialize Device Info Popup
+      if (getDeviceInfoPopup()) {
+        getDeviceInfoPopup().init();
+        SharedLogger.log('[ShellBootstrap] ✅ DeviceInfoPopup initialized');
       }
 
       SharedLogger.log('[ShellBootstrap] 🎉 All player services initialized');
     } catch (error) {
       SharedLogger.error('[ShellBootstrap] ❌ Failed to initialize player services:', error);
+    }
+  }
+
+  /**
+   * Reload player services without reloading shell
+   * Used for cache clear, playlist refresh, etc.
+   */
+  async reloadPlayerServices(): Promise<void> {
+    SharedLogger.log('[ShellBootstrap] 🔄 Reloading player services...');
+
+    try {
+      // 1. Stop all player services
+      this.stopPlayerServices();
+
+      // 2. Wait a bit for cleanup
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      // 3. Re-initialize player services
+      await this.initializePlayerServices();
+
+      SharedLogger.log('[ShellBootstrap] ✅ Player services reloaded successfully');
+    } catch (error) {
+      SharedLogger.error('[ShellBootstrap] ❌ Failed to reload player services:', error);
     }
   }
 
@@ -191,5 +322,6 @@ export const ShellBootstrap = new ShellBootstrapClass();
 
 // Make available globally for compatibility
 if (typeof window !== 'undefined') {
-  window.ShellBootstrap = ShellBootstrap;
+  // Register to ServiceRegistry
+  ServiceRegistry.register('ShellBootstrap', ShellBootstrap);
 }

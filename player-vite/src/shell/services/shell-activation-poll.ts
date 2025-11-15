@@ -13,7 +13,10 @@ import { config } from '@shared/config';
 import { SharedLogger } from '@shared/logger';
 import { SharedAPIClient } from '@shared/api';
 import { SharedDeviceState } from '@shared/device';
+import { deviceConfigStorage } from '@shared/storage';
 import type { ShellActivationPoll as IShellActivationPoll, ActivationCheckResponse } from '../types/shell.types';
+import { ServiceRegistry } from '@shared/services/service-registry';
+import { getShellRegistration } from '@shared/services';
 
 /**
  * Shell Activation Poll Class
@@ -80,38 +83,6 @@ class ShellActivationPollClass implements IShellActivationPoll {
 
       SharedLogger.log('[ShellActivationPoll] 📊 Activation status:', data);
 
-      // Handle expired code - clear localStorage and re-register
-      if (data.expired) {
-        SharedLogger.warn('[ShellActivationPoll] ⚠️ Activation code expired - Auto-resetting viewer');
-
-        // Stop polling
-        this.stopPolling();
-
-        // Clear device data (preserve auth)
-        SharedDeviceState.clearDeviceData({ preserveAuth: true });
-
-        // Delete IndexedDB cache
-        await this.clearMediaCache();
-
-        // Verify device data was cleared
-        const deviceIdAfterClear = SharedDeviceState.getDeviceId();
-        if (deviceIdAfterClear) {
-          SharedLogger.error(
-            '[ShellActivationPoll] CRITICAL: device_id still exists after clear!',
-            deviceIdAfterClear
-          );
-          // Force removal
-          SharedDeviceState.clearDeviceData({ preserveAuth: true });
-        }
-
-        // Re-register device
-        SharedLogger.log('[ShellActivationPoll] 🔄 Re-registering device with preserved token & org_id...');
-        if (window.ShellRegistration) {
-          await window.ShellRegistration.registerDevice();
-        }
-        return;
-      }
-
       // Handle activation success
       if (data.activated && data.device_id) {
         SharedLogger.log(
@@ -132,8 +103,9 @@ class ShellActivationPollClass implements IShellActivationPoll {
         this.stopPolling();
 
         // Stop old heartbeat (if running) and wait for pending requests
-        if (window.ShellHeartbeat?.stop) {
-          window.ShellHeartbeat.stop();
+        const shellHeartbeat = ServiceRegistry.get<any>('ShellHeartbeat');
+        if (shellHeartbeat?.stop) {
+          shellHeartbeat.stop();
           SharedLogger.log('[ShellActivationPoll] Stopped old heartbeat, waiting for pending requests...');
           await new Promise((resolve) => setTimeout(resolve, 200));
         }
@@ -148,15 +120,26 @@ class ShellActivationPollClass implements IShellActivationPoll {
           data.organization_id || null
         );
 
+        // Save device config to IndexedDB (for release flow management)
+        await deviceConfigStorage.setDeviceConfig({
+          device_id: newDeviceId,
+          organization_id: data.organization_id || null,
+          access_token: data.access_token || null,
+          refresh_token: data.refresh_token || null,
+          token_expires_at: data.token_expires_at || null,
+          unique_code: data.unique_code || null,
+        });
+        SharedLogger.log('[ShellActivationPoll] ✅ Device config saved to IndexedDB');
+
         // Save organization PIN for hard reset (if provided)
         if (data.organization_pin) {
           SharedDeviceState.setOrganizationPin(data.organization_pin);
           SharedLogger.log(`[ShellActivationPoll] Organization PIN saved: ${data.organization_pin}`);
         }
 
-        // Clear pending code
-        if (window.ShellRegistration) {
-          window.ShellRegistration.setPendingCode(null);
+        // Clear pending code from IndexedDB
+        if (getShellRegistration()) {
+          await getShellRegistration().setPendingCode(null);
         }
 
         // Reload to player context
@@ -193,5 +176,6 @@ export const ShellActivationPoll = new ShellActivationPollClass();
 
 // Make available globally for compatibility
 if (typeof window !== 'undefined') {
-  window.ShellActivationPoll = ShellActivationPoll;
+  // Register to ServiceRegistry
+  ServiceRegistry.register('ShellActivationPoll', ShellActivationPoll);
 }
