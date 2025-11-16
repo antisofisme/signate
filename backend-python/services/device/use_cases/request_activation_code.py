@@ -54,17 +54,44 @@ class RequestActivationCodeUseCase:
         """
 
         # 🎯 CHECK FOR EXISTING PENDING DEVICE (Code Persistence)
-        # If device_uuid exists and matches a pending/released device, reuse it
+        # If device_uuid exists and matches a pending/released device, check expiry
         if device_uuid:
             existing_device = self.device_repo.find_by_uuid(device_uuid)
             if existing_device and existing_device.status in ['pending', 'released']:
-                print(f"[Device Registration] ✅ Found existing device with UUID {device_uuid}, reusing code: {existing_device.unique_code}")
-                return {
-                    'unique_code': existing_device.unique_code,
-                    'expires_at': existing_device.code_expires_at.isoformat() if existing_device.code_expires_at else None,
-                    'device_id': existing_device.id,
-                    'device_token': None
-                }
+                # ✨ NEW: Check if code expired - if yes, generate new code
+                if existing_device.can_activate():
+                    # Code still valid - reuse it
+                    print(f"[Device Registration] ✅ Found existing device with UUID {device_uuid}, reusing valid code: {existing_device.unique_code}")
+                    return {
+                        'unique_code': existing_device.unique_code,
+                        'expires_at': existing_device.code_expires_at.isoformat() if existing_device.code_expires_at else None,
+                        'device_id': existing_device.id,
+                        'device_token': None
+                    }
+                else:
+                    # Code expired - generate new code and update device
+                    print(f"[Device Registration] ⚠️ Code expired for device {existing_device.id}, generating new code...")
+
+                    # Validate new code is unique
+                    existing_code_check = self.device_repo.find_by_code(code)
+                    if existing_code_check and existing_code_check.id != existing_device.id:
+                        raise ValueError(f"Activation code {code} is already in use. Please generate a new code.")
+
+                    # Update device with new code
+                    expires_at = datetime.now(timezone.utc) + timedelta(minutes=10)
+                    existing_device.unique_code = code
+                    existing_device.code_expires_at = expires_at
+
+                    # Save to database
+                    updated_device = self.device_repo.update(existing_device)
+
+                    print(f"[Device Registration] ✅ Device {updated_device.id} updated with new code: {code}")
+                    return {
+                        'unique_code': updated_device.unique_code,
+                        'expires_at': updated_device.code_expires_at.isoformat(),
+                        'device_id': updated_device.id,
+                        'device_token': None
+                    }
 
         # ✨ NEW FLOW: Always create device as unassigned
         # Organization will be assigned when admin claims the device
