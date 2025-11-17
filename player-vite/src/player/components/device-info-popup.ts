@@ -332,16 +332,9 @@ class DeviceInfoPopupClass {
 
       SharedLogger.log('[DeviceInfoPopup] Backend response:', response);
 
-      // Update organization info
+      // Update organization info (just show ID, no need to fetch)
       if (organizationId) {
-        try {
-          const orgResponse = await SharedAPIClient.get<any>(
-            `${config.api.baseURL}/api/v1/organizations/${organizationId}`
-          );
-          this.updateField('popup-organization', orgResponse.name || `Org #${organizationId}`);
-        } catch (error) {
-          this.updateField('popup-organization', `Organization #${organizationId}`);
-        }
+        this.updateField('popup-organization', `Organization #${organizationId}`);
       } else {
         this.updateField('popup-organization', 'Not assigned');
       }
