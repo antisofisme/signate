@@ -83,6 +83,30 @@ class ShellActivationPollClass implements IShellActivationPoll {
 
       SharedLogger.log('[ShellActivationPoll] 📊 Activation status:', data);
 
+      // Handle code expiration - request new code automatically
+      if (data.expired && !data.activated) {
+        SharedLogger.warn('[ShellActivationPoll] ⚠️ Activation code expired, requesting new code...');
+
+        // Stop current polling
+        this.stopPolling();
+
+        // Request new activation code with forceRenew=true
+        const shellRegistration = getShellRegistration();
+        if (shellRegistration) {
+          SharedLogger.log('[ShellActivationPoll] 🔄 Requesting new activation code (with 1s delay to prevent race)...');
+
+          // Add delay to prevent concurrent registerDevice() calls
+          await new Promise(resolve => setTimeout(resolve, 1000));
+
+          await shellRegistration.registerDevice(true); // Force renew even if device exists
+          SharedLogger.log('[ShellActivationPoll] ✅ New activation code requested, polling will restart');
+        } else {
+          SharedLogger.error('[ShellActivationPoll] ❌ Cannot request new code - ShellRegistration not available');
+        }
+
+        return;
+      }
+
       // Handle activation success
       if (data.activated && data.device_id) {
         SharedLogger.log(
@@ -120,11 +144,17 @@ class ShellActivationPollClass implements IShellActivationPoll {
           data.organization_id || null
         );
 
+        // Save device_token to localStorage for session restore after cache clear
+        if (data.device_token) {
+          SharedDeviceState.setDeviceToken(data.device_token);
+          SharedLogger.log('[ShellActivationPoll] ✅ Device token saved for session restore');
+        }
+
         // Save device config to IndexedDB (for release flow management)
         await deviceConfigStorage.setDeviceConfig({
           device_id: newDeviceId,
           organization_id: data.organization_id || null,
-          access_token: data.access_token || null,
+          access_token: data.device_token || data.access_token || null,  // Use device_token as access_token
           refresh_token: data.refresh_token || null,
           token_expires_at: data.token_expires_at || null,
           unique_code: data.unique_code || null,

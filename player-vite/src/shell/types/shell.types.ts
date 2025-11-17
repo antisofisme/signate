@@ -15,15 +15,17 @@ export interface RegistrationResponse {
 
 export interface ActivationCheckResponse {
   activated: boolean;
+  expired?: boolean; // Whether the activation code has expired (from server)
   device_id?: number;
   device_name?: string;
   organization_id?: number;
   organization_pin?: string; // 6-digit PIN for hard reset
+  device_token?: string; // JWT token for session restore after cache clear
+  unique_code?: string; // 6-digit activation code for heartbeat
   message?: string;
   access_token?: string;
   refresh_token?: string;
   token_expires_at?: number;
-  unique_code?: string;
 }
 
 export interface VerifyDeviceResponse {
@@ -49,7 +51,7 @@ export interface RetryConfig {
 
 export interface ShellRegistration {
   generateActivationCode(): string;
-  registerDevice(): Promise<void>;
+  registerDevice(forceRenew?: boolean): Promise<void>;
   getPendingCode(): Promise<string | null>;
   setPendingCode(code: string | null): Promise<void>;
   getRetryCount(): number;

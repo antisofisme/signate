@@ -40,7 +40,7 @@ export default defineConfig({
       output: {
         // Manual chunks for better caching
         manualChunks: {
-          'vendor': ['hls.js'],
+          'vendor': ['video.js'],
         },
       },
     },
@@ -86,6 +86,6 @@ export default defineConfig({
 
   // Optimize dependencies
   optimizeDeps: {
-    include: ['hls.js'],
+    include: ['video.js'],
   },
 });

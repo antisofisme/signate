@@ -19,6 +19,7 @@ from shared.metrics import init_app_metrics, MetricsMiddleware
 from shared.security_headers import configure_security_headers
 from shared.rate_limiter import cleanup_rate_limiter
 from shared.websocket_manager import websocket_manager
+from shared.range_static_files import RangeStaticFiles
 from services.schedule.domain.schedule_executor import init_schedule_executor, get_schedule_executor
 
 # Import service routers
@@ -36,7 +37,10 @@ from services.user.routes import router as user_router
 from services.audit.routes import router as audit_router
 from services.tag.routes import router as tag_router
 from services.content.routes import router as content_router
+from services.content.video_routes import router as video_router
+from services.content.hls_routes import router as hls_router
 from services.playlist.routes import router as playlist_router
+from services.playlist.client_routes import router as playlist_client_router
 from services.rbac.routes import router as rbac_router
 from services.session.routes import router as session_router
 from services.analytics.routes import router as analytics_router
@@ -238,7 +242,10 @@ app.include_router(user_router, tags=["User Management"])
 app.include_router(audit_router, tags=["Audit Logging"])
 app.include_router(tag_router, tags=["Tag Management"])
 app.include_router(content_router, tags=["Content Management"])
+app.include_router(video_router, tags=["Video Streaming"])  # Range-supporting video streaming
+app.include_router(hls_router, tags=["HLS Streaming"])  # HLS adaptive bitrate streaming
 app.include_router(playlist_router, tags=["Playlist Management"])
+app.include_router(playlist_client_router, tags=["Client - Player/Viewer"])
 app.include_router(rbac_router, tags=["RBAC - Role Management"])
 app.include_router(session_router, tags=["Session Management"])
 app.include_router(analytics_router, prefix="/api/v1/analytics", tags=["Analytics & Reporting"])
@@ -256,11 +263,12 @@ app.include_router(websocket_router, prefix="/api", tags=["WebSocket"])
 # STATIC FILES SERVING (for content uploads and thumbnails)
 # =============================================================================
 
-# Mount static files for content serving
+# Content serving is now handled by dedicated video/image streaming routes
+# See services/content/video_routes.py for Range request support
 CONTENT_DIR = Path("/data/signage/content/uploads")
 if CONTENT_DIR.exists():
-    app.mount("/content", StaticFiles(directory=str(CONTENT_DIR)), name="content")
-    print(f"✓ Static files mounted: /content -> {CONTENT_DIR}")
+    print(f"✓ Content directory found: {CONTENT_DIR}")
+    print(f"  Video/image serving via /content/videos/* and /content/images/* routes")
 else:
     print(f"⚠ Content directory not found: {CONTENT_DIR}")
 

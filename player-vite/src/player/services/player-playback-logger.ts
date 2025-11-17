@@ -54,9 +54,16 @@ class PlayerPlaybackLoggerClass {
   async logPlaybackStart(item: PlaylistItem, playlistId: number | null = null): Promise<void> {
     try {
       const deviceId = SharedDeviceState.getDeviceId();
+      const deviceToken = SharedDeviceState.getDeviceToken();
 
       if (!deviceId) {
         SharedLogger.warn('[PlaybackLogger] No device ID - skipping playback logging');
+        return;
+      }
+
+      // Skip logging if no device token (authentication not available)
+      if (!deviceToken) {
+        SharedLogger.log('[PlaybackLogger] No device token - skipping playback logging (optional feature)');
         return;
       }
 

@@ -17,7 +17,9 @@ import { ShellRegistration } from './shell-registration';
 import { ShellActivationPoll } from './shell-activation-poll';
 import type { ShellBootstrap as IShellBootstrap, VerifyDeviceResponse } from '../types/shell.types';
 import { ServiceRegistry } from '@shared/services/service-registry';
-import { getPlayerMediaCache, getPlayerHeartbeat, getPlayerPlaylistSync, getPlayerCommandExecutor, getPlayerHealthReporter, getSharedWebSocket, getDeviceInfoPopup } from '@shared/services';
+import { getPlayerMediaCache, getPlayerHeartbeat, getPlayerPlaylistSync, getPlayerCommandExecutor, getPlayerHealthReporter, getSharedWebSocket, getDeviceInfoPopup, getPlayerVideoJS } from '@shared/services';
+// Import PlayerVideoJS to ensure it's registered before use
+import '@player/services/player-videojs';
 
 /**
  * Shell Bootstrap Class
@@ -226,46 +228,99 @@ class ShellBootstrapClass implements IShellBootstrap {
    */
   private async initializePlayerServices(): Promise<void> {
     try {
-      // 1. Initialize MediaCache
+      // 1. Initialize PlayerVideoJS with video element
+      const videoElement = document.getElementById('player-video') as HTMLVideoElement;
+      if (videoElement && getPlayerVideoJS()) {
+        getPlayerVideoJS().init(videoElement);
+        SharedLogger.log('[ShellBootstrap] ✅ PlayerVideoJS initialized with video element');
+      } else {
+        SharedLogger.error('[ShellBootstrap] ❌ Failed to initialize PlayerVideoJS - video element or service not found');
+      }
+
+      // 2. Initialize MediaCache
       if (getPlayerMediaCache()) {
         await getPlayerMediaCache().init();
         SharedLogger.log('[ShellBootstrap] ✅ MediaCache initialized');
       }
 
-      // 2-4. Connection logging services already initialized in main.ts
+      // 3. Initialize HLS Cache
+      const PlayerHLSCache = ServiceRegistry.get<any>('PlayerHLSCache');
+      if (PlayerHLSCache) {
+        await PlayerHLSCache.init();
+        SharedLogger.log('[ShellBootstrap] ✅ HLS Cache initialized');
+      }
+
+      // 4. Register HLS Service Worker for offline playback (HTTPS only)
+      if ('serviceWorker' in navigator && window.location.protocol === 'https:') {
+        try {
+          const registration = await navigator.serviceWorker.register('/hls-service-worker.js', {
+            scope: '/',
+          });
+          SharedLogger.log('[ShellBootstrap] ✅ HLS Service Worker registered:', registration.scope);
+
+          // Wait for Service Worker to activate
+          if (registration.active) {
+            SharedLogger.log('[ShellBootstrap] Service Worker already active');
+          } else {
+            SharedLogger.log('[ShellBootstrap] Waiting for Service Worker to activate...');
+            await new Promise<void>((resolve) => {
+              const checkState = () => {
+                if (registration.active) {
+                  SharedLogger.log('[ShellBootstrap] Service Worker activated');
+                  resolve();
+                } else {
+                  setTimeout(checkState, 100);
+                }
+              };
+              checkState();
+            });
+          }
+        } catch (error) {
+          SharedLogger.error('[ShellBootstrap] ❌ Failed to register Service Worker:', error);
+        }
+      } else if (window.location.protocol === 'http:') {
+        // Running on HTTP - Service Worker not available, but system still works
+        SharedLogger.log('[ShellBootstrap] ℹ️ Running on HTTP - Service Worker disabled');
+        SharedLogger.log('[ShellBootstrap] HLS streaming and caching enabled, offline playback requires HTTPS');
+      } else {
+        SharedLogger.log('[ShellBootstrap] ℹ️ Service Worker not supported in this browser');
+        SharedLogger.log('[ShellBootstrap] HLS caching enabled, offline playback limited');
+      }
+
+      // 5-7. Connection logging services already initialized in main.ts
       // (ConnectionLogger, NetworkSpeedTest, ConnectionLogPopup)
 
-      // 5. Initialize Command Executor
+      // 6. Initialize Command Executor
       if (getPlayerCommandExecutor()) {
         getPlayerCommandExecutor().init();
         SharedLogger.log('[ShellBootstrap] ✅ CommandExecutor initialized');
       }
 
-      // 6. Connect WebSocket
+      // 7. Connect WebSocket
       if (getSharedWebSocket()) {
         getSharedWebSocket().connect();
         SharedLogger.log('[ShellBootstrap] ✅ WebSocket connected');
       }
 
-      // 7. Start PlaylistSync
+      // 8. Start PlaylistSync
       if (getPlayerPlaylistSync()) {
         getPlayerPlaylistSync().start();
         SharedLogger.log('[ShellBootstrap] ✅ PlaylistSync started');
       }
 
-      // 8. Start Heartbeat
+      // 9. Start Heartbeat
       if (getPlayerHeartbeat()) {
         getPlayerHeartbeat().start();
         SharedLogger.log('[ShellBootstrap] ✅ Heartbeat started');
       }
 
-      // 9. Start Health Reporter (Phase 4)
+      // 10. Start Health Reporter (Phase 4)
       if (getPlayerHealthReporter()) {
         getPlayerHealthReporter().start();
         SharedLogger.log('[ShellBootstrap] ✅ HealthReporter started');
       }
 
-      // 10. Initialize Device Info Popup
+      // 11. Initialize Device Info Popup
       if (getDeviceInfoPopup()) {
         getDeviceInfoPopup().init();
         SharedLogger.log('[ShellBootstrap] ✅ DeviceInfoPopup initialized');

@@ -13,7 +13,7 @@ import { SharedLogger } from '@shared/logger';
 import { SharedEventBus, EventNames } from '@shared/events/shared-event-bus';
 import { SharedWebSocket, WSMessageType } from '@shared/websocket/shared-websocket';
 import { ServiceRegistry } from '@shared/services/service-registry';
-import { getPlayerHLS, getPlayerMediaCache, getPlayerPlaylistSync } from '@shared/services';
+import { getPlayerVideoJS, getPlayerMediaCache, getPlayerPlaylistSync } from '@shared/services';
 
 /**
  * Command types
@@ -235,43 +235,43 @@ class PlayerCommandExecutorClass {
   // ========================================
 
   private async handlePlay(): Promise<any> {
-    if (getPlayerHLS()) {
-      await getPlayerHLS().play();
+    if (getPlayerVideoJS()) {
+      await getPlayerVideoJS().play();
       return { message: 'Playback started' };
     }
-    throw new Error('PlayerHLS not available');
+    throw new Error('PlayerVideoJS not available');
   }
 
   private async handlePause(): Promise<any> {
-    if (getPlayerHLS()) {
-      getPlayerHLS().pause();
+    if (getPlayerVideoJS()) {
+      getPlayerVideoJS().pause();
       return { message: 'Playback paused' };
     }
-    throw new Error('PlayerHLS not available');
+    throw new Error('PlayerVideoJS not available');
   }
 
   private async handleStop(): Promise<any> {
-    if (getPlayerHLS()) {
-      getPlayerHLS().stop();
+    if (getPlayerVideoJS()) {
+      getPlayerVideoJS().stop();
       return { message: 'Playback stopped' };
     }
-    throw new Error('PlayerHLS not available');
+    throw new Error('PlayerVideoJS not available');
   }
 
   private async handleNext(): Promise<any> {
-    if (getPlayerHLS()) {
-      await getPlayerHLS().next();
+    if (getPlayerVideoJS()) {
+      await getPlayerVideoJS().next();
       return { message: 'Skipped to next item' };
     }
-    throw new Error('PlayerHLS not available');
+    throw new Error('PlayerVideoJS not available');
   }
 
   private async handlePrevious(): Promise<any> {
-    if (getPlayerHLS()) {
-      await getPlayerHLS().previous();
+    if (getPlayerVideoJS()) {
+      await getPlayerVideoJS().previous();
       return { message: 'Skipped to previous item' };
     }
-    throw new Error('PlayerHLS not available');
+    throw new Error('PlayerVideoJS not available');
   }
 
   private async handleSeek(params?: Record<string, any>): Promise<any> {
@@ -341,11 +341,11 @@ class PlayerCommandExecutorClass {
   }
 
   private async handleGetStatus(): Promise<any> {
-    if (getPlayerHLS()) {
-      const state = getPlayerHLS().getState();
+    if (getPlayerVideoJS()) {
+      const state = getPlayerVideoJS().getState();
       return { player_state: state };
     }
-    throw new Error('PlayerHLS not available');
+    throw new Error('PlayerVideoJS not available');
   }
 
   private async handleGetSystemInfo(): Promise<any> {

@@ -8,7 +8,7 @@ export { NetworkSpeedTest } from './network-speed-test';
 export { i18n } from './i18n';
 export {
   ServiceRegistry,
-  getPlayerHLS,
+  getPlayerVideoJS,
   getPlayerMediaCache,
   getPlayerHeartbeat,
   getPlayerPlaylistSync,

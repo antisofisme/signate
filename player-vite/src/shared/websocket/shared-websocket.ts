@@ -90,6 +90,12 @@ class SharedWebSocketClass {
       return;
     }
 
+    // Skip WebSocket if no device token (optional feature)
+    if (!deviceToken) {
+      SharedLogger.log('[WebSocket] No device token - skipping WebSocket connection (optional feature)');
+      return;
+    }
+
     if (this.ws && (this.ws.readyState === WebSocket.OPEN || this.ws.readyState === WebSocket.CONNECTING)) {
       SharedLogger.warn('[WebSocket] Already connected or connecting');
       return;
@@ -100,7 +106,7 @@ class SharedWebSocketClass {
       SharedLogger.log('[WebSocket] Connecting to:', config.api.wsBaseURL);
 
       // Build WebSocket URL with auth params
-      const wsUrl = `${config.api.wsBaseURL}/ws/device/${deviceId}?token=${deviceToken || ''}`;
+      const wsUrl = `${config.api.wsBaseURL}/ws/device/${deviceId}?token=${deviceToken}`;
 
       this.ws = new WebSocket(wsUrl);
 

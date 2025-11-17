@@ -304,13 +304,25 @@ def check_activation_status(
         # IMPORTANT: Return device info for active devices even if code expired!
         # Player needs device_id to persist across reloads
         if device.is_active():
+            # Generate JWT token for session restore (after cache clear)
+            device_token = None
+            if device.organization_id:
+                from shared.auth import create_device_token
+                device_token = create_device_token(
+                    device_id=device.id,
+                    organization_id=device.organization_id,
+                    unique_code=device.unique_code
+                )
+
             return ActivationStatusResponse(
                 activated=True,
                 expired=False,  # Don't set expired for active devices
                 device_id=device.id,
                 device_name=device.device_name,
                 organization_id=device.organization_id,
-                pin=organization_pin,  # 🆕 Include organization PIN
+                organization_pin=organization_pin,  # Fixed: use organization_pin not pin
+                device_token=device_token,  # JWT token for session restore
+                unique_code=device.unique_code,  # For heartbeat
                 message="Device is activated"
             )
 

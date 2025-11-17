@@ -3,8 +3,9 @@
  * Centralized exports for all player services
  */
 
-export { PlayerHLS } from './player-hls';
+export { PlayerVideoJS } from './player-videojs';
 export { PlayerMediaCache } from './player-media-cache';
+export { PlayerHLSCache } from './player-hls-cache';
 export { PlayerHeartbeat } from './player-heartbeat';
 export { PlayerPlaylistSync } from './player-playlist-sync';
 export { PlayerCommandExecutor } from './player-command-executor';

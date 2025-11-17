@@ -353,6 +353,26 @@ class ContentRepository(IContentRepository):
 
     def _to_entity(self, db_content: ContentModel) -> Content:
         """Convert database model to domain entity"""
+        # Construct HLS master playlist URL if path exists but URL is empty
+        hls_master_playlist_url = db_content.hls_master_playlist_url
+
+        if db_content.hls_master_playlist_path and not hls_master_playlist_url:
+            # Path format: "2025/11/org_4/e9dff2be-eb88-41c8-b5aa-a47b9e957fd6_hls/master.m3u8"
+            # URL format: "http://192.168.5.12:8001/content/hls/2025/11/org_4/e9dff2be-eb88-41c8-b5aa-a47b9e957fd6/master.m3u8"
+
+            path_parts = db_content.hls_master_playlist_path.split('/')
+            if len(path_parts) >= 4:
+                year = path_parts[0]
+                month = path_parts[1]
+                org_dir = path_parts[2]  # org_4
+                hls_dir = path_parts[3]  # {uuid}_hls
+
+                # Extract UUID from {uuid}_hls folder name
+                content_uuid = hls_dir.replace('_hls', '')
+
+                # Construct HLS URL
+                hls_master_playlist_url = f"http://192.168.5.12:8001/content/hls/{year}/{month}/{org_dir}/{content_uuid}/master.m3u8"
+
         return Content(
             id=db_content.id,
             title=db_content.title,
@@ -386,7 +406,7 @@ class ContentRepository(IContentRepository):
             transcoding_progress=db_content.transcoding_progress,
             transcoding_error=db_content.transcoding_error,
             hls_master_playlist_path=db_content.hls_master_playlist_path,
-            hls_master_playlist_url=db_content.hls_master_playlist_url,
+            hls_master_playlist_url=hls_master_playlist_url,
             hls_variants=db_content.hls_variants,
             thumbnail_path=db_content.thumbnail_path,
             thumbnail_url=db_content.thumbnail_url,

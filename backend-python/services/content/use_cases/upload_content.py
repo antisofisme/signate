@@ -51,7 +51,7 @@ class UploadContentUseCase:
         file: UploadFile,
         title: str,
         organization_id: int,
-        uploaded_by: int,
+        uploaded_by_id: int,
         description: Optional[str] = None,
         duration: int = 10,
         is_active: bool = True
@@ -72,7 +72,7 @@ class UploadContentUseCase:
             file: Uploaded file
             title: Content title
             organization_id: Organization ID
-            uploaded_by: User ID who uploads
+            uploaded_by_id: User ID who uploads
             description: Optional description
             duration: Display duration in seconds
             is_active: Active status
@@ -194,7 +194,7 @@ class UploadContentUseCase:
 
             # Multi-tenant
             organization_id=organization_id,
-            uploaded_by_id=uploaded_by
+            uploaded_by_id=uploaded_by_id
         )
 
         # Validate business rules (raises ValueError if invalid)

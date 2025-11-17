@@ -195,6 +195,8 @@ class ActivationStatusResponse(BaseModel):
     device_name: Optional[str] = None
     organization_id: Optional[int] = None  # For player to know which org it belongs to
     organization_pin: Optional[str] = None  # 6-digit PIN for hard reset (if org assigned)
+    device_token: Optional[str] = None  # JWT token for session restore after cache clear
+    unique_code: Optional[str] = None  # 6-digit activation code for heartbeat
     message: str
 
     class Config:

@@ -54,13 +54,14 @@ export class PlayerScheduleManager {
    * Initialize schedule manager
    */
   async initialize(): Promise<void> {
-    const device = SharedDeviceState.getDevice();
-    if (!device?.organization_id) {
-      SharedLogger.warn('[PlayerScheduleManager] No organization ID, skipping initialization');
+    // Get organization_id from localStorage (more reliable)
+    const orgIdStr = SharedDeviceState.getOrganizationId();
+    if (!orgIdStr) {
+      SharedLogger.debug('[PlayerScheduleManager] No organization ID yet, skipping initialization (will retry on activation)');
       return;
     }
 
-    this.organizationId = device.organization_id;
+    this.organizationId = parseInt(orgIdStr, 10);
     
     // Initial sync
     await this.syncSchedules();
@@ -80,18 +81,25 @@ export class PlayerScheduleManager {
   async syncSchedules(): Promise<void> {
     try {
       if (!this.organizationId) return;
-      
+
+      // TODO: Schedule API not implemented yet in backend
+      // Temporarily skip sync to avoid console errors
+      SharedLogger.debug('[PlayerScheduleManager] Schedule sync skipped (API not ready)');
+      return;
+
+      /* Uncomment when backend /api/v1/schedules is ready
       const response = await SharedAPIClient.get<{ schedules: Schedule[] }>(
         `/api/v1/schedules?organization_id=${this.organizationId}&is_active=true`
       );
-      
+
       if (response) {
         this.schedules = response.schedules || [];
         SharedLogger.info(`[PlayerScheduleManager] Synced ${this.schedules.length} schedules`);
-        
+
         // Check for active schedule immediately after sync
         this.checkActiveSchedule();
       }
+      */
     } catch (error) {
       SharedLogger.error('[PlayerScheduleManager] Failed to sync schedules:', error);
     }

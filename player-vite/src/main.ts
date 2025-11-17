@@ -15,6 +15,9 @@ import { SharedToast } from '@shared/ui';
 import { ConnectionLogger } from '@shared/services/connection-logger';
 import { NetworkSpeedTest } from '@shared/services/network-speed-test';
 
+// Import player services to trigger registration
+import { PlayerPlaylistSync } from '@player/services';
+
 // Import ServiceRegistry
 import { ServiceRegistry } from '@shared/services';
 
@@ -26,6 +29,7 @@ SharedLogger.log('📋 Configuration loaded:', config);
 void ConnectionLogPopup;
 void ConnectionLogger;
 void NetworkSpeedTest;
+void PlayerPlaylistSync;
 
 /**
  * Initialize application

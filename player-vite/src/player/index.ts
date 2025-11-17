@@ -9,8 +9,9 @@
  */
 
 // Services
-export { PlayerHLS } from './services/player-hls';
+export { PlayerVideoJS } from './services/player-videojs';
 export { PlayerMediaCache } from './services/player-media-cache';
+export { PlayerHLSCache } from './services/player-hls-cache';
 export { PlayerPlaylistSync } from './services/player-playlist-sync';
 export { PlayerHeartbeat } from './services/player-heartbeat';
 export { PlayerCommandExecutor } from './services/player-command-executor';
@@ -26,9 +27,8 @@ export type {
   Playlist,
   PlaylistSyncResponse,
   PlayerConfig,
-  HLSConfig,
   PlayerState,
-  PlayerHLS as IPlayerHLS,
+  PlayerVideoJS as IPlayerVideoJS,
   CachedMedia,
   CacheStats,
   PlayerMediaCache as IPlayerMediaCache,

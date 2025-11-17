@@ -17,7 +17,8 @@ import { SharedEventBus } from '@shared/events/shared-event-bus';
 import { playerScheduleManager } from './player-schedule-manager';
 import type { PlaylistSync as IPlaylistSync, PlaylistSyncResponse, Playlist } from '../types/player.types';
 import { ServiceRegistry } from '@shared/services/service-registry';
-import { getPlayerHLS } from '@shared/services';
+import { getPlayerVideoJS } from '@shared/services';
+import { WaitingForContent } from '@player/components';
 
 /**
  * Player Playlist Sync Class
@@ -113,6 +114,9 @@ class PlayerPlaylistSyncClass implements IPlaylistSync {
       if (!data.playlist) {
         SharedLogger.warn('[PlayerPlaylistSync] ⚠️ No playlist assigned to device');
 
+        // Show waiting for content screen
+        WaitingForContent.show();
+
         // Clear current playlist if exists
         if (this.currentPlaylistVersion) {
           this.currentPlaylistVersion = null;
@@ -123,15 +127,27 @@ class PlayerPlaylistSyncClass implements IPlaylistSync {
         return false;
       }
 
+      // Playlist exists - hide waiting screen
+      WaitingForContent.hide();
+
       // Check if playlist changed
       const newVersion = this.calculatePlaylistVersion(data.playlist);
+      const isFirstLoad = this.currentPlaylistVersion === null;
 
-      if (this.currentPlaylistVersion !== newVersion) {
+      SharedLogger.log('[PlayerPlaylistSync] Version check:', {
+        currentVersion: this.currentPlaylistVersion,
+        newVersion,
+        isFirstLoad,
+        hasChanged: this.currentPlaylistVersion !== newVersion,
+      });
+
+      if (this.currentPlaylistVersion !== newVersion || isFirstLoad) {
         SharedLogger.log('[PlayerPlaylistSync] ✅ Playlist changed!', {
           oldVersion: this.currentPlaylistVersion,
           newVersion,
           playlistId: data.playlist.id,
           itemCount: data.playlist.items?.length || 0,
+          isFirstLoad,
         });
 
         // Update version
@@ -184,14 +200,14 @@ class PlayerPlaylistSyncClass implements IPlaylistSync {
     window.dispatchEvent(event);
 
     // Also update global player if available
-    if (getPlayerHLS()) {
+    if (getPlayerVideoJS()) {
       if (playlist) {
-        void getPlayerHLS().loadPlaylist(playlist);
+        void getPlayerVideoJS().loadPlaylist(playlist);
       } else {
-        getPlayerHLS().stop();
+        getPlayerVideoJS().stop();
       }
     } else {
-      SharedLogger.warn('[PlayerPlaylistSync] PlayerHLS not available');
+      SharedLogger.warn('[PlayerPlaylistSync] PlayerVideoJS not available');
     }
   }
 
@@ -259,7 +275,7 @@ class PlayerPlaylistSyncClass implements IPlaylistSync {
     const targetPlaylistId = await this.getTargetPlaylistId();
     
     // Build API URL
-    let url = `${config.api.baseURL}/api/client/playlist?device_id=${deviceId}`;
+    let url = `${config.api.baseURL}/api/v1/client/playlist?device_id=${deviceId}`;
     
     // If we have a specific playlist from schedule, request it
     if (targetPlaylistId !== null) {

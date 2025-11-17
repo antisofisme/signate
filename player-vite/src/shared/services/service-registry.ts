@@ -79,7 +79,7 @@ class ServiceRegistryClass {
 export const ServiceRegistry = new ServiceRegistryClass();
 
 // Type-safe getters for common services
-export const getPlayerHLS = () => ServiceRegistry.get<any>('PlayerHLS');
+export const getPlayerVideoJS = () => ServiceRegistry.get<any>('PlayerVideoJS');
 export const getPlayerMediaCache = () => ServiceRegistry.get<any>('PlayerMediaCache');
 export const getPlayerHeartbeat = () => ServiceRegistry.get<any>('PlayerHeartbeat');
 export const getPlayerPlaylistSync = () => ServiceRegistry.get<any>('PlayerPlaylistSync');

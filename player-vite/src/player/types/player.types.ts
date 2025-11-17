@@ -24,6 +24,7 @@ export interface ContentItem {
   file_path: string | null;
   url: string | null;
   thumbnail_path: string | null;
+  mime_type?: string | null;
   metadata: Record<string, unknown> | null;
 }
 
@@ -42,7 +43,7 @@ export interface PlaylistSyncResponse {
 }
 
 // ========================================
-// HLS Player Types
+// Video Player Types
 // ========================================
 
 export interface PlayerConfig {
@@ -53,14 +54,6 @@ export interface PlayerConfig {
   controls: boolean;
 }
 
-export interface HLSConfig {
-  enableWorker: boolean;
-  lowLatencyMode: boolean;
-  backBufferLength: number;
-  maxBufferLength: number;
-  maxMaxBufferLength: number;
-}
-
 export interface PlayerState {
   currentItemIndex: number;
   isPlaying: boolean;
@@ -69,7 +62,8 @@ export interface PlayerState {
   error: Error | null;
 }
 
-export interface PlayerHLS {
+// Video.js Player Interface
+export interface PlayerVideoJS {
   init(videoElement: HTMLVideoElement): void;
   loadPlaylist(playlist: Playlist): Promise<void>;
   play(): Promise<void>;

@@ -79,6 +79,7 @@ class PlayerHeartbeatClass implements IHeartbeat {
    */
   async sendHeartbeat(): Promise<void> {
     const deviceId = SharedDeviceState.getDeviceId();
+
     if (!deviceId) {
       SharedLogger.error('[PlayerHeartbeat] Cannot send heartbeat - no device_id');
       this.stop();
@@ -86,12 +87,17 @@ class PlayerHeartbeatClass implements IHeartbeat {
     }
 
     try {
-      // Get device config for unique_code
-      const deviceConfig = await deviceConfigStorage.getDeviceConfig();
+      // Get unique_code from localStorage (simpler and more reliable)
+      const uniqueCode = SharedDeviceState.getDeviceCode();
+
+      if (!uniqueCode) {
+        SharedLogger.error('[PlayerHeartbeat] Cannot send heartbeat - no unique_code');
+        return;
+      }
 
       // Prepare heartbeat payload
       const payload = {
-        unique_code: deviceConfig.unique_code || '',
+        unique_code: uniqueCode,
         device_uuid: '', // WebOS device UUID if available
         screen_width: window.screen.width,
         screen_height: window.screen.height,
@@ -109,7 +115,7 @@ class PlayerHeartbeatClass implements IHeartbeat {
 
       // Send heartbeat using correct endpoint
       await SharedAPIClient.post(
-        `/api/v1/devices/${deviceId}/heartbeat`,
+        `${config.api.baseURL}/api/v1/devices/${deviceId}/heartbeat`,
         payload
       );
 

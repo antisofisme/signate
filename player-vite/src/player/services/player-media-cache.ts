@@ -144,6 +144,14 @@ class PlayerMediaCacheClass implements IPlayerMediaCache {
   }
 
   /**
+   * Create Blob URL from cached media (alias for getCachedBlobURL)
+   */
+  async createBlobUrl(cachedMedia: CachedMedia): Promise<string> {
+    const blob = new Blob([cachedMedia.data], { type: cachedMedia.mimeType });
+    return URL.createObjectURL(blob);
+  }
+
+  /**
    * Check if media is cached
    */
   async isCached(url: string): Promise<boolean> {
