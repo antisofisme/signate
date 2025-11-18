@@ -421,22 +421,28 @@ class DeviceInfoPopupClass {
     try {
       // Get Storage API estimate
       if (navigator.storage && navigator.storage.estimate) {
-        const estimate = await navigator.storage.estimate();
-        const usedMB = ((estimate.usage || 0) / 1048576).toFixed(2);
-        const quotaMB = ((estimate.quota || 0) / 1048576).toFixed(2);
-        const usagePercent = estimate.quota ? ((estimate.usage || 0) / estimate.quota * 100).toFixed(1) : '0';
+        try {
+          const estimate = await navigator.storage.estimate();
+          const usedMB = ((estimate.usage || 0) / 1048576).toFixed(2);
+          const quotaMB = ((estimate.quota || 0) / 1048576).toFixed(2);
+          const usagePercent = estimate.quota ? ((estimate.usage || 0) / estimate.quota * 100).toFixed(1) : '0';
 
-        this.updateField('popup-storage-used', `${usedMB} MB`);
-        this.updateField('popup-storage-quota', `${quotaMB} MB`);
+          this.updateField('popup-storage-used', `${usedMB} MB`);
+          this.updateField('popup-storage-quota', `${quotaMB} MB`);
 
-        // Update progress bar
-        const progressBar = document.getElementById('popup-storage-bar');
-        if (progressBar) {
-          progressBar.style.width = `${usagePercent}%`;
+          // Update progress bar
+          const progressBar = document.getElementById('popup-storage-bar');
+          if (progressBar) {
+            progressBar.style.width = `${usagePercent}%`;
+          }
+        } catch (err) {
+          SharedLogger.warn('[DeviceInfoPopup] Storage API failed:', err);
+          this.updateField('popup-storage-used', 'Not supported on HTTP');
+          this.updateField('popup-storage-quota', 'Requires HTTPS');
         }
       } else {
-        this.updateField('popup-storage-used', 'Not available');
-        this.updateField('popup-storage-quota', 'Not available');
+        this.updateField('popup-storage-used', 'Not supported');
+        this.updateField('popup-storage-quota', 'Not supported');
       }
 
       // Get cache info from PlayerHLSCache
@@ -458,20 +464,32 @@ class DeviceInfoPopupClass {
       const PlayerPlaylistSync = ServiceRegistry.get('PlayerPlaylistSync') as any;
       const PlayerHLSCache = ServiceRegistry.get('PlayerHLSCache') as any;
 
+      SharedLogger.log('[DeviceInfoPopup] PlayerPlaylistSync:', PlayerPlaylistSync);
+      SharedLogger.log('[DeviceInfoPopup] PlayerHLSCache:', PlayerHLSCache);
+
       // Get assigned content from playlist
       let assignedContent: any[] = [];
       if (PlayerPlaylistSync && PlayerPlaylistSync.getCurrentPlaylist) {
         const playlist = PlayerPlaylistSync.getCurrentPlaylist();
+        SharedLogger.log('[DeviceInfoPopup] Current playlist:', playlist);
         if (playlist && playlist.items) {
           assignedContent = playlist.items;
         }
+      } else {
+        SharedLogger.warn('[DeviceInfoPopup] PlayerPlaylistSync.getCurrentPlaylist not available');
       }
 
       // Get cached HLS videos
       let cachedVideos: any[] = [];
       if (PlayerHLSCache && PlayerHLSCache.getAllCachedContent) {
         cachedVideos = await PlayerHLSCache.getAllCachedContent();
+        SharedLogger.log('[DeviceInfoPopup] Cached videos:', cachedVideos);
+      } else {
+        SharedLogger.warn('[DeviceInfoPopup] PlayerHLSCache.getAllCachedContent not available');
       }
+
+      SharedLogger.log('[DeviceInfoPopup] Assigned content count:', assignedContent.length);
+      SharedLogger.log('[DeviceInfoPopup] Cached videos count:', cachedVideos.length);
 
       // Update counts
       this.updateField('popup-assigned-count', `${assignedContent.length} item${assignedContent.length !== 1 ? 's' : ''}`);
@@ -481,7 +499,7 @@ class DeviceInfoPopupClass {
       const listElement = document.getElementById('popup-content-list');
       if (listElement) {
         if (assignedContent.length === 0) {
-          listElement.innerHTML = '<p style="color: rgba(255,255,255,0.6); text-align: center; padding: 1rem;">No content assigned to this device</p>';
+          listElement.innerHTML = '<p style="color: rgba(255,255,255,0.6); text-align: center; padding: 1rem;">No content assigned yet.<br><small>Assign content from CMS admin dashboard.</small></p>';
         } else {
           let listHtml = '';
 
