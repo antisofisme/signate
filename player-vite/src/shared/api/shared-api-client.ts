@@ -41,6 +41,13 @@ class SharedAPIClientClass implements APIClient {
       }
     }
 
+    // Create AbortController for timeout
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => {
+      controller.abort();
+      SharedLogger.warn(`[SharedAPIClient] Request timeout after ${config.api.timeout}ms: ${url}`);
+    }, config.api.timeout);
+
     // Merge options with defaults
     const requestOptions: RequestInit = {
       ...options,
@@ -48,6 +55,7 @@ class SharedAPIClientClass implements APIClient {
         ...defaultHeaders,
         ...(options.headers || {}),
       },
+      signal: controller.signal,
     };
 
     // Remove custom skipAuth flag
@@ -58,6 +66,7 @@ class SharedAPIClientClass implements APIClient {
 
     try {
       const response = await fetch(url, requestOptions);
+      clearTimeout(timeoutId); // Clear timeout on successful response
       const duration = Math.round(performance.now() - startTime);
 
       // Handle non-OK responses (4xx, 5xx)
@@ -76,7 +85,20 @@ class SharedAPIClientClass implements APIClient {
 
       return unwrappedData;
     } catch (error) {
+      clearTimeout(timeoutId); // Clear timeout on error
       const duration = Math.round(performance.now() - startTime);
+
+      // Check if error is due to abort/timeout
+      if (error instanceof Error && error.name === 'AbortError') {
+        const timeoutError = this.createAPIError(
+          new Error(`Request timeout after ${config.api.timeout}ms`),
+          requestId,
+          url,
+          duration
+        );
+        this.logError(requestId, timeoutError);
+        throw timeoutError;
+      }
 
       // Enhance error with context
       const apiError = this.createAPIError(error as Error, requestId, url, duration);

@@ -152,6 +152,58 @@ class SharedLoggerClass implements Logger {
   }
 
   /**
+   * Redact sensitive data from objects before logging
+   * This prevents credential leakage in console logs
+   */
+  private redactSensitiveData(obj: any): any {
+    if (obj === null || obj === undefined) return obj;
+    if (typeof obj !== 'object') return obj;
+
+    // Handle arrays - redact each item
+    if (Array.isArray(obj)) {
+      return obj.map(item => this.redactSensitiveData(item));
+    }
+
+    // List of sensitive field names to redact
+    const sensitiveFields = [
+      'device_token',
+      'token',
+      'access_token',
+      'refresh_token',
+      'jwt',
+      'password',
+      'secret',
+      'api_key',
+      'apiKey',
+      'authorization',
+    ];
+
+    // Create new object with redacted fields
+    const redacted: any = {};
+    for (const key in obj) {
+      const lowerKey = key.toLowerCase();
+      const isSensitive = sensitiveFields.some(field => lowerKey.includes(field.toLowerCase()));
+
+      if (isSensitive) {
+        // Redact but show first/last 4 chars if string is long enough
+        const value = obj[key];
+        if (typeof value === 'string' && value.length > 16) {
+          redacted[key] = `${value.substring(0, 4)}...${value.substring(value.length - 4)}`;
+        } else {
+          redacted[key] = '***REDACTED***';
+        }
+      } else if (typeof obj[key] === 'object') {
+        // Recursively redact nested objects
+        redacted[key] = this.redactSensitiveData(obj[key]);
+      } else {
+        redacted[key] = obj[key];
+      }
+    }
+
+    return redacted;
+  }
+
+  /**
    * Smart object formatter - creates summaries instead of full dumps
    */
   private formatObject(obj: any): string {
@@ -198,13 +250,16 @@ class SharedLoggerClass implements Logger {
 
   /**
    * Format log arguments to string with smart object handling
+   * Automatically redacts sensitive data before formatting
    */
   private formatArgs(args: unknown[]): string {
     return args
       .map((arg) => {
         if (typeof arg === 'object' && arg !== null) {
           try {
-            return this.formatObject(arg);
+            // Redact sensitive data first, then format
+            const redacted = this.redactSensitiveData(arg);
+            return this.formatObject(redacted);
           } catch (e) {
             return String(arg);
           }
@@ -302,27 +357,33 @@ class SharedLoggerClass implements Logger {
 
   /**
    * Create log method for specific level with emoji prefix and colored namespace
+   * Automatically redacts sensitive data before console output
    */
   private createLogMethod(level: LogLevel): (...args: unknown[]) => void {
     return (...args: unknown[]) => {
       // Get emoji prefix
       const emoji = LOG_EMOJIS[level];
 
+      // Redact sensitive data from all arguments before console output
+      const redactedArgs = args.map(arg =>
+        (typeof arg === 'object' && arg !== null) ? this.redactSensitiveData(arg) : arg
+      );
+
       // For errors, use console.group for collapsible stack traces
       if (level === 'error' && this.originalConsole[level]) {
-        this.logErrorWithGroup(args);
+        this.logErrorWithGroup(redactedArgs);
       } else {
         // Check for namespace in first argument
-        const { namespace, color } = this.getNamespaceColor(args);
+        const { namespace, color } = this.getNamespaceColor(redactedArgs);
 
         // Always passthrough to original console with emoji prefix and colored namespace
         if (level !== 'silent' && this.originalConsole[level]) {
           if (namespace) {
             // First arg is namespace - colorize it, then reset style for rest
-            this.originalConsole[level](emoji, '%c' + namespace + '%c', color, '', ...args.slice(1));
+            this.originalConsole[level](emoji, '%c' + namespace + '%c', color, '', ...redactedArgs.slice(1));
           } else {
             // No namespace - regular log
-            this.originalConsole[level](emoji, ...args);
+            this.originalConsole[level](emoji, ...redactedArgs);
           }
         }
       }
@@ -330,7 +391,7 @@ class SharedLoggerClass implements Logger {
       // Check if should log at this level
       if (!this.shouldLog(level)) return;
 
-      // Format and buffer
+      // Format and buffer (formatArgs already redacts, but using original args for consistency)
       const message = emoji + ' ' + this.formatArgs(args);
       this.bufferLog(level, message);
     };
@@ -397,18 +458,24 @@ class SharedLoggerClass implements Logger {
 
   /**
    * Log success message with green checkmark emoji and colored namespace
+   * Automatically redacts sensitive data before console output
    * Usage: SharedLogger.success('[Network:Heartbeat]', 'Sent successfully')
    */
   success(...args: unknown[]): void {
-    const { namespace, color } = this.getNamespaceColor(args);
+    // Redact sensitive data from all arguments before console output
+    const redactedArgs = args.map(arg =>
+      (typeof arg === 'object' && arg !== null) ? this.redactSensitiveData(arg) : arg
+    );
+
+    const { namespace, color } = this.getNamespaceColor(redactedArgs);
 
     if (this.originalConsole.log) {
       if (namespace) {
         // First arg is namespace - colorize it, then reset style for rest
-        this.originalConsole.log(SUCCESS_EMOJI, '%c' + namespace + '%c', color, '', ...args.slice(1));
+        this.originalConsole.log(SUCCESS_EMOJI, '%c' + namespace + '%c', color, '', ...redactedArgs.slice(1));
       } else {
         // No namespace - regular log
-        this.originalConsole.log(SUCCESS_EMOJI, ...args);
+        this.originalConsole.log(SUCCESS_EMOJI, ...redactedArgs);
       }
     }
 

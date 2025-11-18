@@ -27,6 +27,31 @@ import { getShellBootstrap, getShellActivationPoll, getShellActivationScreen } f
 class ShellRegistrationClass implements IShellRegistration {
   private retryTimeout: number | null = null;
   private isRegistering = false;
+  private registrationQueue: Promise<void> = Promise.resolve();
+  private queuedCount = 0;
+
+  /**
+   * Validate registration response structure
+   * Ensures all required fields are present before accessing them
+   */
+  private validateRegistrationResponse(data: any): data is RegistrationResponse {
+    if (!data) {
+      SharedLogger.error('[ShellRegistration] Registration response is null or undefined');
+      return false;
+    }
+
+    // Check required fields
+    const requiredFields = ['device_id', 'unique_code', 'status'];
+    const missingFields = requiredFields.filter(field => !(field in data) || data[field] === null || data[field] === undefined);
+
+    if (missingFields.length > 0) {
+      SharedLogger.error(`[ShellRegistration] Registration response missing required fields: ${missingFields.join(', ')}`);
+      SharedLogger.error('[ShellRegistration] Received data:', data);
+      return false;
+    }
+
+    return true;
+  }
 
   /**
    * Generate 6-digit activation code
@@ -132,12 +157,12 @@ class ShellRegistrationClass implements IShellRegistration {
   }
 
   /**
-   * Register device to backend
+   * Register device to backend (internal implementation)
    * Auto-displays 6-digit code, organization assigned by admin during activation
    * @param forceRenew - Force request new code even if device exists (for expired code renewal)
    */
-  async registerDevice(forceRenew = false): Promise<void> {
-    SharedLogger.log('[ShellRegistration] 🎯 registerDevice() called', { forceRenew });
+  private async _registerDeviceInternal(forceRenew = false): Promise<void> {
+    SharedLogger.log('[ShellRegistration] 🎯 _registerDeviceInternal() called', { forceRenew });
     SharedLogger.log('[ShellRegistration] 🔍 DEBUG - forceRenew type:', typeof forceRenew);
     SharedLogger.log('[ShellRegistration] 🔍 DEBUG - forceRenew value:', forceRenew);
     SharedLogger.log('[ShellRegistration] 🔍 DEBUG - !forceRenew:', !forceRenew);
@@ -279,6 +304,11 @@ class ShellRegistrationClass implements IShellRegistration {
 
     SharedLogger.log('[ShellRegistration] 📥 Response received from backend:', data);
 
+    // Validate response structure before accessing fields
+    if (!this.validateRegistrationResponse(data)) {
+      throw new Error('Invalid registration response structure from backend');
+    }
+
     SharedLogger.log('[ShellRegistration] ✅ Registration successful:', data);
 
     // Check if backend returned different code (existing device reuse)
@@ -366,11 +396,45 @@ class ShellRegistrationClass implements IShellRegistration {
 
       // Schedule retry
       this.retryTimeout = window.setTimeout(() => {
-        void this.registerDevice();
+        void this._registerDeviceInternal();
       }, retryDelay);
     } finally {
       this.isRegistering = false;
     }
+  }
+
+  /**
+   * Register device to backend (public method with queue)
+   * Ensures serial execution to prevent race conditions
+   * @param forceRenew - Force request new code even if device exists (for expired code renewal)
+   */
+  async registerDevice(forceRenew = false): Promise<void> {
+    // Check if too many calls are queued (potential bug)
+    if (this.queuedCount > 5) {
+      SharedLogger.warn('[ShellRegistration] Too many queued registrations, rejecting new request');
+      return;
+    }
+
+    this.queuedCount++;
+    SharedLogger.log(`[ShellRegistration] Queueing registration (queue size: ${this.queuedCount})`);
+
+    // Chain promise to queue for serial execution
+    this.registrationQueue = this.registrationQueue
+      .then(async () => {
+        try {
+          await this._registerDeviceInternal(forceRenew);
+        } finally {
+          this.queuedCount--;
+          SharedLogger.log(`[ShellRegistration] Registration completed (queue size: ${this.queuedCount})`);
+        }
+      })
+      .catch((error) => {
+        this.queuedCount--;
+        SharedLogger.error('[ShellRegistration] Queued registration failed:', error);
+        throw error;
+      });
+
+    return this.registrationQueue;
   }
 
   /**

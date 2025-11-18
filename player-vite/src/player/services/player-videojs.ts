@@ -44,6 +44,9 @@ class PlayerVideoJSClass implements IPlayerVideoJS {
   private itemTimer: number | null = null;
   private volumeLevel: number = 75; // Default volume (0-100), can be overridden by device settings
 
+  // Track created blob URLs for cleanup
+  private activeBlobUrls: Set<string> = new Set();
+
   // Player configuration
   private readonly playerConfig: PlayerConfig = {
     autoplay: true,
@@ -76,6 +79,34 @@ class PlayerVideoJSClass implements IPlayerVideoJS {
     errorDisplay: false,   // Custom error handling
     controlBar: false,     // No controls for auto-play
   };
+
+  /**
+   * Create blob URL and track it for cleanup
+   */
+  private createTrackedBlobURL(blob: Blob): string {
+    const blobUrl = URL.createObjectURL(blob);
+    this.activeBlobUrls.add(blobUrl);
+    SharedLogger.log(`[PlayerVideoJS] Created blob URL (total active: ${this.activeBlobUrls.size})`);
+    return blobUrl;
+  }
+
+  /**
+   * Revoke all active blob URLs
+   */
+  private revokeAllBlobURLs(): void {
+    if (this.activeBlobUrls.size === 0) return;
+
+    SharedLogger.log(`[PlayerVideoJS] Revoking ${this.activeBlobUrls.size} blob URLs...`);
+    this.activeBlobUrls.forEach(url => {
+      try {
+        URL.revokeObjectURL(url);
+      } catch (error) {
+        SharedLogger.warn(`[PlayerVideoJS] Failed to revoke blob URL:`, error);
+      }
+    });
+    this.activeBlobUrls.clear();
+    SharedLogger.log('[PlayerVideoJS] ✅ All blob URLs revoked');
+  }
 
   /**
    * Initialize player with video element
@@ -530,7 +561,7 @@ class PlayerVideoJSClass implements IPlayerVideoJS {
     for (const segment of segments) {
       // Create Blob from ArrayBuffer
       const blob = new Blob([segment.data], { type: 'video/mp2t' });
-      const blobUrl = URL.createObjectURL(blob);
+      const blobUrl = this.createTrackedBlobURL(blob); // Use tracked method
       segmentBlobUrls.push(blobUrl);
     }
 
@@ -553,7 +584,7 @@ class PlayerVideoJSClass implements IPlayerVideoJS {
     const playlistBlob = new Blob([playlistContent], {
       type: 'application/vnd.apple.mpegurl',
     });
-    const playlistUrl = URL.createObjectURL(playlistBlob);
+    const playlistUrl = this.createTrackedBlobURL(playlistBlob); // Use tracked method
 
     SharedLogger.log('[PlayerVideoJS] ✅ Offline HLS playlist created:', playlistUrl);
     return playlistUrl;
@@ -791,6 +822,9 @@ class PlayerVideoJSClass implements IPlayerVideoJS {
     // Clear widgets
     playerWidgetRenderer.clearWidgets();
 
+    // Revoke all blob URLs from previous item
+    this.revokeAllBlobURLs();
+
     if (this.videoElement) {
       this.videoElement.style.display = 'block';
     }
@@ -801,6 +835,9 @@ class PlayerVideoJSClass implements IPlayerVideoJS {
    */
   destroy(): void {
     this.stop();
+
+    // Revoke all blob URLs before destroying
+    this.revokeAllBlobURLs();
 
     if (this.player) {
       this.player.dispose(); // Video.js cleanup method

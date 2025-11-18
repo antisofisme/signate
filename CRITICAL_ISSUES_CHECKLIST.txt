@@ -1,0 +1,393 @@
+================================================================================
+CRITICAL ISSUES - QUICK FIX CHECKLIST
+================================================================================
+
+STATUS: [NOT STARTED] - 13 Critical Issues Found
+TARGET: All fixes complete before production deployment
+
+================================================================================
+ISSUE #1: NULL CHECK - Shell Registration
+================================================================================
+File: player-vite/src/shell/services/shell-registration.ts
+Lines: 178-230
+Status: [ ] NOT STARTED
+Priority: CRITICAL
+Time: 30 mins
+Risk: High - Blocks device registration
+
+Problem:
+  const code = existingCheck.unique_code; // Crashes if undefined
+
+Solution:
+  const code = existingCheck?.unique_code;
+  if (!code) throw new Error('Invalid response: missing unique_code');
+
+Test:
+  [ ] Verify null response handling
+  [ ] Verify empty object handling
+  [ ] Verify all properties validated
+
+================================================================================
+ISSUE #2: API REQUEST TIMEOUT
+================================================================================
+File: player-vite/src/shared/api/shared-api-client.ts
+Lines: 27-88
+Status: [ ] NOT STARTED
+Priority: CRITICAL
+Time: 20 mins
+Risk: High - Prevents hanging requests
+
+Problem:
+  await fetch(url, options); // Can hang forever
+
+Solution:
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 30000);
+  await fetch(url, { ...options, signal: controller.signal });
+
+Test:
+  [ ] Verify timeout triggers at 30s
+  [ ] Verify error message is clear
+  [ ] Verify timeout is cleared on success
+
+================================================================================
+ISSUE #3: TOKEN LEAKAGE IN LOGS
+================================================================================
+File: player-vite/src/shared/api/shared-api-client.ts
+Lines: 189-199
+Status: [ ] NOT STARTED
+Priority: CRITICAL
+Time: 15 mins
+Risk: High - Security vulnerability
+
+Problem:
+  logError(error.url); // May contain ?token=...
+
+Solution:
+  logError(this.redactSensitiveData(error.url));
+
+  redactSensitiveData(url: string): string {
+    return url.replace(/token=[^&]*/gi, 'token=***');
+  }
+
+Test:
+  [ ] Verify token removed from logs
+  [ ] Verify URL still readable for debugging
+  [ ] Verify no regression in logging
+
+================================================================================
+ISSUE #4: RACE CONDITION - Activation Poll
+================================================================================
+File: player-vite/src/shell/services/shell-activation-poll.ts
+Lines: 86-108
+Status: [ ] NOT STARTED
+Priority: CRITICAL
+Time: 20 mins
+Risk: High - Concurrent state mutations
+
+Problem:
+  Multiple checkActivation() calls trigger registerDevice() simultaneously
+
+Solution:
+  private isCheckingActivation = false;
+
+  async checkActivation() {
+    if (this.isCheckingActivation) return;
+    this.isCheckingActivation = true;
+    try {
+      // ... check logic ...
+    } finally {
+      this.isCheckingActivation = false;
+    }
+  }
+
+Test:
+  [ ] Verify concurrent checks prevented
+  [ ] Verify duplicate registrations don't occur
+  [ ] Verify check completes correctly
+
+================================================================================
+ISSUE #5: WEBSOCKET QUEUE UNBOUNDED
+================================================================================
+File: player-vite/src/shared/websocket/shared-websocket.ts
+Lines: 368-376
+Status: [ ] NOT STARTED
+Priority: CRITICAL
+Time: 20 mins
+Risk: High - Memory leak
+
+Problem:
+  Queue drops 1 message but adds 1, grows unbounded
+
+Solution:
+  if (this.messageQueue.length >= this.maxQueueSize) {
+    const dropCount = Math.ceil(this.maxQueueSize * 0.1);
+    this.messageQueue = this.messageQueue.slice(dropCount);
+  }
+  this.messageQueue.push(message);
+
+Test:
+  [ ] Verify queue doesn't exceed max size
+  [ ] Verify old messages dropped first
+  [ ] Verify no memory leak
+
+================================================================================
+ISSUE #6: IMAGE BLOB URL LEAK
+================================================================================
+File: player-vite/src/player/services/player-videojs.ts
+Lines: 340-399
+Status: [ ] NOT STARTED
+Priority: CRITICAL
+Time: 25 mins
+Risk: High - Memory leak after image playback
+
+Problem:
+  Blob URLs created for images never revoked
+
+Solution:
+  private imageBlobUrls: string[] = [];
+
+  // Track blob URL
+  if (isFromCache && finalImageUrl.startsWith('blob:')) {
+    this.imageBlobUrls.push(finalImageUrl);
+  }
+
+  // Revoke on cleanup
+  for (const blobUrl of this.imageBlobUrls) {
+    URL.revokeObjectURL(blobUrl);
+  }
+  this.imageBlobUrls = [];
+
+Test:
+  [ ] Verify blob URL revoked after image
+  [ ] Verify no memory leak (10 images)
+  [ ] Verify cleanup on destroy
+
+================================================================================
+ISSUE #7: XSS VULNERABILITY - localStorage
+================================================================================
+File: player-vite/src/shared/device/shared-device-state.ts
+Lines: 43-88
+Status: [ ] NOT STARTED
+Priority: CRITICAL
+Time: 20 mins
+Risk: High - Security vulnerability
+
+Problem:
+  Device data stored without sanitization
+
+Solution:
+  setDeviceId(id: string | number): void {
+    const sanitized = String(id).replace(/[^a-zA-Z0-9-_]/g, '');
+    if (sanitized !== String(id)) {
+      throw new Error(`Invalid device ID: ${id}`);
+    }
+    localStorage.setItem('device_id', sanitized);
+  }
+
+Test:
+  [ ] Verify XSS payload rejected
+  [ ] Verify valid IDs accepted
+  [ ] Verify error thrown on invalid input
+
+================================================================================
+ISSUE #8: TIMER LEAK - Template Processor
+================================================================================
+File: player-vite/src/shared/services/template-processor.ts
+Lines: 205-224
+Status: [ ] NOT STARTED
+Priority: CRITICAL
+Time: 25 mins
+Risk: High - Memory leak on reload
+
+Problem:
+  3 intervals created without tracking, never cleaned up
+
+Solution:
+  private startSystemVariableRefresh(): void {
+    const timer1 = setInterval(() => { ... }, 1000);
+    this.refreshTimers.set('_system_time', timer1);
+
+    const timer2 = setInterval(() => { ... }, 60000);
+    this.refreshTimers.set('_system_date', timer2);
+
+    const timer3 = setInterval(() => { ... }, 3600000);
+    this.refreshTimers.set('_system_month_year', timer3);
+  }
+
+Test:
+  [ ] Verify all timers tracked
+  [ ] Verify destroy() clears timers
+  [ ] Verify no timer leak on reload
+
+================================================================================
+ISSUE #9: HLS CACHE PARSING - Invalid Duration
+================================================================================
+File: player-vite/src/player/services/player-hls-cache.ts
+Lines: 150-190
+Status: [ ] NOT STARTED
+Priority: CRITICAL
+Time: 20 mins
+Risk: High - Playback failure
+
+Problem:
+  currentDuration = parseFloat(durationMatch[1]); // Could be NaN
+
+Solution:
+  const parsed = parseFloat(durationMatch[1]);
+  if (!isNaN(parsed) && parsed > 0) {
+    currentDuration = parsed;
+  } else {
+    SharedLogger.warn(`Invalid duration: ${durationMatch[1]}`);
+    currentDuration = 6.0;
+  }
+
+Test:
+  [ ] Verify NaN handling
+  [ ] Verify negative durations rejected
+  [ ] Verify default used on error
+
+================================================================================
+ISSUE #10: INDEXEDDB BATCH - Silent Data Loss
+================================================================================
+File: player-vite/src/shared/storage/indexed-db-manager.ts
+Lines: 217-248
+Status: [ ] NOT STARTED
+Priority: CRITICAL
+Time: 20 mins
+Risk: High - Data corruption
+
+Problem:
+  Individual put errors not tracked, insertCount only increments on success
+
+Solution:
+  const errors: any[] = [];
+  dataArray.forEach((data, index) => {
+    const request = store.put(data);
+    request.onsuccess = () => successCount++;
+    request.onerror = () => {
+      failureCount++;
+      errors.push({ index, error: request.error?.message });
+    };
+  });
+
+Test:
+  [ ] Verify partial failures detected
+  [ ] Verify errors list populated
+  [ ] Verify caller notified of failures
+
+================================================================================
+ISSUE #11: TYPE COERCION - Unsafe Casting
+================================================================================
+File: player-vite/src/shared/device/shared-device-state.ts
+Lines: 295-310
+Status: [ ] NOT STARTED
+Priority: CRITICAL
+Time: 15 mins
+Risk: Medium - Configuration corruption
+
+Problem:
+  return value as T; // Unsafe type cast
+
+Solution:
+  getPreference<T = string>(key: string, defaultValue?: T, validator?: (v: any) => boolean): T {
+    // ... parsing logic ...
+    if (validator && !validator(parsed)) {
+      return defaultValue as T;
+    }
+    return parsed as T;
+  }
+
+Test:
+  [ ] Verify type validation
+  [ ] Verify default returned on validation fail
+  [ ] Verify correct types returned
+
+================================================================================
+ISSUE #12: ERROR SWALLOWING - Duplicate Code
+================================================================================
+File: player-vite/src/shell/services/shell-registration.ts
+Lines: 341-344
+Status: [ ] NOT STARTED
+Priority: CRITICAL
+Time: 10 mins
+Risk: High - Unrecoverable failure
+
+Problem:
+  void this.registerDevice(); // Fire and forget, errors lost
+
+Solution:
+  void this.registerDevice().catch((error) => {
+    SharedLogger.error('[ShellRegistration] Retry failed:', error);
+  });
+
+Test:
+  [ ] Verify retry errors logged
+  [ ] Verify no silent failures
+
+================================================================================
+ISSUE #13: API RESPONSE VALIDATION
+================================================================================
+File: player-vite/src/shell/services/shell-registration.ts
+Lines: 275-280
+Status: [ ] NOT STARTED
+Priority: CRITICAL
+Time: 15 mins
+Risk: High - Registration failure
+
+Problem:
+  accessing data.device_id without null check
+
+Solution:
+  if (!data || !data.device_id) {
+    throw new Error('Invalid registration response: missing device_id');
+  }
+  if (!data.unique_code) {
+    throw new Error('Invalid registration response: missing unique_code');
+  }
+
+Test:
+  [ ] Verify missing fields throw error
+  [ ] Verify error message clear
+  [ ] Verify retry logic triggered
+
+================================================================================
+IMPLEMENTATION CHECKLIST
+================================================================================
+
+Phase 1 - CRITICAL FIXES (Do Today)
+[ ] Issue #1 - Null checks in registration
+[ ] Issue #2 - API request timeout
+[ ] Issue #3 - Token redaction in logs
+[ ] Issue #4 - Race condition prevention
+[ ] Issue #5 - WebSocket queue fix
+[ ] Issue #6 - Blob URL cleanup
+[ ] Issue #7 - localStorage sanitization
+[ ] Issue #8 - Timer leak cleanup
+[ ] Issue #9 - HLS duration validation
+[ ] Issue #10 - Batch validation
+[ ] Issue #11 - Type validation
+[ ] Issue #12 - Error handling
+[ ] Issue #13 - Response validation
+
+Phase 2 - TESTING
+[ ] Unit tests for all fixes
+[ ] Integration tests
+[ ] Performance tests
+[ ] Security tests
+[ ] Regression tests
+
+Phase 3 - DEPLOYMENT
+[ ] Staging deployment
+[ ] Production deployment
+[ ] Monitoring setup
+[ ] Alerting setup
+[ ] Documentation
+
+================================================================================
+TOTAL TIME ESTIMATE: 4-5 hours (including testing)
+PRIORITY: HIGHEST - Must complete before production
+================================================================================
+
+Current Progress: 0/13 fixes complete
+Last Updated: 2025-11-19
