@@ -2,9 +2,9 @@
  * Text Widget Renderer
  */
 
-import { TextWidget, WidgetRenderContext, IWidgetRenderer } from '../../models/widget.model';
-import { logger } from '../../logger';
-import { templateProcessor } from '../template-processor';
+import { TextWidget, WidgetRenderContext, IWidgetRenderer } from '@shared/models/widget.model';
+import { logger } from '@shared/logger';
+import { templateProcessor } from '@shared/services/template-processor';
 
 export class TextRenderer implements IWidgetRenderer {
   private container?: HTMLElement;

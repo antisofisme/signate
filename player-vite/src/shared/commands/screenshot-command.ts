@@ -23,6 +23,7 @@
  */
 
 import { BaseCommand, CommandResult } from './base-command';
+import { SharedDeviceState } from '@shared/device';
 
 export type ScreenshotQuality = 'low' | 'medium' | 'high';
 
@@ -148,7 +149,7 @@ export class ScreenshotCommand extends BaseCommand {
       ctx.font = '24px Arial';
       ctx.fillText('Screenshot captured', 50, 100);
       ctx.font = '16px Arial';
-      ctx.fillText(`Device: ${localStorage.getItem('device_id') || 'Unknown'}`, 50, 150);
+      ctx.fillText(`Device: ${SharedDeviceState.getDeviceId() || 'Unknown'}`, 50, 150);
       ctx.fillText(`Time: ${new Date().toLocaleString()}`, 50, 180);
     }
 
@@ -185,7 +186,7 @@ export class ScreenshotCommand extends BaseCommand {
 
       const formData = new FormData();
       formData.append('screenshot', blob, `screenshot_${Date.now()}.jpg`);
-      formData.append('device_id', localStorage.getItem('device_id') || '0');
+      formData.append('device_id', SharedDeviceState.getDeviceId() || '0');
 
       const uploadUrl = `${apiBaseUrl}/api/screenshots/upload`;
       this.log(`Uploading screenshot to ${uploadUrl}`);

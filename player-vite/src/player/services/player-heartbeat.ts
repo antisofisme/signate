@@ -15,7 +15,7 @@ import { SharedLogger } from '@shared/logger';
 import { SharedAPIClient } from '@shared/api';
 import { SharedDeviceState } from '@shared/device';
 import { deviceConfigStorage } from '@shared/storage';
-import type { Heartbeat as IHeartbeat } from '../types/player.types';
+import type { Heartbeat as IHeartbeat } from '@player/types/player.types';
 import { ServiceRegistry } from '@shared/services/service-registry';
 
 /**

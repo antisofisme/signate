@@ -235,7 +235,7 @@ class WaitingForContentManager {
     const deviceId = SharedDeviceState.getDeviceId();
 
     // Try to get room number from localStorage (might be stored during activation)
-    let roomNumber = localStorage.getItem('device_room_number');
+    let roomNumber = SharedDeviceState.getRoomNumber();
 
     // If not in localStorage, construct from device name or ID
     if (!roomNumber) {

@@ -13,7 +13,7 @@ import { SharedAPIClient } from '@shared/api';
 import { config } from '@shared/config';
 import { SharedLogger } from '@shared/logger';
 import { SharedDeviceState } from '@shared/device';
-import type { PlaylistItem } from '../types/player.types';
+import type { PlaylistItem } from '@player/types/player.types';
 
 /**
  * Playback log entry

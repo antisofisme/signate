@@ -3,7 +3,7 @@
  * Displays current active schedule information
  */
 
-import { playerScheduleManager } from '../services/player-schedule-manager';
+import { playerScheduleManager } from '@player/services/player-schedule-manager';
 import { i18n } from '@shared/services/i18n';
 import { SharedLogger } from '@shared/logger';
 import { SharedEventBus } from '@shared/events/shared-event-bus';

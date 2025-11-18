@@ -8,7 +8,7 @@
  */
 
 import { dbManager } from './indexed-db-manager';
-import { SharedLogger } from '../logger';
+import { SharedLogger } from '@shared/logger';
 
 const STORE_NAME = 'device_config';
 const CONFIG_KEY = 'config';

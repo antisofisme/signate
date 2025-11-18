@@ -3,7 +3,7 @@
  * Wrapper for IndexedDB operations with schema support
  */
 
-import { SharedLogger } from '../logger';
+import { SharedLogger } from '@shared/logger';
 import { DB_NAME, DB_VERSION, SCHEMA } from './storage-schema';
 import type { StorageEstimate, StoreData } from './indexed-db.types';
 

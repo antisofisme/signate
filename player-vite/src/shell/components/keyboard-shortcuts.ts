@@ -10,6 +10,7 @@
  */
 
 import { SharedLogger } from '@shared/logger';
+import { SharedDeviceState } from '@shared/device';
 import { SharedToast } from '@shared/ui';
 import type { ShellUI } from './shell-ui';
 
@@ -55,10 +56,10 @@ class KeyboardShortcutsManager {
       const debugStatus = document.getElementById('debug-status');
 
       if (debugDeviceId) {
-        debugDeviceId.textContent = localStorage.getItem('device_id') || '-';
+        debugDeviceId.textContent = SharedDeviceState.getDeviceId() || '-';
       }
       if (debugStatus) {
-        debugStatus.textContent = localStorage.getItem('device_status') || '-';
+        debugStatus.textContent = SharedDeviceState.getDeviceStatus() || '-';
       }
     }
   }

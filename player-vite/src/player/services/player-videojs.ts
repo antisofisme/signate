@@ -24,7 +24,7 @@ import type {
   PlaylistItem,
   PlayerState,
   PlayerConfig,
-} from '../types/player.types';
+} from '@player/types/player.types';
 
 /**
  * Player VideoJS Class

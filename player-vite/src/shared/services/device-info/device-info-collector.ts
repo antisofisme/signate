@@ -91,7 +91,7 @@ class DeviceInfoCollectorClass {
     const uuid = getOrCreateDeviceUUID();
     const organizationIdStr = SharedDeviceState.getOrganizationId();
     const organizationId = organizationIdStr ? parseInt(organizationIdStr) : null;
-    const rotation = parseInt(localStorage.getItem('screen_rotation') || '0');
+    const rotation = SharedDeviceState.getScreenRotation();
 
     // Get current playlist info
     let currentPlaylist: PlaylistInfo | null = null;
@@ -581,7 +581,7 @@ class DeviceInfoCollectorClass {
    * Helper: Get last heartbeat time
    */
   private getLastHeartbeatTime(): Date | null {
-    const lastHeartbeat = localStorage.getItem('last_heartbeat_time');
+    const lastHeartbeat = SharedDeviceState.getLastHeartbeatTime();
     if (lastHeartbeat) {
       return new Date(lastHeartbeat);
     }

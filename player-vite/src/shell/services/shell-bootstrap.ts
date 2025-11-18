@@ -15,7 +15,7 @@ import { SharedAPIClient } from '@shared/api';
 import { SharedDeviceState } from '@shared/device';
 import { ShellRegistration } from './shell-registration';
 import { ShellActivationPoll } from './shell-activation-poll';
-import type { ShellBootstrap as IShellBootstrap, VerifyDeviceResponse } from '../types/shell.types';
+import type { ShellBootstrap as IShellBootstrap, VerifyDeviceResponse } from '@shell/types/shell.types';
 import { ServiceRegistry } from '@shared/services/service-registry';
 import { getPlayerMediaCache, getPlayerHeartbeat, getPlayerPlaylistSync, getPlayerCommandExecutor, getPlayerHealthReporter, getSharedWebSocket, getDeviceInfoPopup, getPlayerVideoJS } from '@shared/services';
 // Import PlayerVideoJS and PlayerBackgroundAudio to ensure they're registered before use

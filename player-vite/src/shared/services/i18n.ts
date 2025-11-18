@@ -3,10 +3,11 @@
  * Manages multi-language support in the player
  */
 
-import { logger } from '../logger';
-import { SharedAPIClient } from '../api';
-import { SharedEventBus } from '../events/shared-event-bus';
-import { defaultTranslations } from '../data/translations';
+import { logger } from '@shared/logger';
+import { SharedAPIClient } from '@shared/api';
+import { SharedEventBus } from '@shared/events/shared-event-bus';
+import { defaultTranslations } from '@shared/data/translations';
+import { SharedDeviceState } from '@shared/device';
 
 export interface Translation {
   key: string;
@@ -128,7 +129,7 @@ export class I18nService {
     }
     
     this.currentLanguage = languageCode;
-    localStorage.setItem('player_language', languageCode);
+    SharedDeviceState.setLanguagePreference(languageCode);
     
     // Update document direction for RTL languages
     document.documentElement.dir = language.direction;
@@ -225,7 +226,7 @@ export class I18nService {
    * Load saved language from localStorage
    */
   private loadSavedLanguage(): void {
-    const savedLanguage = localStorage.getItem('player_language');
+    const savedLanguage = SharedDeviceState.getLanguagePreference();
     
     if (savedLanguage && this.availableLanguages.some(lang => lang.code === savedLanguage)) {
       this.setLanguage(savedLanguage);
@@ -264,7 +265,7 @@ export class I18nService {
   private async checkGuestLanguage(): Promise<void> {
     try {
       // Get device ID
-      const deviceId = localStorage.getItem('device_id');
+      const deviceId = SharedDeviceState.getDeviceId();
       if (!deviceId) return;
       
       // Get guest data

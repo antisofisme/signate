@@ -14,7 +14,7 @@ import { SharedLogger } from '@shared/logger';
 import { SharedAPIClient } from '@shared/api';
 import { SharedDeviceState } from '@shared/device';
 import { deviceConfigStorage } from '@shared/storage';
-import type { ShellActivationPoll as IShellActivationPoll, ActivationCheckResponse } from '../types/shell.types';
+import type { ShellActivationPoll as IShellActivationPoll, ActivationCheckResponse } from '@shell/types/shell.types';
 import { ServiceRegistry } from '@shared/services/service-registry';
 import { getShellRegistration } from '@shared/services';
 

@@ -21,6 +21,7 @@
  */
 
 import { SharedAPIClient } from '@shared/api';
+import { SharedDeviceState } from '@shared/device';
 
 /**
  * Command status types
@@ -58,7 +59,7 @@ export async function reportCommandStatus(
   error: string | null = null
 ): Promise<void> {
   // Get deviceId from localStorage or sessionStorage
-  const deviceId = localStorage.getItem('deviceId') || sessionStorage.getItem('deviceId');
+  const deviceId = SharedDeviceState.getDeviceId() || sessionStorage.getItem('deviceId');
 
   if (!deviceId) {
     console.warn('[CommandReporter] No device ID, cannot report status');

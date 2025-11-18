@@ -8,13 +8,13 @@ import {
   WidgetType,
   WidgetRenderContext,
   IWidgetRenderer,
-} from '../models/widget.model';
+} from '@shared/models/widget.model';
 import { ClockRenderer } from './widget-renderers/clock-renderer';
 import { WeatherRenderer } from './widget-renderers/weather-renderer';
 import { TextRenderer } from './widget-renderers/text-renderer';
 import { CalendarRenderer } from './widget-renderers/calendar-renderer';
 import { HtmlRenderer } from './widget-renderers/html-renderer';
-import { logger } from '../logger';
+import { logger } from '@shared/logger';
 
 export class WidgetRendererService {
   private renderers: Map<string, IWidgetRenderer> = new Map();

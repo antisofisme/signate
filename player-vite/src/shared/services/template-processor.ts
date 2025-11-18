@@ -3,8 +3,8 @@
  * Processes template variables from various sources
  */
 
-import { logger } from '../logger';
-import { SharedAPIClient } from '../api';
+import { logger } from '@shared/logger';
+import { SharedAPIClient } from '@shared/api';
 
 export interface TemplateVariable {
   key: string;

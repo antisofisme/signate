@@ -16,7 +16,7 @@ import { SharedAPIClient } from '@shared/api';
 import { SharedDeviceState } from '@shared/device';
 import { deviceConfigStorage } from '@shared/storage';
 import { getOrCreateDeviceUUID } from '@shared/utils/device-fingerprint';
-import type { ShellRegistration as IShellRegistration, RegistrationResponse, PlatformInfo } from '../types/shell.types';
+import type { ShellRegistration as IShellRegistration, RegistrationResponse, PlatformInfo } from '@shell/types/shell.types';
 import { ServiceRegistry } from '@shared/services/service-registry';
 import { getShellBootstrap, getShellActivationPoll, getShellActivationScreen } from '@shared/services';
 

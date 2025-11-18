@@ -16,7 +16,7 @@ import { SharedDeviceState } from '@shared/device';
 import { SharedEventBus } from '@shared/events/shared-event-bus';
 import { playerScheduleManager } from './player-schedule-manager';
 import { PlayerBackgroundAudio } from './player-background-audio';
-import type { PlaylistSync as IPlaylistSync, PlaylistSyncResponse, Playlist } from '../types/player.types';
+import type { PlaylistSync as IPlaylistSync, PlaylistSyncResponse, Playlist } from '@player/types/player.types';
 import { ServiceRegistry } from '@shared/services/service-registry';
 import { getPlayerVideoJS } from '@shared/services';
 import { WaitingForContent } from '@player/components';

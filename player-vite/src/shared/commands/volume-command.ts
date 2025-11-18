@@ -21,6 +21,7 @@
  */
 
 import { BaseCommand, CommandResult } from './base-command';
+import { SharedDeviceState } from '@shared/device';
 
 export interface VolumeParameters {
   level: number;
@@ -123,7 +124,7 @@ export class VolumeCommand extends BaseCommand {
    */
   private executeBrowser(level: number): VolumeResult {
     this.log('Browser detected - storing volume preference');
-    localStorage.setItem('volume_preference', level.toString());
+    SharedDeviceState.setVolumePreference(level);
 
     // Try to control video element volume
     const videoElements = document.querySelectorAll('video');

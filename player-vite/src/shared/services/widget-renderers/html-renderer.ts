@@ -2,9 +2,9 @@
  * HTML/iFrame Widget Renderer
  */
 
-import { HtmlWidget, WidgetRenderContext, IWidgetRenderer } from '../../models/widget.model';
-import { logger } from '../../logger';
-import { templateProcessor } from '../template-processor';
+import { HtmlWidget, WidgetRenderContext, IWidgetRenderer } from '@shared/models/widget.model';
+import { logger } from '@shared/logger';
+import { templateProcessor } from '@shared/services/template-processor';
 
 export class HtmlRenderer implements IWidgetRenderer {
   private container?: HTMLElement;

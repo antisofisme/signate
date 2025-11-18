@@ -2,9 +2,9 @@
  * Clock Widget Renderer
  */
 
-import { ClockWidget, WidgetRenderContext, IWidgetRenderer } from '../../models/widget.model';
-import { logger } from '../../logger';
-import { i18n } from '../i18n';
+import { ClockWidget, WidgetRenderContext, IWidgetRenderer } from '@shared/models/widget.model';
+import { logger } from '@shared/logger';
+import { i18n } from '@shared/services/i18n';
 
 export class ClockRenderer implements IWidgetRenderer {
   private container?: HTMLElement;

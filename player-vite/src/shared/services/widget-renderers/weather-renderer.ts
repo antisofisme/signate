@@ -2,8 +2,8 @@
  * Weather Widget Renderer
  */
 
-import { WeatherWidget, WidgetRenderContext, IWidgetRenderer } from '../../models/widget.model';
-import { logger } from '../../logger';
+import { WeatherWidget, WidgetRenderContext, IWidgetRenderer } from '@shared/models/widget.model';
+import { logger } from '@shared/logger';
 
 interface WeatherData {
   temperature: number;

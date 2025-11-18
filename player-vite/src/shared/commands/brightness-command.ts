@@ -21,6 +21,7 @@
  */
 
 import { BaseCommand, CommandResult } from './base-command';
+import { SharedDeviceState } from '@shared/device';
 
 export interface BrightnessParameters {
   level: number;
@@ -130,8 +131,8 @@ export class BrightnessCommand extends BaseCommand {
     const brightness = level / 100; // 0-1 range
     document.body.style.filter = `brightness(${brightness})`;
 
-    // Store preference
-    localStorage.setItem('brightness_preference', level.toString());
+    // Store preference via SharedDeviceState
+    SharedDeviceState.setBrightnessPreference(level);
 
     return {
       brightness: level,

@@ -328,6 +328,97 @@ class SharedDeviceStateClass implements DeviceState {
   }
 
   // ==========================================================================
+  // COMMON PREFERENCE CONVENIENCE METHODS
+  // ==========================================================================
+
+  /**
+   * Get device room number
+   */
+  getRoomNumber(): string | null {
+    return this.getPreference('device_room_number', null);
+  }
+
+  /**
+   * Set device room number
+   */
+  setRoomNumber(roomNumber: string): void {
+    this.setPreference('device_room_number', roomNumber);
+  }
+
+  /**
+   * Get brightness preference (0-100)
+   */
+  getBrightnessPreference(): number {
+    const value = this.getPreference('brightness_preference', '75');
+    return parseInt(value, 10) || 75;
+  }
+
+  /**
+   * Set brightness preference (0-100)
+   */
+  setBrightnessPreference(level: number): void {
+    this.setPreference('brightness_preference', level.toString());
+  }
+
+  /**
+   * Get volume preference (0-100)
+   */
+  getVolumePreference(): number {
+    const value = this.getPreference('volume_preference', '75');
+    return parseInt(value, 10) || 75;
+  }
+
+  /**
+   * Set volume preference (0-100)
+   */
+  setVolumePreference(level: number): void {
+    this.setPreference('volume_preference', level.toString());
+  }
+
+  /**
+   * Get player language preference
+   */
+  getLanguagePreference(): string {
+    return this.getPreference('player_language', 'en');
+  }
+
+  /**
+   * Set player language preference
+   */
+  setLanguagePreference(languageCode: string): void {
+    this.setPreference('player_language', languageCode);
+  }
+
+  /**
+   * Get screen rotation (0, 90, 180, 270)
+   */
+  getScreenRotation(): number {
+    const value = this.getPreference('screen_rotation', '0');
+    return parseInt(value, 10) || 0;
+  }
+
+  /**
+   * Set screen rotation (0, 90, 180, 270)
+   */
+  setScreenRotation(rotation: number): void {
+    this.setPreference('screen_rotation', rotation.toString());
+  }
+
+  /**
+   * Get last heartbeat timestamp
+   */
+  getLastHeartbeatTime(): string | null {
+    return this.getPreference('last_heartbeat_time', null);
+  }
+
+  /**
+   * Set last heartbeat timestamp
+   */
+  setLastHeartbeatTime(timestamp: string): void {
+    this.setPreference('last_heartbeat_time', timestamp);
+  }
+
+  // ==========================================================================
   // GENERIC LOCALSTORAGE ACCESSORS (for migration compatibility)
   // ==========================================================================
 

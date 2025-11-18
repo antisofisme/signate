@@ -11,7 +11,7 @@
  */
 
 import { SharedLogger } from '@shared/logger';
-import type { PlayerMediaCache as IPlayerMediaCache, CachedMedia, CacheStats } from '../types/player.types';
+import type { PlayerMediaCache as IPlayerMediaCache, CachedMedia, CacheStats } from '@player/types/player.types';
 import { ServiceRegistry } from '@shared/services/service-registry';
 
 /**

@@ -12,8 +12,8 @@
 
 import { SharedLogger } from '@shared/logger';
 import { ServiceRegistry } from '@shared/services/service-registry';
-import type { DeviceSettings } from '../types/player.types';
-import type { PlayerMediaCache as IPlayerMediaCache } from '../types/player.types';
+import type { DeviceSettings } from '@player/types/player.types';
+import type { PlayerMediaCache as IPlayerMediaCache } from '@player/types/player.types';
 
 /**
  * Background Audio Player Service

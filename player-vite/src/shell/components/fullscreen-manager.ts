@@ -11,6 +11,7 @@
  */
 
 import { SharedLogger } from '@shared/logger';
+import { SharedDeviceState } from '@shared/device';
 
 /**
  * Fullscreen Manager Class
@@ -67,7 +68,7 @@ class FullscreenManagerClass {
         }
 
         // Reload player to update viewport size (ONLY if device is activated)
-        const deviceStatus = localStorage.getItem('device_status');
+        const deviceStatus = SharedDeviceState.getDeviceStatus();
         if (deviceStatus === 'active') {
           SharedLogger.log('[Fullscreen] Reloading player for new viewport size...');
           if (this.shellUI) {
@@ -91,7 +92,7 @@ class FullscreenManagerClass {
         }
 
         // Reload player to restore normal viewport size (ONLY if device is activated)
-        const deviceStatus = localStorage.getItem('device_status');
+        const deviceStatus = SharedDeviceState.getDeviceStatus();
         if (deviceStatus === 'active') {
           SharedLogger.log('[Fullscreen] Reloading player for normal viewport size...');
           if (this.shellUI) {

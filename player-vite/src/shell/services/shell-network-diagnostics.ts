@@ -11,6 +11,7 @@
  */
 
 import { SharedLogger } from '@shared/logger';
+import { SharedDeviceState } from '@shared/device';
 import { SharedEventBus } from '@shared/events/shared-event-bus';
 import { config } from '@shared/config';
 import { SharedAPIClient } from '@shared/api/shared-api-client';
@@ -319,7 +320,7 @@ class ShellNetworkDiagnosticsClass {
    */
   private async reportSpeedTest(result: SpeedTestResult): Promise<void> {
     try {
-      const deviceId = localStorage.getItem('device_id');
+      const deviceId = SharedDeviceState.getDeviceId();
       if (!deviceId) {
         SharedLogger.warn('[NetworkDiagnostics] No device ID, skipping report');
         return;

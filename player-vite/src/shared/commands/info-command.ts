@@ -24,6 +24,7 @@
  */
 
 import { BaseCommand, CommandResult, WebOSWindow } from './base-command';
+import { SharedDeviceState } from '@shared/device';
 
 export interface DeviceInfo {
   device_id: string | null;
@@ -74,9 +75,9 @@ export class InfoCommand extends BaseCommand {
 
     const info: DeviceInfo = {
       // Basic device info
-      device_id: localStorage.getItem('device_id'),
-      device_code: localStorage.getItem('device_code'),
-      activation_status: localStorage.getItem('device_status'),
+      device_id: SharedDeviceState.getDeviceId(),
+      device_code: SharedDeviceState.getDeviceCode(),
+      activation_status: SharedDeviceState.getDeviceStatus(),
 
       // Display information
       screen_width: window.screen.width,

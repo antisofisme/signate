@@ -3,7 +3,7 @@
  * Manages IndexedDB cache for offline media storage and retrieval
  */
 
-import { SharedLogger } from '../logger';
+import { SharedLogger } from '@shared/logger';
 import { dbManager } from './indexed-db-manager';
 import type { CachedMediaEntry, ContentCacheInfo, CacheSyncResult } from './media-cache.types';
 

@@ -2,8 +2,8 @@
  * Calendar Widget Renderer
  */
 
-import { CalendarWidget, WidgetRenderContext, IWidgetRenderer } from '../../models/widget.model';
-import { logger } from '../../logger';
+import { CalendarWidget, WidgetRenderContext, IWidgetRenderer } from '@shared/models/widget.model';
+import { logger } from '@shared/logger';
 
 interface CalendarEvent {
   title: string;

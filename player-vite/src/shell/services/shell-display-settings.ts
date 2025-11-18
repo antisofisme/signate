@@ -12,6 +12,7 @@
  */
 
 import { SharedLogger } from '@shared/logger';
+import { SharedDeviceState } from '@shared/device';
 import { SharedEventBus } from '@shared/events/shared-event-bus';
 import { SharedAPIClient } from '@shared/api/shared-api-client';
 import { ServiceRegistry } from '@shared/services/service-registry';
@@ -342,7 +343,7 @@ class ShellDisplaySettingsClass {
    */
   async reportToBackend(): Promise<void> {
     try {
-      const deviceId = localStorage.getItem('device_id');
+      const deviceId = SharedDeviceState.getDeviceId();
       if (!deviceId) {
         SharedLogger.warn('[DisplaySettings] No device ID, skipping report');
         return;
