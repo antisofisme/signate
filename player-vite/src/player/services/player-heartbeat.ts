@@ -14,6 +14,7 @@ import { config } from '@shared/config';
 import { SharedLogger } from '@shared/logger';
 import { SharedAPIClient } from '@shared/api';
 import { SharedDeviceState } from '@shared/device';
+import { SharedEventBus } from '@shared/events/shared-event-bus';
 import { deviceConfigStorage } from '@shared/storage';
 import type { Heartbeat as IHeartbeat } from '@player/types/player.types';
 import { ServiceRegistry } from '@shared/services/service-registry';
@@ -179,14 +180,11 @@ class PlayerHeartbeatClass implements IHeartbeat {
 
       SharedLogger.log('[PlayerHeartbeat] ✅ Tokens cleared, org_id preserved');
 
-      // Dispatch custom event for UI
-      const event = new CustomEvent('device-released', {
-        detail: {
-          timestamp: new Date().toISOString(),
-          releaseType: 'cms_release',
-        },
+      // Emit event via SharedEventBus
+      SharedEventBus.emit('device:released', {
+        timestamp: new Date().toISOString(),
+        releaseType: 'cms_release',
       });
-      window.dispatchEvent(event);
 
       // Reload to show activation screen
       // Device will request new code WITH org_id parameter
@@ -206,14 +204,11 @@ class PlayerHeartbeatClass implements IHeartbeat {
   private handleConnectionLost(): void {
     SharedLogger.warn('[PlayerHeartbeat] ⚠️ Connection lost - Attempting recovery...');
 
-    // Dispatch custom event for UI to handle
-    const event = new CustomEvent('connection-lost', {
-      detail: {
-        consecutiveFailures: this.consecutiveFailures,
-        timestamp: new Date().toISOString(),
-      },
+    // Emit event via SharedEventBus
+    SharedEventBus.emit('connection:lost', {
+      consecutiveFailures: this.consecutiveFailures,
+      timestamp: new Date().toISOString(),
     });
-    window.dispatchEvent(event);
 
     // Optionally attempt to restart heartbeat after delay
     setTimeout(() => {

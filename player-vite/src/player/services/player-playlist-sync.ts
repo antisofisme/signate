@@ -214,11 +214,8 @@ class PlayerPlaylistSyncClass implements IPlaylistSync {
     // Store current playlist
     this.currentPlaylist = playlist;
 
-    // Dispatch custom event for player to handle
-    const event = new CustomEvent('playlist-changed', {
-      detail: { playlist },
-    });
-    window.dispatchEvent(event);
+    // Emit event via SharedEventBus
+    SharedEventBus.emit('playlist:changed', { playlist });
 
     // Also update global player if available
     if (getPlayerVideoJS()) {

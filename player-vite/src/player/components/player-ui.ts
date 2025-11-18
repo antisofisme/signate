@@ -11,6 +11,7 @@
  */
 
 import { SharedLogger } from '@shared/logger';
+import { SharedEventBus } from '@shared/events/shared-event-bus';
 import { i18n } from '@shared/services/i18n';
 
 /**
@@ -185,8 +186,8 @@ class PlayerUIManager {
       // Press 's' to toggle schedule info
       if (e.key === 's' || e.key === 'S') {
         SharedLogger.log('[PlayerUI] Toggle schedule info');
-        // Dispatch event for schedule info toggle
-        window.dispatchEvent(new Event('toggle-schedule-info'));
+        // Emit event via SharedEventBus
+        SharedEventBus.emit('ui:toggle-schedule-info');
       }
     });
   }
