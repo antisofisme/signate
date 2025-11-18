@@ -28,6 +28,7 @@ class PlayerPlaylistSyncClass implements IPlaylistSync {
   private syncInterval: number | null = null;
   private readonly syncIntervalMs = 60000; // Sync every 60 seconds
   private currentPlaylistVersion: string | null = null;
+  private currentPlaylist: Playlist | null = null; // Store current playlist
   private _isRunning = false;
   private scheduledPlaylistId: number | null = null;
   private useScheduling = true; // Feature flag for scheduling
@@ -193,6 +194,9 @@ class PlayerPlaylistSyncClass implements IPlaylistSync {
   private notifyPlaylistChange(playlist: Playlist | null): void {
     SharedLogger.log('[PlayerPlaylistSync] 📢 Notifying player about playlist change...');
 
+    // Store current playlist
+    this.currentPlaylist = playlist;
+
     // Dispatch custom event for player to handle
     const event = new CustomEvent('playlist-changed', {
       detail: { playlist },
@@ -216,6 +220,14 @@ class PlayerPlaylistSyncClass implements IPlaylistSync {
    */
   getCurrentVersion(): string | null {
     return this.currentPlaylistVersion;
+  }
+
+  /**
+   * Get current playlist
+   * Returns the last loaded playlist or null if not loaded yet
+   */
+  getCurrentPlaylist(): Playlist | null {
+    return this.currentPlaylist;
   }
 
   /**
