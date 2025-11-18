@@ -249,7 +249,7 @@ class ShellBootstrapClass implements IShellBootstrap {
       SharedLogger.log('[ShellBootstrap] ✅ PlayerBackgroundAudio initialized');
 
       // 3. Initialize HLS Cache
-      const PlayerHLSCache = ServiceRegistry.get<any>('PlayerHLSCache');
+      const PlayerHLSCache = getPlayerHLSCache();
       if (PlayerHLSCache) {
         await PlayerHLSCache.init();
         SharedLogger.log('[ShellBootstrap] ✅ HLS Cache initialized');

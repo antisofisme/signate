@@ -10,7 +10,7 @@
  * - Fully testable and reusable
  */
 
-import { ServiceRegistry } from '@shared/services/service-registry';
+import { ServiceRegistry, getPlayerVideoJS, getPlayerMediaCache, getPlayerPlaylistSync, getPlayerBackgroundAudio } from '@shared/services/service-registry';
 import { SharedDeviceState } from '@shared/device';
 import { config } from '@shared/config';
 import { getOrCreateDeviceUUID } from '@shared/utils/device-fingerprint';
@@ -79,8 +79,8 @@ class DeviceInfoCollectorClass {
    * Collect Device tab information
    */
   private async collectDeviceInfo(): Promise<DeviceInfo> {
-    const PlayerPlaylistSync = ServiceRegistry.get<any>('PlayerPlaylistSync');
-    const PlayerVideoJS = ServiceRegistry.get<any>('PlayerVideoJS');
+    const PlayerPlaylistSync = getPlayerPlaylistSync();
+    const PlayerVideoJS = getPlayerVideoJS();
 
     // Get basic device info from SharedDeviceState
     const deviceIdStr = SharedDeviceState.getDeviceId();
@@ -230,8 +230,8 @@ class DeviceInfoCollectorClass {
    * Collect Storage tab information
    */
   private async collectStorageInfo(): Promise<StorageInfo> {
-    const PlayerMediaCache = ServiceRegistry.get<any>('PlayerMediaCache');
-    const PlayerPlaylistSync = ServiceRegistry.get<any>('PlayerPlaylistSync');
+    const PlayerMediaCache = getPlayerMediaCache();
+    const PlayerPlaylistSync = getPlayerPlaylistSync();
 
     // Get storage quota
     let totalUsed = 0;
@@ -350,7 +350,7 @@ class DeviceInfoCollectorClass {
    * Collect Backend tab information
    */
   private async collectBackendInfo(): Promise<BackendInfo> {
-    const PlayerPlaylistSync = ServiceRegistry.get<any>('PlayerPlaylistSync');
+    const PlayerPlaylistSync = getPlayerPlaylistSync();
 
     // Get API URL from config
     const apiUrl = config.api.baseURL;
@@ -401,8 +401,8 @@ class DeviceInfoCollectorClass {
    * Collect Audio tab information
    */
   private async collectAudioInfo(): Promise<AudioInfo> {
-    const PlayerBackgroundAudio = ServiceRegistry.get<any>('PlayerBackgroundAudio');
-    const PlayerPlaylistSync = ServiceRegistry.get<any>('PlayerPlaylistSync');
+    const PlayerBackgroundAudio = getPlayerBackgroundAudio();
+    const PlayerPlaylistSync = getPlayerPlaylistSync();
 
     // Get volume from device settings or default
     let volumeLevel = 75;

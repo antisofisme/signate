@@ -12,8 +12,7 @@
 import { SharedLogger } from '@shared/logger';
 import { SharedEventBus, EventNames } from '@shared/events/shared-event-bus';
 import { SharedWebSocket, WSMessageType } from '@shared/websocket/shared-websocket';
-import { ServiceRegistry } from '@shared/services/service-registry';
-import { getPlayerVideoJS, getPlayerMediaCache, getPlayerPlaylistSync } from '@shared/services';
+import { ServiceRegistry, getPlayerVideoJS, getPlayerMediaCache, getPlayerPlaylistSync } from '@shared/services/service-registry';
 
 /**
  * Command types

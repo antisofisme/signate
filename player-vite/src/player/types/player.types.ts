@@ -82,6 +82,7 @@ export interface PlayerVideoJS {
   stop(): void;
   next(): Promise<void>;
   previous(): Promise<void>;
+  setVolume(level: number): void;
   getCurrentItem(): PlaylistItem | null;
   getState(): PlayerState;
   destroy(): void;
@@ -153,5 +154,7 @@ export interface PlaylistSync {
   start(): void;
   stop(): void;
   syncNow(): Promise<boolean>;
+  forceReload(): void;
+  getCurrentPlaylist(): Playlist | null;
   isRunning(): boolean;
 }

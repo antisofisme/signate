@@ -17,7 +17,7 @@ import type Player from 'video.js/dist/types/player';
 import { SharedLogger } from '@shared/logger';
 import { PlayerPlaybackLogger } from './player-playback-logger';
 import { playerWidgetRenderer } from './player-widget-renderer';
-import { ServiceRegistry } from '@shared/services/service-registry';
+import { ServiceRegistry, getPlayerMediaCache, getPlayerHLSCache } from '@shared/services/service-registry';
 import type {
   PlayerVideoJS as IPlayerVideoJS,
   Playlist,
@@ -247,7 +247,7 @@ class PlayerVideoJSClass implements IPlayerVideoJS {
 
       // HLS VIDEO: Use HLS segment caching with offline-first playback + cache validation
       if (isHLS) {
-        const PlayerHLSCache = ServiceRegistry.get<any>('PlayerHLSCache');
+        const PlayerHLSCache = getPlayerHLSCache();
 
         if (PlayerHLSCache) {
           const isCached = await PlayerHLSCache.isHLSCached(item.content_id);
@@ -303,7 +303,7 @@ class PlayerVideoJSClass implements IPlayerVideoJS {
       }
       // DIRECT VIDEO: Use file-based caching
       else {
-        const PlayerMediaCache = ServiceRegistry.get<any>('PlayerMediaCache');
+        const PlayerMediaCache = getPlayerMediaCache();
 
         if (PlayerMediaCache) {
           const cachedMedia = await PlayerMediaCache.getCachedMedia(videoUrl);
@@ -378,7 +378,7 @@ class PlayerVideoJSClass implements IPlayerVideoJS {
     const imageUrl = item.content.file_path || item.content.url || '';
 
     // HYBRID STRATEGY: Check cache first
-    const PlayerMediaCache = ServiceRegistry.get<any>('PlayerMediaCache');
+    const PlayerMediaCache = getPlayerMediaCache();
     let finalImageUrl = imageUrl;
     let isFromCache = false;
 
@@ -438,7 +438,7 @@ class PlayerVideoJSClass implements IPlayerVideoJS {
     const audioUrl = item.content.file_path || item.content.url || '';
 
     // HYBRID STRATEGY: Check cache first
-    const PlayerMediaCache = ServiceRegistry.get<any>('PlayerMediaCache');
+    const PlayerMediaCache = getPlayerMediaCache();
     let finalAudioUrl = audioUrl;
     let isFromCache = false;
 

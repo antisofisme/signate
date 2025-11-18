@@ -9,6 +9,18 @@
  * - Easy testing and mocking
  */
 
+import type {
+  PlayerVideoJS,
+  PlayerMediaCache,
+  Heartbeat,
+  PlaylistSync,
+} from '@player/types/player.types';
+import type {
+  ShellRegistration,
+  ShellActivationPoll,
+  ShellBootstrap,
+} from '@shell/types/shell.types';
+
 type ServiceFactory<T> = () => T;
 
 class ServiceRegistryClass {
@@ -79,15 +91,17 @@ class ServiceRegistryClass {
 export const ServiceRegistry = new ServiceRegistryClass();
 
 // Type-safe getters for common services
-export const getPlayerVideoJS = () => ServiceRegistry.get<any>('PlayerVideoJS');
-export const getPlayerMediaCache = () => ServiceRegistry.get<any>('PlayerMediaCache');
-export const getPlayerHeartbeat = () => ServiceRegistry.get<any>('PlayerHeartbeat');
-export const getPlayerPlaylistSync = () => ServiceRegistry.get<any>('PlayerPlaylistSync');
-export const getPlayerCommandExecutor = () => ServiceRegistry.get<any>('PlayerCommandExecutor');
-export const getPlayerHealthReporter = () => ServiceRegistry.get<any>('PlayerHealthReporter');
-export const getShellBootstrap = () => ServiceRegistry.get<any>('ShellBootstrap');
-export const getShellRegistration = () => ServiceRegistry.get<any>('ShellRegistration');
-export const getShellActivationPoll = () => ServiceRegistry.get<any>('ShellActivationPoll');
-export const getShellActivationScreen = () => ServiceRegistry.get<any>('ShellActivationScreen');
-export const getSharedWebSocket = () => ServiceRegistry.get<any>('SharedWebSocket');
-export const getDeviceInfoPopup = () => ServiceRegistry.get<any>('DeviceInfoPopup');
+export const getPlayerVideoJS = () => ServiceRegistry.get<PlayerVideoJS>('PlayerVideoJS');
+export const getPlayerMediaCache = () => ServiceRegistry.get<PlayerMediaCache>('PlayerMediaCache');
+export const getPlayerHeartbeat = () => ServiceRegistry.get<Heartbeat>('PlayerHeartbeat');
+export const getPlayerPlaylistSync = () => ServiceRegistry.get<PlaylistSync>('PlayerPlaylistSync');
+export const getPlayerCommandExecutor = () => ServiceRegistry.get<any>('PlayerCommandExecutor'); // TODO: Add PlayerCommandExecutor interface
+export const getPlayerHealthReporter = () => ServiceRegistry.get<any>('PlayerHealthReporter'); // TODO: Add PlayerHealthReporter interface
+export const getPlayerHLSCache = () => ServiceRegistry.get<any>('PlayerHLSCache'); // TODO: Add PlayerHLSCache interface
+export const getPlayerBackgroundAudio = () => ServiceRegistry.get<any>('PlayerBackgroundAudio'); // TODO: Add PlayerBackgroundAudio interface
+export const getShellBootstrap = () => ServiceRegistry.get<ShellBootstrap>('ShellBootstrap');
+export const getShellRegistration = () => ServiceRegistry.get<ShellRegistration>('ShellRegistration');
+export const getShellActivationPoll = () => ServiceRegistry.get<ShellActivationPoll>('ShellActivationPoll');
+export const getShellActivationScreen = () => ServiceRegistry.get<any>('ShellActivationScreen'); // TODO: Add ShellActivationScreen interface
+export const getSharedWebSocket = () => ServiceRegistry.get<any>('SharedWebSocket'); // TODO: Add SharedWebSocket interface
+export const getDeviceInfoPopup = () => ServiceRegistry.get<any>('DeviceInfoPopup'); // TODO: Add DeviceInfoPopup interface
