@@ -78,8 +78,11 @@ class PlayerMediaCacheClass implements IPlayerMediaCache {
 
       SharedLogger.log(`[PlayerMediaCache] 📥 Caching media: ${url}`);
 
-      // Download media
-      const response = await fetch(url);
+      // Download media with CORS support
+      const response = await fetch(url, {
+        mode: 'cors',
+        credentials: 'omit',
+      });
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }

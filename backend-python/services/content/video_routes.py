@@ -198,6 +198,9 @@ async def stream_video(
             "Accept-Ranges": "bytes",
             "Content-Range": f"bytes {start}-{end}/{file_size}",
             "Content-Length": str(content_length),
+            "Access-Control-Allow-Origin": "*",  # Allow CORS for caching
+            "Access-Control-Allow-Methods": "GET, OPTIONS",
+            "Access-Control-Allow-Headers": "*",
         }
     )
 
@@ -231,5 +234,8 @@ async def serve_image(
         media_type=content_type,
         headers={
             "Content-Length": str(file_path.stat().st_size),
+            "Access-Control-Allow-Origin": "*",  # Allow CORS for caching
+            "Access-Control-Allow-Methods": "GET, OPTIONS",
+            "Access-Control-Allow-Headers": "*",
         }
     )
