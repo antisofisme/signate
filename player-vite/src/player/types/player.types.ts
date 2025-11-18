@@ -7,7 +7,7 @@
 // Content & Playlist Types
 // ========================================
 
-export type ContentType = 'image' | 'video' | 'url' | 'text' | 'widget';
+export type ContentType = 'image' | 'video' | 'audio' | 'url' | 'text' | 'widget';
 
 export interface PlaylistItem {
   id: number;

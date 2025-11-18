@@ -168,6 +168,9 @@ class PlayerVideoJSClass implements IPlayerVideoJS {
       case 'image':
         await this.playImage(item);
         break;
+      case 'audio':
+        await this.playAudio(item);
+        break;
       case 'url':
         await this.playURL(item);
         break;
@@ -370,6 +373,71 @@ class PlayerVideoJSClass implements IPlayerVideoJS {
     }, item.duration * 1000);
 
     SharedLogger.log(`[PlayerVideoJS] ${isFromCache ? '💾 OFFLINE' : '🌐 STREAMING'} image for`, item.duration, 'seconds');
+  }
+
+  /**
+   * Play audio content (HYBRID: Cache-first, then stream + background download)
+   */
+  private async playAudio(item: PlaylistItem): Promise<void> {
+    if (!this.player || !this.videoElement) return;
+
+    const audioUrl = item.content.file_path || item.content.url || '';
+
+    // HYBRID STRATEGY: Check cache first
+    const PlayerMediaCache = ServiceRegistry.get<any>('PlayerMediaCache');
+    let finalAudioUrl = audioUrl;
+    let isFromCache = false;
+
+    if (PlayerMediaCache && audioUrl) {
+      const cachedMedia = await PlayerMediaCache.getCachedMedia(audioUrl);
+
+      if (cachedMedia) {
+        // ✅ OFFLINE: Use cached audio
+        finalAudioUrl = await PlayerMediaCache.createBlobUrl(cachedMedia);
+        isFromCache = true;
+        SharedLogger.log('[PlayerVideoJS] 💾 Audio from cache (OFFLINE):', audioUrl);
+      } else {
+        // 🌐 STREAMING: Load from network + trigger background download
+        SharedLogger.log('[PlayerVideoJS] 🌐 Audio from network (downloading in background):', audioUrl);
+
+        // Start background download (non-blocking)
+        PlayerMediaCache.cacheMedia(audioUrl, item.content_id).then(() => {
+          SharedLogger.log('[PlayerVideoJS] ✅ Audio background download complete:', audioUrl);
+        }).catch((err: Error) => {
+          SharedLogger.warn('[PlayerVideoJS] Audio background download failed:', err.message);
+        });
+      }
+    }
+
+    // Show video element (for audio visualization or black screen)
+    this.videoElement.style.display = 'block';
+
+    // Load audio in video player
+    const mimeType = this.getMimeType(finalAudioUrl);
+    this.player.src({
+      src: finalAudioUrl,
+      type: mimeType,
+    });
+
+    // Log playback start for analytics
+    if (this.state.playlist) {
+      void PlayerPlaybackLogger.logPlaybackStart(item, this.state.playlist.id);
+    }
+
+    // Play audio
+    try {
+      await this.player.play();
+      SharedLogger.log(`[PlayerVideoJS] ${isFromCache ? '💾 OFFLINE' : '🌐 STREAMING'} audio playing`);
+
+      // Set timer for duration (in case audio doesn't have metadata)
+      this.itemTimer = window.setTimeout(() => {
+        void PlayerPlaybackLogger.logPlaybackEnd(true);
+        void this.next();
+      }, item.duration * 1000);
+    } catch (error) {
+      SharedLogger.error('[PlayerVideoJS] Audio playback error:', error);
+      void this.next();
+    }
   }
 
   /**
