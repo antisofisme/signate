@@ -4,6 +4,11 @@
  *
  * @features
  * - Multiple log levels (debug, log, info, warn, error)
+ * - Emoji prefixes for visual distinction
+ * - Namespace/category system for log grouping
+ * - Console.group support for collapsible errors
+ * - Smart object logging (summaries, not full dumps)
+ * - Production/development mode support
  * - Enable/disable logging via config
  * - Automatic backend sync for errors
  * - Console passthrough for development
@@ -14,6 +19,19 @@
 import { config } from '@shared/config';
 import type { LogLevel, LogEntry, Logger } from './logger.types';
 
+// Emoji prefixes for log levels (visual distinction)
+const LOG_EMOJIS: Record<LogLevel, string> = {
+  debug: '🔍',
+  log: 'ℹ️',
+  info: 'ℹ️',
+  warn: '⚠️',
+  error: '❌',
+  silent: '',
+};
+
+// Success emoji for positive confirmations
+const SUCCESS_EMOJI = '✅';
+
 // Log levels (higher number = more important)
 const LOG_LEVELS: Record<LogLevel, number> = {
   debug: 0,
@@ -22,6 +40,75 @@ const LOG_LEVELS: Record<LogLevel, number> = {
   warn: 3,
   error: 4,
   silent: 999,
+};
+
+/**
+ * Namespace definitions for log categorization
+ * Hierarchical structure for better organization
+ */
+export const LogNamespace = {
+  SHELL: {
+    BOOTSTRAP: '[Shell:Bootstrap]',
+    ACTIVATION: '[Shell:Activation]',
+    REGISTRATION: '[Shell:Registration]',
+    NETWORK: '[Shell:Network]',
+  },
+  PLAYER: {
+    VIDEOJS: '[Player:VideoJS]',
+    PLAYLIST: '[Player:Playlist]',
+    COMMANDS: '[Player:Commands]',
+    CACHE: '[Player:Cache]',
+    HEALTH: '[Player:Health]',
+  },
+  NETWORK: {
+    HEARTBEAT: '[Network:Heartbeat]',
+    SPEEDTEST: '[Network:SpeedTest]',
+    CONNECTION: '[Network:Connection]',
+  },
+  DEVICE: {
+    INFO: '[DeviceInfo]',
+    FINGERPRINT: '[DeviceFingerprint]',
+  },
+  UI: {
+    TOAST: '[Toast]',
+    MODAL: '[Modal]',
+    POPUP: '[Popup]',
+  },
+  STORAGE: {
+    INDEXEDDB: '[Storage:IndexedDB]',
+    CACHE: '[Storage:Cache]',
+  },
+} as const;
+
+/**
+ * Color scheme for namespaces (console CSS styling)
+ * Maps namespace categories to colors for better visual distinction
+ */
+const NAMESPACE_COLORS: Record<string, string> = {
+  // Shell (blue tones)
+  Shell: 'color: #3b82f6; font-weight: bold',
+
+  // Player (purple tones)
+  Player: 'color: #a855f7; font-weight: bold',
+
+  // Network (green tones)
+  Network: 'color: #10b981; font-weight: bold',
+
+  // Device (cyan tones)
+  Device: 'color: #06b6d4; font-weight: bold',
+  DeviceInfo: 'color: #06b6d4; font-weight: bold',
+  DeviceFingerprint: 'color: #06b6d4; font-weight: bold',
+
+  // UI (orange tones)
+  Toast: 'color: #f97316; font-weight: bold',
+  Modal: 'color: #f97316; font-weight: bold',
+  Popup: 'color: #f97316; font-weight: bold',
+
+  // Storage (yellow tones)
+  Storage: 'color: #eab308; font-weight: bold',
+
+  // Default
+  default: 'color: #64748b; font-weight: bold',
 };
 
 /**
@@ -65,14 +152,59 @@ class SharedLoggerClass implements Logger {
   }
 
   /**
-   * Format log arguments to string
+   * Smart object formatter - creates summaries instead of full dumps
+   */
+  private formatObject(obj: any): string {
+    if (obj === null || obj === undefined) return String(obj);
+
+    // Handle arrays
+    if (Array.isArray(obj)) {
+      if (obj.length === 0) return '[]';
+      if (obj.length <= 3) return JSON.stringify(obj);
+      return `Array(${obj.length}) [${obj.slice(0, 2).map(String).join(', ')}, ...]`;
+    }
+
+    // Handle common object types with smart summaries
+    if (obj instanceof Error) {
+      return `${obj.name}: ${obj.message}`;
+    }
+
+    if (obj instanceof Date) {
+      return obj.toISOString();
+    }
+
+    // Handle plain objects - show only key info
+    if (typeof obj === 'object') {
+      const keys = Object.keys(obj);
+      if (keys.length === 0) return '{}';
+
+      // For objects with id, name, status - show summary
+      const summary: string[] = [];
+      if ('id' in obj) summary.push(`id: ${obj.id}`);
+      if ('name' in obj) summary.push(`name: ${obj.name}`);
+      if ('status' in obj) summary.push(`status: ${obj.status}`);
+      if ('type' in obj) summary.push(`type: ${obj.type}`);
+
+      if (summary.length > 0) {
+        return `{${summary.join(', ')}}`;
+      }
+
+      // Otherwise show key count
+      return `Object{${keys.slice(0, 3).join(', ')}${keys.length > 3 ? ', ...' : ''}}`;
+    }
+
+    return String(obj);
+  }
+
+  /**
+   * Format log arguments to string with smart object handling
    */
   private formatArgs(args: unknown[]): string {
     return args
       .map((arg) => {
         if (typeof arg === 'object' && arg !== null) {
           try {
-            return JSON.stringify(arg, null, 2);
+            return this.formatObject(arg);
           } catch (e) {
             return String(arg);
           }
@@ -145,23 +277,90 @@ class SharedLoggerClass implements Logger {
   }
 
   /**
-   * Create log method for specific level
+   * Extract namespace from first argument and get its color
+   */
+  private getNamespaceColor(args: unknown[]): { namespace: string | null; color: string } {
+    if (args.length === 0) return { namespace: null, color: NAMESPACE_COLORS.default };
+
+    const firstArg = args[0];
+    if (typeof firstArg !== 'string') return { namespace: null, color: NAMESPACE_COLORS.default };
+
+    // Check if first arg matches namespace pattern [Category:Name] or [Name]
+    const namespaceMatch = firstArg.match(/^\[([^\]]+)\]/);
+    if (!namespaceMatch) return { namespace: null, color: NAMESPACE_COLORS.default };
+
+    const namespace = namespaceMatch[1];
+
+    // Extract category (before colon if exists)
+    const category = namespace.includes(':') ? namespace.split(':')[0] : namespace;
+
+    // Get color for category
+    const color = NAMESPACE_COLORS[category] || NAMESPACE_COLORS[namespace] || NAMESPACE_COLORS.default;
+
+    return { namespace: firstArg, color };
+  }
+
+  /**
+   * Create log method for specific level with emoji prefix and colored namespace
    */
   private createLogMethod(level: LogLevel): (...args: unknown[]) => void {
     return (...args: unknown[]) => {
-      // Always passthrough to original console (for development)
-      // Skip 'silent' level as it has no console method
-      if (level !== 'silent' && this.originalConsole[level]) {
-        this.originalConsole[level](...args);
+      // Get emoji prefix
+      const emoji = LOG_EMOJIS[level];
+
+      // For errors, use console.group for collapsible stack traces
+      if (level === 'error' && this.originalConsole[level]) {
+        this.logErrorWithGroup(args);
+      } else {
+        // Check for namespace in first argument
+        const { namespace, color } = this.getNamespaceColor(args);
+
+        // Always passthrough to original console with emoji prefix and colored namespace
+        if (level !== 'silent' && this.originalConsole[level]) {
+          if (namespace) {
+            // First arg is namespace - colorize it, then reset style for rest
+            this.originalConsole[level](emoji, '%c' + namespace + '%c', color, '', ...args.slice(1));
+          } else {
+            // No namespace - regular log
+            this.originalConsole[level](emoji, ...args);
+          }
+        }
       }
 
       // Check if should log at this level
       if (!this.shouldLog(level)) return;
 
       // Format and buffer
-      const message = this.formatArgs(args);
+      const message = emoji + ' ' + this.formatArgs(args);
       this.bufferLog(level, message);
     };
+  }
+
+  /**
+   * Log error with collapsible console.group
+   */
+  private logErrorWithGroup(args: unknown[]): void {
+    const emoji = LOG_EMOJIS.error;
+
+    // Check if first arg is Error object
+    const hasError = args.some((arg) => arg instanceof Error);
+
+    if (hasError) {
+      // Use console.group for collapsible error details
+      this.originalConsole.error('%c' + emoji + ' ERROR', 'font-weight: bold; color: #ff4444;', ...args);
+
+      // Find and show stack trace in collapsed group
+      args.forEach((arg) => {
+        if (arg instanceof Error && arg.stack) {
+          console.groupCollapsed('📋 Stack Trace (click to expand)');
+          this.originalConsole.error(arg.stack);
+          console.groupEnd();
+        }
+      });
+    } else {
+      // Regular error log with emoji
+      this.originalConsole.error(emoji, ...args);
+    }
   }
 
   /**
@@ -195,6 +394,37 @@ class SharedLoggerClass implements Logger {
   info = this.createLogMethod('info');
   warn = this.createLogMethod('warn');
   error = this.createLogMethod('error');
+
+  /**
+   * Log success message with green checkmark emoji and colored namespace
+   * Usage: SharedLogger.success('[Network:Heartbeat]', 'Sent successfully')
+   */
+  success(...args: unknown[]): void {
+    const { namespace, color } = this.getNamespaceColor(args);
+
+    if (this.originalConsole.log) {
+      if (namespace) {
+        // First arg is namespace - colorize it, then reset style for rest
+        this.originalConsole.log(SUCCESS_EMOJI, '%c' + namespace + '%c', color, '', ...args.slice(1));
+      } else {
+        // No namespace - regular log
+        this.originalConsole.log(SUCCESS_EMOJI, ...args);
+      }
+    }
+
+    if (!this.shouldLog('info')) return;
+
+    const message = SUCCESS_EMOJI + ' ' + this.formatArgs(args);
+    this.bufferLog('info', message);
+  }
+
+  /**
+   * Log with custom namespace for better categorization
+   * Usage: SharedLogger.namespace('[Shell:Bootstrap]', 'Device activated')
+   */
+  namespace(ns: string, ...args: unknown[]): void {
+    this.log(ns, ...args);
+  }
 
   /**
    * Set minimum log level

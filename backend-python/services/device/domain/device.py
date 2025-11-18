@@ -101,3 +101,4 @@ class DeviceHeartbeat:
     user_agent: Optional[str]
     connection_type: Optional[str]
     connection_speed: Optional[float]
+    ip_address: Optional[str] = None  # Client IP from HTTP request

@@ -90,8 +90,8 @@ class ConnectionLogPopupClass {
 
     return `
       <div class="log-viewer">
-        <!-- Toolbar -->
-        <div class="toolbar">
+        <!-- Header with Tabs and Actions -->
+        <div class="log-header">
           <!-- Tab Navigation -->
           <div class="tab-nav">
             <button class="tab-btn ${this.activeTab === 'all' ? 'active' : ''}" data-tab="all">
@@ -108,8 +108,8 @@ class ConnectionLogPopupClass {
             </button>
           </div>
 
-          <!-- Actions -->
-          <div class="actions">
+          <!-- Action Buttons -->
+          <div class="log-actions">
             <button id="refresh-logs-btn" class="action-btn" title="Refresh">
               <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/>
@@ -152,183 +152,257 @@ class ConnectionLogPopupClass {
           display: flex;
           flex-direction: column;
           height: 600px;
-          background: #1e1e1e;
-          font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
-          font-size: 11px;
+          max-height: 80vh;
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
         }
 
-        /* Toolbar */
-        .toolbar {
+        /* Header - Fixed at top */
+        .log-header {
           display: flex;
           justify-content: space-between;
           align-items: center;
-          background: #2d2d2d;
-          border-bottom: 1px solid #3e3e3e;
-          padding: 4px 8px;
+          padding: 1.5rem 1.5rem 0 1.5rem;
+          border-bottom: 2px solid rgba(255, 255, 255, 0.1);
           flex-shrink: 0;
         }
 
-        /* Tabs */
+        /* Tab Navigation */
         .tab-nav {
           display: flex;
-          gap: 2px;
+          gap: 0.5rem;
+          overflow-x: auto;
+          overflow-y: hidden;
+          -webkit-overflow-scrolling: touch;
+          scrollbar-width: thin;
         }
         .tab-btn {
-          padding: 4px 12px;
-          background: transparent;
+          padding: 0.75rem 1.25rem;
+          background: rgba(255, 255, 255, 0.05);
           border: none;
-          color: #969696;
+          border-bottom: 3px solid transparent;
+          color: rgba(255, 255, 255, 0.7);
           cursor: pointer;
-          font-size: 11px;
-          font-family: inherit;
-          border-bottom: 2px solid transparent;
+          font-size: 0.9rem;
+          font-weight: 500;
+          transition: all 0.2s ease;
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+          white-space: nowrap;
+          flex-shrink: 0;
+          border-radius: 8px 8px 0 0;
         }
         .tab-btn:hover {
-          color: #cccccc;
+          background: rgba(255, 255, 255, 0.1);
+          color: white;
         }
         .tab-btn.active {
-          color: #ffffff;
-          border-bottom-color: #007acc;
+          background: rgba(59, 130, 246, 0.1);
+          border-bottom-color: #3b82f6;
+          color: white;
         }
 
-        /* Actions */
-        .actions {
+        /* Action Buttons */
+        .log-actions {
           display: flex;
-          gap: 4px;
+          gap: 0.5rem;
+          flex-shrink: 0;
         }
         .action-btn {
-          padding: 4px;
-          background: transparent;
-          border: none;
-          color: #969696;
+          padding: 0.5rem;
+          background: rgba(255, 255, 255, 0.05);
+          border: 1px solid rgba(255, 255, 255, 0.1);
+          border-radius: 8px;
+          color: rgba(255, 255, 255, 0.7);
           cursor: pointer;
           display: flex;
           align-items: center;
           justify-content: center;
+          transition: all 0.2s ease;
         }
         .action-btn:hover {
-          background: #3e3e3e;
-          color: #cccccc;
+          background: rgba(255, 255, 255, 0.1);
+          color: white;
+          border-color: rgba(255, 255, 255, 0.2);
+        }
+        .action-btn:disabled {
+          opacity: 0.5;
+          cursor: not-allowed;
         }
 
-        /* Table Container - Fixed Height with Scroll */
+        /* Table Container - Scrollable area */
         .table-container {
           flex: 1;
           overflow-y: auto;
           overflow-x: auto;
+          padding: 0 1.5rem 1.5rem 1.5rem;
+          -webkit-overflow-scrolling: touch;
         }
 
         /* Table */
         .log-table {
           width: 100%;
           border-collapse: collapse;
-          background: #1e1e1e;
         }
         .log-table thead {
           position: sticky;
           top: 0;
-          background: #252525;
-          z-index: 1;
+          z-index: 10;
+          background: linear-gradient(to bottom,
+            rgba(30, 41, 59, 1) 0%,
+            rgba(30, 41, 59, 0.98) 50%,
+            rgba(30, 41, 59, 0.95) 100%
+          );
+          backdrop-filter: blur(8px);
+          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
         }
         .log-table th {
-          padding: 2px 6px;
+          padding: 0.5rem 1rem;
           text-align: left;
-          font-weight: normal;
-          font-size: 11px;
-          color: #969696;
-          border-bottom: 1px solid #3e3e3e;
+          font-weight: 600;
+          font-size: 0.85rem;
+          color: rgba(255, 255, 255, 0.9);
+          border-bottom: 2px solid rgba(255, 255, 255, 0.1);
           white-space: nowrap;
         }
         .log-table tbody tr {
-          border-bottom: 1px solid #2d2d2d;
+          border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+          transition: all 0.2s ease;
         }
         .log-table tbody tr:hover {
-          background: #2d2d2d;
+          background: rgba(255, 255, 255, 0.05);
         }
         .log-table td {
-          padding: 2px 6px;
-          font-size: 11px;
-          color: #cccccc;
+          padding: 0.5rem 1rem;
+          font-size: 0.875rem;
+          color: rgba(255, 255, 255, 0.85);
           white-space: nowrap;
         }
         .log-table td.timestamp {
-          color: #858585;
+          color: rgba(255, 255, 255, 0.6);
+          font-family: 'Consolas', 'Monaco', monospace;
+          font-size: 0.8rem;
         }
 
-        /* Status Colors (Chrome DevTools style) */
+        /* Status Badge */
         .status-badge {
-          font-weight: normal;
+          display: inline-block;
+          padding: 0.25rem 0.75rem;
+          border-radius: 12px;
+          font-size: 0.75rem;
+          font-weight: 600;
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
         }
         .status-online {
-          color: #73c991;
+          background: rgba(16, 185, 129, 0.15);
+          color: #10b981;
+          border: 1px solid rgba(16, 185, 129, 0.3);
         }
         .status-offline {
-          color: #f48771;
+          background: rgba(239, 68, 68, 0.15);
+          color: #ef4444;
+          border: 1px solid rgba(239, 68, 68, 0.3);
         }
         .status-connected {
-          color: #75beff;
+          background: rgba(59, 130, 246, 0.15);
+          color: #3b82f6;
+          border: 1px solid rgba(59, 130, 246, 0.3);
         }
         .status-disconnected {
-          color: #f48771;
+          background: rgba(239, 68, 68, 0.15);
+          color: #ef4444;
+          border: 1px solid rgba(239, 68, 68, 0.3);
         }
         .status-tested {
-          color: #b180d7;
+          background: rgba(139, 92, 246, 0.15);
+          color: #8b5cf6;
+          border: 1px solid rgba(139, 92, 246, 0.3);
         }
 
         /* Empty State */
         .empty-state {
-          text-align: center;
-          padding: 40px 20px;
-          color: #858585;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          padding: 4rem 2rem;
+          color: rgba(255, 255, 255, 0.5);
         }
         .empty-state-text {
-          font-size: 11px;
+          font-size: 1rem;
+          margin-top: 1rem;
         }
 
         /* Latency Color Coding */
         .latency-good {
-          color: #73c991;
+          color: #10b981;
+          font-weight: 600;
         }
         .latency-ok {
-          color: #dcdcaa;
+          color: #f59e0b;
+          font-weight: 600;
         }
         .latency-slow {
-          color: #f48771;
+          color: #ef4444;
+          font-weight: 600;
         }
 
         /* Speed Color Coding */
         .speed-good {
-          color: #75beff;
+          color: #3b82f6;
+          font-weight: 600;
         }
 
         /* Quality Score Color Coding */
         .quality-excellent {
-          color: #73c991;
-          font-weight: bold;
+          color: #10b981;
+          font-weight: 700;
         }
         .quality-good {
-          color: #75beff;
+          color: #3b82f6;
+          font-weight: 600;
         }
         .quality-fair {
-          color: #dcdcaa;
+          color: #f59e0b;
+          font-weight: 600;
         }
         .quality-poor {
-          color: #f48771;
+          color: #ef4444;
+          font-weight: 600;
         }
 
-        /* Scrollbar */
+        /* Custom Scrollbar */
         .table-container::-webkit-scrollbar {
-          width: 10px;
-          height: 10px;
+          width: 8px;
+          height: 8px;
         }
         .table-container::-webkit-scrollbar-track {
-          background: #1e1e1e;
+          background: rgba(255, 255, 255, 0.05);
+          border-radius: 4px;
         }
         .table-container::-webkit-scrollbar-thumb {
-          background: #424242;
+          background: rgba(255, 255, 255, 0.2);
+          border-radius: 4px;
         }
         .table-container::-webkit-scrollbar-thumb:hover {
-          background: #4e4e4e;
+          background: rgba(255, 255, 255, 0.3);
+        }
+
+        /* Tab scrollbar (horizontal) */
+        .tab-nav::-webkit-scrollbar {
+          height: 6px;
+        }
+        .tab-nav::-webkit-scrollbar-track {
+          background: rgba(255, 255, 255, 0.05);
+          border-radius: 3px;
+        }
+        .tab-nav::-webkit-scrollbar-thumb {
+          background: rgba(255, 255, 255, 0.2);
+          border-radius: 3px;
+        }
+        .tab-nav::-webkit-scrollbar-thumb:hover {
+          background: rgba(255, 255, 255, 0.3);
         }
       </style>
     `;

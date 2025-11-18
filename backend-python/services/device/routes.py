@@ -15,7 +15,7 @@ from shared.api_routes import DeviceRoutes
 from shared.errors import handle_errors, NotFoundError, ValidationError
 from shared.responses import success_response
 from shared.logging import RequestLogger, AuditLogger
-from shared.auth import get_current_user, CurrentUser
+from shared.auth import get_current_user, CurrentUser, get_current_device, CurrentDevice
 from shared.cache import cache, device_cache_key, list_cache_key
 from shared.metrics import track_cache_operation, update_device_metrics
 from typing import Optional
@@ -242,6 +242,9 @@ def device_heartbeat(
             # No JWT token - fallback to unique_code validation (legacy devices)
             print(f"[Heartbeat] ⚠️ Device {device_id} using legacy auth (unique_code only)")
 
+        # Extract client IP address from HTTP request
+        client_ip = http_request.client.host if http_request and http_request.client else None
+
         heartbeat_data = DeviceHeartbeat(
             unique_code=request.unique_code,
             device_uuid=request.device_uuid,
@@ -252,7 +255,8 @@ def device_heartbeat(
             device_pixel_ratio=request.device_pixel_ratio,
             user_agent=request.user_agent,
             connection_type=request.connection_type,
-            connection_speed=request.connection_speed
+            connection_speed=request.connection_speed,
+            ip_address=client_ip
         )
 
         success = use_case.execute(heartbeat_data)
@@ -689,6 +693,48 @@ def get_device(
         cache.set(cache_key, response.dict(), ttl=60)
 
         return response
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(e)
+        )
+
+
+@router.get("/api/v1/devices/me", response_model=DeviceResponse)
+def get_my_device_info(
+    device_repo: DeviceRepository = Depends(get_device_repository),
+    current_device: CurrentDevice = Depends(get_current_device)
+):
+    """
+    Get current device's own information (called by player)
+
+    Requires device JWT token authentication.
+    Device can only access its own data, ensuring security.
+
+    Returns:
+        DeviceResponse with all device fields including ip_address
+    """
+    try:
+        # Fetch device data
+        device = device_repo.find_by_id(current_device.id)
+
+        if not device:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Device with ID {current_device.id} not found"
+            )
+
+        # Verify organization match (security check)
+        if device.organization_id != current_device.organization_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Device organization mismatch"
+            )
+
+        # Convert to response with is_online computed field
+        return device_to_response(device)
     except HTTPException:
         raise
     except Exception as e:

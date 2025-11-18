@@ -83,6 +83,10 @@ class DeviceHeartbeatUseCase:
         if heartbeat_data.device_uuid:
             device.device_uuid = heartbeat_data.device_uuid
 
+        # Update IP address from HTTP request
+        if heartbeat_data.ip_address:
+            device.ip_address = heartbeat_data.ip_address
+
         # Save changes
         self.device_repo.update(device)
 

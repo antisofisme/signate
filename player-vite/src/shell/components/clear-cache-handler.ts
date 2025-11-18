@@ -5,7 +5,7 @@
 
 import { SharedLogger } from '@shared/logger';
 import { SharedToast, SharedModal } from '@shared/ui';
-import { getPlayerMediaCache, getShellBootstrap } from '@shared/services';
+import { getPlayerMediaCache } from '@shared/services';
 
 class ClearCacheHandlerClass {
   private button: HTMLButtonElement | null = null;
@@ -51,42 +51,88 @@ class ClearCacheHandlerClass {
   private async handleClearCache(): Promise<void> {
     try {
       SharedLogger.log('[ClearCache] Starting cache clear...');
+      let clearedItems = 0;
 
       // Clear IndexedDB media cache
-      if (getPlayerMediaCache()) {
-        await getPlayerMediaCache().clearAll();
-        SharedLogger.log('[ClearCache] ✅ Media cache cleared');
+      try {
+        const mediaCache = getPlayerMediaCache();
+        if (mediaCache && typeof mediaCache.clearCache === 'function') {
+          await mediaCache.clearCache();
+          clearedItems++;
+          SharedLogger.success('[ClearCache] Media cache cleared');
+        } else {
+          SharedLogger.warn('[ClearCache] Media cache not available or missing clearCache method');
+        }
+      } catch (err) {
+        SharedLogger.error('[ClearCache] Error clearing media cache:', err);
       }
 
       // Clear Cache API if available
-      if ('caches' in window) {
-        const cacheNames = await caches.keys();
-        for (const cacheName of cacheNames) {
-          await caches.delete(cacheName);
-          SharedLogger.log(`[ClearCache] ✅ Deleted cache: ${cacheName}`);
+      try {
+        if ('caches' in window) {
+          const cacheNames = await caches.keys();
+          SharedLogger.log(`[ClearCache] Found ${cacheNames.length} cache(s) to delete`);
+
+          for (const cacheName of cacheNames) {
+            const deleted = await caches.delete(cacheName);
+            if (deleted) {
+              clearedItems++;
+              SharedLogger.success(`[ClearCache] Deleted cache: ${cacheName}`);
+            } else {
+              SharedLogger.warn(`[ClearCache] Failed to delete cache: ${cacheName}`);
+            }
+          }
+        } else {
+          SharedLogger.warn('[ClearCache] Cache API not available in this browser');
         }
+      } catch (err) {
+        SharedLogger.error('[ClearCache] Error clearing Cache API:', err);
       }
 
-      SharedLogger.log('[ClearCache] ✅ Cache cleared successfully, reloading player...');
+      // Clear localStorage (optional - preserve device registration)
+      try {
+        const keysToPreserve = ['device_id', 'device_token', 'activation_code', 'device_uuid'];
+        const preservedData: Record<string, string> = {};
 
-      // Show success toast
-      SharedToast.success('Cache cleared successfully! Reloading player...', 4000);
+        // Backup critical keys
+        keysToPreserve.forEach(key => {
+          const value = localStorage.getItem(key);
+          if (value) preservedData[key] = value;
+        });
 
-      // Reload player services only (not full page) after delay
-      setTimeout(async () => {
-        if (getShellBootstrap()?.reloadPlayerServices) {
-          await getShellBootstrap().reloadPlayerServices();
-          SharedToast.success('Player reloaded successfully!', 3000);
-        } else {
-          // Fallback to full reload if method not available
-          SharedLogger.warn('[ClearCache] reloadPlayerServices not available, using full reload');
+        // Clear all
+        const storageLength = localStorage.length;
+        localStorage.clear();
+        clearedItems++;
+
+        // Restore critical keys
+        Object.entries(preservedData).forEach(([key, value]) => {
+          localStorage.setItem(key, value);
+        });
+
+        SharedLogger.success(`[ClearCache] Cleared ${storageLength} localStorage items (preserved device data)`);
+      } catch (err) {
+        SharedLogger.error('[ClearCache] Error clearing localStorage:', err);
+      }
+
+      // Summary
+      if (clearedItems > 0) {
+        SharedLogger.success(`[ClearCache] ✅ Successfully cleared ${clearedItems} cache type(s)`);
+        SharedToast.success(`Cache cleared successfully! (${clearedItems} items)`, 3000);
+
+        // Reload page after delay
+        setTimeout(() => {
+          SharedLogger.log('[ClearCache] Reloading page...');
           window.location.reload();
-        }
-      }, 1500);
+        }, 1500);
+      } else {
+        SharedLogger.warn('[ClearCache] ⚠️ No cache items were cleared');
+        SharedToast.warning('No cache to clear', 3000);
+      }
 
     } catch (error) {
-      SharedLogger.error('[ClearCache] ❌ Error clearing cache:', error);
-      SharedToast.error('Failed to clear cache. Please try again.');
+      SharedLogger.error('[ClearCache] ❌ Fatal error:', error);
+      SharedToast.error(`Failed to clear cache: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
 }

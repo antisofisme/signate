@@ -46,6 +46,12 @@ class CurrentUser(BaseModel):
     organization_id: Optional[int] = None
 
 
+class CurrentDevice(BaseModel):
+    """Current authenticated device from JWT device token"""
+    id: int
+    organization_id: int
+
+
 class Role(str, Enum):
     """User roles in hierarchical order"""
     SUPER_ADMIN = "super_admin"
@@ -501,6 +507,59 @@ def get_optional_user(request: Request) -> Optional[CurrentUser]:
         )
     except:
         return None
+
+
+def get_current_device(
+    credentials: HTTPAuthorizationCredentials = Depends(security)
+) -> CurrentDevice:
+    """
+    FastAPI dependency to get current authenticated device from JWT device token
+
+    Usage:
+        @router.get("/devices/me")
+        def get_my_device(current_device: CurrentDevice = Depends(get_current_device)):
+            return {"device_id": current_device.id}
+
+    Args:
+        credentials: HTTP Bearer token from Authorization header
+
+    Returns:
+        CurrentDevice object with device info from token
+
+    Raises:
+        AuthenticationError: If token is invalid, missing, or not a device token
+    """
+    if not credentials:
+        raise AuthenticationError(
+            message="Device token not found",
+            code=ErrorCodes.UNAUTHORIZED
+        )
+
+    try:
+        # Verify device token
+        payload = verify_device_token(credentials.credentials)
+
+        # Extract device info
+        device_id = payload.get("sub")
+        organization_id = payload.get("organization_id")
+
+        if not device_id or not organization_id:
+            raise AuthenticationError(
+                message="Invalid device token - missing device info",
+                code=ErrorCodes.INVALID_TOKEN
+            )
+
+        return CurrentDevice(
+            id=int(device_id),
+            organization_id=organization_id
+        )
+    except AuthenticationError:
+        raise
+    except Exception as e:
+        raise AuthenticationError(
+            message=f"Failed to authenticate device: {str(e)}",
+            code=ErrorCodes.INVALID_TOKEN
+        )
 
 
 # =============================================================================

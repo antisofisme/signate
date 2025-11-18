@@ -1,6 +1,7 @@
 /**
  * Player-Vite Entry Point
  * Main initialization for TypeScript + Vite player
+ * @version 2025-01-18-v2 - Client IP detection from backend
  */
 
 import './index.css';
