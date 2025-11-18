@@ -579,6 +579,40 @@ class PlayerHLSCacheClass {
       throw error;
     }
   }
+
+  /**
+   * Get all cached content metadata
+   * Used by Device Info popup to display cached content list
+   */
+  async getAllCachedContent(): Promise<CachedHLSContent[]> {
+    if (!this.db) {
+      SharedLogger.warn('[PlayerHLSCache] Database not initialized');
+      return [];
+    }
+
+    try {
+      const transaction = this.db.transaction([this.metaStore], 'readonly');
+      const store = transaction.objectStore(this.metaStore);
+
+      return new Promise<CachedHLSContent[]>((resolve, reject) => {
+        const request = store.getAll();
+
+        request.onsuccess = () => {
+          const results = request.result as CachedHLSContent[];
+          SharedLogger.log(`[PlayerHLSCache] Found ${results.length} cached content items`);
+          resolve(results);
+        };
+
+        request.onerror = () => {
+          SharedLogger.error('[PlayerHLSCache] Failed to get all cached content:', request.error);
+          reject(request.error);
+        };
+      });
+    } catch (error) {
+      SharedLogger.error('[PlayerHLSCache] Error getting all cached content:', error);
+      return [];
+    }
+  }
 }
 
 // Export singleton instance

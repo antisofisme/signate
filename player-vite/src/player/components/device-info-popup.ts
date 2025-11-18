@@ -92,6 +92,14 @@ class DeviceInfoPopupClass {
             </svg>
             System
           </button>
+          <button id="tab-storage" class="info-tab" onclick="window.DeviceInfoPopup.switchTab('storage')">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+              <polyline points="3.27 6.96 12 12.01 20.73 6.96"/>
+              <line x1="12" y1="22.08" x2="12" y2="12"/>
+            </svg>
+            Storage
+          </button>
           <button id="tab-backend" class="info-tab" onclick="window.DeviceInfoPopup.switchTab('backend')">
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <rect x="2" y="2" width="20" height="8" rx="2" ry="2"/>
@@ -150,6 +158,43 @@ class DeviceInfoPopupClass {
             <div class="info-row">
               <span class="info-label">Language:</span>
               <span class="info-value" id="popup-language">Loading...</span>
+            </div>
+          </div>
+        </div>
+
+        <div id="content-storage" class="tab-content">
+          <div class="info-grid">
+            <div class="info-row">
+              <span class="info-label">Storage Used:</span>
+              <span class="info-value" id="popup-storage-used">Loading...</span>
+            </div>
+            <div class="info-row">
+              <span class="info-label">Storage Quota:</span>
+              <span class="info-value" id="popup-storage-quota">Loading...</span>
+            </div>
+            <div class="info-row">
+              <span class="info-label">Storage Usage:</span>
+              <span class="info-value">
+                <div style="width: 200px; height: 8px; background: rgba(255,255,255,0.1); border-radius: 4px; overflow: hidden;">
+                  <div id="popup-storage-bar" style="height: 100%; background: linear-gradient(90deg, #3b82f6, #10b981); width: 0%; transition: width 0.3s ease;"></div>
+                </div>
+              </span>
+            </div>
+            <div class="info-row">
+              <span class="info-label">Cached Videos:</span>
+              <span class="info-value" id="popup-cached-count">Loading...</span>
+            </div>
+            <div class="info-row">
+              <span class="info-label">Cache Status:</span>
+              <span class="info-value" id="popup-cache-status">Loading...</span>
+            </div>
+          </div>
+
+          <!-- Cached Content List -->
+          <div style="margin-top: 1.5rem;">
+            <h4 style="color: rgba(255,255,255,0.8); font-size: 0.95rem; font-weight: 600; margin-bottom: 1rem;">Cached Content:</h4>
+            <div id="popup-cached-list" style="max-height: 200px; overflow-y: auto;">
+              <p style="color: rgba(255,255,255,0.6); text-align: center; padding: 1rem;">Loading...</p>
             </div>
           </div>
         </div>
@@ -244,7 +289,7 @@ class DeviceInfoPopupClass {
    */
   switchTab(tabName: string): void {
     // Update tab buttons
-    const tabs = ['device', 'system', 'backend'];
+    const tabs = ['device', 'system', 'storage', 'backend'];
     tabs.forEach(tab => {
       const tabBtn = document.getElementById(`tab-${tab}`);
       const content = document.getElementById(`content-${tab}`);
@@ -315,6 +360,9 @@ class DeviceInfoPopupClass {
         this.updateField('popup-organization', 'Not assigned');
         this.updateField('popup-last-sync', 'Never');
       }
+
+      // Load storage & cache info
+      await this.loadStorageInfo();
     } catch (error) {
       SharedLogger.error('[DeviceInfoPopup] Error loading device info:', error);
     }
@@ -405,6 +453,120 @@ class DeviceInfoPopupClass {
     }
 
     return version ? `${browser} ${version}` : browser;
+  }
+
+  /**
+   * Load storage and cache information
+   */
+  private async loadStorageInfo(): Promise<void> {
+    try {
+      // Get Storage API estimate
+      if (navigator.storage && navigator.storage.estimate) {
+        const estimate = await navigator.storage.estimate();
+        const usedMB = ((estimate.usage || 0) / 1048576).toFixed(2);
+        const quotaMB = ((estimate.quota || 0) / 1048576).toFixed(2);
+        const usagePercent = estimate.quota ? ((estimate.usage || 0) / estimate.quota * 100).toFixed(1) : '0';
+
+        this.updateField('popup-storage-used', `${usedMB} MB`);
+        this.updateField('popup-storage-quota', `${quotaMB} MB`);
+
+        // Update progress bar
+        const progressBar = document.getElementById('popup-storage-bar');
+        if (progressBar) {
+          progressBar.style.width = `${usagePercent}%`;
+        }
+      } else {
+        this.updateField('popup-storage-used', 'Not available');
+        this.updateField('popup-storage-quota', 'Not available');
+      }
+
+      // Get cache info from PlayerHLSCache
+      await this.loadCacheInfo();
+    } catch (error) {
+      SharedLogger.error('[DeviceInfoPopup] Error loading storage info:', error);
+      this.updateField('popup-storage-used', 'Error loading');
+      this.updateField('popup-storage-quota', 'Error loading');
+    }
+  }
+
+  /**
+   * Load HLS cache information
+   */
+  private async loadCacheInfo(): Promise<void> {
+    try {
+      // Import dynamically to avoid circular dependency
+      const { ServiceRegistry } = await import('@shared/services');
+      const PlayerHLSCache = ServiceRegistry.get('PlayerHLSCache') as any;
+
+      if (!PlayerHLSCache) {
+        this.updateField('popup-cached-count', 'Cache service not available');
+        this.updateField('popup-cache-status', 'Not initialized');
+        return;
+      }
+
+      // Get all cached content metadata
+      const cachedContent = await PlayerHLSCache.getAllCachedContent() as Array<any>;
+
+      if (cachedContent.length === 0) {
+        this.updateField('popup-cached-count', '0 videos');
+        this.updateField('popup-cache-status', 'No cached content');
+
+        const listElement = document.getElementById('popup-cached-list');
+        if (listElement) {
+          listElement.innerHTML = '<p style="color: rgba(255,255,255,0.6); text-align: center; padding: 1rem;">No videos cached yet</p>';
+        }
+        return;
+      }
+
+      // Update cache count
+      this.updateField('popup-cached-count', `${cachedContent.length} video${cachedContent.length > 1 ? 's' : ''}`);
+      this.updateField('popup-cache-status', 'Ready for offline playback');
+
+      // Build cached content list
+      const listElement = document.getElementById('popup-cached-list');
+      if (listElement) {
+        let listHtml = '';
+
+        for (const cache of cachedContent) {
+          const cachedDate = new Date(cache.cachedAt);
+          const now = new Date();
+          const diffMs = now.getTime() - cachedDate.getTime();
+          const diffHours = Math.floor(diffMs / 3600000);
+          const diffDays = Math.floor(diffHours / 24);
+
+          let timeAgo = '';
+          if (diffHours < 1) {
+            timeAgo = 'Just now';
+          } else if (diffHours < 24) {
+            timeAgo = `${diffHours}h ago`;
+          } else {
+            timeAgo = `${diffDays}d ago`;
+          }
+
+          const quality = cache.selectedQuality || 'Unknown';
+          const segmentCount = cache.segments[quality]?.length || 0;
+
+          listHtml += `
+            <div style="padding: 0.75rem; background: rgba(255,255,255,0.05); border-radius: 6px; margin-bottom: 0.5rem; border: 1px solid rgba(255,255,255,0.1);">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.25rem;">
+                <span style="color: white; font-size: 0.9rem; font-weight: 500;">Content ID: ${cache.contentId}</span>
+                <span style="color: rgba(255,255,255,0.6); font-size: 0.8rem;">${timeAgo}</span>
+              </div>
+              <div style="display: flex; justify-content: space-between; font-size: 0.85rem;">
+                <span style="color: rgba(255,255,255,0.7);">Quality: ${quality}</span>
+                <span style="color: rgba(255,255,255,0.7);">${segmentCount} segments</span>
+              </div>
+            </div>
+          `;
+        }
+
+        listElement.innerHTML = listHtml;
+      }
+    } catch (error) {
+      SharedLogger.error('[DeviceInfoPopup] Error loading cache info:', error);
+      this.updateField('popup-cached-count', 'Error loading');
+      this.updateField('popup-cache-status', 'Error loading');
+    }
   }
 }
 
