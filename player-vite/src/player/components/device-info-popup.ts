@@ -5,7 +5,6 @@
 
 import { SharedLogger } from '@shared/logger';
 import { SharedDeviceState } from '@shared/device';
-import { SharedAPIClient } from '@shared/api';
 import { SharedModal } from '@shared/ui';
 import { config } from '@shared/config';
 import { getOrCreateDeviceUUID } from '@shared/utils/device-fingerprint';
@@ -181,19 +180,19 @@ class DeviceInfoPopupClass {
               </span>
             </div>
             <div class="info-row">
-              <span class="info-label">Cached Videos:</span>
-              <span class="info-value" id="popup-cached-count">Loading...</span>
+              <span class="info-label">Assigned Content:</span>
+              <span class="info-value" id="popup-assigned-count">Loading...</span>
             </div>
             <div class="info-row">
-              <span class="info-label">Cache Status:</span>
-              <span class="info-value" id="popup-cache-status">Loading...</span>
+              <span class="info-label">Cached for Offline:</span>
+              <span class="info-value" id="popup-cached-count">Loading...</span>
             </div>
           </div>
 
-          <!-- Cached Content List -->
+          <!-- Assigned Content List -->
           <div style="margin-top: 1.5rem;">
-            <h4 style="color: rgba(255,255,255,0.8); font-size: 0.95rem; font-weight: 600; margin-bottom: 1rem;">Cached Content:</h4>
-            <div id="popup-cached-list" style="max-height: 200px; overflow-y: auto;">
+            <h4 style="color: rgba(255,255,255,0.8); font-size: 0.95rem; font-weight: 600; margin-bottom: 1rem;">Assigned Content:</h4>
+            <div id="popup-content-list" style="max-height: 250px; overflow-y: auto;">
               <p style="color: rgba(255,255,255,0.6); text-align: center; padding: 1rem;">Loading...</p>
             </div>
           </div>
@@ -352,35 +351,7 @@ class DeviceInfoPopupClass {
         }
       }
 
-      // Fetch backend info if device is registered
-      if (deviceId) {
-        const orgId = organizationId ? Number(organizationId) : null;
-        await this.fetchBackendInfo(Number(deviceId), orgId);
-      } else {
-        this.updateField('popup-organization', 'Not assigned');
-        this.updateField('popup-last-sync', 'Never');
-      }
-
-      // Load storage & cache info
-      await this.loadStorageInfo();
-    } catch (error) {
-      SharedLogger.error('[DeviceInfoPopup] Error loading device info:', error);
-    }
-  }
-
-  /**
-   * Fetch device info from backend
-   */
-  private async fetchBackendInfo(deviceId: number, organizationId: number | null): Promise<void> {
-    try {
-      // Fetch device details from backend
-      const response = await SharedAPIClient.get<any>(
-        `${config.api.baseURL}/api/v1/devices/${deviceId}`
-      );
-
-      SharedLogger.log('[DeviceInfoPopup] Backend response:', response);
-
-      // Update organization info (just show ID, no need to fetch)
+      // Update organization info (no need to fetch from API)
       if (organizationId) {
         this.updateField('popup-organization', `Organization #${organizationId}`);
       } else {
@@ -388,31 +359,19 @@ class DeviceInfoPopupClass {
       }
 
       // Update last sync time
-      const lastSeenAt = response.last_seen_at;
-      if (lastSeenAt) {
-        const lastSeen = new Date(lastSeenAt);
-        const now = new Date();
-        const diffMs = now.getTime() - lastSeen.getTime();
-        const diffMins = Math.floor(diffMs / 60000);
-
-        let timeAgo = '';
-        if (diffMins < 1) {
-          timeAgo = 'Just now';
-        } else if (diffMins < 60) {
-          timeAgo = `${diffMins} minute${diffMins > 1 ? 's' : ''} ago`;
-        } else {
-          const diffHours = Math.floor(diffMins / 60);
-          timeAgo = `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
-        }
-
-        this.updateField('popup-last-sync', timeAgo);
+      // Since heartbeat runs every 30s, if device is active, it means sync is recent
+      if (deviceStatus === 'active') {
+        this.updateField('popup-last-sync', 'Active (heartbeat running)');
+      } else if (deviceStatus === 'pending') {
+        this.updateField('popup-last-sync', 'Pending activation');
       } else {
-        this.updateField('popup-last-sync', 'Never');
+        this.updateField('popup-last-sync', 'Unknown');
       }
+
+      // Load storage & cache info
+      await this.loadStorageInfo();
     } catch (error) {
-      SharedLogger.error('[DeviceInfoPopup] Error fetching backend info:', error);
-      this.updateField('popup-organization', 'Error loading');
-      this.updateField('popup-last-sync', 'Error loading');
+      SharedLogger.error('[DeviceInfoPopup] Error loading device info:', error);
     }
   }
 
@@ -490,82 +449,80 @@ class DeviceInfoPopupClass {
   }
 
   /**
-   * Load HLS cache information
+   * Load assigned content and cache information
    */
   private async loadCacheInfo(): Promise<void> {
     try {
       // Import dynamically to avoid circular dependency
       const { ServiceRegistry } = await import('@shared/services');
+      const PlayerPlaylistSync = ServiceRegistry.get('PlayerPlaylistSync') as any;
       const PlayerHLSCache = ServiceRegistry.get('PlayerHLSCache') as any;
 
-      if (!PlayerHLSCache) {
-        this.updateField('popup-cached-count', 'Cache service not available');
-        this.updateField('popup-cache-status', 'Not initialized');
-        return;
-      }
-
-      // Get all cached content metadata
-      const cachedContent = await PlayerHLSCache.getAllCachedContent() as Array<any>;
-
-      if (cachedContent.length === 0) {
-        this.updateField('popup-cached-count', '0 videos');
-        this.updateField('popup-cache-status', 'No cached content');
-
-        const listElement = document.getElementById('popup-cached-list');
-        if (listElement) {
-          listElement.innerHTML = '<p style="color: rgba(255,255,255,0.6); text-align: center; padding: 1rem;">No videos cached yet</p>';
+      // Get assigned content from playlist
+      let assignedContent: any[] = [];
+      if (PlayerPlaylistSync && PlayerPlaylistSync.getCurrentPlaylist) {
+        const playlist = PlayerPlaylistSync.getCurrentPlaylist();
+        if (playlist && playlist.items) {
+          assignedContent = playlist.items;
         }
-        return;
       }
 
-      // Update cache count
-      this.updateField('popup-cached-count', `${cachedContent.length} video${cachedContent.length > 1 ? 's' : ''}`);
-      this.updateField('popup-cache-status', 'Ready for offline playback');
+      // Get cached HLS videos
+      let cachedVideos: any[] = [];
+      if (PlayerHLSCache && PlayerHLSCache.getAllCachedContent) {
+        cachedVideos = await PlayerHLSCache.getAllCachedContent();
+      }
 
-      // Build cached content list
-      const listElement = document.getElementById('popup-cached-list');
+      // Update counts
+      this.updateField('popup-assigned-count', `${assignedContent.length} item${assignedContent.length !== 1 ? 's' : ''}`);
+      this.updateField('popup-cached-count', `${cachedVideos.length} video${cachedVideos.length !== 1 ? 's' : ''}`);
+
+      // Build assigned content list
+      const listElement = document.getElementById('popup-content-list');
       if (listElement) {
-        let listHtml = '';
+        if (assignedContent.length === 0) {
+          listElement.innerHTML = '<p style="color: rgba(255,255,255,0.6); text-align: center; padding: 1rem;">No content assigned to this device</p>';
+        } else {
+          let listHtml = '';
 
-        for (const cache of cachedContent) {
-          const cachedDate = new Date(cache.cachedAt);
-          const now = new Date();
-          const diffMs = now.getTime() - cachedDate.getTime();
-          const diffHours = Math.floor(diffMs / 3600000);
-          const diffDays = Math.floor(diffHours / 24);
+          for (const item of assignedContent) {
+            const content = item.content;
+            const contentType = content.type || 'unknown';
+            const contentName = content.name || `Content ${content.id}`;
 
-          let timeAgo = '';
-          if (diffHours < 1) {
-            timeAgo = 'Just now';
-          } else if (diffHours < 24) {
-            timeAgo = `${diffHours}h ago`;
-          } else {
-            timeAgo = `${diffDays}d ago`;
+            // Check if this video is cached
+            const isCached = contentType === 'video' && cachedVideos.some(c => c.contentId === content.id);
+            const cacheStatus = isCached ? '💾 Cached' : (contentType === 'video' ? '🌐 Online' : '✓ Ready');
+
+            // Icon based on content type
+            let typeIcon = '📄';
+            if (contentType === 'video') typeIcon = '🎥';
+            else if (contentType === 'image') typeIcon = '🖼️';
+            else if (contentType === 'audio') typeIcon = '🎵';
+
+            listHtml += `
+              <div style="padding: 0.75rem; background: rgba(255,255,255,0.05); border-radius: 6px; margin-bottom: 0.5rem; border: 1px solid rgba(255,255,255,0.1);">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.25rem;">
+                  <span style="color: white; font-size: 0.9rem; font-weight: 500;">
+                    ${typeIcon} ${contentName}
+                  </span>
+                  <span style="color: ${isCached ? '#10b981' : 'rgba(255,255,255,0.6)'}; font-size: 0.8rem;">${cacheStatus}</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; font-size: 0.85rem;">
+                  <span style="color: rgba(255,255,255,0.7);">Type: ${contentType}</span>
+                  <span style="color: rgba(255,255,255,0.7);">ID: ${content.id}</span>
+                </div>
+              </div>
+            `;
           }
 
-          const quality = cache.selectedQuality || 'Unknown';
-          const segmentCount = cache.segments[quality]?.length || 0;
-
-          listHtml += `
-            <div style="padding: 0.75rem; background: rgba(255,255,255,0.05); border-radius: 6px; margin-bottom: 0.5rem; border: 1px solid rgba(255,255,255,0.1);">
-              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.25rem;">
-                <span style="color: white; font-size: 0.9rem; font-weight: 500;">Content ID: ${cache.contentId}</span>
-                <span style="color: rgba(255,255,255,0.6); font-size: 0.8rem;">${timeAgo}</span>
-              </div>
-              <div style="display: flex; justify-content: space-between; font-size: 0.85rem;">
-                <span style="color: rgba(255,255,255,0.7);">Quality: ${quality}</span>
-                <span style="color: rgba(255,255,255,0.7);">${segmentCount} segments</span>
-              </div>
-            </div>
-          `;
+          listElement.innerHTML = listHtml;
         }
-
-        listElement.innerHTML = listHtml;
       }
     } catch (error) {
       SharedLogger.error('[DeviceInfoPopup] Error loading cache info:', error);
+      this.updateField('popup-assigned-count', 'Error loading');
       this.updateField('popup-cached-count', 'Error loading');
-      this.updateField('popup-cache-status', 'Error loading');
     }
   }
 }
