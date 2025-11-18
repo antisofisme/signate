@@ -25,6 +25,7 @@ class PlayerBackgroundAudioClass {
   private volumeLevel: number = 75; // 0-100
   private isEnabled: boolean = true;
   private _isPlaying: boolean = false;
+  private _isStopping: boolean = false;
 
   /**
    * Initialize background audio player
@@ -57,6 +58,10 @@ class PlayerBackgroundAudioClass {
     });
 
     this.audioElement.addEventListener('error', (e) => {
+      // Ignore errors when intentionally stopping/clearing audio
+      if (this._isStopping) {
+        return;
+      }
       SharedLogger.error('[PlayerBackgroundAudio] ❌ Playback error:', e);
       this._isPlaying = false;
     });
@@ -208,6 +213,7 @@ class PlayerBackgroundAudioClass {
   stop(): void {
     if (!this.audioElement) return;
 
+    this._isStopping = true;
     this.audioElement.pause();
     this.audioElement.src = '';
     this.currentAudioUrl = null;
@@ -215,6 +221,11 @@ class PlayerBackgroundAudioClass {
     this._isPlaying = false;
 
     SharedLogger.log('[PlayerBackgroundAudio] 🛑 Stopped');
+
+    // Reset stopping flag after a brief delay
+    setTimeout(() => {
+      this._isStopping = false;
+    }, 100);
   }
 
   /**
