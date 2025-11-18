@@ -42,11 +42,12 @@ class PlayerVideoJSClass implements IPlayerVideoJS {
   };
 
   private itemTimer: number | null = null;
+  private volumeLevel: number = 75; // Default volume (0-100), can be overridden by device settings
 
   // Player configuration
   private readonly playerConfig: PlayerConfig = {
     autoplay: true,
-    muted: true,
+    muted: false,  // Changed: Allow audio playback (HLS videos, audio content)
     loop: false,
     preload: 'auto',
     controls: false,
@@ -97,6 +98,18 @@ class PlayerVideoJSClass implements IPlayerVideoJS {
       SharedLogger.error('[PlayerVideoJS] ❌ Initialization failed:', error);
       throw error;
     }
+  }
+
+  /**
+   * Set volume level (0-100)
+   */
+  setVolume(level: number): void {
+    if (!this.player) return;
+
+    this.volumeLevel = Math.max(0, Math.min(100, level));
+    this.player.volume(this.volumeLevel / 100);
+
+    SharedLogger.log(`[PlayerVideoJS] 🔊 Volume set to ${this.volumeLevel}%`);
   }
 
   /**
@@ -292,6 +305,16 @@ class PlayerVideoJSClass implements IPlayerVideoJS {
       // Show video element (might be hidden from image/url)
       this.videoElement.style.display = 'block';
 
+      // Apply per-content mute flag and volume
+      if (item.is_muted) {
+        this.player.muted(true);
+        SharedLogger.log('[PlayerVideoJS] 🔇 Content is muted (is_muted=true)');
+      } else {
+        this.player.muted(false);
+        this.player.volume(this.volumeLevel / 100);
+        SharedLogger.log(`[PlayerVideoJS] 🔊 Volume: ${this.volumeLevel}%`);
+      }
+
       await this.player.play();
 
       SharedLogger.log(`[PlayerVideoJS] ${isFromCache ? '💾 OFFLINE' : '🌐 STREAMING'} ${isHLS ? 'HLS' : 'DIRECT'}:`, videoUrl);
@@ -422,6 +445,16 @@ class PlayerVideoJSClass implements IPlayerVideoJS {
     // Log playback start for analytics
     if (this.state.playlist) {
       void PlayerPlaybackLogger.logPlaybackStart(item, this.state.playlist.id);
+    }
+
+    // Apply per-content mute flag and volume
+    if (item.is_muted) {
+      this.player.muted(true);
+      SharedLogger.log('[PlayerVideoJS] 🔇 Audio is muted (is_muted=true)');
+    } else {
+      this.player.muted(false);
+      this.player.volume(this.volumeLevel / 100);
+      SharedLogger.log(`[PlayerVideoJS] 🔊 Volume: ${this.volumeLevel}%`);
     }
 
     // Play audio

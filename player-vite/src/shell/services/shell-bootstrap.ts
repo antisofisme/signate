@@ -18,8 +18,9 @@ import { ShellActivationPoll } from './shell-activation-poll';
 import type { ShellBootstrap as IShellBootstrap, VerifyDeviceResponse } from '../types/shell.types';
 import { ServiceRegistry } from '@shared/services/service-registry';
 import { getPlayerMediaCache, getPlayerHeartbeat, getPlayerPlaylistSync, getPlayerCommandExecutor, getPlayerHealthReporter, getSharedWebSocket, getDeviceInfoPopup, getPlayerVideoJS } from '@shared/services';
-// Import PlayerVideoJS to ensure it's registered before use
+// Import PlayerVideoJS and PlayerBackgroundAudio to ensure they're registered before use
 import '@player/services/player-videojs';
+import { PlayerBackgroundAudio } from '@player/services';
 
 /**
  * Shell Bootstrap Class
@@ -242,6 +243,10 @@ class ShellBootstrapClass implements IShellBootstrap {
         await getPlayerMediaCache().init();
         SharedLogger.log('[ShellBootstrap] ✅ MediaCache initialized');
       }
+
+      // 2.5. Initialize Background Audio Player
+      PlayerBackgroundAudio.init();
+      SharedLogger.log('[ShellBootstrap] ✅ PlayerBackgroundAudio initialized');
 
       // 3. Initialize HLS Cache
       const PlayerHLSCache = ServiceRegistry.get<any>('PlayerHLSCache');

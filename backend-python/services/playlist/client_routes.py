@@ -21,11 +21,81 @@ router = APIRouter(
 
 # ========== DTOs ==========
 
+class DeviceSettings(BaseModel):
+    """Device audio and display settings"""
+    volume_level: int = 75
+    is_volume_enabled: bool = True
+    background_audio_id: Optional[int] = None
+    background_audio_url: Optional[str] = None
+    background_audio_name: Optional[str] = None
+
+
 class PlaylistSyncResponse(BaseModel):
     """Response for playlist sync endpoint"""
     playlist: Optional[dict] = None
+    device_settings: Optional[DeviceSettings] = None
     has_changes: bool = False
     message: str
+
+
+# ========== HELPER FUNCTIONS ==========
+
+def build_device_settings(device, db: Session) -> DeviceSettings:
+    """
+    Build device settings including background audio details
+
+    Priority for background audio:
+    1. Device-level background_audio_id (highest)
+    2. Playlist-level background_audio_id (if device has assigned playlist)
+    """
+    from services.content.repositories.models import ContentModel
+    from services.playlist.repositories.models import PlaylistModel
+
+    background_audio_id = None
+    background_audio_url = None
+    background_audio_name = None
+
+    # Priority 1: Device-level background audio
+    device_bg_audio_id = getattr(device, 'background_audio_id', None)
+    if device_bg_audio_id:
+        bg_audio = db.query(ContentModel).filter(
+            ContentModel.id == device_bg_audio_id,
+            ContentModel.organization_id == device.organization_id  # Multi-tenancy check
+        ).first()
+
+        if bg_audio:
+            background_audio_id = bg_audio.id
+            background_audio_url = bg_audio.file_url
+            background_audio_name = bg_audio.title
+            print(f"[Device Settings] Using device-level background audio: {bg_audio.title}")
+
+    # Priority 2: Playlist-level background audio (if no device-level)
+    elif device.assigned_playlist_id:
+        playlist = db.query(PlaylistModel).filter(
+            PlaylistModel.id == device.assigned_playlist_id,
+            PlaylistModel.organization_id == device.organization_id  # Multi-tenancy check
+        ).first()
+
+        playlist_bg_audio_id = getattr(playlist, 'background_audio_id', None) if playlist else None
+        if playlist and playlist_bg_audio_id:
+            bg_audio = db.query(ContentModel).filter(
+                ContentModel.id == playlist_bg_audio_id,
+                ContentModel.organization_id == device.organization_id  # Multi-tenancy check
+            ).first()
+
+            if bg_audio:
+                background_audio_id = bg_audio.id
+                background_audio_url = bg_audio.file_url
+                background_audio_name = bg_audio.title
+                print(f"[Device Settings] Using playlist-level background audio: {bg_audio.title}")
+
+    return DeviceSettings(
+        volume_level=getattr(device, 'volume_level', 75),
+        is_volume_enabled=getattr(device, 'is_volume_enabled', True),
+        background_audio_id=background_audio_id,
+        background_audio_url=background_audio_url,
+        background_audio_name=background_audio_name
+    )
 
 
 # ========== ENDPOINTS ==========
@@ -124,6 +194,7 @@ def get_playlist_for_device(
                         'content_id': assignment.content_id,
                         'duration': content.duration,  # Use content duration
                         'order': idx,  # Use array index as order
+                        'is_muted': getattr(assignment, 'is_muted', False),  # Per-content mute flag
                         'content': {
                             'id': content.id,
                             'name': content.title,  # Player expects 'name', not 'title'
@@ -139,8 +210,12 @@ def get_playlist_for_device(
 
             # If we have items, return them
             if len(playlist_data['items']) > 0:
+                # Build device settings
+                device_settings = build_device_settings(device, db)
+
                 return PlaylistSyncResponse(
                     playlist=playlist_data,
+                    device_settings=device_settings,
                     has_changes=True,
                     message=f"Retrieved {len(playlist_data['items'])} directly assigned content items"
                 )
@@ -193,17 +268,25 @@ def get_playlist_for_device(
             for item in items:
                 content = db.query(ContentModel).filter(ContentModel.id == item.content_id).first()
                 if content:
+                    # ✅ HLS PRIORITY: Use HLS URL for videos if available (same as direct assignments)
+                    playback_url = content.file_url  # Default: direct file
+
+                    if content.content_type == 'video' and content.hls_master_playlist_url:
+                        playback_url = content.hls_master_playlist_url
+                        print(f"[Client Playlist] Content {content.id}: Using HLS URL: {playback_url}")
+
                     playlist_data['items'].append({
                         'id': item.id,
                         'content_id': item.content_id,
                         'duration': item.duration,
                         'order': item.order_index,
+                        'is_muted': getattr(item, 'is_muted', False),  # Per-content mute flag
                         'content': {
                             'id': content.id,
                             'name': content.title,  # Player expects 'name', not 'title'
                             'type': content.content_type,  # Player expects 'type', not 'content_type'
-                            'file_path': content.file_url,  # Use file_url as file_path for player
-                            'url': content.file_url,  # For URL-based content
+                            'file_path': playback_url,  # HLS URL or direct file URL
+                            'url': playback_url,  # For URL-based content
                             'thumbnail_path': content.thumbnail_url,
                             'mime_type': content.mime_type,
                             'metadata': None,  # No metadata for now
@@ -213,8 +296,15 @@ def get_playlist_for_device(
 
             # If playlist has content items, return them
             if len(playlist_data['items']) > 0:
+                # Add background_audio_id to playlist data
+                playlist_data['background_audio_id'] = getattr(playlist, 'background_audio_id', None)
+
+                # Build device settings
+                device_settings = build_device_settings(device, db)
+
                 return PlaylistSyncResponse(
                     playlist=playlist_data,
+                    device_settings=device_settings,
                     has_changes=True,
                     message="Playlist retrieved successfully"
                 )

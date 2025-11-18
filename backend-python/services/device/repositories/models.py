@@ -52,9 +52,11 @@ class DeviceModel(Base):
     # Display settings
     rotation = Column(Integer, default=0, nullable=False)  # 0, 90, 180, 270
     is_volume_enabled = Column(Boolean, default=True, nullable=False)
-    
+    volume_level = Column(Integer, default=75, nullable=False)  # 0-100 volume level
+
     # Content assignment
     assigned_playlist_id = Column(Integer, ForeignKey("playlists.id", ondelete="SET NULL"), nullable=True)
+    background_audio_id = Column(Integer, ForeignKey("contents.id", ondelete="SET NULL"), nullable=True)  # Background audio to loop
 
     # Hotel-specific
     room_number = Column(String(50), nullable=True, index=True)
@@ -74,6 +76,7 @@ class DeviceModel(Base):
     # Relationships (using string references to avoid circular imports)
     organization = relationship("OrganizationModel", foreign_keys=[organization_id])
     assigned_playlist = relationship("PlaylistModel", foreign_keys=[assigned_playlist_id])
+    background_audio = relationship("ContentModel", foreign_keys=[background_audio_id])
     creator = relationship("UserModel", foreign_keys=[created_by_id])
     updater = relationship("UserModel", foreign_keys=[updated_by_id])
     

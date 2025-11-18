@@ -14,6 +14,7 @@ export interface PlaylistItem {
   content_id: number;
   duration: number;
   order: number;
+  is_muted: boolean;  // Per-content mute control
   content: ContentItem;
 }
 
@@ -32,12 +33,22 @@ export interface Playlist {
   id: number;
   name: string;
   is_active: boolean;
+  background_audio_id?: number | null;  // Playlist-level background audio
   items: PlaylistItem[];
   total_items?: number;
 }
 
+export interface DeviceSettings {
+  volume_level: number;  // 0-100
+  is_volume_enabled: boolean;
+  background_audio_id: number | null;
+  background_audio_url: string | null;
+  background_audio_name: string | null;
+}
+
 export interface PlaylistSyncResponse {
   playlist: Playlist | null;
+  device_settings: DeviceSettings | null;
   has_changes: boolean;
   message?: string;
 }

@@ -15,6 +15,7 @@ import { SharedAPIClient } from '@shared/api';
 import { SharedDeviceState } from '@shared/device';
 import { SharedEventBus } from '@shared/events/shared-event-bus';
 import { playerScheduleManager } from './player-schedule-manager';
+import { PlayerBackgroundAudio } from './player-background-audio';
 import type { PlaylistSync as IPlaylistSync, PlaylistSyncResponse, Playlist } from '../types/player.types';
 import { ServiceRegistry } from '@shared/services/service-registry';
 import { getPlayerVideoJS } from '@shared/services';
@@ -130,6 +131,22 @@ class PlayerPlaylistSyncClass implements IPlaylistSync {
 
       // Playlist exists - hide waiting screen
       WaitingForContent.hide();
+
+      // Handle device settings (volume, background audio)
+      if (data.device_settings) {
+        SharedLogger.log('[PlayerPlaylistSync] 📊 Device settings received:', {
+          volume: data.device_settings.volume_level,
+          background_audio: data.device_settings.background_audio_name,
+        });
+
+        // Update volume for content playback
+        if (getPlayerVideoJS()) {
+          getPlayerVideoJS().setVolume(data.device_settings.volume_level);
+        }
+
+        // Load background audio
+        await PlayerBackgroundAudio.loadFromSettings(data.device_settings);
+      }
 
       // Check if playlist changed
       const newVersion = this.calculatePlaylistVersion(data.playlist);

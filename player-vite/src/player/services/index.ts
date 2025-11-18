@@ -13,3 +13,4 @@ export { PlayerHealthReporter } from './player-health-reporter';
 export { PlayerPlaybackLogger } from './player-playback-logger';
 export { PlayerScheduleManager } from './player-schedule-manager';
 export { PlayerWidgetRenderer } from './player-widget-renderer';
+export { PlayerBackgroundAudio } from './player-background-audio';

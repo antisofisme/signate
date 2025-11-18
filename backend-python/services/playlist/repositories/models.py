@@ -25,6 +25,7 @@ class PlaylistModel(Base):
     schedule = Column(JSON, nullable=True)  # JSONB in PostgreSQL
     is_default = Column(Boolean, default=False, nullable=False)
     is_pms_template = Column(Boolean, default=False, nullable=False)
+    background_audio_id = Column(Integer, ForeignKey("contents.id", ondelete="SET NULL"), nullable=True)  # Playlist background audio
 
     # Multi-tenancy & User tracking
     organization_id = Column(Integer, ForeignKey("organizations.id", ondelete="CASCADE"), nullable=False, index=True)
@@ -56,6 +57,7 @@ class PlaylistContentModel(Base):
     # Order and duration
     order_index = Column(Integer, default=0, nullable=False)
     duration = Column(Integer, nullable=True)  # Override content duration
+    is_muted = Column(Boolean, default=False, nullable=False)  # Per-content mute control
 
     # Audit
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)

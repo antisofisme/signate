@@ -120,6 +120,7 @@ class ContentAssignmentModel(Base):
     priority = Column(Integer, default=1, nullable=False)
     schedule = Column(JSON, nullable=True)  # Optional schedule configuration (JSONB)
     expires_at = Column(DateTime(timezone=True), nullable=True)
+    is_muted = Column(Boolean, default=False, nullable=False)  # Per-content mute control
 
     # Audit trail
     assigned_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
