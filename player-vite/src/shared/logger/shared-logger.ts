@@ -82,33 +82,34 @@ export const LogNamespace = {
 
 /**
  * Color scheme for namespaces (console CSS styling)
+ * Optimized for dark theme console (high contrast, bright colors)
  * Maps namespace categories to colors for better visual distinction
  */
 const NAMESPACE_COLORS: Record<string, string> = {
-  // Shell (blue tones)
-  Shell: 'color: #3b82f6; font-weight: bold',
+  // Shell (yellow - infrastructure/system)
+  Shell: 'color: #fbbf24; font-weight: bold',
 
-  // Player (purple tones)
-  Player: 'color: #a855f7; font-weight: bold',
+  // Player (green - media/content player)
+  Player: 'color: #4ade80; font-weight: bold',
 
-  // Network (green tones)
-  Network: 'color: #10b981; font-weight: bold',
+  // Network (blue - network/communication)
+  Network: 'color: #60a5fa; font-weight: bold',
 
-  // Device (cyan tones)
-  Device: 'color: #06b6d4; font-weight: bold',
-  DeviceInfo: 'color: #06b6d4; font-weight: bold',
-  DeviceFingerprint: 'color: #06b6d4; font-weight: bold',
+  // Device (cyan - device/hardware info)
+  Device: 'color: #22d3ee; font-weight: bold',
+  DeviceInfo: 'color: #22d3ee; font-weight: bold',
+  DeviceFingerprint: 'color: #22d3ee; font-weight: bold',
 
-  // UI (orange tones)
-  Toast: 'color: #f97316; font-weight: bold',
-  Modal: 'color: #f97316; font-weight: bold',
-  Popup: 'color: #f97316; font-weight: bold',
+  // UI (bright red - user notifications)
+  Toast: 'color: #f87171; font-weight: bold',
+  Modal: 'color: #f87171; font-weight: bold',
+  Popup: 'color: #f87171; font-weight: bold',
 
-  // Storage (yellow tones)
-  Storage: 'color: #eab308; font-weight: bold',
+  // Storage (orange - data persistence)
+  Storage: 'color: #fb923c; font-weight: bold',
 
-  // Default
-  default: 'color: #64748b; font-weight: bold',
+  // Default (gray - others/uncategorized)
+  default: 'color: #94a3b8; font-weight: bold',
 };
 
 /**
@@ -140,7 +141,7 @@ class SharedLoggerClass implements Logger {
     // Start periodic flush
     this.startPeriodicFlush();
 
-    this.originalConsole.log('[SharedLogger] Initialized - Level:', config.log.level);
+    this.originalConsole.log('[SharedLogger] Initialized v2.0 - Level:', config.log.level);
   }
 
   /**
@@ -346,10 +347,23 @@ class SharedLoggerClass implements Logger {
 
     const namespace = namespaceMatch[1];
 
-    // Extract category (before colon if exists)
-    const category = namespace.includes(':') ? namespace.split(':')[0] : namespace;
+    // Extract category (before colon if exists, e.g., "Shell:Bootstrap" → "Shell")
+    let category = namespace.includes(':') ? namespace.split(':')[0] : namespace;
 
-    // Get color for category
+    // If no exact match, try to extract prefix from CamelCase
+    // e.g., "PlayerVideoJS" → "Player", "DeviceInfo" → "Device"
+    if (!NAMESPACE_COLORS[category] && !NAMESPACE_COLORS[namespace]) {
+      // Try common prefixes
+      const prefixes = ['Shell', 'Player', 'Network', 'Device', 'Toast', 'Modal', 'Popup', 'Storage'];
+      for (const prefix of prefixes) {
+        if (category.startsWith(prefix)) {
+          category = prefix;
+          break;
+        }
+      }
+    }
+
+    // Get color for category (fallback to default gray)
     const color = NAMESPACE_COLORS[category] || NAMESPACE_COLORS[namespace] || NAMESPACE_COLORS.default;
 
     return { namespace: firstArg, color };
@@ -361,7 +375,7 @@ class SharedLoggerClass implements Logger {
    */
   private createLogMethod(level: LogLevel): (...args: unknown[]) => void {
     return (...args: unknown[]) => {
-      // Get emoji prefix
+      // Get emoji prefix (not used for error/warn - browser handles those)
       const emoji = LOG_EMOJIS[level];
 
       // Redact sensitive data from all arguments before console output
@@ -372,6 +386,9 @@ class SharedLoggerClass implements Logger {
       // For errors, use console.group for collapsible stack traces
       if (level === 'error' && this.originalConsole[level]) {
         this.logErrorWithGroup(redactedArgs);
+      } else if (level === 'warn' && this.originalConsole[level]) {
+        // For warnings, let browser handle styling (yellow/orange icons)
+        this.originalConsole.warn(...redactedArgs);
       } else {
         // Check for namespace in first argument
         const { namespace, color } = this.getNamespaceColor(redactedArgs);
@@ -379,8 +396,25 @@ class SharedLoggerClass implements Logger {
         // Always passthrough to original console with emoji prefix and colored namespace
         if (level !== 'silent' && this.originalConsole[level]) {
           if (namespace) {
-            // First arg is namespace - colorize it, then reset style for rest
-            this.originalConsole[level](emoji, '%c' + namespace + '%c', color, '', ...redactedArgs.slice(1));
+            // Extract namespace and message separately for better styling
+            // [PlayerVideoJS] Buffering... → namespace: "[PlayerVideoJS]", message: "Buffering..."
+            const firstArgStr = redactedArgs[0] as string;
+            const namespaceMatch = firstArgStr.match(/^(\[[^\]]+\])\s*(.*)/);
+
+            if (namespaceMatch) {
+              const [, namespacePart, messagePart] = namespaceMatch;
+              // Format: emoji + colored_namespace + white_message + other_args
+              // %c applies style to following text, next %c resets it
+              this.originalConsole[level](
+                `${emoji} %c${namespacePart}%c ${messagePart}`,
+                color,
+                'color: inherit;', // Reset to default white/console color
+                ...redactedArgs.slice(1)
+              );
+            } else {
+              // Fallback if regex doesn't match (shouldn't happen)
+              this.originalConsole[level](`${emoji} %c${namespace}%c`, color, 'color: inherit;', ...redactedArgs.slice(1));
+            }
           } else {
             // No namespace - regular log
             this.originalConsole[level](emoji, ...redactedArgs);
@@ -401,14 +435,15 @@ class SharedLoggerClass implements Logger {
    * Log error with collapsible console.group
    */
   private logErrorWithGroup(args: unknown[]): void {
-    const emoji = LOG_EMOJIS.error;
+    // For errors, let browser handle ALL styling (red color, icons, etc)
+    // Don't add emoji - browser already provides error indicators
 
     // Check if first arg is Error object
     const hasError = args.some((arg) => arg instanceof Error);
 
     if (hasError) {
       // Use console.group for collapsible error details
-      this.originalConsole.error('%c' + emoji + ' ERROR', 'font-weight: bold; color: #ff4444;', ...args);
+      this.originalConsole.error('ERROR', ...args);
 
       // Find and show stack trace in collapsed group
       args.forEach((arg) => {
@@ -419,8 +454,8 @@ class SharedLoggerClass implements Logger {
         }
       });
     } else {
-      // Regular error log with emoji
-      this.originalConsole.error(emoji, ...args);
+      // Regular error log - browser handles styling
+      this.originalConsole.error(...args);
     }
   }
 
@@ -471,8 +506,23 @@ class SharedLoggerClass implements Logger {
 
     if (this.originalConsole.log) {
       if (namespace) {
-        // First arg is namespace - colorize it, then reset style for rest
-        this.originalConsole.log(SUCCESS_EMOJI, '%c' + namespace + '%c', color, '', ...redactedArgs.slice(1));
+        // Extract namespace and message separately for better styling
+        const firstArgStr = redactedArgs[0] as string;
+        const namespaceMatch = firstArgStr.match(/^(\[[^\]]+\])\s*(.*)/);
+
+        if (namespaceMatch) {
+          const [, namespacePart, messagePart] = namespaceMatch;
+          // Only namespace is colored, message is white
+          this.originalConsole.log(
+            `${SUCCESS_EMOJI} %c${namespacePart}%c ${messagePart}`,
+            color,
+            'color: inherit;',
+            ...redactedArgs.slice(1)
+          );
+        } else {
+          // Fallback
+          this.originalConsole.log(`${SUCCESS_EMOJI} %c${namespace}%c`, color, 'color: inherit;', ...redactedArgs.slice(1));
+        }
       } else {
         // No namespace - regular log
         this.originalConsole.log(SUCCESS_EMOJI, ...redactedArgs);
