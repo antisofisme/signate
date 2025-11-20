@@ -5,15 +5,19 @@
 
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Folder, Plus, Users, Edit, Trash2, MoreVertical } from 'lucide-react'
+import { Folder, Plus, Users, Edit, Trash2, MoreVertical, Grid, List, ChevronRight, ChevronDown } from 'lucide-react'
 import { groupsApi } from '../api/groupsApi'
 import type { DeviceGroup, CreateDeviceGroupRequest, UpdateDeviceGroupRequest } from '../types/groups'
+
+type ViewMode = 'grid' | 'tree'
 
 export function DeviceGroups() {
   const queryClient = useQueryClient()
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
   const [selectedGroup, setSelectedGroup] = useState<DeviceGroup | null>(null)
+  const [viewMode, setViewMode] = useState<ViewMode>('grid')
+  const [expandedNodes, setExpandedNodes] = useState<Set<number>>(new Set())
 
   // Fetch all groups
   const { data: groupsData, isLoading } = useQuery({
@@ -70,6 +74,42 @@ export function DeviceGroups() {
     }
   }
 
+  const toggleNode = (groupId: number) => {
+    setExpandedNodes(prev => {
+      const next = new Set(prev)
+      if (next.has(groupId)) {
+        next.delete(groupId)
+      } else {
+        next.add(groupId)
+      }
+      return next
+    })
+  }
+
+  // Build tree structure from flat list
+  const buildTree = (groups: DeviceGroup[]): DeviceGroup[] => {
+    const groupMap = new Map<number, DeviceGroup & { children: DeviceGroup[] }>()
+    const rootGroups: (DeviceGroup & { children: DeviceGroup[] })[] = []
+
+    // First pass: create map of all groups with empty children arrays
+    groups.forEach(group => {
+      groupMap.set(group.id, { ...group, children: [] })
+    })
+
+    // Second pass: build tree structure
+    groups.forEach(group => {
+      const node = groupMap.get(group.id)!
+      if (group.parent_group_id && groupMap.has(group.parent_group_id)) {
+        const parent = groupMap.get(group.parent_group_id)!
+        parent.children.push(node)
+      } else {
+        rootGroups.push(node)
+      }
+    })
+
+    return rootGroups
+  }
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -79,11 +119,38 @@ export function DeviceGroups() {
   }
 
   const groups = groupsData?.items || []
+  const treeData = buildTree(groups)
 
   return (
     <div className="space-y-6">
       {/* Action Bar */}
-      <div className="flex justify-end">
+      <div className="flex justify-between items-center">
+        {/* View Mode Toggle */}
+        <div className="flex gap-2 bg-gray-100 dark:bg-gray-800 rounded-lg p-1">
+          <button
+            onClick={() => setViewMode('grid')}
+            className={`flex items-center gap-2 px-3 py-1.5 rounded transition-colors ${
+              viewMode === 'grid'
+                ? 'bg-white dark:bg-gray-700 text-blue-600 dark:text-blue-400 shadow-sm'
+                : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
+            }`}
+          >
+            <Grid className="w-4 h-4" />
+            <span className="text-sm font-medium">Grid</span>
+          </button>
+          <button
+            onClick={() => setViewMode('tree')}
+            className={`flex items-center gap-2 px-3 py-1.5 rounded transition-colors ${
+              viewMode === 'tree'
+                ? 'bg-white dark:bg-gray-700 text-blue-600 dark:text-blue-400 shadow-sm'
+                : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
+            }`}
+          >
+            <List className="w-4 h-4" />
+            <span className="text-sm font-medium">Tree</span>
+          </button>
+        </div>
+
         <button
           onClick={() => setIsCreateModalOpen(true)}
           className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
@@ -93,7 +160,7 @@ export function DeviceGroups() {
         </button>
       </div>
 
-      {/* Groups Grid */}
+      {/* Groups Display */}
       {groups.length === 0 ? (
         <div className="text-center py-12 bg-gray-50 dark:bg-gray-800 rounded-lg">
           <Folder className="w-16 h-16 mx-auto text-gray-400 mb-4" />
@@ -108,12 +175,26 @@ export function DeviceGroups() {
             Create First Group
           </button>
         </div>
-      ) : (
+      ) : viewMode === 'grid' ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {groups.map((group) => (
             <GroupCard
               key={group.id}
               group={group}
+              onEdit={handleEditClick}
+              onDelete={handleDeleteGroup}
+            />
+          ))}
+        </div>
+      ) : (
+        <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
+          {treeData.map((group) => (
+            <TreeNode
+              key={group.id}
+              group={group}
+              level={0}
+              expandedNodes={expandedNodes}
+              onToggle={toggleNode}
               onEdit={handleEditClick}
               onDelete={handleDeleteGroup}
             />
@@ -228,6 +309,138 @@ function GroupCard({
           <Trash2 className="w-4 h-4 inline" />
         </button>
       </div>
+    </div>
+  )
+}
+
+// Tree Node Component
+function TreeNode({
+  group,
+  level,
+  expandedNodes,
+  onToggle,
+  onEdit,
+  onDelete,
+}: {
+  group: DeviceGroup & { children?: DeviceGroup[] }
+  level: number
+  expandedNodes: Set<number>
+  onToggle: (id: number) => void
+  onEdit: (group: DeviceGroup) => void
+  onDelete: (id: number) => void
+}) {
+  const hasChildren = group.children && group.children.length > 0
+  const isExpanded = expandedNodes.has(group.id)
+  const indentPx = level * 24
+
+  const { data: stats } = useQuery({
+    queryKey: ['device-group-stats', group.id],
+    queryFn: () => groupsApi.getGroupStats(group.id),
+  })
+
+  return (
+    <div>
+      {/* Node Row */}
+      <div
+        className="flex items-center gap-2 py-2 px-3 hover:bg-gray-50 dark:hover:bg-gray-700/50 rounded-lg transition-colors group"
+        style={{ paddingLeft: `${indentPx + 12}px` }}
+      >
+        {/* Expand/Collapse Button */}
+        {hasChildren ? (
+          <button
+            onClick={() => onToggle(group.id)}
+            className="flex-shrink-0 w-5 h-5 flex items-center justify-center text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+          >
+            {isExpanded ? (
+              <ChevronDown className="w-4 h-4" />
+            ) : (
+              <ChevronRight className="w-4 h-4" />
+            )}
+          </button>
+        ) : (
+          <div className="w-5 h-5 flex-shrink-0" />
+        )}
+
+        {/* Folder Icon */}
+        <div className="flex-shrink-0 w-8 h-8 bg-blue-100 dark:bg-blue-900 rounded flex items-center justify-center">
+          <Folder className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+        </div>
+
+        {/* Group Info */}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2">
+            <span className="font-medium text-gray-900 dark:text-white truncate">
+              {group.name}
+            </span>
+            {group.group_type && (
+              <span className="text-xs text-gray-500 dark:text-gray-400 capitalize">
+                {group.group_type}
+              </span>
+            )}
+          </div>
+          {group.description && (
+            <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+              {group.description}
+            </p>
+          )}
+        </div>
+
+        {/* Stats */}
+        <div className="flex items-center gap-4 text-sm flex-shrink-0">
+          <div className="flex items-center gap-1">
+            <Users className="w-4 h-4 text-gray-400" />
+            <span className="text-gray-900 dark:text-white font-medium">
+              {stats?.total_devices || 0}
+            </span>
+          </div>
+          {stats && (
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-green-600 dark:text-green-400">
+                {stats.online_devices}
+              </span>
+              <span className="text-xs text-gray-400">/</span>
+              <span className="text-xs text-gray-600 dark:text-gray-400">
+                {stats.offline_devices}
+              </span>
+            </div>
+          )}
+        </div>
+
+        {/* Actions */}
+        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
+          <button
+            onClick={() => onEdit(group)}
+            className="p-1.5 text-gray-600 hover:text-blue-600 dark:text-gray-400 dark:hover:text-blue-400 rounded hover:bg-blue-50 dark:hover:bg-blue-900/20"
+            title="Edit group"
+          >
+            <Edit className="w-4 h-4" />
+          </button>
+          <button
+            onClick={() => onDelete(group.id)}
+            className="p-1.5 text-gray-600 hover:text-red-600 dark:text-gray-400 dark:hover:text-red-400 rounded hover:bg-red-50 dark:hover:bg-red-900/20"
+            title="Delete group"
+          >
+            <Trash2 className="w-4 h-4" />
+          </button>
+        </div>
+      </div>
+
+      {/* Children */}
+      {hasChildren && isExpanded && (
+        <div>
+          {group.children!.map((child) => (
+            <TreeNode
+              key={child.id}
+              group={child}
+              level={level + 1}
+              expandedNodes={expandedNodes}
+              onToggle={onToggle}
+              onEdit={onEdit}
+              onDelete={onDelete}
+            />
+          ))}
+        </div>
+      )}
     </div>
   )
 }
