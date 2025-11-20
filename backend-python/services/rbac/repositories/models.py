@@ -6,6 +6,7 @@ from sqlalchemy import Column, Integer, String, Boolean, ForeignKey, TIMESTAMP, 
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import relationship
 from shared.database import Base
+from services.auth.repositories.models import UserModel
 
 
 class Role(Base):
@@ -26,8 +27,8 @@ class Role(Base):
     updated_by_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
 
     # Relationships for audit trail
-    created_by = relationship("User", foreign_keys=[created_by_id])
-    updated_by = relationship("User", foreign_keys=[updated_by_id])
+    created_by = relationship("UserModel", foreign_keys=[created_by_id])
+    updated_by = relationship("UserModel", foreign_keys=[updated_by_id])
 
     def __repr__(self):
         return f"<Role(id={self.id}, name='{self.name}', is_system={self.is_system_role})>"

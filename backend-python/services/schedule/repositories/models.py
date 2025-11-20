@@ -9,6 +9,7 @@ from sqlalchemy.orm import relationship
 from datetime import datetime
 
 from shared.database import Base
+from services.auth.repositories.models import UserModel
 
 
 class Schedule(Base):
@@ -65,8 +66,8 @@ class Schedule(Base):
 
     # Relationships
     playlist = relationship("PlaylistModel", foreign_keys=[playlist_id])
-    created_by = relationship("User", foreign_keys=[created_by_id])
-    updated_by = relationship("User", foreign_keys=[updated_by_id])
+    created_by = relationship("UserModel", foreign_keys=[created_by_id])
+    updated_by = relationship("UserModel", foreign_keys=[updated_by_id])
     # organization = relationship("OrganizationModel", foreign_keys=[organization_id])
 
     def __repr__(self):
