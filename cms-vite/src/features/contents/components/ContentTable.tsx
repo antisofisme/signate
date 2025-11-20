@@ -30,6 +30,7 @@ import { UploadModal } from './UploadModal';
 import { EditContentModal } from './EditContentModal';
 import { BulkEditModal } from './BulkEditModal';
 import { BulkTagModal } from './BulkTagModal';
+import { ContentPreviewModal } from './ContentPreviewModal';
 import { toast } from 'sonner';
 
 // Delete Confirmation Modal
@@ -686,14 +687,17 @@ export function ContentTable() {
       />
 
       {/* Preview Modal */}
-      <PreviewModal
-        isOpen={showPreview}
-        content={selectedContent}
-        onClose={() => {
-          setShowPreview(false);
-          setSelectedContent(null);
-        }}
-      />
+      {/* Content Preview Modal */}
+      {selectedContent && (
+        <ContentPreviewModal
+          isOpen={showPreview}
+          content={selectedContent}
+          onClose={() => {
+            setShowPreview(false);
+            setSelectedContent(null);
+          }}
+        />
+      )}
 
       {/* Edit Content Modal */}
       <EditContentModal

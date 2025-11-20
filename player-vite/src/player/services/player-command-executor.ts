@@ -234,40 +234,35 @@ class PlayerCommandExecutorClass {
   // ========================================
 
   private async handlePlay(): Promise<any> {
-    if (getPlayerVideoJS()) {
-      await getPlayerVideoJS().play();
+    if (getPlayerVideoJS()) { await getPlayerVideoJS()!.play();
       return { message: 'Playback started' };
     }
     throw new Error('PlayerVideoJS not available');
   }
 
   private async handlePause(): Promise<any> {
-    if (getPlayerVideoJS()) {
-      getPlayerVideoJS().pause();
+    if (getPlayerVideoJS()) { getPlayerVideoJS()!.pause();
       return { message: 'Playback paused' };
     }
     throw new Error('PlayerVideoJS not available');
   }
 
   private async handleStop(): Promise<any> {
-    if (getPlayerVideoJS()) {
-      getPlayerVideoJS().stop();
+    if (getPlayerVideoJS()) { getPlayerVideoJS()!.stop();
       return { message: 'Playback stopped' };
     }
     throw new Error('PlayerVideoJS not available');
   }
 
   private async handleNext(): Promise<any> {
-    if (getPlayerVideoJS()) {
-      await getPlayerVideoJS().next();
+    if (getPlayerVideoJS()) { await getPlayerVideoJS()!.next();
       return { message: 'Skipped to next item' };
     }
     throw new Error('PlayerVideoJS not available');
   }
 
   private async handlePrevious(): Promise<any> {
-    if (getPlayerVideoJS()) {
-      await getPlayerVideoJS().previous();
+    if (getPlayerVideoJS()) { await getPlayerVideoJS()!.previous();
       return { message: 'Skipped to previous item' };
     }
     throw new Error('PlayerVideoJS not available');
@@ -298,16 +293,14 @@ class PlayerCommandExecutorClass {
   }
 
   private async handleReloadPlaylist(): Promise<any> {
-    if (getPlayerPlaylistSync()) {
-      getPlayerPlaylistSync().forceReload();
+    if (getPlayerPlaylistSync()) { getPlayerPlaylistSync()!.forceReload();
       return { message: 'Playlist reload triggered' };
     }
     throw new Error('PlayerPlaylistSync not available');
   }
 
   private async handleClearCache(): Promise<any> {
-    if (getPlayerMediaCache()) {
-      await getPlayerMediaCache().clearCache();
+    if (getPlayerMediaCache()) { await getPlayerMediaCache()!.clearCache();
       return { message: 'Cache cleared' };
     }
     throw new Error('PlayerMediaCache not available');
@@ -341,7 +334,7 @@ class PlayerCommandExecutorClass {
 
   private async handleGetStatus(): Promise<any> {
     if (getPlayerVideoJS()) {
-      const state = getPlayerVideoJS().getState();
+      const state = getPlayerVideoJS()?.getState();
       return { player_state: state };
     }
     throw new Error('PlayerVideoJS not available');

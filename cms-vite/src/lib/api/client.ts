@@ -19,12 +19,12 @@ const IS_DEV = import.meta.env.DEV;
  * Axios client instance
  *
  * ⚠️ IMPORTANT:
- * - In production with nginx proxy: baseURL is empty because endpoints include full path
+ * - baseURL set to backend API URL from environment variable
  * - Endpoints in endpoints.ts include /api/v1 prefix
- * - Nginx proxy forwards /api/* to backend
+ * - Direct connection to backend (no nginx proxy)
  */
 export const apiClient = axios.create({
-  baseURL: '',  // Always empty - endpoints include full path
+  baseURL: API_BASE_URL,  // Use environment variable
   timeout: 30000,
   headers: {
     'Content-Type': 'application/json',

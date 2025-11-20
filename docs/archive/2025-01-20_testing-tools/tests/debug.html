@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Debug - Player Vite</title>
+  <style>
+    body {
+      font-family: monospace;
+      background: #1a1a1a;
+      color: #0f0;
+      padding: 20px;
+    }
+    #logs {
+      white-space: pre-wrap;
+      word-wrap: break-word;
+    }
+    .error { color: #f00; }
+    .warn { color: #ff0; }
+    .info { color: #0ff; }
+  </style>
+</head>
+<body>
+  <h1>Player-Vite Debug Console</h1>
+  <div id="logs"></div>
+
+  <script>
+    const logContainer = document.getElementById('logs');
+
+    // Intercept console methods
+    const originalLog = console.log;
+    const originalError = console.error;
+    const originalWarn = console.warn;
+
+    console.log = function(...args) {
+      originalLog.apply(console, args);
+      logContainer.innerHTML += `<div class="info">[LOG] ${args.join(' ')}</div>`;
+    };
+
+    console.error = function(...args) {
+      originalError.apply(console, args);
+      logContainer.innerHTML += `<div class="error">[ERROR] ${args.join(' ')}</div>`;
+    };
+
+    console.warn = function(...args) {
+      originalWarn.apply(console, args);
+      logContainer.innerHTML += `<div class="warn">[WARN] ${args.join(' ')}</div>`;
+    };
+
+    // Intercept all errors
+    window.addEventListener('error', (event) => {
+      logContainer.innerHTML += `<div class="error">[UNCAUGHT ERROR] ${event.message} at ${event.filename}:${event.lineno}:${event.colno}</div>`;
+    });
+
+    window.addEventListener('unhandledrejection', (event) => {
+      logContainer.innerHTML += `<div class="error">[UNHANDLED PROMISE REJECTION] ${event.reason}</div>`;
+    });
+
+    console.log('Debug console initialized');
+    console.log('Loading main.ts...');
+  </script>
+
+  <script type="module" src="/src/main.ts"></script>
+</body>
+</html>

@@ -227,15 +227,14 @@ class ShellRegistrationClass implements IShellRegistration {
 
           // Update UI with existing code
           if (getShellActivationScreen() && existingCheck.unique_code) {
-            getShellActivationScreen().updateCode(existingCheck.unique_code);
+            getShellActivationScreen()?.updateCode(existingCheck.unique_code);
           }
 
           // If device is active, start player mode
           if (existingCheck.status === 'active') {
             SharedLogger.log('[ShellRegistration] Device is already active → Starting player');
             // Trigger player mode
-            if (getShellBootstrap()) {
-              getShellBootstrap().startPlayer();
+            if (getShellBootstrap()) { getShellBootstrap()!.startPlayer();
             }
             return;
           }
@@ -243,8 +242,7 @@ class ShellRegistrationClass implements IShellRegistration {
           // If device is pending, start polling
           if (existingCheck.status === 'pending') {
             SharedLogger.log('[ShellRegistration] Device is pending → Start polling');
-            if (getShellActivationPoll()) {
-              getShellActivationPoll().startPolling();
+            if (getShellActivationPoll()) { getShellActivationPoll()!.startPolling();
             }
           }
 
@@ -347,15 +345,14 @@ class ShellRegistrationClass implements IShellRegistration {
     SharedLogger.log('[ShellRegistration] 🎯 Activation code from backend:', data.unique_code);
     if (getShellActivationScreen()) {
       SharedLogger.log('[ShellRegistration] Updating UI with backend code...');
-      getShellActivationScreen().updateCode(data.unique_code);
+      getShellActivationScreen()?.updateCode(data.unique_code);
       SharedLogger.log('[ShellRegistration] ✅ UI updated with code:', data.unique_code);
     } else {
       SharedLogger.error('[ShellRegistration] ❌ getShellActivationScreen() not available!');
     }
 
     // Start activation polling
-    if (getShellActivationPoll()) {
-      getShellActivationPoll().startPolling();
+    if (getShellActivationPoll()) { getShellActivationPoll()!.startPolling();
     }
     } catch (error) {
       SharedLogger.error('[ShellRegistration] ❌ Registration failed:', error);

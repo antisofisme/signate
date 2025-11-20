@@ -14,6 +14,9 @@ import type {
   OrganizationListData,
   OrganizationResponse,
   OrganizationListResponse,
+  OrganizationQuota,
+  QuotaCheckResult,
+  UpdateQuotaRequest,
 } from '../types/organization';
 
 export const organizationsApi = {
@@ -84,5 +87,78 @@ export const organizationsApi = {
    */
   delete: async (id: number): Promise<void> => {
     await apiClient.delete(API_ENDPOINTS.ORGANIZATIONS.DELETE(id));
+  },
+
+  // ==========================================================================
+  // QUOTA OPERATIONS
+  // ==========================================================================
+
+  /**
+   * Get organization quota status
+   * @param id - Organization ID
+   * @returns Quota information with usage percentages
+   */
+  getQuota: async (id: number): Promise<OrganizationQuota> => {
+    const { data } = await apiClient.get<OrganizationQuota>(
+      API_ENDPOINTS.ORGANIZATIONS.QUOTA(id)
+    );
+    return data;
+  },
+
+  /**
+   * Update organization quota limits
+   * @param id - Organization ID
+   * @param quotaData - New quota limits
+   * @returns Updated quota information
+   */
+  updateQuota: async (
+    id: number,
+    quotaData: UpdateQuotaRequest
+  ): Promise<OrganizationQuota> => {
+    const { data } = await apiClient.put<OrganizationQuota>(
+      API_ENDPOINTS.ORGANIZATIONS.UPDATE_QUOTA(id),
+      quotaData
+    );
+    return data;
+  },
+
+  /**
+   * Check if organization can add more devices
+   * @param id - Organization ID
+   * @returns Quota check result
+   */
+  checkDeviceQuota: async (id: number): Promise<QuotaCheckResult> => {
+    const { data } = await apiClient.get<QuotaCheckResult>(
+      API_ENDPOINTS.ORGANIZATIONS.CHECK_DEVICE_QUOTA(id)
+    );
+    return data;
+  },
+
+  /**
+   * Check if organization can add more users
+   * @param id - Organization ID
+   * @returns Quota check result
+   */
+  checkUserQuota: async (id: number): Promise<QuotaCheckResult> => {
+    const { data } = await apiClient.get<QuotaCheckResult>(
+      API_ENDPOINTS.ORGANIZATIONS.CHECK_USER_QUOTA(id)
+    );
+    return data;
+  },
+
+  /**
+   * Check if organization can add content with specified size
+   * @param id - Organization ID
+   * @param fileSizeBytes - File size in bytes
+   * @returns Quota check result
+   */
+  checkContentQuota: async (
+    id: number,
+    fileSizeBytes: number
+  ): Promise<QuotaCheckResult> => {
+    const { data } = await apiClient.get<QuotaCheckResult>(
+      `${API_ENDPOINTS.ORGANIZATIONS.CHECK_CONTENT_QUOTA(id)}?file_size_bytes=${fileSizeBytes}`
+    );
+    return data;
   },
 };

@@ -13,10 +13,11 @@ import { config } from '@shared/config';
 import { SharedLogger } from '@shared/logger';
 import { SharedAPIClient } from '@shared/api';
 import { SharedDeviceState } from '@shared/device';
+import { serviceActionAsync, serviceAction } from '@shared/utils';
 import { ShellRegistration } from './shell-registration';
 import { ShellActivationPoll } from './shell-activation-poll';
 import type { ShellBootstrap as IShellBootstrap, VerifyDeviceResponse } from '@shell/types/shell.types';
-import { ServiceRegistry } from '@shared/services/service-registry';
+import { ServiceRegistry, getPlayerHLSCache } from '@shared/services/service-registry';
 import { getPlayerMediaCache, getPlayerHeartbeat, getPlayerPlaylistSync, getPlayerCommandExecutor, getPlayerHealthReporter, getSharedWebSocket, getDeviceInfoPopup, getPlayerVideoJS } from '@shared/services';
 // Import PlayerVideoJS and PlayerBackgroundAudio to ensure they're registered before use
 import '@player/services/player-videojs';
@@ -185,29 +186,27 @@ class ShellBootstrapClass implements IShellBootstrap {
 
       // Stop services in reverse order
       if (getPlayerHealthReporter()?.stop) {
-        getPlayerHealthReporter().stop();
+        getPlayerHealthReporter()?.stop();
         SharedLogger.log('[ShellBootstrap] ✅ HealthReporter stopped');
       }
 
       if (getPlayerHeartbeat()?.stop) {
-        getPlayerHeartbeat().stop();
+        getPlayerHeartbeat()?.stop();
         SharedLogger.log('[ShellBootstrap] ✅ Heartbeat stopped');
       }
 
       if (getPlayerPlaylistSync()?.stop) {
-        getPlayerPlaylistSync().stop();
+        getPlayerPlaylistSync()?.stop();
         SharedLogger.log('[ShellBootstrap] ✅ PlaylistSync stopped');
       }
 
       if (getSharedWebSocket()?.disconnect) {
-        getSharedWebSocket().disconnect();
+        getSharedWebSocket()?.disconnect();
         SharedLogger.log('[ShellBootstrap] ✅ WebSocket disconnected');
       }
 
-      if (getPlayerCommandExecutor()?.destroy) {
-        getPlayerCommandExecutor().destroy();
-        SharedLogger.log('[ShellBootstrap] ✅ CommandExecutor destroyed');
-      }
+      // Note: PlayerCommandExecutor doesn't have a destroy() method
+      SharedLogger.log('[ShellBootstrap] ✅ CommandExecutor stopped (no destroy needed)');
 
       // Clear video element
       const videoElement = document.getElementById('player-video') as HTMLVideoElement;
@@ -232,17 +231,21 @@ class ShellBootstrapClass implements IShellBootstrap {
       // 1. Initialize PlayerVideoJS with video element
       const videoElement = document.getElementById('player-video') as HTMLVideoElement;
       if (videoElement && getPlayerVideoJS()) {
-        getPlayerVideoJS().init(videoElement);
+        getPlayerVideoJS()?.init(videoElement);
         SharedLogger.log('[ShellBootstrap] ✅ PlayerVideoJS initialized with video element');
       } else {
         SharedLogger.error('[ShellBootstrap] ❌ Failed to initialize PlayerVideoJS - video element or service not found');
       }
 
       // 2. Initialize MediaCache
-      if (getPlayerMediaCache()) {
-        await getPlayerMediaCache().init();
-        SharedLogger.log('[ShellBootstrap] ✅ MediaCache initialized');
-      }
+      await serviceActionAsync(
+        getPlayerMediaCache,
+        async (service) => {
+          await service.init();
+          SharedLogger.log('[ShellBootstrap] ✅ MediaCache initialized');
+        },
+        'PlayerMediaCache'
+      );
 
       // 2.5. Initialize Background Audio Player
       PlayerBackgroundAudio.init();
@@ -296,40 +299,64 @@ class ShellBootstrapClass implements IShellBootstrap {
       // (ConnectionLogger, NetworkSpeedTest, ConnectionLogPopup)
 
       // 6. Initialize Command Executor
-      if (getPlayerCommandExecutor()) {
-        getPlayerCommandExecutor().init();
-        SharedLogger.log('[ShellBootstrap] ✅ CommandExecutor initialized');
-      }
+      serviceAction(
+        getPlayerCommandExecutor,
+        (service) => {
+          service.init();
+          SharedLogger.log('[ShellBootstrap] ✅ CommandExecutor initialized');
+        },
+        'PlayerCommandExecutor'
+      );
 
       // 7. Connect WebSocket
-      if (getSharedWebSocket()) {
-        getSharedWebSocket().connect();
-        SharedLogger.log('[ShellBootstrap] ✅ WebSocket connected');
-      }
+      serviceAction(
+        getSharedWebSocket,
+        (service) => {
+          service.connect();
+          SharedLogger.log('[ShellBootstrap] ✅ WebSocket connected');
+        },
+        'SharedWebSocket'
+      );
 
       // 8. Start PlaylistSync
-      if (getPlayerPlaylistSync()) {
-        getPlayerPlaylistSync().start();
-        SharedLogger.log('[ShellBootstrap] ✅ PlaylistSync started');
-      }
+      serviceAction(
+        getPlayerPlaylistSync,
+        (service) => {
+          service.start();
+          SharedLogger.log('[ShellBootstrap] ✅ PlaylistSync started');
+        },
+        'PlayerPlaylistSync'
+      );
 
       // 9. Start Heartbeat
-      if (getPlayerHeartbeat()) {
-        getPlayerHeartbeat().start();
-        SharedLogger.log('[ShellBootstrap] ✅ Heartbeat started');
-      }
+      serviceAction(
+        getPlayerHeartbeat,
+        (service) => {
+          service.start();
+          SharedLogger.log('[ShellBootstrap] ✅ Heartbeat started');
+        },
+        'PlayerHeartbeat'
+      );
 
       // 10. Start Health Reporter (Phase 4)
-      if (getPlayerHealthReporter()) {
-        getPlayerHealthReporter().start();
-        SharedLogger.log('[ShellBootstrap] ✅ HealthReporter started');
-      }
+      serviceAction(
+        getPlayerHealthReporter,
+        (service) => {
+          service.start();
+          SharedLogger.log('[ShellBootstrap] ✅ HealthReporter started');
+        },
+        'PlayerHealthReporter'
+      );
 
       // 11. Initialize Device Info Popup
-      if (getDeviceInfoPopup()) {
-        getDeviceInfoPopup().init();
-        SharedLogger.log('[ShellBootstrap] ✅ DeviceInfoPopup initialized');
-      }
+      serviceAction(
+        getDeviceInfoPopup,
+        (service) => {
+          service.init();
+          SharedLogger.log('[ShellBootstrap] ✅ DeviceInfoPopup initialized');
+        },
+        'DeviceInfoPopup'
+      );
 
       SharedLogger.log('[ShellBootstrap] 🎉 All player services initialized');
     } catch (error) {

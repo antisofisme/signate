@@ -33,6 +33,12 @@ export const API_ENDPOINTS = {
     UPDATE: (id: number) => `/api/v1/organizations/${id}`,
     DELETE: (id: number) => `/api/v1/organizations/${id}`,
     VALIDATE_PIN: (id: number) => `/api/v1/organizations/${id}/validate-pin`,
+    // Quota endpoints
+    QUOTA: (id: number) => `/api/v1/organizations/${id}/quota`,
+    UPDATE_QUOTA: (id: number) => `/api/v1/organizations/${id}/quota`,
+    CHECK_DEVICE_QUOTA: (id: number) => `/api/v1/organizations/${id}/quota/check/device`,
+    CHECK_USER_QUOTA: (id: number) => `/api/v1/organizations/${id}/quota/check/user`,
+    CHECK_CONTENT_QUOTA: (id: number) => `/api/v1/organizations/${id}/quota/check/content`,
   },
 
   // ========================================

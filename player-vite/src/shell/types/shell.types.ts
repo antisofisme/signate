@@ -72,3 +72,10 @@ export interface ShellBootstrap {
   verifyDevice(): Promise<boolean>;
   startPlayer(): void;
 }
+
+export interface ShellActivationScreen {
+  render(containerId?: string): Promise<void>;
+  updateCode(code: string): void;
+  updateStatus(message: string): void;
+  destroy(): void;
+}

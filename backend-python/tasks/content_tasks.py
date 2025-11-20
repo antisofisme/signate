@@ -86,7 +86,16 @@ def calculate_width(height: int, aspect_ratio: float = 16/9) -> int:
     return width + (width % 2)
 
 
-@app.task(bind=True, name='tasks.content_tasks.transcode_to_hls', max_retries=3)
+@app.task(
+    bind=True,
+    name='tasks.content_tasks.transcode_to_hls',
+    max_retries=3,
+    default_retry_delay=300,  # Wait 5 minutes before retry
+    autoretry_for=(Exception,),  # Auto-retry on any exception
+    retry_backoff=True,  # Exponential backoff
+    retry_backoff_max=3600,  # Max 1 hour between retries
+    retry_jitter=True  # Add randomness to prevent thundering herd
+)
 def transcode_to_hls(self, content_id: int):
     """
     Transcode video to HLS format with adaptive bitrate streaming
@@ -117,6 +126,11 @@ def transcode_to_hls(self, content_id: int):
     content = None
 
     try:
+        # Log retry attempt
+        retry_count = self.request.retries
+        if retry_count > 0:
+            print(f"[Transcode] Retry attempt {retry_count}/3 for content {content_id}")
+
         # Get content from database
         content = db.query(ContentModel).filter(ContentModel.id == content_id).first()
         if not content:
@@ -307,52 +321,65 @@ def transcode_to_hls(self, content_id: int):
 
     except ValueError as e:
         # Invalid input (content not found, no video stream)
-        print(f"[Transcode] Validation error: {str(e)}")
+        retry_count = self.request.retries
+        error_msg = f"[Retry {retry_count}/3] Validation error: {str(e)}"
+        print(error_msg)
+
         if content:
-            content.transcoding_status = 'failed'
-            content.transcoding_error = str(e)[:500]
+            content.transcoding_status = 'failed' if retry_count >= 2 else 'pending'
+            content.transcoding_error = f"{error_msg} (Attempt {retry_count + 1}/3)"[:500]
             content.transcoding_progress = 0
             db.commit()
+
+        # Re-raise to trigger retry
         raise
 
     except FileNotFoundError as e:
         # Source file missing
-        print(f"[Transcode] File not found: {str(e)}")
+        retry_count = self.request.retries
+        error_msg = f"[Retry {retry_count}/3] File not found: {str(e)}"
+        print(error_msg)
+
         if content:
-            content.transcoding_status = 'failed'
-            content.transcoding_error = f"Source file not found: {str(e)}"[:500]
+            content.transcoding_status = 'failed' if retry_count >= 2 else 'pending'
+            content.transcoding_error = f"{error_msg} (Attempt {retry_count + 1}/3)"[:500]
             content.transcoding_progress = 0
             db.commit()
+
+        # Re-raise to trigger retry
         raise
 
     except ffmpeg.Error as e:
         # FFmpeg-specific errors
+        retry_count = self.request.retries
         error_message = e.stderr.decode() if e.stderr else str(e)
-        print(f"[Transcode] FFmpeg error: {error_message}")
+        error_msg = f"[Retry {retry_count}/3] FFmpeg error: {error_message}"
+        print(error_msg)
 
         if content:
-            content.transcoding_status = 'failed'
+            content.transcoding_status = 'failed' if retry_count >= 2 else 'pending'
             content.transcoding_error = f"FFmpeg error: {error_message}"[:500]
             content.transcoding_progress = 0
             db.commit()
 
-        # Retry for transient errors
-        if self.request.retries < self.max_retries:
-            print(f"[Transcode] Retrying (attempt {self.request.retries + 1}/{self.max_retries})")
-            raise self.retry(exc=e, countdown=300)  # Retry after 5 minutes
-
+        # Re-raise to trigger auto-retry (handled by autoretry_for)
         raise
 
     except Exception as e:
         # Unexpected errors
-        print(f"[Transcode] Unexpected error: {str(e)}")
+        retry_count = self.request.retries
+        error_msg = f"[Retry {retry_count}/3] Unexpected error: {str(e)}"
+        print(error_msg)
+        print(f"[Transcode] Error type: {type(e).__name__}")
+        print(f"[Transcode] Content ID: {content_id}")
 
         if content:
-            content.transcoding_status = 'failed'
-            content.transcoding_error = str(e)[:500]
+            content.transcoding_status = 'failed' if retry_count >= 2 else 'pending'
+            content.transcoding_error = f"{error_msg} (Attempt {retry_count + 1}/3)"[:500]
             content.transcoding_progress = 0
             db.commit()
 
+        # Re-raise to trigger retry
         raise
 
     finally:

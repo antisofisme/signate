@@ -56,3 +56,20 @@ export {
   generateDeviceFingerprint,
   getOrCreateDeviceUUID,
 } from './device-fingerprint';
+
+// Error handling
+export {
+  handleError,
+  withErrorHandling,
+  withErrorHandlingSync,
+  type ErrorHandlerOptions,
+} from './error-handler';
+
+// Service helpers
+export {
+  safeServiceCall,
+  safeServiceCallAsync,
+  serviceAction,
+  serviceActionAsync,
+  conditionalServiceCall,
+} from './service-helpers';

@@ -49,3 +49,53 @@ export interface OrganizationListData {
 
 export type OrganizationResponse = SuccessResponse<Organization>;
 export type OrganizationListResponse = SuccessResponse<OrganizationListData>;
+
+// ============================================================================
+// QUOTA TYPES
+// ============================================================================
+
+export interface QuotaInfo {
+  max: number;
+  current: number;
+  available: number;
+  percentage_used: number;
+}
+
+export interface StorageQuotaInfo {
+  max_items: number;
+  current_items: number;
+  available_items: number;
+  max_size_gb: number;
+  current_size_gb: number;
+  available_size_gb: number;
+  items_percentage_used: number;
+  size_percentage_used: number;
+}
+
+export interface OrganizationQuota {
+  devices: QuotaInfo;
+  users: QuotaInfo;
+  content: StorageQuotaInfo;
+  playlists: QuotaInfo;
+  total_percentage_used: number;
+  warnings: string[];
+}
+
+export interface QuotaCheckResult {
+  allowed: boolean;
+  reason?: string;
+  current: number;
+  max: number;
+  available: number;
+}
+
+export interface UpdateQuotaRequest {
+  max_devices?: number;
+  max_users?: number;
+  max_content_size_gb?: number;
+  max_content_items?: number;
+  max_playlists?: number;
+}
+
+export type OrganizationQuotaResponse = SuccessResponse<OrganizationQuota>;
+export type QuotaCheckResponse = SuccessResponse<QuotaCheckResult>;

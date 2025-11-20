@@ -139,8 +139,7 @@ class PlayerPlaylistSyncClass implements IPlaylistSync {
         });
 
         // Update volume for content playback
-        if (getPlayerVideoJS()) {
-          getPlayerVideoJS().setVolume(data.device_settings.volume_level);
+        if (getPlayerVideoJS()) { getPlayerVideoJS()!.setVolume(data.device_settings.volume_level);
         }
 
         // Load background audio
@@ -219,9 +218,9 @@ class PlayerPlaylistSyncClass implements IPlaylistSync {
     // Also update global player if available
     if (getPlayerVideoJS()) {
       if (playlist) {
-        void getPlayerVideoJS().loadPlaylist(playlist);
+        void getPlayerVideoJS()?.loadPlaylist(playlist);
       } else {
-        getPlayerVideoJS().stop();
+        getPlayerVideoJS()?.stop();
       }
     } else {
       SharedLogger.warn('[PlayerPlaylistSync] PlayerVideoJS not available');

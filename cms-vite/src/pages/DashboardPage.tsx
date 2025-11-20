@@ -26,6 +26,8 @@ import ActivePlaylistsTable from '@/features/dashboard/components/ActivePlaylist
 import RecentActivityFeed from '@/features/dashboard/components/RecentActivityFeed';
 import SystemAlertsPanel from '@/features/dashboard/components/SystemAlertsPanel';
 import SystemInfoPanel from '@/features/dashboard/components/SystemInfoPanel';
+import { QuotaAlertBanner } from '@/features/organizations/components/QuotaAlertBanner';
+import { useOrganizationQuota } from '@/features/organizations/hooks/useOrganizationQuota';
 
 export default function DashboardPage() {
   const { t } = useTranslation();
@@ -41,6 +43,9 @@ export default function DashboardPage() {
   const { data: systemAlerts, isLoading: alertsLoading } = useSystemAlerts();
   const { data: systemInfo, isLoading: systemInfoLoading } = useSystemInfo();
 
+  // Fetch organization quota for alerts
+  const { data: quota } = useOrganizationQuota(user?.organization_id);
+
   return (
     <>
       {/* Page Header */}
@@ -48,6 +53,11 @@ export default function DashboardPage() {
         title={t('dashboard.title')}
         description={`${t('dashboard.welcome')}, ${user?.full_name || user?.username}!`}
       />
+
+      {/* Quota Alert Banner - Shows critical warnings */}
+      {quota && user?.organization_id && (
+        <QuotaAlertBanner quota={quota} organizationId={user.organization_id} />
+      )}
 
       {/* Dashboard Content */}
       <div className="space-y-6">

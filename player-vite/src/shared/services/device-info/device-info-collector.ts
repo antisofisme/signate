@@ -10,7 +10,7 @@
  * - Fully testable and reusable
  */
 
-import { ServiceRegistry, getPlayerVideoJS, getPlayerMediaCache, getPlayerPlaylistSync, getPlayerBackgroundAudio } from '@shared/services/service-registry';
+import { ServiceRegistry, getPlayerVideoJS, getPlayerMediaCache, getPlayerPlaylistSync, getPlayerBackgroundAudio, getSharedWebSocket } from '@shared/services/service-registry';
 import { SharedDeviceState } from '@shared/device';
 import { config } from '@shared/config';
 import { getOrCreateDeviceUUID } from '@shared/utils/device-fingerprint';
@@ -365,25 +365,34 @@ class DeviceInfoCollectorClass {
       connectionStatus = isRunning ? 'connected' : 'disconnected';
     }
 
-    // WebSocket status (if available)
+    // WebSocket status
     let websocketStatus: 'connected' | 'disconnected' = 'disconnected';
-    // TODO: Implement WebSocket service integration when available
+    const SharedWebSocket = getSharedWebSocket();
+    if (SharedWebSocket) {
+      websocketStatus = SharedWebSocket.isConnected() ? 'connected' : 'disconnected';
+    }
 
     // Heartbeat timing (from ShellActivationPoll)
     const lastHeartbeat = this.getLastHeartbeatTime();
 
-    // API response time (measure with a simple ping)
+    // API response time and version (from health endpoint)
     let apiResponseTime: number | null = null;
+    let backendVersion: string | null = null;
     try {
       const startTime = performance.now();
-      await fetch(`${apiUrl}/api/v1/health`, { method: 'GET', signal: AbortSignal.timeout(5000) });
+      const response = await fetch(`${apiUrl}/health`, {
+        method: 'GET',
+        signal: AbortSignal.timeout(5000)
+      });
       apiResponseTime = Math.round(performance.now() - startTime);
+
+      if (response.ok) {
+        const data = await response.json();
+        backendVersion = data.version || null;
+      }
     } catch (error) {
       connectionStatus = 'disconnected';
     }
-
-    // Backend version (would need to be returned from API)
-    const backendVersion = null; // TODO: Add version endpoint
 
     return {
       apiUrl,
@@ -415,8 +424,9 @@ class DeviceInfoCollectorClass {
       const isPlaying = PlayerBackgroundAudio.isPlaying();
 
       if (currentAudio.id && currentAudio.url) {
-        // Get audio name from device settings if available
-        const audioName = 'Background Music'; // TODO: Get from device settings
+        // Try to get audio name from device state or fallback
+        const device = SharedDeviceState.getDevice() as any;
+        const audioName = device?.background_audio_name || 'Background Music';
 
         backgroundAudio = {
           id: currentAudio.id,

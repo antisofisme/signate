@@ -3,6 +3,9 @@ FastAPI Main Application - Phase 2: Auth + Device
 Centralized API with Clean Architecture
 """
 
+# Application Version
+__version__ = "1.0.0"
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -205,14 +208,15 @@ def root():
 
 @app.get("/health")
 def health_check():
-    """Health check endpoint"""
+    """Health check endpoint with version info"""
     db_healthy = check_db_connection()
     redis_health = cache.health_check()
-    
+
     overall_healthy = db_healthy and redis_health["status"] == "healthy"
 
     return {
         "status": "healthy" if overall_healthy else "unhealthy",
+        "version": __version__,
         "database": "connected" if db_healthy else "disconnected",
         "cache": redis_health["status"],
         "phase": "Phase 6: Performance & Production",

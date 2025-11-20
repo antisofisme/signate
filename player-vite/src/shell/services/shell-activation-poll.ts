@@ -168,8 +168,7 @@ class ShellActivationPollClass implements IShellActivationPoll {
         }
 
         // Clear pending code from IndexedDB
-        if (getShellRegistration()) {
-          await getShellRegistration().setPendingCode(null);
+        if (getShellRegistration()) { await getShellRegistration()!.setPendingCode(null);
         }
 
         // Reload to player context

@@ -38,6 +38,11 @@ export default defineConfig({
     // Rollup options
     rollupOptions: {
       output: {
+        // Add hash to filenames for cache busting
+        entryFileNames: 'assets/[name]-[hash].js',
+        chunkFileNames: 'assets/[name]-[hash].js',
+        assetFileNames: 'assets/[name]-[hash].[ext]',
+
         // Manual chunks for better caching
         manualChunks: {
           'vendor': ['video.js'],
