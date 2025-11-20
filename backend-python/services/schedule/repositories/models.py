@@ -56,14 +56,18 @@ class Schedule(Base):
     applies_to_all = Column(Boolean, default=False)     # Apply to all org devices
 
     # Metadata
-    created_by_id = Column(Integer, ForeignKey("users.id"), nullable=True)
     created_at = Column(TIMESTAMP, default=datetime.utcnow)
     updated_at = Column(TIMESTAMP, default=datetime.utcnow, onupdate=datetime.utcnow)
 
+    # Audit trail fields (Migration 046)
+    created_by_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    updated_by_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+
     # Relationships
     playlist = relationship("PlaylistModel", foreign_keys=[playlist_id])
+    created_by = relationship("User", foreign_keys=[created_by_id])
+    updated_by = relationship("User", foreign_keys=[updated_by_id])
     # organization = relationship("OrganizationModel", foreign_keys=[organization_id])
-    # creator = relationship("UserModel", foreign_keys=[created_by])
 
     def __repr__(self):
         return f"<Schedule {self.id}: {self.name} ({self.recurrence_type})>"

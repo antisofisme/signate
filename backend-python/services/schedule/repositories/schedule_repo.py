@@ -22,7 +22,7 @@ class ScheduleRepository:
         self,
         organization_id: int,
         request: CreateScheduleRequest,
-        created_by: int
+        created_by_id: int
     ) -> Schedule:
         """Create new schedule"""
         # Convert RecurrencePattern to dict if present
@@ -44,7 +44,7 @@ class ScheduleRepository:
             exceptions=request.exceptions,
             priority=request.priority,
             is_active=request.is_active,
-            created_by_id=created_by
+            created_by_id=created_by_id  # Audit trail (Migration 046)
         )
 
         self.db.add(schedule)
@@ -101,7 +101,8 @@ class ScheduleRepository:
     def update_schedule(
         self,
         schedule: Schedule,
-        request: UpdateScheduleRequest
+        request: UpdateScheduleRequest,
+        updated_by_id: Optional[int] = None
     ) -> Schedule:
         """Update schedule"""
         update_data = request.model_dump(exclude_none=True)
@@ -112,6 +113,10 @@ class ScheduleRepository:
 
         for key, value in update_data.items():
             setattr(schedule, key, value)
+
+        # Set audit trail (Migration 046)
+        if updated_by_id is not None:
+            schedule.updated_by_id = updated_by_id
 
         self.db.commit()
         self.db.refresh(schedule)

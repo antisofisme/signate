@@ -111,9 +111,12 @@ class ScheduleResponse(BaseModel):
     priority: int
     is_active: bool
 
-    created_by: Optional[int]
     created_at: datetime
     updated_at: datetime
+
+    # Audit trail fields (Migration 046)
+    created_by_id: Optional[int] = Field(None, description="User who created this schedule")
+    updated_by_id: Optional[int] = Field(None, description="User who last updated this schedule")
 
     class Config:
         from_attributes = True

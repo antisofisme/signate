@@ -17,7 +17,7 @@ VALID_RECURRENCE_TYPES = ['once', 'daily', 'weekly', 'monthly', 'yearly']
 def create_schedule_use_case(
     organization_id: int,
     request: CreateScheduleRequest,
-    created_by: int,
+    created_by_id: int,
     db: Session
 ) -> ScheduleResponse:
     """
@@ -29,6 +29,12 @@ def create_schedule_use_case(
     - End time must be after start time (if both provided)
     - Playlist must exist (validated at API layer)
     - Priority range: 0-100
+
+    Args:
+        organization_id: Organization ID
+        request: Create request
+        created_by_id: User ID who creates this schedule (for audit trail)
+        db: Database session
     """
     repo = ScheduleRepository(db)
 

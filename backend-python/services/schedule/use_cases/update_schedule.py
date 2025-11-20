@@ -3,6 +3,7 @@ Update Schedule Use Case
 Business logic for updating and deleting schedules
 """
 
+from typing import Optional
 from sqlalchemy.orm import Session
 from fastapi import HTTPException, status
 
@@ -15,6 +16,7 @@ def update_schedule_use_case(
     schedule_id: int,
     organization_id: int,
     request: UpdateScheduleRequest,
+    updated_by_id: Optional[int],
     db: Session
 ) -> ScheduleResponse:
     """
@@ -23,6 +25,13 @@ def update_schedule_use_case(
     Business Rules:
     - Schedule must exist and belong to organization
     - Same validation rules as create apply
+
+    Args:
+        schedule_id: Schedule ID
+        organization_id: Organization ID
+        request: Update request
+        updated_by_id: User ID who updates this schedule (for audit trail)
+        db: Database session
     """
     repo = ScheduleRepository(db)
 
@@ -62,8 +71,8 @@ def update_schedule_use_case(
                 detail="end_time must be after start_time"
             )
 
-    # Update schedule
-    updated_schedule = repo.update_schedule(schedule, request)
+    # Update schedule (with audit trail - Migration 046)
+    updated_schedule = repo.update_schedule(schedule, request, updated_by_id)
 
     return ScheduleResponse.model_validate(updated_schedule)
 

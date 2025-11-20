@@ -133,6 +133,7 @@ def update_schedule(
         schedule_id=schedule_id,
         organization_id=current_user.organization_id,
         request=request,
+        updated_by_id=current_user.user_id,  # Audit trail (Migration 046)
         db=db
     )
 
