@@ -115,6 +115,10 @@ class RoleResponse(BaseModel):
     created_at: datetime
     updated_at: Optional[datetime]
 
+    # Audit trail fields (Migration 046)
+    created_by_id: Optional[int] = Field(None, description="User who created this role")
+    updated_by_id: Optional[int] = Field(None, description="User who last updated this role")
+
     class Config:
         from_attributes = True
 

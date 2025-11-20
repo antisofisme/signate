@@ -20,7 +20,8 @@ class UpdateRoleUseCase:
         role_id: int,
         name: Optional[str] = None,
         description: Optional[str] = None,
-        permissions: Optional[Dict[str, List[str]]] = None
+        permissions: Optional[Dict[str, List[str]]] = None,
+        updated_by_id: Optional[int] = None
     ) -> Role:
         """
         Update role
@@ -30,6 +31,7 @@ class UpdateRoleUseCase:
             name: New role name
             description: New description
             permissions: New permissions (replaces existing)
+            updated_by_id: User ID who updates this role (for audit trail)
 
         Returns:
             Updated Role model
@@ -76,6 +78,10 @@ class UpdateRoleUseCase:
         # Update permissions if provided
         if permissions is not None:
             role.permissions = permissions
+
+        # Set audit trail (Migration 046)
+        if updated_by_id is not None:
+            role.updated_by_id = updated_by_id
 
         # Save changes
         return self.role_repository.update(role)

@@ -20,7 +20,8 @@ class CreateRoleUseCase:
         name: str,
         description: Optional[str],
         organization_id: Optional[int],
-        permissions: Dict[str, List[str]]
+        permissions: Dict[str, List[str]],
+        created_by_id: Optional[int] = None
     ) -> Role:
         """
         Create new role
@@ -30,6 +31,7 @@ class CreateRoleUseCase:
             description: Role description
             organization_id: Organization ID (None for system roles - admin only)
             permissions: Permissions dictionary
+            created_by_id: User ID who creates this role (for audit trail)
 
         Returns:
             Created Role model
@@ -57,7 +59,8 @@ class CreateRoleUseCase:
             description=description,
             organization_id=organization_id,
             is_system_role=is_system_role,
-            permissions=permissions or {}
+            permissions=permissions or {},
+            created_by_id=created_by_id  # Audit trail (Migration 046)
         )
 
         return self.role_repository.create(role)

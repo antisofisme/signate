@@ -135,7 +135,8 @@ def create_role(
         name=request.name,
         description=request.description,
         organization_id=request.organization_id,
-        permissions=request.permissions
+        permissions=request.permissions,
+        created_by_id=current_user.id  # Audit trail (Migration 046)
     )
 
     return RoleResponse.model_validate(role)
@@ -166,7 +167,8 @@ def update_role(
         role_id=role_id,
         name=request.name,
         description=request.description,
-        permissions=request.permissions
+        permissions=request.permissions,
+        updated_by_id=current_user.id  # Audit trail (Migration 046)
     )
 
     return RoleResponse.model_validate(updated_role)

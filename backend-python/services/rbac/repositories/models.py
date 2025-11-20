@@ -21,6 +21,14 @@ class Role(Base):
     created_at = Column(TIMESTAMP(timezone=True), nullable=False, server_default=text("now()"))
     updated_at = Column(TIMESTAMP(timezone=True))
 
+    # Audit trail fields (Migration 046)
+    created_by_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    updated_by_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+
+    # Relationships for audit trail
+    created_by = relationship("User", foreign_keys=[created_by_id])
+    updated_by = relationship("User", foreign_keys=[updated_by_id])
+
     def __repr__(self):
         return f"<Role(id={self.id}, name='{self.name}', is_system={self.is_system_role})>"
 
@@ -45,4 +53,6 @@ class Role(Base):
             "permissions": self.permissions,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,
+            "created_by_id": self.created_by_id,
+            "updated_by_id": self.updated_by_id,
         }
