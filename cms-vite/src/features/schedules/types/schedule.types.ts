@@ -36,7 +36,9 @@ export interface Schedule {
   timezone: string
   created_at: string
   updated_at: string
-  created_by?: number
+  // Audit trail fields (Migration 046)
+  created_by_id?: number
+  updated_by_id?: number
   last_run?: string
   next_run?: string
 }

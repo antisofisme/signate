@@ -46,6 +46,9 @@ export interface Role {
   organization_id?: number
   created_at: string
   updated_at: string
+  // Audit trail fields (Migration 046)
+  created_by_id?: number
+  updated_by_id?: number
   permissions?: Permission[]
   users_count?: number
 }
