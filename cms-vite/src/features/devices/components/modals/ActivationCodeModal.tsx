@@ -2,11 +2,13 @@
  * Activation Code Modal Component
  *
  * Displays the 6-digit activation code after TV registration
+ * Uses centralized Modal component
  */
 
-import { X, Check, Copy, Tv } from 'lucide-react';
+import { Check, Copy, Tv } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
+import { Modal } from '@/shared/components';
 import type { Device } from '../../types/device';
 
 interface ActivationCodeModalProps {
@@ -22,7 +24,7 @@ export function ActivationCodeModal({
 }: ActivationCodeModalProps) {
   const [copied, setCopied] = useState(false);
 
-  if (!isOpen || !device) return null;
+  if (!device) return null;
 
   const activationCode = device.unique_code;
   const expiresAt = device.code_expires_at
@@ -50,32 +52,33 @@ export function ActivationCodeModal({
     }
   };
 
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-md">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-green-100 dark:bg-green-900 rounded-lg flex items-center justify-center">
-              <Check className="w-5 h-5 text-green-600 dark:text-green-400" />
-            </div>
-            <div>
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-                TV Registered Successfully
-              </h3>
-              <p className="text-sm text-gray-500 dark:text-gray-400">
-                {device.device_name}
-              </p>
-            </div>
-          </div>
-          <button
-            onClick={onClose}
-            className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
-          >
-            <X className="w-5 h-5" />
-          </button>
+  // Custom header with success icon
+  const customHeader = (
+    <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+      <div className="flex items-center gap-3">
+        <div className="w-10 h-10 bg-green-100 dark:bg-green-900 rounded-lg flex items-center justify-center">
+          <Check className="w-5 h-5 text-green-600 dark:text-green-400" />
         </div>
+        <div>
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+            TV Registered Successfully
+          </h3>
+          <p className="text-sm text-gray-500 dark:text-gray-400">
+            {device.device_name}
+          </p>
+        </div>
+      </div>
+    </div>
+  );
 
+  return (
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      maxWidth="md"
+      customHeader={customHeader}
+    >
+      <div className="p-6">
         {/* Activation Code Display */}
         <div className="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border-2 border-blue-200 dark:border-blue-800 rounded-xl p-6 mb-6">
           <div className="text-center">
@@ -150,6 +153,6 @@ export function ActivationCodeModal({
           </button>
         </div>
       </div>
-    </div>
+    </Modal>
   );
 }

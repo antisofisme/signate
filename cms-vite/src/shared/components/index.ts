@@ -9,3 +9,5 @@ export { DeleteConfirmModal } from './DeleteConfirmModal';
 export { StatsCard } from './StatsCard';
 export { Pagination, PaginationCompact } from './Pagination';
 export type { PaginationProps } from './Pagination';
+export { Modal, ModalOverlay } from './Modal';
+export type { ModalProps, ModalOverlayProps, MaxWidthKey } from './Modal';

@@ -3,6 +3,7 @@
  *
  * Full-screen modal preview of content that will play on a device
  * Shows content rotation based on 3-tier priority system
+ * Uses centralized ModalOverlay for custom styling
  */
 
 import { useQuery } from '@tanstack/react-query';
@@ -19,6 +20,7 @@ import {
   Maximize2,
   Minimize2,
 } from 'lucide-react';
+import { ModalOverlay } from '@/shared/components';
 import { apiClient } from '@/lib/api/client';
 import type { Device } from '../../types/device';
 
@@ -145,18 +147,18 @@ export function DevicePreviewModal({ isOpen, device, onClose }: DevicePreviewMod
     }
   };
 
-  if (!isOpen || !device) return null;
+  if (!device) return null;
 
   return (
-    <div
-      className="fixed top-0 left-0 right-0 bottom-0 w-screen h-screen bg-black bg-opacity-90 flex items-center justify-center z-[9999]"
-      style={{ margin: 0, marginTop: 0 }}
-    >
-      <div className={`bg-gray-900 rounded-lg overflow-hidden flex flex-col transition-all duration-300 ${
-        isFullscreen
-          ? 'w-full h-full max-w-none max-h-none rounded-none'
-          : 'w-full max-w-5xl max-h-[90vh]'
-      }`}>
+    <ModalOverlay isOpen={isOpen} onClose={onClose} backdropOpacity={90}>
+      <div
+        className={`bg-gray-900 rounded-lg overflow-hidden flex flex-col transition-all duration-300 ${
+          isFullscreen
+            ? 'w-full h-full max-w-none max-h-none rounded-none'
+            : 'w-full max-w-5xl max-h-[90vh]'
+        }`}
+        onClick={(e) => e.stopPropagation()}
+      >
         {/* Header */}
         <div className={`flex items-center justify-between border-b border-gray-700 ${isFullscreen ? 'p-2' : 'p-4'}`}>
           <div>
@@ -321,6 +323,6 @@ export function DevicePreviewModal({ isOpen, device, onClose }: DevicePreviewMod
           )}
         </div>
       </div>
-    </div>
+    </ModalOverlay>
   );
 }
