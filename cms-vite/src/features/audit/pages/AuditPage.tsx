@@ -14,25 +14,32 @@ import { AuditLogFilters } from '../components/AuditLogFilters';
 import { AuditLogTable } from '../components/AuditLogTable';
 import { AuditLogStats } from '../components/AuditLogStats';
 import type { AuditLogFilters as Filters } from '../types/auditLog';
+import { usePagination } from '@/shared/hooks';
 
 export default function AuditPage() {
-  const [filters, setFilters] = useState<Filters>({
-    page: 1,
-    per_page: 20,
-  });
+  // Standardized pagination hook
+  const pagination = usePagination({ pageSize: 20 });
+
+  const [filters, setFilters] = useState<Omit<Filters, 'page' | 'per_page'>>({});
   const [showFilters, setShowFilters] = useState(true);
 
-  // Queries
-  const { data, isLoading } = useAuditLogs(filters);
+  // Queries - convert 0-indexed to 1-indexed for API
+  const { data, isLoading } = useAuditLogs({
+    ...filters,
+    page: pagination.currentPage + 1,
+    per_page: pagination.pageSize,
+  });
   const { data: usersData } = useUsers({});
   const { data: orgsData } = useOrganizations(true);
 
+  // Handle page change - convert 1-indexed from table to 0-indexed for hook
   const handlePageChange = (newPage: number) => {
-    setFilters({ ...filters, page: newPage });
+    pagination.goToPage(newPage - 1);
   };
 
   const handleClearFilters = () => {
-    setFilters({ page: 1, per_page: 20 });
+    setFilters({});
+    pagination.resetPage();
   };
 
   return (

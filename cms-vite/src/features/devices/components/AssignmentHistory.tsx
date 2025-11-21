@@ -18,6 +18,8 @@ import {
   useDeviceTags,
 } from '../hooks/useDeviceAssignments';
 import type { AssignmentType } from '../types/assignment';
+import { usePagination } from '@/shared/hooks';
+import { PaginationCompact } from '@/shared/components';
 
 interface AssignmentHistoryProps {
   deviceId: number;
@@ -38,8 +40,9 @@ export const AssignmentHistory: React.FC<AssignmentHistoryProps> = ({
   deviceName,
 }) => {
   const [typeFilter, setTypeFilter] = useState<AssignmentType | 'all'>('all');
-  const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 10;
+
+  // Standardized pagination hook (client-side pagination)
+  const pagination = usePagination({ pageSize: 10 });
 
   // Fetch all assignments
   const { data: playlistsData, isLoading: loadingPlaylists } = useDevicePlaylists(deviceId);
@@ -115,12 +118,11 @@ export const AssignmentHistory: React.FC<AssignmentHistoryProps> = ({
     return allHistory.filter((item) => item.type === typeFilter);
   }, [allHistory, typeFilter]);
 
-  // Paginate
-  const totalPages = Math.ceil(filteredHistory.length / itemsPerPage);
+  // Paginate using standardized hook
+  const totalPages = pagination.getTotalPages(filteredHistory.length);
   const paginatedHistory = useMemo(() => {
-    const start = (currentPage - 1) * itemsPerPage;
-    return filteredHistory.slice(start, start + itemsPerPage);
-  }, [filteredHistory, currentPage, itemsPerPage]);
+    return filteredHistory.slice(pagination.skip, pagination.skip + pagination.pageSize);
+  }, [filteredHistory, pagination.skip, pagination.pageSize]);
 
   // Export to CSV
   const handleExportCSV = () => {
@@ -318,47 +320,15 @@ export const AssignmentHistory: React.FC<AssignmentHistoryProps> = ({
         )}
       </div>
 
-      {/* Pagination */}
+      {/* Pagination - Using standardized component */}
       {totalPages > 1 && (
-        <div className="flex items-center justify-between">
-          <div className="text-sm text-gray-600">
-            Showing {(currentPage - 1) * itemsPerPage + 1} to{' '}
-            {Math.min(currentPage * itemsPerPage, filteredHistory.length)} of{' '}
-            {filteredHistory.length}
-          </div>
-
-          <div className="flex gap-2">
-            <button
-              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-              disabled={currentPage === 1}
-              className="px-3 py-1 text-sm border rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              Previous
-            </button>
-            <div className="flex items-center gap-1">
-              {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-                <button
-                  key={page}
-                  onClick={() => setCurrentPage(page)}
-                  className={`px-3 py-1 text-sm rounded-lg transition-colors ${
-                    page === currentPage
-                      ? 'bg-blue-500 text-white'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                  }`}
-                >
-                  {page}
-                </button>
-              ))}
-            </div>
-            <button
-              onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-              disabled={currentPage === totalPages}
-              className="px-3 py-1 text-sm border rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              Next
-            </button>
-          </div>
-        </div>
+        <PaginationCompact
+          currentPage={pagination.currentPage}
+          totalPages={totalPages}
+          totalItems={filteredHistory.length}
+          pageSize={pagination.pageSize}
+          onPageChange={pagination.goToPage}
+        />
       )}
     </div>
   );

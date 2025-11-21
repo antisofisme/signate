@@ -119,9 +119,9 @@ export const logsApi = {
   // ========================================
 
   /**
-   * Get device connection logs (placeholder for future implementation)
+   * Get device connection logs
    * @param deviceId - Device ID
-   * @param filters - Filter options
+   * @param filters - Filter options (event_type, limit, skip)
    * @returns Connection log entries
    */
   getConnectionLogs: async (
@@ -131,9 +131,34 @@ export const logsApi = {
       limit?: number;
       skip?: number;
     }
-  ): Promise<{ logs: any[]; total: number }> => {
-    // TODO: Implement when backend endpoint is ready
-    console.warn('[LogsAPI] Connection logs endpoint not yet implemented');
-    return { logs: [], total: 0 };
+  ): Promise<{ items: any[]; total: number }> => {
+    const params = new URLSearchParams();
+
+    if (filters?.event_type && filters.event_type !== 'all') {
+      params.append('event_type', filters.event_type);
+    }
+    if (filters?.limit !== undefined) {
+      params.append('limit', String(Math.min(500, Math.max(1, filters.limit))));
+    }
+    if (filters?.skip !== undefined) {
+      params.append('skip', String(Math.max(0, filters.skip)));
+    }
+
+    const queryString = params.toString();
+    const url = `${API_ENDPOINTS.DEVICES.CONNECTION_LOGS(deviceId)}${queryString ? `?${queryString}` : ''}`;
+
+    console.log('[LogsAPI] Fetching connection logs:', url);
+    const response = await apiClient.get(url);
+
+    // Handle both unwrapped and wrapped responses
+    if (response.data && 'items' in response.data && 'total' in response.data) {
+      return response.data;
+    }
+
+    if (response.data?.data && 'items' in response.data.data && 'total' in response.data.data) {
+      return response.data.data;
+    }
+
+    return { items: [], total: 0 };
   },
 };

@@ -240,7 +240,7 @@ app.include_router(device_command_router, prefix="/api/v1", tags=["Device Comman
 app.include_router(device_health_router, prefix="/api/v1", tags=["Device Health"])
 app.include_router(device_log_router, prefix="/api/v1", tags=["Device Logs"])
 app.include_router(device_connection_log_router, prefix="/api/v1", tags=["Device Connection Logs"])
-app.include_router(device_extended_router, prefix="/api/v1", tags=["Device Extended"])
+app.include_router(device_extended_router, tags=["Device Extended"])  # Routes already include /api/v1
 app.include_router(organization_router, tags=["Organization Management"])
 app.include_router(user_router, tags=["User Management"])
 app.include_router(audit_router, tags=["Audit Logging"])

@@ -478,11 +478,51 @@ export const deviceApi = {
 
   /**
    * Get speed test history for device
+   * Reads from connection_logs with event_type=speed_test filter
    * @param id - Device ID
-   * @returns Speed test history
+   * @returns Speed test history transformed to SpeedTest format
    */
   getSpeedTests: async (id: number): Promise<{ total: number; items: any[] }> => {
-    const response = await apiClient.get(`/api/v1/devices/${id}/speed-tests`);
-    return unwrapResponse<{ total: number; items: any[] }>(response);
+    // Speed tests are stored in connection_logs with event_type='speed_test'
+    console.log('[DeviceAPI] Fetching speed tests for device:', id);
+    const response = await apiClient.get(
+      `${API_ENDPOINTS.DEVICES.CONNECTION_LOGS(id)}?event_type=speed_test&limit=100`
+    );
+    console.log('[DeviceAPI] Speed test response:', response.data);
+
+    // Handle both wrapped and unwrapped responses
+    let data: { total: number; items: any[] };
+    if (response.data && 'total' in response.data && 'items' in response.data) {
+      data = response.data;
+    } else if (response.data?.data) {
+      data = response.data.data;
+    } else {
+      data = { total: 0, items: [] };
+    }
+    console.log('[DeviceAPI] Parsed speed test data:', data);
+
+    // Transform connection log format to speed test format
+    const items = (data.items || []).map((log: any) => ({
+      id: log.id,
+      device_id: log.device_id,
+      download_speed: log.download_speed_mbps || 0,
+      upload_speed: log.upload_speed_mbps || 0,
+      latency: log.latency_ms || 0,
+      jitter: log.metadata?.jitter || null,
+      packet_loss: log.metadata?.packet_loss || null,
+      quality: calculateQuality(log.download_speed_mbps || 0, log.upload_speed_mbps || 0),
+      tested_at: log.logged_at,
+    }));
+
+    return { total: data.total || items.length, items };
   },
 };
+
+/**
+ * Calculate speed test quality based on speeds
+ */
+function calculateQuality(download: number, upload: number): 'good' | 'fair' | 'poor' {
+  if (download >= 25 && upload >= 10) return 'good';
+  if (download >= 10 && upload >= 5) return 'fair';
+  return 'poor';
+}

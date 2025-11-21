@@ -11,6 +11,7 @@ from shared.api_routes import SessionRoutes
 from shared.errors import handle_errors
 from shared.responses import success_response
 from shared.auth import get_current_user, require_admin, CurrentUser
+from shared.pagination import PaginationParams
 
 from .dtos import (
     SessionResponse, SessionListResponse, SessionStatsResponse,
@@ -174,7 +175,7 @@ def get_user_sessions_admin(
 @handle_errors
 def get_sessions_by_ip_admin(
     ip_address: str,
-    limit: int = Query(10, ge=1, le=100),
+    pagination: PaginationParams = Depends(PaginationParams.as_query),
     current_user: CurrentUser = Depends(require_admin),
     session_repo: SessionRepository = Depends(get_session_repository)
 ):
@@ -184,7 +185,7 @@ def get_sessions_by_ip_admin(
     Useful for security monitoring and abuse detection
     """
     use_case = GetSessionsUseCase(session_repo)
-    sessions = use_case.get_sessions_by_ip(ip_address, limit)
+    sessions = use_case.get_sessions_by_ip(ip_address, pagination.limit)
 
     return [SessionResponse.model_validate(s) for s in sessions]
 

@@ -9,7 +9,7 @@
  * - Clear logs functionality
  */
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Terminal,
   RefreshCw,
@@ -21,12 +21,14 @@ import {
   Eye,
   Network,
 } from 'lucide-react';
+import { usePagination } from '@/shared/hooks';
+import { Pagination } from '@/shared/components';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
-import { useDeviceLogs, useClearLogs } from '../hooks/useDeviceLogs';
+import { useDeviceLogs, useClearLogs, useConnectionLogs } from '../hooks/useDeviceLogs';
 import { LogDetailModal } from './LogDetailModal';
 import type { DeviceLog, LogLevel } from '../types/logs';
 import { LOG_LEVEL_OPTIONS, LOG_LEVEL_COLORS } from '../types/logs';
@@ -43,8 +45,14 @@ export function DeviceLogsViewer({ deviceId, deviceName }: DeviceLogsViewerProps
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [logLevel, setLogLevel] = useState<LogLevel | 'all'>('all');
   const [autoRefresh, setAutoRefresh] = useState(true);
-  const [currentPage, setCurrentPage] = useState(0);
-  const pageSize = 50;
+  const [activeTab, setActiveTab] = useState<'console' | 'connection'>('console');
+
+  // Connection logs state
+  const [eventTypeFilter, setEventTypeFilter] = useState<string>('all');
+
+  // Pagination hook (standardized)
+  const pagination = usePagination({ pageSize: 50 });
+  const connectionPagination = usePagination({ pageSize: 50 });
 
   // Queries
   const {
@@ -56,8 +64,8 @@ export function DeviceLogsViewer({ deviceId, deviceName }: DeviceLogsViewerProps
     deviceId,
     {
       log_level: logLevel !== 'all' ? logLevel : undefined,
-      limit: pageSize,
-      skip: currentPage * pageSize,
+      limit: pagination.limit,
+      skip: pagination.skip,
     },
     {
       enabled: deviceId > 0,
@@ -67,13 +75,33 @@ export function DeviceLogsViewer({ deviceId, deviceName }: DeviceLogsViewerProps
 
   const clearLogsMutation = useClearLogs();
 
+  // Connection logs query
+  const {
+    data: connectionLogsData,
+    isLoading: isLoadingConnection,
+    isFetching: isFetchingConnection,
+    refetch: refetchConnection,
+  } = useConnectionLogs(
+    deviceId,
+    {
+      event_type: eventTypeFilter !== 'all' ? eventTypeFilter : undefined,
+      limit: connectionPagination.limit,
+      skip: connectionPagination.skip,
+    },
+    {
+      enabled: deviceId > 0 && activeTab === 'connection',
+    }
+  );
+
   // Computed
   const logs = logsData?.logs || [];
   const total = logsData?.total || 0;
-  const totalPages = Math.ceil(total / pageSize);
+  const connectionLogs = connectionLogsData?.items || [];
+  const connectionTotal = connectionLogsData?.total || 0;
+  const totalPages = pagination.getTotalPages(total);
+  const connectionTotalPages = connectionPagination.getTotalPages(connectionTotal);
   const hasLogs = logs.length > 0;
-  const startIndex = currentPage * pageSize + 1;
-  const endIndex = Math.min((currentPage + 1) * pageSize, total);
+  const hasConnectionLogs = connectionLogs.length > 0;
 
   // Handlers
   const handleViewDetails = (log: DeviceLog) => {
@@ -93,25 +121,51 @@ export function DeviceLogsViewer({ deviceId, deviceName }: DeviceLogsViewerProps
 
     clearLogsMutation.mutate(deviceId, {
       onSuccess: () => {
-        setCurrentPage(0);
+        pagination.resetPage();
       },
     });
   };
 
   const handleLogLevelChange = (value: string) => {
     setLogLevel(value as LogLevel | 'all');
-    setCurrentPage(0);
+    pagination.resetPage();
   };
 
-  const handlePreviousPage = () => {
-    if (currentPage > 0) {
-      setCurrentPage(currentPage - 1);
+  const handleEventTypeChange = (value: string) => {
+    setEventTypeFilter(value);
+    connectionPagination.resetPage();
+  };
+
+  const handleRefreshConnection = () => {
+    refetchConnection();
+    toast.success('Connection logs refreshed');
+  };
+
+  const getEventTypeIcon = (eventType: string) => {
+    switch (eventType) {
+      case 'network':
+        return <Network className="w-4 h-4" />;
+      case 'server':
+        return <Terminal className="w-4 h-4" />;
+      case 'speed_test':
+        return <RefreshCw className="w-4 h-4" />;
+      default:
+        return <Info className="w-4 h-4" />;
     }
   };
 
-  const handleNextPage = () => {
-    if (currentPage < totalPages - 1) {
-      setCurrentPage(currentPage + 1);
+  const getStatusColor = (status: string) => {
+    switch (status.toLowerCase()) {
+      case 'online':
+      case 'connected':
+      case 'success':
+        return 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400';
+      case 'offline':
+      case 'disconnected':
+      case 'failed':
+        return 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400';
+      default:
+        return 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300';
     }
   };
 
@@ -148,16 +202,15 @@ export function DeviceLogsViewer({ deviceId, deviceName }: DeviceLogsViewerProps
       </div>
 
       {/* Tabs */}
-      <Tabs defaultValue="console">
+      <Tabs defaultValue="console" value={activeTab} onValueChange={(v) => setActiveTab(v as 'console' | 'connection')}>
         <TabsList>
           <TabsTrigger value="console">
             <Terminal className="w-4 h-4 mr-2" />
             Console Logs
           </TabsTrigger>
-          <TabsTrigger value="connection" disabled>
+          <TabsTrigger value="connection">
             <Network className="w-4 h-4 mr-2" />
             Connection Logs
-            <Badge className="ml-2 text-xs bg-gray-200 text-gray-600">Coming Soon</Badge>
           </TabsTrigger>
         </TabsList>
 
@@ -311,54 +364,166 @@ export function DeviceLogsViewer({ deviceId, deviceName }: DeviceLogsViewerProps
                 </table>
               </div>
 
-              {/* Pagination */}
-              <div className="flex items-center justify-between px-4 py-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700">
-                <div className="text-sm text-gray-700 dark:text-gray-300">
-                  Showing{' '}
-                  <span className="font-medium">{startIndex}</span>
-                  {' - '}
-                  <span className="font-medium">{endIndex}</span>
-                  {' of '}
-                  <span className="font-medium">{total}</span>
-                  {' logs'}
-                </div>
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handlePreviousPage}
-                    disabled={currentPage === 0}
-                  >
-                    Previous
-                  </Button>
-                  <span className="text-sm text-gray-700 dark:text-gray-300">
-                    Page {currentPage + 1} of {totalPages || 1}
-                  </span>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleNextPage}
-                    disabled={currentPage >= totalPages - 1}
-                  >
-                    Next
-                  </Button>
-                </div>
-              </div>
+              {/* Pagination - Using standardized component */}
+              <Pagination
+                currentPage={pagination.currentPage}
+                totalPages={totalPages}
+                totalItems={total}
+                pageSize={pagination.pageSize}
+                onPageChange={pagination.goToPage}
+                className="px-4 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700"
+              />
             </>
           )}
         </TabsContent>
 
-        {/* Connection Logs Tab (Placeholder) */}
-        <TabsContent value="connection">
-          <div className="text-center py-12 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700">
-            <Network className="w-12 h-12 mx-auto text-gray-400 mb-3" />
-            <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-1">
-              Connection Logs Coming Soon
-            </h3>
-            <p className="text-sm text-gray-500 dark:text-gray-400">
-              Network, server, and speed test logs will be available in a future update.
-            </p>
+        {/* Connection Logs Tab */}
+        <TabsContent value="connection" className="space-y-4">
+          {/* Filter Controls */}
+          <div className="flex flex-wrap items-center gap-3 p-4 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700">
+            {/* Event Type Filter */}
+            <div className="flex items-center gap-2 min-w-[200px]">
+              <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                Event Type:
+              </label>
+              <Select value={eventTypeFilter} onValueChange={handleEventTypeChange}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="All Events" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Events</SelectItem>
+                  <SelectItem value="network">Network Status</SelectItem>
+                  <SelectItem value="server">Server Connection</SelectItem>
+                  <SelectItem value="speed_test">Speed Test</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Spacer */}
+            <div className="flex-1" />
+
+            {/* Action Buttons */}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleRefreshConnection}
+              disabled={isFetchingConnection}
+            >
+              <RefreshCw className={`w-4 h-4 mr-2 ${isFetchingConnection ? 'animate-spin' : ''}`} />
+              Refresh
+            </Button>
           </div>
+
+          {/* Connection Logs Table */}
+          {isLoadingConnection ? (
+            <div className="space-y-2">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <Skeleton key={i} className="h-16 w-full" />
+              ))}
+            </div>
+          ) : !hasConnectionLogs ? (
+            <div className="text-center py-12 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700">
+              <Network className="w-12 h-12 mx-auto text-gray-400 mb-3" />
+              <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-1">
+                No Connection Logs Found
+              </h3>
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                {eventTypeFilter !== 'all'
+                  ? `No ${eventTypeFilter.replace('_', ' ')} logs available for this device.`
+                  : 'This device has not sent any connection logs yet.'}
+              </p>
+            </div>
+          ) : (
+            <>
+              {/* Table */}
+              <div className="overflow-x-auto border border-gray-200 dark:border-gray-700 rounded-lg">
+                <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                  <thead className="bg-gray-50 dark:bg-gray-900">
+                    <tr>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                        Timestamp
+                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                        Event Type
+                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                        Status
+                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                        Latency
+                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                        Speed
+                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                        Error
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                    {connectionLogs.map((log: any) => (
+                      <tr
+                        key={log.id}
+                        className="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                      >
+                        <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+                          {new Date(log.logged_at).toLocaleTimeString('en-US', {
+                            hour: '2-digit',
+                            minute: '2-digit',
+                            second: '2-digit',
+                          })}
+                          <div className="text-xs text-gray-500">
+                            {new Date(log.logged_at).toLocaleDateString()}
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 whitespace-nowrap">
+                          <Badge className="flex items-center gap-1.5 w-fit bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">
+                            {getEventTypeIcon(log.event_type)}
+                            {log.event_type.replace('_', ' ')}
+                          </Badge>
+                        </td>
+                        <td className="px-4 py-3 whitespace-nowrap">
+                          <Badge className={`${getStatusColor(log.status)}`}>
+                            {log.status}
+                          </Badge>
+                        </td>
+                        <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+                          {log.latency_ms !== null ? `${log.latency_ms}ms` : '-'}
+                        </td>
+                        <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+                          {log.download_speed_mbps !== null || log.upload_speed_mbps !== null ? (
+                            <div className="text-xs">
+                              {log.download_speed_mbps !== null && (
+                                <div>Down: {log.download_speed_mbps.toFixed(2)} Mbps</div>
+                              )}
+                              {log.upload_speed_mbps !== null && (
+                                <div>Up: {log.upload_speed_mbps.toFixed(2)} Mbps</div>
+                              )}
+                            </div>
+                          ) : '-'}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-red-600 dark:text-red-400 max-w-xs">
+                          <div className="truncate" title={log.error_message || ''}>
+                            {log.error_message || '-'}
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Pagination */}
+              <Pagination
+                currentPage={connectionPagination.currentPage}
+                totalPages={connectionTotalPages}
+                totalItems={connectionTotal}
+                pageSize={connectionPagination.pageSize}
+                onPageChange={connectionPagination.goToPage}
+                className="px-4 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700"
+              />
+            </>
+          )}
         </TabsContent>
       </Tabs>
 

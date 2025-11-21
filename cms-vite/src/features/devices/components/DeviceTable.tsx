@@ -45,6 +45,7 @@ import { ContentAssignmentModal } from './modals/ContentAssignmentModal';
 import { PlaylistAssignmentModal } from './modals/PlaylistAssignmentModal';
 import { SpeedHistoryModal } from './modals/SpeedHistoryModal';
 import { DeviceHealthModal } from './modals/DeviceHealthModal';
+import { DevicePreviewModal } from './modals/DevicePreviewModal';
 import { PendingDeviceCard } from './PendingDeviceCard';
 
 // Delete Confirmation Modal
@@ -159,6 +160,10 @@ export function DeviceTable() {
     device: Device | null;
   }>({ isOpen: false, device: null });
   const [healthModal, setHealthModal] = useState<{
+    isOpen: boolean;
+    device: Device | null;
+  }>({ isOpen: false, device: null });
+  const [previewModal, setPreviewModal] = useState<{
     isOpen: boolean;
     device: Device | null;
   }>({ isOpen: false, device: null });
@@ -532,7 +537,7 @@ export function DeviceTable() {
                         </button>
                         <button
                           onClick={() =>
-                            window.open(`/devices/${device.id}/preview`, '_blank')
+                            setPreviewModal({ isOpen: true, device })
                           }
                           className="text-orange-600 hover:text-orange-800 dark:text-orange-400 dark:hover:text-orange-300"
                           title="Preview device content"
@@ -667,6 +672,13 @@ export function DeviceTable() {
         isOpen={healthModal.isOpen}
         device={healthModal.device}
         onClose={() => setHealthModal({ isOpen: false, device: null })}
+      />
+
+      {/* Device Preview Modal */}
+      <DevicePreviewModal
+        isOpen={previewModal.isOpen}
+        device={previewModal.device}
+        onClose={() => setPreviewModal({ isOpen: false, device: null })}
       />
     </>
   );

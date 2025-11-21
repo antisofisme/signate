@@ -55,6 +55,7 @@ export const API_ENDPOINTS = {
     HEARTBEAT: (id: number) => `/api/v1/devices/${id}/heartbeat`,
     CHECK_ACTIVATION: (code: string) => `/api/v1/devices/check-activation/${code}`,
     LOGS: (id: number) => `/api/v1/devices/${id}/logs`,
+    CONNECTION_LOGS: (id: number) => `/api/v1/devices/${id}/connection-logs`,
     COMMANDS: (id: number) => `/api/v1/devices/${id}/commands`,
     SEND_COMMAND: (id: number) => `/api/v1/devices/${id}/commands`,
     CONTENT_RESOLVED: (id: number) => `/api/v1/devices/${id}/content/resolved`,

@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 from shared.database import get_db
 from shared.auth import get_current_user, CurrentUser
 from shared.logging import AuditLogger
+from shared.pagination import PaginationParams
 
 from services.template.dtos import (
     CreateTemplateRequest,
@@ -85,8 +86,7 @@ def create_template(
 def get_templates(
     template_type: Optional[str] = Query(None, description="Filter by template type"),
     is_active: Optional[bool] = Query(None, description="Filter by active status"),
-    skip: int = Query(0, ge=0),
-    limit: int = Query(100, ge=1, le=500),
+    pagination: PaginationParams = Depends(PaginationParams.as_query),
     current_user: CurrentUser = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -101,8 +101,8 @@ def get_templates(
         organization_id=current_user.organization_id,
         template_type=template_type,
         is_active=is_active,
-        skip=skip,
-        limit=limit,
+        skip=pagination.skip,
+        limit=pagination.limit,
         db=db
     )
 

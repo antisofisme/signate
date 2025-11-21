@@ -10,6 +10,8 @@ import { useQuery } from '@tanstack/react-query'
 import type { DeviceCommand, CommandStatus } from '../types/commands'
 import { COMMAND_TYPE_INFO } from '../types/commandTemplates'
 import { renderIcon } from '@/shared/utils/iconHelper'
+import { usePagination } from '@/shared/hooks'
+import { PaginationCompact } from '@/shared/components'
 
 interface CommandHistoryProps {
   deviceId?: number
@@ -19,18 +21,19 @@ interface CommandHistoryProps {
 export function CommandHistory({ deviceId, maxHeight = '600px' }: CommandHistoryProps) {
   const [statusFilter, setStatusFilter] = useState<CommandStatus | 'all'>('all')
   const [searchQuery, setSearchQuery] = useState('')
-  const [page, setPage] = useState(0)
-  const pageSize = 20
+
+  // Standardized pagination hook
+  const pagination = usePagination({ pageSize: 20 })
 
   // Query command history
   const { data, isLoading, refetch } = useQuery({
-    queryKey: ['command-history', deviceId, statusFilter, page],
+    queryKey: ['command-history', deviceId, statusFilter, pagination.currentPage],
     queryFn: () => {
       if (!deviceId) return { total: 0, items: [] }
       return deviceCommandApi.getCommands(deviceId, {
         status: statusFilter === 'all' ? undefined : statusFilter,
-        skip: page * pageSize,
-        limit: pageSize,
+        skip: pagination.skip,
+        limit: pagination.limit,
       })
     },
     enabled: !!deviceId,
@@ -49,7 +52,8 @@ export function CommandHistory({ deviceId, maxHeight = '600px' }: CommandHistory
     )
   }) || []
 
-  const totalPages = Math.ceil((data?.total || 0) / pageSize)
+  const total = data?.total || 0
+  const totalPages = pagination.getTotalPages(total)
 
   const handleExport = () => {
     if (!filteredCommands.length) return
@@ -124,7 +128,7 @@ export function CommandHistory({ deviceId, maxHeight = '600px' }: CommandHistory
                 value={statusFilter}
                 onChange={(e) => {
                   setStatusFilter(e.target.value as CommandStatus | 'all')
-                  setPage(0)
+                  pagination.resetPage()
                 }}
                 className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               >
@@ -185,28 +189,17 @@ export function CommandHistory({ deviceId, maxHeight = '600px' }: CommandHistory
         )}
       </div>
 
-      {/* Pagination */}
+      {/* Pagination - Using standardized component */}
       {totalPages > 1 && (
-        <div className="p-4 border-t border-gray-200 dark:border-gray-700 flex items-center justify-between">
-          <div className="text-sm text-gray-600 dark:text-gray-400">
-            Page {page + 1} of {totalPages}
-          </div>
-          <div className="flex gap-2">
-            <button
-              onClick={() => setPage(Math.max(0, page - 1))}
-              disabled={page === 0}
-              className="px-3 py-1.5 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              Previous
-            </button>
-            <button
-              onClick={() => setPage(Math.min(totalPages - 1, page + 1))}
-              disabled={page >= totalPages - 1}
-              className="px-3 py-1.5 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              Next
-            </button>
-          </div>
+        <div className="border-t border-gray-200 dark:border-gray-700">
+          <PaginationCompact
+            currentPage={pagination.currentPage}
+            totalPages={totalPages}
+            totalItems={total}
+            pageSize={pagination.pageSize}
+            onPageChange={pagination.goToPage}
+            className="px-4"
+          />
         </div>
       )}
     </div>

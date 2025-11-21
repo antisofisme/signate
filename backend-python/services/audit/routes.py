@@ -10,6 +10,7 @@ from shared.api_routes import AuditRoutes
 from shared.errors import handle_errors
 from shared.logging import RequestLogger
 from shared.middleware import get_current_active_user
+from shared.pagination import PaginationParams
 from typing import Optional
 from datetime import datetime
 import time
@@ -77,8 +78,7 @@ def list_audit_logs(
     resource_id: Optional[int] = Query(None, description="Filter by resource ID"),
     start_date: Optional[datetime] = Query(None, description="Filter from date"),
     end_date: Optional[datetime] = Query(None, description="Filter until date"),
-    limit: int = Query(100, ge=1, le=1000, description="Results per page"),
-    offset: int = Query(0, ge=0, description="Results to skip"),
+    pagination: PaginationParams = Depends(PaginationParams.as_query),
     use_case: ListAuditLogsUseCase = Depends(get_list_audit_logs_use_case),
     user_repo = Depends(get_user_repository),
     org_repo = Depends(get_organization_repository),
@@ -104,8 +104,8 @@ def list_audit_logs(
         resource_id=resource_id,
         start_date=start_date,
         end_date=end_date,
-        limit=limit,
-        offset=offset
+        limit=pagination.limit,
+        offset=pagination.skip
     )
 
     # Convert to response and enrich with usernames and org names

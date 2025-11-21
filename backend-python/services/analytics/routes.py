@@ -13,6 +13,7 @@ from shared.auth import get_current_user, CurrentUser
 from shared.errors import handle_errors
 from shared.responses import success_response
 from shared.logging import RequestLogger
+from shared.pagination import PaginationParams
 import time
 
 from .repositories.analytics_repo import AnalyticsRepository
@@ -52,7 +53,7 @@ def get_analytics_repository(db: Session = Depends(get_db)) -> AnalyticsReposito
 def get_analytics_dashboard(
     start_date: Optional[datetime] = Query(None),
     end_date: Optional[datetime] = Query(None),
-    limit: int = Query(10, ge=1, le=100),
+    pagination: PaginationParams = Depends(PaginationParams.as_query),
     current_user: CurrentUser = Depends(get_current_user),
     analytics_repo: AnalyticsRepository = Depends(get_analytics_repository)
 ):
@@ -76,7 +77,7 @@ def get_analytics_dashboard(
         organization_id=current_user.organization_id,
         start_date=start_date,
         end_date=end_date,
-        limit=limit
+        limit=pagination.limit
     )
 
     # Get top devices
@@ -84,7 +85,7 @@ def get_analytics_dashboard(
         organization_id=current_user.organization_id,
         start_date=start_date,
         end_date=end_date,
-        limit=limit
+        limit=pagination.limit
     )
 
     # Log request
@@ -112,7 +113,7 @@ def get_analytics_dashboard(
 def get_content_performance(
     start_date: Optional[datetime] = Query(None),
     end_date: Optional[datetime] = Query(None),
-    limit: int = Query(10, ge=1, le=100),
+    pagination: PaginationParams = Depends(PaginationParams.as_query),
     current_user: CurrentUser = Depends(get_current_user),
     analytics_repo: AnalyticsRepository = Depends(get_analytics_repository)
 ):
@@ -128,7 +129,7 @@ def get_content_performance(
         organization_id=current_user.organization_id,
         start_date=start_date,
         end_date=end_date,
-        limit=limit
+        limit=pagination.limit
     )
 
     # Log request
@@ -152,7 +153,7 @@ def get_content_performance(
 def get_device_engagement(
     start_date: Optional[datetime] = Query(None),
     end_date: Optional[datetime] = Query(None),
-    limit: int = Query(10, ge=1, le=100),
+    pagination: PaginationParams = Depends(PaginationParams.as_query),
     current_user: CurrentUser = Depends(get_current_user),
     analytics_repo: AnalyticsRepository = Depends(get_analytics_repository)
 ):
@@ -168,7 +169,7 @@ def get_device_engagement(
         organization_id=current_user.organization_id,
         start_date=start_date,
         end_date=end_date,
-        limit=limit
+        limit=pagination.limit
     )
 
     # Log request

@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 
 from shared.database import get_db
 from shared.auth import get_current_user, CurrentUser
+from shared.pagination import PaginationParams
 from services.translation.dtos import (
     AddTranslationRequest,
     TranslationResponse,
@@ -73,8 +74,7 @@ def get_translations(
     entity_type: Optional[str] = Query(None, description="Filter by entity type"),
     entity_id: Optional[int] = Query(None, description="Filter by entity ID"),
     language_code: Optional[str] = Query(None, description="Filter by language code"),
-    skip: int = Query(0, ge=0, description="Number of records to skip"),
-    limit: int = Query(100, ge=1, le=1000, description="Max records to return"),
+    pagination: PaginationParams = Depends(PaginationParams.as_query),
     current_user: CurrentUser = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -92,8 +92,8 @@ def get_translations(
         entity_type=entity_type,
         entity_id=entity_id,
         language_code=language_code,
-        skip=skip,
-        limit=limit,
+        skip=pagination.skip,
+        limit=pagination.limit,
         db=db
     )
 

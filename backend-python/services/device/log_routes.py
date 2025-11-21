@@ -265,6 +265,100 @@ class SaveConnectionLogsDTO(BaseModel):
     """Batch connection logs from player - sent every 5 minutes"""
     logs: List[ConnectionLogEntryDTO] = Field(..., min_items=1, max_items=100, description="Connection log entries")
 
+class ConnectionLogResponse(BaseModel):
+    """Single connection log response"""
+    id: int
+    device_id: int
+    logged_at: datetime
+    event_type: str
+    status: str
+    latency_ms: Optional[int]
+    error_message: Optional[str]
+    download_speed_mbps: Optional[float]
+    upload_speed_mbps: Optional[float]
+    connection_type: Optional[str]
+    effective_type: Optional[str]
+    rtt_ms: Optional[int]
+    endpoint: Optional[str]
+    http_status: Optional[int]
+    test_trigger: Optional[str]
+    test_duration_ms: Optional[int]
+    metadata: Optional[dict]
+    created_at: datetime
+
+
+class ConnectionLogListResponse(BaseModel):
+    """List of connection logs response"""
+    total: int
+    items: List[ConnectionLogResponse]
+
+
+@router.get("/devices/{device_id}/connection-logs", response_model=ConnectionLogListResponse)
+def get_device_connection_logs(
+    device_id: int,
+    event_type: Optional[str] = Query(None, description="Filter by event type: network, server, speed_test"),
+    limit: int = Query(50, ge=1, le=500, description="Number of logs to return"),
+    skip: int = Query(0, ge=0, description="Number of logs to skip"),
+    db: Session = Depends(get_db)
+):
+    """
+    Get device connection logs (called by CMS)
+
+    Returns paginated list of connection logs with optional event_type filter.
+    Sorted by logged_at DESC (newest first).
+    """
+    # Build query
+    where_clause = "WHERE device_id = :device_id"
+    params = {"device_id": device_id, "limit": limit, "skip": skip}
+
+    if event_type:
+        where_clause += " AND event_type = :event_type"
+        params["event_type"] = event_type
+
+    # Get total count
+    count_query = text(f"SELECT COUNT(*) as total FROM device_connection_logs {where_clause}")
+    total = db.execute(count_query, params).fetchone().total
+
+    # Get logs
+    query = text(f"""
+        SELECT id, device_id, logged_at, event_type, status, latency_ms,
+               error_message, download_speed_mbps, upload_speed_mbps,
+               connection_type, effective_type, rtt_ms, endpoint, http_status,
+               test_trigger, test_duration_ms, metadata, created_at
+        FROM device_connection_logs
+        {where_clause}
+        ORDER BY logged_at DESC
+        LIMIT :limit OFFSET :skip
+    """)
+
+    results = db.execute(query, params).fetchall()
+
+    logs = []
+    for row in results:
+        logs.append(ConnectionLogResponse(
+            id=row.id,
+            device_id=row.device_id,
+            logged_at=row.logged_at,
+            event_type=row.event_type,
+            status=row.status,
+            latency_ms=row.latency_ms,
+            error_message=row.error_message,
+            download_speed_mbps=row.download_speed_mbps,
+            upload_speed_mbps=row.upload_speed_mbps,
+            connection_type=row.connection_type,
+            effective_type=row.effective_type,
+            rtt_ms=row.rtt_ms,
+            endpoint=row.endpoint,
+            http_status=row.http_status,
+            test_trigger=row.test_trigger,
+            test_duration_ms=row.test_duration_ms,
+            metadata=row.metadata if row.metadata else {},
+            created_at=row.created_at
+        ))
+
+    return ConnectionLogListResponse(total=total, items=logs)
+
+
 @router.post("/devices/{device_id}/connection-logs", status_code=status.HTTP_201_CREATED)
 def save_connection_logs(
     device_id: int,

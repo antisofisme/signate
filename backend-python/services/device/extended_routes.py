@@ -301,7 +301,7 @@ def get_resolved_content(
     try:
         # Priority 1: Direct content assignments
         direct_query = text("""
-            SELECT c.id, c.name, c.type, c.uri, c.duration,
+            SELECT c.id, c.title as name, c.content_type as type, c.file_url as uri, c.duration,
                    ca.priority, 'direct' as source
             FROM content_assignments ca
             JOIN contents c ON c.id = ca.content_id
@@ -314,7 +314,7 @@ def get_resolved_content(
 
         # Priority 2: Tag-based content
         tag_query = text("""
-            SELECT DISTINCT c.id, c.name, c.type, c.uri, c.duration,
+            SELECT DISTINCT c.id, c.title as name, c.content_type as type, c.file_url as uri, c.duration,
                    0 as priority, 'tag' as source
             FROM device_tags dt
             JOIN content_tags ct ON ct.tag_id = dt.tag_id
@@ -326,13 +326,13 @@ def get_resolved_content(
 
         # Priority 3: Playlist content
         playlist_query = text("""
-            SELECT DISTINCT c.id, c.name, c.type, c.uri, c.duration,
+            SELECT c.id, c.title as name, c.content_type as type, c.file_url as uri, c.duration,
                    0 as priority, 'playlist' as source
-            FROM playlist_devices pd
-            JOIN playlist_items pi ON pi.playlist_id = pd.playlist_id
-            JOIN contents c ON c.id = pi.content_id
-            WHERE pd.device_id = :device_id
-            ORDER BY pi.order_index ASC
+            FROM playlist_assignments pa
+            JOIN playlist_contents pc ON pc.playlist_id = pa.playlist_id
+            JOIN contents c ON c.id = pc.content_id
+            WHERE pa.device_id = :device_id
+            ORDER BY pc.order_index ASC
         """)
 
         playlist_results = db.execute(playlist_query, {"device_id": device_id}).fetchall()

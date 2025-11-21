@@ -42,7 +42,7 @@ interface ResolvedContent {
 }
 
 export default function DevicePreviewPage() {
-  const { deviceId } = useParams<{ deviceId: string }>();
+  const { id: deviceId } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -53,7 +53,10 @@ export default function DevicePreviewPage() {
     queryKey: ['device-content-resolved', deviceId],
     queryFn: async () => {
       const response = await apiClient.get(`/api/v1/devices/${deviceId}/content/resolved`);
-      return response.data?.data as ResolvedContent;
+      // Response interceptor unwraps {success, data} to just data
+      // But if 'total' exists at any level, it may not unwrap
+      const result = response.data?.data ?? response.data;
+      return result as ResolvedContent;
     },
     enabled: !!deviceId,
   });

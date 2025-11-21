@@ -19,6 +19,8 @@ import {
   Filter,
   X,
 } from 'lucide-react';
+import { usePagination } from '@/shared/hooks';
+import { Pagination } from '@/shared/components';
 import {
   useContentList,
   useDeleteContent,
@@ -234,10 +236,10 @@ function getContentTypeIcon(type: ContentType) {
 }
 
 export function ContentTable() {
-  const [filters, setFilters] = useState<ContentFilters>({
-    skip: 0,
-    limit: 20,
-  });
+  // Standardized pagination hook
+  const pagination = usePagination({ pageSize: 20 });
+
+  const [filters, setFilters] = useState<ContentFilters>({});
   const [showFilters, setShowFilters] = useState(false);
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [selectedContent, setSelectedContent] = useState<Content | null>(null);
@@ -250,8 +252,12 @@ export function ContentTable() {
   const [showBulkEditModal, setShowBulkEditModal] = useState(false);
   const [showBulkTagModal, setShowBulkTagModal] = useState(false);
 
-  // Hooks
-  const { data: contentData, isLoading } = useContentList(filters);
+  // Hooks - merge filters with pagination
+  const { data: contentData, isLoading } = useContentList({
+    ...filters,
+    skip: pagination.skip,
+    limit: pagination.limit,
+  });
   const deleteMutation = useDeleteContent();
   const bulkDeleteMutation = useBulkDeleteContent();
 
@@ -267,7 +273,8 @@ export function ContentTable() {
   };
 
   const handleFilterChange = (key: keyof ContentFilters, value: any) => {
-    setFilters((prev) => ({ ...prev, [key]: value, skip: 0 }));
+    setFilters((prev) => ({ ...prev, [key]: value }));
+    pagination.resetPage();
   };
 
   const handleDelete = async () => {
@@ -283,7 +290,8 @@ export function ContentTable() {
   };
 
   const clearFilters = () => {
-    setFilters({ skip: 0, limit: 20 });
+    setFilters({});
+    pagination.resetPage();
   };
 
   // Selection handlers
@@ -343,24 +351,9 @@ export function ContentTable() {
     return contentData?.data.filter((c) => selectedIds.has(c.id)) || [];
   };
 
-  // Pagination handlers
-  const handleNextPage = () => {
-    if (contentData?.pagination.has_next) {
-      setFilters((prev) => ({
-        ...prev,
-        skip: (prev.skip || 0) + (prev.limit || 20),
-      }));
-    }
-  };
-
-  const handlePrevPage = () => {
-    if (contentData?.pagination.has_prev) {
-      setFilters((prev) => ({
-        ...prev,
-        skip: Math.max(0, (prev.skip || 0) - (prev.limit || 20)),
-      }));
-    }
-  };
+  // Computed pagination values
+  const total = contentData?.pagination?.total || 0;
+  const totalPages = pagination.getTotalPages(total);
 
   return (
     <div className="space-y-4">
@@ -631,29 +624,15 @@ export function ContentTable() {
               </table>
             </div>
 
-            {/* Pagination */}
-            <div className="bg-gray-50 dark:bg-gray-900 px-6 py-3 flex items-center justify-between">
-              <div className="text-sm text-gray-700 dark:text-gray-300">
-                Page {contentData.pagination.page} of{' '}
-                {contentData.pagination.total_pages}
-              </div>
-              <div className="flex gap-2">
-                <button
-                  onClick={handlePrevPage}
-                  disabled={!contentData.pagination.has_prev}
-                  className="px-3 py-1 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  Previous
-                </button>
-                <button
-                  onClick={handleNextPage}
-                  disabled={!contentData.pagination.has_next}
-                  className="px-3 py-1 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  Next
-                </button>
-              </div>
-            </div>
+            {/* Pagination - Using standardized component */}
+            <Pagination
+              currentPage={pagination.currentPage}
+              totalPages={totalPages}
+              totalItems={total}
+              pageSize={pagination.pageSize}
+              onPageChange={pagination.goToPage}
+              className="px-6 bg-gray-50 dark:bg-gray-900"
+            />
           </>
         ) : (
           <div className="text-center py-12">

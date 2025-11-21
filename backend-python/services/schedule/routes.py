@@ -10,6 +10,7 @@ from datetime import date, time
 
 from shared.database import get_db
 from shared.auth import get_current_user, CurrentUser
+from shared.pagination import PaginationParams
 from .domain.schedule_executor import get_schedule_executor
 from services.schedule.dtos import (
     CreateScheduleRequest,
@@ -80,8 +81,7 @@ def get_schedules(
     playlist_id: Optional[int] = Query(None, description="Filter by playlist ID"),
     is_active: Optional[bool] = Query(None, description="Filter by active status"),
     recurrence_type: Optional[str] = Query(None, description="Filter by recurrence type"),
-    skip: int = Query(0, ge=0, description="Number of records to skip"),
-    limit: int = Query(100, ge=1, le=1000, description="Max records to return"),
+    pagination: PaginationParams = Depends(PaginationParams.as_query),
     current_user: CurrentUser = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -101,8 +101,8 @@ def get_schedules(
         playlist_id=playlist_id,
         is_active=is_active,
         recurrence_type=recurrence_type,
-        skip=skip,
-        limit=limit,
+        skip=pagination.skip,
+        limit=pagination.limit,
         db=db
     )
 

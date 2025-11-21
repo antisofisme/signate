@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 
 from shared.database import get_db
 from shared.auth import get_current_user, CurrentUser
+from shared.pagination import PaginationParams
 from shared.logging import AuditLogger
 
 from services.widget.dtos import (
@@ -84,8 +85,7 @@ def create_widget(
 def get_widgets(
     widget_type: Optional[str] = Query(None, description="Filter by widget type"),
     is_active: Optional[bool] = Query(None, description="Filter by active status"),
-    skip: int = Query(0, ge=0),
-    limit: int = Query(100, ge=1, le=500),
+    pagination: PaginationParams = Depends(PaginationParams.as_query),
     current_user: CurrentUser = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -100,8 +100,8 @@ def get_widgets(
         organization_id=current_user.organization_id,
         widget_type=widget_type,
         is_active=is_active,
-        skip=skip,
-        limit=limit,
+        skip=pagination.skip,
+        limit=pagination.limit,
         db=db
     )
 
