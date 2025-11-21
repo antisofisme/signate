@@ -143,7 +143,8 @@ export function useCurrentOrganization() {
 }
 
 /**
- * Select organization
+ * Select organization (LEGACY - navigates to dashboard)
+ * Use useSwitchOrganization for in-place switching
  */
 export function useSelectOrganization() {
   const navigate = useNavigate();
@@ -153,6 +154,47 @@ export function useSelectOrganization() {
     selectOrganization(orgId);
     navigate('/dashboard');
   };
+}
+
+/**
+ * Switch organization (ENHANCED - no navigation)
+ * Switches organization in-place with automatic cache invalidation
+ * Use this for the OrganizationSwitcher component
+ */
+export function useSwitchOrganization() {
+  const { switchOrganization } = useAuthStore();
+
+  return (orgId: number) => {
+    switchOrganization(orgId, true);
+  };
+}
+
+/**
+ * Get all user organizations
+ */
+export function useOrganizations() {
+  const { organizations } = useAuthStore();
+  return organizations;
+}
+
+/**
+ * Get user preferences
+ */
+export function useUserPreferences() {
+  const { preferences, updatePreferences } = useAuthStore();
+
+  return {
+    preferences,
+    updatePreferences,
+  };
+}
+
+/**
+ * Check if user can auto-select organization
+ */
+export function useCanAutoSelectOrg() {
+  const { canAutoSelectOrg } = useAuthStore();
+  return canAutoSelectOrg();
 }
 
 /**

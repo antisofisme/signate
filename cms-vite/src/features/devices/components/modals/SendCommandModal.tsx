@@ -78,8 +78,8 @@ export function SendCommandModal({
   const selectedOption = COMMAND_OPTIONS.find((cmd) => cmd.type === selectedCommand);
 
   // Check if device is online
-  const isOnline = device.last_seen
-    ? new Date().getTime() - new Date(device.last_seen).getTime() < 5 * 60 * 1000
+  const isOnline = device.last_seen_at
+    ? new Date().getTime() - new Date(device.last_seen_at).getTime() < 5 * 60 * 1000
     : false;
 
   // Handle close

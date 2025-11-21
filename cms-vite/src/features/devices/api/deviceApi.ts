@@ -241,7 +241,7 @@ export const deviceApi = {
    * @returns Success status
    */
   heartbeat: async (deviceId: number): Promise<void> => {
-    await apiClient.post(API_ENDPOINTS.DEVICES.HEARTBEAT, { device_id: deviceId });
+    await apiClient.post(API_ENDPOINTS.DEVICES.HEARTBEAT(deviceId), { device_id: deviceId });
   },
 
   /**
@@ -403,17 +403,31 @@ export const deviceApi = {
    * @param id - Device ID
    * @param contentId - Content ID
    * @param priority - Assignment priority
+   * @param expiresAt - Optional expiry timestamp
+   * @param schedule - Optional schedule JSON
    * @returns Assignment result
    */
   assignContent: async (
     id: number,
     contentId: number,
-    priority?: number
+    priority?: number,
+    expiresAt?: string,
+    schedule?: Record<string, any>
   ): Promise<any> => {
-    const response = await apiClient.post(`/api/v1/devices/${id}/contents`, {
+    const payload: any = {
       content_id: contentId,
       priority: priority || 1,
-    });
+    };
+
+    if (expiresAt) {
+      payload.expires_at = expiresAt;
+    }
+
+    if (schedule) {
+      payload.schedule = schedule;
+    }
+
+    const response = await apiClient.post(`/api/v1/devices/${id}/contents`, payload);
     return unwrapResponse<any>(response);
   },
 

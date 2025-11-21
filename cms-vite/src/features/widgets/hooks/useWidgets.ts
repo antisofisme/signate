@@ -125,6 +125,11 @@ export const useAssignWidgetToPlaylist = () => {
       queryClient.invalidateQueries({
         queryKey: ['playlist-widgets', variables.playlistId],
       })
+
+      // Invalidate playlist queries (playlist now has widget)
+      queryClient.invalidateQueries({ queryKey: ['playlists'] })
+      queryClient.invalidateQueries({ queryKey: ['playlist', variables.playlistId] })
+
       toast.success('Widget assigned to playlist')
     },
     onError: (error: any) => {
@@ -163,6 +168,11 @@ export const useRemoveWidgetFromPlaylist = () => {
       queryClient.invalidateQueries({
         queryKey: ['playlist-widgets', variables.playlistId],
       })
+
+      // Invalidate playlist queries (playlist no longer has widget)
+      queryClient.invalidateQueries({ queryKey: ['playlists'] })
+      queryClient.invalidateQueries({ queryKey: ['playlist', variables.playlistId] })
+
       toast.success('Widget removed from playlist')
     },
     onError: (error: any) => {

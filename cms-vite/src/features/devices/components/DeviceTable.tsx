@@ -192,8 +192,8 @@ export function DeviceTable() {
 
   // Status badge
   const getStatusBadge = (device: Device) => {
-    const isOnline = device.last_seen
-      ? new Date().getTime() - new Date(device.last_seen).getTime() < 5 * 60 * 1000
+    const isOnline = device.last_seen_at
+      ? new Date().getTime() - new Date(device.last_seen_at).getTime() < 5 * 60 * 1000
       : false;
 
     if (device.status === 'pending') {
@@ -443,8 +443,8 @@ export function DeviceTable() {
                       {device.ip_address || '-'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300">
-                      {device.last_seen
-                        ? new Date(device.last_seen).toLocaleString()
+                      {device.last_seen_at
+                        ? new Date(device.last_seen_at).toLocaleString()
                         : '-'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">

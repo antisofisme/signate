@@ -247,6 +247,7 @@ def get_group_stats(
 
 
 @router.put("/{group_id}", response_model=DeviceGroupResponse)
+@router.patch("/{group_id}", response_model=DeviceGroupResponse)
 def update_device_group(
     group_id: int,
     request: UpdateDeviceGroupRequest,
@@ -254,7 +255,10 @@ def update_device_group(
     current_user: CurrentUser = Depends(get_current_user),
 ):
     """
-    Update a device group
+    Update a device group (supports both PUT and PATCH methods)
+
+    **PUT**: Replace entire resource (all fields required)
+    **PATCH**: Partial update (only provided fields updated)
     """
     try:
         use_case = UpdateDeviceGroupUseCase(db)

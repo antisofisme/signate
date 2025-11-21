@@ -39,7 +39,7 @@ export function TagAssignmentModal({
   if (!isOpen || !device) return null;
 
   const assignedTags = assignedData?.items || [];
-  const allTags = allTagsData?.items || [];
+  const allTags = allTagsData || [];
 
   // Filter out already assigned tags
   const availableTags = allTags.filter(
@@ -122,7 +122,7 @@ export function TagAssignmentModal({
                       <option value="">Select a tag...</option>
                       {availableTags.map((tag) => (
                         <option key={tag.id} value={tag.id}>
-                          {tag.name}
+                          {tag.tag_name}
                         </option>
                       ))}
                     </select>

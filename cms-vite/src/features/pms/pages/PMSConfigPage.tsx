@@ -104,7 +104,7 @@ export default function PMSConfigPage() {
 
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
             <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">Sync Configuration</h2>
-            <PMSSyncStatus value={syncConfig} onChange={setSyncConfig} />
+            <PMSSyncStatus />
           </div>
 
           <div className="flex justify-end gap-3">
@@ -134,7 +134,7 @@ export default function PMSConfigPage() {
         {activeTab === 'rooms' && (
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
             <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">Room to Device Mapping</h2>
-            <RoomMappingTable devices={devices} />
+            <RoomMappingTable availableDevices={devices || []} />
           </div>
         )}
       </div>

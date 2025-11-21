@@ -70,6 +70,10 @@ export const useUpdateDevice = () => {
       // Invalidate specific device and list
       queryClient.invalidateQueries({ queryKey: deviceKeys.detail(variables.id) });
       queryClient.invalidateQueries({ queryKey: deviceKeys.lists() });
+
+      // Invalidate dashboard queries (device status/health may change)
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+
       toast.success('Device updated successfully');
     },
     onError: (error: any) => {
@@ -147,6 +151,10 @@ export const useTVRegister = () => {
     onSuccess: (device) => {
       // Invalidate device list to refetch
       queryClient.invalidateQueries({ queryKey: deviceKeys.lists() });
+
+      // Invalidate dashboard queries (new device affects device count)
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+
       toast.success(`TV registered successfully. Activation code: ${device.unique_code}`);
     },
     onError: (error: any) => {
@@ -167,6 +175,10 @@ export const useMonitorRegister = () => {
     onSuccess: () => {
       // Invalidate device list to refetch
       queryClient.invalidateQueries({ queryKey: deviceKeys.lists() });
+
+      // Invalidate dashboard queries (new device affects device count)
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+
       toast.success('Monitor registered successfully');
     },
     onError: (error: any) => {
@@ -188,6 +200,10 @@ export const useActivateDevice = () => {
       // Invalidate device list and specific device
       queryClient.invalidateQueries({ queryKey: deviceKeys.lists() });
       queryClient.invalidateQueries({ queryKey: deviceKeys.detail(device.id) });
+
+      // Invalidate dashboard queries (device status changed)
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+
       toast.success(`Device "${device.device_name}" activated successfully`);
     },
     onError: (error: any) => {
@@ -326,6 +342,11 @@ export const useAssignTag = () => {
       deviceApi.assignTag(deviceId, tagId),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: [...deviceKeys.all, 'tags', variables.deviceId] });
+
+      // Invalidate tag queries (usage count changes)
+      queryClient.invalidateQueries({ queryKey: ['tags'] });
+      queryClient.invalidateQueries({ queryKey: ['tags', variables.tagId] });
+
       toast.success('Tag assigned successfully');
     },
     onError: (error: any) => {
@@ -346,6 +367,11 @@ export const useUnassignTag = () => {
       deviceApi.unassignTag(deviceId, tagId),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: [...deviceKeys.all, 'tags', variables.deviceId] });
+
+      // Invalidate tag queries (usage count changes)
+      queryClient.invalidateQueries({ queryKey: ['tags'] });
+      queryClient.invalidateQueries({ queryKey: ['tags', variables.tagId] });
+
       toast.success('Tag removed successfully');
     },
     onError: (error: any) => {
@@ -385,6 +411,10 @@ export const useAssignContent = () => {
     }) => deviceApi.assignContent(deviceId, contentId, priority),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: [...deviceKeys.all, 'contents', variables.deviceId] });
+
+      // Invalidate content queries (assignment count may change)
+      queryClient.invalidateQueries({ queryKey: ['content', variables.contentId] });
+
       toast.success('Content assigned successfully');
     },
     onError: (error: any) => {
@@ -405,6 +435,10 @@ export const useUnassignContent = () => {
       deviceApi.unassignContent(deviceId, contentId),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: [...deviceKeys.all, 'contents', variables.deviceId] });
+
+      // Invalidate content queries (assignment count may change)
+      queryClient.invalidateQueries({ queryKey: ['content', variables.contentId] });
+
       toast.success('Content removed successfully');
     },
     onError: (error: any) => {
@@ -437,6 +471,14 @@ export const useAssignPlaylist = () => {
       deviceApi.assignPlaylist(deviceId, playlistId),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: [...deviceKeys.all, 'playlists', variables.deviceId] });
+
+      // Invalidate playlist queries (assignment count changes)
+      queryClient.invalidateQueries({ queryKey: ['playlists'] });
+      queryClient.invalidateQueries({ queryKey: ['playlist', variables.playlistId] });
+
+      // Invalidate dashboard queries (active playlists may change)
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+
       toast.success('Playlist assigned successfully');
     },
     onError: (error: any) => {
@@ -457,6 +499,14 @@ export const useUnassignPlaylist = () => {
       deviceApi.unassignPlaylist(deviceId, playlistId),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: [...deviceKeys.all, 'playlists', variables.deviceId] });
+
+      // Invalidate playlist queries (assignment count changes)
+      queryClient.invalidateQueries({ queryKey: ['playlists'] });
+      queryClient.invalidateQueries({ queryKey: ['playlist', variables.playlistId] });
+
+      // Invalidate dashboard queries (active playlists may change)
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+
       toast.success('Playlist removed successfully');
     },
     onError: (error: any) => {

@@ -30,7 +30,9 @@ export function ToastContainer() {
       );
     });
 
-    return unsubscribe;
+    return () => {
+      unsubscribe();
+    };
   }, []);
 
   const getIcon = (type: string) => {

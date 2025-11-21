@@ -23,14 +23,15 @@ interface MetricCardProps {
 }
 
 const MetricCard = ({ icon: Icon, iconColor, label, value, subtitle, isLoading }: MetricCardProps) => {
-  const iconColorClasses = {
+  const colorMap = {
     blue: 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400',
     green: 'bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400',
     purple: 'bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400',
     orange: 'bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400',
     indigo: 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400',
     pink: 'bg-pink-100 dark:bg-pink-900/30 text-pink-600 dark:text-pink-400',
-  }[iconColor] || iconColorClasses.blue;
+  };
+  const iconColorClasses = colorMap[iconColor] || colorMap.blue;
 
   return (
     <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 hover:shadow-lg transition-shadow">

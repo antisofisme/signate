@@ -294,6 +294,10 @@ export function useMapRoomToDevice() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: PMS_KEYS.rooms() })
       queryClient.invalidateQueries({ queryKey: PMS_KEYS.stats() })
+
+      // Invalidate device queries (device now mapped to room)
+      queryClient.invalidateQueries({ queryKey: ['devices'] })
+
       toast.success('Room mapped to device successfully')
     },
     onError: (error: any) => {
@@ -313,6 +317,10 @@ export function useUnmapRoomFromDevice() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: PMS_KEYS.rooms() })
       queryClient.invalidateQueries({ queryKey: PMS_KEYS.stats() })
+
+      // Invalidate device queries (device no longer mapped to room)
+      queryClient.invalidateQueries({ queryKey: ['devices'] })
+
       toast.success('Room unmapped from device successfully')
     },
     onError: (error: any) => {

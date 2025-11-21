@@ -79,6 +79,10 @@ export const useCreatePlaylist = () => {
     mutationFn: (data: CreatePlaylistRequest) => playlistApi.create(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: playlistKeys.lists() });
+
+      // Invalidate dashboard queries (playlist count changes)
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+
       toast.success('Playlist created successfully');
     },
     onError: (error: any) => {
@@ -117,6 +121,13 @@ export const useDeletePlaylist = () => {
     mutationFn: (id: number) => playlistApi.delete(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: playlistKeys.lists() });
+
+      // Invalidate device queries (devices may have had this playlist assigned)
+      queryClient.invalidateQueries({ queryKey: ['devices'] });
+
+      // Invalidate dashboard queries (playlist count and active playlists change)
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+
       toast.success('Playlist deleted successfully');
     },
     onError: (error: any) => {
@@ -210,6 +221,13 @@ export const useAssignPlaylistToDevices = () => {
       playlistApi.assignDevices(id, data),
     onSuccess: (result, variables) => {
       queryClient.invalidateQueries({ queryKey: playlistKeys.assignments(variables.id) });
+
+      // Invalidate device queries (assigned devices need to show new playlist)
+      queryClient.invalidateQueries({ queryKey: ['devices'] });
+
+      // Invalidate dashboard queries (active playlists may change)
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+
       toast.success(`Assigned to ${result.assigned} devices`);
     },
     onError: (error: any) => {
@@ -229,6 +247,13 @@ export const useAssignPlaylistToTags = () => {
       playlistApi.assignTags(id, data),
     onSuccess: (result, variables) => {
       queryClient.invalidateQueries({ queryKey: playlistKeys.assignments(variables.id) });
+
+      // Invalidate tag queries (tags now have playlist assignments)
+      queryClient.invalidateQueries({ queryKey: ['tags'] });
+
+      // Invalidate dashboard queries (active playlists may change)
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+
       toast.success(`Assigned to ${result.assigned} tags`);
     },
     onError: (error: any) => {
@@ -248,6 +273,13 @@ export const useUnassignPlaylistFromDevices = () => {
       playlistApi.unassignDevices(id, data),
     onSuccess: (result, variables) => {
       queryClient.invalidateQueries({ queryKey: playlistKeys.assignments(variables.id) });
+
+      // Invalidate device queries (devices no longer have this playlist)
+      queryClient.invalidateQueries({ queryKey: ['devices'] });
+
+      // Invalidate dashboard queries (active playlists may change)
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+
       toast.success(`Unassigned from ${result.removed} devices`);
     },
     onError: (error: any) => {
@@ -267,6 +299,13 @@ export const useUnassignPlaylistFromTags = () => {
       playlistApi.unassignTags(id, data),
     onSuccess: (result, variables) => {
       queryClient.invalidateQueries({ queryKey: playlistKeys.assignments(variables.id) });
+
+      // Invalidate tag queries (tags no longer have playlist assignments)
+      queryClient.invalidateQueries({ queryKey: ['tags'] });
+
+      // Invalidate dashboard queries (active playlists may change)
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+
       toast.success(`Unassigned from ${result.removed} tags`);
     },
     onError: (error: any) => {

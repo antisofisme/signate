@@ -135,7 +135,7 @@ export default function PlaylistAssignmentModal({
   );
 
   const availableTags = mockAvailableTags.filter(
-    (tag) => !assignedTags.some((t) => t.tag_id === tag.id)
+    (tag) => !assignedTags.some((t) => t.id === tag.id)
   );
 
   return (
@@ -292,7 +292,7 @@ export default function PlaylistAssignmentModal({
                           {assignment.device_name || `Device #${assignment.device_id}`}
                         </p>
                         <p className="text-sm text-gray-500 dark:text-gray-400">
-                          Assigned: {new Date(assignment.created_at).toLocaleDateString()}
+                          {assignment.location ? `Location: ${assignment.location}` : 'No location set'}
                         </p>
                       </div>
                       <button
@@ -404,18 +404,18 @@ export default function PlaylistAssignmentModal({
                     >
                       <div
                         className="w-4 h-4 rounded-full flex-shrink-0"
-                        style={{ backgroundColor: assignment.tag_color || '#3B82F6' }}
+                        style={{ backgroundColor: assignment.color || '#3B82F6' }}
                       />
                       <div className="flex-1 min-w-0">
                         <p className="font-medium text-gray-900 dark:text-white">
-                          {assignment.tag_name || `Tag #${assignment.tag_id}`}
+                          {assignment.name || `Tag #${assignment.id}`}
                         </p>
                         <p className="text-sm text-gray-500 dark:text-gray-400">
-                          Assigned: {new Date(assignment.created_at).toLocaleDateString()}
+                          Tag ID: {assignment.id}
                         </p>
                       </div>
                       <button
-                        onClick={() => handleUnassignTag(assignment.tag_id)}
+                        onClick={() => handleUnassignTag(assignment.id)}
                         disabled={unassignTags.isPending}
                         className="p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg disabled:opacity-50"
                       >

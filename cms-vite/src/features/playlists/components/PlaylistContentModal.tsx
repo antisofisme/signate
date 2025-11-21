@@ -31,7 +31,7 @@ interface ContentItem {
   id: number;
   content_id: number;
   order_index: number;
-  duration: number;
+  duration?: number; // Optional to match PlaylistContent type
   // From joined content
   content_name?: string;
   content_type?: string;
@@ -58,8 +58,7 @@ export default function PlaylistContentModal({
 
   // Fetch available content
   const { data: availableContentData } = useContentList(
-    { skip: 0, limit: 100 },
-    showAddContent
+    showAddContent ? { skip: 0, limit: 100 } : undefined
   );
 
   // Mutations
@@ -182,7 +181,7 @@ export default function PlaylistContentModal({
     }
   };
 
-  const availableContents = (availableContentData?.items || []).filter(
+  const availableContents = (availableContentData?.data || []).filter(
     (content) => !localContent.some((item) => item.content_id === content.id)
   );
 
@@ -243,7 +242,7 @@ export default function PlaylistContentModal({
                       />
                       <div className="flex-1">
                         <p className="font-medium text-gray-900 dark:text-white">
-                          {content.file_name}
+                          {content.title}
                         </p>
                         <p className="text-sm text-gray-500 dark:text-gray-400">
                           {content.content_type} • {content.duration}s

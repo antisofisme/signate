@@ -66,6 +66,10 @@ export const useUploadContent = () => {
       // Invalidate content list to refetch
       queryClient.invalidateQueries({ queryKey: contentKeys.lists() });
       queryClient.invalidateQueries({ queryKey: contentKeys.stats() });
+
+      // Invalidate dashboard queries (content count and storage change)
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+
       toast.success('Content uploaded successfully');
     },
     onError: (error: any) => {
@@ -97,6 +101,9 @@ export const useBulkUploadContent = () => {
       // Invalidate content list to refetch
       queryClient.invalidateQueries({ queryKey: contentKeys.lists() });
       queryClient.invalidateQueries({ queryKey: contentKeys.stats() });
+
+      // Invalidate dashboard queries (content count and storage change)
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
 
       const { summary } = response.data;
       if (summary.failed > 0) {
@@ -148,6 +155,10 @@ export const useDeleteContent = () => {
       // Invalidate content list to refetch
       queryClient.invalidateQueries({ queryKey: contentKeys.lists() });
       queryClient.invalidateQueries({ queryKey: contentKeys.stats() });
+
+      // Invalidate dashboard queries (content count and storage change)
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+
       toast.success('Content deleted successfully');
     },
     onError: (error: any) => {
@@ -169,6 +180,10 @@ export const useBulkDeleteContent = () => {
       // Invalidate content list to refetch
       queryClient.invalidateQueries({ queryKey: contentKeys.lists() });
       queryClient.invalidateQueries({ queryKey: contentKeys.stats() });
+
+      // Invalidate dashboard queries (content count and storage change)
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+
       toast.success(`${ids.length} content(s) deleted successfully`);
     },
     onError: (error: any) => {

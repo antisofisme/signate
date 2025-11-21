@@ -3,11 +3,12 @@
  * Manage device groups with hierarchical structure
  */
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { toast } from 'sonner'
 import { Folder, Plus, Users, Edit, Trash2, MoreVertical, Grid, List, ChevronRight, ChevronDown, Settings, X, Check, Monitor } from 'lucide-react'
 import { groupsApi } from '../api/groupsApi'
-import { devicesApi } from '../api/devicesApi'
+import { deviceApi } from '../api/deviceApi'
 import type { DeviceGroup, CreateDeviceGroupRequest, UpdateDeviceGroupRequest } from '../types/groups'
 import type { Device } from '../types/device'
 
@@ -31,9 +32,17 @@ export function DeviceGroups() {
   // Create group mutation
   const createGroupMutation = useMutation({
     mutationFn: groupsApi.createGroup,
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['device-groups'] })
       setIsCreateModalOpen(false)
+      toast.success('Group created successfully', {
+        description: `"${data.name}" has been created`
+      })
+    },
+    onError: (error: any) => {
+      toast.error('Failed to create group', {
+        description: error.response?.data?.detail || error.message || 'Please try again'
+      })
     },
   })
 
@@ -41,10 +50,18 @@ export function DeviceGroups() {
   const updateGroupMutation = useMutation({
     mutationFn: ({ id, data }: { id: number; data: UpdateDeviceGroupRequest }) =>
       groupsApi.updateGroup(id, data),
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['device-groups'] })
       setIsEditModalOpen(false)
       setSelectedGroup(null)
+      toast.success('Group updated successfully', {
+        description: `Changes to "${data.name}" have been saved`
+      })
+    },
+    onError: (error: any) => {
+      toast.error('Failed to update group', {
+        description: error.response?.data?.detail || error.message || 'Please try again'
+      })
     },
   })
 
@@ -53,6 +70,12 @@ export function DeviceGroups() {
     mutationFn: groupsApi.deleteGroup,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['device-groups'] })
+      toast.success('Group deleted successfully')
+    },
+    onError: (error: any) => {
+      toast.error('Failed to delete group', {
+        description: error.response?.data?.detail || error.message || 'Please try again'
+      })
     },
   })
 
@@ -502,13 +525,31 @@ function EditGroupModal({
   const [formData, setFormData] = useState<UpdateDeviceGroupRequest>({
     name: group.name,
     description: group.description || '',
-    group_type: group.group_type,
+    group_type: group.group_type as 'chain' | 'hotel' | 'floor' | 'location' | 'custom' | undefined,
     parent_group_id: group.parent_group_id || undefined,
   })
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     onUpdate(formData)
+  }
+
+  // ESC key handler to close modal
+  useEffect(() => {
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !isLoading) {
+        onClose()
+      }
+    }
+    window.addEventListener('keydown', handleEsc)
+    return () => window.removeEventListener('keydown', handleEsc)
+  }, [isLoading, onClose])
+
+  // Click outside to close
+  const handleBackdropClick = (e: React.MouseEvent) => {
+    if (e.target === e.currentTarget && !isLoading) {
+      onClose()
+    }
   }
 
   // Filter out current group and its descendants from parent options
@@ -521,8 +562,11 @@ function EditGroupModal({
   })
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-md">
+    <div
+      className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
+      onClick={handleBackdropClick}
+    >
+      <div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-md" onClick={(e) => e.stopPropagation()}>
         <h2 className="text-xl font-bold mb-4 text-gray-900 dark:text-white">Edit Device Group</h2>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
@@ -532,6 +576,7 @@ function EditGroupModal({
             <input
               type="text"
               required
+              maxLength={200}
               value={formData.name}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
               className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
@@ -639,9 +684,30 @@ function CreateGroupModal({
     onCreate(formData)
   }
 
+  // ESC key handler to close modal
+  useEffect(() => {
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !isLoading) {
+        onClose()
+      }
+    }
+    window.addEventListener('keydown', handleEsc)
+    return () => window.removeEventListener('keydown', handleEsc)
+  }, [isLoading, onClose])
+
+  // Click outside to close
+  const handleBackdropClick = (e: React.MouseEvent) => {
+    if (e.target === e.currentTarget && !isLoading) {
+      onClose()
+    }
+  }
+
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-md">
+    <div
+      className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
+      onClick={handleBackdropClick}
+    >
+      <div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-md" onClick={(e) => e.stopPropagation()}>
         <h2 className="text-xl font-bold mb-4 text-gray-900 dark:text-white">Create Device Group</h2>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
@@ -651,6 +717,7 @@ function CreateGroupModal({
             <input
               type="text"
               required
+              maxLength={200}
               value={formData.name}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
               className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
@@ -748,7 +815,7 @@ function DeviceAssignmentModal({
   // Fetch all devices
   const { data: devicesData, isLoading: isLoadingDevices } = useQuery({
     queryKey: ['devices'],
-    queryFn: () => devicesApi.getAllDevices(),
+    queryFn: () => deviceApi.list(),
   })
 
   // Fetch devices in this group
@@ -777,7 +844,7 @@ function DeviceAssignmentModal({
     },
   })
 
-  const devices = devicesData?.devices || []
+  const devices = devicesData?.items || []
   const assignedDeviceIds = new Set(groupDevicesData?.devices || [])
 
   // Filter devices by search query

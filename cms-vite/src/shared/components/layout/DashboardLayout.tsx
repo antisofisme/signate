@@ -2,7 +2,8 @@
  * Dashboard Layout Component
  *
  * LAYER 1: PRESENTATION
- * Main layout wrapper for authenticated pages
+ * Main layout wrapper for authenticated pages.
+ * Includes automatic cache invalidation on organization switch.
  */
 
 import { Outlet } from 'react-router-dom';
@@ -10,9 +11,17 @@ import Sidebar from './Sidebar';
 import Topbar from './Topbar';
 import { useUIStore } from '@/lib/stores/uiStore';
 import { ToastContainer } from '@/lib/notifications/ToastContainer';
+import { useOrgSwitch } from '@/shared/hooks/useOrgSwitch';
 
 export default function DashboardLayout() {
   const { sidebarOpen } = useUIStore();
+
+  // Automatically handle organization switching and cache invalidation
+  // This hook listens to org-switch events and invalidates all org-scoped queries
+  useOrgSwitch({
+    showToast: true,
+    invalidateCaches: true,
+  });
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">

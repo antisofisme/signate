@@ -4,11 +4,12 @@ FastAPI endpoints for widget management
 """
 
 from typing import Optional
-from fastapi import APIRouter, Depends, Query, Path
+from fastapi import APIRouter, Depends, Query, Path, Request
 from sqlalchemy.orm import Session
 
 from shared.database import get_db
 from shared.auth import get_current_user, CurrentUser
+from shared.logging import AuditLogger
 
 from services.widget.dtos import (
     CreateWidgetRequest,
@@ -38,6 +39,9 @@ from services.widget.use_cases.assign_widget_to_playlist import (
 
 router = APIRouter(prefix="/widgets", tags=["widgets"])
 
+# Initialize audit logger
+audit_logger = AuditLogger()
+
 
 # ============================================================================
 # Widget Endpoints
@@ -47,6 +51,7 @@ router = APIRouter(prefix="/widgets", tags=["widgets"])
 def create_widget(
     request: CreateWidgetRequest,
     current_user: CurrentUser = Depends(get_current_user),
+    http_request: Request = None,
     db: Session = Depends(get_db)
 ):
     """
@@ -54,12 +59,25 @@ def create_widget(
 
     Permissions: admin, manager
     """
-    return create_widget_use_case(
+    result = create_widget_use_case(
         organization_id=current_user.organization_id,
         user_id=current_user.id,
         request=request,
         db=db
     )
+
+    # Audit log
+    audit_logger.log_action(
+        user_id=current_user.id,
+        action="widget.create",
+        resource_type="widget",
+        resource_id=result.id,
+        details={"name": result.name, "widget_type": result.widget_type},
+        ip_address=http_request.client.host if http_request else None,
+        organization_id=current_user.organization_id
+    )
+
+    return result
 
 
 @router.get("", response_model=WidgetListResponse)
@@ -107,6 +125,7 @@ def update_widget(
     widget_id: int = Path(..., description="Widget ID"),
     request: UpdateWidgetRequest = None,
     current_user: CurrentUser = Depends(get_current_user),
+    http_request: Request = None,
     db: Session = Depends(get_db)
 ):
     """
@@ -114,18 +133,32 @@ def update_widget(
 
     Permissions: admin, manager
     """
-    return update_widget_use_case(
+    result = update_widget_use_case(
         widget_id=widget_id,
         organization_id=current_user.organization_id,
         request=request,
         db=db
     )
 
+    # Audit log
+    audit_logger.log_action(
+        user_id=current_user.id,
+        action="widget.update",
+        resource_type="widget",
+        resource_id=result.id,
+        details={"name": result.name, "is_active": result.is_active},
+        ip_address=http_request.client.host if http_request else None,
+        organization_id=current_user.organization_id
+    )
+
+    return result
+
 
 @router.delete("/{widget_id}")
 def delete_widget(
     widget_id: int = Path(..., description="Widget ID"),
     current_user: CurrentUser = Depends(get_current_user),
+    http_request: Request = None,
     db: Session = Depends(get_db)
 ):
     """
@@ -134,11 +167,30 @@ def delete_widget(
     Permissions: admin, manager
     Note: Will cascade delete from playlists
     """
-    return delete_widget_use_case(
+    # Get widget name before deletion for audit log
+    from services.widget.repositories.widget_repo import WidgetRepository
+    repo = WidgetRepository(db)
+    widget = repo.get_widget_by_id(widget_id, current_user.organization_id)
+    widget_name = widget.name if widget else f"ID:{widget_id}"
+
+    result = delete_widget_use_case(
         widget_id=widget_id,
         organization_id=current_user.organization_id,
         db=db
     )
+
+    # Audit log
+    audit_logger.log_action(
+        user_id=current_user.id,
+        action="widget.delete",
+        resource_type="widget",
+        resource_id=widget_id,
+        details={"name": widget_name},
+        ip_address=http_request.client.host if http_request else None,
+        organization_id=current_user.organization_id
+    )
+
+    return result
 
 
 # ============================================================================
@@ -150,6 +202,7 @@ def assign_widget_to_playlist(
     playlist_id: int = Path(..., description="Playlist ID"),
     request: AssignWidgetToPlaylistRequest = None,
     current_user: CurrentUser = Depends(get_current_user),
+    http_request: Request = None,
     db: Session = Depends(get_db)
 ):
     """
@@ -157,12 +210,25 @@ def assign_widget_to_playlist(
 
     Permissions: admin, manager
     """
-    return assign_widget_to_playlist_use_case(
+    result = assign_widget_to_playlist_use_case(
         playlist_id=playlist_id,
         organization_id=current_user.organization_id,
         request=request,
         db=db
     )
+
+    # Audit log
+    audit_logger.log_action(
+        user_id=current_user.id,
+        action="widget.assign_to_playlist",
+        resource_type="widget",
+        resource_id=request.widget_id,
+        details={"playlist_id": playlist_id, "widget_id": request.widget_id},
+        ip_address=http_request.client.host if http_request else None,
+        organization_id=current_user.organization_id
+    )
+
+    return result
 
 
 @router.get("/playlists/{playlist_id}/widgets", response_model=PlaylistWidgetListResponse)
@@ -183,6 +249,7 @@ def update_playlist_widget(
     playlist_widget_id: int = Path(..., description="Playlist Widget ID"),
     request: UpdatePlaylistWidgetRequest = None,
     current_user: CurrentUser = Depends(get_current_user),
+    http_request: Request = None,
     db: Session = Depends(get_db)
 ):
     """
@@ -190,11 +257,24 @@ def update_playlist_widget(
 
     Permissions: admin, manager
     """
-    return update_playlist_widget_use_case(
+    result = update_playlist_widget_use_case(
         playlist_widget_id=playlist_widget_id,
         request=request,
         db=db
     )
+
+    # Audit log
+    audit_logger.log_action(
+        user_id=current_user.id,
+        action="playlist_widget.update",
+        resource_type="playlist_widget",
+        resource_id=result.id,
+        details={"position": result.position, "z_index": result.z_index},
+        ip_address=http_request.client.host if http_request else None,
+        organization_id=current_user.organization_id
+    )
+
+    return result
 
 
 @router.delete("/playlists/{playlist_id}/widgets/{widget_id}")
@@ -202,6 +282,7 @@ def remove_widget_from_playlist(
     playlist_id: int = Path(..., description="Playlist ID"),
     widget_id: int = Path(..., description="Widget ID"),
     current_user: CurrentUser = Depends(get_current_user),
+    http_request: Request = None,
     db: Session = Depends(get_db)
 ):
     """
@@ -209,8 +290,21 @@ def remove_widget_from_playlist(
 
     Permissions: admin, manager
     """
-    return remove_widget_from_playlist_use_case(
+    result = remove_widget_from_playlist_use_case(
         playlist_id=playlist_id,
         widget_id=widget_id,
         db=db
     )
+
+    # Audit log
+    audit_logger.log_action(
+        user_id=current_user.id,
+        action="widget.remove_from_playlist",
+        resource_type="widget",
+        resource_id=widget_id,
+        details={"playlist_id": playlist_id, "widget_id": widget_id},
+        ip_address=http_request.client.host if http_request else None,
+        organization_id=current_user.organization_id
+    )
+
+    return result

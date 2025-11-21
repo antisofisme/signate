@@ -223,6 +223,11 @@ export const API_ENDPOINTS = {
     PAUSE: (id: number) => `/api/v1/schedules/${id}/pause`,
     CHECK_CONFLICTS: '/api/v1/schedules/check-conflicts',
     GET_OCCURRENCES: '/api/v1/schedules/occurrences',
+    // Advanced scheduling features
+    CHECK_CONFLICT: '/api/v1/schedules/check-conflict',
+    VALIDATE: '/api/v1/schedules/validate',
+    NEXT_OCCURRENCE: (id: number) => `/api/v1/schedules/${id}/next-occurrence`,
+    ACTIVE: '/api/v1/schedules/active',
   },
 
   // ========================================

@@ -180,7 +180,7 @@ export default function LiveDeviceMonitor({ devices, isLoading }: LiveDeviceMoni
                   </td>
                   <td className="py-3 px-4">
                     <span className="text-xs text-gray-500 dark:text-gray-400">
-                      {formatDistanceToNow(new Date(device.last_seen), { addSuffix: true })}
+                      {formatDistanceToNow(new Date(device.last_seen_at), { addSuffix: true })}
                     </span>
                   </td>
                 </tr>
@@ -235,7 +235,7 @@ export default function LiveDeviceMonitor({ devices, isLoading }: LiveDeviceMoni
                   </div>
                 )}
                 <div className="text-xs text-gray-500 dark:text-gray-400">
-                  {formatDistanceToNow(new Date(device.last_seen), { addSuffix: true })}
+                  {formatDistanceToNow(new Date(device.last_seen_at), { addSuffix: true })}
                 </div>
               </div>
             </div>

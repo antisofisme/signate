@@ -38,7 +38,7 @@ export function DeviceEditModal({
       setFormData({
         device_name: device.device_name,
         rotation: device.rotation || 0,
-        volume_enabled: device.volume_enabled !== false,
+        volume_enabled: device.is_volume_enabled !== false,
         room_number: device.room_number || '',
       });
     }
@@ -52,7 +52,7 @@ export function DeviceEditModal({
       setFormData({
         device_name: device.device_name,
         rotation: device.rotation || 0,
-        volume_enabled: device.volume_enabled !== false,
+        volume_enabled: device.is_volume_enabled !== false,
         room_number: device.room_number || '',
       });
     }
@@ -84,7 +84,7 @@ export function DeviceEditModal({
         data: {
           device_name: formData.device_name.trim(),
           rotation: formData.rotation,
-          volume_enabled: formData.volume_enabled,
+          is_volume_enabled: formData.volume_enabled,
           room_number: formData.room_number.trim() || undefined,
         },
       });

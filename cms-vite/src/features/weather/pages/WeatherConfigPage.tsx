@@ -167,7 +167,7 @@ export default function WeatherConfigPage() {
         {/* Locations Tab */}
         {activeTab === 'locations' && (
           <LocationManager
-            locations={locations}
+            locations={locations.filter(loc => loc.id !== undefined) as any}
             searchQuery={locationSearch}
             searchResults={searchResults}
             onSearchChange={setLocationSearch}
@@ -180,7 +180,7 @@ export default function WeatherConfigPage() {
         {/* Preview Tab */}
         {activeTab === 'preview' && (
           <WeatherPreview
-            locations={locations}
+            locations={locations.filter(loc => loc.id !== undefined) as any}
             selectedLocationId={previewLocationId}
             weatherData={weatherData}
             onLocationSelect={setPreviewLocationId}

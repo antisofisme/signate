@@ -45,11 +45,11 @@ class DeviceGroupRepository:
         return self._to_domain(db_group)
 
     def add_device_to_group(
-        self, device_id: int, group_id: int, added_by: Optional[int] = None
+        self, device_id: int, group_id: int, added_by_id: Optional[int] = None
     ) -> DeviceGroupMember:
         """Add a device to a group"""
         db_member = DeviceGroupMemberModel(
-            device_id=device_id, group_id=group_id, added_by_id=added_by
+            device_id=device_id, group_id=group_id, added_by_id=added_by_id
         )
 
         self.db.add(db_member)

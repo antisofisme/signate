@@ -41,7 +41,7 @@ export interface LiveDevice {
   status: 'online' | 'offline' | 'warning' | 'error';
   location: string;
   current_content: string | null;
-  last_seen: string;
+  last_seen_at: string;
   cpu_usage: number | null;
   memory_usage: number | null;
   storage_usage: number | null;

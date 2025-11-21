@@ -14,6 +14,7 @@ import {
   DEFAULT_LAYOUT,
   type Widget,
   type WidgetType,
+  type WidgetLayout,
   type CreateWidgetRequest,
   type UpdateWidgetRequest,
 } from '../types/widget.types'
@@ -353,7 +354,7 @@ export const WidgetForm = ({
 
       {/* Layout Editor */}
       <LayoutEditor
-        value={layout}
+        value={(layout || { x: 10, y: 10, width: 200, height: 100 }) as WidgetLayout}
         onChange={(newLayout) => setValue('layout', newLayout)}
         disabled={isLoading}
       />

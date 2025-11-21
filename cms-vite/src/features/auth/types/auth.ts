@@ -15,6 +15,11 @@ export interface User {
   role: 'admin' | 'manager' | 'user';
   organization_id: number | null;
   is_active: boolean;
+
+  // RBAC fields (extended for permission checking)
+  role_id?: number;
+  role_name?: string;
+  permissions?: Record<string, string[]>;  // {resource: [actions]}
 }
 
 export interface Organization {
@@ -34,6 +39,7 @@ export interface AuthState {
   user: User | null;
   token: string | null;
   organizations: Organization[];
+  selectedOrgId: number | null;
   isAuthenticated: boolean;
   isLoading: boolean;
 }
@@ -140,4 +146,18 @@ export interface ResetPasswordFormErrors {
   token?: string;
   new_password?: string;
   confirm_password?: string;
+}
+
+// =============================================================================
+// RBAC PERMISSION TYPES
+// =============================================================================
+
+export type Permission = Record<string, string[]>;
+export type Resource = string;
+export type Action = string;
+
+export interface PermissionCheck {
+  hasPermission: boolean;
+  resource: string;
+  action: string;
 }

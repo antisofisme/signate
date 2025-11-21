@@ -40,7 +40,7 @@ export function ContentAssignmentModal({
   if (!isOpen || !device) return null;
 
   const assignedContents = assignedData?.items || [];
-  const allContents = allContentData?.items || [];
+  const allContents = allContentData?.data || [];
 
   // Filter out already assigned content
   const availableContents = allContents.filter(
@@ -129,7 +129,7 @@ export function ContentAssignmentModal({
                         <option value="">Select content...</option>
                         {availableContents.map((content) => (
                           <option key={content.id} value={content.id}>
-                            {content.name} ({content.type})
+                            {content.title} ({content.content_type})
                           </option>
                         ))}
                       </select>

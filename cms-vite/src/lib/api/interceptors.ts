@@ -3,7 +3,7 @@
  * Request and response interceptors for axios
  */
 
-import { AxiosInstance, AxiosError, InternalAxiosRequestConfig } from 'axios';
+import { AxiosInstance, AxiosError, InternalAxiosRequestConfig, AxiosRequestHeaders } from 'axios';
 import { useAuthStore } from '../stores/authStore';
 
 /**
@@ -15,7 +15,9 @@ export function setupRequestInterceptor(axiosInstance: AxiosInstance) {
       const { token } = useAuthStore.getState();
 
       if (token) {
-        config.headers = config.headers || {};
+        if (!config.headers) {
+          config.headers = {} as AxiosRequestHeaders;
+        }
         config.headers.Authorization = `Bearer ${token}`;
       }
 

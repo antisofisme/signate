@@ -4,40 +4,59 @@
 
 export type DeviceType = 'tv' | 'monitor';
 export type DeviceStatus = 'pending' | 'active' | 'inactive';
+export type LocationType = 'guest_room' | 'lobby' | 'conference_room' | 'restaurant' | 'other';
+export type PrivacyMode = 'none' | 'limited' | 'full';
 
 export interface Device {
   id: number;
   device_type: DeviceType;
   device_name: string;
-  ip_address?: string;
-  unique_code: string;
-  code_expires_at?: string;
-  platform?: string;
-  model_name?: string;
-  firmware_version?: string;
-  status: DeviceStatus;
-  last_seen?: string;
-  created_at: string;
-  updated_at: string;
   organization_id: number;
 
-  // Screen info
+  // Activation info
+  unique_code?: string;
+  code_expires_at?: string;
+  device_uuid?: string;
+
+  // Network info
+  ip_address?: string;
+  platform?: string;
+  user_agent?: string;
+  connection_type?: string;
+  connection_speed?: number;
+
+  // Device metadata
   screen_width?: number;
   screen_height?: number;
   viewport_width?: number;
   viewport_height?: number;
   device_pixel_ratio?: number;
 
-  // Network info
-  user_agent?: string;
-  connection_type?: string;
-  connection_speed?: string;
+  // WebOS specific
+  model_name?: string;
+  firmware_version?: string;
 
-  // Settings
-  rotation?: number;
-  volume_enabled?: boolean;
+  // Status
+  status: DeviceStatus;
+  last_seen_at?: string;
+  is_online: boolean;  // Computed field from backend
 
-  // Relationships
+  // Display settings
+  rotation: number;
+  is_volume_enabled: boolean;
+
+  // Hotel-specific
+  room_number?: string;
+  location_type: LocationType;
+  is_personalization_supported: boolean;
+  privacy_mode: PrivacyMode;
+
+  // Metadata
+  created_at: string;
+  updated_at?: string;
+  released_at?: string;
+
+  // Relationships (optional, may not be included in all responses)
   tags?: DeviceTag[];
   playlists?: DevicePlaylist[];
 }

@@ -1,12 +1,15 @@
 /**
  * Upload Modal Component
  *
- * File upload modal with progress tracking and validation
+ * File upload modal with progress tracking, validation, and quota checks
  */
 
-import { useState } from 'react';
-import { X, Upload, Loader2, FileImage, FileVideo, FileAudio, Trash2 } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { X, Upload, Loader2, FileImage, FileVideo, FileAudio, Trash2, AlertTriangle } from 'lucide-react';
 import { useBulkUploadContent } from '../hooks/useContent';
+import { useCheckContentQuota } from '@/features/organizations/hooks/useOrganizationQuota';
+import { useAuthStore } from '@/lib/stores/authStore';
+import { toast } from 'sonner';
 
 interface UploadModalProps {
   isOpen: boolean;
@@ -27,6 +30,7 @@ const MAX_FILE_SIZE = {
 };
 
 export function UploadModal({ isOpen, onClose }: UploadModalProps) {
+  const { user } = useAuthStore();
   const [files, setFiles] = useState<File[]>([]);
   const [duration, setDuration] = useState(10);
   const [isActive, setIsActive] = useState(true);
@@ -34,6 +38,27 @@ export function UploadModal({ isOpen, onClose }: UploadModalProps) {
   const [error, setError] = useState<string | null>(null);
 
   const uploadMutation = useBulkUploadContent();
+
+  // Calculate total file size
+  const totalFileSize = files.reduce((sum, file) => sum + file.size, 0);
+
+  // Check quota with current total file size
+  const { data: quotaCheck, isLoading: quotaLoading } = useCheckContentQuota(
+    user?.organization_id,
+    totalFileSize
+  );
+
+  // Check if quota is exceeded
+  const isQuotaExceeded = quotaCheck && !quotaCheck.allowed;
+
+  // Show quota warning when files change
+  useEffect(() => {
+    if (files.length > 0 && isQuotaExceeded && quotaCheck) {
+      toast.error('Content Quota Exceeded', {
+        description: quotaCheck.reason || 'Cannot upload more content. Storage or item limit reached.',
+      });
+    }
+  }, [isQuotaExceeded, files.length, quotaCheck]);
 
   if (!isOpen) return null;
 
@@ -103,6 +128,14 @@ export function UploadModal({ isOpen, onClose }: UploadModalProps) {
       return;
     }
 
+    // Final quota check before upload
+    if (isQuotaExceeded) {
+      toast.error('Content Quota Exceeded', {
+        description: quotaCheck?.reason || 'Cannot upload content. Storage or item limit reached.',
+      });
+      return;
+    }
+
     try {
       await uploadMutation.mutateAsync({
         files,
@@ -159,6 +192,26 @@ export function UploadModal({ isOpen, onClose }: UploadModalProps) {
         </div>
 
         <form onSubmit={handleUpload} className="space-y-6">
+          {/* Quota Warning Banner */}
+          {isQuotaExceeded && quotaCheck && (
+            <div className="bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-lg p-4">
+              <div className="flex items-start gap-3">
+                <AlertTriangle className="w-5 h-5 text-orange-600 mt-0.5 flex-shrink-0" />
+                <div>
+                  <h3 className="text-sm font-semibold text-orange-900 dark:text-orange-300 mb-1">
+                    Content Quota Limit Reached
+                  </h3>
+                  <p className="text-xs text-orange-800 dark:text-orange-400">
+                    {quotaCheck.reason}
+                  </p>
+                  <p className="text-xs text-orange-700 dark:text-orange-500 mt-1">
+                    Total file size: {(totalFileSize / 1024 / 1024).toFixed(2)} MB
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Supported File Types Info */}
           <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
             <h3 className="text-sm font-semibold text-blue-900 dark:text-blue-300 mb-3">
@@ -343,13 +396,23 @@ export function UploadModal({ isOpen, onClose }: UploadModalProps) {
             </button>
             <button
               type="submit"
-              disabled={files.length === 0 || uploadMutation.isPending}
+              disabled={files.length === 0 || uploadMutation.isPending || isQuotaExceeded || quotaLoading}
               className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
             >
               {uploadMutation.isPending ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin" />
                   Uploading {files.length} file(s)...
+                </>
+              ) : quotaLoading ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Checking quota...
+                </>
+              ) : isQuotaExceeded ? (
+                <>
+                  <AlertTriangle className="w-4 h-4" />
+                  Quota Exceeded
                 </>
               ) : (
                 <>

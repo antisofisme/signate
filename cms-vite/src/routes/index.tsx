@@ -41,6 +41,7 @@ const RolesPage = lazy(() => import('@/pages/RolesPage'));
 const SessionsPage = lazy(() => import('@/pages/SessionsPage'));
 const PMSConfigPage = lazy(() => import('@/features/pms/pages/PMSConfigPage'));
 const WeatherConfigPage = lazy(() => import('@/features/weather/pages/WeatherConfigPage'));
+const OrganizationQuotaPage = lazy(() => import('@/features/organizations/pages/OrganizationQuotaPage'));
 
 // Wrapper for lazy loaded components
 const LazyPage = ({ component: Component }: { component: React.LazyExoticComponent<() => JSX.Element> }) => (
@@ -93,6 +94,10 @@ export const router = createBrowserRouter([
       {
         path: 'settings',
         element: <LazyPage component={SettingsPage} />,
+      },
+      {
+        path: 'organizations/:id/quota',
+        element: <LazyPage component={OrganizationQuotaPage} />,
       },
       // Device Management
       {

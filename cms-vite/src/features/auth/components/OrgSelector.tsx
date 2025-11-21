@@ -3,13 +3,25 @@
  * Menampilkan daftar organisasi untuk dipilih user
  */
 
-import { useSelectOrganization } from '../hooks/useAuth';
+import { useState } from 'react';
+import { useSelectOrganization, useUserPreferences } from '../hooks/useAuth';
 import { useAuthStore } from '@/lib/stores/authStore';
 import { formatDate } from '@/lib/utils/dateTime';
 
 export function OrgSelector() {
   const { organizations } = useAuthStore();
   const selectOrganization = useSelectOrganization();
+  const { preferences, updatePreferences } = useUserPreferences();
+
+  // Local state for remember checkbox
+  const [rememberOrg, setRememberOrg] = useState(preferences.rememberOrganization);
+
+  // Handle organization selection
+  const handleSelectOrganization = (orgId: number) => {
+    // Update preference before selecting
+    updatePreferences({ rememberOrganization: rememberOrg });
+    selectOrganization(orgId);
+  };
 
   if (organizations.length === 0) {
     return (
@@ -27,7 +39,7 @@ export function OrgSelector() {
         {organizations.map((org) => (
           <button
             key={org.id}
-            onClick={() => selectOrganization(org.id)}
+            onClick={() => handleSelectOrganization(org.id)}
             disabled={!org.is_active}
             className={`
               p-6 rounded-lg border-2 text-left transition-all
@@ -84,11 +96,32 @@ export function OrgSelector() {
         ))}
       </div>
 
+      {/* Remember Organization Checkbox */}
+      <div className="mt-6 p-4 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md">
+        <label className="flex items-start gap-3 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={rememberOrg}
+            onChange={(e) => setRememberOrg(e.target.checked)}
+            className="mt-1 w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 focus:ring-2"
+          />
+          <div className="flex-1">
+            <p className="text-sm font-medium text-gray-900 dark:text-white">
+              Ingat pilihan organisasi saya
+            </p>
+            <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
+              Organisasi yang Anda pilih akan otomatis dipilih saat login berikutnya.
+              Anda tetap dapat beralih organisasi kapan saja dari menu navigasi.
+            </p>
+          </div>
+        </label>
+      </div>
+
       {/* Info Text */}
-      <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-md">
-        <p className="text-sm text-blue-800">
+      <div className="mt-4 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-md">
+        <p className="text-sm text-blue-800 dark:text-blue-300">
           <strong>Info:</strong> Pilih organisasi untuk melanjutkan ke dashboard.
-          Anda dapat mengganti organisasi kapan saja dari menu navigasi.
+          Anda dapat mengganti organisasi kapan saja menggunakan menu beralih organisasi di navigasi atas.
         </p>
       </div>
     </div>

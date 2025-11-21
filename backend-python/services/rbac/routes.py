@@ -11,6 +11,7 @@ from shared.api_routes import RBACRoutes
 from shared.errors import handle_errors
 from shared.responses import success_response
 from shared.auth import get_current_user, require_admin, require_manager, CurrentUser
+from shared.logging import AuditLogger
 
 from .dtos import (
     RoleCreateRequest, RoleUpdateRequest, RoleResponse, RoleListResponse,
@@ -27,6 +28,9 @@ from .use_cases.manage_permissions import ManagePermissionsUseCase
 
 
 router = APIRouter()
+
+# Initialize audit logger
+audit_logger = AuditLogger()
 
 
 # =============================================================================
@@ -139,6 +143,21 @@ def create_role(
         created_by_id=current_user.id  # Audit trail (Migration 046)
     )
 
+    # Audit log
+    audit_logger.log_action(
+        user_id=current_user.id,
+        action="role.create",
+        resource_type="role",
+        resource_id=role.id,
+        details={
+            "role_name": role.name,
+            "organization_id": role.organization_id,
+            "is_system_role": role.is_system_role,
+            "permissions_count": sum(len(actions) for actions in role.permissions.values()) if isinstance(role.permissions, dict) else 0
+        },
+        organization_id=current_user.organization_id
+    )
+
     return RoleResponse.model_validate(role)
 
 
@@ -171,6 +190,24 @@ def update_role(
         updated_by_id=current_user.id  # Audit trail (Migration 046)
     )
 
+    # Audit log
+    audit_logger.log_action(
+        user_id=current_user.id,
+        action="role.update",
+        resource_type="role",
+        resource_id=role_id,
+        details={
+            "role_name": updated_role.name,
+            "organization_id": updated_role.organization_id,
+            "changes": {
+                "name": request.name,
+                "description": request.description,
+                "permissions_updated": request.permissions is not None
+            }
+        },
+        organization_id=current_user.organization_id
+    )
+
     return RoleResponse.model_validate(updated_role)
 
 
@@ -193,8 +230,25 @@ def delete_role(
             from shared.errors import AuthorizationError
             raise AuthorizationError(message="Access denied to this role")
 
+    # Store role info before deletion
+    role_name = role.name
+    role_org_id = role.organization_id
+
     use_case = DeleteRoleUseCase(role_repo)
     use_case.execute(role_id)
+
+    # Audit log
+    audit_logger.log_action(
+        user_id=current_user.id,
+        action="role.delete",
+        resource_type="role",
+        resource_id=role_id,
+        details={
+            "role_name": role_name,
+            "organization_id": role_org_id
+        },
+        organization_id=current_user.organization_id
+    )
 
 
 @router.post(RBACRoutes.CHECK_PERMISSION, response_model=PermissionCheckResponse)
@@ -265,6 +319,20 @@ def add_permission(
         action=request.action
     )
 
+    # Audit log
+    audit_logger.log_action(
+        user_id=current_user.id,
+        action="permission.add",
+        resource_type="role",
+        resource_id=role_id,
+        details={
+            "role_name": role.name,
+            "permission_resource": request.resource,
+            "permission_action": request.action
+        },
+        organization_id=current_user.organization_id
+    )
+
     return success_response(
         data={"success": success},
         message=f"Permission '{request.action}' added to resource '{request.resource}'"
@@ -296,6 +364,20 @@ def remove_permission(
         role_id=role_id,
         resource=request.resource,
         action=request.action
+    )
+
+    # Audit log
+    audit_logger.log_action(
+        user_id=current_user.id,
+        action="permission.remove",
+        resource_type="role",
+        resource_id=role_id,
+        details={
+            "role_name": role.name,
+            "permission_resource": request.resource,
+            "permission_action": request.action
+        },
+        organization_id=current_user.organization_id
     )
 
     return success_response(

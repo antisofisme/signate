@@ -20,7 +20,7 @@ class DeviceRepository(IDeviceRepository):
     def find_by_id(self, device_id: int, organization_id: Optional[int] = None) -> Optional[Device]:
         """
         Find device by ID with organization isolation
-        
+
         Args:
             device_id: Device ID
             organization_id: Organization ID for multi-tenant isolation
@@ -31,13 +31,26 @@ class DeviceRepository(IDeviceRepository):
             selectinload(DeviceModel.commands),
             selectinload(DeviceModel.health_metrics)
         ).filter(DeviceModel.id == device_id)
-        
+
         # SECURITY: Always filter by organization_id to prevent cross-tenant access
         if organization_id is not None:
             query = query.filter(DeviceModel.organization_id == organization_id)
-            
+
         device_model = query.first()
         return self._to_entity(device_model) if device_model else None
+
+    def get_by_id(self, device_id: int, organization_id: Optional[int] = None) -> Optional[Device]:
+        """
+        Get device by ID (alias for find_by_id for compatibility)
+
+        Args:
+            device_id: Device ID
+            organization_id: Organization ID for multi-tenant isolation
+
+        Returns:
+            Device entity or None if not found
+        """
+        return self.find_by_id(device_id, organization_id)
 
     def find_by_code(self, unique_code: str) -> Optional[Device]:
         """

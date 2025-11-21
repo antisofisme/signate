@@ -4,11 +4,12 @@ FastAPI endpoints for template management
 """
 
 from typing import Optional
-from fastapi import APIRouter, Depends, Query, Path
+from fastapi import APIRouter, Depends, Query, Path, Request
 from sqlalchemy.orm import Session
 
 from shared.database import get_db
 from shared.auth import get_current_user, CurrentUser
+from shared.logging import AuditLogger
 
 from services.template.dtos import (
     CreateTemplateRequest,
@@ -39,6 +40,9 @@ from services.template.use_cases.render_template import (
 
 router = APIRouter(prefix="/templates", tags=["templates"])
 
+# Initialize audit logger
+audit_logger = AuditLogger()
+
 
 # ============================================================================
 # Template CRUD Endpoints
@@ -48,6 +52,7 @@ router = APIRouter(prefix="/templates", tags=["templates"])
 def create_template(
     request: CreateTemplateRequest,
     current_user: CurrentUser = Depends(get_current_user),
+    http_request: Request = None,
     db: Session = Depends(get_db)
 ):
     """
@@ -55,12 +60,25 @@ def create_template(
 
     Permissions: All authenticated users
     """
-    return create_template_use_case(
+    result = create_template_use_case(
         organization_id=current_user.organization_id,
         user_id=current_user.id,
         request=request,
         db=db
     )
+
+    # Audit log
+    audit_logger.log_action(
+        user_id=current_user.id,
+        action="template.create",
+        resource_type="template",
+        resource_id=result.id,
+        details={"name": result.name, "template_type": result.template_type},
+        ip_address=http_request.client.host if http_request else None,
+        organization_id=current_user.organization_id
+    )
+
+    return result
 
 
 @router.get("", response_model=TemplateListResponse)
@@ -108,6 +126,7 @@ def update_template(
     template_id: int = Path(..., description="Template ID"),
     request: UpdateTemplateRequest = None,
     current_user: CurrentUser = Depends(get_current_user),
+    http_request: Request = None,
     db: Session = Depends(get_db)
 ):
     """
@@ -115,18 +134,32 @@ def update_template(
 
     Permissions: All authenticated users
     """
-    return update_template_use_case(
+    result = update_template_use_case(
         template_id=template_id,
         organization_id=current_user.organization_id,
         request=request,
         db=db
     )
 
+    # Audit log
+    audit_logger.log_action(
+        user_id=current_user.id,
+        action="template.update",
+        resource_type="template",
+        resource_id=result.id,
+        details={"name": result.name, "is_active": result.is_active},
+        ip_address=http_request.client.host if http_request else None,
+        organization_id=current_user.organization_id
+    )
+
+    return result
+
 
 @router.delete("/{template_id}")
 def delete_template(
     template_id: int = Path(..., description="Template ID"),
     current_user: CurrentUser = Depends(get_current_user),
+    http_request: Request = None,
     db: Session = Depends(get_db)
 ):
     """
@@ -134,11 +167,30 @@ def delete_template(
 
     Permissions: All authenticated users
     """
-    return delete_template_use_case(
+    # Get template name before deletion for audit log
+    from services.template.repositories.template_repo import TemplateRepository
+    repo = TemplateRepository(db)
+    template = repo.get_template_by_id(template_id, current_user.organization_id)
+    template_name = template.name if template else f"ID:{template_id}"
+
+    result = delete_template_use_case(
         template_id=template_id,
         organization_id=current_user.organization_id,
         db=db
     )
+
+    # Audit log
+    audit_logger.log_action(
+        user_id=current_user.id,
+        action="template.delete",
+        resource_type="template",
+        resource_id=template_id,
+        details={"name": template_name},
+        ip_address=http_request.client.host if http_request else None,
+        organization_id=current_user.organization_id
+    )
+
+    return result
 
 
 # ============================================================================

@@ -51,8 +51,8 @@ export function DeviceDetailModal({
   if (!isOpen || !device) return null;
 
   // Calculate online status
-  const isOnline = device.last_seen
-    ? new Date().getTime() - new Date(device.last_seen).getTime() < 5 * 60 * 1000
+  const isOnline = device.last_seen_at
+    ? new Date().getTime() - new Date(device.last_seen_at).getTime() < 5 * 60 * 1000
     : false;
 
   // Handle quick commands
@@ -261,7 +261,7 @@ export function DeviceDetailModal({
                     Volume:
                   </span>
                   <span className="font-medium text-gray-900 dark:text-white">
-                    {device.volume_enabled ? 'Enabled' : 'Disabled'}
+                    {device.is_volume_enabled ? 'Enabled' : 'Disabled'}
                   </span>
                 </div>
                 {device.room_number && (
@@ -281,8 +281,8 @@ export function DeviceDetailModal({
                     Last Seen:
                   </span>
                   <span className="font-medium text-gray-900 dark:text-white text-xs">
-                    {device.last_seen
-                      ? new Date(device.last_seen).toLocaleString()
+                    {device.last_seen_at
+                      ? new Date(device.last_seen_at).toLocaleString()
                       : 'Never'}
                   </span>
                 </div>

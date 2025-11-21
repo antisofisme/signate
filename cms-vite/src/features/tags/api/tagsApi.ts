@@ -55,9 +55,8 @@ export const tagsApi = {
       API_ENDPOINTS.TAGS.USAGE(id)
     );
     return {
-      ...response.data.data.tag,
-      device_count: response.data.data.usage.device_count,
-      content_count: response.data.data.usage.content_count
+      tag: response.data.data.tag,
+      usage: response.data.data.usage
     };
   },
 
