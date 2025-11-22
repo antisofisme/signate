@@ -272,11 +272,21 @@ def assign_content_to_device(
                 detail="Content already assigned to this device"
             )
 
+        # Get device's organization_id
+        device_query = text("SELECT organization_id FROM devices WHERE id = :device_id")
+        device = db.execute(device_query, {"device_id": device_id}).fetchone()
+
+        if not device:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Device not found"
+            )
+
         # Insert assignment
         insert_query = text("""
             INSERT INTO content_assignments
-            (device_id, content_id, priority, schedule, expires_at, assigned_at)
-            VALUES (:device_id, :content_id, :priority, :schedule, :expires_at, NOW())
+            (device_id, content_id, priority, schedule, expires_at, assigned_at, organization_id)
+            VALUES (:device_id, :content_id, :priority, :schedule, :expires_at, NOW(), :organization_id)
             RETURNING id, assigned_at
         """)
 
@@ -285,7 +295,8 @@ def assign_content_to_device(
             "content_id": request.content_id,
             "priority": request.priority,
             "schedule": request.schedule,
-            "expires_at": request.expires_at
+            "expires_at": request.expires_at,
+            "organization_id": device.organization_id
         })
         db.commit()
 
