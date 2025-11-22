@@ -6,11 +6,12 @@
  */
 
 import { useState } from 'react';
-import { FileText, Plus, Trash2, Loader2, Star } from 'lucide-react';
+import { FileText, Plus, Trash2, Loader2, Star, Image, Video, Music, ArrowRight } from 'lucide-react';
 import { Modal } from '@/shared/components';
 import { useDeviceContents, useAssignContent, useUnassignContent } from '../../hooks/useDevices';
 import { useContentList } from '@/shared/hooks/useSharedContents';
 import type { Device } from '../../types/device';
+import type { Content } from '@/features/contents/types/content';
 
 interface ContentAssignmentModalProps {
   isOpen: boolean;
@@ -23,7 +24,6 @@ export function ContentAssignmentModal({
   device,
   onClose,
 }: ContentAssignmentModalProps) {
-  const [selectedContentId, setSelectedContentId] = useState<number | null>(null);
   const [priority, setPriority] = useState<number>(1);
 
   // Fetch assigned content for this device
@@ -49,18 +49,33 @@ export function ContentAssignmentModal({
     (content) => !assignedContents.some((assigned) => assigned.content_id === content.id)
   );
 
-  // Handle assign
-  const handleAssign = async () => {
-    if (!selectedContentId) return;
+  // Get content type icon
+  const getContentIcon = (type: string) => {
+    switch (type) {
+      case 'image':
+        return Image;
+      case 'video':
+        return Video;
+      case 'audio':
+        return Music;
+      default:
+        return FileText;
+    }
+  };
 
+  // Get content details by ID
+  const getContentDetails = (contentId: number) => {
+    return allContents.find((c) => c.id === contentId);
+  };
+
+  // Handle assign with priority
+  const handleAssign = async (contentId: number) => {
     try {
       await assignContent.mutateAsync({
         deviceId: device.id,
-        contentId: selectedContentId,
+        contentId,
         priority,
       });
-      setSelectedContentId(null);
-      setPriority(1);
     } catch (error) {
       // Error handled by mutation
     }
@@ -77,7 +92,7 @@ export function ContentAssignmentModal({
 
   const isLoading = loadingAssigned || loadingAllContent;
 
-  // Custom header with icon
+  // Custom header with icon and priority selector
   const customHeader = (
     <div className="border-b border-gray-200 dark:border-gray-700 px-6 py-4">
       <div className="flex items-center justify-between">
@@ -89,6 +104,23 @@ export function ContentAssignmentModal({
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
             {device.device_name} - Priority 1 (Highest)
           </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <label className="text-sm font-medium text-gray-700 dark:text-gray-300 flex items-center gap-1">
+            <Star className="w-4 h-4" />
+            Priority:
+          </label>
+          <input
+            type="number"
+            min="1"
+            max="100"
+            value={priority}
+            onChange={(e) => setPriority(parseInt(e.target.value) || 1)}
+            className="w-20 px-3 py-1.5 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+          />
+          <span className="text-xs text-gray-500 dark:text-gray-400">
+            (Higher = More Important)
+          </span>
         </div>
       </div>
     </div>
@@ -114,137 +146,162 @@ export function ContentAssignmentModal({
         </div>
       }
     >
-      {/* Content */}
+      {/* Content - 2 Column Grid */}
       <div className="p-6">
         {isLoading ? (
           <div className="flex items-center justify-center py-12">
             <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
           </div>
         ) : (
-          <div className="space-y-6">
-            {/* Assign New Content */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
-                Assign New Content
-              </label>
+          <div className="grid grid-cols-2 gap-6">
+            {/* Left Column - Available Content */}
+            <div className="border-r border-gray-200 dark:border-gray-700 pr-4">
+              <h4 className="font-semibold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
+                <FileText className="w-4 h-4" />
+                Available Content ({availableContents.length})
+              </h4>
               {availableContents.length === 0 ? (
                 <p className="text-sm text-gray-500 dark:text-gray-400">
-                  All available content is already assigned to this device.
+                  All content is already assigned.
                 </p>
               ) : (
-                <div className="space-y-3">
-                  <div className="flex gap-2">
-                    <select
-                      value={selectedContentId || ''}
-                      onChange={(e) => setSelectedContentId(Number(e.target.value) || null)}
-                      className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                      disabled={assignContent.isPending}
-                    >
-                      <option value="">Select content...</option>
-                      {availableContents.map((content) => (
-                        <option key={content.id} value={content.id}>
-                          {content.title} ({content.content_type})
-                        </option>
-                      ))}
-                    </select>
-                    <button
-                      onClick={handleAssign}
-                      disabled={!selectedContentId || assignContent.isPending}
-                      className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2 transition-colors"
-                    >
-                      {assignContent.isPending ? (
-                        <>
-                          <Loader2 className="w-4 h-4 animate-spin" />
-                          Assigning...
-                        </>
-                      ) : (
-                        <>
-                          <Plus className="w-4 h-4" />
-                          Assign
-                        </>
-                      )}
-                    </button>
-                  </div>
+                <div className="space-y-2 max-h-[500px] overflow-y-auto">
+                  {availableContents.map((content: Content) => {
+                    const Icon = getContentIcon(content.content_type);
+                    return (
+                      <div
+                        key={content.id}
+                        className="group relative border border-gray-200 dark:border-gray-700 rounded-lg p-3 hover:border-blue-500 dark:hover:border-blue-400 transition-colors cursor-pointer"
+                        onClick={() => handleAssign(content.id)}
+                      >
+                        <div className="flex gap-3">
+                          {/* Thumbnail */}
+                          <div className="w-16 h-16 flex-shrink-0 rounded bg-gray-100 dark:bg-gray-700 overflow-hidden">
+                            {content.thumbnail_url ? (
+                              <img
+                                src={content.thumbnail_url}
+                                alt={content.title}
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center">
+                                <Icon className="w-6 h-6 text-gray-400" />
+                              </div>
+                            )}
+                          </div>
 
-                  {/* Priority Input */}
-                  {selectedContentId && (
-                    <div className="flex items-center gap-3">
-                      <label className="text-sm font-medium text-gray-700 dark:text-gray-300 flex items-center gap-1">
-                        <Star className="w-4 h-4" />
-                        Priority:
-                      </label>
-                      <input
-                        type="number"
-                        min="1"
-                        max="100"
-                        value={priority}
-                        onChange={(e) => setPriority(parseInt(e.target.value) || 1)}
-                        className="w-20 px-3 py-1.5 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                        disabled={assignContent.isPending}
-                      />
-                      <span className="text-xs text-gray-500 dark:text-gray-400">
-                        (Higher = More Important)
-                      </span>
-                    </div>
-                  )}
+                          {/* Info */}
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                              {content.title}
+                            </p>
+                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                              {content.content_type} • {content.duration}s
+                            </p>
+                          </div>
+
+                          {/* Assign Button */}
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleAssign(content.id);
+                            }}
+                            disabled={assignContent.isPending}
+                            className="opacity-0 group-hover:opacity-100 flex-shrink-0 p-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 transition-all"
+                            title="Assign to device"
+                          >
+                            <ArrowRight className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               )}
             </div>
 
-            {/* Currently Assigned Content */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
-                Currently Assigned Content ({assignedContents.length})
-              </label>
+            {/* Right Column - Assigned Content */}
+            <div className="pl-4">
+              <h4 className="font-semibold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
+                <Star className="w-4 h-4 text-yellow-500" />
+                Assigned Content ({assignedContents.length})
+              </h4>
               {assignedContents.length === 0 ? (
                 <p className="text-sm text-gray-500 dark:text-gray-400">
-                  No content directly assigned to this device yet.
+                  No content assigned yet.
                 </p>
               ) : (
-                <div className="space-y-2">
+                <div className="space-y-2 max-h-[500px] overflow-y-auto">
                   {assignedContents
                     .sort((a, b) => b.priority - a.priority)
-                    .map((assigned) => (
-                      <div
-                        key={assigned.id}
-                        className="flex items-center justify-between p-3 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
-                      >
-                        <div className="flex items-center gap-3 flex-1">
-                          <div className="flex items-center gap-2">
-                            <Star className="w-4 h-4 text-yellow-500" />
-                            <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">
-                              {assigned.priority}
-                            </span>
-                          </div>
-                          <div>
-                            <div className="text-sm font-medium text-gray-900 dark:text-white">
-                              {assigned.content_name}
+                    .map((assigned) => {
+                      const content = getContentDetails(assigned.content_id);
+                      if (!content) return null;
+                      const Icon = getContentIcon(assigned.content_type);
+                      return (
+                        <div
+                          key={assigned.id}
+                          className="group relative border border-gray-200 dark:border-gray-700 rounded-lg p-3 hover:border-red-500 dark:hover:border-red-400 transition-colors"
+                        >
+                          <div className="flex gap-3">
+                            {/* Priority Badge */}
+                            <div className="flex-shrink-0 w-8 h-16 flex items-center justify-center">
+                              <div className="flex flex-col items-center">
+                                <Star className="w-4 h-4 text-yellow-500" />
+                                <span className="text-xs font-bold text-gray-700 dark:text-gray-300">
+                                  {assigned.priority}
+                                </span>
+                              </div>
                             </div>
-                            <div className="text-xs text-gray-500 dark:text-gray-400">
-                              {assigned.content_type}
+
+                            {/* Thumbnail */}
+                            <div className="w-16 h-16 flex-shrink-0 rounded bg-gray-100 dark:bg-gray-700 overflow-hidden">
+                              {content.thumbnail_url ? (
+                                <img
+                                  src={content.thumbnail_url}
+                                  alt={content.title}
+                                  className="w-full h-full object-cover"
+                                />
+                              ) : (
+                                <div className="w-full h-full flex items-center justify-center">
+                                  <Icon className="w-6 h-6 text-gray-400" />
+                                </div>
+                              )}
                             </div>
+
+                            {/* Info */}
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                                {assigned.content_name}
+                              </p>
+                              <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                                {assigned.content_type}
+                              </p>
+                            </div>
+
+                            {/* Remove Button */}
+                            <button
+                              onClick={() => handleUnassign(assigned.content_id)}
+                              disabled={unassignContent.isPending}
+                              className="opacity-0 group-hover:opacity-100 flex-shrink-0 p-2 rounded-lg bg-red-600 text-white hover:bg-red-700 disabled:opacity-50 transition-all"
+                              title="Remove from device"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
                           </div>
                         </div>
-                        <button
-                          onClick={() => handleUnassign(assigned.content_id)}
-                          disabled={unassignContent.isPending}
-                          className="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 disabled:opacity-50"
-                          title="Remove content"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    ))}
+                      );
+                    })}
                 </div>
               )}
-            </div>
 
-            {/* Info */}
-            <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
-              <p className="text-sm text-blue-700 dark:text-blue-300">
-                <strong>Priority 1 (Highest):</strong> Direct assignments override tag-based and playlist assignments.
-                Higher priority numbers are shown first.
-              </p>
+              {/* Info */}
+              <div className="mt-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
+                <p className="text-sm text-blue-700 dark:text-blue-300">
+                  <strong>Priority 1 (Highest):</strong> Direct assignments override tag-based and playlist assignments.
+                  Higher priority numbers are shown first.
+                </p>
+              </div>
             </div>
           </div>
         )}
