@@ -36,16 +36,9 @@ import { toast } from 'sonner';
 import { TVRegisterModal } from './modals/TVRegisterModal';
 import { MonitorRegisterModal } from './modals/MonitorRegisterModal';
 import { ActivationCodeModal } from './modals/ActivationCodeModal';
-import { DeviceDetailModal } from './modals/DeviceDetailModal';
-import { DeviceEditModal } from './modals/DeviceEditModal';
-import { DeviceLogsModal } from './modals/DeviceLogsModal';
-import { SendCommandModal } from './modals/SendCommandModal';
-import { TagAssignmentModal } from './modals/TagAssignmentModal';
-import { ContentAssignmentModal } from './modals/ContentAssignmentModal';
-import { PlaylistAssignmentModal } from './modals/PlaylistAssignmentModal';
-import { SpeedHistoryModal } from './modals/SpeedHistoryModal';
-import { DeviceHealthModal } from './modals/DeviceHealthModal';
-import { DevicePreviewModal } from './modals/DevicePreviewModal';
+import { DeviceManagementModal, type DeviceTabId } from './modals/DeviceManagementModal';
+import { DeviceSettingsModal } from './modals/DeviceSettingsModal';
+import { UnifiedContentAssignmentModal, type ContentAssignmentTabId } from './modals/UnifiedContentAssignmentModal';
 import { PendingDeviceCard } from './PendingDeviceCard';
 
 // Delete Confirmation Modal
@@ -127,43 +120,23 @@ export function DeviceTable() {
     isOpen: boolean;
     device: Device | null;
   }>({ isOpen: false, device: null });
-  const [detailModal, setDetailModal] = useState<{
+
+  // ✨ NEW: Unified Device Management Modal
+  const [deviceManagementModal, setDeviceManagementModal] = useState<{
     isOpen: boolean;
     device: Device | null;
-  }>({ isOpen: false, device: null });
-  const [editModal, setEditModal] = useState<{
-    isOpen: boolean;
-    device: Device | null;
-  }>({ isOpen: false, device: null });
-  const [logsModal, setLogsModal] = useState<{
-    isOpen: boolean;
-    device: Device | null;
-  }>({ isOpen: false, device: null });
-  const [commandModal, setCommandModal] = useState<{
-    isOpen: boolean;
-    device: Device | null;
-  }>({ isOpen: false, device: null });
-  const [tagAssignmentModal, setTagAssignmentModal] = useState<{
-    isOpen: boolean;
-    device: Device | null;
-  }>({ isOpen: false, device: null });
+    defaultTab: DeviceTabId;
+  }>({ isOpen: false, device: null, defaultTab: 'overview' });
+
+  // Content Assignment Modal (separate from DeviceManagementModal)
   const [contentAssignmentModal, setContentAssignmentModal] = useState<{
     isOpen: boolean;
     device: Device | null;
-  }>({ isOpen: false, device: null });
-  const [playlistAssignmentModal, setPlaylistAssignmentModal] = useState<{
-    isOpen: boolean;
-    device: Device | null;
-  }>({ isOpen: false, device: null });
-  const [speedHistoryModal, setSpeedHistoryModal] = useState<{
-    isOpen: boolean;
-    device: Device | null;
-  }>({ isOpen: false, device: null });
-  const [healthModal, setHealthModal] = useState<{
-    isOpen: boolean;
-    device: Device | null;
-  }>({ isOpen: false, device: null });
-  const [previewModal, setPreviewModal] = useState<{
+    defaultTab: ContentAssignmentTabId;
+  }>({ isOpen: false, device: null, defaultTab: 'direct' });
+
+  // Device Settings Modal (separate from DeviceManagementModal)
+  const [settingsModal, setSettingsModal] = useState<{
     isOpen: boolean;
     device: Device | null;
   }>({ isOpen: false, device: null });
@@ -454,95 +427,47 @@ export function DeviceTable() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <div className="flex items-center justify-end gap-2">
+                        {/* View Device - Opens unified modal (Overview tab) */}
                         <button
                           onClick={() =>
-                            setHealthModal({ isOpen: true, device })
-                          }
-                          className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
-                          title="Health & Commands"
-                        >
-                          <Activity className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() =>
-                            setDetailModal({ isOpen: true, device })
+                            setDeviceManagementModal({ isOpen: true, device, defaultTab: 'overview' })
                           }
                           className="text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-300"
-                          title="View details"
+                          title="View device"
                         >
                           <Eye className="w-4 h-4" />
                         </button>
+
+                        {/* Quick Actions Dropdown */}
                         <button
                           onClick={() =>
-                            setEditModal({ isOpen: true, device })
-                          }
-                          className="text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-300"
-                          title="Edit device"
-                        >
-                          <Edit className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() =>
-                            setLogsModal({ isOpen: true, device })
-                          }
-                          className="text-purple-600 hover:text-purple-800 dark:text-purple-400 dark:hover:text-purple-300"
-                          title="View logs"
-                        >
-                          <Terminal className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() =>
-                            setCommandModal({ isOpen: true, device })
+                            setDeviceManagementModal({ isOpen: true, device, defaultTab: 'commands' })
                           }
                           className="text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-300"
-                          title="Send command"
+                          title="Commands"
                         >
                           <Send className="w-4 h-4" />
                         </button>
+                        {/* Content Management - Opens separate UnifiedContentAssignmentModal */}
                         <button
                           onClick={() =>
-                            setTagAssignmentModal({ isOpen: true, device })
-                          }
-                          className="text-yellow-600 hover:text-yellow-800 dark:text-yellow-400 dark:hover:text-yellow-300"
-                          title="Manage tags"
-                        >
-                          <Tag className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() =>
-                            setContentAssignmentModal({ isOpen: true, device })
+                            setContentAssignmentModal({ isOpen: true, device, defaultTab: 'direct' })
                           }
                           className="text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300"
-                          title="Manage content"
+                          title="Manage content, tags & playlists"
                         >
                           <FileText className="w-4 h-4" />
                         </button>
+
+                        {/* Edit/Settings - Opens standalone Settings Modal */}
                         <button
                           onClick={() =>
-                            setPlaylistAssignmentModal({ isOpen: true, device })
+                            setSettingsModal({ isOpen: true, device })
                           }
-                          className="text-pink-600 hover:text-pink-800 dark:text-pink-400 dark:hover:text-pink-300"
-                          title="Manage playlists"
+                          className="text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-300"
+                          title="Edit device settings"
                         >
-                          <List className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() =>
-                            setSpeedHistoryModal({ isOpen: true, device })
-                          }
-                          className="text-cyan-600 hover:text-cyan-800 dark:text-cyan-400 dark:hover:text-cyan-300"
-                          title="Speed test history"
-                        >
-                          <Wifi className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() =>
-                            setPreviewModal({ isOpen: true, device })
-                          }
-                          className="text-orange-600 hover:text-orange-800 dark:text-orange-400 dark:hover:text-orange-300"
-                          title="Preview device content"
-                        >
-                          <Play className="w-4 h-4" />
+                          <Edit className="w-4 h-4" />
                         </button>
                         <button
                           onClick={() =>
@@ -597,88 +522,33 @@ export function DeviceTable() {
         onClose={() => setActivationCodeModal({ isOpen: false, device: null })}
       />
 
-      {/* Device Detail Modal */}
-      <DeviceDetailModal
-        isOpen={detailModal.isOpen}
-        device={detailModal.device}
-        onClose={() => setDetailModal({ isOpen: false, device: null })}
-        onEdit={(device) => {
-          setDetailModal({ isOpen: false, device: null });
-          setEditModal({ isOpen: true, device });
-        }}
-        onShowLogs={(device) => {
-          setDetailModal({ isOpen: false, device: null });
-          setLogsModal({ isOpen: true, device });
+      {/* ✨ NEW: Unified Device Management Modal - Replaces 10+ old modals */}
+      <DeviceManagementModal
+        isOpen={deviceManagementModal.isOpen}
+        device={deviceManagementModal.device}
+        defaultTab={deviceManagementModal.defaultTab}
+        onClose={() => setDeviceManagementModal({ isOpen: false, device: null, defaultTab: 'overview' })}
+        onRefresh={() => {
+          // React Query will auto-refetch
         }}
       />
 
-      {/* Device Edit Modal */}
-      <DeviceEditModal
-        isOpen={editModal.isOpen}
-        device={editModal.device}
-        onClose={() => setEditModal({ isOpen: false, device: null })}
-        onSuccess={() => {
-          // Refresh will happen automatically via React Query
-        }}
-      />
-
-      {/* Device Logs Modal */}
-      <DeviceLogsModal
-        isOpen={logsModal.isOpen}
-        device={logsModal.device}
-        onClose={() => setLogsModal({ isOpen: false, device: null })}
-      />
-
-      {/* Send Command Modal */}
-      <SendCommandModal
-        isOpen={commandModal.isOpen}
-        device={commandModal.device}
-        onClose={() => setCommandModal({ isOpen: false, device: null })}
-        onSuccess={() => {
-          // Command sent successfully
-        }}
-      />
-
-      {/* Tag Assignment Modal */}
-      <TagAssignmentModal
-        isOpen={tagAssignmentModal.isOpen}
-        device={tagAssignmentModal.device}
-        onClose={() => setTagAssignmentModal({ isOpen: false, device: null })}
-      />
-
-      {/* Content Assignment Modal */}
-      <ContentAssignmentModal
+      {/* ✨ Unified Content Assignment Modal - Separate modal with 3 tabs */}
+      <UnifiedContentAssignmentModal
         isOpen={contentAssignmentModal.isOpen}
         device={contentAssignmentModal.device}
-        onClose={() => setContentAssignmentModal({ isOpen: false, device: null })}
+        defaultTab={contentAssignmentModal.defaultTab}
+        onClose={() => setContentAssignmentModal({ isOpen: false, device: null, defaultTab: 'direct' })}
       />
 
-      {/* Playlist Assignment Modal */}
-      <PlaylistAssignmentModal
-        isOpen={playlistAssignmentModal.isOpen}
-        device={playlistAssignmentModal.device}
-        onClose={() => setPlaylistAssignmentModal({ isOpen: false, device: null })}
-      />
-
-      {/* Speed History Modal */}
-      <SpeedHistoryModal
-        isOpen={speedHistoryModal.isOpen}
-        device={speedHistoryModal.device}
-        onClose={() => setSpeedHistoryModal({ isOpen: false, device: null })}
-      />
-
-      {/* Device Health & Commands Modal */}
-      <DeviceHealthModal
-        isOpen={healthModal.isOpen}
-        device={healthModal.device}
-        onClose={() => setHealthModal({ isOpen: false, device: null })}
-      />
-
-      {/* Device Preview Modal */}
-      <DevicePreviewModal
-        isOpen={previewModal.isOpen}
-        device={previewModal.device}
-        onClose={() => setPreviewModal({ isOpen: false, device: null })}
+      {/* ✨ Device Settings Modal - Standalone settings/edit modal */}
+      <DeviceSettingsModal
+        isOpen={settingsModal.isOpen}
+        device={settingsModal.device}
+        onClose={() => setSettingsModal({ isOpen: false, device: null })}
+        onSuccess={() => {
+          // React Query will auto-refetch
+        }}
       />
     </>
   );

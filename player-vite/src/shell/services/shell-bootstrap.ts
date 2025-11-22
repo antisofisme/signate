@@ -358,6 +358,9 @@ class ShellBootstrapClass implements IShellBootstrap {
         'DeviceInfoPopup'
       );
 
+      // Note: Rotation is now applied via PlayerPlaylistSync when device_settings are received
+      // This ensures rotation is synced together with other device settings (volume, background audio)
+
       SharedLogger.log('[ShellBootstrap] 🎉 All player services initialized');
     } catch (error) {
       SharedLogger.error('[ShellBootstrap] ❌ Failed to initialize player services:', error);

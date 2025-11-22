@@ -41,6 +41,7 @@ export interface Playlist {
 export interface DeviceSettings {
   volume_level: number;  // 0-100
   is_volume_enabled: boolean;
+  rotation: number;  // 0, 90, 180, 270
   background_audio_id: number | null;
   background_audio_url: string | null;
   background_audio_name: string | null;

@@ -95,15 +95,28 @@ export function PlaylistAssignmentModal({
       maxWidth="2xl"
       customHeader={customHeader}
       footer={
-        <div className="border-t border-gray-200 dark:border-gray-700 px-6 py-4">
-          <div className="flex justify-end">
-            <button
-              onClick={onClose}
-              disabled={assignPlaylist.isPending || unassignPlaylist.isPending}
-              className="px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors disabled:opacity-50"
-            >
-              Close
-            </button>
+        <div className="border-t border-gray-200 dark:border-gray-700">
+          {/* Info */}
+          <div className="px-6 pt-4">
+            <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
+              <p className="text-sm text-blue-700 dark:text-blue-300">
+                <strong>Priority 3 (Lowest):</strong> Playlist content is shown when no direct content or tag-based content is assigned.
+                Multiple playlists will be combined and shuffled.
+              </p>
+            </div>
+          </div>
+
+          {/* Close Button */}
+          <div className="px-6 py-4">
+            <div className="flex justify-end">
+              <button
+                onClick={onClose}
+                disabled={assignPlaylist.isPending || unassignPlaylist.isPending}
+                className="px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors disabled:opacity-50"
+              >
+                Close
+              </button>
+            </div>
           </div>
         </div>
       }
@@ -195,14 +208,6 @@ export function PlaylistAssignmentModal({
                   ))}
                 </div>
               )}
-            </div>
-
-            {/* Info */}
-            <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
-              <p className="text-sm text-blue-700 dark:text-blue-300">
-                <strong>Priority 3 (Lowest):</strong> Playlist content is shown when no direct content or tag-based content is assigned.
-                Multiple playlists will be combined and shuffled.
-              </p>
             </div>
           </div>
         )}

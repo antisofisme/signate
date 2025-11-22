@@ -75,7 +75,7 @@ def get_device_tags(
             dt.id,
             dt.device_id,
             dt.tag_id,
-            t.name as tag_name,
+            t.tag_name as tag_name,
             t.color as tag_color,
             dt.assigned_at
         FROM device_tags dt
@@ -142,14 +142,14 @@ def assign_tag_to_device(
         row = result.fetchone()
 
         # Get tag details
-        tag_query = text("SELECT name, color FROM tags WHERE id = :tag_id")
+        tag_query = text("SELECT tag_name, color FROM tags WHERE id = :tag_id")
         tag = db.execute(tag_query, {"tag_id": request.tag_id}).fetchone()
 
         return {
             "id": row.id,
             "device_id": device_id,
             "tag_id": request.tag_id,
-            "tag_name": tag.name,
+            "tag_name": tag.tag_name,
             "tag_color": tag.color,
             "assigned_at": row.assigned_at,
             "message": "Tag assigned successfully"
@@ -216,8 +216,8 @@ def get_device_contents(
             ca.id,
             ca.device_id,
             ca.content_id,
-            c.name as content_name,
-            c.type as content_type,
+            c.title as content_name,
+            c.content_type as content_type,
             ca.priority,
             ca.assigned_at,
             ca.expires_at
@@ -254,11 +254,11 @@ def assign_content_to_device(
     request: AssignContentRequest,
     db: Session = Depends(get_db)
 ):
-    """Assign content directly to a device"""
+    """Assign content directly to a device or update priority if already assigned"""
     try:
         # Check if already assigned
         check_query = text("""
-            SELECT id FROM content_assignments
+            SELECT id, priority FROM content_assignments
             WHERE device_id = :device_id AND content_id = :content_id
         """)
         existing = db.execute(check_query, {
@@ -267,10 +267,40 @@ def assign_content_to_device(
         }).fetchone()
 
         if existing:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Content already assigned to this device"
-            )
+            # UPDATE: If already assigned, just update the priority
+            update_query = text("""
+                UPDATE content_assignments
+                SET priority = :priority,
+                    schedule = :schedule,
+                    expires_at = :expires_at
+                WHERE id = :assignment_id
+                RETURNING id, assigned_at
+            """)
+            result = db.execute(update_query, {
+                "assignment_id": existing.id,
+                "priority": request.priority,
+                "schedule": request.schedule,
+                "expires_at": request.expires_at
+            })
+            db.commit()
+
+            row = result.fetchone()
+
+            # Get content details
+            content_query = text("SELECT title, content_type FROM contents WHERE id = :content_id")
+            content = db.execute(content_query, {"content_id": request.content_id}).fetchone()
+
+            return {
+                "id": row.id,
+                "device_id": device_id,
+                "content_id": request.content_id,
+                "content_name": content.title,
+                "content_type": content.content_type,
+                "priority": request.priority,
+                "assigned_at": row.assigned_at,
+                "expires_at": request.expires_at,
+                "message": "Content priority updated successfully"
+            }
 
         # Get device's organization_id
         device_query = text("SELECT organization_id FROM devices WHERE id = :device_id")

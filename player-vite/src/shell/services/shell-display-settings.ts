@@ -389,6 +389,100 @@ class ShellDisplaySettingsClass {
   }
 
   /**
+   * Apply screen rotation from device settings
+   * Reads rotation value from SharedDeviceState and applies CSS transform
+   * Handles width/height swap for 90/270 degree rotations
+   */
+  applyRotation(): void {
+    const rotation = SharedDeviceState.getScreenRotation();
+    const playerContainer = document.getElementById('player-container');
+
+    if (!playerContainer) {
+      SharedLogger.warn('[DisplaySettings] Player container not found, cannot apply rotation');
+      return;
+    }
+
+    // Remove any existing rotation styles
+    playerContainer.style.transform = '';
+    playerContainer.style.width = '';
+    playerContainer.style.height = '';
+    playerContainer.style.position = '';
+    playerContainer.style.top = '';
+    playerContainer.style.left = '';
+
+    if (rotation === 0) {
+      // No rotation needed
+      SharedLogger.log('[DisplaySettings] Applied rotation: 0deg (no rotation)');
+      return;
+    }
+
+    // Get viewport dimensions
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+
+    // Apply rotation transform
+    playerContainer.style.transformOrigin = 'center center';
+    playerContainer.style.position = 'fixed';
+
+    if (rotation === 90 || rotation === 270) {
+      // For 90/270 degrees, we need to swap width and height
+      // and adjust positioning to keep content centered
+      playerContainer.style.width = `${viewportHeight}px`;
+      playerContainer.style.height = `${viewportWidth}px`;
+      playerContainer.style.transform = `rotate(${rotation}deg)`;
+
+      // Center the rotated container
+      if (rotation === 90) {
+        playerContainer.style.top = `${(viewportHeight - viewportWidth) / 2}px`;
+        playerContainer.style.left = `${(viewportWidth - viewportHeight) / 2}px`;
+      } else if (rotation === 270) {
+        playerContainer.style.top = `${(viewportHeight - viewportWidth) / 2}px`;
+        playerContainer.style.left = `${(viewportWidth - viewportHeight) / 2}px`;
+      }
+    } else if (rotation === 180) {
+      // For 180 degrees, no width/height swap needed
+      playerContainer.style.width = `${viewportWidth}px`;
+      playerContainer.style.height = `${viewportHeight}px`;
+      playerContainer.style.transform = `rotate(180deg)`;
+      playerContainer.style.top = '0';
+      playerContainer.style.left = '0';
+    }
+
+    SharedLogger.log(`[DisplaySettings] Applied rotation: ${rotation}deg (viewport: ${viewportWidth}x${viewportHeight})`);
+  }
+
+  /**
+   * Sync rotation from backend device settings
+   * Fetches device info and updates local rotation preference
+   */
+  async syncRotationFromBackend(): Promise<void> {
+    try {
+      const deviceId = SharedDeviceState.getDeviceId();
+      if (!deviceId) {
+        SharedLogger.warn('[DisplaySettings] No device ID, skipping rotation sync');
+        return;
+      }
+
+      // Fetch device info from backend using device ID (no auth required)
+      const response = await SharedAPIClient.get(`/api/v1/devices/${deviceId}`);
+
+      const device = (response as any).data?.data || (response as any).data;
+
+      if (device && typeof device.rotation === 'number') {
+        // Update local rotation preference
+        SharedDeviceState.setScreenRotation(device.rotation);
+
+        // Apply rotation immediately
+        this.applyRotation();
+
+        SharedLogger.log(`[DisplaySettings] Synced rotation from backend: ${device.rotation}deg`);
+      }
+    } catch (error) {
+      SharedLogger.error('[DisplaySettings] Failed to sync rotation from backend:', error);
+    }
+  }
+
+  /**
    * Cleanup event listeners
    */
   destroy(): void {

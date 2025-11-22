@@ -25,6 +25,7 @@ class DeviceSettings(BaseModel):
     """Device audio and display settings"""
     volume_level: int = 75
     is_volume_enabled: bool = True
+    rotation: int = 0
     background_audio_id: Optional[int] = None
     background_audio_url: Optional[str] = None
     background_audio_name: Optional[str] = None
@@ -92,6 +93,7 @@ def build_device_settings(device, db: Session) -> DeviceSettings:
     return DeviceSettings(
         volume_level=getattr(device, 'volume_level', 75),
         is_volume_enabled=getattr(device, 'is_volume_enabled', True),
+        rotation=getattr(device, 'rotation', 0),
         background_audio_id=background_audio_id,
         background_audio_url=background_audio_url,
         background_audio_name=background_audio_name

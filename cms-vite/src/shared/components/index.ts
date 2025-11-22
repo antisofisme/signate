@@ -11,3 +11,5 @@ export { Pagination, PaginationCompact } from './Pagination';
 export type { PaginationProps } from './Pagination';
 export { Modal, ModalOverlay } from './Modal';
 export type { ModalProps, ModalOverlayProps, MaxWidthKey } from './Modal';
+export { Tabs, TabPanel } from './Tabs';
+export type { Tab } from './Tabs';

@@ -23,6 +23,8 @@ export { AssignmentHistory } from './AssignmentHistory';
 export { AssignContentWithExpiry } from './AssignContentWithExpiry';
 
 // Modals
+export { DeviceManagementModal } from './modals/DeviceManagementModal';
+export type { DeviceTabId } from './modals/DeviceManagementModal';
 export { DeviceDetailModal } from './modals/DeviceDetailModal';
 export { DeviceLogsModal } from './modals/DeviceLogsModal';
 export { DeviceEditModal } from './modals/DeviceEditModal';
@@ -32,3 +34,5 @@ export { MonitorRegisterModal } from './modals/MonitorRegisterModal';
 export { SendCommandModal } from './modals/SendCommandModal';
 export { PlaylistAssignmentModal } from './modals/PlaylistAssignmentModal';
 export { ContentAssignmentModal } from './modals/ContentAssignmentModal';
+export { UnifiedContentAssignmentModal } from './modals/UnifiedContentAssignmentModal';
+export type { ContentAssignmentTabId } from './modals/UnifiedContentAssignmentModal';

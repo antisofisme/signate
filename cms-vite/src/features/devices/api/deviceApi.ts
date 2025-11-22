@@ -160,7 +160,7 @@ export const deviceApi = {
     id: number,
     deviceData: Partial<Device>
   ): Promise<Device> => {
-    const response = await apiClient.patch<DetailResponse>(
+    const response = await apiClient.put<DetailResponse>(
       API_ENDPOINTS.DEVICES.UPDATE(id),
       deviceData
     );
