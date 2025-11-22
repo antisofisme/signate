@@ -84,36 +84,98 @@ export function SpeedHistoryModal({
       }
     : null;
 
-  // Custom header with icon
+  // Custom header with icon and summary cards
   const customHeader = (
-    <div className="border-b border-gray-200 dark:border-gray-700 px-6 py-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-            <Wifi className="w-5 h-5" />
-            Network Speed Test History
-          </h3>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-            {device.device_name}
-          </p>
+    <div className="border-b border-gray-200 dark:border-gray-700">
+      <div className="px-6 py-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+              <Wifi className="w-5 h-5" />
+              Network Speed Test History
+            </h3>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+              {device.device_name}
+            </p>
+          </div>
         </div>
       </div>
+
+      {/* Summary Cards */}
+      {averages && (
+        <div className="px-6 pb-4">
+          <div className="grid grid-cols-3 gap-4">
+            <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+              <div className="flex items-center gap-2 text-blue-700 dark:text-blue-300 mb-2">
+                <TrendingDown className="w-4 h-4" />
+                <span className="text-sm font-medium">Avg Download</span>
+              </div>
+              <p className="text-2xl font-bold text-blue-900 dark:text-blue-100">
+                {formatSpeed(averages.download)} <span className="text-sm">Mbps</span>
+              </p>
+            </div>
+
+            <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4">
+              <div className="flex items-center gap-2 text-green-700 dark:text-green-300 mb-2">
+                <TrendingUp className="w-4 h-4" />
+                <span className="text-sm font-medium">Avg Upload</span>
+              </div>
+              <p className="text-2xl font-bold text-green-900 dark:text-green-100">
+                {formatSpeed(averages.upload)} <span className="text-sm">Mbps</span>
+              </p>
+            </div>
+
+            <div className="bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-lg p-4">
+              <div className="flex items-center gap-2 text-purple-700 dark:text-purple-300 mb-2">
+                <Activity className="w-4 h-4" />
+                <span className="text-sm font-medium">Avg Latency</span>
+              </div>
+              <p className="text-2xl font-bold text-purple-900 dark:text-purple-100">
+                {Math.round(averages.latency)} <span className="text-sm">ms</span>
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 
-  // Footer
+  // Footer with quality criteria and close button
   const footer = (
-    <div className="border-t border-gray-200 dark:border-gray-700 px-6 py-4">
-      <div className="flex justify-between items-center">
-        <p className="text-sm text-gray-500 dark:text-gray-400">
-          Showing last {speedTests?.length || 0} speed tests
-        </p>
-        <button
-          onClick={onClose}
-          className="px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
-        >
-          Close
-        </button>
+    <div className="border-t border-gray-200 dark:border-gray-700">
+      {/* Quality Criteria */}
+      <div className="px-6 pt-4">
+        <div className="bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600 rounded-lg p-4">
+          <h4 className="text-sm font-semibold text-gray-900 dark:text-white mb-2">
+            Quality Criteria:
+          </h4>
+          <ul className="text-sm text-gray-600 dark:text-gray-400 space-y-1">
+            <li>
+              <span className="font-medium text-green-600 dark:text-green-400">Good:</span> Download ≥ 25 Mbps, Upload ≥ 10 Mbps
+            </li>
+            <li>
+              <span className="font-medium text-yellow-600 dark:text-yellow-400">Fair:</span> Download ≥ 10 Mbps, Upload ≥ 5 Mbps
+            </li>
+            <li>
+              <span className="font-medium text-red-600 dark:text-red-400">Poor:</span> Below fair criteria
+            </li>
+          </ul>
+        </div>
+      </div>
+
+      {/* Footer Actions */}
+      <div className="px-6 py-4">
+        <div className="flex justify-between items-center">
+          <p className="text-sm text-gray-500 dark:text-gray-400">
+            Showing last {speedTests?.length || 0} speed tests
+          </p>
+          <button
+            onClick={onClose}
+            className="px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+          >
+            Close
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -143,42 +205,7 @@ export function SpeedHistoryModal({
             </p>
           </div>
         ) : (
-          <div className="space-y-6">
-            {/* Summary Cards */}
-            {averages && (
-              <div className="grid grid-cols-3 gap-4">
-                <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
-                  <div className="flex items-center gap-2 text-blue-700 dark:text-blue-300 mb-2">
-                    <TrendingDown className="w-4 h-4" />
-                    <span className="text-sm font-medium">Avg Download</span>
-                  </div>
-                  <p className="text-2xl font-bold text-blue-900 dark:text-blue-100">
-                    {formatSpeed(averages.download)} <span className="text-sm">Mbps</span>
-                  </p>
-                </div>
-
-                <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4">
-                  <div className="flex items-center gap-2 text-green-700 dark:text-green-300 mb-2">
-                    <TrendingUp className="w-4 h-4" />
-                    <span className="text-sm font-medium">Avg Upload</span>
-                  </div>
-                  <p className="text-2xl font-bold text-green-900 dark:text-green-100">
-                    {formatSpeed(averages.upload)} <span className="text-sm">Mbps</span>
-                  </p>
-                </div>
-
-                <div className="bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-lg p-4">
-                  <div className="flex items-center gap-2 text-purple-700 dark:text-purple-300 mb-2">
-                    <Activity className="w-4 h-4" />
-                    <span className="text-sm font-medium">Avg Latency</span>
-                  </div>
-                  <p className="text-2xl font-bold text-purple-900 dark:text-purple-100">
-                    {Math.round(averages.latency)} <span className="text-sm">ms</span>
-                  </p>
-                </div>
-              </div>
-            )}
-
+          <>
             {/* Speed Test Table */}
             <div className="overflow-x-auto">
               <table className="w-full border-collapse">
@@ -235,25 +262,7 @@ export function SpeedHistoryModal({
                 </tbody>
               </table>
             </div>
-
-            {/* Info */}
-            <div className="bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600 rounded-lg p-4">
-              <h4 className="text-sm font-semibold text-gray-900 dark:text-white mb-2">
-                Quality Criteria:
-              </h4>
-              <ul className="text-sm text-gray-600 dark:text-gray-400 space-y-1">
-                <li>
-                  <span className="font-medium text-green-600 dark:text-green-400">Good:</span> Download ≥ 25 Mbps, Upload ≥ 10 Mbps
-                </li>
-                <li>
-                  <span className="font-medium text-yellow-600 dark:text-yellow-400">Fair:</span> Download ≥ 10 Mbps, Upload ≥ 5 Mbps
-                </li>
-                <li>
-                  <span className="font-medium text-red-600 dark:text-red-400">Poor:</span> Below fair criteria
-                </li>
-              </ul>
-            </div>
-          </div>
+          </>
         )}
       </div>
     </Modal>
