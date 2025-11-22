@@ -1,12 +1,13 @@
 /**
  * Connection Log Storage
  * IndexedDB storage for connection activity logs with rotation
+ * @updated 2025-11-21T12:22:00Z - Fixed getUnsentLogs to use cursor iteration
  *
  * @features
  * - Store network and server connection logs
  * - Automatic rotation (max 1000 entries OR 7 days)
  * - Track upload status (sent/unsent)
- * - Fast queries with indexes
+ * - Fast queries with indexes (using cursor to avoid boolean index issues)
  */
 
 import { SharedLogger } from '@shared/logger';
@@ -153,6 +154,7 @@ class ConnectionLogStorageClass {
 
   /**
    * Get unsent logs (for batch upload)
+   * Uses cursor iteration to avoid browser-specific IDBKeyRange issues with boolean values
    */
   async getUnsentLogs(): Promise<ConnectionLogEntry[]> {
     if (!this.db) {
@@ -162,15 +164,26 @@ class ConnectionLogStorageClass {
     return new Promise((resolve, reject) => {
       const transaction = this.db!.transaction(this.STORE_NAME, 'readonly');
       const store = transaction.objectStore(this.STORE_NAME);
-      const index = store.index('isSent');
 
-      // Use 0 for false (boolean stored as number in IndexedDB)
-      const request = index.getAll(IDBKeyRange.only(0));
+      // Use cursor iteration instead of index query to avoid DataError in some browsers
+      const logs: ConnectionLogEntry[] = [];
+      const request = store.openCursor();
 
-      request.onsuccess = () => {
-        const logs = request.result as ConnectionLogEntry[];
-        SharedLogger.log(`[ConnectionLogStorage] Found ${logs.length} unsent logs`);
-        resolve(logs);
+      request.onsuccess = (event) => {
+        const cursor = (event.target as IDBRequest<IDBCursorWithValue>).result;
+
+        if (cursor) {
+          const log = cursor.value as ConnectionLogEntry;
+          // Manually filter for unsent logs (isSent === false or undefined)
+          if (log.isSent === false || log.isSent === undefined) {
+            logs.push(log);
+          }
+          cursor.continue();
+        } else {
+          // All records processed
+          SharedLogger.log(`[ConnectionLogStorage] Found ${logs.length} unsent logs`);
+          resolve(logs);
+        }
       };
 
       request.onerror = () => {

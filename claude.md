@@ -1,3 +1,9 @@
+# GitHub Credentials
+
+**Repository**: `https://github.com/antisofisme/signate.git`
+
+---
+
 # Refactoring Concept
 
 ## Overview

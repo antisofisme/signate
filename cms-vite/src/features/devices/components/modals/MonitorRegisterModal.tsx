@@ -109,15 +109,50 @@ export function MonitorRegisterModal({
     </div>
   );
 
+  // Footer
+  const footer = (
+    <div className="border-t border-gray-200 dark:border-gray-700 px-6 py-4">
+      <div className="flex justify-end gap-3">
+        <button
+          type="button"
+          onClick={handleClose}
+          disabled={registerMutation.isPending}
+          className="px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg disabled:opacity-50 transition-colors"
+        >
+          Cancel
+        </button>
+        <button
+          type="submit"
+          form="monitor-register-form"
+          disabled={registerMutation.isPending}
+          className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 flex items-center gap-2 transition-colors"
+        >
+          {registerMutation.isPending ? (
+            <>
+              <Loader2 className="w-4 h-4 animate-spin" />
+              Activating...
+            </>
+          ) : (
+            <>
+              <Monitor className="w-4 h-4" />
+              Activate Monitor
+            </>
+          )}
+        </button>
+      </div>
+    </div>
+  );
+
   return (
     <Modal
       isOpen={isOpen}
       onClose={handleClose}
       maxWidth="md"
       customHeader={customHeader}
+      footer={footer}
     >
       {/* Form */}
-      <form onSubmit={handleSubmit} className="p-6 space-y-4">
+      <form id="monitor-register-form" onSubmit={handleSubmit} className="p-6 space-y-4">
         {/* Error Message */}
         {error && (
           <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3">
@@ -195,35 +230,6 @@ export function MonitorRegisterModal({
           <p className="text-sm text-purple-700 dark:text-purple-300">
             <strong>How it works:</strong> Enter the 6-digit activation code shown on the monitor screen. The device will be automatically assigned to your organization.
           </p>
-        </div>
-
-        {/* Actions */}
-        <div className="flex justify-end gap-3 pt-4">
-          <button
-            type="button"
-            onClick={handleClose}
-            disabled={registerMutation.isPending}
-            className="px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg disabled:opacity-50 transition-colors"
-          >
-            Cancel
-          </button>
-          <button
-            type="submit"
-            disabled={registerMutation.isPending}
-            className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 flex items-center gap-2 transition-colors"
-          >
-            {registerMutation.isPending ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin" />
-                Activating...
-              </>
-            ) : (
-              <>
-                <Monitor className="w-4 h-4" />
-                Activate Monitor
-              </>
-            )}
-          </button>
         </div>
       </form>
     </Modal>

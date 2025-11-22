@@ -123,6 +123,34 @@ export function SendCommandModal({
       title="Send Command"
       subtitle={device.device_name}
       maxWidth="md"
+      footer={
+        <div className="border-t border-gray-200 dark:border-gray-700 px-6 py-4 flex justify-end gap-3">
+          <button
+            onClick={handleClose}
+            disabled={sendCommand.isPending}
+            className="px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg disabled:opacity-50 transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleSend}
+            disabled={sendCommand.isPending || !selectedCommand}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2 transition-colors"
+          >
+            {sendCommand.isPending ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Sending...
+              </>
+            ) : (
+              <>
+                <Send className="w-4 h-4" />
+                Send Command
+              </>
+            )}
+          </button>
+        </div>
+      }
     >
       {/* Content */}
       <div className="p-6 space-y-4">
@@ -253,34 +281,6 @@ export function SendCommandModal({
             </div>
           </div>
         )}
-      </div>
-
-      {/* Footer */}
-      <div className="border-t border-gray-200 dark:border-gray-700 px-6 py-4 flex justify-end gap-3">
-        <button
-          onClick={handleClose}
-          disabled={sendCommand.isPending}
-          className="px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg disabled:opacity-50 transition-colors"
-        >
-          Cancel
-        </button>
-        <button
-          onClick={handleSend}
-          disabled={sendCommand.isPending || !selectedCommand}
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2 transition-colors"
-        >
-          {sendCommand.isPending ? (
-            <>
-              <Loader2 className="w-4 h-4 animate-spin" />
-              Sending...
-            </>
-          ) : (
-            <>
-              <Send className="w-4 h-4" />
-              Send Command
-            </>
-          )}
-        </button>
       </div>
     </Modal>
   );

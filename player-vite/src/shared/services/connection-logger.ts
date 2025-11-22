@@ -185,8 +185,19 @@ class ConnectionLoggerClass {
       await ConnectionLogStorage.markAsSent(logIds);
 
       SharedLogger.log(`[ConnectionLogger] ✅ Uploaded ${unsentLogs.length} logs successfully`);
-    } catch (error) {
+    } catch (error: any) {
       SharedLogger.error('[ConnectionLogger] Failed to upload logs:', error);
+
+      // Auto-recover from IndexedDB corruption (DataError)
+      if (error?.name === 'DataError') {
+        SharedLogger.warn('[ConnectionLogger] IndexedDB corrupted, clearing and starting fresh...');
+        try {
+          await ConnectionLogStorage.clearAll();
+          SharedLogger.log('[ConnectionLogger] IndexedDB cleared, will collect fresh logs');
+        } catch (clearError) {
+          SharedLogger.error('[ConnectionLogger] Failed to clear IndexedDB:', clearError);
+        }
+      }
       // Don't throw - will retry on next upload cycle
     }
   }

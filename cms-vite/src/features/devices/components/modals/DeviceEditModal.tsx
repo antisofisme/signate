@@ -98,15 +98,50 @@ export function DeviceEditModal({
     }
   };
 
+  // Footer
+  const footer = (
+    <div className="border-t border-gray-200 dark:border-gray-700 px-6 py-4">
+      <div className="flex justify-end gap-3">
+        <button
+          type="button"
+          onClick={handleClose}
+          disabled={updateMutation.isPending}
+          className="px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg disabled:opacity-50 transition-colors"
+        >
+          Cancel
+        </button>
+        <button
+          type="submit"
+          form="device-edit-form"
+          disabled={updateMutation.isPending}
+          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2 transition-colors"
+        >
+          {updateMutation.isPending ? (
+            <>
+              <Loader2 className="w-4 h-4 animate-spin" />
+              Saving...
+            </>
+          ) : (
+            <>
+              <Save className="w-4 h-4" />
+              Save Changes
+            </>
+          )}
+        </button>
+      </div>
+    </div>
+  );
+
   return (
     <Modal
       isOpen={isOpen}
       onClose={handleClose}
       title="Edit Device"
       maxWidth="md"
+      footer={footer}
     >
       {/* Form */}
-      <form onSubmit={handleSubmit} className="p-6 space-y-4">
+      <form id="device-edit-form" onSubmit={handleSubmit} className="p-6 space-y-4">
         {/* Error Message */}
         {error && (
           <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3">
@@ -205,35 +240,6 @@ export function DeviceEditModal({
             <strong>Note:</strong> Changes will take effect immediately on the device.
             The device may need to refresh to apply rotation changes.
           </p>
-        </div>
-
-        {/* Actions */}
-        <div className="flex justify-end gap-3 pt-4">
-          <button
-            type="button"
-            onClick={handleClose}
-            disabled={updateMutation.isPending}
-            className="px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg disabled:opacity-50 transition-colors"
-          >
-            Cancel
-          </button>
-          <button
-            type="submit"
-            disabled={updateMutation.isPending}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2 transition-colors"
-          >
-            {updateMutation.isPending ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin" />
-                Saving...
-              </>
-            ) : (
-              <>
-                <Save className="w-4 h-4" />
-                Save Changes
-              </>
-            )}
-          </button>
         </div>
       </form>
     </Modal>

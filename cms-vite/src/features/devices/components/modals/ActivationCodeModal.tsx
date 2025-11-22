@@ -71,12 +71,27 @@ export function ActivationCodeModal({
     </div>
   );
 
+  // Footer
+  const footer = (
+    <div className="border-t border-gray-200 dark:border-gray-700 px-6 py-4">
+      <div className="flex justify-end">
+        <button
+          onClick={onClose}
+          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+        >
+          Got it
+        </button>
+      </div>
+    </div>
+  );
+
   return (
     <Modal
       isOpen={isOpen}
       onClose={onClose}
       maxWidth="md"
       customHeader={customHeader}
+      footer={footer}
     >
       <div className="p-6">
         {/* Activation Code Display */}
@@ -117,7 +132,7 @@ export function ActivationCodeModal({
         </div>
 
         {/* Instructions */}
-        <div className="space-y-4 mb-6">
+        <div className="space-y-4">
           <div className="flex items-start gap-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4">
             <div className="w-6 h-6 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
               <Tv className="w-3 h-3 text-blue-600 dark:text-blue-400" />
@@ -141,16 +156,6 @@ export function ActivationCodeModal({
               the activation on your TV before it expires.
             </p>
           </div>
-        </div>
-
-        {/* Actions */}
-        <div className="flex justify-end">
-          <button
-            onClick={onClose}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-          >
-            Got it
-          </button>
         </div>
       </div>
     </Modal>

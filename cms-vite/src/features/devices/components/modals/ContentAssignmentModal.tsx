@@ -100,6 +100,19 @@ export function ContentAssignmentModal({
       onClose={onClose}
       maxWidth="4xl"
       customHeader={customHeader}
+      footer={
+        <div className="border-t border-gray-200 dark:border-gray-700 px-6 py-4">
+          <div className="flex justify-end">
+            <button
+              onClick={onClose}
+              disabled={assignContent.isPending || unassignContent.isPending}
+              className="px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors disabled:opacity-50"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      }
     >
       {/* Content */}
       <div className="p-6">
@@ -235,19 +248,6 @@ export function ContentAssignmentModal({
             </div>
           </div>
         )}
-      </div>
-
-      {/* Footer */}
-      <div className="border-t border-gray-200 dark:border-gray-700 px-6 py-4">
-        <div className="flex justify-end">
-          <button
-            onClick={onClose}
-            disabled={assignContent.isPending || unassignContent.isPending}
-            className="px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors disabled:opacity-50"
-          >
-            Close
-          </button>
-        </div>
       </div>
     </Modal>
   );

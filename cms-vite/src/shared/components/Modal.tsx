@@ -75,6 +75,8 @@ interface ModalProps {
   showHeader?: boolean;
   /** Custom header content (replaces default header) */
   customHeader?: ReactNode;
+  /** Custom footer content (static, doesn't scroll) */
+  footer?: ReactNode;
   /** Close on backdrop click */
   closeOnBackdropClick?: boolean;
   /** Background opacity (0-100) */
@@ -95,6 +97,7 @@ export function Modal({
   showCloseButton = true,
   showHeader = true,
   customHeader,
+  footer,
   closeOnBackdropClick = true,
   backdropOpacity = 50,
 }: ModalProps) {
@@ -108,8 +111,11 @@ export function Modal({
 
   return createPortal(
     <div
-      className={`bg-black/${backdropOpacity} flex items-center justify-center`}
-      style={overlayStyles}
+      className="flex items-center justify-center"
+      style={{
+        ...overlayStyles,
+        backgroundColor: `rgba(0, 0, 0, ${backdropOpacity / 100})`,
+      }}
       onClick={handleBackdropClick}
     >
       <div
@@ -150,6 +156,13 @@ export function Modal({
         <div className="flex-1 overflow-y-auto">
           {children}
         </div>
+
+        {/* Footer */}
+        {footer && (
+          <div className="flex-shrink-0">
+            {footer}
+          </div>
+        )}
       </div>
     </div>,
     getModalRoot()

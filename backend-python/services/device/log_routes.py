@@ -259,6 +259,14 @@ class ConnectionLogEntryDTO(BaseModel):
     error_message: Optional[str] = Field(None, max_length=1000, description="Error details if failed")
     download_speed_mbps: Optional[float] = Field(None, ge=0, description="Download speed in Mbps")
     upload_speed_mbps: Optional[float] = Field(None, ge=0, description="Upload speed in Mbps")
+    # Dedicated fields for better query performance (added in migration 046)
+    connection_type: Optional[str] = Field(None, max_length=20, description="Network type: wifi, ethernet, cellular, etc")
+    effective_type: Optional[str] = Field(None, max_length=10, description="Effective network type: 4g, 3g, 2g, etc")
+    rtt_ms: Optional[int] = Field(None, ge=0, description="Round-trip time in milliseconds")
+    endpoint: Optional[str] = Field(None, max_length=200, description="API endpoint accessed")
+    http_status: Optional[int] = Field(None, description="HTTP status code")
+    test_trigger: Optional[str] = Field(None, max_length=10, description="Speed test trigger: auto or manual")
+    test_duration_ms: Optional[int] = Field(None, ge=0, description="Speed test duration in milliseconds")
     metadata: Optional[dict] = Field(default={}, description="Additional metadata")
 
 class SaveConnectionLogsDTO(BaseModel):

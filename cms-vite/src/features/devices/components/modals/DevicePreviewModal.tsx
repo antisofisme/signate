@@ -150,7 +150,7 @@ export function DevicePreviewModal({ isOpen, device, onClose }: DevicePreviewMod
   if (!device) return null;
 
   return (
-    <ModalOverlay isOpen={isOpen} onClose={onClose} backdropOpacity={90}>
+    <ModalOverlay isOpen={isOpen} onClose={onClose} backdropOpacity={50}>
       <div
         className={`bg-gray-900 rounded-lg overflow-hidden flex flex-col transition-all duration-300 ${
           isFullscreen

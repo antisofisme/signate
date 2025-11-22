@@ -101,12 +101,30 @@ export function SpeedHistoryModal({
     </div>
   );
 
+  // Footer
+  const footer = (
+    <div className="border-t border-gray-200 dark:border-gray-700 px-6 py-4">
+      <div className="flex justify-between items-center">
+        <p className="text-sm text-gray-500 dark:text-gray-400">
+          Showing last {speedTests?.length || 0} speed tests
+        </p>
+        <button
+          onClick={onClose}
+          className="px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+        >
+          Close
+        </button>
+      </div>
+    </div>
+  );
+
   return (
     <Modal
       isOpen={isOpen}
       onClose={onClose}
       maxWidth="4xl"
       customHeader={customHeader}
+      footer={footer}
     >
       {/* Content */}
       <div className="p-6">
@@ -237,21 +255,6 @@ export function SpeedHistoryModal({
             </div>
           </div>
         )}
-      </div>
-
-      {/* Footer */}
-      <div className="border-t border-gray-200 dark:border-gray-700 px-6 py-4">
-        <div className="flex justify-between items-center">
-          <p className="text-sm text-gray-500 dark:text-gray-400">
-            Showing last {speedTests?.length || 0} speed tests
-          </p>
-          <button
-            onClick={onClose}
-            className="px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
-          >
-            Close
-          </button>
-        </div>
       </div>
     </Modal>
   );

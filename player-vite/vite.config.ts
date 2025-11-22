@@ -1,8 +1,34 @@
-import { defineConfig } from 'vite';
+import { defineConfig, Plugin } from 'vite';
 import path from 'path';
+import fs from 'fs';
+
+/**
+ * Plugin to generate version.json on build
+ * This allows the player to detect when a new build is deployed
+ */
+function versionPlugin(): Plugin {
+  return {
+    name: 'version-plugin',
+    closeBundle() {
+      const now = new Date();
+      const versionInfo = {
+        buildTime: now.toISOString(),
+        buildTimestamp: now.getTime(),
+        buildDate: now.toLocaleDateString('id-ID'),
+        buildTimeLocal: now.toLocaleTimeString('id-ID'),
+      };
+
+      const outputPath = path.resolve(__dirname, 'dist/version.json');
+      fs.writeFileSync(outputPath, JSON.stringify(versionInfo, null, 2));
+      console.log(`\n[version-plugin] Generated version.json: ${versionInfo.buildTime}\n`);
+    },
+  };
+}
 
 // https://vitejs.dev/config/
 export default defineConfig({
+  // Plugins
+  plugins: [versionPlugin()],
   // Path aliases (match tsconfig.json)
   resolve: {
     alias: {

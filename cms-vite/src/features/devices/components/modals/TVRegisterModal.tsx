@@ -110,15 +110,47 @@ export function TVRegisterModal({ isOpen, onClose, onSuccess }: TVRegisterModalP
     </div>
   );
 
+  const footerContent = (
+    <div className="flex justify-end gap-3 pt-4 px-6 pb-6">
+      <button
+        type="button"
+        onClick={handleClose}
+        disabled={registerMutation.isPending}
+        className="px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg disabled:opacity-50 transition-colors"
+      >
+        Cancel
+      </button>
+      <button
+        type="submit"
+        form="tv-register-form"
+        disabled={registerMutation.isPending}
+        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2 transition-colors"
+      >
+        {registerMutation.isPending ? (
+          <>
+            <Loader2 className="w-4 h-4 animate-spin" />
+            Activating...
+          </>
+        ) : (
+          <>
+            <Tv className="w-4 h-4" />
+            Activate TV
+          </>
+        )}
+      </button>
+    </div>
+  );
+
   return (
     <Modal
       isOpen={isOpen}
       onClose={handleClose}
       maxWidth="md"
       customHeader={customHeader}
+      footer={footerContent}
     >
       {/* Form */}
-      <form onSubmit={handleSubmit} className="p-6 space-y-4">
+      <form id="tv-register-form" onSubmit={handleSubmit} className="p-6 space-y-4">
         {/* Error Message */}
         {error && (
           <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3">
@@ -175,35 +207,6 @@ export function TVRegisterModal({ isOpen, onClose, onSuccess }: TVRegisterModalP
           <p className="text-sm text-blue-700 dark:text-blue-300">
             <strong>How it works:</strong> Enter the 6-digit activation code shown on the TV screen. The device will be automatically assigned to your organization.
           </p>
-        </div>
-
-        {/* Actions */}
-        <div className="flex justify-end gap-3 pt-4">
-          <button
-            type="button"
-            onClick={handleClose}
-            disabled={registerMutation.isPending}
-            className="px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg disabled:opacity-50 transition-colors"
-          >
-            Cancel
-          </button>
-          <button
-            type="submit"
-            disabled={registerMutation.isPending}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2 transition-colors"
-          >
-            {registerMutation.isPending ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin" />
-                Activating...
-              </>
-            ) : (
-              <>
-                <Tv className="w-4 h-4" />
-                Activate TV
-              </>
-            )}
-          </button>
         </div>
       </form>
     </Modal>

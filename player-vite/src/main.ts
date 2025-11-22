@@ -15,6 +15,7 @@ import { SharedToast } from '@shared/ui';
 // Import connection logging services
 import { ConnectionLogger } from '@shared/services/connection-logger';
 import { NetworkSpeedTest } from '@shared/services/network-speed-test';
+import { VersionChecker } from '@shared/services/version-checker';
 
 // Import player services to trigger registration
 import { PlayerPlaylistSync } from '@player/services';
@@ -73,6 +74,10 @@ const initApp = async () => {
   // Register UI popups to ServiceRegistry
   ServiceRegistry.register('DeviceInfoPopup', DeviceInfoPopup);
   ServiceRegistry.register('ConnectionLogPopup', ConnectionLogPopup);
+
+  // Initialize version checker FIRST (auto-reload on new build)
+  SharedLogger.log('🔄 Initializing version checker...');
+  await VersionChecker.init();
 
   // Initialize connection logging services EARLY (before bootstrap needs them)
   SharedLogger.log('📊 Initializing connection logging services...');

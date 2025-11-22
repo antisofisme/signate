@@ -314,8 +314,7 @@ def check_activation_status(
                 from shared.auth import create_device_token
                 device_token = create_device_token(
                     device_id=device.id,
-                    organization_id=device.organization_id,
-                    unique_code=device.unique_code
+                    organization_id=device.organization_id
                 )
 
             return ActivationStatusResponse(
