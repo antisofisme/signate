@@ -303,15 +303,15 @@ def assign_content_to_device(
         row = result.fetchone()
 
         # Get content details
-        content_query = text("SELECT name, type FROM contents WHERE id = :content_id")
+        content_query = text("SELECT title, content_type FROM contents WHERE id = :content_id")
         content = db.execute(content_query, {"content_id": request.content_id}).fetchone()
 
         return {
             "id": row.id,
             "device_id": device_id,
             "content_id": request.content_id,
-            "content_name": content.name,
-            "content_type": content.type,
+            "content_name": content.title,
+            "content_type": content.content_type,
             "priority": request.priority,
             "assigned_at": row.assigned_at,
             "expires_at": request.expires_at,
