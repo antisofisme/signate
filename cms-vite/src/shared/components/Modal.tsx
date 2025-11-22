@@ -185,8 +185,11 @@ export function ModalOverlay({
 
   return createPortal(
     <div
-      className={`bg-black/${backdropOpacity} flex items-center justify-center`}
-      style={overlayStyles}
+      className="flex items-center justify-center"
+      style={{
+        ...overlayStyles,
+        backgroundColor: `rgba(0, 0, 0, ${backdropOpacity / 100})`,
+      }}
       onClick={onClose}
     >
       {children}
