@@ -1,12 +1,13 @@
 /**
  * Device Logs Viewer Component
  *
- * Comprehensive console logs viewer with:
- * - Tabbed interface (Console Logs / Connection Logs)
+ * Features:
+ * - Tabbed interface (Console Logs / Connection Logs / Speed Test)
  * - Filter controls (log level, auto-refresh)
  * - Pagination
  * - Log detail modal
  * - Clear logs functionality
+ * - Sticky header and footer with scrollable content
  */
 
 import { useState, useEffect } from 'react';
@@ -14,45 +15,52 @@ import {
   Terminal,
   RefreshCw,
   Trash2,
+  Eye,
+  Filter,
   AlertCircle,
   Info,
-  AlertTriangle,
   Bug,
-  Eye,
+  Activity,
   Network,
+  Gauge,
 } from 'lucide-react';
 import { usePagination } from '@/shared/hooks';
 import { Pagination } from '@/shared/components';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import { useDeviceLogs, useClearLogs, useConnectionLogs } from '../hooks/useDeviceLogs';
 import { LogDetailModal } from './LogDetailModal';
 import type { DeviceLog, LogLevel } from '../types/logs';
-import { LOG_LEVEL_OPTIONS, LOG_LEVEL_COLORS } from '../types/logs';
 import { toast } from 'sonner';
+
+export type LogsViewTab = 'console' | 'connection' | 'speedtest';
 
 interface DeviceLogsViewerProps {
   deviceId: number;
   deviceName?: string;
+  activeTab?: LogsViewTab;
+  onTabChange?: (tab: LogsViewTab) => void;
 }
 
-export function DeviceLogsViewer({ deviceId, deviceName }: DeviceLogsViewerProps) {
+export function DeviceLogsViewer({
+  deviceId,
+  deviceName,
+  activeTab = 'console',
+  onTabChange,
+}: DeviceLogsViewerProps) {
   // State
   const [selectedLog, setSelectedLog] = useState<DeviceLog | null>(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
-  const [logLevel, setLogLevel] = useState<LogLevel | 'all'>('all');
-  const [autoRefresh, setAutoRefresh] = useState(true);
-  const [activeTab, setActiveTab] = useState<'console' | 'connection'>('console');
-
-  // Connection logs state
+  const [autoRefresh, setAutoRefresh] = useState(false);
+  const [logLevel, setLogLevel] = useState<string>('all');
   const [eventTypeFilter, setEventTypeFilter] = useState<string>('all');
 
   // Pagination hook (standardized)
   const pagination = usePagination({ pageSize: 50 });
   const connectionPagination = usePagination({ pageSize: 50 });
+  const speedTestPagination = usePagination({ pageSize: 50 });
 
   // Queries
   const {
@@ -63,17 +71,14 @@ export function DeviceLogsViewer({ deviceId, deviceName }: DeviceLogsViewerProps
   } = useDeviceLogs(
     deviceId,
     {
-      log_level: logLevel !== 'all' ? logLevel : undefined,
+      level: logLevel !== 'all' ? (logLevel as LogLevel) : undefined,
       limit: pagination.limit,
       skip: pagination.skip,
     },
     {
-      enabled: deviceId > 0,
-      autoRefresh,
+      enabled: deviceId > 0 && activeTab === 'console',
     }
   );
-
-  const clearLogsMutation = useClearLogs();
 
   // Connection logs query
   const {
@@ -93,15 +98,37 @@ export function DeviceLogsViewer({ deviceId, deviceName }: DeviceLogsViewerProps
     }
   );
 
+  // Speed test logs query (filtered connection_logs with event_type=speed_test)
+  const {
+    data: speedTestLogsData,
+    isLoading: isLoadingSpeedTest,
+    isFetching: isFetchingSpeedTest,
+    refetch: refetchSpeedTest,
+  } = useConnectionLogs(
+    deviceId,
+    {
+      event_type: 'speed_test',
+      limit: speedTestPagination.limit,
+      skip: speedTestPagination.skip,
+    },
+    {
+      enabled: deviceId > 0 && activeTab === 'speedtest',
+    }
+  );
+
   // Computed
   const logs = logsData?.logs || [];
   const total = logsData?.total || 0;
   const connectionLogs = connectionLogsData?.items || [];
   const connectionTotal = connectionLogsData?.total || 0;
+  const speedTestLogs = speedTestLogsData?.items || [];
+  const speedTestTotal = speedTestLogsData?.total || 0;
   const totalPages = pagination.getTotalPages(total);
   const connectionTotalPages = connectionPagination.getTotalPages(connectionTotal);
+  const speedTestTotalPages = speedTestPagination.getTotalPages(speedTestTotal);
   const hasLogs = logs.length > 0;
   const hasConnectionLogs = connectionLogs.length > 0;
+  const hasSpeedTestLogs = speedTestLogs.length > 0;
 
   // Handlers
   const handleViewDetails = (log: DeviceLog) => {
@@ -109,25 +136,24 @@ export function DeviceLogsViewer({ deviceId, deviceName }: DeviceLogsViewerProps
     setIsDetailModalOpen(true);
   };
 
-  const handleRefresh = () => {
-    refetch();
-    toast.success('Logs refreshed');
-  };
+  const clearLogsMutation = useClearLogs();
 
-  const handleClearLogs = () => {
-    if (!confirm('Are you sure you want to clear all console logs for this device?')) {
+  const handleClearLogs = async () => {
+    if (!window.confirm('Are you sure you want to clear all logs? This action cannot be undone.')) {
       return;
     }
 
-    clearLogsMutation.mutate(deviceId, {
-      onSuccess: () => {
-        pagination.resetPage();
-      },
-    });
+    try {
+      await clearLogsMutation.mutateAsync(deviceId);
+      toast.success('All logs cleared successfully');
+      refetch();
+    } catch (error) {
+      toast.error('Failed to clear logs');
+    }
   };
 
   const handleLogLevelChange = (value: string) => {
-    setLogLevel(value as LogLevel | 'all');
+    setLogLevel(value);
     pagination.resetPage();
   };
 
@@ -139,6 +165,11 @@ export function DeviceLogsViewer({ deviceId, deviceName }: DeviceLogsViewerProps
   const handleRefreshConnection = () => {
     refetchConnection();
     toast.success('Connection logs refreshed');
+  };
+
+  const handleRefreshSpeedTest = () => {
+    refetchSpeedTest();
+    toast.success('Speed test logs refreshed');
   };
 
   const getEventTypeIcon = (eventType: string) => {
@@ -154,27 +185,15 @@ export function DeviceLogsViewer({ deviceId, deviceName }: DeviceLogsViewerProps
     }
   };
 
-  const getStatusColor = (status: string) => {
-    switch (status.toLowerCase()) {
-      case 'online':
-      case 'connected':
-      case 'success':
-        return 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400';
-      case 'offline':
-      case 'disconnected':
-      case 'failed':
-        return 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400';
-      default:
-        return 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300';
-    }
-  };
+  const getLevelIcon = (level: string) => {
+    if (!level) return <Info className="w-4 h-4" />; // Default icon for undefined/null
 
-  const getLevelIcon = (level: LogLevel) => {
-    switch (level) {
+    switch (level.toLowerCase()) {
       case 'error':
         return <AlertCircle className="w-4 h-4" />;
       case 'warn':
-        return <AlertTriangle className="w-4 h-4" />;
+      case 'warning':
+        return <Activity className="w-4 h-4" />;
       case 'info':
         return <Info className="w-4 h-4" />;
       case 'debug':
@@ -184,348 +203,397 @@ export function DeviceLogsViewer({ deviceId, deviceName }: DeviceLogsViewerProps
     }
   };
 
+  // Auto-refresh effect
+  useEffect(() => {
+    if (!autoRefresh) return;
+
+    const interval = setInterval(() => {
+      if (activeTab === 'console') {
+        refetch();
+      } else if (activeTab === 'connection') {
+        refetchConnection();
+      } else if (activeTab === 'speedtest') {
+        refetchSpeedTest();
+      }
+    }, 5000);
+
+    return () => clearInterval(interval);
+  }, [autoRefresh, activeTab, refetch, refetchConnection, refetchSpeedTest]);
+
   return (
-    <div className="space-y-4">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Terminal className="w-5 h-5 text-gray-600 dark:text-gray-400" />
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-            Device Logs
-            {deviceName && (
-              <span className="ml-2 text-sm font-normal text-gray-500 dark:text-gray-400">
-                {deviceName}
-              </span>
-            )}
-          </h3>
-        </div>
-      </div>
+    <>
+      <div className="flex flex-col h-full min-h-[600px]">
 
-      {/* Tabs */}
-      <Tabs defaultValue="console" value={activeTab} onValueChange={(v) => setActiveTab(v as 'console' | 'connection')}>
-        <TabsList>
-          <TabsTrigger value="console">
-            <Terminal className="w-4 h-4 mr-2" />
-            Console Logs
-          </TabsTrigger>
-          <TabsTrigger value="connection">
-            <Network className="w-4 h-4 mr-2" />
-            Connection Logs
-          </TabsTrigger>
-        </TabsList>
-
-        {/* Console Logs Tab */}
-        <TabsContent value="console" className="space-y-4">
-          {/* Filter Controls */}
-          <div className="flex flex-wrap items-center gap-3 p-4 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700">
-            {/* Log Level Filter */}
-            <div className="flex items-center gap-2 min-w-[180px]">
-              <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                Level:
-              </label>
+        {/* Sticky Filter Bar */}
+        <div className="sticky top-0 z-[9] bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">
+          {/* Console Filters */}
+          {activeTab === 'console' && (
+            <div className="flex items-center gap-2 px-3 py-2">
+              <Filter className="w-4 h-4 text-gray-500" />
               <Select value={logLevel} onValueChange={handleLogLevelChange}>
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="All Logs" />
+                <SelectTrigger className="w-36 h-8 text-xs">
+                  <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {LOG_LEVEL_OPTIONS.map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
-                      {option.label}
-                    </SelectItem>
-                  ))}
+                  <SelectItem value="all">All Levels</SelectItem>
+                  <SelectItem value="error">Error</SelectItem>
+                  <SelectItem value="warn">Warning</SelectItem>
+                  <SelectItem value="info">Info</SelectItem>
+                  <SelectItem value="debug">Debug</SelectItem>
                 </SelectContent>
               </Select>
-            </div>
 
-            {/* Auto-refresh Toggle */}
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={autoRefresh}
-                onChange={(e) => setAutoRefresh(e.target.checked)}
-                className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
-              />
-              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                Auto-refresh (30s)
-              </span>
-            </label>
+              <div className="flex-1" />
 
-            {/* Spacer */}
-            <div className="flex-1" />
-
-            {/* Action Buttons */}
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleRefresh}
-                disabled={isFetching}
-              >
-                <RefreshCw className={`w-4 h-4 mr-2 ${isFetching ? 'animate-spin' : ''}`} />
+              <Button variant="outline" size="sm" onClick={() => refetch()} disabled={isFetching} className="h-8 px-2 text-xs">
+                <RefreshCw className={`w-3 h-3 mr-1 ${isFetching ? 'animate-spin' : ''}`} />
                 Refresh
               </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleClearLogs}
-                disabled={clearLogsMutation.isPending || !hasLogs}
-                className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20"
-              >
-                <Trash2 className="w-4 h-4 mr-2" />
-                Clear Logs
+
+              <Button variant="outline" size="sm" onClick={handleClearLogs} disabled={clearLogsMutation.isPending} className="h-8 px-2 text-xs">
+                <Trash2 className="w-3 h-3 mr-1" />
+                Clear
+              </Button>
+
+              <Button variant={autoRefresh ? 'default' : 'outline'} size="sm" onClick={() => setAutoRefresh(!autoRefresh)} className="h-8 px-2 text-xs">
+                <RefreshCw className={`w-3 h-3 mr-1 ${autoRefresh ? 'animate-spin' : ''}`} />
+                Auto
               </Button>
             </div>
-          </div>
-
-          {/* Logs Table */}
-          {isLoading ? (
-            <div className="space-y-2">
-              {Array.from({ length: 5 }).map((_, i) => (
-                <Skeleton key={i} className="h-16 w-full" />
-              ))}
-            </div>
-          ) : !hasLogs ? (
-            <div className="text-center py-12 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700">
-              <Terminal className="w-12 h-12 mx-auto text-gray-400 mb-3" />
-              <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-1">
-                No Logs Found
-              </h3>
-              <p className="text-sm text-gray-500 dark:text-gray-400">
-                {logLevel !== 'all'
-                  ? `No ${logLevel} logs available for this device.`
-                  : 'This device has not sent any console logs yet.'}
-              </p>
-            </div>
-          ) : (
-            <>
-              {/* Table */}
-              <div className="overflow-x-auto border border-gray-200 dark:border-gray-700 rounded-lg">
-                <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                  <thead className="bg-gray-50 dark:bg-gray-900">
-                    <tr>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                        Timestamp
-                      </th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                        Level
-                      </th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                        Message
-                      </th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                        Source
-                      </th>
-                      <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                        Actions
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                    {logs.map((log) => (
-                      <tr
-                        key={log.id}
-                        className="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-                      >
-                        <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-                          {new Date(log.recorded_at).toLocaleTimeString('en-US', {
-                            hour: '2-digit',
-                            minute: '2-digit',
-                            second: '2-digit',
-                          })}
-                        </td>
-                        <td className="px-4 py-3 whitespace-nowrap">
-                          <Badge className={`flex items-center gap-1.5 w-fit ${LOG_LEVEL_COLORS[log.log_level]}`}>
-                            {getLevelIcon(log.log_level)}
-                            {log.log_level}
-                          </Badge>
-                        </td>
-                        <td className="px-4 py-3 text-sm text-gray-900 dark:text-white max-w-md">
-                          <div className="truncate" title={log.message}>
-                            {log.message}
-                          </div>
-                        </td>
-                        <td className="px-4 py-3 text-sm text-gray-500 dark:text-gray-400 max-w-xs">
-                          <div className="truncate font-mono text-xs" title={log.source || 'N/A'}>
-                            {log.source || 'N/A'}
-                          </div>
-                        </td>
-                        <td className="px-4 py-3 whitespace-nowrap text-right">
-                          <button
-                            onClick={() => handleViewDetails(log)}
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
-                          >
-                            <Eye className="w-4 h-4" />
-                            Details
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-
-              {/* Pagination - Using standardized component */}
-              <Pagination
-                currentPage={pagination.currentPage}
-                totalPages={totalPages}
-                totalItems={total}
-                pageSize={pagination.pageSize}
-                onPageChange={pagination.goToPage}
-                className="px-4 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700"
-              />
-            </>
           )}
-        </TabsContent>
 
-        {/* Connection Logs Tab */}
-        <TabsContent value="connection" className="space-y-4">
-          {/* Filter Controls */}
-          <div className="flex flex-wrap items-center gap-3 p-4 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700">
-            {/* Event Type Filter */}
-            <div className="flex items-center gap-2 min-w-[200px]">
-              <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                Event Type:
-              </label>
+          {/* Connection Filters */}
+          {activeTab === 'connection' && (
+            <div className="flex items-center gap-2 px-3 py-2">
+              <Filter className="w-4 h-4 text-gray-500" />
               <Select value={eventTypeFilter} onValueChange={handleEventTypeChange}>
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="All Events" />
+                <SelectTrigger className="w-36 h-8 text-xs">
+                  <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Events</SelectItem>
-                  <SelectItem value="network">Network Status</SelectItem>
-                  <SelectItem value="server">Server Connection</SelectItem>
+                  <SelectItem value="all">All Types</SelectItem>
+                  <SelectItem value="network">Network</SelectItem>
+                  <SelectItem value="server">Server</SelectItem>
                   <SelectItem value="speed_test">Speed Test</SelectItem>
                 </SelectContent>
               </Select>
-            </div>
 
-            {/* Spacer */}
-            <div className="flex-1" />
+              <div className="flex-1" />
 
-            {/* Action Buttons */}
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleRefreshConnection}
-              disabled={isFetchingConnection}
-            >
-              <RefreshCw className={`w-4 h-4 mr-2 ${isFetchingConnection ? 'animate-spin' : ''}`} />
-              Refresh
-            </Button>
-          </div>
+              <Button variant="outline" size="sm" onClick={handleRefreshConnection} disabled={isFetchingConnection} className="h-8 px-2 text-xs">
+                <RefreshCw className={`w-3 h-3 mr-1 ${isFetchingConnection ? 'animate-spin' : ''}`} />
+                Refresh
+              </Button>
+            </div>
+          )}
 
-          {/* Connection Logs Table */}
-          {isLoadingConnection ? (
-            <div className="space-y-2">
-              {Array.from({ length: 5 }).map((_, i) => (
-                <Skeleton key={i} className="h-16 w-full" />
-              ))}
+          {/* Speed Test Filters */}
+          {activeTab === 'speedtest' && (
+            <div className="flex items-center gap-2 px-3 py-2">
+              <div className="flex-1" />
+
+              <Button variant="outline" size="sm" onClick={handleRefreshSpeedTest} disabled={isFetchingSpeedTest} className="h-8 px-2 text-xs">
+                <RefreshCw className={`w-3 h-3 mr-1 ${isFetchingSpeedTest ? 'animate-spin' : ''}`} />
+                Refresh
+              </Button>
             </div>
-          ) : !hasConnectionLogs ? (
-            <div className="text-center py-12 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700">
-              <Network className="w-12 h-12 mx-auto text-gray-400 mb-3" />
-              <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-1">
-                No Connection Logs Found
-              </h3>
-              <p className="text-sm text-gray-500 dark:text-gray-400">
-                {eventTypeFilter !== 'all'
-                  ? `No ${eventTypeFilter.replace('_', ' ')} logs available for this device.`
-                  : 'This device has not sent any connection logs yet.'}
-              </p>
-            </div>
-          ) : (
-            <>
-              {/* Table */}
-              <div className="overflow-x-auto border border-gray-200 dark:border-gray-700 rounded-lg">
+          )}
+        </div>
+
+        {/* Scrollable Content Area */}
+        <div className="flex-1 overflow-y-auto">
+          {/* Console Logs */}
+          {activeTab === 'console' && (
+            <div className="space-y-3 p-3">
+
+            {/* Logs List */}
+            {isLoading ? (
+              <div className="space-y-2">
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <Skeleton key={i} className="h-20 w-full" />
+                ))}
+              </div>
+            ) : !hasLogs ? (
+              <div className="text-center py-12 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700">
+                <Terminal className="w-12 h-12 mx-auto text-gray-400 mb-3" />
+                <p className="text-gray-500 dark:text-gray-400">No logs available</p>
+              </div>
+            ) : (
+              <div className="border rounded-lg overflow-hidden">
                 <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                  <thead className="bg-gray-50 dark:bg-gray-900">
+                  <thead className="bg-gray-50 dark:bg-gray-800">
                     <tr>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                        Timestamp
+                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-16">
+                        Level
                       </th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                        Event Type
+                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-40">
+                        Time
                       </th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                        Status
+                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                        Message
                       </th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                        Latency
+                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-32">
+                        Source
                       </th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                        Speed
-                      </th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                        Error
+                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-16">
+                        Action
                       </th>
                     </tr>
                   </thead>
-                  <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                    {connectionLogs.map((log: any) => (
+                  <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
+                    {logs.map((log) => (
                       <tr
                         key={log.id}
-                        className="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                        className="hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer"
+                        onClick={() => handleViewDetails(log)}
                       >
-                        <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-                          {new Date(log.logged_at).toLocaleTimeString('en-US', {
-                            hour: '2-digit',
-                            minute: '2-digit',
-                            second: '2-digit',
-                          })}
-                          <div className="text-xs text-gray-500">
-                            {new Date(log.logged_at).toLocaleDateString()}
-                          </div>
-                        </td>
-                        <td className="px-4 py-3 whitespace-nowrap">
-                          <Badge className="flex items-center gap-1.5 w-fit bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">
-                            {getEventTypeIcon(log.event_type)}
-                            {log.event_type.replace('_', ' ')}
+                        <td className="px-3 py-2 whitespace-nowrap">
+                          <Badge
+                            variant={
+                              log.level === 'error' ? 'destructive' :
+                              log.level === 'warn' ? 'default' :
+                              log.level === 'info' ? 'secondary' :
+                              'outline'
+                            }
+                            className="text-xs"
+                          >
+                            {log.level ? log.level.toUpperCase() : 'LOG'}
                           </Badge>
                         </td>
-                        <td className="px-4 py-3 whitespace-nowrap">
-                          <Badge className={`${getStatusColor(log.status)}`}>
-                            {log.status}
-                          </Badge>
+                        <td className="px-3 py-2 whitespace-nowrap text-xs text-gray-500 dark:text-gray-400">
+                          {new Date(log.recorded_at).toLocaleString()}
                         </td>
-                        <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-                          {log.latency_ms !== null ? `${log.latency_ms}ms` : '-'}
+                        <td className="px-3 py-2 text-sm text-gray-900 dark:text-gray-100 font-mono truncate max-w-md">
+                          {log.message}
                         </td>
-                        <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-                          {log.download_speed_mbps !== null || log.upload_speed_mbps !== null ? (
-                            <div className="text-xs">
-                              {log.download_speed_mbps !== null && (
-                                <div>Down: {log.download_speed_mbps.toFixed(2)} Mbps</div>
-                              )}
-                              {log.upload_speed_mbps !== null && (
-                                <div>Up: {log.upload_speed_mbps.toFixed(2)} Mbps</div>
-                              )}
-                            </div>
-                          ) : '-'}
+                        <td className="px-3 py-2 text-xs text-gray-500 dark:text-gray-400 truncate">
+                          {log.source || '-'}
                         </td>
-                        <td className="px-4 py-3 text-sm text-red-600 dark:text-red-400 max-w-xs">
-                          <div className="truncate" title={log.error_message || ''}>
-                            {log.error_message || '-'}
-                          </div>
+                        <td className="px-3 py-2 whitespace-nowrap">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 w-7 p-0"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleViewDetails(log);
+                            }}
+                          >
+                            <Eye className="w-3 h-3" />
+                          </Button>
                         </td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
               </div>
-
-              {/* Pagination */}
-              <Pagination
-                currentPage={connectionPagination.currentPage}
-                totalPages={connectionTotalPages}
-                totalItems={connectionTotal}
-                pageSize={connectionPagination.pageSize}
-                onPageChange={connectionPagination.goToPage}
-                className="px-4 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700"
-              />
-            </>
+            )}
+            </div>
           )}
-        </TabsContent>
-      </Tabs>
+
+          {/* Connection Logs */}
+          {activeTab === 'connection' && (
+            <div className="space-y-3 p-3">
+            {/* Connection Logs List */}
+            {isLoadingConnection ? (
+              <div className="space-y-2">
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <Skeleton key={i} className="h-20 w-full" />
+                ))}
+              </div>
+            ) : !hasConnectionLogs ? (
+              <div className="text-center py-12 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700">
+                <Network className="w-12 h-12 mx-auto text-gray-400 mb-3" />
+                <p className="text-gray-500 dark:text-gray-400">No connection logs available</p>
+              </div>
+            ) : (
+              <div className="border rounded-lg overflow-hidden">
+                <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                  <thead className="bg-gray-50 dark:bg-gray-800">
+                    <tr>
+                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-32">
+                        Event Type
+                      </th>
+                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-24">
+                        Status
+                      </th>
+                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-40">
+                        Time
+                      </th>
+                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-24">
+                        Latency
+                      </th>
+                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                        Error Message
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
+                    {connectionLogs.map((log: any) => (
+                      <tr key={log.id} className="hover:bg-gray-50 dark:hover:bg-gray-800">
+                        <td className="px-3 py-2 whitespace-nowrap">
+                          <Badge variant="outline" className="text-xs">
+                            {log.event_type}
+                          </Badge>
+                        </td>
+                        <td className="px-3 py-2 whitespace-nowrap">
+                          <Badge
+                            variant={
+                              log.status === 'success' || log.status === 'connected' || log.status === 'online' ? 'default' :
+                              log.status === 'failed' || log.status === 'disconnected' || log.status === 'offline' ? 'destructive' :
+                              'secondary'
+                            }
+                            className="text-xs"
+                          >
+                            {log.status}
+                          </Badge>
+                        </td>
+                        <td className="px-3 py-2 whitespace-nowrap text-xs text-gray-500 dark:text-gray-400">
+                          {new Date(log.logged_at || log.recorded_at).toLocaleString()}
+                        </td>
+                        <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
+                          {log.latency_ms !== null ? `${log.latency_ms}ms` : '-'}
+                        </td>
+                        <td className="px-3 py-2 text-sm text-red-600 dark:text-red-400 font-mono truncate max-w-md">
+                          {log.error_message || '-'}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+            </div>
+          )}
+
+          {/* Speed Test Logs */}
+          {activeTab === 'speedtest' && (
+            <div className="space-y-3 p-3">
+            {/* Speed Test Logs Table */}
+            {isLoadingSpeedTest ? (
+              <div className="space-y-2">
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <Skeleton key={i} className="h-16 w-full" />
+                ))}
+              </div>
+            ) : !hasSpeedTestLogs ? (
+              <div className="text-center py-12 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700">
+                <Gauge className="w-12 h-12 mx-auto text-gray-400 mb-3" />
+                <p className="text-gray-500 dark:text-gray-400">No speed test logs available</p>
+              </div>
+            ) : (
+              <>
+                <div className="overflow-x-auto bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700">
+                  <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                    <thead className="bg-gray-50 dark:bg-gray-900">
+                      <tr>
+                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                          Timestamp
+                        </th>
+                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                          Download Speed
+                        </th>
+                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                          Upload Speed
+                        </th>
+                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                          Latency
+                        </th>
+                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                          Status
+                        </th>
+                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                          Error
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
+                      {speedTestLogs.map((log: any) => (
+                        <tr key={log.id} className="hover:bg-gray-50 dark:hover:bg-gray-800">
+                          <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
+                            {new Date(log.recorded_at).toLocaleString()}
+                          </td>
+                          <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
+                            {log.download_speed_mbps !== null ? (
+                              <div className="flex items-baseline gap-1">
+                                <span className="font-semibold">{log.download_speed_mbps.toFixed(2)}</span>
+                                <span className="text-xs text-gray-500 dark:text-gray-400">Mbps</span>
+                              </div>
+                            ) : (
+                              <span className="text-gray-400">-</span>
+                            )}
+                          </td>
+                          <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
+                            {log.upload_speed_mbps !== null ? (
+                              <div className="flex items-baseline gap-1">
+                                <span className="font-semibold">{log.upload_speed_mbps.toFixed(2)}</span>
+                                <span className="text-xs text-gray-500 dark:text-gray-400">Mbps</span>
+                              </div>
+                            ) : (
+                              <span className="text-gray-400">-</span>
+                            )}
+                          </td>
+                          <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
+                            {log.latency_ms !== null ? (
+                              <span className="font-semibold">{log.latency_ms}ms</span>
+                            ) : (
+                              <span className="text-gray-400">-</span>
+                            )}
+                          </td>
+                          <td className="px-3 py-2 whitespace-nowrap">
+                            <Badge variant={
+                              log.status === 'success' ? 'default' :
+                              log.status === 'failed' ? 'destructive' :
+                              'secondary'
+                            }>
+                              {log.status}
+                            </Badge>
+                          </td>
+                          <td className="px-3 py-2 text-sm text-gray-500 dark:text-gray-400 max-w-xs truncate">
+                            {log.error_message || '-'}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </>
+            )}
+            </div>
+          )}
+        </div>
+
+        {/* Sticky Footer - Pagination */}
+        <div className="sticky bottom-0 z-10 bg-gray-50 dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700 px-3 py-2">
+          {activeTab === 'console' && hasLogs && (
+            <Pagination
+              currentPage={pagination.currentPage}
+              totalPages={totalPages}
+              totalItems={total}
+              pageSize={pagination.pageSize}
+              onPageChange={pagination.goToPage}
+            />
+          )}
+          {activeTab === 'connection' && hasConnectionLogs && (
+            <Pagination
+              currentPage={connectionPagination.currentPage}
+              totalPages={connectionTotalPages}
+              totalItems={connectionTotal}
+              pageSize={connectionPagination.pageSize}
+              onPageChange={connectionPagination.goToPage}
+            />
+          )}
+          {activeTab === 'speedtest' && hasSpeedTestLogs && (
+            <Pagination
+              currentPage={speedTestPagination.currentPage}
+              totalPages={speedTestTotalPages}
+              totalItems={speedTestTotal}
+              pageSize={speedTestPagination.pageSize}
+              onPageChange={speedTestPagination.goToPage}
+            />
+          )}
+        </div>
+      </div>
 
       {/* Log Detail Modal */}
       <LogDetailModal
@@ -536,6 +604,6 @@ export function DeviceLogsViewer({ deviceId, deviceName }: DeviceLogsViewerProps
           setSelectedLog(null);
         }}
       />
-    </div>
+    </>
   );
 }

@@ -59,7 +59,7 @@ export function TagAssignmentTab({ device }: TagAssignmentTabProps) {
   const isLoading = loadingAssigned || loadingAllTags;
 
   return (
-    <div className="p-6">
+    <div className="p-6 min-h-[600px]">
       {/* Info */}
       <div className="mb-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
         <p className="text-sm text-blue-700 dark:text-blue-300">

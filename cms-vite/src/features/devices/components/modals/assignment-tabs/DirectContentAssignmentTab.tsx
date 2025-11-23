@@ -299,7 +299,7 @@ export function DirectContentAssignmentTab({ device }: DirectContentAssignmentTa
   const isLoading = loadingAssigned || loadingAllContent;
 
   return (
-    <div className="p-6">
+    <div className="p-6 min-h-[600px]">
       {/* Priority Selector */}
       <div className="mb-4 flex items-center justify-between bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
         <p className="text-sm text-blue-700 dark:text-blue-300">
@@ -340,7 +340,7 @@ export function DirectContentAssignmentTab({ device }: DirectContentAssignmentTa
                 All content is already assigned.
               </p>
             ) : (
-              <div className="space-y-2 max-h-[500px] overflow-y-auto">
+              <div className="space-y-2 max-h-[400px] overflow-y-auto">
                 {availableContents.map((content: Content) => {
                   const Icon = getContentIcon(content.content_type);
                   return (
@@ -413,7 +413,7 @@ export function DirectContentAssignmentTab({ device }: DirectContentAssignmentTa
                   items={sortedItems.map((item) => item.id)}
                   strategy={verticalListSortingStrategy}
                 >
-                  <div className="space-y-2 max-h-[500px] overflow-y-auto">
+                  <div className="space-y-2 max-h-[400px] overflow-y-auto">
                     {sortedItems.map((assigned) => {
                       const content = getContentDetails(assigned.content_id);
                       const Icon = getContentIcon(assigned.content_type);

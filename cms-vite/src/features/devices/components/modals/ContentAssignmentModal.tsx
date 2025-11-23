@@ -298,43 +298,18 @@ export function ContentAssignmentModal({
       onClose={onClose}
       maxWidth="4xl"
       customHeader={customHeader}
-      footer={
-        <div className="border-t border-gray-200 dark:border-gray-700">
-          {/* Info */}
-          <div className="px-6 pt-4">
-            <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
-              <p className="text-sm text-blue-700 dark:text-blue-300">
-                <strong>Priority 1 (Highest):</strong> Direct assignments override tag-based and playlist assignments.
-                Drag and drop items to reorder - items at the top have higher priority.
-              </p>
-            </div>
-          </div>
-
-          {/* Close Button */}
-          <div className="px-6 py-4">
-            <div className="flex justify-end">
-              <button
-                onClick={onClose}
-                disabled={assignContent.isPending || unassignContent.isPending}
-                className="px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors disabled:opacity-50"
-              >
-                Close
-              </button>
-            </div>
-          </div>
-        </div>
-      }
+      className="h-[90vh]"
     >
-      {/* Content - 2 Column Grid */}
-      <div className="p-6">
+      {/* Scrollable Content - 2 Column Grid */}
+      <div className="flex-1 overflow-y-auto p-6">
         {isLoading ? (
           <div className="flex items-center justify-center py-12">
             <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
           </div>
         ) : (
-          <div className="grid grid-cols-2 gap-6">
+          <div className="grid grid-cols-2 gap-6 h-full">
             {/* Left Column - Available Content */}
-            <div className="border-r border-gray-200 dark:border-gray-700 pr-4">
+            <div className="border-r border-gray-200 dark:border-gray-700 pr-4 flex flex-col">
               <h4 className="font-semibold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
                 <FileText className="w-4 h-4" />
                 Available Content ({availableContents.length})
@@ -344,7 +319,7 @@ export function ContentAssignmentModal({
                   All content is already assigned.
                 </p>
               ) : (
-                <div className="space-y-2 max-h-[500px] overflow-y-auto">
+                <div className="space-y-2 flex-1 overflow-y-auto">
                   {availableContents.map((content: Content) => {
                     const Icon = getContentIcon(content.content_type);
                     return (
@@ -400,7 +375,7 @@ export function ContentAssignmentModal({
             </div>
 
             {/* Right Column - Assigned Content with Drag & Drop */}
-            <div className="pl-4">
+            <div className="pl-4 flex flex-col">
               <h4 className="font-semibold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
                 <GripVertical className="w-4 h-4 text-gray-400" />
                 Assigned Content ({sortedItems.length})
@@ -419,7 +394,7 @@ export function ContentAssignmentModal({
                     items={sortedItems.map(item => item.id)}
                     strategy={verticalListSortingStrategy}
                   >
-                    <div className="space-y-2 max-h-[500px] overflow-y-auto">
+                    <div className="space-y-2 flex-1 overflow-y-auto">
                       {sortedItems.map((assigned) => {
                         const content = getContentDetails(assigned.content_id);
                         const Icon = getContentIcon(assigned.content_type);
@@ -441,6 +416,32 @@ export function ContentAssignmentModal({
             </div>
           </div>
         )}
+      </div>
+
+      {/* Fixed Footer */}
+      <div className="border-t border-gray-200 dark:border-gray-700">
+        {/* Info */}
+        <div className="px-6 pt-4">
+          <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
+            <p className="text-sm text-blue-700 dark:text-blue-300">
+              <strong>Priority 1 (Highest):</strong> Direct assignments override tag-based and playlist assignments.
+              Drag and drop items to reorder - items at the top have higher priority.
+            </p>
+          </div>
+        </div>
+
+        {/* Close Button */}
+        <div className="px-6 py-4">
+          <div className="flex justify-end">
+            <button
+              onClick={onClose}
+              disabled={assignContent.isPending || unassignContent.isPending}
+              className="px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors disabled:opacity-50"
+            >
+              Close
+            </button>
+          </div>
+        </div>
       </div>
     </Modal>
   );

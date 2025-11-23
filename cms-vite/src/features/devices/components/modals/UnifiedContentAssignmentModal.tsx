@@ -86,10 +86,10 @@ export function UnifiedContentAssignmentModal({
       onClose={onClose}
       maxWidth="5xl"
       customHeader={customHeader}
-      className="h-[90vh]"
+      className="h-[90vh] flex flex-col"
     >
-      {/* Tab Panels */}
-      <div className="overflow-y-auto max-h-[calc(90vh-140px)]">
+      {/* Tab Panels - Scrollable */}
+      <div className="flex-1 overflow-y-auto">
         <TabPanel activeTab={activeTab} tabId="direct">
           <DirectContentAssignmentTab device={device} />
         </TabPanel>

@@ -176,9 +176,9 @@ export function UploadModal({ isOpen, onClose }: UploadModalProps) {
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-6">
+      <div className="bg-white dark:bg-gray-800 rounded-lg w-full max-w-2xl h-[90vh] flex flex-col">
+        {/* Header - Fixed */}
+        <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
           <h2 className="text-xl font-bold text-gray-900 dark:text-white">
             Upload Content
           </h2>
@@ -191,7 +191,9 @@ export function UploadModal({ isOpen, onClose }: UploadModalProps) {
           </button>
         </div>
 
-        <form onSubmit={handleUpload} className="space-y-6">
+        {/* Scrollable Content */}
+        <div className="flex-1 overflow-y-auto p-6">
+          <form onSubmit={handleUpload} className="space-y-6">
           {/* Quota Warning Banner */}
           {isQuotaExceeded && quotaCheck && (
             <div className="bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-lg p-4">
@@ -423,6 +425,7 @@ export function UploadModal({ isOpen, onClose }: UploadModalProps) {
             </button>
           </div>
         </form>
+        </div>
       </div>
     </div>
   );
