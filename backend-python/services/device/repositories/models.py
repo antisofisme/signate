@@ -310,3 +310,38 @@ class DeviceConnectionLogModel(Base):
 
     # Relationships
     device = relationship("DeviceModel", foreign_keys=[device_id])
+
+
+class DeviceLogModel(Base):
+    """Device Log database model for browser console logs"""
+    __tablename__ = "device_logs"
+
+    # Primary key
+    id = Column(Integer, primary_key=True, index=True)
+
+    # Foreign keys
+    device_id = Column(Integer, ForeignKey("devices.id", ondelete="CASCADE"), nullable=False, index=True)
+    organization_id = Column(Integer, ForeignKey("organizations.id", ondelete="CASCADE"), nullable=False, index=True)
+
+    # Log details
+    log_level = Column(String(20), nullable=False, index=True)  # 'log', 'info', 'warn', 'error', 'debug'
+    message = Column(Text, nullable=False)
+
+    # Optional context
+    source = Column(String(500), nullable=True)  # File:line where log originated
+    stack_trace = Column(Text, nullable=True)  # Error stack trace
+    user_agent = Column(String(500), nullable=True)  # Browser user agent
+    url = Column(String(1000), nullable=True)  # Page URL when logged
+
+    # Timestamp
+    recorded_at = Column(DateTime(timezone=True), nullable=False, index=True)  # When log was created
+
+    # Composite index for common queries
+    __table_args__ = (
+        Index('ix_device_logs_device_level_timestamp', 'device_id', 'log_level', 'recorded_at'),
+        Index('ix_device_logs_organization', 'organization_id'),
+    )
+
+    # Relationships
+    device = relationship("DeviceModel", foreign_keys=[device_id])
+    organization = relationship("OrganizationModel", foreign_keys=[organization_id])

@@ -61,7 +61,16 @@ export const logsApi = {
     const response = await apiClient.get(url);
     console.log('[LogsAPI] Response:', response.data);
 
-    // Handle both unwrapped and wrapped responses
+    // Backend returns { total, items } - we need to map it to { total, logs }
+    if (response.data && 'items' in response.data && 'total' in response.data) {
+      console.log('[LogsAPI] Mapping items to logs');
+      return {
+        logs: response.data.items,
+        total: response.data.total
+      };
+    }
+
+    // Handle legacy response format (if exists)
     if (response.data && 'logs' in response.data && 'total' in response.data) {
       console.log('[LogsAPI] Response already unwrapped by interceptor');
       return response.data as LogListResponse;
@@ -91,7 +100,15 @@ export const logsApi = {
     console.log('[LogsAPI] Fetching latest logs:', url);
     const response = await apiClient.get(url);
 
-    // Handle both unwrapped and wrapped responses
+    // Backend returns { total, items } - we need to map it to { total, logs }
+    if (response.data && 'items' in response.data && 'total' in response.data) {
+      return {
+        logs: response.data.items,
+        total: response.data.total
+      };
+    }
+
+    // Handle legacy response format (if exists)
     if (response.data && 'logs' in response.data && 'total' in response.data) {
       return response.data as LogListResponse;
     }

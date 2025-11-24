@@ -294,8 +294,18 @@ class SharedLoggerClass implements Logger {
 
   /**
    * Send buffered logs to backend
+   *
+   * DEPRECATED: This method is disabled. Console log streaming is now handled by
+   * ConsoleInterceptor service which uses /api/v1/devices/{device_id}/console/upload
+   * and broadcasts to CMS via WebSocket for real-time monitoring.
    */
   async flush(): Promise<void> {
+    // DISABLED - Console logging now handled by ConsoleInterceptor
+    // Clear buffer to prevent memory buildup
+    this.logBuffer = [];
+    return;
+
+    /* OLD CODE - DISABLED
     if (this.logBuffer.length === 0) return;
 
     const deviceId = localStorage.getItem('device_id');
@@ -330,6 +340,7 @@ class SharedLoggerClass implements Logger {
         this.originalConsole.warn('[SharedLogger] Backend unavailable, logs not sent');
       }
     }
+    */
   }
 
   /**

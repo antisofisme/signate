@@ -58,14 +58,26 @@ class UpdateDeviceRequest(BaseModel):
 
 
 class DeviceLogEntry(BaseModel):
-    """Single log entry from player"""
-    level: str = Field(..., pattern='^(log|warn|error|info)$')
-    message: str = Field(..., max_length=1000)
-    timestamp: str  # ISO format from player
+    """Single console log entry from player browser"""
+    level: Literal['log', 'info', 'warn', 'error', 'debug'] = Field(..., description="Console log level")
+    message: str = Field(..., max_length=5000, description="Log message content")
+    timestamp: str = Field(..., description="ISO format timestamp from player")
+
+    # Optional context fields
+    source: Optional[str] = Field(None, max_length=500, description="File:line where log originated (e.g., 'app.js:42')")
+    stack_trace: Optional[str] = Field(None, max_length=10000, description="Error stack trace if available")
+    user_agent: Optional[str] = Field(None, max_length=500, description="Browser user agent string")
+    url: Optional[str] = Field(None, max_length=1000, description="Page URL when log was created")
 
 
+class BatchDeviceLogsRequest(BaseModel):
+    """Batch of console logs from player - sent periodically"""
+    logs: List[DeviceLogEntry] = Field(..., min_items=1, max_items=100, description="Console log entries")
+
+
+# Legacy DTO - kept for backward compatibility
 class DeviceLogsRequest(BaseModel):
-    """Batch logs from player - sent periodically"""
+    """DEPRECATED: Use BatchDeviceLogsRequest instead"""
     device_id: int = Field(..., gt=0)
     logs: list[DeviceLogEntry] = Field(..., min_items=1, max_items=100)
 
@@ -100,6 +112,45 @@ class ConnectionLogEntryDTO(BaseModel):
 class SaveConnectionLogsDTO(BaseModel):
     """Batch connection logs from player - sent every 5 minutes"""
     logs: List[ConnectionLogEntryDTO] = Field(..., min_items=1, max_items=100, description="Connection log entries")
+
+
+class DeviceLogResponse(BaseModel):
+    """Single device log response - for CMS"""
+    id: int
+    device_id: int
+    organization_id: int
+    log_level: str
+    message: str
+    source: Optional[str]
+    stack_trace: Optional[str]
+    user_agent: Optional[str]
+    url: Optional[str]
+    recorded_at: datetime
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class DeviceLogsListResponse(BaseModel):
+    """List of device logs with pagination"""
+    items: List[DeviceLogResponse]
+    total: int
+    page: int
+    page_size: int
+
+    class Config:
+        from_attributes = True
+
+
+class SaveDeviceLogsResponse(BaseModel):
+    """Response after saving batch of logs"""
+    success: bool = True
+    logs_saved: int
+    message: str = "Logs saved successfully"
+
+    class Config:
+        from_attributes = True
 
 
 # =============================================================================

@@ -14,6 +14,7 @@ from shared.responses import success_response
 from shared.errors import NotFoundError
 from datetime import datetime
 from typing import Optional, List
+from services.device.dtos import BatchDeviceLogsRequest, SaveDeviceLogsResponse
 
 router = APIRouter()
 
@@ -244,6 +245,65 @@ def get_latest_device_logs(
 def test_endpoint(device_id: int):
     """Simple test endpoint to verify routing works"""
     return {"message": f"Test endpoint works for device {device_id}", "success": True}
+
+
+# ============================================================================
+# CONSOLE LOG BATCH ENDPOINTS (Console Interceptor)
+# ============================================================================
+
+@router.post("/devices/{device_id}/logs/batch", response_model=SaveDeviceLogsResponse, status_code=status.HTTP_201_CREATED)
+def save_console_logs_batch(
+    device_id: int,
+    request: BatchDeviceLogsRequest,
+    db: Session = Depends(get_db)
+):
+    """
+    Save batch of console logs from player browser (Console Interceptor)
+
+    This endpoint receives batched console.log(), console.error(), etc. from player.
+    Player sends logs in batches every 5-60 seconds to minimize network overhead.
+
+    Features:
+    - Bulk insert optimization (single SQL statement)
+    - Multi-tenancy support (organization_id)
+    - XSS sanitization (backend validation)
+    - Rate limiting (20 batches/min per device)
+
+    Request body format:
+    ```json
+    {
+      "logs": [
+        {
+          "level": "error",
+          "message": "TypeError: Cannot read property 'foo' of undefined",
+          "timestamp": "2025-01-15T10:30:00.123Z",
+          "source": "app.js:42",
+          "stack_trace": "Error: ...",
+          "user_agent": "Mozilla/5.0...",
+          "url": "http://192.168.5.12:8080/"
+        }
+      ]
+    }
+    ```
+
+    No JWT auth required - device_id verification is sufficient.
+    """
+    from services.device.use_cases.save_device_logs_batch import SaveDeviceLogsBatch
+
+    try:
+        use_case = SaveDeviceLogsBatch(db)
+        result = use_case.execute(device_id=device_id, dto=request)
+
+        return SaveDeviceLogsResponse(
+            success=True,
+            logs_saved=result['logs_saved'],
+            message=result['message']
+        )
+
+    except NotFoundError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
 
 
 # ============================================================================

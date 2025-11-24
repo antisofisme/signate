@@ -23,6 +23,8 @@ import {
   Activity,
   Network,
   Gauge,
+  Wifi,
+  WifiOff,
 } from 'lucide-react';
 import { usePagination } from '@/shared/hooks';
 import { Pagination } from '@/shared/components';
@@ -31,6 +33,7 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import { useDeviceLogs, useClearLogs, useConnectionLogs } from '../hooks/useDeviceLogs';
+import { useConsoleLiveStream } from '../hooks';
 import { LogDetailModal } from './LogDetailModal';
 import type { DeviceLog, LogLevel } from '../types/logs';
 import { toast } from 'sonner';
@@ -115,6 +118,23 @@ export function DeviceLogsViewer({
       enabled: deviceId > 0 && activeTab === 'speedtest',
     }
   );
+
+  // Live console streaming (WebSocket-based, no database)
+  const {
+    logs: liveConsoleLogs,
+    isConnected: isConsoleConnected,
+    isConnecting: isConsoleConnecting,
+    error: consoleStreamError,
+    clearLogs: clearLiveConsoleLogs,
+    reconnect: reconnectConsoleStream,
+  } = useConsoleLiveStream({
+    deviceId,
+    enabled: activeTab === 'console', // Only connect when console tab is active
+    maxLogs: 1000,
+    onError: (error) => {
+      console.error('[DeviceLogsViewer] Console stream error:', error);
+    },
+  });
 
   // Computed
   const logs = logsData?.logs || [];
@@ -302,92 +322,129 @@ export function DeviceLogsViewer({
 
         {/* Scrollable Content Area */}
         <div className="flex-1 overflow-y-auto">
-          {/* Console Logs */}
+          {/* Console Logs - LIVE STREAM (WebSocket, no database) */}
           {activeTab === 'console' && (
             <div className="space-y-3 p-3">
+              {/* Connection Status Banner */}
+              <div className={`flex items-center gap-2 px-3 py-2 rounded-lg border ${
+                isConsoleConnected
+                  ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800'
+                  : isConsoleConnecting
+                  ? 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800'
+                  : 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800'
+              }`}>
+                {isConsoleConnected ? (
+                  <>
+                    <Wifi className="w-4 h-4 text-green-600 dark:text-green-400" />
+                    <span className="text-xs font-medium text-green-700 dark:text-green-300">
+                      Live Streaming Active ({liveConsoleLogs.length} logs)
+                    </span>
+                  </>
+                ) : isConsoleConnecting ? (
+                  <>
+                    <RefreshCw className="w-4 h-4 text-yellow-600 dark:text-yellow-400 animate-spin" />
+                    <span className="text-xs font-medium text-yellow-700 dark:text-yellow-300">
+                      Connecting to live stream...
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <WifiOff className="w-4 h-4 text-red-600 dark:text-red-400" />
+                    <span className="text-xs font-medium text-red-700 dark:text-red-300">
+                      {consoleStreamError ? `Error: ${consoleStreamError.message}` : 'Disconnected'}
+                    </span>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={reconnectConsoleStream}
+                      className="ml-auto h-6 text-xs"
+                    >
+                      Reconnect
+                    </Button>
+                  </>
+                )}
+                {isConsoleConnected && liveConsoleLogs.length > 0 && (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={clearLiveConsoleLogs}
+                    className="ml-auto h-6 text-xs"
+                  >
+                    <Trash2 className="w-3 h-3 mr-1" />
+                    Clear
+                  </Button>
+                )}
+              </div>
 
-            {/* Logs List */}
-            {isLoading ? (
-              <div className="space-y-2">
-                {Array.from({ length: 5 }).map((_, i) => (
-                  <Skeleton key={i} className="h-20 w-full" />
-                ))}
-              </div>
-            ) : !hasLogs ? (
-              <div className="text-center py-12 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700">
-                <Terminal className="w-12 h-12 mx-auto text-gray-400 mb-3" />
-                <p className="text-gray-500 dark:text-gray-400">No logs available</p>
-              </div>
-            ) : (
-              <div className="border rounded-lg overflow-hidden">
-                <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                  <thead className="bg-gray-50 dark:bg-gray-800">
-                    <tr>
-                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-16">
-                        Level
-                      </th>
-                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-40">
-                        Time
-                      </th>
-                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                        Message
-                      </th>
-                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-32">
-                        Source
-                      </th>
-                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-16">
-                        Action
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
-                    {logs.map((log) => (
-                      <tr
-                        key={log.id}
-                        className="hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer"
-                        onClick={() => handleViewDetails(log)}
-                      >
-                        <td className="px-3 py-2 whitespace-nowrap">
-                          <Badge
-                            variant={
-                              log.level === 'error' ? 'destructive' :
-                              log.level === 'warn' ? 'default' :
-                              log.level === 'info' ? 'secondary' :
-                              'outline'
-                            }
-                            className="text-xs"
-                          >
-                            {log.level ? log.level.toUpperCase() : 'LOG'}
-                          </Badge>
-                        </td>
-                        <td className="px-3 py-2 whitespace-nowrap text-xs text-gray-500 dark:text-gray-400">
-                          {new Date(log.recorded_at).toLocaleString()}
-                        </td>
-                        <td className="px-3 py-2 text-sm text-gray-900 dark:text-gray-100 font-mono truncate max-w-md">
-                          {log.message}
-                        </td>
-                        <td className="px-3 py-2 text-xs text-gray-500 dark:text-gray-400 truncate">
-                          {log.source || '-'}
-                        </td>
-                        <td className="px-3 py-2 whitespace-nowrap">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-7 w-7 p-0"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleViewDetails(log);
-                            }}
-                          >
-                            <Eye className="w-3 h-3" />
-                          </Button>
-                        </td>
+              {/* Logs List */}
+              {isConsoleConnecting ? (
+                <div className="space-y-2">
+                  {Array.from({ length: 5 }).map((_, i) => (
+                    <Skeleton key={i} className="h-20 w-full" />
+                  ))}
+                </div>
+              ) : liveConsoleLogs.length === 0 ? (
+                <div className="text-center py-12 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700">
+                  <Terminal className="w-12 h-12 mx-auto text-gray-400 mb-3" />
+                  <p className="text-gray-500 dark:text-gray-400">
+                    {isConsoleConnected ? 'Waiting for console logs...' : 'No connection to device'}
+                  </p>
+                  <p className="text-xs text-gray-400 dark:text-gray-500 mt-2">
+                    Logs will appear here in real-time when the device sends them
+                  </p>
+                </div>
+              ) : (
+                <div className="border rounded-lg overflow-hidden">
+                  <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                    <thead className="bg-gray-50 dark:bg-gray-800 sticky top-0">
+                      <tr>
+                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-16">
+                          Level
+                        </th>
+                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-40">
+                          Time
+                        </th>
+                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                          Message
+                        </th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
+                    </thead>
+                    <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
+                      {liveConsoleLogs.map((log, index) => (
+                        <tr
+                          key={`${log.timestamp}-${index}`}
+                          className="hover:bg-gray-50 dark:hover:bg-gray-800"
+                        >
+                          <td className="px-3 py-2 whitespace-nowrap">
+                            <Badge
+                              variant={
+                                log.level === 'error' ? 'destructive' :
+                                log.level === 'warn' ? 'default' :
+                                log.level === 'info' ? 'secondary' :
+                                'outline'
+                              }
+                              className="text-xs"
+                            >
+                              {log.level.toUpperCase()}
+                            </Badge>
+                          </td>
+                          <td className="px-3 py-2 whitespace-nowrap text-xs text-gray-500 dark:text-gray-400">
+                            {new Date(log.timestamp).toLocaleString()}
+                          </td>
+                          <td className="px-3 py-2 text-sm text-gray-900 dark:text-gray-100 font-mono break-words">
+                            {log.message}
+                            {log.stack && (
+                              <pre className="mt-1 text-xs text-red-600 dark:text-red-400 whitespace-pre-wrap">
+                                {log.stack}
+                              </pre>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
           )}
 
@@ -563,16 +620,12 @@ export function DeviceLogsViewer({
           )}
         </div>
 
-        {/* Sticky Footer - Pagination */}
+        {/* Sticky Footer - Pagination (not needed for console live stream) */}
         <div className="sticky bottom-0 z-10 bg-gray-50 dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700 px-3 py-2">
-          {activeTab === 'console' && hasLogs && (
-            <Pagination
-              currentPage={pagination.currentPage}
-              totalPages={totalPages}
-              totalItems={total}
-              pageSize={pagination.pageSize}
-              onPageChange={pagination.goToPage}
-            />
+          {activeTab === 'console' && liveConsoleLogs.length > 0 && (
+            <div className="text-xs text-gray-500 dark:text-gray-400 text-center">
+              Showing last {liveConsoleLogs.length} logs (live stream)
+            </div>
           )}
           {activeTab === 'connection' && hasConnectionLogs && (
             <Pagination

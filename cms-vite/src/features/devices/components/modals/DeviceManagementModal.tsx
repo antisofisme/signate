@@ -15,9 +15,6 @@ import {
   LayoutDashboard,
   Activity,
   Terminal as TerminalIcon,
-  FileText,
-  FileCode,
-  Settings as SettingsIcon,
   Tv,
   Monitor,
 } from 'lucide-react';
@@ -28,9 +25,8 @@ import type { Device } from '../../types/device';
 import { OverviewTab } from './tabs/OverviewTab';
 import { HealthTab } from './tabs/HealthTab';
 import { CommandsTab } from './tabs/CommandsTab';
-import { LogsTab } from './tabs/LogsTab';
 
-export type DeviceTabId = 'overview' | 'health' | 'commands' | 'logs';
+export type DeviceTabId = 'overview' | 'health' | 'commands';
 
 interface DeviceManagementModalProps {
   isOpen: boolean;
@@ -55,11 +51,6 @@ const DEVICE_TABS: Tab[] = [
     id: 'commands',
     label: 'Commands',
     icon: TerminalIcon,
-  },
-  {
-    id: 'logs',
-    label: 'Logs',
-    icon: FileCode,
   },
 ];
 
@@ -157,10 +148,6 @@ export function DeviceManagementModal({
 
         <TabPanel activeTab={activeTab} tabId="commands">
           <CommandsTab device={device} isOnline={isOnline} />
-        </TabPanel>
-
-        <TabPanel activeTab={activeTab} tabId="logs">
-          <LogsTab device={device} />
         </TabPanel>
       </div>
     </Modal>

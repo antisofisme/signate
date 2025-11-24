@@ -225,6 +225,9 @@ class ShellRegistrationClass implements IShellRegistration {
             SharedDeviceState.setOrganizationId(existingCheck.organization_id);
           }
 
+          // Trigger device:restored event to notify other services (e.g., console interceptor)
+          SharedDeviceState.loadFromStorage();
+
           // Update UI with existing code
           if (getShellActivationScreen() && existingCheck.unique_code) {
             getShellActivationScreen()?.updateCode(existingCheck.unique_code);
@@ -337,6 +340,9 @@ class ShellRegistrationClass implements IShellRegistration {
     if (data.device_token) {
       SharedDeviceState.setDeviceToken(data.device_token);
     }
+
+    // Trigger device:restored event to notify other services (e.g., console interceptor)
+    SharedDeviceState.loadFromStorage();
 
     // Clear retry count on success
     this.clearRetryCount();

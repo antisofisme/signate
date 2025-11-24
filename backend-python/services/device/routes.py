@@ -1004,57 +1004,72 @@ def hard_reset_device(
     }
 
 
-@router.post(DeviceRoutes.DEVICE_LOGS_BATCH, status_code=status.HTTP_204_NO_CONTENT)
-def receive_device_logs(
-    request_body: DeviceLogsRequest,
-    device_repo: DeviceRepository = Depends(get_device_repository)
-):
-    """
-    Receive batch logs from player (called by player device)
+# =============================================================================
+# DEPRECATED: Old Log Endpoint (Database Storage)
+# REPLACED BY: Console Streaming API (/api/v1/devices/{device_id}/console/upload)
+# =============================================================================
+# This endpoint has been DISABLED to avoid confusion with the new console streaming system.
+# New system: Player → HTTP POST to console/upload → Backend broadcasts via WebSocket to CMS
+# =============================================================================
 
-    Logs are sent from player for debugging purposes.
-    Currently just logged to console, can be stored to database later.
-
-    ⚠️ SECURITY NOTE: This is a public endpoint (no auth) because it's called by player devices.
-    The player sends its device_id in the request body. We verify the device exists but don't
-    require JWT authentication.
-    """
-    try:
-        # Verify device exists (no organization filter - public endpoint)
-        device = device_repo.find_by_id(request_body.device_id)
-
-        if not device:
-            # Device not found - return success but log the issue
-            return {
-                "status": "ignored",
-                "message": "Device not found",
-                "processed_logs": 0
-            }
-
-        # Log to console for debugging
-        print(f"[Device Logs] Device ID: {request_body.device_id} ({device.device_name})")
-        for log_entry in request_body.logs:
-            print(f"  [{log_entry.level.upper()}] {log_entry.timestamp}: {log_entry.message}")
-
-        # TODO: Store logs to database if needed
-        # For now, just acknowledge receipt
-        
-        return {
-            "status": "success",
-            "message": "Logs received and processed",
-            "processed_logs": len(request_body.logs),
-            "device_id": request_body.device_id
-        }
-
-    except Exception as e:
-        # Return error response but don't break player functionality
-        print(f"[Device Logs] Error processing logs: {e}")
-        return {
-            "status": "error",
-            "message": "Failed to process logs",
-            "processed_logs": 0,
-            "error": str(e)
-        }
+# @router.post(DeviceRoutes.DEVICE_LOGS_BATCH, status_code=status.HTTP_204_NO_CONTENT)
+# def receive_device_logs(
+#     request_body: DeviceLogsRequest,
+#     device_repo: DeviceRepository = Depends(get_device_repository),
+#     db: Session = Depends(get_db)
+# ):
+#     """
+#     Receive batch logs from player (called by player device)
+#
+#     Logs are sent from player for debugging purposes and stored to database.
+#
+#     ⚠️ SECURITY NOTE: This is a public endpoint (no auth) because it's called by player devices.
+#     The player sends its device_id in the request body. We verify the device exists but don't
+#     require JWT authentication.
+#     """
+#     from services.device.use_cases.save_device_logs_batch import SaveDeviceLogsBatch
+#     from services.device.dtos import BatchDeviceLogsRequest, DeviceLogEntry
+#
+#     try:
+#         # Verify device exists (no organization filter - public endpoint)
+#         device = device_repo.find_by_id(request_body.device_id)
+#
+#         if not device:
+#             # Device not found - log but don't break
+#             print(f"[Device Logs] Device {request_body.device_id} not found - ignoring logs")
+#             return
+#
+#         # Convert DeviceLogsRequest to BatchDeviceLogsRequest format
+#         batch_request = BatchDeviceLogsRequest(
+#             logs=[
+#                 DeviceLogEntry(
+#                     level=log.level,
+#                     message=log.message,
+#                     timestamp=log.timestamp,
+#                     source=log.source,
+#                     stack_trace=log.stack_trace,
+#                     user_agent=log.user_agent,
+#                     url=log.url
+#                 )
+#                 for log in request_body.logs
+#             ]
+#         )
+#
+#         # Save logs to database using use case
+#         use_case = SaveDeviceLogsBatch(db)
+#         result = use_case.execute(device_id=request_body.device_id, dto=batch_request)
+#
+#         # Log success
+#         print(f"[Device Logs] ✅ Saved {result['logs_saved']} logs for device {request_body.device_id} ({device.device_name})")
+#
+#         # Return 204 No Content (no body needed)
+#         return
+#
+#     except Exception as e:
+#         # Log error but don't break player functionality
+#         print(f"[Device Logs] ❌ Error saving logs: {e}")
+#         # Return 204 anyway to not break player
+#         return
 
 
 # NOTE: get_resolved_content endpoint moved to extended_routes.py to avoid duplication

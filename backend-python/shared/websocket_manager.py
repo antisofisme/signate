@@ -1,6 +1,6 @@
 """
 WebSocket Manager
-Centralized WebSocket connection management and broadcasting
+Centralized WebSocket connection management and broadcasting with Redis pub/sub support
 """
 
 from typing import Dict, Set, Optional, Any, List
@@ -10,6 +10,7 @@ import json
 import asyncio
 import logging
 from enum import Enum
+import redis.asyncio as redis
 
 logger = logging.getLogger(__name__)
 
@@ -22,27 +23,28 @@ class WebSocketEventType(Enum):
     DEVICE_OFFLINE = "device.offline"
     DEVICE_ONLINE = "device.online"
     DEVICE_COMMAND = "device.command"
-    
+    DEVICE_CONSOLE_LOG = "device.console_log"
+
     # Content events
     CONTENT_UPLOADED = "content.uploaded"
     CONTENT_UPDATED = "content.updated"
     CONTENT_DELETED = "content.deleted"
     CONTENT_TRANSCODED = "content.transcoded"
-    
+
     # Playlist events
     PLAYLIST_CREATED = "playlist.created"
     PLAYLIST_UPDATED = "playlist.updated"
     PLAYLIST_ASSIGNED = "playlist.assigned"
     PLAYLIST_UNASSIGNED = "playlist.unassigned"
-    
+
     # Schedule events
     SCHEDULE_ACTIVATED = "schedule.activated"
     SCHEDULE_DEACTIVATED = "schedule.deactivated"
-    
+
     # PMS events
     PMS_GUEST_UPDATE = "pms.guest_update"
     PMS_ROOM_UPDATE = "pms.room_update"
-    
+
     # System events
     SYSTEM_NOTIFICATION = "system.notification"
     SYSTEM_MAINTENANCE = "system.maintenance"
@@ -59,24 +61,53 @@ class ConnectionManager:
     - Connection health monitoring
     """
     
-    def __init__(self):
+    def __init__(self, redis_url: Optional[str] = None, use_redis: bool = True):
         # Device connections: {device_id: {websocket, org_id, last_ping}}
         self._device_connections: Dict[int, Dict[str, Any]] = {}
-        
+
         # Admin connections: {user_id: {websocket, org_id, permissions}}
         self._admin_connections: Dict[int, Dict[str, Any]] = {}
-        
+
         # Organization rooms: {org_id: {device_ids, admin_ids}}
         self._organization_rooms: Dict[int, Dict[str, Set[int]]] = {}
-        
+
         # Channel subscriptions: {channel: {connection_ids}}
         self._channel_subscriptions: Dict[str, Set[str]] = {}
-        
+
+        # Console log subscriptions: {device_id: {admin_user_ids}} - ALWAYS in-memory
+        self._console_subscriptions: Dict[int, Set[int]] = {}
+
+        # Player control WebSocket connections: {device_id: websocket} - For sending commands
+        self._player_control_connections: Dict[int, WebSocket] = {}
+
+        # Console subscriber count tracking: {device_id: {org_id: count}}
+        self._console_subscriber_counts: Dict[int, Dict[int, int]] = {}
+
         # Lock for thread safety
         self._lock = asyncio.Lock()
-        
+
         # Background tasks
         self._ping_task: Optional[asyncio.Task] = None
+        self._redis_listener_task: Optional[asyncio.Task] = None
+        self._command_listener_task: Optional[asyncio.Task] = None
+
+        # Redis pub/sub for multi-instance support
+        self._use_redis = use_redis and redis_url is not None
+        self._redis_client: Optional[redis.Redis] = None
+        self._redis_pubsub: Optional[redis.client.PubSub] = None
+        self._command_pubsub: Optional[redis.client.PubSub] = None  # Separate pubsub for commands
+
+        if self._use_redis and redis_url:
+            try:
+                self._redis_client = redis.from_url(redis_url, decode_responses=True)
+                self._redis_pubsub = self._redis_client.pubsub()
+                self._command_pubsub = self._redis_client.pubsub()  # Separate pubsub connection
+                logger.info(f"Redis pub/sub enabled for WebSocket broadcasting")
+            except Exception as e:
+                logger.error(f"Failed to initialize Redis pub/sub: {e}")
+                self._use_redis = False
+        else:
+            logger.info("Using in-memory WebSocket broadcasting (single instance mode)")
         
     async def connect_device(
         self, 
@@ -265,43 +296,28 @@ class ConnectionManager:
             return False
     
     async def broadcast_to_organization(
-        self, 
-        organization_id: int, 
-        event_type: WebSocketEventType, 
+        self,
+        organization_id: int,
+        event_type: WebSocketEventType,
         data: Any
     ):
         """
         Broadcast message to all connections in an organization
-        
+        Uses Redis pub/sub if enabled for multi-instance support
+
         Args:
             organization_id: Target organization
             event_type: Event type
             data: Event data
         """
-        if organization_id not in self._organization_rooms:
-            return
-            
-        room = self._organization_rooms[organization_id]
-        
-        # Send to all devices in organization
-        failed_devices = []
-        for device_id in room["device_ids"]:
-            success = await self.send_to_device(device_id, event_type, data)
-            if not success:
-                failed_devices.append(device_id)
-        
-        # Send to all admins in organization
-        failed_admins = []
-        for user_id in room["admin_ids"]:
-            success = await self.send_to_admin(user_id, event_type, data)
-            if not success:
-                failed_admins.append(user_id)
-        
-        # Clean up failed connections
-        for device_id in failed_devices:
-            room["device_ids"].discard(device_id)
-        for user_id in failed_admins:
-            room["admin_ids"].discard(user_id)
+        # If Redis is enabled, publish to Redis (all instances will receive)
+        if self._use_redis:
+            await self._publish_to_redis(organization_id, event_type, data)
+            # Also broadcast locally for immediate delivery
+            await self._broadcast_local(organization_id, event_type, data)
+        else:
+            # In-memory only - broadcast to local connections
+            await self._broadcast_local(organization_id, event_type, data)
     
     async def broadcast_to_devices(
         self,
@@ -402,6 +418,7 @@ class ConnectionManager:
         return {
             "total_devices": len(self._device_connections),
             "total_admins": len(self._admin_connections),
+            "total_player_controls": len(self._player_control_connections),
             "organizations": len(self._organization_rooms),
             "devices_by_org": {
                 org_id: len(room["device_ids"])
@@ -410,9 +427,492 @@ class ConnectionManager:
             "admins_by_org": {
                 org_id: len(room["admin_ids"])
                 for org_id, room in self._organization_rooms.items()
+            },
+            "console_subscriptions": {
+                device_id: len(admins)
+                for device_id, admins in self._console_subscriptions.items()
             }
         }
 
+    # ========== PLAYER CONTROL WEBSOCKET METHODS ==========
 
-# Global WebSocket manager instance
-websocket_manager = ConnectionManager()
+    async def register_player_control(self, device_id: int, websocket: WebSocket):
+        """
+        Register a player's control WebSocket connection
+        This is used for bidirectional communication with the player
+
+        Args:
+            device_id: Device ID
+            websocket: WebSocket connection from player
+        """
+        async with self._lock:
+            self._player_control_connections[device_id] = websocket
+            logger.info(f"Player control WebSocket registered for device {device_id}")
+
+    async def unregister_player_control(self, device_id: int):
+        """
+        Unregister a player's control WebSocket connection
+
+        Args:
+            device_id: Device ID
+        """
+        async with self._lock:
+            if device_id in self._player_control_connections:
+                del self._player_control_connections[device_id]
+                logger.info(f"Player control WebSocket unregistered for device {device_id}")
+
+    async def send_command_to_player(self, device_id: int, command: str, data: Optional[Dict[str, Any]] = None) -> bool:
+        """
+        Send a control command to the player via WebSocket
+        Used for console streaming control (start_streaming, stop_streaming)
+
+        Args:
+            device_id: Target device ID
+            command: Command name (e.g., "start_streaming", "stop_streaming")
+            data: Optional additional command data
+
+        Returns:
+            True if command was sent successfully, False otherwise
+        """
+        # Try direct WebSocket first (if player is connected)
+        if device_id in self._player_control_connections:
+            websocket = self._player_control_connections[device_id]
+            message = {
+                "command": command,
+                "data": data or {},
+                "timestamp": datetime.now(timezone.utc).isoformat()
+            }
+            try:
+                await websocket.send_json(message)
+                logger.info(f"Sent command '{command}' to player {device_id} via WebSocket")
+                return True
+            except Exception as e:
+                logger.error(f"Failed to send command to player {device_id} via WebSocket: {e}")
+                # Remove failed connection
+                await self.unregister_player_control(device_id)
+
+        # Fallback to Redis pub/sub (for multi-instance support or reconnection)
+        if self._use_redis:
+            channel = f"command:{device_id}"
+            message = {
+                "command": command,
+                "data": data or {},
+                "timestamp": datetime.now(timezone.utc).isoformat()
+            }
+            try:
+                await self._redis_client.publish(channel, json.dumps(message))
+                logger.info(f"Published command '{command}' to Redis channel {channel}")
+                return True
+            except Exception as e:
+                logger.error(f"Failed to publish command to Redis: {e}")
+                return False
+
+        logger.warning(f"Unable to send command to player {device_id} - no WebSocket or Redis")
+        return False
+
+    async def get_console_subscriber_count(self, device_id: int, organization_id: int) -> int:
+        """
+        Get the number of admins currently subscribed to a device's console logs
+        Used to determine when to start/stop player streaming
+
+        Args:
+            device_id: Device ID
+            organization_id: Organization ID for multi-tenant isolation
+
+        Returns:
+            Number of subscribed admins from the specified organization
+        """
+        async with self._lock:
+            if device_id not in self._console_subscriber_counts:
+                return 0
+            return self._console_subscriber_counts[device_id].get(organization_id, 0)
+
+    # ========== CONSOLE LOG STREAMING ==========
+
+    async def subscribe_to_console(
+        self,
+        device_id: int,
+        admin_user_id: int,
+        organization_id: int,
+        websocket: WebSocket
+    ) -> bool:
+        """
+        Subscribe admin to device console logs (in-memory tracking)
+        Sends start_streaming command to player if this is the first subscriber
+
+        Args:
+            device_id: Device ID to subscribe to
+            admin_user_id: Admin user ID
+            organization_id: Organization ID for multi-tenant isolation
+            websocket: WebSocket connection for console streaming
+
+        Returns:
+            True if subscribed successfully
+        """
+        is_first_subscriber = False
+
+        async with self._lock:
+            # Track console subscriptions
+            if device_id not in self._console_subscriptions:
+                self._console_subscriptions[device_id] = {}
+
+            # Store WebSocket connection with user_id
+            self._console_subscriptions[device_id][admin_user_id] = websocket
+
+            # Track subscriber counts per organization
+            if device_id not in self._console_subscriber_counts:
+                self._console_subscriber_counts[device_id] = {}
+
+            if organization_id not in self._console_subscriber_counts[device_id]:
+                self._console_subscriber_counts[device_id][organization_id] = 0
+
+            # Check if this is the first subscriber for this organization
+            if self._console_subscriber_counts[device_id][organization_id] == 0:
+                is_first_subscriber = True
+
+            # Increment subscriber count
+            self._console_subscriber_counts[device_id][organization_id] += 1
+
+            total_subs = len(self._console_subscriptions[device_id])
+            org_subs = self._console_subscriber_counts[device_id][organization_id]
+
+            logger.info(
+                f"Admin {admin_user_id} subscribed to device {device_id} console "
+                f"(org: {organization_id}, total: {total_subs}, org_total: {org_subs})"
+            )
+
+        # Send start_streaming command if this is the first subscriber
+        if is_first_subscriber:
+            logger.info(f"First subscriber for device {device_id} - sending start_streaming command")
+            await self.send_command_to_player(device_id, "start_streaming", {"organization_id": organization_id})
+
+        return True
+
+    async def unsubscribe_from_console(self, device_id: int, admin_user_id: int, organization_id: int):
+        """
+        Unsubscribe admin from device console logs
+        Sends stop_streaming command to player if this is the last subscriber
+
+        Args:
+            device_id: Device ID to unsubscribe from
+            admin_user_id: Admin user ID
+            organization_id: Organization ID for multi-tenant isolation
+        """
+        is_last_subscriber = False
+
+        async with self._lock:
+            if device_id in self._console_subscriptions:
+                if admin_user_id in self._console_subscriptions[device_id]:
+                    del self._console_subscriptions[device_id][admin_user_id]
+
+                # Clean up empty subscriptions
+                if not self._console_subscriptions[device_id]:
+                    del self._console_subscriptions[device_id]
+
+            # Decrement subscriber count
+            if device_id in self._console_subscriber_counts:
+                if organization_id in self._console_subscriber_counts[device_id]:
+                    self._console_subscriber_counts[device_id][organization_id] -= 1
+
+                    # Check if this was the last subscriber for this organization
+                    if self._console_subscriber_counts[device_id][organization_id] <= 0:
+                        is_last_subscriber = True
+                        del self._console_subscriber_counts[device_id][organization_id]
+
+                    # Clean up empty counts
+                    if not self._console_subscriber_counts[device_id]:
+                        del self._console_subscriber_counts[device_id]
+
+            logger.info(f"Admin {admin_user_id} unsubscribed from device {device_id} console logs (org: {organization_id})")
+
+        # Send stop_streaming command if this was the last subscriber
+        if is_last_subscriber:
+            logger.info(f"Last subscriber for device {device_id} - sending stop_streaming command")
+            await self.send_command_to_player(device_id, "stop_streaming", {"organization_id": organization_id})
+
+    async def broadcast_console_log(self, device_id: int, organization_id: int, logs: List[Dict[str, Any]]):
+        """
+        Broadcast console logs from device to subscribed admins via Redis pub/sub
+
+        Args:
+            device_id: Source device ID
+            organization_id: Organization ID for multi-tenant routing
+            logs: List of console log entries
+        """
+        # Prepare message
+        message = {
+            "event": WebSocketEventType.DEVICE_CONSOLE_LOG.value,
+            "data": {
+                "device_id": device_id,
+                "logs": logs
+            },
+            "timestamp": datetime.now(timezone.utc).isoformat()
+        }
+
+        if self._use_redis:
+            # Use Redis pub/sub for multi-worker support
+            # Channel format: console:{device_id}:{org_id}
+            channel = f"console:{device_id}:{organization_id}"
+            try:
+                print(f"[WSManager] Publishing {len(logs)} console logs to Redis channel: {channel}")
+                await self._redis_client.publish(channel, json.dumps(message))
+                logger.info(f"Published {len(logs)} console logs to Redis channel {channel}")
+            except Exception as e:
+                print(f"[WSManager] ❌ Failed to publish to Redis: {e}")
+                logger.error(f"Failed to publish console logs to Redis: {e}")
+        else:
+            # Fallback to in-memory (single worker only)
+            subscribed_admins = self._console_subscriptions.get(device_id, {})
+
+            print(f"[WSManager] Broadcasting {len(logs)} console logs from device {device_id} to {len(subscribed_admins)} in-memory subscribers")
+
+            if not subscribed_admins:
+                print(f"[WSManager] ⚠️ No admins subscribed to device {device_id} console logs - logs discarded")
+                logger.info(f"No admins subscribed to device {device_id} console logs - logs discarded")
+                return
+
+            # Send to subscribed admins via their console WebSocket connections
+            failed_admins = []
+            sent_count = 0
+            for user_id, websocket in subscribed_admins.items():
+                try:
+                    print(f"[WSManager] Sending {len(logs)} logs to admin {user_id}...")
+                    await websocket.send_json(message)
+                    sent_count += 1
+                    print(f"[WSManager] ✅ Sent to admin {user_id}")
+                except Exception as e:
+                    print(f"[WSManager] ❌ Failed to send to admin {user_id}: {e}")
+                    logger.error(f"Failed to send console logs to admin {user_id}: {e}")
+                    failed_admins.append(user_id)
+
+            # Clean up failed subscriptions
+            if failed_admins:
+                async with self._lock:
+                    for user_id in failed_admins:
+                        if user_id in self._console_subscriptions[device_id]:
+                            del self._console_subscriptions[device_id][user_id]
+
+            logger.info(f"Broadcasted {len(logs)} console logs from device {device_id} to {sent_count}/{len(subscribed_admins)} admins (org: {organization_id})")
+
+    # ========== REDIS PUB/SUB METHODS ==========
+
+    async def start_redis_listener(self):
+        """Start Redis pub/sub listener tasks"""
+        if self._use_redis and not self._redis_listener_task:
+            self._redis_listener_task = asyncio.create_task(self._redis_listener())
+            logger.info("Redis pub/sub listener started")
+
+        if self._use_redis and not self._command_listener_task:
+            self._command_listener_task = asyncio.create_task(self._command_listener())
+            logger.info("Redis command listener started")
+
+    async def stop_redis_listener(self):
+        """Stop Redis pub/sub listener tasks"""
+        if self._redis_listener_task:
+            self._redis_listener_task.cancel()
+            try:
+                await self._redis_listener_task
+            except asyncio.CancelledError:
+                pass
+            self._redis_listener_task = None
+            logger.info("Redis pub/sub listener stopped")
+
+        if self._command_listener_task:
+            self._command_listener_task.cancel()
+            try:
+                await self._command_listener_task
+            except asyncio.CancelledError:
+                pass
+            self._command_listener_task = None
+            logger.info("Redis command listener stopped")
+
+    async def _redis_listener(self):
+        """Background task to listen for Redis pub/sub messages"""
+        if not self._redis_pubsub:
+            return
+
+        try:
+            # Subscribe to organization channels AND console channels
+            await self._redis_pubsub.psubscribe("org:*")
+            await self._redis_pubsub.psubscribe("console:*")
+            print("[WSManager] Subscribed to Redis channels: org:* and console:*")
+
+            async for message in self._redis_pubsub.listen():
+                if message["type"] == "pmessage":
+                    try:
+                        # Parse channel and data
+                        channel = message["channel"]
+                        data = json.loads(message["data"])
+
+                        # Check if this is a console log message
+                        if channel.startswith("console:"):
+                            # Console channel format: console:{device_id}:{org_id}
+                            parts = channel.split(":")
+                            if len(parts) == 3:
+                                device_id = int(parts[1])
+                                org_id = int(parts[2])
+
+                                # Broadcast to local console subscribers only
+                                print(f"[WSManager] Received console logs from Redis for device {device_id}")
+                                await self._broadcast_console_local(device_id, data)
+                        else:
+                            # Regular organization message
+                            event_type = WebSocketEventType(data["event"])
+                            event_data = data["data"]
+
+                            # Extract org_id from channel (format: org:123)
+                            org_id = int(channel.split(":")[1])
+
+                            # Broadcast to local connections only (avoid double-send)
+                            await self._broadcast_local(org_id, event_type, event_data)
+
+                    except Exception as e:
+                        logger.error(f"Error processing Redis message: {e}")
+
+        except asyncio.CancelledError:
+            await self._redis_pubsub.punsubscribe("org:*")
+            await self._redis_pubsub.punsubscribe("console:*")
+            raise
+        except Exception as e:
+            logger.error(f"Redis listener error: {e}")
+
+    async def _command_listener(self):
+        """
+        Background task to listen for Redis command channel messages
+        Forwards commands from Redis to player control WebSocket connections
+        """
+        if not self._command_pubsub:
+            return
+
+        try:
+            # Subscribe to all command channels: command:*
+            await self._command_pubsub.psubscribe("command:*")
+            logger.info("Subscribed to Redis command channels: command:*")
+
+            async for message in self._command_pubsub.listen():
+                if message["type"] == "pmessage":
+                    try:
+                        # Parse channel and data
+                        channel = message["channel"]
+                        data = json.loads(message["data"])
+
+                        # Extract device_id from channel (format: command:{device_id})
+                        parts = channel.split(":")
+                        if len(parts) == 2:
+                            device_id = int(parts[1])
+                            command = data.get("command")
+                            command_data = data.get("data", {})
+
+                            logger.info(f"Received command '{command}' from Redis for device {device_id}")
+
+                            # Forward command to player if connected locally
+                            if device_id in self._player_control_connections:
+                                websocket = self._player_control_connections[device_id]
+                                try:
+                                    await websocket.send_json({
+                                        "command": command,
+                                        "data": command_data,
+                                        "timestamp": data.get("timestamp")
+                                    })
+                                    logger.info(f"Forwarded command '{command}' to player {device_id}")
+                                except Exception as e:
+                                    logger.error(f"Failed to forward command to player {device_id}: {e}")
+                                    # Remove failed connection
+                                    await self.unregister_player_control(device_id)
+                            else:
+                                logger.debug(f"Player {device_id} not connected to this instance - command handled by other instance")
+
+                    except Exception as e:
+                        logger.error(f"Error processing command message: {e}")
+
+        except asyncio.CancelledError:
+            await self._command_pubsub.punsubscribe("command:*")
+            raise
+        except Exception as e:
+            logger.error(f"Command listener error: {e}")
+
+    async def _broadcast_local(self, organization_id: int, event_type: WebSocketEventType, data: Any):
+        """Broadcast to local WebSocket connections only (called by Redis listener)"""
+        if organization_id not in self._organization_rooms:
+            return
+
+        room = self._organization_rooms[organization_id]
+
+        # Send to local devices
+        for device_id in room["device_ids"]:
+            if device_id in self._device_connections:
+                await self.send_to_device(device_id, event_type, data)
+
+        # Send to local admins
+        for user_id in room["admin_ids"]:
+            if user_id in self._admin_connections:
+                await self.send_to_admin(user_id, event_type, data)
+
+    async def _broadcast_console_local(self, device_id: int, message: dict):
+        """
+        Broadcast console logs to local WebSocket subscribers only (called by Redis listener)
+
+        Args:
+            device_id: Device ID
+            message: Complete message dict with event, data, timestamp
+        """
+        subscribed_admins = self._console_subscriptions.get(device_id, {})
+
+        if not subscribed_admins:
+            print(f"[WSManager] No local subscribers for device {device_id} console")
+            return
+
+        print(f"[WSManager] Broadcasting console logs to {len(subscribed_admins)} local subscribers")
+        print(f"[WSManager] Message to send: {message}")  # DEBUG
+
+        failed_admins = []
+        sent_count = 0
+        for user_id, websocket in subscribed_admins.items():
+            try:
+                print(f"[WSManager] Sending to admin {user_id}...")  # DEBUG
+                await websocket.send_json(message)
+                sent_count += 1
+                print(f"[WSManager] ✅ Sent console logs to admin {user_id}")
+            except Exception as e:
+                print(f"[WSManager] ❌ Failed to send to admin {user_id}: {e}")
+                logger.error(f"Failed to send console logs to admin {user_id}: {e}")
+                failed_admins.append(user_id)
+
+        # Clean up failed subscriptions
+        if failed_admins:
+            async with self._lock:
+                for user_id in failed_admins:
+                    if user_id in self._console_subscriptions[device_id]:
+                        del self._console_subscriptions[device_id][user_id]
+
+        logger.info(f"Sent console logs to {sent_count}/{len(subscribed_admins)} local subscribers for device {device_id}")
+
+    async def _publish_to_redis(self, organization_id: int, event_type: WebSocketEventType, data: Any):
+        """Publish message to Redis for multi-instance broadcasting"""
+        if not self._use_redis or not self._redis_client:
+            return
+
+        try:
+            channel = f"org:{organization_id}"
+            message = {
+                "event": event_type.value,
+                "data": data,
+                "recorded_at": datetime.now(timezone.utc).isoformat()
+            }
+
+            await self._redis_client.publish(channel, json.dumps(message))
+            logger.debug(f"Published to Redis channel {channel}: {event_type.value}")
+
+        except Exception as e:
+            logger.error(f"Failed to publish to Redis: {e}")
+
+
+# Global WebSocket manager instance (will be initialized in main.py with settings)
+websocket_manager: Optional[ConnectionManager] = None
+
+
+def init_websocket_manager(redis_url: Optional[str] = None, use_redis: bool = True):
+    """Initialize global WebSocket manager with Redis support"""
+    global websocket_manager
+    websocket_manager = ConnectionManager(redis_url=redis_url, use_redis=use_redis)
+    return websocket_manager

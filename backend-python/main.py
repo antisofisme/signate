@@ -21,7 +21,7 @@ from shared.cache import cache
 from shared.metrics import init_app_metrics, MetricsMiddleware
 from shared.security_headers import configure_security_headers
 from shared.rate_limiter import cleanup_rate_limiter
-from shared.websocket_manager import websocket_manager
+from shared.websocket_manager import init_websocket_manager, websocket_manager
 from shared.range_static_files import RangeStaticFiles
 from services.schedule.domain.schedule_executor import init_schedule_executor, get_schedule_executor
 
@@ -33,6 +33,8 @@ from services.device.command_routes import router as device_command_router
 from services.device.health_routes import router as device_health_router
 from services.device.log_routes import router as device_log_router
 from services.device.connection_log_routes import router as device_connection_log_router
+from services.device.console_routes import router as device_console_router
+from services.device.console_control_routes import router as device_console_control_router
 from services.device.extended_routes import router as device_extended_router
 from services.device.group_routes import router as device_group_router
 from services.organization.routes import router as organization_router
@@ -93,11 +95,26 @@ async def lifespan(app: FastAPI):
         print(f"  - Memory used: {redis_health.get('used_memory_human', 'N/A')}")
     else:
         print(f"⚠ Redis cache: {redis_health.get('message', 'Not connected')}")
-    
+
+    # Initialize WebSocket manager with Redis pub/sub
+    ws_manager = init_websocket_manager(
+        redis_url=settings.REDIS_URL,
+        use_redis=settings.USE_REDIS_PUBSUB
+    )
+    if settings.USE_REDIS_PUBSUB:
+        await ws_manager.start_redis_listener()
+        print("✓ WebSocket manager: Redis pub/sub enabled")
+    else:
+        print("✓ WebSocket manager: In-memory mode")
+
+    # Start WebSocket ping task
+    await ws_manager.start_ping_task()
+    print("✓ WebSocket ping task: Started")
+
     # Initialize metrics
     init_app_metrics(version="1.0.0", environment=settings.ENVIRONMENT)
     print("✓ Prometheus metrics: Initialized")
-    
+
     # Initialize schedule executor
     from shared.database import get_db_context
     schedule_executor = init_schedule_executor(get_db_context)
@@ -109,7 +126,15 @@ async def lifespan(app: FastAPI):
 
     # Shutdown
     print("👋 Shutting down Digital Signage Backend")
-    
+
+    # Stop WebSocket manager
+    try:
+        await websocket_manager.stop_ping_task()
+        await websocket_manager.stop_redis_listener()
+        print("✓ WebSocket manager stopped")
+    except:
+        pass
+
     # Stop schedule executor
     try:
         schedule_executor = get_schedule_executor()
@@ -234,12 +259,16 @@ app.include_router(auth_router, tags=["Authentication"])
 # IMPORTANT: Device Groups must be registered BEFORE Device Management
 # to avoid /devices/groups being caught by /devices/{device_id}
 app.include_router(device_group_router, prefix="/api/v1/devices", tags=["Device Groups"])
+# IMPORTANT: Device Logs must be registered BEFORE Device Management
+# to avoid /devices/{device_id}/logs/batch being caught by /devices/{device_id}
+app.include_router(device_log_router, prefix="/api/v1", tags=["Device Logs"])
+app.include_router(device_connection_log_router, prefix="/api/v1", tags=["Device Connection Logs"])
+app.include_router(device_console_router, prefix="/api/v1", tags=["Device Console Logs"])
+app.include_router(device_console_control_router, prefix="/api/v1", tags=["Device Console Control"])
 app.include_router(device_router, tags=["Device Management"])
 app.include_router(device_assignment_router, prefix="/api/v1", tags=["Device Assignments"])
 app.include_router(device_command_router, prefix="/api/v1", tags=["Device Commands"])
 app.include_router(device_health_router, prefix="/api/v1", tags=["Device Health"])
-app.include_router(device_log_router, prefix="/api/v1", tags=["Device Logs"])
-app.include_router(device_connection_log_router, prefix="/api/v1", tags=["Device Connection Logs"])
 app.include_router(device_extended_router, tags=["Device Extended"])  # Routes already include /api/v1
 app.include_router(organization_router, tags=["Organization Management"])
 app.include_router(user_router, tags=["User Management"])
@@ -332,27 +361,20 @@ async def authz_exception_handler(request, exc: AuthorizationError):
 
 @app.exception_handler(404)
 async def not_found_handler(request, exc):
-    """Custom 404 handler"""
+    """Custom 404 handler with dynamic route list"""
+    # Generate routes dynamically from app
+    routes = []
+    for route in app.routes:
+        if hasattr(route, "path"):
+            routes.append(route.path)
+
     return JSONResponse(
         status_code=404,
         content={
             "detail": "Endpoint not found",
             "phase": "Phase 1 Day 2: RBAC + Session",
-            "available_routes": [
-                "/docs",
-                "/health",
-                f"{API_V1}/auth/login",
-                f"{API_V1}/auth/register",
-                f"{API_V1}/devices/request-code",
-                f"{API_V1}/devices/activate",
-                f"{API_V1}/devices/heartbeat",
-                f"{API_V1}/devices",
-                f"{API_V1}/organizations",
-                f"{API_V1}/users",
-                f"{API_V1}/tags",
-                f"{API_V1}/roles",
-                f"{API_V1}/sessions"
-            ]
+            "requested_path": str(request.url.path),
+            "available_routes": sorted(set(routes))
         }
     )
 

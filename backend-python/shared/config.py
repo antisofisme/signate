@@ -20,6 +20,7 @@ class Settings(BaseSettings):
 
     # Redis
     REDIS_URL: str
+    USE_REDIS_PUBSUB: bool = True  # Use Redis for WebSocket pub/sub (recommended for production)
 
     # Security
     SECRET_KEY: str

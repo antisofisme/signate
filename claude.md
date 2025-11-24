@@ -1,7 +1,7 @@
 # GitHub Credentials
 
 **Repository**: `https://github.com/antisofisme/signate.git`
-
+**Token**: (stored locally, not committed to repo for security)
 ---
 
 # Refactoring Concept

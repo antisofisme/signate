@@ -8,7 +8,7 @@ from typing import Optional
 import json
 import logging
 
-from shared.websocket_manager import websocket_manager
+from shared import websocket_manager as ws_manager_module
 from shared.auth import get_current_user_ws, get_device_by_token_ws
 from services.auth.dtos import UserResponse
 from services.device.dtos import DeviceResponse
@@ -16,6 +16,14 @@ from services.device.dtos import DeviceResponse
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
+
+
+def get_ws_manager():
+    """Get WebSocket manager instance (access at runtime, not import time)"""
+    manager = ws_manager_module.websocket_manager
+    if manager is None:
+        raise RuntimeError("WebSocket manager not initialized")
+    return manager
 
 
 @router.websocket("/ws/admin")
@@ -56,7 +64,7 @@ async def admin_websocket(
     
     try:
         # Connect admin to WebSocket manager
-        await websocket_manager.connect_admin(
+        await get_ws_manager().connect_admin(
             websocket=websocket,
             user_id=current_user.id,
             organization_id=current_user.organization_id,
@@ -71,7 +79,7 @@ async def admin_websocket(
                 message = json.loads(data)
                 
                 # Handle admin messages
-                await websocket_manager.handle_admin_message(
+                await get_ws_manager().handle_admin_message(
                     user_id=current_user.id,
                     message=message
                 )
@@ -83,11 +91,11 @@ async def admin_websocket(
                 
     except WebSocketDisconnect:
         # Clean disconnect
-        await websocket_manager.disconnect_admin(current_user.id)
+        await get_ws_manager().disconnect_admin(current_user.id)
         
     except Exception as e:
         logger.error(f"WebSocket error for admin {current_user.id}: {e}")
-        await websocket_manager.disconnect_admin(current_user.id)
+        await get_ws_manager().disconnect_admin(current_user.id)
         await websocket.close(code=1011, reason="Internal error")
 
 
@@ -118,7 +126,7 @@ async def device_websocket(
     
     try:
         # Connect device to WebSocket manager
-        await websocket_manager.connect_device(
+        await get_ws_manager().connect_device(
             websocket=websocket,
             device_id=device.id,
             organization_id=device.organization_id
@@ -132,7 +140,7 @@ async def device_websocket(
                 message = json.loads(data)
                 
                 # Handle device messages
-                await websocket_manager.handle_device_message(
+                await get_ws_manager().handle_device_message(
                     device_id=device.id,
                     message=message
                 )
@@ -144,11 +152,11 @@ async def device_websocket(
                 
     except WebSocketDisconnect:
         # Clean disconnect
-        await websocket_manager.disconnect_device(device.id)
+        await get_ws_manager().disconnect_device(device.id)
         
     except Exception as e:
         logger.error(f"WebSocket error for device {device.id}: {e}")
-        await websocket_manager.disconnect_device(device.id)
+        await get_ws_manager().disconnect_device(device.id)
         await websocket.close(code=1011, reason="Internal error")
 
 
@@ -159,7 +167,7 @@ async def websocket_status():
     
     Returns current connection counts and status
     """
-    stats = websocket_manager.get_connection_stats()
+    stats = get_ws_manager().get_connection_stats()
     
     return {
         "status": "active",

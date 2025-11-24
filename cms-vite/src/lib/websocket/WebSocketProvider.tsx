@@ -69,6 +69,13 @@ export function WebSocketProvider({
       return
     }
 
+    // Guard against React StrictMode double-invocation
+    // If there's already a client and it's connected/connecting, don't create a new one
+    if (clientRef.current && clientRef.current.isConnected()) {
+      console.log('[WebSocket] Already connected, skipping reconnection')
+      return
+    }
+
     console.log('[WebSocket] Store hydrated, token present:', token ? 'YES' : 'NO')
 
     // Create WebSocket client
@@ -101,13 +108,16 @@ export function WebSocketProvider({
     client.connect(token)
     clientRef.current = client
 
-    // Cleanup on unmount
+    // Cleanup on unmount (but only if this effect created the client)
     return () => {
-      console.log('[WebSocket] Cleaning up...')
-      client.destroy()
-      clientRef.current = null
+      // Only cleanup if we're the ones who created this client
+      if (clientRef.current === client) {
+        console.log('[WebSocket] Cleaning up...')
+        client.destroy()
+        clientRef.current = null
+      }
     }
-  }, [url, enabled, debug, token, isAuthenticated, _hasHydrated])
+  }, [url, enabled, debug, isAuthenticated, _hasHydrated]) // Removed 'token' to prevent reconnection loops
 
   // Reconnect function
   const reconnect = () => {

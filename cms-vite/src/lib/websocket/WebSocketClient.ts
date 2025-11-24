@@ -21,6 +21,7 @@ export class WebSocketClient {
   private heartbeatTimer: ReturnType<typeof setInterval> | null = null
   private eventHandlers: Map<WebSocketMessageType, Set<WebSocketEventHandler>> = new Map()
   private globalHandlers: WebSocketEventHandlers = {}
+  private lastToken?: string // Store token for reconnects
 
   constructor(config: WebSocketConfig) {
     this.config = {
@@ -56,11 +57,17 @@ export class WebSocketClient {
     try {
       this.state = 'connecting'
 
+      // Store token for reconnects
+      if (token) {
+        this.lastToken = token
+      }
+
       // Build URL with token if provided
       let url = this.config.url
-      if (token) {
+      const tokenToUse = token || this.lastToken
+      if (tokenToUse) {
         const separator = url.includes('?') ? '&' : '?'
-        url = `${url}${separator}token=${token}`
+        url = `${url}${separator}token=${tokenToUse}`
       }
 
       this.log('Connecting to:', url.replace(/token=[^&]+/, 'token=***'))

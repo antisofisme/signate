@@ -18,7 +18,6 @@ import {
   Plus,
   Eye,
   Terminal,
-  Send,
   Tag,
   FileText,
   List,
@@ -39,6 +38,7 @@ import { ActivationCodeModal } from './modals/ActivationCodeModal';
 import { DeviceManagementModal, type DeviceTabId } from './modals/DeviceManagementModal';
 import { DeviceSettingsModal } from './modals/DeviceSettingsModal';
 import { UnifiedContentAssignmentModal, type ContentAssignmentTabId } from './modals/UnifiedContentAssignmentModal';
+import { DeviceLogsModal } from './modals/DeviceLogsModal';
 import { PendingDeviceCard } from './PendingDeviceCard';
 
 // Delete Confirmation Modal
@@ -137,6 +137,12 @@ export function DeviceTable() {
 
   // Device Settings Modal (separate from DeviceManagementModal)
   const [settingsModal, setSettingsModal] = useState<{
+    isOpen: boolean;
+    device: Device | null;
+  }>({ isOpen: false, device: null });
+
+  // Device Logs Modal
+  const [logsModal, setLogsModal] = useState<{
     isOpen: boolean;
     device: Device | null;
   }>({ isOpen: false, device: null });
@@ -427,6 +433,17 @@ export function DeviceTable() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <div className="flex items-center justify-end gap-2">
+                        {/* View Logs - Opens Device Logs Modal */}
+                        <button
+                          onClick={() =>
+                            setLogsModal({ isOpen: true, device })
+                          }
+                          className="text-purple-600 hover:text-purple-800 dark:text-purple-400 dark:hover:text-purple-300"
+                          title="View device logs"
+                        >
+                          <Terminal className="w-4 h-4" />
+                        </button>
+
                         {/* View Device - Opens unified modal (Overview tab) */}
                         <button
                           onClick={() =>
@@ -438,16 +455,6 @@ export function DeviceTable() {
                           <Eye className="w-4 h-4" />
                         </button>
 
-                        {/* Quick Actions Dropdown */}
-                        <button
-                          onClick={() =>
-                            setDeviceManagementModal({ isOpen: true, device, defaultTab: 'commands' })
-                          }
-                          className="text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-300"
-                          title="Commands"
-                        >
-                          <Send className="w-4 h-4" />
-                        </button>
                         {/* Content Management - Opens separate UnifiedContentAssignmentModal */}
                         <button
                           onClick={() =>
@@ -549,6 +556,13 @@ export function DeviceTable() {
         onSuccess={() => {
           // React Query will auto-refetch
         }}
+      />
+
+      {/* ✨ Device Logs Modal - View console, connection, and speed test logs */}
+      <DeviceLogsModal
+        isOpen={logsModal.isOpen}
+        device={logsModal.device}
+        onClose={() => setLogsModal({ isOpen: false, device: null })}
       />
     </>
   );
