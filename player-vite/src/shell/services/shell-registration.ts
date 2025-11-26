@@ -262,11 +262,9 @@ class ShellRegistrationClass implements IShellRegistration {
     SharedLogger.log('[ShellRegistration] 🔍 DEBUG - About to proceed with registration...');
     SharedLogger.log('[ShellRegistration] Proceeding with new device registration...');
 
-    // Generate temporary activation code for first-time registration request
-    // Backend will either accept this code OR return existing code for this device
-    const activationCode = this.generateActivationCode();
-    SharedLogger.log('[ShellRegistration] Generated temporary code for registration:', activationCode);
-    SharedLogger.log('[ShellRegistration] Backend may return different code if device already exists');
+    // ✨ ARCHITECTURAL FIX: No longer generate code client-side
+    // Backend will generate and return the activation code
+    SharedLogger.log('[ShellRegistration] ✅ Requesting activation code from backend (backend will generate)');
 
     // Detect platform
     const platformInfo = this.detectPlatform();
@@ -276,9 +274,8 @@ class ShellRegistrationClass implements IShellRegistration {
     const deviceConfig = await deviceConfigStorage.getDeviceConfig();
     const hasOrganization = deviceConfig.organization_id !== null;
 
-    // Prepare request body
+    // Prepare request body (NO code field - backend generates)
     const requestBody: any = {
-      code: activationCode,
       platform: platformInfo.type,
       device_uuid: deviceUUID, // Send fingerprint for code persistence
     };
@@ -312,16 +309,10 @@ class ShellRegistrationClass implements IShellRegistration {
 
     SharedLogger.log('[ShellRegistration] ✅ Registration successful:', data);
 
-    // Check if backend returned different code (existing device reuse)
-    if (data.unique_code !== activationCode) {
-      SharedLogger.warn(
-        `[ShellRegistration] Backend returned different code! Temp: ${activationCode}, Actual: ${data.unique_code}`
-      );
-      SharedLogger.log('[ShellRegistration] ✅ This is CORRECT - backend reused existing code for this device UUID');
-      SharedLogger.log('[ShellRegistration] Code persistence is working!');
-    } else {
-      SharedLogger.log('[ShellRegistration] Backend accepted our generated code (new device)');
-    }
+    // ✨ ARCHITECTURAL FIX: Backend always generates the code
+    SharedLogger.log('[ShellRegistration] 🎲 Backend generated activation code:', data.unique_code);
+    SharedLogger.log('[ShellRegistration] ✅ Code displayed on screen is now 100% synchronized with backend database');
+    SharedLogger.log('[ShellRegistration] ✅ No more code sync issues!');
 
     // Store device data using SharedDeviceState
     SharedDeviceState.setDeviceId(data.device_id);

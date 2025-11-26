@@ -23,6 +23,7 @@ from datetime import datetime, timedelta, timezone
 from typing import List, Dict, Optional
 
 from shared.database import SessionLocal
+from shared.config import settings
 from services.content.repositories.models import ContentModel
 
 
@@ -292,9 +293,9 @@ def transcode_to_hls(self, content_id: int):
         relative_path = Path(*path_parts[videos_idx+1:])  # '2025/11/org_4/uuid_hls/master.m3u8'
 
         # Construct HLS URL
-        # Pattern: http://192.168.5.12:8001/content/hls/{year}/{month}/org_{org_id}/{uuid}/master.m3u8
+        # Pattern: {PUBLIC_BASE_URL}/content/hls/{year}/{month}/org_{org_id}/{uuid}/master.m3u8
         # Note: HLS router has prefix="/content/hls" (no /api/v1/)
-        hls_url = f"http://192.168.5.12:8001/content/hls/{year}/{month}/org_{org_id}/{content_uuid}/master.m3u8"
+        hls_url = f"{settings.PUBLIC_BASE_URL}/content/hls/{year}/{month}/org_{org_id}/{content_uuid}/master.m3u8"
 
         # Update content record
         content.transcoding_status = 'completed'
@@ -459,7 +460,7 @@ def generate_thumbnail(self, content_id: int):
                 raise
 
         # Update content record
-        content.thumbnail_url = f"http://192.168.5.12:8001/thumbnails/{thumb_filename}"
+        content.thumbnail_url = f"{settings.PUBLIC_BASE_URL}/thumbnails/{thumb_filename}"
         db.commit()
 
         return {

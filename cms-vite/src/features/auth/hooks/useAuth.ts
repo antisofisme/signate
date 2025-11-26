@@ -11,6 +11,7 @@ import { authApi } from '../api/authApi';
 import { useAuthStore } from '@/lib/stores/authStore';
 import { handleAPIError } from '@/lib/errors/errorHandler';
 import { toast } from '@/lib/notifications/toast';
+import { logger } from '@/shared/utils/logger';
 import type {
   LoginRequest,
   RegisterRequest,
@@ -207,10 +208,10 @@ export function useForgotPassword() {
       // Show success toast
       toast.success(data.message);
 
-      // In development, also log the token for testing
+      // In development, indicate token is available without logging it
       if (data.reset_token && import.meta.env.DEV) {
-        console.log('Reset Token (DEV ONLY):', data.reset_token);
-        toast.info('Check console for reset token (dev mode)');
+        logger.debug('Reset token received');
+        toast.info('Reset token has been generated (dev mode)');
       }
     },
     onError: (error) => {

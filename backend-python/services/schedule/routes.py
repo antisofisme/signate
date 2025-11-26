@@ -11,6 +11,7 @@ from datetime import date, time
 from shared.database import get_db
 from shared.auth import get_current_user, CurrentUser
 from shared.pagination import PaginationParams
+from shared.logging import AuditLogger
 from .domain.schedule_executor import get_schedule_executor
 from services.schedule.dtos import (
     CreateScheduleRequest,
@@ -45,6 +46,15 @@ router = APIRouter()
 
 
 # ============================================================================
+# Dependency Injection
+# ============================================================================
+
+def get_audit_logger() -> AuditLogger:
+    """Get audit logger instance"""
+    return AuditLogger()
+
+
+# ============================================================================
 # Schedule CRUD Endpoints
 # ============================================================================
 
@@ -52,6 +62,7 @@ router = APIRouter()
 def create_schedule(
     request: CreateScheduleRequest,
     current_user: CurrentUser = Depends(get_current_user),
+    audit_logger: AuditLogger = Depends(get_audit_logger),
     db: Session = Depends(get_db)
 ):
     """
@@ -68,12 +79,30 @@ def create_schedule(
     - Higher priority (0-100) wins when schedules overlap
     - Default: 0
     """
-    return create_schedule_use_case(
+    schedule = create_schedule_use_case(
         organization_id=current_user.organization_id,
         request=request,
         created_by_id=current_user.user_id,
         db=db
     )
+
+    # Audit log
+    audit_logger.log_action(
+        user_id=current_user.user_id,
+        action="schedule.create",
+        resource_type="schedule",
+        resource_id=schedule.id,
+        details={
+            "playlist_id": schedule.playlist_id,
+            "recurrence_type": schedule.recurrence_type,
+            "start_date": str(schedule.start_date),
+            "priority": schedule.priority,
+            "is_active": schedule.is_active
+        },
+        organization_id=current_user.organization_id
+    )
+
+    return schedule
 
 
 @router.get("/schedules", response_model=ScheduleListResponse)
@@ -126,10 +155,11 @@ def update_schedule(
     schedule_id: int,
     request: UpdateScheduleRequest,
     current_user: CurrentUser = Depends(get_current_user),
+    audit_logger: AuditLogger = Depends(get_audit_logger),
     db: Session = Depends(get_db)
 ):
     """Update schedule"""
-    return update_schedule_use_case(
+    schedule = update_schedule_use_case(
         schedule_id=schedule_id,
         organization_id=current_user.organization_id,
         request=request,
@@ -137,19 +167,50 @@ def update_schedule(
         db=db
     )
 
+    # Audit log
+    audit_logger.log_action(
+        user_id=current_user.user_id,
+        action="schedule.update",
+        resource_type="schedule",
+        resource_id=schedule_id,
+        details={
+            "playlist_id": schedule.playlist_id if hasattr(schedule, 'playlist_id') else None,
+            "is_active": schedule.is_active if hasattr(schedule, 'is_active') else None,
+            "priority": schedule.priority if hasattr(schedule, 'priority') else None
+        },
+        organization_id=current_user.organization_id
+    )
+
+    return schedule
+
 
 @router.delete("/schedules/{schedule_id}", status_code=status.HTTP_200_OK)
 def delete_schedule(
     schedule_id: int,
     current_user: CurrentUser = Depends(get_current_user),
+    audit_logger: AuditLogger = Depends(get_audit_logger),
     db: Session = Depends(get_db)
 ):
     """Delete schedule (hard delete)"""
-    return delete_schedule_use_case(
+    result = delete_schedule_use_case(
         schedule_id=schedule_id,
         organization_id=current_user.organization_id,
         db=db
     )
+
+    # Audit log
+    audit_logger.log_action(
+        user_id=current_user.user_id,
+        action="schedule.delete",
+        resource_type="schedule",
+        resource_id=schedule_id,
+        details={
+            "deleted": True
+        },
+        organization_id=current_user.organization_id
+    )
+
+    return result
 
 
 @router.post("/schedules/{schedule_id}/deactivate", response_model=ScheduleResponse)

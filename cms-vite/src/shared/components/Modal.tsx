@@ -27,6 +27,7 @@ const MAX_WIDTH_CLASSES = {
   '4xl': 'max-w-4xl',
   '5xl': 'max-w-5xl',
   '6xl': 'max-w-6xl',
+  '7xl': 'max-w-7xl',
 } as const;
 
 type MaxWidthKey = keyof typeof MAX_WIDTH_CLASSES;
@@ -64,7 +65,7 @@ interface ModalProps {
   /** Modal content */
   children: ReactNode;
   /** Optional title in header */
-  title?: string;
+  title?: string | ReactNode;
   /** Optional subtitle below title */
   subtitle?: string;
   /** Max width of modal content */
@@ -81,6 +82,8 @@ interface ModalProps {
   closeOnBackdropClick?: boolean;
   /** Background opacity (0-100) */
   backdropOpacity?: number;
+  /** Optional className for modal container */
+  className?: string;
 }
 
 // ============================================================================
@@ -100,6 +103,7 @@ export function Modal({
   footer,
   closeOnBackdropClick = true,
   backdropOpacity = 50,
+  className = '',
 }: ModalProps) {
   if (!isOpen) return null;
 
@@ -119,7 +123,7 @@ export function Modal({
       onClick={handleBackdropClick}
     >
       <div
-        className={`bg-white dark:bg-gray-800 rounded-lg w-full ${MAX_WIDTH_CLASSES[maxWidth]} max-h-[90vh] overflow-hidden flex flex-col mx-4`}
+        className={`bg-white dark:bg-gray-800 rounded-lg w-full ${MAX_WIDTH_CLASSES[maxWidth]} max-h-[90vh] overflow-hidden flex flex-col mx-4 ${className}`}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Custom Header */}

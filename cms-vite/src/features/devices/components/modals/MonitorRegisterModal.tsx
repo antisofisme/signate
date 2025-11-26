@@ -7,6 +7,7 @@
 
 import { useState } from 'react';
 import { Monitor, Loader2 } from 'lucide-react';
+import { toast } from 'sonner';
 import { Modal } from '@/shared/components';
 import { useMonitorRegister } from '../../hooks/useDevices';
 
@@ -32,15 +33,50 @@ export function MonitorRegisterModal({
 
   // Helper to format error messages
   const formatErrorMessage = (err: any): string => {
-    if (typeof err?.response?.data?.detail === 'string') {
-      return err.response.data.detail;
+    // Network errors
+    if (!err.response) {
+      return 'Network error - Please check your connection';
     }
+
+    // HTTP status-based messages
+    const status = err.response?.status;
+    if (status === 404) {
+      return 'Activation code not found or expired. Please check the code on your device screen.';
+    }
+    if (status === 400) {
+      // Bad request - check for specific error message
+      if (typeof err?.response?.data?.detail === 'string') {
+        const detail = err.response.data.detail;
+
+        // Check for common error patterns
+        if (detail.toLowerCase().includes('expired')) {
+          return 'Activation code has expired. Please refresh the device to get a new code.';
+        }
+        if (detail.toLowerCase().includes('invalid')) {
+          return 'Invalid activation code. Please verify the 6-digit code on your device screen.';
+        }
+        if (detail.toLowerCase().includes('already')) {
+          return 'Device already activated. Please use a different device or contact support.';
+        }
+
+        return detail;
+      }
+    }
+
+    // Validation errors (FastAPI format)
     if (Array.isArray(err?.response?.data?.detail)) {
       return err.response.data.detail
         .map((e: any) => `${e.loc?.join('.') || 'Field'}: ${e.msg}`)
         .join(', ');
     }
-    return 'Failed to activate device';
+
+    // Generic detail message
+    if (typeof err?.response?.data?.detail === 'string') {
+      return err.response.data.detail;
+    }
+
+    // Fallback
+    return `Failed to activate device (Error ${status || 'unknown'})`;
   };
 
   // Reset form
@@ -66,6 +102,7 @@ export function MonitorRegisterModal({
     e.preventDefault();
     setError(null);
 
+    // Validation
     if (!formData.activation_code || formData.activation_code.length !== 6) {
       setError('Activation code must be 6 digits');
       return;
@@ -76,17 +113,41 @@ export function MonitorRegisterModal({
       return;
     }
 
+    // Log for debugging
+    console.log('[MonitorRegisterModal] Submitting registration:', {
+      unique_code: formData.activation_code,
+      device_name: formData.device_name.trim(),
+    });
+
     try {
-      await registerMutation.mutateAsync({
+      const result = await registerMutation.mutateAsync({
         unique_code: formData.activation_code,
         device_name: formData.device_name.trim(),
       });
 
+      console.log('[MonitorRegisterModal] Registration successful:', result);
+
+      // Only close modal and reset form if successful
       resetForm();
-      onSuccess?.();
+      if (onSuccess) {
+        onSuccess();
+      }
       onClose();
     } catch (err: any) {
-      setError(formatErrorMessage(err));
+      // Enhanced error logging
+      console.error('[MonitorRegisterModal] Registration failed:', err);
+      console.error('[MonitorRegisterModal] Error response:', err?.response);
+      console.error('[MonitorRegisterModal] Error data:', err?.response?.data);
+
+      const errorMessage = formatErrorMessage(err);
+      console.error('[MonitorRegisterModal] Formatted error:', errorMessage);
+
+      setError(errorMessage);
+
+      // Show toast as additional feedback
+      toast.error(errorMessage);
+
+      // DO NOT close modal on error - let user see the error and retry
     }
   };
 

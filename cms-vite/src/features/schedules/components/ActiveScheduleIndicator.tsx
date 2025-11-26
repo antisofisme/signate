@@ -41,7 +41,7 @@ export const ActiveScheduleIndicator = ({
     format(currentTime, 'HH:mm'),
     {
       enabled: true,
-      refetchInterval: autoRefresh ? refreshInterval : false,
+      refetchInterval: autoRefresh ? refreshInterval : undefined,
     }
   )
 

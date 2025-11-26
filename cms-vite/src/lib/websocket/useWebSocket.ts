@@ -6,6 +6,7 @@
 import { useEffect, useCallback, useRef } from 'react'
 import { useWebSocketContext } from './WebSocketProvider'
 import type { WebSocketMessageType, WebSocketEventHandler } from './types'
+import { logger } from '@/shared/utils/logger'
 
 /**
  * Hook to subscribe to WebSocket events
@@ -41,7 +42,7 @@ export function useWebSocket<T = any>(
   const send = useCallback(
     (data?: any) => {
       if (!client) {
-        console.warn('[useWebSocket] Client not available')
+        logger.warn('[useWebSocket] Client not available')
         return false
       }
       return client.send(messageType, data)
@@ -107,7 +108,7 @@ export function useWebSocketSend() {
   return useCallback(
     <T = any>(type: WebSocketMessageType, data?: T) => {
       if (!client) {
-        console.warn('[useWebSocketSend] Client not available')
+        logger.warn('[useWebSocketSend] Client not available')
         return false
       }
       return client.send(type, data)

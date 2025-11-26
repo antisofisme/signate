@@ -109,11 +109,37 @@ cms-vite/
 
 # Server Information
 
-## Production Server
+## VPS Production Server (NEW - Primary)
+- **IP Address**: 72.61.209.158
+- **SSH User**: root
+- **SSH Password**: `1(;2-Ur?F)PP73J#G-wW`
+- **Project Directory**: `/root/signage/`
+- **Type**: VPS Cloud Server
+- **Purpose**: Production deployment dengan akses publik
+- **Domain**: zhmhotels.online
+- **OS**: Ubuntu 24.04 LTS (Noble)
+- **Kernel**: 6.8.0-87-generic
+
+### Services Running on VPS:
+- ✅ **Nginx** (v1.24.0) - Reverse proxy untuk subdomain
+- ✅ **Docker** (v28.5.2, API 1.51) - Container runtime (downgraded from 29.0.2 for Portainer compatibility)
+- ✅ **Portainer CE** (v2.33.4) - Docker management UI - WORKING ✅
+- ✅ **Certbot** (v2.9.0) - Let's Encrypt SSL certificate manager
+- ✅ **SSL Certificates** - Valid HTTPS untuk semua subdomain (expires: 2026-02-24)
+
+### 🔧 Important Notes - VPS Specific:
+- **Docker Version Lock**: Docker 28.5.2 installed (DO NOT upgrade to 29.x - incompatible with Portainer)
+- **Portainer Fix Applied**: "Environment unreachable" issue resolved by downgrading Docker from 29.0.2 to 28.5.2
+- **VPS Type**: Docker-optimized OS (not full Ubuntu) - limited systemd service management
+- **SSL Auto-Renew**: Certbot timer enabled for automatic certificate renewal
+
+## Local Network Server (Legacy)
 - **IP Address**: 192.168.5.12
 - **SSH User**: gzjbbk
 - **SSH Password**: Password@2021
-- **Project Directory**: `/home/gzjbbk/signate/` (CHANGED from prototipe2)
+- **Project Directory**: `/home/gzjbbk/signate/`
+- **Type**: Local Development Server
+- **Purpose**: Development & testing internal
 
 ## Directory Structure on Server
 ```
@@ -126,17 +152,39 @@ cms-vite/
 └── .env                     # Environment variables
 ```
 
-## Service Ports (ALL ON SERVER)
-- **Port 8001**: Backend API (FastAPI) ✅ RUNNING - Custom-built from scratch
-- **Port 3000**: CMS Admin (cms-vite - React + Vite) ✅ - Development or production
-- **Port 5433**: PostgreSQL Database ✅ RUNNING
-- **Port 8080**: Player/Viewer (player-vite) ✅ RUNNING - For all display devices
+## Service Ports
+- **Port 8001**: Backend API (FastAPI) - Custom-built from scratch
+- **Port 3000**: CMS Admin (cms-vite - React + Vite) - Development or production
+- **Port 5433**: PostgreSQL Database
+- **Port 8080**: Player/Viewer (player-vite) - For all display devices
+- **Port 80/443**: Nginx reverse proxy (VPS only) - HTTP/HTTPS access
 
 ## URLs
-- **Player/Viewer**: http://192.168.5.12:8080/ - Untuk semua display devices (monitors, browsers, WebOS TV)
-- **CMS Admin**: http://localhost:3000/ atau http://192.168.5.12:3000/ - Admin dashboard
-- **Backend API**: http://192.168.5.12:8001/ - REST API
-- **API Docs**: http://192.168.5.12:8001/docs - Swagger/OpenAPI docs
+
+### VPS Production URLs (Public Access with Subdomain) - ✅ HTTPS Enabled
+- **🎨 CMS Admin**: https://admin.zhmhotels.online/ - Admin dashboard (port 3000 via Nginx)
+- **📺 Player/Viewer**: https://player.zhmhotels.online/ - Display devices (port 8080 via Nginx)
+- **🔌 Backend API**: https://api.zhmhotels.online/ - REST API (port 8001 via Nginx)
+- **📖 API Docs**: https://api.zhmhotels.online/docs - Swagger/OpenAPI docs
+- **🐳 Portainer**: https://portainer.zhmhotels.online/ - Docker management (port 9000 via Nginx) ✅ **WORKING**
+
+**🔧 Portainer Access Notes:**
+- First-time setup: Create admin user when accessing
+- Click "Get Started" to auto-create Docker environment
+- Should show environment as CONNECTED (green status)
+- See detailed fix report: `PORTAINER_FIX_SUMMARY.md`
+
+### VPS Direct Access (Without Subdomain)
+- **Player/Viewer**: http://72.61.209.158:8080/ - Direct access
+- **CMS Admin**: http://72.61.209.158:3000/ - Direct access
+- **Backend API**: http://72.61.209.158:8001/ - Direct access
+- **Portainer**: http://72.61.209.158:9000/ - Direct access
+
+### Local Network URLs (Internal Access)
+- **Player/Viewer**: http://192.168.5.12:8080/ - Local devices only
+- **CMS Admin**: http://192.168.5.12:3000/ - Local admin
+- **Backend API**: http://192.168.5.12:8001/ - Local API
+- **API Docs**: http://192.168.5.12:8001/docs - Local docs
 
 ## Current Status
 ✅ **Backend API** (`backend-python`) - FastAPI running in Docker (port 8001) - Custom-built from scratch
@@ -194,6 +242,8 @@ cms-vite/
    - WebOS App: `webos-app/**/*` (IPK packaging - copies from player-vite)
 
 ### Workflow Update:
+
+#### Local to VPS Production (Recommended)
 ```bash
 # 1. Update di LOCAL terlebih dahulu
 # Edit file yang diperlukan di /mnt/g/khoirul/signate
@@ -202,11 +252,24 @@ cms-vite/
 npm run dev  # untuk frontend
 uvicorn app.main:app --reload  # untuk backend
 
-# 3. Sync ke SERVER menggunakan scp/rsync
-sshpass -p 'Password@2021' scp -r file_yang_diubah gzjbbk@192.168.5.12:/home/gzjbbk/prototipe2/
+# 3. Sync ke VPS SERVER menggunakan scp/rsync
+sshpass -p '1(;2-Ur?F)PP73J#G-wW' rsync -avz --exclude '__pycache__' \
+  --exclude 'node_modules' --exclude '.git' \
+  /mnt/g/khoirul/signate/ root@72.61.209.158:/root/signage/
 
-# 4. Rebuild container di server jika diperlukan
-sshpass -p 'Password@2021' ssh gzjbbk@192.168.5.12 "cd /home/gzjbbk/prototipe2 && docker-compose -f docker/docker-compose.yml up -d --build backend-api"
+# 4. Rebuild container di VPS jika diperlukan
+sshpass -p '1(;2-Ur?F)PP73J#G-wW' ssh root@72.61.209.158 \
+  "cd /root/signage && docker-compose -f docker/docker-compose.yml up -d --build backend-api"
+```
+
+#### Local to Local Network Server (Development)
+```bash
+# 3. Sync ke Local Network Server
+sshpass -p 'Password@2021' scp -r file_yang_diubah gzjbbk@192.168.5.12:/home/gzjbbk/signate/
+
+# 4. Rebuild container di local server jika diperlukan
+sshpass -p 'Password@2021' ssh gzjbbk@192.168.5.12 \
+  "cd /home/gzjbbk/signate && docker-compose -f docker/docker-compose.yml up -d --build backend-api"
 ```
 
 ### ⚠️ Konsekuensi Jika TIDAK Sinkron:
@@ -294,8 +357,184 @@ sleep 10
 docker exec signage-postgres psql -U signage_user -d signage_db -c "SELECT username, role FROM users WHERE username='admin';"
 ```
 
+### 🔒 SSL Certificate Management (VPS Only)
+
+**SSL Provider**: Let's Encrypt (Free, Auto-Renewing)
+**Certificate Expires**: 2026-02-24 (auto-renewal enabled)
+**Subdomains with SSL**:
+- ✅ admin.zhmhotels.online
+- ✅ player.zhmhotels.online
+- ✅ api.zhmhotels.online
+- ✅ portainer.zhmhotels.online
+
+**Certificate Location**: `/etc/letsencrypt/live/admin.zhmhotels.online/`
+
+**SSL Management Commands**:
+```bash
+# Check certificate expiration
+sshpass -p '1(;2-Ur?F)PP73J#G-wW' ssh root@72.61.209.158 \
+  "certbot certificates"
+
+# Renew certificates manually (auto-renew is enabled)
+sshpass -p '1(;2-Ur?F)PP73J#G-wW' ssh root@72.61.209.158 \
+  "certbot renew"
+
+# Test certificate renewal (dry-run)
+sshpass -p '1(;2-Ur?F)PP73J#G-wW' ssh root@72.61.209.158 \
+  "certbot renew --dry-run"
+
+# Add new subdomain to existing certificate
+sshpass -p '1(;2-Ur?F)PP73J#G-wW' ssh root@72.61.209.158 \
+  "certbot --nginx -d newsubdomain.zhmhotels.online --expand"
+```
+
+**Auto-Renewal**: Certbot automatically renews certificates 30 days before expiration via systemd timer.
+
+**⚠️ CATATAN PENTING - Google Safe Browsing Warning:**
+- **SSL Certificate**: ✅ Valid (Let's Encrypt, expires 2026-02-24)
+- **HTTPS Working**: ✅ Semua subdomain accessible via HTTPS
+- **"Dangerous Site" Warning**: ⚠️ MASIH MUNCUL di beberapa browser (Nov 26, 2025)
+
+**Root Cause**: VPS IP (72.61.209.158) kemungkinan pernah digunakan untuk aktivitas suspicious oleh previous owner, sehingga masih di-cache di Google Safe Browsing database sebagai "dangerous".
+
+**Important**: Ini **BUKAN masalah SSL certificate** - certificate 100% valid dan trusted. Warning adalah **Google Safe Browsing false positive**.
+
+**Solutions**: Lihat detail lengkap di `GOOGLE_SAFE_BROWSING_FIX.md`
+1. **Verify status**: https://transparencyreport.google.com/safe-browsing/search
+2. **Clear browser cache** & test incognito mode
+3. **Submit false positive report**: https://safebrowsing.google.com/safebrowsing/report_error/
+4. **Wait 1-3 days** untuk Google review
+5. **Temporary workaround**: Browser → "Details" → "Visit this unsafe site"
+
+**Timeline**: Domain reputation akan improve dalam 2-4 minggu dengan consistent use.
+
+### 🐳 Portainer Management (VPS Only)
+
+**Access Portainer**: https://portainer.zhmhotels.online/
+
+**Container Info**:
+- Container Name: `portainer`
+- Image: `portainer/portainer-ce:latest`
+- Version: 2.33.4
+- Ports: 9000 (HTTP), 9443 (HTTPS)
+- Volume: `portainer_data`
+- Auto-restart: ✅ Enabled
+
+**Common Commands**:
+```bash
+# View Portainer logs
+sshpass -p '1(;2-Ur?F)PP73J#G-wW' ssh root@72.61.209.158 \
+  "docker logs portainer --tail 50"
+
+# Restart Portainer
+sshpass -p '1(;2-Ur?F)PP73J#G-wW' ssh root@72.61.209.158 \
+  "docker restart portainer"
+
+# Stop Portainer
+sshpass -p '1(;2-Ur?F)PP73J#G-wW' ssh root@72.61.209.158 \
+  "docker stop portainer"
+
+# Update Portainer to latest
+sshpass -p '1(;2-Ur?F)PP73J#G-wW' ssh root@72.61.209.158 \
+  "docker stop portainer && docker rm portainer && docker pull portainer/portainer-ce:latest && docker run -d -p 9000:9000 -p 9443:9443 --name portainer --restart=always -v /var/run/docker.sock:/var/run/docker.sock -v portainer_data:/data portainer/portainer-ce:latest"
+```
+
+**First Time Setup**:
+1. Akses http://portainer.zhmhotels.online/
+2. Buat admin password (minimal 12 karakter)
+3. Pilih "Docker" sebagai environment
+4. Connect to local Docker socket
+
+### 🌐 Nginx Subdomain Configuration
+
+**Subdomain Mapping**:
+| Subdomain | Target Port | Service | Config File |
+|-----------|-------------|---------|-------------|
+| admin.zhmhotels.online | 3000 | CMS Admin | /etc/nginx/sites-available/admin.zhmhotels.online |
+| player.zhmhotels.online | 8080 | Player/Viewer | /etc/nginx/sites-available/player.zhmhotels.online |
+| api.zhmhotels.online | 8001 | Backend API | /etc/nginx/sites-available/api.zhmhotels.online |
+| portainer.zhmhotels.online | 9000 | Portainer | /etc/nginx/sites-available/portainer.zhmhotels.online |
+
+**Nginx Management Commands**:
+```bash
+# Test Nginx configuration
+sshpass -p '1(;2-Ur?F)PP73J#G-wW' ssh root@72.61.209.158 "nginx -t"
+
+# Reload Nginx (apply config changes)
+sshpass -p '1(;2-Ur?F)PP73J#G-wW' ssh root@72.61.209.158 "systemctl reload nginx"
+
+# Restart Nginx
+sshpass -p '1(;2-Ur?F)PP73J#G-wW' ssh root@72.61.209.158 "systemctl restart nginx"
+
+# Check Nginx status
+sshpass -p '1(;2-Ur?F)PP73J#G-wW' ssh root@72.61.209.158 "systemctl status nginx"
+
+# View Nginx error logs
+sshpass -p '1(;2-Ur?F)PP73J#G-wW' ssh root@72.61.209.158 "tail -f /var/log/nginx/error.log"
+
+# View Nginx access logs
+sshpass -p '1(;2-Ur?F)PP73J#G-wW' ssh root@72.61.209.158 "tail -f /var/log/nginx/access.log"
+
+# List all enabled sites
+sshpass -p '1(;2-Ur?F)PP73J#G-wW' ssh root@72.61.209.158 "ls -la /etc/nginx/sites-enabled/"
+```
+
+**Adding New Subdomain**:
+```bash
+# 1. Create new config file
+sshpass -p '1(;2-Ur?F)PP73J#G-wW' ssh root@72.61.209.158 \
+  "cat > /etc/nginx/sites-available/newsubdomain.zhmhotels.online << 'EOF'
+server {
+    listen 80;
+    server_name newsubdomain.zhmhotels.online;
+
+    location / {
+        proxy_pass http://localhost:PORT;
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+    }
+}
+EOF"
+
+# 2. Enable the site
+sshpass -p '1(;2-Ur?F)PP73J#G-wW' ssh root@72.61.209.158 \
+  "ln -sf /etc/nginx/sites-available/newsubdomain.zhmhotels.online /etc/nginx/sites-enabled/"
+
+# 3. Test and reload
+sshpass -p '1(;2-Ur?F)PP73J#G-wW' ssh root@72.61.209.158 \
+  "nginx -t && systemctl reload nginx"
+```
+
 ### 📋 Quick Reference Commands
 
+#### VPS Production Server
+```bash
+# SSH ke VPS
+sshpass -p '1(;2-Ur?F)PP73J#G-wW' ssh root@72.61.209.158
+
+# Check all services status (dari local)
+sshpass -p '1(;2-Ur?F)PP73J#G-wW' ssh root@72.61.209.158 \
+  "cd /root/signage && docker-compose -f docker/docker-compose.yml ps"
+
+# View logs for specific service
+sshpass -p '1(;2-Ur?F)PP73J#G-wW' ssh root@72.61.209.158 \
+  "docker logs signage-backend --tail 50"
+
+# Restart specific service
+sshpass -p '1(;2-Ur?F)PP73J#G-wW' ssh root@72.61.209.158 \
+  "cd /root/signage && docker-compose -f docker/docker-compose.yml restart backend-api"
+
+# Access database
+sshpass -p '1(;2-Ur?F)PP73J#G-wW' ssh root@72.61.209.158 \
+  "docker exec -it signage-postgres psql -U signage_user -d signage_db"
+
+# Backup database dari VPS ke local
+sshpass -p '1(;2-Ur?F)PP73J#G-wW' ssh root@72.61.209.158 \
+  "docker exec signage-postgres pg_dump -U signage_user -d signage_db" \
+  > backups/vps_backup_$(date +%Y%m%d_%H%M%S).sql
+```
+
+#### Local Network Server
 ```bash
 # Check all services status
 docker-compose -f docker/docker-compose.yml ps
@@ -407,11 +646,40 @@ COMMIT;
 
 #### Running Migrations
 
+##### VPS Production Server
+```bash
+# 1. Backup database first
+sshpass -p '1(;2-Ur?F)PP73J#G-wW' ssh root@72.61.209.158 \
+  "docker exec signage-postgres pg_dump -U signage_user -d signage_db" \
+  > backups/vps_pre_migration_XXX_$(date +%Y%m%d_%H%M%S).sql
+
+# 2. Stop backend
+sshpass -p '1(;2-Ur?F)PP73J#G-wW' ssh root@72.61.209.158 \
+  "cd /root/signage && docker-compose -f docker/docker-compose.yml stop backend-api"
+
+# 3. Upload migration
+sshpass -p '1(;2-Ur?F)PP73J#G-wW' scp backend-python/migrations/XXX_*.sql \
+  root@72.61.209.158:/root/signage/backend-python/migrations/
+
+# 4. Run migration
+sshpass -p '1(;2-Ur?F)PP73J#G-wW' ssh root@72.61.209.158 \
+  "docker exec -i signage-postgres psql -U signage_user -d signage_db < /root/signage/backend-python/migrations/XXX_*.sql"
+
+# 5. Sync code if needed
+sshpass -p '1(;2-Ur?F)PP73J#G-wW' rsync -avz --exclude '__pycache__' \
+  backend-python/ root@72.61.209.158:/root/signage/backend-python/
+
+# 6. Restart backend
+sshpass -p '1(;2-Ur?F)PP73J#G-wW' ssh root@72.61.209.158 \
+  "cd /root/signage && docker-compose -f docker/docker-compose.yml start backend-api"
+```
+
+##### Local Network Server
 ```bash
 # 1. Backup database first
 sshpass -p 'Password@2021' ssh gzjbbk@192.168.5.12 \
   "docker exec signage-postgres pg_dump -U signage_user -d signage_db" \
-  > backups/pre_migration_XXX_$(date +%Y%m%d_%H%M%S).sql
+  > backups/local_pre_migration_XXX_$(date +%Y%m%d_%H%M%S).sql
 
 # 2. Stop backend
 sshpass -p 'Password@2021' ssh gzjbbk@192.168.5.12 \

@@ -7,6 +7,8 @@ import React, { createContext, useContext, useEffect, useState, useRef } from 'r
 import { WebSocketClient } from './WebSocketClient'
 import type { WebSocketState } from './types'
 import { useAuthStore } from '../stores/authStore'
+import { logger } from '@/shared/utils/logger'
+import { getSmartWebSocketUrl } from '../config/network-detector'
 
 // ============================================================================
 // Context Types
@@ -52,31 +54,31 @@ export function WebSocketProvider({
 
     // Wait for Zustand hydration to complete
     if (!_hasHydrated) {
-      console.log('[WebSocket] Waiting for store hydration...')
+      logger.debug('[WebSocket] Waiting for store hydration...')
       return
     }
 
     // Get WebSocket URL
     const wsUrl = url || getWebSocketUrl()
     if (!wsUrl) {
-      console.warn('[WebSocket] No URL provided')
+      logger.warn('[WebSocket] No URL provided')
       return
     }
 
     // Get auth token from Zustand store (not localStorage)
     if (!token || !isAuthenticated) {
-      console.warn('[WebSocket] No auth token found or not authenticated')
+      logger.warn('[WebSocket] No auth token found or not authenticated')
       return
     }
 
     // Guard against React StrictMode double-invocation
     // If there's already a client and it's connected/connecting, don't create a new one
     if (clientRef.current && clientRef.current.isConnected()) {
-      console.log('[WebSocket] Already connected, skipping reconnection')
+      logger.debug('[WebSocket] Already connected, skipping reconnection')
       return
     }
 
-    console.log('[WebSocket] Store hydrated, token present:', token ? 'YES' : 'NO')
+    logger.debug('[WebSocket] Store hydrated, token present:', token ? 'YES' : 'NO')
 
     // Create WebSocket client
     const client = new WebSocketClient({
@@ -91,15 +93,15 @@ export function WebSocketProvider({
     // Setup global handlers
     client.setGlobalHandlers({
       onOpen: () => {
-        console.log('[WebSocket] ✅ Connected')
+        logger.info('[WebSocket] Connected')
         setState('connected')
       },
       onClose: () => {
-        console.log('[WebSocket] ❌ Disconnected')
+        logger.info('[WebSocket] Disconnected')
         setState('disconnected')
       },
       onError: (error) => {
-        console.error('[WebSocket] 🔴 Error:', error)
+        logger.error('[WebSocket] Error', error)
         setState('error')
       },
     })
@@ -112,7 +114,7 @@ export function WebSocketProvider({
     return () => {
       // Only cleanup if we're the ones who created this client
       if (clientRef.current === client) {
-        console.log('[WebSocket] Cleaning up...')
+        logger.debug('[WebSocket] Cleaning up...')
         client.destroy()
         clientRef.current = null
       }
@@ -157,20 +159,10 @@ export function useWebSocketContext() {
 // ============================================================================
 
 /**
- * Get WebSocket URL based on environment
+ * Get WebSocket URL based on environment with smart detection
  */
 function getWebSocketUrl(): string {
-  // Get base URL from environment or window location
-  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
-  const host = import.meta.env.VITE_API_URL
-    ? new URL(import.meta.env.VITE_API_URL).host
-    : window.location.host
-
-  // For development, use server IP
-  if (import.meta.env.DEV) {
-    return `ws://192.168.5.12:8001/api/ws/admin`
-  }
-
-  // For production, use same host as API
-  return `${protocol}//${host}/api/ws/admin`
+  // Use smart detection to get base WebSocket URL
+  const wsBaseUrl = getSmartWebSocketUrl()
+  return `${wsBaseUrl}/api/ws/admin`
 }

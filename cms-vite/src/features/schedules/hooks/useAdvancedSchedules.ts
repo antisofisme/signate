@@ -91,7 +91,7 @@ export const useScheduleValidation = (
 
 export const useNextOccurrences = (
   scheduleId: number,
-  options?: UseQueryOptions<CalculateNextOccurrenceResponse>
+  options?: Omit<UseQueryOptions<CalculateNextOccurrenceResponse>, 'queryKey' | 'queryFn'>
 ) => {
   return useQuery({
     queryKey: ['schedule-occurrences', scheduleId],

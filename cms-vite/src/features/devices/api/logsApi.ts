@@ -7,6 +7,7 @@
 
 import { apiClient } from '@/lib/api/client';
 import { API_ENDPOINTS } from '@/lib/api/endpoints';
+import { logger } from '@/shared/utils/logger';
 import type { DeviceLog, LogListResponse, LogFilters } from '../types/logs';
 
 /**
@@ -57,13 +58,13 @@ export const logsApi = {
     const queryString = params.toString();
     const url = `${API_ENDPOINTS.DEVICES.LOGS(deviceId)}${queryString ? `?${queryString}` : ''}`;
 
-    console.log('[LogsAPI] Fetching device logs:', url);
+    logger.debug('[LogsAPI] Fetching device logs:', url);
     const response = await apiClient.get(url);
-    console.log('[LogsAPI] Response:', response.data);
+    logger.debug('[LogsAPI] Response:', response.data);
 
     // Backend returns { total, items } - we need to map it to { total, logs }
     if (response.data && 'items' in response.data && 'total' in response.data) {
-      console.log('[LogsAPI] Mapping items to logs');
+      logger.debug('[LogsAPI] Mapping items to logs');
       return {
         logs: response.data.items,
         total: response.data.total
@@ -72,16 +73,16 @@ export const logsApi = {
 
     // Handle legacy response format (if exists)
     if (response.data && 'logs' in response.data && 'total' in response.data) {
-      console.log('[LogsAPI] Response already unwrapped by interceptor');
+      logger.debug('[LogsAPI] Response already unwrapped by interceptor');
       return response.data as LogListResponse;
     }
 
     if (response.data?.data && 'logs' in response.data.data && 'total' in response.data.data) {
-      console.log('[LogsAPI] Returning wrapped response data');
+      logger.debug('[LogsAPI] Returning wrapped response data');
       return response.data.data;
     }
 
-    console.error('[LogsAPI] Invalid response structure:', response.data);
+    logger.error('[LogsAPI] Invalid response structure:', response.data);
     return { logs: [], total: 0 };
   },
 
@@ -97,7 +98,7 @@ export const logsApi = {
   ): Promise<LogListResponse> => {
     const url = `${API_ENDPOINTS.DEVICES.LOGS(deviceId)}/latest?count=${count}`;
 
-    console.log('[LogsAPI] Fetching latest logs:', url);
+    logger.debug('[LogsAPI] Fetching latest logs:', url);
     const response = await apiClient.get(url);
 
     // Backend returns { total, items } - we need to map it to { total, logs }
@@ -127,7 +128,7 @@ export const logsApi = {
    */
   clearDeviceLogs: async (deviceId: number): Promise<void> => {
     const url = API_ENDPOINTS.DEVICES.LOGS(deviceId);
-    console.log('[LogsAPI] Clearing device logs:', url);
+    logger.debug('[LogsAPI] Clearing device logs:', url);
     await apiClient.delete(url);
   },
 
@@ -164,7 +165,7 @@ export const logsApi = {
     const queryString = params.toString();
     const url = `${API_ENDPOINTS.DEVICES.CONNECTION_LOGS(deviceId)}${queryString ? `?${queryString}` : ''}`;
 
-    console.log('[LogsAPI] Fetching connection logs:', url);
+    logger.debug('[LogsAPI] Fetching connection logs:', url);
     const response = await apiClient.get(url);
 
     // Handle both unwrapped and wrapped responses

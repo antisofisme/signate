@@ -11,6 +11,7 @@ import type {
   WebSocketEventHandler,
   WebSocketEventHandlers,
 } from './types'
+import { logger } from '@/shared/utils/logger'
 
 export class WebSocketClient {
   private ws: WebSocket | null = null
@@ -309,7 +310,7 @@ export class WebSocketClient {
 
   private log(...args: any[]): void {
     if (this.config.debug) {
-      console.log('[WebSocket]', ...args)
+      logger.debug('[WebSocket]', ...args)
     }
   }
 

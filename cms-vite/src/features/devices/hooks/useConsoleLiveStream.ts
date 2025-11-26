@@ -18,6 +18,8 @@
 
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { useAuthStore } from '@/lib/stores/authStore';
+import { logger } from '@/shared/utils/logger';
+import { getSmartWebSocketUrl } from '@/lib/config/network-detector';
 
 interface ConsoleLog {
   level: 'log' | 'info' | 'warn' | 'error' | 'debug';
@@ -96,19 +98,16 @@ export function useConsoleLiveStream({
     setError(null);
 
     try {
-      // WebSocket URL (upgrade HTTP to WS)
-      const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8001';
-      const wsBaseUrl = apiUrl.replace(/^http/, 'ws');
-
+      // WebSocket URL using smart network detection
+      const wsBaseUrl = getSmartWebSocketUrl();
       const wsUrl = `${wsBaseUrl}/api/v1/devices/${deviceId}/console/stream?user_id=${user.id}`;
 
-      console.log('[ConsoleStream] Connecting to:', wsUrl);
+      logger.debug('[ConsoleStream] Connecting to:', wsUrl);
 
       const ws = new WebSocket(wsUrl);
 
       ws.onopen = () => {
-        console.log('[ConsoleStream] Connected to device', deviceId);
+        logger.debug('[ConsoleStream] Connected to device', deviceId);
         setIsConnected(true);
         setIsConnecting(false);
         setIsLoadingHistory(true); // Start loading history
@@ -121,15 +120,15 @@ export function useConsoleLiveStream({
           const message: ConsoleLogEvent = JSON.parse(event.data);
 
           // DEBUG: Log ALL messages received
-          console.log('[ConsoleStream] Message received:', message);
+          logger.debug('[ConsoleStream] Message received:', message);
 
           if (message.event === 'console.subscribed') {
-            console.log('[ConsoleStream] Subscription confirmed:', message.data.message);
+            logger.debug('[ConsoleStream] Subscription confirmed:', message.data.message);
           }
           // Historical logs (sent once on subscribe) - REPLACE existing logs
           else if (message.event === 'console.historical') {
             const historicalLogs = message.data.logs || [];
-            console.log('[ConsoleStream] 📦 Historical logs received:', historicalLogs.length);
+            logger.debug('[ConsoleStream] Historical logs received:', historicalLogs.length);
             setLogs(historicalLogs.slice(-maxLogs)); // REPLACE, not append
             setIsLoadingHistory(false);
           }
@@ -139,12 +138,12 @@ export function useConsoleLiveStream({
 
             if (logType === 'historical') {
               // Alternative handling if backend uses same event with metadata
-              console.log('[ConsoleStream] 📦 Historical logs (via logType):', message.data.logs.length);
+              logger.debug('[ConsoleStream] Historical logs (via logType):', message.data.logs.length);
               setLogs(message.data.logs.slice(-maxLogs)); // REPLACE
               setIsLoadingHistory(false);
             } else {
               // Real-time logs
-              console.log('[ConsoleStream] ⚡ Real-time log received:', message.data.logs.length);
+              logger.debug('[ConsoleStream] Real-time log received:', message.data.logs.length);
               setLogs((prev) => {
                 const newLogs = [...prev, ...message.data.logs!];
                 return newLogs.slice(-maxLogs); // Keep last maxLogs
@@ -152,22 +151,22 @@ export function useConsoleLiveStream({
             }
           }
           else {
-            console.warn('[ConsoleStream] ⚠️ Unhandled message event:', message.event, message);
+            logger.warn(`[ConsoleStream] Unhandled message event: ${message.event}`, message);
           }
         } catch (err) {
-          console.error('[ConsoleStream] Failed to parse message:', err);
+          logger.error('[ConsoleStream] Failed to parse message:', err);
         }
       };
 
       ws.onerror = (event) => {
-        console.error('[ConsoleStream] WebSocket error:', event);
+        logger.error('[ConsoleStream] WebSocket error:', event);
         const err = new Error('WebSocket connection error');
         setError(err);
         if (onError) onError(err);
       };
 
       ws.onclose = (event) => {
-        console.log('[ConsoleStream] Disconnected:', event.code, event.reason);
+        logger.debug(`[ConsoleStream] Disconnected: ${event.code} ${event.reason}`);
         setIsConnected(false);
         setIsConnecting(false);
         setIsLoadingHistory(false); // Reset loading state on disconnect
@@ -175,7 +174,7 @@ export function useConsoleLiveStream({
         // Auto-reconnect with exponential backoff
         if (enabled && reconnectAttemptsRef.current < 5) {
           const delay = Math.min(1000 * Math.pow(2, reconnectAttemptsRef.current), 30000);
-          console.log(`[ConsoleStream] Reconnecting in ${delay}ms...`);
+          logger.debug(`[ConsoleStream] Reconnecting in ${delay}ms...`);
 
           reconnectTimeoutRef.current = window.setTimeout(() => {
             reconnectAttemptsRef.current++;
@@ -186,7 +185,7 @@ export function useConsoleLiveStream({
 
       wsRef.current = ws;
     } catch (err) {
-      console.error('[ConsoleStream] Failed to create WebSocket:', err);
+      logger.error('[ConsoleStream] Failed to create WebSocket:', err);
       const error = err instanceof Error ? err : new Error('Failed to connect');
       setError(error);
       setIsConnecting(false);
@@ -232,7 +231,7 @@ export function useConsoleLiveStream({
     if (enabled && deviceId && user?.id) {
       // Only connect if not already connected or connecting
       if (wsRef.current?.readyState === WebSocket.OPEN || isConnecting) {
-        console.log('[ConsoleStream] Already connected/connecting, skipping');
+        logger.debug('[ConsoleStream] Already connected/connecting, skipping');
         return;
       }
       connect();

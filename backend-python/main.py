@@ -196,13 +196,7 @@ if settings.ENABLE_CORS:
     cors_origins = settings.get_cors_origins_list()
 
     if not cors_origins:
-        # Default CORS origins if not specified
-        cors_origins = [
-            "http://localhost:3000",
-            "http://localhost:5173",
-            "http://192.168.5.12:8080",
-            "http://192.168.5.12:3000"
-        ]
+        raise ValueError("CORS_ORIGINS must be configured in .env file")
 
     app.add_middleware(
         CORSMiddleware,

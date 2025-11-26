@@ -74,7 +74,7 @@ export function DeviceLogsViewer({
   } = useDeviceLogs(
     deviceId,
     {
-      level: logLevel !== 'all' ? (logLevel as LogLevel) : undefined,
+      log_level: logLevel !== 'all' ? (logLevel as LogLevel) : undefined,
       limit: pagination.limit,
       skip: pagination.skip,
     },

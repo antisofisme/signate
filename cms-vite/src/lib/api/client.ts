@@ -6,12 +6,14 @@
  * - Organization ID header
  * - Auto logout on 401
  * - Request/response interceptors
+ * - Smart network detection (LAN vs Internet)
  */
 
 import axios, { AxiosError } from 'axios';
+import { getSmartApiUrl } from '../config/network-detector';
 
-// Environment variables
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://192.168.5.12:8001';
+// Environment variables with smart detection
+const API_BASE_URL = getSmartApiUrl();
 const API_VERSION = import.meta.env.VITE_API_VERSION || 'v1';
 const IS_DEV = import.meta.env.DEV;
 
@@ -24,7 +26,7 @@ const IS_DEV = import.meta.env.DEV;
  * - Direct connection to backend (no nginx proxy)
  */
 export const apiClient = axios.create({
-  baseURL: API_BASE_URL,  // Use environment variable
+  baseURL: API_BASE_URL,
   timeout: 30000,
   headers: {
     'Content-Type': 'application/json',

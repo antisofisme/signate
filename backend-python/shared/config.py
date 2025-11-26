@@ -49,6 +49,11 @@ class Settings(BaseSettings):
     UPLOAD_DIR: str = "/app/uploads"
     MAX_UPLOAD_SIZE: int = 524288000  # 500MB
 
+    # Public URLs - no defaults to force configuration from .env
+    PUBLIC_BASE_URL: str  # Production: https://api.zhmhotels.online
+    CMS_URL: str          # CMS Admin URL: https://admin.zhmhotels.online
+    PLAYER_URL: str       # Player URL: https://player.zhmhotels.online
+
     # External Services
     ANTHIAS_API_URL: str = ""
 

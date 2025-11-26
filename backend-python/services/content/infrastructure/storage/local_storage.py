@@ -12,6 +12,7 @@ import uuid
 
 from .interfaces import IStorageService
 from shared.file_security import SecureFileHandler
+from shared.config import settings
 
 
 class LocalFilesystemStorage(IStorageService):
@@ -36,10 +37,10 @@ class LocalFilesystemStorage(IStorageService):
     def __init__(
         self,
         base_path: str = "/data/signage/content",
-        base_url: str = "http://192.168.5.12:8001"
+        base_url: str = None
     ):
         self.base_path = Path(base_path)
-        self.base_url = base_url
+        self.base_url = base_url or settings.PUBLIC_BASE_URL
 
         # Define subdirectories
         self.uploads_dir = self.base_path / "uploads"

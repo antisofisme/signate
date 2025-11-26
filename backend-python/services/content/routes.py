@@ -86,6 +86,7 @@ async def upload_content(
     is_active: bool = Form(True),
     upload_use_case: UploadContentUseCase = Depends(get_upload_content_use_case),
     current_user: CurrentUser = Depends(get_current_user),
+    audit_logger: AuditLogger = Depends(get_audit_logger),
     request: Request = None
 ):
     """
@@ -105,6 +106,22 @@ async def upload_content(
             uploaded_by_id=current_user.id,
             duration=duration,
             is_active=is_active
+        )
+
+        # Audit log
+        audit_logger.log_action(
+            user_id=current_user.id,
+            action="content.upload",
+            resource_type="content",
+            resource_id=content.id,
+            details={
+                "title": content.title,
+                "content_type": content.content_type,
+                "file_size": content.file_size,
+                "original_filename": content.original_filename,
+                "ip_address": request.client.host if request and request.client else None
+            },
+            organization_id=current_user.organization_id
         )
 
         return created_response(

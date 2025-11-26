@@ -1,6 +1,7 @@
 /**
  * Centralized Application Configuration
  * NO hardcoded values - all from environment variables
+ * WITH smart auto-detection for LAN vs Internet access
  *
  * Usage:
  *   import { config } from '@shared/config';
@@ -8,6 +9,7 @@
  */
 
 import type { AppConfig } from './config.types';
+import { getSmartApiUrl, getSmartWebSocketUrl, showPlayerNetworkConfig } from './network-detector';
 
 /**
  * Parse environment variable as number
@@ -38,13 +40,13 @@ function getEnvString(key: string, defaultValue: string): string {
 
 /**
  * Application Configuration Object
- * All values from environment variables
+ * All values from environment variables with smart auto-detection
  */
 export const config: AppConfig = {
-  // API Configuration
+  // API Configuration - with smart LAN/Internet detection
   api: {
-    baseURL: getEnvString('VITE_API_BASE_URL', 'http://192.168.5.12:8001'),
-    wsBaseURL: getEnvString('VITE_WS_BASE_URL', 'ws://192.168.5.12:8001'),
+    baseURL: getSmartApiUrl(import.meta.env.VITE_API_BASE_URL),
+    wsBaseURL: getSmartWebSocketUrl(import.meta.env.VITE_WS_BASE_URL),
     timeout: getEnvNumber('VITE_API_TIMEOUT', 30000),
   },
 
@@ -96,4 +98,5 @@ Object.freeze(config.player);
 // Log config in development (for debugging)
 if (import.meta.env.DEV) {
   console.log('[Config] Loaded configuration:', config);
+  showPlayerNetworkConfig();
 }

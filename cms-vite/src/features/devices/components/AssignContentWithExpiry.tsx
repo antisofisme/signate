@@ -52,14 +52,15 @@ export const AssignContentWithExpiry: React.FC<AssignContentWithExpiryProps> = (
 
   // Filter available content (exclude already assigned)
   const availableContent = useMemo(() => {
-    if (!contentData?.items) return [];
+    if (!contentData?.data) return [];
 
     const assignedIds = new Set(assignmentsData?.items.map((a) => a.content_id) || []);
 
-    return contentData.items.filter((content) => {
+    return contentData.data.filter((content) => {
       const isAssigned = assignedIds.has(content.id);
       const matchesSearch =
-        content.filename.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        content.original_filename.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        content.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
         content.content_type.toLowerCase().includes(searchQuery.toLowerCase());
 
       return !isAssigned && matchesSearch;
@@ -280,7 +281,7 @@ export const AssignContentWithExpiry: React.FC<AssignContentWithExpiryProps> = (
                             className="w-4 h-4 text-blue-600"
                           />
                           <div className="flex-1">
-                            <div className="font-medium">{content.filename}</div>
+                            <div className="font-medium">{content.title}</div>
                             <div className="text-sm text-gray-500 capitalize">
                               {content.content_type.replace('_', ' ')}
                             </div>

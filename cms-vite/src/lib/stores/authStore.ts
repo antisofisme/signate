@@ -23,6 +23,7 @@ import {
   addToOrgHistory,
   isValidOrgId,
 } from '@/features/auth/types/userPreferences';
+import { logger } from '@/shared/utils/logger';
 
 interface AuthStore extends AuthState {
   // User preferences
@@ -127,12 +128,12 @@ export const useAuthStore = create<AuthStore>()(
         const organization = state.organizations.find((org) => org.id === orgId);
 
         if (!organization) {
-          console.error(`[AuthStore] Organization with ID ${orgId} not found`);
+          logger.error(`[AuthStore] Organization with ID ${orgId} not found`);
           return;
         }
 
         if (!organization.is_active) {
-          console.error(
+          logger.error(
             `[AuthStore] Cannot switch to inactive organization: ${organization.name}`
           );
           return;
@@ -168,7 +169,7 @@ export const useAuthStore = create<AuthStore>()(
           new CustomEvent(ORG_SWITCH_EVENT, { detail: event })
         );
 
-        console.log(`[AuthStore] Switched to organization: ${organization.name}`, {
+        logger.debug(`[AuthStore] Switched to organization: ${organization.name}`, {
           from: previousOrgId,
           to: orgId,
           isUserTriggered,

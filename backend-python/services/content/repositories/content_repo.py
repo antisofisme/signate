@@ -11,6 +11,7 @@ from sqlalchemy import func
 from ..domain.content import Content
 from ..domain.interfaces import IContentRepository
 from .models import ContentModel
+from shared.config import settings
 
 
 class ContentRepository(IContentRepository):
@@ -371,7 +372,7 @@ class ContentRepository(IContentRepository):
                 content_uuid = hls_dir.replace('_hls', '')
 
                 # Construct HLS URL
-                hls_master_playlist_url = f"http://192.168.5.12:8001/content/hls/{year}/{month}/{org_dir}/{content_uuid}/master.m3u8"
+                hls_master_playlist_url = f"{settings.PUBLIC_BASE_URL}/content/hls/{year}/{month}/{org_dir}/{content_uuid}/master.m3u8"
 
         return Content(
             id=db_content.id,

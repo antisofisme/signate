@@ -22,6 +22,7 @@ from datetime import datetime, timedelta, timezone
 from typing import List, Dict, Optional
 
 from shared.database import SessionLocal
+from shared.config import settings
 from services.content.repositories.models import ContentModel
 
 
@@ -411,7 +412,7 @@ def generate_thumbnail(self, content_id: int):
                 raise
 
         # Update content record
-        content.thumbnail_url = f"http://192.168.5.12:8001/thumbnails/{thumb_filename}"
+        content.thumbnail_url = f"{settings.PUBLIC_BASE_URL}/thumbnails/{thumb_filename}"
         db.commit()
 
         return {

@@ -50,7 +50,7 @@ export function QuotaSettingsForm({ quota, organizationId }: QuotaSettingsFormPr
   const updateQuotaMutation = useUpdateQuota();
 
   // Check if user is admin (only admins can update quotas)
-  const isAdmin = user?.role === 'admin' || user?.role === 'superadmin';
+  const isAdmin = user?.role === 'admin';
 
   const {
     register,
@@ -84,7 +84,7 @@ export function QuotaSettingsForm({ quota, organizationId }: QuotaSettingsFormPr
     devices: getFieldWarning('max_devices', quota.devices.current),
     users: getFieldWarning('max_users', quota.users.current),
     contentItems: getFieldWarning('max_content_items', quota.content.current_items),
-    contentSize: formValues.max_content_size_gb < quota.content.current_size_gb
+    contentSize: Number(formValues.max_content_size_gb) < quota.content.current_size_gb
       ? `New limit (${formValues.max_content_size_gb} GB) is lower than current usage (${quota.content.current_size_gb.toFixed(2)} GB)`
       : null,
     playlists: getFieldWarning('max_playlists', quota.playlists.current),

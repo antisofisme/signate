@@ -11,6 +11,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { ORG_SWITCH_EVENT_NAME } from '@/lib/stores/authStore';
 import type { OrgSwitchEvent } from '@/features/auth/types/userPreferences';
 import { toast } from '@/lib/notifications/toast';
+import { logger } from '@/shared/utils/logger';
 
 /**
  * Configuration for cache invalidation behavior
@@ -115,7 +116,7 @@ export function useOrgSwitch(config: OrgSwitchConfig = {}): {
   );
 
   useEffect(() => {
-    let debounceTimeout: NodeJS.Timeout | null = null;
+    let debounceTimeout: ReturnType<typeof setTimeout> | null = null;
 
     const handleOrgSwitch = async (event: Event) => {
       const customEvent = event as CustomEvent<OrgSwitchEvent>;
@@ -128,7 +129,7 @@ export function useOrgSwitch(config: OrgSwitchConfig = {}): {
 
       // Debounce to prevent rapid switching
       debounceTimeout = setTimeout(async () => {
-        console.log('[useOrgSwitch] Organization switch detected:', {
+        logger.debug('[useOrgSwitch] Organization switch detected', {
           from: switchEvent.previousOrgId,
           to: switchEvent.newOrgId,
           name: switchEvent.organizationName,
@@ -147,9 +148,7 @@ export function useOrgSwitch(config: OrgSwitchConfig = {}): {
 
           // Show toast notification (only for user-triggered switches)
           if (showToast && switchEvent.isUserTriggered) {
-            toast.info(`Beralih ke ${switchEvent.organizationName}...`, {
-              duration: 2000,
-            });
+            toast.info(`Beralih ke ${switchEvent.organizationName}...`);
           }
 
           // Invalidate caches
@@ -171,7 +170,7 @@ export function useOrgSwitch(config: OrgSwitchConfig = {}): {
             // Wait for all invalidations to complete
             await Promise.all(invalidations);
 
-            console.log('[useOrgSwitch] Cache invalidation complete:', {
+            logger.debug('[useOrgSwitch] Cache invalidation complete', {
               invalidatedKeys: allQueryKeys,
             });
           }
@@ -186,7 +185,7 @@ export function useOrgSwitch(config: OrgSwitchConfig = {}): {
             onAfterSwitch(switchEvent);
           }
         } catch (error) {
-          console.error('[useOrgSwitch] Error during organization switch:', error);
+          logger.error('[useOrgSwitch] Error during organization switch', error);
 
           if (showToast) {
             toast.error('Terjadi kesalahan saat beralih organisasi');
@@ -263,7 +262,7 @@ export function useInvalidateOnOrgSwitch(
 
       await Promise.all(invalidations);
 
-      console.log('[useInvalidateOnOrgSwitch] Invalidated:', queryKeys);
+      logger.debug('[useInvalidateOnOrgSwitch] Invalidated:', queryKeys);
     };
 
     window.addEventListener(ORG_SWITCH_EVENT_NAME, handleOrgSwitch);

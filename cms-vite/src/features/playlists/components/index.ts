@@ -4,8 +4,8 @@
  * Centralized exports for all playlist feature components
  */
 
-export { PlaylistList } from './PlaylistList';
-export { PlaylistForm } from './PlaylistForm';
-export { PlaylistContentModal } from './PlaylistContentModal';
-export { PlaylistAssignmentModal } from './PlaylistAssignmentModal';
+export { default as PlaylistList } from './PlaylistList';
+export { default as PlaylistForm } from './PlaylistForm';
+export { default as PlaylistContentModal } from './PlaylistContentModal';
+export { default as PlaylistAssignmentModal } from './PlaylistAssignmentModal';
 export { BulkAssignDevices } from './BulkAssignDevices';

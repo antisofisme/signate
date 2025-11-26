@@ -81,6 +81,35 @@ class PlayerVideoJSClass implements IPlayerVideoJS {
   };
 
   /**
+   * Transform content URL for LAN access (HTTPS → HTTP for local network)
+   * Prevents mixed content blocking when player runs on HTTP
+   */
+  private transformContentUrl(url: string): string {
+    if (!url) return url;
+
+    // Check if on local network
+    const hostname = window.location.hostname;
+    const isLocalNetwork =
+      hostname.startsWith('192.168.') ||
+      hostname.startsWith('10.') ||
+      hostname.startsWith('172.16.') ||
+      hostname === 'localhost' ||
+      hostname === '127.0.0.1';
+
+    // If on local network, replace HTTPS domain with HTTP local
+    if (isLocalNetwork) {
+      if (url.includes('https://api.zhmhotels.online')) {
+        const transformed = url.replace('https://api.zhmhotels.online', 'http://192.168.5.12:8001');
+        SharedLogger.log('[PlayerVideoJS] 🔄 URL transformed for LAN:', url, '→', transformed);
+        return transformed;
+      }
+    }
+
+    // No transformation needed
+    return url;
+  }
+
+  /**
    * Create blob URL and track it for cleanup
    */
   private createTrackedBlobURL(blob: Blob): string {
@@ -233,12 +262,15 @@ class PlayerVideoJSClass implements IPlayerVideoJS {
   private async playVideo(item: PlaylistItem): Promise<void> {
     if (!this.player || !this.videoElement) return;
 
-    const videoUrl = item.content.file_path || item.content.url;
-    if (!videoUrl) {
+    const rawVideoUrl = item.content.file_path || item.content.url;
+    if (!rawVideoUrl) {
       SharedLogger.error('[PlayerVideoJS] No video URL found');
       await this.next();
       return;
     }
+
+    // Transform URL for LAN access (HTTPS → HTTP for local network)
+    const videoUrl = this.transformContentUrl(rawVideoUrl);
 
     try {
       const isHLS = videoUrl.includes('.m3u8');
@@ -375,7 +407,10 @@ class PlayerVideoJSClass implements IPlayerVideoJS {
     // Hide video, show image overlay
     this.videoElement.style.display = 'none';
 
-    const imageUrl = item.content.file_path || item.content.url || '';
+    const rawImageUrl = item.content.file_path || item.content.url || '';
+
+    // Transform URL for LAN access (HTTPS → HTTP for local network)
+    const imageUrl = this.transformContentUrl(rawImageUrl);
 
     // HYBRID STRATEGY: Check cache first
     const PlayerMediaCache = getPlayerMediaCache();
@@ -435,7 +470,10 @@ class PlayerVideoJSClass implements IPlayerVideoJS {
   private async playAudio(item: PlaylistItem): Promise<void> {
     if (!this.player || !this.videoElement) return;
 
-    const audioUrl = item.content.file_path || item.content.url || '';
+    const rawAudioUrl = item.content.file_path || item.content.url || '';
+
+    // Transform URL for LAN access (HTTPS → HTTP for local network)
+    const audioUrl = this.transformContentUrl(rawAudioUrl);
 
     // HYBRID STRATEGY: Check cache first
     const PlayerMediaCache = getPlayerMediaCache();

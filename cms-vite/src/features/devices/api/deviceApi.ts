@@ -7,6 +7,7 @@
 
 import { apiClient } from '@/lib/api/client';
 import { API_ENDPOINTS } from '@/lib/api/endpoints';
+import { logger } from '@/shared/utils/logger';
 import type {
   Device,
   DeviceLog,
@@ -115,25 +116,25 @@ export const deviceApi = {
       const queryString = params.toString();
       const url = `${API_ENDPOINTS.DEVICES.LIST}${queryString ? `?${queryString}` : ''}`;
 
-      console.log('[DeviceAPI] Fetching:', url);
+      logger.debug('[DeviceAPI] Fetching:', url);
       const response = await apiClient.get<ListResponse>(url);
-      console.log('[DeviceAPI] Response:', response.data);
+      logger.debug('[DeviceAPI] Response:', response.data);
 
       // Handle both unwrapped and wrapped responses
       if (response.data && 'total' in response.data && 'items' in response.data) {
-        console.log('[DeviceAPI] Response already unwrapped by interceptor');
+        logger.debug('[DeviceAPI] Response already unwrapped by interceptor');
         return response.data as { total: number; items: Device[] };
       }
 
       if (response.data?.data && 'total' in response.data.data && 'items' in response.data.data) {
-        console.log('[DeviceAPI] Returning wrapped response data');
+        logger.debug('[DeviceAPI] Returning wrapped response data');
         return response.data.data;
       }
 
-      console.error('[DeviceAPI] Invalid response structure:', response.data);
+      logger.error('[DeviceAPI] Invalid response structure:', response.data);
       return { total: 0, items: [] };
     } catch (error) {
-      console.error('[DeviceAPI] List error:', error);
+      logger.error('[DeviceAPI] List error:', error);
       return { total: 0, items: [] };
     }
   },
@@ -484,11 +485,11 @@ export const deviceApi = {
    */
   getSpeedTests: async (id: number): Promise<{ total: number; items: any[] }> => {
     // Speed tests are stored in connection_logs with event_type='speed_test'
-    console.log('[DeviceAPI] Fetching speed tests for device:', id);
+    logger.debug('[DeviceAPI] Fetching speed tests for device:', id);
     const response = await apiClient.get(
       `${API_ENDPOINTS.DEVICES.CONNECTION_LOGS(id)}?event_type=speed_test&limit=100`
     );
-    console.log('[DeviceAPI] Speed test response:', response.data);
+    logger.debug('[DeviceAPI] Speed test response:', response.data);
 
     // Handle both wrapped and unwrapped responses
     let data: { total: number; items: any[] };
@@ -499,7 +500,7 @@ export const deviceApi = {
     } else {
       data = { total: 0, items: [] };
     }
-    console.log('[DeviceAPI] Parsed speed test data:', data);
+    logger.debug('[DeviceAPI] Parsed speed test data:', data);
 
     // Transform connection log format to speed test format
     const items = (data.items || []).map((log: any) => ({

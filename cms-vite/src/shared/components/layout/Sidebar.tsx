@@ -61,8 +61,8 @@ export default function Sidebar() {
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({
     devices: true,
     content: true,
-    customization: false,
-    integrations: false,
+    // customization: false, // HIDDEN: Belum dikembangkan
+    // integrations: false, // HIDDEN: Belum dikembangkan
     insights: false,
     security: false,
   });
@@ -99,23 +99,25 @@ export default function Sidebar() {
         { name: t('navigation.tags'), href: '/tags', icon: Tag },
       ],
     },
-    {
-      name: 'Customization',
-      icon: Puzzle,
-      items: [
-        { name: t('navigation.widgets'), href: '/widgets', icon: Puzzle },
-        { name: t('navigation.templates'), href: '/templates', icon: FileCode },
-        { name: t('navigation.translations'), href: '/translations', icon: Languages },
-      ],
-    },
-    {
-      name: 'Integrations',
-      icon: CloudRain,
-      items: [
-        { name: 'PMS Integration', href: '/integrations/pms', icon: Hotel },
-        { name: 'Weather Service', href: '/integrations/weather', icon: CloudRain },
-      ],
-    },
+    // HIDDEN: Belum dikembangkan
+    // {
+    //   name: 'Customization',
+    //   icon: Puzzle,
+    //   items: [
+    //     { name: t('navigation.widgets'), href: '/widgets', icon: Puzzle },
+    //     { name: t('navigation.templates'), href: '/templates', icon: FileCode },
+    //     { name: t('navigation.translations'), href: '/translations', icon: Languages },
+    //   ],
+    // },
+    // HIDDEN: Belum dikembangkan
+    // {
+    //   name: 'Integrations',
+    //   icon: CloudRain,
+    //   items: [
+    //     { name: 'PMS Integration', href: '/integrations/pms', icon: Hotel },
+    //     { name: 'Weather Service', href: '/integrations/weather', icon: CloudRain },
+    //   ],
+    // },
     {
       name: 'Insights',
       icon: BarChart3,

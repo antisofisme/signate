@@ -443,8 +443,7 @@ export const ScheduleFormEnhanced = ({
       {recurrenceType !== 'once' && (
         <ExceptionDatesManager
           exceptionDates={exceptionDates}
-          onAdd={(date) => setExceptionDates([...exceptionDates, date])}
-          onRemove={(date) => setExceptionDates(exceptionDates.filter((d) => d !== date))}
+          onChange={setExceptionDates}
           minDate={formValues.start_date}
           maxDate={formValues.end_date}
           disabled={isLoading}

@@ -7,6 +7,7 @@
 
 import { apiClient } from '@/lib/api/client';
 import { API_ENDPOINTS } from '@/lib/api/endpoints';
+import { logger } from '@/shared/utils/logger';
 import type {
   Playlist,
   PlaylistContent,
@@ -106,27 +107,27 @@ export const playlistApi = {
       const queryString = params.toString();
       const url = `${API_ENDPOINTS.PLAYLISTS.LIST}${queryString ? `?${queryString}` : ''}`;
 
-      console.log('[PlaylistAPI] Fetching:', url);
+      logger.debug('[PlaylistAPI] Fetching:', url);
       const response = await apiClient.get<ListResponse>(url);
-      console.log('[PlaylistAPI] Response:', response.data);
+      logger.debug('[PlaylistAPI] Response:', response.data);
 
       // Handle both unwrapped and wrapped responses
       // Interceptor unwraps if no 'total' found at top level
       if (response.data && 'total' in response.data && 'items' in response.data) {
-        console.log('[PlaylistAPI] Response already unwrapped by interceptor');
+        logger.debug('[PlaylistAPI] Response already unwrapped by interceptor');
         return response.data as { total: number; items: Playlist[] };
       }
 
       // Handle wrapped response
       if (response.data?.data && 'total' in response.data.data && 'items' in response.data.data) {
-        console.log('[PlaylistAPI] Returning wrapped response data');
+        logger.debug('[PlaylistAPI] Returning wrapped response data');
         return response.data.data;
       }
 
-      console.error('[PlaylistAPI] Invalid response structure:', response.data);
+      logger.error('[PlaylistAPI] Invalid response structure:', response.data);
       return { total: 0, items: [] };
     } catch (error) {
-      console.error('[PlaylistAPI] List error:', error);
+      logger.error('[PlaylistAPI] List error:', error);
       return { total: 0, items: [] };
     }
   },

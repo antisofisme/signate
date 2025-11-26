@@ -7,6 +7,7 @@ import { useEffect } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { useWebSocketEvents } from '@/lib/websocket'
 import { toast } from 'sonner'
+import { logger } from '@/shared/utils/logger'
 import type {
   DeviceStatusData,
   DeviceHeartbeatData,
@@ -25,7 +26,7 @@ export function useDeviceWebSocket() {
   useWebSocketEvents({
     // Device status changed (online/offline)
     'device:status': (data: DeviceStatusData) => {
-      console.log('[WS] Device status:', data)
+      logger.debug('[WS] Device status:', data)
 
       // Invalidate device list query
       queryClient.invalidateQueries({ queryKey: ['devices'] })
@@ -47,21 +48,21 @@ export function useDeviceWebSocket() {
 
     // Device connected
     'device:connected': (data: DeviceStatusData) => {
-      console.log('[WS] Device connected:', data)
+      logger.debug('[WS] Device connected:', data)
       queryClient.invalidateQueries({ queryKey: ['devices'] })
       toast.success(`Device #${data.device_id} connected`)
     },
 
     // Device disconnected
     'device:disconnected': (data: DeviceStatusData) => {
-      console.log('[WS] Device disconnected:', data)
+      logger.debug('[WS] Device disconnected:', data)
       queryClient.invalidateQueries({ queryKey: ['devices'] })
       toast.info(`Device #${data.device_id} disconnected`)
     },
 
     // Device heartbeat
     'device:heartbeat': (data: DeviceHeartbeatData) => {
-      console.log('[WS] Device heartbeat:', data.device_id)
+      logger.debug('[WS] Device heartbeat:', data.device_id)
 
       // Update cache without full refetch (optimistic update)
       queryClient.setQueryData(['devices', data.device_id], (oldData: any) => {
@@ -77,13 +78,13 @@ export function useDeviceWebSocket() {
 
     // Command acknowledged
     'command:ack': (data: CommandAckData) => {
-      console.log('[WS] Command acknowledged:', data)
+      logger.debug('[WS] Command acknowledged:', data)
       toast.info(`Device #${data.device_id} received command`)
     },
 
     // Command completed
     'command:complete': (data: CommandCompleteData) => {
-      console.log('[WS] Command completed:', data)
+      logger.debug('[WS] Command completed:', data)
       queryClient.invalidateQueries({
         queryKey: ['devices', data.device_id, 'commands']
       })
@@ -92,7 +93,7 @@ export function useDeviceWebSocket() {
 
     // Command error
     'command:error': (data: CommandErrorData) => {
-      console.log('[WS] Command error:', data)
+      logger.debug('[WS] Command error:', data)
       toast.error(`Command failed on device #${data.device_id}: ${data.error}`)
     },
   })

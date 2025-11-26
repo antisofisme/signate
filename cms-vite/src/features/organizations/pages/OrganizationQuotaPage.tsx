@@ -82,18 +82,19 @@ export default function OrganizationQuotaPage() {
       <PageHeader
         title="Organization Quota Management"
         description="Monitor resource usage and configure quota limits"
-      >
-        <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => navigate('/settings')}
-          >
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to Settings
-          </Button>
-        </div>
-      </PageHeader>
+        actions={
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => navigate('/settings')}
+            >
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back to Settings
+            </Button>
+          </div>
+        }
+      />
 
       {/* Content */}
       <div className="space-y-8">
