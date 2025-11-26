@@ -7,13 +7,15 @@ import React from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { X } from 'lucide-react'
+import { X, Loader2 } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import type { Role, CreateRoleRequest, UpdateRoleRequest } from '../types/rbac.types'
 
 // ============================================================================
 // Validation Schema
 // ============================================================================
 
+// Note: Validation messages are in English for consistency with zod validation
 const roleSchema = z.object({
   name: z.string().min(3, 'Name must be at least 3 characters').max(50, 'Name must be less than 50 characters'),
   description: z.string().max(200, 'Description must be less than 200 characters').optional(),
@@ -38,6 +40,7 @@ interface RoleFormProps {
 // ============================================================================
 
 export function RoleForm({ role, onSubmit, onCancel, isLoading }: RoleFormProps) {
+  const { t } = useTranslation()
   const isEditMode = !!role
 
   const {
@@ -62,7 +65,7 @@ export function RoleForm({ role, onSubmit, onCancel, isLoading }: RoleFormProps)
       {/* Header */}
       <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
         <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-          {isEditMode ? 'Edit Role' : 'Create New Role'}
+          {isEditMode ? t('rbac.editRole') : t('rbac.createNewRole')}
         </h2>
         <button
           onClick={onCancel}
@@ -77,14 +80,14 @@ export function RoleForm({ role, onSubmit, onCancel, isLoading }: RoleFormProps)
         {/* Role Name */}
         <div>
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-            Role Name *
+            {t('rbac.roleName')} *
           </label>
           <input
             type="text"
             {...register('name')}
             disabled={role?.is_system}
             className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white disabled:opacity-50 disabled:cursor-not-allowed"
-            placeholder="e.g., Content Manager"
+            placeholder={t('rbac.roleNamePlaceholder')}
           />
           {errors.name && (
             <p className="mt-1 text-sm text-red-600 dark:text-red-400">
@@ -93,7 +96,7 @@ export function RoleForm({ role, onSubmit, onCancel, isLoading }: RoleFormProps)
           )}
           {role?.is_system && (
             <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-              System roles cannot be renamed
+              {t('rbac.systemRoleCannotBeRenamed')}
             </p>
           )}
         </div>
@@ -101,13 +104,13 @@ export function RoleForm({ role, onSubmit, onCancel, isLoading }: RoleFormProps)
         {/* Description */}
         <div>
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-            Description
+            {t('rbac.description')}
           </label>
           <textarea
             {...register('description')}
             rows={3}
             className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white resize-none"
-            placeholder="Brief description of this role..."
+            placeholder={t('rbac.descriptionPlaceholder')}
           />
           {errors.description && (
             <p className="mt-1 text-sm text-red-600 dark:text-red-400">
@@ -115,7 +118,7 @@ export function RoleForm({ role, onSubmit, onCancel, isLoading }: RoleFormProps)
             </p>
           )}
           <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-            Optional. Helps users understand the role's purpose.
+            {t('rbac.descriptionHelp')}
           </p>
         </div>
 
@@ -128,11 +131,11 @@ export function RoleForm({ role, onSubmit, onCancel, isLoading }: RoleFormProps)
             className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700"
           />
           <label htmlFor="is_active" className="text-sm font-medium text-gray-700 dark:text-gray-300">
-            Active
+            {t('rbac.active')}
           </label>
         </div>
         <p className="text-sm text-gray-500 dark:text-gray-400">
-          Inactive roles cannot be assigned to users
+          {t('rbac.inactiveRolesHelp')}
         </p>
 
         {/* Actions */}
@@ -143,7 +146,7 @@ export function RoleForm({ role, onSubmit, onCancel, isLoading }: RoleFormProps)
             disabled={isLoading}
             className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors disabled:opacity-50"
           >
-            Cancel
+            {t('common.cancel')}
           </button>
           <button
             type="submit"
@@ -152,14 +155,11 @@ export function RoleForm({ role, onSubmit, onCancel, isLoading }: RoleFormProps)
           >
             {isLoading ? (
               <span className="flex items-center gap-2">
-                <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                </svg>
-                Saving...
+                <Loader2 className="animate-spin h-4 w-4" />
+                {t('common.saving')}
               </span>
             ) : (
-              isEditMode ? 'Update Role' : 'Create Role'
+              isEditMode ? t('rbac.updateRole') : t('rbac.createRole')
             )}
           </button>
         </div>

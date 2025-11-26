@@ -4,6 +4,7 @@
  */
 
 import { Pencil, Trash2, Loader2, Tag as TagIcon } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { TagBadge } from './TagBadge';
 import type { Tag } from '../types/tag';
 
@@ -22,11 +23,13 @@ export function TagList({
   onEdit,
   onDelete,
 }: TagListProps) {
+  const { t } = useTranslation();
+
   if (isLoading) {
     return (
       <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-12 text-center">
         <Loader2 className="w-8 h-8 animate-spin text-blue-600 mx-auto mb-4" />
-        <p className="text-gray-600 dark:text-gray-400">Loading tags...</p>
+        <p className="text-gray-600 dark:text-gray-400">{t('tags.loadingTags')}</p>
       </div>
     );
   }
@@ -36,7 +39,7 @@ export function TagList({
       <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-12 text-center">
         <TagIcon className="w-12 h-12 mx-auto mb-4 text-gray-400" />
         <p className="text-gray-600 dark:text-gray-400">
-          {searchQuery ? 'Tidak ada tag yang cocok' : 'Belum ada tag'}
+          {searchQuery ? t('tags.noTagsMatch') : t('tags.noTagsYet')}
         </p>
       </div>
     );
@@ -48,16 +51,16 @@ export function TagList({
         <thead className="bg-gray-50 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600">
           <tr>
             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-              Tag
+              {t('tags.tag')}
             </th>
             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-              Deskripsi
+              {t('tags.description')}
             </th>
             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-              Dibuat
+              {t('tags.created')}
             </th>
             <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-              Aksi
+              {t('tags.actions')}
             </th>
           </tr>
         </thead>
@@ -78,14 +81,14 @@ export function TagList({
                   <button
                     onClick={() => onEdit(tag)}
                     className="p-1.5 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded"
-                    title="Edit"
+                    title={t('tags.edit')}
                   >
                     <Pencil className="h-4 w-4" />
                   </button>
                   <button
                     onClick={() => onDelete(tag)}
                     className="p-1.5 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded"
-                    title="Delete"
+                    title={t('tags.delete')}
                   >
                     <Trash2 className="h-4 w-4" />
                   </button>

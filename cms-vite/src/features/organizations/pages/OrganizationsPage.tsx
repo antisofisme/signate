@@ -7,6 +7,7 @@
 
 import { useState } from 'react';
 import { Plus, Building, Shield, Loader2 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import {
   useOrganizations,
   useCreateOrganization,
@@ -23,6 +24,7 @@ import type {
 } from '../types/organization';
 
 export default function OrganizationsPage() {
+  const { t } = useTranslation();
   const { data: organizationsData, isLoading } = useOrganizations();
   const createMutation = useCreateOrganization();
   const updateMutation = useUpdateOrganization();
@@ -79,7 +81,7 @@ export default function OrganizationsPage() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-600 dark:text-gray-400">
-                Total Organizations
+                {t('organizations.totalOrganizations')}
               </p>
               <p className="text-2xl font-bold text-gray-900 dark:text-white">
                 {totalOrgs}
@@ -93,7 +95,7 @@ export default function OrganizationsPage() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-600 dark:text-gray-400">
-                Active
+                {t('organizations.active')}
               </p>
               <p className="text-2xl font-bold text-green-600 dark:text-green-400">
                 {activeOrgs}
@@ -107,7 +109,7 @@ export default function OrganizationsPage() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-600 dark:text-gray-400">
-                Inactive
+                {t('organizations.inactive')}
               </p>
               <p className="text-2xl font-bold text-gray-600 dark:text-gray-400">
                 {inactiveOrgs}
@@ -125,7 +127,7 @@ export default function OrganizationsPage() {
           className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
         >
           <Plus className="w-5 h-5" />
-          Create Organization
+          {t('organizations.createOrganization')}
         </button>
       </div>
 
@@ -157,8 +159,8 @@ export default function OrganizationsPage() {
       {deletingOrg && (
         <DeleteConfirmModal
           isOpen={!!deletingOrg}
-          title="Delete Organization"
-          message="Are you sure you want to delete this organization?"
+          title={t('organizations.deleteOrganization')}
+          message={t('organizations.deleteConfirmMessage')}
           itemName={deletingOrg.name}
           onClose={() => setDeletingOrg(null)}
           onConfirm={handleDelete}

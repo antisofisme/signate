@@ -3,6 +3,7 @@
  * Confirmation modal for revoking all other sessions
  */
 
+import { useTranslation } from 'react-i18next';
 import { AlertTriangle } from 'lucide-react';
 
 interface RevokeAllModalProps {
@@ -20,6 +21,8 @@ export function RevokeAllModal({
   onClose,
   onConfirm,
 }: RevokeAllModalProps) {
+  const { t } = useTranslation();
+
   if (!isOpen) return null;
 
   return (
@@ -30,16 +33,15 @@ export function RevokeAllModal({
             <AlertTriangle className="w-6 h-6 text-red-600 dark:text-red-400" />
           </div>
           <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-            Logout from All Devices?
+            {t('sessions.modal.title')}
           </h2>
         </div>
 
         <p className="text-gray-600 dark:text-gray-400 mb-6">
-          This will logout all your active sessions except this one. You'll need to login again
-          on those devices.
+          {t('sessions.modal.description')}
           <br />
           <br />
-          <strong>Sessions to revoke: {otherSessionsCount}</strong>
+          <strong>{t('sessions.modal.sessionsToRevoke', { count: otherSessionsCount })}</strong>
         </p>
 
         <div className="flex items-center gap-3">
@@ -48,14 +50,14 @@ export function RevokeAllModal({
             disabled={isRevoking}
             className="flex-1 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors disabled:opacity-50"
           >
-            Cancel
+            {t('sessions.modal.cancel')}
           </button>
           <button
             onClick={onConfirm}
             disabled={isRevoking}
             className="flex-1 px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {isRevoking ? 'Revoking...' : 'Logout All'}
+            {isRevoking ? t('sessions.modal.revoking') : t('sessions.modal.confirmButton')}
           </button>
         </div>
       </div>

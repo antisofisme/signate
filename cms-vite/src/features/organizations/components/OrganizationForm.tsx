@@ -7,6 +7,7 @@
 
 import { useState } from 'react';
 import { Loader2 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import type {
   Organization,
   CreateOrganizationRequest,
@@ -26,6 +27,7 @@ export function OrganizationForm({
   onSubmit,
   isLoading,
 }: OrganizationFormProps) {
+  const { t } = useTranslation();
   const [name, setName] = useState(organization?.name || '');
   const [description, setDescription] = useState(organization?.description || '');
   const [address, setAddress] = useState(organization?.address || '');
@@ -67,14 +69,14 @@ export function OrganizationForm({
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 overflow-y-auto">
       <div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-2xl my-8">
         <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-          {organization ? 'Edit Organization' : 'Create Organization'}
+          {organization ? t('organizations.editOrganization') : t('organizations.createOrganization')}
         </h3>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Name */}
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Organization Name *
+              {t('organizations.organizationName')} *
             </label>
             <input
               type="text"
@@ -88,7 +90,7 @@ export function OrganizationForm({
           {/* Description */}
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Description
+              {t('organizations.description')}
             </label>
             <textarea
               value={description}
@@ -96,14 +98,14 @@ export function OrganizationForm({
               rows={3}
               maxLength={500}
               className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
-              placeholder="Brief description of the organization"
+              placeholder={t('organizations.descriptionPlaceholder')}
             />
           </div>
 
           {/* Address */}
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Address
+              {t('organizations.address')}
             </label>
             <textarea
               value={address}
@@ -111,7 +113,7 @@ export function OrganizationForm({
               rows={2}
               maxLength={500}
               className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
-              placeholder="Physical address"
+              placeholder={t('organizations.addressPlaceholder')}
             />
           </div>
 
@@ -119,7 +121,7 @@ export function OrganizationForm({
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Contact Email
+                {t('organizations.contactEmail')}
               </label>
               <input
                 type="email"
@@ -127,13 +129,13 @@ export function OrganizationForm({
                 onChange={(e) => setContactEmail(e.target.value)}
                 maxLength={100}
                 className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
-                placeholder="email@example.com"
+                placeholder={t('organizations.contactEmailPlaceholder')}
               />
             </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Contact Phone
+                {t('organizations.contactPhone')}
               </label>
               <input
                 type="tel"
@@ -141,7 +143,7 @@ export function OrganizationForm({
                 onChange={(e) => setContactPhone(e.target.value)}
                 maxLength={20}
                 className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
-                placeholder="+62 xxx xxx xxx"
+                placeholder={t('organizations.contactPhonePlaceholder')}
               />
             </div>
           </div>
@@ -149,7 +151,7 @@ export function OrganizationForm({
           {/* Logo URL */}
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Logo URL
+              {t('organizations.logoUrl')}
             </label>
             <input
               type="url"
@@ -157,7 +159,7 @@ export function OrganizationForm({
               onChange={(e) => setLogoUrl(e.target.value)}
               maxLength={500}
               className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
-              placeholder="https://example.com/logo.png"
+              placeholder={t('organizations.logoUrlPlaceholder')}
             />
           </div>
 
@@ -175,7 +177,7 @@ export function OrganizationForm({
                 htmlFor="isActive"
                 className="text-sm font-medium text-gray-700 dark:text-gray-300 cursor-pointer"
               >
-                Organization is Active
+                {t('organizations.organizationIsActive')}
               </label>
             </div>
           )}
@@ -188,7 +190,7 @@ export function OrganizationForm({
               disabled={isLoading}
               className="px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg disabled:opacity-50"
             >
-              Cancel
+              {t('organizations.cancel')}
             </button>
             <button
               type="submit"
@@ -198,12 +200,12 @@ export function OrganizationForm({
               {isLoading ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin" />
-                  Saving...
+                  {t('organizations.saving')}
                 </>
               ) : organization ? (
-                'Update'
+                t('organizations.update')
               ) : (
-                'Create'
+                t('organizations.create')
               )}
             </button>
           </div>

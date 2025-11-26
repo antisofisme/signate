@@ -5,6 +5,7 @@
 
 import React from 'react'
 import { Shield, Users, Lock, Edit, Trash2 } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import type { Role } from '../types/rbac.types'
 
 interface RoleCardProps {
@@ -15,6 +16,7 @@ interface RoleCardProps {
 }
 
 export function RoleCard({ role, onEdit, onDelete, onViewDetails }: RoleCardProps) {
+  const { t } = useTranslation()
   const isSystemRole = role.is_system
 
   return (
@@ -43,7 +45,7 @@ export function RoleCard({ role, onEdit, onDelete, onViewDetails }: RoleCardProp
             {isSystemRole && (
               <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-300 rounded">
                 <Lock className="w-3 h-3" />
-                System Role
+                {t('rbac.systemRole')}
               </span>
             )}
           </div>
@@ -57,7 +59,7 @@ export function RoleCard({ role, onEdit, onDelete, onViewDetails }: RoleCardProp
               : 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300'
           }`}
         >
-          {role.is_active ? 'Active' : 'Inactive'}
+          {role.is_active ? t('rbac.active') : t('rbac.inactive')}
         </span>
       </div>
 
@@ -72,12 +74,12 @@ export function RoleCard({ role, onEdit, onDelete, onViewDetails }: RoleCardProp
       <div className="flex items-center gap-4 mb-4 text-sm">
         <div className="flex items-center gap-1 text-gray-600 dark:text-gray-400">
           <Users className="w-4 h-4" />
-          <span>{role.users_count || 0} users</span>
+          <span>{role.users_count || 0} {t('rbac.users')}</span>
         </div>
         {role.permissions && (
           <div className="flex items-center gap-1 text-gray-600 dark:text-gray-400">
             <Shield className="w-4 h-4" />
-            <span>{role.permissions.length} permissions</span>
+            <span>{role.permissions.length} {t('rbac.permissions')}</span>
           </div>
         )}
       </div>
@@ -94,7 +96,7 @@ export function RoleCard({ role, onEdit, onDelete, onViewDetails }: RoleCardProp
               className="flex items-center gap-1 px-3 py-1.5 text-sm font-medium text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded transition-colors"
             >
               <Edit className="w-4 h-4" />
-              Edit
+              {t('common.edit')}
             </button>
           )}
           {onDelete && (
@@ -106,7 +108,7 @@ export function RoleCard({ role, onEdit, onDelete, onViewDetails }: RoleCardProp
               className="flex items-center gap-1 px-3 py-1.5 text-sm font-medium text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/30 rounded transition-colors"
             >
               <Trash2 className="w-4 h-4" />
-              Delete
+              {t('common.delete')}
             </button>
           )}
         </div>

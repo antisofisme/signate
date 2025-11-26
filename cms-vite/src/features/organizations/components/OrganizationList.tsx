@@ -6,6 +6,7 @@
  */
 
 import { Building, Shield, Edit, Trash2, Users, Monitor } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import type { Organization } from '../types/organization';
 
 interface OrganizationListProps {
@@ -19,25 +20,27 @@ export function OrganizationList({
   onEdit,
   onDelete,
 }: OrganizationListProps) {
+  const { t } = useTranslation();
+
   return (
     <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
       <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
         <thead className="bg-gray-50 dark:bg-gray-900">
           <tr>
             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-              Name
+              {t('organizations.name')}
             </th>
             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-              Users
+              {t('organizations.users')}
             </th>
             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-              Devices
+              {t('organizations.devices')}
             </th>
             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-              Status
+              {t('organizations.status')}
             </th>
             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-              Actions
+              {t('organizations.actions')}
             </th>
           </tr>
         </thead>
@@ -72,7 +75,7 @@ export function OrganizationList({
                       : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
                   }`}
                 >
-                  {org.is_active ? 'Active' : 'Inactive'}
+                  {org.is_active ? t('organizations.active') : t('organizations.inactive')}
                 </span>
               </td>
               <td className="px-6 py-4 whitespace-nowrap text-sm">

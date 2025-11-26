@@ -6,6 +6,7 @@
  */
 
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { LogOut, Shield } from 'lucide-react';
 import { PageHeader } from '@/shared/components';
 import { SessionCard } from '../components/SessionCard';
@@ -22,6 +23,7 @@ import {
 import type { Session } from '../types/session.types';
 
 export default function SessionsPage() {
+  const { t } = useTranslation();
   const [showRevokeAllModal, setShowRevokeAllModal] = useState(false);
 
   // Queries
@@ -37,7 +39,10 @@ export default function SessionsPage() {
   const handleRevokeSession = (session: Session) => {
     if (
       confirm(
-        `Are you sure you want to revoke this session?\n\nDevice: ${session.device_info?.browser || 'Unknown'}\nIP: ${session.ip_address}\n\nYou will be logged out from that device.`
+        t('sessions.confirmRevokeSession', {
+          device: session.device_info?.browser || t('sessions.unknownDevice'),
+          ip: session.ip_address,
+        })
       )
     ) {
       revokeSessionMutation.mutate({
@@ -66,7 +71,7 @@ export default function SessionsPage() {
   if (sessionsLoading) {
     return (
       <div className="flex items-center justify-center h-96">
-        <div className="text-gray-500 dark:text-gray-400">Loading sessions...</div>
+        <div className="text-gray-500 dark:text-gray-400">{t('sessions.loadingSessions')}</div>
       </div>
     );
   }
@@ -74,8 +79,8 @@ export default function SessionsPage() {
   return (
     <>
       <PageHeader
-        title="Active Sessions"
-        description="Manage your active login sessions across devices"
+        title={t('sessions.title')}
+        description={t('sessions.description')}
       />
 
       <div className="space-y-6">
@@ -101,7 +106,7 @@ export default function SessionsPage() {
               className="flex items-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-medium rounded-lg transition-colors"
             >
               <LogOut className="w-5 h-5" />
-              Logout from All Other Devices
+              {t('sessions.logoutAllDevices')}
             </button>
           </div>
         )}
@@ -110,7 +115,7 @@ export default function SessionsPage() {
         {currentSession && (
           <div>
             <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-              Current Session
+              {t('sessions.currentSession')}
             </h2>
             <SessionCard session={currentSession} />
           </div>
@@ -120,7 +125,7 @@ export default function SessionsPage() {
         {activeSessions.length > 0 && (
           <div>
             <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-              Other Sessions ({activeSessions.length})
+              {t('sessions.otherSessions', { count: activeSessions.length })}
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {activeSessions.map((session) => (
@@ -140,10 +145,10 @@ export default function SessionsPage() {
           <div className="text-center py-12 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
             <Shield className="w-12 h-12 text-gray-400 mx-auto mb-4" />
             <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
-              No Active Sessions
+              {t('sessions.noActiveSessions')}
             </h3>
             <p className="text-gray-600 dark:text-gray-400">
-              You don't have any active sessions at the moment
+              {t('sessions.noActiveSessionsDescription')}
             </p>
           </div>
         )}

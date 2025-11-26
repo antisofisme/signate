@@ -5,6 +5,7 @@
 
 import { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import { Folder, Plus, Users, Edit, Trash2, MoreVertical, Grid, List, ChevronRight, ChevronDown, Settings, X, Check, Monitor } from 'lucide-react'
 import { groupsApi } from '../api/groupsApi'
@@ -15,6 +16,7 @@ import type { Device } from '../types/device'
 type ViewMode = 'grid' | 'tree'
 
 export function DeviceGroups() {
+  const { t } = useTranslation()
   const queryClient = useQueryClient()
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
@@ -35,13 +37,13 @@ export function DeviceGroups() {
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['device-groups'] })
       setIsCreateModalOpen(false)
-      toast.success('Group created successfully', {
-        description: `"${data.name}" has been created`
+      toast.success(t('deviceGroups.toast.createSuccess'), {
+        description: t('deviceGroups.toast.createSuccessDescription', { name: data.name })
       })
     },
     onError: (error: any) => {
-      toast.error('Failed to create group', {
-        description: error.response?.data?.detail || error.message || 'Please try again'
+      toast.error(t('deviceGroups.toast.createError'), {
+        description: error.response?.data?.detail || error.message || t('deviceGroups.toast.tryAgain')
       })
     },
   })
@@ -54,13 +56,13 @@ export function DeviceGroups() {
       queryClient.invalidateQueries({ queryKey: ['device-groups'] })
       setIsEditModalOpen(false)
       setSelectedGroup(null)
-      toast.success('Group updated successfully', {
-        description: `Changes to "${data.name}" have been saved`
+      toast.success(t('deviceGroups.toast.updateSuccess'), {
+        description: t('deviceGroups.toast.updateSuccessDescription', { name: data.name })
       })
     },
     onError: (error: any) => {
-      toast.error('Failed to update group', {
-        description: error.response?.data?.detail || error.message || 'Please try again'
+      toast.error(t('deviceGroups.toast.updateError'), {
+        description: error.response?.data?.detail || error.message || t('deviceGroups.toast.tryAgain')
       })
     },
   })
@@ -70,11 +72,11 @@ export function DeviceGroups() {
     mutationFn: groupsApi.deleteGroup,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['device-groups'] })
-      toast.success('Group deleted successfully')
+      toast.success(t('deviceGroups.toast.deleteSuccess'))
     },
     onError: (error: any) => {
-      toast.error('Failed to delete group', {
-        description: error.response?.data?.detail || error.message || 'Please try again'
+      toast.error(t('deviceGroups.toast.deleteError'), {
+        description: error.response?.data?.detail || error.message || t('deviceGroups.toast.tryAgain')
       })
     },
   })
@@ -100,7 +102,7 @@ export function DeviceGroups() {
   }
 
   const handleDeleteGroup = (groupId: number) => {
-    if (confirm('Are you sure you want to delete this group?')) {
+    if (confirm(t('deviceGroups.confirmDelete'))) {
       deleteGroupMutation.mutate(groupId)
     }
   }
@@ -144,7 +146,7 @@ export function DeviceGroups() {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="text-gray-500">Loading groups...</div>
+        <div className="text-gray-500">{t('deviceGroups.loadingGroups')}</div>
       </div>
     )
   }
@@ -167,7 +169,7 @@ export function DeviceGroups() {
             }`}
           >
             <Grid className="w-4 h-4" />
-            <span className="text-sm font-medium">Grid</span>
+            <span className="text-sm font-medium">{t('deviceGroups.viewMode.grid')}</span>
           </button>
           <button
             onClick={() => setViewMode('tree')}
@@ -178,7 +180,7 @@ export function DeviceGroups() {
             }`}
           >
             <List className="w-4 h-4" />
-            <span className="text-sm font-medium">Tree</span>
+            <span className="text-sm font-medium">{t('deviceGroups.viewMode.tree')}</span>
           </button>
         </div>
 
@@ -187,7 +189,7 @@ export function DeviceGroups() {
           className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
         >
           <Plus className="w-4 h-4" />
-          Create Group
+          {t('deviceGroups.createGroup')}
         </button>
       </div>
 
@@ -195,15 +197,15 @@ export function DeviceGroups() {
       {groups.length === 0 ? (
         <div className="text-center py-12 bg-gray-50 dark:bg-gray-800 rounded-lg">
           <Folder className="w-16 h-16 mx-auto text-gray-400 mb-4" />
-          <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">No groups yet</h3>
+          <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">{t('deviceGroups.noGroups')}</h3>
           <p className="text-gray-600 dark:text-gray-400 mb-4">
-            Create your first device group to organize your devices
+            {t('deviceGroups.noGroupsDescription')}
           </p>
           <button
             onClick={() => setIsCreateModalOpen(true)}
             className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
           >
-            Create First Group
+            {t('deviceGroups.createFirstGroup')}
           </button>
         </div>
       ) : viewMode === 'grid' ? (
@@ -285,6 +287,7 @@ function GroupCard({
   onManageDevices: (group: DeviceGroup) => void
   onDelete: (id: number) => void
 }) {
+  const { t } = useTranslation()
   const { data: stats } = useQuery({
     queryKey: ['device-group-stats', group.id],
     queryFn: () => groupsApi.getGroupStats(group.id),
@@ -323,17 +326,19 @@ function GroupCard({
           <span className="text-gray-900 dark:text-white font-medium">
             {stats?.total_devices || 0}
           </span>
-          <span className="text-gray-500 dark:text-gray-400">devices</span>
+          <span className="text-gray-500 dark:text-gray-400">
+            {t((stats?.total_devices || 0) !== 1 ? 'deviceGroups.devicesPlural' : 'deviceGroups.devices')}
+          </span>
         </div>
         <div className="flex items-center gap-2">
           {stats && (
             <>
               <span className="text-xs text-green-600 dark:text-green-400">
-                {stats.online_devices} online
+                {stats.online_devices} {t('deviceGroups.online')}
               </span>
               <span className="text-xs text-gray-400">•</span>
               <span className="text-xs text-gray-600 dark:text-gray-400">
-                {stats.offline_devices} offline
+                {stats.offline_devices} {t('deviceGroups.offline')}
               </span>
             </>
           )}
@@ -346,14 +351,14 @@ function GroupCard({
           className="flex-1 px-3 py-2 text-sm bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors"
         >
           <Settings className="w-4 h-4 inline mr-1" />
-          Devices
+          {t('deviceGroups.manageDevices')}
         </button>
         <button
           onClick={() => onEdit(group)}
           className="flex-1 px-3 py-2 text-sm bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
         >
           <Edit className="w-4 h-4 inline mr-1" />
-          Edit
+          {t('deviceGroups.edit')}
         </button>
         <button
           onClick={() => onDelete(group.id)}
@@ -384,6 +389,7 @@ function TreeNode({
   onManageDevices: (group: DeviceGroup) => void
   onDelete: (id: number) => void
 }) {
+  const { t } = useTranslation()
   const hasChildren = group.children && group.children.length > 0
   const isExpanded = expandedNodes.has(group.id)
   const indentPx = level * 24
@@ -466,21 +472,21 @@ function TreeNode({
           <button
             onClick={() => onManageDevices(group)}
             className="p-1.5 text-gray-600 hover:text-blue-600 dark:text-gray-400 dark:hover:text-blue-400 rounded hover:bg-blue-50 dark:hover:bg-blue-900/20"
-            title="Manage devices"
+            title={t('deviceGroups.manageDevices')}
           >
             <Settings className="w-4 h-4" />
           </button>
           <button
             onClick={() => onEdit(group)}
             className="p-1.5 text-gray-600 hover:text-blue-600 dark:text-gray-400 dark:hover:text-blue-400 rounded hover:bg-blue-50 dark:hover:bg-blue-900/20"
-            title="Edit group"
+            title={t('deviceGroups.editGroup')}
           >
             <Edit className="w-4 h-4" />
           </button>
           <button
             onClick={() => onDelete(group.id)}
             className="p-1.5 text-gray-600 hover:text-red-600 dark:text-gray-400 dark:hover:text-red-400 rounded hover:bg-red-50 dark:hover:bg-red-900/20"
-            title="Delete group"
+            title={t('deviceGroups.deleteGroup')}
           >
             <Trash2 className="w-4 h-4" />
           </button>
@@ -522,6 +528,7 @@ function EditGroupModal({
   isLoading: boolean
   allGroups: DeviceGroup[]
 }) {
+  const { t } = useTranslation()
   const [formData, setFormData] = useState<UpdateDeviceGroupRequest>({
     name: group.name,
     description: group.description || '',
@@ -567,11 +574,11 @@ function EditGroupModal({
       onClick={handleBackdropClick}
     >
       <div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-md" onClick={(e) => e.stopPropagation()}>
-        <h2 className="text-xl font-bold mb-4 text-gray-900 dark:text-white">Edit Device Group</h2>
+        <h2 className="text-xl font-bold mb-4 text-gray-900 dark:text-white">{t('deviceGroups.modal.editTitle')}</h2>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Group Name *
+              {t('deviceGroups.modal.groupName')} *
             </label>
             <input
               type="text"
@@ -580,43 +587,43 @@ function EditGroupModal({
               value={formData.name}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
               className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
-              placeholder="e.g., Lobby Displays"
+              placeholder={t('deviceGroups.modal.groupNamePlaceholder')}
             />
           </div>
 
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Description
+              {t('deviceGroups.modal.description')}
             </label>
             <textarea
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
               className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
               rows={3}
-              placeholder="Optional description"
+              placeholder={t('deviceGroups.modal.descriptionPlaceholder')}
             />
           </div>
 
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Group Type
+              {t('deviceGroups.modal.groupType')}
             </label>
             <select
               value={formData.group_type}
               onChange={(e) => setFormData({ ...formData, group_type: e.target.value as any })}
               className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
             >
-              <option value="custom">Custom</option>
-              <option value="chain">Chain</option>
-              <option value="hotel">Hotel</option>
-              <option value="floor">Floor</option>
-              <option value="location">Location</option>
+              <option value="custom">{t('deviceGroups.modal.types.custom')}</option>
+              <option value="chain">{t('deviceGroups.modal.types.chain')}</option>
+              <option value="hotel">{t('deviceGroups.modal.types.hotel')}</option>
+              <option value="floor">{t('deviceGroups.modal.types.floor')}</option>
+              <option value="location">{t('deviceGroups.modal.types.location')}</option>
             </select>
           </div>
 
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Parent Group (Optional)
+              {t('deviceGroups.modal.parentGroup')}
             </label>
             <select
               value={formData.parent_group_id || ''}
@@ -626,7 +633,7 @@ function EditGroupModal({
               })}
               className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
             >
-              <option value="">None (Top Level)</option>
+              <option value="">{t('deviceGroups.modal.noneTopLevel')}</option>
               {availableParentGroups.map(g => (
                 <option key={g.id} value={g.id}>
                   {g.name}
@@ -634,7 +641,7 @@ function EditGroupModal({
               ))}
             </select>
             <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-              Create hierarchical structure by nesting groups
+              {t('deviceGroups.modal.hierarchicalHint')}
             </p>
           </div>
 
@@ -644,14 +651,14 @@ function EditGroupModal({
               onClick={onClose}
               className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300"
             >
-              Cancel
+              {t('deviceGroups.modal.cancel')}
             </button>
             <button
               type="submit"
               disabled={isLoading}
               className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {isLoading ? 'Updating...' : 'Update Group'}
+              {isLoading ? t('deviceGroups.modal.updating') : t('deviceGroups.modal.updateGroup')}
             </button>
           </div>
         </form>
@@ -672,6 +679,7 @@ function CreateGroupModal({
   isLoading: boolean
   allGroups: DeviceGroup[]
 }) {
+  const { t } = useTranslation()
   const [formData, setFormData] = useState<CreateDeviceGroupRequest>({
     name: '',
     description: '',
@@ -708,11 +716,11 @@ function CreateGroupModal({
       onClick={handleBackdropClick}
     >
       <div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-md" onClick={(e) => e.stopPropagation()}>
-        <h2 className="text-xl font-bold mb-4 text-gray-900 dark:text-white">Create Device Group</h2>
+        <h2 className="text-xl font-bold mb-4 text-gray-900 dark:text-white">{t('deviceGroups.modal.createTitle')}</h2>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Group Name *
+              {t('deviceGroups.modal.groupName')} *
             </label>
             <input
               type="text"
@@ -721,43 +729,43 @@ function CreateGroupModal({
               value={formData.name}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
               className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
-              placeholder="e.g., Lobby Displays"
+              placeholder={t('deviceGroups.modal.groupNamePlaceholder')}
             />
           </div>
 
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Description
+              {t('deviceGroups.modal.description')}
             </label>
             <textarea
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
               className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
               rows={3}
-              placeholder="Optional description"
+              placeholder={t('deviceGroups.modal.descriptionPlaceholder')}
             />
           </div>
 
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Group Type
+              {t('deviceGroups.modal.groupType')}
             </label>
             <select
               value={formData.group_type}
               onChange={(e) => setFormData({ ...formData, group_type: e.target.value as any })}
               className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
             >
-              <option value="custom">Custom</option>
-              <option value="chain">Chain</option>
-              <option value="hotel">Hotel</option>
-              <option value="floor">Floor</option>
-              <option value="location">Location</option>
+              <option value="custom">{t('deviceGroups.modal.types.custom')}</option>
+              <option value="chain">{t('deviceGroups.modal.types.chain')}</option>
+              <option value="hotel">{t('deviceGroups.modal.types.hotel')}</option>
+              <option value="floor">{t('deviceGroups.modal.types.floor')}</option>
+              <option value="location">{t('deviceGroups.modal.types.location')}</option>
             </select>
           </div>
 
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Parent Group (Optional)
+              {t('deviceGroups.modal.parentGroup')}
             </label>
             <select
               value={formData.parent_group_id || ''}
@@ -767,7 +775,7 @@ function CreateGroupModal({
               })}
               className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
             >
-              <option value="">None (Top Level)</option>
+              <option value="">{t('deviceGroups.modal.noneTopLevel')}</option>
               {allGroups.map(g => (
                 <option key={g.id} value={g.id}>
                   {g.name}
@@ -775,7 +783,7 @@ function CreateGroupModal({
               ))}
             </select>
             <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-              Create hierarchical structure by nesting groups
+              {t('deviceGroups.modal.hierarchicalHint')}
             </p>
           </div>
 
@@ -785,14 +793,14 @@ function CreateGroupModal({
               onClick={onClose}
               className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300"
             >
-              Cancel
+              {t('deviceGroups.modal.cancel')}
             </button>
             <button
               type="submit"
               disabled={isLoading}
               className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {isLoading ? 'Creating...' : 'Create Group'}
+              {isLoading ? t('deviceGroups.modal.creating') : t('deviceGroups.modal.createGroup')}
             </button>
           </div>
         </form>
@@ -809,6 +817,7 @@ function DeviceAssignmentModal({
   group: DeviceGroup
   onClose: () => void
 }) {
+  const { t } = useTranslation()
   const queryClient = useQueryClient()
   const [searchQuery, setSearchQuery] = useState('')
 
@@ -869,9 +878,9 @@ function DeviceAssignmentModal({
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
           <div>
-            <h2 className="text-xl font-bold text-gray-900 dark:text-white">Manage Devices</h2>
+            <h2 className="text-xl font-bold text-gray-900 dark:text-white">{t('deviceGroups.assignment.title')}</h2>
             <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-              Group: {group.name}
+              {t('deviceGroups.assignment.group')}: {group.name}
             </p>
           </div>
           <button
@@ -886,7 +895,7 @@ function DeviceAssignmentModal({
         <div className="p-4 border-b border-gray-200 dark:border-gray-700">
           <input
             type="text"
-            placeholder="Search devices..."
+            placeholder={t('deviceGroups.assignment.searchPlaceholder')}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
@@ -897,11 +906,11 @@ function DeviceAssignmentModal({
         <div className="flex-1 overflow-y-auto p-4">
           {isLoading ? (
             <div className="flex items-center justify-center h-32">
-              <div className="text-gray-500">Loading devices...</div>
+              <div className="text-gray-500">{t('deviceGroups.assignment.loadingDevices')}</div>
             </div>
           ) : filteredDevices.length === 0 ? (
             <div className="text-center py-8 text-gray-500 dark:text-gray-400">
-              No devices found
+              {t('deviceGroups.assignment.noDevices')}
             </div>
           ) : (
             <div className="space-y-2">
@@ -940,7 +949,7 @@ function DeviceAssignmentModal({
                               ? 'bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-400'
                               : 'bg-gray-100 text-gray-600 dark:bg-gray-600 dark:text-gray-400'
                           }`}>
-                            {isOnline ? 'Online' : 'Offline'}
+                            {isOnline ? t('deviceGroups.online') : t('deviceGroups.offline')}
                           </span>
                         </div>
                         {device.ip_address && (
@@ -976,13 +985,13 @@ function DeviceAssignmentModal({
         {/* Footer */}
         <div className="flex items-center justify-between p-4 border-t border-gray-200 dark:border-gray-700">
           <div className="text-sm text-gray-600 dark:text-gray-400">
-            {assignedDeviceIds.size} device{assignedDeviceIds.size !== 1 ? 's' : ''} assigned
+            {t(assignedDeviceIds.size !== 1 ? 'deviceGroups.assignment.devicesAssignedPlural' : 'deviceGroups.assignment.devicesAssigned', { count: assignedDeviceIds.size })}
           </div>
           <button
             onClick={onClose}
             className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
           >
-            Done
+            {t('deviceGroups.assignment.done')}
           </button>
         </div>
       </div>

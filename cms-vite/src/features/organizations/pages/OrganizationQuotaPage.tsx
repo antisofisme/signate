@@ -6,6 +6,7 @@
  */
 
 import { useParams, useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { PageHeader } from '@/shared/components';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, TrendingUp } from 'lucide-react';
@@ -17,6 +18,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Skeleton } from '@/components/ui/skeleton';
 
 export default function OrganizationQuotaPage() {
+  const { t } = useTranslation();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user } = useAuthStore();
@@ -36,8 +38,8 @@ export default function OrganizationQuotaPage() {
     return (
       <>
         <PageHeader
-          title="Organization Quota"
-          description="Loading quota information..."
+          title={t('organizations.organizationQuota')}
+          description={t('organizations.loadingQuotaInfo')}
         />
         <div className="space-y-6">
           <Skeleton className="h-48 w-full" />
@@ -58,18 +60,18 @@ export default function OrganizationQuotaPage() {
     return (
       <>
         <PageHeader
-          title="Organization Quota"
-          description="Error loading quota information"
+          title={t('organizations.organizationQuota')}
+          description={t('organizations.errorLoadingQuota')}
         />
         <Alert variant="destructive">
           <AlertDescription>
-            Failed to load quota information: {error?.message || 'Unknown error'}
+            {t('organizations.failedToLoadQuota')}: {error?.message || t('organizations.unknownError')}
           </AlertDescription>
         </Alert>
         <div className="mt-4">
           <Button onClick={() => navigate(-1)} variant="outline">
             <ArrowLeft className="h-4 w-4 mr-2" />
-            Go Back
+            {t('organizations.goBack')}
           </Button>
         </div>
       </>
@@ -80,8 +82,8 @@ export default function OrganizationQuotaPage() {
     <>
       {/* Page Header */}
       <PageHeader
-        title="Organization Quota Management"
-        description="Monitor resource usage and configure quota limits"
+        title={t('organizations.quotaManagement')}
+        description={t('organizations.quotaManagementDescription')}
         actions={
           <div className="flex items-center gap-2">
             <Button
@@ -90,7 +92,7 @@ export default function OrganizationQuotaPage() {
               onClick={() => navigate('/settings')}
             >
               <ArrowLeft className="h-4 w-4 mr-2" />
-              Back to Settings
+              {t('organizations.backToSettings')}
             </Button>
           </div>
         }

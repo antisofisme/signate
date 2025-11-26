@@ -3,6 +3,7 @@
  * Table display of audit logs with pagination
  */
 
+import { useTranslation } from 'react-i18next';
 import { ChevronLeft, ChevronRight, FileText } from 'lucide-react';
 import { format } from 'date-fns';
 import type { AuditLog } from '../types/auditLog';
@@ -26,6 +27,8 @@ export function AuditLogTable({
   total,
   onPageChange,
 }: AuditLogTableProps) {
+  const { t } = useTranslation();
+
   const getActionBadgeColor = (action: string) => {
     if (action.includes('create')) return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200';
     if (action.includes('update')) return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200';
@@ -50,7 +53,7 @@ export function AuditLogTable({
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
         <div className="p-12 text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600 dark:text-gray-400">Loading audit logs...</p>
+          <p className="mt-4 text-gray-600 dark:text-gray-400">{t('audit.loadingLogs')}</p>
         </div>
       </div>
     );
@@ -62,7 +65,7 @@ export function AuditLogTable({
         <div className="p-12 text-center">
           <FileText className="w-16 h-16 text-gray-400 mx-auto mb-4" />
           <p className="text-gray-600 dark:text-gray-400">
-            No audit logs found. Try adjusting your filters.
+            {t('audit.noLogsFound')}
           </p>
         </div>
       </div>
@@ -76,22 +79,22 @@ export function AuditLogTable({
           <thead className="bg-gray-50 dark:bg-gray-700">
             <tr>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                Timestamp
+                {t('audit.table.timestamp')}
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                User
+                {t('audit.table.user')}
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                Action
+                {t('audit.table.action')}
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                Resource
+                {t('audit.table.resource')}
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                Details
+                {t('audit.table.details')}
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                IP Address
+                {t('audit.table.ipAddress')}
               </th>
             </tr>
           </thead>
@@ -108,7 +111,7 @@ export function AuditLogTable({
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   <div className="text-sm text-gray-900 dark:text-white">
-                    {log.username || 'System'}
+                    {log.username || t('audit.system')}
                   </div>
                   {log.organization_name && (
                     <div className="text-xs text-gray-500 dark:text-gray-400">
@@ -127,7 +130,7 @@ export function AuditLogTable({
                   </span>
                   {log.resource_id && (
                     <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                      ID: {log.resource_id}
+                      {t('audit.table.id')}: {log.resource_id}
                     </div>
                   )}
                 </td>
@@ -149,7 +152,11 @@ export function AuditLogTable({
       {totalPages > 1 && (
         <div className="bg-gray-50 dark:bg-gray-700 px-6 py-4 flex items-center justify-between border-t border-gray-200 dark:border-gray-600">
           <div className="text-sm text-gray-700 dark:text-gray-300">
-            Showing {((currentPage - 1) * perPage) + 1} to {Math.min(currentPage * perPage, total)} of {total} results
+            {t('audit.pagination.showing', {
+              from: ((currentPage - 1) * perPage) + 1,
+              to: Math.min(currentPage * perPage, total),
+              total: total
+            })}
           </div>
           <div className="flex gap-2">
             <button
@@ -160,7 +167,7 @@ export function AuditLogTable({
               <ChevronLeft className="w-5 h-5" />
             </button>
             <div className="flex items-center px-4 py-2 text-sm text-gray-700 dark:text-gray-300">
-              Page {currentPage} of {totalPages}
+              {t('audit.pagination.page', { current: currentPage, total: totalPages })}
             </div>
             <button
               onClick={() => onPageChange(currentPage + 1)}

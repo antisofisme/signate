@@ -5,6 +5,7 @@
 
 import React, { useState, useMemo } from 'react'
 import { Check, X } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import type { Permission, PermissionResource, PermissionAction } from '../types/rbac.types'
 
 // ============================================================================
@@ -27,31 +28,32 @@ interface PermissionCell {
 // Resource Icons & Labels
 // ============================================================================
 
-const RESOURCE_LABELS: Record<PermissionResource, string> = {
-  users: 'Users',
-  roles: 'Roles',
-  organizations: 'Organizations',
-  devices: 'Devices',
-  content: 'Content',
-  playlists: 'Playlists',
-  schedules: 'Schedules',
-  widgets: 'Widgets',
-  templates: 'Templates',
-  tags: 'Tags',
-  analytics: 'Analytics',
-  audit: 'Audit Logs',
-  translations: 'Translations',
-  pms: 'PMS Integration',
-  weather: 'Weather',
-  settings: 'Settings',
+// These will be translated in the component
+const RESOURCE_KEYS: Record<PermissionResource, string> = {
+  users: 'rbac.resources.users',
+  roles: 'rbac.resources.roles',
+  organizations: 'rbac.resources.organizations',
+  devices: 'rbac.resources.devices',
+  content: 'rbac.resources.content',
+  playlists: 'rbac.resources.playlists',
+  schedules: 'rbac.resources.schedules',
+  widgets: 'rbac.resources.widgets',
+  templates: 'rbac.resources.templates',
+  tags: 'rbac.resources.tags',
+  analytics: 'rbac.resources.analytics',
+  audit: 'rbac.resources.audit',
+  translations: 'rbac.resources.translations',
+  pms: 'rbac.resources.pms',
+  weather: 'rbac.resources.weather',
+  settings: 'rbac.resources.settings',
 }
 
-const ACTION_LABELS: Record<PermissionAction, string> = {
-  create: 'Create',
-  read: 'Read',
-  update: 'Update',
-  delete: 'Delete',
-  manage: 'Manage',
+const ACTION_KEYS: Record<PermissionAction, string> = {
+  create: 'rbac.actions.create',
+  read: 'rbac.actions.read',
+  update: 'rbac.actions.update',
+  delete: 'rbac.actions.delete',
+  manage: 'rbac.actions.manage',
 }
 
 const ACTION_COLORS: Record<PermissionAction, string> = {
@@ -72,6 +74,7 @@ export function PermissionMatrix({
   onPermissionToggle,
   readOnly = false,
 }: PermissionMatrixProps) {
+  const { t } = useTranslation()
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedResource, setSelectedResource] = useState<PermissionResource | 'all'>('all')
 
@@ -113,13 +116,13 @@ export function PermissionMatrix({
 
       // Filter by search term
       if (searchTerm) {
-        const resourceLabel = RESOURCE_LABELS[resource].toLowerCase()
+        const resourceLabel = t(RESOURCE_KEYS[resource]).toLowerCase()
         return resourceLabel.includes(searchTerm.toLowerCase())
       }
 
       return true
     })
-  }, [permissionsByResource, selectedResource, searchTerm])
+  }, [permissionsByResource, selectedResource, searchTerm, t])
 
   // Calculate stats
   const stats = useMemo(() => {
@@ -139,7 +142,7 @@ export function PermissionMatrix({
           type="text"
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
-          placeholder="Search resources..."
+          placeholder={t('rbac.searchResourcesPlaceholder')}
           className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
         />
 
@@ -149,10 +152,10 @@ export function PermissionMatrix({
           onChange={(e) => setSelectedResource(e.target.value as any)}
           className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
         >
-          <option value="all">All Resources</option>
-          {Object.entries(RESOURCE_LABELS).map(([key, label]) => (
+          <option value="all">{t('rbac.allResources')}</option>
+          {Object.entries(RESOURCE_KEYS).map(([key, translationKey]) => (
             <option key={key} value={key}>
-              {label}
+              {t(translationKey)}
             </option>
           ))}
         </select>
@@ -164,7 +167,7 @@ export function PermissionMatrix({
           <span className="font-semibold text-gray-900 dark:text-white">
             {stats.selected}
           </span>{' '}
-          of {stats.total} permissions selected
+          {t('rbac.permissionsSelectedOf', { total: stats.total })}
         </div>
         <div className="flex-1 h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
           <div
@@ -187,7 +190,7 @@ export function PermissionMatrix({
             {/* Resource Header */}
             <div className="px-4 py-3 bg-gray-50 dark:bg-gray-700/50 border-b border-gray-200 dark:border-gray-600">
               <h3 className="font-semibold text-gray-900 dark:text-white">
-                {RESOURCE_LABELS[resource]}
+                {t(RESOURCE_KEYS[resource])}
               </h3>
             </div>
 
@@ -213,7 +216,7 @@ export function PermissionMatrix({
                     ) : (
                       <X className="w-4 h-4 opacity-50" />
                     )}
-                    <span>{ACTION_LABELS[permission.action]}</span>
+                    <span>{t(ACTION_KEYS[permission.action])}</span>
                   </button>
                 ))}
               </div>
@@ -224,18 +227,18 @@ export function PermissionMatrix({
         {/* Empty State */}
         {filteredResources.length === 0 && (
           <div className="text-center py-12 text-gray-500 dark:text-gray-400">
-            No resources found matching your search
+            {t('rbac.noResourcesFound')}
           </div>
         )}
       </div>
 
       {/* Legend */}
       <div className="flex flex-wrap gap-4 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg text-sm">
-        <div className="font-semibold text-gray-700 dark:text-gray-300">Legend:</div>
-        {Object.entries(ACTION_LABELS).map(([action, label]) => (
+        <div className="font-semibold text-gray-700 dark:text-gray-300">{t('rbac.legend')}:</div>
+        {Object.entries(ACTION_KEYS).map(([action, translationKey]) => (
           <div key={action} className="flex items-center gap-2">
             <div className={`w-3 h-3 rounded ${ACTION_COLORS[action as PermissionAction].split(' ')[0]}`} />
-            <span className="text-gray-600 dark:text-gray-400">{label}</span>
+            <span className="text-gray-600 dark:text-gray-400">{t(translationKey)}</span>
           </div>
         ))}
       </div>
