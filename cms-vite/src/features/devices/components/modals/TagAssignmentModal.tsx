@@ -6,6 +6,7 @@
  */
 
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Tag as TagIcon, Plus, Trash2, Loader2 } from 'lucide-react';
 import { Modal } from '@/shared/components';
 import { useDeviceTags, useAssignTag, useUnassignTag } from '../../hooks/useDevices';
@@ -23,6 +24,7 @@ export function TagAssignmentModal({
   device,
   onClose,
 }: TagAssignmentModalProps) {
+  const { t } = useTranslation();
   const [selectedTagId, setSelectedTagId] = useState<number | null>(null);
 
   // Fetch assigned tags for this device
@@ -78,7 +80,7 @@ export function TagAssignmentModal({
         <div>
           <h3 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
             <TagIcon className="w-5 h-5" />
-            Manage Tags
+            {t('devices.modals.tags')}
           </h3>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
             {device.device_name}
@@ -100,7 +102,7 @@ export function TagAssignmentModal({
           <div className="px-6 pt-4">
             <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
               <p className="text-sm text-blue-700 dark:text-blue-300">
-                <strong>Priority 2 (Medium):</strong> Tag-based content is shown when no direct content is assigned. All content from assigned tags will be combined and played.
+                <strong>{t('devices.modals.priority2Medium')}:</strong> {t('devices.modals.priority2Info')}
               </p>
             </div>
           </div>
@@ -113,7 +115,7 @@ export function TagAssignmentModal({
                 disabled={assignTag.isPending || unassignTag.isPending}
                 className="px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors disabled:opacity-50"
               >
-                Close
+                {t('common.close')}
               </button>
             </div>
           </div>
@@ -131,11 +133,11 @@ export function TagAssignmentModal({
             {/* Assign New Tag */}
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
-                Assign New Tag
+                {t('devices.modals.assignNewTag')}
               </label>
               {availableTags.length === 0 ? (
                 <p className="text-sm text-gray-500 dark:text-gray-400">
-                  All available tags are already assigned to this device.
+                  {t('devices.modals.allTagsAssigned')}
                 </p>
               ) : (
                 <div className="flex gap-2">
@@ -145,7 +147,7 @@ export function TagAssignmentModal({
                     className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                     disabled={assignTag.isPending}
                   >
-                    <option value="">Select a tag...</option>
+                    <option value="">{t('devices.modals.selectTag')}</option>
                     {availableTags.map((tag) => (
                       <option key={tag.id} value={tag.id}>
                         {tag.tag_name}
@@ -160,12 +162,12 @@ export function TagAssignmentModal({
                     {assignTag.isPending ? (
                       <>
                         <Loader2 className="w-4 h-4 animate-spin" />
-                        Assigning...
+                        {t('devices.modals.assigning')}
                       </>
                     ) : (
                       <>
                         <Plus className="w-4 h-4" />
-                        Assign
+                        {t('devices.modals.assign')}
                       </>
                     )}
                   </button>
@@ -176,11 +178,11 @@ export function TagAssignmentModal({
             {/* Currently Assigned Tags */}
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
-                Currently Assigned Tags ({assignedTags.length})
+                {t('devices.modals.currentlyAssignedTags')} ({assignedTags.length})
               </label>
               {assignedTags.length === 0 ? (
                 <p className="text-sm text-gray-500 dark:text-gray-400">
-                  No tags assigned to this device yet.
+                  {t('devices.modals.noTagsAssigned')}
                 </p>
               ) : (
                 <div className="space-y-2">
@@ -202,7 +204,7 @@ export function TagAssignmentModal({
                         onClick={() => handleUnassign(assigned.tag_id)}
                         disabled={unassignTag.isPending}
                         className="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 disabled:opacity-50"
-                        title="Remove tag"
+                        title={t('devices.modals.removeTag')}
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>

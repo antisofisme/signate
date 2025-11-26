@@ -3,9 +3,16 @@
  *
  * LAYER 1: PRESENTATION
  * Reusable confirmation modal for delete operations
+ *
+ * ✅ REFACTORED: Now uses shared Modal component
+ * - Fixed header (title)
+ * - Fixed footer (buttons)
+ * - Scrollable content (message + item name)
+ * - Click outside to close
  */
 
 import { Loader2 } from 'lucide-react';
+import { Modal } from './Modal';
 
 interface DeleteConfirmModalProps {
   isOpen: boolean;
@@ -26,44 +33,61 @@ export function DeleteConfirmModal({
   onConfirm,
   isLoading,
 }: DeleteConfirmModalProps) {
-  if (!isOpen) return null;
+  // Prevent closing during loading
+  const handleClose = () => {
+    if (!isLoading) {
+      onClose();
+    }
+  };
 
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-md">
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-          {title}
-        </h3>
-        <p className="text-gray-700 dark:text-gray-300 mb-2">{message}</p>
-        <p className="text-gray-900 dark:text-white font-semibold mb-6">
-          {itemName}
-        </p>
-
-        <div className="flex justify-end gap-3">
-          <button
-            onClick={onClose}
-            disabled={isLoading}
-            className="px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg disabled:opacity-50"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={onConfirm}
-            disabled={isLoading}
-            className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 flex items-center gap-2"
-          >
-            {isLoading ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin" />
-                Deleting...
-              </>
-            ) : (
-              'Delete'
-            )}
-          </button>
-        </div>
+  // Footer with action buttons
+  const footer = (
+    <div className="border-t border-gray-200 dark:border-gray-700 px-6 py-4">
+      <div className="flex justify-end gap-3">
+        <button
+          type="button"
+          onClick={handleClose}
+          disabled={isLoading}
+          className="px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg disabled:opacity-50 transition-colors"
+        >
+          Cancel
+        </button>
+        <button
+          type="button"
+          onClick={onConfirm}
+          disabled={isLoading}
+          className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 flex items-center gap-2 transition-colors"
+        >
+          {isLoading ? (
+            <>
+              <Loader2 className="w-4 h-4 animate-spin" />
+              Deleting...
+            </>
+          ) : (
+            'Delete'
+          )}
+        </button>
       </div>
     </div>
+  );
+
+  return (
+    <Modal
+      isOpen={isOpen}
+      onClose={handleClose}
+      title={title}
+      maxWidth="md"
+      footer={footer}
+      closeOnBackdropClick={!isLoading}
+    >
+      {/* Scrollable content */}
+      <div className="p-6 space-y-3">
+        <p className="text-gray-700 dark:text-gray-300">{message}</p>
+        <p className="text-gray-900 dark:text-white font-semibold">
+          {itemName}
+        </p>
+      </div>
+    </Modal>
   );
 }
 

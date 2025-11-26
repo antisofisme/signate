@@ -10,6 +10,7 @@
  */
 
 import React, { useState, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Search, Loader2, AlertCircle, CheckCircle2, Circle } from 'lucide-react';
 import { useDeviceList } from '@/features/devices/hooks/useDevices';
 import { useBulkAssignPlaylist } from '@/features/devices/hooks/useDeviceAssignments';
@@ -30,6 +31,7 @@ export const BulkAssignDevices: React.FC<BulkAssignDevicesProps> = ({
   onSuccess,
   onCancel,
 }) => {
+  const { t } = useTranslation();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedDeviceIds, setSelectedDeviceIds] = useState<Set<number>>(new Set());
   const [statusFilter, setStatusFilter] = useState<'all' | 'online' | 'offline'>('all');
@@ -113,9 +115,9 @@ export const BulkAssignDevices: React.FC<BulkAssignDevicesProps> = ({
     <div className="space-y-4">
       {/* Header */}
       <div>
-        <h3 className="text-lg font-semibold">Assign Devices to Playlist</h3>
+        <h3 className="text-lg font-semibold">{t('playlists.bulkAssign.title')}</h3>
         <p className="text-sm text-gray-500">
-          Select devices to assign to "{playlistName}"
+          {t('playlists.bulkAssign.subtitle', { playlistName })}
         </p>
       </div>
 
@@ -125,7 +127,7 @@ export const BulkAssignDevices: React.FC<BulkAssignDevicesProps> = ({
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
           <input
             type="text"
-            placeholder="Search devices..."
+            placeholder={t('playlists.bulkAssign.searchPlaceholder')}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
@@ -141,7 +143,7 @@ export const BulkAssignDevices: React.FC<BulkAssignDevicesProps> = ({
                 : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
             }`}
           >
-            All
+            {t('playlists.bulkAssign.filters.all')}
           </button>
           <button
             onClick={() => setStatusFilter('online')}
@@ -151,7 +153,7 @@ export const BulkAssignDevices: React.FC<BulkAssignDevicesProps> = ({
                 : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
             }`}
           >
-            Online
+            {t('playlists.bulkAssign.filters.online')}
           </button>
           <button
             onClick={() => setStatusFilter('offline')}
@@ -161,7 +163,7 @@ export const BulkAssignDevices: React.FC<BulkAssignDevicesProps> = ({
                 : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
             }`}
           >
-            Offline
+            {t('playlists.bulkAssign.filters.offline')}
           </button>
         </div>
       </div>
@@ -169,20 +171,23 @@ export const BulkAssignDevices: React.FC<BulkAssignDevicesProps> = ({
       {/* Selection Actions */}
       <div className="flex items-center justify-between">
         <div className="text-sm text-gray-600">
-          {selectedDeviceIds.size} of {filteredDevices.length} devices selected
+          {t('playlists.bulkAssign.selection.count', {
+            selected: selectedDeviceIds.size,
+            total: filteredDevices.length,
+          })}
         </div>
         <div className="flex gap-2">
           <button
             onClick={selectAll}
             className="text-sm text-blue-600 hover:text-blue-700 font-medium"
           >
-            Select All
+            {t('playlists.bulkAssign.selection.selectAll')}
           </button>
           <button
             onClick={deselectAll}
             className="text-sm text-gray-600 hover:text-gray-700 font-medium"
           >
-            Deselect All
+            {t('playlists.bulkAssign.selection.deselectAll')}
           </button>
         </div>
       </div>
@@ -193,10 +198,15 @@ export const BulkAssignDevices: React.FC<BulkAssignDevicesProps> = ({
           <AlertCircle className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" />
           <div className="text-sm">
             <p className="font-medium text-yellow-800">
-              {conflictCount} device{conflictCount > 1 ? 's' : ''} already assigned
+              {t(
+                conflictCount > 1
+                  ? 'playlists.bulkAssign.conflict.title_plural'
+                  : 'playlists.bulkAssign.conflict.title',
+                { count: conflictCount }
+              )}
             </p>
             <p className="text-yellow-700">
-              These devices already have this playlist and will be skipped.
+              {t('playlists.bulkAssign.conflict.description')}
             </p>
           </div>
         </div>
@@ -207,11 +217,11 @@ export const BulkAssignDevices: React.FC<BulkAssignDevicesProps> = ({
         {isLoadingDevices ? (
           <div className="flex items-center justify-center py-12">
             <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
-            <span className="ml-2 text-gray-500">Loading devices...</span>
+            <span className="ml-2 text-gray-500">{t('playlists.bulkAssign.loading')}</span>
           </div>
         ) : filteredDevices.length === 0 ? (
           <div className="text-center py-12 text-gray-500">
-            No devices found matching your filters
+            {t('playlists.bulkAssign.noDevices')}
           </div>
         ) : (
           <div className="divide-y">
@@ -238,12 +248,12 @@ export const BulkAssignDevices: React.FC<BulkAssignDevicesProps> = ({
                       <span className="font-medium">{device.device_name}</span>
                       {device.room_number && (
                         <span className="text-sm text-gray-500">
-                          Room {device.room_number}
+                          {t('playlists.bulkAssign.room', { number: device.room_number })}
                         </span>
                       )}
                       {isAssigned && (
                         <span className="text-xs px-2 py-0.5 bg-yellow-100 text-yellow-700 rounded-full">
-                          Already assigned
+                          {t('playlists.bulkAssign.alreadyAssigned')}
                         </span>
                       )}
                     </div>
@@ -258,10 +268,18 @@ export const BulkAssignDevices: React.FC<BulkAssignDevicesProps> = ({
                         ) : (
                           <Circle className="w-3 h-3" />
                         )}
-                        {device.is_online ? 'Online' : 'Offline'}
+                        {t(
+                          device.is_online
+                            ? 'playlists.bulkAssign.status.online'
+                            : 'playlists.bulkAssign.status.offline'
+                        )}
                       </span>
                       <span className="text-xs text-gray-500">
-                        {device.device_type === 'tv' ? 'TV' : 'Monitor'}
+                        {t(
+                          device.device_type === 'tv'
+                            ? 'playlists.bulkAssign.deviceTypes.tv'
+                            : 'playlists.bulkAssign.deviceTypes.monitor'
+                        )}
                       </span>
                     </div>
                   </div>
@@ -279,7 +297,7 @@ export const BulkAssignDevices: React.FC<BulkAssignDevicesProps> = ({
           className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
           disabled={bulkAssign.isPending}
         >
-          Cancel
+          {t('playlists.buttons.cancel')}
         </button>
         <button
           onClick={handleAssign}
@@ -287,7 +305,12 @@ export const BulkAssignDevices: React.FC<BulkAssignDevicesProps> = ({
           className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
         >
           {bulkAssign.isPending && <Loader2 className="w-4 h-4 animate-spin" />}
-          Assign to {selectedDeviceIds.size} Device{selectedDeviceIds.size !== 1 ? 's' : ''}
+          {t(
+            selectedDeviceIds.size !== 1
+              ? 'playlists.bulkAssign.assignButton_plural'
+              : 'playlists.bulkAssign.assignButton',
+            { count: selectedDeviceIds.size }
+          )}
         </button>
       </div>
     </div>

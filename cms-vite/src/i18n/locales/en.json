@@ -150,7 +150,14 @@
       "diskUsage": "Disk Usage",
       "networkLatency": "Network Latency",
       "display": "Display",
-      "playerUptime": "Player Uptime"
+      "playerUptime": "Player Uptime",
+      "snapshot": "Health Snapshot",
+      "viewDetails": "View Details",
+      "lastUpdated": "Last updated",
+      "noDataAvailable": "No health metrics available",
+      "deviceOffline": "Device offline",
+      "minutesAgo": "{{count}}m ago",
+      "justNow": "just now"
     },
     "actions": {
       "viewLogs": "View device logs",
@@ -671,7 +678,9 @@
       "activateSchedule": "Activate Schedule",
       "resumeSchedule": "Resume Schedule",
       "editSchedule": "Edit Schedule",
-      "deleteSchedule": "Delete Schedule"
+      "deleteSchedule": "Delete Schedule",
+      "showPreview": "Show Preview",
+      "hidePreview": "Hide Preview"
     },
     "noMatches": "No schedules match your filters",
     "clearFilters": "Clear filters",
@@ -806,7 +815,8 @@
       "occurrence": "occurrence",
       "occurrences": "occurrences",
       "exceptionCount": "({count} exception)",
-      "exceptionCount_plural": "({count} exceptions)"
+      "exceptionCount_plural": "({count} exceptions)",
+      "loadingPreview": "Loading preview..."
     },
     "recurrenceBuilder": {
       "recurrenceType": "Recurrence Type",

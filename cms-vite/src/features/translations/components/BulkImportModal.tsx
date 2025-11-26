@@ -1,10 +1,12 @@
 /**
+ * ✅ REFACTORED: Now uses shared Modal component
  * Bulk Import Modal Component
  * Import translations from JSON array or CSV format
  */
 
 import { useState } from 'react'
-import { X, ClipboardList, CheckCircle, AlertTriangle, FastForward } from 'lucide-react'
+import { ClipboardList, CheckCircle, AlertTriangle, FastForward, Loader2 } from 'lucide-react'
+import { Modal } from '@/shared/components'
 import { useBulkImportTranslations } from '../hooks/useTranslations'
 import type { BulkImportItem } from '../types/translation.types'
 
@@ -89,27 +91,37 @@ export const BulkImportModal = ({ isOpen, onClose }: BulkImportModalProps) => {
     },
   ]
 
-  if (!isOpen) return null
+  const footer = (
+    <div className="flex justify-end gap-3">
+      <button
+        onClick={onClose}
+        disabled={bulkImportMutation.isPending}
+        className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50"
+      >
+        Cancel
+      </button>
+      <button
+        onClick={handleImport}
+        disabled={bulkImportMutation.isPending || !importData.trim()}
+        className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50 flex items-center gap-2"
+      >
+        {bulkImportMutation.isPending && <Loader2 className="animate-spin h-4 w-4" />}
+        Import Translations
+      </button>
+    </div>
+  )
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white dark:bg-gray-800 rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-        {/* Header */}
-        <div className="sticky top-0 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-4 rounded-t-lg">
-          <div className="flex items-center justify-between">
-            <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Bulk Import Translations</h2>
-            <button
-              onClick={onClose}
-              className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
-              disabled={bulkImportMutation.isPending}
-            >
-              <X className="w-6 h-6" />
-            </button>
-          </div>
-        </div>
-
-        {/* Content */}
-        <div className="p-6 space-y-4">
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      title="Bulk Import Translations"
+      footer={footer}
+      maxWidth="4xl"
+      closeOnBackdropClick={!bulkImportMutation.isPending}
+      showCloseButton={!bulkImportMutation.isPending}
+    >
+      <div className="flex-1 overflow-y-auto p-6 space-y-4">
           {/* Instructions */}
           <div className="bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
             <div className="flex items-start gap-2 mb-2">
@@ -211,51 +223,8 @@ export const BulkImportModal = ({ isOpen, onClose }: BulkImportModalProps) => {
               </div>
             </div>
           )}
-        </div>
-
-        {/* Footer */}
-        <div className="sticky bottom-0 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 px-6 py-4 rounded-b-lg">
-          <div className="flex justify-end gap-3">
-            <button
-              onClick={onClose}
-              disabled={bulkImportMutation.isPending}
-              className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50"
-            >
-              Cancel
-            </button>
-            <button
-              onClick={handleImport}
-              disabled={bulkImportMutation.isPending || !importData.trim()}
-              className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50 flex items-center gap-2"
-            >
-              {bulkImportMutation.isPending && (
-                <svg
-                  className="animate-spin h-4 w-4"
-                  xmlns="http://www.w3.org/2000/svg"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                >
-                  <circle
-                    className="opacity-25"
-                    cx="12"
-                    cy="12"
-                    r="10"
-                    stroke="currentColor"
-                    strokeWidth="4"
-                  />
-                  <path
-                    className="opacity-75"
-                    fill="currentColor"
-                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                  />
-                </svg>
-              )}
-              Import Translations
-            </button>
-          </div>
-        </div>
       </div>
-    </div>
+    </Modal>
   )
 }
 

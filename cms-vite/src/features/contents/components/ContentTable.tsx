@@ -6,6 +6,7 @@
  */
 
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Upload,
   Trash2,
@@ -55,6 +56,7 @@ function DeleteConfirmModal({
   onConfirm,
   isLoading,
 }: DeleteConfirmModalProps) {
+  const { t } = useTranslation();
   if (!isOpen) return null;
 
   return (
@@ -74,7 +76,7 @@ function DeleteConfirmModal({
             disabled={isLoading}
             className="px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg disabled:opacity-50"
           >
-            Cancel
+            {t('contents.buttons.cancel')}
           </button>
           <button
             onClick={onConfirm}
@@ -84,10 +86,10 @@ function DeleteConfirmModal({
             {isLoading ? (
               <>
                 <Loader2 className="w-4 h-4 animate-spin" />
-                Deleting...
+                {t('contents.buttons.deleting')}
               </>
             ) : (
-              'Delete'
+              t('contents.buttons.delete')
             )}
           </button>
         </div>

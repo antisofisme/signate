@@ -12,9 +12,10 @@
  * - Responsive design
  */
 
-import { Building2 } from 'lucide-react';
+import { Building2, ChevronRight } from 'lucide-react';
 import { useAuthStore } from '@/lib/stores/authStore';
 import { useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 
 /**
  * Display variants for the indicator
@@ -113,6 +114,7 @@ export function OrgContextIndicator({
   interactive = false,
 }: OrgContextIndicatorProps) {
   const { organizations, selectedOrgId } = useAuthStore();
+  const { t } = useTranslation();
 
   // Current organization
   const currentOrg = useMemo(() => {
@@ -151,7 +153,7 @@ export function OrgContextIndicator({
           onClick={onClick}
           role={isClickable ? 'button' : undefined}
           tabIndex={isClickable ? 0 : undefined}
-          title={isClickable ? 'Klik untuk beralih organisasi' : currentOrg.name}
+          title={isClickable ? t('organization.clickToSwitch') : currentOrg.name}
         >
           {showIcon && <Building2 className="w-4 h-4" />}
           <span className="text-sm font-medium">{currentOrg.name}</span>
@@ -267,6 +269,7 @@ export function OrgContextSidebarWidget({
   className?: string;
 }) {
   const { organizations, selectedOrgId } = useAuthStore();
+  const { t } = useTranslation();
 
   const currentOrg = organizations.find((org) => org.id === selectedOrgId);
   const orgColor = selectedOrgId ? getOrgColor(selectedOrgId) : null;
@@ -288,7 +291,7 @@ export function OrgContextSidebarWidget({
       onClick={onSwitch}
       role={onSwitch ? 'button' : undefined}
       tabIndex={onSwitch ? 0 : undefined}
-      title={onSwitch ? 'Klik untuk beralih organisasi' : currentOrg.name}
+      title={onSwitch ? t('organization.clickToSwitch') : currentOrg.name}
     >
       {/* Icon */}
       <div className={`p-2 rounded-lg bg-white dark:bg-gray-800 ${orgColor.text}`}>
@@ -298,7 +301,7 @@ export function OrgContextSidebarWidget({
       {/* Organization Info */}
       <div className="flex-1 min-w-0">
         <p className={`text-xs font-medium ${orgColor.text} opacity-75`}>
-          Organisasi Aktif
+          {t('organization.activeOrganization')}
         </p>
         <p className={`text-sm font-semibold ${orgColor.text} truncate`}>
           {currentOrg.name}
@@ -307,19 +310,7 @@ export function OrgContextSidebarWidget({
 
       {/* Arrow hint (if clickable) */}
       {onSwitch && (
-        <svg
-          className={`w-4 h-4 ${orgColor.text} opacity-50`}
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M9 5l7 7-7 7"
-          />
-        </svg>
+        <ChevronRight className={`w-4 h-4 ${orgColor.text} opacity-50`} />
       )}
     </div>
   );

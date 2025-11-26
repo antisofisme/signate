@@ -6,6 +6,7 @@
  */
 
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Monitor,
   Tv,
@@ -57,16 +58,17 @@ function DeleteConfirmModal({
   onConfirm,
   isLoading,
 }: DeleteConfirmModalProps) {
+  const { t } = useTranslation();
   if (!isOpen || !device) return null;
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-md">
         <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-          Delete Device
+          {t('devices.modals.editDevice')}
         </h3>
         <p className="text-gray-700 dark:text-gray-300 mb-2">
-          Are you sure you want to delete this device?
+          {t('devices.confirmDelete')}
         </p>
         <p className="text-gray-900 dark:text-white font-semibold mb-6">
           {device.device_name}
@@ -78,7 +80,7 @@ function DeleteConfirmModal({
             disabled={isLoading}
             className="px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg disabled:opacity-50"
           >
-            Cancel
+            {t('devices.buttons.cancel')}
           </button>
           <button
             onClick={onConfirm}
@@ -88,10 +90,10 @@ function DeleteConfirmModal({
             {isLoading ? (
               <>
                 <Loader2 className="w-4 h-4 animate-spin" />
-                Deleting...
+                {t('devices.buttons.deleting')}
               </>
             ) : (
-              'Delete'
+              t('devices.buttons.delete')
             )}
           </button>
         </div>
@@ -101,6 +103,8 @@ function DeleteConfirmModal({
 }
 
 export function DeviceTable() {
+  const { t } = useTranslation();
+
   // Scope filter (my_org or unassigned)
   const [scope, setScope] = useState<'my_org' | 'unassigned'>('my_org');
 
@@ -184,7 +188,7 @@ export function DeviceTable() {
       return (
         <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200">
           <Circle className="w-2 h-2 fill-current" />
-          Pending
+          {t('devices.status.pending')}
         </span>
       );
     }
@@ -193,7 +197,7 @@ export function DeviceTable() {
       return (
         <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300">
           <Circle className="w-2 h-2 fill-current" />
-          Inactive
+          {t('devices.status.inactive')}
         </span>
       );
     }
@@ -201,12 +205,12 @@ export function DeviceTable() {
     return isOnline ? (
       <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
         <Circle className="w-2 h-2 fill-current" />
-        Online
+        {t('devices.online')}
       </span>
     ) : (
       <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200">
         <Circle className="w-2 h-2 fill-current" />
-        Offline
+        {t('devices.offline')}
       </span>
     );
   };
@@ -233,7 +237,7 @@ export function DeviceTable() {
                 : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
             }`}
           >
-            My Devices
+            {t('devices.tabs.myDevices')}
           </button>
           <button
             onClick={() => setScope('unassigned')}
@@ -243,7 +247,7 @@ export function DeviceTable() {
                 : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
             }`}
           >
-            Unassigned Pool
+            {t('devices.tabs.unassignedPool')}
           </button>
         </div>
       </div>
@@ -253,10 +257,10 @@ export function DeviceTable() {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
             <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-              {scope === 'my_org' ? 'My Devices' : 'Unassigned Devices'}
+              {scope === 'my_org' ? t('devices.tabs.myDevices') : t('devices.tabs.unassignedDevices')}
             </h2>
             <span className="text-sm text-gray-500 dark:text-gray-400">
-              {total} {total === 1 ? 'device' : 'devices'}
+              {total} {total === 1 ? t('devices.messages.deviceCount') : t('devices.messages.devicesCount')}
             </span>
           </div>
 
@@ -268,7 +272,7 @@ export function DeviceTable() {
             >
               <Plus className="w-4 h-4" />
               <Tv className="w-4 h-4" />
-              Register TV
+              {t('devices.buttons.registerTV')}
             </button>
 
             {/* Register Monitor Button */}
@@ -278,7 +282,7 @@ export function DeviceTable() {
             >
               <Plus className="w-4 h-4" />
               <Monitor className="w-4 h-4" />
-              Register Monitor
+              {t('devices.buttons.registerMonitor')}
             </button>
 
             {/* Filter Button */}
@@ -291,7 +295,7 @@ export function DeviceTable() {
               }`}
             >
               <Filter className="w-4 h-4" />
-              Filters
+              {t('devices.filters.filters')}
             </button>
           </div>
         </div>
@@ -303,33 +307,33 @@ export function DeviceTable() {
               {/* Status Filter */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Status
+                  {t('devices.status')}
                 </label>
                 <select
                   value={statusFilter}
                   onChange={(e) => setStatusFilter(e.target.value as any)}
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                 >
-                  <option value="all">All Statuses</option>
-                  <option value="pending">Pending</option>
-                  <option value="active">Active</option>
-                  <option value="inactive">Inactive</option>
+                  <option value="all">{t('devices.allStatuses')}</option>
+                  <option value="pending">{t('devices.status.pending')}</option>
+                  <option value="active">{t('devices.status.active')}</option>
+                  <option value="inactive">{t('devices.status.inactive')}</option>
                 </select>
               </div>
 
               {/* Type Filter */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Device Type
+                  {t('devices.filters.deviceType')}
                 </label>
                 <select
                   value={typeFilter}
                   onChange={(e) => setTypeFilter(e.target.value as any)}
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                 >
-                  <option value="all">All Types</option>
-                  <option value="tv">TV</option>
-                  <option value="monitor">Monitor</option>
+                  <option value="all">{t('devices.filters.allTypes')}</option>
+                  <option value="tv">{t('devices.filters.tv')}</option>
+                  <option value="monitor">{t('devices.filters.monitor')}</option>
                 </select>
               </div>
             </div>
@@ -341,7 +345,7 @@ export function DeviceTable() {
       {devices.filter((d) => d.status === 'pending').length > 0 && (
         <div className="space-y-4">
           <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-            Pending Devices Awaiting Activation
+            {t('devices.messages.pendingDevicesAwaiting')}
           </h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {devices
@@ -367,11 +371,11 @@ export function DeviceTable() {
           </div>
         ) : error ? (
           <div className="text-center py-12 text-red-600">
-            Error loading devices
+            {t('devices.messages.errorLoading')}
           </div>
         ) : devices.length === 0 ? (
           <div className="text-center py-12 text-gray-500 dark:text-gray-400">
-            No devices found
+            {t('devices.messages.noDevicesFound')}
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -379,22 +383,22 @@ export function DeviceTable() {
               <thead className="bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                    Device
+                    {t('devices.table.device')}
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                    Type
+                    {t('devices.type')}
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                    Status
+                    {t('devices.status')}
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                    IP Address
+                    {t('devices.table.ipAddress')}
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                    Last Seen
+                    {t('devices.lastSeen')}
                   </th>
                   <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                    Actions
+                    {t('devices.table.actions')}
                   </th>
                 </tr>
               </thead>
@@ -439,7 +443,7 @@ export function DeviceTable() {
                             setLogsModal({ isOpen: true, device })
                           }
                           className="text-purple-600 hover:text-purple-800 dark:text-purple-400 dark:hover:text-purple-300"
-                          title="View device logs"
+                          title={t('devices.actions.viewLogs')}
                         >
                           <Terminal className="w-4 h-4" />
                         </button>
@@ -450,7 +454,7 @@ export function DeviceTable() {
                             setDeviceManagementModal({ isOpen: true, device, defaultTab: 'overview' })
                           }
                           className="text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-300"
-                          title="View device"
+                          title={t('devices.actions.viewDevice')}
                         >
                           <Eye className="w-4 h-4" />
                         </button>
@@ -461,7 +465,7 @@ export function DeviceTable() {
                             setContentAssignmentModal({ isOpen: true, device, defaultTab: 'direct' })
                           }
                           className="text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300"
-                          title="Manage content, tags & playlists"
+                          title={t('devices.actions.manageContent')}
                         >
                           <FileText className="w-4 h-4" />
                         </button>
@@ -472,7 +476,7 @@ export function DeviceTable() {
                             setSettingsModal({ isOpen: true, device })
                           }
                           className="text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-300"
-                          title="Edit device settings"
+                          title={t('devices.actions.editSettings')}
                         >
                           <Edit className="w-4 h-4" />
                         </button>
@@ -481,7 +485,7 @@ export function DeviceTable() {
                             setDeleteModal({ isOpen: true, device })
                           }
                           className="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"
-                          title="Delete device"
+                          title={t('devices.actions.deleteDevice')}
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>

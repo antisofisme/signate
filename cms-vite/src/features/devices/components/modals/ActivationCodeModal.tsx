@@ -7,6 +7,7 @@
 
 import { Check, Copy, Tv } from 'lucide-react';
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { Modal } from '@/shared/components';
 import type { Device } from '../../types/device';
@@ -22,6 +23,7 @@ export function ActivationCodeModal({
   device,
   onClose,
 }: ActivationCodeModalProps) {
+  const { t } = useTranslation();
   const [copied, setCopied] = useState(false);
 
   if (!device) return null;
@@ -45,10 +47,10 @@ export function ActivationCodeModal({
     try {
       await navigator.clipboard.writeText(activationCode);
       setCopied(true);
-      toast.success('Activation code copied to clipboard');
+      toast.success(t('common.toasts.codeCopied'));
       setTimeout(() => setCopied(false), 2000);
     } catch (error) {
-      toast.error('Failed to copy code');
+      toast.error(t('common.toasts.copyFailed'));
     }
   };
 
@@ -61,7 +63,7 @@ export function ActivationCodeModal({
         </div>
         <div>
           <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-            TV Registered Successfully
+            {t('devices.modals.tvRegistered')}
           </h3>
           <p className="text-sm text-gray-500 dark:text-gray-400">
             {device.device_name}
@@ -79,7 +81,7 @@ export function ActivationCodeModal({
           onClick={onClose}
           className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
         >
-          Got it
+          {t('devices.modals.gotIt')}
         </button>
       </div>
     </div>
@@ -98,7 +100,7 @@ export function ActivationCodeModal({
         <div className="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border-2 border-blue-200 dark:border-blue-800 rounded-xl p-6 mb-6">
           <div className="text-center">
             <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
-              Activation Code
+              {t('devices.modals.activationCodeLabel')}
             </p>
             <div className="flex items-center justify-center gap-3 mb-4">
               {/* Code Display */}
@@ -109,7 +111,7 @@ export function ActivationCodeModal({
               <button
                 onClick={handleCopy}
                 className="p-2 hover:bg-blue-100 dark:hover:bg-blue-800 rounded-lg transition-colors"
-                title="Copy code"
+                title={t('devices.actions.copyCode')}
               >
                 {copied ? (
                   <Check className="w-5 h-5 text-green-600 dark:text-green-400" />
@@ -124,7 +126,7 @@ export function ActivationCodeModal({
               <div className="flex items-center justify-center gap-2 text-sm">
                 <div className="w-2 h-2 bg-orange-500 rounded-full animate-pulse" />
                 <span className="text-orange-600 dark:text-orange-400 font-medium">
-                  Expires in {minutes}:{seconds.toString().padStart(2, '0')}
+                  {t('devices.modals.expiresIn')} {minutes}:{seconds.toString().padStart(2, '0')}
                 </span>
               </div>
             )}
@@ -139,12 +141,12 @@ export function ActivationCodeModal({
             </div>
             <div className="flex-1">
               <h4 className="text-sm font-semibold text-gray-900 dark:text-white mb-1">
-                Complete Setup on Your TV
+                {t('devices.modals.completeSetup')}
               </h4>
               <ol className="text-sm text-gray-600 dark:text-gray-400 space-y-1 list-decimal list-inside">
-                <li>Open the app on your TV</li>
-                <li>Enter the 6-digit code above when prompted</li>
-                <li>Wait for activation to complete</li>
+                <li>{t('devices.modals.instruction1')}</li>
+                <li>{t('devices.modals.instruction2')}</li>
+                <li>{t('devices.modals.instruction3')}</li>
               </ol>
             </div>
           </div>
@@ -152,8 +154,7 @@ export function ActivationCodeModal({
           {/* Warning */}
           <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-3">
             <p className="text-sm text-yellow-700 dark:text-yellow-300">
-              <strong>Important:</strong> This code will expire in 10 minutes. Complete
-              the activation on your TV before it expires.
+              <strong>{t('common.toasts.important')}</strong> {t('devices.modals.codeExpiryWarning')}
             </p>
           </div>
         </div>

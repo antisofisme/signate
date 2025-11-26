@@ -6,6 +6,7 @@
  */
 
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Tv, Loader2 } from 'lucide-react';
 import { Modal } from '@/shared/components';
 import { useTVRegister } from '../../hooks/useDevices';
@@ -18,6 +19,7 @@ interface TVRegisterModalProps {
 }
 
 export function TVRegisterModal({ isOpen, onClose, onSuccess }: TVRegisterModalProps) {
+  const { t } = useTranslation();
   const [formData, setFormData] = useState({
     activation_code: '',
     device_name: '',
@@ -39,7 +41,7 @@ export function TVRegisterModal({ isOpen, onClose, onSuccess }: TVRegisterModalP
         .map((e: any) => `${e.loc?.join('.') || 'Field'}: ${e.msg}`)
         .join(', ');
     }
-    return 'Failed to activate TV device';
+    return t('devices.modals.errors.failedToActivate');
   };
 
   // Reset form
@@ -68,12 +70,12 @@ export function TVRegisterModal({ isOpen, onClose, onSuccess }: TVRegisterModalP
     setError(null);
 
     if (!formData.activation_code || formData.activation_code.length !== 6) {
-      setError('Activation code must be 6 digits');
+      setError(t('devices.modals.errors.codeRequired'));
       return;
     }
 
     if (!formData.device_name.trim()) {
-      setError('Device name is required');
+      setError(t('devices.modals.errors.nameRequired'));
       return;
     }
 
@@ -100,10 +102,10 @@ export function TVRegisterModal({ isOpen, onClose, onSuccess }: TVRegisterModalP
         </div>
         <div>
           <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-            Register TV Device
+            {t('devices.modals.registerTV')}
           </h3>
           <p className="text-sm text-gray-500 dark:text-gray-400">
-            WebOS or native app devices
+            {t('devices.modals.webosOrNative')}
           </p>
         </div>
       </div>
@@ -118,7 +120,7 @@ export function TVRegisterModal({ isOpen, onClose, onSuccess }: TVRegisterModalP
         disabled={registerMutation.isPending}
         className="px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg disabled:opacity-50 transition-colors"
       >
-        Cancel
+        {t('devices.buttons.cancel')}
       </button>
       <button
         type="submit"
@@ -129,12 +131,12 @@ export function TVRegisterModal({ isOpen, onClose, onSuccess }: TVRegisterModalP
         {registerMutation.isPending ? (
           <>
             <Loader2 className="w-4 h-4 animate-spin" />
-            Activating...
+            {t('devices.modals.registering')}
           </>
         ) : (
           <>
             <Tv className="w-4 h-4" />
-            Activate TV
+            {t('devices.modals.register')}
           </>
         )}
       </button>
@@ -161,7 +163,7 @@ export function TVRegisterModal({ isOpen, onClose, onSuccess }: TVRegisterModalP
         {/* Activation Code */}
         <div>
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-            Activation Code <span className="text-red-500">*</span>
+            {t('devices.modals.activationCodeLabel')} <span className="text-red-500">*</span>
           </label>
           <input
             type="text"
@@ -171,21 +173,21 @@ export function TVRegisterModal({ isOpen, onClose, onSuccess }: TVRegisterModalP
               setFormData((prev) => ({ ...prev, activation_code: value }));
               setError(null);
             }}
-            placeholder="Enter 6-digit code"
+            placeholder={t('devices.placeholders.enterCode')}
             maxLength={6}
             className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white font-mono text-lg tracking-widest text-center focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             disabled={registerMutation.isPending}
             required
           />
           <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-            6-digit code displayed on TV screen
+            {t('devices.modals.codeHelp')}
           </p>
         </div>
 
         {/* Device Name */}
         <div>
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-            Device Name <span className="text-red-500">*</span>
+            {t('devices.modals.deviceNameLabel')} <span className="text-red-500">*</span>
           </label>
           <input
             type="text"
@@ -194,7 +196,7 @@ export function TVRegisterModal({ isOpen, onClose, onSuccess }: TVRegisterModalP
               setFormData((prev) => ({ ...prev, device_name: e.target.value }));
               setError(null);
             }}
-            placeholder="e.g., Lobby TV 1, Room 101 TV"
+            placeholder={t('devices.placeholders.deviceName')}
             maxLength={200}
             className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             disabled={registerMutation.isPending}
@@ -205,7 +207,7 @@ export function TVRegisterModal({ isOpen, onClose, onSuccess }: TVRegisterModalP
         {/* Info Box */}
         <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
           <p className="text-sm text-blue-700 dark:text-blue-300">
-            <strong>How it works:</strong> Enter the 6-digit activation code shown on the TV screen. The device will be automatically assigned to your organization.
+            <strong>{t('devices.modals.howItWorks')}</strong> {t('devices.modals.howItWorksDesc')}
           </p>
         </div>
       </form>

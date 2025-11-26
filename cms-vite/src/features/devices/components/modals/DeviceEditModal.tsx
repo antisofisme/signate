@@ -6,6 +6,7 @@
  */
 
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Save, Loader2 } from 'lucide-react';
 import { Modal } from '@/shared/components';
 import { useUpdateDevice } from '../../hooks/useDevices';
@@ -24,6 +25,7 @@ export function DeviceEditModal({
   onClose,
   onSuccess,
 }: DeviceEditModalProps) {
+  const { t } = useTranslation();
   const [formData, setFormData] = useState({
     device_name: '',
     rotation: 0,
@@ -76,7 +78,7 @@ export function DeviceEditModal({
 
     // Validation
     if (!formData.device_name.trim()) {
-      setError('Device name is required');
+      setError(t('devices.modals.errors.nameRequired'));
       return;
     }
 
@@ -94,7 +96,7 @@ export function DeviceEditModal({
       onSuccess?.();
       handleClose();
     } catch (err: any) {
-      setError(err?.response?.data?.detail || 'Failed to update device');
+      setError(err?.response?.data?.detail || t('devices.modals.errors.updateFailed'));
     }
   };
 
@@ -108,7 +110,7 @@ export function DeviceEditModal({
           disabled={updateMutation.isPending}
           className="px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg disabled:opacity-50 transition-colors"
         >
-          Cancel
+          {t('devices.buttons.cancel')}
         </button>
         <button
           type="submit"
@@ -119,12 +121,12 @@ export function DeviceEditModal({
           {updateMutation.isPending ? (
             <>
               <Loader2 className="w-4 h-4 animate-spin" />
-              Saving...
+              {t('devices.modals.saving')}
             </>
           ) : (
             <>
               <Save className="w-4 h-4" />
-              Save Changes
+              {t('devices.modals.saveChanges')}
             </>
           )}
         </button>
@@ -136,7 +138,7 @@ export function DeviceEditModal({
     <Modal
       isOpen={isOpen}
       onClose={handleClose}
-      title="Edit Device"
+      title={t('devices.modals.editDevice')}
       maxWidth="md"
       footer={footer}
     >
@@ -152,7 +154,7 @@ export function DeviceEditModal({
         {/* Device Name */}
         <div>
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-            Device Name <span className="text-red-500">*</span>
+            {t('devices.modals.deviceNameLabel')} <span className="text-red-500">*</span>
           </label>
           <input
             type="text"
@@ -161,7 +163,7 @@ export function DeviceEditModal({
               setFormData((prev) => ({ ...prev, device_name: e.target.value }));
               setError(null);
             }}
-            placeholder="e.g., Lobby TV 1, Room 101 Display"
+            placeholder={t('devices.placeholders.deviceName')}
             maxLength={200}
             className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             disabled={updateMutation.isPending}
@@ -172,7 +174,7 @@ export function DeviceEditModal({
         {/* Rotation */}
         <div>
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-            Screen Rotation
+            {t('devices.modals.screenRotation')}
           </label>
           <select
             value={formData.rotation}
@@ -182,13 +184,13 @@ export function DeviceEditModal({
             className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             disabled={updateMutation.isPending}
           >
-            <option value={0}>0° (Normal)</option>
-            <option value={90}>90° (Clockwise)</option>
-            <option value={180}>180° (Upside Down)</option>
-            <option value={270}>270° (Counter-Clockwise)</option>
+            <option value={0}>{t('devices.modals.rotation0')}</option>
+            <option value={90}>{t('devices.modals.rotation90')}</option>
+            <option value={180}>{t('devices.modals.rotation180')}</option>
+            <option value={270}>{t('devices.modals.rotation270')}</option>
           </select>
           <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-            Adjust screen orientation for portrait/landscape displays
+            {t('devices.modals.rotationHelp')}
           </p>
         </div>
 
@@ -205,18 +207,18 @@ export function DeviceEditModal({
               disabled={updateMutation.isPending}
             />
             <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-              Enable Audio/Volume
+              {t('devices.modals.enableAudio')}
             </span>
           </label>
           <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 ml-6">
-            Allow audio playback for video content
+            {t('devices.modals.audioHelp')}
           </p>
         </div>
 
         {/* Room Number (Optional) */}
         <div>
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-            Room Number (Optional)
+            {t('devices.modals.roomNumberOptional')}
           </label>
           <input
             type="text"
@@ -224,21 +226,20 @@ export function DeviceEditModal({
             onChange={(e) =>
               setFormData((prev) => ({ ...prev, room_number: e.target.value }))
             }
-            placeholder="e.g., 101, A-205, Lobby"
+            placeholder={t('devices.placeholders.roomNumber')}
             maxLength={50}
             className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             disabled={updateMutation.isPending}
           />
           <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-            For hotel/office deployments
+            {t('devices.modals.roomHelp')}
           </p>
         </div>
 
         {/* Info Box */}
         <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
           <p className="text-sm text-blue-700 dark:text-blue-300">
-            <strong>Note:</strong> Changes will take effect immediately on the device.
-            The device may need to refresh to apply rotation changes.
+            <strong>{t('devices.modals.changesNote')}</strong> {t('devices.modals.changesEffect')}
           </p>
         </div>
       </form>

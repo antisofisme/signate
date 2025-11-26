@@ -1,12 +1,20 @@
 /**
  * Bulk Edit Modal Component
  * Edit multiple content items at once with simplified bulk update
+ *
+ * ✅ REFACTORED: Now uses shared Modal component
+ * - Fixed header (title + subtitle)
+ * - Fixed footer (action buttons)
+ * - Scrollable content (bulk fields + content list with progress tracking)
+ * - Click outside to close (disabled during update)
  */
 
 import { useState } from 'react';
-import { X, Save, Loader2, FileImage, FileVideo, FileAudio } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
+import { Save, Loader2, FileImage, FileVideo, FileAudio } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
+import { Modal } from '@/shared/components';
 import { apiClient } from '@/lib/api/client';
 import { API_ENDPOINTS } from '@/lib/api/endpoints';
 import type { Content } from '../types/content';
@@ -19,6 +27,7 @@ interface BulkEditModalProps {
 }
 
 export function BulkEditModal({ isOpen, onClose, selectedContent }: BulkEditModalProps) {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const [updating, setUpdating] = useState(false);
   const [updateProgress, setUpdateProgress] = useState<{[key: number]: 'pending' | 'updating' | 'success' | 'error'}>({});
@@ -33,7 +42,7 @@ export function BulkEditModal({ isOpen, onClose, selectedContent }: BulkEditModa
     e.preventDefault();
 
     if (bulkDuration === '' && bulkIsActive === null) {
-      toast.error('Please set at least one field to update');
+      toast.error(t('contents.messages.setAtLeastOneField'));
       return;
     }
 
@@ -78,10 +87,10 @@ export function BulkEditModal({ isOpen, onClose, selectedContent }: BulkEditModa
 
     // Show result
     if (failCount === 0) {
-      toast.success(`Successfully updated ${successCount} content items`);
+      toast.success(t('contents.messages.successfullyUpdated', { count: successCount }));
       onClose();
     } else {
-      toast.warning(`Updated ${successCount} items, ${failCount} failed`);
+      toast.warning(t('contents.messages.updatedWithFailures', { successCount, failCount }));
     }
   };
 
@@ -101,53 +110,95 @@ export function BulkEditModal({ isOpen, onClose, selectedContent }: BulkEditModa
   const getStatusBadge = (status: 'pending' | 'updating' | 'success' | 'error') => {
     switch (status) {
       case 'pending':
-        return <span className="text-xs text-gray-500">Pending</span>;
+        return <span className="text-xs text-gray-500">{t('contents.status.pending')}</span>;
       case 'updating':
         return <span className="text-xs text-blue-600 flex items-center gap-1">
-          <Loader2 className="w-3 h-3 animate-spin" /> Updating...
+          <Loader2 className="w-3 h-3 animate-spin" /> {t('contents.status.updating')}
         </span>;
       case 'success':
-        return <span className="text-xs text-green-600">✓ Success</span>;
+        return <span className="text-xs text-green-600">{t('contents.status.success')}</span>;
       case 'error':
-        return <span className="text-xs text-red-600">✗ Failed</span>;
+        return <span className="text-xs text-red-600">{t('contents.status.failed')}</span>;
       default:
         return null;
     }
   };
 
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h2 className="text-xl font-bold text-gray-900 dark:text-white">
-              Bulk Edit Content
-            </h2>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-              Editing {selectedContent.length} content items
-            </p>
-          </div>
-          <button
-            onClick={onClose}
-            disabled={updating}
-            className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 disabled:opacity-50"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
+  const handleClose = () => {
+    if (!updating) {
+      onClose();
+    }
+  };
 
-        <form onSubmit={handleBulkUpdate} className="space-y-6">
+  // Custom header with subtitle
+  const customHeader = (
+    <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+      <h2 className="text-xl font-bold text-gray-900 dark:text-white">
+        {t('contents.modals.bulkEdit')}
+      </h2>
+      <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+        {t('contents.modals.editingItems', { count: selectedContent.length })}
+      </p>
+    </div>
+  );
+
+  // Footer with action buttons
+  const footer = (
+    <div className="border-t border-gray-200 dark:border-gray-700 px-6 py-4">
+      <div className="flex justify-end gap-3">
+        <button
+          type="button"
+          onClick={handleClose}
+          disabled={updating}
+          className="px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg disabled:opacity-50 transition-colors"
+        >
+          {t('contents.buttons.cancel')}
+        </button>
+        <button
+          type="submit"
+          form="bulk-edit-form"
+          disabled={updating || (bulkDuration === '' && bulkIsActive === null)}
+          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 transition-colors"
+        >
+          {updating ? (
+            <>
+              <Loader2 className="w-4 h-4 animate-spin" />
+              {t('contents.buttons.updatingItems', { count: selectedContent.length })}
+            </>
+          ) : (
+            <>
+              <Save className="w-4 h-4" />
+              {t('contents.buttons.updateAll')}
+            </>
+          )}
+        </button>
+      </div>
+    </div>
+  );
+
+  return (
+    <Modal
+      isOpen={isOpen}
+      onClose={handleClose}
+      maxWidth="4xl"
+      customHeader={customHeader}
+      footer={footer}
+      closeOnBackdropClick={!updating}
+      className="h-[90vh]"
+    >
+      {/* Scrollable content */}
+      <div className="flex-1 overflow-y-auto p-6">
+        <form id="bulk-edit-form" onSubmit={handleBulkUpdate} className="space-y-6">
           {/* Bulk Update Fields */}
           <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
             <h3 className="text-sm font-semibold text-blue-900 dark:text-blue-300 mb-3">
-              📝 Apply to All Selected Items
+              {t('contents.form.applyToAll')}
             </h3>
             <div className="grid grid-cols-2 gap-4">
               {/* Duration */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Duration (seconds)
+                  {t('contents.form.durationSeconds')}
                 </label>
                 <input
                   type="number"
@@ -155,7 +206,7 @@ export function BulkEditModal({ isOpen, onClose, selectedContent }: BulkEditModa
                   onChange={(e) => setBulkDuration(e.target.value ? parseInt(e.target.value) : '')}
                   disabled={updating}
                   className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white disabled:opacity-50"
-                  placeholder="Leave empty to skip"
+                  placeholder={t('contents.form.leaveEmptyToSkip')}
                   min={1}
                   max={86400}
                 />
@@ -164,7 +215,7 @@ export function BulkEditModal({ isOpen, onClose, selectedContent }: BulkEditModa
               {/* Active Status */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Active Status
+                  {t('contents.form.activeStatus')}
                 </label>
                 <select
                   value={bulkIsActive === null ? '' : bulkIsActive.toString()}
@@ -172,9 +223,9 @@ export function BulkEditModal({ isOpen, onClose, selectedContent }: BulkEditModa
                   disabled={updating}
                   className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white disabled:opacity-50"
                 >
-                  <option value="">Don't change</option>
-                  <option value="true">Active</option>
-                  <option value="false">Inactive</option>
+                  <option value="">{t('contents.form.dontChange')}</option>
+                  <option value="true">{t('contents.form.active')}</option>
+                  <option value="false">{t('contents.form.inactive')}</option>
                 </select>
               </div>
             </div>
@@ -183,7 +234,7 @@ export function BulkEditModal({ isOpen, onClose, selectedContent }: BulkEditModa
           {/* Selected Content List */}
           <div>
             <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
-              Selected Content ({selectedContent.length})
+              {t('contents.form.selectedContent', { count: selectedContent.length })}
             </h3>
             <div className="space-y-2 max-h-80 overflow-y-auto">
               {selectedContent.map((content) => (
@@ -209,37 +260,8 @@ export function BulkEditModal({ isOpen, onClose, selectedContent }: BulkEditModa
               ))}
             </div>
           </div>
-
-          {/* Actions */}
-          <div className="flex justify-end gap-3 pt-4 border-t dark:border-gray-700">
-            <button
-              type="button"
-              onClick={onClose}
-              disabled={updating}
-              className="px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg disabled:opacity-50"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={updating || (bulkDuration === '' && bulkIsActive === null)}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-            >
-              {updating ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  Updating {selectedContent.length} items...
-                </>
-              ) : (
-                <>
-                  <Save className="w-4 h-4" />
-                  Update All
-                </>
-              )}
-            </button>
-          </div>
         </form>
       </div>
-    </div>
+    </Modal>
   );
 }

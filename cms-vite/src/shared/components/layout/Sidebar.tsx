@@ -30,6 +30,7 @@ import {
   CloudRain,
   ChevronDown,
   ChevronRight,
+  UtensilsCrossed,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useUIStore } from '@/lib/stores/uiStore';
@@ -95,6 +96,7 @@ export default function Sidebar() {
       items: [
         { name: t('navigation.contents'), href: '/contents', icon: FileImage },
         { name: t('navigation.playlists'), href: '/playlists', icon: ListVideo },
+        { name: 'Digital Menus', href: '/menus', icon: UtensilsCrossed },
         { name: t('navigation.schedules'), href: '/schedules', icon: Calendar },
         { name: t('navigation.tags'), href: '/tags', icon: Tag },
       ],

@@ -6,6 +6,7 @@
  */
 
 import { Monitor, FileImage, ListVideo, Clock, TrendingUp, Activity } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { DashboardStats } from '../api/dashboard.api';
 
 interface OverviewMetricsProps {
@@ -73,6 +74,7 @@ const formatBytes = (bytes: number): string => {
 };
 
 export default function OverviewMetrics({ stats, isLoading }: OverviewMetricsProps) {
+  const { t } = useTranslation();
   const onlinePercentage = stats?.total_devices
     ? Math.round((stats.online_devices / stats.total_devices) * 100)
     : 0;
@@ -85,7 +87,7 @@ export default function OverviewMetrics({ stats, isLoading }: OverviewMetricsPro
         iconColor="blue"
         label="Total Devices"
         value={stats?.total_devices || 0}
-        subtitle={`${stats?.online_devices || 0} online (${onlinePercentage}%)`}
+        subtitle={t('dashboard.metrics.onlineDevices', { online: stats?.online_devices || 0, percentage: onlinePercentage })}
         isLoading={isLoading}
       />
 
@@ -105,7 +107,7 @@ export default function OverviewMetrics({ stats, isLoading }: OverviewMetricsPro
         iconColor="purple"
         label="Active Playlists"
         value={stats?.active_playlists || 0}
-        subtitle={`${stats?.total_playback_events || 0} playback events`}
+        subtitle={t('dashboard.metrics.playbackEventsCount', { count: stats?.total_playback_events || 0 })}
         isLoading={isLoading}
       />
 
@@ -115,7 +117,7 @@ export default function OverviewMetrics({ stats, isLoading }: OverviewMetricsPro
         iconColor="orange"
         label="Total Watch Time"
         value={stats ? formatDuration(stats.total_watch_time_seconds) : '0s'}
-        subtitle="Across all devices"
+        subtitle={t('dashboard.metrics.acrossAllDevices')}
         isLoading={isLoading}
       />
 
@@ -125,7 +127,7 @@ export default function OverviewMetrics({ stats, isLoading }: OverviewMetricsPro
         iconColor="indigo"
         label="Avg Completion Rate"
         value={stats ? `${Math.round(stats.avg_completion_rate)}%` : '0%'}
-        subtitle="Content playback completion"
+        subtitle={t('dashboard.metrics.playbackCompletion')}
         isLoading={isLoading}
       />
 
@@ -135,7 +137,7 @@ export default function OverviewMetrics({ stats, isLoading }: OverviewMetricsPro
         iconColor="pink"
         label="System Activity"
         value={stats?.total_playback_events || 0}
-        subtitle="Total playback events"
+        subtitle={t('dashboard.metrics.totalPlaybackEvents')}
         isLoading={isLoading}
       />
     </div>

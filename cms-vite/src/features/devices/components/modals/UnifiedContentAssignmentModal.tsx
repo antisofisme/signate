@@ -8,6 +8,7 @@
  */
 
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { FileText, Tag as TagIcon, List } from 'lucide-react';
 import { Modal, Tabs, TabPanel, type Tab } from '@/shared/components';
 import type { Device } from '../../types/device';
@@ -26,33 +27,34 @@ interface UnifiedContentAssignmentModalProps {
   onClose: () => void;
 }
 
-const ASSIGNMENT_TABS: Tab[] = [
-  {
-    id: 'direct',
-    label: 'Direct Content',
-    icon: FileText,
-  },
-  {
-    id: 'tags',
-    label: 'Tags',
-    icon: TagIcon,
-  },
-  {
-    id: 'playlists',
-    label: 'Playlists',
-    icon: List,
-  },
-];
-
 export function UnifiedContentAssignmentModal({
   isOpen,
   device,
   defaultTab = 'direct',
   onClose,
 }: UnifiedContentAssignmentModalProps) {
+  const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState<ContentAssignmentTabId>(defaultTab);
 
   if (!device) return null;
+
+  const ASSIGNMENT_TABS: Tab[] = [
+    {
+      id: 'direct',
+      label: t('devices.modals.directContent'),
+      icon: FileText,
+    },
+    {
+      id: 'tags',
+      label: t('devices.modals.tags'),
+      icon: TagIcon,
+    },
+    {
+      id: 'playlists',
+      label: t('devices.modals.playlists'),
+      icon: List,
+    },
+  ];
 
   // Custom header with tabs
   const customHeader = (
@@ -62,7 +64,7 @@ export function UnifiedContentAssignmentModal({
         <div className="flex items-center justify-between">
           <div>
             <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-              Manage Content Assignment
+              {t('devices.modals.manageContentAssignment')}
             </h3>
             <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
               {device.device_name}

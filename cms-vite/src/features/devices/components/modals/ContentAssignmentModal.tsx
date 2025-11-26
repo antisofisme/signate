@@ -6,6 +6,7 @@
  */
 
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { FileText, Trash2, Loader2, Star, Image, Video, Music, ArrowRight, GripVertical } from 'lucide-react';
 import { Modal } from '@/shared/components';
 import { useDeviceContents, useAssignContent, useUnassignContent } from '../../hooks/useDevices';
@@ -46,6 +47,7 @@ interface SortableItemProps {
 }
 
 function SortableItem({ assigned, content, Icon, onUnassign, isUnassigning }: SortableItemProps) {
+  const { t } = useTranslation();
   const {
     attributes,
     listeners,
@@ -119,7 +121,7 @@ function SortableItem({ assigned, content, Icon, onUnassign, isUnassigning }: So
           onClick={() => onUnassign(assigned.content_id)}
           disabled={isUnassigning}
           className="opacity-0 group-hover:opacity-100 flex-shrink-0 p-2 rounded-lg bg-red-600 text-white hover:bg-red-700 disabled:opacity-50 transition-all"
-          title="Remove from device"
+          title={t('devices.modals.removeFromDevice')}
         >
           <Trash2 className="w-4 h-4" />
         </button>
@@ -133,6 +135,7 @@ export function ContentAssignmentModal({
   device,
   onClose,
 }: ContentAssignmentModalProps) {
+  const { t } = useTranslation();
   const [priority, setPriority] = useState<number>(1);
   const [sortedItems, setSortedItems] = useState<any[]>([]);
 
@@ -265,16 +268,16 @@ export function ContentAssignmentModal({
         <div>
           <h3 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
             <FileText className="w-5 h-5" />
-            Manage Content (Direct Assignment)
+            {t('devices.modals.manageContentDirectAssignment')}
           </h3>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-            {device.device_name} - Priority 1 (Highest)
+            {device.device_name} - {t('devices.modals.priority1Highest')}
           </p>
         </div>
         <div className="flex items-center gap-2">
           <label className="text-sm font-medium text-gray-700 dark:text-gray-300 flex items-center gap-1">
             <Star className="w-4 h-4" />
-            Priority:
+            {t('devices.modals.priorityLabel')}:
           </label>
           <input
             type="number"
@@ -312,11 +315,11 @@ export function ContentAssignmentModal({
             <div className="border-r border-gray-200 dark:border-gray-700 pr-4 flex flex-col">
               <h4 className="font-semibold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
                 <FileText className="w-4 h-4" />
-                Available Content ({availableContents.length})
+                {t('devices.modals.availableContent')} ({availableContents.length})
               </h4>
               {availableContents.length === 0 ? (
                 <p className="text-sm text-gray-500 dark:text-gray-400">
-                  All content is already assigned.
+                  {t('devices.modals.allContentAssigned')}
                 </p>
               ) : (
                 <div className="space-y-2 flex-1 overflow-y-auto">
@@ -362,7 +365,7 @@ export function ContentAssignmentModal({
                             }}
                             disabled={assignContent.isPending}
                             className="opacity-0 group-hover:opacity-100 flex-shrink-0 p-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 transition-all"
-                            title="Assign to device"
+                            title={t('devices.modals.assignToDevice')}
                           >
                             <ArrowRight className="w-4 h-4" />
                           </button>
@@ -378,11 +381,11 @@ export function ContentAssignmentModal({
             <div className="pl-4 flex flex-col">
               <h4 className="font-semibold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
                 <GripVertical className="w-4 h-4 text-gray-400" />
-                Assigned Content ({sortedItems.length})
+                {t('devices.modals.assignedContent')} ({sortedItems.length})
               </h4>
               {sortedItems.length === 0 ? (
                 <p className="text-sm text-gray-500 dark:text-gray-400">
-                  No content assigned yet.
+                  {t('devices.modals.noContentAssigned')}
                 </p>
               ) : (
                 <DndContext
@@ -424,8 +427,7 @@ export function ContentAssignmentModal({
         <div className="px-6 pt-4">
           <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
             <p className="text-sm text-blue-700 dark:text-blue-300">
-              <strong>Priority 1 (Highest):</strong> Direct assignments override tag-based and playlist assignments.
-              Drag and drop items to reorder - items at the top have higher priority.
+              <strong>{t('devices.modals.priority1Highest')}:</strong> {t('devices.modals.priority1InfoDetailed')}
             </p>
           </div>
         </div>
@@ -438,7 +440,7 @@ export function ContentAssignmentModal({
               disabled={assignContent.isPending || unassignContent.isPending}
               className="px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors disabled:opacity-50"
             >
-              Close
+              {t('common.close')}
             </button>
           </div>
         </div>

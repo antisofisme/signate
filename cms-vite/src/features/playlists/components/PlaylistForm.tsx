@@ -4,6 +4,7 @@
  */
 
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Loader2 } from 'lucide-react';
 import type { Playlist, CreatePlaylistRequest, UpdatePlaylistRequest } from '../types/playlist';
 
@@ -15,6 +16,7 @@ interface PlaylistFormProps {
 }
 
 export function PlaylistForm({ playlist, onClose, onSubmit, isLoading }: PlaylistFormProps) {
+  const { t } = useTranslation();
   const [formData, setFormData] = useState({
     name: playlist?.name || '',
     description: playlist?.description || '',
@@ -32,21 +34,21 @@ export function PlaylistForm({ playlist, onClose, onSubmit, isLoading }: Playlis
       <div className="bg-white dark:bg-gray-800 rounded-lg w-full max-w-lg max-h-[90vh] overflow-y-auto">
         <div className="p-6">
           <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-6">
-            {playlist ? 'Edit Playlist' : 'Buat Playlist Baru'}
+            {playlist ? t('playlists.editPlaylist') : t('playlists.createPlaylist')}
           </h3>
 
           <form onSubmit={handleSubmit} className="space-y-4">
             {/* Name */}
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Nama Playlist <span className="text-red-500">*</span>
+                {t('playlists.playlistName')} <span className="text-red-500">*</span>
               </label>
               <input
                 type="text"
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                 className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                placeholder="Nama playlist"
+                placeholder={t('playlists.placeholders.name')}
                 required
               />
             </div>
@@ -54,21 +56,21 @@ export function PlaylistForm({ playlist, onClose, onSubmit, isLoading }: Playlis
             {/* Description */}
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Deskripsi
+                {t('playlists.description')}
               </label>
               <textarea
                 value={formData.description}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                 rows={3}
                 className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                placeholder="Deskripsi playlist (opsional)"
+                placeholder={t('playlists.placeholders.description')}
               />
             </div>
 
             {/* Priority */}
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Prioritas
+                {t('playlists.priority')}
               </label>
               <input
                 type="number"
@@ -79,7 +81,7 @@ export function PlaylistForm({ playlist, onClose, onSubmit, isLoading }: Playlis
                 placeholder="0"
               />
               <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                Prioritas lebih tinggi akan ditampilkan lebih dulu (0 = terendah)
+                {t('playlists.priorityHelp')}
               </p>
             </div>
 
@@ -93,7 +95,7 @@ export function PlaylistForm({ playlist, onClose, onSubmit, isLoading }: Playlis
                 className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
               />
               <label htmlFor="is_active" className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                Aktif
+                {t('playlists.active')}
               </label>
             </div>
 
@@ -105,7 +107,7 @@ export function PlaylistForm({ playlist, onClose, onSubmit, isLoading }: Playlis
                 disabled={isLoading}
                 className="px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg disabled:opacity-50"
               >
-                Batal
+                {t('playlists.buttons.cancel')}
               </button>
               <button
                 type="submit"
@@ -115,11 +117,11 @@ export function PlaylistForm({ playlist, onClose, onSubmit, isLoading }: Playlis
                 {isLoading ? (
                   <>
                     <Loader2 className="w-4 h-4 animate-spin" />
-                    Menyimpan...
+                    {t('playlists.buttons.saving')}
                   </>
                 ) : (
                   <>
-                    {playlist ? 'Update' : 'Buat Playlist'}
+                    {playlist ? t('playlists.buttons.update') : t('playlists.buttons.create')}
                   </>
                 )}
               </button>

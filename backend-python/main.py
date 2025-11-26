@@ -56,6 +56,8 @@ from services.template.routes import router as template_router
 from services.translation.routes import router as translation_router
 from services.schedule.routes import router as schedule_router
 from services.weather.routes import router as weather_router
+from services.menu.routes import router as menu_router
+from services.menu.public_routes import router as public_menu_router
 from shared.websocket_routes import router as websocket_router
 
 
@@ -283,6 +285,8 @@ app.include_router(template_router, prefix="/api/v1", tags=["Template System"])
 app.include_router(translation_router, prefix="/api/v1", tags=["Translation System"])
 app.include_router(schedule_router, prefix="/api/v1", tags=["Schedule System"])
 app.include_router(weather_router, prefix="/api/v1", tags=["Weather Service"])
+app.include_router(menu_router, tags=["Digital Menu"])  # Routes already include /api/v1
+app.include_router(public_menu_router, tags=["Public Menu Viewer"])  # Routes already include /api/v1/public
 app.include_router(websocket_router, prefix="/api", tags=["WebSocket"])
 
 
@@ -306,6 +310,14 @@ if THUMBNAILS_DIR.exists():
     print(f"✓ Static files mounted: /thumbnails -> {THUMBNAILS_DIR}")
 else:
     print(f"⚠ Thumbnails directory not found: {THUMBNAILS_DIR}")
+
+# Mount static files for QR codes
+QR_CODES_DIR = Path("/data/signage/content/qr_codes")
+if QR_CODES_DIR.exists():
+    app.mount("/qr_codes", StaticFiles(directory=str(QR_CODES_DIR)), name="qr_codes")
+    print(f"✓ Static files mounted: /qr_codes -> {QR_CODES_DIR}")
+else:
+    print(f"⚠ QR codes directory not found: {QR_CODES_DIR}")
 
 
 # =============================================================================

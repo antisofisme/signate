@@ -4,6 +4,7 @@
  */
 
 import { Play, CheckCircle, FileVideo, Monitor, Clock } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { StatCard } from './StatCard'
 import type { PlaybackStats } from '../types'
 
@@ -13,6 +14,7 @@ interface AnalyticsOverviewProps {
 }
 
 export function AnalyticsOverview({ stats, isLoading }: AnalyticsOverviewProps) {
+  const { t } = useTranslation()
   if (isLoading) {
     return (
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
@@ -47,35 +49,35 @@ export function AnalyticsOverview({ stats, isLoading }: AnalyticsOverviewProps) 
   return (
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
       <StatCard
-        title="Total Plays"
+        title={t('analytics.totalPlays')}
         value={formatNumber(safeStats.total_plays)}
         icon={Play}
         description="Total content playback"
       />
 
       <StatCard
-        title="Completed"
+        title={t('analytics.completed')}
         value={formatNumber(safeStats.completed_plays)}
         icon={CheckCircle}
         description="Completed playback"
       />
 
       <StatCard
-        title="Unique Content"
+        title={t('analytics.uniqueContent')}
         value={formatNumber(safeStats.unique_content)}
         icon={FileVideo}
         description="Different content played"
       />
 
       <StatCard
-        title="Active Devices"
+        title={t('analytics.activeDevices')}
         value={formatNumber(safeStats.unique_devices)}
         icon={Monitor}
         description="Devices with playback"
       />
 
       <StatCard
-        title="Watch Time"
+        title={t('analytics.watchTime')}
         value={formatHours(safeStats.total_watch_time_hours)}
         icon={Clock}
         description={`${formatNumber(safeStats.total_watch_time_seconds)}s total`}

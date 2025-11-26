@@ -6,6 +6,7 @@
  */
 
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { List, Plus, Trash2, Loader2 } from 'lucide-react';
 import { Modal } from '@/shared/components';
 import { useDevicePlaylists, useAssignPlaylist, useUnassignPlaylist } from '../../hooks/useDevices';
@@ -23,6 +24,7 @@ export function PlaylistAssignmentModal({
   device,
   onClose,
 }: PlaylistAssignmentModalProps) {
+  const { t } = useTranslation();
   const [selectedPlaylistId, setSelectedPlaylistId] = useState<number | null>(null);
 
   // Fetch assigned playlists for this device
@@ -78,10 +80,10 @@ export function PlaylistAssignmentModal({
         <div>
           <h3 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
             <List className="w-5 h-5" />
-            Manage Playlists
+            {t('devices.modals.playlists')}
           </h3>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-            {device.device_name} - Priority 3 (Lowest)
+            {device.device_name} - {t('devices.modals.priority3Lowest')}
           </p>
         </div>
       </div>
@@ -100,8 +102,7 @@ export function PlaylistAssignmentModal({
           <div className="px-6 pt-4">
             <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
               <p className="text-sm text-blue-700 dark:text-blue-300">
-                <strong>Priority 3 (Lowest):</strong> Playlist content is shown when no direct content or tag-based content is assigned.
-                Multiple playlists will be combined and shuffled.
+                <strong>{t('devices.modals.priority3Lowest')}:</strong> {t('devices.modals.priority3Info')}
               </p>
             </div>
           </div>
@@ -114,7 +115,7 @@ export function PlaylistAssignmentModal({
                 disabled={assignPlaylist.isPending || unassignPlaylist.isPending}
                 className="px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors disabled:opacity-50"
               >
-                Close
+                {t('common.close')}
               </button>
             </div>
           </div>
@@ -132,11 +133,11 @@ export function PlaylistAssignmentModal({
             {/* Assign New Playlist */}
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
-                Assign New Playlist
+                {t('devices.modals.assignNewPlaylist')}
               </label>
               {availablePlaylists.length === 0 ? (
                 <p className="text-sm text-gray-500 dark:text-gray-400">
-                  All available playlists are already assigned to this device.
+                  {t('devices.modals.allPlaylistsAssigned')}
                 </p>
               ) : (
                 <div className="flex gap-2">
@@ -146,7 +147,7 @@ export function PlaylistAssignmentModal({
                     className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                     disabled={assignPlaylist.isPending}
                   >
-                    <option value="">Select a playlist...</option>
+                    <option value="">{t('devices.modals.selectPlaylist')}</option>
                     {availablePlaylists.map((playlist) => (
                       <option key={playlist.id} value={playlist.id}>
                         {playlist.name}
@@ -161,12 +162,12 @@ export function PlaylistAssignmentModal({
                     {assignPlaylist.isPending ? (
                       <>
                         <Loader2 className="w-4 h-4 animate-spin" />
-                        Assigning...
+                        {t('devices.modals.assigning')}
                       </>
                     ) : (
                       <>
                         <Plus className="w-4 h-4" />
-                        Assign
+                        {t('devices.modals.assign')}
                       </>
                     )}
                   </button>
@@ -177,11 +178,11 @@ export function PlaylistAssignmentModal({
             {/* Currently Assigned Playlists */}
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
-                Currently Assigned Playlists ({assignedPlaylists.length})
+                {t('devices.modals.currentlyAssignedPlaylists')} ({assignedPlaylists.length})
               </label>
               {assignedPlaylists.length === 0 ? (
                 <p className="text-sm text-gray-500 dark:text-gray-400">
-                  No playlists assigned to this device yet.
+                  {t('devices.modals.noPlaylistsAssigned')}
                 </p>
               ) : (
                 <div className="space-y-2">
@@ -200,7 +201,7 @@ export function PlaylistAssignmentModal({
                         onClick={() => handleUnassign(assigned.playlist_id)}
                         disabled={unassignPlaylist.isPending}
                         className="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 disabled:opacity-50"
-                        title="Remove playlist"
+                        title={t('devices.modals.removePlaylist')}
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>

@@ -18,6 +18,7 @@ import { SharedLogger } from '@shared/logger';
 import { PlayerPlaybackLogger } from './player-playback-logger';
 import { playerWidgetRenderer } from './player-widget-renderer';
 import { ServiceRegistry, getPlayerMediaCache, getPlayerHLSCache } from '@shared/services/service-registry';
+import { transformContentUrl } from '@shared/config/network-detector';
 import type {
   PlayerVideoJS as IPlayerVideoJS,
   Playlist,
@@ -80,34 +81,7 @@ class PlayerVideoJSClass implements IPlayerVideoJS {
     controlBar: false,     // No controls for auto-play
   };
 
-  /**
-   * Transform content URL for LAN access (HTTPS → HTTP for local network)
-   * Prevents mixed content blocking when player runs on HTTP
-   */
-  private transformContentUrl(url: string): string {
-    if (!url) return url;
-
-    // Check if on local network
-    const hostname = window.location.hostname;
-    const isLocalNetwork =
-      hostname.startsWith('192.168.') ||
-      hostname.startsWith('10.') ||
-      hostname.startsWith('172.16.') ||
-      hostname === 'localhost' ||
-      hostname === '127.0.0.1';
-
-    // If on local network, replace HTTPS domain with HTTP local
-    if (isLocalNetwork) {
-      if (url.includes('https://api.zhmhotels.online')) {
-        const transformed = url.replace('https://api.zhmhotels.online', 'http://192.168.5.12:8001');
-        SharedLogger.log('[PlayerVideoJS] 🔄 URL transformed for LAN:', url, '→', transformed);
-        return transformed;
-      }
-    }
-
-    // No transformation needed
-    return url;
-  }
+  // Note: URL transformation now handled by @shared/config/network-detector
 
   /**
    * Create blob URL and track it for cleanup
@@ -270,7 +244,7 @@ class PlayerVideoJSClass implements IPlayerVideoJS {
     }
 
     // Transform URL for LAN access (HTTPS → HTTP for local network)
-    const videoUrl = this.transformContentUrl(rawVideoUrl);
+    const videoUrl = transformContentUrl(rawVideoUrl);
 
     try {
       const isHLS = videoUrl.includes('.m3u8');
@@ -410,7 +384,7 @@ class PlayerVideoJSClass implements IPlayerVideoJS {
     const rawImageUrl = item.content.file_path || item.content.url || '';
 
     // Transform URL for LAN access (HTTPS → HTTP for local network)
-    const imageUrl = this.transformContentUrl(rawImageUrl);
+    const imageUrl = transformContentUrl(rawImageUrl);
 
     // HYBRID STRATEGY: Check cache first
     const PlayerMediaCache = getPlayerMediaCache();
@@ -473,7 +447,7 @@ class PlayerVideoJSClass implements IPlayerVideoJS {
     const rawAudioUrl = item.content.file_path || item.content.url || '';
 
     // Transform URL for LAN access (HTTPS → HTTP for local network)
-    const audioUrl = this.transformContentUrl(rawAudioUrl);
+    const audioUrl = transformContentUrl(rawAudioUrl);
 
     // HYBRID STRATEGY: Check cache first
     const PlayerMediaCache = getPlayerMediaCache();

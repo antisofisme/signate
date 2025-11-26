@@ -86,6 +86,10 @@ services:
       JWT_SECRET: 07bc4fd46bc638bee245d1e777b9c80234e39a58f66a04c7a7ab8832083122f6
       ENCRYPTION_KEY: e779d259bfea9822d0fe994903dac28f
       CORS_ORIGINS: https://admin.zhmhotels.online,https://player.zhmhotels.online,https://api.zhmhotels.online,wss://api.zhmhotels.online
+      # Public URLs for content serving and cross-service communication
+      PUBLIC_BASE_URL: https://api.zhmhotels.online
+      CMS_URL: https://admin.zhmhotels.online
+      PLAYER_URL: https://player.zhmhotels.online
       ENVIRONMENT: production
       DEBUG: false
       LOG_LEVEL: info
@@ -119,6 +123,10 @@ services:
       SECRET_KEY: d5a744c062e254050dbc9405dc654f51b436ac5539b5e6b8997f86b56749c266
       JWT_SECRET: 07bc4fd46bc638bee245d1e777b9c80234e39a58f66a04c7a7ab8832083122f6
       ENCRYPTION_KEY: e779d259bfea9822d0fe994903dac28f
+      # Public URLs for thumbnail generation and content serving
+      PUBLIC_BASE_URL: https://api.zhmhotels.online
+      CMS_URL: https://admin.zhmhotels.online
+      PLAYER_URL: https://player.zhmhotels.online
       ENVIRONMENT: production
       DEBUG: false
       LOG_LEVEL: info

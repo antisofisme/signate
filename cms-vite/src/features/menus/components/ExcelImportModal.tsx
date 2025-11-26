@@ -1,14 +1,22 @@
 /**
  * Excel Import Modal Component
  * Upload Excel file to import menu items
+ *
+ * ✅ REFACTORED: Now uses shared Modal component
+ * - Fixed header (title)
+ * - Fixed footer (action buttons)
+ * - Scrollable content (download template, upload, results)
+ * - Click outside to close (disabled during import)
  */
 
 import { useState } from 'react';
-import { X, Upload, Download, CheckCircle, AlertCircle } from 'lucide-react';
+import { Upload, Download, CheckCircle, AlertCircle } from 'lucide-react';
+import { Modal } from '@/shared/components';
 import { useImportMenuItems, useDownloadTemplate } from '../hooks/useMenuImport';
 import type { MenuImportResult } from '../types/menu';
 
 interface ExcelImportModalProps {
+  isOpen: boolean;
   menuId: number;
   menuName: string;
   onClose: () => void;
@@ -16,6 +24,7 @@ interface ExcelImportModalProps {
 }
 
 export const ExcelImportModal = ({
+  isOpen,
   menuId,
   menuName,
   onClose,
@@ -71,19 +80,48 @@ export const ExcelImportModal = ({
     }
   };
 
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4">
-        {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b">
-          <h2 className="text-xl font-semibold">Import Menu Items</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
-            <X className="w-5 h-5" />
-          </button>
-        </div>
+  const handleClose = () => {
+    if (!importMutation.isPending) {
+      onClose();
+    }
+  };
 
-        {/* Content */}
-        <div className="p-6 space-y-6">
+  // Footer with action buttons
+  const footer = (
+    <div className="border-t border-gray-200 dark:border-gray-700 px-6 py-4">
+      <div className="flex justify-end space-x-3">
+        <button
+          type="button"
+          onClick={handleClose}
+          disabled={importMutation.isPending}
+          className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+        >
+          {importResult ? 'Close' : 'Cancel'}
+        </button>
+        {!importResult && (
+          <button
+            onClick={handleImport}
+            disabled={!selectedFile || importMutation.isPending}
+            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            {importMutation.isPending ? 'Importing...' : 'Import Items'}
+          </button>
+        )}
+      </div>
+    </div>
+  );
+
+  return (
+    <Modal
+      isOpen={isOpen}
+      onClose={handleClose}
+      title="Import Menu Items"
+      maxWidth="2xl"
+      footer={footer}
+      closeOnBackdropClick={!importMutation.isPending}
+    >
+      {/* Scrollable content */}
+      <div className="flex-1 overflow-y-auto p-6 space-y-6">
           {/* Menu Info */}
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
             <p className="text-sm text-blue-800">
@@ -203,27 +241,6 @@ export const ExcelImportModal = ({
             </div>
           )}
         </div>
-
-        {/* Actions */}
-        <div className="flex justify-end space-x-3 p-6 border-t">
-          <button
-            type="button"
-            onClick={onClose}
-            className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
-          >
-            {importResult ? 'Close' : 'Cancel'}
-          </button>
-          {!importResult && (
-            <button
-              onClick={handleImport}
-              disabled={!selectedFile || importMutation.isPending}
-              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {importMutation.isPending ? 'Importing...' : 'Import Items'}
-            </button>
-          )}
-        </div>
-      </div>
-    </div>
+    </Modal>
   );
 };

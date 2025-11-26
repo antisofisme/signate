@@ -7,6 +7,7 @@
  * - Simpler UX for quick edits
  */
 
+import { useTranslation } from 'react-i18next';
 import { Modal } from '@/shared/components';
 import { Settings } from 'lucide-react';
 import type { Device } from '../../types/device';
@@ -25,6 +26,8 @@ export function DeviceSettingsModal({
   onClose,
   onSuccess,
 }: DeviceSettingsModalProps) {
+  const { t } = useTranslation();
+
   if (!device) return null;
 
   const handleSuccess = () => {
@@ -43,7 +46,7 @@ export function DeviceSettingsModal({
           </div>
           <div>
             <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-              Device Settings
+              {t('devices.modals.deviceSettings')}
             </h2>
             <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
               {device.device_name}

@@ -6,6 +6,7 @@
  */
 
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ClipboardList, Calendar, Plus } from 'lucide-react';
 import {
   useSchedules,
@@ -33,6 +34,7 @@ type ViewMode = 'list' | 'calendar';
 type ModalMode = 'create' | 'edit' | 'view' | null;
 
 export const SchedulesPage = () => {
+  const { t } = useTranslation();
   const [viewMode, setViewMode] = useState<ViewMode>('list');
   const [modalMode, setModalMode] = useState<ModalMode>(null);
   const [selectedSchedule, setSelectedSchedule] = useState<Schedule | null>(null);
@@ -141,7 +143,7 @@ export const SchedulesPage = () => {
             }`}
           >
             <ClipboardList className="w-4 h-4" />
-            List
+            {t('schedules.page.listView')}
           </button>
           <button
             onClick={() => setViewMode('calendar')}
@@ -152,7 +154,7 @@ export const SchedulesPage = () => {
             }`}
           >
             <Calendar className="w-4 h-4" />
-            Calendar
+            {t('schedules.page.calendarView')}
           </button>
         </div>
 
@@ -162,7 +164,7 @@ export const SchedulesPage = () => {
           className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 flex items-center gap-2"
         >
           <Plus className="w-5 h-5" />
-          <span>Create Schedule</span>
+          <span>{t('schedules.createSchedule')}</span>
         </button>
       </div>
 
@@ -209,6 +211,7 @@ export const SchedulesPage = () => {
 
       {modalMode === 'view' && selectedSchedule && (
         <ScheduleViewModal
+          isOpen={modalMode === 'view'}
           schedule={selectedSchedule}
           onClose={() => {
             setModalMode(null);
@@ -220,6 +223,7 @@ export const SchedulesPage = () => {
 
       {showDeleteConfirm && selectedSchedule && (
         <ScheduleDeleteModal
+          isOpen={showDeleteConfirm}
           schedule={selectedSchedule}
           isDeleting={deleteMutation.isPending}
           onClose={() => {

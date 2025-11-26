@@ -4,6 +4,7 @@
  */
 
 import { Pencil, Trash2, Clock, FileText, List, Monitor, Plus, Loader2 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import type { Playlist } from '../types/playlist';
 
 interface PlaylistListProps {
@@ -25,6 +26,8 @@ export function PlaylistList({
   onManageAssignments,
   onCreateNew,
 }: PlaylistListProps) {
+  const { t } = useTranslation();
+
   const formatDuration = (seconds: number): string => {
     if (seconds === 0) return '0s';
     const hours = Math.floor(seconds / 3600);
@@ -55,17 +58,17 @@ export function PlaylistList({
         <div className="text-center py-12">
           <List className="w-12 h-12 text-gray-400 mx-auto mb-4" />
           <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
-            Belum ada playlist
+            {t('playlists.messages.noPlaylists')}
           </h3>
           <p className="text-gray-600 dark:text-gray-400 mb-4">
-            Mulai dengan membuat playlist pertama Anda
+            Start by creating your first playlist
           </p>
           <button
             onClick={onCreateNew}
             className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 inline-flex items-center gap-2"
           >
             <Plus className="w-4 h-4" />
-            Buat Playlist
+            {t('playlists.createPlaylist')}
           </button>
         </div>
       </div>
@@ -78,22 +81,22 @@ export function PlaylistList({
         <thead className="bg-gray-50 dark:bg-gray-700">
           <tr>
             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-              Nama Playlist
+              {t('playlists.name')}
             </th>
             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
               Status
             </th>
             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-              Prioritas
+              Priority
             </th>
             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-              Konten
+              {t('playlists.items')}
             </th>
             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-              Durasi
+              {t('playlists.duration')}
             </th>
             <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-              Aksi
+              {t('common.actions')}
             </th>
           </tr>
         </thead>

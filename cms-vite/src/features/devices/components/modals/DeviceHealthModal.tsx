@@ -6,6 +6,7 @@
  * Uses centralized Modal component
  */
 
+import { useTranslation } from 'react-i18next';
 import { Modal } from '@/shared/components';
 import { DeviceHealthDashboard } from '../DeviceHealthDashboard';
 import { DeviceCommandControl } from '../DeviceCommandControl';
@@ -18,13 +19,15 @@ interface DeviceHealthModalProps {
 }
 
 export function DeviceHealthModal({ isOpen, device, onClose }: DeviceHealthModalProps) {
+  const { t } = useTranslation();
+
   if (!device) return null;
 
   return (
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title="Device Health & Commands"
+      title={t('devices.modals.deviceHealth')}
       subtitle={`${device.device_name} (ID: ${device.id})`}
       maxWidth="6xl"
       footer={
@@ -33,7 +36,7 @@ export function DeviceHealthModal({ isOpen, device, onClose }: DeviceHealthModal
             onClick={onClose}
             className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
           >
-            Close
+            {t('common.close')}
           </button>
         </div>
       }

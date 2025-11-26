@@ -45,6 +45,7 @@ interface ScheduleFormProps {
   onSubmit: (data: CreateScheduleRequest | UpdateScheduleRequest) => void
   onCancel: () => void
   isLoading?: boolean
+  showButtons?: boolean // For modal usage - buttons can be in footer
 }
 
 interface Playlist {
@@ -63,6 +64,7 @@ export const ScheduleForm = ({
   onSubmit,
   onCancel,
   isLoading = false,
+  showButtons = true,
 }: ScheduleFormProps) => {
   const [playlists, setPlaylists] = useState<Playlist[]>([])
   const [devices, setDevices] = useState<Device[]>([])
@@ -187,7 +189,7 @@ export const ScheduleForm = ({
   }
 
   return (
-    <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-6">
+    <form id="schedule-form" onSubmit={handleSubmit(handleFormSubmit)} className="space-y-6">
       {/* Basic Information */}
       <div className="space-y-4">
         <h3 className="text-lg font-semibold text-gray-900">Basic Information</h3>
@@ -513,25 +515,27 @@ export const ScheduleForm = ({
         />
       )}
 
-      {/* Action Buttons */}
-      <div className="flex justify-end gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
-        <button
-          type="button"
-          onClick={onCancel}
-          disabled={isLoading}
-          className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50"
-        >
-          Cancel
-        </button>
-        <button
-          type="submit"
-          disabled={isLoading}
-          className="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 disabled:opacity-50 flex items-center gap-2"
-        >
-          {isLoading && <Loader2 className="animate-spin h-4 w-4" />}
-          {isEdit ? 'Update Schedule' : 'Create Schedule'}
-        </button>
-      </div>
+      {/* Action Buttons - Only rendered when showButtons is true */}
+      {showButtons && (
+        <div className="flex justify-end gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
+          <button
+            type="button"
+            onClick={onCancel}
+            disabled={isLoading}
+            className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            disabled={isLoading}
+            className="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 disabled:opacity-50 flex items-center gap-2"
+          >
+            {isLoading && <Loader2 className="animate-spin h-4 w-4" />}
+            {isEdit ? 'Update Schedule' : 'Create Schedule'}
+          </button>
+        </div>
+      )}
     </form>
   )
 }

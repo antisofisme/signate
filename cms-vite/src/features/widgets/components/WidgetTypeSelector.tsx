@@ -3,6 +3,7 @@
  * Select widget type with visual cards
  */
 
+import { Check } from 'lucide-react';
 import { WIDGET_TYPES, type WidgetType } from '../types/widget.types'
 import { renderIcon } from '@/shared/utils/iconHelper'
 
@@ -41,17 +42,7 @@ export const WidgetTypeSelector = ({
             {value === widgetType.type && (
               <div className="absolute top-2 right-2">
                 <div className="w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center">
-                  <svg
-                    className="w-3 h-3 text-white"
-                    fill="none"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth="2"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path d="M5 13l4 4L19 7"></path>
-                  </svg>
+                  <Check className="w-3 h-3 text-white" strokeWidth={3} />
                 </div>
               </div>
             )}

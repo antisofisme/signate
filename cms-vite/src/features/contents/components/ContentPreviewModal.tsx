@@ -8,6 +8,7 @@
  */
 
 import { useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { X, ZoomIn, ZoomOut, Download, Play, Pause, Volume2, VolumeX } from 'lucide-react';
 import type { Content } from '../types/content';
 
@@ -18,6 +19,7 @@ interface ContentPreviewModalProps {
 }
 
 export function ContentPreviewModal({ content, isOpen, onClose }: ContentPreviewModalProps) {
+  const { t } = useTranslation();
   const [zoom, setZoom] = useState(1);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
@@ -91,7 +93,7 @@ export function ContentPreviewModal({ content, isOpen, onClose }: ContentPreview
                 onClick={() => setZoom(Math.max(0.5, zoom - 0.25))}
                 disabled={zoom <= 0.5}
                 className="p-2 text-white hover:bg-gray-700 rounded disabled:opacity-50"
-                title="Zoom Out"
+                title={t('contents.preview.zoomOut')}
               >
                 <ZoomOut className="w-5 h-5" />
               </button>
@@ -103,7 +105,7 @@ export function ContentPreviewModal({ content, isOpen, onClose }: ContentPreview
                 onClick={() => setZoom(Math.min(3, zoom + 0.25))}
                 disabled={zoom >= 3}
                 className="p-2 text-white hover:bg-gray-700 rounded disabled:opacity-50"
-                title="Zoom In"
+                title={t('contents.preview.zoomIn')}
               >
                 <ZoomIn className="w-5 h-5" />
               </button>
@@ -124,16 +126,16 @@ export function ContentPreviewModal({ content, isOpen, onClose }: ContentPreview
                 onPause={() => setIsPlaying(false)}
                 onVolumeChange={(e) => setIsMuted(e.currentTarget.muted)}
               >
-                Your browser does not support video playback.
+                {t('contents.messages.videoNotSupported')}
               </video>
             </div>
 
             {/* Video Info */}
             <div className="text-white text-sm bg-gray-900/80 px-4 py-2 rounded-lg">
-              {content.resolution && <span>Resolution: {content.resolution}</span>}
-              <span className="ml-4">Duration: {formatDuration(content.duration)}</span>
+              {content.resolution && <span>{t('contents.preview.resolution', { resolution: content.resolution })}</span>}
+              <span className="ml-4">{t('contents.preview.duration', { duration: formatDuration(content.duration) })}</span>
               {content.hls_master_playlist_url && (
-                <span className="ml-4 text-green-400">HLS Streaming</span>
+                <span className="ml-4 text-green-400">{t('contents.preview.hlsStreaming')}</span>
               )}
             </div>
           </div>
@@ -160,11 +162,11 @@ export function ContentPreviewModal({ content, isOpen, onClose }: ContentPreview
                 onPause={() => setIsPlaying(false)}
                 onVolumeChange={(e) => setIsMuted(e.currentTarget.muted)}
               >
-                Your browser does not support audio playback.
+                {t('contents.messages.audioNotSupported')}
               </audio>
 
               <div className="mt-6 text-center text-white text-sm">
-                <p>Duration: {formatDuration(content.duration)}</p>
+                <p>{t('contents.preview.duration', { duration: formatDuration(content.duration) })}</p>
                 <p className="text-gray-100 opacity-75 mt-1">{content.mime_type}</p>
               </div>
             </div>
@@ -174,7 +176,7 @@ export function ContentPreviewModal({ content, isOpen, onClose }: ContentPreview
       default:
         return (
           <div className="flex items-center justify-center h-full text-white">
-            <p>Preview not available for this content type</p>
+            <p>{t('contents.messages.previewNotAvailable')}</p>
           </div>
         );
     }
@@ -197,7 +199,7 @@ export function ContentPreviewModal({ content, isOpen, onClose }: ContentPreview
             type="button"
             onClick={handleDownload}
             className="p-2 text-white hover:bg-gray-700 rounded-lg transition-colors"
-            title="Download"
+            title={t('contents.preview.download')}
           >
             <Download className="w-5 h-5" />
           </button>
@@ -206,7 +208,7 @@ export function ContentPreviewModal({ content, isOpen, onClose }: ContentPreview
             type="button"
             onClick={onClose}
             className="p-2 text-white hover:bg-gray-700 rounded-lg transition-colors"
-            title="Close (ESC)"
+            title={t('contents.preview.closeEsc')}
           >
             <X className="w-6 h-6" />
           </button>
@@ -220,8 +222,8 @@ export function ContentPreviewModal({ content, isOpen, onClose }: ContentPreview
       <div className="p-4 bg-gray-900/80 backdrop-blur-sm text-sm text-gray-300">
         <div className="flex items-center justify-between max-w-7xl mx-auto">
           <div className="flex items-center gap-6">
-            <span>Original: {content.original_filename}</span>
-            <span>Uploaded: {new Date(content.created_at).toLocaleDateString()}</span>
+            <span>{t('contents.preview.original', { filename: content.original_filename })}</span>
+            <span>{t('contents.preview.uploaded', { date: new Date(content.created_at).toLocaleDateString() })}</span>
             {content.transcoding_status !== 'completed' && (
               <span
                 className={`px-2 py-1 rounded text-xs ${
@@ -232,14 +234,15 @@ export function ContentPreviewModal({ content, isOpen, onClose }: ContentPreview
                       : 'bg-gray-500/20 text-gray-300'
                 }`}
               >
-                Transcoding: {content.transcoding_status}{' '}
-                {content.transcoding_progress > 0 && `(${content.transcoding_progress}%)`}
+                {t('contents.preview.transcoding', {
+                  status: `${content.transcoding_status}${content.transcoding_progress > 0 ? ` (${content.transcoding_progress}%)` : ''}`
+                })}
               </span>
             )}
           </div>
 
           <div className="text-gray-400">
-            Press <kbd className="px-2 py-1 bg-gray-700 rounded text-xs">ESC</kbd> to close
+            {t('contents.preview.pressEscToClose', { key: <kbd className="px-2 py-1 bg-gray-700 rounded text-xs">ESC</kbd> })}
           </div>
         </div>
       </div>

@@ -1,37 +1,87 @@
+// ✅ REFACTORED: Migrated to shared Modal component
 /**
  * Schedule View Modal Component
  * Display schedule details in a modal
  */
 
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { X } from 'lucide-react';
+import { Eye } from 'lucide-react';
+import { Modal } from '@/shared/components';
 import type { Schedule } from '../types/schedule.types';
+import { SchedulePreviewCalendar } from './SchedulePreviewCalendar';
+import { useNextOccurrences, useSchedulePreview } from '../hooks/useAdvancedSchedules';
 
 interface ScheduleViewModalProps {
+  isOpen: boolean;
   schedule: Schedule;
   onClose: () => void;
   onEdit: () => void;
 }
 
-export function ScheduleViewModal({ schedule, onClose, onEdit }: ScheduleViewModalProps) {
+export function ScheduleViewModal({ isOpen, schedule, onClose, onEdit }: ScheduleViewModalProps) {
   const { t } = useTranslation();
+  const [showPreview, setShowPreview] = useState(false);
+
+  // Map priority level to number
+  const priorityMap: Record<string, number> = {
+    low: 1,
+    normal: 2,
+    high: 3,
+    critical: 4
+  };
+
+  // Fetch next occurrences (raw data)
+  const { data: occurrencesData, isLoading: isLoadingPreview } = useNextOccurrences(
+    Number(schedule.id),
+    { enabled: showPreview && isOpen }
+  );
+
+  // Transform to preview format
+  const previewOccurrences = useSchedulePreview(
+    occurrencesData,
+    priorityMap[schedule.priority] || 2
+  );
+
+  // Footer with action buttons
+  const footer = (
+    <div className="flex justify-between gap-3 px-6 py-4 border-t border-gray-200 dark:border-gray-700">
+      {/* Left: Preview Button */}
+      <button
+        onClick={() => setShowPreview(!showPreview)}
+        className="px-4 py-2 flex items-center gap-2 border border-purple-300 dark:border-purple-600 text-purple-700 dark:text-purple-300 rounded-md hover:bg-purple-50 dark:hover:bg-purple-900/20"
+      >
+        <Eye className="w-4 h-4" />
+        {showPreview ? t('schedules.actions.hidePreview') : t('schedules.actions.showPreview')}
+      </button>
+
+      {/* Right: Edit & Close */}
+      <div className="flex gap-3">
+        <button
+          onClick={onEdit}
+          className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+        >
+          {t('schedules.actions.editSchedule')}
+        </button>
+        <button
+          onClick={onClose}
+          className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
+        >
+          {t('schedules.viewModal.close')}
+        </button>
+      </div>
+    </div>
+  );
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white dark:bg-gray-800 rounded-lg max-w-3xl w-full max-h-[90vh] overflow-y-auto">
-        <div className="sticky top-0 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-4 rounded-t-lg flex items-center justify-between">
-          <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-            {t('schedules.viewModal.title')}
-          </h2>
-          <button
-            onClick={onClose}
-            className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
-          >
-            <X className="w-6 h-6" />
-          </button>
-        </div>
-
-        <div className="p-6 space-y-6">
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      title={t('schedules.viewModal.title')}
+      footer={footer}
+      maxWidth="2xl"
+    >
+      <div className="flex-1 overflow-y-auto p-6 space-y-6">
           {/* Basic Info */}
           <div>
             <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">
@@ -158,24 +208,26 @@ export function ScheduleViewModal({ schedule, onClose, onEdit }: ScheduleViewMod
             </dl>
           </div>
 
-          {/* Actions */}
-          <div className="flex justify-end gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
-            <button
-              onClick={onEdit}
-              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-            >
-              {t('schedules.actions.editSchedule')}
-            </button>
-            <button
-              onClick={onClose}
-              className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
-            >
-              {t('schedules.viewModal.close')}
-            </button>
+        {/* Preview Calendar */}
+        {showPreview && (
+          <div className="pt-6 border-t border-gray-200 dark:border-gray-700">
+            {isLoadingPreview ? (
+              <div className="flex items-center justify-center py-8">
+                <div className="animate-spin h-8 w-8 border-4 border-purple-500 border-t-transparent rounded-full"></div>
+                <span className="ml-3 text-gray-600 dark:text-gray-400">{t('schedules.previewCalendar.loadingPreview')}</span>
+              </div>
+            ) : previewOccurrences.length > 0 ? (
+              <SchedulePreviewCalendar
+                occurrences={previewOccurrences}
+                playlistName={schedule.playlist_name}
+                priority={priorityMap[schedule.priority] || 2}
+                exceptionDates={schedule.exception_dates || []}
+              />
+            ) : null}
           </div>
-        </div>
+        )}
       </div>
-    </div>
+    </Modal>
   );
 }
 

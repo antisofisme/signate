@@ -7,6 +7,19 @@
  * - If hostname is domain HTTPS → Internet (use HTTPS domain)
  */
 
+// Network Configuration Constants
+// These are fallback values when environment variables are not configured
+const NETWORK_CONFIG = {
+  LAN: {
+    API_URL: import.meta.env.VITE_LAN_API_URL || 'http://192.168.5.12:8001',
+    WS_URL: import.meta.env.VITE_LAN_WS_URL || 'ws://192.168.5.12:8001',
+  },
+  INTERNET: {
+    API_URL: import.meta.env.VITE_INTERNET_API_URL || 'https://api.zhmhotels.online',
+    WS_URL: import.meta.env.VITE_INTERNET_WS_URL || 'wss://api.zhmhotels.online',
+  },
+} as const;
+
 /**
  * Check if hostname is a local IP (private network)
  */
@@ -61,11 +74,11 @@ export function getSmartApiUrl(envUrl?: string): string {
   if (isLocalNetwork()) {
     // Accessed via local IP → use local backend
     console.log('[CMS NetworkDetector] LAN detected - Using local backend');
-    return 'http://192.168.5.12:8001';
+    return NETWORK_CONFIG.LAN.API_URL;
   } else {
     // Accessed via domain → use HTTPS domain
     console.log('[CMS NetworkDetector] Internet access - Using HTTPS domain');
-    return 'https://api.zhmhotels.online';
+    return NETWORK_CONFIG.INTERNET.API_URL;
   }
 }
 
@@ -88,11 +101,11 @@ export function getSmartWebSocketUrl(envWsUrl?: string): string {
   if (isLocalNetwork()) {
     // Accessed via local IP → use local backend WebSocket
     console.log('[CMS NetworkDetector] LAN detected - Using local WebSocket');
-    return 'ws://192.168.5.12:8001';
+    return NETWORK_CONFIG.LAN.WS_URL;
   } else {
     // Accessed via domain → use WSS domain
     console.log('[CMS NetworkDetector] Internet access - Using WSS domain');
-    return 'wss://api.zhmhotels.online';
+    return NETWORK_CONFIG.INTERNET.WS_URL;
   }
 }
 

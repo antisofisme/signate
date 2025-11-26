@@ -208,14 +208,13 @@ export const MenuItemsManager = ({ menu, onClose }: MenuItemsManagerProps) => {
       </div>
 
       {/* Import Modal */}
-      {showImportModal && (
-        <ExcelImportModal
-          menuId={menu.id}
-          menuName={menu.name}
-          onClose={() => setShowImportModal(false)}
-          onSuccess={() => setShowImportModal(false)}
-        />
-      )}
+      <ExcelImportModal
+        isOpen={showImportModal}
+        menuId={menu.id}
+        menuName={menu.name}
+        onClose={() => setShowImportModal(false)}
+        onSuccess={() => setShowImportModal(false)}
+      />
     </>
   );
 };

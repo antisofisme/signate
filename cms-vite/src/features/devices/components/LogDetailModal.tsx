@@ -3,11 +3,18 @@
  *
  * Displays full details of a single console log entry
  * with syntax highlighting and copy-to-clipboard functionality
+ *
+ * ✅ REFACTORED: Now uses shared Modal component
+ * - Fixed header (title with badge and copy button)
+ * - Fixed footer (close button)
+ * - Scrollable content (metadata grid, message, stack trace)
+ * - Click outside to close
  */
 
-import { Copy, X, CheckCircle } from 'lucide-react';
+import { Copy, CheckCircle } from 'lucide-react';
 import { useState } from 'react';
 import { Badge } from '@/components/ui/badge';
+import { Modal } from '@/shared/components';
 import type { DeviceLog } from '../types/logs';
 import { LOG_LEVEL_COLORS } from '../types/logs';
 
@@ -48,60 +55,61 @@ ${log.stack_trace ? `Stack Trace:\n${log.stack_trace}` : ''}
     }
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Escape') {
-      onClose();
-    }
-  };
+  // Custom header with badge and copy button
+  const customHeader = (
+    <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
+      <div className="flex items-center gap-3">
+        <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+          Console Log Details
+        </h2>
+        <Badge className={LOG_LEVEL_COLORS[log.log_level]}>{log.log_level}</Badge>
+      </div>
+      <button
+        onClick={handleCopy}
+        className="px-3 py-1.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors flex items-center gap-2"
+        title="Copy log to clipboard"
+      >
+        {copied ? (
+          <>
+            <CheckCircle className="w-4 h-4 text-green-600" />
+            Copied!
+          </>
+        ) : (
+          <>
+            <Copy className="w-4 h-4" />
+            Copy
+          </>
+        )}
+      </button>
+    </div>
+  );
+
+  // Footer with close button
+  const footer = (
+    <div className="border-t border-gray-200 dark:border-gray-700 px-6 py-4 bg-gray-50 dark:bg-gray-900">
+      <div className="flex items-center justify-end">
+        <button
+          onClick={onClose}
+          className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+        >
+          Close
+        </button>
+      </div>
+    </div>
+  );
 
   return (
-    <div
-      className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
-      onClick={onClose}
-      onKeyDown={handleKeyDown}
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      maxWidth="4xl"
+      customHeader={customHeader}
+      footer={footer}
+      showCloseButton={false}
+      className="h-[90vh]"
     >
-      <div
-        className="bg-white dark:bg-gray-800 rounded-lg w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col"
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* Header */}
-        <div className="sticky top-0 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-4 flex items-center justify-between z-10">
-          <div className="flex items-center gap-3">
-            <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-              Console Log Details
-            </h2>
-            <Badge className={LOG_LEVEL_COLORS[log.log_level]}>{log.log_level}</Badge>
-          </div>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={handleCopy}
-              className="px-3 py-1.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors flex items-center gap-2"
-              title="Copy log to clipboard"
-            >
-              {copied ? (
-                <>
-                  <CheckCircle className="w-4 h-4 text-green-600" />
-                  Copied!
-                </>
-              ) : (
-                <>
-                  <Copy className="w-4 h-4" />
-                  Copy
-                </>
-              )}
-            </button>
-            <button
-              onClick={onClose}
-              className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
-              aria-label="Close modal"
-            >
-              <X className="w-5 h-5" />
-            </button>
-          </div>
-        </div>
-
-        {/* Content */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-6">
+      {/* Scrollable content */}
+      <div className="flex-1 overflow-y-auto p-6 space-y-6">
           {/* Metadata Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-gray-50 dark:bg-gray-900 rounded-lg">
             <div>
@@ -197,17 +205,6 @@ ${log.stack_trace ? `Stack Trace:\n${log.stack_trace}` : ''}
             </div>
           )}
         </div>
-
-        {/* Footer */}
-        <div className="sticky bottom-0 bg-gray-50 dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700 px-6 py-4 flex items-center justify-end">
-          <button
-            onClick={onClose}
-            className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-          >
-            Close
-          </button>
-        </div>
-      </div>
-    </div>
+    </Modal>
   );
 }

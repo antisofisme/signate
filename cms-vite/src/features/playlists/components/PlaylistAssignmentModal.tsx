@@ -7,10 +7,18 @@
  * - Assign to tags (multi-select)
  * - Unassign from devices/tags
  * - Tabs for Devices and Tags
+ *
+ * ✅ REFACTORED: Now uses shared Modal component
+ * - Fixed header (title with playlist name subtitle)
+ * - Fixed footer (close button)
+ * - Scrollable content (tabs + assignment lists)
+ * - Click outside to close (disabled during operations)
  */
 
 import { useState } from 'react';
-import { X, Monitor, Tag, Plus, Trash2 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
+import { Monitor, Tag, Plus, Trash2 } from 'lucide-react';
+import { Modal } from '@/shared/components';
 import { toast } from 'sonner';
 import {
   usePlaylistAssignments,
@@ -35,6 +43,7 @@ export default function PlaylistAssignmentModal({
   isOpen,
   onClose,
 }: PlaylistAssignmentModalProps) {
+  const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState<TabType>('devices');
   const [showAddDevices, setShowAddDevices] = useState(false);
   const [showAddTags, setShowAddTags] = useState(false);
@@ -54,7 +63,7 @@ export default function PlaylistAssignmentModal({
 
   const handleAssignDevices = async () => {
     if (selectedDeviceIds.length === 0) {
-      toast.error('Please select at least one device');
+      toast.error(t('playlists.assignmentModal.selectAtLeastOneDevice'));
       return;
     }
 
@@ -72,7 +81,7 @@ export default function PlaylistAssignmentModal({
 
   const handleAssignTags = async () => {
     if (selectedTagIds.length === 0) {
-      toast.error('Please select at least one tag');
+      toast.error(t('playlists.assignmentModal.selectAtLeastOneTag'));
       return;
     }
 
@@ -89,7 +98,7 @@ export default function PlaylistAssignmentModal({
   };
 
   const handleUnassignDevice = async (deviceId: number) => {
-    if (!confirm('Unassign this playlist from the device?')) return;
+    if (!confirm(t('playlists.assignmentModal.devices.confirmUnassign'))) return;
 
     try {
       await unassignDevices.mutateAsync({
@@ -102,7 +111,7 @@ export default function PlaylistAssignmentModal({
   };
 
   const handleUnassignTag = async (tagId: number) => {
-    if (!confirm('Unassign this playlist from the tag?')) return;
+    if (!confirm(t('playlists.assignmentModal.tags.confirmUnassign'))) return;
 
     try {
       await unassignTags.mutateAsync({
@@ -138,29 +147,53 @@ export default function PlaylistAssignmentModal({
     (tag) => !assignedTags.some((t) => t.id === tag.id)
   );
 
-  return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-3xl w-full max-h-[90vh] flex flex-col">
-        {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b dark:border-gray-700">
-          <div>
-            <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-              Playlist Assignments
-            </h2>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-              {playlistName}
-            </p>
-          </div>
-          <button
-            onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
+  const isOperationPending =
+    assignDevices.isPending ||
+    assignTags.isPending ||
+    unassignDevices.isPending ||
+    unassignTags.isPending;
 
+  // Custom header with subtitle
+  const customHeader = (
+    <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+      <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+        {t('playlists.assignmentModal.title')}
+      </h2>
+      <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+        {playlistName}
+      </p>
+    </div>
+  );
+
+  // Footer with close button
+  const footer = (
+    <div className="border-t border-gray-200 dark:border-gray-700 px-6 py-4">
+      <div className="flex justify-end">
+        <button
+          onClick={onClose}
+          disabled={isOperationPending}
+          className="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 disabled:opacity-50 transition-colors"
+        >
+          {t('playlists.assignmentModal.close')}
+        </button>
+      </div>
+    </div>
+  );
+
+  return (
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      maxWidth="4xl"
+      customHeader={customHeader}
+      footer={footer}
+      closeOnBackdropClick={!isOperationPending}
+      className="h-[90vh]"
+    >
+      {/* Scrollable content */}
+      <div className="flex-1 overflow-y-auto">
         {/* Tabs */}
-        <div className="flex border-b dark:border-gray-700">
+        <div className="flex border-b dark:border-gray-700 sticky top-0 bg-white dark:bg-gray-800 z-10">
           <button
             onClick={() => setActiveTab('devices')}
             className={`flex-1 px-6 py-3 font-medium flex items-center justify-center gap-2 ${
@@ -170,7 +203,7 @@ export default function PlaylistAssignmentModal({
             }`}
           >
             <Monitor className="w-4 h-4" />
-            Devices ({assignedDevices.length})
+            {t('playlists.assignmentModal.tabs.devices', { count: assignedDevices.length })}
           </button>
           <button
             onClick={() => setActiveTab('tags')}
@@ -181,15 +214,15 @@ export default function PlaylistAssignmentModal({
             }`}
           >
             <Tag className="w-4 h-4" />
-            Tags ({assignedTags.length})
+            {t('playlists.assignmentModal.tabs.tags', { count: assignedTags.length })}
           </button>
         </div>
 
-        {/* Content */}
-        <div className="flex-1 overflow-y-auto p-6">
+        {/* Tab Content */}
+        <div className="p-6">
           {isLoading ? (
             <div className="text-center py-8 text-gray-500 dark:text-gray-400">
-              Loading assignments...
+              {t('playlists.assignmentModal.loading')}
             </div>
           ) : activeTab === 'devices' ? (
             <>
@@ -197,13 +230,13 @@ export default function PlaylistAssignmentModal({
               {showAddDevices ? (
                 <div className="mb-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
                   <h3 className="font-medium text-gray-900 dark:text-white mb-3">
-                    Assign to Devices
+                    {t('playlists.assignmentModal.devices.assignToDevices')}
                   </h3>
 
                   <div className="space-y-2 max-h-48 overflow-y-auto mb-4">
                     {availableDevices.length === 0 ? (
                       <p className="text-sm text-gray-500 dark:text-gray-400">
-                        No available devices to assign
+                        {t('playlists.assignmentModal.devices.noAvailableDevices')}
                       </p>
                     ) : (
                       availableDevices.map((device) => (
@@ -231,7 +264,7 @@ export default function PlaylistAssignmentModal({
                               {device.device_name}
                             </p>
                             <p className="text-sm text-gray-500 dark:text-gray-400">
-                              Status: {device.status}
+                              {t('playlists.assignmentModal.devices.status', { status: device.status })}
                             </p>
                           </div>
                         </label>
@@ -246,8 +279,13 @@ export default function PlaylistAssignmentModal({
                       className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       {assignDevices.isPending
-                        ? 'Assigning...'
-                        : `Assign ${selectedDeviceIds.length} device(s)`}
+                        ? t('playlists.assignmentModal.devices.assigning')
+                        : t(
+                            selectedDeviceIds.length > 1
+                              ? 'playlists.assignmentModal.devices.assignDevices_plural'
+                              : 'playlists.assignmentModal.devices.assignDevices',
+                            { count: selectedDeviceIds.length }
+                          )}
                     </button>
                     <button
                       onClick={() => {
@@ -256,7 +294,7 @@ export default function PlaylistAssignmentModal({
                       }}
                       className="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600"
                     >
-                      Cancel
+                      {t('playlists.assignmentModal.cancel')}
                     </button>
                   </div>
                 </div>
@@ -266,19 +304,21 @@ export default function PlaylistAssignmentModal({
                   className="mb-6 w-full p-4 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg hover:border-blue-500 dark:hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors flex items-center justify-center gap-2 text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400"
                 >
                   <Plus className="w-5 h-5" />
-                  Assign to Devices
+                  {t('playlists.assignmentModal.devices.assignToDevices')}
                 </button>
               )}
 
               {/* Current Devices */}
               <div className="space-y-2">
                 <h3 className="font-medium text-gray-900 dark:text-white mb-3">
-                  Assigned Devices ({assignedDevices.length})
+                  {t('playlists.assignmentModal.devices.assignedDevices', {
+                    count: assignedDevices.length,
+                  })}
                 </h3>
 
                 {assignedDevices.length === 0 ? (
                   <div className="text-center py-8 text-gray-500 dark:text-gray-400">
-                    Not assigned to any devices yet
+                    {t('playlists.assignmentModal.devices.notAssignedYet')}
                   </div>
                 ) : (
                   assignedDevices.map((assignment) => (
@@ -289,10 +329,17 @@ export default function PlaylistAssignmentModal({
                       <Monitor className="w-5 h-5 text-gray-400 flex-shrink-0" />
                       <div className="flex-1 min-w-0">
                         <p className="font-medium text-gray-900 dark:text-white">
-                          {assignment.device_name || `Device #${assignment.device_id}`}
+                          {assignment.device_name ||
+                            t('playlists.assignmentModal.devices.deviceFallback', {
+                              id: assignment.device_id,
+                            })}
                         </p>
                         <p className="text-sm text-gray-500 dark:text-gray-400">
-                          {assignment.location ? `Location: ${assignment.location}` : 'No location set'}
+                          {assignment.location
+                            ? t('playlists.assignmentModal.devices.location', {
+                                location: assignment.location,
+                              })
+                            : t('playlists.assignmentModal.devices.noLocation')}
                         </p>
                       </div>
                       <button
@@ -313,13 +360,13 @@ export default function PlaylistAssignmentModal({
               {showAddTags ? (
                 <div className="mb-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
                   <h3 className="font-medium text-gray-900 dark:text-white mb-3">
-                    Assign to Tags
+                    {t('playlists.assignmentModal.tags.assignToTags')}
                   </h3>
 
                   <div className="space-y-2 max-h-48 overflow-y-auto mb-4">
                     {availableTags.length === 0 ? (
                       <p className="text-sm text-gray-500 dark:text-gray-400">
-                        No available tags to assign
+                        {t('playlists.assignmentModal.tags.noAvailableTags')}
                       </p>
                     ) : (
                       availableTags.map((tag) => (
@@ -362,8 +409,13 @@ export default function PlaylistAssignmentModal({
                       className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       {assignTags.isPending
-                        ? 'Assigning...'
-                        : `Assign ${selectedTagIds.length} tag(s)`}
+                        ? t('playlists.assignmentModal.tags.assigning')
+                        : t(
+                            selectedTagIds.length > 1
+                              ? 'playlists.assignmentModal.tags.assignTags_plural'
+                              : 'playlists.assignmentModal.tags.assignTags',
+                            { count: selectedTagIds.length }
+                          )}
                     </button>
                     <button
                       onClick={() => {
@@ -372,7 +424,7 @@ export default function PlaylistAssignmentModal({
                       }}
                       className="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600"
                     >
-                      Cancel
+                      {t('playlists.assignmentModal.cancel')}
                     </button>
                   </div>
                 </div>
@@ -382,19 +434,19 @@ export default function PlaylistAssignmentModal({
                   className="mb-6 w-full p-4 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg hover:border-blue-500 dark:hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors flex items-center justify-center gap-2 text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400"
                 >
                   <Plus className="w-5 h-5" />
-                  Assign to Tags
+                  {t('playlists.assignmentModal.tags.assignToTags')}
                 </button>
               )}
 
               {/* Current Tags */}
               <div className="space-y-2">
                 <h3 className="font-medium text-gray-900 dark:text-white mb-3">
-                  Assigned Tags ({assignedTags.length})
+                  {t('playlists.assignmentModal.tags.assignedTags', { count: assignedTags.length })}
                 </h3>
 
                 {assignedTags.length === 0 ? (
                   <div className="text-center py-8 text-gray-500 dark:text-gray-400">
-                    Not assigned to any tags yet
+                    {t('playlists.assignmentModal.tags.notAssignedYet')}
                   </div>
                 ) : (
                   assignedTags.map((assignment) => (
@@ -408,10 +460,11 @@ export default function PlaylistAssignmentModal({
                       />
                       <div className="flex-1 min-w-0">
                         <p className="font-medium text-gray-900 dark:text-white">
-                          {assignment.name || `Tag #${assignment.id}`}
+                          {assignment.name ||
+                            t('playlists.assignmentModal.tags.tagFallback', { id: assignment.id })}
                         </p>
                         <p className="text-sm text-gray-500 dark:text-gray-400">
-                          Tag ID: {assignment.id}
+                          {t('playlists.assignmentModal.tags.tagId', { id: assignment.id })}
                         </p>
                       </div>
                       <button
@@ -428,17 +481,7 @@ export default function PlaylistAssignmentModal({
             </>
           )}
         </div>
-
-        {/* Footer */}
-        <div className="flex justify-end gap-3 p-6 border-t dark:border-gray-700">
-          <button
-            onClick={onClose}
-            className="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600"
-          >
-            Close
-          </button>
-        </div>
       </div>
-    </div>
+    </Modal>
   );
 }

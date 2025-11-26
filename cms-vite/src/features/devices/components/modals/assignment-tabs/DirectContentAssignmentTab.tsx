@@ -5,6 +5,7 @@
  */
 
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Trash2, Loader2, Star, Image, Video, Music, ArrowRight, GripVertical, FileText } from 'lucide-react';
 import { toast } from 'sonner';
 import { useQueryClient } from '@tanstack/react-query';
@@ -50,6 +51,7 @@ interface SortableItemProps {
 }
 
 function SortableItem({ assigned, content, Icon, onUnassign, isUnassigning }: SortableItemProps) {
+  const { t } = useTranslation();
   const {
     attributes,
     listeners,
@@ -123,7 +125,7 @@ function SortableItem({ assigned, content, Icon, onUnassign, isUnassigning }: So
           onClick={() => onUnassign(assigned.content_id)}
           disabled={isUnassigning}
           className="opacity-0 group-hover:opacity-100 flex-shrink-0 p-2 rounded-lg bg-red-600 text-white hover:bg-red-700 disabled:opacity-50 transition-all"
-          title="Remove from device"
+          title={t('devices.modals.removeFromDevice')}
         >
           <Trash2 className="w-4 h-4" />
         </button>
@@ -133,6 +135,7 @@ function SortableItem({ assigned, content, Icon, onUnassign, isUnassigning }: So
 }
 
 export function DirectContentAssignmentTab({ device }: DirectContentAssignmentTabProps) {
+  const { t } = useTranslation();
   const [priority, setPriority] = useState<number>(1);
   const [sortedItems, setSortedItems] = useState<any[]>([]);
   const queryClient = useQueryClient();
@@ -280,7 +283,7 @@ export function DirectContentAssignmentTab({ device }: DirectContentAssignmentTa
       queryClient.invalidateQueries({ queryKey: ['devices', 'detail', device.id] });
       queryClient.invalidateQueries({ queryKey: ['devices', 'list'] });
 
-      toast.success('Priority updated successfully');
+      toast.success(t('devices.modals.priorityUpdatedSuccess'));
     } catch (error) {
       // Rollback on error
       setSortedItems(originalOrder);
@@ -291,7 +294,7 @@ export function DirectContentAssignmentTab({ device }: DirectContentAssignmentTa
         exact: true
       });
 
-      toast.error('Failed to update priority');
+      toast.error(t('devices.modals.priorityUpdateFailed'));
       console.error('Failed to update priorities:', error);
     }
   };
@@ -303,13 +306,12 @@ export function DirectContentAssignmentTab({ device }: DirectContentAssignmentTa
       {/* Priority Selector */}
       <div className="mb-4 flex items-center justify-between bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
         <p className="text-sm text-blue-700 dark:text-blue-300">
-          <strong>Priority 1 (Highest):</strong> Direct assignments override tag-based and playlist
-          assignments. Drag and drop items to reorder.
+          <strong>{t('devices.modals.priority1Highest')}:</strong> {t('devices.modals.priority1Info')}
         </p>
         <div className="flex items-center gap-2 ml-4">
           <label className="text-sm font-medium text-gray-700 dark:text-gray-300 flex items-center gap-1 whitespace-nowrap">
             <Star className="w-4 h-4" />
-            Priority:
+            {t('devices.modals.priorityLabel')}:
           </label>
           <input
             type="number"
@@ -333,11 +335,11 @@ export function DirectContentAssignmentTab({ device }: DirectContentAssignmentTa
           <div className="border-r border-gray-200 dark:border-gray-700 pr-4">
             <h4 className="font-semibold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
               <FileText className="w-4 h-4" />
-              Available Content ({availableContents.length})
+              {t('devices.modals.availableContent')} ({availableContents.length})
             </h4>
             {availableContents.length === 0 ? (
               <p className="text-sm text-gray-500 dark:text-gray-400">
-                All content is already assigned.
+                {t('devices.modals.allContentAssigned')}
               </p>
             ) : (
               <div className="space-y-2 max-h-[400px] overflow-y-auto">
@@ -383,7 +385,7 @@ export function DirectContentAssignmentTab({ device }: DirectContentAssignmentTa
                           }}
                           disabled={assignContent.isPending}
                           className="opacity-0 group-hover:opacity-100 flex-shrink-0 p-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 transition-all"
-                          title="Assign to device"
+                          title={t('devices.modals.assignToDevice')}
                         >
                           <ArrowRight className="w-4 h-4" />
                         </button>
@@ -399,10 +401,10 @@ export function DirectContentAssignmentTab({ device }: DirectContentAssignmentTa
           <div className="pl-4">
             <h4 className="font-semibold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
               <GripVertical className="w-4 h-4 text-gray-400" />
-              Assigned Content ({sortedItems.length})
+              {t('devices.modals.assignedContent')} ({sortedItems.length})
             </h4>
             {sortedItems.length === 0 ? (
-              <p className="text-sm text-gray-500 dark:text-gray-400">No content assigned yet.</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400">{t('devices.modals.noContentAssigned')}</p>
             ) : (
               <DndContext
                 sensors={sensors}

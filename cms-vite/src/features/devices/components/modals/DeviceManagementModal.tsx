@@ -11,6 +11,7 @@
  */
 
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   LayoutDashboard,
   Activity,
@@ -36,24 +37,6 @@ interface DeviceManagementModalProps {
   onRefresh?: () => void;
 }
 
-const DEVICE_TABS: Tab[] = [
-  {
-    id: 'overview',
-    label: 'Overview',
-    icon: LayoutDashboard,
-  },
-  {
-    id: 'health',
-    label: 'Health',
-    icon: Activity,
-  },
-  {
-    id: 'commands',
-    label: 'Commands',
-    icon: TerminalIcon,
-  },
-];
-
 export function DeviceManagementModal({
   isOpen,
   device,
@@ -61,6 +44,25 @@ export function DeviceManagementModal({
   onClose,
   onRefresh,
 }: DeviceManagementModalProps) {
+  const { t } = useTranslation();
+
+  const DEVICE_TABS: Tab[] = [
+    {
+      id: 'overview',
+      label: t('devices.modals.overview'),
+      icon: LayoutDashboard,
+    },
+    {
+      id: 'health',
+      label: t('devices.modals.health'),
+      icon: Activity,
+    },
+    {
+      id: 'commands',
+      label: t('devices.modals.commands'),
+      icon: TerminalIcon,
+    },
+  ];
   const [activeTab, setActiveTab] = useState<DeviceTabId>(defaultTab);
 
   if (!device) return null;

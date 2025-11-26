@@ -14,7 +14,6 @@ import {
   Monitor as MonitorIcon,
   Volume2,
   RotateCcw,
-  Activity,
   FileText,
   Zap,
   RotateCw,
@@ -24,6 +23,7 @@ import {
 import type { Device } from '../../../types/device';
 import { useSendCommand } from '../../../hooks/useDevices';
 import { toast } from 'sonner';
+import { MiniHealthSnapshot } from '../../MiniHealthSnapshot';
 
 interface OverviewTabProps {
   device: Device;
@@ -235,30 +235,11 @@ export function OverviewTab({ device, isOnline, onRefresh }: OverviewTabProps) {
           </div>
         )}
 
-        {/* Health Summary Card */}
-        <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
-          <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3 flex items-center gap-2">
-            <Activity className="w-4 h-4" />
-            Health Status
-          </h4>
-          <div className="space-y-2 text-sm">
-            <div className="flex justify-between">
-              <span className="text-gray-500 dark:text-gray-400">Overall:</span>
-              <span
-                className={`font-medium ${
-                  isOnline
-                    ? 'text-green-600 dark:text-green-400'
-                    : 'text-red-600 dark:text-red-400'
-                }`}
-              >
-                {isOnline ? 'Healthy' : 'Offline'}
-              </span>
-            </div>
-            <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
-              View Health tab for detailed metrics
-            </p>
-          </div>
-        </div>
+        {/* Mini Health Snapshot */}
+        <MiniHealthSnapshot
+          deviceId={device.id}
+          isOnline={isOnline}
+        />
 
         {/* Timestamps Card */}
         <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">

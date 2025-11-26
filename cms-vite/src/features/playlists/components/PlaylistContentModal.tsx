@@ -7,10 +7,18 @@
  * - Remove content items
  * - Reorder content with drag & drop
  * - Edit duration per item
+ *
+ * ✅ REFACTORED: Now uses shared Modal component
+ * - Fixed header (title + subtitle)
+ * - Fixed footer (close button)
+ * - Scrollable content (content management)
+ * - Click outside to close
  */
 
 import { useState, useEffect } from 'react';
-import { X, Plus, Trash2, GripVertical, Clock } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
+import { Plus, Trash2, GripVertical, Clock } from 'lucide-react';
+import { Modal } from '@/shared/components';
 import { toast } from 'sonner';
 import {
   usePlaylistContent,
@@ -44,6 +52,7 @@ export default function PlaylistContentModal({
   isOpen,
   onClose,
 }: PlaylistContentModalProps) {
+  const { t } = useTranslation();
   const [showAddContent, setShowAddContent] = useState(false);
   const [selectedContentIds, setSelectedContentIds] = useState<number[]>([]);
   const [editingDuration, setEditingDuration] = useState<{ [key: number]: number }>({});
@@ -77,7 +86,7 @@ export default function PlaylistContentModal({
 
   const handleAddContent = async () => {
     if (selectedContentIds.length === 0) {
-      toast.error('Please select at least one content item');
+      toast.error(t('playlists.contentModal.selectAtLeastOne'));
       return;
     }
 
@@ -94,7 +103,7 @@ export default function PlaylistContentModal({
   };
 
   const handleRemoveContent = async (itemId: number) => {
-    if (!confirm('Remove this content from playlist?')) return;
+    if (!confirm(t('playlists.contentModal.confirmRemove'))) return;
 
     try {
       await removeContent.mutateAsync({
@@ -138,7 +147,7 @@ export default function PlaylistContentModal({
         id: playlistId,
         data: { content_items: reorderedItems },
       });
-      toast.success('Content reordered successfully');
+      toast.success(t('playlists.contentModal.reorderedSuccess'));
     } catch (error) {
       // Revert on error
       if (contentData?.items) {
@@ -171,7 +180,7 @@ export default function PlaylistContentModal({
         id: playlistId,
         data: { content_items: reorderedItems },
       });
-      toast.success('Duration updated');
+      toast.success(t('playlists.contentModal.durationUpdated'));
       setEditingDuration((prev) => {
         const { [itemId]: _, ...rest } = prev;
         return rest;
@@ -185,40 +194,55 @@ export default function PlaylistContentModal({
     (content) => !localContent.some((item) => item.content_id === content.id)
   );
 
-  return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] flex flex-col">
-        {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b dark:border-gray-700">
-          <div>
-            <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-              Manage Content
-            </h2>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-              {playlistName}
-            </p>
-          </div>
-          <button
-            onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
+  // Custom header with subtitle
+  const customHeader = (
+    <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+      <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+        {t('playlists.contentModal.title')}
+      </h2>
+      <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+        {playlistName}
+      </p>
+    </div>
+  );
 
-        {/* Content */}
-        <div className="flex-1 overflow-y-auto p-6">
+  // Footer with close button
+  const footer = (
+    <div className="border-t border-gray-200 dark:border-gray-700 px-6 py-4">
+      <div className="flex justify-end">
+        <button
+          type="button"
+          onClick={onClose}
+          className="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
+        >
+          {t('playlists.contentModal.close')}
+        </button>
+      </div>
+    </div>
+  );
+
+  return (
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      maxWidth="4xl"
+      customHeader={customHeader}
+      footer={footer}
+      className="h-[90vh]"
+    >
+      {/* Scrollable content */}
+      <div className="flex-1 overflow-y-auto p-6">
           {/* Add Content Section */}
           {showAddContent ? (
             <div className="mb-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
               <h3 className="font-medium text-gray-900 dark:text-white mb-3">
-                Add Content to Playlist
+                {t('playlists.contentModal.addContentToPlaylist')}
               </h3>
 
               <div className="space-y-2 max-h-64 overflow-y-auto mb-4">
                 {availableContents.length === 0 ? (
                   <p className="text-sm text-gray-500 dark:text-gray-400">
-                    No available content to add
+                    {t('playlists.contentModal.noAvailableContent')}
                   </p>
                 ) : (
                   availableContents.map((content) => (
@@ -259,7 +283,14 @@ export default function PlaylistContentModal({
                   disabled={selectedContentIds.length === 0 || addContent.isPending}
                   className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {addContent.isPending ? 'Adding...' : `Add ${selectedContentIds.length} item(s)`}
+                  {addContent.isPending
+                    ? t('playlists.contentModal.adding')
+                    : t(
+                        selectedContentIds.length > 1
+                          ? 'playlists.contentModal.addItems_plural'
+                          : 'playlists.contentModal.addItems',
+                        { count: selectedContentIds.length }
+                      )}
                 </button>
                 <button
                   onClick={() => {
@@ -268,7 +299,7 @@ export default function PlaylistContentModal({
                   }}
                   className="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600"
                 >
-                  Cancel
+                  {t('playlists.contentModal.cancel')}
                 </button>
               </div>
             </div>
@@ -278,23 +309,23 @@ export default function PlaylistContentModal({
               className="mb-6 w-full p-4 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg hover:border-blue-500 dark:hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors flex items-center justify-center gap-2 text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400"
             >
               <Plus className="w-5 h-5" />
-              Add Content
+              {t('playlists.contentModal.addContent')}
             </button>
           )}
 
           {/* Current Content List */}
           <div className="space-y-2">
             <h3 className="font-medium text-gray-900 dark:text-white mb-3">
-              Content Items ({localContent.length})
+              {t('playlists.contentModal.contentItems', { count: localContent.length })}
             </h3>
 
             {loadingContent ? (
               <div className="text-center py-8 text-gray-500 dark:text-gray-400">
-                Loading content...
+                {t('playlists.contentModal.loading')}
               </div>
             ) : localContent.length === 0 ? (
               <div className="text-center py-8 text-gray-500 dark:text-gray-400">
-                No content in this playlist yet
+                {t('playlists.contentModal.noContentYet')}
               </div>
             ) : (
               localContent.map((item, index) => (
@@ -312,10 +343,12 @@ export default function PlaylistContentModal({
 
                   <div className="flex-1 min-w-0">
                     <p className="font-medium text-gray-900 dark:text-white truncate">
-                      {item.content_name || `Content #${item.content_id}`}
+                      {item.content_name ||
+                        t('playlists.contentModal.contentFallback', { id: item.content_id })}
                     </p>
                     <p className="text-sm text-gray-500 dark:text-gray-400">
-                      {item.content_type} • Position: {index + 1}
+                      {item.content_type} •{' '}
+                      {t('playlists.contentModal.position', { position: index + 1 })}
                     </p>
                   </div>
 
@@ -350,17 +383,6 @@ export default function PlaylistContentModal({
             )}
           </div>
         </div>
-
-        {/* Footer */}
-        <div className="flex justify-end gap-3 p-6 border-t dark:border-gray-700">
-          <button
-            onClick={onClose}
-            className="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600"
-          >
-            Close
-          </button>
-        </div>
-      </div>
-    </div>
+    </Modal>
   );
 }

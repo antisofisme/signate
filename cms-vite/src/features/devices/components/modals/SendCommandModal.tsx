@@ -6,6 +6,7 @@
  */
 
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Send, Loader2, Zap, RotateCw, Camera, Volume2, Sun } from 'lucide-react';
 import { Modal } from '@/shared/components';
 import { useSendCommand } from '../../hooks/useDevices';
@@ -18,55 +19,56 @@ interface SendCommandModalProps {
   onSuccess?: () => void;
 }
 
-const COMMAND_OPTIONS = [
-  {
-    type: 'reboot' as const,
-    label: 'Reboot Device',
-    description: 'Restart the device completely',
-    icon: RotateCw,
-    color: 'orange',
-    params: [],
-  },
-  {
-    type: 'refresh' as const,
-    label: 'Refresh Content',
-    description: 'Reload current content without restarting',
-    icon: Zap,
-    color: 'blue',
-    params: [],
-  },
-  {
-    type: 'screenshot' as const,
-    label: 'Take Screenshot',
-    description: 'Capture current display',
-    icon: Camera,
-    color: 'purple',
-    params: [],
-  },
-  {
-    type: 'volume' as const,
-    label: 'Set Volume',
-    description: 'Adjust audio volume level',
-    icon: Volume2,
-    color: 'green',
-    params: [{ name: 'level', type: 'number', min: 0, max: 100, default: 50 }],
-  },
-  {
-    type: 'brightness' as const,
-    label: 'Set Brightness',
-    description: 'Adjust screen brightness',
-    icon: Sun,
-    color: 'yellow',
-    params: [{ name: 'level', type: 'number', min: 0, max: 100, default: 100 }],
-  },
-];
-
 export function SendCommandModal({
   isOpen,
   device,
   onClose,
   onSuccess,
 }: SendCommandModalProps) {
+  const { t } = useTranslation();
+
+  const COMMAND_OPTIONS = [
+    {
+      type: 'reboot' as const,
+      label: t('devices.modals.commands.reboot'),
+      description: t('devices.modals.commands.rebootDesc'),
+      icon: RotateCw,
+      color: 'orange',
+      params: [],
+    },
+    {
+      type: 'refresh' as const,
+      label: t('devices.modals.commands.refresh'),
+      description: t('devices.modals.commands.refreshDesc'),
+      icon: Zap,
+      color: 'blue',
+      params: [],
+    },
+    {
+      type: 'screenshot' as const,
+      label: t('devices.modals.commands.screenshot'),
+      description: t('devices.modals.commands.screenshotDesc'),
+      icon: Camera,
+      color: 'purple',
+      params: [],
+    },
+    {
+      type: 'volume' as const,
+      label: t('devices.modals.commands.volume'),
+      description: t('devices.modals.commands.volumeDesc'),
+      icon: Volume2,
+      color: 'green',
+      params: [{ name: t('devices.modals.commands.level'), type: 'number', min: 0, max: 100, default: 50 }],
+    },
+    {
+      type: 'brightness' as const,
+      label: t('devices.modals.commands.brightness'),
+      description: t('devices.modals.commands.brightnessDesc'),
+      icon: Sun,
+      color: 'yellow',
+      params: [{ name: t('devices.modals.commands.level'), type: 'number', min: 0, max: 100, default: 100 }],
+    },
+  ];
   const [selectedCommand, setSelectedCommand] = useState<
     'reboot' | 'screenshot' | 'volume' | 'brightness' | 'refresh' | null
   >(null);
@@ -112,7 +114,7 @@ export function SendCommandModal({
       onSuccess?.();
       handleClose();
     } catch (err: any) {
-      setError(err?.response?.data?.detail || 'Failed to send command');
+      setError(err?.response?.data?.detail || t('devices.modals.errors.commandFailed'));
     }
   };
 
@@ -120,7 +122,7 @@ export function SendCommandModal({
     <Modal
       isOpen={isOpen}
       onClose={handleClose}
-      title="Send Command"
+      title={t('devices.modals.sendCommand')}
       subtitle={device.device_name}
       maxWidth="md"
       footer={
@@ -130,7 +132,7 @@ export function SendCommandModal({
             disabled={sendCommand.isPending}
             className="px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg disabled:opacity-50 transition-colors"
           >
-            Cancel
+            {t('devices.buttons.cancel')}
           </button>
           <button
             onClick={handleSend}
@@ -140,12 +142,12 @@ export function SendCommandModal({
             {sendCommand.isPending ? (
               <>
                 <Loader2 className="w-4 h-4 animate-spin" />
-                Sending...
+                {t('devices.modals.sendingCommand')}
               </>
             ) : (
               <>
                 <Send className="w-4 h-4" />
-                Send Command
+                {t('devices.modals.sendCommand')}
               </>
             )}
           </button>
@@ -158,8 +160,7 @@ export function SendCommandModal({
         {!isOnline && (
           <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-3">
             <p className="text-sm text-yellow-700 dark:text-yellow-300">
-              <strong>Warning:</strong> Device appears to be offline. Commands will be
-              queued and executed when device comes online.
+              <strong>{t('devices.modals.offlineWarning')}</strong> {t('devices.modals.offlineWarningText')}
             </p>
           </div>
         )}
@@ -174,7 +175,7 @@ export function SendCommandModal({
         {/* Command Selection */}
         <div>
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
-            Select Command
+            {t('devices.modals.selectCommand')}
           </label>
           <div className="space-y-2">
             {COMMAND_OPTIONS.map((command) => {
@@ -247,7 +248,7 @@ export function SendCommandModal({
         {selectedOption && selectedOption.params.length > 0 && (
           <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
-              Parameters
+              {t('devices.modals.parameters')}
             </label>
             <div className="space-y-3">
               {selectedOption.params.map((param) => (
@@ -273,7 +274,7 @@ export function SendCommandModal({
                   />
                   {param.min !== undefined && param.max !== undefined && (
                     <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                      Range: {param.min} - {param.max}
+                      {t('devices.modals.range')}: {param.min} - {param.max}
                     </p>
                   )}
                 </div>

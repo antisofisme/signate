@@ -150,7 +150,14 @@
       "diskUsage": "Penggunaan Disk",
       "networkLatency": "Latensi Jaringan",
       "display": "Tampilan",
-      "playerUptime": "Waktu Aktif Player"
+      "playerUptime": "Waktu Aktif Player",
+      "snapshot": "Ringkasan Kesehatan",
+      "viewDetails": "Lihat Detail",
+      "lastUpdated": "Terakhir diperbarui",
+      "noDataAvailable": "Tidak ada data kesehatan",
+      "deviceOffline": "Perangkat offline",
+      "minutesAgo": "{{count}} menit lalu",
+      "justNow": "baru saja"
     },
     "actions": {
       "viewLogs": "Lihat log perangkat",
@@ -671,7 +678,9 @@
       "activateSchedule": "Aktifkan Jadwal",
       "resumeSchedule": "Lanjutkan Jadwal",
       "editSchedule": "Edit Jadwal",
-      "deleteSchedule": "Hapus Jadwal"
+      "deleteSchedule": "Hapus Jadwal",
+      "showPreview": "Tampilkan Preview",
+      "hidePreview": "Sembunyikan Preview"
     },
     "noMatches": "Tidak ada jadwal yang cocok dengan filter Anda",
     "clearFilters": "Hapus filter",
@@ -806,7 +815,8 @@
       "occurrence": "kejadian berikutnya",
       "occurrences": "kejadian berikutnya",
       "exceptionCount": "({count} pengecualian)",
-      "exceptionCount_plural": "({count} pengecualian)"
+      "exceptionCount_plural": "({count} pengecualian)",
+      "loadingPreview": "Memuat preview..."
     },
     "recurrenceBuilder": {
       "recurrenceType": "Tipe Pengulangan",

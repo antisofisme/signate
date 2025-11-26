@@ -18,6 +18,7 @@ import { Building2, Check, ChevronDown, Loader2 } from 'lucide-react';
 import { useAuthStore } from '@/lib/stores/authStore';
 import { useOrgSwitch } from '@/shared/hooks/useOrgSwitch';
 import { useKeyboardShortcut } from '@/shared/hooks/useKeyboardShortcuts';
+import { useTranslation } from 'react-i18next';
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 
 /**
@@ -58,6 +59,7 @@ export function OrganizationSwitcher({
 }: OrganizationSwitcherProps) {
   const { organizations, selectedOrgId, switchOrganization } = useAuthStore();
   const { isSwitching } = useOrgSwitch();
+  const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
 
   // Current organization
@@ -130,14 +132,14 @@ export function OrganizationSwitcher({
             ${className}
           `}
           disabled={isSwitching}
-          title="Beralih organisasi (Ctrl/Cmd+K)"
+          title={`${t('organization.switchOrganization')} (Ctrl/Cmd+K)`}
         >
           {/* Icon */}
           <Building2 className="w-4 h-4 text-gray-600 dark:text-gray-400" />
 
           {/* Organization Name */}
           <span className="text-sm font-medium text-gray-900 dark:text-white max-w-[200px] truncate">
-            {currentOrg?.name || 'Pilih Organisasi'}
+            {currentOrg?.name || t('organization.selectOrganization')}
           </span>
 
           {/* Loading Spinner or Chevron */}
@@ -176,7 +178,7 @@ export function OrganizationSwitcher({
           {/* Header */}
           <div className="px-3 py-2 border-b border-gray-200 dark:border-gray-700">
             <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-              Pilih Organisasi
+              {t('organization.selectOrganization')}
             </p>
           </div>
 
@@ -217,7 +219,7 @@ export function OrganizationSwitcher({
                       {/* Current Badge */}
                       {isCurrent && (
                         <span className="px-1.5 py-0.5 text-xs font-medium rounded bg-blue-100 dark:bg-blue-800 text-blue-700 dark:text-blue-200">
-                          Aktif
+                          {t('organization.active')}
                         </span>
                       )}
                     </div>
@@ -249,7 +251,16 @@ export function OrganizationSwitcher({
           {/* Footer: Keyboard Shortcut Hint */}
           <div className="px-3 py-2 border-t border-gray-200 dark:border-gray-700">
             <p className="text-xs text-gray-500 dark:text-gray-400">
-              Tekan <kbd className="px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-700 font-mono">Ctrl/Cmd+K</kbd> untuk membuka
+              {t('organization.keyboardHint').split('<kbd>').map((part, i) => {
+                if (i === 0) return part;
+                const [kbd, ...rest] = part.split('</kbd>');
+                return (
+                  <span key={i}>
+                    <kbd className="px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-700 font-mono">{kbd}</kbd>
+                    {rest.join('</kbd>')}
+                  </span>
+                );
+              })}
             </p>
           </div>
         </DropdownMenu.Content>
@@ -268,6 +279,7 @@ export function OrganizationSwitcherCompact({
 }) {
   const { organizations, selectedOrgId, switchOrganization } = useAuthStore();
   const { isSwitching } = useOrgSwitch();
+  const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
 
   const currentOrg = organizations.find((org) => org.id === selectedOrgId);
@@ -302,7 +314,7 @@ export function OrganizationSwitcherCompact({
           <div className="flex items-center gap-2 min-w-0">
             <Building2 className="w-4 h-4 text-gray-600 dark:text-gray-400 flex-shrink-0" />
             <span className="text-sm font-medium text-gray-900 dark:text-white truncate">
-              {currentOrg?.name || 'Pilih'}
+              {currentOrg?.name || t('organization.select')}
             </span>
           </div>
           {isSwitching ? (

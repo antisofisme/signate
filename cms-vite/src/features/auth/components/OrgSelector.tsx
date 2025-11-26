@@ -4,6 +4,7 @@
  */
 
 import { useState } from 'react';
+import { ChevronRight } from 'lucide-react';
 import { useSelectOrganization, useUserPreferences } from '../hooks/useAuth';
 import { useAuthStore } from '@/lib/stores/authStore';
 import { formatDate } from '@/lib/utils/dateTime';
@@ -75,20 +76,7 @@ export function OrgSelector() {
             {/* Active Status Indicator */}
             {org.is_active && (
               <div className="mt-4 text-blue-600 font-medium text-sm flex items-center">
-                <svg
-                  className="w-5 h-5 mr-1"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                  xmlns="http://www.w3.org/2000/svg"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M9 5l7 7-7 7"
-                  />
-                </svg>
+                <ChevronRight className="w-5 h-5 mr-1" />
                 Pilih organisasi ini
               </div>
             )}
