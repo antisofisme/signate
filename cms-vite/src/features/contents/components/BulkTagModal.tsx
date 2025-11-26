@@ -1,10 +1,18 @@
 /**
  * Bulk Tag Modal Component
  * Assign/unassign tags to multiple content items
+ *
+ * ✅ REFACTORED: Now uses shared Modal component
+ * - Fixed header (title + subtitle)
+ * - Fixed footer (buttons)
+ * - Scrollable content (tag selection + content list)
+ * - Click outside to close
  */
 
 import { useState } from 'react';
-import { X, Tag, Plus, Loader2 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
+import { Tag, Plus, Loader2 } from 'lucide-react';
+import { Modal } from '@/shared/components';
 import { useTags, useAssignTagToContents } from '@/shared/hooks/useSharedTags';
 import type { Content } from '../types/content';
 
@@ -15,6 +23,7 @@ interface BulkTagModalProps {
 }
 
 export function BulkTagModal({ isOpen, onClose, selectedContent }: BulkTagModalProps) {
+  const { t } = useTranslation();
   const [selectedTagId, setSelectedTagId] = useState<number | null>(null);
 
   // Fetch tags
@@ -22,8 +31,6 @@ export function BulkTagModal({ isOpen, onClose, selectedContent }: BulkTagModalP
 
   // Assign mutation
   const assignMutation = useAssignTagToContents();
-
-  if (!isOpen) return null;
 
   const handleAssign = async () => {
     if (!selectedTagId) {
@@ -41,34 +48,75 @@ export function BulkTagModal({ isOpen, onClose, selectedContent }: BulkTagModalP
     }
   };
 
+  const handleClose = () => {
+    if (!assignMutation.isPending) {
+      onClose();
+    }
+  };
+
   const selectedTag = tags?.find(t => t.id === selectedTagId);
 
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h2 className="text-xl font-bold text-gray-900 dark:text-white">
-              Bulk Tag Assignment
-            </h2>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-              Assign tag to {selectedContent.length} content items
-            </p>
-          </div>
-          <button
-            onClick={onClose}
-            disabled={assignMutation.isPending}
-            className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 disabled:opacity-50"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
+  // Custom header with subtitle
+  const customHeader = (
+    <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+      <h2 className="text-xl font-bold text-gray-900 dark:text-white">
+        {t('contents.actions.bulkTagAssignment')}
+      </h2>
+      <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+        {t('contents.actions.assignTagToItems', { count: selectedContent.length })}
+      </p>
+    </div>
+  );
 
+  // Footer with action buttons
+  const footer = (
+    <div className="border-t border-gray-200 dark:border-gray-700 px-6 py-4">
+      <div className="flex justify-end gap-3">
+        <button
+          type="button"
+          onClick={handleClose}
+          disabled={assignMutation.isPending}
+          className="px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg disabled:opacity-50 transition-colors"
+        >
+          {t('common.cancel')}
+        </button>
+        <button
+          type="button"
+          onClick={handleAssign}
+          disabled={!selectedTagId || assignMutation.isPending}
+          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 transition-colors"
+        >
+          {assignMutation.isPending ? (
+            <>
+              <Loader2 className="w-4 h-4 animate-spin" />
+              {t('contents.actions.assigningTag')}
+            </>
+          ) : (
+            <>
+              <Plus className="w-4 h-4" />
+              {t('contents.actions.assignTag')}
+            </>
+          )}
+        </button>
+      </div>
+    </div>
+  );
+
+  return (
+    <Modal
+      isOpen={isOpen}
+      onClose={handleClose}
+      maxWidth="2xl"
+      customHeader={customHeader}
+      footer={footer}
+      closeOnBackdropClick={!assignMutation.isPending}
+    >
+      {/* Scrollable content */}
+      <div className="p-6 space-y-6">
         {/* Tag Selection */}
-        <div className="mb-6">
+        <div>
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
-            Select Tag
+            {t('contents.actions.selectTag')}
           </label>
 
           {tagsLoading ? (
@@ -101,9 +149,9 @@ export function BulkTagModal({ isOpen, onClose, selectedContent }: BulkTagModalP
           ) : (
             <div className="text-center py-8 bg-gray-50 dark:bg-gray-700 rounded-lg">
               <Tag className="w-12 h-12 mx-auto text-gray-400 mb-2" />
-              <p className="text-sm text-gray-500 dark:text-gray-400">No tags available</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400">{t('contents.actions.noTagsAvailable')}</p>
               <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
-                Create tags first to assign them to content
+                {t('contents.actions.createTagsFirst')}
               </p>
             </div>
           )}
@@ -113,7 +161,7 @@ export function BulkTagModal({ isOpen, onClose, selectedContent }: BulkTagModalP
         {selectedTag && (
           <div className="mb-6 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
             <p className="text-sm font-medium text-blue-900 dark:text-blue-300 mb-2">
-              Selected Tag:
+              {t('contents.actions.selectedTag')}
             </p>
             <div className="flex items-center gap-2">
               <div
@@ -133,9 +181,9 @@ export function BulkTagModal({ isOpen, onClose, selectedContent }: BulkTagModalP
         )}
 
         {/* Selected Content List */}
-        <div className="mb-6">
+        <div>
           <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
-            Content to be tagged ({selectedContent.length}):
+            {t('contents.actions.contentToBeTagged', { count: selectedContent.length })}
           </p>
           <div className="space-y-2 max-h-48 overflow-y-auto border dark:border-gray-700 rounded-lg p-3">
             {selectedContent.map((content) => (
@@ -153,35 +201,7 @@ export function BulkTagModal({ isOpen, onClose, selectedContent }: BulkTagModalP
             ))}
           </div>
         </div>
-
-        {/* Actions */}
-        <div className="flex justify-end gap-3 pt-4 border-t dark:border-gray-700">
-          <button
-            onClick={onClose}
-            disabled={assignMutation.isPending}
-            className="px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg disabled:opacity-50"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={handleAssign}
-            disabled={!selectedTagId || assignMutation.isPending}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-          >
-            {assignMutation.isPending ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin" />
-                Assigning...
-              </>
-            ) : (
-              <>
-                <Plus className="w-4 h-4" />
-                Assign Tag
-              </>
-            )}
-          </button>
-        </div>
       </div>
-    </div>
+    </Modal>
   );
 }

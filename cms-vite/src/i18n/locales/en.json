@@ -27,7 +27,43 @@
     "export": "Export",
     "import": "Import",
     "settings": "Settings",
-    "logout": "Logout"
+    "logout": "Logout",
+    "buttons": {
+      "edit": "Edit",
+      "delete": "Delete",
+      "preview": "Preview",
+      "download": "Download",
+      "copy": "Copy",
+      "assign": "Assign",
+      "unassign": "Unassign",
+      "remove": "Remove",
+      "manage": "Manage",
+      "refresh": "Refresh",
+      "search": "Search",
+      "zoomIn": "Zoom In",
+      "zoomOut": "Zoom Out",
+      "view": "View",
+      "duplicate": "Duplicate"
+    },
+    "placeholders": {
+      "search": "Search...",
+      "searchDevices": "Search devices...",
+      "searchContent": "Search content...",
+      "searchTemplates": "Search templates...",
+      "leaveEmpty": "Leave empty to skip"
+    },
+    "titles": {
+      "copyToClipboard": "Copy to clipboard",
+      "closeModal": "Close modal",
+      "closeDialog": "Close dialog",
+      "enterFullscreen": "Enter fullscreen",
+      "exitFullscreen": "Exit fullscreen"
+    },
+    "toasts": {
+      "codeCopied": "Activation code copied to clipboard",
+      "copyFailed": "Failed to copy code",
+      "important": "Important:"
+    }
   },
   "auth": {
     "login": "Login",
@@ -42,7 +78,17 @@
     "loginError": "Login failed. Please check your username and password.",
     "logoutSuccess": "Logout successful",
     "pleaseLogin": "Please login to continue",
-    "loggingOut": "Logging out..."
+    "loggingOut": "Logging out...",
+    "placeholders": {
+      "username": "Enter username",
+      "password": "Enter password",
+      "email": "name@example.com",
+      "fullName": "Enter full name",
+      "confirmPassword": "Confirm password",
+      "token": "Enter token from email",
+      "newPassword": "Minimum 6 characters",
+      "repeatPassword": "Repeat new password"
+    }
   },
   "navigation": {
     "dashboard": "Dashboard",
@@ -98,6 +144,199 @@
       "active": "Active",
       "pending": "Pending",
       "inactive": "Inactive"
+    },
+    "health": {
+      "cpuUsage": "CPU Usage",
+      "memoryUsage": "Memory Usage",
+      "diskUsage": "Disk Usage",
+      "networkLatency": "Network Latency",
+      "display": "Display",
+      "playerUptime": "Player Uptime"
+    },
+    "actions": {
+      "viewLogs": "View device logs",
+      "viewDevice": "View device",
+      "manageContent": "Manage content, tags & playlists",
+      "editSettings": "Edit device settings",
+      "deleteDevice": "Delete device",
+      "assignToDevice": "Assign to device",
+      "removeFromDevice": "Remove from device",
+      "copyCode": "Copy code",
+      "unassignContent": "Unassign content",
+      "removePlaylist": "Remove playlist",
+      "removeTag": "Remove tag",
+      "manageDevices": "Manage devices",
+      "editGroup": "Edit group",
+      "deleteGroup": "Delete group",
+      "refreshHealth": "Refresh health data"
+    },
+    "modals": {
+      "editDevice": "Edit Device",
+      "saveChanges": "Save Changes",
+      "saving": "Saving...",
+      "screenRotation": "Screen Rotation",
+      "rotation0": "0° (Normal)",
+      "rotation90": "90° (Clockwise)",
+      "rotation180": "180° (Upside Down)",
+      "rotation270": "270° (Counter-Clockwise)",
+      "rotationHelp": "Adjust screen orientation for portrait/landscape displays",
+      "enableAudio": "Enable Audio/Volume",
+      "audioHelp": "Allow audio playback for video content",
+      "roomNumberOptional": "Room Number (Optional)",
+      "roomHelp": "For hotel/office deployments",
+      "changesNote": "Note:",
+      "changesEffect": "Changes will take effect immediately on the device. The device may need to refresh to apply rotation changes.",
+      "deviceHealth": "Device Health & Commands",
+      "deviceSettings": "Device Settings",
+      "manageContentAssignment": "Manage Content Assignment",
+      "directContent": "Direct Content",
+      "tags": "Tags",
+      "playlists": "Playlists",
+      "assignNewPlaylist": "Assign New Playlist",
+      "currentlyAssignedPlaylists": "Currently Assigned Playlists",
+      "priority3Lowest": "Priority 3 (Lowest)",
+      "priority3Info": "Playlist content is shown when no direct content or tag-based content is assigned. Multiple playlists will be combined and shuffled.",
+      "allPlaylistsAssigned": "All available playlists are already assigned to this device.",
+      "noPlaylistsAssigned": "No playlists assigned to this device yet.",
+      "selectPlaylist": "Select a playlist...",
+      "assigning": "Assigning...",
+      "assign": "Assign",
+      "removePlaylist": "Remove playlist",
+      "priority1Highest": "Priority 1 (Highest)",
+      "priority1Info": "Direct assignments override tag-based and playlist assignments. Drag and drop items to reorder.",
+      "priority1InfoDetailed": "Direct assignments override tag-based and playlist assignments. Drag and drop items to reorder - items at the top have higher priority.",
+      "manageContentDirectAssignment": "Manage Content (Direct Assignment)",
+      "priorityLabel": "Priority",
+      "availableContent": "Available Content",
+      "allContentAssigned": "All content is already assigned.",
+      "assignedContent": "Assigned Content",
+      "noContentAssigned": "No content assigned yet.",
+      "removeFromDevice": "Remove from device",
+      "assignToDevice": "Assign to device",
+      "priorityUpdatedSuccess": "Priority updated successfully",
+      "priorityUpdateFailed": "Failed to update priority",
+      "priority2Medium": "Priority 2 (Medium)",
+      "priority2Info": "Tag-based content is shown when no direct content is assigned. All content from assigned tags will be combined and played.",
+      "assignNewTag": "Assign New Tag",
+      "allTagsAssigned": "All available tags are already assigned to this device.",
+      "noTagsAssigned": "No tags assigned to this device yet.",
+      "selectTag": "Select a tag...",
+      "currentlyAssignedTags": "Currently Assigned Tags",
+      "removeTag": "Remove tag",
+      "deviceLogs": "Device Logs",
+      "console": "Console",
+      "connection": "Connection",
+      "speedTest": "Speed Test",
+      "pendingActivation": "Pending Activation",
+      "overview": "Overview",
+      "health": "Health",
+      "commands": "Commands",
+      "sendCommand": "Send Command",
+      "sendingCommand": "Sending...",
+      "selectCommand": "Select Command",
+      "parameters": "Parameters",
+      "range": "Range",
+      "offlineWarning": "Warning:",
+      "offlineWarningText": "Device appears to be offline. Commands will be queued and executed when device comes online.",
+      "commands": {
+        "reboot": "Reboot Device",
+        "rebootDesc": "Restart the device completely",
+        "refresh": "Refresh Content",
+        "refreshDesc": "Reload current content without restarting",
+        "screenshot": "Take Screenshot",
+        "screenshotDesc": "Capture current display",
+        "volume": "Set Volume",
+        "volumeDesc": "Adjust audio volume level",
+        "brightness": "Set Brightness",
+        "brightnessDesc": "Adjust screen brightness",
+        "level": "Level"
+      },
+      "tvRegistered": "TV Registered Successfully",
+      "registerTV": "Register TV Device",
+      "registerMonitor": "Register Monitor Device",
+      "webosOrNative": "WebOS or native app devices",
+      "browserDevices": "Browser-based display devices",
+      "gotIt": "Got it",
+      "register": "Register",
+      "registering": "Registering...",
+      "activationCodeLabel": "Activation Code",
+      "deviceNameLabel": "Device Name",
+      "codeHelp": "6-digit code displayed on TV screen",
+      "expiresIn": "Expires in",
+      "completeSetup": "Complete Setup on Your TV",
+      "instruction1": "Open the app on your TV",
+      "instruction2": "Enter the 6-digit code above when prompted",
+      "instruction3": "Wait for activation to complete",
+      "codeExpiryWarning": "This code will expire in 10 minutes. Complete the activation on your TV before it expires.",
+      "howItWorks": "How it works:",
+      "howItWorksDesc": "Enter the 6-digit activation code shown on the TV screen. The device will be automatically assigned to your organization.",
+      "howItWorksMonitor": "Enter the 6-digit activation code shown on the monitor screen. The device will be automatically assigned to your organization.",
+      "browserBasedDisplay": "Browser-based display",
+      "activateMonitor": "Activate Monitor",
+      "monitorCodeHelp": "6-digit code displayed on monitor screen",
+      "platform": "Platform",
+      "platformWebBrowser": "Web Browser",
+      "platformChrome": "Chrome",
+      "platformFirefox": "Firefox",
+      "platformEdge": "Edge",
+      "platformSafari": "Safari",
+      "errors": {
+        "codeRequired": "Activation code must be 6 digits",
+        "nameRequired": "Device name is required",
+        "failedToActivate": "Failed to activate TV device",
+        "networkError": "Network error - Please check your connection",
+        "codeNotFound": "Activation code not found or expired. Please check the code on your device screen.",
+        "codeExpired": "Activation code has expired. Please refresh the device to get a new code.",
+        "invalidCode": "Invalid activation code. Please verify the 6-digit code on your device screen.",
+        "alreadyActivated": "Device already activated. Please use a different device or contact support.",
+        "activationFailed": "Failed to activate device (Error {status})",
+        "updateFailed": "Failed to update device",
+        "commandFailed": "Failed to send command"
+      }
+    },
+    "placeholders": {
+      "enterCode": "Enter 6-digit code",
+      "deviceName": "e.g., Lobby TV 1, Room 101 Display",
+      "monitorName": "e.g., Reception Monitor, Meeting Room Display",
+      "roomNumber": "e.g., 101, A-205, Lobby",
+      "groupName": "e.g., Lobby Displays",
+      "groupDescription": "Optional description",
+      "searchDevices": "Search devices...",
+      "searchCommands": "Search commands...",
+      "templateName": "e.g., Morning Refresh",
+      "templateDescription": "What does this template do?",
+      "templateTags": "e.g., maintenance, daily, high-priority"
+    },
+    "tabs": {
+      "myDevices": "My Devices",
+      "unassignedPool": "Unassigned Pool",
+      "unassignedDevices": "Unassigned Devices"
+    },
+    "filters": {
+      "filters": "Filters",
+      "deviceType": "Device Type",
+      "allTypes": "All Types",
+      "tv": "TV",
+      "monitor": "Monitor"
+    },
+    "buttons": {
+      "registerTV": "Register TV",
+      "registerMonitor": "Register Monitor",
+      "cancel": "Cancel",
+      "delete": "Delete",
+      "deleting": "Deleting..."
+    },
+    "table": {
+      "device": "Device",
+      "ipAddress": "IP Address",
+      "actions": "Actions"
+    },
+    "messages": {
+      "pendingDevicesAwaiting": "Pending Devices Awaiting Activation",
+      "errorLoading": "Error loading devices",
+      "noDevicesFound": "No devices found",
+      "deviceCount": "device",
+      "devicesCount": "devices"
     }
   },
   "contents": {
@@ -110,15 +349,602 @@
     "uploadDate": "Upload Date",
     "image": "Image",
     "video": "Video",
-    "url": "URL"
+    "audio": "Audio",
+    "url": "URL",
+    "type": "Type",
+    "tags": "Tags",
+    "uploadedBy": "Uploaded By",
+    "actions": {
+      "edit": "Edit",
+      "preview": "Preview",
+      "download": "Download",
+      "delete": "Delete",
+      "zoomOut": "Zoom Out",
+      "zoomIn": "Zoom In",
+      "close": "Close (ESC)",
+      "upload": "Upload Content",
+      "bulkEdit": "Bulk Edit",
+      "bulkTag": "Bulk Tag",
+      "bulkDelete": "Bulk Delete",
+      "bulkTagAssignment": "Bulk Tag Assignment",
+      "assignTagToItems": "Assign tag to {count} content items",
+      "selectTag": "Select Tag",
+      "noTagsAvailable": "No tags available",
+      "createTagsFirst": "Create tags first to assign them to content",
+      "selectedTag": "Selected Tag:",
+      "contentToBeTagged": "Content to be tagged ({count}):",
+      "assigningTag": "Assigning...",
+      "assignTag": "Assign Tag"
+    },
+    "modals": {
+      "deleteContent": "Delete Content",
+      "deleteMultiple": "Delete Multiple Contents",
+      "confirmDelete": "Are you sure you want to delete this content?",
+      "confirmBulkDelete": "Are you sure you want to delete {count} selected content items?",
+      "editContent": "Edit Content",
+      "bulkEdit": "Bulk Edit Content",
+      "editingItems": "Editing {count} content items",
+      "uploadContent": "Upload Content"
+    },
+    "upload": {
+      "quota": {
+        "exceeded": "Content Quota Exceeded",
+        "cannotUpload": "Cannot upload more content. Storage or item limit reached.",
+        "limitReached": "Content Quota Limit Reached",
+        "totalFileSize": "Total file size: {size} MB"
+      },
+      "fileTypes": {
+        "title": "📎 Supported File Types & Limits",
+        "images": "Images (Max 50MB)",
+        "videos": "Videos (Max 500MB)",
+        "audio": "Audio (Max 100MB)"
+      },
+      "filesLabel": "Files * (multiple files supported)",
+      "clickOrDrag": "Click to select files or drag and drop",
+      "selectMultiple": "Select one or multiple files at once",
+      "selectedFiles": "Selected Files ({count})",
+      "uploading": "Uploading...",
+      "errors": {
+        "invalidFileType": "{filename}: Invalid file type",
+        "tooLarge": "{filename}: Too large (max {maxSize}MB)",
+        "selectAtLeastOne": "Please select at least one file to upload"
+      }
+    },
+    "form": {
+      "fileName": "File Name",
+      "type": "Type",
+      "title": "Title *",
+      "description": "Description",
+      "displayDuration": "Display Duration (seconds)",
+      "durationHelp": "How long this content should display in playlists (1-86400 seconds)",
+      "activeLabel": "Active (available for playlists)",
+      "applyToAll": "📝 Apply to All Selected Items",
+      "durationSeconds": "Duration (seconds)",
+      "leaveEmptyToSkip": "Leave empty to skip",
+      "activeStatus": "Active Status",
+      "dontChange": "Don't change",
+      "active": "Active",
+      "inactive": "Inactive",
+      "selectedContent": "Selected Content ({count})"
+    },
+    "placeholders": {
+      "title": "Enter content title",
+      "description": "Enter content description (optional)",
+      "searchContent": "Search by title or description..."
+    },
+    "filters": {
+      "allTypes": "All Types"
+    },
+    "table": {
+      "content": "Content",
+      "createdAt": "Created At",
+      "actions": "Actions"
+    },
+    "messages": {
+      "noContent": "No content found",
+      "errorLoading": "Error loading content",
+      "selectedCount": "{count} selected",
+      "setAtLeastOneField": "Please set at least one field to update",
+      "successfullyUpdated": "Successfully updated {count} content items",
+      "updatedWithFailures": "Updated {successCount} items, {failCount} failed",
+      "videoNotSupported": "Your browser does not support video playback.",
+      "audioNotSupported": "Your browser does not support audio playback.",
+      "previewNotAvailable": "Preview not available for this content type"
+    },
+    "preview": {
+      "zoomOut": "Zoom Out",
+      "zoomIn": "Zoom In",
+      "resolution": "Resolution: {resolution}",
+      "duration": "Duration: {duration}",
+      "hlsStreaming": "HLS Streaming",
+      "original": "Original: {filename}",
+      "uploaded": "Uploaded: {date}",
+      "transcoding": "Transcoding: {status}",
+      "pressEscToClose": "Press {key} to close",
+      "download": "Download",
+      "closeEsc": "Close (ESC)"
+    },
+    "status": {
+      "pending": "Pending",
+      "updating": "Updating...",
+      "success": "✓ Success",
+      "failed": "✗ Failed"
+    },
+    "buttons": {
+      "cancel": "Cancel",
+      "delete": "Delete",
+      "deleting": "Deleting...",
+      "updating": "Updating...",
+      "saveChanges": "Save Changes",
+      "updatingItems": "Updating {count} items...",
+      "updateAll": "Update All",
+      "uploadingFiles": "Uploading {count} file(s)...",
+      "checkingQuota": "Checking quota...",
+      "quotaExceeded": "Quota Exceeded",
+      "upload": "Upload",
+      "uploadWithCount": "Upload ({count})"
+    }
   },
   "playlists": {
     "title": "Playlist Management",
     "addPlaylist": "Add Playlist",
+    "createPlaylist": "Create Playlist",
+    "editPlaylist": "Edit Playlist",
     "playlistName": "Playlist Name",
+    "name": "Name",
+    "description": "Description",
+    "items": "Items",
+    "duration": "Duration",
     "totalItems": "Total Items",
     "totalDuration": "Total Duration",
-    "assignToDevice": "Assign to Device"
+    "assignToDevice": "Assign to Device",
+    "assignedDevices": "Assigned Devices",
+    "noItems": "No items",
+    "isDefault": "Default Playlist",
+    "isLoop": "Loop Playback",
+    "createdAt": "Created At",
+    "priority": "Priority",
+    "priorityHelp": "Higher priority will be displayed first (0 = lowest)",
+    "active": "Active",
+    "actions": {
+      "edit": "Edit",
+      "delete": "Delete",
+      "assignDevices": "Assign Devices",
+      "manageContent": "Manage Content",
+      "preview": "Preview"
+    },
+    "modals": {
+      "deletePlaylist": "Delete Playlist",
+      "confirmDelete": "Are you sure you want to delete this playlist?"
+    },
+    "placeholders": {
+      "name": "Enter playlist name",
+      "description": "Enter description (optional)",
+      "search": "Search playlists..."
+    },
+    "messages": {
+      "noPlaylists": "No playlists found",
+      "errorLoading": "Error loading playlists"
+    },
+    "buttons": {
+      "cancel": "Cancel",
+      "save": "Save",
+      "delete": "Delete",
+      "deleting": "Deleting...",
+      "create": "Create",
+      "saving": "Saving...",
+      "update": "Update"
+    },
+    "bulkAssign": {
+      "title": "Assign Devices to Playlist",
+      "subtitle": "Select devices to assign to \"{playlistName}\"",
+      "searchPlaceholder": "Search devices...",
+      "filters": {
+        "all": "All",
+        "online": "Online",
+        "offline": "Offline"
+      },
+      "selection": {
+        "count": "{selected} of {total} devices selected",
+        "selectAll": "Select All",
+        "deselectAll": "Deselect All"
+      },
+      "conflict": {
+        "title": "{count} device already assigned",
+        "title_plural": "{count} devices already assigned",
+        "description": "These devices already have this playlist and will be skipped."
+      },
+      "loading": "Loading devices...",
+      "noDevices": "No devices found matching your filters",
+      "room": "Room {number}",
+      "alreadyAssigned": "Already assigned",
+      "status": {
+        "online": "Online",
+        "offline": "Offline"
+      },
+      "deviceTypes": {
+        "tv": "TV",
+        "monitor": "Monitor"
+      },
+      "assignButton": "Assign to {count} Device",
+      "assignButton_plural": "Assign to {count} Devices"
+    },
+    "contentModal": {
+      "title": "Manage Content",
+      "addContentToPlaylist": "Add Content to Playlist",
+      "addContent": "Add Content",
+      "contentItems": "Content Items ({count})",
+      "position": "Position: {position}",
+      "contentFallback": "Content #{id}",
+      "noAvailableContent": "No available content to add",
+      "noContentYet": "No content in this playlist yet",
+      "loading": "Loading content...",
+      "adding": "Adding...",
+      "addItems": "Add {count} item",
+      "addItems_plural": "Add {count} items",
+      "confirmRemove": "Remove this content from playlist?",
+      "reorderedSuccess": "Content reordered successfully",
+      "durationUpdated": "Duration updated",
+      "selectAtLeastOne": "Please select at least one content item",
+      "close": "Close",
+      "cancel": "Cancel"
+    },
+    "assignmentModal": {
+      "title": "Playlist Assignments",
+      "tabs": {
+        "devices": "Devices ({count})",
+        "tags": "Tags ({count})"
+      },
+      "loading": "Loading assignments...",
+      "devices": {
+        "assignToDevices": "Assign to Devices",
+        "noAvailableDevices": "No available devices to assign",
+        "assignedDevices": "Assigned Devices ({count})",
+        "notAssignedYet": "Not assigned to any devices yet",
+        "deviceFallback": "Device #{id}",
+        "status": "Status: {status}",
+        "location": "Location: {location}",
+        "noLocation": "No location set",
+        "assigning": "Assigning...",
+        "assignDevices": "Assign {count} device",
+        "assignDevices_plural": "Assign {count} devices",
+        "confirmUnassign": "Unassign this playlist from the device?"
+      },
+      "tags": {
+        "assignToTags": "Assign to Tags",
+        "noAvailableTags": "No available tags to assign",
+        "assignedTags": "Assigned Tags ({count})",
+        "notAssignedYet": "Not assigned to any tags yet",
+        "tagFallback": "Tag #{id}",
+        "tagId": "Tag ID: {id}",
+        "assigning": "Assigning...",
+        "assignTags": "Assign {count} tag",
+        "assignTags_plural": "Assign {count} tags",
+        "confirmUnassign": "Unassign this playlist from the tag?"
+      },
+      "selectAtLeastOneDevice": "Please select at least one device",
+      "selectAtLeastOneTag": "Please select at least one tag",
+      "cancel": "Cancel",
+      "close": "Close"
+    }
+  },
+  "schedules": {
+    "createSchedule": "Create Schedule",
+    "editSchedule": "Edit Schedule",
+    "noSchedulesYet": "No schedules yet",
+    "createFirstSchedule": "Create your first schedule to start automating content playback",
+    "searchPlaceholder": "Search schedules or playlists...",
+    "filters": {
+      "allStatus": "All Status",
+      "allPriority": "All Priority",
+      "allTypes": "All Types"
+    },
+    "showing": "Showing {filtered} of {total} schedules",
+    "status": {
+      "active": "Active",
+      "inactive": "Inactive",
+      "paused": "Paused",
+      "expired": "Expired"
+    },
+    "device": "device",
+    "devices": "devices",
+    "labels": {
+      "time": "Time",
+      "timezone": "Timezone",
+      "start": "Start",
+      "end": "End",
+      "noEndDate": "No end date",
+      "lastRun": "Last run",
+      "nextRun": "Next run",
+      "exceptionDates": "Exception dates",
+      "more": "+{count} more"
+    },
+    "actions": {
+      "view": "View",
+      "pause": "Pause",
+      "stop": "Stop",
+      "start": "Start",
+      "resume": "Resume",
+      "edit": "Edit",
+      "delete": "Delete",
+      "viewDetails": "View Details",
+      "pauseSchedule": "Pause Schedule",
+      "deactivateSchedule": "Deactivate Schedule",
+      "activateSchedule": "Activate Schedule",
+      "resumeSchedule": "Resume Schedule",
+      "editSchedule": "Edit Schedule",
+      "deleteSchedule": "Delete Schedule"
+    },
+    "noMatches": "No schedules match your filters",
+    "clearFilters": "Clear filters",
+    "deleteModal": {
+      "title": "Delete Schedule",
+      "confirmMessage": "Are you sure you want to delete this schedule? This action cannot be undone.",
+      "deleteButton": "Delete Schedule",
+      "cancel": "Cancel"
+    },
+    "viewModal": {
+      "title": "Schedule Details",
+      "sections": {
+        "basicInfo": "Basic Information",
+        "timing": "Timing",
+        "recurrence": "Recurrence",
+        "assignedResources": "Assigned Resources"
+      },
+      "fields": {
+        "name": "Name",
+        "description": "Description",
+        "status": "Status",
+        "startDate": "Start Date",
+        "endDate": "End Date",
+        "dailyTime": "Daily Time",
+        "timezone": "Timezone",
+        "recurrenceType": "Type:",
+        "playlist": "Playlist",
+        "devices": "Devices",
+        "devicesAssigned": "{count} device assigned",
+        "devicesAssigned_plural": "{count} devices assigned"
+      },
+      "close": "Close"
+    },
+    "activeIndicator": {
+      "checkingSchedule": "Checking active schedule...",
+      "noActiveSchedule": "No active schedule",
+      "currentlyPlaying": "Currently Playing",
+      "activeNow": "Active Now",
+      "live": "Live",
+      "priority": "Priority",
+      "nextChangeIn": "Next change in",
+      "changesIn": "Changes in",
+      "viewSchedule": "View Schedule",
+      "viewDetails": "View Details"
+    },
+    "conflictDetector": {
+      "checkingConflicts": "Checking for conflicts...",
+      "errorChecking": "Error checking conflicts",
+      "failedToCheck": "Failed to check conflicts",
+      "noConflicts": "No conflicts detected",
+      "noConflictsDesc": "This schedule can be created without conflicts",
+      "conflictsDetected": "{count} conflict detected",
+      "conflictsDetected_plural": "{count} conflicts detected",
+      "reviewConflicts": "Please review the conflicts below and adjust your schedule",
+      "timeOverlaps": "Time Overlaps",
+      "deviceConflicts": "Device Conflicts",
+      "priorityConflicts": "Priority Conflicts",
+      "conflictingSchedule": "Conflicting schedule:",
+      "date": "Date:",
+      "time": "Time:"
+    },
+    "page": {
+      "listView": "List",
+      "calendarView": "Calendar"
+    },
+    "exceptionDates": {
+      "title": "Exception Dates",
+      "description": "Dates when this schedule should NOT run",
+      "clearAll": "Clear All",
+      "add": "Add",
+      "pleaseSelectDate": "Please select a date",
+      "dateAfter": "Date must be on or after {date}",
+      "dateBefore": "Date must be on or before {date}",
+      "alreadyInList": "This date is already in the exception list",
+      "confirmClearAll": "Are you sure you want to clear all exception dates?",
+      "countDates": "{count} exception date",
+      "countDates_plural": "{count} exception dates",
+      "removeDate": "Remove exception date",
+      "noExceptionDates": "No exception dates added",
+      "addDatesDesc": "Add dates when this schedule should be skipped",
+      "tip": "Tip:",
+      "tipDescription": "Exception dates are useful for holidays, maintenance periods, or special events when you want to skip the regular schedule.",
+      "exceptionDate": "Exception date"
+    },
+    "priorityManager": {
+      "title": "Priority Management",
+      "priorityLevel": "Priority Level",
+      "levels": {
+        "low": "Low",
+        "normal": "Normal",
+        "high": "High",
+        "critical": "Critical"
+      },
+      "ranges": {
+        "low": "0-24",
+        "normal": "25-49",
+        "high": "50-74",
+        "critical": "75-100"
+      },
+      "quickActions": {
+        "decrease": "-10",
+        "reset": "Reset (50)",
+        "increase": "+10"
+      },
+      "relatedSchedules": "Related Schedules ({count})",
+      "conflictsDetected": "Priority Conflicts Detected",
+      "noConflictsDetected": "No priority conflicts detected",
+      "applyChange": "Apply Priority Change",
+      "suggestions": {
+        "adjustToAvoidTie": "Adjust to {value} to avoid tie",
+        "hasHigherPriority": "{name} has higher priority"
+      }
+    },
+    "previewCalendar": {
+      "title": "Schedule Preview",
+      "playlist": "Playlist:",
+      "weekdays": {
+        "mon": "Mon",
+        "tue": "Tue",
+        "wed": "Wed",
+        "thu": "Thu",
+        "fri": "Fri",
+        "sat": "Sat",
+        "sun": "Sun"
+      },
+      "legend": {
+        "exception": "Exception"
+      },
+      "priorityLabel": "Priority {value}",
+      "exceptionWillNotRun": "Exception date - will not run",
+      "showingNext": "Showing next",
+      "occurrence": "occurrence",
+      "occurrences": "occurrences",
+      "exceptionCount": "({count} exception)",
+      "exceptionCount_plural": "({count} exceptions)"
+    },
+    "recurrenceBuilder": {
+      "recurrenceType": "Recurrence Type",
+      "repeatEvery": "Repeat every",
+      "day": "day",
+      "days": "days",
+      "repeatOnDays": "Repeat on days",
+      "repeatsOn": "Repeats on:",
+      "repeatOn": "Repeat on",
+      "dayLabel": "Day",
+      "ofTheMonth": "of the month",
+      "lastDayOfMonth": "Last day of the month",
+      "cronExpression": "Cron Expression",
+      "cronPlaceholder": "0 9 * * *",
+      "cronFormat": "Format: minute hour day month weekday",
+      "examples": "Examples:",
+      "exampleDaily": "Every day at 9:00 AM",
+      "exampleHourly": "Every 2 hours",
+      "exampleWeekdays": "Weekdays at 9:00 AM",
+      "scheduleWillRepeat": "Schedule will repeat:",
+      "summary": {
+        "everyDay": "Every day",
+        "everyDays": "Every {interval} days",
+        "noDaysSelected": "No days selected",
+        "everyDayOfWeek": "Every day of the week",
+        "everyDays_weekly": "Every {days}",
+        "lastDayOfMonth": "Last day of every month",
+        "dayOfMonth": "Day {day} of every month",
+        "noExpressionDefined": "No expression defined",
+        "oneTimeOnly": "One time only"
+      }
+    },
+    "fullCalendar": {
+      "loadingCalendar": "Loading calendar...",
+      "buttons": {
+        "today": "Today",
+        "month": "Month",
+        "week": "Week",
+        "day": "Day",
+        "list": "List"
+      },
+      "priorityLevels": "Priority Levels:",
+      "tip": "Tip:",
+      "tipMessage": "Drag events to reschedule, resize to adjust duration, click to view details"
+    },
+    "recurrencePatternBuilder": {
+      "title": "Recurrence Pattern",
+      "hidePresets": "Hide Presets",
+      "showPresets": "Show Presets",
+      "quickPresets": "Quick Presets",
+      "naturalLanguage": {
+        "runOnce": "Run once on the specified date",
+        "runEveryDay": "Run every day",
+        "runEveryDays": "Run every {interval} days",
+        "selectDaysOfWeek": "Select days of the week",
+        "runEvery": "Run every {days}",
+        "runLastDayMonth": "Run on the last day of each month",
+        "runDayOfMonth": "Run on the {day}{suffix} day of each month",
+        "selectDayOfMonth": "Select day of month",
+        "customPattern": "Custom pattern: {expression}",
+        "enterCronExpression": "Enter cron expression"
+      },
+      "dailyPattern": {
+        "label": "Repeat every N days",
+        "description": "Enter 1 for every day, 2 for every other day, etc."
+      },
+      "weeklyPattern": {
+        "label": "Select days of the week"
+      },
+      "monthlyPattern": {
+        "label": "Day of month",
+        "specificDay": "Specific Day",
+        "lastDay": "Last Day",
+        "dayRangeNote": "Day 1-31 (Note: Day 29-31 may not exist in all months)",
+        "lastDayDescription": "Schedule will run on the last day of each month"
+      },
+      "customPattern": {
+        "label": "Cron Expression",
+        "formatHelp": "Format: minute hour day month weekday (e.g., \"0 9 * * 1-5\" = 9 AM on weekdays)",
+        "learnMore": "Learn more about cron expressions"
+      }
+    },
+    "scheduleForm": {
+      "labels": {
+        "scheduleName": "Schedule Name",
+        "description": "Description",
+        "playlist": "Playlist",
+        "devices": "Devices ({count} selected)",
+        "startDate": "Start Date",
+        "endDate": "End Date",
+        "startTime": "Start Time",
+        "endTime": "End Time",
+        "timezone": "Timezone",
+        "recurrenceType": "Recurrence Type",
+        "priority": "Priority"
+      },
+      "placeholders": {
+        "scheduleName": "e.g., Morning Playlist Schedule",
+        "description": "Optional description...",
+        "selectPlaylist": "-- Select Playlist --",
+        "selectTimezone": "-- Select Timezone --"
+      },
+      "validation": {
+        "nameRequired": "Schedule name is required",
+        "nameMax": "Name must not exceed 255 characters",
+        "playlistRequired": "Please select a playlist",
+        "devicesRequired": "Please select at least one device",
+        "startDateRequired": "Start date is required",
+        "startTimeRequired": "Start time is required",
+        "endTimeRequired": "End time is required",
+        "timezoneRequired": "Timezone is required",
+        "endTimeAfterStart": "End time must be after start time"
+      },
+      "buttons": {
+        "cancel": "Cancel",
+        "createSchedule": "Create Schedule",
+        "updateSchedule": "Update Schedule",
+        "saveDraft": "Save Draft",
+        "preview": "Preview"
+      },
+      "sections": {
+        "basicInfo": "Basic Information",
+        "timing": "Date & Time",
+        "recurrence": "Recurrence Pattern",
+        "priority": "Priority Settings",
+        "devices": "Assign Devices",
+        "exceptions": "Exception Dates",
+        "conflictCheck": "Conflict Detection",
+        "preview": "Schedule Preview"
+      },
+      "help": {
+        "endDateOptional": "Leave empty for ongoing schedule",
+        "timezoneInfo": "All times will be scheduled in this timezone",
+        "exceptionDatesInfo": "Skip specific dates even if they match the recurrence pattern"
+      }
+    }
   },
   "dashboard": {
     "title": "Dashboard",
@@ -133,7 +959,21 @@
     "status": "Status",
     "active": "Active",
     "inactive": "Inactive",
-    "notAvailable": "N/A"
+    "notAvailable": "N/A",
+    "metrics": {
+      "onlineDevices": "{online} online ({percentage}%)",
+      "acrossAllDevices": "Across all devices",
+      "playbackCompletion": "Content playback completion",
+      "totalPlaybackEvents": "Total playback events",
+      "playbackEventsCount": "{count} playback events"
+    }
+  },
+  "analytics": {
+    "totalPlays": "Total Plays",
+    "completed": "Completed",
+    "uniqueContent": "Unique Content",
+    "activeDevices": "Active Devices",
+    "watchTime": "Watch Time"
   },
   "theme": {
     "light": "Light",
@@ -153,5 +993,14 @@
     "notFound": "Page not found",
     "unauthorized": "You don't have access",
     "forbidden": "Access denied"
+  },
+  "organization": {
+    "switchOrganization": "Switch Organization",
+    "clickToSwitch": "Click to switch organization",
+    "activeOrganization": "Active Organization",
+    "selectOrganization": "Select Organization",
+    "active": "Active",
+    "keyboardHint": "Press <kbd>Ctrl/Cmd+K</kbd> to open",
+    "select": "Select"
   }
 }

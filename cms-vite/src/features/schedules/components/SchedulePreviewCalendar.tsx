@@ -4,6 +4,7 @@
  */
 
 import { useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { ChevronLeft, ChevronRight, Calendar, Clock, X } from 'lucide-react'
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths } from 'date-fns'
 import type { PreviewOccurrence } from '../types/advanced'
@@ -23,6 +24,7 @@ export const SchedulePreviewCalendar = ({
   exceptionDates = [],
   className = '',
 }: SchedulePreviewCalendarProps) => {
+  const { t } = useTranslation()
   const [currentMonth, setCurrentMonth] = useState(new Date())
   const [selectedDate, setSelectedDate] = useState<Date | null>(null)
 
@@ -90,7 +92,7 @@ export const SchedulePreviewCalendar = ({
           <div className="flex items-center gap-2">
             <Calendar className="h-5 w-5 text-purple-600 dark:text-purple-400" />
             <h3 className="text-sm font-semibold text-gray-900 dark:text-white">
-              Schedule Preview
+              {t('schedules.previewCalendar.title')}
             </h3>
           </div>
           <div className="flex items-center gap-1">
@@ -116,7 +118,7 @@ export const SchedulePreviewCalendar = ({
 
         {playlistName && (
           <p className="text-xs text-gray-600 dark:text-gray-400">
-            Playlist: <span className="font-medium">{playlistName}</span>
+            {t('schedules.previewCalendar.playlist')} <span className="font-medium">{playlistName}</span>
           </p>
         )}
       </div>
@@ -125,12 +127,12 @@ export const SchedulePreviewCalendar = ({
       <div className="p-4">
         {/* Weekday Headers */}
         <div className="grid grid-cols-7 gap-1 mb-2">
-          {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((day) => (
+          {['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'].map((day) => (
             <div
               key={day}
               className="text-center text-xs font-medium text-gray-500 dark:text-gray-400 py-1"
             >
-              {day}
+              {t(`schedules.previewCalendar.weekdays.${day}`)}
             </div>
           ))}
         </div>
@@ -191,23 +193,23 @@ export const SchedulePreviewCalendar = ({
           <div className="flex flex-wrap gap-3 text-xs">
             <div className="flex items-center gap-1.5">
               <div className="w-2 h-2 rounded-full bg-red-500" />
-              <span className="text-gray-600 dark:text-gray-400">Critical</span>
+              <span className="text-gray-600 dark:text-gray-400">{t('schedules.priorityManager.levels.critical')}</span>
             </div>
             <div className="flex items-center gap-1.5">
               <div className="w-2 h-2 rounded-full bg-orange-500" />
-              <span className="text-gray-600 dark:text-gray-400">High</span>
+              <span className="text-gray-600 dark:text-gray-400">{t('schedules.priorityManager.levels.high')}</span>
             </div>
             <div className="flex items-center gap-1.5">
               <div className="w-2 h-2 rounded-full bg-blue-500" />
-              <span className="text-gray-600 dark:text-gray-400">Normal</span>
+              <span className="text-gray-600 dark:text-gray-400">{t('schedules.priorityManager.levels.normal')}</span>
             </div>
             <div className="flex items-center gap-1.5">
               <div className="w-2 h-2 rounded-full bg-gray-500" />
-              <span className="text-gray-600 dark:text-gray-400">Low</span>
+              <span className="text-gray-600 dark:text-gray-400">{t('schedules.priorityManager.levels.low')}</span>
             </div>
             <div className="flex items-center gap-1.5">
               <X className="h-3 w-3 text-red-500" />
-              <span className="text-gray-600 dark:text-gray-400">Exception</span>
+              <span className="text-gray-600 dark:text-gray-400">{t('schedules.previewCalendar.legend.exception')}</span>
             </div>
           </div>
         </div>
@@ -239,11 +241,11 @@ export const SchedulePreviewCalendar = ({
                       {occ.startTime} - {occ.endTime}
                     </span>
                     <span className="px-2 py-0.5 bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-200 rounded">
-                      Priority {occ.priority}
+                      {t('schedules.previewCalendar.priorityLabel', { value: occ.priority })}
                     </span>
                   </div>
                   {occ.isException && (
-                    <p className="text-red-600 dark:text-red-400 mt-1">Exception date - will not run</p>
+                    <p className="text-red-600 dark:text-red-400 mt-1">{t('schedules.previewCalendar.exceptionWillNotRun')}</p>
                   )}
                 </div>
               ))}
@@ -254,10 +256,16 @@ export const SchedulePreviewCalendar = ({
         {/* Summary */}
         <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
           <p className="text-xs text-gray-600 dark:text-gray-400">
-            Showing next <span className="font-medium">{occurrences.length}</span> occurrence
-            {occurrences.length !== 1 ? 's' : ''}
+            {t('schedules.previewCalendar.showingNext')}{' '}
+            <span className="font-medium">{occurrences.length}</span>{' '}
+            {t(occurrences.length !== 1 ? 'schedules.previewCalendar.occurrences' : 'schedules.previewCalendar.occurrence')}
             {exceptionDates.length > 0 && (
-              <span> ({exceptionDates.length} exception{exceptionDates.length !== 1 ? 's' : ''})</span>
+              <span> {t(
+                exceptionDates.length !== 1
+                  ? 'schedules.previewCalendar.exceptionCount_plural'
+                  : 'schedules.previewCalendar.exceptionCount',
+                { count: exceptionDates.length }
+              )}</span>
             )}
           </p>
         </div>

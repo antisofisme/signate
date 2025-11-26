@@ -27,7 +27,43 @@
     "export": "Ekspor",
     "import": "Impor",
     "settings": "Pengaturan",
-    "logout": "Keluar"
+    "logout": "Keluar",
+    "buttons": {
+      "edit": "Edit",
+      "delete": "Hapus",
+      "preview": "Pratinjau",
+      "download": "Unduh",
+      "copy": "Salin",
+      "assign": "Tetapkan",
+      "unassign": "Batalkan Penetapan",
+      "remove": "Hapus",
+      "manage": "Kelola",
+      "refresh": "Muat Ulang",
+      "search": "Cari",
+      "zoomIn": "Perbesar",
+      "zoomOut": "Perkecil",
+      "view": "Lihat",
+      "duplicate": "Duplikat"
+    },
+    "placeholders": {
+      "search": "Cari...",
+      "searchDevices": "Cari perangkat...",
+      "searchContent": "Cari konten...",
+      "searchTemplates": "Cari template...",
+      "leaveEmpty": "Kosongkan untuk melewati"
+    },
+    "titles": {
+      "copyToClipboard": "Salin ke clipboard",
+      "closeModal": "Tutup modal",
+      "closeDialog": "Tutup dialog",
+      "enterFullscreen": "Masuk layar penuh",
+      "exitFullscreen": "Keluar layar penuh"
+    },
+    "toasts": {
+      "codeCopied": "Kode aktivasi berhasil disalin",
+      "copyFailed": "Gagal menyalin kode",
+      "important": "Penting:"
+    }
   },
   "auth": {
     "login": "Masuk",
@@ -42,7 +78,17 @@
     "loginError": "Gagal masuk. Periksa username dan password Anda.",
     "logoutSuccess": "Berhasil keluar",
     "pleaseLogin": "Silakan masuk untuk melanjutkan",
-    "loggingOut": "Keluar..."
+    "loggingOut": "Keluar...",
+    "placeholders": {
+      "username": "Masukkan username",
+      "password": "Masukkan password",
+      "email": "nama@contoh.com",
+      "fullName": "Masukkan nama lengkap",
+      "confirmPassword": "Konfirmasi password",
+      "token": "Masukkan token dari email",
+      "newPassword": "Minimal 6 karakter",
+      "repeatPassword": "Ulangi password baru"
+    }
   },
   "navigation": {
     "dashboard": "Dashboard",
@@ -98,6 +144,199 @@
       "active": "Aktif",
       "pending": "Menunggu",
       "inactive": "Tidak Aktif"
+    },
+    "health": {
+      "cpuUsage": "Penggunaan CPU",
+      "memoryUsage": "Penggunaan Memori",
+      "diskUsage": "Penggunaan Disk",
+      "networkLatency": "Latensi Jaringan",
+      "display": "Tampilan",
+      "playerUptime": "Waktu Aktif Player"
+    },
+    "actions": {
+      "viewLogs": "Lihat log perangkat",
+      "viewDevice": "Lihat perangkat",
+      "manageContent": "Kelola konten, tag & playlist",
+      "editSettings": "Edit pengaturan perangkat",
+      "deleteDevice": "Hapus perangkat",
+      "assignToDevice": "Tetapkan ke perangkat",
+      "removeFromDevice": "Hapus dari perangkat",
+      "copyCode": "Salin kode",
+      "unassignContent": "Batalkan penetapan konten",
+      "removePlaylist": "Hapus playlist",
+      "removeTag": "Hapus tag",
+      "manageDevices": "Kelola perangkat",
+      "editGroup": "Edit grup",
+      "deleteGroup": "Hapus grup",
+      "refreshHealth": "Muat ulang data kesehatan"
+    },
+    "modals": {
+      "editDevice": "Edit Perangkat",
+      "saveChanges": "Simpan Perubahan",
+      "saving": "Menyimpan...",
+      "screenRotation": "Rotasi Layar",
+      "rotation0": "0° (Normal)",
+      "rotation90": "90° (Searah Jarum Jam)",
+      "rotation180": "180° (Terbalik)",
+      "rotation270": "270° (Berlawanan Jarum Jam)",
+      "rotationHelp": "Sesuaikan orientasi layar untuk tampilan portrait/landscape",
+      "enableAudio": "Aktifkan Audio/Volume",
+      "audioHelp": "Izinkan pemutaran audio untuk konten video",
+      "roomNumberOptional": "Nomor Ruangan (Opsional)",
+      "roomHelp": "Untuk deployment hotel/kantor",
+      "changesNote": "Catatan:",
+      "changesEffect": "Perubahan akan diterapkan segera pada perangkat. Perangkat mungkin perlu refresh untuk menerapkan perubahan rotasi.",
+      "deviceHealth": "Kesehatan & Perintah Perangkat",
+      "deviceSettings": "Pengaturan Perangkat",
+      "manageContentAssignment": "Kelola Penetapan Konten",
+      "directContent": "Konten Langsung",
+      "tags": "Tag",
+      "playlists": "Playlist",
+      "assignNewPlaylist": "Tetapkan Playlist Baru",
+      "currentlyAssignedPlaylists": "Playlist yang Sudah Ditetapkan",
+      "priority3Lowest": "Prioritas 3 (Terendah)",
+      "priority3Info": "Konten playlist ditampilkan ketika tidak ada konten langsung atau konten berbasis tag yang ditetapkan. Beberapa playlist akan digabungkan dan diacak.",
+      "allPlaylistsAssigned": "Semua playlist yang tersedia sudah ditetapkan ke perangkat ini.",
+      "noPlaylistsAssigned": "Belum ada playlist yang ditetapkan ke perangkat ini.",
+      "selectPlaylist": "Pilih playlist...",
+      "assigning": "Menetapkan...",
+      "assign": "Tetapkan",
+      "removePlaylist": "Hapus playlist",
+      "priority1Highest": "Prioritas 1 (Tertinggi)",
+      "priority1Info": "Penetapan langsung menimpa penetapan berbasis tag dan playlist. Seret dan lepas item untuk mengurutkan ulang.",
+      "priority1InfoDetailed": "Penetapan langsung menimpa penetapan berbasis tag dan playlist. Seret dan lepas item untuk mengurutkan ulang - item di atas memiliki prioritas lebih tinggi.",
+      "manageContentDirectAssignment": "Kelola Konten (Penetapan Langsung)",
+      "priorityLabel": "Prioritas",
+      "availableContent": "Konten Tersedia",
+      "allContentAssigned": "Semua konten sudah ditetapkan.",
+      "assignedContent": "Konten yang Ditetapkan",
+      "noContentAssigned": "Belum ada konten yang ditetapkan.",
+      "removeFromDevice": "Hapus dari perangkat",
+      "assignToDevice": "Tetapkan ke perangkat",
+      "priorityUpdatedSuccess": "Prioritas berhasil diperbarui",
+      "priorityUpdateFailed": "Gagal memperbarui prioritas",
+      "priority2Medium": "Prioritas 2 (Menengah)",
+      "priority2Info": "Konten berbasis tag ditampilkan ketika tidak ada konten langsung yang ditetapkan. Semua konten dari tag yang ditetapkan akan digabungkan dan diputar.",
+      "assignNewTag": "Tetapkan Tag Baru",
+      "allTagsAssigned": "Semua tag yang tersedia sudah ditetapkan ke perangkat ini.",
+      "noTagsAssigned": "Belum ada tag yang ditetapkan ke perangkat ini.",
+      "selectTag": "Pilih tag...",
+      "currentlyAssignedTags": "Tag yang Sudah Ditetapkan",
+      "removeTag": "Hapus tag",
+      "deviceLogs": "Log Perangkat",
+      "console": "Konsol",
+      "connection": "Koneksi",
+      "speedTest": "Tes Kecepatan",
+      "pendingActivation": "Menunggu Aktivasi",
+      "overview": "Gambaran Umum",
+      "health": "Kesehatan",
+      "commands": "Perintah",
+      "sendCommand": "Kirim Perintah",
+      "sendingCommand": "Mengirim...",
+      "selectCommand": "Pilih Perintah",
+      "parameters": "Parameter",
+      "range": "Rentang",
+      "offlineWarning": "Peringatan:",
+      "offlineWarningText": "Perangkat tampaknya offline. Perintah akan diantrekan dan dieksekusi saat perangkat online.",
+      "commands": {
+        "reboot": "Reboot Perangkat",
+        "rebootDesc": "Restart perangkat sepenuhnya",
+        "refresh": "Refresh Konten",
+        "refreshDesc": "Muat ulang konten saat ini tanpa restart",
+        "screenshot": "Ambil Screenshot",
+        "screenshotDesc": "Tangkap tampilan saat ini",
+        "volume": "Atur Volume",
+        "volumeDesc": "Sesuaikan level volume audio",
+        "brightness": "Atur Kecerahan",
+        "brightnessDesc": "Sesuaikan kecerahan layar",
+        "level": "Level"
+      },
+      "tvRegistered": "TV Berhasil Didaftarkan",
+      "registerTV": "Daftarkan Perangkat TV",
+      "registerMonitor": "Daftarkan Perangkat Monitor",
+      "webosOrNative": "Perangkat WebOS atau aplikasi native",
+      "browserDevices": "Perangkat tampilan berbasis browser",
+      "gotIt": "Mengerti",
+      "register": "Daftarkan",
+      "registering": "Mendaftarkan...",
+      "activationCodeLabel": "Kode Aktivasi",
+      "deviceNameLabel": "Nama Perangkat",
+      "codeHelp": "Kode 6 digit yang ditampilkan di layar TV",
+      "expiresIn": "Kedaluwarsa dalam",
+      "completeSetup": "Selesaikan Pengaturan di TV Anda",
+      "instruction1": "Buka aplikasi di TV Anda",
+      "instruction2": "Masukkan kode 6 digit di atas saat diminta",
+      "instruction3": "Tunggu hingga aktivasi selesai",
+      "codeExpiryWarning": "Kode ini akan kedaluwarsa dalam 10 menit. Selesaikan aktivasi di TV Anda sebelum kedaluwarsa.",
+      "howItWorks": "Cara kerja:",
+      "howItWorksDesc": "Masukkan kode aktivasi 6 digit yang ditampilkan di layar TV. Perangkat akan secara otomatis ditugaskan ke organisasi Anda.",
+      "howItWorksMonitor": "Masukkan kode aktivasi 6 digit yang ditampilkan di layar monitor. Perangkat akan secara otomatis ditugaskan ke organisasi Anda.",
+      "browserBasedDisplay": "Tampilan berbasis browser",
+      "activateMonitor": "Aktivasi Monitor",
+      "monitorCodeHelp": "Kode 6 digit yang ditampilkan di layar monitor",
+      "platform": "Platform",
+      "platformWebBrowser": "Web Browser",
+      "platformChrome": "Chrome",
+      "platformFirefox": "Firefox",
+      "platformEdge": "Edge",
+      "platformSafari": "Safari",
+      "errors": {
+        "codeRequired": "Kode aktivasi harus 6 digit",
+        "nameRequired": "Nama perangkat wajib diisi",
+        "failedToActivate": "Gagal mengaktifkan perangkat TV",
+        "networkError": "Kesalahan jaringan - Silakan periksa koneksi Anda",
+        "codeNotFound": "Kode aktivasi tidak ditemukan atau kedaluwarsa. Silakan periksa kode di layar perangkat Anda.",
+        "codeExpired": "Kode aktivasi sudah kedaluwarsa. Silakan refresh perangkat untuk mendapatkan kode baru.",
+        "invalidCode": "Kode aktivasi tidak valid. Silakan verifikasi kode 6 digit di layar perangkat Anda.",
+        "alreadyActivated": "Perangkat sudah diaktifkan. Silakan gunakan perangkat lain atau hubungi dukungan.",
+        "activationFailed": "Gagal mengaktifkan perangkat (Error {status})",
+        "updateFailed": "Gagal memperbarui perangkat",
+        "commandFailed": "Gagal mengirim perintah"
+      }
+    },
+    "placeholders": {
+      "enterCode": "Masukkan kode 6 digit",
+      "deviceName": "contoh: TV Lobby 1, Tampilan Ruang 101",
+      "monitorName": "contoh: Monitor Resepsi, Tampilan Ruang Rapat",
+      "roomNumber": "contoh: 101, A-205, Lobby",
+      "groupName": "contoh: Tampilan Lobby",
+      "groupDescription": "Deskripsi opsional",
+      "searchDevices": "Cari perangkat...",
+      "searchCommands": "Cari perintah...",
+      "templateName": "contoh: Refresh Pagi",
+      "templateDescription": "Apa fungsi template ini?",
+      "templateTags": "contoh: pemeliharaan, harian, prioritas-tinggi"
+    },
+    "tabs": {
+      "myDevices": "Perangkat Saya",
+      "unassignedPool": "Pool Belum Ditugaskan",
+      "unassignedDevices": "Perangkat Belum Ditugaskan"
+    },
+    "filters": {
+      "filters": "Filter",
+      "deviceType": "Tipe Perangkat",
+      "allTypes": "Semua Tipe",
+      "tv": "TV",
+      "monitor": "Monitor"
+    },
+    "buttons": {
+      "registerTV": "Daftarkan TV",
+      "registerMonitor": "Daftarkan Monitor",
+      "cancel": "Batal",
+      "delete": "Hapus",
+      "deleting": "Menghapus..."
+    },
+    "table": {
+      "device": "Perangkat",
+      "ipAddress": "Alamat IP",
+      "actions": "Aksi"
+    },
+    "messages": {
+      "pendingDevicesAwaiting": "Perangkat Pending Menunggu Aktivasi",
+      "errorLoading": "Error memuat perangkat",
+      "noDevicesFound": "Tidak ada perangkat ditemukan",
+      "deviceCount": "perangkat",
+      "devicesCount": "perangkat"
     }
   },
   "contents": {
@@ -110,15 +349,602 @@
     "uploadDate": "Tanggal Upload",
     "image": "Gambar",
     "video": "Video",
-    "url": "URL"
+    "audio": "Audio",
+    "url": "URL",
+    "type": "Tipe",
+    "tags": "Tag",
+    "uploadedBy": "Diupload Oleh",
+    "actions": {
+      "edit": "Edit",
+      "preview": "Pratinjau",
+      "download": "Unduh",
+      "delete": "Hapus",
+      "zoomOut": "Perkecil",
+      "zoomIn": "Perbesar",
+      "close": "Tutup (ESC)",
+      "upload": "Upload Konten",
+      "bulkEdit": "Edit Massal",
+      "bulkTag": "Tag Massal",
+      "bulkDelete": "Hapus Massal",
+      "bulkTagAssignment": "Penetapan Tag Massal",
+      "assignTagToItems": "Tetapkan tag ke {count} item konten",
+      "selectTag": "Pilih Tag",
+      "noTagsAvailable": "Tidak ada tag tersedia",
+      "createTagsFirst": "Buat tag terlebih dahulu untuk menetapkannya ke konten",
+      "selectedTag": "Tag Terpilih:",
+      "contentToBeTagged": "Konten yang akan diberi tag ({count}):",
+      "assigningTag": "Menetapkan...",
+      "assignTag": "Tetapkan Tag"
+    },
+    "modals": {
+      "deleteContent": "Hapus Konten",
+      "deleteMultiple": "Hapus Beberapa Konten",
+      "confirmDelete": "Apakah Anda yakin ingin menghapus konten ini?",
+      "confirmBulkDelete": "Apakah Anda yakin ingin menghapus {count} konten yang dipilih?",
+      "editContent": "Edit Konten",
+      "bulkEdit": "Edit Massal Konten",
+      "editingItems": "Mengedit {count} item konten",
+      "uploadContent": "Upload Konten"
+    },
+    "upload": {
+      "quota": {
+        "exceeded": "Kuota Konten Terlampaui",
+        "cannotUpload": "Tidak dapat mengupload konten lagi. Batas penyimpanan atau item tercapai.",
+        "limitReached": "Batas Kuota Konten Tercapai",
+        "totalFileSize": "Total ukuran file: {size} MB"
+      },
+      "fileTypes": {
+        "title": "📎 Jenis File & Batas yang Didukung",
+        "images": "Gambar (Maks 50MB)",
+        "videos": "Video (Maks 500MB)",
+        "audio": "Audio (Maks 100MB)"
+      },
+      "filesLabel": "File * (mendukung multiple file)",
+      "clickOrDrag": "Klik untuk memilih file atau drag and drop",
+      "selectMultiple": "Pilih satu atau beberapa file sekaligus",
+      "selectedFiles": "File Terpilih ({count})",
+      "uploading": "Mengupload...",
+      "errors": {
+        "invalidFileType": "{filename}: Jenis file tidak valid",
+        "tooLarge": "{filename}: Terlalu besar (maks {maxSize}MB)",
+        "selectAtLeastOne": "Harap pilih setidaknya satu file untuk diupload"
+      }
+    },
+    "form": {
+      "fileName": "Nama File",
+      "type": "Tipe",
+      "title": "Judul *",
+      "description": "Deskripsi",
+      "displayDuration": "Durasi Tampilan (detik)",
+      "durationHelp": "Berapa lama konten ini ditampilkan dalam playlist (1-86400 detik)",
+      "activeLabel": "Aktif (tersedia untuk playlist)",
+      "applyToAll": "📝 Terapkan ke Semua Item Terpilih",
+      "durationSeconds": "Durasi (detik)",
+      "leaveEmptyToSkip": "Biarkan kosong untuk dilewati",
+      "activeStatus": "Status Aktif",
+      "dontChange": "Jangan ubah",
+      "active": "Aktif",
+      "inactive": "Tidak Aktif",
+      "selectedContent": "Konten Terpilih ({count})"
+    },
+    "placeholders": {
+      "title": "Masukkan judul konten",
+      "description": "Masukkan deskripsi konten (opsional)",
+      "searchContent": "Cari berdasarkan judul atau deskripsi..."
+    },
+    "filters": {
+      "allTypes": "Semua Tipe"
+    },
+    "table": {
+      "content": "Konten",
+      "createdAt": "Dibuat Pada",
+      "actions": "Aksi"
+    },
+    "messages": {
+      "noContent": "Tidak ada konten ditemukan",
+      "errorLoading": "Error memuat konten",
+      "selectedCount": "{count} dipilih",
+      "setAtLeastOneField": "Harap atur setidaknya satu field untuk diperbarui",
+      "successfullyUpdated": "Berhasil memperbarui {count} item konten",
+      "updatedWithFailures": "Berhasil memperbarui {successCount} item, {failCount} gagal",
+      "videoNotSupported": "Browser Anda tidak mendukung pemutaran video.",
+      "audioNotSupported": "Browser Anda tidak mendukung pemutaran audio.",
+      "previewNotAvailable": "Pratinjau tidak tersedia untuk tipe konten ini"
+    },
+    "preview": {
+      "zoomOut": "Perkecil",
+      "zoomIn": "Perbesar",
+      "resolution": "Resolusi: {resolution}",
+      "duration": "Durasi: {duration}",
+      "hlsStreaming": "Streaming HLS",
+      "original": "Original: {filename}",
+      "uploaded": "Diupload: {date}",
+      "transcoding": "Transcoding: {status}",
+      "pressEscToClose": "Tekan {key} untuk menutup",
+      "download": "Unduh",
+      "closeEsc": "Tutup (ESC)"
+    },
+    "status": {
+      "pending": "Menunggu",
+      "updating": "Memperbarui...",
+      "success": "✓ Berhasil",
+      "failed": "✗ Gagal"
+    },
+    "buttons": {
+      "cancel": "Batal",
+      "delete": "Hapus",
+      "deleting": "Menghapus...",
+      "updating": "Memperbarui...",
+      "saveChanges": "Simpan Perubahan",
+      "updatingItems": "Memperbarui {count} item...",
+      "updateAll": "Perbarui Semua",
+      "uploadingFiles": "Mengupload {count} file...",
+      "checkingQuota": "Memeriksa kuota...",
+      "quotaExceeded": "Kuota Terlampaui",
+      "upload": "Upload",
+      "uploadWithCount": "Upload ({count})"
+    }
   },
   "playlists": {
     "title": "Manajemen Playlist",
     "addPlaylist": "Tambah Playlist",
+    "createPlaylist": "Buat Playlist",
+    "editPlaylist": "Edit Playlist",
     "playlistName": "Nama Playlist",
+    "name": "Nama",
+    "description": "Deskripsi",
+    "items": "Item",
+    "duration": "Durasi",
     "totalItems": "Total Item",
     "totalDuration": "Durasi Total",
-    "assignToDevice": "Tetapkan ke Perangkat"
+    "assignToDevice": "Tetapkan ke Perangkat",
+    "assignedDevices": "Perangkat Ditugaskan",
+    "noItems": "Tidak ada item",
+    "isDefault": "Playlist Default",
+    "isLoop": "Putar Berulang",
+    "createdAt": "Dibuat Pada",
+    "priority": "Prioritas",
+    "priorityHelp": "Prioritas lebih tinggi akan ditampilkan lebih dulu (0 = terendah)",
+    "active": "Aktif",
+    "actions": {
+      "edit": "Edit",
+      "delete": "Hapus",
+      "assignDevices": "Tetapkan Perangkat",
+      "manageContent": "Kelola Konten",
+      "preview": "Pratinjau"
+    },
+    "modals": {
+      "deletePlaylist": "Hapus Playlist",
+      "confirmDelete": "Apakah Anda yakin ingin menghapus playlist ini?"
+    },
+    "placeholders": {
+      "name": "Masukkan nama playlist",
+      "description": "Masukkan deskripsi (opsional)",
+      "search": "Cari playlist..."
+    },
+    "messages": {
+      "noPlaylists": "Tidak ada playlist ditemukan",
+      "errorLoading": "Error memuat playlist"
+    },
+    "buttons": {
+      "cancel": "Batal",
+      "save": "Simpan",
+      "delete": "Hapus",
+      "deleting": "Menghapus...",
+      "create": "Buat",
+      "saving": "Menyimpan...",
+      "update": "Update"
+    },
+    "bulkAssign": {
+      "title": "Tetapkan Perangkat ke Playlist",
+      "subtitle": "Pilih perangkat untuk ditetapkan ke \"{playlistName}\"",
+      "searchPlaceholder": "Cari perangkat...",
+      "filters": {
+        "all": "Semua",
+        "online": "Online",
+        "offline": "Offline"
+      },
+      "selection": {
+        "count": "{selected} dari {total} perangkat dipilih",
+        "selectAll": "Pilih Semua",
+        "deselectAll": "Batal Pilih Semua"
+      },
+      "conflict": {
+        "title": "{count} perangkat sudah ditetapkan",
+        "title_plural": "{count} perangkat sudah ditetapkan",
+        "description": "Perangkat ini sudah memiliki playlist ini dan akan dilewati."
+      },
+      "loading": "Memuat perangkat...",
+      "noDevices": "Tidak ada perangkat yang cocok dengan filter Anda",
+      "room": "Ruang {number}",
+      "alreadyAssigned": "Sudah ditetapkan",
+      "status": {
+        "online": "Online",
+        "offline": "Offline"
+      },
+      "deviceTypes": {
+        "tv": "TV",
+        "monitor": "Monitor"
+      },
+      "assignButton": "Tetapkan ke {count} Perangkat",
+      "assignButton_plural": "Tetapkan ke {count} Perangkat"
+    },
+    "contentModal": {
+      "title": "Kelola Konten",
+      "addContentToPlaylist": "Tambah Konten ke Playlist",
+      "addContent": "Tambah Konten",
+      "contentItems": "Item Konten ({count})",
+      "position": "Posisi: {position}",
+      "contentFallback": "Konten #{id}",
+      "noAvailableContent": "Tidak ada konten yang tersedia untuk ditambahkan",
+      "noContentYet": "Belum ada konten dalam playlist ini",
+      "loading": "Memuat konten...",
+      "adding": "Menambahkan...",
+      "addItems": "Tambah {count} item",
+      "addItems_plural": "Tambah {count} item",
+      "confirmRemove": "Hapus konten ini dari playlist?",
+      "reorderedSuccess": "Konten berhasil diurutkan ulang",
+      "durationUpdated": "Durasi diperbarui",
+      "selectAtLeastOne": "Pilih setidaknya satu item konten",
+      "close": "Tutup",
+      "cancel": "Batal"
+    },
+    "assignmentModal": {
+      "title": "Penugasan Playlist",
+      "tabs": {
+        "devices": "Perangkat ({count})",
+        "tags": "Tag ({count})"
+      },
+      "loading": "Memuat penugasan...",
+      "devices": {
+        "assignToDevices": "Tetapkan ke Perangkat",
+        "noAvailableDevices": "Tidak ada perangkat yang tersedia untuk ditetapkan",
+        "assignedDevices": "Perangkat Ditugaskan ({count})",
+        "notAssignedYet": "Belum ditetapkan ke perangkat manapun",
+        "deviceFallback": "Perangkat #{id}",
+        "status": "Status: {status}",
+        "location": "Lokasi: {location}",
+        "noLocation": "Tidak ada lokasi",
+        "assigning": "Menetapkan...",
+        "assignDevices": "Tetapkan {count} perangkat",
+        "assignDevices_plural": "Tetapkan {count} perangkat",
+        "confirmUnassign": "Lepaskan playlist ini dari perangkat?"
+      },
+      "tags": {
+        "assignToTags": "Tetapkan ke Tag",
+        "noAvailableTags": "Tidak ada tag yang tersedia untuk ditetapkan",
+        "assignedTags": "Tag Ditugaskan ({count})",
+        "notAssignedYet": "Belum ditetapkan ke tag manapun",
+        "tagFallback": "Tag #{id}",
+        "tagId": "ID Tag: {id}",
+        "assigning": "Menetapkan...",
+        "assignTags": "Tetapkan {count} tag",
+        "assignTags_plural": "Tetapkan {count} tag",
+        "confirmUnassign": "Lepaskan playlist ini dari tag?"
+      },
+      "selectAtLeastOneDevice": "Pilih setidaknya satu perangkat",
+      "selectAtLeastOneTag": "Pilih setidaknya satu tag",
+      "cancel": "Batal",
+      "close": "Tutup"
+    }
+  },
+  "schedules": {
+    "createSchedule": "Buat Jadwal",
+    "editSchedule": "Edit Jadwal",
+    "noSchedulesYet": "Belum ada jadwal",
+    "createFirstSchedule": "Buat jadwal pertama Anda untuk mulai mengotomatisasi pemutaran konten",
+    "searchPlaceholder": "Cari jadwal atau playlist...",
+    "filters": {
+      "allStatus": "Semua Status",
+      "allPriority": "Semua Prioritas",
+      "allTypes": "Semua Tipe"
+    },
+    "showing": "Menampilkan {filtered} dari {total} jadwal",
+    "status": {
+      "active": "Aktif",
+      "inactive": "Tidak Aktif",
+      "paused": "Dijeda",
+      "expired": "Kedaluwarsa"
+    },
+    "device": "perangkat",
+    "devices": "perangkat",
+    "labels": {
+      "time": "Waktu",
+      "timezone": "Zona Waktu",
+      "start": "Mulai",
+      "end": "Selesai",
+      "noEndDate": "Tidak ada tanggal akhir",
+      "lastRun": "Terakhir dijalankan",
+      "nextRun": "Selanjutnya",
+      "exceptionDates": "Tanggal pengecualian",
+      "more": "+{count} lagi"
+    },
+    "actions": {
+      "view": "Lihat",
+      "pause": "Jeda",
+      "stop": "Hentikan",
+      "start": "Mulai",
+      "resume": "Lanjutkan",
+      "edit": "Edit",
+      "delete": "Hapus",
+      "viewDetails": "Lihat Detail",
+      "pauseSchedule": "Jeda Jadwal",
+      "deactivateSchedule": "Nonaktifkan Jadwal",
+      "activateSchedule": "Aktifkan Jadwal",
+      "resumeSchedule": "Lanjutkan Jadwal",
+      "editSchedule": "Edit Jadwal",
+      "deleteSchedule": "Hapus Jadwal"
+    },
+    "noMatches": "Tidak ada jadwal yang cocok dengan filter Anda",
+    "clearFilters": "Hapus filter",
+    "deleteModal": {
+      "title": "Hapus Jadwal",
+      "confirmMessage": "Apakah Anda yakin ingin menghapus jadwal ini? Tindakan ini tidak dapat dibatalkan.",
+      "deleteButton": "Hapus Jadwal",
+      "cancel": "Batal"
+    },
+    "viewModal": {
+      "title": "Detail Jadwal",
+      "sections": {
+        "basicInfo": "Informasi Dasar",
+        "timing": "Waktu",
+        "recurrence": "Pengulangan",
+        "assignedResources": "Sumber Daya Terkait"
+      },
+      "fields": {
+        "name": "Nama",
+        "description": "Deskripsi",
+        "status": "Status",
+        "startDate": "Tanggal Mulai",
+        "endDate": "Tanggal Selesai",
+        "dailyTime": "Waktu Harian",
+        "timezone": "Zona Waktu",
+        "recurrenceType": "Tipe:",
+        "playlist": "Playlist",
+        "devices": "Perangkat",
+        "devicesAssigned": "{count} perangkat ditugaskan",
+        "devicesAssigned_plural": "{count} perangkat ditugaskan"
+      },
+      "close": "Tutup"
+    },
+    "activeIndicator": {
+      "checkingSchedule": "Memeriksa jadwal aktif...",
+      "noActiveSchedule": "Tidak ada jadwal aktif",
+      "currentlyPlaying": "Sedang Diputar",
+      "activeNow": "Aktif Sekarang",
+      "live": "Live",
+      "priority": "Prioritas",
+      "nextChangeIn": "Perubahan berikutnya dalam",
+      "changesIn": "Berubah dalam",
+      "viewSchedule": "Lihat Jadwal",
+      "viewDetails": "Lihat Detail"
+    },
+    "conflictDetector": {
+      "checkingConflicts": "Memeriksa konflik...",
+      "errorChecking": "Error memeriksa konflik",
+      "failedToCheck": "Gagal memeriksa konflik",
+      "noConflicts": "Tidak ada konflik terdeteksi",
+      "noConflictsDesc": "Jadwal ini dapat dibuat tanpa konflik",
+      "conflictsDetected": "{count} konflik terdeteksi",
+      "conflictsDetected_plural": "{count} konflik terdeteksi",
+      "reviewConflicts": "Silakan tinjau konflik di bawah dan sesuaikan jadwal Anda",
+      "timeOverlaps": "Tumpang Tindih Waktu",
+      "deviceConflicts": "Konflik Perangkat",
+      "priorityConflicts": "Konflik Prioritas",
+      "conflictingSchedule": "Jadwal yang berkonflik:",
+      "date": "Tanggal:",
+      "time": "Waktu:"
+    },
+    "page": {
+      "listView": "Daftar",
+      "calendarView": "Kalender"
+    },
+    "exceptionDates": {
+      "title": "Tanggal Pengecualian",
+      "description": "Tanggal dimana jadwal ini TIDAK akan berjalan",
+      "clearAll": "Hapus Semua",
+      "add": "Tambah",
+      "pleaseSelectDate": "Silakan pilih tanggal",
+      "dateAfter": "Tanggal harus pada atau setelah {date}",
+      "dateBefore": "Tanggal harus pada atau sebelum {date}",
+      "alreadyInList": "Tanggal ini sudah ada dalam daftar pengecualian",
+      "confirmClearAll": "Apakah Anda yakin ingin menghapus semua tanggal pengecualian?",
+      "countDates": "{count} tanggal pengecualian",
+      "countDates_plural": "{count} tanggal pengecualian",
+      "removeDate": "Hapus tanggal pengecualian",
+      "noExceptionDates": "Belum ada tanggal pengecualian",
+      "addDatesDesc": "Tambahkan tanggal dimana jadwal ini harus dilewati",
+      "tip": "Tips:",
+      "tipDescription": "Tanggal pengecualian berguna untuk hari libur, periode pemeliharaan, atau acara khusus ketika Anda ingin melewati jadwal reguler.",
+      "exceptionDate": "Tanggal pengecualian"
+    },
+    "priorityManager": {
+      "title": "Manajemen Prioritas",
+      "priorityLevel": "Tingkat Prioritas",
+      "levels": {
+        "low": "Rendah",
+        "normal": "Normal",
+        "high": "Tinggi",
+        "critical": "Kritis"
+      },
+      "ranges": {
+        "low": "0-24",
+        "normal": "25-49",
+        "high": "50-74",
+        "critical": "75-100"
+      },
+      "quickActions": {
+        "decrease": "-10",
+        "reset": "Atur Ulang (50)",
+        "increase": "+10"
+      },
+      "relatedSchedules": "Jadwal Terkait ({count})",
+      "conflictsDetected": "Konflik Prioritas Terdeteksi",
+      "noConflictsDetected": "Tidak ada konflik prioritas terdeteksi",
+      "applyChange": "Terapkan Perubahan Prioritas",
+      "suggestions": {
+        "adjustToAvoidTie": "Sesuaikan ke {value} untuk menghindari nilai prioritas yang sama",
+        "hasHigherPriority": "{name} memiliki prioritas lebih tinggi"
+      }
+    },
+    "previewCalendar": {
+      "title": "Pratinjau Jadwal",
+      "playlist": "Playlist:",
+      "weekdays": {
+        "mon": "Sen",
+        "tue": "Sel",
+        "wed": "Rab",
+        "thu": "Kam",
+        "fri": "Jum",
+        "sat": "Sab",
+        "sun": "Min"
+      },
+      "legend": {
+        "exception": "Pengecualian"
+      },
+      "priorityLabel": "Prioritas {value}",
+      "exceptionWillNotRun": "Tanggal pengecualian - tidak akan dijalankan",
+      "showingNext": "Menampilkan",
+      "occurrence": "kejadian berikutnya",
+      "occurrences": "kejadian berikutnya",
+      "exceptionCount": "({count} pengecualian)",
+      "exceptionCount_plural": "({count} pengecualian)"
+    },
+    "recurrenceBuilder": {
+      "recurrenceType": "Tipe Pengulangan",
+      "repeatEvery": "Ulangi setiap",
+      "day": "hari",
+      "days": "hari",
+      "repeatOnDays": "Ulangi pada hari",
+      "repeatsOn": "Diulangi pada:",
+      "repeatOn": "Ulangi pada",
+      "dayLabel": "Tanggal",
+      "ofTheMonth": "setiap bulan",
+      "lastDayOfMonth": "Hari terakhir bulan",
+      "cronExpression": "Ekspresi Cron",
+      "cronPlaceholder": "0 9 * * *",
+      "cronFormat": "Format: menit jam tanggal bulan hari_minggu",
+      "examples": "Contoh:",
+      "exampleDaily": "Setiap hari pukul 9:00 pagi",
+      "exampleHourly": "Setiap 2 jam",
+      "exampleWeekdays": "Hari kerja pukul 9:00 pagi",
+      "scheduleWillRepeat": "Jadwal akan diulangi:",
+      "summary": {
+        "everyDay": "Setiap hari",
+        "everyDays": "Setiap {interval} hari",
+        "noDaysSelected": "Tidak ada hari dipilih",
+        "everyDayOfWeek": "Setiap hari dalam seminggu",
+        "everyDays_weekly": "Setiap {days}",
+        "lastDayOfMonth": "Hari terakhir setiap bulan",
+        "dayOfMonth": "Tanggal {day} setiap bulan",
+        "noExpressionDefined": "Tidak ada ekspresi didefinisikan",
+        "oneTimeOnly": "Satu kali saja"
+      }
+    },
+    "fullCalendar": {
+      "loadingCalendar": "Memuat kalender...",
+      "buttons": {
+        "today": "Hari Ini",
+        "month": "Bulan",
+        "week": "Minggu",
+        "day": "Hari",
+        "list": "Daftar"
+      },
+      "priorityLevels": "Tingkat Prioritas:",
+      "tip": "Tips:",
+      "tipMessage": "Seret acara untuk menjadwal ulang, ubah ukuran untuk menyesuaikan durasi, klik untuk melihat detail"
+    },
+    "recurrencePatternBuilder": {
+      "title": "Pola Pengulangan",
+      "hidePresets": "Sembunyikan Preset",
+      "showPresets": "Tampilkan Preset",
+      "quickPresets": "Preset Cepat",
+      "naturalLanguage": {
+        "runOnce": "Jalankan sekali pada tanggal yang ditentukan",
+        "runEveryDay": "Jalankan setiap hari",
+        "runEveryDays": "Jalankan setiap {interval} hari",
+        "selectDaysOfWeek": "Pilih hari dalam seminggu",
+        "runEvery": "Jalankan setiap {days}",
+        "runLastDayMonth": "Jalankan pada hari terakhir setiap bulan",
+        "runDayOfMonth": "Jalankan pada tanggal {day} setiap bulan",
+        "selectDayOfMonth": "Pilih tanggal bulan",
+        "customPattern": "Pola kustom: {expression}",
+        "enterCronExpression": "Masukkan ekspresi cron"
+      },
+      "dailyPattern": {
+        "label": "Ulangi setiap N hari",
+        "description": "Masukkan 1 untuk setiap hari, 2 untuk setiap hari kedua, dll."
+      },
+      "weeklyPattern": {
+        "label": "Pilih hari dalam seminggu"
+      },
+      "monthlyPattern": {
+        "label": "Tanggal bulan",
+        "specificDay": "Tanggal Tertentu",
+        "lastDay": "Hari Terakhir",
+        "dayRangeNote": "Tanggal 1-31 (Catatan: Tanggal 29-31 mungkin tidak ada di semua bulan)",
+        "lastDayDescription": "Jadwal akan dijalankan pada hari terakhir setiap bulan"
+      },
+      "customPattern": {
+        "label": "Ekspresi Cron",
+        "formatHelp": "Format: menit jam tanggal bulan hari_minggu (contoh: \"0 9 * * 1-5\" = 9 pagi pada hari kerja)",
+        "learnMore": "Pelajari lebih lanjut tentang ekspresi cron"
+      }
+    },
+    "scheduleForm": {
+      "labels": {
+        "scheduleName": "Nama Jadwal",
+        "description": "Deskripsi",
+        "playlist": "Playlist",
+        "devices": "Perangkat ({count} dipilih)",
+        "startDate": "Tanggal Mulai",
+        "endDate": "Tanggal Selesai",
+        "startTime": "Waktu Mulai",
+        "endTime": "Waktu Selesai",
+        "timezone": "Zona Waktu",
+        "recurrenceType": "Tipe Pengulangan",
+        "priority": "Prioritas"
+      },
+      "placeholders": {
+        "scheduleName": "contoh: Jadwal Playlist Pagi",
+        "description": "Deskripsi opsional...",
+        "selectPlaylist": "-- Pilih Playlist --",
+        "selectTimezone": "-- Pilih Zona Waktu --"
+      },
+      "validation": {
+        "nameRequired": "Nama jadwal wajib diisi",
+        "nameMax": "Nama tidak boleh lebih dari 255 karakter",
+        "playlistRequired": "Silakan pilih playlist",
+        "devicesRequired": "Silakan pilih minimal satu perangkat",
+        "startDateRequired": "Tanggal mulai wajib diisi",
+        "startTimeRequired": "Waktu mulai wajib diisi",
+        "endTimeRequired": "Waktu selesai wajib diisi",
+        "timezoneRequired": "Zona waktu wajib diisi",
+        "endTimeAfterStart": "Waktu selesai harus setelah waktu mulai"
+      },
+      "buttons": {
+        "cancel": "Batal",
+        "createSchedule": "Buat Jadwal",
+        "updateSchedule": "Perbarui Jadwal",
+        "saveDraft": "Simpan Draft",
+        "preview": "Pratinjau"
+      },
+      "sections": {
+        "basicInfo": "Informasi Dasar",
+        "timing": "Tanggal & Waktu",
+        "recurrence": "Pola Pengulangan",
+        "priority": "Pengaturan Prioritas",
+        "devices": "Tetapkan Perangkat",
+        "exceptions": "Tanggal Pengecualian",
+        "conflictCheck": "Deteksi Konflik",
+        "preview": "Pratinjau Jadwal"
+      },
+      "help": {
+        "endDateOptional": "Kosongkan untuk jadwal berkelanjutan",
+        "timezoneInfo": "Semua waktu akan dijadwalkan dalam zona waktu ini",
+        "exceptionDatesInfo": "Lewati tanggal tertentu meskipun cocok dengan pola pengulangan"
+      }
+    }
   },
   "dashboard": {
     "title": "Dashboard",
@@ -133,7 +959,21 @@
     "status": "Status",
     "active": "Aktif",
     "inactive": "Tidak Aktif",
-    "notAvailable": "N/A"
+    "notAvailable": "N/A",
+    "metrics": {
+      "onlineDevices": "{online} online ({percentage}%)",
+      "acrossAllDevices": "Di semua perangkat",
+      "playbackCompletion": "Penyelesaian pemutaran konten",
+      "totalPlaybackEvents": "Total event pemutaran",
+      "playbackEventsCount": "{count} event pemutaran"
+    }
+  },
+  "analytics": {
+    "totalPlays": "Total Putar",
+    "completed": "Selesai",
+    "uniqueContent": "Konten Unik",
+    "activeDevices": "Perangkat Aktif",
+    "watchTime": "Waktu Tonton"
   },
   "theme": {
     "light": "Terang",
@@ -153,5 +993,14 @@
     "notFound": "Halaman tidak ditemukan",
     "unauthorized": "Anda tidak memiliki akses",
     "forbidden": "Akses ditolak"
+  },
+  "organization": {
+    "switchOrganization": "Beralih Organisasi",
+    "clickToSwitch": "Klik untuk beralih organisasi",
+    "activeOrganization": "Organisasi Aktif",
+    "selectOrganization": "Pilih Organisasi",
+    "active": "Aktif",
+    "keyboardHint": "Tekan <kbd>Ctrl/Cmd+K</kbd> untuk membuka",
+    "select": "Pilih"
   }
 }

@@ -4,6 +4,7 @@
  */
 
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { AlertTriangle, AlertCircle, Info, ChevronDown, ChevronUp, ExternalLink } from 'lucide-react'
 import { useScheduleConflicts, useConflictState } from '../hooks/useAdvancedSchedules'
 import type { CheckConflictRequest, ConflictSchedule } from '../types/advanced'
@@ -32,6 +33,7 @@ export const ScheduleConflictDetector = ({
   excludeScheduleId,
   onConflictClick,
 }: ScheduleConflictDetectorProps) => {
+  const { t } = useTranslation()
   const [isExpanded, setIsExpanded] = useState(true)
 
   // Build conflict check request
@@ -103,7 +105,9 @@ export const ScheduleConflictDetector = ({
       <div className="p-4 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg">
         <div className="flex items-center gap-3">
           <div className="animate-spin h-5 w-5 border-2 border-purple-500 border-t-transparent rounded-full" />
-          <span className="text-sm text-gray-600 dark:text-gray-400">Checking for conflicts...</span>
+          <span className="text-sm text-gray-600 dark:text-gray-400">
+            {t('schedules.conflictDetector.checkingConflicts')}
+          </span>
         </div>
       </div>
     )
@@ -178,6 +182,8 @@ interface ConflictCardProps {
 }
 
 const ConflictCard = ({ conflict, onClick }: ConflictCardProps) => {
+  const { t } = useTranslation()
+
   const formatDate = (date: string) => {
     return new Date(date).toLocaleDateString('en-US', {
       month: 'short',
@@ -209,12 +215,12 @@ const ConflictCard = ({ conflict, onClick }: ConflictCardProps) => {
 
           <div className="space-y-1">
             <p className="text-xs text-gray-600 dark:text-gray-400">
-              <span className="font-medium">Date:</span>{' '}
+              <span className="font-medium">{t('schedules.conflictDetector.date')}</span>{' '}
               {formatDate(conflict.start_date)}
               {conflict.end_date && ` - ${formatDate(conflict.end_date)}`}
             </p>
             <p className="text-xs text-gray-600 dark:text-gray-400">
-              <span className="font-medium">Time:</span>{' '}
+              <span className="font-medium">{t('schedules.conflictDetector.time')}</span>{' '}
               {formatTime(conflict.start_time)} - {formatTime(conflict.end_time)}
             </p>
           </div>

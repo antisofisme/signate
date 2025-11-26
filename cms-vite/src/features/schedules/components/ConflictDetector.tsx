@@ -4,6 +4,7 @@
  */
 
 import { useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import { AlertTriangle, Ban, AlertCircle, Clock, Zap } from 'lucide-react'
 import { useCheckConflicts } from '../hooks/useSchedules'
 import type { RecurrenceType, RecurrencePattern } from '../types/schedule.types'
@@ -31,6 +32,7 @@ export const ConflictDetector = ({
   recurrencePattern,
   excludeScheduleId,
 }: ConflictDetectorProps) => {
+  const { t } = useTranslation()
   const checkConflicts = useCheckConflicts()
 
   useEffect(() => {
@@ -55,7 +57,9 @@ export const ConflictDetector = ({
       <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
         <div className="flex items-center gap-3">
           <div className="animate-spin h-5 w-5 border-3 border-gray-600 border-t-transparent rounded-full"></div>
-          <p className="text-sm text-gray-700">Checking for conflicts...</p>
+          <p className="text-sm text-gray-700">
+            {t('schedules.conflictDetector.checkingConflicts')}
+          </p>
         </div>
       </div>
     )
@@ -67,9 +71,12 @@ export const ConflictDetector = ({
         <div className="flex items-start gap-3">
           <Ban className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
           <div>
-            <h4 className="text-sm font-semibold text-red-900">Error checking conflicts</h4>
+            <h4 className="text-sm font-semibold text-red-900">
+              {t('schedules.conflictDetector.errorChecking')}
+            </h4>
             <p className="text-xs text-red-700 mt-1">
-              {(checkConflicts.error as any)?.response?.data?.detail || 'Failed to check conflicts'}
+              {(checkConflicts.error as any)?.response?.data?.detail ||
+                t('schedules.conflictDetector.failedToCheck')}
             </p>
           </div>
         </div>
@@ -89,9 +96,11 @@ export const ConflictDetector = ({
         <div className="flex items-center gap-3">
           <AlertCircle className="w-5 h-5 text-green-600 flex-shrink-0" />
           <div>
-            <h4 className="text-sm font-semibold text-green-900">No conflicts detected</h4>
+            <h4 className="text-sm font-semibold text-green-900">
+              {t('schedules.conflictDetector.noConflicts')}
+            </h4>
             <p className="text-xs text-green-700 mt-1">
-              This schedule can be created without conflicts
+              {t('schedules.conflictDetector.noConflictsDesc')}
             </p>
           </div>
         </div>
@@ -111,10 +120,15 @@ export const ConflictDetector = ({
           <AlertTriangle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
           <div className="flex-1">
             <h4 className="text-sm font-semibold text-red-900">
-              {data.conflicts.length} conflict{data.conflicts.length > 1 ? 's' : ''} detected
+              {t(
+                data.conflicts.length > 1
+                  ? 'schedules.conflictDetector.conflictsDetected_plural'
+                  : 'schedules.conflictDetector.conflictsDetected',
+                { count: data.conflicts.length }
+              )}
             </h4>
             <p className="text-xs text-red-700 mt-1">
-              Please review the conflicts below and adjust your schedule
+              {t('schedules.conflictDetector.reviewConflicts')}
             </p>
           </div>
         </div>
@@ -125,10 +139,10 @@ export const ConflictDetector = ({
         <div className="space-y-2">
           <h5 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
             <Clock className="w-4 h-4" />
-            Time Overlaps ({timeOverlaps.length})
+            {t('schedules.conflictDetector.timeOverlaps')} ({timeOverlaps.length})
           </h5>
           {timeOverlaps.map((conflict, index) => (
-            <ConflictCard key={index} conflict={conflict} />
+            <ConflictCard key={index} conflict={conflict} t={t} />
           ))}
         </div>
       )}
@@ -138,10 +152,10 @@ export const ConflictDetector = ({
         <div className="space-y-2">
           <h5 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
             <AlertCircle className="w-4 h-4" />
-            Device Conflicts ({deviceOverlaps.length})
+            {t('schedules.conflictDetector.deviceConflicts')} ({deviceOverlaps.length})
           </h5>
           {deviceOverlaps.map((conflict, index) => (
-            <ConflictCard key={index} conflict={conflict} />
+            <ConflictCard key={index} conflict={conflict} t={t} />
           ))}
         </div>
       )}
@@ -151,10 +165,10 @@ export const ConflictDetector = ({
         <div className="space-y-2">
           <h5 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
             <Zap className="w-4 h-4" />
-            Priority Conflicts ({priorityConflicts.length})
+            {t('schedules.conflictDetector.priorityConflicts')} ({priorityConflicts.length})
           </h5>
           {priorityConflicts.map((conflict, index) => (
-            <ConflictCard key={index} conflict={conflict} />
+            <ConflictCard key={index} conflict={conflict} t={t} />
           ))}
         </div>
       )}
@@ -163,7 +177,7 @@ export const ConflictDetector = ({
 }
 
 // Conflict Card Component
-const ConflictCard = ({ conflict }: { conflict: any }) => {
+const ConflictCard = ({ conflict, t }: { conflict: any; t: any }) => {
   const isWarning = conflict.severity === 'warning'
 
   return (
@@ -182,7 +196,8 @@ const ConflictCard = ({ conflict }: { conflict: any }) => {
           </p>
           {conflict.conflicting_schedule_name && (
             <p className={`text-xs mt-1 ${isWarning ? 'text-yellow-700' : 'text-red-700'}`}>
-              Conflicting schedule: <strong>{conflict.conflicting_schedule_name}</strong>
+              {t('schedules.conflictDetector.conflictingSchedule')}{' '}
+              <strong>{conflict.conflicting_schedule_name}</strong>
             </p>
           )}
           {conflict.resolution_suggestion && (

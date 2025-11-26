@@ -4,6 +4,7 @@
  */
 
 import { useRef, useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 import FullCalendar from '@fullcalendar/react'
 import dayGridPlugin from '@fullcalendar/daygrid'
 import timeGridPlugin from '@fullcalendar/timegrid'
@@ -38,6 +39,7 @@ export function FullCalendarView({
   editable = false,
   isLoading = false,
 }: FullCalendarViewProps) {
+  const { t } = useTranslation()
   const calendarRef = useRef<FullCalendar>(null)
 
   // Convert schedule occurrences to FullCalendar events
@@ -120,7 +122,7 @@ export function FullCalendarView({
       <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-8">
         <div className="flex items-center justify-center">
           <div className="animate-spin h-8 w-8 border-4 border-blue-500 border-t-transparent rounded-full"></div>
-          <span className="ml-3 text-gray-600 dark:text-gray-400">Loading calendar...</span>
+          <span className="ml-3 text-gray-600 dark:text-gray-400">{t('schedules.fullCalendar.loadingCalendar')}</span>
         </div>
       </div>
     )
@@ -275,11 +277,11 @@ export function FullCalendarView({
         // Localization
         locale="en"
         buttonText={{
-          today: 'Today',
-          month: 'Month',
-          week: 'Week',
-          day: 'Day',
-          list: 'List',
+          today: t('schedules.fullCalendar.buttons.today'),
+          month: t('schedules.fullCalendar.buttons.month'),
+          week: t('schedules.fullCalendar.buttons.week'),
+          day: t('schedules.fullCalendar.buttons.day'),
+          list: t('schedules.fullCalendar.buttons.list'),
         }}
         slotLabelFormat={{
           hour: '2-digit',
@@ -300,7 +302,7 @@ export function FullCalendarView({
       {/* Calendar Legend */}
       <div className="mt-4 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700">
         <div className="flex flex-wrap items-center gap-4 text-xs">
-          <span className="font-semibold text-gray-700 dark:text-gray-300">Priority Levels:</span>
+          <span className="font-semibold text-gray-700 dark:text-gray-300">{t('schedules.fullCalendar.priorityLevels')}</span>
           {Object.values(PRIORITY_LEVELS).map((priority) => (
             <div key={priority.level} className="flex items-center gap-2">
               <div
@@ -316,7 +318,7 @@ export function FullCalendarView({
         </div>
         {editable && (
           <div className="mt-2 text-xs text-gray-500 dark:text-gray-400">
-            💡 <strong>Tip:</strong> Drag events to reschedule, resize to adjust duration, click to view details
+            💡 <strong>{t('schedules.fullCalendar.tip')}</strong> {t('schedules.fullCalendar.tipMessage')}
           </div>
         )}
       </div>

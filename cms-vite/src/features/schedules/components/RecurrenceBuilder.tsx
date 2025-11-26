@@ -3,6 +3,7 @@
  * Visual builder for schedule recurrence patterns
  */
 
+import { useTranslation } from 'react-i18next'
 import { RECURRENCE_TYPES, DAYS_OF_WEEK, type RecurrenceType, type RecurrencePattern, type DayOfWeek } from '../types/schedule.types'
 import { renderIcon } from '@/shared/utils/iconHelper'
 
@@ -21,6 +22,8 @@ export const RecurrenceBuilder = ({
   onPatternChange,
   disabled = false,
 }: RecurrenceBuilderProps) => {
+  const { t } = useTranslation()
+
   const handleTypeClick = (type: RecurrenceType) => {
     if (disabled) return
     onTypeChange(type)
@@ -61,7 +64,7 @@ export const RecurrenceBuilder = ({
       {/* Recurrence Type Selector */}
       <div>
         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
-          Recurrence Type
+          {t('schedules.recurrenceBuilder.recurrenceType')}
         </label>
         <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
           {Object.values(RECURRENCE_TYPES).map((type) => {
@@ -105,7 +108,7 @@ export const RecurrenceBuilder = ({
           {recurrenceType === 'daily' && (
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Repeat every
+                {t('schedules.recurrenceBuilder.repeatEvery')}
               </label>
               <div className="flex items-center gap-2">
                 <input
@@ -121,7 +124,7 @@ export const RecurrenceBuilder = ({
                   className="w-20 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
                 />
                 <span className="text-sm text-gray-700 dark:text-gray-300">
-                  {(recurrencePattern.interval || 1) === 1 ? 'day' : 'days'}
+                  {t((recurrencePattern.interval || 1) === 1 ? 'schedules.recurrenceBuilder.day' : 'schedules.recurrenceBuilder.days')}
                 </span>
               </div>
             </div>
@@ -131,7 +134,7 @@ export const RecurrenceBuilder = ({
           {recurrenceType === 'weekly' && (
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
-                Repeat on days
+                {t('schedules.recurrenceBuilder.repeatOnDays')}
               </label>
               <div className="grid grid-cols-7 gap-2">
                 {Object.entries(DAYS_OF_WEEK).map(([key, day]) => {
@@ -160,7 +163,7 @@ export const RecurrenceBuilder = ({
               </div>
               {recurrencePattern.days_of_week && recurrencePattern.days_of_week.length > 0 && (
                 <p className="mt-2 text-xs text-gray-600 dark:text-gray-400">
-                  Repeats on: {recurrencePattern.days_of_week
+                  {t('schedules.recurrenceBuilder.repeatsOn')} {recurrencePattern.days_of_week
                     .map(d => DAYS_OF_WEEK[d].label)
                     .join(', ')}
                 </p>
@@ -172,7 +175,7 @@ export const RecurrenceBuilder = ({
           {recurrenceType === 'monthly' && (
             <div className="space-y-3">
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                Repeat on
+                {t('schedules.recurrenceBuilder.repeatOn')}
               </label>
 
               <div className="space-y-2">
@@ -187,7 +190,7 @@ export const RecurrenceBuilder = ({
                     disabled={disabled}
                     className="w-4 h-4"
                   />
-                  <span className="text-sm text-gray-700 dark:text-gray-300">Day</span>
+                  <span className="text-sm text-gray-700 dark:text-gray-300">{t('schedules.recurrenceBuilder.dayLabel')}</span>
                   <input
                     type="number"
                     min="1"
@@ -200,7 +203,7 @@ export const RecurrenceBuilder = ({
                     disabled={disabled || recurrencePattern.last_day_of_month}
                     className="w-16 px-2 py-1 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
                   />
-                  <span className="text-sm text-gray-700 dark:text-gray-300">of the month</span>
+                  <span className="text-sm text-gray-700 dark:text-gray-300">{t('schedules.recurrenceBuilder.ofTheMonth')}</span>
                 </label>
 
                 <label className="flex items-center gap-3">
@@ -213,7 +216,7 @@ export const RecurrenceBuilder = ({
                     disabled={disabled}
                     className="w-4 h-4"
                   />
-                  <span className="text-sm text-gray-700 dark:text-gray-300">Last day of the month</span>
+                  <span className="text-sm text-gray-700 dark:text-gray-300">{t('schedules.recurrenceBuilder.lastDayOfMonth')}</span>
                 </label>
               </div>
             </div>
@@ -223,7 +226,7 @@ export const RecurrenceBuilder = ({
           {recurrenceType === 'custom' && (
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Cron Expression
+                {t('schedules.recurrenceBuilder.cronExpression')}
               </label>
               <input
                 type="text"
@@ -232,17 +235,17 @@ export const RecurrenceBuilder = ({
                   ...recurrencePattern,
                   cron_expression: e.target.value,
                 })}
-                placeholder="0 9 * * *"
+                placeholder={t('schedules.recurrenceBuilder.cronPlaceholder')}
                 disabled={disabled}
                 className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md font-mono text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
               />
               <div className="mt-2 text-xs text-gray-600 dark:text-gray-400 space-y-1">
-                <p>Format: minute hour day month weekday</p>
-                <p>Examples:</p>
+                <p>{t('schedules.recurrenceBuilder.cronFormat')}</p>
+                <p>{t('schedules.recurrenceBuilder.examples')}</p>
                 <ul className="list-disc list-inside ml-2">
-                  <li><code className="bg-gray-200 dark:bg-gray-600 px-1">0 9 * * *</code> - Every day at 9:00 AM</li>
-                  <li><code className="bg-gray-200 dark:bg-gray-600 px-1">0 */2 * * *</code> - Every 2 hours</li>
-                  <li><code className="bg-gray-200 dark:bg-gray-600 px-1">0 9 * * 1-5</code> - Weekdays at 9:00 AM</li>
+                  <li><code className="bg-gray-200 dark:bg-gray-600 px-1">0 9 * * *</code> - {t('schedules.recurrenceBuilder.exampleDaily')}</li>
+                  <li><code className="bg-gray-200 dark:bg-gray-600 px-1">0 */2 * * *</code> - {t('schedules.recurrenceBuilder.exampleHourly')}</li>
+                  <li><code className="bg-gray-200 dark:bg-gray-600 px-1">0 9 * * 1-5</code> - {t('schedules.recurrenceBuilder.exampleWeekdays')}</li>
                 </ul>
               </div>
             </div>
@@ -254,8 +257,8 @@ export const RecurrenceBuilder = ({
       {recurrenceType !== 'once' && (
         <div className="bg-blue-50 dark:bg-blue-900 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
           <p className="text-sm text-blue-900 dark:text-blue-200">
-            <span className="font-medium">Schedule will repeat:</span>{' '}
-            {getRecurrenceSummary(recurrenceType, recurrencePattern)}
+            <span className="font-medium">{t('schedules.recurrenceBuilder.scheduleWillRepeat')}</span>{' '}
+            {getRecurrenceSummary(recurrenceType, recurrencePattern, t)}
           </p>
         </div>
       )}
@@ -264,27 +267,31 @@ export const RecurrenceBuilder = ({
 }
 
 // Helper function to generate human-readable summary
-function getRecurrenceSummary(type: RecurrenceType, pattern: RecurrencePattern): string {
+function getRecurrenceSummary(type: RecurrenceType, pattern: RecurrencePattern, t: any): string {
   switch (type) {
     case 'daily':
       const interval = pattern.interval || 1
-      return interval === 1 ? 'Every day' : `Every ${interval} days`
-    
+      return interval === 1
+        ? t('schedules.recurrenceBuilder.summary.everyDay')
+        : t('schedules.recurrenceBuilder.summary.everyDays', { interval })
+
     case 'weekly':
       const days = pattern.days_of_week || []
-      if (days.length === 0) return 'No days selected'
-      if (days.length === 7) return 'Every day of the week'
-      return `Every ${days.map(d => DAYS_OF_WEEK[d].label).join(', ')}`
-    
+      if (days.length === 0) return t('schedules.recurrenceBuilder.summary.noDaysSelected')
+      if (days.length === 7) return t('schedules.recurrenceBuilder.summary.everyDayOfWeek')
+      return t('schedules.recurrenceBuilder.summary.everyDays_weekly', {
+        days: days.map(d => DAYS_OF_WEEK[d].label).join(', ')
+      })
+
     case 'monthly':
-      if (pattern.last_day_of_month) return 'Last day of every month'
-      return `Day ${pattern.day_of_month || 1} of every month`
-    
+      if (pattern.last_day_of_month) return t('schedules.recurrenceBuilder.summary.lastDayOfMonth')
+      return t('schedules.recurrenceBuilder.summary.dayOfMonth', { day: pattern.day_of_month || 1 })
+
     case 'custom':
-      return pattern.cron_expression || 'No expression defined'
-    
+      return pattern.cron_expression || t('schedules.recurrenceBuilder.summary.noExpressionDefined')
+
     default:
-      return 'One time only'
+      return t('schedules.recurrenceBuilder.summary.oneTimeOnly')
   }
 }
 

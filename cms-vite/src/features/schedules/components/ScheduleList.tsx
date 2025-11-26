@@ -4,6 +4,7 @@
  */
 
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { CheckCircle, XCircle, Clock, Calendar, ClipboardList, Smartphone, Eye, Pause, X, Play, Edit, Trash2 } from 'lucide-react'
 import {
   PRIORITY_LEVELS,
@@ -37,6 +38,7 @@ export const ScheduleList = ({
   onDeactivate,
   onPause,
 }: ScheduleListProps) => {
+  const { t } = useTranslation()
   const [searchQuery, setSearchQuery] = useState('')
   const [filterStatus, setFilterStatus] = useState<ScheduleStatus | 'all'>('all')
   const [filterPriority, setFilterPriority] = useState<PriorityLevel | 'all'>('all')
@@ -69,8 +71,8 @@ export const ScheduleList = ({
     return (
       <div className="text-center py-12 bg-gray-50 dark:bg-gray-800 rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-600">
         <Calendar className="w-16 h-16 mx-auto mb-4 text-gray-400 dark:text-gray-500" />
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">No schedules yet</h3>
-        <p className="text-gray-600 dark:text-gray-400 mb-4">Create your first schedule to start automating content playback</p>
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">{t('schedules.noSchedulesYet')}</h3>
+        <p className="text-gray-600 dark:text-gray-400 mb-4">{t('schedules.createFirstSchedule')}</p>
       </div>
     )
   }
@@ -83,7 +85,7 @@ export const ScheduleList = ({
         <div className="flex-1">
           <input
             type="text"
-            placeholder="Search schedules or playlists..."
+            placeholder={t('schedules.searchPlaceholder')}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
@@ -96,11 +98,11 @@ export const ScheduleList = ({
           onChange={(e) => setFilterStatus(e.target.value as ScheduleStatus | 'all')}
           className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
         >
-          <option value="all">All Status</option>
-          <option value="active">Active</option>
-          <option value="inactive">Inactive</option>
-          <option value="paused">Paused</option>
-          <option value="expired">Expired</option>
+          <option value="all">{t('schedules.filters.allStatus')}</option>
+          <option value="active">{t('schedules.status.active')}</option>
+          <option value="inactive">{t('schedules.status.inactive')}</option>
+          <option value="paused">{t('schedules.status.paused')}</option>
+          <option value="expired">{t('schedules.status.expired')}</option>
         </select>
 
         {/* Priority filter */}
@@ -109,7 +111,7 @@ export const ScheduleList = ({
           onChange={(e) => setFilterPriority(e.target.value as PriorityLevel | 'all')}
           className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
         >
-          <option value="all">All Priority</option>
+          <option value="all">{t('schedules.filters.allPriority')}</option>
           {Object.values(PRIORITY_LEVELS).map((priority) => (
             <option key={priority.level} value={priority.level}>
               {priority.label}
@@ -123,7 +125,7 @@ export const ScheduleList = ({
           onChange={(e) => setFilterRecurrence(e.target.value as RecurrenceType | 'all')}
           className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
         >
-          <option value="all">All Types</option>
+          <option value="all">{t('schedules.filters.allTypes')}</option>
           {Object.values(RECURRENCE_TYPES).map((type) => (
             <option key={type.type} value={type.type}>
               {type.label}
@@ -134,7 +136,10 @@ export const ScheduleList = ({
 
       {/* Results count */}
       <div className="text-sm text-gray-600 dark:text-gray-400">
-        Showing {filteredSchedules.length} of {schedules.length} schedules
+        {t('schedules.showing', {
+          filtered: filteredSchedules.length,
+          total: schedules.length,
+        })}
       </div>
 
       {/* Schedule cards */}
@@ -177,25 +182,25 @@ export const ScheduleList = ({
                       {schedule.status === 'active' && (
                         <>
                           <CheckCircle className="w-4 h-4" />
-                          <span>Active</span>
+                          <span>{t('schedules.status.active')}</span>
                         </>
                       )}
                       {schedule.status === 'inactive' && (
                         <>
                           <XCircle className="w-4 h-4" />
-                          <span>Inactive</span>
+                          <span>{t('schedules.status.inactive')}</span>
                         </>
                       )}
                       {schedule.status === 'paused' && (
                         <>
                           <Clock className="w-4 h-4" />
-                          <span>Paused</span>
+                          <span>{t('schedules.status.paused')}</span>
                         </>
                       )}
                       {schedule.status === 'expired' && (
                         <>
                           <Clock className="w-4 h-4" />
-                          <span>Expired</span>
+                          <span>{t('schedules.status.expired')}</span>
                         </>
                       )}
                     </div>
@@ -234,49 +239,65 @@ export const ScheduleList = ({
                     {/* Devices count */}
                     <div className="inline-flex items-center gap-1 px-3 py-1 bg-cyan-100 dark:bg-cyan-900/30 text-cyan-700 dark:text-cyan-300 rounded-full text-sm">
                       <Smartphone className="w-4 h-4" />
-                      <span>{schedule.device_ids.length} device{schedule.device_ids.length !== 1 ? 's' : ''}</span>
+                      <span>
+                        {schedule.device_ids.length}{' '}
+                        {t(schedule.device_ids.length !== 1 ? 'schedules.devices' : 'schedules.device')}
+                      </span>
                     </div>
                   </div>
 
                   {/* Schedule details */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm text-gray-600 dark:text-gray-400">
                     <div>
-                      <span className="font-medium">Time:</span>{' '}
+                      <span className="font-medium">{t('schedules.labels.time')}:</span>{' '}
                       {schedule.start_time} - {schedule.end_time}
                     </div>
                     <div>
-                      <span className="font-medium">Timezone:</span>{' '}
+                      <span className="font-medium">{t('schedules.labels.timezone')}:</span>{' '}
                       {schedule.timezone}
                     </div>
                     <div>
-                      <span className="font-medium">Start:</span>{' '}
+                      <span className="font-medium">{t('schedules.labels.start')}:</span>{' '}
                       {new Date(schedule.start_date).toLocaleDateString()}
                     </div>
                     <div>
-                      <span className="font-medium">End:</span>{' '}
-                      {schedule.end_date ? new Date(schedule.end_date).toLocaleDateString() : 'No end date'}
+                      <span className="font-medium">{t('schedules.labels.end')}:</span>{' '}
+                      {schedule.end_date
+                        ? new Date(schedule.end_date).toLocaleDateString()
+                        : t('schedules.labels.noEndDate')}
                     </div>
                   </div>
 
                   {/* Additional info */}
                   <div className="flex items-center gap-4 mt-3 text-xs text-gray-500 dark:text-gray-400">
                     {schedule.last_run && (
-                      <span>Last run: {formatDateTime(schedule.last_run)}</span>
+                      <span>
+                        {t('schedules.labels.lastRun')}: {formatDateTime(schedule.last_run)}
+                      </span>
                     )}
                     {schedule.next_run && (
-                      <span>Next run: {formatDateTime(schedule.next_run)}</span>
+                      <span>
+                        {t('schedules.labels.nextRun')}: {formatDateTime(schedule.next_run)}
+                      </span>
                     )}
                   </div>
 
                   {/* Exception dates */}
                   {schedule.exception_dates && schedule.exception_dates.length > 0 && (
                     <div className="mt-3 p-2 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded text-xs">
-                      <span className="font-medium text-red-900 dark:text-red-200">Exception dates:</span>{' '}
+                      <span className="font-medium text-red-900 dark:text-red-200">
+                        {t('schedules.labels.exceptionDates')}:
+                      </span>{' '}
                       <span className="text-red-700 dark:text-red-300">
-                        {schedule.exception_dates.slice(0, 3).map(d =>
-                          new Date(d).toLocaleDateString()
-                        ).join(', ')}
-                        {schedule.exception_dates.length > 3 && ` +${schedule.exception_dates.length - 3} more`}
+                        {schedule.exception_dates
+                          .slice(0, 3)
+                          .map((d) => new Date(d).toLocaleDateString())
+                          .join(', ')}
+                        {schedule.exception_dates.length > 3 &&
+                          ' ' +
+                            t('schedules.labels.more', {
+                              count: schedule.exception_dates.length - 3,
+                            })}
                       </span>
                     </div>
                   )}
@@ -287,10 +308,10 @@ export const ScheduleList = ({
                   <button
                     onClick={() => onView(schedule)}
                     className="px-3 py-1.5 text-sm bg-gray-50 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-100 dark:hover:bg-gray-600 flex items-center gap-1"
-                    title="View Details"
+                    title={t('schedules.actions.viewDetails')}
                   >
                     <Eye className="w-4 h-4" />
-                    View
+                    {t('schedules.actions.view')}
                   </button>
 
                   {schedule.status === 'active' && (
@@ -298,18 +319,18 @@ export const ScheduleList = ({
                       <button
                         onClick={() => onPause(schedule)}
                         className="px-3 py-1.5 text-sm bg-yellow-50 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300 rounded hover:bg-yellow-100 dark:hover:bg-yellow-900/50 flex items-center gap-1"
-                        title="Pause Schedule"
+                        title={t('schedules.actions.pauseSchedule')}
                       >
                         <Pause className="w-4 h-4" />
-                        Pause
+                        {t('schedules.actions.pause')}
                       </button>
                       <button
                         onClick={() => onDeactivate(schedule)}
                         className="px-3 py-1.5 text-sm bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300 rounded hover:bg-red-100 dark:hover:bg-red-900/50 flex items-center gap-1"
-                        title="Deactivate Schedule"
+                        title={t('schedules.actions.deactivateSchedule')}
                       >
                         <X className="w-4 h-4" />
-                        Stop
+                        {t('schedules.actions.stop')}
                       </button>
                     </>
                   )}
@@ -318,10 +339,10 @@ export const ScheduleList = ({
                     <button
                       onClick={() => onActivate(schedule)}
                       className="px-3 py-1.5 text-sm bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded hover:bg-green-100 dark:hover:bg-green-900/50 flex items-center gap-1"
-                      title="Activate Schedule"
+                      title={t('schedules.actions.activateSchedule')}
                     >
                       <CheckCircle className="w-4 h-4" />
-                      Start
+                      {t('schedules.actions.start')}
                     </button>
                   )}
 
@@ -329,10 +350,10 @@ export const ScheduleList = ({
                     <button
                       onClick={() => onActivate(schedule)}
                       className="px-3 py-1.5 text-sm bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded hover:bg-green-100 dark:hover:bg-green-900/50 flex items-center gap-1"
-                      title="Resume Schedule"
+                      title={t('schedules.actions.resumeSchedule')}
                     >
                       <Play className="w-4 h-4" />
-                      Resume
+                      {t('schedules.actions.resume')}
                     </button>
                   )}
 
@@ -340,20 +361,20 @@ export const ScheduleList = ({
                     <button
                       onClick={() => onEdit(schedule)}
                       className="px-3 py-1.5 text-sm bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded hover:bg-blue-100 dark:hover:bg-blue-900/50 flex items-center gap-1"
-                      title="Edit Schedule"
+                      title={t('schedules.actions.editSchedule')}
                     >
                       <Edit className="w-4 h-4" />
-                      Edit
+                      {t('schedules.actions.edit')}
                     </button>
                   )}
 
                   <button
                     onClick={() => onDelete(schedule)}
                     className="px-3 py-1.5 text-sm bg-gray-50 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-100 dark:hover:bg-gray-600 flex items-center gap-1"
-                    title="Delete Schedule"
+                    title={t('schedules.actions.deleteSchedule')}
                   >
                     <Trash2 className="w-4 h-4" />
-                    Delete
+                    {t('schedules.actions.delete')}
                   </button>
                 </div>
               </div>
@@ -365,7 +386,7 @@ export const ScheduleList = ({
       {/* No results */}
       {filteredSchedules.length === 0 && (
         <div className="text-center py-8 bg-gray-50 dark:bg-gray-800 rounded-lg">
-          <p className="text-gray-600 dark:text-gray-400">No schedules match your filters</p>
+          <p className="text-gray-600 dark:text-gray-400">{t('schedules.noMatches')}</p>
           <button
             onClick={() => {
               setSearchQuery('')
@@ -375,7 +396,7 @@ export const ScheduleList = ({
             }}
             className="mt-2 text-sm text-blue-600 dark:text-blue-400 hover:underline"
           >
-            Clear filters
+            {t('schedules.clearFilters')}
           </button>
         </div>
       )}

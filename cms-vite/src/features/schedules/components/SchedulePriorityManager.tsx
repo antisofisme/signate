@@ -4,6 +4,7 @@
  */
 
 import { useState, useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Slider } from '@/shared/components/ui/slider'
 import { ArrowUp, ArrowDown, AlertTriangle, CheckCircle, TrendingUp } from 'lucide-react'
 import type { Schedule } from '../types/schedule.types'
@@ -21,6 +22,7 @@ export const SchedulePriorityManager = ({
   relatedSchedules = [],
   className = '',
 }: SchedulePriorityManagerProps) => {
+  const { t } = useTranslation()
   const [localPriority, setLocalPriority] = useState(currentPriority)
 
   // Analyze conflicts with related schedules
@@ -40,26 +42,26 @@ export const SchedulePriorityManager = ({
         conflicts.push({
           schedule,
           conflict: 'same',
-          suggestion: `Adjust to ${schedulePriority + 10} to avoid tie`,
+          suggestion: t('schedules.priorityManager.suggestions.adjustToAvoidTie', { value: schedulePriority + 10 }),
         })
       } else if (schedulePriority > localPriority) {
         conflicts.push({
           schedule,
           conflict: 'higher',
-          suggestion: `${schedule.name} has higher priority`,
+          suggestion: t('schedules.priorityManager.suggestions.hasHigherPriority', { name: schedule.name }),
         })
       }
     })
 
     return conflicts
-  }, [relatedSchedules, localPriority])
+  }, [relatedSchedules, localPriority, t])
 
   // Get priority level from numeric value
   const getPriorityLevel = (value: number): string => {
-    if (value >= 75) return 'Critical'
-    if (value >= 50) return 'High'
-    if (value >= 25) return 'Normal'
-    return 'Low'
+    if (value >= 75) return t('schedules.priorityManager.levels.critical')
+    if (value >= 50) return t('schedules.priorityManager.levels.high')
+    if (value >= 25) return t('schedules.priorityManager.levels.normal')
+    return t('schedules.priorityManager.levels.low')
   }
 
   // Get priority color
@@ -87,7 +89,7 @@ export const SchedulePriorityManager = ({
       <div className="flex items-center gap-2 mb-4">
         <TrendingUp className="h-5 w-5 text-purple-600 dark:text-purple-400" />
         <h3 className="text-sm font-semibold text-gray-900 dark:text-white">
-          Priority Management
+          {t('schedules.priorityManager.title')}
         </h3>
       </div>
 
@@ -95,7 +97,7 @@ export const SchedulePriorityManager = ({
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-            Priority Level
+            {t('schedules.priorityManager.priorityLevel')}
           </label>
           <div className="flex items-center gap-2">
             <span className={`text-2xl font-bold ${getPriorityColor(localPriority)}`}>
@@ -131,17 +133,17 @@ export const SchedulePriorityManager = ({
         {/* Priority Levels Guide */}
         <div className="grid grid-cols-4 gap-2 mt-4">
           {[
-            { label: 'Low', range: '0-24', color: 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300' },
-            { label: 'Normal', range: '25-49', color: 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-200' },
-            { label: 'High', range: '50-74', color: 'bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-200' },
-            { label: 'Critical', range: '75-100', color: 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-200' },
+            { label: 'low', range: 'low', color: 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300' },
+            { label: 'normal', range: 'normal', color: 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-200' },
+            { label: 'high', range: 'high', color: 'bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-200' },
+            { label: 'critical', range: 'critical', color: 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-200' },
           ].map((level) => (
             <div
               key={level.label}
               className={`p-2 rounded text-center ${level.color}`}
             >
-              <div className="text-xs font-semibold">{level.label}</div>
-              <div className="text-xs opacity-75">{level.range}</div>
+              <div className="text-xs font-semibold">{t(`schedules.priorityManager.levels.${level.label}`)}</div>
+              <div className="text-xs opacity-75">{t(`schedules.priorityManager.ranges.${level.range}`)}</div>
             </div>
           ))}
         </div>
@@ -154,14 +156,14 @@ export const SchedulePriorityManager = ({
             className="flex-1 flex items-center justify-center gap-1 px-3 py-2 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-md text-sm transition-colors"
           >
             <ArrowDown className="h-4 w-4" />
-            -10
+            {t('schedules.priorityManager.quickActions.decrease')}
           </button>
           <button
             type="button"
             onClick={() => setLocalPriority(50)}
             className="flex-1 px-3 py-2 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-md text-sm transition-colors"
           >
-            Reset (50)
+            {t('schedules.priorityManager.quickActions.reset')}
           </button>
           <button
             type="button"
@@ -169,7 +171,7 @@ export const SchedulePriorityManager = ({
             className="flex-1 flex items-center justify-center gap-1 px-3 py-2 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-md text-sm transition-colors"
           >
             <ArrowUp className="h-4 w-4" />
-            +10
+            {t('schedules.priorityManager.quickActions.increase')}
           </button>
         </div>
 
@@ -177,7 +179,7 @@ export const SchedulePriorityManager = ({
         {relatedSchedules.length > 0 && (
           <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
             <h4 className="text-sm font-medium text-gray-900 dark:text-white mb-3">
-              Related Schedules ({relatedSchedules.length})
+              {t('schedules.priorityManager.relatedSchedules', { count: relatedSchedules.length })}
             </h4>
 
             <div className="space-y-2 max-h-40 overflow-y-auto">
@@ -227,7 +229,7 @@ export const SchedulePriorityManager = ({
               <AlertTriangle className="h-4 w-4 text-yellow-600 dark:text-yellow-400 flex-shrink-0 mt-0.5" />
               <div className="flex-1">
                 <p className="text-sm font-medium text-yellow-900 dark:text-yellow-200 mb-1">
-                  Priority Conflicts Detected
+                  {t('schedules.priorityManager.conflictsDetected')}
                 </p>
                 <ul className="text-xs text-yellow-800 dark:text-yellow-300 space-y-1">
                   {conflictAnalysis.map((conflict, idx) => (
@@ -245,7 +247,7 @@ export const SchedulePriorityManager = ({
         {!hasConflicts && relatedSchedules.length > 0 && (
           <div className="flex items-center gap-2 text-sm text-green-600 dark:text-green-400">
             <CheckCircle className="h-4 w-4" />
-            <span>No priority conflicts detected</span>
+            <span>{t('schedules.priorityManager.noConflictsDetected')}</span>
           </div>
         )}
 
@@ -256,7 +258,7 @@ export const SchedulePriorityManager = ({
             onClick={handleApply}
             className="w-full px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 transition-colors text-sm font-medium"
           >
-            Apply Priority Change
+            {t('schedules.priorityManager.applyChange')}
           </button>
         )}
       </div>

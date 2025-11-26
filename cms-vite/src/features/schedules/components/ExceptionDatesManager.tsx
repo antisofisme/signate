@@ -4,6 +4,7 @@
  */
 
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Calendar, X, Plus, AlertCircle } from 'lucide-react'
 
 interface ExceptionDatesManagerProps {
@@ -21,6 +22,7 @@ export function ExceptionDatesManager({
   minDate,
   maxDate,
 }: ExceptionDatesManagerProps) {
+  const { t } = useTranslation()
   const [newDate, setNewDate] = useState('')
   const [error, setError] = useState('')
 
@@ -28,24 +30,24 @@ export function ExceptionDatesManager({
     setError('')
 
     if (!newDate) {
-      setError('Please select a date')
+      setError(t('schedules.exceptionDates.pleaseSelectDate'))
       return
     }
 
     // Validate min/max date
     if (minDate && newDate < minDate) {
-      setError(`Date must be on or after ${formatDate(minDate)}`)
+      setError(t('schedules.exceptionDates.dateAfter', { date: formatDate(minDate) }))
       return
     }
 
     if (maxDate && newDate > maxDate) {
-      setError(`Date must be on or before ${formatDate(maxDate)}`)
+      setError(t('schedules.exceptionDates.dateBefore', { date: formatDate(maxDate) }))
       return
     }
 
     // Check for duplicate
     if (exceptionDates.includes(newDate)) {
-      setError('This date is already in the exception list')
+      setError(t('schedules.exceptionDates.alreadyInList'))
       return
     }
 
@@ -61,7 +63,7 @@ export function ExceptionDatesManager({
   }
 
   const handleClearAll = () => {
-    if (confirm('Are you sure you want to clear all exception dates?')) {
+    if (confirm(t('schedules.exceptionDates.confirmClearAll'))) {
       onChange([])
     }
   }
@@ -73,10 +75,10 @@ export function ExceptionDatesManager({
         <div>
           <h4 className="text-sm font-medium text-gray-900 dark:text-white flex items-center gap-2">
             <Calendar className="w-4 h-4" />
-            Exception Dates
+            {t('schedules.exceptionDates.title')}
           </h4>
           <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-            Dates when this schedule should NOT run
+            {t('schedules.exceptionDates.description')}
           </p>
         </div>
         {exceptionDates.length > 0 && (
@@ -86,7 +88,7 @@ export function ExceptionDatesManager({
             disabled={disabled}
             className="text-xs text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            Clear All
+            {t('schedules.exceptionDates.clearAll')}
           </button>
         )}
       </div>
@@ -115,7 +117,7 @@ export function ExceptionDatesManager({
             className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 text-sm"
           >
             <Plus className="w-4 h-4" />
-            Add
+            {t('schedules.exceptionDates.add')}
           </button>
         </div>
 
@@ -132,7 +134,12 @@ export function ExceptionDatesManager({
       {exceptionDates.length > 0 ? (
         <div className="space-y-2">
           <div className="text-xs font-medium text-gray-700 dark:text-gray-300">
-            {exceptionDates.length} exception date{exceptionDates.length !== 1 ? 's' : ''}
+            {t(
+              exceptionDates.length !== 1
+                ? 'schedules.exceptionDates.countDates_plural'
+                : 'schedules.exceptionDates.countDates',
+              { count: exceptionDates.length }
+            )}
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
             {exceptionDates.map((date) => (
@@ -154,7 +161,7 @@ export function ExceptionDatesManager({
                   onClick={() => handleRemoveDate(date)}
                   disabled={disabled}
                   className="opacity-0 group-hover:opacity-100 p-1 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 rounded transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                  title="Remove exception date"
+                  title={t('schedules.exceptionDates.removeDate')}
                 >
                   <X className="w-4 h-4" />
                 </button>
@@ -166,10 +173,10 @@ export function ExceptionDatesManager({
         <div className="text-center py-6 bg-gray-50 dark:bg-gray-900 rounded-lg border-2 border-dashed border-gray-200 dark:border-gray-700">
           <Calendar className="w-8 h-8 text-gray-400 dark:text-gray-500 mx-auto mb-2" />
           <p className="text-sm text-gray-500 dark:text-gray-400">
-            No exception dates added
+            {t('schedules.exceptionDates.noExceptionDates')}
           </p>
           <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
-            Add dates when this schedule should be skipped
+            {t('schedules.exceptionDates.addDatesDesc')}
           </p>
         </div>
       )}
@@ -179,7 +186,7 @@ export function ExceptionDatesManager({
         <div className="flex gap-2">
           <AlertCircle className="w-4 h-4 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
           <div className="text-xs text-blue-800 dark:text-blue-300">
-            <strong>Tip:</strong> Exception dates are useful for holidays, maintenance periods, or special events when you want to skip the regular schedule.
+            <strong>{t('schedules.exceptionDates.tip')}</strong> {t('schedules.exceptionDates.tipDescription')}
           </div>
         </div>
       </div>

@@ -4,6 +4,7 @@
  */
 
 import { useState, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Play, Clock, Calendar, TrendingUp, ChevronRight } from 'lucide-react'
 import { useActiveSchedule, useTimeUntilNextChange } from '../hooks/useAdvancedSchedules'
 import { format } from 'date-fns'
@@ -25,6 +26,7 @@ export const ActiveScheduleIndicator = ({
   autoRefresh = true,
   refreshInterval = 60000, // 1 minute
 }: ActiveScheduleIndicatorProps) => {
+  const { t } = useTranslation()
   const [currentTime, setCurrentTime] = useState(new Date())
 
   // Update current time every second for countdown
@@ -60,7 +62,9 @@ export const ActiveScheduleIndicator = ({
       <div className={getModeClasses(mode, className)}>
         <div className="flex items-center gap-2">
           <div className="animate-spin h-4 w-4 border-2 border-purple-500 border-t-transparent rounded-full" />
-          <span className="text-sm text-gray-600 dark:text-gray-400">Checking active schedule...</span>
+          <span className="text-sm text-gray-600 dark:text-gray-400">
+            {t('schedules.activeIndicator.checkingSchedule')}
+          </span>
         </div>
       </div>
     )
@@ -71,7 +75,9 @@ export const ActiveScheduleIndicator = ({
       <div className={getModeClasses(mode, className)}>
         <div className="flex items-center gap-2">
           <Calendar className="h-5 w-5 text-gray-400" />
-          <span className="text-sm text-gray-600 dark:text-gray-400">No active schedule</span>
+          <span className="text-sm text-gray-600 dark:text-gray-400">
+            {t('schedules.activeIndicator.noActiveSchedule')}
+          </span>
         </div>
       </div>
     )
@@ -80,11 +86,11 @@ export const ActiveScheduleIndicator = ({
   // Render based on mode
   switch (mode) {
     case 'banner':
-      return <BannerMode data={data} timeRemaining={timeRemaining} currentTime={currentTime} onClick={onScheduleClick} className={className} />
+      return <BannerMode data={data} timeRemaining={timeRemaining} currentTime={currentTime} onClick={onScheduleClick} className={className} t={t} />
     case 'widget':
-      return <WidgetMode data={data} timeRemaining={timeRemaining} currentTime={currentTime} onClick={onScheduleClick} className={className} />
+      return <WidgetMode data={data} timeRemaining={timeRemaining} currentTime={currentTime} onClick={onScheduleClick} className={className} t={t} />
     case 'inline':
-      return <InlineMode data={data} timeRemaining={timeRemaining} onClick={onScheduleClick} className={className} />
+      return <InlineMode data={data} timeRemaining={timeRemaining} onClick={onScheduleClick} className={className} t={t} />
     default:
       return null
   }
@@ -118,6 +124,7 @@ const BannerMode = ({
   currentTime,
   onClick,
   className,
+  t,
 }: any) => {
   return (
     <div className={getModeClasses('banner', className)}>
@@ -131,10 +138,10 @@ const BannerMode = ({
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-1">
               <h3 className="text-sm font-semibold text-gray-900 dark:text-white">
-                Currently Playing
+                {t('schedules.activeIndicator.currentlyPlaying')}
               </h3>
               <span className="px-2 py-0.5 bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-200 text-xs rounded-full font-medium">
-                Live
+                {t('schedules.activeIndicator.live')}
               </span>
             </div>
 
@@ -153,7 +160,7 @@ const BannerMode = ({
                 </span>
                 <span className="flex items-center gap-1">
                   <TrendingUp className="h-3 w-3" />
-                  Priority {data.priority || 0}
+                  {t('schedules.activeIndicator.priority')} {data.priority || 0}
                 </span>
               </div>
             </div>
@@ -163,7 +170,9 @@ const BannerMode = ({
         {/* Right: Time Remaining */}
         {timeRemaining && (
           <div className="text-right">
-            <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Next change in</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">
+              {t('schedules.activeIndicator.nextChangeIn')}
+            </p>
             <p className="text-2xl font-bold text-purple-600 dark:text-purple-400">
               {timeRemaining}
             </p>
@@ -177,7 +186,7 @@ const BannerMode = ({
             onClick={() => onClick(data.schedule.id)}
             className="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 transition-colors text-sm font-medium"
           >
-            View Schedule
+            {t('schedules.activeIndicator.viewSchedule')}
           </button>
         )}
       </div>
@@ -195,6 +204,7 @@ const WidgetMode = ({
   currentTime,
   onClick,
   className,
+  t,
 }: any) => {
   return (
     <div className={getModeClasses('widget', className)}>
@@ -203,10 +213,12 @@ const WidgetMode = ({
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Play className="h-4 w-4 text-green-600 dark:text-green-400" fill="currentColor" />
-            <h4 className="text-sm font-semibold text-gray-900 dark:text-white">Active Now</h4>
+            <h4 className="text-sm font-semibold text-gray-900 dark:text-white">
+              {t('schedules.activeIndicator.activeNow')}
+            </h4>
           </div>
           <span className="px-2 py-0.5 bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-200 text-xs rounded-full">
-            Live
+            {t('schedules.activeIndicator.live')}
           </span>
         </div>
 
@@ -225,12 +237,12 @@ const WidgetMode = ({
             </div>
             <div className="flex items-center gap-2">
               <TrendingUp className="h-3 w-3 flex-shrink-0" />
-              <span>Priority {data.priority || 0}</span>
+              <span>{t('schedules.activeIndicator.priority')} {data.priority || 0}</span>
             </div>
             {timeRemaining && (
               <div className="flex items-center gap-2">
                 <Calendar className="h-3 w-3 flex-shrink-0" />
-                <span>Changes in {timeRemaining}</span>
+                <span>{t('schedules.activeIndicator.changesIn')} {timeRemaining}</span>
               </div>
             )}
           </div>
@@ -243,7 +255,7 @@ const WidgetMode = ({
             onClick={() => onClick(data.schedule.id)}
             className="w-full flex items-center justify-center gap-1 px-3 py-1.5 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded text-xs font-medium transition-colors"
           >
-            View Details
+            {t('schedules.activeIndicator.viewDetails')}
             <ChevronRight className="h-3 w-3" />
           </button>
         )}
@@ -256,7 +268,7 @@ const WidgetMode = ({
 // Inline Mode Component
 // ========================================
 
-const InlineMode = ({ data, timeRemaining, onClick, className }: any) => {
+const InlineMode = ({ data, timeRemaining, onClick, className, t }: any) => {
   return (
     <div className={getModeClasses('inline', className)}>
       <div className="flex items-center justify-between gap-2">
