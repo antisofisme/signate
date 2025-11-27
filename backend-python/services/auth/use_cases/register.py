@@ -3,24 +3,29 @@ Register Use Case
 Handles user registration
 
 Updated to use centralized validators and error handling
+Added organization validation (Critical Fix)
 """
 
+from typing import Optional
 from ..domain.user import User
 from ..domain.interfaces import IUserRepository
-from passlib.context import CryptContext
+from ..repositories.organization_repo import OrganizationRepository
+from shared.auth import get_password_hash  # Use centralized password hashing
 from datetime import datetime, timezone
-from shared.errors import ValidationError, ErrorCodes
+from shared.errors import ValidationError, NotFoundError
 from shared.validators import validate_username, validate_email, validate_password, sanitize_string
-
-
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
 class RegisterUseCase:
     """Register use case - 1 file, 1 responsibility"""
 
-    def __init__(self, user_repository: IUserRepository):
+    def __init__(
+        self,
+        user_repository: IUserRepository,
+        organization_repository: Optional[OrganizationRepository] = None
+    ):
         self.user_repository = user_repository
+        self.organization_repository = organization_repository
 
     def execute(
         self,
@@ -83,6 +88,21 @@ class RegisterUseCase:
                 details={"field": "full_name"}
             )
 
+        # Validate organization exists if provided (Critical Fix)
+        if organization_id is not None and self.organization_repository:
+            org = self.organization_repository.find_by_id(organization_id)
+            if not org:
+                raise NotFoundError(
+                    message=f"Organization dengan ID {organization_id} tidak ditemukan",
+                    details={"field": "organization_id", "organization_id": organization_id}
+                )
+            # Check if organization is active
+            if hasattr(org, 'is_active') and not org.is_active:
+                raise ValidationError(
+                    message="Organization tidak aktif",
+                    details={"field": "organization_id", "organization_id": organization_id}
+                )
+
         # Check if username exists within organization (per-org unique)
         # Username is unique per-organization, allowing same username in different organizations
         if organization_id:
@@ -112,8 +132,8 @@ class RegisterUseCase:
         email = sanitize_string(email)
         full_name = sanitize_string(full_name)
 
-        # Hash password
-        password_hash = pwd_context.hash(password)
+        # Hash password using centralized function (Fix #5)
+        password_hash = get_password_hash(password)
 
         # Create user entity
         user = User(

@@ -545,13 +545,14 @@ def update_organization_quota(
     Permission: Admin only
     """
     from services.auth.repositories.models import OrganizationModel
-    
+
     start_time = time.time()
-    
-    # Get organization
+
+    # Get organization with row lock to prevent race conditions
+    # with_for_update() ensures atomic read-modify-write operation
     org = db.query(OrganizationModel).filter(
         OrganizationModel.id == org_id
-    ).first()
+    ).with_for_update().first()
     
     if not org:
         raise HTTPException(

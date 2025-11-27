@@ -325,3 +325,285 @@ def can_view_audit_logs(current_user: dict, log_org_id: Optional[int]) -> bool:
 
     # Regular users cannot view audit logs
     return False
+
+
+# =============================================================================
+# PERMISSION-BASED ACCESS CONTROL (P0-2 RBAC)
+# =============================================================================
+
+class PermissionChecker:
+    """
+    Dependency class to check specific permissions from role's permission matrix
+
+    Permission format: {resource: [actions]}
+    Example: {"contents": ["view", "create", "edit"], "devices": ["view"]}
+
+    Usage:
+        @router.post("/contents")
+        def create_content(
+            current_user: dict = Depends(require_permission("contents", "create"))
+        ):
+            ...
+    """
+
+    def __init__(self, resource: str, action: str):
+        """
+        Args:
+            resource: Resource name (e.g., "contents", "devices", "playlists")
+            action: Action name (e.g., "view", "create", "edit", "delete", "manage")
+        """
+        self.resource = resource.lower()
+        self.action = action.lower()
+
+    async def __call__(
+        self,
+        current_user: dict = Depends(get_current_active_user),
+        db: Session = Depends(get_db)
+    ) -> dict:
+        """
+        Check if user has the required permission
+
+        Permission lookup priority:
+        1. Check permissions in JWT token (if present) - fast path
+        2. Fetch permissions from database (fallback)
+
+        Special roles:
+        - SUPER_ADMIN: Has all permissions by default
+        - System roles have predefined permissions
+        """
+        user_role = current_user.get("role", "").lower()
+
+        # SUPER_ADMIN bypass - has all permissions
+        if user_role == "super_admin":
+            return current_user
+
+        # Check permissions from JWT token first (fast path)
+        if "permissions" in current_user and current_user["permissions"]:
+            if self._has_permission(current_user["permissions"]):
+                return current_user
+
+        # Fallback: Fetch permissions from database
+        permissions = await self._get_user_permissions(current_user["user_id"], db)
+
+        if self._has_permission(permissions):
+            return current_user
+
+        # Permission denied
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={
+                "message": f"Permission denied. Required: {self.resource}:{self.action}",
+                "code": "PERMISSION_DENIED",
+                "required_permission": f"{self.resource}:{self.action}",
+                "user_role": user_role
+            }
+        )
+
+    def _has_permission(self, permissions: dict) -> bool:
+        """
+        Check if permission exists in permission dict
+
+        Args:
+            permissions: Dict of {resource: [actions]}
+
+        Returns:
+            True if permission found
+        """
+        if not permissions:
+            return False
+
+        resource_permissions = permissions.get(self.resource, [])
+
+        # Check for exact action or "manage" (which implies all actions)
+        if self.action in resource_permissions:
+            return True
+        if "manage" in resource_permissions:
+            return True
+
+        return False
+
+    async def _get_user_permissions(self, user_id: int, db: Session) -> dict:
+        """
+        Fetch user's role permissions from database
+
+        Args:
+            user_id: User ID
+            db: Database session
+
+        Returns:
+            Permission dict {resource: [actions]}
+        """
+        from services.user.repositories.user_repo import UserRepository
+
+        user_repo = UserRepository(db)
+        role_details = user_repo.get_user_role(user_id)
+
+        if role_details and role_details.get("permissions"):
+            return role_details["permissions"]
+
+        return {}
+
+
+def require_permission(resource: str, action: str) -> PermissionChecker:
+    """
+    Factory function to create permission checker
+
+    Usage:
+        @router.post("/contents")
+        def create_content(
+            current_user: dict = Depends(require_permission("contents", "create"))
+        ):
+            ...
+
+    Args:
+        resource: Resource name (e.g., "contents", "devices")
+        action: Action name (e.g., "view", "create", "edit", "delete")
+
+    Returns:
+        PermissionChecker dependency
+    """
+    return PermissionChecker(resource, action)
+
+
+class MultiPermissionChecker:
+    """
+    Check if user has ANY of the required permissions (OR logic)
+
+    Usage:
+        @router.get("/reports")
+        def get_reports(
+            current_user: dict = Depends(require_any_permission([
+                ("analytics", "view"),
+                ("reports", "view")
+            ]))
+        ):
+            ...
+    """
+
+    def __init__(self, permissions: List[tuple]):
+        """
+        Args:
+            permissions: List of (resource, action) tuples
+        """
+        self.permissions = [(r.lower(), a.lower()) for r, a in permissions]
+
+    async def __call__(
+        self,
+        current_user: dict = Depends(get_current_active_user),
+        db: Session = Depends(get_db)
+    ) -> dict:
+        user_role = current_user.get("role", "").lower()
+
+        # SUPER_ADMIN bypass
+        if user_role == "super_admin":
+            return current_user
+
+        # Get user's permissions
+        user_permissions = current_user.get("permissions", {})
+        if not user_permissions:
+            from services.user.repositories.user_repo import UserRepository
+            user_repo = UserRepository(db)
+            role_details = user_repo.get_user_role(current_user["user_id"])
+            if role_details:
+                user_permissions = role_details.get("permissions", {})
+
+        # Check if ANY permission matches
+        for resource, action in self.permissions:
+            resource_perms = user_permissions.get(resource, [])
+            if action in resource_perms or "manage" in resource_perms:
+                return current_user
+
+        # None matched
+        permission_strs = [f"{r}:{a}" for r, a in self.permissions]
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={
+                "message": f"Permission denied. Required one of: {', '.join(permission_strs)}",
+                "code": "PERMISSION_DENIED",
+                "required_permissions": permission_strs
+            }
+        )
+
+
+def require_any_permission(permissions: List[tuple]) -> MultiPermissionChecker:
+    """
+    Factory function for OR-based permission checking
+
+    Args:
+        permissions: List of (resource, action) tuples
+
+    Returns:
+        MultiPermissionChecker dependency
+    """
+    return MultiPermissionChecker(permissions)
+
+
+class AllPermissionsChecker:
+    """
+    Check if user has ALL of the required permissions (AND logic)
+
+    Usage:
+        @router.delete("/organization/{org_id}")
+        def delete_organization(
+            current_user: dict = Depends(require_all_permissions([
+                ("organizations", "delete"),
+                ("users", "manage")
+            ]))
+        ):
+            ...
+    """
+
+    def __init__(self, permissions: List[tuple]):
+        self.permissions = [(r.lower(), a.lower()) for r, a in permissions]
+
+    async def __call__(
+        self,
+        current_user: dict = Depends(get_current_active_user),
+        db: Session = Depends(get_db)
+    ) -> dict:
+        user_role = current_user.get("role", "").lower()
+
+        # SUPER_ADMIN bypass
+        if user_role == "super_admin":
+            return current_user
+
+        # Get user's permissions
+        user_permissions = current_user.get("permissions", {})
+        if not user_permissions:
+            from services.user.repositories.user_repo import UserRepository
+            user_repo = UserRepository(db)
+            role_details = user_repo.get_user_role(current_user["user_id"])
+            if role_details:
+                user_permissions = role_details.get("permissions", {})
+
+        # Check that ALL permissions match
+        missing = []
+        for resource, action in self.permissions:
+            resource_perms = user_permissions.get(resource, [])
+            if action not in resource_perms and "manage" not in resource_perms:
+                missing.append(f"{resource}:{action}")
+
+        if missing:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail={
+                    "message": f"Permission denied. Missing: {', '.join(missing)}",
+                    "code": "PERMISSION_DENIED",
+                    "missing_permissions": missing
+                }
+            )
+
+        return current_user
+
+
+def require_all_permissions(permissions: List[tuple]) -> AllPermissionsChecker:
+    """
+    Factory function for AND-based permission checking
+
+    Args:
+        permissions: List of (resource, action) tuples
+
+    Returns:
+        AllPermissionsChecker dependency
+    """
+    return AllPermissionsChecker(permissions)

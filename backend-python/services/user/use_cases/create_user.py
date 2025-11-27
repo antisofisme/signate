@@ -1,15 +1,13 @@
 """Create User Use Case"""
 
-from passlib.context import CryptContext
 from ..domain.user import User
 from ..domain.interfaces import IUserRepository
 from services.organization.repositories.organization_repo import OrganizationRepository
 from sqlalchemy.orm import Session
 from shared.errors import ValidationError, NotFoundError
 from shared.validators import sanitize_string, validate_email
+from shared.auth import get_password_hash  # Centralized password hashing (Fix #5)
 from services.organization.domain.quota_service import OrganizationQuotaService
-
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
 class CreateUserUseCase:
@@ -130,8 +128,8 @@ class CreateUserUseCase:
                 details={"field": "role", "valid_roles": valid_roles}
             )
 
-        # Hash password
-        password_hash = pwd_context.hash(password)
+        # Hash password using centralized function (Fix #5)
+        password_hash = get_password_hash(password)
 
         # Create user entity
         user = User(

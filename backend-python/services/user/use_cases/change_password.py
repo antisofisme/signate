@@ -1,11 +1,9 @@
 """Change User Password Use Case"""
 
-from passlib.context import CryptContext
 from ..domain.user import User
 from ..domain.interfaces import IUserRepository
 from shared.errors import ValidationError, NotFoundError, ErrorCodes
-
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+from shared.auth import get_password_hash  # Centralized password hashing (Fix #5)
 
 
 class ChangePasswordUseCase:
@@ -57,8 +55,8 @@ class ChangePasswordUseCase:
                 field="new_password"
             )
 
-        # Hash new password
-        password_hash = pwd_context.hash(new_password)
+        # Hash new password using centralized function (Fix #5)
+        password_hash = get_password_hash(new_password)
 
         # Change password via repository
         updated_user = self.user_repo.change_password(user_id, password_hash)

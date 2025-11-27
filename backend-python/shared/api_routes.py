@@ -51,6 +51,10 @@ class UserRoutes:
     DELETE = f"{BASE}/{{user_id}}"
     CHANGE_PASSWORD = f"{BASE}/{{user_id}}/change-password"
 
+    # User-Role Assignment endpoints (P0-1 RBAC)
+    GET_ROLE = f"{BASE}/{{user_id}}/role"
+    ASSIGN_ROLE = f"{BASE}/{{user_id}}/role"
+
 
 # =============================================================================
 # DEVICE SERVICE ROUTES

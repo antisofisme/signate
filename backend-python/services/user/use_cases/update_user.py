@@ -58,9 +58,9 @@ class UpdateUserUseCase:
                     details={"field": "email", "email": email}
                 )
 
-            # Check email uniqueness within organization (CRITICAL FIX P0-6)
+            # Check email uniqueness within organization
             # Note: user.organization_id is from the fetched user above
-            existing_email = self.user_repo.find_by_email_in_org(email, user.organization_id)
+            existing_email = self.user_repo.find_by_email(email, user.organization_id)
 
             if existing_email and existing_email.id != user_id:
                 raise ValidationError(

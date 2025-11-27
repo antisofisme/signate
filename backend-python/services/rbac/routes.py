@@ -13,6 +13,10 @@ from shared.responses import success_response
 from shared.auth import get_current_user, require_admin, require_manager, CurrentUser
 from shared.logging import AuditLogger
 
+# Import for DB-persisted audit logging
+from services.audit.repositories.audit_log_repo import AuditLogRepository
+from services.audit.use_cases.create_audit_log import CreateAuditLogUseCase
+
 from .dtos import (
     RoleCreateRequest, RoleUpdateRequest, RoleResponse, RoleListResponse,
     PermissionAddRequest, PermissionRemoveRequest, PermissionCheckRequest,
@@ -29,9 +33,6 @@ from .use_cases.manage_permissions import ManagePermissionsUseCase
 
 router = APIRouter()
 
-# Initialize audit logger
-audit_logger = AuditLogger()
-
 
 # =============================================================================
 # DEPENDENCY INJECTION
@@ -40,6 +41,13 @@ audit_logger = AuditLogger()
 def get_role_repository(db: Session = Depends(get_db)) -> RoleRepository:
     """Get role repository instance"""
     return RoleRepository(db)
+
+
+def get_audit_logger(db: Session = Depends(get_db)) -> AuditLogger:
+    """Get audit logger with DB persistence"""
+    audit_repo = AuditLogRepository(db)
+    create_audit_use_case = CreateAuditLogUseCase(audit_repo)
+    return AuditLogger(create_audit_log_use_case=create_audit_use_case)
 
 
 # =============================================================================
@@ -117,7 +125,8 @@ def get_role(
 def create_role(
     request: RoleCreateRequest,
     current_user: CurrentUser = Depends(require_manager),
-    role_repo: RoleRepository = Depends(get_role_repository)
+    role_repo: RoleRepository = Depends(get_role_repository),
+    audit_logger: AuditLogger = Depends(get_audit_logger)
 ):
     """
     Create new role
@@ -167,7 +176,8 @@ def update_role(
     role_id: int,
     request: RoleUpdateRequest,
     current_user: CurrentUser = Depends(require_manager),
-    role_repo: RoleRepository = Depends(get_role_repository)
+    role_repo: RoleRepository = Depends(get_role_repository),
+    audit_logger: AuditLogger = Depends(get_audit_logger)
 ):
     """Update role (only custom roles, not system roles)"""
     # Check access
@@ -216,7 +226,8 @@ def update_role(
 def delete_role(
     role_id: int,
     current_user: CurrentUser = Depends(require_manager),
-    role_repo: RoleRepository = Depends(get_role_repository)
+    role_repo: RoleRepository = Depends(get_role_repository),
+    audit_logger: AuditLogger = Depends(get_audit_logger)
 ):
     """Delete role (only custom roles, not system roles)"""
     # Check access
@@ -298,7 +309,8 @@ def add_permission(
     role_id: int,
     request: PermissionAddRequest,
     current_user: CurrentUser = Depends(require_manager),
-    role_repo: RoleRepository = Depends(get_role_repository)
+    role_repo: RoleRepository = Depends(get_role_repository),
+    audit_logger: AuditLogger = Depends(get_audit_logger)
 ):
     """Add permission to role"""
     # Check access
@@ -345,7 +357,8 @@ def remove_permission(
     role_id: int,
     request: PermissionRemoveRequest,
     current_user: CurrentUser = Depends(require_manager),
-    role_repo: RoleRepository = Depends(get_role_repository)
+    role_repo: RoleRepository = Depends(get_role_repository),
+    audit_logger: AuditLogger = Depends(get_audit_logger)
 ):
     """Remove permission from role"""
     # Check access

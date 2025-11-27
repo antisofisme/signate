@@ -7,6 +7,8 @@ from pydantic import BaseModel, Field, field_validator
 from typing import Optional, Dict, List
 from datetime import datetime
 
+from .constants import PERMISSION_RESOURCES, PERMISSION_ACTIONS, validate_permissions as validate_perm
+
 
 # =============================================================================
 # REQUEST DTOs
@@ -34,15 +36,24 @@ class RoleCreateRequest(BaseModel):
     @field_validator("permissions")
     @classmethod
     def validate_permissions(cls, v: Dict[str, List[str]]) -> Dict[str, List[str]]:
-        """Validate permissions structure"""
+        """Validate permissions structure against allowed resources and actions"""
         if not isinstance(v, dict):
             raise ValueError("Permissions must be a dictionary")
 
         for resource, actions in v.items():
+            # Validate resource
+            if resource not in PERMISSION_RESOURCES:
+                raise ValueError(f"Invalid resource: {resource}. Valid resources: {', '.join(PERMISSION_RESOURCES)}")
+
             if not isinstance(actions, list):
                 raise ValueError(f"Actions for '{resource}' must be a list")
-            if not all(isinstance(a, str) for a in actions):
-                raise ValueError(f"All actions for '{resource}' must be strings")
+
+            # Validate each action
+            for action in actions:
+                if not isinstance(action, str):
+                    raise ValueError(f"All actions for '{resource}' must be strings")
+                if action not in PERMISSION_ACTIONS:
+                    raise ValueError(f"Invalid action: {action}. Valid actions: {', '.join(PERMISSION_ACTIONS)}")
 
         return v
 
@@ -66,7 +77,7 @@ class RoleUpdateRequest(BaseModel):
     @field_validator("permissions")
     @classmethod
     def validate_permissions(cls, v: Optional[Dict[str, List[str]]]) -> Optional[Dict[str, List[str]]]:
-        """Validate permissions structure"""
+        """Validate permissions structure against allowed resources and actions"""
         if v is None:
             return v
 
@@ -74,18 +85,43 @@ class RoleUpdateRequest(BaseModel):
             raise ValueError("Permissions must be a dictionary")
 
         for resource, actions in v.items():
+            # Validate resource
+            if resource not in PERMISSION_RESOURCES:
+                raise ValueError(f"Invalid resource: {resource}. Valid resources: {', '.join(PERMISSION_RESOURCES)}")
+
             if not isinstance(actions, list):
                 raise ValueError(f"Actions for '{resource}' must be a list")
-            if not all(isinstance(a, str) for a in actions):
-                raise ValueError(f"All actions for '{resource}' must be strings")
+
+            # Validate each action
+            for action in actions:
+                if not isinstance(action, str):
+                    raise ValueError(f"All actions for '{resource}' must be strings")
+                if action not in PERMISSION_ACTIONS:
+                    raise ValueError(f"Invalid action: {action}. Valid actions: {', '.join(PERMISSION_ACTIONS)}")
 
         return v
 
 
 class PermissionAddRequest(BaseModel):
     """Add permission to role request"""
-    resource: str = Field(..., min_length=1, description="Resource name (e.g., 'devices', 'content')")
-    action: str = Field(..., min_length=1, description="Action name (e.g., 'read', 'write', 'delete')")
+    resource: str = Field(..., min_length=1, description="Resource name (e.g., 'devices', 'contents')")
+    action: str = Field(..., min_length=1, description="Action name (e.g., 'view', 'create', 'edit', 'delete', 'manage')")
+
+    @field_validator("resource")
+    @classmethod
+    def validate_resource(cls, v: str) -> str:
+        """Validate resource against allowed resources"""
+        if v not in PERMISSION_RESOURCES:
+            raise ValueError(f"Invalid resource: {v}. Valid resources: {', '.join(PERMISSION_RESOURCES)}")
+        return v
+
+    @field_validator("action")
+    @classmethod
+    def validate_action(cls, v: str) -> str:
+        """Validate action against allowed actions"""
+        if v not in PERMISSION_ACTIONS:
+            raise ValueError(f"Invalid action: {v}. Valid actions: {', '.join(PERMISSION_ACTIONS)}")
+        return v
 
 
 class PermissionRemoveRequest(BaseModel):
@@ -93,11 +129,43 @@ class PermissionRemoveRequest(BaseModel):
     resource: str = Field(..., min_length=1, description="Resource name")
     action: str = Field(..., min_length=1, description="Action name")
 
+    @field_validator("resource")
+    @classmethod
+    def validate_resource(cls, v: str) -> str:
+        """Validate resource against allowed resources"""
+        if v not in PERMISSION_RESOURCES:
+            raise ValueError(f"Invalid resource: {v}. Valid resources: {', '.join(PERMISSION_RESOURCES)}")
+        return v
+
+    @field_validator("action")
+    @classmethod
+    def validate_action(cls, v: str) -> str:
+        """Validate action against allowed actions"""
+        if v not in PERMISSION_ACTIONS:
+            raise ValueError(f"Invalid action: {v}. Valid actions: {', '.join(PERMISSION_ACTIONS)}")
+        return v
+
 
 class PermissionCheckRequest(BaseModel):
     """Check permission request"""
     resource: str = Field(..., min_length=1, description="Resource name")
     action: str = Field(..., min_length=1, description="Action name")
+
+    @field_validator("resource")
+    @classmethod
+    def validate_resource(cls, v: str) -> str:
+        """Validate resource against allowed resources"""
+        if v not in PERMISSION_RESOURCES:
+            raise ValueError(f"Invalid resource: {v}. Valid resources: {', '.join(PERMISSION_RESOURCES)}")
+        return v
+
+    @field_validator("action")
+    @classmethod
+    def validate_action(cls, v: str) -> str:
+        """Validate action against allowed actions"""
+        if v not in PERMISSION_ACTIONS:
+            raise ValueError(f"Invalid action: {v}. Valid actions: {', '.join(PERMISSION_ACTIONS)}")
+        return v
 
 
 # =============================================================================

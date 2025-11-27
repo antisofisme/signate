@@ -16,6 +16,7 @@ from shared.errors import handle_errors
 from shared.responses import success_response
 from shared.logging import RequestLogger, AuditLogger
 from shared.middleware import get_current_active_user, require_admin, require_admin_or_manager
+from shared.rate_limiter import rate_limit  # P1-2: Rate limiting for password change
 from typing import Optional
 import time
 
@@ -24,7 +25,9 @@ from .dtos import (
     UpdateUserRequest,
     ChangePasswordRequest,
     UserResponse,
-    UserListResponse
+    UserListResponse,
+    AssignRoleRequest,
+    UserRoleResponse
 )
 from .use_cases.create_user import CreateUserUseCase
 from .use_cases.list_users import ListUsersUseCase
@@ -274,8 +277,8 @@ def get_user(
             )
     start_time = time.time()
 
-    # Execute use case
-    user = use_case.execute(user_id)
+    # Reuse target_user from permission check (Fix #6: removed duplicate DB query)
+    user = target_user
 
     # Convert to response
     response = UserResponse.model_validate(user)
@@ -398,6 +401,7 @@ def update_user(
 
 
 @router.put(UserRoutes.CHANGE_PASSWORD.replace("{user_id}", "{user_id:int}"), response_model=UserResponse)
+@rate_limit(max_requests=5, window_seconds=300)  # P1-2: 5 password change attempts per 5 minutes
 @handle_errors
 def change_password(
     user_id: int,
@@ -412,6 +416,7 @@ def change_password(
     Change user password
 
     Permission: Admin (any user) or Self
+    P1-2: Rate limited to prevent brute force attempts
     """
     # Check permissions - only admin or self can change password
     if current_user["role"] != "admin" and current_user["user_id"] != user_id:
@@ -517,3 +522,142 @@ def delete_user(
     )
 
     return None
+
+
+# =============================================================================
+# USER-ROLE ASSIGNMENT ENDPOINTS (P0-1 RBAC)
+# =============================================================================
+
+@router.get(UserRoutes.GET_ROLE.replace("{user_id}", "{user_id:int}"), response_model=UserRoleResponse)
+@handle_errors
+def get_user_role(
+    user_id: int,
+    http_request: Request,
+    user_repo = Depends(get_user_repository),
+    current_user: dict = Depends(get_current_active_user)
+):
+    """
+    Get user's current role and permissions
+
+    Permission: Admin (any user) or Manager (own org only) or Self
+    """
+    start_time = time.time()
+
+    # Get target user to check permissions
+    target_user = user_repo.find_by_id(user_id)
+
+    if not target_user:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=404, detail="User not found")
+
+    # Check permissions
+    if current_user["role"] not in ["admin", "super_admin"]:
+        # Manager can view users in own org
+        if current_user["role"] == "manager":
+            if target_user.organization_id != current_user["organization_id"]:
+                from fastapi import HTTPException
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="You can only view users in your organization"
+                )
+        # Regular user can only view self
+        elif current_user["user_id"] != user_id:
+            from fastapi import HTTPException
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You can only view your own role"
+            )
+
+    # Get user's role details
+    role_details = user_repo.get_user_role(user_id)
+
+    if not role_details:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=404, detail="User role not found")
+
+    # Calculate duration
+    duration_ms = (time.time() - start_time) * 1000
+
+    # Log request
+    request_logger.log_request(
+        method="GET",
+        path=UserRoutes.GET_ROLE.replace("{user_id}", str(user_id)),
+        status_code=200,
+        duration_ms=duration_ms
+    )
+
+    return UserRoleResponse(**role_details)
+
+
+@router.put(UserRoutes.ASSIGN_ROLE.replace("{user_id}", "{user_id:int}"), response_model=UserResponse)
+@handle_errors
+def assign_user_role(
+    user_id: int,
+    request_body: AssignRoleRequest,
+    http_request: Request,
+    user_repo = Depends(get_user_repository),
+    list_use_case: ListUsersUseCase = Depends(get_list_users_use_case),
+    audit_logger: AuditLogger = Depends(get_audit_logger),
+    current_user: dict = Depends(require_admin)
+):
+    """
+    Assign a role to user by role_id
+
+    Permission: Admin only (role changes are sensitive operations)
+    """
+    start_time = time.time()
+
+    # Get target user to check permissions
+    target_user = user_repo.find_by_id(user_id)
+
+    if not target_user:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=404, detail="User not found")
+
+    # Get old role for audit log
+    old_role = user_repo.get_user_role(user_id)
+    old_role_name = old_role["name"] if old_role else "None"
+
+    # Execute role assignment
+    updated_user = user_repo.assign_role(
+        user_id=user_id,
+        role_id=request_body.role_id,
+        organization_id=None  # Admin can assign roles across orgs
+    )
+
+    # Get new role for audit log
+    new_role = user_repo.get_user_role(user_id)
+    new_role_name = new_role["name"] if new_role else "Unknown"
+
+    # Convert to response
+    response = UserResponse.model_validate(updated_user)
+    org_name = list_use_case.get_user_organization_name(updated_user.id)
+    response.organization_name = org_name
+
+    # Calculate duration
+    duration_ms = (time.time() - start_time) * 1000
+
+    # Log request
+    request_logger.log_request(
+        method="PUT",
+        path=UserRoutes.ASSIGN_ROLE.replace("{user_id}", str(user_id)),
+        status_code=200,
+        duration_ms=duration_ms
+    )
+
+    # Audit log - critical operation
+    audit_logger.log_action(
+        user_id=current_user["user_id"],
+        action="user.assign_role",
+        resource_type="user",
+        resource_id=user_id,
+        details={
+            "username": updated_user.username,
+            "old_role": old_role_name,
+            "new_role": new_role_name,
+            "new_role_id": request_body.role_id,
+            "ip_address": http_request.client.host if http_request.client else None
+        }
+    )
+
+    return response

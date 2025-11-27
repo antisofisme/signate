@@ -25,6 +25,26 @@ class OrganizationRepository(IOrganizationRepository):
         ).first()
         return self._to_entity(org_model) if org_model else None
 
+    def find_by_ids(self, org_ids: List[int]) -> dict:
+        """
+        Batch fetch organizations by IDs - returns dict for O(1) lookup
+        Optimized for N+1 query prevention
+
+        Args:
+            org_ids: List of organization IDs to fetch
+
+        Returns:
+            Dict mapping org_id -> Organization entity
+        """
+        if not org_ids:
+            return {}
+
+        org_models = self.db.query(OrganizationModel).filter(
+            OrganizationModel.id.in_(org_ids)
+        ).all()
+
+        return {model.id: self._to_entity(model) for model in org_models}
+
     def find_by_name(self, name: str) -> Optional[Organization]:
         """Find organization by name"""
         org_model = self.db.query(OrganizationModel).filter(

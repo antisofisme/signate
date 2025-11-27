@@ -1,12 +1,14 @@
 """
 Reset Password Use Case
 Completes password reset process using a valid token
+
+Updated to use centralized password hashing (Fix #5)
 """
 
 from shared.password_reset import get_password_reset_manager
 from shared.errors import ValidationError, NotFoundError
+from shared.auth import get_password_hash  # Centralized password hashing
 from ..repositories.user_repo import UserRepository
-import bcrypt
 
 
 class ResetPasswordUseCase:
@@ -61,11 +63,8 @@ class ResetPasswordUseCase:
         if not user.is_active:
             raise ValidationError("This account is not active")
 
-        # Hash new password
-        password_hash = bcrypt.hashpw(
-            new_password.encode('utf-8'),
-            bcrypt.gensalt()
-        ).decode('utf-8')
+        # Hash new password using centralized function (Fix #5)
+        password_hash = get_password_hash(new_password)
 
         # Update password
         user.password_hash = password_hash

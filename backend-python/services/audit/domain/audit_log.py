@@ -34,7 +34,10 @@ class AuditLog:
     ]
 
     # Valid resource types
-    VALID_RESOURCE_TYPES = ['user', 'organization', 'device', 'content', 'tag', 'auth']
+    VALID_RESOURCE_TYPES = [
+        'user', 'organization', 'device', 'content', 'tag', 'auth',
+        'role', 'playlist', 'schedule', 'menu', 'widget', 'template', 'session'
+    ]
 
     def __post_init__(self):
         """Validate audit log data"""

@@ -185,6 +185,18 @@ class CacheService:
     def invalidate_organization(self, org_id: int):
         """Invalidate all organization caches"""
         self.clear_pattern(f"org:{org_id}:*")
+
+    def invalidate_session(self, token: str):
+        """Invalidate session cache when session is revoked (Fix #13)"""
+        if token and len(token) >= 16:
+            token_hash = token[:16]
+            self.delete(f"session:valid:{token_hash}")
+
+    def invalidate_user_sessions(self, user_id: int):
+        """Invalidate all session caches for a user (e.g., on password change)"""
+        # Note: This requires knowing all tokens for a user
+        # For now, use pattern matching if possible or rely on TTL expiration
+        self.clear_pattern(f"session:valid:*")
     
     # Utility methods
     

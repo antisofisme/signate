@@ -33,6 +33,7 @@ from .use_cases.logout import LogoutUseCase
 from .repositories.user_repo import UserRepository
 from .repositories.organization_repo import OrganizationRepository
 from services.session.repositories.session_repo import SessionRepository
+from services.rbac.repositories.role_repo import RoleRepository  # P0-3: For permissions in JWT
 from shared.auth import get_current_user, CurrentUser
 
 
@@ -62,16 +63,23 @@ def get_session_repository(db: Session = Depends(get_db)) -> SessionRepository:
     return SessionRepository(db)
 
 
+def get_role_repository(db: Session = Depends(get_db)) -> RoleRepository:
+    """Get role repository instance (P0-3: for embedding permissions in JWT)"""
+    return RoleRepository(db)
+
+
 def get_login_use_case(
     user_repo: UserRepository = Depends(get_user_repository),
     org_repo: OrganizationRepository = Depends(get_organization_repository),
-    session_repo: SessionRepository = Depends(get_session_repository)
+    session_repo: SessionRepository = Depends(get_session_repository),
+    role_repo: RoleRepository = Depends(get_role_repository)
 ) -> LoginUseCase:
-    """Get login use case instance"""
+    """Get login use case instance with role repository (P0-3)"""
     return LoginUseCase(
         user_repository=user_repo,
         organization_repository=org_repo,
         session_repository=session_repo,
+        role_repository=role_repo,  # P0-3: For fetching permissions during login
         secret_key=settings.SECRET_KEY,
         algorithm=settings.ALGORITHM,
         token_expire_minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES
@@ -79,10 +87,14 @@ def get_login_use_case(
 
 
 def get_register_use_case(
-    user_repo: UserRepository = Depends(get_user_repository)
+    user_repo: UserRepository = Depends(get_user_repository),
+    org_repo: OrganizationRepository = Depends(get_organization_repository)
 ) -> RegisterUseCase:
-    """Get register use case instance"""
-    return RegisterUseCase(user_repository=user_repo)
+    """Get register use case instance with org validation (Critical Fix)"""
+    return RegisterUseCase(
+        user_repository=user_repo,
+        organization_repository=org_repo
+    )
 
 
 def get_forgot_password_use_case(
@@ -284,7 +296,8 @@ def register(
 def forgot_password(
     request_body: ForgotPasswordRequest,
     http_request: Request,
-    use_case: ForgotPasswordUseCase = Depends(get_forgot_password_use_case)
+    use_case: ForgotPasswordUseCase = Depends(get_forgot_password_use_case),
+    user_repo: UserRepository = Depends(get_user_repository)
 ):
     """
     Forgot password endpoint
@@ -294,6 +307,7 @@ def forgot_password(
     For development/testing, the token is returned in the response.
 
     Security: Returns same message regardless of whether email exists (prevents email enumeration)
+    P0-4: Added audit logging for security tracking
     """
     start_time = time.time()
 
@@ -309,6 +323,22 @@ def forgot_password(
         path=AuthRoutes.FORGOT_PASSWORD,
         status_code=200,
         duration_ms=duration_ms
+    )
+
+    # P0-4: Audit log for password reset request (security event)
+    # Log regardless of whether email exists (but don't reveal user existence)
+    # Use a system user_id (0) for audit when actual user unknown
+    user = user_repo.find_by_email(request_body.email)
+    audit_logger.log_action(
+        user_id=user.id if user else 0,  # 0 = system/unknown user
+        action="auth.forgot_password_request",
+        resource_type="user",
+        resource_id=user.id if user else 0,
+        details={
+            "email_requested": request_body.email[:3] + "***" if request_body.email else None,  # Partially mask email
+            "ip_address": http_request.client.host if http_request.client else None,
+            "token_generated": result.get("reset_token") is not None
+        }
     )
 
     # Return response
@@ -331,8 +361,15 @@ def reset_password(
 
     Completes password reset using a valid token.
     Validates token and updates user's password.
+    P0-4: Added audit logging for security tracking
     """
     start_time = time.time()
+
+    # Decode token to get user_id for audit logging (before consuming it)
+    from shared.password_reset import get_password_reset_manager
+    reset_manager = get_password_reset_manager()
+    token_info = reset_manager.validate_token(request_body.token)
+    user_id = token_info.get("user_id") if token_info else None
 
     # Execute use case (will raise ValidationError if token invalid)
     result = use_case.execute(
@@ -348,8 +385,22 @@ def reset_password(
         method="POST",
         path=AuthRoutes.RESET_PASSWORD,
         status_code=200,
-        duration_ms=duration_ms
+        duration_ms=duration_ms,
+        user_id=user_id
     )
+
+    # P0-4: Audit log for password reset (critical security event)
+    if user_id:
+        audit_logger.log_action(
+            user_id=user_id,
+            action="auth.reset_password",
+            resource_type="user",
+            resource_id=user_id,
+            details={
+                "ip_address": http_request.client.host if http_request.client else None,
+                "method": "token_reset"  # Distinguish from change_password (authenticated)
+            }
+        )
 
     # Return response
     return ResetPasswordResponse(

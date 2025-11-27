@@ -9,7 +9,7 @@ from shared.database import get_db
 from shared.api_routes import AuditRoutes
 from shared.errors import handle_errors
 from shared.logging import RequestLogger
-from shared.middleware import get_current_active_user
+from shared.middleware import get_current_active_user, require_admin  # P0-5: Admin only access
 from shared.pagination import PaginationParams
 from typing import Optional
 from datetime import datetime
@@ -82,17 +82,14 @@ def list_audit_logs(
     use_case: ListAuditLogsUseCase = Depends(get_list_audit_logs_use_case),
     user_repo = Depends(get_user_repository),
     org_repo = Depends(get_organization_repository),
-    current_user: dict = Depends(get_current_active_user)
+    current_user: dict = Depends(require_admin)  # P0-5: Admin only access
 ):
     """
     List audit logs with filters and pagination
 
-    Permission: Admin (all logs) or Manager (own org logs only)
+    Permission: Admin or Super Admin only (P0-5 security fix)
+    Audit logs are sensitive security data and should not be accessible to managers/viewers
     """
-    # If manager or regular user, force filter to their organization only
-    if current_user["role"] != "admin":
-        organization_id = current_user["organization_id"]
-
     start_time = time.time()
 
     # Execute use case
@@ -108,20 +105,30 @@ def list_audit_logs(
         offset=pagination.skip
     )
 
-    # Convert to response and enrich with usernames and org names
+    # OPTIMIZATION: Batch fetch users and organizations to prevent N+1 queries
+    # Instead of 1 + N*2 queries, we now do 1 + 2 queries (logs + users + orgs)
+    logs = result["logs"]
+
+    # Collect unique IDs
+    user_ids = list({log.user_id for log in logs if log.user_id})
+    org_ids = list({log.organization_id for log in logs if log.organization_id})
+
+    # Batch fetch (2 queries total instead of N*2)
+    users_map = user_repo.find_by_ids(user_ids) if user_ids else {}
+    orgs_map = org_repo.find_by_ids(org_ids) if org_ids else {}
+
+    # Convert to response and enrich from lookup dictionaries
     log_responses = []
-    for log in result["logs"]:
+    for log in logs:
         response = AuditLogResponse.model_validate(log)
 
-        # Enrich with username if user_id exists
-        if log.user_id:
-            user = user_repo.find_by_id(log.user_id)
-            response.username = user.username if user else None
+        # Enrich with username from pre-fetched map
+        if log.user_id and log.user_id in users_map:
+            response.username = users_map[log.user_id].username
 
-        # Enrich with organization name if organization_id exists
-        if log.organization_id:
-            org = org_repo.find_by_id(log.organization_id)
-            response.organization_name = org.name if org else None
+        # Enrich with organization name from pre-fetched map
+        if log.organization_id and log.organization_id in orgs_map:
+            response.organization_name = orgs_map[log.organization_id].name
 
         log_responses.append(response)
 
@@ -158,25 +165,18 @@ def get_audit_log(
     use_case: GetAuditLogUseCase = Depends(get_get_audit_log_use_case),
     user_repo = Depends(get_user_repository),
     org_repo = Depends(get_organization_repository),
-    current_user: dict = Depends(get_current_active_user)
+    current_user: dict = Depends(require_admin)  # P0-5: Admin only access
 ):
     """
     Get single audit log by ID
 
-    Permission: Admin (any log) or Manager (own org logs only)
+    Permission: Admin or Super Admin only (P0-5 security fix)
+    Audit logs are sensitive security data and should not be accessible to managers/viewers
     """
     start_time = time.time()
 
     # Execute use case
     audit_log = use_case.execute(log_id)
-
-    # Check permissions - Manager can only view logs from their organization
-    if current_user["role"] != "admin":
-        if audit_log.organization_id != current_user["organization_id"]:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="You can only view audit logs from your organization"
-            )
 
     # Convert to response
     response = AuditLogResponse.model_validate(audit_log)

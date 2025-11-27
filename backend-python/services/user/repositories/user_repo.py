@@ -37,6 +37,28 @@ class UserRepository(IUserRepository):
         user_model = query.first()
         return self._to_entity(user_model) if user_model else None
 
+    def find_by_ids(self, user_ids: List[int]) -> dict:
+        """
+        Batch fetch users by IDs - returns dict for O(1) lookup
+        Optimized for N+1 query prevention
+
+        Args:
+            user_ids: List of user IDs to fetch
+
+        Returns:
+            Dict mapping user_id -> User entity
+        """
+        if not user_ids:
+            return {}
+
+        user_models = self.db.query(UserModel).options(
+            joinedload(UserModel.role)
+        ).filter(
+            UserModel.id.in_(user_ids)
+        ).all()
+
+        return {model.id: self._to_entity(model) for model in user_models}
+
     def find_by_username(self, username: str, organization_id: Optional[int] = None) -> Optional[User]:
         """
         Find user by username with optional organization isolation
@@ -260,6 +282,74 @@ class UserRepository(IUserRepository):
             query = query.filter(UserModel.is_active == True)
 
         return query.scalar() or 0
+
+    def assign_role(self, user_id: int, role_id: int, organization_id: Optional[int] = None) -> User:
+        """
+        Assign a role to user by role_id
+
+        Args:
+            user_id: User ID
+            role_id: Role ID to assign
+            organization_id: Organization ID for isolation (recommended for security)
+
+        Returns:
+            Updated User entity
+        """
+        # Verify role exists
+        role_model = self.db.query(RoleModel).filter(RoleModel.id == role_id).first()
+        if not role_model:
+            raise ValidationError(
+                message=f"Role with id {role_id} not found",
+                code=ErrorCodes.NOT_FOUND,
+                field="role_id"
+            )
+
+        # Get user with org isolation
+        query = self.db.query(UserModel).options(joinedload(UserModel.role)).filter(UserModel.id == user_id)
+        if organization_id is not None:
+            query = query.filter(UserModel.organization_id == organization_id)
+
+        user_model = query.first()
+        if not user_model:
+            raise ValidationError(
+                message=f"User with id {user_id} not found",
+                code=ErrorCodes.NOT_FOUND,
+                field="user_id"
+            )
+
+        # Assign role
+        user_model.role_id = role_id
+        self.db.commit()
+        self.db.refresh(user_model)
+        return self._to_entity(user_model)
+
+    def get_user_role(self, user_id: int, organization_id: Optional[int] = None) -> Optional[dict]:
+        """
+        Get user's current role details
+
+        Args:
+            user_id: User ID
+            organization_id: Organization ID for isolation
+
+        Returns:
+            Role details dict or None
+        """
+        query = self.db.query(UserModel).options(joinedload(UserModel.role)).filter(UserModel.id == user_id)
+        if organization_id is not None:
+            query = query.filter(UserModel.organization_id == organization_id)
+
+        user_model = query.first()
+        if not user_model or not user_model.role:
+            return None
+
+        role = user_model.role
+        return {
+            "id": role.id,
+            "name": role.name,
+            "description": role.description,
+            "is_system_role": role.is_system_role,
+            "permissions": role.permissions or {}
+        }
 
     def _to_entity(self, model: UserModel) -> User:
         """Convert SQLAlchemy model to domain entity with proper role mapping"""

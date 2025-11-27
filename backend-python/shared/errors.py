@@ -124,6 +124,78 @@ class ExternalServiceError(AppException):
 # ERROR CODES
 # =============================================================================
 
+def create_error_response(
+    message: str,
+    code: str = "ERROR",
+    details: Optional[Dict[str, Any]] = None,
+    status_code: int = status.HTTP_400_BAD_REQUEST
+) -> HTTPException:
+    """
+    Create standardized HTTPException with consistent format (Fix #14)
+
+    Usage:
+        # Instead of: raise HTTPException(status_code=404, detail="Menu not found")
+        # Use: raise create_error_response("Menu not found", "NOT_FOUND", status_code=404)
+
+    Args:
+        message: Human-readable error message
+        code: Machine-readable error code (e.g., "NOT_FOUND", "VALIDATION_ERROR")
+        details: Additional context (optional)
+        status_code: HTTP status code (default: 400)
+
+    Returns:
+        HTTPException with standardized detail format:
+        {
+            "message": "...",
+            "code": "ERROR_CODE",
+            "details": {}
+        }
+    """
+    return HTTPException(
+        status_code=status_code,
+        detail={
+            "message": message,
+            "code": code,
+            "details": details or {}
+        }
+    )
+
+
+def not_found_error(resource: str, resource_id: Any = None) -> HTTPException:
+    """Shortcut for 404 Not Found errors"""
+    message = f"{resource} not found"
+    if resource_id is not None:
+        message = f"{resource} with ID {resource_id} not found"
+    return create_error_response(
+        message=message,
+        code=ErrorCodes.NOT_FOUND,
+        details={"resource": resource, "resource_id": resource_id},
+        status_code=status.HTTP_404_NOT_FOUND
+    )
+
+
+def validation_error(message: str, field: str = None, details: Dict = None) -> HTTPException:
+    """Shortcut for 400 Validation errors"""
+    error_details = details or {}
+    if field:
+        error_details["field"] = field
+    return create_error_response(
+        message=message,
+        code=ErrorCodes.VALIDATION_ERROR,
+        details=error_details,
+        status_code=status.HTTP_400_BAD_REQUEST
+    )
+
+
+def forbidden_error(message: str = "Access denied") -> HTTPException:
+    """Shortcut for 403 Forbidden errors"""
+    return create_error_response(
+        message=message,
+        code=ErrorCodes.ACCESS_DENIED,
+        status_code=status.HTTP_403_FORBIDDEN
+    )
+
+
 class ErrorCodes:
     """Centralized error codes"""
 

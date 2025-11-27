@@ -103,6 +103,7 @@ class AuditLogRepository(IAuditLogRepository):
         organization_id: Optional[int] = None,
         action: Optional[str] = None,
         resource_type: Optional[str] = None,
+        resource_id: Optional[int] = None,
         start_date: Optional[datetime] = None,
         end_date: Optional[datetime] = None
     ) -> int:
@@ -123,6 +124,9 @@ class AuditLogRepository(IAuditLogRepository):
 
         if resource_type is not None:
             filters.append(AuditLogModel.resource_type == resource_type)
+
+        if resource_id is not None:
+            filters.append(AuditLogModel.resource_id == resource_id)
 
         if start_date is not None:
             filters.append(AuditLogModel.created_at >= start_date)

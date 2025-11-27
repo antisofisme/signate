@@ -97,3 +97,24 @@ class UserListResponse(BaseModel):
     users: list[UserResponse]
     total: int
     active: int
+
+
+# ============================================================================
+# ROLE ASSIGNMENT MODELS (P0-1 RBAC)
+# ============================================================================
+
+class AssignRoleRequest(BaseModel):
+    """Request to assign role to user"""
+    role_id: int = Field(..., description="Role ID to assign")
+
+
+class UserRoleResponse(BaseModel):
+    """User role information response"""
+    id: int
+    name: str
+    description: Optional[str] = None
+    is_system_role: bool = False
+    permissions: dict = Field(default_factory=dict)
+
+    class Config:
+        from_attributes = True

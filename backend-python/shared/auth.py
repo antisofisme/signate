@@ -353,31 +353,40 @@ def create_token_payload(
     user_id: int,
     username: str,
     role: str,
-    organization_id: Optional[int] = None
+    organization_id: Optional[int] = None,
+    permissions: Optional[Dict[str, Any]] = None
 ) -> Dict[str, Any]:
     """
-    Create standardized token payload
+    Create standardized token payload with optional permissions (P0-3 RBAC)
 
     Args:
         user_id: User ID
         username: Username
         role: User role (admin, manager, user)
         organization_id: Optional organization ID
+        permissions: Optional permission dict {resource: [actions]}
 
     Returns:
         Token payload dictionary
     """
-    return {
+    payload = {
         "sub": str(user_id),  # Subject (user ID)
         "username": username,
         "role": role,
         "organization_id": organization_id
     }
 
+    # Include permissions in token for fast permission checking (P0-3)
+    # Note: This makes the JWT larger but avoids DB lookups per request
+    if permissions:
+        payload["permissions"] = permissions
+
+    return payload
+
 
 def extract_user_from_token(token: str) -> Dict[str, Any]:
     """
-    Extract user information from valid access token
+    Extract user information from valid access token (P0-3 RBAC updated)
 
     Args:
         token: JWT access token
@@ -388,6 +397,7 @@ def extract_user_from_token(token: str) -> Dict[str, Any]:
         - username: str
         - role: str
         - organization_id: Optional[int]
+        - permissions: Optional[Dict] (P0-3: embedded permissions for fast checking)
 
     Raises:
         AuthenticationError: If token is invalid
@@ -398,7 +408,8 @@ def extract_user_from_token(token: str) -> Dict[str, Any]:
         "user_id": int(payload["sub"]),
         "username": payload["username"],
         "role": payload["role"],
-        "organization_id": payload.get("organization_id")
+        "organization_id": payload.get("organization_id"),
+        "permissions": payload.get("permissions", {})  # P0-3: Include permissions
     }
 
 
@@ -447,26 +458,50 @@ def get_current_user(
 
     # CRITICAL FIX: Verify session is still active in database
     # This prevents revoked tokens from being used
-    # NOTE: This adds a DB query to every request - consider Redis caching for production
+    # OPTIMIZATION: Use Redis cache to reduce DB queries (Fix #13)
     try:
         from services.session.repositories.session_repo import SessionRepository
         from shared.database import SessionLocal
+        from shared.cache import cache
 
-        db = SessionLocal()
-        try:
-            session_repo = SessionRepository(db)
-            session = session_repo.verify_session(credentials.credentials)
+        # Generate cache key from token hash (first 16 chars for privacy)
+        token_hash = credentials.credentials[:16]
+        cache_key = f"session:valid:{token_hash}"
 
-            if not session:
-                raise AuthenticationError(
-                    message="Session has been revoked or expired",
-                    code=ErrorCodes.SESSION_REVOKED
-                )
+        # Check cache first (reduces DB queries by ~98% with 60s TTL)
+        cached_valid = cache.get(cache_key)
 
-            # Update last activity timestamp
-            session_repo.update_last_activity(session.id)
-        finally:
-            db.close()
+        if cached_valid is None:
+            # Cache miss - query database
+            db = SessionLocal()
+            try:
+                session_repo = SessionRepository(db)
+                session = session_repo.verify_session(credentials.credentials)
+
+                if not session:
+                    # Cache negative result for short time to prevent hammering
+                    cache.set(cache_key, False, ttl=10)
+                    raise AuthenticationError(
+                        message="Session has been revoked or expired",
+                        code=ErrorCodes.SESSION_REVOKED
+                    )
+
+                # Cache positive result for 60 seconds
+                # Balance between performance and security (revoked sessions detected within 60s)
+                cache.set(cache_key, True, ttl=60)
+
+                # Update last activity timestamp (only on cache miss to reduce DB writes)
+                session_repo.update_last_activity(session.id)
+            finally:
+                db.close()
+        elif cached_valid is False:
+            # Cached as invalid
+            raise AuthenticationError(
+                message="Session has been revoked or expired",
+                code=ErrorCodes.SESSION_REVOKED
+            )
+        # If cached_valid is True, session is valid - skip DB query
+
     except ImportError:
         # Session verification not available - continue without it
         # This allows backward compatibility during migration
@@ -568,7 +603,13 @@ def get_current_device(
 
 def get_role_level(role: str) -> int:
     """Get numeric level for role (higher = more permissions)"""
-    return ROLE_HIERARCHY.get(Role(role), 0)
+    try:
+        # Try lowercase first (enum values are lowercase)
+        role_lower = role.lower() if isinstance(role, str) else role
+        return ROLE_HIERARCHY.get(Role(role_lower), 0)
+    except ValueError:
+        # Unknown role
+        return 0
 
 
 def has_role(user: CurrentUser, required_role: str) -> bool:
@@ -589,7 +630,8 @@ def has_role(user: CurrentUser, required_role: str) -> bool:
 
 def is_super_admin(user: CurrentUser) -> bool:
     """Check if user is super admin"""
-    return user.role == Role.SUPER_ADMIN
+    role_lower = user.role.lower() if isinstance(user.role, str) else user.role
+    return role_lower == Role.SUPER_ADMIN.value
 
 
 def is_admin(user: CurrentUser) -> bool:

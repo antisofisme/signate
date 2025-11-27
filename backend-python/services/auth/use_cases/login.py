@@ -4,6 +4,7 @@ Handles user authentication
 
 Updated to use centralized error handling and JWT utilities
 Integrated with Session Management (Phase 1 Day 3)
+P0-3: Updated to include permissions in JWT token
 """
 
 from typing import Dict, Any, Optional
@@ -22,6 +23,7 @@ class LoginUseCase:
         user_repository: IUserRepository,
         organization_repository: OrganizationRepository,
         session_repository = None,  # Optional: SessionRepository from services.session
+        role_repository = None,  # Optional: RoleRepository for permissions (P0-3)
         secret_key: str = None,  # Kept for backward compatibility, but uses shared auth
         algorithm: str = "HS256",
         token_expire_minutes: int = 30
@@ -29,6 +31,7 @@ class LoginUseCase:
         self.user_repository = user_repository
         self.organization_repository = organization_repository
         self.session_repository = session_repository
+        self.role_repository = role_repository  # P0-3: For fetching role permissions
 
     def execute(
         self,
@@ -73,12 +76,24 @@ class LoginUseCase:
                 message="Akun Anda telah dinonaktifkan"
             )
 
-        # Generate JWT token with organization_id using shared auth utility
+        # P0-3: Fetch user's role permissions for embedding in JWT
+        permissions = {}
+        if self.role_repository:
+            try:
+                role = self.role_repository.find_by_name(user.role.upper() if user.role else "VIEWER")
+                if role and role.permissions:
+                    permissions = role.permissions
+            except Exception:
+                # Fallback: continue without permissions if role lookup fails
+                pass
+
+        # Generate JWT token with organization_id and permissions using shared auth utility
         payload = create_token_payload(
             user_id=user.id,
             username=user.username,
             role=user.role,
-            organization_id=user.organization_id
+            organization_id=user.organization_id,
+            permissions=permissions  # P0-3: Embed permissions for fast checking
         )
         token = create_access_token(payload)
 
