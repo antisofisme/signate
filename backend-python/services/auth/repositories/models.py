@@ -3,7 +3,7 @@ SQLAlchemy Models
 Database representation
 """
 
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, ForeignKey, JSON, Text
+from sqlalchemy import Column, Integer, String, Boolean, DateTime, ForeignKey, JSON, Text, UniqueConstraint
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
 from shared.database import Base
@@ -39,9 +39,15 @@ class UserModel(Base):
     """User database model"""
     __tablename__ = "users"
 
+    # Composite unique constraint: username is unique within organization
+    # Email stays globally unique for login
+    __table_args__ = (
+        UniqueConstraint('organization_id', 'username', name='users_org_username_unique'),
+    )
+
     id = Column(Integer, primary_key=True, index=True)
-    username = Column(String(50), unique=True, nullable=False, index=True)
-    email = Column(String(100), unique=True, nullable=False, index=True)
+    username = Column(String(50), nullable=False, index=True)  # unique per-organization
+    email = Column(String(100), unique=True, nullable=False, index=True)  # globally unique for login
     password_hash = Column(String(255), nullable=False)
     full_name = Column(String(100), nullable=False)
     role_id = Column(Integer, ForeignKey("roles.id"), nullable=False)

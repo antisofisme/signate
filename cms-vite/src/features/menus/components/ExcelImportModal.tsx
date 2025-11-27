@@ -123,22 +123,22 @@ export const ExcelImportModal = ({
       {/* Scrollable content */}
       <div className="flex-1 overflow-y-auto p-6 space-y-6">
           {/* Menu Info */}
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-            <p className="text-sm text-blue-800">
+          <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+            <p className="text-sm text-blue-800 dark:text-blue-300">
               <strong>Menu:</strong> {menuName}
             </p>
           </div>
 
           {/* Download Template */}
-          <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
-            <h3 className="font-medium text-gray-900 mb-2">Step 1: Download Template</h3>
-            <p className="text-sm text-gray-600 mb-3">
+          <div className="bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+            <h3 className="font-medium text-gray-900 dark:text-white mb-2">Step 1: Download Template</h3>
+            <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
               Download the Excel template and fill in your menu items following the format.
             </p>
             <button
               onClick={handleDownloadTemplate}
               disabled={downloadTemplateMutation.isPending}
-              className="flex items-center space-x-2 px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 disabled:opacity-50"
+              className="flex items-center space-x-2 px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 disabled:opacity-50 transition-colors"
             >
               <Download className="w-4 h-4" />
               <span>
@@ -149,9 +149,9 @@ export const ExcelImportModal = ({
 
           {/* Upload File */}
           <div className="space-y-3">
-            <h3 className="font-medium text-gray-900">Step 2: Upload Filled Excel</h3>
+            <h3 className="font-medium text-gray-900 dark:text-white">Step 2: Upload Filled Excel</h3>
 
-            <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-blue-400 transition-colors">
+            <div className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-6 text-center hover:border-blue-400 dark:hover:border-blue-500 transition-colors bg-white dark:bg-gray-800">
               <input
                 type="file"
                 onChange={handleFileChange}
@@ -163,11 +163,11 @@ export const ExcelImportModal = ({
                 htmlFor="excel-upload"
                 className="cursor-pointer flex flex-col items-center space-y-2"
               >
-                <Upload className="w-8 h-8 text-gray-400" />
-                <span className="text-sm text-gray-600">
+                <Upload className="w-8 h-8 text-gray-400 dark:text-gray-500" />
+                <span className="text-sm text-gray-600 dark:text-gray-400">
                   {selectedFile ? selectedFile.name : 'Click to select Excel file'}
                 </span>
-                <span className="text-xs text-gray-500">Supports .xlsx and .xls files</span>
+                <span className="text-xs text-gray-500 dark:text-gray-500">Supports .xlsx and .xls files</span>
               </label>
             </div>
 
@@ -177,9 +177,9 @@ export const ExcelImportModal = ({
                 type="checkbox"
                 checked={replaceExisting}
                 onChange={(e) => setReplaceExisting(e.target.checked)}
-                className="rounded"
+                className="rounded border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700"
               />
-              <span className="text-sm text-gray-700">
+              <span className="text-sm text-gray-700 dark:text-gray-300">
                 Replace existing items (delete all current items before import)
               </span>
             </label>
@@ -190,29 +190,29 @@ export const ExcelImportModal = ({
             <div
               className={`rounded-lg p-4 ${
                 importResult.status === 'success'
-                  ? 'bg-green-50 border border-green-200'
+                  ? 'bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800'
                   : importResult.status === 'partial'
-                  ? 'bg-yellow-50 border border-yellow-200'
-                  : 'bg-red-50 border border-red-200'
+                  ? 'bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800'
+                  : 'bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800'
               }`}
             >
               <div className="flex items-start space-x-3">
                 {importResult.status === 'success' ? (
-                  <CheckCircle className="w-5 h-5 text-green-600 mt-0.5" />
+                  <CheckCircle className="w-5 h-5 text-green-600 dark:text-green-400 mt-0.5" />
                 ) : (
-                  <AlertCircle className="w-5 h-5 text-yellow-600 mt-0.5" />
+                  <AlertCircle className="w-5 h-5 text-yellow-600 dark:text-yellow-400 mt-0.5" />
                 )}
                 <div className="flex-1">
-                  <h4 className="font-medium text-gray-900 mb-2">Import Results</h4>
+                  <h4 className="font-medium text-gray-900 dark:text-white mb-2">Import Results</h4>
                   <div className="text-sm space-y-1">
-                    <p>
+                    <p className="text-gray-700 dark:text-gray-300">
                       <strong>Total rows:</strong> {importResult.rows_total}
                     </p>
-                    <p className="text-green-700">
+                    <p className="text-green-700 dark:text-green-400">
                       <strong>Success:</strong> {importResult.rows_success}
                     </p>
                     {importResult.rows_failed > 0 && (
-                      <p className="text-red-700">
+                      <p className="text-red-700 dark:text-red-400">
                         <strong>Failed:</strong> {importResult.rows_failed}
                       </p>
                     )}
@@ -221,15 +221,15 @@ export const ExcelImportModal = ({
                   {/* Error Details */}
                   {importResult.errors && importResult.errors.length > 0 && (
                     <div className="mt-3 max-h-40 overflow-y-auto">
-                      <p className="font-medium text-sm text-gray-900 mb-1">Errors:</p>
+                      <p className="font-medium text-sm text-gray-900 dark:text-white mb-1">Errors:</p>
                       <ul className="text-sm space-y-1">
                         {importResult.errors.slice(0, 10).map((error, idx) => (
-                          <li key={idx} className="text-red-700">
+                          <li key={idx} className="text-red-700 dark:text-red-400">
                             Row {error.row}: {error.error}
                           </li>
                         ))}
                         {importResult.errors.length > 10 && (
-                          <li className="text-gray-600 italic">
+                          <li className="text-gray-600 dark:text-gray-400 italic">
                             ... and {importResult.errors.length - 10} more errors
                           </li>
                         )}

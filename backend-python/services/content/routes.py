@@ -273,6 +273,89 @@ async def list_content(
         raise HTTPException(status_code=500, detail=f"List failed: {str(e)}")
 
 
+@router.get(ContentRoutes.STATS, response_model=dict)
+async def get_content_stats(
+    db: Session = Depends(get_db),
+    current_user: CurrentUser = Depends(get_current_user)
+):
+    """
+    Get content storage statistics for the organization
+
+    Returns:
+    - total_files: Total number of content files
+    - total_size_bytes: Total storage used in bytes
+    - total_size_readable: Human-readable storage size
+    - by_type: Breakdown by content type (image, video, audio)
+    """
+    from sqlalchemy import func
+    from .repositories.models import ContentModel
+    from .dtos import ContentStatsResponse
+
+    try:
+        org_id = current_user.organization_id
+
+        # Get total counts and size
+        total_result = db.query(
+            func.count(ContentModel.id).label('total_files'),
+            func.coalesce(func.sum(ContentModel.file_size), 0).label('total_size')
+        ).filter(
+            ContentModel.organization_id == org_id,
+            ContentModel.deleted_at == None
+        ).first()
+
+        total_files = total_result.total_files or 0
+        total_size_bytes = int(total_result.total_size or 0)
+
+        # Get breakdown by type
+        type_stats = db.query(
+            ContentModel.content_type,
+            func.count(ContentModel.id).label('count'),
+            func.coalesce(func.sum(ContentModel.file_size), 0).label('size')
+        ).filter(
+            ContentModel.organization_id == org_id,
+            ContentModel.deleted_at == None
+        ).group_by(ContentModel.content_type).all()
+
+        by_type = {}
+        for stat in type_stats:
+            content_type = stat.content_type or 'unknown'
+            # Normalize type names
+            if content_type.startswith('image'):
+                type_key = 'image'
+            elif content_type.startswith('video'):
+                type_key = 'video'
+            elif content_type.startswith('audio'):
+                type_key = 'audio'
+            else:
+                type_key = content_type
+
+            if type_key not in by_type:
+                by_type[type_key] = {'count': 0, 'size_bytes': 0}
+
+            by_type[type_key]['count'] += stat.count
+            by_type[type_key]['size_bytes'] += int(stat.size or 0)
+
+        # Format readable size
+        def format_size(size_bytes):
+            for unit in ['B', 'KB', 'MB', 'GB', 'TB']:
+                if size_bytes < 1024:
+                    return f"{size_bytes:.2f} {unit}"
+                size_bytes /= 1024
+            return f"{size_bytes:.2f} PB"
+
+        stats = ContentStatsResponse(
+            total_files=total_files,
+            total_size_bytes=total_size_bytes,
+            total_size_readable=format_size(total_size_bytes),
+            by_type=by_type
+        )
+
+        return success_response(data=stats.dict())
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Stats failed: {str(e)}")
+
+
 @router.get(ContentRoutes.GET, response_model=dict)
 async def get_content(
     content_id: int,

@@ -239,13 +239,12 @@ class RequestActivationCodeUseCase:
 
     def _generate_secure_code(self) -> str:
         """
-        🔒 SECURITY: Generate cryptographically secure 6-digit code
+        🔒 SECURITY: Generate cryptographically secure 6-digit numeric code
         Uses secrets module instead of random for better security
+        Format: 6 digits (000000 - 999999)
         """
-        # Use uppercase letters and numbers for readability
-        chars = string.ascii_uppercase + string.digits
-        # Exclude confusing characters: O, 0, I, 1
-        chars = chars.replace('O', '').replace('0', '').replace('I', '').replace('1', '')
+        # Use only digits for activation code (easier to read/type)
+        chars = string.digits  # 0-9
 
         # Use secrets.choice instead of random.choice
         return ''.join(secrets.choice(chars) for _ in range(6))

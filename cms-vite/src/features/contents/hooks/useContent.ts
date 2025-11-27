@@ -4,6 +4,7 @@
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
+import { getApiErrorMessage } from '@/shared/utils/types';
 import type { ContentFilters, ContentUploadData } from '../types/content';
 import {
   getContentList,
@@ -72,9 +73,8 @@ export const useUploadContent = () => {
 
       toast.success('Content uploaded successfully');
     },
-    onError: (error: any) => {
-      const message = error?.response?.data?.detail || 'Failed to upload content';
-      toast.error(message);
+    onError: (error: unknown) => {
+      toast.error(getApiErrorMessage(error, 'Failed to upload content'));
     },
   });
 };
@@ -114,9 +114,8 @@ export const useBulkUploadContent = () => {
         toast.success(`${summary.successful} files uploaded successfully`);
       }
     },
-    onError: (error: any) => {
-      const message = error?.response?.data?.detail || 'Failed to upload files';
-      toast.error(message);
+    onError: (error: unknown) => {
+      toast.error(getApiErrorMessage(error, 'Failed to upload files'));
     },
   });
 };
@@ -136,9 +135,8 @@ export const useUpdateContent = () => {
       queryClient.invalidateQueries({ queryKey: contentKeys.lists() });
       toast.success('Content updated successfully');
     },
-    onError: (error: any) => {
-      const message = error?.response?.data?.detail || 'Failed to update content';
-      toast.error(message);
+    onError: (error: unknown) => {
+      toast.error(getApiErrorMessage(error, 'Failed to update content'));
     },
   });
 };
@@ -151,19 +149,21 @@ export const useDeleteContent = () => {
 
   return useMutation({
     mutationFn: (id: number) => deleteContent(id),
-    onSuccess: () => {
-      // Invalidate content list to refetch
-      queryClient.invalidateQueries({ queryKey: contentKeys.lists() });
-      queryClient.invalidateQueries({ queryKey: contentKeys.stats() });
+    onSuccess: async () => {
+      // Force refetch content list immediately
+      await queryClient.invalidateQueries({
+        queryKey: contentKeys.lists(),
+        refetchType: 'all',
+      });
+      await queryClient.invalidateQueries({ queryKey: contentKeys.stats() });
 
       // Invalidate dashboard queries (content count and storage change)
       queryClient.invalidateQueries({ queryKey: ['dashboard'] });
 
       toast.success('Content deleted successfully');
     },
-    onError: (error: any) => {
-      const message = error?.response?.data?.detail || 'Failed to delete content';
-      toast.error(message);
+    onError: (error: unknown) => {
+      toast.error(getApiErrorMessage(error, 'Failed to delete content'));
     },
   });
 };
@@ -176,19 +176,21 @@ export const useBulkDeleteContent = () => {
 
   return useMutation({
     mutationFn: (ids: number[]) => bulkDeleteContent(ids),
-    onSuccess: (_, ids) => {
-      // Invalidate content list to refetch
-      queryClient.invalidateQueries({ queryKey: contentKeys.lists() });
-      queryClient.invalidateQueries({ queryKey: contentKeys.stats() });
+    onSuccess: async (_, ids) => {
+      // Force refetch content list immediately
+      await queryClient.invalidateQueries({
+        queryKey: contentKeys.lists(),
+        refetchType: 'all',
+      });
+      await queryClient.invalidateQueries({ queryKey: contentKeys.stats() });
 
       // Invalidate dashboard queries (content count and storage change)
       queryClient.invalidateQueries({ queryKey: ['dashboard'] });
 
       toast.success(`${ids.length} content(s) deleted successfully`);
     },
-    onError: (error: any) => {
-      const message = error?.response?.data?.detail || 'Failed to delete content';
-      toast.error(message);
+    onError: (error: unknown) => {
+      toast.error(getApiErrorMessage(error, 'Failed to delete content'));
     },
   });
 };

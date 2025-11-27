@@ -94,7 +94,7 @@ class CreateMenuUseCase:
             )
 
             # Generate public URL
-            player_url = settings.PLAYER_URL or "https://player.zhmhotels.online"
+            player_url = settings.PLAYER_URL  # Must be configured via environment variable
             public_url = f"{player_url}/menu/{public_url_code}"
 
             # Generate QR code

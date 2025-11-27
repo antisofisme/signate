@@ -63,6 +63,22 @@ export const API_ENDPOINTS = {
     SPEED_TEST: (id: number) => `/api/v1/devices/${id}/speed-test`,
     SPEED_TESTS: (id: number) => `/api/v1/devices/${id}/speed-tests`,
 
+    // Device Assignments (tags, contents, playlists)
+    ASSIGNMENTS: {
+      // Tags
+      GET_TAGS: (id: number) => `/api/v1/devices/${id}/tags`,
+      ASSIGN_TAG: (id: number) => `/api/v1/devices/${id}/tags`,
+      UNASSIGN_TAG: (id: number, tagId: number) => `/api/v1/devices/${id}/tags/${tagId}`,
+      // Contents
+      GET_CONTENTS: (id: number) => `/api/v1/devices/${id}/contents`,
+      ASSIGN_CONTENT: (id: number) => `/api/v1/devices/${id}/contents`,
+      UNASSIGN_CONTENT: (id: number, contentId: number) => `/api/v1/devices/${id}/contents/${contentId}`,
+      // Playlists
+      GET_PLAYLISTS: (id: number) => `/api/v1/devices/${id}/playlists`,
+      ASSIGN_PLAYLIST: (id: number) => `/api/v1/devices/${id}/playlists`,
+      UNASSIGN_PLAYLIST: (id: number, playlistId: number) => `/api/v1/devices/${id}/playlists/${playlistId}`,
+    },
+
     // Device Groups
     GROUPS: {
       LIST: '/api/v1/devices/groups',

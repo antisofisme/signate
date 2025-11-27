@@ -49,6 +49,9 @@ import { ConnectionLogger } from '@shared/services/connection-logger';
 import { NetworkSpeedTest } from '@shared/services/network-speed-test';
 import { VersionChecker } from '@shared/services/version-checker';
 
+// Import media cache for periodic cleanup
+import { mediaCache } from '@shared/storage';
+
 // Import player services to trigger registration
 import { PlayerPlaylistSync } from '@player/services';
 
@@ -120,6 +123,11 @@ const initApp = async () => {
   NetworkSpeedTest.init();
   ConnectionLogPopup.init();
   SharedLogger.log('[Main] ✅ Connection logging services initialized');
+
+  // Start periodic cache cleanup (runs every 24 hours)
+  SharedLogger.log('🧹 Starting periodic cache cleanup...');
+  mediaCache.startPeriodicCleanup(24 * 60 * 60 * 1000); // 24 hours
+  SharedLogger.log('[Main] ✅ Periodic cache cleanup scheduled');
 
   // Bootstrap device initialization FIRST (loads device from storage)
   SharedLogger.log('🚀 Initializing ShellBootstrap...');

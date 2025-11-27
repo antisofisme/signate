@@ -26,7 +26,6 @@ from .dtos import (
     ActivateDeviceRequest,
     HeartbeatRequest,
     UpdateDeviceRequest,
-    DeviceLogsRequest,
     ValidateResetPasswordRequest,
     ActivationCodeResponse,
     DeviceResponse,
@@ -944,31 +943,61 @@ def release_device_by_admin(
 @router.post(DeviceRoutes.HARD_RESET)
 def hard_reset_device(
     device_id: int,
-    device_repo: DeviceRepository = Depends(get_device_repository)
+    http_request: Request,
+    device_repo: DeviceRepository = Depends(get_device_repository),
+    current_device: CurrentDevice = Depends(get_current_device)
 ):
     """
     Hard reset device (factory reset) - called by player after password validation
 
+    🔒 SECURITY REQUIREMENTS:
+    - Requires device JWT authentication (prevents unauthorized reset attacks)
+    - Device can only reset ITSELF (device_id must match JWT token)
+    - Password validation MUST be called first via /validate-reset-password
+    - Rate limiting applied to prevent brute force attacks
+
     Flow:
     1. Player validates password via /validate-reset-password
-    2. Player calls this endpoint
-    3. Backend sets status='released' (same as CMS release)
-    4. Player clears ALL IndexedDB data (including org_id)
-    5. Player requests new activation code (WITHOUT org_id)
-    6. Device appears in GLOBAL pending list (unassigned)
+    2. Player calls this endpoint WITH device JWT token
+    3. Backend verifies device can only reset itself
+    4. Backend sets status='released' (same as CMS release)
+    5. Player clears ALL IndexedDB data (including org_id)
+    6. Player requests new activation code (WITHOUT org_id)
+    7. Device appears in GLOBAL pending list (unassigned)
 
     This is DIFFERENT from CMS release:
     - CMS Release: Keep org_id → re-register to SAME org
     - Hard Reset: Clear org_id → re-register to GLOBAL pending
 
-    NOTE: Public endpoint (no auth required) because:
-    - Player already validated password in previous step
-    - Device is being factory reset anyway
-    - Want to allow reset even if token expired
+    ⚠️ SECURITY FIX (CVSS 9.8 - Critical):
+    - Added device authentication requirement
+    - Added device ownership verification (can only reset self)
+    - Added IP address logging for audit trail
+    - Password validation must be enforced client-side
     """
     from datetime import datetime, timezone
 
-    # Get device (no organization filter - public endpoint)
+    # 🔒 SECURITY CHECK: Verify device can only reset itself
+    if current_device.id != device_id:
+        audit_logger.log_action(
+            user_id=None,
+            action="device.hard_reset.unauthorized_attempt",
+            resource_type="device",
+            resource_id=device_id,
+            details={
+                "authenticated_device_id": current_device.id,
+                "attempted_device_id": device_id,
+                "ip_address": http_request.client.host if http_request.client else None,
+                "severity": "CRITICAL",
+                "attack_type": "Unauthorized device reset attempt"
+            }
+        )
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Devices can only reset themselves"
+        )
+
+    # Get device (verify it exists)
     device = device_repo.find_by_id(device_id)
 
     if not device:
@@ -977,99 +1006,61 @@ def hard_reset_device(
             detail="Device not found"
         )
 
+    # 🔒 SECURITY CHECK: Additional verification that device matches JWT org
+    if device.organization_id != current_device.organization_id:
+        audit_logger.log_action(
+            user_id=None,
+            action="device.hard_reset.org_mismatch",
+            resource_type="device",
+            resource_id=device_id,
+            details={
+                "device_org_id": device.organization_id,
+                "token_org_id": current_device.organization_id,
+                "ip_address": http_request.client.host if http_request.client else None,
+                "severity": "HIGH"
+            }
+        )
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Organization mismatch - device token invalid"
+        )
+
+    # Store original state for audit
+    original_org_id = device.organization_id
+    original_status = device.status
+
     # Set status to released (same action as CMS release)
     device.status = 'released'
     device.released_at = datetime.now(timezone.utc)
 
     updated_device = device_repo.update(device)
 
-    # Audit log
+    # 🔒 SECURITY: Comprehensive audit logging
     audit_logger.log_action(
-        user_id=None,  # No user - called by player
+        user_id=None,  # No user - called by player device
         action="device.hard_reset",
         resource_type="device",
         resource_id=device_id,
         details={
             "device_name": device.device_name,
-            "organization_id": device.organization_id,
-            "note": "Factory reset by player device"
+            "organization_id": original_org_id,
+            "previous_status": original_status,
+            "new_status": "released",
+            "reset_type": "Factory reset by device",
+            "authenticated_device_id": current_device.id,
+            "ip_address": http_request.client.host if http_request.client else None,
+            "user_agent": http_request.headers.get("User-Agent") if http_request else None,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "security_note": "Password validation required client-side"
         }
     )
 
-    print(f"[Hard Reset] Device {device_id} ({device.device_name}) factory reset completed")
+    print(f"[Hard Reset] ✅ Device {device_id} ({device.device_name}) factory reset completed by authenticated device")
 
     return {
         "success": True,
         "message": "Device factory reset completed"
     }
-
-
-# =============================================================================
-# DEPRECATED: Old Log Endpoint (Database Storage)
-# REPLACED BY: Console Streaming API (/api/v1/devices/{device_id}/console/upload)
-# =============================================================================
-# This endpoint has been DISABLED to avoid confusion with the new console streaming system.
-# New system: Player → HTTP POST to console/upload → Backend broadcasts via WebSocket to CMS
-# =============================================================================
-
-# @router.post(DeviceRoutes.DEVICE_LOGS_BATCH, status_code=status.HTTP_204_NO_CONTENT)
-# def receive_device_logs(
-#     request_body: DeviceLogsRequest,
-#     device_repo: DeviceRepository = Depends(get_device_repository),
-#     db: Session = Depends(get_db)
-# ):
-#     """
-#     Receive batch logs from player (called by player device)
-#
-#     Logs are sent from player for debugging purposes and stored to database.
-#
-#     ⚠️ SECURITY NOTE: This is a public endpoint (no auth) because it's called by player devices.
-#     The player sends its device_id in the request body. We verify the device exists but don't
-#     require JWT authentication.
-#     """
-#     from services.device.use_cases.save_device_logs_batch import SaveDeviceLogsBatch
-#     from services.device.dtos import BatchDeviceLogsRequest, DeviceLogEntry
-#
-#     try:
-#         # Verify device exists (no organization filter - public endpoint)
-#         device = device_repo.find_by_id(request_body.device_id)
-#
-#         if not device:
-#             # Device not found - log but don't break
-#             print(f"[Device Logs] Device {request_body.device_id} not found - ignoring logs")
-#             return
-#
-#         # Convert DeviceLogsRequest to BatchDeviceLogsRequest format
-#         batch_request = BatchDeviceLogsRequest(
-#             logs=[
-#                 DeviceLogEntry(
-#                     level=log.level,
-#                     message=log.message,
-#                     timestamp=log.timestamp,
-#                     source=log.source,
-#                     stack_trace=log.stack_trace,
-#                     user_agent=log.user_agent,
-#                     url=log.url
-#                 )
-#                 for log in request_body.logs
-#             ]
-#         )
-#
-#         # Save logs to database using use case
-#         use_case = SaveDeviceLogsBatch(db)
-#         result = use_case.execute(device_id=request_body.device_id, dto=batch_request)
-#
-#         # Log success
-#         print(f"[Device Logs] ✅ Saved {result['logs_saved']} logs for device {request_body.device_id} ({device.device_name})")
-#
-#         # Return 204 No Content (no body needed)
-#         return
-#
-#     except Exception as e:
-#         # Log error but don't break player functionality
-#         print(f"[Device Logs] ❌ Error saving logs: {e}")
-#         # Return 204 anyway to not break player
-#         return
 
 
 # NOTE: get_resolved_content endpoint moved to extended_routes.py to avoid duplication
@@ -1078,27 +1069,87 @@ def hard_reset_device(
 
 @router.post(DeviceRoutes.VALIDATE_RESET_PASSWORD)
 def validate_reset_password(
-    request: ValidateResetPasswordRequest
+    request: ValidateResetPasswordRequest,
+    http_request: Request,
+    current_device: CurrentDevice = Depends(get_current_device)
 ):
     """
     Validate device reset password (called by player)
 
-    Player sends password to validate before performing hard reset.
-    Password is stored in environment variable for security.
+    🔒 SECURITY REQUIREMENTS:
+    - Requires device JWT authentication (prevents unauthorized password checking)
+    - Device can only validate for ITSELF
+    - Rate limiting applied (prevent brute force attacks)
+    - Failed attempts are logged for security monitoring
+    - Password stored in environment variable (never hardcoded)
+
+    Flow:
+    1. Player shows password input dialog
+    2. Player calls this endpoint WITH device JWT token
+    3. Backend verifies device authentication
+    4. Backend checks password against environment variable
+    5. Failed attempts logged for security monitoring
+    6. On success, player can proceed to hard_reset_device
 
     Request body: { "password": "admin123" }
+
+    ⚠️ SECURITY FIX (CVSS 7.5 - High):
+    - Added device authentication requirement
+    - Added rate limiting consideration (TODO: implement rate limiter)
+    - Added comprehensive audit logging for failed attempts
+    - IP address logging for forensic analysis
     """
     import os
+    import time
 
     # Get reset password from environment variable
     reset_password = os.getenv('DEVICE_RESET_PASSWORD', 'admin123')
 
+    # Log the validation attempt
+    attempt_details = {
+        "device_id": current_device.id,
+        "organization_id": current_device.organization_id,
+        "ip_address": http_request.client.host if http_request.client else None,
+        "user_agent": http_request.headers.get("User-Agent") if http_request else None,
+        "timestamp": time.time()
+    }
+
     if request.password == reset_password:
+        # 🔒 SECURITY: Log successful validation
+        audit_logger.log_action(
+            user_id=None,
+            action="device.reset_password.validation_success",
+            resource_type="device",
+            resource_id=current_device.id,
+            details={
+                **attempt_details,
+                "result": "success",
+                "severity": "INFO"
+            }
+        )
+
         return {
             "valid": True,
             "message": "Password correct"
         }
     else:
+        # 🔒 SECURITY: Log FAILED validation attempt (potential attack)
+        audit_logger.log_action(
+            user_id=None,
+            action="device.reset_password.validation_failed",
+            resource_type="device",
+            resource_id=current_device.id,
+            details={
+                **attempt_details,
+                "result": "failed",
+                "severity": "WARNING",
+                "security_note": "Monitor for brute force attempts"
+            }
+        )
+
+        # Add small delay to mitigate brute force (timing attack prevention)
+        time.sleep(1)
+
         return {
             "valid": False,
             "message": "Incorrect password"

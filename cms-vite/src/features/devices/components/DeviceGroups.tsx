@@ -8,6 +8,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import { Folder, Plus, Users, Edit, Trash2, MoreVertical, Grid, List, ChevronRight, ChevronDown, Settings, X, Check, Monitor } from 'lucide-react'
+import { getApiErrorMessage } from '@/shared/utils/types'
 import { groupsApi } from '../api/groupsApi'
 import { deviceApi } from '../api/deviceApi'
 import type { DeviceGroup, CreateDeviceGroupRequest, UpdateDeviceGroupRequest } from '../types/groups'
@@ -41,9 +42,9 @@ export function DeviceGroups() {
         description: t('deviceGroups.toast.createSuccessDescription', { name: data.name })
       })
     },
-    onError: (error: any) => {
+    onError: (error: unknown) => {
       toast.error(t('deviceGroups.toast.createError'), {
-        description: error.response?.data?.detail || error.message || t('deviceGroups.toast.tryAgain')
+        description: getApiErrorMessage(error, t('deviceGroups.toast.tryAgain'))
       })
     },
   })
@@ -60,9 +61,9 @@ export function DeviceGroups() {
         description: t('deviceGroups.toast.updateSuccessDescription', { name: data.name })
       })
     },
-    onError: (error: any) => {
+    onError: (error: unknown) => {
       toast.error(t('deviceGroups.toast.updateError'), {
-        description: error.response?.data?.detail || error.message || t('deviceGroups.toast.tryAgain')
+        description: getApiErrorMessage(error, t('deviceGroups.toast.tryAgain'))
       })
     },
   })
@@ -74,9 +75,9 @@ export function DeviceGroups() {
       queryClient.invalidateQueries({ queryKey: ['device-groups'] })
       toast.success(t('deviceGroups.toast.deleteSuccess'))
     },
-    onError: (error: any) => {
+    onError: (error: unknown) => {
       toast.error(t('deviceGroups.toast.deleteError'), {
-        description: error.response?.data?.detail || error.message || t('deviceGroups.toast.tryAgain')
+        description: getApiErrorMessage(error, t('deviceGroups.toast.tryAgain'))
       })
     },
   })

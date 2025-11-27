@@ -20,7 +20,8 @@ import {
   type RecurrencePattern,
   type PriorityLevel,
 } from '../types/schedule.types'
-import axios from 'axios'
+import { apiClient } from '@/lib/api/client'
+import { API_ENDPOINTS } from '@/lib/api/endpoints'
 import { renderIcon } from '@/shared/utils/iconHelper'
 
 // Validation schema
@@ -127,8 +128,8 @@ export const ScheduleForm = ({
       setLoadingData(true)
       try {
         const [playlistsRes, devicesRes] = await Promise.all([
-          axios.get('/api/v1/playlists'),
-          axios.get('/api/v1/devices'),
+          apiClient.get(API_ENDPOINTS.PLAYLISTS.LIST),
+          apiClient.get(API_ENDPOINTS.DEVICES.LIST),
         ])
 
         setPlaylists(playlistsRes.data.playlists || [])
@@ -143,27 +144,62 @@ export const ScheduleForm = ({
     fetchData()
   }, [])
 
+  // Helper to compare values (handles arrays properly)
+  const isEqual = (a: unknown, b: unknown): boolean => {
+    if (Array.isArray(a) && Array.isArray(b)) {
+      return JSON.stringify(a.slice().sort()) === JSON.stringify(b.slice().sort())
+    }
+    if (typeof a === 'object' && typeof b === 'object' && a !== null && b !== null) {
+      return JSON.stringify(a) === JSON.stringify(b)
+    }
+    return a === b
+  }
+
+  // Convert priority string to number for backend
+  const priorityToNumber = (priority: PriorityLevel): number => {
+    const mapping: Record<PriorityLevel, number> = {
+      low: 10,
+      normal: 50,
+      high: 75,
+      critical: 100,
+    }
+    return mapping[priority] ?? 50
+  }
+
   const handleFormSubmit = (data: ScheduleFormData) => {
     const formData = {
       ...data,
+      priority: priorityToNumber(data.priority), // Convert to number for backend
       recurrence_pattern: recurrenceType === 'once' ? undefined : recurrencePattern,
       exception_dates: exceptionDates.length > 0 ? exceptionDates : undefined,
     }
 
-    if (isEdit) {
+    if (isEdit && schedule) {
       // For edit, only send changed fields
       const updateData: UpdateScheduleRequest = {}
-      
-      Object.keys(formData).forEach((key) => {
-        const k = key as keyof ScheduleFormData
-        if (formData[k] !== schedule[k as keyof Schedule]) {
-          (updateData as any)[k] = formData[k]
-        }
-      })
+
+      // Compare each field properly (including arrays)
+      if (!isEqual(formData.name, schedule.name)) updateData.name = formData.name
+      if (!isEqual(formData.description, schedule.description)) updateData.description = formData.description
+      if (!isEqual(formData.device_ids, schedule.device_ids)) updateData.device_ids = formData.device_ids
+      if (!isEqual(formData.start_date, schedule.start_date)) updateData.start_date = formData.start_date
+      if (!isEqual(formData.end_date, schedule.end_date)) updateData.end_date = formData.end_date
+      if (!isEqual(formData.start_time, schedule.start_time)) updateData.start_time = formData.start_time
+      if (!isEqual(formData.end_time, schedule.end_time)) updateData.end_time = formData.end_time
+      if (!isEqual(formData.recurrence_pattern, schedule.recurrence_pattern)) {
+        updateData.recurrence_pattern = formData.recurrence_pattern
+      }
+      if (!isEqual(formData.exception_dates, schedule.exception_dates)) {
+        updateData.exception_dates = formData.exception_dates
+      }
+      if (formData.priority !== priorityToNumber(schedule.priority)) {
+        updateData.priority = formData.priority as unknown as PriorityLevel
+      }
+      if (!isEqual(formData.timezone, schedule.timezone)) updateData.timezone = formData.timezone
 
       onSubmit(updateData)
     } else {
-      onSubmit(formData as CreateScheduleRequest)
+      onSubmit(formData as unknown as CreateScheduleRequest)
     }
   }
 
@@ -189,52 +225,61 @@ export const ScheduleForm = ({
   }
 
   return (
-    <form id="schedule-form" onSubmit={handleSubmit(handleFormSubmit)} className="space-y-6">
+    <form id="schedule-form" onSubmit={handleSubmit(handleFormSubmit)} className="space-y-6" aria-label={isEdit ? 'Edit schedule form' : 'Create schedule form'}>
       {/* Basic Information */}
-      <div className="space-y-4">
-        <h3 className="text-lg font-semibold text-gray-900">Basic Information</h3>
-        
+      <fieldset className="space-y-4">
+        <legend className="text-lg font-semibold text-gray-900 dark:text-white">Basic Information</legend>
+
         {/* Name */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-            Schedule Name *
+          <label htmlFor="schedule-name" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            Schedule Name <span className="text-red-500" aria-hidden="true">*</span>
           </label>
           <input
             {...register('name')}
+            id="schedule-name"
             type="text"
-            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+            aria-required="true"
+            aria-invalid={!!errors.name}
+            aria-describedby={errors.name ? 'schedule-name-error' : undefined}
+            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2"
             placeholder="e.g., Morning Playlist Schedule"
             disabled={isLoading}
           />
           {errors.name && (
-            <p className="mt-1 text-sm text-red-600">{errors.name.message}</p>
+            <p id="schedule-name-error" className="mt-1 text-sm text-red-600" role="alert">{errors.name.message}</p>
           )}
         </div>
 
         {/* Description */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+          <label htmlFor="schedule-description" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
             Description
           </label>
           <textarea
             {...register('description')}
+            id="schedule-description"
             rows={3}
-            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2"
             placeholder="Optional description..."
             disabled={isLoading}
           />
         </div>
-      </div>
+      </fieldset>
 
       {/* Playlist Selection */}
       <div>
-        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-          Playlist *
+        <label htmlFor="schedule-playlist" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+          Playlist <span className="text-red-500" aria-hidden="true">*</span>
         </label>
         <select
           {...register('playlist_id', { valueAsNumber: true })}
+          id="schedule-playlist"
           disabled={isLoading || isEdit}
-          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+          aria-required="true"
+          aria-invalid={!!errors.playlist_id}
+          aria-describedby={errors.playlist_id ? 'playlist-error' : undefined}
+          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2"
         >
           <option value="">-- Select Playlist --</option>
           {playlists.map((playlist) => (
@@ -244,19 +289,24 @@ export const ScheduleForm = ({
           ))}
         </select>
         {errors.playlist_id && (
-          <p className="mt-1 text-sm text-red-600">{errors.playlist_id.message}</p>
+          <p id="playlist-error" className="mt-1 text-sm text-red-600" role="alert">{errors.playlist_id.message}</p>
         )}
       </div>
 
       {/* Device Selection */}
-      <div>
-        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
-          Devices * ({selectedDevices.length} selected)
-        </label>
-        <div className="max-h-40 overflow-y-auto border border-gray-300 dark:border-gray-600 rounded-md p-3 bg-white dark:bg-gray-800">
+      <fieldset>
+        <legend className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+          Devices <span className="text-red-500" aria-hidden="true">*</span> ({selectedDevices.length} selected)
+        </legend>
+        <div
+          className="max-h-40 overflow-y-auto border border-gray-300 dark:border-gray-600 rounded-md p-3 bg-white dark:bg-gray-800"
+          role="group"
+          aria-label="Select devices for schedule"
+          aria-describedby={errors.device_ids ? 'devices-error' : undefined}
+        >
           <div className="space-y-2">
             {devices.map((device) => (
-              <label key={device.id} className="flex items-center gap-3">
+              <label key={device.id} className="flex items-center gap-3 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 p-1 rounded">
                 <input
                   type="checkbox"
                   value={device.id}
@@ -270,7 +320,8 @@ export const ScheduleForm = ({
                     }
                   }}
                   disabled={isLoading}
-                  className="w-4 h-4"
+                  className="w-4 h-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500 focus:ring-2"
+                  aria-label={`Select ${device.name}`}
                 />
                 <span className="text-sm text-gray-700 dark:text-gray-300">{device.name}</span>
                 <span className={`text-xs px-2 py-0.5 rounded ${
@@ -285,9 +336,9 @@ export const ScheduleForm = ({
           </div>
         </div>
         {errors.device_ids && (
-          <p className="mt-1 text-sm text-red-600">{errors.device_ids.message}</p>
+          <p id="devices-error" className="mt-1 text-sm text-red-600" role="alert">{errors.device_ids.message}</p>
         )}
-      </div>
+      </fieldset>
 
       {/* Schedule Timing */}
       <div className="space-y-4">
@@ -517,21 +568,23 @@ export const ScheduleForm = ({
 
       {/* Action Buttons - Only rendered when showButtons is true */}
       {showButtons && (
-        <div className="flex justify-end gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
+        <div className="flex justify-end gap-3 pt-4 border-t border-gray-200 dark:border-gray-700" role="group" aria-label="Form actions">
           <button
             type="button"
             onClick={onCancel}
             disabled={isLoading}
-            className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50"
+            className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 transition-colors focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
+            aria-label="Cancel and close form"
           >
             Cancel
           </button>
           <button
             type="submit"
             disabled={isLoading}
-            className="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 disabled:opacity-50 flex items-center gap-2"
+            aria-busy={isLoading}
+            className="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 disabled:opacity-50 flex items-center gap-2 transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2"
           >
-            {isLoading && <Loader2 className="animate-spin h-4 w-4" />}
+            {isLoading && <Loader2 className="animate-spin h-4 w-4" aria-hidden="true" />}
             {isEdit ? 'Update Schedule' : 'Create Schedule'}
           </button>
         </div>

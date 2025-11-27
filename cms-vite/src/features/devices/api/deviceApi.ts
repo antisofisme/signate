@@ -365,7 +365,7 @@ export const deviceApi = {
    * @returns List of assigned tags
    */
   getTags: async (id: number): Promise<{ total: number; items: any[] }> => {
-    const response = await apiClient.get(`/api/v1/devices/${id}/tags`);
+    const response = await apiClient.get(API_ENDPOINTS.DEVICES.ASSIGNMENTS.GET_TAGS(id));
     return unwrapResponse<{ total: number; items: any[] }>(response);
   },
 
@@ -376,7 +376,7 @@ export const deviceApi = {
    * @returns Assignment result
    */
   assignTag: async (id: number, tagId: number): Promise<any> => {
-    const response = await apiClient.post(`/api/v1/devices/${id}/tags`, { tag_id: tagId });
+    const response = await apiClient.post(API_ENDPOINTS.DEVICES.ASSIGNMENTS.ASSIGN_TAG(id), { tag_id: tagId });
     return unwrapResponse<any>(response);
   },
 
@@ -386,7 +386,7 @@ export const deviceApi = {
    * @param tagId - Tag ID
    */
   unassignTag: async (id: number, tagId: number): Promise<void> => {
-    await apiClient.delete(`/api/v1/devices/${id}/tags/${tagId}`);
+    await apiClient.delete(API_ENDPOINTS.DEVICES.ASSIGNMENTS.UNASSIGN_TAG(id, tagId));
   },
 
   /**
@@ -395,7 +395,7 @@ export const deviceApi = {
    * @returns List of assigned content
    */
   getContents: async (id: number): Promise<{ total: number; items: any[] }> => {
-    const response = await apiClient.get(`/api/v1/devices/${id}/contents`);
+    const response = await apiClient.get(API_ENDPOINTS.DEVICES.ASSIGNMENTS.GET_CONTENTS(id));
     return unwrapResponse<{ total: number; items: any[] }>(response);
   },
 
@@ -428,7 +428,7 @@ export const deviceApi = {
       payload.schedule = schedule;
     }
 
-    const response = await apiClient.post(`/api/v1/devices/${id}/contents`, payload);
+    const response = await apiClient.post(API_ENDPOINTS.DEVICES.ASSIGNMENTS.ASSIGN_CONTENT(id), payload);
     return unwrapResponse<any>(response);
   },
 
@@ -438,7 +438,7 @@ export const deviceApi = {
    * @param contentId - Content ID
    */
   unassignContent: async (id: number, contentId: number): Promise<void> => {
-    await apiClient.delete(`/api/v1/devices/${id}/contents/${contentId}`);
+    await apiClient.delete(API_ENDPOINTS.DEVICES.ASSIGNMENTS.UNASSIGN_CONTENT(id, contentId));
   },
 
   /**
@@ -447,7 +447,7 @@ export const deviceApi = {
    * @returns List of assigned playlists
    */
   getPlaylists: async (id: number): Promise<{ total: number; items: any[] }> => {
-    const response = await apiClient.get(`/api/v1/devices/${id}/playlists`);
+    const response = await apiClient.get(API_ENDPOINTS.DEVICES.ASSIGNMENTS.GET_PLAYLISTS(id));
     return unwrapResponse<{ total: number; items: any[] }>(response);
   },
 
@@ -458,7 +458,7 @@ export const deviceApi = {
    * @returns Assignment result
    */
   assignPlaylist: async (id: number, playlistId: number): Promise<any> => {
-    const response = await apiClient.post(`/api/v1/devices/${id}/playlists`, {
+    const response = await apiClient.post(API_ENDPOINTS.DEVICES.ASSIGNMENTS.ASSIGN_PLAYLIST(id), {
       playlist_id: playlistId,
     });
     return unwrapResponse<any>(response);
@@ -470,7 +470,7 @@ export const deviceApi = {
    * @param playlistId - Playlist ID
    */
   unassignPlaylist: async (id: number, playlistId: number): Promise<void> => {
-    await apiClient.delete(`/api/v1/devices/${id}/playlists/${playlistId}`);
+    await apiClient.delete(API_ENDPOINTS.DEVICES.ASSIGNMENTS.UNASSIGN_PLAYLIST(id, playlistId));
   },
 
   // ========================================

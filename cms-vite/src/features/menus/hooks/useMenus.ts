@@ -5,6 +5,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { menuApi } from '../api/menuApi';
+import { getApiErrorMessage } from '@/shared/utils/types';
 import type {
   MenuCreateRequest,
   MenuUpdateRequest,
@@ -59,9 +60,8 @@ export const useCreateMenu = () => {
       queryClient.invalidateQueries({ queryKey: menuKeys.lists() });
       toast.success('Menu created successfully');
     },
-    onError: (error: any) => {
-      const message = error.response?.data?.message || 'Failed to create menu';
-      toast.error(message);
+    onError: (error: unknown) => {
+      toast.error(getApiErrorMessage(error, 'Failed to create menu'));
     },
   });
 };
@@ -80,9 +80,8 @@ export const useUpdateMenu = () => {
       queryClient.invalidateQueries({ queryKey: menuKeys.detail(variables.id) });
       toast.success('Menu updated successfully');
     },
-    onError: (error: any) => {
-      const message = error.response?.data?.message || 'Failed to update menu';
-      toast.error(message);
+    onError: (error: unknown) => {
+      toast.error(getApiErrorMessage(error, 'Failed to update menu'));
     },
   });
 };
@@ -99,9 +98,8 @@ export const useDeleteMenu = () => {
       queryClient.invalidateQueries({ queryKey: menuKeys.lists() });
       toast.success('Menu deleted successfully');
     },
-    onError: (error: any) => {
-      const message = error.response?.data?.message || 'Failed to delete menu';
-      toast.error(message);
+    onError: (error: unknown) => {
+      toast.error(getApiErrorMessage(error, 'Failed to delete menu'));
     },
   });
 };
@@ -118,9 +116,8 @@ export const useRegenerateQRCode = () => {
       queryClient.invalidateQueries({ queryKey: menuKeys.detail(menuId) });
       toast.success('QR code regenerated successfully');
     },
-    onError: (error: any) => {
-      const message = error.response?.data?.message || 'Failed to regenerate QR code';
-      toast.error(message);
+    onError: (error: unknown) => {
+      toast.error(getApiErrorMessage(error, 'Failed to regenerate QR code'));
     },
   });
 };

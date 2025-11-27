@@ -5,6 +5,7 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
+import { getApiErrorMessage } from '@/shared/utils/types'
 import * as rbacApi from '../api/rbacApi'
 import type {
   Role,
@@ -120,8 +121,8 @@ export function useCreateRole() {
       queryClient.invalidateQueries({ queryKey: roleKeys.lists() })
       toast.success('Role created successfully')
     },
-    onError: (error: any) => {
-      toast.error(error.response?.data?.message || 'Failed to create role')
+    onError: (error: unknown) => {
+      toast.error(getApiErrorMessage(error, 'Failed to create role'))
     },
   })
 }
@@ -140,8 +141,8 @@ export function useUpdateRole() {
       queryClient.invalidateQueries({ queryKey: roleKeys.detail(variables.id) })
       toast.success('Role updated successfully')
     },
-    onError: (error: any) => {
-      toast.error(error.response?.data?.message || 'Failed to update role')
+    onError: (error: unknown) => {
+      toast.error(getApiErrorMessage(error, 'Failed to update role'))
     },
   })
 }
@@ -158,8 +159,8 @@ export function useDeleteRole() {
       queryClient.invalidateQueries({ queryKey: roleKeys.lists() })
       toast.success('Role deleted successfully')
     },
-    onError: (error: any) => {
-      toast.error(error.response?.data?.message || 'Failed to delete role')
+    onError: (error: unknown) => {
+      toast.error(getApiErrorMessage(error, 'Failed to delete role'))
     },
   })
 }
@@ -182,8 +183,8 @@ export function useAddPermissionsToRole() {
       queryClient.invalidateQueries({ queryKey: roleKeys.detail(variables.roleId) })
       toast.success('Permissions added to role')
     },
-    onError: (error: any) => {
-      toast.error(error.response?.data?.message || 'Failed to add permissions')
+    onError: (error: unknown) => {
+      toast.error(getApiErrorMessage(error, 'Failed to add permissions'))
     },
   })
 }
@@ -202,8 +203,8 @@ export function useRemovePermissionsFromRole() {
       queryClient.invalidateQueries({ queryKey: roleKeys.detail(variables.roleId) })
       toast.success('Permissions removed from role')
     },
-    onError: (error: any) => {
-      toast.error(error.response?.data?.message || 'Failed to remove permissions')
+    onError: (error: unknown) => {
+      toast.error(getApiErrorMessage(error, 'Failed to remove permissions'))
     },
   })
 }

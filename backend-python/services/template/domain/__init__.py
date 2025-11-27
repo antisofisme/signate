@@ -1,0 +1,1 @@
+"""Template Domain Layer"""

@@ -198,9 +198,34 @@ cms-vite/
 ✅ **Database Migrations** 001-044 all deployed and verified
 
 ## Default Credentials
-- **Username**: `admin`
-- **Password**: `admin123`
-- **Password Hash** (bcrypt): `$2b$12$KK.KGcUEcVCSYotdWlLOP.7oHoGtQbdqWUbBVsvf36r2ne56ywwd2`
+
+### Test Users (Clean Database - 2025-11-27)
+
+| Username | Password | Role | Organization | Description |
+|----------|----------|------|--------------|-------------|
+| `superadmin` | `admin123` | SUPER_ADMIN | All (system-wide) | Full system access, can manage all organizations |
+| `tenantadmin` | `admin123` | ADMIN | Hotel Signage Demo | Tenant admin, can only see own organization |
+
+### Organizations
+
+| ID | Name | Description |
+|----|------|-------------|
+| 21 | System | System organization |
+| 22 | Hotel Signage Demo | Demo tenant organization |
+
+### Password Hash (bcrypt)
+```
+$2b$12$KK.KGcUEcVCSYotdWlLOP.7oHoGtQbdqWUbBVsvf36r2ne56ywwd2
+```
+
+### Roles Available
+
+| ID | Role | Description |
+|----|------|-------------|
+| 5 | SUPER_ADMIN | System-wide access |
+| 6 | ADMIN | Organization admin |
+| 7 | CONTENT_MANAGER | Manage content & playlists |
+| 8 | VIEWER | View only access |
 
 ## Architecture Notes
 

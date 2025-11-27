@@ -8,17 +8,31 @@
  */
 
 // Network Configuration Constants
-// These are fallback values when environment variables are not configured
-const NETWORK_CONFIG = {
-  LAN: {
-    API_URL: import.meta.env.VITE_LAN_API_URL || 'http://192.168.5.12:8001',
-    WS_URL: import.meta.env.VITE_LAN_WS_URL || 'ws://192.168.5.12:8001',
-  },
-  INTERNET: {
-    API_URL: import.meta.env.VITE_INTERNET_API_URL || 'https://api.zhmhotels.online',
-    WS_URL: import.meta.env.VITE_INTERNET_WS_URL || 'wss://api.zhmhotels.online',
-  },
-} as const;
+// ALL URLs MUST come from environment variables - NO hardcoded fallbacks
+const getNetworkConfig = () => {
+  const lanApiUrl = import.meta.env.VITE_LAN_API_URL;
+  const lanWsUrl = import.meta.env.VITE_LAN_WS_URL;
+  const internetApiUrl = import.meta.env.VITE_INTERNET_API_URL;
+  const internetWsUrl = import.meta.env.VITE_INTERNET_WS_URL;
+
+  // Warn if environment variables are missing
+  if (!lanApiUrl || !internetApiUrl) {
+    console.warn('[Player NetworkDetector] ⚠️ Missing environment variables! Set VITE_LAN_API_URL and VITE_INTERNET_API_URL');
+  }
+
+  return {
+    LAN: {
+      API_URL: lanApiUrl || '',
+      WS_URL: lanWsUrl || '',
+    },
+    INTERNET: {
+      API_URL: internetApiUrl || '',
+      WS_URL: internetWsUrl || '',
+    },
+  };
+};
+
+const NETWORK_CONFIG = getNetworkConfig();
 
 /**
  * Cek apakah hostname adalah IP lokal (private network)

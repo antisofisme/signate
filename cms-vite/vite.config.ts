@@ -43,10 +43,14 @@ export default defineConfig(({ mode }) => {
           manualChunks: {
             'react-vendor': ['react', 'react-dom', 'react-router-dom'],
             'query-vendor': ['@tanstack/react-query'],
-            'ui-vendor': ['lucide-react', 'clsx', 'tailwind-merge'],
+            // Note: lucide-react removed from manual chunks to enable tree-shaking
+            // Icons are imported individually throughout the app
+            'ui-vendor': ['clsx', 'tailwind-merge'],
           },
         },
       },
+      // Optimize chunk size
+      chunkSizeWarningLimit: 500,
     },
   }
 })

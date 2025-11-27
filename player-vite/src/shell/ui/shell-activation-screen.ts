@@ -12,7 +12,6 @@
 import { SharedLogger } from '@shared/logger';
 import { SharedDeviceState } from '@shared/device';
 import { deviceConfigStorage } from '@shared/storage';
-import { i18n } from '@shared/services/i18n';
 
 /**
  * Shell Activation Screen Class
@@ -56,7 +55,7 @@ class ShellActivationScreenClass {
               <line x1="8" x2="16" y1="21" y2="21"/>
               <line x1="12" x2="12" y1="17" y2="21"/>
             </svg>
-            ${i18n.t('activation.title')}
+            Digital Signage
           </h1>
 
           <div id="activation-code">
@@ -70,22 +69,12 @@ class ShellActivationScreenClass {
               <circle cx="12" cy="12" r="10"/>
               <polyline points="12 6 12 12 16 14"/>
             </svg>
-            ${activationCode ? i18n.t('activation.waiting') : 'Generating activation code...'}
+            ${activationCode ? 'Waiting for activation...' : 'Generating activation code...'}
           </p>
 
           <p id="activation-instruction" style="margin-top: 1.5rem; font-size: 1rem; opacity: 0.8;">
-            ${i18n.t('activation.instruction')}
+            Register this code in CMS to add device to your organization
           </p>
-          
-          <!-- Language Selector -->
-          <div class="language-selector" style="margin-top: 2rem;">
-            <label style="display: block; margin-bottom: 0.5rem; opacity: 0.7;">
-              ${i18n.t('common.language')}:
-            </label>
-            <select id="language-select" class="language-dropdown">
-              ${this.renderLanguageOptions()}
-            </select>
-          </div>
         </div>
       </div>
     `;
@@ -98,17 +87,6 @@ class ShellActivationScreenClass {
     this.statusElement = document.getElementById('status-message');
 
     SharedLogger.log('[ShellActivationScreen] ✅ Activation screen rendered');
-    
-    // Add language change handler
-    const languageSelect = document.getElementById('language-select') as HTMLSelectElement;
-    if (languageSelect) {
-      languageSelect.addEventListener('change', (e) => {
-        const target = e.target as HTMLSelectElement;
-        i18n.setLanguage(target.value);
-        // Re-render to update translations
-        this.render(containerId);
-      });
-    }
   }
 
   /**
@@ -132,21 +110,8 @@ class ShellActivationScreenClass {
   /**
    * Update status message
    */
-  updateStatus(messageKey: string | { key: string, params?: Record<string, any> }, type: 'waiting' | 'success' | 'error' = 'waiting'): void {
+  updateStatus(message: string, type: 'waiting' | 'success' | 'error' = 'waiting'): void {
     if (this.statusElement) {
-      // Get translated message
-      let message: string;
-      if (typeof messageKey === 'string') {
-        // Try to translate the key first, fallback to the original message
-        message = i18n.t(messageKey);
-        // If no translation found (returns the key), use the original message
-        if (message === messageKey && !messageKey.includes('.')) {
-          message = messageKey; // It's probably a raw message, not a key
-        }
-      } else {
-        message = i18n.t(messageKey.key, messageKey.params);
-      }
-      
       // Update text content (keep the icon SVG)
       const icon = this.statusElement.querySelector('svg');
       if (icon) {
@@ -261,40 +226,6 @@ class ShellActivationScreenClass {
         color: white;
       }
 
-      /* Language Selector Styles */
-      .language-selector {
-        margin-top: 2rem;
-        text-align: center;
-      }
-      
-      .language-dropdown {
-        background-color: rgba(255, 255, 255, 0.1);
-        color: #fff;
-        border: 1px solid rgba(255, 255, 255, 0.2);
-        padding: 0.5rem 1rem;
-        border-radius: 0.375rem;
-        font-size: 1rem;
-        cursor: pointer;
-        transition: all 0.3s ease;
-        min-width: 150px;
-      }
-      
-      .language-dropdown:hover {
-        background-color: rgba(255, 255, 255, 0.2);
-        border-color: rgba(255, 255, 255, 0.3);
-      }
-      
-      .language-dropdown:focus {
-        outline: none;
-        border-color: #3b82f6;
-        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-      }
-      
-      .language-dropdown option {
-        background-color: #1f2937;
-        color: #fff;
-      }
-
       /* Responsive */
       @media (max-width: 640px) {
         .activation-card h1,
@@ -313,20 +244,6 @@ class ShellActivationScreenClass {
     `;
 
     document.head.appendChild(style);
-  }
-
-  /**
-   * Render language options
-   */
-  private renderLanguageOptions(): string {
-    const languages = i18n.getAvailableLanguages();
-    const currentLang = i18n.getLanguage();
-    
-    return languages.map(lang => `
-      <option value="${lang.code}" ${lang.code === currentLang ? 'selected' : ''}>
-        ${lang.name}
-      </option>
-    `).join('');
   }
 
   /**

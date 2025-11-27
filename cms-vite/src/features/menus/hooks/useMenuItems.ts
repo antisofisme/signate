@@ -6,6 +6,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { menuApi } from '../api/menuApi';
 import { menuKeys } from './useMenus';
+import { getApiErrorMessage } from '@/shared/utils/types';
 import type {
   MenuItemCreateRequest,
   MenuItemUpdateRequest,
@@ -40,9 +41,8 @@ export const useAddMenuItem = (menuId: number) => {
       queryClient.invalidateQueries({ queryKey: menuKeys.detail(menuId) });
       toast.success('Item added successfully');
     },
-    onError: (error: any) => {
-      const message = error.response?.data?.message || 'Failed to add item';
-      toast.error(message);
+    onError: (error: unknown) => {
+      toast.error(getApiErrorMessage(error, 'Failed to add item'));
     },
   });
 };
@@ -61,9 +61,8 @@ export const useUpdateMenuItem = (menuId: number) => {
       queryClient.invalidateQueries({ queryKey: menuKeys.detail(menuId) });
       toast.success('Item updated successfully');
     },
-    onError: (error: any) => {
-      const message = error.response?.data?.message || 'Failed to update item';
-      toast.error(message);
+    onError: (error: unknown) => {
+      toast.error(getApiErrorMessage(error, 'Failed to update item'));
     },
   });
 };
@@ -81,9 +80,8 @@ export const useDeleteMenuItem = (menuId: number) => {
       queryClient.invalidateQueries({ queryKey: menuKeys.detail(menuId) });
       toast.success('Item deleted successfully');
     },
-    onError: (error: any) => {
-      const message = error.response?.data?.message || 'Failed to delete item';
-      toast.error(message);
+    onError: (error: unknown) => {
+      toast.error(getApiErrorMessage(error, 'Failed to delete item'));
     },
   });
 };

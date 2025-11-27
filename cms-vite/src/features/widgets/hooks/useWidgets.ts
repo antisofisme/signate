@@ -16,6 +16,7 @@ import {
   updatePlaylistWidget,
   removeWidgetFromPlaylist
 } from '../api/widgetApi'
+import { getApiErrorMessage } from '@/shared/utils/types'
 import type {
   WidgetFilters,
   CreateWidgetRequest,
@@ -65,9 +66,8 @@ export const useCreateWidget = () => {
       queryClient.invalidateQueries({ queryKey: ['widgets'] })
       toast.success('Widget created successfully')
     },
-    onError: (error: any) => {
-      const message = error.response?.data?.detail || 'Failed to create widget'
-      toast.error(message)
+    onError: (error: unknown) => {
+      toast.error(getApiErrorMessage(error, 'Failed to create widget'))
     },
   })
 }
@@ -83,9 +83,8 @@ export const useUpdateWidget = () => {
       queryClient.invalidateQueries({ queryKey: ['widget', variables.id] })
       toast.success('Widget updated successfully')
     },
-    onError: (error: any) => {
-      const message = error.response?.data?.detail || 'Failed to update widget'
-      toast.error(message)
+    onError: (error: unknown) => {
+      toast.error(getApiErrorMessage(error, 'Failed to update widget'))
     },
   })
 }
@@ -99,9 +98,8 @@ export const useDeleteWidget = () => {
       queryClient.invalidateQueries({ queryKey: ['widgets'] })
       toast.success('Widget deleted successfully')
     },
-    onError: (error: any) => {
-      const message = error.response?.data?.detail || 'Failed to delete widget'
-      toast.error(message)
+    onError: (error: unknown) => {
+      toast.error(getApiErrorMessage(error, 'Failed to delete widget'))
     },
   })
 }
@@ -132,10 +130,8 @@ export const useAssignWidgetToPlaylist = () => {
 
       toast.success('Widget assigned to playlist')
     },
-    onError: (error: any) => {
-      const message =
-        error.response?.data?.detail || 'Failed to assign widget to playlist'
-      toast.error(message)
+    onError: (error: unknown) => {
+      toast.error(getApiErrorMessage(error, 'Failed to assign widget to playlist'))
     },
   })
 }
@@ -150,10 +146,8 @@ export const useUpdatePlaylistWidget = () => {
       queryClient.invalidateQueries({ queryKey: ['playlist-widgets'] })
       toast.success('Widget settings updated')
     },
-    onError: (error: any) => {
-      const message =
-        error.response?.data?.detail || 'Failed to update widget settings'
-      toast.error(message)
+    onError: (error: unknown) => {
+      toast.error(getApiErrorMessage(error, 'Failed to update widget settings'))
     },
   })
 }
@@ -175,10 +169,8 @@ export const useRemoveWidgetFromPlaylist = () => {
 
       toast.success('Widget removed from playlist')
     },
-    onError: (error: any) => {
-      const message =
-        error.response?.data?.detail || 'Failed to remove widget from playlist'
-      toast.error(message)
+    onError: (error: unknown) => {
+      toast.error(getApiErrorMessage(error, 'Failed to remove widget from playlist'))
     },
   })
 }

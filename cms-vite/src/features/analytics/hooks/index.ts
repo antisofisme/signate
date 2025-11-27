@@ -31,6 +31,9 @@ const ANALYTICS_KEYS = {
 
 /**
  * Hook to fetch complete analytics dashboard
+ *
+ * NOTE: Auto-polling removed for performance optimization.
+ * Use refetch() from returned query for manual refresh.
  */
 export function useAnalyticsDashboard(
   params?: AnalyticsQueryParams,
@@ -39,8 +42,7 @@ export function useAnalyticsDashboard(
   return useQuery({
     queryKey: ANALYTICS_KEYS.dashboard(params),
     queryFn: () => analyticsApi.getDashboard(params),
-    staleTime: 30000, // 30 seconds
-    refetchInterval: 30000, // Refresh every 30s
+    staleTime: 60000, // 1 minute - analytics data is relatively stable
     ...options,
   })
 }
@@ -55,8 +57,7 @@ export function useAnalyticsStats(
   return useQuery({
     queryKey: ANALYTICS_KEYS.stats(params),
     queryFn: () => analyticsApi.getStats(params),
-    staleTime: 30000,
-    refetchInterval: 30000,
+    staleTime: 60000, // 1 minute
     ...options,
   })
 }
@@ -71,8 +72,7 @@ export function useContentPerformance(
   return useQuery({
     queryKey: ANALYTICS_KEYS.contentPerformance(params),
     queryFn: () => analyticsApi.getContentPerformance(params),
-    staleTime: 30000,
-    refetchInterval: 30000,
+    staleTime: 120000, // 2 minutes - content performance is stable
     ...options,
   })
 }
@@ -87,8 +87,7 @@ export function useDeviceEngagement(
   return useQuery({
     queryKey: ANALYTICS_KEYS.deviceEngagement(params),
     queryFn: () => analyticsApi.getDeviceEngagement(params),
-    staleTime: 30000,
-    refetchInterval: 30000,
+    staleTime: 120000, // 2 minutes
     ...options,
   })
 }
@@ -103,8 +102,7 @@ export function usePlaybackTimeline(
   return useQuery({
     queryKey: ANALYTICS_KEYS.timeline(params),
     queryFn: () => analyticsApi.getTimeline(params),
-    staleTime: 30000,
-    refetchInterval: 30000,
+    staleTime: 300000, // 5 minutes - historical timeline data is stable
     ...options,
   })
 }

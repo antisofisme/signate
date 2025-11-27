@@ -2,16 +2,18 @@
  * Settings Page
  *
  * LAYER 1: PRESENTATION
- * Tabbed settings page with Organizations and Users management
+ * Tabbed settings page with Organizations, Users, Sessions, and Roles management
  */
 
 import { useState } from 'react';
-import { Building, Users } from 'lucide-react';
+import { Building, Users, Shield, Key } from 'lucide-react';
 import OrganizationsTab from '@/features/organizations/pages/OrganizationsPage';
 import UsersTab from '@/features/users/pages/UsersPage';
+import SessionsTab from '@/features/sessions/pages/SessionsPage';
+import RolesTab from '@/pages/RolesPage';
 import { PageHeader } from '@/shared/components';
 
-type TabType = 'organizations' | 'users';
+type TabType = 'organizations' | 'users' | 'sessions' | 'roles';
 
 export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState<TabType>('organizations');
@@ -28,6 +30,18 @@ export default function SettingsPage() {
       name: 'Users',
       icon: Users,
       component: UsersTab,
+    },
+    {
+      id: 'sessions' as TabType,
+      name: 'Active Sessions',
+      icon: Shield,
+      component: SessionsTab,
+    },
+    {
+      id: 'roles' as TabType,
+      name: 'Roles & Permissions',
+      icon: Key,
+      component: RolesTab,
     },
   ];
 

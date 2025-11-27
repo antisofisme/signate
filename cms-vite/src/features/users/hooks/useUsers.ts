@@ -51,6 +51,12 @@ export function useCreateUser() {
       // Invalidate user list
       queryClient.invalidateQueries({ queryKey: ['users'] });
 
+      // Invalidate dashboard (user count changes)
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+
+      // Invalidate RBAC queries (new user may have roles)
+      queryClient.invalidateQueries({ queryKey: ['roles'] });
+
       // Show success toast
       toast.success(`User "${data.username}" berhasil dibuat`);
     },
@@ -74,6 +80,10 @@ export function useUpdateUser() {
       // Invalidate queries
       queryClient.invalidateQueries({ queryKey: ['users'] });
       queryClient.invalidateQueries({ queryKey: ['users', variables.id] });
+
+      // Invalidate RBAC queries (role may have changed)
+      queryClient.invalidateQueries({ queryKey: ['roles'] });
+      queryClient.invalidateQueries({ queryKey: ['permissions'] });
 
       // Show success toast
       toast.success(`User "${data.username}" berhasil diupdate`);
@@ -125,6 +135,18 @@ export function useDeleteUser() {
       // Invalidate queries
       queryClient.invalidateQueries({ queryKey: ['users'] });
       queryClient.removeQueries({ queryKey: ['users', id] });
+
+      // Invalidate dashboard (user count changes)
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+
+      // Invalidate session queries (user's sessions are invalidated)
+      queryClient.invalidateQueries({ queryKey: ['sessions'] });
+
+      // Invalidate RBAC queries (user's roles are removed)
+      queryClient.invalidateQueries({ queryKey: ['roles'] });
+
+      // Invalidate audit logs (may reference this user)
+      queryClient.invalidateQueries({ queryKey: ['auditLogs'] });
 
       // Show success toast
       toast.success('User berhasil dihapus');

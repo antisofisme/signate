@@ -121,6 +121,7 @@
     "name": "Name",
     "room": "Room",
     "roomNumber": "Room Number",
+    "statusLabel": "Status",
     "status": {
       "active": "Active",
       "pending": "Pending",
@@ -236,6 +237,7 @@
       "pendingActivation": "Pending Activation",
       "overview": "Overview",
       "health": "Health",
+      "commandsTitle": "Commands",
       "commands": {
         "reboot": "Reboot Device",
         "rebootDesc": "Restart the device completely",

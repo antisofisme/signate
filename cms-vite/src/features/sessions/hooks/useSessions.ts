@@ -11,6 +11,7 @@ import type {
   RevokeSessionRequest,
   RevokeAllSessionsRequest,
 } from '../types/session.types'
+import { getApiErrorMessage } from '@/shared/utils/types'
 
 // ============================================================================
 // Query Keys
@@ -107,8 +108,8 @@ export function useRevokeSession() {
       queryClient.invalidateQueries({ queryKey: sessionKeys.stats() })
       toast.success('Session revoked successfully')
     },
-    onError: (error: any) => {
-      toast.error(error.response?.data?.message || 'Failed to revoke session')
+    onError: (error: unknown) => {
+      toast.error(getApiErrorMessage(error, 'Failed to revoke session'))
     },
   })
 }
@@ -127,8 +128,8 @@ export function useRevokeAllSessions() {
       queryClient.invalidateQueries({ queryKey: sessionKeys.stats() })
       toast.success(`${data.revoked_count} session(s) revoked successfully`)
     },
-    onError: (error: any) => {
-      toast.error(error.response?.data?.message || 'Failed to revoke sessions')
+    onError: (error: unknown) => {
+      toast.error(getApiErrorMessage(error, 'Failed to revoke sessions'))
     },
   })
 }

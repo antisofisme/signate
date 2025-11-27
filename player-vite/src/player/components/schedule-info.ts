@@ -4,7 +4,6 @@
  */
 
 import { playerScheduleManager } from '@player/services/player-schedule-manager';
-import { i18n } from '@shared/services/i18n';
 import { SharedLogger } from '@shared/logger';
 import { SharedEventBus } from '@shared/events/shared-event-bus';
 
@@ -61,26 +60,26 @@ export class ScheduleInfo {
     if (!this.container) return;
 
     const schedule = playerScheduleManager.getCurrentSchedule();
-    
+
     if (!schedule) {
       this.container.innerHTML = `
         <div class="schedule-status">
-          <strong>${i18n.t('schedule.no_active', 'No Active Schedule')}</strong>
+          <strong>No Active Schedule</strong>
         </div>
       `;
       return;
     }
 
     const now = new Date();
-    const currentTime = now.toLocaleTimeString(i18n.getLocale(), { 
-      hour: '2-digit', 
-      minute: '2-digit' 
+    const currentTime = now.toLocaleTimeString('en-US', {
+      hour: '2-digit',
+      minute: '2-digit'
     });
 
     this.container.innerHTML = `
       <div class="schedule-status">
         <div style="margin-bottom: 8px;">
-          <strong>${i18n.t('schedule.active', 'Active Schedule')}</strong>
+          <strong>Active Schedule</strong>
         </div>
         <div style="opacity: 0.9; font-size: 13px;">
           <div>${schedule.name}</div>
@@ -91,7 +90,7 @@ export class ScheduleInfo {
             ${this.getRecurrenceText(schedule.recurrence_type)}
           </div>
           <div style="margin-top: 6px; font-size: 12px; opacity: 0.6;">
-            ${i18n.t('schedule.current_time', 'Current time')}: ${currentTime}
+            Current time: ${currentTime}
           </div>
         </div>
       </div>
@@ -103,11 +102,11 @@ export class ScheduleInfo {
    */
   private getRecurrenceText(type: string): string {
     const translations: Record<string, string> = {
-      'once': i18n.t('schedule.once', 'One time'),
-      'daily': i18n.t('schedule.daily', 'Daily'),
-      'weekly': i18n.t('schedule.weekly', 'Weekly'),
-      'monthly': i18n.t('schedule.monthly', 'Monthly'),
-      'yearly': i18n.t('schedule.yearly', 'Yearly'),
+      'once': 'One time',
+      'daily': 'Daily',
+      'weekly': 'Weekly',
+      'monthly': 'Monthly',
+      'yearly': 'Yearly',
     };
 
     return translations[type] || type;

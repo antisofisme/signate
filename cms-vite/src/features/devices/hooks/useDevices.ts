@@ -11,6 +11,7 @@ import type {
   TVRegisterRequest,
   ActivateDeviceRequest,
 } from '../types/device';
+import { getApiErrorMessage } from '@/shared/utils/types';
 
 // Query keys
 export const deviceKeys = {
@@ -31,6 +32,10 @@ export const deviceKeys = {
 
 /**
  * Get list of devices with filters
+ *
+ * NOTE: Auto-polling removed for performance optimization.
+ * Use refetch() from the returned query for manual refresh.
+ * Data is considered fresh for 30 seconds (staleTime).
  */
 export const useDeviceList = (filters?: {
   status?: string;
@@ -41,8 +46,8 @@ export const useDeviceList = (filters?: {
   return useQuery({
     queryKey: deviceKeys.list(filters),
     queryFn: () => deviceApi.list(filters),
-    staleTime: 10000, // 10 seconds
-    refetchInterval: 10000, // Auto-refresh every 10 seconds for real-time updates
+    staleTime: 30000, // 30 seconds - data is fresh for this duration
+    // refetchInterval removed - use manual refresh for performance
   });
 };
 
@@ -76,9 +81,8 @@ export const useUpdateDevice = () => {
 
       toast.success('Device updated successfully');
     },
-    onError: (error: any) => {
-      const message = error?.response?.data?.detail || 'Failed to update device';
-      toast.error(message);
+    onError: (error: unknown) => {
+      toast.error(getApiErrorMessage(error, 'Failed to update device'));
     },
   });
 };
@@ -119,15 +123,14 @@ export const useDeleteDevice = () => {
       await queryClient.invalidateQueries({ queryKey: deviceKeys.all });
       toast.success('Device deleted successfully');
     },
-    onError: (error: any, deletedId, context) => {
+    onError: (error: unknown, deletedId, context) => {
       // Rollback optimistic update on error
       if (context?.previousData) {
         context.previousData.forEach(([queryKey, data]) => {
           queryClient.setQueryData(queryKey, data);
         });
       }
-      const message = error?.response?.data?.detail || 'Failed to delete device';
-      toast.error(message);
+      toast.error(getApiErrorMessage(error, 'Failed to delete device'));
     },
     onSettled: () => {
       // Always refetch after error or success to sync with server
@@ -157,9 +160,8 @@ export const useTVRegister = () => {
 
       toast.success(`TV registered successfully. Activation code: ${device.unique_code}`);
     },
-    onError: (error: any) => {
-      const message = error?.response?.data?.detail || 'Failed to register TV';
-      toast.error(message);
+    onError: (error: unknown) => {
+      toast.error(getApiErrorMessage(error, 'Failed to register TV'));
     },
   });
 };
@@ -181,9 +183,8 @@ export const useMonitorRegister = () => {
 
       toast.success('Monitor registered successfully');
     },
-    onError: (error: any) => {
-      const message = error?.response?.data?.detail || 'Failed to register monitor';
-      toast.error(message);
+    onError: (error: unknown) => {
+      toast.error(getApiErrorMessage(error, 'Failed to register monitor'));
     },
   });
 };
@@ -206,9 +207,8 @@ export const useActivateDevice = () => {
 
       toast.success(`Device "${device.device_name}" activated successfully`);
     },
-    onError: (error: any) => {
-      const message = error?.response?.data?.detail || 'Failed to activate device';
-      toast.error(message);
+    onError: (error: unknown) => {
+      toast.error(getApiErrorMessage(error, 'Failed to activate device'));
     },
   });
 };
@@ -235,7 +235,7 @@ export const useCheckActivation = (code: string, enabled = true) => {
 export const useHeartbeat = () => {
   return useMutation({
     mutationFn: (deviceId: number) => deviceApi.heartbeat(deviceId),
-    onError: (error: any) => {
+    onError: (error: unknown) => {
       console.error('Heartbeat failed:', error);
       // Don't show toast for heartbeat errors (silent background operation)
     },
@@ -308,9 +308,8 @@ export const useSendCommand = () => {
       queryClient.invalidateQueries({ queryKey: deviceKeys.commands(variables.id) });
       toast.success(`Command "${command.command_type}" sent successfully`);
     },
-    onError: (error: any) => {
-      const message = error?.response?.data?.detail || 'Failed to send command';
-      toast.error(message);
+    onError: (error: unknown) => {
+      toast.error(getApiErrorMessage(error, 'Failed to send command'));
     },
   });
 };
@@ -341,7 +340,9 @@ export const useAssignTag = () => {
     mutationFn: ({ deviceId, tagId }: { deviceId: number; tagId: number }) =>
       deviceApi.assignTag(deviceId, tagId),
     onSuccess: (_, variables) => {
+      // Invalidate device tags (both patterns for consistency)
       queryClient.invalidateQueries({ queryKey: [...deviceKeys.all, 'tags', variables.deviceId] });
+      queryClient.invalidateQueries({ queryKey: ['device-assignments', 'tags', variables.deviceId] });
 
       // Invalidate tag queries (usage count changes)
       queryClient.invalidateQueries({ queryKey: ['tags'] });
@@ -349,9 +350,8 @@ export const useAssignTag = () => {
 
       toast.success('Tag assigned successfully');
     },
-    onError: (error: any) => {
-      const message = error?.response?.data?.detail || 'Failed to assign tag';
-      toast.error(message);
+    onError: (error: unknown) => {
+      toast.error(getApiErrorMessage(error, 'Failed to assign tag'));
     },
   });
 };
@@ -366,7 +366,9 @@ export const useUnassignTag = () => {
     mutationFn: ({ deviceId, tagId }: { deviceId: number; tagId: number }) =>
       deviceApi.unassignTag(deviceId, tagId),
     onSuccess: (_, variables) => {
+      // Invalidate device tags (both patterns for consistency)
       queryClient.invalidateQueries({ queryKey: [...deviceKeys.all, 'tags', variables.deviceId] });
+      queryClient.invalidateQueries({ queryKey: ['device-assignments', 'tags', variables.deviceId] });
 
       // Invalidate tag queries (usage count changes)
       queryClient.invalidateQueries({ queryKey: ['tags'] });
@@ -374,9 +376,8 @@ export const useUnassignTag = () => {
 
       toast.success('Tag removed successfully');
     },
-    onError: (error: any) => {
-      const message = error?.response?.data?.detail || 'Failed to remove tag';
-      toast.error(message);
+    onError: (error: unknown) => {
+      toast.error(getApiErrorMessage(error, 'Failed to remove tag'));
     },
   });
 };
@@ -410,16 +411,20 @@ export const useAssignContent = () => {
       priority?: number;
     }) => deviceApi.assignContent(deviceId, contentId, priority),
     onSuccess: (_, variables) => {
+      // Invalidate device contents (both patterns for consistency)
       queryClient.invalidateQueries({ queryKey: [...deviceKeys.all, 'contents', variables.deviceId] });
+      queryClient.invalidateQueries({ queryKey: ['device-assignments', 'contents', variables.deviceId] });
 
       // Invalidate content queries (assignment count may change)
       queryClient.invalidateQueries({ queryKey: ['content', variables.contentId] });
 
+      // Invalidate dashboard
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+
       toast.success('Content assigned successfully');
     },
-    onError: (error: any) => {
-      const message = error?.response?.data?.detail || 'Failed to assign content';
-      toast.error(message);
+    onError: (error: unknown) => {
+      toast.error(getApiErrorMessage(error, 'Failed to assign content'));
     },
   });
 };
@@ -434,16 +439,20 @@ export const useUnassignContent = () => {
     mutationFn: ({ deviceId, contentId }: { deviceId: number; contentId: number }) =>
       deviceApi.unassignContent(deviceId, contentId),
     onSuccess: (_, variables) => {
+      // Invalidate device contents (both patterns for consistency)
       queryClient.invalidateQueries({ queryKey: [...deviceKeys.all, 'contents', variables.deviceId] });
+      queryClient.invalidateQueries({ queryKey: ['device-assignments', 'contents', variables.deviceId] });
 
       // Invalidate content queries (assignment count may change)
       queryClient.invalidateQueries({ queryKey: ['content', variables.contentId] });
 
+      // Invalidate dashboard
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+
       toast.success('Content removed successfully');
     },
-    onError: (error: any) => {
-      const message = error?.response?.data?.detail || 'Failed to remove content';
-      toast.error(message);
+    onError: (error: unknown) => {
+      toast.error(getApiErrorMessage(error, 'Failed to remove content'));
     },
   });
 };
@@ -470,7 +479,9 @@ export const useAssignPlaylist = () => {
     mutationFn: ({ deviceId, playlistId }: { deviceId: number; playlistId: number }) =>
       deviceApi.assignPlaylist(deviceId, playlistId),
     onSuccess: (_, variables) => {
+      // Invalidate device playlists (both patterns for consistency)
       queryClient.invalidateQueries({ queryKey: [...deviceKeys.all, 'playlists', variables.deviceId] });
+      queryClient.invalidateQueries({ queryKey: ['device-assignments', 'playlists', variables.deviceId] });
 
       // Invalidate playlist queries (assignment count changes)
       queryClient.invalidateQueries({ queryKey: ['playlists'] });
@@ -481,9 +492,8 @@ export const useAssignPlaylist = () => {
 
       toast.success('Playlist assigned successfully');
     },
-    onError: (error: any) => {
-      const message = error?.response?.data?.detail || 'Failed to assign playlist';
-      toast.error(message);
+    onError: (error: unknown) => {
+      toast.error(getApiErrorMessage(error, 'Failed to assign playlist'));
     },
   });
 };
@@ -498,7 +508,9 @@ export const useUnassignPlaylist = () => {
     mutationFn: ({ deviceId, playlistId }: { deviceId: number; playlistId: number }) =>
       deviceApi.unassignPlaylist(deviceId, playlistId),
     onSuccess: (_, variables) => {
+      // Invalidate device playlists (both patterns for consistency)
       queryClient.invalidateQueries({ queryKey: [...deviceKeys.all, 'playlists', variables.deviceId] });
+      queryClient.invalidateQueries({ queryKey: ['device-assignments', 'playlists', variables.deviceId] });
 
       // Invalidate playlist queries (assignment count changes)
       queryClient.invalidateQueries({ queryKey: ['playlists'] });
@@ -509,9 +521,8 @@ export const useUnassignPlaylist = () => {
 
       toast.success('Playlist removed successfully');
     },
-    onError: (error: any) => {
-      const message = error?.response?.data?.detail || 'Failed to remove playlist';
-      toast.error(message);
+    onError: (error: unknown) => {
+      toast.error(getApiErrorMessage(error, 'Failed to remove playlist'));
     },
   });
 };

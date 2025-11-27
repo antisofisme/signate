@@ -21,10 +21,11 @@ import {
   AlertCircle,
   Loader2,
 } from 'lucide-react';
-import { deviceCommandApi } from '../api/commands';
-import type { DeviceCommand, CommandType, SendCommandRequest } from '../types/commands';
 import { toast } from 'sonner';
 import { formatDistanceToNow } from 'date-fns';
+import { getApiErrorMessage } from '@/shared/utils/types';
+import { deviceCommandApi } from '../api/commands';
+import type { DeviceCommand, CommandType, SendCommandRequest } from '../types/commands';
 
 interface DeviceCommandControlProps {
   deviceId: number;
@@ -55,10 +56,8 @@ export function DeviceCommandControl({
       queryClient.invalidateQueries({ queryKey: ['device-commands', deviceId] });
       setConfirmCommand(null);
     },
-    onError: (error: any) => {
-      toast.error(
-        error.response?.data?.message || 'Failed to send command. Please try again.'
-      );
+    onError: (error: unknown) => {
+      toast.error(getApiErrorMessage(error, 'Failed to send command. Please try again.'));
     },
   });
 

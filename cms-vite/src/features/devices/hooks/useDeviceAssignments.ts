@@ -20,6 +20,7 @@ import type {
   AssignTagRequest,
   BulkAssignPlaylistRequest,
 } from '../types/assignment';
+import { getApiErrorMessage } from '@/shared/utils/types';
 
 // Query keys for assignment-related queries
 export const assignmentKeys = {
@@ -55,8 +56,9 @@ export const useAssignPlaylist = () => {
     mutationFn: ({ deviceId, data }: { deviceId: number; data: AssignPlaylistRequest }) =>
       deviceAssignmentsApi.assignPlaylistToDevice(deviceId, data),
     onSuccess: (_, variables) => {
-      // Invalidate device playlists
+      // Invalidate device playlists (both patterns for consistency)
       queryClient.invalidateQueries({ queryKey: assignmentKeys.playlists(variables.deviceId) });
+      queryClient.invalidateQueries({ queryKey: ['devices', 'playlists', variables.deviceId] });
 
       // Invalidate device queries
       queryClient.invalidateQueries({ queryKey: ['devices', 'detail', variables.deviceId] });
@@ -70,9 +72,8 @@ export const useAssignPlaylist = () => {
 
       toast.success('Playlist assigned successfully');
     },
-    onError: (error: any) => {
-      const message = error?.response?.data?.detail || 'Failed to assign playlist';
-      toast.error(message);
+    onError: (error: unknown) => {
+      toast.error(getApiErrorMessage(error, 'Failed to assign playlist'));
     },
   });
 };
@@ -87,8 +88,9 @@ export const useUnassignPlaylist = () => {
     mutationFn: ({ deviceId, playlistId }: { deviceId: number; playlistId: number }) =>
       deviceAssignmentsApi.unassignPlaylistFromDevice(deviceId, playlistId),
     onSuccess: (_, variables) => {
-      // Invalidate device playlists
+      // Invalidate device playlists (both patterns for consistency)
       queryClient.invalidateQueries({ queryKey: assignmentKeys.playlists(variables.deviceId) });
+      queryClient.invalidateQueries({ queryKey: ['devices', 'playlists', variables.deviceId] });
 
       // Invalidate device queries
       queryClient.invalidateQueries({ queryKey: ['devices', 'detail', variables.deviceId] });
@@ -102,9 +104,8 @@ export const useUnassignPlaylist = () => {
 
       toast.success('Playlist unassigned successfully');
     },
-    onError: (error: any) => {
-      const message = error?.response?.data?.detail || 'Failed to unassign playlist';
-      toast.error(message);
+    onError: (error: unknown) => {
+      toast.error(getApiErrorMessage(error, 'Failed to unassign playlist'));
     },
   });
 };
@@ -140,9 +141,8 @@ export const useBulkAssignPlaylist = () => {
         toast.success(`Playlist assigned to ${result.assigned} devices`);
       }
     },
-    onError: (error: any) => {
-      const message = error?.response?.data?.detail || 'Failed to assign playlist to devices';
-      toast.error(message);
+    onError: (error: unknown) => {
+      toast.error(getApiErrorMessage(error, 'Failed to assign playlist to devices'));
     },
   });
 };
@@ -173,8 +173,9 @@ export const useAssignContent = () => {
     mutationFn: ({ deviceId, data }: { deviceId: number; data: AssignContentRequest }) =>
       deviceAssignmentsApi.assignContentToDevice(deviceId, data),
     onSuccess: (_, variables) => {
-      // Invalidate device contents
+      // Invalidate device contents (both patterns for consistency)
       queryClient.invalidateQueries({ queryKey: assignmentKeys.contents(variables.deviceId) });
+      queryClient.invalidateQueries({ queryKey: ['devices', 'contents', variables.deviceId] });
 
       // Invalidate device queries
       queryClient.invalidateQueries({ queryKey: ['devices', 'detail', variables.deviceId] });
@@ -188,9 +189,8 @@ export const useAssignContent = () => {
 
       toast.success('Content assigned successfully');
     },
-    onError: (error: any) => {
-      const message = error?.response?.data?.detail || 'Failed to assign content';
-      toast.error(message);
+    onError: (error: unknown) => {
+      toast.error(getApiErrorMessage(error, 'Failed to assign content'));
     },
   });
 };
@@ -205,8 +205,9 @@ export const useUnassignContent = () => {
     mutationFn: ({ deviceId, contentId }: { deviceId: number; contentId: number }) =>
       deviceAssignmentsApi.unassignContentFromDevice(deviceId, contentId),
     onSuccess: (_, variables) => {
-      // Invalidate device contents
+      // Invalidate device contents (both patterns for consistency)
       queryClient.invalidateQueries({ queryKey: assignmentKeys.contents(variables.deviceId) });
+      queryClient.invalidateQueries({ queryKey: ['devices', 'contents', variables.deviceId] });
 
       // Invalidate device queries
       queryClient.invalidateQueries({ queryKey: ['devices', 'detail', variables.deviceId] });
@@ -220,9 +221,8 @@ export const useUnassignContent = () => {
 
       toast.success('Content unassigned successfully');
     },
-    onError: (error: any) => {
-      const message = error?.response?.data?.detail || 'Failed to unassign content';
-      toast.error(message);
+    onError: (error: unknown) => {
+      toast.error(getApiErrorMessage(error, 'Failed to unassign content'));
     },
   });
 };
@@ -253,8 +253,9 @@ export const useAssignTag = () => {
     mutationFn: ({ deviceId, data }: { deviceId: number; data: AssignTagRequest }) =>
       deviceAssignmentsApi.assignTagToDevice(deviceId, data),
     onSuccess: (_, variables) => {
-      // Invalidate device tags
+      // Invalidate device tags (both patterns for consistency)
       queryClient.invalidateQueries({ queryKey: assignmentKeys.tags(variables.deviceId) });
+      queryClient.invalidateQueries({ queryKey: ['devices', 'tags', variables.deviceId] });
 
       // Invalidate device queries
       queryClient.invalidateQueries({ queryKey: ['devices', 'detail', variables.deviceId] });
@@ -265,9 +266,8 @@ export const useAssignTag = () => {
 
       toast.success('Tag assigned successfully');
     },
-    onError: (error: any) => {
-      const message = error?.response?.data?.detail || 'Failed to assign tag';
-      toast.error(message);
+    onError: (error: unknown) => {
+      toast.error(getApiErrorMessage(error, 'Failed to assign tag'));
     },
   });
 };
@@ -282,8 +282,9 @@ export const useUnassignTag = () => {
     mutationFn: ({ deviceId, tagId }: { deviceId: number; tagId: number }) =>
       deviceAssignmentsApi.unassignTagFromDevice(deviceId, tagId),
     onSuccess: (_, variables) => {
-      // Invalidate device tags
+      // Invalidate device tags (both patterns for consistency)
       queryClient.invalidateQueries({ queryKey: assignmentKeys.tags(variables.deviceId) });
+      queryClient.invalidateQueries({ queryKey: ['devices', 'tags', variables.deviceId] });
 
       // Invalidate device queries
       queryClient.invalidateQueries({ queryKey: ['devices', 'detail', variables.deviceId] });
@@ -294,9 +295,8 @@ export const useUnassignTag = () => {
 
       toast.success('Tag unassigned successfully');
     },
-    onError: (error: any) => {
-      const message = error?.response?.data?.detail || 'Failed to unassign tag';
-      toast.error(message);
+    onError: (error: unknown) => {
+      toast.error(getApiErrorMessage(error, 'Failed to unassign tag'));
     },
   });
 };

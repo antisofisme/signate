@@ -6,9 +6,10 @@
  */
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
+import { getApiErrorMessage } from '@/shared/utils/types';
 import { organizationsApi } from '../api/organizationsApi';
 import type { UpdateQuotaRequest } from '../types/organization';
-import { toast } from 'sonner';
 
 // Query keys
 export const quotaKeys = {
@@ -51,8 +52,8 @@ export function useUpdateQuota() {
       queryClient.invalidateQueries({ queryKey: quotaKeys.detail(variables.orgId) });
       toast.success('Quota updated successfully');
     },
-    onError: (error: any) => {
-      toast.error(error.message || 'Failed to update quota');
+    onError: (error: unknown) => {
+      toast.error(getApiErrorMessage(error, 'Failed to update quota'));
     },
   });
 }

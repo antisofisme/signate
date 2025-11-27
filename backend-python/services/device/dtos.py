@@ -77,13 +77,6 @@ class BatchDeviceLogsRequest(BaseModel):
     logs: List[DeviceLogEntry] = Field(..., min_items=1, max_items=100, description="Console log entries")
 
 
-# Legacy DTO - kept for backward compatibility
-class DeviceLogsRequest(BaseModel):
-    """DEPRECATED: Use BatchDeviceLogsRequest instead"""
-    device_id: int = Field(..., gt=0)
-    logs: list[DeviceLogEntry] = Field(..., min_items=1, max_items=100)
-
-
 class ValidateResetPasswordRequest(BaseModel):
     """Validate reset password - called by player before hard reset"""
     password: str = Field(..., min_length=1, max_length=100)

@@ -59,7 +59,7 @@ export function DeviceManagementModal({
     },
     {
       id: 'commands',
-      label: t('devices.modals.commands'),
+      label: t('devices.modals.commandsTitle'),
       icon: TerminalIcon,
     },
   ];

@@ -20,8 +20,10 @@ import {
   Filter,
   X,
 } from 'lucide-react';
+import { toast } from 'sonner';
 import { usePagination } from '@/shared/hooks';
 import { Pagination } from '@/shared/components';
+import { getApiErrorMessage } from '@/shared/utils/types';
 import {
   useContentList,
   useDeleteContent,
@@ -34,7 +36,6 @@ import { EditContentModal } from './EditContentModal';
 import { BulkEditModal } from './BulkEditModal';
 import { BulkTagModal } from './BulkTagModal';
 import { ContentPreviewModal } from './ContentPreviewModal';
-import { toast } from 'sonner';
 
 // Delete Confirmation Modal
 interface DeleteConfirmModalProps {
@@ -268,9 +269,8 @@ export function ContentTable() {
     try {
       await downloadContent(content.id, content.original_filename);
       toast.success('Download started');
-    } catch (error: any) {
-      const message = error?.response?.data?.detail || 'Failed to download file';
-      toast.error(message);
+    } catch (error: unknown) {
+      toast.error(getApiErrorMessage(error, 'Failed to download file'));
     }
   };
 

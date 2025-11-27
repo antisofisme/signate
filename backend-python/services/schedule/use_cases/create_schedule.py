@@ -102,7 +102,7 @@ def create_schedule_use_case(
     schedule = repo.create_schedule(
         organization_id=organization_id,
         request=request,
-        created_by_id=created_by
+        created_by_id=created_by_id
     )
 
     return ScheduleResponse.model_validate(schedule)

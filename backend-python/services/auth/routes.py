@@ -357,6 +357,110 @@ def reset_password(
     )
 
 
+@router.get(AuthRoutes.ME)
+@handle_errors
+def get_current_user_info(
+    http_request: Request,
+    current_user: CurrentUser = Depends(get_current_user),
+    user_repo: UserRepository = Depends(get_user_repository),
+    org_repo: OrganizationRepository = Depends(get_organization_repository)
+):
+    """
+    Get current authenticated user info
+
+    Returns the currently logged in user's profile data.
+    Requires valid JWT token in Authorization header.
+    """
+    # Get full user data from database
+    user = user_repo.get_by_id(current_user.id)
+    if not user:
+        from shared.errors import NotFoundError
+        raise NotFoundError("User not found")
+
+    # Get organization if exists
+    organization = None
+    if user.organization_id:
+        organization = org_repo.get_by_id(user.organization_id)
+
+    user_response = UserResponseDTO(
+        id=user.id,
+        username=user.username,
+        email=user.email,
+        full_name=user.full_name,
+        role=user.role,
+        organization_id=user.organization_id,
+        is_active=user.is_active
+    )
+
+    return success_response(
+        data={
+            "user": user_response,
+            "organization": OrganizationResponse.model_validate(organization) if organization else None
+        },
+        message="User info retrieved successfully"
+    )
+
+
+@router.post(AuthRoutes.REFRESH)
+@handle_errors
+def refresh_token(
+    http_request: Request,
+    current_user: CurrentUser = Depends(get_current_user),
+    user_repo: UserRepository = Depends(get_user_repository),
+    session_repo: SessionRepository = Depends(get_session_repository)
+):
+    """
+    Refresh JWT token
+
+    Generates a new JWT token using the current valid token.
+    The old token remains valid until its expiration.
+    Requires valid JWT token in Authorization header.
+    """
+    from datetime import datetime, timedelta, timezone
+    from jose import jwt
+
+    # Get user from database to ensure still active
+    user = user_repo.get_by_id(current_user.id)
+    if not user or not user.is_active:
+        from shared.errors import AuthenticationError
+        raise AuthenticationError("User account is disabled or not found")
+
+    # Create new token with extended expiration
+    expire = datetime.now(timezone.utc) + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+    token_data = {
+        "sub": str(user.id),
+        "username": user.username,
+        "role": user.role,
+        "organization_id": user.organization_id,
+        "exp": expire,
+        "iat": datetime.now(timezone.utc),
+        "type": "access"
+    }
+
+    new_token = jwt.encode(token_data, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
+
+    # Update session with new token
+    auth_header = http_request.headers.get("authorization", "")
+    old_token = auth_header.replace("Bearer ", "")
+    session_repo.update_token(old_token, new_token)
+
+    # Audit log
+    audit_logger.log_action(
+        user_id=current_user.id,
+        action="auth.refresh_token",
+        resource_type="user",
+        resource_id=current_user.id,
+        details={
+            "ip_address": http_request.client.host if http_request.client else None
+        }
+    )
+
+    return success_response(
+        data={"token": new_token},
+        message="Token refreshed successfully"
+    )
+
+
 @router.post(AuthRoutes.LOGOUT)
 @handle_errors
 def logout(

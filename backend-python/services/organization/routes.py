@@ -216,7 +216,8 @@ def create_organization(
             "name": organization.name,
             # REMOVED: organization_pin from audit logs (security fix, No-PIN flow)
             "ip_address": http_request.client.host if http_request.client else None
-        }
+        },
+        organization_id=organization.id
     )
 
     return response
@@ -329,7 +330,8 @@ def update_organization(
         details={
             "name": organization.name,
             "ip_address": http_request.client.host if http_request.client else None
-        }
+        },
+        organization_id=org_id
     )
 
     return response
@@ -375,7 +377,8 @@ def delete_organization(
         resource_id=org_id,
         details={
             "ip_address": http_request.client.host if http_request.client else None
-        }
+        },
+        organization_id=org_id
     )
 
     return None
@@ -431,7 +434,7 @@ def get_organization_quota(
     return quota_response
 
 
-@router.get("/organizations/{org_id:int}/quota/check/device", response_model=QuotaCheckResponse)
+@router.get("/api/v1/organizations/{org_id:int}/quota/check/device", response_model=QuotaCheckResponse)
 @handle_errors
 def check_device_quota(
     org_id: int,
@@ -464,7 +467,7 @@ def check_device_quota(
     return QuotaCheckResponse(**result)
 
 
-@router.get("/organizations/{org_id:int}/quota/check/user", response_model=QuotaCheckResponse)
+@router.get("/api/v1/organizations/{org_id:int}/quota/check/user", response_model=QuotaCheckResponse)
 @handle_errors
 def check_user_quota(
     org_id: int,
@@ -497,7 +500,7 @@ def check_user_quota(
     return QuotaCheckResponse(**result)
 
 
-@router.get("/organizations/{org_id:int}/quota/check/content", response_model=QuotaCheckResponse)
+@router.get("/api/v1/organizations/{org_id:int}/quota/check/content", response_model=QuotaCheckResponse)
 @handle_errors
 def check_content_quota(
     org_id: int,
@@ -526,7 +529,7 @@ def check_content_quota(
     return QuotaCheckResponse(**result)
 
 
-@router.put("/organizations/{org_id:int}/quota", response_model=OrganizationQuotaResponse)
+@router.put("/api/v1/organizations/{org_id:int}/quota", response_model=OrganizationQuotaResponse)
 @handle_errors
 def update_organization_quota(
     org_id: int,
@@ -605,7 +608,8 @@ def update_organization_quota(
             "max_content_items": request_body.max_content_items,
             "max_playlists": request_body.max_playlists,
             "ip_address": http_request.client.host if http_request.client else None
-        }
+        },
+        organization_id=org_id
     )
     
     return quota_response

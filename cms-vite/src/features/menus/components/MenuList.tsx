@@ -80,7 +80,7 @@ export const MenuList = ({
 
   if (error) {
     return (
-      <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-red-800">
+      <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4 text-red-800 dark:text-red-300">
         Failed to load menus. Please try again.
       </div>
     );
@@ -88,8 +88,8 @@ export const MenuList = ({
 
   if (!filteredMenus.length) {
     return (
-      <div className="text-center py-12 bg-gray-50 rounded-lg">
-        <p className="text-gray-500">No menus found</p>
+      <div className="text-center py-12 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+        <p className="text-gray-500 dark:text-gray-400">No menus found</p>
       </div>
     );
   }
@@ -97,57 +97,57 @@ export const MenuList = ({
   return (
     <div className="space-y-4">
       {/* Table */}
-      <div className="bg-white rounded-lg shadow overflow-hidden">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700 overflow-hidden">
+        <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+          <thead className="bg-gray-50 dark:bg-gray-900">
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                 Menu Name
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                 Type
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                 Items
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                 Status
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                 Public Access
               </th>
-              <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                 Actions
               </th>
             </tr>
           </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
+          <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
             {filteredMenus.map((menu) => (
-              <tr key={menu.id} className="hover:bg-gray-50">
+              <tr key={menu.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
                 <td className="px-6 py-4 whitespace-nowrap">
                   <div>
-                    <div className="text-sm font-medium text-gray-900">{menu.name}</div>
+                    <div className="text-sm font-medium text-gray-900 dark:text-white">{menu.name}</div>
                     {menu.description && (
-                      <div className="text-sm text-gray-500 truncate max-w-xs">
+                      <div className="text-sm text-gray-500 dark:text-gray-400 truncate max-w-xs">
                         {menu.description}
                       </div>
                     )}
                   </div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
-                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 capitalize">
+                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 capitalize">
                     {menu.menu_type.replace('_', ' ')}
                   </span>
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                   {menu.items_count} items
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   <span
                     className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
                       menu.is_active
-                        ? 'bg-green-100 text-green-800'
-                        : 'bg-gray-100 text-gray-800'
+                        ? 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200'
+                        : 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-300'
                     }`}
                   >
                     {menu.is_active ? 'Active' : 'Inactive'}
@@ -157,14 +157,14 @@ export const MenuList = ({
                   <div className="flex items-center space-x-2">
                     <button
                       onClick={() => handleCopyPublicUrl(menu)}
-                      className="text-gray-400 hover:text-gray-600"
+                      className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
                       title="Copy Public URL"
                     >
                       <Copy className="w-4 h-4" />
                     </button>
                     <button
                       onClick={() => handleOpenPublicUrl(menu)}
-                      className="text-gray-400 hover:text-gray-600"
+                      className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
                       title="Open Public URL"
                     >
                       <ExternalLink className="w-4 h-4" />
@@ -172,7 +172,7 @@ export const MenuList = ({
                     {menu.qr_code_url && (
                       <button
                         onClick={() => handleDownloadQR(menu)}
-                        className="text-gray-400 hover:text-gray-600"
+                        className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
                         title="Download QR Code"
                         disabled={downloadQRMutation.isPending}
                       >
@@ -185,21 +185,21 @@ export const MenuList = ({
                   <div className="flex items-center justify-end space-x-2">
                     <button
                       onClick={() => onEdit(menu)}
-                      className="text-blue-600 hover:text-blue-900"
+                      className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 transition-colors"
                       title="Edit Menu"
                     >
                       <Edit className="w-4 h-4" />
                     </button>
                     <button
                       onClick={() => onManageItems(menu)}
-                      className="text-green-600 hover:text-green-900"
+                      className="text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-300 transition-colors"
                       title="Manage Items"
                     >
                       <List className="w-4 h-4" />
                     </button>
                     <button
                       onClick={() => handleDelete(menu)}
-                      className="text-red-600 hover:text-red-900"
+                      className="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 transition-colors"
                       title="Delete Menu"
                       disabled={deleteMutation.isPending}
                     >
@@ -215,8 +215,8 @@ export const MenuList = ({
 
       {/* Pagination */}
       {data && data.total > pageSize && (
-        <div className="flex items-center justify-between px-4 py-3 bg-white rounded-lg shadow">
-          <div className="text-sm text-gray-700">
+        <div className="flex items-center justify-between px-4 py-3 bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700">
+          <div className="text-sm text-gray-700 dark:text-gray-300">
             Showing {currentPage * pageSize + 1} to{' '}
             {Math.min((currentPage + 1) * pageSize, data.total)} of {data.total} results
           </div>
@@ -224,14 +224,14 @@ export const MenuList = ({
             <button
               onClick={() => setCurrentPage((p) => Math.max(0, p - 1))}
               disabled={currentPage === 0}
-              className="px-3 py-1 border rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+              className="px-3 py-1 border border-gray-300 dark:border-gray-600 rounded-md text-gray-700 dark:text-gray-300 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
             >
               Previous
             </button>
             <button
               onClick={() => setCurrentPage((p) => p + 1)}
               disabled={(currentPage + 1) * pageSize >= data.total}
-              className="px-3 py-1 border rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+              className="px-3 py-1 border border-gray-300 dark:border-gray-600 rounded-md text-gray-700 dark:text-gray-300 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
             >
               Next
             </button>

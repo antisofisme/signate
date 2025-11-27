@@ -37,6 +37,7 @@ class CreateScheduleRequest(BaseModel):
     name: str = Field(..., min_length=1, max_length=255, description="Schedule name")
     description: Optional[str] = Field(None, description="Schedule description")
     playlist_id: int = Field(..., description="Playlist ID to schedule")
+    device_ids: Optional[List[int]] = Field(None, description="Target device IDs for this schedule")
 
     start_date: date = Field(..., description="Start date (YYYY-MM-DD)")
     end_date: Optional[date] = Field(None, description="End date (optional for ongoing)")
@@ -45,7 +46,7 @@ class CreateScheduleRequest(BaseModel):
 
     recurrence_type: Optional[str] = Field("once", description="once, daily, weekly, monthly, yearly")
     recurrence_pattern: Optional[RecurrencePattern] = Field(None, description="Recurrence configuration")
-    exceptions: Optional[List[str]] = Field(None, description="Exception dates (YYYY-MM-DD)")
+    exception_dates: Optional[List[str]] = Field(None, description="Exception dates (YYYY-MM-DD)")
 
     priority: int = Field(0, ge=0, le=100, description="Priority (0-100, higher wins)")
     is_active: bool = Field(True, description="Active status")
@@ -56,6 +57,7 @@ class CreateScheduleRequest(BaseModel):
                 "name": "Weekday Morning Schedule",
                 "description": "Play breakfast menu 7-10am on weekdays",
                 "playlist_id": 1,
+                "device_ids": [1, 2, 3],
                 "start_date": "2025-01-13",
                 "end_date": "2025-12-31",
                 "start_time": "07:00:00",
@@ -65,7 +67,7 @@ class CreateScheduleRequest(BaseModel):
                     "interval": 1,
                     "days": [1, 2, 3, 4, 5]  # Mon-Fri
                 },
-                "exceptions": ["2025-01-15", "2025-02-20"],
+                "exception_dates": ["2025-01-15", "2025-02-20"],
                 "priority": 10,
                 "is_active": True
             }
@@ -77,6 +79,7 @@ class UpdateScheduleRequest(BaseModel):
     name: Optional[str] = Field(None, min_length=1, max_length=255)
     description: Optional[str] = None
     playlist_id: Optional[int] = None
+    device_ids: Optional[List[int]] = Field(None, description="Target device IDs for this schedule")
 
     start_date: Optional[date] = None
     end_date: Optional[date] = None
@@ -85,7 +88,7 @@ class UpdateScheduleRequest(BaseModel):
 
     recurrence_type: Optional[str] = None
     recurrence_pattern: Optional[RecurrencePattern] = None
-    exceptions: Optional[List[str]] = None
+    exception_dates: Optional[List[str]] = None
 
     priority: Optional[int] = Field(None, ge=0, le=100)
     is_active: Optional[bool] = None
@@ -98,6 +101,7 @@ class ScheduleResponse(BaseModel):
     name: str
     description: Optional[str]
     playlist_id: int
+    device_ids: Optional[List[int]] = Field(None, description="Target device IDs")
 
     start_date: date
     end_date: Optional[date]
@@ -106,7 +110,7 @@ class ScheduleResponse(BaseModel):
 
     recurrence_type: Optional[str]
     recurrence_pattern: Optional[Dict[str, Any]]
-    exceptions: Optional[List[str]]
+    exception_dates: Optional[List[str]] = Field(None, validation_alias="exceptions")  # Map from DB column
 
     priority: int
     is_active: bool
@@ -120,6 +124,7 @@ class ScheduleResponse(BaseModel):
 
     class Config:
         from_attributes = True
+        populate_by_name = True  # Allow both field name and alias
 
 
 class ScheduleListResponse(BaseModel):

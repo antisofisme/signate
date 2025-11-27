@@ -5,6 +5,7 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
+import { getApiErrorMessage } from '@/shared/utils/types'
 import {
   getSchedules,
   getSchedule,
@@ -98,8 +99,8 @@ export const useCreateSchedule = () => {
       queryClient.invalidateQueries({ queryKey: ['playlist-schedules'] })
       toast.success('Schedule created successfully')
     },
-    onError: (error: any) => {
-      toast.error(error.response?.data?.detail || 'Failed to create schedule')
+    onError: (error: unknown) => {
+      toast.error(getApiErrorMessage(error, 'Failed to create schedule'))
     },
   })
 }
@@ -121,8 +122,8 @@ export const useUpdateSchedule = () => {
       queryClient.invalidateQueries({ queryKey: ['playlist-schedules'] })
       toast.success('Schedule updated successfully')
     },
-    onError: (error: any) => {
-      toast.error(error.response?.data?.detail || 'Failed to update schedule')
+    onError: (error: unknown) => {
+      toast.error(getApiErrorMessage(error, 'Failed to update schedule'))
     },
   })
 }
@@ -142,8 +143,8 @@ export const useDeleteSchedule = () => {
       queryClient.invalidateQueries({ queryKey: ['playlist-schedules'] })
       toast.success('Schedule deleted successfully')
     },
-    onError: (error: any) => {
-      toast.error(error.response?.data?.detail || 'Failed to delete schedule')
+    onError: (error: unknown) => {
+      toast.error(getApiErrorMessage(error, 'Failed to delete schedule'))
     },
   })
 }
@@ -156,14 +157,16 @@ export const useActivateSchedule = () => {
 
   return useMutation({
     mutationFn: (id: number) => activateSchedule(id),
-    onSuccess: (_, id) => {
-      queryClient.invalidateQueries({ queryKey: ['schedules'] })
+    onSuccess: async (_, id) => {
+      await queryClient.invalidateQueries({ queryKey: ['schedules'], refetchType: 'all' })
       queryClient.invalidateQueries({ queryKey: ['schedule', id] })
       queryClient.invalidateQueries({ queryKey: ['schedule-occurrences'] })
+      queryClient.invalidateQueries({ queryKey: ['device-schedules'] })
+      queryClient.invalidateQueries({ queryKey: ['playlist-schedules'] })
       toast.success('Schedule activated')
     },
-    onError: (error: any) => {
-      toast.error(error.response?.data?.detail || 'Failed to activate schedule')
+    onError: (error: unknown) => {
+      toast.error(getApiErrorMessage(error, 'Failed to activate schedule'))
     },
   })
 }
@@ -176,14 +179,16 @@ export const useDeactivateSchedule = () => {
 
   return useMutation({
     mutationFn: (id: number) => deactivateSchedule(id),
-    onSuccess: (_, id) => {
-      queryClient.invalidateQueries({ queryKey: ['schedules'] })
+    onSuccess: async (_, id) => {
+      await queryClient.invalidateQueries({ queryKey: ['schedules'], refetchType: 'all' })
       queryClient.invalidateQueries({ queryKey: ['schedule', id] })
       queryClient.invalidateQueries({ queryKey: ['schedule-occurrences'] })
+      queryClient.invalidateQueries({ queryKey: ['device-schedules'] })
+      queryClient.invalidateQueries({ queryKey: ['playlist-schedules'] })
       toast.success('Schedule deactivated')
     },
-    onError: (error: any) => {
-      toast.error(error.response?.data?.detail || 'Failed to deactivate schedule')
+    onError: (error: unknown) => {
+      toast.error(getApiErrorMessage(error, 'Failed to deactivate schedule'))
     },
   })
 }
@@ -196,14 +201,16 @@ export const usePauseSchedule = () => {
 
   return useMutation({
     mutationFn: (id: number) => pauseSchedule(id),
-    onSuccess: (_, id) => {
-      queryClient.invalidateQueries({ queryKey: ['schedules'] })
+    onSuccess: async (_, id) => {
+      await queryClient.invalidateQueries({ queryKey: ['schedules'], refetchType: 'all' })
       queryClient.invalidateQueries({ queryKey: ['schedule', id] })
       queryClient.invalidateQueries({ queryKey: ['schedule-occurrences'] })
+      queryClient.invalidateQueries({ queryKey: ['device-schedules'] })
+      queryClient.invalidateQueries({ queryKey: ['playlist-schedules'] })
       toast.success('Schedule paused')
     },
-    onError: (error: any) => {
-      toast.error(error.response?.data?.detail || 'Failed to pause schedule')
+    onError: (error: unknown) => {
+      toast.error(getApiErrorMessage(error, 'Failed to pause schedule'))
     },
   })
 }
@@ -214,8 +221,8 @@ export const usePauseSchedule = () => {
 export const useCheckConflicts = () => {
   return useMutation({
     mutationFn: (data: ConflictCheckRequest) => checkConflicts(data),
-    onError: (error: any) => {
-      toast.error(error.response?.data?.detail || 'Failed to check conflicts')
+    onError: (error: unknown) => {
+      toast.error(getApiErrorMessage(error, 'Failed to check conflicts'))
     },
   })
 }

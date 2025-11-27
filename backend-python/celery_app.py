@@ -34,7 +34,7 @@ app.conf.update(
     task_serializer='json',
     accept_content=['json'],
     result_serializer='json',
-    timezone='Asia/Jakarta',
+    timezone=os.getenv('CELERY_TIMEZONE', 'Asia/Jakarta'),
     enable_utc=True,
 
     # Task routing
@@ -46,27 +46,30 @@ app.conf.update(
     # Task execution settings
     task_acks_late=True,
     task_reject_on_worker_lost=True,
-    worker_prefetch_multiplier=1,
+    worker_prefetch_multiplier=int(os.getenv('CELERY_WORKER_PREFETCH_MULTIPLIER', '1')),
 
     # Result backend settings
-    result_expires=3600,  # 1 hour
+    result_expires=int(os.getenv('CELERY_RESULT_EXPIRES', '3600')),  # Default: 1 hour
     result_backend_transport_options={
-        'master_name': 'mymaster',
+        'master_name': os.getenv('REDIS_MASTER_NAME', 'mymaster'),
     },
 
     # Task time limits
-    task_soft_time_limit=600,  # 10 minutes
-    task_time_limit=900,       # 15 minutes
+    task_soft_time_limit=int(os.getenv('CELERY_TASK_SOFT_TIME_LIMIT', '600')),  # Default: 10 minutes
+    task_time_limit=int(os.getenv('CELERY_TASK_TIME_LIMIT', '900')),       # Default: 15 minutes
 
     # Worker settings
-    worker_max_tasks_per_child=50,
+    worker_max_tasks_per_child=int(os.getenv('CELERY_WORKER_MAX_TASKS_PER_CHILD', '50')),
     worker_disable_rate_limits=True,
 
     # Beat schedule (periodic tasks)
     beat_schedule={
         'cleanup-old-tasks': {
             'task': 'tasks.content_tasks.cleanup_old_task_results',
-            'schedule': crontab(hour=3, minute=0),  # Daily at 3 AM
+            'schedule': crontab(
+                hour=int(os.getenv('CELERY_CLEANUP_HOUR', '3')),
+                minute=int(os.getenv('CELERY_CLEANUP_MINUTE', '0'))
+            ),  # Default: Daily at 3 AM
         },
     },
 )

@@ -27,16 +27,10 @@ from services.schedule.domain.schedule_executor import init_schedule_executor, g
 
 # Import service routers
 from services.auth.routes import router as auth_router
+# Device service - consolidated routes (10 files → 3 files)
 from services.device.routes import router as device_router
-from services.device.assignment_routes import router as device_assignment_router
-from services.device.command_routes import router as device_command_router
-from services.device.health_routes import router as device_health_router
-from services.device.log_routes import router as device_log_router
-from services.device.connection_log_routes import router as device_connection_log_router
-from services.device.console_routes import router as device_console_router
-from services.device.console_control_routes import router as device_console_control_router
-from services.device.extended_routes import router as device_extended_router
-from services.device.group_routes import router as device_group_router
+from services.device.management_routes import management_router as device_management_router
+from services.device.monitoring_routes import monitoring_router as device_monitoring_router
 from services.organization.routes import router as organization_router
 from services.user.routes import router as user_router
 from services.audit.routes import router as audit_router
@@ -58,6 +52,7 @@ from services.schedule.routes import router as schedule_router
 from services.weather.routes import router as weather_router
 from services.menu.routes import router as menu_router
 from services.menu.public_routes import router as public_menu_router
+from services.dashboard.routes import router as dashboard_router
 from shared.websocket_routes import router as websocket_router
 
 
@@ -252,20 +247,11 @@ def health_check():
 # Note: Routes already include full path from Route classes
 # So we don't add prefix here
 app.include_router(auth_router, tags=["Authentication"])
-# IMPORTANT: Device Groups must be registered BEFORE Device Management
-# to avoid /devices/groups being caught by /devices/{device_id}
-app.include_router(device_group_router, prefix="/api/v1/devices", tags=["Device Groups"])
-# IMPORTANT: Device Logs must be registered BEFORE Device Management
-# to avoid /devices/{device_id}/logs/batch being caught by /devices/{device_id}
-app.include_router(device_log_router, prefix="/api/v1", tags=["Device Logs"])
-app.include_router(device_connection_log_router, prefix="/api/v1", tags=["Device Connection Logs"])
-app.include_router(device_console_router, prefix="/api/v1", tags=["Device Console Logs"])
-app.include_router(device_console_control_router, prefix="/api/v1", tags=["Device Console Control"])
-app.include_router(device_router, tags=["Device Management"])
-app.include_router(device_assignment_router, prefix="/api/v1", tags=["Device Assignments"])
-app.include_router(device_command_router, prefix="/api/v1", tags=["Device Commands"])
-app.include_router(device_health_router, prefix="/api/v1", tags=["Device Health"])
-app.include_router(device_extended_router, tags=["Device Extended"])  # Routes already include /api/v1
+# Device service - consolidated routes (10 files → 3 files)
+# Order matters: management and monitoring before core routes for path matching
+app.include_router(device_management_router, prefix="/api/v1/devices", tags=["Device Management"])
+app.include_router(device_monitoring_router, tags=["Device Monitoring"])  # Already has /api/v1/devices prefix
+app.include_router(device_router, tags=["Device Core"])  # Core CRUD operations
 app.include_router(organization_router, tags=["Organization Management"])
 app.include_router(user_router, tags=["User Management"])
 app.include_router(audit_router, tags=["Audit Logging"])
@@ -278,6 +264,7 @@ app.include_router(playlist_client_router, tags=["Client - Player/Viewer"])
 app.include_router(rbac_router, tags=["RBAC - Role Management"])
 app.include_router(session_router, tags=["Session Management"])
 app.include_router(analytics_router, prefix="/api/v1/analytics", tags=["Analytics & Reporting"])
+app.include_router(dashboard_router, tags=["Dashboard"])  # Routes already include /api/v1/dashboard
 app.include_router(pms_router, prefix="/api/v1", tags=["PMS Integration"])
 app.include_router(pms_websocket_router, tags=["PMS WebSocket"])
 app.include_router(widget_router, prefix="/api/v1", tags=["Widget System"])

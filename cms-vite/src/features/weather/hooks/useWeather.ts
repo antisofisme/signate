@@ -17,6 +17,7 @@ import type {
   UpdateLocationRequest,
   TestWeatherAPIRequest,
 } from '../types/weather.types'
+import { getApiErrorMessage } from '@/shared/utils/types'
 
 // ===================================
 // Query Keys
@@ -58,8 +59,8 @@ export function useCreateWeatherConfig() {
       queryClient.invalidateQueries({ queryKey: WEATHER_KEYS.config() })
       toast.success('Weather configuration created successfully')
     },
-    onError: (error: any) => {
-      toast.error(error?.response?.data?.detail || 'Failed to create weather configuration')
+    onError: (error: unknown) => {
+      toast.error(getApiErrorMessage(error, 'Failed to create weather configuration'))
     },
   })
 }
@@ -76,8 +77,8 @@ export function useUpdateWeatherConfig() {
       queryClient.invalidateQueries({ queryKey: WEATHER_KEYS.config() })
       toast.success('Weather configuration updated successfully')
     },
-    onError: (error: any) => {
-      toast.error(error?.response?.data?.detail || 'Failed to update weather configuration')
+    onError: (error: unknown) => {
+      toast.error(getApiErrorMessage(error, 'Failed to update weather configuration'))
     },
   })
 }
@@ -94,8 +95,8 @@ export function useDeleteWeatherConfig() {
       queryClient.invalidateQueries({ queryKey: WEATHER_KEYS.config() })
       toast.success('Weather configuration deleted successfully')
     },
-    onError: (error: any) => {
-      toast.error(error?.response?.data?.detail || 'Failed to delete weather configuration')
+    onError: (error: unknown) => {
+      toast.error(getApiErrorMessage(error, 'Failed to delete weather configuration'))
     },
   })
 }
@@ -113,8 +114,8 @@ export function useTestWeatherAPI() {
         toast.error(`API test failed: ${data.message}`)
       }
     },
-    onError: (error: any) => {
-      toast.error(error?.response?.data?.detail || 'API test failed')
+    onError: (error: unknown) => {
+      toast.error(getApiErrorMessage(error, 'API test failed'))
     },
   })
 }
@@ -157,8 +158,8 @@ export function useCreateLocation() {
       queryClient.invalidateQueries({ queryKey: WEATHER_KEYS.locations() })
       toast.success('Location added successfully')
     },
-    onError: (error: any) => {
-      toast.error(error?.response?.data?.detail || 'Failed to add location')
+    onError: (error: unknown) => {
+      toast.error(getApiErrorMessage(error, 'Failed to add location'))
     },
   })
 }
@@ -176,8 +177,8 @@ export function useUpdateLocation() {
       queryClient.invalidateQueries({ queryKey: WEATHER_KEYS.locations() })
       toast.success('Location updated successfully')
     },
-    onError: (error: any) => {
-      toast.error(error?.response?.data?.detail || 'Failed to update location')
+    onError: (error: unknown) => {
+      toast.error(getApiErrorMessage(error, 'Failed to update location'))
     },
   })
 }
@@ -194,8 +195,8 @@ export function useDeleteLocation() {
       queryClient.invalidateQueries({ queryKey: WEATHER_KEYS.locations() })
       toast.success('Location deleted successfully')
     },
-    onError: (error: any) => {
-      toast.error(error?.response?.data?.detail || 'Failed to delete location')
+    onError: (error: unknown) => {
+      toast.error(getApiErrorMessage(error, 'Failed to delete location'))
     },
   })
 }

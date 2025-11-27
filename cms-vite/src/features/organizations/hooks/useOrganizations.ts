@@ -50,6 +50,9 @@ export function useCreateOrganization() {
       // Invalidate organization list
       queryClient.invalidateQueries({ queryKey: ['organizations'] });
 
+      // Invalidate dashboard (organization count changes)
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+
       // REMOVED: Organization PIN from toast message (No-PIN flow)
       toast.success(
         `Organization "${data.name}" berhasil dibuat`
@@ -105,6 +108,16 @@ export function useDeleteOrganization() {
       // Invalidate queries
       queryClient.invalidateQueries({ queryKey: ['organizations'] });
       queryClient.removeQueries({ queryKey: ['organizations', id] });
+
+      // Invalidate dashboard (organization count changes)
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+
+      // Invalidate related entities (cascade delete may affect these)
+      queryClient.invalidateQueries({ queryKey: ['users'] });
+      queryClient.invalidateQueries({ queryKey: ['devices'] });
+      queryClient.invalidateQueries({ queryKey: ['playlists'] });
+      queryClient.invalidateQueries({ queryKey: ['content'] });
+      queryClient.invalidateQueries({ queryKey: ['schedules'] });
 
       // Show success toast
       toast.success('Organization berhasil dihapus');

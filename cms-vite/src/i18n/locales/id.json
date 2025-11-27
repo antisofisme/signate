@@ -121,6 +121,7 @@
     "name": "Nama",
     "room": "Ruangan",
     "roomNumber": "Nomor Ruangan",
+    "statusLabel": "Status",
     "status": {
       "active": "Aktif",
       "pending": "Menunggu",
@@ -236,6 +237,7 @@
       "pendingActivation": "Menunggu Aktivasi",
       "overview": "Gambaran Umum",
       "health": "Kesehatan",
+      "commandsTitle": "Perintah",
       "commands": {
         "reboot": "Reboot Perangkat",
         "rebootDesc": "Restart perangkat sepenuhnya",

@@ -1,251 +1,345 @@
 # Backend Python - Digital Signage API
 
+Backend API untuk sistem Digital Signage menggunakan FastAPI dengan Clean Architecture.
+
+## Tech Stack
+
+| Component | Technology | Version |
+|-----------|------------|---------|
+| Framework | FastAPI | 0.109.0 |
+| Database | PostgreSQL | 15 |
+| ORM | SQLAlchemy | 2.0 |
+| Connection Pool | PgBouncer | Latest |
+| Cache & Broker | Redis | 7 |
+| Task Queue | Celery | 5.x |
+| Virus Scanner | ClamAV | Latest |
+| Auth | JWT (PyJWT) | - |
+| Validation | Pydantic | 2.x |
+
 ## Architecture
-
-Multi-tenant microservices architecture dengan shared resources.
-
-## Structure (Clean Architecture - Flattened)
 
 ```
 backend-python/
-├── .env                     # SATU untuk semua services (DB, Redis, Secret, CORS)
-├── requirements.txt
-├── services/
-│   ├── auth/               # Authentication Service
-│   │   ├── domain/         # 📦 CORE - Business Logic (No dependencies)
-│   │   │   ├── user.py            # User entity + Credentials value object
-│   │   │   └── interfaces.py      # IUserRepository contract
-│   │   ├── use_cases/      # 🎯 USE CASES - Application Logic (1 file = 1 use case)
-│   │   │   ├── login.py           # Login use case
-│   │   │   └── register.py        # Register use case
-│   │   ├── repositories/   # 🔧 INFRASTRUCTURE - Database
-│   │   │   ├── models.py          # SQLAlchemy models
-│   │   │   └── user_repo.py       # Repository implementation
-│   │   ├── dtos.py         # Request/Response DTOs
-│   │   └── routes.py       # 🌐 HTTP - FastAPI endpoints
-│   ├── tenant/             # Organization Service (same structure)
-│   ├── device/             # Device Service
-│   ├── content/            # Content Service
-│   └── analytics/          # Analytics Service
-└── shared/                 # 📦 CENTRALIZED UTILITIES (stable patterns)
-    ├── api_routes.py      # ⚠️ API routes definition (Single Source of Truth)
-    ├── config.py          # Settings from .env
-    ├── database.py        # SQLAlchemy setup
-    ├── errors.py          # ✅ Custom exceptions & error handling
-    ├── responses.py       # ✅ Standardized API response formatters
-    ├── validators.py      # ✅ Common validation functions
-    └── logging.py         # ✅ Centralized logging infrastructure
+├── main.py                    # FastAPI application entry point
+├── celery_app.py              # Celery configuration
+├── services/                  # Domain services (Clean Architecture)
+│   ├── auth/                  # Authentication & authorization
+│   ├── device/                # Device management
+│   ├── content/               # Content management
+│   ├── playlist/              # Playlist management
+│   ├── schedule/              # Schedule management
+│   ├── organization/          # Organization management
+│   ├── user/                  # User management
+│   ├── role/                  # Role & permission management
+│   ├── analytics/             # Analytics & reporting
+│   ├── audit/                 # Audit logging
+│   ├── notification/          # Notification system
+│   ├── system/                # System settings
+│   ├── dashboard/             # Dashboard statistics
+│   ├── device_group/          # Device grouping
+│   ├── emergency/             # Emergency alerts
+│   ├── tag/                   # Content tagging
+│   ├── display_zone/          # Display zone management
+│   └── [service]/
+│       ├── models.py          # SQLAlchemy models
+│       ├── dtos.py            # Pydantic DTOs
+│       ├── routes.py          # FastAPI routes
+│       ├── repositories/      # Data access layer
+│       └── use_cases/         # Business logic
+├── shared/                    # Shared utilities
+│   ├── config.py              # Environment configuration
+│   ├── database.py            # Database connection
+│   ├── cache.py               # Redis cache service
+│   ├── virus_scanner.py       # ClamAV integration
+│   ├── api_routes.py          # Centralized route definitions
+│   ├── errors.py              # Custom exceptions
+│   ├── responses.py           # Standardized API responses
+│   ├── validators.py          # Common validations
+│   └── logging.py             # Centralized logging
+├── tasks/                     # Celery tasks
+│   └── content_tasks.py       # Video transcoding, thumbnails
+└── migrations/                # SQL migrations (001-050)
 ```
 
-**Dependency Flow (Clean Architecture):**
+## Clean Architecture Flow
+
 ```
 routes.py → use_cases/ → domain/
               ↓
           repositories/
 ```
-- **domain/** depends on NOTHING (pure business logic)
-- **use_cases/** depends on domain/ interfaces
-- **repositories/** implements domain/ interfaces
-- **routes.py** coordinates use cases (DI)
+
+- **domain/** - Pure business logic (no dependencies)
+- **use_cases/** - Application logic (depends on domain interfaces)
+- **repositories/** - Data access (implements domain interfaces)
+- **routes.py** - HTTP endpoints (dependency injection)
+
+## API Endpoints
+
+### Authentication (`/api/v1/auth`)
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/login` | User login dengan JWT |
+| POST | `/register` | User registration |
+| POST | `/refresh` | Refresh access token |
+| POST | `/logout` | Invalidate token |
+| GET | `/me` | Get current user |
+
+### Devices (`/api/v1/devices`)
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/` | List devices (paginated) |
+| POST | `/` | Register device |
+| GET | `/{id}` | Get device detail |
+| PUT | `/{id}` | Update device |
+| DELETE | `/{id}` | Delete device |
+| POST | `/activate` | Activate with 6-digit code |
+| POST | `/{id}/heartbeat` | Device heartbeat |
+| POST | `/{id}/command` | Send command to device |
+| GET | `/{id}/status` | Get device status |
+
+### Content (`/api/v1/contents`)
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/` | List contents (paginated) |
+| POST | `/upload` | Upload content (image/video) |
+| GET | `/{id}` | Get content detail |
+| PUT | `/{id}` | Update content metadata |
+| DELETE | `/{id}` | Delete content |
+| GET | `/{id}/download` | Download content file |
+
+### Playlists (`/api/v1/playlists`)
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/` | List playlists |
+| POST | `/` | Create playlist |
+| GET | `/{id}` | Get playlist with items |
+| PUT | `/{id}` | Update playlist |
+| DELETE | `/{id}` | Delete playlist |
+| POST | `/{id}/items` | Add item to playlist |
+| PUT | `/{id}/items/reorder` | Reorder items |
+| DELETE | `/{id}/items/{item_id}` | Remove item |
+
+### Schedules (`/api/v1/schedules`)
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/` | List schedules |
+| POST | `/` | Create schedule |
+| GET | `/{id}` | Get schedule detail |
+| PUT | `/{id}` | Update schedule |
+| DELETE | `/{id}` | Delete schedule |
+| GET | `/device/{device_id}` | Get device schedule |
+
+### Organizations (`/api/v1/organizations`)
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/` | List organizations |
+| POST | `/` | Create organization |
+| GET | `/{id}` | Get organization detail |
+| PUT | `/{id}` | Update organization |
+| DELETE | `/{id}` | Delete organization |
+
+### Users (`/api/v1/users`)
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/` | List users (org-scoped) |
+| POST | `/` | Create user |
+| GET | `/{id}` | Get user detail |
+| PUT | `/{id}` | Update user |
+| DELETE | `/{id}` | Delete user |
+| PUT | `/{id}/password` | Change password |
+
+### Roles & Permissions (`/api/v1/roles`)
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/` | List roles |
+| POST | `/` | Create role |
+| GET | `/{id}` | Get role with permissions |
+| PUT | `/{id}` | Update role |
+| DELETE | `/{id}` | Delete role |
+| GET | `/permissions` | List all permissions |
+
+### Audit Logs (`/api/v1/audit-logs`)
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/` | List audit logs (filtered) |
+| GET | `/{id}` | Get audit log detail |
+
+### WebSocket (`/ws`)
+| Endpoint | Description |
+|----------|-------------|
+| `/ws/device/{device_id}` | Device real-time communication |
+| `/ws/admin` | Admin broadcast channel |
+
+## Database Schema
+
+**Total Tables**: 29
+
+### Core Tables
+| Table | Description |
+|-------|-------------|
+| `users` | User accounts |
+| `organizations` | Multi-tenant organizations |
+| `devices` | Display devices |
+| `contents` | Media content |
+| `playlists` | Content playlists |
+| `playlist_items` | Playlist content items |
+| `schedules` | Playback schedules |
+| `roles` | User roles |
+| `permissions` | System permissions |
+| `role_permissions` | Role-permission mapping |
+
+### Supporting Tables
+| Table | Description |
+|-------|-------------|
+| `device_groups` | Device grouping |
+| `device_group_members` | Group membership |
+| `device_commands` | Pending commands |
+| `display_zones` | Screen zones |
+| `tags` | Content tags |
+| `content_tags` | Content-tag mapping |
+| `audit_logs` | System audit trail |
+| `notifications` | User notifications |
+| `emergency_alerts` | Emergency broadcasts |
+| `system_settings` | Global settings |
+
+## Celery Tasks
+
+### Configuration
+```python
+broker_url = "redis://signage-redis:6379/0"
+result_backend = "redis://signage-redis:6379/0"
+task_queues = ["celery", "video_processing", "image_processing"]
+```
+
+### Available Tasks
+| Task | Queue | Description |
+|------|-------|-------------|
+| `transcode_to_hls` | video_processing | Convert video to HLS (360p-1080p) |
+| `generate_thumbnail` | image_processing | Generate content thumbnails |
+| `cleanup_old_task_results` | celery | Daily cleanup (3 AM) |
+
+### Task Settings
+```python
+task_acks_late = True              # Safe acknowledgment
+task_reject_on_worker_lost = True  # Requeue on crash
+worker_prefetch_multiplier = 1     # No prefetch
+worker_max_tasks_per_child = 50    # Prevent memory leak
+```
+
+## Redis Usage
+
+| Purpose | Key Pattern | TTL |
+|---------|-------------|-----|
+| Celery Broker | `celery-task-*` | - |
+| Celery Results | `celery-task-meta-*` | 1 hour |
+| Content Cache | `content:{id}` | 5 min |
+| Playlist Cache | `playlist:{id}` | 5 min |
+| Device Cache | `device:{id}` | 5 min |
+| List Cache | `org:{id}:*:list:page:*` | 5 min |
+| WebSocket Pub/Sub | `ws:*` | - |
+
+## ClamAV Integration
+
+Virus scanning untuk uploaded content:
+
+```
+1. File saved to disk
+2. ClamAV scans via INSTREAM (port 3310)
+3. If virus detected → delete file, reject upload
+4. If ClamAV down → WARNING log, allow upload
+```
 
 ## Environment Variables
 
-### .env (Root)
-**SATU file untuk semua microservices backend:**
-- `DATABASE_URL` - Shared database
-- `REDIS_URL` - Shared cache
-- `SECRET_KEY` - JWT signing
-- `CORS_ORIGINS` - Allowed origins
-- Service ports (jika berbeda per service)
-- Feature flags
+```env
+# Database
+DATABASE_URL=postgresql://user:pass@signage-pgbouncer:6432/signage_db
 
-**Semua services dalam backend-python menggunakan .env yang sama.**
+# Redis
+REDIS_URL=redis://signage-redis:6379/0
 
-## API Routes (Centralized)
+# ClamAV
+CLAMAV_HOST=signage-clamav
+CLAMAV_PORT=3310
 
-**File:** `shared/api_routes.py`
+# Security
+SECRET_KEY=<random-256-bit-key>
+JWT_SECRET=<random-256-bit-key>
+ENCRYPTION_KEY=<random-128-bit-key>
 
-Semua route definitions harus di sini:
-```python
-# ⚠️ SINGLE SOURCE OF TRUTH untuk API endpoints
-API_V1 = "/api/v1"
+# URLs
+PUBLIC_BASE_URL=https://api.zhmhotels.online
+CMS_URL=https://admin.zhmhotels.online
+PLAYER_URL=https://player.zhmhotels.online
 
-class AuthRoutes:
-    LOGIN = f"{API_V1}/auth/login"
-    REGISTER = f"{API_V1}/auth/register"
+# CORS
+CORS_ORIGINS=https://admin.zhmhotels.online,https://player.zhmhotels.online
 
-class DeviceRoutes:
-    LIST = f"{API_V1}/devices"
-    ACTIVATE = f"{API_V1}/devices/activate"
+# Environment
+ENVIRONMENT=production
+DEBUG=false
+LOG_LEVEL=info
 ```
 
-**Keuntungan:**
-- Perubahan endpoint cukup 1 tempat
-- Mudah review semua API yang tersedia
-- Bisa compare dengan CMS/Player endpoints
+## Docker Services
 
-## Layer Explanation
+```yaml
+backend-api:
+  container_name: signage-backend-python
+  ports: 8001:8000
+  healthcheck: GET /health
 
-### 1. **domain/** - Core Business Logic
-- **Tidak boleh** depend ke framework, database, atau library eksternal
-- **Pure Python** objects saja
-- **Business rules** & validasi
-- File: `user.py` (entity), `interfaces.py` (contracts)
+celery-worker:
+  container_name: signage-celery-worker
+  command: celery -A celery_app worker
+  queues: celery,video_processing,image_processing
 
-### 2. **use_cases/** - Application Logic
-- **1 file = 1 use case** (login.py, register.py, logout.py, dll)
-- Depends **hanya** ke `domain/` interfaces
-- Coordinates business logic
-- Max ~150 lines per file
-
-### 3. **repositories/** - Infrastructure
-- Implements `domain/interfaces.py`
-- Database access (SQLAlchemy)
-- File: `models.py` (SQLAlchemy models), `user_repo.py` (implementation)
-
-### 4. **routes.py** - HTTP Layer
-- FastAPI endpoints
-- Dependency Injection (DI)
-- **TIDAK ada** business logic (delegate ke use_cases)
-
-### 5. **dtos.py** - Data Transfer Objects
-- Pydantic models untuk Request/Response
-- Validation schema
-
----
-
-## Flow Example: Login
-
-```
-1. HTTP POST /api/v1/auth/login
-   ↓
-2. routes.py
-   - Validate LoginRequest DTO
-   - Inject LoginUseCase
-   ↓
-3. use_cases/login.py
-   - Call user_repo.find_by_username()
-   - Verify password
-   - Generate JWT token
-   ↓
-4. repositories/user_repo.py
-   - Query database via SQLAlchemy
-   - Convert UserModel → User entity
-   ↓
-5. Return TokenResponse
+celery-beat:
+  container_name: signage-celery-beat
+  command: celery -A celery_app beat
 ```
 
----
+## Health Checks
 
-## Best Practices
+| Service | Check Method |
+|---------|--------------|
+| Backend | `GET /health` |
+| Celery Worker | `celery inspect ping` |
+| Database | PgBouncer healthcheck |
+| Redis | `redis-cli ping` |
+| ClamAV | `clamdscan --ping` |
 
-### ✅ DO:
-- 1 file = 1 responsibility
-- Keep files < 200 lines
-- Domain entities pure Python (no SQLAlchemy)
-- Use interfaces for repositories
-- Use dependency injection in routes
+## Content Storage
 
-### ❌ DON'T:
-- Business logic in routes.py
-- Domain depends on infrastructure
-- God classes (1 file dengan 20+ methods)
-- Hardcode URLs/configs
-- Direct DB access in use_cases
-
----
-
-## Delete Strategy
-
-### Hard Delete vs Active/Inactive Toggle
-
-**Strategy Adopted**: Hybrid approach with clear separation
-
-#### 1. **DELETE Endpoint** = Hard Delete (Permanent Removal)
-```python
-# DELETE /organizations/{id}
-# DELETE /users/{id}
-# → Permanently removes from database
-# → Cannot be recovered
-# → Use for: cleanup, test data removal
+```
+/data/signage/content/
+├── originals/          # Original uploaded files
+├── thumbnails/         # Generated thumbnails
+└── hls/                # HLS transcoded videos
+    └── {content_id}/
+        ├── master.m3u8
+        ├── 360p/
+        ├── 480p/
+        ├── 720p/
+        └── 1080p/
 ```
 
-**Validation**:
-- Organization: Cannot delete if has users or devices
-- User: No restrictions (force delete)
+## Security Features
 
-#### 2. **UPDATE Endpoint with is_active** = Soft Archive (Reversible)
-```python
-# PUT /organizations/{id} with {"is_active": false}
-# PUT /users/{id} with {"is_active": false}
-# → Disables/archives without deleting
-# → Data remains in database
-# → Can be restored with is_active=true
-# → Use for: temporary suspension, archiving
-```
+- JWT authentication with refresh tokens
+- Password hashing (bcrypt)
+- Role-based access control (RBAC)
+- Multi-tenant data isolation
+- Content virus scanning
+- Audit logging
+- CORS protection
 
-**Use Cases**:
-- Disable user temporarily: `PUT /users/{id}` → `{"is_active": false}`
-- Restore user: `PUT /users/{id}` → `{"is_active": true}`
-- Permanent removal: `DELETE /users/{id}`
+## API Documentation
 
-**List Filtering**:
-- By default, list endpoints show ALL records (active + inactive)
-- Use `?active_only=true` to filter active records only
-
-**Example**:
-```bash
-# Archive organization (soft)
-curl -X PUT /api/v1/organizations/1 -d '{"name":"...", "is_active":false}'
-
-# Delete organization permanently (hard)
-curl -X DELETE /api/v1/organizations/1
-```
-
----
-
-## Creating New Feature
-
-**Example: Add "Delete User" feature**
-
-1. **Update interface** (`domain/interfaces.py`):
-   ```python
-   def delete(self, user_id: int) -> bool
-   ```
-
-2. **Implement repository** (`repositories/user_repo.py`):
-   ```python
-   def delete(self, user_id: int) -> bool:
-       # DB delete logic
-   ```
-
-3. **Create use case** (`use_cases/delete_user.py`):
-   ```python
-   class DeleteUserUseCase:
-       def execute(self, user_id: int) -> bool:
-           # Business logic
-   ```
-
-4. **Add endpoint** (`routes.py`):
-   ```python
-   @router.delete("/users/{user_id}")
-   def delete_user(user_id: int, use_case: DeleteUserUseCase = Depends(...)):
-       ...
-   ```
-
----
-
-## Creating New Service
-
-**Template:**
-```bash
-mkdir -p services/new_service/{domain,use_cases,repositories}
-touch services/new_service/{dtos.py,routes.py}
-```
-
-Copy struktur dari `services/auth/` dan sesuaikan.
-
----
+- **Swagger UI**: https://api.zhmhotels.online/docs
+- **ReDoc**: https://api.zhmhotels.online/redoc
+- **OpenAPI JSON**: https://api.zhmhotels.online/openapi.json
 
 ## Development
 
@@ -253,137 +347,12 @@ Copy struktur dari `services/auth/` dan sesuaikan.
 # Install dependencies
 pip install -r requirements.txt
 
-# Run specific service (TODO: belum ada main.py)
-# cd services/auth
-# uvicorn main:app --reload --port 8001
+# Run development server
+uvicorn main:app --reload --host 0.0.0.0 --port 8000
+
+# Run Celery worker
+celery -A celery_app worker --loglevel=info -Q celery,video_processing,image_processing
+
+# Run Celery beat
+celery -A celery_app beat --loglevel=info
 ```
-
----
-
-## Architecture Consistency Status
-
-### ✅ **ALL SERVICES NOW 100% COMPLIANT!**
-
-**Fully Compliant Services (✅ Clean Architecture):**
-- ✅ **Organization Service** - Repository pattern, domain layer, proper DI
-- ✅ **Auth Service** - Clean Architecture principles
-- ✅ **User Service** - ✨ **MIGRATED!** Now uses Repository pattern (2025-01-05)
-- ✅ **Audit Service** - ✨ **NEW!** Complete audit logging system with DB persistence (2025-01-05)
-
-**Incomplete Services (⚠️ Not Fully Implemented):**
-- **Device Service** - Missing routes.py and some use cases
-
-### 🎉 User Service Migration Complete!
-
-**User Service Structure (NOW CORRECT):**
-```
-services/user/
-├── domain/                  # ✅ Core business logic
-│   ├── user.py             # User entity (pure Python)
-│   ├── interfaces.py       # IUserRepository contract
-│   └── __init__.py
-├── repositories/            # ✅ Infrastructure layer
-│   ├── user_repo.py        # UserRepository implementation
-│   └── __init__.py
-├── use_cases/              # ✅ Application logic (all 6 refactored)
-│   ├── create_user.py
-│   ├── list_users.py
-│   ├── get_user.py
-│   ├── update_user.py
-│   ├── delete_user.py
-│   └── change_password.py
-├── dtos.py
-└── routes.py               # ✅ Updated DI to use repositories
-```
-
-**Migration Details:**
-1. ✅ Created `domain/user.py` with User entity & business logic
-2. ✅ Created `domain/interfaces.py` with IUserRepository contract
-3. ✅ Created `repositories/user_repo.py` implementing IUserRepository
-4. ✅ Refactored all 6 use cases to use repository instead of Session
-5. ✅ Updated routes.py dependency injection
-
-**Benefits Achieved:**
-- ✅ Dependency inversion principle followed
-- ✅ Loose coupling (can swap SQLAlchemy for MongoDB)
-- ✅ Testable (easy to mock repository)
-- ✅ Consistent with Organization service
-- ✅ True Clean Architecture
-
-### 🎉 Audit Service - Complete Audit Logging System!
-
-**Audit Service Structure (CLEAN ARCHITECTURE):**
-```
-services/audit/
-├── domain/                     # ✅ Core business logic
-│   ├── audit_log.py           # AuditLog entity (pure Python)
-│   ├── interfaces.py          # IAuditLogRepository contract
-│   └── __init__.py
-├── repositories/              # ✅ Infrastructure layer
-│   ├── audit_log_repo.py     # AuditLogRepository implementation
-│   └── __init__.py
-├── use_cases/                 # ✅ Application logic
-│   ├── create_audit_log.py   # Create audit log entry
-│   ├── list_audit_logs.py    # List with filters & pagination
-│   └── get_audit_log.py       # Get single log
-├── dtos.py                    # Request/Response DTOs
-└── routes.py                  # ✅ FastAPI endpoints (GET /api/v1/audit-logs)
-```
-
-**Database Table:**
-- `audit_logs` table in `services/auth/repositories/models.py` (centralized)
-- Tracks: user_id, organization_id, action, resource_type, resource_id, details (JSON), ip_address, user_agent, created_at
-- Foreign keys with ON DELETE SET NULL for data integrity
-
-**Features:**
-1. ✅ **Database Persistence** - All audit logs saved to PostgreSQL
-2. ✅ **Enhanced AuditLogger** - Updated `shared/logging.py` to optionally persist via use case
-3. ✅ **Query API** - List audit logs with filters (user, org, action, resource, dates)
-4. ✅ **Pagination** - Supports limit/offset for large result sets
-5. ✅ **Enriched Responses** - Includes username and organization_name in responses
-6. ✅ **Clean Architecture** - Repository pattern, domain layer, dependency injection
-
-**API Endpoints:**
-- `GET /api/v1/audit-logs` - List audit logs with filters
-- `GET /api/v1/audit-logs/{log_id}` - Get single audit log
-
-**Usage in Other Services:**
-```python
-# In routes.py - Inject CreateAuditLogUseCase via DI
-def get_create_audit_log_use_case(
-    audit_log_repo = Depends(get_audit_log_repository)
-) -> CreateAuditLogUseCase:
-    return CreateAuditLogUseCase(audit_log_repo)
-
-# Create AuditLogger with database persistence
-audit_logger = AuditLogger(
-    create_audit_log_use_case=create_audit_log_use_case
-)
-
-# Log action (saves to console AND database)
-audit_logger.log_action(
-    user_id=user.id,
-    organization_id=user.organization_id,
-    action="user.create",
-    resource_type="user",
-    resource_id=user.id,
-    details={"username": user.username, "role": user.role},
-    ip_address=request.client.host,
-    user_agent=request.headers.get("user-agent")
-)
-```
-
-**Migration Details:**
-1. ✅ Created complete audit service with Clean Architecture
-2. ✅ Added AuditLogModel to centralized models.py
-3. ✅ Updated shared/logging.py AuditLogger to persist to DB
-4. ✅ Registered audit routes in main.py
-5. ✅ Added audit endpoints to shared/api_routes.py
-
----
-
-## Documentation
-
-- `ARCHITECTURE.md` - Panduan lengkap Clean Architecture
-- `REFACTORING_AUDIT.md` - Audit existing code
-

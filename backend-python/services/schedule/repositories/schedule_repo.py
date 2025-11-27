@@ -35,13 +35,14 @@ class ScheduleRepository:
             name=request.name,
             description=request.description,
             playlist_id=request.playlist_id,
+            device_ids=request.device_ids,  # Target devices
             start_date=request.start_date,
             end_date=request.end_date,
             start_time=request.start_time,
             end_time=request.end_time,
             recurrence_type=request.recurrence_type or 'once',
             recurrence_pattern=recurrence_pattern_dict,
-            exceptions=request.exceptions,
+            exceptions=request.exception_dates,  # Map DTO exception_dates to DB exceptions column
             priority=request.priority,
             is_active=request.is_active,
             created_by_id=created_by_id  # Audit trail (Migration 046)
@@ -110,6 +111,10 @@ class ScheduleRepository:
         # Handle recurrence_pattern separately
         if 'recurrence_pattern' in update_data and update_data['recurrence_pattern']:
             update_data['recurrence_pattern'] = update_data['recurrence_pattern'].model_dump(exclude_none=True)
+
+        # Map exception_dates from DTO to exceptions column in DB
+        if 'exception_dates' in update_data:
+            update_data['exceptions'] = update_data.pop('exception_dates')
 
         for key, value in update_data.items():
             setattr(schedule, key, value)

@@ -9,7 +9,6 @@ import { logger } from '@shared/logger';
 import { SharedEventBus as eventBus } from '@shared/events/shared-event-bus';
 import { templateProcessor } from '@shared/services/template-processor';
 import { SharedDeviceState } from '@shared/device';
-import { i18n } from '@shared/services/i18n';
 
 export class PlayerWidgetRenderer {
   private widgetContainer?: HTMLElement;
@@ -44,21 +43,13 @@ export class PlayerWidgetRenderer {
     playerContainer.style.position = 'relative';
     playerContainer.appendChild(this.widgetContainer);
 
-    // Initialize template processor and i18n with device ID
+    // Initialize template processor with device ID
     const deviceId = SharedDeviceState.getDeviceId();
     if (deviceId) {
       // Initialize template processor
       templateProcessor.initialize(deviceId).catch(error => {
         logger.error('[PlayerWidgetRenderer] Failed to initialize template processor:', error);
       });
-      
-      // Initialize i18n with organization context
-      const device = SharedDeviceState.getDevice();
-      if (device?.organization_id) {
-        i18n.initialize(device.organization_id).catch(error => {
-          logger.error('[PlayerWidgetRenderer] Failed to initialize i18n:', error);
-        });
-      }
     }
 
     logger.info('[PlayerWidgetRenderer] Widget container initialized');
@@ -199,7 +190,7 @@ export class PlayerWidgetRenderer {
    * Get current locale
    */
   private getLocale(): string {
-    return i18n.getLocale();
+    return 'en-US';
   }
 
   /**

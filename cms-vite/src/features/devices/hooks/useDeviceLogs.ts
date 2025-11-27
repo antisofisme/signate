@@ -7,6 +7,7 @@ import { toast } from 'sonner';
 import { logsApi } from '../api/logsApi';
 import type { LogFilters } from '../types/logs';
 import { deviceKeys } from './useDevices';
+import { getApiErrorMessage } from '@/shared/utils/types';
 
 // Query keys
 export const logKeys = {
@@ -89,9 +90,8 @@ export const useClearLogs = () => {
 
       toast.success('Console logs cleared successfully');
     },
-    onError: (error: any) => {
-      const message = error?.response?.data?.detail || 'Failed to clear console logs';
-      toast.error(message);
+    onError: (error: unknown) => {
+      toast.error(getApiErrorMessage(error, 'Failed to clear console logs'));
     },
   });
 };

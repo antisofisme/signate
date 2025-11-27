@@ -15,6 +15,7 @@ import {
   validateTemplate,
   extractVariables
 } from '../api/templateApi'
+import { getApiErrorMessage } from '@/shared/utils/types'
 import type {
   TemplateFilters,
   CreateTemplateRequest,
@@ -57,9 +58,8 @@ export const useCreateTemplate = () => {
       queryClient.invalidateQueries({ queryKey: ['templates'] })
       toast.success('Template created successfully')
     },
-    onError: (error: any) => {
-      const message = error.response?.data?.detail || 'Failed to create template'
-      toast.error(message)
+    onError: (error: unknown) => {
+      toast.error(getApiErrorMessage(error, 'Failed to create template'))
     },
   })
 }
@@ -75,9 +75,8 @@ export const useUpdateTemplate = () => {
       queryClient.invalidateQueries({ queryKey: ['template', variables.id] })
       toast.success('Template updated successfully')
     },
-    onError: (error: any) => {
-      const message = error.response?.data?.detail || 'Failed to update template'
-      toast.error(message)
+    onError: (error: unknown) => {
+      toast.error(getApiErrorMessage(error, 'Failed to update template'))
     },
   })
 }
@@ -91,9 +90,8 @@ export const useDeleteTemplate = () => {
       queryClient.invalidateQueries({ queryKey: ['templates'] })
       toast.success('Template deleted successfully')
     },
-    onError: (error: any) => {
-      const message = error.response?.data?.detail || 'Failed to delete template'
-      toast.error(message)
+    onError: (error: unknown) => {
+      toast.error(getApiErrorMessage(error, 'Failed to delete template'))
     },
   })
 }
@@ -106,9 +104,8 @@ export const useRenderTemplate = () => {
   return useMutation({
     mutationFn: ({ id, data }: { id: number; data: RenderTemplateRequest }) =>
       renderTemplate(id, data),
-    onError: (error: any) => {
-      const message = error.response?.data?.detail || 'Failed to render template'
-      toast.error(message)
+    onError: (error: unknown) => {
+      toast.error(getApiErrorMessage(error, 'Failed to render template'))
     },
   })
 }
@@ -116,9 +113,8 @@ export const useRenderTemplate = () => {
 export const useValidateTemplate = () => {
   return useMutation({
     mutationFn: (data: ValidateTemplateRequest) => validateTemplate(data),
-    onError: (error: any) => {
-      const message = error.response?.data?.detail || 'Failed to validate template'
-      toast.error(message)
+    onError: (error: unknown) => {
+      toast.error(getApiErrorMessage(error, 'Failed to validate template'))
     },
   })
 }
@@ -133,9 +129,8 @@ export const useExtractVariables = () => {
         toast.info('No variables found in template')
       }
     },
-    onError: (error: any) => {
-      const message = error.response?.data?.detail || 'Failed to extract variables'
-      toast.error(message)
+    onError: (error: unknown) => {
+      toast.error(getApiErrorMessage(error, 'Failed to extract variables'))
     },
   })
 }

@@ -4,13 +4,19 @@
  * Centralized, reusable modal wrapper using createPortal
  * Renders to #modal-root to avoid CSS interference from parent components
  *
+ * Features:
+ * - Keyboard navigation (Escape to close)
+ * - Focus trap (keeps focus within modal)
+ * - ARIA attributes for screen readers
+ * - Body scroll lock when open
+ *
  * @usage
  * <Modal isOpen={isOpen} onClose={onClose} title="My Modal" maxWidth="lg">
  *   <div className="p-6">Content here</div>
  * </Modal>
  */
 
-import { ReactNode } from 'react';
+import { ReactNode, useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 
@@ -90,6 +96,9 @@ interface ModalProps {
 // MODAL COMPONENT
 // ============================================================================
 
+// Focusable elements selector for focus trap
+const FOCUSABLE_SELECTOR = 'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])';
+
 export function Modal({
   isOpen,
   onClose,
@@ -105,6 +114,76 @@ export function Modal({
   backdropOpacity = 50,
   className = '',
 }: ModalProps) {
+  const modalRef = useRef<HTMLDivElement>(null);
+  const previousActiveElement = useRef<HTMLElement | null>(null);
+
+  // Handle Escape key to close modal
+  const handleKeyDown = useCallback((event: KeyboardEvent) => {
+    if (event.key === 'Escape') {
+      onClose();
+    }
+
+    // Focus trap - Tab key
+    if (event.key === 'Tab' && modalRef.current) {
+      const focusableElements = modalRef.current.querySelectorAll(FOCUSABLE_SELECTOR);
+      const firstElement = focusableElements[0] as HTMLElement;
+      const lastElement = focusableElements[focusableElements.length - 1] as HTMLElement;
+
+      if (event.shiftKey) {
+        // Shift + Tab: if on first element, go to last
+        if (document.activeElement === firstElement) {
+          event.preventDefault();
+          lastElement?.focus();
+        }
+      } else {
+        // Tab: if on last element, go to first
+        if (document.activeElement === lastElement) {
+          event.preventDefault();
+          firstElement?.focus();
+        }
+      }
+    }
+  }, [onClose]);
+
+  // Setup and cleanup effects
+  useEffect(() => {
+    if (!isOpen) return;
+
+    // Store the previously focused element
+    previousActiveElement.current = document.activeElement as HTMLElement;
+
+    // Lock body scroll
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    // Add keyboard listener
+    document.addEventListener('keydown', handleKeyDown);
+
+    // Focus the modal or first focusable element
+    const timeoutId = setTimeout(() => {
+      if (modalRef.current) {
+        const firstFocusable = modalRef.current.querySelector(FOCUSABLE_SELECTOR) as HTMLElement;
+        if (firstFocusable) {
+          firstFocusable.focus();
+        } else {
+          modalRef.current.focus();
+        }
+      }
+    }, 0);
+
+    // Cleanup
+    return () => {
+      document.body.style.overflow = originalOverflow;
+      document.removeEventListener('keydown', handleKeyDown);
+      clearTimeout(timeoutId);
+
+      // Restore focus to previous element
+      if (previousActiveElement.current && previousActiveElement.current.focus) {
+        previousActiveElement.current.focus();
+      }
+    };
+  }, [isOpen, handleKeyDown]);
+
   if (!isOpen) return null;
 
   const handleBackdropClick = () => {
@@ -112,6 +191,9 @@ export function Modal({
       onClose();
     }
   };
+
+  // Generate unique ID for title if it exists
+  const titleId = title ? `modal-title-${Math.random().toString(36).substr(2, 9)}` : undefined;
 
   return createPortal(
     <div
@@ -121,10 +203,16 @@ export function Modal({
         backgroundColor: `rgba(0, 0, 0, ${backdropOpacity / 100})`,
       }}
       onClick={handleBackdropClick}
+      role="presentation"
     >
       <div
+        ref={modalRef}
         className={`bg-white dark:bg-gray-800 rounded-lg w-full ${MAX_WIDTH_CLASSES[maxWidth]} max-h-[90vh] overflow-hidden flex flex-col mx-4 ${className}`}
         onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        tabIndex={-1}
       >
         {/* Custom Header */}
         {customHeader}
@@ -134,7 +222,7 @@ export function Modal({
           <div className="flex items-center justify-between border-b border-gray-200 dark:border-gray-700 px-6 py-4">
             <div>
               {title && (
-                <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+                <h2 id={titleId} className="text-xl font-semibold text-gray-900 dark:text-white">
                   {title}
                 </h2>
               )}
@@ -147,10 +235,10 @@ export function Modal({
             {showCloseButton && (
               <button
                 onClick={onClose}
-                className="p-2 rounded-lg bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-500 dark:text-gray-400 transition-colors"
+                className="p-2 rounded-lg bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-500 dark:text-gray-400 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
                 aria-label="Close modal"
               >
-                <X className="w-5 h-5" />
+                <X className="w-5 h-5" aria-hidden="true" />
               </button>
             )}
           </div>

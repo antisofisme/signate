@@ -21,6 +21,7 @@ import type {
   PMSGuestFilters,
   PMSRoomFilters,
 } from '../types/pms.types'
+import { getApiErrorMessage } from '@/shared/utils/types'
 
 // ===================================
 // Query Keys
@@ -65,8 +66,8 @@ export function useCreatePMSConfig() {
       queryClient.invalidateQueries({ queryKey: PMS_KEYS.config() })
       toast.success('PMS configuration created successfully')
     },
-    onError: (error: any) => {
-      toast.error(error?.response?.data?.detail || 'Failed to create PMS configuration')
+    onError: (error: unknown) => {
+      toast.error(getApiErrorMessage(error, 'Failed to create PMS configuration'))
     },
   })
 }
@@ -83,8 +84,8 @@ export function useUpdatePMSConfig() {
       queryClient.invalidateQueries({ queryKey: PMS_KEYS.config() })
       toast.success('PMS configuration updated successfully')
     },
-    onError: (error: any) => {
-      toast.error(error?.response?.data?.detail || 'Failed to update PMS configuration')
+    onError: (error: unknown) => {
+      toast.error(getApiErrorMessage(error, 'Failed to update PMS configuration'))
     },
   })
 }
@@ -101,8 +102,8 @@ export function useDeletePMSConfig() {
       queryClient.invalidateQueries({ queryKey: PMS_KEYS.config() })
       toast.success('PMS configuration deleted successfully')
     },
-    onError: (error: any) => {
-      toast.error(error?.response?.data?.detail || 'Failed to delete PMS configuration')
+    onError: (error: unknown) => {
+      toast.error(getApiErrorMessage(error, 'Failed to delete PMS configuration'))
     },
   })
 }
@@ -120,8 +121,8 @@ export function useTestPMSConnection() {
         toast.error(`Connection failed: ${data.message}`)
       }
     },
-    onError: (error: any) => {
-      toast.error(error?.response?.data?.detail || 'Connection test failed')
+    onError: (error: unknown) => {
+      toast.error(getApiErrorMessage(error, 'Connection test failed'))
     },
   })
 }
@@ -157,8 +158,8 @@ export function useTriggerPMSSync() {
       queryClient.invalidateQueries({ queryKey: PMS_KEYS.stats() })
       toast.success('PMS sync triggered successfully')
     },
-    onError: (error: any) => {
-      toast.error(error?.response?.data?.detail || 'Failed to trigger PMS sync')
+    onError: (error: unknown) => {
+      toast.error(getApiErrorMessage(error, 'Failed to trigger PMS sync'))
     },
   })
 }
@@ -228,8 +229,8 @@ export function useSyncPMSGuests() {
         toast.warning(`${data.errors.length} errors occurred during sync`)
       }
     },
-    onError: (error: any) => {
-      toast.error(error?.response?.data?.detail || 'Failed to sync guests')
+    onError: (error: unknown) => {
+      toast.error(getApiErrorMessage(error, 'Failed to sync guests'))
     },
   })
 }
@@ -277,8 +278,8 @@ export function useSyncPMSRooms() {
         toast.warning(`${data.errors.length} errors occurred during sync`)
       }
     },
-    onError: (error: any) => {
-      toast.error(error?.response?.data?.detail || 'Failed to sync rooms')
+    onError: (error: unknown) => {
+      toast.error(getApiErrorMessage(error, 'Failed to sync rooms'))
     },
   })
 }
@@ -300,8 +301,8 @@ export function useMapRoomToDevice() {
 
       toast.success('Room mapped to device successfully')
     },
-    onError: (error: any) => {
-      toast.error(error?.response?.data?.detail || 'Failed to map room to device')
+    onError: (error: unknown) => {
+      toast.error(getApiErrorMessage(error, 'Failed to map room to device'))
     },
   })
 }
@@ -323,8 +324,8 @@ export function useUnmapRoomFromDevice() {
 
       toast.success('Room unmapped from device successfully')
     },
-    onError: (error: any) => {
-      toast.error(error?.response?.data?.detail || 'Failed to unmap room from device')
+    onError: (error: unknown) => {
+      toast.error(getApiErrorMessage(error, 'Failed to unmap room from device'))
     },
   })
 }

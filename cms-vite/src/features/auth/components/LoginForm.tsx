@@ -65,11 +65,12 @@ export function LoginForm() {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
+    <form onSubmit={handleSubmit} className="space-y-6" aria-label={t('auth.loginForm', 'Login form')}>
       {/* Username Field */}
       <div>
         <label htmlFor="username" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
           Username
+          <span className="text-red-500 ml-1" aria-hidden="true">*</span>
         </label>
         <input
           id="username"
@@ -78,7 +79,11 @@ export function LoginForm() {
           onChange={(e) => setUsername(e.target.value)}
           onBlur={(e) => validateUsername(e.target.value)}
           disabled={isPending}
-          className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+          aria-required="true"
+          aria-invalid={!!errors.username}
+          aria-describedby={errors.username ? 'username-error' : undefined}
+          autoComplete="username"
+          className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-offset-2 ${
             errors.username
               ? 'border-red-500 focus:ring-red-500'
               : 'border-gray-300 dark:border-gray-600 focus:ring-blue-500'
@@ -86,7 +91,7 @@ export function LoginForm() {
           placeholder={t('auth.placeholders.username')}
         />
         {errors.username && (
-          <p className="mt-1 text-sm text-red-600">{errors.username}</p>
+          <p id="username-error" className="mt-1 text-sm text-red-600" role="alert">{errors.username}</p>
         )}
       </div>
 
@@ -94,6 +99,7 @@ export function LoginForm() {
       <div>
         <label htmlFor="password" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
           Password
+          <span className="text-red-500 ml-1" aria-hidden="true">*</span>
         </label>
         <input
           id="password"
@@ -102,7 +108,11 @@ export function LoginForm() {
           onChange={(e) => setPassword(e.target.value)}
           onBlur={(e) => validatePassword(e.target.value)}
           disabled={isPending}
-          className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+          aria-required="true"
+          aria-invalid={!!errors.password}
+          aria-describedby={errors.password ? 'password-error' : undefined}
+          autoComplete="current-password"
+          className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-offset-2 ${
             errors.password
               ? 'border-red-500 focus:ring-red-500'
               : 'border-gray-300 dark:border-gray-600 focus:ring-blue-500'
@@ -110,7 +120,7 @@ export function LoginForm() {
           placeholder={t('auth.placeholders.password')}
         />
         {errors.password && (
-          <p className="mt-1 text-sm text-red-600">{errors.password}</p>
+          <p id="password-error" className="mt-1 text-sm text-red-600" role="alert">{errors.password}</p>
         )}
       </div>
 
@@ -118,7 +128,9 @@ export function LoginForm() {
       <button
         type="submit"
         disabled={isPending || !username || !password}
-        className={`w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white ${
+        aria-busy={isPending}
+        aria-label={isPending ? t('auth.loggingIn', 'Logging in...') : t('auth.login', 'Login')}
+        className={`w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white transition-colors ${
           isPending || !username || !password
             ? 'bg-gray-400 cursor-not-allowed'
             : 'bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500'
@@ -126,11 +138,11 @@ export function LoginForm() {
       >
         {isPending ? (
           <span className="flex items-center">
-            <Loader2 className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" />
-            Loading...
+            <Loader2 className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" aria-hidden="true" />
+            <span>{t('auth.loggingIn', 'Logging in...')}</span>
           </span>
         ) : (
-          'Login'
+          t('auth.login', 'Login')
         )}
       </button>
     </form>

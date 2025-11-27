@@ -54,17 +54,19 @@ export function OverviewTab({ device, isOnline, onRefresh }: OverviewTabProps) {
   return (
     <div className="p-6 space-y-6">
       {/* Quick Actions Bar */}
-      <div>
-        <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
+      <div role="region" aria-labelledby="quick-actions-heading">
+        <h3 id="quick-actions-heading" className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
           Quick Actions
         </h3>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3" role="group" aria-label="Device quick actions">
           <button
             onClick={() => handleQuickCommand('refresh', 'Refresh Content')}
             disabled={sendCommand.isPending || !isOnline}
-            className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors flex flex-col items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors flex flex-col items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+            aria-label="Refresh device content"
+            aria-disabled={sendCommand.isPending || !isOnline}
           >
-            <RotateCw className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+            <RotateCw className="w-5 h-5 text-blue-600 dark:text-blue-400" aria-hidden="true" />
             <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
               Refresh
             </span>
@@ -73,9 +75,11 @@ export function OverviewTab({ device, isOnline, onRefresh }: OverviewTabProps) {
           <button
             onClick={() => handleQuickCommand('reboot', 'Reboot')}
             disabled={sendCommand.isPending || !isOnline}
-            className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors flex flex-col items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors flex flex-col items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2"
+            aria-label="Reboot device"
+            aria-disabled={sendCommand.isPending || !isOnline}
           >
-            <Zap className="w-5 h-5 text-orange-600 dark:text-orange-400" />
+            <Zap className="w-5 h-5 text-orange-600 dark:text-orange-400" aria-hidden="true" />
             <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
               Reboot
             </span>
@@ -84,9 +88,11 @@ export function OverviewTab({ device, isOnline, onRefresh }: OverviewTabProps) {
           <button
             onClick={() => handleQuickCommand('screenshot', 'Screenshot')}
             disabled={sendCommand.isPending || !isOnline}
-            className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors flex flex-col items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors flex flex-col items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2"
+            aria-label="Take device screenshot"
+            aria-disabled={sendCommand.isPending || !isOnline}
           >
-            <Camera className="w-5 h-5 text-purple-600 dark:text-purple-400" />
+            <Camera className="w-5 h-5 text-purple-600 dark:text-purple-400" aria-hidden="true" />
             <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
               Screenshot
             </span>
@@ -95,9 +101,11 @@ export function OverviewTab({ device, isOnline, onRefresh }: OverviewTabProps) {
           <button
             onClick={() => toast.info('Preview feature coming soon')}
             disabled={!isOnline}
-            className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors flex flex-col items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors flex flex-col items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2"
+            aria-label="Preview device display"
+            aria-disabled={!isOnline}
           >
-            <Eye className="w-5 h-5 text-green-600 dark:text-green-400" />
+            <Eye className="w-5 h-5 text-green-600 dark:text-green-400" aria-hidden="true" />
             <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
               Preview
             </span>

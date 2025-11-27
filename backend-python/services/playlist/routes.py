@@ -66,13 +66,25 @@ def get_user_repository(db: Session = Depends(get_db)) -> IUserRepository:
     return UserRepository(db)
 
 
+def get_audit_log_repository(db: Session = Depends(get_db)):
+    """Get audit log repository instance"""
+    from services.audit.repositories.audit_log_repo import AuditLogRepository
+    return AuditLogRepository(db)
+
+
+def get_create_audit_log_use_case(audit_repo = Depends(get_audit_log_repository)):
+    """Get create audit log use case"""
+    from services.audit.use_cases.create_audit_log import CreateAuditLogUseCase
+    return CreateAuditLogUseCase(audit_repo)
+
+
 # ⚠️ SECURITY FIX: Removed mock get_current_user() - now imported from shared.auth
 # This was a CRITICAL security vulnerability (CVSS 8.5) - complete authentication bypass!
 
 
-def get_audit_logger() -> AuditLogger:
-    """Get audit logger instance"""
-    return AuditLogger()
+def get_audit_logger(create_audit_use_case = Depends(get_create_audit_log_use_case)) -> AuditLogger:
+    """Get audit logger with database persistence"""
+    return AuditLogger(create_audit_log_use_case=create_audit_use_case)
 
 
 # ========== Use Case Factories ==========

@@ -5,6 +5,8 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
+import { getApiErrorMessage } from '@/shared/utils/types'
+import { useAuthStore } from '@/lib/stores/authStore'
 import * as rbacApi from '../api/rbacApi'
 import type {
   Permission,
@@ -148,7 +150,17 @@ export function useCanPerformAction(
   userId?: number
 ) {
   // Get current user ID from auth store if not provided
-  const currentUserId = userId || getCurrentUserId()
+  const authUser = useAuthStore((state) => state.user)
+  const currentUserId = userId ?? authUser?.id
+
+  // Return safe defaults if no user ID available
+  if (currentUserId === undefined) {
+    return {
+      hasPermission: false,
+      isLoading: false,
+      permissions: undefined,
+    }
+  }
 
   return useHasPermission(currentUserId, resource, action)
 }
@@ -173,8 +185,8 @@ export function useAssignRoleToUser() {
       })
       toast.success('Role assigned to user')
     },
-    onError: (error: any) => {
-      toast.error(error.response?.data?.message || 'Failed to assign role')
+    onError: (error: unknown) => {
+      toast.error(getApiErrorMessage(error, 'Failed to assign role'))
     },
   })
 }
@@ -195,8 +207,8 @@ export function useRemoveRoleFromUser() {
       })
       toast.success('Role removed from user')
     },
-    onError: (error: any) => {
-      toast.error(error.response?.data?.message || 'Failed to remove role')
+    onError: (error: unknown) => {
+      toast.error(getApiErrorMessage(error, 'Failed to remove role'))
     },
   })
 }
@@ -206,19 +218,33 @@ export function useRemoveRoleFromUser() {
 // ============================================================================
 
 /**
- * Get current user ID from localStorage
- * This should ideally come from auth store
+ * Get current user ID from auth store
+ * Safe helper function that doesn't rely on JWT decoding
+ * @deprecated Use useAuthStore directly in hooks instead
  */
 function getCurrentUserId(): number | undefined {
   try {
-    const authToken = localStorage.getItem('auth-token')
-    if (!authToken) return undefined
+    // Use auth store state directly (safer than JWT decoding)
+    const authState = useAuthStore.getState()
+    if (authState.user?.id) {
+      return authState.user.id
+    }
 
-    // Decode JWT token to get user ID
-    const payload = JSON.parse(atob(authToken.split('.')[1]))
-    return payload.user_id || payload.sub
+    // Fallback: Try to parse from localStorage (with proper validation)
+    const authStorage = localStorage.getItem('auth-storage')
+    if (!authStorage) return undefined
+
+    const parsed = JSON.parse(authStorage)
+    const userId = parsed?.state?.user?.id
+
+    // Validate userId is a positive number
+    if (typeof userId === 'number' && userId > 0) {
+      return userId
+    }
+
+    return undefined
   } catch (error) {
-    console.error('Failed to get user ID from token:', error)
+    console.error('Failed to get user ID:', error)
     return undefined
   }
 }

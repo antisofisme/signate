@@ -30,14 +30,14 @@ class VirusScanner:
         """
         self.host = host or os.getenv('CLAMAV_HOST', 'localhost')
         self.port = int(port or os.getenv('CLAMAV_PORT', 3310))
-        self.timeout = 30  # 30 seconds timeout
+        self.timeout = int(os.getenv('CLAMAV_TIMEOUT', '30'))  # Default: 30 seconds
 
-    def scan_file(self, file_path: Path) -> Tuple[bool, str]:
+    def scan_file(self, file_path) -> Tuple[bool, str]:
         """
         Scan file for viruses using ClamAV
 
         Args:
-            file_path: Path to file to scan
+            file_path: Path to file to scan (Path object or string)
 
         Returns:
             Tuple of (is_clean, result_message)
@@ -49,6 +49,10 @@ class VirusScanner:
             TimeoutError: If scan times out
         """
         try:
+            # Convert string to Path if needed
+            if isinstance(file_path, str):
+                file_path = Path(file_path)
+
             # Check if file exists
             if not file_path.exists():
                 raise FileNotFoundError(f"File not found: {file_path}")

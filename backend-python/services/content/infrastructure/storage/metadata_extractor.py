@@ -5,6 +5,7 @@ Extracts media information from video, audio, and image files
 
 import subprocess
 import json
+import os
 from pathlib import Path
 from typing import Dict, Any, Optional
 from PIL import Image
@@ -71,7 +72,7 @@ class MetadataExtractor:
                 cmd,
                 capture_output=True,
                 text=True,
-                timeout=30
+                timeout=int(os.getenv('FFPROBE_TIMEOUT', '30'))  # Default: 30 seconds
             )
 
             if result.returncode != 0:

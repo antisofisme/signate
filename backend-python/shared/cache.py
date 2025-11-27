@@ -77,16 +77,20 @@ class CacheService:
             return None
     
     def set(
-        self, 
-        key: str, 
-        value: Any, 
-        ttl: int = 300,  # 5 minutes default
+        self,
+        key: str,
+        value: Any,
+        ttl: int = None,  # Uses env var if not specified
         nx: bool = False  # Only set if not exists
     ) -> bool:
         """Set value in cache with TTL"""
         if not self.redis_client:
             return False
-        
+
+        # Use default TTL from env if not specified
+        if ttl is None:
+            ttl = int(os.getenv("CACHE_DEFAULT_TTL", "300"))
+
         try:
             serialized = self._serialize(value)
             if nx:
@@ -199,11 +203,15 @@ class CacheService:
         except:
             return {}
     
-    def set_many(self, mapping: dict, ttl: int = 300) -> bool:
+    def set_many(self, mapping: dict, ttl: int = None) -> bool:
         """Set multiple values at once"""
         if not self.redis_client:
             return False
-        
+
+        # Use default TTL from env if not specified
+        if ttl is None:
+            ttl = int(os.getenv("CACHE_DEFAULT_TTL", "300"))
+
         try:
             pipe = self.redis_client.pipeline()
             for key, value in mapping.items():

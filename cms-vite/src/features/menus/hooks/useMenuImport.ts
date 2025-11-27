@@ -6,6 +6,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { menuApi } from '../api/menuApi';
 import { menuKeys } from './useMenus';
+import { getApiErrorMessage } from '@/shared/utils/types';
 
 // ========== Import History Query ==========
 
@@ -46,9 +47,8 @@ export const useImportMenuItems = (menuId: number) => {
         toast.error('Import failed. Please check the file format.');
       }
     },
-    onError: (error: any) => {
-      const message = error.response?.data?.message || 'Failed to import Excel file';
-      toast.error(message);
+    onError: (error: unknown) => {
+      toast.error(getApiErrorMessage(error, 'Failed to import Excel file'));
     },
   });
 };
@@ -72,9 +72,8 @@ export const useDownloadTemplate = () => {
 
       toast.success('Template downloaded successfully');
     },
-    onError: (error: any) => {
-      const message = error.response?.data?.message || 'Failed to download template';
-      toast.error(message);
+    onError: (error: unknown) => {
+      toast.error(getApiErrorMessage(error, 'Failed to download template'));
     },
   });
 };
@@ -99,9 +98,8 @@ export const useExportMenu = () => {
 
       toast.success('Menu exported successfully');
     },
-    onError: (error: any) => {
-      const message = error.response?.data?.message || 'Failed to export menu';
-      toast.error(message);
+    onError: (error: unknown) => {
+      toast.error(getApiErrorMessage(error, 'Failed to export menu'));
     },
   });
 };
@@ -126,9 +124,8 @@ export const useDownloadQRCode = () => {
 
       toast.success('QR code downloaded successfully');
     },
-    onError: (error: any) => {
-      const message = error.response?.data?.message || 'Failed to download QR code';
-      toast.error(message);
+    onError: (error: unknown) => {
+      toast.error(getApiErrorMessage(error, 'Failed to download QR code'));
     },
   });
 };

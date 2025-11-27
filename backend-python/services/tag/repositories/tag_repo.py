@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session, selectinload
 from sqlalchemy import func, select
 from ..domain.interfaces import ITagRepository
 from ..domain.tag import Tag
-from .models import TagModel
+from .models import TagModel, ContentTag
 
 
 class TagRepository(ITagRepository):
@@ -145,9 +145,6 @@ class TagRepository(ITagRepository):
         Get usage statistics for a tag
         Returns device_count and content_count
         """
-        # Import content_tags model
-        from services.tag.models import ContentTag
-
         # Count content assignments
         content_count = (
             self.db.query(func.count(ContentTag.id))
@@ -162,7 +159,6 @@ class TagRepository(ITagRepository):
 
     def assign_to_content(self, tag_id: int, content_id: int, organization_id: int) -> bool:
         """Assign tag to a content item"""
-        from services.tag.models import ContentTag
         from services.content.repositories.models import ContentModel as Content
 
         # Verify tag belongs to organization
@@ -203,8 +199,6 @@ class TagRepository(ITagRepository):
 
     def unassign_from_content(self, tag_id: int, content_id: int, organization_id: int) -> bool:
         """Unassign tag from a content item"""
-        from services.tag.models import ContentTag
-
         # Verify tag belongs to organization
         tag = self.find_by_id(tag_id, organization_id)
         if not tag:
@@ -229,7 +223,6 @@ class TagRepository(ITagRepository):
 
     def assign_to_contents(self, tag_id: int, content_ids: List[int], organization_id: int) -> dict:
         """Bulk assign tag to multiple content items"""
-        from services.tag.models import ContentTag
         from services.content.repositories.models import ContentModel as Content
 
         # Verify tag belongs to organization
@@ -280,8 +273,6 @@ class TagRepository(ITagRepository):
 
     def unassign_from_contents(self, tag_id: int, content_ids: List[int], organization_id: int) -> dict:
         """Bulk unassign tag from multiple content items"""
-        from services.tag.models import ContentTag
-
         # Verify tag belongs to organization
         tag = self.find_by_id(tag_id, organization_id)
         if not tag:
@@ -305,7 +296,6 @@ class TagRepository(ITagRepository):
 
     def get_content_tags(self, content_id: int, organization_id: int) -> List[Tag]:
         """Get all tags assigned to a content item"""
-        from services.tag.models import ContentTag
         from services.content.repositories.models import ContentModel as Content
 
         # Verify content belongs to organization

@@ -264,6 +264,124 @@ class MediaCache {
       };
     }
   }
+
+  /**
+   * Clean up old cache entries
+   * Removes entries older than maxAge (default: 7 days)
+   * Also enforces maxSize limit (default: 500 MB)
+   */
+  async cleanupOldCache(options?: {
+    maxAgeMs?: number;
+    maxSizeBytes?: number;
+  }): Promise<{
+    removedByAge: number;
+    removedBySize: number;
+    freedBytes: number;
+  }> {
+    const {
+      maxAgeMs = 7 * 24 * 60 * 60 * 1000, // 7 days default
+      maxSizeBytes = 500 * 1024 * 1024, // 500 MB default
+    } = options || {};
+
+    const result = {
+      removedByAge: 0,
+      removedBySize: 0,
+      freedBytes: 0,
+    };
+
+    try {
+      const allCached = await dbManager.getAll<CachedMediaEntry>(this.STORE_NAME);
+      const now = Date.now();
+
+      // Sort by timestamp (oldest first)
+      allCached.sort((a, b) => a.timestamp - b.timestamp);
+
+      // Phase 1: Remove entries older than maxAge
+      for (const entry of allCached) {
+        const age = now - entry.timestamp;
+        if (age > maxAgeMs) {
+          try {
+            await this.deleteFromCache(entry.content_id);
+            result.removedByAge++;
+            result.freedBytes += entry.size;
+          } catch (error) {
+            SharedLogger.error(`[MediaCache] Cleanup: Failed to remove old entry ${entry.content_id}:`, error);
+          }
+        }
+      }
+
+      // Phase 2: If still over size limit, remove oldest entries
+      let currentSize = allCached.reduce((sum, entry) => sum + entry.size, 0) - result.freedBytes;
+
+      if (currentSize > maxSizeBytes) {
+        // Re-fetch remaining entries (after age cleanup)
+        const remainingCached = await dbManager.getAll<CachedMediaEntry>(this.STORE_NAME);
+        remainingCached.sort((a, b) => a.timestamp - b.timestamp);
+
+        for (const entry of remainingCached) {
+          if (currentSize <= maxSizeBytes) break;
+
+          try {
+            await this.deleteFromCache(entry.content_id);
+            result.removedBySize++;
+            result.freedBytes += entry.size;
+            currentSize -= entry.size;
+          } catch (error) {
+            SharedLogger.error(`[MediaCache] Cleanup: Failed to remove oversized entry ${entry.content_id}:`, error);
+          }
+        }
+      }
+
+      if (result.removedByAge > 0 || result.removedBySize > 0) {
+        SharedLogger.log(
+          `[MediaCache] Cleanup complete: ` +
+          `${result.removedByAge} old entries, ${result.removedBySize} size-limited, ` +
+          `freed ${(result.freedBytes / 1024 / 1024).toFixed(2)} MB`
+        );
+      }
+    } catch (error) {
+      SharedLogger.error('[MediaCache] Cleanup failed:', error);
+    }
+
+    return result;
+  }
+
+  /**
+   * Start periodic cache cleanup (runs every 24 hours)
+   */
+  private cleanupIntervalId: ReturnType<typeof setInterval> | null = null;
+
+  startPeriodicCleanup(intervalMs: number = 24 * 60 * 60 * 1000): void {
+    // Clear existing interval if any
+    if (this.cleanupIntervalId) {
+      clearInterval(this.cleanupIntervalId);
+    }
+
+    // Run initial cleanup
+    this.cleanupOldCache().catch((error) => {
+      SharedLogger.error('[MediaCache] Initial cleanup failed:', error);
+    });
+
+    // Schedule periodic cleanup
+    this.cleanupIntervalId = setInterval(() => {
+      this.cleanupOldCache().catch((error) => {
+        SharedLogger.error('[MediaCache] Periodic cleanup failed:', error);
+      });
+    }, intervalMs);
+
+    SharedLogger.log(`[MediaCache] Periodic cleanup scheduled (every ${intervalMs / 1000 / 60 / 60} hours)`);
+  }
+
+  /**
+   * Stop periodic cache cleanup
+   */
+  stopPeriodicCleanup(): void {
+    if (this.cleanupIntervalId) {
+      clearInterval(this.cleanupIntervalId);
+      this.cleanupIntervalId = null;
+      SharedLogger.log('[MediaCache] Periodic cleanup stopped');
+    }
+  }
 }
 
 // Export singleton instance

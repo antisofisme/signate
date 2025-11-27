@@ -5,6 +5,7 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
+import { getApiErrorMessage } from '@/shared/utils/types'
 import {
   getTranslations,
   getTranslation,
@@ -88,8 +89,8 @@ export const useCreateTranslation = () => {
       queryClient.invalidateQueries({ queryKey: ['translation-stats'] })
       toast.success('Translation created successfully')
     },
-    onError: (error: any) => {
-      toast.error(error.response?.data?.detail || 'Failed to create translation')
+    onError: (error: unknown) => {
+      toast.error(getApiErrorMessage(error, 'Failed to create translation'))
     },
   })
 }
@@ -110,8 +111,8 @@ export const useUpdateTranslation = () => {
       queryClient.invalidateQueries({ queryKey: ['translation-stats'] })
       toast.success('Translation updated successfully')
     },
-    onError: (error: any) => {
-      toast.error(error.response?.data?.detail || 'Failed to update translation')
+    onError: (error: unknown) => {
+      toast.error(getApiErrorMessage(error, 'Failed to update translation'))
     },
   })
 }
@@ -130,8 +131,8 @@ export const useDeleteTranslation = () => {
       queryClient.invalidateQueries({ queryKey: ['translation-stats'] })
       toast.success('Translation deleted successfully')
     },
-    onError: (error: any) => {
-      toast.error(error.response?.data?.detail || 'Failed to delete translation')
+    onError: (error: unknown) => {
+      toast.error(getApiErrorMessage(error, 'Failed to delete translation'))
     },
   })
 }
@@ -150,8 +151,8 @@ export const useBulkCreateTranslations = () => {
       queryClient.invalidateQueries({ queryKey: ['translation-stats'] })
       toast.success(`${data.created} translation(s) created successfully`)
     },
-    onError: (error: any) => {
-      toast.error(error.response?.data?.detail || 'Failed to create translations')
+    onError: (error: unknown) => {
+      toast.error(getApiErrorMessage(error, 'Failed to create translations'))
     },
   })
 }
@@ -176,8 +177,8 @@ export const useBulkImportTranslations = () => {
         toast.success(message)
       }
     },
-    onError: (error: any) => {
-      toast.error(error.response?.data?.detail || 'Failed to import translations')
+    onError: (error: unknown) => {
+      toast.error(getApiErrorMessage(error, 'Failed to import translations'))
     },
   })
 }
@@ -197,8 +198,8 @@ export const useApproveTranslation = () => {
       queryClient.invalidateQueries({ queryKey: ['translation-stats'] })
       toast.success('Translation approved')
     },
-    onError: (error: any) => {
-      toast.error(error.response?.data?.detail || 'Failed to approve translation')
+    onError: (error: unknown) => {
+      toast.error(getApiErrorMessage(error, 'Failed to approve translation'))
     },
   })
 }
@@ -218,8 +219,8 @@ export const useRejectTranslation = () => {
       queryClient.invalidateQueries({ queryKey: ['translation-stats'] })
       toast.success('Translation rejected')
     },
-    onError: (error: any) => {
-      toast.error(error.response?.data?.detail || 'Failed to reject translation')
+    onError: (error: unknown) => {
+      toast.error(getApiErrorMessage(error, 'Failed to reject translation'))
     },
   })
 }

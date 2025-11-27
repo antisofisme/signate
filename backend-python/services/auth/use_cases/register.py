@@ -83,11 +83,12 @@ class RegisterUseCase:
                 details={"field": "full_name"}
             )
 
-        # Check if username exists within organization (CRITICAL FIX P0-6)
+        # Check if username exists within organization (per-org unique)
+        # Username is unique per-organization, allowing same username in different organizations
         if organization_id:
             existing_user = self.user_repository.find_by_username_in_org(username, organization_id)
         else:
-            # For super_admin registration without organization
+            # For super_admin registration without organization, check globally
             existing_user = self.user_repository.find_by_username(username)
 
         if existing_user:
@@ -97,13 +98,8 @@ class RegisterUseCase:
                 details={"field": "username"}
             )
 
-        # Check if email exists within organization (CRITICAL FIX P0-6)
-        if organization_id:
-            existing_email = self.user_repository.find_by_email_in_org(email, organization_id)
-        else:
-            # For super_admin registration without organization
-            existing_email = self.user_repository.find_by_email(email)
-
+        # Check if email exists globally (email stays globally unique for login)
+        existing_email = self.user_repository.find_by_email(email)
         if existing_email:
             raise ValidationError(
                 message=f"Email '{email}' sudah terdaftar",

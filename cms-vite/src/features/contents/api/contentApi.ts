@@ -186,7 +186,7 @@ export const downloadContent = async (id: number, filename: string): Promise<voi
  * Bulk delete content
  */
 export const bulkDeleteContent = async (ids: number[]): Promise<void> => {
-  await apiClient.post(API_ENDPOINTS.CONTENT.BULK_DELETE, { ids });
+  await apiClient.post(API_ENDPOINTS.CONTENT.BULK_DELETE, { content_ids: ids });
 };
 
 /**

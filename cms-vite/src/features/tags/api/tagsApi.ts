@@ -41,8 +41,9 @@ export const tagsApi = {
    * @returns Tag details
    */
   get: async (id: number): Promise<Tag> => {
-    const response = await apiClient.get<{success: boolean; data: Tag}>(API_ENDPOINTS.TAGS.GET(id));
-    return response.data.data;
+    const response = await apiClient.get<Tag>(API_ENDPOINTS.TAGS.GET(id));
+    // Interceptor already unwraps { success, data } to just data
+    return response.data;
   },
 
   /**
@@ -51,12 +52,13 @@ export const tagsApi = {
    * @returns Tag with device and content counts
    */
   getUsage: async (id: number): Promise<TagWithUsage> => {
-    const response = await apiClient.get<{success: boolean; data: {tag: Tag; usage: {device_count: number; content_count: number}}}>(
+    const response = await apiClient.get<{tag: Tag; usage: {device_count: number; content_count: number}}>(
       API_ENDPOINTS.TAGS.USAGE(id)
     );
+    // Interceptor already unwraps { success, data } to just data
     return {
-      tag: response.data.data.tag,
-      usage: response.data.data.usage
+      tag: response.data.tag,
+      usage: response.data.usage
     };
   },
 
@@ -66,11 +68,12 @@ export const tagsApi = {
    * @returns Created tag
    */
   create: async (tagData: CreateTagRequest): Promise<Tag> => {
-    const response = await apiClient.post<{success: boolean; data: Tag}>(
+    const response = await apiClient.post<Tag>(
       API_ENDPOINTS.TAGS.CREATE,
       tagData
     );
-    return response.data.data;
+    // Interceptor already unwraps { success, data } to just data
+    return response.data;
   },
 
   /**
@@ -80,11 +83,12 @@ export const tagsApi = {
    * @returns Updated tag
    */
   update: async (id: number, tagData: UpdateTagRequest): Promise<Tag> => {
-    const response = await apiClient.put<{success: boolean; data: Tag}>(
+    const response = await apiClient.put<Tag>(
       API_ENDPOINTS.TAGS.UPDATE(id),
       tagData
     );
-    return response.data.data;
+    // Interceptor already unwraps { success, data } to just data
+    return response.data;
   },
 
   /**

@@ -5,9 +5,10 @@
 
 import { useState } from 'react'
 import { Send, Loader2, CheckCircle, XCircle, Users, AlertTriangle } from 'lucide-react'
-import { deviceCommandApi } from '../api/commands'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
+import { getApiErrorMessage } from '@/shared/utils/types'
+import { deviceCommandApi } from '../api/commands'
 import type { CommandType } from '../types/commands'
 import { COMMAND_TYPE_INFO } from '../types/commandTemplates'
 
@@ -48,8 +49,8 @@ export function BulkCommandSender({ devices, onComplete }: BulkCommandSenderProp
         }, 3000)
       }
     },
-    onError: (error: any) => {
-      toast.error(error?.response?.data?.detail || 'Failed to send bulk command')
+    onError: (error: unknown) => {
+      toast.error(getApiErrorMessage(error, 'Failed to send bulk command'))
     },
   })
 

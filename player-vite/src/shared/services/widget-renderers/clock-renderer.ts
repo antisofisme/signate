@@ -4,7 +4,6 @@
 
 import { ClockWidget, WidgetRenderContext, IWidgetRenderer } from '@shared/models/widget.model';
 import { logger } from '@shared/logger';
-import { i18n } from '@shared/services/i18n';
 
 export class ClockRenderer implements IWidgetRenderer {
   private container?: HTMLElement;
@@ -161,24 +160,24 @@ export class ClockRenderer implements IWidgetRenderer {
 
   private updateDigitalClock(element: HTMLElement, config: ClockWidget['config']): void {
     const now = this.getTime(config.timezone);
-    
-    // Use i18n for time formatting based on locale
-    const locale = i18n.getLocale();
+
+    // Use English locale for time formatting
+    const locale = 'en-US';
     const options: Intl.DateTimeFormatOptions = {
       hour: '2-digit',
       minute: '2-digit',
       hour12: config.format === '12h'
     };
-    
+
     if (config.show_seconds) {
       options.second = '2-digit';
     }
-    
+
     // Add timezone if specified
     if (config.timezone) {
       options.timeZone = config.timezone;
     }
-    
+
     const timeString = now.toLocaleTimeString(locale, options);
     element.textContent = timeString;
   }

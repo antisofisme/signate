@@ -5,7 +5,7 @@ Implements organization data access
 
 from typing import List, Optional
 from sqlalchemy.orm import Session
-from .models import OrganizationModel
+from .models import OrganizationModel, UserModel
 
 
 class OrganizationRepository:
@@ -34,7 +34,29 @@ class OrganizationRepository:
 
     def get_user_organizations(self, user_id: int) -> List[OrganizationModel]:
         """
-        Get organizations accessible to user
-        For now, returns all organizations (user can select which one to use)
+        Get organizations accessible by a user.
+        - SUPER_ADMIN: All active organizations
+        - Other roles: Only their own organization
         """
-        return self.get_all_active()
+        # Get user with role relationship
+        user = self.db.query(UserModel).filter(
+            UserModel.id == user_id,
+            UserModel.is_active == True
+        ).first()
+
+        if not user:
+            return []
+
+        # SUPER_ADMIN can see all organizations
+        if user.role and user.role.name.lower() == "super_admin":
+            return self.get_all_active()
+
+        # Other users only see their organization
+        if user.organization_id:
+            org = self.db.query(OrganizationModel).filter(
+                OrganizationModel.id == user.organization_id,
+                OrganizationModel.is_active == True
+            ).first()
+            return [org] if org else []
+
+        return []

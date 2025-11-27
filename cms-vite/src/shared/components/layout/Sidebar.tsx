@@ -25,7 +25,6 @@ import {
   Calendar,
   Languages,
   FileCode,
-  Shield,
   Hotel,
   CloudRain,
   ChevronDown,
@@ -65,7 +64,6 @@ export default function Sidebar() {
     // customization: false, // HIDDEN: Belum dikembangkan
     // integrations: false, // HIDDEN: Belum dikembangkan
     insights: false,
-    security: false,
   });
 
   const toggleGroup = (groupKey: string) => {
@@ -96,7 +94,6 @@ export default function Sidebar() {
       items: [
         { name: t('navigation.contents'), href: '/contents', icon: FileImage },
         { name: t('navigation.playlists'), href: '/playlists', icon: ListVideo },
-        { name: 'Digital Menus', href: '/menus', icon: UtensilsCrossed },
         { name: t('navigation.schedules'), href: '/schedules', icon: Calendar },
         { name: t('navigation.tags'), href: '/tags', icon: Tag },
       ],
@@ -120,20 +117,21 @@ export default function Sidebar() {
     //     { name: 'Weather Service', href: '/integrations/weather', icon: CloudRain },
     //   ],
     // },
+  ];
+
+  // Standalone feature items (rendered between groups and insights)
+  const standaloneFeatures: NavItem[] = [
+    { name: 'Digital Menus', href: '/menus', icon: UtensilsCrossed },
+  ];
+
+  // Insight group (Security moved to Settings page)
+  const bottomGroups: NavGroup[] = [
     {
       name: 'Insights',
       icon: BarChart3,
       items: [
         { name: t('navigation.analytics'), href: '/analytics', icon: BarChart3 },
         { name: t('navigation.auditLogs'), href: '/audit-logs', icon: FileText },
-      ],
-    },
-    {
-      name: 'Security',
-      icon: Shield,
-      items: [
-        { name: 'Active Sessions', href: '/sessions', icon: Shield },
-        { name: 'Roles & Permissions', href: '/roles', icon: Shield },
       ],
     },
   ];
@@ -222,8 +220,88 @@ export default function Sidebar() {
               );
             })}
 
-            {/* Grouped Navigation */}
-            {navigationGroups.map((group, index) => {
+            {/* Grouped Navigation (Devices, Content) */}
+            {navigationGroups.map((group) => {
+              const groupKey = group.name.toLowerCase().replace(/\s+/g, '-');
+              const isOpen = openGroups[groupKey];
+              const hasActiveItem = isGroupActive(group.items);
+              const GroupIcon = group.icon;
+
+              return (
+                <div key={group.name} className="space-y-1">
+                  {/* Group Header */}
+                  <button
+                    onClick={() => toggleGroup(groupKey)}
+                    className={`flex items-center justify-between w-full px-3 py-2.5 rounded-lg transition-colors ${
+                      hasActiveItem
+                        ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400'
+                        : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                    }`}
+                  >
+                    <div className="flex items-center">
+                      <GroupIcon className="w-5 h-5 mr-3" />
+                      <span className="font-medium text-sm">{group.name}</span>
+                    </div>
+                    {isOpen ? (
+                      <ChevronDown className="w-4 h-4" />
+                    ) : (
+                      <ChevronRight className="w-4 h-4" />
+                    )}
+                  </button>
+
+                  {/* Group Items */}
+                  {isOpen && (
+                    <div className="ml-4 space-y-1">
+                      {group.items.map((item) => {
+                        const Icon = item.icon;
+                        const isActive = location.pathname === item.href;
+
+                        return (
+                          <Link
+                            key={item.name}
+                            to={item.href}
+                            onClick={toggleSidebar}
+                            className={`flex items-center px-3 py-2 rounded-lg transition-colors text-sm ${
+                              isActive
+                                ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400'
+                                : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-gray-200'
+                            }`}
+                          >
+                            <Icon className="w-4 h-4 mr-3" />
+                            <span>{item.name}</span>
+                          </Link>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+
+            {/* Standalone Features (Digital Menus) */}
+            {standaloneFeatures.map((item) => {
+              const Icon = item.icon;
+              const isActive = location.pathname === item.href;
+
+              return (
+                <Link
+                  key={item.name}
+                  to={item.href}
+                  onClick={toggleSidebar}
+                  className={`flex items-center px-3 py-2.5 rounded-lg transition-colors ${
+                    isActive
+                      ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400'
+                      : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                  }`}
+                >
+                  <Icon className="w-5 h-5 mr-3" />
+                  <span className="font-medium">{item.name}</span>
+                </Link>
+              );
+            })}
+
+            {/* Bottom Groups (Insights, Security) */}
+            {bottomGroups.map((group) => {
               const groupKey = group.name.toLowerCase().replace(/\s+/g, '-');
               const isOpen = openGroups[groupKey];
               const hasActiveItem = isGroupActive(group.items);

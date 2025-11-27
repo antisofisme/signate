@@ -4,6 +4,7 @@
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
+import { getApiErrorMessage } from '@/shared/utils/types';
 import { playlistApi } from '../api/playlistApi';
 import type {
   CreatePlaylistRequest,
@@ -85,8 +86,8 @@ export const useCreatePlaylist = () => {
 
       toast.success('Playlist created successfully');
     },
-    onError: (error: any) => {
-      toast.error(error?.response?.data?.message || 'Failed to create playlist');
+    onError: (error: unknown) => {
+      toast.error(getApiErrorMessage(error, 'Failed to create playlist'));
     },
   });
 };
@@ -105,8 +106,8 @@ export const useUpdatePlaylist = () => {
       queryClient.invalidateQueries({ queryKey: playlistKeys.detail(variables.id) });
       toast.success('Playlist updated successfully');
     },
-    onError: (error: any) => {
-      toast.error(error?.response?.data?.message || 'Failed to update playlist');
+    onError: (error: unknown) => {
+      toast.error(getApiErrorMessage(error, 'Failed to update playlist'));
     },
   });
 };
@@ -125,13 +126,22 @@ export const useDeletePlaylist = () => {
       // Invalidate device queries (devices may have had this playlist assigned)
       queryClient.invalidateQueries({ queryKey: ['devices'] });
 
+      // Invalidate device-side playlist queries
+      queryClient.invalidateQueries({ queryKey: ['devices', 'playlists'] });
+      queryClient.invalidateQueries({ queryKey: ['device-assignments', 'playlists'] });
+
+      // Invalidate schedule queries (schedules may reference this playlist)
+      queryClient.invalidateQueries({ queryKey: ['schedules'] });
+      queryClient.invalidateQueries({ queryKey: ['device-schedules'] });
+      queryClient.invalidateQueries({ queryKey: ['playlist-schedules'] });
+
       // Invalidate dashboard queries (playlist count and active playlists change)
       queryClient.invalidateQueries({ queryKey: ['dashboard'] });
 
       toast.success('Playlist deleted successfully');
     },
-    onError: (error: any) => {
-      toast.error(error?.response?.data?.message || 'Failed to delete playlist');
+    onError: (error: unknown) => {
+      toast.error(getApiErrorMessage(error, 'Failed to delete playlist'));
     },
   });
 };
@@ -161,8 +171,8 @@ export const useAddContentToPlaylist = () => {
         toast.success(`${result.added} content items added`);
       }
     },
-    onError: (error: any) => {
-      toast.error(error?.response?.data?.message || 'Failed to add content');
+    onError: (error: unknown) => {
+      toast.error(getApiErrorMessage(error, 'Failed to add content'));
     },
   });
 };
@@ -181,8 +191,8 @@ export const useRemoveContentFromPlaylist = () => {
       queryClient.invalidateQueries({ queryKey: playlistKeys.detail(variables.playlistId) });
       toast.success('Content removed from playlist');
     },
-    onError: (error: any) => {
-      toast.error(error?.response?.data?.message || 'Failed to remove content');
+    onError: (error: unknown) => {
+      toast.error(getApiErrorMessage(error, 'Failed to remove content'));
     },
   });
 };
@@ -200,8 +210,8 @@ export const useReorderPlaylistContent = () => {
       queryClient.invalidateQueries({ queryKey: playlistKeys.content(variables.id) });
       toast.success('Content reordered successfully');
     },
-    onError: (error: any) => {
-      toast.error(error?.response?.data?.message || 'Failed to reorder content');
+    onError: (error: unknown) => {
+      toast.error(getApiErrorMessage(error, 'Failed to reorder content'));
     },
   });
 };
@@ -225,13 +235,21 @@ export const useAssignPlaylistToDevices = () => {
       // Invalidate device queries (assigned devices need to show new playlist)
       queryClient.invalidateQueries({ queryKey: ['devices'] });
 
+      // Invalidate device-side playlist queries (both patterns)
+      queryClient.invalidateQueries({ queryKey: ['devices', 'playlists'] });
+      queryClient.invalidateQueries({ queryKey: ['device-assignments', 'playlists'] });
+
+      // Invalidate schedule queries (schedules reference playlists)
+      queryClient.invalidateQueries({ queryKey: ['schedules'] });
+      queryClient.invalidateQueries({ queryKey: ['device-schedules'] });
+
       // Invalidate dashboard queries (active playlists may change)
       queryClient.invalidateQueries({ queryKey: ['dashboard'] });
 
       toast.success(`Assigned to ${result.assigned} devices`);
     },
-    onError: (error: any) => {
-      toast.error(error?.response?.data?.message || 'Failed to assign devices');
+    onError: (error: unknown) => {
+      toast.error(getApiErrorMessage(error, 'Failed to assign devices'));
     },
   });
 };
@@ -256,8 +274,8 @@ export const useAssignPlaylistToTags = () => {
 
       toast.success(`Assigned to ${result.assigned} tags`);
     },
-    onError: (error: any) => {
-      toast.error(error?.response?.data?.message || 'Failed to assign tags');
+    onError: (error: unknown) => {
+      toast.error(getApiErrorMessage(error, 'Failed to assign tags'));
     },
   });
 };
@@ -277,13 +295,21 @@ export const useUnassignPlaylistFromDevices = () => {
       // Invalidate device queries (devices no longer have this playlist)
       queryClient.invalidateQueries({ queryKey: ['devices'] });
 
+      // Invalidate device-side playlist queries (both patterns)
+      queryClient.invalidateQueries({ queryKey: ['devices', 'playlists'] });
+      queryClient.invalidateQueries({ queryKey: ['device-assignments', 'playlists'] });
+
+      // Invalidate schedule queries (schedules reference playlists)
+      queryClient.invalidateQueries({ queryKey: ['schedules'] });
+      queryClient.invalidateQueries({ queryKey: ['device-schedules'] });
+
       // Invalidate dashboard queries (active playlists may change)
       queryClient.invalidateQueries({ queryKey: ['dashboard'] });
 
       toast.success(`Unassigned from ${result.removed} devices`);
     },
-    onError: (error: any) => {
-      toast.error(error?.response?.data?.message || 'Failed to unassign devices');
+    onError: (error: unknown) => {
+      toast.error(getApiErrorMessage(error, 'Failed to unassign devices'));
     },
   });
 };
@@ -308,8 +334,8 @@ export const useUnassignPlaylistFromTags = () => {
 
       toast.success(`Unassigned from ${result.removed} tags`);
     },
-    onError: (error: any) => {
-      toast.error(error?.response?.data?.message || 'Failed to unassign tags');
+    onError: (error: unknown) => {
+      toast.error(getApiErrorMessage(error, 'Failed to unassign tags'));
     },
   });
 };

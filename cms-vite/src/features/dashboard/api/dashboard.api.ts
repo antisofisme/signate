@@ -162,11 +162,14 @@ export const dashboardApi = {
 };
 
 // React Query hooks
+// NOTE: Auto-polling removed for performance optimization (was causing 100-200 requests/min)
+// Use refetch() from returned queries for manual refresh. Data uses staleTime for caching.
+
 export const useDashboardStats = () => {
   return useQuery({
     queryKey: ['dashboard', 'stats'],
     queryFn: dashboardApi.getStats,
-    refetchInterval: 30000, // Refetch every 30 seconds
+    staleTime: 60000, // 1 minute - stats don't change frequently
   });
 };
 
@@ -174,7 +177,7 @@ export const useDeviceHealth = () => {
   return useQuery({
     queryKey: ['dashboard', 'device-health'],
     queryFn: dashboardApi.getDeviceHealth,
-    refetchInterval: 30000,
+    staleTime: 30000, // 30 seconds
   });
 };
 
@@ -182,7 +185,7 @@ export const useLiveDevices = () => {
   return useQuery({
     queryKey: ['dashboard', 'live-devices'],
     queryFn: dashboardApi.getLiveDevices,
-    refetchInterval: 10000, // Refetch every 10 seconds for live data
+    staleTime: 30000, // 30 seconds - use manual refresh for live updates
   });
 };
 
@@ -190,7 +193,7 @@ export const useContentPerformance = (limit: number = 10) => {
   return useQuery({
     queryKey: ['dashboard', 'content-performance', limit],
     queryFn: () => dashboardApi.getContentPerformance(limit),
-    refetchInterval: 60000, // Refetch every minute
+    staleTime: 120000, // 2 minutes - content performance is relatively stable
   });
 };
 
@@ -198,7 +201,7 @@ export const useActivePlaylistAssignments = () => {
   return useQuery({
     queryKey: ['dashboard', 'active-playlists'],
     queryFn: dashboardApi.getActivePlaylistAssignments,
-    refetchInterval: 60000,
+    staleTime: 120000, // 2 minutes
   });
 };
 
@@ -206,7 +209,7 @@ export const usePlaybackTimeline = (days: number = 7) => {
   return useQuery({
     queryKey: ['dashboard', 'playback-timeline', days],
     queryFn: () => dashboardApi.getPlaybackTimeline(days),
-    refetchInterval: 60000,
+    staleTime: 300000, // 5 minutes - historical data doesn't change often
   });
 };
 
@@ -214,7 +217,7 @@ export const useRecentActivity = (limit: number = 20) => {
   return useQuery({
     queryKey: ['dashboard', 'recent-activity', limit],
     queryFn: () => dashboardApi.getRecentActivity(limit),
-    refetchInterval: 30000,
+    staleTime: 60000, // 1 minute
   });
 };
 
@@ -222,7 +225,7 @@ export const useSystemAlerts = () => {
   return useQuery({
     queryKey: ['dashboard', 'alerts'],
     queryFn: dashboardApi.getSystemAlerts,
-    refetchInterval: 30000,
+    staleTime: 30000, // 30 seconds - alerts are important
   });
 };
 
@@ -230,6 +233,6 @@ export const useSystemInfo = () => {
   return useQuery({
     queryKey: ['dashboard', 'system-info'],
     queryFn: dashboardApi.getSystemInfo,
-    refetchInterval: 60000,
+    staleTime: 300000, // 5 minutes - system info is stable
   });
 };

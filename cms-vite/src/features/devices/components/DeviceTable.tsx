@@ -3,9 +3,12 @@
  *
  * LAYER 1: PRESENTATION
  * Device management table with filters and actions
+ *
+ * PERFORMANCE: Modal components are lazy loaded to reduce initial bundle size
+ * by ~100 KB (modals are loaded on demand when user clicks action buttons)
  */
 
-import { useState } from 'react';
+import { useState, useCallback, lazy, Suspense } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Monitor,
@@ -25,6 +28,7 @@ import {
   Wifi,
   Play,
   Activity,
+  RefreshCw,
 } from 'lucide-react';
 import {
   useDeviceList,
@@ -33,14 +37,46 @@ import {
 } from '../hooks/useDevices';
 import type { Device, DeviceStatus, DeviceType } from '../types/device';
 import { toast } from 'sonner';
-import { TVRegisterModal } from './modals/TVRegisterModal';
-import { MonitorRegisterModal } from './modals/MonitorRegisterModal';
-import { ActivationCodeModal } from './modals/ActivationCodeModal';
-import { DeviceManagementModal, type DeviceTabId } from './modals/DeviceManagementModal';
-import { DeviceSettingsModal } from './modals/DeviceSettingsModal';
-import { UnifiedContentAssignmentModal, type ContentAssignmentTabId } from './modals/UnifiedContentAssignmentModal';
-import { DeviceLogsModal } from './modals/DeviceLogsModal';
 import { PendingDeviceCard } from './PendingDeviceCard';
+
+// Lazy load modal components for better initial page load
+const TVRegisterModal = lazy(() =>
+  import('./modals/TVRegisterModal').then((m) => ({ default: m.TVRegisterModal }))
+);
+const MonitorRegisterModal = lazy(() =>
+  import('./modals/MonitorRegisterModal').then((m) => ({ default: m.MonitorRegisterModal }))
+);
+const ActivationCodeModal = lazy(() =>
+  import('./modals/ActivationCodeModal').then((m) => ({ default: m.ActivationCodeModal }))
+);
+const DeviceManagementModal = lazy(() =>
+  import('./modals/DeviceManagementModal').then((m) => ({ default: m.DeviceManagementModal }))
+);
+const DeviceSettingsModal = lazy(() =>
+  import('./modals/DeviceSettingsModal').then((m) => ({ default: m.DeviceSettingsModal }))
+);
+const UnifiedContentAssignmentModal = lazy(() =>
+  import('./modals/UnifiedContentAssignmentModal').then((m) => ({ default: m.UnifiedContentAssignmentModal }))
+);
+const DeviceLogsModal = lazy(() =>
+  import('./modals/DeviceLogsModal').then((m) => ({ default: m.DeviceLogsModal }))
+);
+
+// Types needed for lazy loaded components
+import type { DeviceTabId } from './modals/DeviceManagementModal';
+import type { ContentAssignmentTabId } from './modals/UnifiedContentAssignmentModal';
+
+// Loading fallback for modals
+function ModalLoadingFallback() {
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-white dark:bg-gray-800 rounded-lg p-8 flex flex-col items-center">
+        <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+        <span className="mt-2 text-gray-600 dark:text-gray-300">Loading...</span>
+      </div>
+    </div>
+  );
+}
 
 // Delete Confirmation Modal
 interface DeleteConfirmModalProps {
@@ -61,35 +97,54 @@ function DeleteConfirmModal({
   const { t } = useTranslation();
   if (!isOpen || !device) return null;
 
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-md">
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-          {t('devices.modals.editDevice')}
-        </h3>
-        <p className="text-gray-700 dark:text-gray-300 mb-2">
-          {t('devices.confirmDelete')}
-        </p>
-        <p className="text-gray-900 dark:text-white font-semibold mb-6">
-          {device.device_name}
-        </p>
+  const titleId = `delete-modal-title-${device.id}`;
+  const descId = `delete-modal-desc-${device.id}`;
 
-        <div className="flex justify-end gap-3">
+  return (
+    <div
+      className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+      role="presentation"
+      onClick={onClose}
+    >
+      <div
+        className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-md"
+        role="alertdialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        aria-describedby={descId}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h3 id={titleId} className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+          {t('devices.modals.deleteDevice', 'Delete Device')}
+        </h3>
+        <div id={descId}>
+          <p className="text-gray-700 dark:text-gray-300 mb-2">
+            {t('devices.confirmDelete')}
+          </p>
+          <p className="text-gray-900 dark:text-white font-semibold mb-6">
+            {device.device_name}
+          </p>
+        </div>
+
+        <div className="flex justify-end gap-3" role="group" aria-label={t('devices.modals.confirmActions', 'Confirmation actions')}>
           <button
             onClick={onClose}
             disabled={isLoading}
-            className="px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg disabled:opacity-50"
+            className="px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg disabled:opacity-50 transition-colors focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
+            aria-label={t('devices.buttons.cancelDelete', 'Cancel deletion')}
           >
             {t('devices.buttons.cancel')}
           </button>
           <button
             onClick={onConfirm}
             disabled={isLoading}
-            className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 flex items-center gap-2"
+            className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 flex items-center gap-2 transition-colors focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
+            aria-label={t('devices.buttons.confirmDelete', 'Confirm deletion of {name}', { name: device.device_name })}
+            aria-busy={isLoading}
           >
             {isLoading ? (
               <>
-                <Loader2 className="w-4 h-4 animate-spin" />
+                <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
                 {t('devices.buttons.deleting')}
               </>
             ) : (
@@ -158,10 +213,15 @@ export function DeviceTable() {
     ...(typeFilter !== 'all' && { device_type: typeFilter }),
   };
 
-  // Fetch devices
-  const { data, isLoading, error } = useDeviceList(apiFilters);
+  // Fetch devices with refetch function for manual refresh
+  const { data, isLoading, error, refetch, isFetching } = useDeviceList(apiFilters);
   const devices = data?.items || [];
   const total = data?.total || 0;
+
+  // Manual refresh handler
+  const handleRefresh = useCallback(() => {
+    refetch();
+  }, [refetch]);
 
   // Mutations
   const deleteMutation = useDeleteDevice();
@@ -228,10 +288,14 @@ export function DeviceTable() {
     <>
       {/* Scope Tabs */}
       <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 mb-4">
-        <div className="flex border-b border-gray-200 dark:border-gray-700">
+        <div className="flex border-b border-gray-200 dark:border-gray-700" role="tablist" aria-label={t('devices.tabs.scopeSelection', 'Device scope selection')}>
           <button
             onClick={() => setScope('my_org')}
-            className={`flex-1 px-6 py-3 text-sm font-medium transition-colors ${
+            role="tab"
+            aria-selected={scope === 'my_org'}
+            aria-controls="device-table-panel"
+            id="tab-my-devices"
+            className={`flex-1 px-6 py-3 text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500 ${
               scope === 'my_org'
                 ? 'text-blue-600 dark:text-blue-400 border-b-2 border-blue-600 dark:border-blue-400'
                 : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
@@ -241,7 +305,11 @@ export function DeviceTable() {
           </button>
           <button
             onClick={() => setScope('unassigned')}
-            className={`flex-1 px-6 py-3 text-sm font-medium transition-colors ${
+            role="tab"
+            aria-selected={scope === 'unassigned'}
+            aria-controls="device-table-panel"
+            id="tab-unassigned"
+            className={`flex-1 px-6 py-3 text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500 ${
               scope === 'unassigned'
                 ? 'text-blue-600 dark:text-blue-400 border-b-2 border-blue-600 dark:border-blue-400'
                 : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
@@ -265,6 +333,17 @@ export function DeviceTable() {
           </div>
 
           <div className="flex items-center gap-2">
+            {/* Refresh Button */}
+            <button
+              onClick={handleRefresh}
+              disabled={isFetching}
+              className="flex items-center gap-2 px-3 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors disabled:opacity-50"
+              title={t('common.refresh', 'Refresh')}
+              aria-label={t('common.refresh', 'Refresh device list')}
+            >
+              <RefreshCw className={`w-4 h-4 ${isFetching ? 'animate-spin' : ''}`} />
+            </button>
+
             {/* Register TV Button */}
             <button
               onClick={() => setTvRegisterModal(true)}
@@ -307,7 +386,7 @@ export function DeviceTable() {
               {/* Status Filter */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  {t('devices.status')}
+                  {t('devices.statusLabel')}
                 </label>
                 <select
                   value={statusFilter}
@@ -389,7 +468,7 @@ export function DeviceTable() {
                     {t('devices.type')}
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                    {t('devices.status')}
+                    {t('devices.statusLabel')}
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                     {t('devices.table.ipAddress')}
@@ -436,16 +515,17 @@ export function DeviceTable() {
                         : '-'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                      <div className="flex items-center justify-end gap-2">
+                      <div className="flex items-center justify-end gap-1" role="group" aria-label={t('devices.table.actionsFor', { name: device.device_name })}>
                         {/* View Logs - Opens Device Logs Modal */}
                         <button
                           onClick={() =>
                             setLogsModal({ isOpen: true, device })
                           }
-                          className="text-purple-600 hover:text-purple-800 dark:text-purple-400 dark:hover:text-purple-300"
+                          className="p-2 rounded-lg text-purple-600 hover:text-purple-800 hover:bg-purple-50 dark:text-purple-400 dark:hover:text-purple-300 dark:hover:bg-purple-900/20 transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2"
                           title={t('devices.actions.viewLogs')}
+                          aria-label={t('devices.actions.viewLogsFor', { name: device.device_name })}
                         >
-                          <Terminal className="w-4 h-4" />
+                          <Terminal className="w-4 h-4" aria-hidden="true" />
                         </button>
 
                         {/* View Device - Opens unified modal (Overview tab) */}
@@ -453,10 +533,11 @@ export function DeviceTable() {
                           onClick={() =>
                             setDeviceManagementModal({ isOpen: true, device, defaultTab: 'overview' })
                           }
-                          className="text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-300"
+                          className="p-2 rounded-lg text-gray-600 hover:text-gray-800 hover:bg-gray-100 dark:text-gray-400 dark:hover:text-gray-300 dark:hover:bg-gray-700 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
                           title={t('devices.actions.viewDevice')}
+                          aria-label={t('devices.actions.viewDeviceFor', { name: device.device_name })}
                         >
-                          <Eye className="w-4 h-4" />
+                          <Eye className="w-4 h-4" aria-hidden="true" />
                         </button>
 
                         {/* Content Management - Opens separate UnifiedContentAssignmentModal */}
@@ -464,10 +545,11 @@ export function DeviceTable() {
                           onClick={() =>
                             setContentAssignmentModal({ isOpen: true, device, defaultTab: 'direct' })
                           }
-                          className="text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300"
+                          className="p-2 rounded-lg text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50 dark:text-indigo-400 dark:hover:text-indigo-300 dark:hover:bg-indigo-900/20 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
                           title={t('devices.actions.manageContent')}
+                          aria-label={t('devices.actions.manageContentFor', { name: device.device_name })}
                         >
-                          <FileText className="w-4 h-4" />
+                          <FileText className="w-4 h-4" aria-hidden="true" />
                         </button>
 
                         {/* Edit/Settings - Opens standalone Settings Modal */}
@@ -475,19 +557,23 @@ export function DeviceTable() {
                           onClick={() =>
                             setSettingsModal({ isOpen: true, device })
                           }
-                          className="text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-300"
+                          className="p-2 rounded-lg text-gray-600 hover:text-gray-800 hover:bg-gray-100 dark:text-gray-400 dark:hover:text-gray-300 dark:hover:bg-gray-700 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
                           title={t('devices.actions.editSettings')}
+                          aria-label={t('devices.actions.editSettingsFor', { name: device.device_name })}
                         >
-                          <Edit className="w-4 h-4" />
+                          <Edit className="w-4 h-4" aria-hidden="true" />
                         </button>
+
+                        {/* Delete Device */}
                         <button
                           onClick={() =>
                             setDeleteModal({ isOpen: true, device })
                           }
-                          className="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"
+                          className="p-2 rounded-lg text-red-600 hover:text-red-800 hover:bg-red-50 dark:text-red-400 dark:hover:text-red-300 dark:hover:bg-red-900/20 transition-colors focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
                           title={t('devices.actions.deleteDevice')}
+                          aria-label={t('devices.actions.deleteDeviceFor', { name: device.device_name })}
                         >
-                          <Trash2 className="w-4 h-4" />
+                          <Trash2 className="w-4 h-4" aria-hidden="true" />
                         </button>
                       </div>
                     </td>
@@ -499,7 +585,7 @@ export function DeviceTable() {
         )}
       </div>
 
-      {/* Delete Confirmation Modal */}
+      {/* Delete Confirmation Modal - Not lazy loaded (small component) */}
       <DeleteConfirmModal
         isOpen={deleteModal.isOpen}
         device={deleteModal.device}
@@ -508,66 +594,83 @@ export function DeviceTable() {
         isLoading={deleteMutation.isPending}
       />
 
-      {/* TV Registration Modal */}
-      <TVRegisterModal
-        isOpen={tvRegisterModal}
-        onClose={() => setTvRegisterModal(false)}
-        onSuccess={(device) => {
-          setActivationCodeModal({ isOpen: true, device });
-        }}
-      />
+      {/* Lazy loaded modals - Only loaded when needed */}
+      <Suspense fallback={<ModalLoadingFallback />}>
+        {/* TV Registration Modal */}
+        {tvRegisterModal && (
+          <TVRegisterModal
+            isOpen={tvRegisterModal}
+            onClose={() => setTvRegisterModal(false)}
+            onSuccess={(device) => {
+              setActivationCodeModal({ isOpen: true, device });
+            }}
+          />
+        )}
 
-      {/* Monitor Registration Modal */}
-      <MonitorRegisterModal
-        isOpen={monitorRegisterModal}
-        onClose={() => setMonitorRegisterModal(false)}
-        onSuccess={() => {
-          // Refresh device list after successful registration
-        }}
-      />
+        {/* Monitor Registration Modal */}
+        {monitorRegisterModal && (
+          <MonitorRegisterModal
+            isOpen={monitorRegisterModal}
+            onClose={() => setMonitorRegisterModal(false)}
+            onSuccess={() => {
+              // Refresh device list after successful registration
+            }}
+          />
+        )}
 
-      {/* Activation Code Modal */}
-      <ActivationCodeModal
-        isOpen={activationCodeModal.isOpen}
-        device={activationCodeModal.device}
-        onClose={() => setActivationCodeModal({ isOpen: false, device: null })}
-      />
+        {/* Activation Code Modal */}
+        {activationCodeModal.isOpen && (
+          <ActivationCodeModal
+            isOpen={activationCodeModal.isOpen}
+            device={activationCodeModal.device}
+            onClose={() => setActivationCodeModal({ isOpen: false, device: null })}
+          />
+        )}
 
-      {/* ✨ NEW: Unified Device Management Modal - Replaces 10+ old modals */}
-      <DeviceManagementModal
-        isOpen={deviceManagementModal.isOpen}
-        device={deviceManagementModal.device}
-        defaultTab={deviceManagementModal.defaultTab}
-        onClose={() => setDeviceManagementModal({ isOpen: false, device: null, defaultTab: 'overview' })}
-        onRefresh={() => {
-          // React Query will auto-refetch
-        }}
-      />
+        {/* Unified Device Management Modal */}
+        {deviceManagementModal.isOpen && (
+          <DeviceManagementModal
+            isOpen={deviceManagementModal.isOpen}
+            device={deviceManagementModal.device}
+            defaultTab={deviceManagementModal.defaultTab}
+            onClose={() => setDeviceManagementModal({ isOpen: false, device: null, defaultTab: 'overview' })}
+            onRefresh={() => {
+              // React Query will auto-refetch
+            }}
+          />
+        )}
 
-      {/* ✨ Unified Content Assignment Modal - Separate modal with 3 tabs */}
-      <UnifiedContentAssignmentModal
-        isOpen={contentAssignmentModal.isOpen}
-        device={contentAssignmentModal.device}
-        defaultTab={contentAssignmentModal.defaultTab}
-        onClose={() => setContentAssignmentModal({ isOpen: false, device: null, defaultTab: 'direct' })}
-      />
+        {/* Unified Content Assignment Modal */}
+        {contentAssignmentModal.isOpen && (
+          <UnifiedContentAssignmentModal
+            isOpen={contentAssignmentModal.isOpen}
+            device={contentAssignmentModal.device}
+            defaultTab={contentAssignmentModal.defaultTab}
+            onClose={() => setContentAssignmentModal({ isOpen: false, device: null, defaultTab: 'direct' })}
+          />
+        )}
 
-      {/* ✨ Device Settings Modal - Standalone settings/edit modal */}
-      <DeviceSettingsModal
-        isOpen={settingsModal.isOpen}
-        device={settingsModal.device}
-        onClose={() => setSettingsModal({ isOpen: false, device: null })}
-        onSuccess={() => {
-          // React Query will auto-refetch
-        }}
-      />
+        {/* Device Settings Modal */}
+        {settingsModal.isOpen && (
+          <DeviceSettingsModal
+            isOpen={settingsModal.isOpen}
+            device={settingsModal.device}
+            onClose={() => setSettingsModal({ isOpen: false, device: null })}
+            onSuccess={() => {
+              // React Query will auto-refetch
+            }}
+          />
+        )}
 
-      {/* ✨ Device Logs Modal - View console, connection, and speed test logs */}
-      <DeviceLogsModal
-        isOpen={logsModal.isOpen}
-        device={logsModal.device}
-        onClose={() => setLogsModal({ isOpen: false, device: null })}
-      />
+        {/* Device Logs Modal */}
+        {logsModal.isOpen && (
+          <DeviceLogsModal
+            isOpen={logsModal.isOpen}
+            device={logsModal.device}
+            onClose={() => setLogsModal({ isOpen: false, device: null })}
+          />
+        )}
+      </Suspense>
     </>
   );
 }

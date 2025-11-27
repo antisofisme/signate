@@ -67,7 +67,7 @@ def init_db():
         from services.auth.repositories.models import UserModel, OrganizationModel
         from services.device.repositories.models import DeviceModel, DeviceTagModel, DeviceCommandModel, DeviceHealthMetricModel
         from services.device.repositories.group_models import DeviceGroupModel, DeviceGroupMemberModel
-        from services.tag.repositories.models import TagModel
+        from services.tag.repositories.models import TagModel, ContentTag
         from services.content.repositories.models import ContentModel
         from services.playlist.repositories.models import PlaylistModel, PlaylistItemModel, PlaylistDeviceModel, PlaylistTagModel
         from services.audit.repositories.models import AuditLogModel

@@ -29,12 +29,14 @@ class UploadContentUseCase:
     VIDEO_EXTENSIONS = {'.mp4', '.webm', '.mkv', '.avi', '.mov', '.m4v', '.flv'}
     AUDIO_EXTENSIONS = {'.mp3', '.aac', '.m4a', '.ogg', '.wav', '.flac', '.wma'}
 
-    # Max file sizes (bytes)
-    MAX_SIZES = {
-        'image': 50 * 1024 * 1024,   # 50 MB
-        'video': 500 * 1024 * 1024,  # 500 MB
-        'audio': 100 * 1024 * 1024,  # 100 MB
-    }
+    # Max file sizes (bytes) - configurable via environment variables
+    @staticmethod
+    def get_max_sizes():
+        return {
+            'image': int(os.getenv('MAX_IMAGE_SIZE_MB', '50')) * 1024 * 1024,   # Default: 50 MB
+            'video': int(os.getenv('MAX_VIDEO_SIZE_MB', '500')) * 1024 * 1024,  # Default: 500 MB
+            'audio': int(os.getenv('MAX_AUDIO_SIZE_MB', '100')) * 1024 * 1024,  # Default: 100 MB
+        }
 
     def __init__(
         self,
@@ -122,7 +124,7 @@ class UploadContentUseCase:
                 await self.storage.delete_file(storage_result['storage_key'])
                 raise ValueError(f"File rejected: {scan_result}")
 
-            print(f"[Virus Scan] {storage_result['file_path'].name}: {scan_result}")
+            print(f"[Virus Scan] {os.path.basename(storage_result['file_path'])}: {scan_result}")
 
         except (ConnectionError, TimeoutError) as e:
             # ClamAV unavailable - log warning but allow upload
@@ -223,22 +225,27 @@ class UploadContentUseCase:
             from tasks.content_tasks import generate_thumbnail
             generate_thumbnail.delay(saved_content.id)
             
-        # 9. Send WebSocket notification
-        loop = asyncio.get_event_loop()
-        loop.create_task(
-            websocket_manager.broadcast_to_organization(
-                organization_id=saved_content.organization_id,
-                event_type=WebSocketEventType.CONTENT_UPLOADED,
-                data={
-                    "content_id": saved_content.id,
-                    "title": saved_content.title,
-                    "content_type": saved_content.content_type,
-                    "file_size": saved_content.file_size,
-                    "duration": saved_content.duration,
-                    "uploaded_by": saved_content.uploaded_by
-                }
-            )
-        )
+        # 9. Send WebSocket notification (if manager is initialized)
+        if websocket_manager is not None:
+            try:
+                loop = asyncio.get_event_loop()
+                loop.create_task(
+                    websocket_manager.broadcast_to_organization(
+                        organization_id=saved_content.organization_id,
+                        event_type=WebSocketEventType.CONTENT_UPLOADED,
+                        data={
+                            "content_id": saved_content.id,
+                            "title": saved_content.title,
+                            "content_type": saved_content.content_type,
+                            "file_size": saved_content.file_size,
+                            "duration": saved_content.duration,
+                            "uploaded_by": saved_content.uploaded_by
+                        }
+                    )
+                )
+            except Exception as e:
+                # Don't fail upload if WebSocket notification fails
+                logger.warning(f"WebSocket notification failed: {e}")
 
         return saved_content
 

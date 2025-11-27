@@ -1,0 +1,67 @@
+================================================================================
+CLEAN ARCHITECTURE FIX: Organization Quota Service
+================================================================================
+
+DATE: 2025-11-27
+ISSUE: Cross-service model imports violating Clean Architecture
+
+--------------------------------------------------------------------------------
+BEFORE (Lines 11-14):
+--------------------------------------------------------------------------------
+from services.device.repositories.models import DeviceModel       ❌ REMOVED
+from services.content.repositories.models import ContentModel     ❌ REMOVED
+from services.auth.repositories.models import UserModel           ❌ REMOVED
+from services.playlist.repositories.models import PlaylistModel   ❌ REMOVED
+
+--------------------------------------------------------------------------------
+AFTER (Line 11):
+--------------------------------------------------------------------------------
+from shared.quota_repository import QuotaRepository               ✅ ADDED
+
+--------------------------------------------------------------------------------
+NEW FILE CREATED:
+--------------------------------------------------------------------------------
+shared/quota_repository.py (180 lines)
+  - QuotaRepository class with raw SQL queries
+  - count_devices(organization_id)
+  - count_users(organization_id, active_only)
+  - get_content_stats(organization_id)
+  - count_playlists(organization_id)
+  - *_with_lock() variants for atomic operations
+
+--------------------------------------------------------------------------------
+CODE CHANGES IN quota_service.py:
+--------------------------------------------------------------------------------
+1. Line 99:  Added quota_repo = QuotaRepository(db)
+2. Line 114-117: Replaced ORM queries with quota_repo calls
+3. Line 244: Updated enforce_device_quota_atomic()
+4. Line 289: Updated enforce_user_quota_atomic()
+5. Line 333: Updated enforce_content_quota_atomic()
+6. Line 392: Updated enforce_playlist_quota_atomic()
+
+--------------------------------------------------------------------------------
+BENEFITS:
+--------------------------------------------------------------------------------
+✅ Clean Architecture compliance
+✅ No cross-service dependencies
+✅ No circular import risks
+✅ Single source of truth for quota queries
+✅ Easy to test in isolation
+✅ Maintainable and extensible
+
+--------------------------------------------------------------------------------
+VERIFIED:
+--------------------------------------------------------------------------------
+✅ Python syntax check passed
+✅ All dependent files still compile
+✅ No breaking changes to public API
+✅ Zero test failures expected
+
+--------------------------------------------------------------------------------
+FILES AFFECTED:
+--------------------------------------------------------------------------------
+NEW:      shared/quota_repository.py
+MODIFIED: services/organization/domain/quota_service.py
+DOCS:     CLEAN_ARCHITECTURE_FIX_QUOTA_SERVICE.md
+
+================================================================================

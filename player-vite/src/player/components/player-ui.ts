@@ -12,7 +12,6 @@
 
 import { SharedLogger } from '@shared/logger';
 import { SharedEventBus } from '@shared/events/shared-event-bus';
-import { i18n } from '@shared/services/i18n';
 
 /**
  * Player UI Manager Class
@@ -44,7 +43,7 @@ class PlayerUIManager {
     if (loading) {
       const paragraph = loading.querySelector('p');
       if (paragraph) {
-        paragraph.textContent = message || i18n.t('player.loading');
+        paragraph.textContent = message || 'Loading content...';
       }
       loading.style.display = 'block';
     }

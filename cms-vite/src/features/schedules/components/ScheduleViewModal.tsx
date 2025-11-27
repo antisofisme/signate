@@ -45,27 +45,32 @@ export function ScheduleViewModal({ isOpen, schedule, onClose, onEdit }: Schedul
 
   // Footer with action buttons
   const footer = (
-    <div className="flex justify-between gap-3 px-6 py-4 border-t border-gray-200 dark:border-gray-700">
+    <div className="flex justify-between gap-3 px-6 py-4 border-t border-gray-200 dark:border-gray-700" role="group" aria-label={t('schedules.viewModal.actions', 'Schedule actions')}>
       {/* Left: Preview Button */}
       <button
         onClick={() => setShowPreview(!showPreview)}
-        className="px-4 py-2 flex items-center gap-2 border border-purple-300 dark:border-purple-600 text-purple-700 dark:text-purple-300 rounded-md hover:bg-purple-50 dark:hover:bg-purple-900/20"
+        className="px-4 py-2 flex items-center gap-2 border border-purple-300 dark:border-purple-600 text-purple-700 dark:text-purple-300 rounded-md hover:bg-purple-50 dark:hover:bg-purple-900/20 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2"
+        aria-expanded={showPreview}
+        aria-controls="schedule-preview-section"
+        aria-label={showPreview ? t('schedules.actions.hidePreview') : t('schedules.actions.showPreview')}
       >
-        <Eye className="w-4 h-4" />
+        <Eye className="w-4 h-4" aria-hidden="true" />
         {showPreview ? t('schedules.actions.hidePreview') : t('schedules.actions.showPreview')}
       </button>
 
       {/* Right: Edit & Close */}
-      <div className="flex gap-3">
+      <div className="flex gap-3" role="group" aria-label={t('schedules.viewModal.primaryActions', 'Primary actions')}>
         <button
           onClick={onEdit}
-          className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+          className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+          aria-label={t('schedules.actions.editSchedule')}
         >
           {t('schedules.actions.editSchedule')}
         </button>
         <button
           onClick={onClose}
-          className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
+          className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
+          aria-label={t('schedules.viewModal.close')}
         >
           {t('schedules.viewModal.close')}
         </button>
@@ -210,7 +215,7 @@ export function ScheduleViewModal({ isOpen, schedule, onClose, onEdit }: Schedul
 
         {/* Preview Calendar */}
         {showPreview && (
-          <div className="pt-6 border-t border-gray-200 dark:border-gray-700">
+          <div id="schedule-preview-section" className="pt-6 border-t border-gray-200 dark:border-gray-700" role="region" aria-label={t('schedules.previewCalendar.title', 'Schedule preview calendar')}>
             {isLoadingPreview ? (
               <div className="flex items-center justify-center py-8">
                 <div className="animate-spin h-8 w-8 border-4 border-purple-500 border-t-transparent rounded-full"></div>

@@ -5,7 +5,6 @@
 
 export { ConnectionLogger } from './connection-logger';
 export { NetworkSpeedTest } from './network-speed-test';
-export { i18n } from './i18n';
 export {
   ServiceRegistry,
   getPlayerVideoJS,

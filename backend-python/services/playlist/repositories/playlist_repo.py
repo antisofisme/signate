@@ -54,7 +54,7 @@ class PlaylistRepository(IPlaylistRepository):
             # For tag assignments, invalidate cache for all devices with those tags
             if tag_assignments:
                 from services.device.repositories.models import DeviceModel
-                from services.tag.models import DeviceTag as DeviceTagModel
+                from services.device.repositories.models import DeviceTagModel
 
                 tag_ids = [a.tag_id for a in tag_assignments]
 
@@ -448,7 +448,7 @@ class PlaylistRepository(IPlaylistRepository):
             ).all()
 
         # Get tag details
-        from services.tag.models import Tag as TagModel
+        from services.tag.repositories.models import TagModel
         tag_ids = [a.tag_id for a in tag_assignments]
         tags = []
         if tag_ids:
@@ -458,7 +458,7 @@ class PlaylistRepository(IPlaylistRepository):
 
         return {
             "devices": [{"id": d.id, "device_name": d.device_name, "location": d.location} for d in devices],
-            "tags": [{"id": t.id, "name": t.name, "color": t.color} for t in tags]
+            "tags": [{"id": t.id, "name": t.tag_name, "color": t.color} for t in tags]
         }
 
     def assign_to_devices(
@@ -534,7 +534,7 @@ class PlaylistRepository(IPlaylistRepository):
             raise ValueError(f"Playlist {playlist_id} not found or access denied")
 
         # Validate tags exist and belong to organization
-        from services.tag.models import Tag as TagModel
+        from services.tag.repositories.models import TagModel
         valid_tag_ids = self.db.query(TagModel.id).filter(
             and_(
                 TagModel.id.in_(tag_ids),

@@ -8,10 +8,7 @@ from dataclasses import dataclass
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
-from services.device.repositories.models import DeviceModel
-from services.content.repositories.models import ContentModel  
-from services.auth.repositories.models import UserModel
-from services.playlist.repositories.models import PlaylistModel
+from shared.quota_repository import QuotaRepository
 
 
 @dataclass
@@ -96,9 +93,10 @@ class OrganizationQuota:
 
 class OrganizationQuotaService:
     """Service for managing organization quotas"""
-    
+
     def __init__(self, db: Session):
         self.db = db
+        self.quota_repo = QuotaRepository(db)
     
     def get_organization_quota(self, organization_id: int) -> OrganizationQuota:
         """Get organization quota limits and current usage"""
@@ -111,32 +109,12 @@ class OrganizationQuotaService:
         
         if not org:
             raise ValueError(f"Organization {organization_id} not found")
-        
-        # Get current device count
-        device_count = self.db.query(func.count(DeviceModel.id)).filter(
-            DeviceModel.organization_id == organization_id
-        ).scalar() or 0
-        
-        # Get current user count  
-        user_count = self.db.query(func.count(UserModel.id)).filter(
-            UserModel.organization_id == organization_id,
-            UserModel.is_active == True
-        ).scalar() or 0
-        
-        # Get content statistics
-        content_stats = self.db.query(
-            func.count(ContentModel.id).label('count'),
-            func.coalesce(func.sum(ContentModel.file_size), 0).label('total_size')
-        ).filter(
-            ContentModel.organization_id == organization_id,
-            ContentModel.deleted_at.is_(None)
-        ).first()
-        
-        # Get playlist count
-        playlist_count = self.db.query(func.count(PlaylistModel.id)).filter(
-            PlaylistModel.organization_id == organization_id,
-            PlaylistModel.deleted_at.is_(None)
-        ).scalar() or 0
+
+        # Get current resource counts using shared quota repository
+        device_count = self.quota_repo.count_devices(organization_id)
+        user_count = self.quota_repo.count_users(organization_id, active_only=True)
+        content_stats = self.quota_repo.get_content_stats(organization_id)
+        playlist_count = self.quota_repo.count_playlists(organization_id)
         
         # Get limits from org settings or use defaults
         settings = org.settings or {}
@@ -151,8 +129,8 @@ class OrganizationQuotaService:
             # Current usage
             current_devices=device_count,
             current_users=user_count,
-            current_content_size_bytes=int(content_stats.total_size or 0),
-            current_content_items=content_stats.count or 0,
+            current_content_size_bytes=content_stats['total_size'],
+            current_content_items=content_stats['count'],
             current_playlists=playlist_count
         )
     
@@ -261,12 +239,10 @@ class OrganizationQuotaService:
             
             if not org:
                 raise ValueError(f"Organization {organization_id} not found")
-            
-            # Count current devices with lock
-            current_count = self.db.query(func.count(DeviceModel.id)).filter(
-                DeviceModel.organization_id == organization_id
-            ).scalar() or 0
-            
+
+            # Count current devices with lock using quota repository
+            current_count = self.quota_repo.count_devices_with_lock(organization_id)
+
             max_devices = org.max_devices or 10
             
             if current_count >= max_devices:
@@ -309,11 +285,8 @@ class OrganizationQuotaService:
             if not org:
                 raise ValueError(f"Organization {organization_id} not found")
 
-            # Count current active users with lock
-            current_count = self.db.query(func.count(UserModel.id)).filter(
-                UserModel.organization_id == organization_id,
-                UserModel.is_active == True
-            ).scalar() or 0
+            # Count current active users with lock using quota repository
+            current_count = self.quota_repo.count_users_with_lock(organization_id)
 
             max_users = org.max_users or 5
 
@@ -346,45 +319,38 @@ class OrganizationQuotaService:
             ValueError: If quota limit reached
         """
         from services.auth.repositories.models import OrganizationModel
-        from services.content.repositories.models import ContentModel
-        
+
         try:
             # Lock organization row to prevent concurrent modifications
             org = self.db.query(OrganizationModel).filter(
                 OrganizationModel.id == organization_id
             ).with_for_update().first()
-            
+
             if not org:
                 raise ValueError(f"Organization {organization_id} not found")
-            
-            # Get current content statistics with lock
-            content_stats = self.db.query(
-                func.count(ContentModel.id).label('count'),
-                func.coalesce(func.sum(ContentModel.file_size), 0).label('total_size')
-            ).filter(
-                ContentModel.organization_id == organization_id,
-                ContentModel.deleted_at.is_(None)
-            ).first()
-            
+
+            # Get current content statistics with lock using quota repository
+            content_stats = self.quota_repo.get_content_stats_with_lock(organization_id)
+
             # Get limits from org settings or use defaults
             settings = org.settings or {}
             max_content_items = settings.get('max_content_items', 1000)
             max_content_size_gb = settings.get('max_content_size_gb', 100)
             max_content_size_bytes = max_content_size_gb * (1024 ** 3)
-            
-            current_items = content_stats.count or 0
-            current_size_bytes = int(content_stats.total_size or 0)
-            
+
+            current_items = content_stats['count']
+            current_size_bytes = content_stats['total_size']
+
             # Check item limit
             if current_items >= max_content_items:
                 raise ValueError(f"Content item limit reached: {current_items}/{max_content_items}")
-            
+
             # Check storage limit
             if (current_size_bytes + file_size_bytes) > max_content_size_bytes:
                 current_gb = current_size_bytes / (1024 ** 3)
                 new_gb = (current_size_bytes + file_size_bytes) / (1024 ** 3)
                 raise ValueError(f"Storage limit would be exceeded: {new_gb:.2f}GB > {max_content_size_gb}GB")
-                
+
         except Exception as e:
             self.db.rollback()
             raise
@@ -422,11 +388,8 @@ class OrganizationQuotaService:
             if not org:
                 raise ValueError(f"Organization {organization_id} not found")
 
-            # Count current playlists with lock
-            current_count = self.db.query(func.count(PlaylistModel.id)).filter(
-                PlaylistModel.organization_id == organization_id,
-                PlaylistModel.deleted_at.is_(None)
-            ).scalar() or 0
+            # Count current playlists with lock using quota repository
+            current_count = self.quota_repo.count_playlists_with_lock(organization_id)
 
             # Get limit from org settings or use default
             settings = org.settings or {}

@@ -3,11 +3,15 @@
  *
  * LAYER 1: PRESENTATION
  * Main dashboard with comprehensive system overview
+ *
+ * NOTE: Auto-polling removed for performance optimization.
+ * Use the Refresh button to manually update data.
  */
 
+import { useState, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAuthStore } from '@/lib/stores/authStore';
-import { PageHeader } from '@/shared/components';
+import { PageHeader, RefreshButton } from '@/shared/components';
 import {
   useDashboardStats,
   useDeviceHealth,
@@ -32,26 +36,65 @@ import { useOrganizationQuota } from '@/features/organizations/hooks/useOrganiza
 export default function DashboardPage() {
   const { t } = useTranslation();
   const { user } = useAuthStore();
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
-  // Fetch all dashboard data
-  const { data: stats, isLoading: statsLoading } = useDashboardStats();
-  const { data: deviceHealth, isLoading: healthLoading } = useDeviceHealth();
-  const { data: liveDevices, isLoading: devicesLoading } = useLiveDevices();
-  const { data: contentPerformance, isLoading: contentLoading } = useContentPerformance(10);
-  const { data: playlists, isLoading: playlistsLoading } = useActivePlaylistAssignments();
-  const { data: recentActivity, isLoading: activityLoading } = useRecentActivity(20);
-  const { data: systemAlerts, isLoading: alertsLoading } = useSystemAlerts();
-  const { data: systemInfo, isLoading: systemInfoLoading } = useSystemInfo();
+  // Fetch all dashboard data with refetch functions
+  const { data: stats, isLoading: statsLoading, refetch: refetchStats } = useDashboardStats();
+  const { data: deviceHealth, isLoading: healthLoading, refetch: refetchHealth } = useDeviceHealth();
+  const { data: liveDevices, isLoading: devicesLoading, refetch: refetchDevices } = useLiveDevices();
+  const { data: contentPerformance, isLoading: contentLoading, refetch: refetchContent } = useContentPerformance(10);
+  const { data: playlists, isLoading: playlistsLoading, refetch: refetchPlaylists } = useActivePlaylistAssignments();
+  const { data: recentActivity, isLoading: activityLoading, refetch: refetchActivity } = useRecentActivity(20);
+  const { data: systemAlerts, isLoading: alertsLoading, refetch: refetchAlerts } = useSystemAlerts();
+  const { data: systemInfo, isLoading: systemInfoLoading, refetch: refetchSystemInfo } = useSystemInfo();
 
   // Fetch organization quota for alerts
-  const { data: quota } = useOrganizationQuota(user?.organization_id);
+  const { data: quota, refetch: refetchQuota } = useOrganizationQuota(user?.organization_id);
+
+  // Combined refresh handler - refreshes all dashboard data
+  const handleRefreshAll = useCallback(async () => {
+    setIsRefreshing(true);
+    try {
+      await Promise.all([
+        refetchStats(),
+        refetchHealth(),
+        refetchDevices(),
+        refetchContent(),
+        refetchPlaylists(),
+        refetchActivity(),
+        refetchAlerts(),
+        refetchSystemInfo(),
+        refetchQuota(),
+      ]);
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, [
+    refetchStats,
+    refetchHealth,
+    refetchDevices,
+    refetchContent,
+    refetchPlaylists,
+    refetchActivity,
+    refetchAlerts,
+    refetchSystemInfo,
+    refetchQuota,
+  ]);
 
   return (
     <>
-      {/* Page Header */}
+      {/* Page Header with Refresh Button */}
       <PageHeader
         title={t('dashboard.title')}
         description={`${t('dashboard.welcome')}, ${user?.full_name || user?.username}!`}
+        actions={
+          <RefreshButton
+            onClick={handleRefreshAll}
+            isLoading={isRefreshing}
+            label={t('common.refresh', 'Refresh')}
+            title={t('dashboard.refreshAll', 'Refresh all dashboard data')}
+          />
+        }
       />
 
       {/* Quota Alert Banner - Shows critical warnings */}

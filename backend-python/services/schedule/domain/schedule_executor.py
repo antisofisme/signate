@@ -265,7 +265,12 @@ class ScheduleExecutor:
         # Direct device targeting
         if schedule.device_ids:
             for device_id in schedule.device_ids:
-                device = device_repo.find_by_id(device_id)
+                # SECURITY: Explicitly filter by organization to prevent cross-org device access
+                # Defense-in-depth: Even if JSONB array is corrupted, we verify ownership
+                device = device_repo.find_by_id(
+                    device_id,
+                    organization_id=schedule.organization_id
+                )
                 if device and device.is_active():
                     affected_devices.append(device)
         
