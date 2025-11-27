@@ -18,7 +18,6 @@ import {
   Settings,
   Menu,
   X,
-  FileText,
   Building2,
   BarChart3,
   Folder,
@@ -63,7 +62,6 @@ export default function Sidebar() {
     content: true,
     // customization: false, // HIDDEN: Belum dikembangkan
     // integrations: false, // HIDDEN: Belum dikembangkan
-    insights: false,
   });
 
   const toggleGroup = (groupKey: string) => {
@@ -119,22 +117,14 @@ export default function Sidebar() {
     // },
   ];
 
-  // Standalone feature items (rendered between groups and insights)
+  // Standalone feature items (rendered between groups and bottom)
   const standaloneFeatures: NavItem[] = [
     { name: 'Digital Menus', href: '/menus', icon: UtensilsCrossed },
+    { name: t('navigation.analytics'), href: '/analytics', icon: BarChart3 },
   ];
 
-  // Insight group (Security moved to Settings page)
-  const bottomGroups: NavGroup[] = [
-    {
-      name: 'Insights',
-      icon: BarChart3,
-      items: [
-        { name: t('navigation.analytics'), href: '/analytics', icon: BarChart3 },
-        { name: t('navigation.auditLogs'), href: '/audit-logs', icon: FileText },
-      ],
-    },
-  ];
+  // Note: Insights group removed - Analytics is standalone, Audit Logs in Settings
+  const bottomGroups: NavGroup[] = [];
 
   // Bottom menu items (always visible)
   const bottomItems: NavItem[] = [

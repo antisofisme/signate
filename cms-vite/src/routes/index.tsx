@@ -25,14 +25,14 @@ const ResetPasswordPage = lazy(() => import('@/pages/ResetPasswordPage'));
 const DashboardPage = lazy(() => import('@/pages/DashboardPage'));
 const SelectOrganizationPage = lazy(() => import('@/pages/SelectOrganizationPage'));
 const SettingsPage = lazy(() => import('@/pages/SettingsPage'));
-const AuditLogsPage = lazy(() => import('@/pages/AuditLogsPage'));
+// AuditLogsPage moved to Settings tab
 const TagsPage = lazy(() => import('@/pages/TagsPage'));
 const ContentPage = lazy(() => import('@/pages/ContentPage'));
 const PlaylistsPage = lazy(() => import('@/pages/PlaylistsPage'));
 const DevicesPage = lazy(() => import('@/pages/DevicesPage'));
 const DeviceGroupsPage = lazy(() => import('@/pages/DeviceGroupsPage'));
 const DevicePreviewPage = lazy(() => import('@/pages/DevicePreviewPage'));
-const AnalyticsPage = lazy(() => import('@/pages/AnalyticsPageWrapper'));
+const AnalyticsPage = lazy(() => import('@/features/analytics/pages/AnalyticsPage'));
 const WidgetsPage = lazy(() => import('@/pages/WidgetsPage'));
 const TemplatesPage = lazy(() => import('@/pages/TemplatesPage'));
 const TranslationsPage = lazy(() => import('@/pages/TranslationsPage'));
@@ -136,15 +136,12 @@ export const router = createBrowserRouter([
         path: 'schedules',
         element: <LazyPage component={SchedulesPage} />,
       },
-      // Analytics & Audit
+      // Analytics (standalone like Digital Menus)
       {
         path: 'analytics',
         element: <LazyPage component={AnalyticsPage} />,
       },
-      {
-        path: 'audit-logs',
-        element: <LazyPage component={AuditLogsPage} />,
-      },
+      // Note: Audit Logs moved to Settings tab
       // User Management
       {
         path: 'roles',

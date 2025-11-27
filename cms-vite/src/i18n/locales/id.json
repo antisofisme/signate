@@ -979,11 +979,34 @@
     }
   },
   "analytics": {
+    "title": "Analitik & Laporan",
+    "description": "Pantau performa konten dan interaksi perangkat",
     "totalPlays": "Total Putar",
     "completed": "Selesai",
     "uniqueContent": "Konten Unik",
     "activeDevices": "Perangkat Aktif",
-    "watchTime": "Waktu Tonton"
+    "watchTime": "Waktu Tonton",
+    "refresh": "Segarkan data analitik",
+    "playbackTimeline": "Timeline Pemutaran",
+    "activityOverTime": "Aktivitas dari waktu ke waktu",
+    "selectInterval": "Pilih interval waktu",
+    "daily": "Harian",
+    "weekly": "Mingguan",
+    "monthly": "Bulanan",
+    "manualRefresh": "Segarkan Manual",
+    "clickRefresh": "Klik tombol Segarkan di atas untuk memperbarui data analitik",
+    "showingLast30Days": "Menampilkan data 30 hari terakhir"
+  },
+  "settings": {
+    "title": "Pengaturan",
+    "description": "Kelola pengaturan sistem, organisasi, pengguna, dan log audit",
+    "tabs": {
+      "organizations": "Organisasi",
+      "users": "Pengguna",
+      "sessions": "Sesi Aktif",
+      "roles": "Peran & Izin",
+      "auditLogs": "Log Audit"
+    }
   },
   "theme": {
     "light": "Terang",

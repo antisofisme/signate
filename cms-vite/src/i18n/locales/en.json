@@ -979,11 +979,34 @@
     }
   },
   "analytics": {
+    "title": "Analytics & Reports",
+    "description": "Track content performance and device engagement",
     "totalPlays": "Total Plays",
     "completed": "Completed",
     "uniqueContent": "Unique Content",
     "activeDevices": "Active Devices",
-    "watchTime": "Watch Time"
+    "watchTime": "Watch Time",
+    "refresh": "Refresh analytics data",
+    "playbackTimeline": "Playback Timeline",
+    "activityOverTime": "Activity over time",
+    "selectInterval": "Select time interval",
+    "daily": "Daily",
+    "weekly": "Weekly",
+    "monthly": "Monthly",
+    "manualRefresh": "Manual Refresh",
+    "clickRefresh": "Click the Refresh button above to update analytics data",
+    "showingLast30Days": "Showing data from last 30 days"
+  },
+  "settings": {
+    "title": "Settings",
+    "description": "Manage system settings, organizations, users, and audit logs",
+    "tabs": {
+      "organizations": "Organizations",
+      "users": "Users",
+      "sessions": "Active Sessions",
+      "roles": "Roles & Permissions",
+      "auditLogs": "Audit Logs"
+    }
   },
   "theme": {
     "light": "Light",
