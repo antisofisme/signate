@@ -832,7 +832,7 @@ def create_device_group(
 def get_device_groups(
     include_deleted: bool = False,
     db: Session = Depends(get_db),
-    current_user: dict = Depends(require_permission("device_groups", "view")),
+    current_user: dict = Depends(require_permission("device_groups", "read")),
 ):
     """
     Get all device groups for the organization
@@ -858,7 +858,7 @@ def get_device_groups(
 @management_router.get("/groups/roots", response_model=DeviceGroupListResponse)
 def get_root_groups(
     db: Session = Depends(get_db),
-    current_user: dict = Depends(require_permission("device_groups", "view")),
+    current_user: dict = Depends(require_permission("device_groups", "read")),
 ):
     """
     Get root device groups (no parent) for the organization
@@ -883,7 +883,7 @@ def get_root_groups(
 def get_device_group(
     group_id: int,
     db: Session = Depends(get_db),
-    current_user: dict = Depends(require_permission("device_groups", "view")),
+    current_user: dict = Depends(require_permission("device_groups", "read")),
 ):
     """
     Get a single device group by ID
@@ -916,7 +916,7 @@ def get_device_group(
 def get_group_children(
     group_id: int,
     db: Session = Depends(get_db),
-    current_user: dict = Depends(require_permission("device_groups", "view")),
+    current_user: dict = Depends(require_permission("device_groups", "read")),
 ):
     """
     Get child groups of a parent group
@@ -944,7 +944,7 @@ def get_group_devices(
     group_id: int,
     recursive: bool = False,
     db: Session = Depends(get_db),
-    current_user: dict = Depends(require_permission("device_groups", "view")),
+    current_user: dict = Depends(require_permission("device_groups", "read")),
 ):
     """
     Get device IDs in a group
@@ -975,7 +975,7 @@ def get_group_devices(
 def get_group_stats(
     group_id: int,
     db: Session = Depends(get_db),
-    current_user: dict = Depends(require_permission("device_groups", "view")),
+    current_user: dict = Depends(require_permission("device_groups", "read")),
 ):
     """
     Get group statistics (device count, online/offline)

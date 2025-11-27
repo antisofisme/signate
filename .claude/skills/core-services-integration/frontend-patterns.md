@@ -488,7 +488,7 @@ export function [Feature]Form({
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Plus, Search, Trash2, Edit, MoreHorizontal } from 'lucide-react';
-import { usePermissions } from '@/features/rbac/hooks/usePermissions';
+import { useCanPerformAction } from '@/features/rbac/hooks/usePermissions';
 import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
 import { Badge } from '@/shared/components/ui/badge';
@@ -519,7 +519,11 @@ interface [Feature]ListProps {
 
 export function [Feature]List({ onEdit, onCreate }: [Feature]ListProps) {
   const { t } = useTranslation();
-  const { hasPermission } = usePermissions();
+
+  // Permission checks - Use 'read', 'create', 'edit', 'delete', 'manage' (NOT 'view')
+  const { hasPermission: canCreate } = useCanPerformAction('[features]', 'create');
+  const { hasPermission: canEdit } = useCanPerformAction('[features]', 'edit');
+  const { hasPermission: canDelete } = useCanPerformAction('[features]', 'delete');
 
   // State
   const [page, setPage] = useState(1);
@@ -581,7 +585,7 @@ export function [Feature]List({ onEdit, onCreate }: [Feature]ListProps) {
             className="pl-9"
           />
         </div>
-        {hasPermission('[features].create') && (
+        {canCreate && (
           <Button onClick={onCreate}>
             <Plus className="mr-2 h-4 w-4" />
             {t('[features].create')}
@@ -631,13 +635,13 @@ export function [Feature]List({ onEdit, onCreate }: [Feature]ListProps) {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        {hasPermission('[features].update') && (
+                        {canEdit && (
                           <DropdownMenuItem onClick={() => onEdit([feature])}>
                             <Edit className="mr-2 h-4 w-4" />
                             {t('common.edit')}
                           </DropdownMenuItem>
                         )}
-                        {hasPermission('[features].delete') && (
+                        {canDelete && (
                           <DropdownMenuItem
                             onClick={() => setDeleteTarget([feature])}
                             className="text-destructive"
@@ -692,10 +696,8 @@ export function [Feature]List({ onEdit, onCreate }: [Feature]ListProps) {
  */
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { usePermissions } from '@/features/rbac/hooks/usePermissions';
-import { PageHeader } from '@/shared/components/PageHeader';
-import { Modal } from '@/shared/components/Modal';
-import { AccessDenied } from '@/shared/components/AccessDenied';
+import { useCanPerformAction } from '@/features/rbac/hooks/usePermissions';
+import { PageHeader, PageSkeleton, AccessDenied, Modal } from '@/shared/components';
 import { [Feature]List } from '../components/[Feature]List';
 import { [Feature]Form } from '../components/[Feature]Form';
 import { use[Feature]Mutations } from '../hooks/use[Features]';
@@ -703,7 +705,9 @@ import type { [Feature], [Feature]FormData } from '../types/[feature].types';
 
 export function [Features]Page() {
   const { t } = useTranslation();
-  const { hasPermission } = usePermissions();
+
+  // Permission check - Use 'read' NOT 'view'!
+  const { hasPermission: canRead, isLoading: isCheckingPermission } = useCanPerformAction('[features]', 'read');
 
   // State
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -712,8 +716,13 @@ export function [Features]Page() {
   // Mutations
   const { create, update, isCreating, isUpdating } = use[Feature]Mutations();
 
+  // Show loading while checking permissions
+  if (isCheckingPermission) {
+    return <PageSkeleton />;
+  }
+
   // Permission check
-  if (!hasPermission('[features].read')) {
+  if (!canRead) {
     return <AccessDenied />;
   }
 
@@ -866,20 +875,50 @@ import { [Features]Page } from '@/features/[features]';
 
 ## Permission Constants (Frontend)
 
+**IMPORTANT: Permission Actions**
 ```typescript
-// Add to cms-vite/src/features/rbac/constants/permissions.ts
+// VALID actions: 'read', 'create', 'edit', 'delete', 'manage'
+// DO NOT use 'view' - it does not exist!
 
-export const [FEATURE]_PERMISSIONS = {
-  '[features].read': '[Features] - View',
-  '[features].create': '[Features] - Create',
-  '[features].update': '[Features] - Update',
-  '[features].delete': '[Features] - Delete',
-  '[features].export': '[Features] - Export',
-} as const;
+export const PERMISSION_ACTIONS = [
+  'read',    // Read access (NOT 'view')
+  'create',  // Create new items
+  'edit',    // Update existing items (NOT 'update')
+  'delete',  // Remove items
+  'manage',  // Full control (implies all above)
+] as const;
 
-// Add to ALL_PERMISSIONS
-export const ALL_PERMISSIONS = {
-  ...EXISTING_PERMISSIONS,
-  ...[FEATURE]_PERMISSIONS,
+export type PermissionAction = (typeof PERMISSION_ACTIONS)[number];
+```
+
+**Permission Format in JWT:**
+```typescript
+// Permissions are stored in JWT token as nested object:
+// {
+//   "permissions": {
+//     "devices": ["read", "create", "edit", "delete"],
+//     "contents": ["read", "create"],
+//     "users": ["read"]
+//   }
+// }
+
+// The useCanPerformAction hook decodes this from JWT automatically
+const { hasPermission, isLoading } = useCanPerformAction('devices', 'read');
+```
+
+**Adding New Resource Permissions:**
+```typescript
+// Add resource to PERMISSION_RESOURCES in permissions.ts
+export const PERMISSION_RESOURCES = [
+  'dashboard',
+  'devices',
+  '[features]',  // Add your new resource
+  // ...
+] as const;
+
+// Labels for UI
+export const RESOURCE_LABELS: Record<PermissionResource, string> = {
+  '[features]': '[Features]',
+  // ...
 };
 ```

@@ -37,11 +37,14 @@ import { useOrganizationQuota } from '@/features/organizations/hooks/useOrganiza
 
 export default function DashboardPage() {
   const { t } = useTranslation();
-  const { user } = useAuthStore();
+  const { user, selectedOrgId } = useAuthStore();
   const [isRefreshing, setIsRefreshing] = useState(false);
 
+  // Use selectedOrgId (for SUPER_ADMIN switching) or fallback to user's org
+  const effectiveOrgId = selectedOrgId || user?.organization_id;
+
   // Permission check
-  const { hasPermission: canView, isLoading: isCheckingPermission } = useCanPerformAction('dashboard', 'view');
+  const { hasPermission: canView, isLoading: isCheckingPermission } = useCanPerformAction('dashboard', 'read');
 
   // Show loading skeleton while checking permissions
   if (isCheckingPermission) {
@@ -62,8 +65,8 @@ export default function DashboardPage() {
   const { data: systemAlerts, isLoading: alertsLoading, refetch: refetchAlerts } = useSystemAlerts();
   const { data: systemInfo, isLoading: systemInfoLoading, refetch: refetchSystemInfo } = useSystemInfo();
 
-  // Fetch organization quota for alerts
-  const { data: quota, refetch: refetchQuota } = useOrganizationQuota(user?.organization_id);
+  // Fetch organization quota for alerts (uses effective org for SUPER_ADMIN switching)
+  const { data: quota, refetch: refetchQuota } = useOrganizationQuota(effectiveOrgId);
 
   // Combined refresh handler - refreshes all dashboard data
   const handleRefreshAll = useCallback(async () => {
@@ -109,9 +112,9 @@ export default function DashboardPage() {
         }
       />
 
-      {/* Quota Alert Banner - Shows critical warnings */}
-      {quota && user?.organization_id && (
-        <QuotaAlertBanner quota={quota} organizationId={user.organization_id} />
+      {/* Quota Alert Banner - Shows critical warnings (uses effective org) */}
+      {quota && effectiveOrgId && (
+        <QuotaAlertBanner quota={quota} organizationId={effectiveOrgId} />
       )}
 
       {/* Dashboard Content */}

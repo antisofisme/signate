@@ -143,6 +143,7 @@ async def bulk_upload_content(
     is_active: bool = Form(True),
     upload_use_case: UploadContentUseCase = Depends(get_upload_content_use_case),
     current_user: dict = Depends(require_permission("contents", "create")),
+    audit_logger: AuditLogger = Depends(get_audit_logger),
     request: Request = None
 ):
     """
@@ -175,6 +176,23 @@ async def bulk_upload_content(
                 uploaded_by_id=current_user["user_id"],
                 duration=duration,
                 is_active=is_active
+            )
+
+            # Audit log for each successful upload
+            audit_logger.log_action(
+                user_id=current_user["user_id"],
+                action="content.bulk_upload",
+                resource_type="content",
+                resource_id=content.id,
+                details={
+                    "title": content.title,
+                    "content_type": content.content_type,
+                    "file_size": content.file_size,
+                    "original_filename": content.original_filename,
+                    "bulk_upload": True
+                },
+                ip_address=request.client.host if request and request.client else None,
+                organization_id=current_user["organization_id"]
             )
 
             results.append({
@@ -406,7 +424,7 @@ async def update_content(
     request: Request,
     update_use_case: UpdateContentUseCase = Depends(get_update_content_use_case),
     audit_logger: AuditLogger = Depends(get_audit_logger),
-    current_user: dict = Depends(require_permission("contents", "update"))
+    current_user: dict = Depends(require_permission("contents", "edit"))
 ):
     """
     Update content metadata
@@ -620,7 +638,7 @@ async def bulk_update_content(
     http_request: Request,
     update_use_case: UpdateContentUseCase = Depends(get_update_content_use_case),
     audit_logger: AuditLogger = Depends(get_audit_logger),
-    current_user: dict = Depends(require_permission("contents", "update"))
+    current_user: dict = Depends(require_permission("contents", "edit"))
 ):
     """
     Bulk update content metadata

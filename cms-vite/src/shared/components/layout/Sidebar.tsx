@@ -79,7 +79,7 @@ export default function Sidebar() {
   // Grouped navigation
   const navigationGroups: NavGroup[] = [
     {
-      name: 'Devices',
+      name: t('navigation.groups.devices'),
       icon: Monitor,
       items: [
         { name: t('navigation.devices'), href: '/devices', icon: Monitor },
@@ -87,7 +87,7 @@ export default function Sidebar() {
       ],
     },
     {
-      name: 'Content',
+      name: t('navigation.groups.content'),
       icon: FileImage,
       items: [
         { name: t('navigation.contents'), href: '/contents', icon: FileImage },
@@ -119,7 +119,7 @@ export default function Sidebar() {
 
   // Standalone feature items (rendered between groups and bottom)
   const standaloneFeatures: NavItem[] = [
-    { name: 'Digital Menus', href: '/menus', icon: UtensilsCrossed },
+    { name: t('navigation.digitalMenus'), href: '/menus', icon: UtensilsCrossed },
     { name: t('navigation.analytics'), href: '/analytics', icon: BarChart3 },
   ];
 

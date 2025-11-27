@@ -107,7 +107,14 @@
     "analytics": "Analitik",
     "activityLogs": "Log Aktivitas",
     "auditLogs": "Log Audit",
-    "settings": "Pengaturan"
+    "settings": "Pengaturan",
+    "digitalMenus": "Menu Digital",
+    "groups": {
+      "devices": "Perangkat",
+      "content": "Konten",
+      "customization": "Kustomisasi",
+      "integrations": "Integrasi"
+    }
   },
   "devices": {
     "title": "Manajemen Perangkat",
@@ -1104,6 +1111,8 @@
     "select": "Pilih"
   },
   "deviceGroups": {
+    "title": "Grup Perangkat",
+    "description": "Organisir perangkat ke dalam grup untuk manajemen massal",
     "loadingGroups": "Memuat grup...",
     "viewMode": {
       "grid": "Grid",
@@ -1170,6 +1179,8 @@
     }
   },
   "tags": {
+    "title": "Manajemen Tag",
+    "description": "Organisir konten dan perangkat Anda dengan tag",
     "searchPlaceholder": "Cari tags...",
     "sortNewest": "Terbaru",
     "sortOldest": "Terlama",
@@ -1211,6 +1222,8 @@
     "delete": "Hapus"
   },
   "audit": {
+    "title": "Log Audit",
+    "description": "Lihat aktivitas sistem dan tindakan pengguna",
     "showFilters": "Tampilkan Filter",
     "hideFilters": "Sembunyikan Filter",
     "loadingLogs": "Memuat log audit...",
@@ -1251,6 +1264,8 @@
     }
   },
   "rbac": {
+    "title": "Manajemen Peran",
+    "description": "Kelola peran dan izin untuk kontrol akses",
     "editRole": "Edit Peran",
     "createNewRole": "Buat Peran Baru",
     "roleName": "Nama Peran",
@@ -1299,6 +1314,8 @@
     }
   },
   "organizations": {
+    "title": "Organisasi",
+    "description": "Kelola organisasi tenant dan pengaturannya",
     "totalOrganizations": "Total Organisasi",
     "active": "Aktif",
     "inactive": "Tidak Aktif",
@@ -1338,6 +1355,8 @@
     "backToSettings": "Kembali ke Pengaturan"
   },
   "users": {
+    "title": "Manajemen Pengguna",
+    "description": "Kelola akun pengguna dan izin akses",
     "stats": {
       "totalUsers": "Total Pengguna",
       "active": "Aktif"

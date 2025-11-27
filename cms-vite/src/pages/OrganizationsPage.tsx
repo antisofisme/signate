@@ -7,13 +7,16 @@
 
 import { PageHeader } from '@/shared/components';
 import OrganizationsPageContent from '@/features/organizations/pages/OrganizationsPage';
+import { useTranslation } from 'react-i18next';
 
 export default function OrganizationsPage() {
+  const { t } = useTranslation();
+
   return (
     <div>
       <PageHeader
-        title="Organizations"
-        description="Manage your organizations and their settings"
+        title={t('organizations.title')}
+        description={t('organizations.description')}
       />
       <OrganizationsPageContent />
     </div>

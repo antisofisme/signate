@@ -120,15 +120,20 @@ def list_organizations(
     """
     List all organizations
 
-    Permission: Admin (all orgs) or Manager (own org only)
+    Permission:
+    - SUPER_ADMIN: Can see all organizations
+    - ADMIN: Can only see own organization
+    - Manager: Can only see own organization
     """
     start_time = time.time()
 
     # Execute use case
     result = use_case.execute(active_only=active_only)
 
-    # If manager, filter to only show their organization
-    if current_user["role"] == "manager":
+    # Multi-tenancy: Non-SUPER_ADMIN users can only see their own organization
+    user_role = current_user["role"].lower() if current_user.get("role") else ""
+    if user_role != "super_admin":
+        # Filter to only show user's own organization
         result["organizations"] = [
             org for org in result["organizations"]
             if org.id == current_user["organization_id"]
@@ -235,10 +240,13 @@ def get_organization(
     """
     Get organization by ID
 
-    Permission: Admin (any org) or Manager (own org only)
+    Permission:
+    - SUPER_ADMIN: Can view any organization
+    - Others: Can only view own organization
     """
-    # Check permissions - Manager can only view their own organization
-    if current_user["role"] != "admin":
+    # Multi-tenancy: Non-SUPER_ADMIN can only view their own organization
+    user_role = current_user["role"].lower() if current_user.get("role") else ""
+    if user_role != "super_admin":
         if current_user["organization_id"] != org_id:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
@@ -398,17 +406,20 @@ def get_organization_quota(
 ):
     """
     Get organization quota status
-    
+
     Shows current usage and limits for:
     - Devices
     - Users
     - Content (items and storage)
     - Playlists
-    
-    Permission: Admin (any org) or Manager/User (own org only)
+
+    Permission:
+    - SUPER_ADMIN: Can view any organization's quota
+    - Others: Can only view own organization's quota
     """
-    # Check permissions
-    if current_user["role"] not in ["admin", "super_admin"]:
+    # Multi-tenancy: Non-SUPER_ADMIN can only view their own organization's quota
+    user_role = current_user["role"].lower() if current_user.get("role") else ""
+    if user_role != "super_admin":
         if current_user["organization_id"] != org_id:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
@@ -511,11 +522,14 @@ def check_content_quota(
 ):
     """
     Check if organization can add content with specified size
-    
-    Permission: Any authenticated user (own org only)
+
+    Permission:
+    - SUPER_ADMIN: Can check any organization
+    - Others: Can only check own organization
     """
-    # Check permissions
-    if current_user["role"] not in ["admin", "super_admin"]:
+    # Multi-tenancy: Non-SUPER_ADMIN can only check their own organization's quota
+    user_role = current_user["role"].lower() if current_user.get("role") else ""
+    if user_role != "super_admin":
         if current_user["organization_id"] != org_id:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,

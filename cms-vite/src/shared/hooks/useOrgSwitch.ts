@@ -55,21 +55,58 @@ export interface OrgSwitchConfig {
 /**
  * Default organization-scoped query keys to invalidate
  *
- * These are the core queries that depend on selected organization
+ * These are the core queries that depend on selected organization.
+ * All query keys that fetch organization-specific data must be listed here
+ * to ensure proper cache invalidation when user switches organizations.
  */
 const DEFAULT_ORG_SCOPED_QUERY_KEYS = [
+  // Core entities
   'devices',
   'device',
+  'device-groups',
+  'device-group',
   'content',
   'contents',
   'playlists',
   'playlist',
+  'playlist-widgets',
   'schedules',
   'schedule',
+  'schedule-occurrences',
+  'device-schedules',
+  'playlist-schedules',
+  'tags',
+  'tag',
+  // Dashboard & Analytics
   'dashboard',
   'stats',
-  'assignments',
+  'analytics',
   'reports',
+  'assignments',
+  // User Management
+  'users',
+  'user',
+  'roles',
+  'role',
+  'sessions',
+  'session',
+  // Audit & Organization
+  'audit-logs',
+  'audit',
+  'organization-quota',
+  'quota',
+  // Templates & Widgets
+  'templates',
+  'template',
+  'widgets',
+  'widget',
+  // Integrations
+  'weather',
+  'weather-config',
+  'weather-locations',
+  'pms',
+  'pms-config',
+  'pms-rooms',
 ];
 
 /**

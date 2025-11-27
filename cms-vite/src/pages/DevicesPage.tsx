@@ -10,12 +10,14 @@ import { DeviceTable } from '@/features/devices/components/DeviceTable';
 import { OrganizationHealthSummary } from '@/features/devices/components/OrganizationHealthSummary';
 import { useDeviceWebSocket } from '@/features/devices/hooks/useDeviceWebSocket';
 import { useCanPerformAction } from '@/features/rbac/hooks/usePermissions';
+import { useTranslation } from 'react-i18next';
 
 export default function DevicesPage() {
+  const { t } = useTranslation();
   // Check permissions
   const { hasPermission, isLoading: isCheckingPermission } = useCanPerformAction(
     'devices',
-    'view'
+    'read'
   );
 
   // Enable real-time device updates only if user has permission
@@ -39,8 +41,8 @@ export default function DevicesPage() {
     <>
       {/* Sticky Page Header */}
       <PageHeader
-        title="Device Management"
-        description="Monitor and manage TV and monitor devices for digital signage"
+        title={t('devices.title')}
+        description={t('devices.subtitle')}
       />
 
       {/* Content */}

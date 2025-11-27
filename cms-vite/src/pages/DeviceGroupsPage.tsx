@@ -8,9 +8,11 @@
 import { PageHeader, AccessDenied, PageSkeleton } from '@/shared/components'
 import { useCanPerformAction } from '@/features/rbac/hooks/usePermissions'
 import { DeviceGroups } from '@/features/devices/components/DeviceGroups'
+import { useTranslation } from 'react-i18next'
 
 export default function DeviceGroupsPage() {
-  const { hasPermission, isLoading } = useCanPerformAction('device_groups', 'view')
+  const { t } = useTranslation()
+  const { hasPermission, isLoading } = useCanPerformAction('device_groups', 'read')
 
   // Show loading while checking permission
   if (isLoading) {
@@ -25,8 +27,8 @@ export default function DeviceGroupsPage() {
   return (
     <>
       <PageHeader
-        title="Device Groups"
-        description="Organize devices into groups for bulk management"
+        title={t('deviceGroups.title')}
+        description={t('deviceGroups.description')}
       />
       <DeviceGroups />
     </>

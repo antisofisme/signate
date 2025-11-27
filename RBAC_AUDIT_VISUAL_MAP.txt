@@ -1,0 +1,202 @@
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                    RBAC Service - Code Quality Audit                        │
+│                         Issue Location Map                                  │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+Overall Grade: A- (87/100)
+Status: ⚠️  3 CRITICAL/HIGH issues require immediate fix
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ services/rbac/                                                               │
+│ ├── constants.py                           Grade: A (95/100)                │
+│ │   ├── PERMISSION_RESOURCES                   ✅ 17 resources              │
+│ │   ├── PERMISSION_ACTIONS                     ✅ 5 actions                 │
+│ │   ├── SYSTEM_ROLE_PERMISSIONS                ✅ 4 system roles            │
+│ │   └── has_permission()                       🟡 MEDIUM #1                 │
+│ │       └─► Doesn't check 'manage' implies all                             │
+│ │                                                                            │
+│ ├── dtos.py                                Grade: B+ (88/100)               │
+│ │   ├── RoleCreateRequest                      ✅ Good validation           │
+│ │   ├── RoleUpdateRequest                      ✅ Good validation           │
+│ │   ├── PermissionAddRequest                   🔴 CRITICAL #2               │
+│ │   │   └─► Missing resource/action validation                             │
+│ │   └── PermissionRemoveRequest                🔴 CRITICAL #2               │
+│ │       └─► Missing resource/action validation                             │
+│ │   └── Code Duplication                       🟡 MEDIUM #3                 │
+│ │       └─► validate_permissions repeated                                  │
+│ │                                                                            │
+│ ├── routes.py                              Grade: A- (90/100)               │
+│ │   ├── list_roles()                           ✅ Good                      │
+│ │   ├── get_system_roles()                     ✅ Good                      │
+│ │   ├── get_role()                             ✅ Good                      │
+│ │   ├── create_role()                          ✅ Good + Audit              │
+│ │   ├── update_role()                          🟡 MEDIUM #5                 │
+│ │   │   └─► Duplicate role fetching                                        │
+│ │   ├── delete_role()                          🟡 MEDIUM #7                 │
+│ │   │   └─► No transaction for audit log                                   │
+│ │   ├── add_permission()                       🟡 MEDIUM #5                 │
+│ │   │   └─► Duplicate role fetching                                        │
+│ │   └── remove_permission()                    🟡 MEDIUM #5                 │
+│ │       └─► Duplicate role fetching                                        │
+│ │   └── Import Style                           🔵 LOW #6                    │
+│ │       └─► Inconsistent local imports                                     │
+│ │                                                                            │
+│ ├── repositories/                                                            │
+│ │   ├── models.py                         Grade: A (94/100)                │
+│ │   │   ├── Role class                         ✅ Good ORM model            │
+│ │   │   ├── has_permission()                   🟡 MEDIUM #9                 │
+│ │   │   │   └─► Doesn't check 'manage'                                     │
+│ │   │   └── to_dict()                          🔵 LOW #8                    │
+│ │   │       └─► Missing type hint                                          │
+│ │   │                                                                        │
+│ │   └── role_repo.py                      Grade: B+ (87/100)               │
+│ │       ├── find_by_id()                       ✅ Good                      │
+│ │       ├── find_by_name()                     ✅ Good                      │
+│ │       ├── get_all()                          ✅ Good                      │
+│ │       ├── create()                           ✅ Good                      │
+│ │       ├── update()                           ✅ Good                      │
+│ │       ├── delete()                           ✅ System role protected     │
+│ │       ├── add_permission()                   🔴 HIGH #10 + #11            │
+│ │       │   ├─► No transaction rollback                                    │
+│ │       │   └─► No validation of input                                     │
+│ │       └── remove_permission()                🔴 HIGH #10 + #11            │
+│ │           ├─► No transaction rollback                                    │
+│ │           └─► No validation of input                                     │
+│ │                                                                            │
+│ └── use_cases/                                                               │
+│     ├── check_permission.py                Grade: A (100/100) ✅            │
+│     ├── create_role.py                     Grade: A (100/100) ✅            │
+│     ├── delete_role.py                     Grade: A (100/100) ✅            │
+│     ├── get_roles.py                       Grade: A (100/100) ✅            │
+│     ├── manage_permissions.py             Grade: B- (80/100)               │
+│     │   ├── add_permission()                   🔴 HIGH #12                  │
+│     │   │   └─► No validation before repo call                             │
+│     │   └── remove_permission()                🔴 HIGH #12                  │
+│     │       └─► No validation before repo call                             │
+│     └── update_role.py                     Grade: A (100/100) ✅            │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ Issue Severity Distribution                                                  │
+├─────────────────────────────────────────────────────────────────────────────┤
+│ 🔴 CRITICAL (1):  Permission validation missing in DTOs                     │
+│ 🔴 HIGH (3):      Transaction rollback, validation in repo/use case         │
+│ 🟡 MEDIUM (5):    has_permission logic, code duplication, transactions      │
+│ 🔵 LOW (3):       Type hints, import style, naming normalization            │
+├─────────────────────────────────────────────────────────────────────────────┤
+│ Total Issues: 12                                                             │
+│ Dead Code: 0                                                                 │
+│ Security Risks: 4 (Issues #2, #10, #11, #12)                                │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ System Role Protection Status (Excellent ✅)                                 │
+├─────────────────────────────────────────────────────────────────────────────┤
+│ ✅ Repository Layer:    delete() checks is_system_role                      │
+│ ✅ Repository Layer:    add_permission() checks is_system_role              │
+│ ✅ Repository Layer:    remove_permission() checks is_system_role           │
+│ ✅ Use Case Layer:      DeleteRoleUseCase checks is_system_role             │
+│ ✅ Use Case Layer:      UpdateRoleUseCase checks is_system_role             │
+│ ✅ Use Case Layer:      ManagePermissionsUseCase checks is_system_role      │
+│ ✅ Route Layer:         Only admins can create system roles                 │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ Fix Priority Queue                                                           │
+├─────────────────────────────────────────────────────────────────────────────┤
+│ P0 (Today):                                                                  │
+│   1. Add validators to PermissionAddRequest/RemoveRequest (#2)              │
+│   2. Add validation in ManagePermissionsUseCase (#12)                       │
+│   3. Add try/except with rollback in role_repo (#10)                        │
+│   4. Add input validation in add/remove_permission (#11)                    │
+│                                                                               │
+│ P1 (This Week):                                                              │
+│   5. Fix has_permission to check 'manage' action (#1, #9)                   │
+│   6. Extract shared validation logic (#3)                                    │
+│   7. Extract duplicate role fetching (#5)                                    │
+│                                                                               │
+│ P2 (Next Sprint):                                                            │
+│   8. Add transaction for audit logs (#7)                                     │
+│   9. Fix import style (#6)                                                   │
+│  10. Add type hints (#8)                                                     │
+│  11. Document name normalization (#4)                                        │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ Code Quality Scorecard                                                       │
+├────────────────────────────┬────────────────────────────────────────────────┤
+│ Architecture               │ ████████████████████▓▓▓▓ 95/100               │
+│ Security                   │ ████████████████▓▓▓▓▓▓▓▓ 82/100               │
+│ Error Handling             │ ██████████████████▓▓▓▓▓▓ 90/100               │
+│ Code Duplication           │ ███████████████▓▓▓▓▓▓▓▓▓ 75/100               │
+│ Documentation              │ █████████████████▓▓▓▓▓▓▓ 88/100               │
+│ Type Safety                │ █████████████████▓▓▓▓▓▓▓ 85/100               │
+│ Testability                │ ██████████████████▓▓▓▓▓▓ 92/100               │
+├────────────────────────────┴────────────────────────────────────────────────┤
+│ Overall Grade: A- (87/100) ⭐⭐⭐⭐                                          │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ Validation Flow (Current vs Expected)                                       │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                               │
+│ 🔴 CURRENT (Broken):                                                         │
+│                                                                               │
+│   API Request → PermissionAddRequest (NO VALIDATION ❌)                      │
+│        ↓                                                                      │
+│   Route Handler → ManagePermissionsUseCase (NO VALIDATION ❌)               │
+│        ↓                                                                      │
+│   Use Case → RoleRepository.add_permission() (NO VALIDATION ❌)             │
+│        ↓                                                                      │
+│   Database ← Invalid permission stored! 💥                                   │
+│                                                                               │
+│ ✅ EXPECTED (After Fix):                                                     │
+│                                                                               │
+│   API Request → PermissionAddRequest (@field_validator ✅)                  │
+│        ↓                                                                      │
+│   Route Handler → ManagePermissionsUseCase (validate_resource() ✅)         │
+│        ↓                                                                      │
+│   Use Case → RoleRepository.add_permission() (double-check ✅)              │
+│        ↓                                                                      │
+│   Database ← Only valid permissions stored ✅                                │
+│                                                                               │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ Transaction Flow (Current vs Expected)                                      │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                               │
+│ 🔴 CURRENT (No Rollback):                                                    │
+│                                                                               │
+│   add_permission() → role.permissions[resource].append(action)              │
+│        ↓                                                                      │
+│   flag_modified(role, "permissions")                                         │
+│        ↓                                                                      │
+│   self.db.commit() ← If this fails, no rollback! 💥                         │
+│        ↓                                                                      │
+│   Database in inconsistent state ❌                                          │
+│                                                                               │
+│ ✅ EXPECTED (With Rollback):                                                 │
+│                                                                               │
+│   try:                                                                        │
+│       add_permission() → role.permissions[resource].append(action)          │
+│       flag_modified(role, "permissions")                                     │
+│       self.db.commit() ← If succeeds, all good ✅                           │
+│   except Exception:                                                           │
+│       self.db.rollback() ← Undo changes ✅                                   │
+│       raise DatabaseError(...) ← Proper error ✅                             │
+│                                                                               │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+Legend:
+  ✅ = Working correctly
+  🟢 = Good quality
+  🟡 = Medium issue (fixable)
+  🔴 = Critical/High issue (must fix)
+  🔵 = Low priority issue
+  💥 = Security vulnerability
+  ⚠️  = Warning
+
+Report generated: 2025-11-27
+Full report: RBAC_SERVICE_CODE_QUALITY_AUDIT_REPORT.md
+Quick ref: RBAC_AUDIT_QUICK_REFERENCE.md

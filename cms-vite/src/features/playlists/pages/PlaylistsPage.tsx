@@ -25,7 +25,7 @@ export default function PlaylistsPage() {
   const { t } = useTranslation();
 
   // Permission checks
-  const { hasPermission: canRead, isLoading: loadingReadPerm } = useCanPerformAction('playlists', 'view');
+  const { hasPermission: canRead, isLoading: loadingReadPerm } = useCanPerformAction('playlists', 'read');
   const { hasPermission: canCreate } = useCanPerformAction('playlists', 'create');
   const { hasPermission: canUpdate } = useCanPerformAction('playlists', 'edit');
   const { hasPermission: canDelete } = useCanPerformAction('playlists', 'delete');

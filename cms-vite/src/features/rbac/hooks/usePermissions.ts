@@ -3,6 +3,7 @@
  * React Query hooks for permission management and checking
  */
 
+import React from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { getApiErrorMessage } from '@/shared/utils/types'
@@ -143,26 +144,53 @@ export function useHasPermissions(
 /**
  * Check if user can perform action on resource
  * Helper hook for common permission checks
+ *
+ * NOTE: Permissions are decoded from JWT token stored in auth state.
+ * No API call is made - permissions are checked locally from the token.
  */
 export function useCanPerformAction(
   resource: PermissionResource,
   action: PermissionAction,
-  userId?: number
+  _userId?: number // Kept for API compatibility but not used
 ) {
-  // Get current user ID from auth store if not provided
-  const authUser = useAuthStore((state) => state.user)
-  const currentUserId = userId ?? authUser?.id
+  // Get all state at once (single selector to avoid multiple subscriptions)
+  const { token, user, isHydrated } = useAuthStore((state) => ({
+    token: state.token,
+    user: state.user,
+    isHydrated: state._hasHydrated,
+  }))
 
-  // Return safe defaults if no user ID available
-  if (currentUserId === undefined) {
-    return {
-      hasPermission: false,
-      isLoading: false,
-      permissions: undefined,
+  // Decode permissions from JWT token - MUST be called unconditionally
+  const permissions = React.useMemo((): Record<string, string[]> | null => {
+    if (!token) return null
+    try {
+      const payload = JSON.parse(atob(token.split('.')[1]))
+      return payload.permissions as Record<string, string[]> || null
+    } catch {
+      return null
     }
-  }
+  }, [token])
 
-  return useHasPermission(currentUserId, resource, action)
+  // Calculate permission result - MUST be called unconditionally
+  const result = React.useMemo(() => {
+    // Still loading during hydration
+    if (!isHydrated) {
+      return { hasPermission: false, isLoading: true, permissions: undefined }
+    }
+
+    // No user or permissions
+    if (!user || !permissions) {
+      return { hasPermission: false, isLoading: false, permissions: undefined }
+    }
+
+    // Check permission
+    const resourcePerms = permissions[resource] || []
+    const hasPerm = resourcePerms.includes(action) || resourcePerms.includes('manage')
+
+    return { hasPermission: hasPerm, isLoading: false, permissions: resourcePerms }
+  }, [isHydrated, user, permissions, resource, action])
+
+  return result
 }
 
 // ============================================================================

@@ -503,35 +503,89 @@ const response = await apiClient.get('/endpoint', {
 
 ---
 
-## shared/hooks/useAuth.ts - Authentication Hook
+## Authentication - Zustand Auth Store
 
 ```typescript
-import { useAuth } from '@/shared/hooks/useAuth';
+import { useAuthStore } from '@/stores/auth';
+import { Navigate } from 'react-router-dom';
 
 function MyComponent() {
-  const {
-    user,              // Current user object
-    isAuthenticated,   // boolean
-    isLoading,         // boolean
-    login,             // (credentials) => Promise
-    logout,            // () => void
-    hasPermission,     // (permission: string) => boolean
-    hasRole,           // (role: string) => boolean
-  } = useAuth();
+  const { user, token, logout, isHydrated } = useAuthStore();
+
+  // Wait for store hydration
+  if (!isHydrated) {
+    return <PageSkeleton />;
+  }
 
   // Check authentication
-  if (!isAuthenticated) {
+  if (!token || !user) {
     return <Navigate to="/login" />;
   }
 
-  // Check permission
-  if (!hasPermission('devices.delete')) {
+  // Access user data
+  const orgId = user.organization_id;
+  const role = user.role;
+}
+```
+
+---
+
+## Permission Checking - useCanPerformAction Hook
+
+**IMPORTANT: Use `'read'` NOT `'view'` for permission actions!**
+
+```typescript
+import { useCanPerformAction } from '@/features/rbac/hooks/usePermissions';
+
+function MyPage() {
+  // Permission check - CORRECT: use 'read' NOT 'view'
+  const { hasPermission: canRead, isLoading } = useCanPerformAction('devices', 'read');
+  const { hasPermission: canEdit } = useCanPerformAction('devices', 'edit');
+  const { hasPermission: canDelete } = useCanPerformAction('devices', 'delete');
+
+  // Show loading while checking permissions
+  if (isLoading) {
+    return <PageSkeleton />;
+  }
+
+  // Access denied if no permission
+  if (!canRead) {
     return <AccessDenied />;
   }
 
-  // Access user data
-  const orgId = user?.organization_id;
-  const role = user?.role;
+  return (
+    <div>
+      {/* Conditionally show actions based on permissions */}
+      {canEdit && <EditButton />}
+      {canDelete && <DeleteButton />}
+    </div>
+  );
+}
+```
+
+**Valid Permission Actions:**
+- `'read'` - View/read access (NOT 'view'!)
+- `'create'` - Create new items
+- `'edit'` - Edit existing items
+- `'delete'` - Delete items
+- `'manage'` - Full control (implies all above)
+
+**How it works:**
+The hook decodes permissions from the JWT token stored in auth store.
+No API call is made - permissions are read directly from the token payload.
+
+```typescript
+// JWT token payload structure:
+{
+  "sub": "9",
+  "username": "admin",
+  "role": "ADMIN",
+  "organization_id": 4,
+  "permissions": {
+    "devices": ["read", "create", "edit", "delete"],
+    "contents": ["read", "create"],
+    "users": ["read"]
+  }
 }
 ```
 
@@ -626,14 +680,20 @@ import { cn } from '@/shared/utils/cn';
 
 ## Service Integration Quick Reference
 
-| Service | Backend Import | Frontend Hook |
-|---------|---------------|---------------|
-| Auth | `from shared.auth import get_current_user` | `useAuth()` |
-| RBAC | `from shared.auth import require_permission` | `usePermissions()` |
+| Service | Backend Import | Frontend Hook/Store |
+|---------|---------------|---------------------|
+| Auth | `from shared.auth import get_current_user` | `useAuthStore()` from `@/stores/auth` |
+| RBAC | `from shared.auth import require_permission` | `useCanPerformAction(resource, action)` from `@/features/rbac/hooks/usePermissions` |
 | Audit | `from services.audit.use_cases.log_action import LogActionUseCase` | N/A (backend only) |
 | Cache | `from shared.cache import cache` | N/A (backend only) |
 | Errors | `from shared.errors import not_found_error` | Error boundary |
 | Validators | `from shared.validators import sanitize_input` | Zod schemas |
+
+**IMPORTANT - Permission Actions:**
+- Backend: `require_permission("resource:action")` - uses colon `:` separator
+- Frontend: `useCanPerformAction('resource', 'action')` - separate parameters
+- Valid actions: `read`, `create`, `edit`, `delete`, `manage`
+- **DO NOT use `'view'`** - use `'read'` instead!
 
 ---
 
@@ -641,6 +701,8 @@ import { cn } from '@/shared/utils/cn';
 
 ### New Backend Endpoint
 - [ ] Import `get_current_user` or `require_permission`
+- [ ] Use `require_permission("resource:action")` format with colon separator
+- [ ] Use valid actions: `read`, `create`, `edit`, `delete`, `manage`
 - [ ] Filter by `organization_id`
 - [ ] Sanitize input with `sanitize_input()`
 - [ ] Use standardized errors (`not_found_error`, `validation_error`)
@@ -649,10 +711,27 @@ import { cn } from '@/shared/utils/cn';
 - [ ] Add to `shared/api_routes.py`
 
 ### New Frontend Page
-- [ ] Check permission with `usePermissions()`
+- [ ] Import `useCanPerformAction` from `@/features/rbac/hooks/usePermissions`
+- [ ] Use `'read'` action for view permission (NOT `'view'`!)
+- [ ] Handle `isLoading` state from permission check
+- [ ] Show `<PageSkeleton />` while checking permissions
+- [ ] Show `<AccessDenied />` if no permission
 - [ ] Include `orgId` in query keys
-- [ ] Handle loading/error states
+- [ ] Handle loading/error states for data
 - [ ] Use React Hook Form + Zod for forms
 - [ ] Add translations to i18n files
 - [ ] Add route to router config
 - [ ] Add to sidebar navigation
+
+### Permission Pattern Example
+```typescript
+// Page component with permission check
+function MyPage() {
+  const { hasPermission: canRead, isLoading } = useCanPerformAction('resource', 'read');
+
+  if (isLoading) return <PageSkeleton />;
+  if (!canRead) return <AccessDenied />;
+
+  return <MyContent />;
+}
+```

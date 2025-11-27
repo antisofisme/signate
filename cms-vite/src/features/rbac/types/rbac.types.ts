@@ -15,7 +15,7 @@ export type { Permissions } from '../constants/permissions';
 // Core Types (Updated for new format)
 // ============================================================================
 
-export type PermissionAction = 'view' | 'create' | 'edit' | 'delete' | 'manage';
+export type PermissionAction = 'read' | 'create' | 'edit' | 'delete' | 'manage';
 
 export type PermissionResource =
   | 'dashboard'
@@ -195,7 +195,7 @@ export interface RemoveUsersFromRoleRequest {
 // ============================================================================
 
 export const PERMISSION_ACTIONS: PermissionAction[] = [
-  'view',
+  'read',
   'create',
   'edit',
   'delete',

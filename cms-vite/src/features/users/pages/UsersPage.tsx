@@ -28,7 +28,7 @@ export default function UsersPage() {
   const { t } = useTranslation();
 
   // Permission checks
-  const { hasPermission: canView, isLoading: isCheckingView } = useCanPerformAction('users', 'view');
+  const { hasPermission: canView, isLoading: isCheckingView } = useCanPerformAction('users', 'read');
   const { hasPermission: canCreate } = useCanPerformAction('users', 'create');
   const { hasPermission: canEdit } = useCanPerformAction('users', 'edit');
   const { hasPermission: canDelete } = useCanPerformAction('users', 'delete');

@@ -5,13 +5,16 @@
 
 import { PageHeader } from '@/shared/components';
 import SessionsPageContent from '@/features/sessions/pages/SessionsPage';
+import { useTranslation } from 'react-i18next';
 
 export default function SessionsPage() {
+  const { t } = useTranslation();
+
   return (
     <>
       <PageHeader
-        title="Active Sessions"
-        description="Manage your active login sessions across devices"
+        title={t('sessions.title')}
+        description={t('sessions.description')}
       />
       <SessionsPageContent />
     </>

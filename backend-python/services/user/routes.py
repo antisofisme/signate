@@ -131,10 +131,15 @@ def list_users(
     """
     List all users with filters
 
-    Permission: Admin (all orgs) or Manager (own org only)
+    Permission:
+    - SUPER_ADMIN: Can see all organizations (or filter by org_id param)
+    - ADMIN: Can only see users in own organization
+    - Manager: Can only see users in own organization
     """
-    # If manager, can only see users from own organization
-    if current_user["role"] == "manager":
+    # Multi-tenancy: Non-SUPER_ADMIN users can only see their own organization
+    user_role = current_user["role"].lower() if current_user.get("role") else ""
+    if user_role != "super_admin":
+        # Force filter by user's organization for ADMIN, manager, and other roles
         organization_id = current_user["organization_id"]
     start_time = time.time()
 

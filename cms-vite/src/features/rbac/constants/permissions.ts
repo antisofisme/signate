@@ -33,7 +33,7 @@ export type PermissionResource = (typeof PERMISSION_RESOURCES)[number];
 // ============================================================================
 
 export const PERMISSION_ACTIONS = [
-  'view',    // Read access
+  'read',    // Read access
   'create',  // Create new items
   'edit',    // Update existing items
   'delete',  // Remove items
@@ -95,7 +95,7 @@ export const RESOURCE_I18N_KEYS: Record<PermissionResource, string> = {
 // ============================================================================
 
 export const ACTION_LABELS: Record<PermissionAction, string> = {
-  view: 'View',
+  read: 'View',
   create: 'Create',
   edit: 'Edit',
   delete: 'Delete',
@@ -103,7 +103,7 @@ export const ACTION_LABELS: Record<PermissionAction, string> = {
 };
 
 export const ACTION_I18N_KEYS: Record<PermissionAction, string> = {
-  view: 'rbac.actions.view',
+  read: 'rbac.actions.read',
   create: 'rbac.actions.create',
   edit: 'rbac.actions.edit',
   delete: 'rbac.actions.delete',
@@ -115,7 +115,7 @@ export const ACTION_I18N_KEYS: Record<PermissionAction, string> = {
 // ============================================================================
 
 export const ACTION_COLORS: Record<PermissionAction, string> = {
-  view: 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20',
+  read: 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20',
   create: 'text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/20',
   edit: 'text-yellow-600 dark:text-yellow-400 bg-yellow-50 dark:bg-yellow-900/20',
   delete: 'text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20',
@@ -200,55 +200,55 @@ export function createFullPermissions(): Permissions {
 
 export const SYSTEM_ROLE_PERMISSIONS: Record<string, Permissions> = {
   SUPER_ADMIN: {
-    dashboard: ['view', 'manage'],
-    devices: ['view', 'create', 'edit', 'delete', 'manage'],
-    device_groups: ['view', 'create', 'edit', 'delete', 'manage'],
-    contents: ['view', 'create', 'edit', 'delete', 'manage'],
-    playlists: ['view', 'create', 'edit', 'delete', 'manage'],
-    schedules: ['view', 'create', 'edit', 'delete', 'manage'],
-    tags: ['view', 'create', 'edit', 'delete', 'manage'],
-    menus: ['view', 'create', 'edit', 'delete', 'manage'],
-    analytics: ['view', 'manage'],
-    audit_logs: ['view', 'manage'],
-    users: ['view', 'create', 'edit', 'delete', 'manage'],
-    organizations: ['view', 'create', 'edit', 'delete', 'manage'],
-    roles: ['view', 'create', 'edit', 'delete', 'manage'],
-    sessions: ['view', 'manage'],
-    settings: ['view', 'edit', 'manage'],
-    system: ['view', 'manage'],
+    dashboard: ['read', 'manage'],
+    devices: ['read', 'create', 'edit', 'delete', 'manage'],
+    device_groups: ['read', 'create', 'edit', 'delete', 'manage'],
+    contents: ['read', 'create', 'edit', 'delete', 'manage'],
+    playlists: ['read', 'create', 'edit', 'delete', 'manage'],
+    schedules: ['read', 'create', 'edit', 'delete', 'manage'],
+    tags: ['read', 'create', 'edit', 'delete', 'manage'],
+    menus: ['read', 'create', 'edit', 'delete', 'manage'],
+    analytics: ['read', 'manage'],
+    audit_logs: ['read', 'manage'],
+    users: ['read', 'create', 'edit', 'delete', 'manage'],
+    organizations: ['read', 'create', 'edit', 'delete', 'manage'],
+    roles: ['read', 'create', 'edit', 'delete', 'manage'],
+    sessions: ['read', 'manage'],
+    settings: ['read', 'edit', 'manage'],
+    system: ['read', 'manage'],
   },
   ADMIN: {
-    dashboard: ['view'],
-    devices: ['view', 'create', 'edit', 'delete'],
-    device_groups: ['view', 'create', 'edit', 'delete'],
-    contents: ['view', 'create', 'edit', 'delete'],
-    playlists: ['view', 'create', 'edit', 'delete'],
-    schedules: ['view', 'create', 'edit', 'delete'],
-    tags: ['view', 'create', 'edit', 'delete'],
-    menus: ['view', 'create', 'edit', 'delete'],
-    analytics: ['view'],
-    audit_logs: ['view'],
-    users: ['view', 'create', 'edit', 'delete'],
-    organizations: ['view', 'edit'],
-    roles: ['view', 'create', 'edit', 'delete'],
-    sessions: ['view'],
-    settings: ['view', 'edit'],
+    dashboard: ['read'],
+    devices: ['read', 'create', 'edit', 'delete'],
+    device_groups: ['read', 'create', 'edit', 'delete'],
+    contents: ['read', 'create', 'edit', 'delete'],
+    playlists: ['read', 'create', 'edit', 'delete'],
+    schedules: ['read', 'create', 'edit', 'delete'],
+    tags: ['read', 'create', 'edit', 'delete'],
+    menus: ['read', 'create', 'edit', 'delete'],
+    analytics: ['read'],
+    audit_logs: ['read'],
+    users: ['read', 'create', 'edit', 'delete'],
+    organizations: ['read', 'edit'],
+    roles: ['read', 'create', 'edit', 'delete'],
+    sessions: ['read'],
+    settings: ['read', 'edit'],
   },
   CONTENT_MANAGER: {
-    dashboard: ['view'],
-    devices: ['view'],
-    contents: ['view', 'create', 'edit', 'delete'],
-    playlists: ['view', 'create', 'edit', 'delete'],
-    schedules: ['view', 'create', 'edit'],
-    tags: ['view', 'create', 'edit'],
-    menus: ['view', 'create', 'edit'],
+    dashboard: ['read'],
+    devices: ['read'],
+    contents: ['read', 'create', 'edit', 'delete'],
+    playlists: ['read', 'create', 'edit', 'delete'],
+    schedules: ['read', 'create', 'edit'],
+    tags: ['read', 'create', 'edit'],
+    menus: ['read', 'create', 'edit'],
   },
   VIEWER: {
-    dashboard: ['view'],
-    devices: ['view'],
-    contents: ['view'],
-    playlists: ['view'],
-    schedules: ['view'],
-    analytics: ['view'],
+    dashboard: ['read'],
+    devices: ['read'],
+    contents: ['read'],
+    playlists: ['read'],
+    schedules: ['read'],
+    analytics: ['read'],
   },
 };

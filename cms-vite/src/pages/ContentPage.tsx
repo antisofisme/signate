@@ -8,10 +8,12 @@
 import { PageHeader, AccessDenied } from '@/shared/components';
 import { ContentTable } from '@/features/contents/components/ContentTable';
 import { useCanPerformAction } from '@/features/rbac/hooks/usePermissions';
+import { useTranslation } from 'react-i18next';
 
 export default function ContentPage() {
+  const { t } = useTranslation();
   // Permission check - user needs view access to contents
-  const { hasPermission, isLoading } = useCanPerformAction('contents', 'view');
+  const { hasPermission, isLoading } = useCanPerformAction('contents', 'read');
 
   // Wait for permission check to complete
   if (isLoading) {
@@ -27,8 +29,8 @@ export default function ContentPage() {
     <>
       {/* Sticky Page Header */}
       <PageHeader
-        title="Content Library"
-        description="Manage your media content (images, videos, audio) for digital signage"
+        title={t('contents.title')}
+        description={t('contents.title')}
       />
 
       {/* Content Table */}

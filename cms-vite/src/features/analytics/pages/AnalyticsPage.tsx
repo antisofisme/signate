@@ -87,7 +87,7 @@ export default function AnalyticsPage() {
   const { t } = useTranslation();
 
   // Permission check
-  const { hasPermission: canView, isLoading: isCheckingPermission } = useCanPerformAction('analytics', 'view');
+  const { hasPermission: canView, isLoading: isCheckingPermission } = useCanPerformAction('analytics', 'read');
 
   const [dateRange, setDateRange] = useState<DateRange>('30d');
   const [isRefreshing, setIsRefreshing] = useState(false);

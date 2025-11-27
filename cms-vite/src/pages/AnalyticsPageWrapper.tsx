@@ -5,13 +5,16 @@
 
 import { PageHeader } from '@/shared/components';
 import { AnalyticsPage } from './AnalyticsPage';
+import { useTranslation } from 'react-i18next';
 
 export default function AnalyticsPageWrapper() {
+  const { t } = useTranslation();
+
   return (
     <>
       <PageHeader
-        title="Analytics & Reports"
-        description="Track content performance and device engagement"
+        title={t('analytics.title')}
+        description={t('analytics.description')}
       />
       <AnalyticsPage />
     </>

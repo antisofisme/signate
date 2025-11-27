@@ -35,7 +35,7 @@ export default function SessionsPage() {
   const [sessionToRevoke, setSessionToRevoke] = useState<Session | null>(null);
 
   // Permission checks
-  const { hasPermission: canView, isLoading: permissionLoading } = useCanPerformAction('sessions', 'view');
+  const { hasPermission: canView, isLoading: permissionLoading } = useCanPerformAction('sessions', 'read');
   const { hasPermission: canDelete } = useCanPerformAction('sessions', 'delete');
 
   // Queries

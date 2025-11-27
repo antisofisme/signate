@@ -2,6 +2,35 @@
 
 Complete templates and patterns for integrating core services in backend features.
 
+## Multi-Tenancy Role Hierarchy (CRITICAL!)
+
+| Role | See Own Org | See All Orgs | Switch Org |
+|------|-------------|--------------|------------|
+| SUPER_ADMIN | Yes | Yes | Yes (via X-Organization-Id header) |
+| ADMIN (tenant) | Yes | **NO** | No |
+| CONTENT_MANAGER | Yes | No | No |
+| VIEWER | Yes | No | No |
+
+**IMPORTANT Pattern for ALL routes:**
+```python
+# ALWAYS use this pattern for multi-tenancy filtering
+user_role = current_user["role"].lower() if current_user.get("role") else ""
+if user_role != "super_admin":
+    # Force filter by user's organization
+    organization_id = current_user["organization_id"]
+```
+
+**WRONG patterns to avoid:**
+```python
+# WRONG - "admin" is tenant admin, NOT super admin!
+if current_user["role"] != "admin":
+    organization_id = current_user["organization_id"]
+
+# WRONG - Only filters for "manager", misses ADMIN role
+if current_user["role"] == "manager":
+    organization_id = current_user["organization_id"]
+```
+
 ## Directory Structure Template
 
 ```
@@ -399,15 +428,30 @@ async def list_[features](
     is_active: bool = Query(default=None),
     sort_by: str = Query(default="created_at"),
     sort_order: str = Query(default="desc"),
+    organization_id: Optional[int] = Query(None, description="Filter by org (SUPER_ADMIN only)"),
     current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """List all [features] for current organization"""
-    org_id = current_user["organization_id"]
+    """
+    List all [features]
+
+    Permission:
+    - SUPER_ADMIN: Can see all organizations (or filter by org_id param)
+    - Others: Can only see own organization's data
+    """
+    # CRITICAL: Multi-tenancy filtering
+    user_role = current_user["role"].lower() if current_user.get("role") else ""
+    if user_role != "super_admin":
+        # Non-SUPER_ADMIN can ONLY see their own organization
+        organization_id = current_user["organization_id"]
+    elif not organization_id:
+        # SUPER_ADMIN with no filter - use their org as default
+        organization_id = current_user["organization_id"]
+
     repo = [Feature]Repository(db)
 
     items, total = repo.get_list(
-        org_id=org_id,
+        org_id=organization_id,  # Use the filtered organization_id
         page=page,
         limit=limit,
         search=search,
@@ -701,24 +745,53 @@ class Create[Feature]UseCase:
 
 ## Permission Constants
 
+**IMPORTANT: Permission Format**
+- Backend permission check: `"resource:action"` format (colon separator)
+- Valid actions: `read`, `create`, `edit`, `delete`, `manage`
+- DO NOT use `view` - use `read` instead!
+
 ```python
 # Add to backend-python/services/rbac/constants.py
 
+# Valid permission actions (NEVER use 'view' - use 'read')
+PERMISSION_ACTIONS = ['read', 'create', 'edit', 'delete', 'manage']
+
+# Permission format: "resource:action"
 [FEATURES]_PERMISSIONS = {
-    "[features].read": "View [features]",
-    "[features].create": "Create [features]",
-    "[features].update": "Update [features]",
-    "[features].delete": "Delete [features]",
-    "[features].export": "Export [features]",
+    "[features]:read": "View [features]",       # NOT "[features]:view"
+    "[features]:create": "Create [features]",
+    "[features]:edit": "Edit [features]",       # NOT "[features]:update"
+    "[features]:delete": "Delete [features]",
+    "[features]:manage": "Full control of [features]",
 }
 
 # Add to DEFAULT_ROLE_PERMISSIONS
 DEFAULT_ROLE_PERMISSIONS = {
     "SUPER_ADMIN": [..., *[FEATURES]_PERMISSIONS.keys()],
-    "ADMIN": [..., "[features].read", "[features].create", "[features].update", "[features].delete"],
-    "MANAGER": [..., "[features].read", "[features].create", "[features].update"],
-    "VIEWER": [..., "[features].read"],
+    "ADMIN": [..., "[features]:read", "[features]:create", "[features]:edit", "[features]:delete"],
+    "CONTENT_MANAGER": [..., "[features]:read", "[features]:create", "[features]:edit"],
+    "VIEWER": [..., "[features]:read"],
 }
+```
+
+**In Routes - require_permission:**
+```python
+# Format: "resource:action" with colon separator
+@router.get("")
+async def list_items(current_user: dict = Depends(require_permission("[features]:read"))):
+    pass
+
+@router.post("")
+async def create_item(current_user: dict = Depends(require_permission("[features]:create"))):
+    pass
+
+@router.put("/{id}")
+async def update_item(current_user: dict = Depends(require_permission("[features]:edit"))):
+    pass
+
+@router.delete("/{id}")
+async def delete_item(current_user: dict = Depends(require_permission("[features]:delete"))):
+    pass
 ```
 
 ## Register Routes

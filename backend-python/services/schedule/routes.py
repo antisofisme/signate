@@ -157,7 +157,7 @@ def update_schedule(
     schedule_id: int,
     request: UpdateScheduleRequest,
     http_request: Request,
-    current_user: dict = Depends(require_permission("schedules", "update")),
+    current_user: dict = Depends(require_permission("schedules", "edit")),
     audit_logger: AuditLogger = Depends(get_audit_logger),
     db: Session = Depends(get_db)
 ):
@@ -223,7 +223,7 @@ def delete_schedule(
 @router.post("/schedules/{schedule_id}/deactivate", response_model=ScheduleResponse)
 def deactivate_schedule(
     schedule_id: int,
-    current_user: dict = Depends(require_permission("schedules", "update")),
+    current_user: dict = Depends(require_permission("schedules", "edit")),
     db: Session = Depends(get_db)
 ):
     """Deactivate schedule (soft delete)"""
@@ -341,7 +341,7 @@ def check_schedule_conflicts(
 
 @router.post("/schedules/refresh", status_code=status.HTTP_200_OK)
 async def refresh_schedules(
-    current_user: dict = Depends(require_permission("schedules", "update")),
+    current_user: dict = Depends(require_permission("schedules", "edit")),
     organization_id: Optional[int] = Query(None, description="Refresh specific organization (admin only)")
 ):
     """

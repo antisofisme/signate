@@ -33,7 +33,7 @@ export default function OrganizationsPage() {
   const deleteMutation = useDeleteOrganization();
 
   // Permission checks
-  const { hasPermission: canView } = useCanPerformAction('organizations', 'view');
+  const { hasPermission: canView } = useCanPerformAction('organizations', 'read');
   const { hasPermission: canCreate } = useCanPerformAction('organizations', 'create');
   const { hasPermission: canEdit } = useCanPerformAction('organizations', 'edit');
   const { hasPermission: canDelete } = useCanPerformAction('organizations', 'delete');

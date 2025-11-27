@@ -273,7 +273,7 @@ def update_playlist(
     request_body: PlaylistUpdateRequest,
     http_request: Request,
     use_case: UpdatePlaylistUseCase = Depends(get_update_playlist_use_case),
-    current_user: dict = Depends(require_permission("playlists", "update")),
+    current_user: dict = Depends(require_permission("playlists", "edit")),
     audit_logger: AuditLogger = Depends(get_audit_logger),
 ):
     """Update playlist"""
@@ -383,7 +383,7 @@ def add_content_to_playlist(
     request_body: AddContentRequest,
     http_request: Request,
     use_case: AddContentToPlaylistUseCase = Depends(get_add_content_use_case),
-    current_user: dict = Depends(require_permission("playlists", "update")),
+    current_user: dict = Depends(require_permission("playlists", "edit")),
     audit_logger: AuditLogger = Depends(get_audit_logger),
 ):
     """Add content to playlist (bulk)"""
@@ -431,7 +431,7 @@ def remove_content_from_playlist(
     content_item_id: int,
     http_request: Request,
     use_case: RemoveContentFromPlaylistUseCase = Depends(get_remove_content_use_case),
-    current_user: dict = Depends(require_permission("playlists", "update")),
+    current_user: dict = Depends(require_permission("playlists", "edit")),
     audit_logger: AuditLogger = Depends(get_audit_logger),
 ):
     """Remove content from playlist"""
@@ -472,7 +472,7 @@ def reorder_playlist_content(
     request_body: ReorderContentRequest,
     http_request: Request,
     use_case: ReorderPlaylistContentUseCase = Depends(get_reorder_content_use_case),
-    current_user: dict = Depends(require_permission("playlists", "update")),
+    current_user: dict = Depends(require_permission("playlists", "edit")),
     audit_logger: AuditLogger = Depends(get_audit_logger),
 ):
     """Reorder and update duration of playlist content"""
@@ -536,7 +536,7 @@ def assign_to_devices(
     request_body: AssignDevicesRequest,
     http_request: Request,
     use_case: AssignPlaylistToDevicesUseCase = Depends(get_assign_devices_use_case),
-    current_user: dict = Depends(require_permission("playlists", "update")),
+    current_user: dict = Depends(require_permission("playlists", "edit")),
     audit_logger: AuditLogger = Depends(get_audit_logger),
 ):
     """Assign playlist to devices (bulk)"""
@@ -579,7 +579,7 @@ def assign_to_tags(
     request_body: AssignTagsRequest,
     http_request: Request,
     use_case: AssignPlaylistToTagsUseCase = Depends(get_assign_tags_use_case),
-    current_user: dict = Depends(require_permission("playlists", "update")),
+    current_user: dict = Depends(require_permission("playlists", "edit")),
     audit_logger: AuditLogger = Depends(get_audit_logger),
 ):
     """Assign playlist to tags (bulk)"""
@@ -622,7 +622,7 @@ def unassign_from_devices(
     request_body: AssignDevicesRequest,
     http_request: Request,
     use_case: UnassignPlaylistFromDevicesUseCase = Depends(get_unassign_devices_use_case),
-    current_user: dict = Depends(require_permission("playlists", "update")),
+    current_user: dict = Depends(require_permission("playlists", "edit")),
     audit_logger: AuditLogger = Depends(get_audit_logger),
 ):
     """Unassign playlist from devices"""
@@ -663,7 +663,7 @@ def unassign_from_tags(
     request_body: AssignTagsRequest,
     http_request: Request,
     use_case: UnassignPlaylistFromTagsUseCase = Depends(get_unassign_tags_use_case),
-    current_user: dict = Depends(require_permission("playlists", "update")),
+    current_user: dict = Depends(require_permission("playlists", "edit")),
     audit_logger: AuditLogger = Depends(get_audit_logger),
 ):
     """Unassign playlist from tags"""

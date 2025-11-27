@@ -107,7 +107,14 @@
     "analytics": "Analytics",
     "activityLogs": "Activity Logs",
     "auditLogs": "Audit Logs",
-    "settings": "Settings"
+    "settings": "Settings",
+    "digitalMenus": "Digital Menus",
+    "groups": {
+      "devices": "Devices",
+      "content": "Content",
+      "customization": "Customization",
+      "integrations": "Integrations"
+    }
   },
   "devices": {
     "title": "Device Management",
@@ -1105,6 +1112,8 @@
     "select": "Select"
   },
   "deviceGroups": {
+    "title": "Device Groups",
+    "description": "Organize devices into groups for bulk management",
     "loadingGroups": "Loading groups...",
     "viewMode": {
       "grid": "Grid",
@@ -1171,6 +1180,8 @@
     }
   },
   "tags": {
+    "title": "Tag Management",
+    "description": "Organize your content and devices with tags",
     "searchPlaceholder": "Search tags...",
     "sortNewest": "Newest",
     "sortOldest": "Oldest",
@@ -1212,6 +1223,8 @@
     "delete": "Delete"
   },
   "audit": {
+    "title": "Audit Logs",
+    "description": "View system activity and user actions",
     "showFilters": "Show Filters",
     "hideFilters": "Hide Filters",
     "loadingLogs": "Loading audit logs...",
@@ -1252,6 +1265,8 @@
     }
   },
   "rbac": {
+    "title": "Role Management",
+    "description": "Manage roles and permissions for access control",
     "editRole": "Edit Role",
     "createNewRole": "Create New Role",
     "roleName": "Role Name",
@@ -1300,6 +1315,8 @@
     }
   },
   "organizations": {
+    "title": "Organizations",
+    "description": "Manage tenant organizations and their settings",
     "totalOrganizations": "Total Organizations",
     "active": "Active",
     "inactive": "Inactive",
@@ -1339,6 +1356,8 @@
     "backToSettings": "Back to Settings"
   },
   "users": {
+    "title": "User Management",
+    "description": "Manage user accounts and access permissions",
     "stats": {
       "totalUsers": "Total Users",
       "active": "Active"

@@ -23,7 +23,7 @@ export default function AuditPage() {
   const { t } = useTranslation();
 
   // Permission check
-  const { hasPermission: canView, isLoading: isCheckingPermission } = useCanPerformAction('audit_logs', 'view');
+  const { hasPermission: canView, isLoading: isCheckingPermission } = useCanPerformAction('audit_logs', 'read');
 
   // Standardized pagination hook
   const pagination = usePagination({ pageSize: 20 });

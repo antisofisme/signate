@@ -89,8 +89,18 @@ def list_audit_logs(
 
     Permission: Admin or Super Admin only (P0-5 security fix)
     Audit logs are sensitive security data and should not be accessible to managers/viewers
+
+    Multi-tenancy:
+    - SUPER_ADMIN: Can see all organizations (or filter by org_id param)
+    - ADMIN: Can only see logs from own organization
     """
     start_time = time.time()
+
+    # Multi-tenancy: Non-SUPER_ADMIN users can only see their own organization
+    user_role = current_user["role"].lower() if current_user.get("role") else ""
+    if user_role != "super_admin":
+        # Force filter by user's organization for ADMIN role
+        organization_id = current_user["organization_id"]
 
     # Execute use case
     result = use_case.execute(

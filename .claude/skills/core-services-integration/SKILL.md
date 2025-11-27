@@ -62,12 +62,18 @@ async def get_items(
 # 3. Apply permission check
 @router.post("/items")
 async def create_item(
-    current_user: dict = Depends(require_permission("items.create"))  # RBAC
+    current_user: dict = Depends(require_permission("items:create"))  # RBAC - use colon!
 ):
     pass
 
-# 4. Filter by organization (multi-tenancy)
-items = repo.get_by_organization(current_user["organization_id"])
+# 4. Filter by organization (CRITICAL MULTI-TENANCY!)
+# Only SUPER_ADMIN can see all organizations
+# ADMIN (tenant admin) and others can ONLY see their own organization
+user_role = current_user["role"].lower() if current_user.get("role") else ""
+if user_role != "super_admin":
+    # Force filter by user's organization for non-SUPER_ADMIN
+    organization_id = current_user["organization_id"]
+items = repo.get_by_organization(organization_id)
 
 # 5. Sanitize user input
 name = sanitize_input(data.name)
@@ -86,17 +92,31 @@ if not item:
     raise not_found_error("Item", item_id)
 ```
 
+### Multi-Tenancy Role Hierarchy (CRITICAL!)
+
+| Role | See Own Org | See All Orgs | Switch Org |
+|------|-------------|--------------|------------|
+| SUPER_ADMIN | Yes | Yes | Yes (via X-Organization-Id header) |
+| ADMIN (tenant) | Yes | **NO** | No |
+| CONTENT_MANAGER | Yes | No | No |
+| VIEWER | Yes | No | No |
+
+**IMPORTANT**: Never use `if role != "admin"` - use `if role != "super_admin"` instead!
+
 ### Frontend Page Checklist
 
 ```typescript
-// 1. Use auth hook for protected routes
-import { useAuth } from '@/shared/hooks/useAuth';
+// 1. Import permission hook
+import { useCanPerformAction } from '@/features/rbac/hooks/usePermissions';
+import { useAuthStore } from '@/stores/auth';
 
-// 2. Check permissions before rendering
-const { user, hasPermission } = useAuth();
-if (!hasPermission('items.read')) return <AccessDenied />;
+// 2. Check permissions before rendering - Use 'read' NOT 'view'!
+const { hasPermission: canRead, isLoading } = useCanPerformAction('items', 'read');
+if (isLoading) return <PageSkeleton />;
+if (!canRead) return <AccessDenied />;
 
-// 3. Use organization context
+// 3. Use organization context from auth store
+const user = useAuthStore((s) => s.user);
 const orgId = user?.organization_id;
 
 // 4. Use TanStack Query for data fetching
@@ -137,69 +157,116 @@ async def protected_endpoint(
 
 **Frontend:**
 ```typescript
-// In your component
-import { useAuth } from '@/shared/hooks/useAuth';
+// In your component - Use Zustand auth store
+import { useAuthStore } from '@/stores/auth';
+import { Navigate } from 'react-router-dom';
 
 function MyComponent() {
-  const { user, isAuthenticated, logout } = useAuth();
+  const { user, token, logout } = useAuthStore();
 
-  if (!isAuthenticated) {
+  if (!token || !user) {
     return <Navigate to="/login" />;
   }
+
+  // Access user data
+  const orgId = user.organization_id;
+  const role = user.role;
   // ...
 }
 ```
 
 ### 2. RBAC Service Integration
 
+**Permission Actions (IMPORTANT):**
+```typescript
+// CORRECT actions - Use 'read' NOT 'view'
+type PermissionAction = 'read' | 'create' | 'edit' | 'delete' | 'manage';
+
+// Resources
+type PermissionResource =
+  | 'dashboard' | 'devices' | 'device_groups' | 'contents'
+  | 'playlists' | 'schedules' | 'tags' | 'menus'
+  | 'analytics' | 'audit_logs' | 'users' | 'organizations'
+  | 'roles' | 'sessions' | 'settings' | 'system';
+```
+
 **Backend:**
 ```python
-# Permission-based access
+# Permission-based access - format: "resource:action"
 @router.delete("/items/{id}")
 async def delete_item(
     id: int,
-    current_user: dict = Depends(require_permission("items.delete"))
+    current_user: dict = Depends(require_permission("items:delete"))
 ):
-    # User has items.delete permission
+    # User has items:delete permission
     pass
 
 # Role hierarchy check
 from shared.auth import PermissionChecker
-checker = PermissionChecker(current_user["role"], current_user.get("permissions", []))
+checker = PermissionChecker(current_user["role"], current_user.get("permissions", {}))
 if not checker.can_manage_users():
     raise forbidden_error("Cannot manage users")
 ```
 
 **Frontend:**
 ```typescript
-// Permission-based UI
-import { usePermissions } from '@/features/rbac/hooks/usePermissions';
+// Permission-based UI - Use useCanPerformAction hook
+import { useCanPerformAction } from '@/features/rbac/hooks/usePermissions';
 
 function ItemActions({ item }) {
-  const { hasPermission } = usePermissions();
+  // CORRECT: Use 'read', 'create', 'edit', 'delete', 'manage'
+  const { hasPermission: canEdit } = useCanPerformAction('items', 'edit');
+  const { hasPermission: canDelete } = useCanPerformAction('items', 'delete');
 
   return (
     <div>
-      {hasPermission('items.edit') && <EditButton />}
-      {hasPermission('items.delete') && <DeleteButton />}
+      {canEdit && <EditButton />}
+      {canDelete && <DeleteButton />}
     </div>
   );
+}
+
+// For page-level permission check
+function ItemsPage() {
+  const { hasPermission: canRead, isLoading } = useCanPerformAction('items', 'read');
+
+  if (isLoading) return <PageSkeleton />;
+  if (!canRead) return <AccessDenied />;
+
+  return <ItemsList />;
 }
 ```
 
 ### 3. Organization Service Integration
 
-**Backend:**
+**Backend - Multi-Tenancy Pattern:**
 ```python
-# Always filter by organization
+# CRITICAL: Always filter by organization for non-SUPER_ADMIN users
 @router.get("/items")
 async def get_items(
+    organization_id: Optional[int] = Query(None),  # Optional param for SUPER_ADMIN
     current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    org_id = current_user["organization_id"]
-    items = item_repo.get_by_organization(org_id)  # REQUIRED
+    # CORRECT Multi-tenancy pattern:
+    user_role = current_user["role"].lower() if current_user.get("role") else ""
+    if user_role != "super_admin":
+        # Force filter by user's organization for ADMIN, manager, viewer, etc.
+        organization_id = current_user["organization_id"]
+
+    items = item_repo.get_by_organization(organization_id)  # REQUIRED
     return items
+
+# For listing organizations - same pattern!
+@router.get("/organizations")
+async def list_organizations(...):
+    user_role = current_user["role"].lower() if current_user.get("role") else ""
+    if user_role != "super_admin":
+        # Non-SUPER_ADMIN can ONLY see their own organization
+        result["organizations"] = [
+            org for org in result["organizations"]
+            if org.id == current_user["organization_id"]
+        ]
 ```
 
 **Frontend:**
@@ -345,7 +412,22 @@ async def expensive_operation():
 
 ### Backend
 
-1. **Missing organization filter**
+1. **Wrong multi-tenancy role check (CRITICAL!)**
+   ```python
+   # WRONG - ADMIN (tenant admin) will see ALL data!
+   if current_user["role"] == "manager":
+       organization_id = current_user["organization_id"]
+   # or
+   if current_user["role"] != "admin":  # WRONG! admin != super_admin
+       organization_id = current_user["organization_id"]
+
+   # CORRECT - Only SUPER_ADMIN sees all, everyone else sees own org
+   user_role = current_user["role"].lower() if current_user.get("role") else ""
+   if user_role != "super_admin":
+       organization_id = current_user["organization_id"]
+   ```
+
+2. **Missing organization filter**
    ```python
    # WRONG - returns ALL items
    items = db.query(Item).all()
@@ -391,13 +473,20 @@ async def expensive_operation():
 
 ### Frontend
 
-1. **Missing permission check**
+1. **Wrong permission action or hook**
    ```typescript
+   // WRONG - 'view' doesn't exist, use 'read'
+   const { hasPermission } = useCanPerformAction('items', 'view');
+
+   // CORRECT - use 'read' action
+   const { hasPermission } = useCanPerformAction('items', 'read');
+
    // WRONG - shows to everyone
    <DeleteButton onClick={handleDelete} />
 
-   // CORRECT - permission-gated
-   {hasPermission('items.delete') && <DeleteButton onClick={handleDelete} />}
+   // CORRECT - permission-gated with useCanPerformAction
+   const { hasPermission: canDelete } = useCanPerformAction('items', 'delete');
+   {canDelete && <DeleteButton onClick={handleDelete} />}
    ```
 
 2. **Missing organization context**

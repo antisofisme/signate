@@ -5,13 +5,16 @@
 
 import { PageHeader } from '@/shared/components';
 import SchedulesPageContent from '@/features/schedules/pages/SchedulesPage';
+import { useTranslation } from 'react-i18next';
 
 export default function SchedulesPage() {
+  const { t } = useTranslation();
+
   return (
     <>
       <PageHeader
-        title="Schedule Manager"
-        description="Create and manage automated content playback schedules"
+        title={t('navigation.schedules')}
+        description={t('navigation.schedules')}
       />
       <SchedulesPageContent />
     </>

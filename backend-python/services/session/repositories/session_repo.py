@@ -357,3 +357,24 @@ class SessionRepository:
             )
 
         return query.order_by(UserSession.last_activity_at.desc()).all()
+
+    def update_token(self, old_token: str, new_token: str) -> bool:
+        """
+        Update session token with new token (for token refresh)
+
+        Args:
+            old_token: Current JWT access token
+            new_token: New JWT access token
+
+        Returns:
+            True if updated, False if session not found
+        """
+        session = self.find_by_token(old_token)
+        if not session:
+            return False
+
+        # Update token hash and last activity
+        session.session_token = self.hash_token(new_token)
+        session.last_activity_at = datetime.now(timezone.utc)
+        self.db.commit()
+        return True

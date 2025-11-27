@@ -59,7 +59,7 @@ export default function RolesPage() {
   const [deleteItem, setDeleteItem] = useState<Role | null>(null);
 
   // Permission checks
-  const { hasPermission: canView } = useCanPerformAction('roles', 'view');
+  const { hasPermission: canView } = useCanPerformAction('roles', 'read');
   const { hasPermission: canCreate } = useCanPerformAction('roles', 'create');
   const { hasPermission: canEdit } = useCanPerformAction('roles', 'edit');
   const { hasPermission: canDelete } = useCanPerformAction('roles', 'delete');

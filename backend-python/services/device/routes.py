@@ -757,7 +757,7 @@ def update_device(
     device_id: int,
     request_body: UpdateDeviceRequest,
     http_request: Request,
-    current_user: dict = Depends(require_permission("devices", "update")),
+    current_user: dict = Depends(require_permission("devices", "edit")),
     use_case: UpdateDeviceUseCase = Depends(get_update_device_use_case)
 ):
     """
@@ -881,7 +881,7 @@ def delete_device(
 def release_device_by_admin(
     device_id: int,
     http_request: Request,
-    current_user: dict = Depends(require_permission("devices", "update")),
+    current_user: dict = Depends(require_permission("devices", "edit")),
     device_repo: DeviceRepository = Depends(get_device_repository)
 ):
     """

@@ -363,7 +363,7 @@ def update_tag(
     request_body: UpdateTagRequest,
     http_request: Request,
     use_case: UpdateTagUseCase = Depends(get_update_tag_use_case),
-    current_user: dict = Depends(require_permission("tags", "update")),
+    current_user: dict = Depends(require_permission("tags", "edit")),
     audit_logger: AuditLogger = Depends(get_audit_logger)
 ):
     """
@@ -492,7 +492,7 @@ def assign_tag_to_content(
     request_body: AssignTagRequest,
     http_request: Request,
     use_case: AssignTagToContentUseCase = Depends(get_assign_tag_to_content_use_case),
-    current_user: dict = Depends(require_permission("tags", "update")),
+    current_user: dict = Depends(require_permission("tags", "edit")),
     audit_logger: AuditLogger = Depends(get_audit_logger)
 ):
     """
@@ -548,7 +548,7 @@ def assign_tag_to_contents(
     request_body: AssignTagToContentsRequest,
     http_request: Request,
     use_case: AssignTagToContentsUseCase = Depends(get_assign_tag_to_contents_use_case),
-    current_user: dict = Depends(require_permission("tags", "update")),
+    current_user: dict = Depends(require_permission("tags", "edit")),
     audit_logger: AuditLogger = Depends(get_audit_logger)
 ):
     """
@@ -608,7 +608,7 @@ def unassign_tag_from_content(
     request_body: UnassignTagRequest,
     http_request: Request,
     use_case: UnassignTagFromContentUseCase = Depends(get_unassign_tag_from_content_use_case),
-    current_user: dict = Depends(require_permission("tags", "update")),
+    current_user: dict = Depends(require_permission("tags", "edit")),
     audit_logger: AuditLogger = Depends(get_audit_logger)
 ):
     """
@@ -663,7 +663,7 @@ def unassign_tag_from_contents(
     request_body: UnassignTagFromContentsRequest,
     http_request: Request,
     use_case: UnassignTagFromContentsUseCase = Depends(get_unassign_tag_from_contents_use_case),
-    current_user: dict = Depends(require_permission("tags", "update")),
+    current_user: dict = Depends(require_permission("tags", "edit")),
     audit_logger: AuditLogger = Depends(get_audit_logger)
 ):
     """

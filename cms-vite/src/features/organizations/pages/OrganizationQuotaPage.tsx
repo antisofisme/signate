@@ -25,7 +25,7 @@ export default function OrganizationQuotaPage() {
   const { user } = useAuthStore();
 
   // Permission checks
-  const { hasPermission: canView } = useCanPerformAction('organizations', 'view');
+  const { hasPermission: canView } = useCanPerformAction('organizations', 'read');
   const { hasPermission: canManage } = useCanPerformAction('organizations', 'manage');
 
   const orgId = id ? parseInt(id, 10) : user?.organization_id;

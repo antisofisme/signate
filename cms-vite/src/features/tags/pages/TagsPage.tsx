@@ -24,7 +24,7 @@ export default function TagsPage() {
   const [deletingTag, setDeletingTag] = useState<Tag | null>(null);
 
   // Permission checks
-  const { hasPermission: canRead, isLoading: isLoadingReadPermission } = useCanPerformAction('tags', 'view');
+  const { hasPermission: canRead, isLoading: isLoadingReadPermission } = useCanPerformAction('tags', 'read');
   const { hasPermission: canCreate } = useCanPerformAction('tags', 'create');
   const { hasPermission: canUpdate } = useCanPerformAction('tags', 'edit');
   const { hasPermission: canDelete } = useCanPerformAction('tags', 'delete');

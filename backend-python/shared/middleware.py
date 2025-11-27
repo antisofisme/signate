@@ -4,7 +4,7 @@ FastAPI dependencies for JWT authentication and authorization
 """
 
 from typing import Optional, List
-from fastapi import Depends, HTTPException, status, Header
+from fastapi import Depends, HTTPException, status, Header, Request
 from sqlalchemy.orm import Session
 from shared.database import get_db
 from shared.auth import extract_user_from_token
@@ -58,18 +58,24 @@ async def get_current_user(
 
 
 async def get_current_active_user(
+    request: Request,
     current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db)
 ) -> dict:
     """
     Verify that current user is active in database AND session is not revoked (P0-16)
 
+    Multi-tenancy support:
+    - SUPER_ADMIN: organization_id can be overridden via X-Organization-Id header
+    - Regular users: organization_id is always from JWT (header ignored for security)
+
     Args:
+        request: FastAPI request object (for reading X-Organization-Id header)
         current_user: User info from token (includes 'token' field)
         db: Database session
 
     Returns:
-        User information dictionary
+        User information dictionary with effective organization_id
 
     Raises:
         HTTPException: If user is not active, not found, or session revoked
@@ -109,6 +115,29 @@ async def get_current_active_user(
                     "details": {}
                 }
             )
+
+    # =============================================================================
+    # MULTI-TENANCY: Calculate effective organization_id
+    # =============================================================================
+    # Store original JWT organization for reference
+    jwt_org_id = current_user.get("organization_id")
+    current_user["jwt_organization_id"] = jwt_org_id
+
+    user_role = current_user.get("role", "").lower()
+    header_org_id = request.headers.get("X-Organization-Id")
+
+    # For SUPER_ADMIN: Allow switching organizations via header
+    if user_role == "super_admin" and header_org_id:
+        try:
+            effective_org_id = int(header_org_id)
+            current_user["organization_id"] = effective_org_id
+            current_user["organization_switched"] = True
+        except (ValueError, TypeError):
+            # Invalid header value, keep JWT org_id
+            current_user["organization_switched"] = False
+    else:
+        # Regular users: Always use their JWT organization (ignore header)
+        current_user["organization_switched"] = False
 
     return current_user
 
@@ -343,7 +372,13 @@ class PermissionChecker:
         def create_content(
             current_user: dict = Depends(require_permission("contents", "create"))
         ):
+            # current_user["organization_id"] is already the effective organization
             ...
+
+    Multi-tenancy:
+    - organization_id is already resolved by get_current_active_user
+    - SUPER_ADMIN: organization_id from X-Organization-Id header (if provided)
+    - Regular users: organization_id from JWT (header ignored for security)
     """
 
     def __init__(self, resource: str, action: str):
@@ -370,6 +405,10 @@ class PermissionChecker:
         Special roles:
         - SUPER_ADMIN: Has all permissions by default
         - System roles have predefined permissions
+
+        Note:
+        - current_user["organization_id"] is already the effective organization
+          (resolved by get_current_active_user based on role and X-Organization-Id header)
         """
         user_role = current_user.get("role", "").lower()
 

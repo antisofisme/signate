@@ -418,10 +418,15 @@ def extract_user_from_token(token: str) -> Dict[str, Any]:
 # =============================================================================
 
 def get_current_user(
+    request: Request,
     credentials: HTTPAuthorizationCredentials = Depends(security)
 ) -> CurrentUser:
     """
     FastAPI dependency to get current authenticated user from JWT token
+
+    Multi-tenancy support:
+    - SUPER_ADMIN: organization_id can be overridden via X-Organization-Id header
+    - Regular users: organization_id is always from JWT (header ignored for security)
 
     Usage:
         @router.get("/protected")
@@ -429,10 +434,11 @@ def get_current_user(
             return {"user_id": current_user.id}
 
     Args:
+        request: FastAPI Request object (for reading X-Organization-Id header)
         credentials: HTTP Bearer token from Authorization header
 
     Returns:
-        CurrentUser object with user info from token
+        CurrentUser object with user info from token (organization_id may be overridden)
 
     Raises:
         AuthenticationError: If token is invalid or missing
@@ -449,7 +455,7 @@ def get_current_user(
     user_id = payload.get("sub")
     username = payload.get("username")
     role = payload.get("role")
-    organization_id = payload.get("organization_id")
+    jwt_organization_id = payload.get("organization_id")
 
     if not user_id or not username or not role:
         raise AuthenticationError(
@@ -486,9 +492,9 @@ def get_current_user(
                         code=ErrorCodes.SESSION_REVOKED
                     )
 
-                # Cache positive result for 60 seconds
-                # Balance between performance and security (revoked sessions detected within 60s)
-                cache.set(cache_key, True, ttl=60)
+                # Cache positive result for 30 seconds
+                # Balance between performance and security (revoked sessions detected within 30s)
+                cache.set(cache_key, True, ttl=30)
 
                 # Update last activity timestamp (only on cache miss to reduce DB writes)
                 session_repo.update_last_activity(session.id)
@@ -507,11 +513,30 @@ def get_current_user(
         # This allows backward compatibility during migration
         pass
 
+    # =============================================================================
+    # MULTI-TENANCY: Calculate effective organization_id
+    # =============================================================================
+    effective_organization_id = jwt_organization_id
+
+    # Normalize role to lowercase for comparison
+    role_lower = role.lower() if isinstance(role, str) else role
+
+    # For SUPER_ADMIN: Allow switching organizations via X-Organization-Id header
+    header_org_id = request.headers.get("X-Organization-Id")
+    if role_lower == "super_admin" and header_org_id:
+        try:
+            effective_organization_id = int(header_org_id)
+        except (ValueError, TypeError):
+            # Invalid header value, keep JWT org_id
+            pass
+    # For regular users: Always use their JWT organization (ignore header)
+    # This is a security measure - regular users cannot switch organizations
+
     return CurrentUser(
         id=int(user_id),
         username=username,
         role=role,
-        organization_id=organization_id
+        organization_id=effective_organization_id
     )
 
 
@@ -869,6 +894,118 @@ class PermissionChecker:
 
 
 # =============================================================================
+# ORGANIZATION CONTEXT - MULTI-TENANCY SUPPORT
+# =============================================================================
+
+def get_effective_organization_id(
+    request: Request,
+    current_user: CurrentUser = Depends(get_current_user)
+) -> int:
+    """
+    Get effective organization ID for the current request.
+
+    This is the KEY function for multi-tenancy:
+    - SUPER_ADMIN: Can use X-Organization-Id header to switch organizations
+    - Regular users: Always use their own organization from JWT (ignore header)
+
+    Usage:
+        @router.get("/items")
+        def list_items(
+            org_id: int = Depends(get_effective_organization_id),
+            current_user: CurrentUser = Depends(get_current_user)
+        ):
+            # org_id is the effective organization to use for filtering
+            items = repo.get_by_organization(org_id)
+            return items
+
+    Args:
+        request: FastAPI Request object (to access headers)
+        current_user: Current authenticated user
+
+    Returns:
+        Effective organization ID to use for data filtering
+
+    Raises:
+        AuthorizationError: If organization context is invalid
+    """
+    # Get X-Organization-Id header if present
+    header_org_id = request.headers.get("X-Organization-Id")
+
+    # For SUPER_ADMIN: Allow switching organizations via header
+    if is_super_admin(current_user):
+        if header_org_id:
+            try:
+                org_id = int(header_org_id)
+                # TODO: Optionally validate that organization exists
+                return org_id
+            except (ValueError, TypeError):
+                raise AuthorizationError(
+                    message="Invalid X-Organization-Id header value",
+                    code=ErrorCodes.INVALID_INPUT,
+                    details={"header_value": header_org_id}
+                )
+        # If no header, super_admin must have selected an organization
+        if current_user.organization_id:
+            return current_user.organization_id
+        raise AuthorizationError(
+            message="SUPER_ADMIN must select an organization. Please select an organization first.",
+            code=ErrorCodes.ORGANIZATION_REQUIRED,
+            details={"hint": "Use X-Organization-Id header or select organization during login"}
+        )
+
+    # For regular users: Always use their own organization
+    if current_user.organization_id is None:
+        raise AuthorizationError(
+            message="User does not belong to any organization",
+            code=ErrorCodes.ORGANIZATION_REQUIRED,
+            details={"user_id": current_user.id}
+        )
+
+    # Security: Regular users cannot switch organizations
+    # Even if they send X-Organization-Id header, we ignore it
+    return current_user.organization_id
+
+
+class OrganizationContext:
+    """
+    Organization context for request - includes user and effective organization.
+
+    Use this when you need both user info and organization context.
+    """
+    def __init__(self, user: CurrentUser, organization_id: int):
+        self.user = user
+        self.organization_id = organization_id
+
+    @property
+    def user_id(self) -> int:
+        return self.user.id
+
+    @property
+    def is_super_admin(self) -> bool:
+        return is_super_admin(self.user)
+
+
+def get_organization_context(
+    request: Request,
+    current_user: CurrentUser = Depends(get_current_user)
+) -> OrganizationContext:
+    """
+    Get full organization context for the current request.
+
+    Usage:
+        @router.get("/items")
+        def list_items(ctx: OrganizationContext = Depends(get_organization_context)):
+            items = repo.get_by_organization(ctx.organization_id)
+            return items
+
+    Returns:
+        OrganizationContext with user and effective organization_id
+    """
+    org_id = get_effective_organization_id(request, current_user)
+    return OrganizationContext(user=current_user, organization_id=org_id)
+
+
+# =============================================================================
 # WEBSOCKET AUTHENTICATION DEPENDENCIES
 # =============================================================================
 
@@ -1001,4 +1138,9 @@ __all__ = [
 
     # Permission checker
     "PermissionChecker",
+
+    # Organization context - Multi-tenancy
+    "get_effective_organization_id",
+    "get_organization_context",
+    "OrganizationContext",
 ]
