@@ -7,13 +7,14 @@
 
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { PageHeader } from '@/shared/components';
+import { PageHeader, AccessDenied } from '@/shared/components';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, TrendingUp } from 'lucide-react';
 import { useOrganizationQuota } from '../hooks/useOrganizationQuota';
 import { QuotaDashboard } from '../components/QuotaDashboard';
 import { QuotaSettingsForm } from '../components/QuotaSettingsForm';
 import { useAuthStore } from '@/lib/stores/authStore';
+import { useCanPerformAction } from '@/features/rbac/hooks/usePermissions';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Skeleton } from '@/components/ui/skeleton';
 
@@ -22,6 +23,10 @@ export default function OrganizationQuotaPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user } = useAuthStore();
+
+  // Permission checks
+  const { hasPermission: canView } = useCanPerformAction('organizations', 'view');
+  const { hasPermission: canManage } = useCanPerformAction('organizations', 'manage');
 
   const orgId = id ? parseInt(id, 10) : user?.organization_id;
 
@@ -32,6 +37,11 @@ export default function OrganizationQuotaPage() {
     error,
     refetch,
   } = useOrganizationQuota(orgId);
+
+  // Access control
+  if (!canView) {
+    return <AccessDenied />;
+  }
 
   // Loading state
   if (isLoading) {
@@ -108,11 +118,13 @@ export default function OrganizationQuotaPage() {
           onRefresh={() => refetch()}
         />
 
-        {/* Quota Settings Form (Admin Only) */}
-        <QuotaSettingsForm
-          quota={quota}
-          organizationId={orgId!}
-        />
+        {/* Quota Settings Form (Admin/Manage Only) */}
+        {canManage && (
+          <QuotaSettingsForm
+            quota={quota}
+            organizationId={orgId!}
+          />
+        )}
       </div>
     </>
   );

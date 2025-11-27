@@ -6,6 +6,7 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { CheckCircle, XCircle, Clock, Calendar, ClipboardList, Smartphone, Eye, Pause, X, Play, Edit, Trash2 } from 'lucide-react'
+import { TableSkeleton, EmptyState } from '@/shared/components'
 import {
   PRIORITY_LEVELS,
   RECURRENCE_TYPES,
@@ -26,6 +27,8 @@ interface ScheduleListProps {
   onActivate: (schedule: Schedule) => void
   onDeactivate: (schedule: Schedule) => void
   onPause: (schedule: Schedule) => void
+  canUpdate?: boolean
+  canDelete?: boolean
 }
 
 export const ScheduleList = ({
@@ -37,6 +40,8 @@ export const ScheduleList = ({
   onActivate,
   onDeactivate,
   onPause,
+  canUpdate = true,
+  canDelete = true,
 }: ScheduleListProps) => {
   const { t } = useTranslation()
   const [searchQuery, setSearchQuery] = useState('')
@@ -58,22 +63,16 @@ export const ScheduleList = ({
   })
 
   if (isLoading) {
-    return (
-      <div className="space-y-3">
-        {[...Array(5)].map((_, i) => (
-          <div key={i} className="h-32 bg-gray-100 dark:bg-gray-700 rounded-lg animate-pulse" />
-        ))}
-      </div>
-    )
+    return <TableSkeleton rows={5} columns={1} />
   }
 
   if (schedules.length === 0) {
     return (
-      <div className="text-center py-12 bg-gray-50 dark:bg-gray-800 rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-600">
-        <Calendar className="w-16 h-16 mx-auto mb-4 text-gray-400 dark:text-gray-500" />
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">{t('schedules.noSchedulesYet')}</h3>
-        <p className="text-gray-600 dark:text-gray-400 mb-4">{t('schedules.createFirstSchedule')}</p>
-      </div>
+      <EmptyState
+        icon={Calendar}
+        title={t('schedules.noSchedulesYet')}
+        description={t('schedules.createFirstSchedule')}
+      />
     )
   }
 
@@ -314,7 +313,7 @@ export const ScheduleList = ({
                     {t('schedules.actions.view')}
                   </button>
 
-                  {schedule.status === 'active' && (
+                  {canUpdate && schedule.status === 'active' && (
                     <>
                       <button
                         onClick={() => onPause(schedule)}
@@ -335,7 +334,7 @@ export const ScheduleList = ({
                     </>
                   )}
 
-                  {schedule.status === 'inactive' && (
+                  {canUpdate && schedule.status === 'inactive' && (
                     <button
                       onClick={() => onActivate(schedule)}
                       className="px-3 py-1.5 text-sm bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded hover:bg-green-100 dark:hover:bg-green-900/50 flex items-center gap-1"
@@ -346,7 +345,7 @@ export const ScheduleList = ({
                     </button>
                   )}
 
-                  {schedule.status === 'paused' && (
+                  {canUpdate && schedule.status === 'paused' && (
                     <button
                       onClick={() => onActivate(schedule)}
                       className="px-3 py-1.5 text-sm bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded hover:bg-green-100 dark:hover:bg-green-900/50 flex items-center gap-1"
@@ -357,7 +356,7 @@ export const ScheduleList = ({
                     </button>
                   )}
 
-                  {schedule.status !== 'expired' && (
+                  {canUpdate && schedule.status !== 'expired' && (
                     <button
                       onClick={() => onEdit(schedule)}
                       className="px-3 py-1.5 text-sm bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded hover:bg-blue-100 dark:hover:bg-blue-900/50 flex items-center gap-1"
@@ -368,14 +367,16 @@ export const ScheduleList = ({
                     </button>
                   )}
 
-                  <button
-                    onClick={() => onDelete(schedule)}
-                    className="px-3 py-1.5 text-sm bg-gray-50 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-100 dark:hover:bg-gray-600 flex items-center gap-1"
-                    title={t('schedules.actions.deleteSchedule')}
-                  >
-                    <Trash2 className="w-4 h-4" />
-                    {t('schedules.actions.delete')}
-                  </button>
+                  {canDelete && (
+                    <button
+                      onClick={() => onDelete(schedule)}
+                      className="px-3 py-1.5 text-sm bg-gray-50 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-100 dark:hover:bg-gray-600 flex items-center gap-1"
+                      title={t('schedules.actions.deleteSchedule')}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                      {t('schedules.actions.delete')}
+                    </button>
+                  )}
                 </div>
               </div>
             </div>
@@ -385,20 +386,24 @@ export const ScheduleList = ({
 
       {/* No results */}
       {filteredSchedules.length === 0 && (
-        <div className="text-center py-8 bg-gray-50 dark:bg-gray-800 rounded-lg">
-          <p className="text-gray-600 dark:text-gray-400">{t('schedules.noMatches')}</p>
-          <button
-            onClick={() => {
-              setSearchQuery('')
-              setFilterStatus('all')
-              setFilterPriority('all')
-              setFilterRecurrence('all')
-            }}
-            className="mt-2 text-sm text-blue-600 dark:text-blue-400 hover:underline"
-          >
-            {t('schedules.clearFilters')}
-          </button>
-        </div>
+        <EmptyState
+          icon={Calendar}
+          title={t('schedules.noMatches')}
+          description={t('schedules.tryDifferentFilters')}
+          action={
+            <button
+              onClick={() => {
+                setSearchQuery('')
+                setFilterStatus('all')
+                setFilterPriority('all')
+                setFilterRecurrence('all')
+              }}
+              className="px-4 py-2 text-sm font-medium text-purple-600 hover:text-purple-700 dark:text-purple-400 dark:hover:text-purple-300"
+            >
+              {t('schedules.clearFilters')}
+            </button>
+          }
+        />
       )}
     </div>
   )

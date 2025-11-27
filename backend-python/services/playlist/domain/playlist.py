@@ -21,7 +21,9 @@ class Playlist:
         schedule: Optional[Dict[str, Any]] = None,
         is_default: bool = False,
         is_pms_template: bool = False,
-        created_by_id: Optional[int] = None,  # 🐛 FIX: Match database field name
+        created_by_id: Optional[int] = None,
+        updated_by_id: Optional[int] = None,
+        deleted_by_id: Optional[int] = None,
         created_at: Optional[datetime] = None,
         updated_at: Optional[datetime] = None,
         deleted_at: Optional[datetime] = None,
@@ -38,7 +40,10 @@ class Playlist:
         self.is_default = is_default
         self.is_pms_template = is_pms_template
         self.organization_id = organization_id
-        self.created_by_id = created_by_id  # 🐛 FIX: Direct assignment
+        # Audit trail fields
+        self.created_by_id = created_by_id
+        self.updated_by_id = updated_by_id
+        self.deleted_by_id = deleted_by_id
         self.created_at = created_at
         self.updated_at = updated_at
         self.deleted_at = deleted_at

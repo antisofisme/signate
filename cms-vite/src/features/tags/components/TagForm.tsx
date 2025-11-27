@@ -3,9 +3,13 @@
  * Form for creating/editing tags
  */
 
-import { useState } from 'react';
+import { useEffect } from 'react';
+import { useForm, FormProvider } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
 import { Loader2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { FormInput, FormSelect, FormTextarea } from '@/shared/components';
 import type { Tag, CreateTagRequest, UpdateTagRequest } from '../types/tag';
 
 const TAG_COLORS = [
@@ -18,6 +22,15 @@ const TAG_COLORS = [
   { label: 'Gray', value: '#6B7280' },
 ];
 
+// Zod validation schema
+const tagSchema = z.object({
+  tag_name: z.string().min(1, 'Tag name is required').max(100, 'Tag name must be less than 100 characters'),
+  description: z.string().max(500, 'Description must be less than 500 characters').optional().nullable(),
+  color: z.string().regex(/^#[0-9A-Fa-f]{6}$/, 'Invalid color format'),
+});
+
+type TagFormData = z.infer<typeof tagSchema>;
+
 interface TagFormProps {
   tag?: Tag;
   onClose: () => void;
@@ -27,16 +40,42 @@ interface TagFormProps {
 
 export function TagForm({ tag, onClose, onSubmit, isLoading }: TagFormProps) {
   const { t } = useTranslation();
-  const [formData, setFormData] = useState({
-    tag_name: tag?.tag_name || '',
-    description: tag?.description || '',
-    color: tag?.color || '#3B82F6',
+
+  // React Hook Form setup
+  const methods = useForm<TagFormData>({
+    resolver: zodResolver(tagSchema),
+    defaultValues: {
+      tag_name: tag?.tag_name || '',
+      description: tag?.description || '',
+      color: tag?.color || '#3B82F6',
+    },
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    onSubmit(formData);
+  const { handleSubmit, watch, reset, formState: { isDirty } } = methods;
+
+  // Reset form when tag changes
+  useEffect(() => {
+    if (tag) {
+      reset({
+        tag_name: tag.tag_name,
+        description: tag.description || '',
+        color: tag.color,
+      });
+    }
+  }, [tag, reset]);
+
+  // Watch color for preview
+  const selectedColor = watch('color');
+
+  const onFormSubmit = (data: TagFormData) => {
+    onSubmit(data);
   };
+
+  // Convert color options for FormSelect
+  const colorOptions = TAG_COLORS.map((color) => ({
+    label: t(`tags.colors.${color.label.toLowerCase()}`),
+    value: color.value,
+  }));
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -45,87 +84,67 @@ export function TagForm({ tag, onClose, onSubmit, isLoading }: TagFormProps) {
           {tag ? t('tags.editTag') : t('tags.createNewTag')}
         </h3>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Name */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              {t('tags.tagName')} *
-            </label>
-            <input
-              type="text"
-              value={formData.tag_name}
-              onChange={(e) => setFormData({ ...formData, tag_name: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+        <FormProvider {...methods}>
+          <form onSubmit={handleSubmit(onFormSubmit)} className="space-y-4">
+            {/* Name */}
+            <FormInput
+              name="tag_name"
+              label={t('tags.tagName')}
               placeholder={t('tags.tagNamePlaceholder')}
               required
             />
-          </div>
 
-          {/* Color */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              {t('tags.color')}
-            </label>
-            <select
-              value={formData.color}
-              onChange={(e) => setFormData({ ...formData, color: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-            >
-              {TAG_COLORS.map((color) => (
-                <option key={color.value} value={color.value}>
-                  {t(`tags.colors.${color.label.toLowerCase()}`)}
-                </option>
-              ))}
-            </select>
-            <div className="mt-2 flex items-center gap-2">
-              <div
-                className="w-8 h-8 rounded border-2"
-                style={{ backgroundColor: formData.color }}
+            {/* Color */}
+            <div>
+              <FormSelect
+                name="color"
+                label={t('tags.color')}
+                options={colorOptions}
               />
-              <span className="text-sm text-gray-600 dark:text-gray-400">{t('tags.preview')}</span>
+              <div className="mt-2 flex items-center gap-2">
+                <div
+                  className="w-8 h-8 rounded border-2 border-gray-300 dark:border-gray-600"
+                  style={{ backgroundColor: selectedColor }}
+                />
+                <span className="text-sm text-gray-600 dark:text-gray-400">{t('tags.preview')}</span>
+              </div>
             </div>
-          </div>
 
-          {/* Description */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              {t('tags.description')}
-            </label>
-            <textarea
-              value={formData.description}
-              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+            {/* Description */}
+            <FormTextarea
+              name="description"
+              label={t('tags.description')}
               placeholder={t('tags.descriptionPlaceholder')}
               rows={3}
             />
-          </div>
 
-          {/* Buttons */}
-          <div className="flex justify-end gap-3 pt-4">
-            <button
-              type="button"
-              onClick={onClose}
-              disabled={isLoading}
-              className="px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg disabled:opacity-50"
-            >
-              {t('tags.cancel')}
-            </button>
-            <button
-              type="submit"
-              disabled={isLoading || !formData.tag_name.trim()}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2"
-            >
-              {isLoading ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  {tag ? t('tags.updating') : t('tags.creating')}
-                </>
-              ) : (
-                <>{tag ? t('tags.update') : t('tags.create')}</>
-              )}
-            </button>
-          </div>
-        </form>
+            {/* Buttons */}
+            <div className="flex justify-end gap-3 pt-4">
+              <button
+                type="button"
+                onClick={onClose}
+                disabled={isLoading}
+                className="px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg disabled:opacity-50"
+              >
+                {t('tags.cancel')}
+              </button>
+              <button
+                type="submit"
+                disabled={isLoading || !isDirty}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2"
+              >
+                {isLoading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    {tag ? t('tags.updating') : t('tags.creating')}
+                  </>
+                ) : (
+                  <>{tag ? t('tags.update') : t('tags.create')}</>
+                )}
+              </button>
+            </div>
+          </form>
+        </FormProvider>
       </div>
     </div>
   );

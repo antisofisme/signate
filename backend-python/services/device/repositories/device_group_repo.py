@@ -159,7 +159,7 @@ class DeviceGroupRepository:
     # UPDATE
     # ========================================================================
 
-    def update(self, group: DeviceGroup) -> DeviceGroup:
+    def update(self, group: DeviceGroup, updated_by_id: Optional[int] = None) -> DeviceGroup:
         """Update a device group"""
         stmt = (
             select(DeviceGroupModel)
@@ -186,6 +186,10 @@ class DeviceGroupRepository:
         if group.default_playlist_id is not None:
             db_group.default_playlist_id = group.default_playlist_id
 
+        # Track who updated
+        if updated_by_id is not None:
+            db_group.updated_by_id = updated_by_id
+
         self.db.commit()
         self.db.refresh(db_group)
 
@@ -195,7 +199,7 @@ class DeviceGroupRepository:
     # DELETE
     # ========================================================================
 
-    def soft_delete(self, group_id: int) -> bool:
+    def soft_delete(self, group_id: int, deleted_by_id: Optional[int] = None) -> bool:
         """Soft delete a group"""
         from datetime import datetime, timezone
 
@@ -211,6 +215,8 @@ class DeviceGroupRepository:
             return False
 
         db_group.deleted_at = datetime.now(timezone.utc)
+        if deleted_by_id is not None:
+            db_group.deleted_by_id = deleted_by_id
         self.db.commit()
 
         return True
@@ -251,6 +257,8 @@ class DeviceGroupRepository:
             default_playlist_id=db_group.default_playlist_id,
             deleted_at=db_group.deleted_at,
             created_by=db_group.created_by_id,
+            updated_by_id=getattr(db_group, 'updated_by_id', None),
+            deleted_by_id=getattr(db_group, 'deleted_by_id', None),
             created_at=db_group.created_at,
             updated_at=db_group.updated_at,
         )

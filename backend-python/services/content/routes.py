@@ -11,6 +11,7 @@ from shared.database import get_db
 from shared.api_routes import ContentRoutes
 from shared.responses import success_response, error_response, paginated_response, created_response
 from shared.auth import CurrentUser, get_current_user
+from shared.middleware import require_permission
 from shared.logging import AuditLogger
 from shared.cache import cache, content_cache_key, list_cache_key
 from shared.metrics import track_cache_operation
@@ -85,13 +86,14 @@ async def upload_content(
     duration: int = Form(10),
     is_active: bool = Form(True),
     upload_use_case: UploadContentUseCase = Depends(get_upload_content_use_case),
-    current_user: CurrentUser = Depends(get_current_user),
+    current_user: dict = Depends(require_permission("contents", "create")),
     audit_logger: AuditLogger = Depends(get_audit_logger),
     request: Request = None
 ):
     """
     Upload content file
 
+    Requires 'contents:create' permission.
     - Supports: image (jpg, png, webp), video (mp4, webm), audio (mp3, aac)
     - Max sizes: Image 50MB, Video 500MB, Audio 100MB
     - Auto-extracts metadata (resolution, duration, codec)
@@ -102,15 +104,15 @@ async def upload_content(
             file=file,
             title=title,
             description=description,
-            organization_id=current_user.organization_id,
-            uploaded_by_id=current_user.id,
+            organization_id=current_user["organization_id"],
+            uploaded_by_id=current_user["user_id"],
             duration=duration,
             is_active=is_active
         )
 
         # Audit log
         audit_logger.log_action(
-            user_id=current_user.id,
+            user_id=current_user["user_id"],
             action="content.upload",
             resource_type="content",
             resource_id=content.id,
@@ -118,10 +120,10 @@ async def upload_content(
                 "title": content.title,
                 "content_type": content.content_type,
                 "file_size": content.file_size,
-                "original_filename": content.original_filename,
-                "ip_address": request.client.host if request and request.client else None
+                "original_filename": content.original_filename
             },
-            organization_id=current_user.organization_id
+            ip_address=request.client.host if request and request.client else None,
+            organization_id=current_user["organization_id"]
         )
 
         return created_response(
@@ -140,12 +142,13 @@ async def bulk_upload_content(
     duration: int = Form(10),
     is_active: bool = Form(True),
     upload_use_case: UploadContentUseCase = Depends(get_upload_content_use_case),
-    current_user: CurrentUser = Depends(get_current_user),
+    current_user: dict = Depends(require_permission("contents", "create")),
     request: Request = None
 ):
     """
     Upload multiple content files at once
 
+    Requires 'contents:create' permission.
     - Files: Multiple files (image/video/audio)
     - Default duration: 10 seconds per file
     - Default active: true
@@ -168,8 +171,8 @@ async def bulk_upload_content(
                 file=file,
                 title=title,
                 description=None,  # No description for bulk upload
-                organization_id=current_user.organization_id,
-                uploaded_by_id=current_user.id,
+                organization_id=current_user["organization_id"],
+                uploaded_by_id=current_user["user_id"],
                 duration=duration,
                 is_active=is_active
             )
@@ -216,11 +219,12 @@ async def list_content(
     content_type: Optional[str] = None,
     is_active: Optional[bool] = None,
     list_use_case: ListContentUseCase = Depends(get_list_content_use_case),
-    current_user: CurrentUser = Depends(get_current_user)
+    current_user: dict = Depends(require_permission("contents", "read"))
 ):
     """
     List content with filters
 
+    Requires 'contents:read' permission.
     Query params:
     - skip: Offset for pagination (default 0)
     - limit: Number of records (default 20)
@@ -230,24 +234,24 @@ async def list_content(
     # Generate cache key
     cache_key = list_cache_key(
         entity="contents",
-        org_id=current_user.organization_id,
+        org_id=current_user["organization_id"],
         page=(skip // limit) + 1 if limit > 0 else 1,
         limit=limit,
         content_type=content_type,
         is_active=is_active
     )
-    
+
     # Try cache first
     cached_result = cache.get(cache_key)
     if cached_result:
         track_cache_operation("get", hit=True)
         return cached_result
-    
+
     track_cache_operation("get", hit=False)
-    
+
     try:
         contents, total = list_use_case.execute(
-            organization_id=current_user.organization_id,
+            organization_id=current_user["organization_id"],
             skip=skip,
             limit=limit,
             content_type=content_type,
@@ -264,10 +268,10 @@ async def list_content(
             page=page,
             page_size=page_size
         )
-        
+
         # Cache for 5 minutes
         cache.set(cache_key, result, ttl=300)
-        
+
         return result
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"List failed: {str(e)}")
@@ -276,11 +280,12 @@ async def list_content(
 @router.get(ContentRoutes.STATS, response_model=dict)
 async def get_content_stats(
     db: Session = Depends(get_db),
-    current_user: CurrentUser = Depends(get_current_user)
+    current_user: dict = Depends(require_permission("contents", "read"))
 ):
     """
     Get content storage statistics for the organization
 
+    Requires 'contents:read' permission.
     Returns:
     - total_files: Total number of content files
     - total_size_bytes: Total storage used in bytes
@@ -292,7 +297,7 @@ async def get_content_stats(
     from .dtos import ContentStatsResponse
 
     try:
-        org_id = current_user.organization_id
+        org_id = current_user["organization_id"]
 
         # Get total counts and size
         total_result = db.query(
@@ -360,33 +365,33 @@ async def get_content_stats(
 async def get_content(
     content_id: int,
     get_use_case: GetContentUseCase = Depends(get_get_content_use_case),
-    current_user: CurrentUser = Depends(get_current_user)
+    current_user: dict = Depends(require_permission("contents", "read"))
 ):
-    """Get single content by ID"""
+    """Get single content by ID. Requires 'contents:read' permission."""
     # Generate cache key
     cache_key = content_cache_key(content_id)
-    
+
     # Try cache first
     cached_result = cache.get(cache_key)
     if cached_result:
         track_cache_operation("get", hit=True)
         # Verify organization access
-        if cached_result['data']['organization_id'] != current_user.organization_id:
+        if cached_result['data']['organization_id'] != current_user["organization_id"]:
             raise HTTPException(status_code=404, detail="Content not found")
         return cached_result
-    
+
     track_cache_operation("get", hit=False)
-    
+
     try:
-        content = get_use_case.execute(content_id, current_user.organization_id)
+        content = get_use_case.execute(content_id, current_user["organization_id"])
 
         result = success_response(
             data=ContentResponse.from_entity(content).dict()
         )
-        
+
         # Cache for 5 minutes
         cache.set(cache_key, result, ttl=300)
-        
+
         return result
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
@@ -401,11 +406,12 @@ async def update_content(
     request: Request,
     update_use_case: UpdateContentUseCase = Depends(get_update_content_use_case),
     audit_logger: AuditLogger = Depends(get_audit_logger),
-    current_user: CurrentUser = Depends(get_current_user)
+    current_user: dict = Depends(require_permission("contents", "update"))
 ):
     """
     Update content metadata
 
+    Requires 'contents:update' permission.
     - Updates title, description, duration, is_active
     - Validates organization ownership
     - Logs audit trail
@@ -413,28 +419,30 @@ async def update_content(
     try:
         updated_content = update_use_case.execute(
             content_id=content_id,
-            organization_id=current_user.organization_id,
+            organization_id=current_user["organization_id"],
             title=request_body.title,
             description=request_body.description,
             duration=request_body.duration,
-            is_active=request_body.is_active
+            is_active=request_body.is_active,
+            updated_by_id=current_user["user_id"],
         )
 
         # Invalidate cache
-        cache.invalidate_content(content_id, current_user.organization_id)
+        cache.invalidate_content(content_id, current_user["organization_id"])
 
         # Audit log
         audit_logger.log_action(
-            user_id=current_user.id,
+            user_id=current_user["user_id"],
             action="content.update",
             resource_type="content",
             resource_id=content_id,
             details={
                 "title": updated_content.title,
                 "duration": updated_content.duration,
-                "is_active": updated_content.is_active,
-                "ip_address": request.client.host if request.client else None
-            }
+                "is_active": updated_content.is_active
+            },
+            ip_address=request.client.host if request.client else None,
+            organization_id=current_user["organization_id"]
         )
 
         return success_response(
@@ -452,15 +460,15 @@ async def update_content(
 async def download_content(
     content_id: int,
     get_use_case: GetContentUseCase = Depends(get_get_content_use_case),
-    current_user: CurrentUser = Depends(get_current_user)
+    current_user: dict = Depends(require_permission("contents", "read"))
 ):
-    """Download content file (forces download instead of displaying in browser)"""
+    """Download content file (forces download instead of displaying in browser). Requires 'contents:read' permission."""
     from fastapi.responses import FileResponse
     from pathlib import Path
 
     try:
         # Get content
-        content = get_use_case.execute(content_id, current_user.organization_id)
+        content = get_use_case.execute(content_id, current_user["organization_id"])
 
         # Get file path
         file_path = Path(content.file_path)
@@ -491,36 +499,40 @@ async def delete_content(
     content_repo: IContentRepository = Depends(get_content_repository),
     get_use_case: GetContentUseCase = Depends(get_get_content_use_case),
     audit_logger: AuditLogger = Depends(get_audit_logger),
-    current_user: CurrentUser = Depends(get_current_user)
+    current_user: dict = Depends(require_permission("contents", "delete"))
 ):
-    """Delete content (soft delete - sets deleted_at timestamp)"""
+    """Delete content (soft delete - sets deleted_at timestamp). Requires 'contents:delete' permission."""
     try:
         # Get content first for audit log (before deletion)
-        content = get_use_case.execute(content_id, current_user.organization_id)
+        content = get_use_case.execute(content_id, current_user["organization_id"])
 
         # Soft delete - automatically checks organization ownership
-        deleted = content_repo.soft_delete(content_id, current_user.organization_id)
-        
+        deleted = content_repo.soft_delete(
+            content_id,
+            current_user["organization_id"],
+            deleted_by_id=current_user["user_id"]
+        )
+
         # Invalidate cache
         if deleted:
-            cache.invalidate_content(content_id, current_user.organization_id)
+            cache.invalidate_content(content_id, current_user["organization_id"])
 
         if not deleted:
             raise HTTPException(status_code=404, detail="Content not found or access denied")
 
         # Audit log
         audit_logger.log_action(
-            user_id=current_user.id,
+            user_id=current_user["user_id"],
             action="content.delete",
             resource_type="content",
             resource_id=content_id,
             details={
                 "title": content.title,
                 "content_type": content.content_type,
-                "file_url": content.file_url,
-                "organization_id": content.organization_id,
-                "ip_address": request.client.host if request.client else None
-            }
+                "file_url": content.file_url
+            },
+            ip_address=request.client.host if request.client else None,
+            organization_id=current_user["organization_id"]
         )
 
         return None  # 204 No Content
@@ -538,11 +550,12 @@ async def bulk_delete_content(
     content_repo: IContentRepository = Depends(get_content_repository),
     get_use_case: GetContentUseCase = Depends(get_get_content_use_case),
     audit_logger: AuditLogger = Depends(get_audit_logger),
-    current_user: CurrentUser = Depends(get_current_user)
+    current_user: dict = Depends(require_permission("contents", "delete"))
 ):
     """
     Bulk delete content (soft delete)
 
+    Requires 'contents:delete' permission.
     - Deletes multiple content items at once
     - Max 100 items per request
     - Validates organization ownership for each item
@@ -555,25 +568,30 @@ async def bulk_delete_content(
     for content_id in request_body.content_ids:
         try:
             # Get content first for audit log
-            content = get_use_case.execute(content_id, current_user.organization_id)
+            content = get_use_case.execute(content_id, current_user["organization_id"])
 
-            # Soft delete
-            deleted = content_repo.soft_delete(content_id, current_user.organization_id)
+            # Soft delete with audit tracking
+            deleted = content_repo.soft_delete(
+                content_id,
+                current_user["organization_id"],
+                deleted_by_id=current_user["user_id"]
+            )
 
             if deleted:
                 deleted_count += 1
 
                 # Audit log
                 audit_logger.log_action(
-                    user_id=current_user.id,
+                    user_id=current_user["user_id"],
                     action="content.bulk_delete",
                     resource_type="content",
                     resource_id=content_id,
                     details={
                         "title": content.title,
-                        "content_type": content.content_type,
-                        "ip_address": http_request.client.host if http_request.client else None
-                    }
+                        "content_type": content.content_type
+                    },
+                    ip_address=http_request.client.host if http_request.client else None,
+                    organization_id=current_user["organization_id"]
                 )
             else:
                 failed_count += 1
@@ -602,11 +620,12 @@ async def bulk_update_content(
     http_request: Request,
     update_use_case: UpdateContentUseCase = Depends(get_update_content_use_case),
     audit_logger: AuditLogger = Depends(get_audit_logger),
-    current_user: CurrentUser = Depends(get_current_user)
+    current_user: dict = Depends(require_permission("contents", "update"))
 ):
     """
     Bulk update content metadata
 
+    Requires 'contents:update' permission.
     - Updates multiple content items at once
     - Max 100 items per request
     - Applies same updates to all items
@@ -620,27 +639,29 @@ async def bulk_update_content(
         try:
             updated_content = update_use_case.execute(
                 content_id=content_id,
-                organization_id=current_user.organization_id,
+                organization_id=current_user["organization_id"],
                 title=request_body.updates.title,
                 description=request_body.updates.description,
                 duration=request_body.updates.duration,
-                is_active=request_body.updates.is_active
+                is_active=request_body.updates.is_active,
+                updated_by_id=current_user["user_id"],
             )
 
             updated_count += 1
 
             # Audit log
             audit_logger.log_action(
-                user_id=current_user.id,
+                user_id=current_user["user_id"],
                 action="content.bulk_update",
                 resource_type="content",
                 resource_id=content_id,
                 details={
                     "title": updated_content.title,
                     "duration": updated_content.duration,
-                    "is_active": updated_content.is_active,
-                    "ip_address": http_request.client.host if http_request.client else None
-                }
+                    "is_active": updated_content.is_active
+                },
+                ip_address=http_request.client.host if http_request.client else None,
+                organization_id=current_user["organization_id"]
             )
 
         except ValueError as e:

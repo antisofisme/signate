@@ -15,6 +15,7 @@ from sqlalchemy import text
 from shared.database import get_db
 from shared.api_routes import DeviceRoutes
 from shared.auth import get_current_user, CurrentUser
+from shared.middleware import require_permission
 from shared.errors import handle_errors, NotFoundError
 from shared.responses import success_response
 from shared.logging import RequestLogger, AuditLogger
@@ -785,7 +786,7 @@ def record_device_health(
 @monitoring_router.get("/{device_id}/health", response_model=DeviceHealthWithAlertsResponse)
 def get_device_health(
     device_id: int,
-    current_user: CurrentUser = Depends(get_current_user),
+    current_user: dict = Depends(require_permission("devices", "read")),
     health_repo: DeviceHealthRepository = Depends(get_health_repository),
     device_repo: DeviceRepository = Depends(get_device_repository)
 ):
@@ -793,6 +794,8 @@ def get_device_health(
     Get latest health metrics with alerts (called by CMS)
 
     Returns latest health metrics and any active alerts for the device.
+
+    Requires: devices.read permission
     """
     use_case = GetDeviceHealthWithAlertsUseCase(health_repo, device_repo)
 
@@ -815,7 +818,7 @@ def get_device_health(
 def get_device_health_history(
     device_id: int,
     hours: int = Query(24, ge=1, le=168, description="Hours of history to retrieve (max 7 days)"),
-    current_user: CurrentUser = Depends(get_current_user),
+    current_user: dict = Depends(require_permission("devices", "read")),
     health_repo: DeviceHealthRepository = Depends(get_health_repository),
     device_repo: DeviceRepository = Depends(get_device_repository)
 ):
@@ -823,6 +826,8 @@ def get_device_health_history(
     Get health history for device (called by CMS)
 
     Returns historical health metrics for charting and analysis.
+
+    Requires: devices.read permission
     """
     use_case = GetDeviceHealthHistoryUseCase(health_repo, device_repo)
 
@@ -844,7 +849,7 @@ def get_device_health_history(
 @monitoring_router.get("/organizations/{organization_id}/health/summary", response_model=OrganizationHealthSummaryResponse)
 def get_organization_health_summary(
     organization_id: int,
-    current_user: CurrentUser = Depends(get_current_user),
+    current_user: dict = Depends(require_permission("devices", "read")),
     health_repo: DeviceHealthRepository = Depends(get_health_repository)
 ):
     """
@@ -852,9 +857,11 @@ def get_organization_health_summary(
 
     Returns aggregated health statistics for all devices in organization.
     Useful for dashboard overview.
+
+    Requires: devices.read permission
     """
     # Verify user belongs to organization
-    if current_user.organization_id != organization_id:
+    if current_user["organization_id"] != organization_id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Access denied to this organization"
@@ -884,7 +891,7 @@ def get_organization_health_summary(
 @monitoring_router.get("/{device_id}/health/latest", response_model=Optional[DeviceHealthResponse])
 def get_latest_device_health(
     device_id: int,
-    current_user: CurrentUser = Depends(get_current_user),
+    current_user: dict = Depends(require_permission("devices", "read")),
     health_repo: DeviceHealthRepository = Depends(get_health_repository),
     device_repo: DeviceRepository = Depends(get_device_repository)
 ):
@@ -893,6 +900,8 @@ def get_latest_device_health(
 
     Returns latest health metrics without alerts.
     Lighter endpoint for simple health checks.
+
+    Requires: devices.read permission
     """
     use_case = GetDeviceHealthUseCase(health_repo, device_repo)
 
@@ -914,7 +923,7 @@ def get_latest_device_health(
 @monitoring_router.get("/{device_id}/health/alerts", response_model=List[HealthAlertResponse])
 def get_device_health_alerts(
     device_id: int,
-    current_user: CurrentUser = Depends(get_current_user),
+    current_user: dict = Depends(require_permission("devices", "read")),
     health_repo: DeviceHealthRepository = Depends(get_health_repository),
     device_repo: DeviceRepository = Depends(get_device_repository)
 ):
@@ -922,6 +931,8 @@ def get_device_health_alerts(
     Get health alerts for device (called by CMS)
 
     Returns only active health alerts without full metrics.
+
+    Requires: devices.read permission
     """
     # Verify device exists
     device = device_repo.find_by_id(device_id)

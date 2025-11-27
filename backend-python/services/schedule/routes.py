@@ -1,15 +1,15 @@
 """
 Schedule Routes
-REST API endpoints for schedule management
+REST API endpoints for schedule management with RBAC integration
 """
 
 from typing import Optional
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi import APIRouter, Depends, HTTPException, status, Query, Request
 from sqlalchemy.orm import Session
 from datetime import date, time
 
 from shared.database import get_db
-from shared.auth import get_current_user, CurrentUser
+from shared.middleware import require_permission
 from shared.pagination import PaginationParams
 from shared.logging import AuditLogger
 from .domain.schedule_executor import get_schedule_executor
@@ -61,7 +61,8 @@ def get_audit_logger() -> AuditLogger:
 @router.post("/schedules", response_model=ScheduleResponse, status_code=status.HTTP_201_CREATED)
 def create_schedule(
     request: CreateScheduleRequest,
-    current_user: CurrentUser = Depends(get_current_user),
+    http_request: Request,
+    current_user: dict = Depends(require_permission("schedules", "create")),
     audit_logger: AuditLogger = Depends(get_audit_logger),
     db: Session = Depends(get_db)
 ):
@@ -80,15 +81,15 @@ def create_schedule(
     - Default: 0
     """
     schedule = create_schedule_use_case(
-        organization_id=current_user.organization_id,
+        organization_id=current_user["organization_id"],
         request=request,
-        created_by_id=current_user.user_id,
+        created_by_id=current_user["user_id"],
         db=db
     )
 
     # Audit log
     audit_logger.log_action(
-        user_id=current_user.user_id,
+        user_id=current_user["user_id"],
         action="schedule.create",
         resource_type="schedule",
         resource_id=schedule.id,
@@ -99,7 +100,8 @@ def create_schedule(
             "priority": schedule.priority,
             "is_active": schedule.is_active
         },
-        organization_id=current_user.organization_id
+        ip_address=http_request.client.host if http_request.client else None,
+        organization_id=current_user["organization_id"]
     )
 
     return schedule
@@ -111,7 +113,7 @@ def get_schedules(
     is_active: Optional[bool] = Query(None, description="Filter by active status"),
     recurrence_type: Optional[str] = Query(None, description="Filter by recurrence type"),
     pagination: PaginationParams = Depends(PaginationParams.as_query),
-    current_user: CurrentUser = Depends(get_current_user),
+    current_user: dict = Depends(require_permission("schedules", "read")),
     db: Session = Depends(get_db)
 ):
     """
@@ -126,7 +128,7 @@ def get_schedules(
     Results ordered by priority (highest first), then start_date (newest first)
     """
     return get_schedules_use_case(
-        organization_id=current_user.organization_id,
+        organization_id=current_user["organization_id"],
         playlist_id=playlist_id,
         is_active=is_active,
         recurrence_type=recurrence_type,
@@ -139,13 +141,13 @@ def get_schedules(
 @router.get("/schedules/{schedule_id}", response_model=ScheduleResponse)
 def get_schedule(
     schedule_id: int,
-    current_user: CurrentUser = Depends(get_current_user),
+    current_user: dict = Depends(require_permission("schedules", "read")),
     db: Session = Depends(get_db)
 ):
     """Get schedule by ID"""
     return get_schedule_by_id_use_case(
         schedule_id=schedule_id,
-        organization_id=current_user.organization_id,
+        organization_id=current_user["organization_id"],
         db=db
     )
 
@@ -154,22 +156,23 @@ def get_schedule(
 def update_schedule(
     schedule_id: int,
     request: UpdateScheduleRequest,
-    current_user: CurrentUser = Depends(get_current_user),
+    http_request: Request,
+    current_user: dict = Depends(require_permission("schedules", "update")),
     audit_logger: AuditLogger = Depends(get_audit_logger),
     db: Session = Depends(get_db)
 ):
     """Update schedule"""
     schedule = update_schedule_use_case(
         schedule_id=schedule_id,
-        organization_id=current_user.organization_id,
+        organization_id=current_user["organization_id"],
         request=request,
-        updated_by_id=current_user.user_id,  # Audit trail (Migration 046)
+        updated_by_id=current_user["user_id"],
         db=db
     )
 
     # Audit log
     audit_logger.log_action(
-        user_id=current_user.user_id,
+        user_id=current_user["user_id"],
         action="schedule.update",
         resource_type="schedule",
         resource_id=schedule_id,
@@ -178,7 +181,8 @@ def update_schedule(
             "is_active": schedule.is_active if hasattr(schedule, 'is_active') else None,
             "priority": schedule.priority if hasattr(schedule, 'priority') else None
         },
-        organization_id=current_user.organization_id
+        ip_address=http_request.client.host if http_request.client else None,
+        organization_id=current_user["organization_id"]
     )
 
     return schedule
@@ -187,27 +191,30 @@ def update_schedule(
 @router.delete("/schedules/{schedule_id}", status_code=status.HTTP_200_OK)
 def delete_schedule(
     schedule_id: int,
-    current_user: CurrentUser = Depends(get_current_user),
+    http_request: Request,
+    current_user: dict = Depends(require_permission("schedules", "delete")),
     audit_logger: AuditLogger = Depends(get_audit_logger),
     db: Session = Depends(get_db)
 ):
-    """Delete schedule (hard delete)"""
+    """Delete schedule (soft delete with audit tracking)"""
     result = delete_schedule_use_case(
         schedule_id=schedule_id,
-        organization_id=current_user.organization_id,
+        organization_id=current_user["organization_id"],
+        deleted_by_id=current_user["user_id"],
         db=db
     )
 
     # Audit log
     audit_logger.log_action(
-        user_id=current_user.user_id,
+        user_id=current_user["user_id"],
         action="schedule.delete",
         resource_type="schedule",
         resource_id=schedule_id,
         details={
             "deleted": True
         },
-        organization_id=current_user.organization_id
+        ip_address=http_request.client.host if http_request.client else None,
+        organization_id=current_user["organization_id"]
     )
 
     return result
@@ -216,13 +223,13 @@ def delete_schedule(
 @router.post("/schedules/{schedule_id}/deactivate", response_model=ScheduleResponse)
 def deactivate_schedule(
     schedule_id: int,
-    current_user: CurrentUser = Depends(get_current_user),
+    current_user: dict = Depends(require_permission("schedules", "update")),
     db: Session = Depends(get_db)
 ):
     """Deactivate schedule (soft delete)"""
     return deactivate_schedule_use_case(
         schedule_id=schedule_id,
-        organization_id=current_user.organization_id,
+        organization_id=current_user["organization_id"],
         db=db
     )
 
@@ -233,7 +240,7 @@ def deactivate_schedule(
 
 @router.get("/schedules/active/now", response_model=ActiveScheduleResponse)
 def get_active_schedule_now(
-    current_user: CurrentUser = Depends(get_current_user),
+    current_user: dict = Depends(require_permission("schedules", "read")),
     db: Session = Depends(get_db)
 ):
     """
@@ -243,7 +250,7 @@ def get_active_schedule_now(
     Uses current date/time to determine active schedule.
     """
     return get_active_schedule_use_case(
-        organization_id=current_user.organization_id,
+        organization_id=current_user["organization_id"],
         check_date=None,  # Will use current date
         check_time=None,  # Will use current time
         db=db
@@ -253,7 +260,7 @@ def get_active_schedule_now(
 @router.post("/schedules/active/check", response_model=ActiveScheduleResponse)
 def get_active_schedule_at(
     request: ActiveScheduleRequest,
-    current_user: CurrentUser = Depends(get_current_user),
+    current_user: dict = Depends(require_permission("schedules", "read")),
     db: Session = Depends(get_db)
 ):
     """
@@ -263,7 +270,7 @@ def get_active_schedule_at(
     Useful for previewing schedule behavior.
     """
     return get_active_schedule_use_case(
-        organization_id=current_user.organization_id,
+        organization_id=current_user["organization_id"],
         check_date=request.check_date,
         check_time=request.check_time,
         db=db
@@ -278,7 +285,7 @@ def get_active_schedule_at(
 def calculate_next_occurrence(
     schedule_id: int,
     request: CalculateNextOccurrenceRequest,
-    current_user: CurrentUser = Depends(get_current_user),
+    current_user: dict = Depends(require_permission("schedules", "read")),
     db: Session = Depends(get_db)
 ):
     """
@@ -292,7 +299,7 @@ def calculate_next_occurrence(
     """
     return calculate_next_occurrence_use_case(
         schedule_id=schedule_id,
-        organization_id=current_user.organization_id,
+        organization_id=current_user["organization_id"],
         from_date=request.from_date,
         db=db
     )
@@ -305,7 +312,7 @@ def calculate_next_occurrence(
 @router.post("/schedules/check-conflicts", response_model=CheckConflictResponse)
 def check_schedule_conflicts(
     request: CheckConflictRequest,
-    current_user: CurrentUser = Depends(get_current_user),
+    current_user: dict = Depends(require_permission("schedules", "read")),
     db: Session = Depends(get_db)
 ):
     """
@@ -317,7 +324,7 @@ def check_schedule_conflicts(
     Note: Higher priority schedules will take precedence in actual playback.
     """
     return check_conflicts_use_case(
-        organization_id=current_user.organization_id,
+        organization_id=current_user["organization_id"],
         playlist_id=request.playlist_id,
         start_date=request.start_date,
         end_date=request.end_date,
@@ -334,39 +341,39 @@ def check_schedule_conflicts(
 
 @router.post("/schedules/refresh", status_code=status.HTTP_200_OK)
 async def refresh_schedules(
-    current_user: dict = Depends(get_current_user),
+    current_user: dict = Depends(require_permission("schedules", "update")),
     organization_id: Optional[int] = Query(None, description="Refresh specific organization (admin only)")
 ):
     """
     Force immediate schedule refresh
-    
+
     Manually triggers schedule check without waiting for next interval.
     Useful after creating/updating schedules to see immediate effect.
-    
+
     - Regular users: Can only refresh their own organization
     - Admins: Can refresh any organization or all organizations
     """
     # Check permissions
-    if organization_id and organization_id != current_user.organization_id:
+    if organization_id and organization_id != current_user["organization_id"]:
         # Only admins can refresh other organizations
-        if current_user.role not in ["admin", "super_admin"]:
+        if current_user.get("role") not in ["admin", "super_admin", "ADMIN", "SUPER_ADMIN"]:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="You can only refresh schedules for your own organization"
             )
-    
+
     # Use user's organization if not specified
-    target_org_id = organization_id or current_user.organization_id
-    
+    target_org_id = organization_id or current_user["organization_id"]
+
     try:
         executor = get_schedule_executor()
         await executor.force_refresh(target_org_id)
-        
+
         return {
             "message": f"Schedule refresh triggered for organization {target_org_id}",
             "organization_id": target_org_id
         }
-        
+
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

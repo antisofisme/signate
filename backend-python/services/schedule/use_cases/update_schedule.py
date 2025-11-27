@@ -80,9 +80,18 @@ def update_schedule_use_case(
 def delete_schedule_use_case(
     schedule_id: int,
     organization_id: int,
-    db: Session
+    db: Session,
+    deleted_by_id: Optional[int] = None
 ) -> dict:
-    """Delete schedule"""
+    """
+    Delete schedule with audit tracking
+
+    Args:
+        schedule_id: Schedule ID to delete
+        organization_id: Organization ID for ownership check
+        db: Database session
+        deleted_by_id: User ID who deleted the schedule (audit trail)
+    """
     repo = ScheduleRepository(db)
 
     # Check if schedule exists
@@ -93,8 +102,8 @@ def delete_schedule_use_case(
             detail=f"Schedule with id {schedule_id} not found"
         )
 
-    # Delete schedule
-    success = repo.delete_schedule(schedule_id, organization_id)
+    # Soft delete schedule with audit tracking
+    success = repo.delete_schedule(schedule_id, organization_id, deleted_by_id=deleted_by_id)
     if not success:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

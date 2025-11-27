@@ -21,7 +21,8 @@ class UpdateContentUseCase:
         title: Optional[str] = None,
         description: Optional[str] = None,
         duration: Optional[int] = None,
-        is_active: Optional[bool] = None
+        is_active: Optional[bool] = None,
+        updated_by_id: Optional[int] = None
     ) -> Content:
         """
         Update content metadata
@@ -33,6 +34,7 @@ class UpdateContentUseCase:
             description: New description (optional)
             duration: New duration in seconds (optional)
             is_active: New active status (optional)
+            updated_by_id: User ID who updated the content (audit trail)
 
         Returns:
             Updated Content entity
@@ -68,6 +70,6 @@ class UpdateContentUseCase:
 
         # Validate and save
         content.__post_init__()
-        updated_content = self.content_repo.update(content)
+        updated_content = self.content_repo.update(content, updated_by_id=updated_by_id)
 
         return updated_content

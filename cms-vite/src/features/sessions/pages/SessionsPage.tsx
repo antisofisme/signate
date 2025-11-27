@@ -8,7 +8,14 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { LogOut, Shield } from 'lucide-react';
-import { PageHeader } from '@/shared/components';
+import {
+  PageHeader,
+  PageSkeleton,
+  EmptyState,
+  ConfirmDialog,
+  AccessDenied
+} from '@/shared/components';
+import { useCanPerformAction } from '@/features/rbac/hooks/usePermissions';
 import { SessionCard } from '../components/SessionCard';
 import { SessionStats } from '../components/SessionStats';
 import { SecurityWarning } from '../components/SecurityWarning';
@@ -25,6 +32,11 @@ import type { Session } from '../types/session.types';
 export default function SessionsPage() {
   const { t } = useTranslation();
   const [showRevokeAllModal, setShowRevokeAllModal] = useState(false);
+  const [sessionToRevoke, setSessionToRevoke] = useState<Session | null>(null);
+
+  // Permission checks
+  const { hasPermission: canView, isLoading: permissionLoading } = useCanPerformAction('sessions', 'view');
+  const { hasPermission: canDelete } = useCanPerformAction('sessions', 'delete');
 
   // Queries
   const { data: sessionsData, isLoading: sessionsLoading } = useSessions();
@@ -37,18 +49,16 @@ export default function SessionsPage() {
 
   // Handlers
   const handleRevokeSession = (session: Session) => {
-    if (
-      confirm(
-        t('sessions.confirmRevokeSession', {
-          device: session.device_info?.browser || t('sessions.unknownDevice'),
-          ip: session.ip_address,
-        })
-      )
-    ) {
+    setSessionToRevoke(session);
+  };
+
+  const confirmRevokeSession = () => {
+    if (sessionToRevoke) {
       revokeSessionMutation.mutate({
-        session_id: session.id,
+        session_id: sessionToRevoke.id,
         reason: 'User revoked session manually',
       });
+      setSessionToRevoke(null);
     }
   };
 
@@ -68,12 +78,13 @@ export default function SessionsPage() {
   const otherSessionsCount = activeSessions.length;
 
   // Loading state
-  if (sessionsLoading) {
-    return (
-      <div className="flex items-center justify-center h-96">
-        <div className="text-gray-500 dark:text-gray-400">{t('sessions.loadingSessions')}</div>
-      </div>
-    );
+  if (permissionLoading || sessionsLoading) {
+    return <PageSkeleton showFilters={false} showTable={false} tableRows={3} />;
+  }
+
+  // Permission check
+  if (!canView) {
+    return <AccessDenied />;
   }
 
   return (
@@ -93,13 +104,15 @@ export default function SessionsPage() {
         />
 
         {/* Security Warning */}
-        <SecurityWarning
-          sessionCount={otherSessionsCount}
-          onRevokeAll={() => setShowRevokeAllModal(true)}
-        />
+        {canDelete && (
+          <SecurityWarning
+            sessionCount={otherSessionsCount}
+            onRevokeAll={() => setShowRevokeAllModal(true)}
+          />
+        )}
 
         {/* Logout All Button */}
-        {otherSessionsCount > 0 && (
+        {canDelete && otherSessionsCount > 0 && (
           <div className="flex justify-end">
             <button
               onClick={() => setShowRevokeAllModal(true)}
@@ -132,7 +145,7 @@ export default function SessionsPage() {
                 <SessionCard
                   key={session.id}
                   session={session}
-                  onRevoke={handleRevokeSession}
+                  onRevoke={canDelete ? handleRevokeSession : undefined}
                   isRevoking={revokeSessionMutation.isPending}
                 />
               ))}
@@ -142,17 +155,28 @@ export default function SessionsPage() {
 
         {/* Empty State */}
         {!currentSession && activeSessions.length === 0 && (
-          <div className="text-center py-12 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
-            <Shield className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
-              {t('sessions.noActiveSessions')}
-            </h3>
-            <p className="text-gray-600 dark:text-gray-400">
-              {t('sessions.noActiveSessionsDescription')}
-            </p>
-          </div>
+          <EmptyState
+            icon={Shield}
+            title={t('sessions.noActiveSessions')}
+            description={t('sessions.noActiveSessionsDescription')}
+          />
         )}
       </div>
+
+      {/* Revoke Session Confirmation Dialog */}
+      <ConfirmDialog
+        open={!!sessionToRevoke}
+        onOpenChange={(open) => !open && setSessionToRevoke(null)}
+        title={t('sessions.revokeSessionTitle', 'Revoke Session')}
+        description={t('sessions.confirmRevokeSession', {
+          device: sessionToRevoke?.device_info?.browser || t('sessions.unknownDevice'),
+          ip: sessionToRevoke?.ip_address,
+        })}
+        variant="warning"
+        confirmLabel={t('sessions.revoke', 'Revoke')}
+        onConfirm={confirmRevokeSession}
+        isLoading={revokeSessionMutation.isPending}
+      />
 
       {/* Revoke All Confirmation Modal */}
       <RevokeAllModal

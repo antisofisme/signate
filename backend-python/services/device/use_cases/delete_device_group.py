@@ -3,6 +3,7 @@ Delete Device Group Use Case
 Business logic for soft-deleting a device group
 """
 
+from typing import Optional
 from sqlalchemy.orm import Session
 
 from services.device.repositories.device_group_repo import DeviceGroupRepository
@@ -14,13 +15,19 @@ class DeleteDeviceGroupUseCase:
     def __init__(self, db: Session):
         self.repo = DeviceGroupRepository(db)
 
-    def execute(self, group_id: int, organization_id: int) -> bool:
+    def execute(
+        self,
+        group_id: int,
+        organization_id: int,
+        deleted_by_id: Optional[int] = None,
+    ) -> bool:
         """
         Soft delete a device group
 
         Args:
             group_id: ID of group to delete
             organization_id: Organization ID (for authorization)
+            deleted_by_id: User ID who deleted the group (for audit trail)
 
         Returns:
             True if deleted successfully
@@ -45,8 +52,8 @@ class DeleteDeviceGroupUseCase:
                 "Delete or reassign child groups first."
             )
 
-        # Soft delete
-        success = self.repo.soft_delete(group_id)
+        # Soft delete with deleted_by_id tracking
+        success = self.repo.soft_delete(group_id, deleted_by_id=deleted_by_id)
 
         if not success:
             raise ValueError(f"Failed to delete group {group_id}")

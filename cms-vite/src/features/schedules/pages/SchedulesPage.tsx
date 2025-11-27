@@ -8,6 +8,8 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ClipboardList, Calendar, Plus } from 'lucide-react';
+import { useCanPerformAction } from '@/features/rbac/hooks/usePermissions';
+import { AccessDenied, ConfirmDialog } from '@/shared/components';
 import {
   useSchedules,
   useOccurrences,
@@ -22,7 +24,6 @@ import ScheduleList from '../components/ScheduleList';
 import CalendarView from '../components/CalendarView';
 import { ScheduleFormModal } from '../components/ScheduleFormModal';
 import { ScheduleViewModal } from '../components/ScheduleViewModal';
-import { ScheduleDeleteModal } from '../components/ScheduleDeleteModal';
 import type {
   Schedule,
   CreateScheduleRequest,
@@ -40,6 +41,17 @@ export const SchedulesPage = () => {
   const [selectedSchedule, setSelectedSchedule] = useState<Schedule | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+
+  // Check permissions
+  const { hasPermission: canView, isLoading: loadingViewPerm } = useCanPerformAction('schedules', 'view');
+  const { hasPermission: canCreate } = useCanPerformAction('schedules', 'create');
+  const { hasPermission: canEdit } = useCanPerformAction('schedules', 'edit');
+  const { hasPermission: canDelete } = useCanPerformAction('schedules', 'delete');
+
+  // Return access denied if no view permission
+  if (!loadingViewPerm && !canView) {
+    return <AccessDenied />;
+  }
 
   // Calculate date range for calendar
   const startOfMonth = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1);
@@ -159,13 +171,15 @@ export const SchedulesPage = () => {
         </div>
 
         {/* Create Button */}
-        <button
-          onClick={handleCreate}
-          className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 flex items-center gap-2"
-        >
-          <Plus className="w-5 h-5" />
-          <span>{t('schedules.createSchedule')}</span>
-        </button>
+        {canCreate && (
+          <button
+            onClick={handleCreate}
+            className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 flex items-center gap-2"
+          >
+            <Plus className="w-5 h-5" />
+            <span>{t('schedules.createSchedule')}</span>
+          </button>
+        )}
       </div>
 
       {/* Content */}
@@ -180,6 +194,8 @@ export const SchedulesPage = () => {
             onActivate={handleActivate}
             onDeactivate={handleDeactivate}
             onPause={handlePause}
+            canUpdate={canEdit}
+            canDelete={canDelete}
           />
         ) : (
           <CalendarView
@@ -217,20 +233,28 @@ export const SchedulesPage = () => {
             setModalMode(null);
             setSelectedSchedule(null);
           }}
-          onEdit={() => setModalMode('edit')}
+          onEdit={canEdit ? () => setModalMode('edit') : undefined}
         />
       )}
 
-      {showDeleteConfirm && selectedSchedule && (
-        <ScheduleDeleteModal
-          isOpen={showDeleteConfirm}
-          schedule={selectedSchedule}
-          isDeleting={deleteMutation.isPending}
-          onClose={() => {
-            setShowDeleteConfirm(false);
-            setSelectedSchedule(null);
+      {showDeleteConfirm && selectedSchedule && canDelete && (
+        <ConfirmDialog
+          open={showDeleteConfirm}
+          onOpenChange={(open) => {
+            setShowDeleteConfirm(open);
+            if (!open) setSelectedSchedule(null);
           }}
+          title={t('schedules.deleteModal.title')}
+          description={t('schedules.deleteModal.confirmMessage') + '\n\n' +
+            `${t('schedules.labels.name')}: ${selectedSchedule.name}\n` +
+            `${t('schedules.labels.type')}: ${selectedSchedule.recurrence_type}\n` +
+            `${t('schedules.labels.devices')}: ${selectedSchedule.device_ids.length} ${t(selectedSchedule.device_ids.length !== 1 ? 'schedules.devices' : 'schedules.device')}`
+          }
+          confirmLabel={t('schedules.deleteModal.deleteButton')}
+          cancelLabel={t('schedules.deleteModal.cancel')}
           onConfirm={confirmDelete}
+          isLoading={deleteMutation.isPending}
+          variant="danger"
         />
       )}
     </>

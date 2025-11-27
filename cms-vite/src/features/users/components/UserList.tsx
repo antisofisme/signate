@@ -2,6 +2,7 @@
  * User List Component
  *
  * Table display of users with actions
+ * Following CMS UI Development skill standards
  */
 
 import { useTranslation } from 'react-i18next';
@@ -10,9 +11,9 @@ import type { User } from '../types/user';
 
 interface UserListProps {
   users: User[];
-  onEdit: (user: User) => void;
-  onDelete: (user: User) => void;
-  onChangePassword: (user: User) => void;
+  onEdit?: (user: User) => void;
+  onDelete?: (user: User) => void;
+  onChangePassword?: (user: User) => void;
 }
 
 export function UserList({
@@ -95,27 +96,38 @@ export function UserList({
               </td>
               <td className="px-6 py-4 whitespace-nowrap text-sm">
                 <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => onEdit(user)}
-                    className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
-                    title={t('users.actions.editUser')}
-                  >
-                    <Edit className="w-5 h-5" />
-                  </button>
-                  <button
-                    onClick={() => onChangePassword(user)}
-                    className="text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-300"
-                    title={t('users.actions.changePassword')}
-                  >
-                    <Key className="w-5 h-5" />
-                  </button>
-                  <button
-                    onClick={() => onDelete(user)}
-                    className="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"
-                    title={t('users.actions.deleteUser')}
-                  >
-                    <Trash2 className="w-5 h-5" />
-                  </button>
+                  {onEdit && (
+                    <button
+                      onClick={() => onEdit(user)}
+                      className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
+                      title={t('users.actions.editUser')}
+                    >
+                      <Edit className="w-5 h-5" />
+                    </button>
+                  )}
+                  {onChangePassword && (
+                    <button
+                      onClick={() => onChangePassword(user)}
+                      className="text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-300"
+                      title={t('users.actions.changePassword')}
+                    >
+                      <Key className="w-5 h-5" />
+                    </button>
+                  )}
+                  {onDelete && (
+                    <button
+                      onClick={() => onDelete(user)}
+                      className="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"
+                      title={t('users.actions.deleteUser')}
+                    >
+                      <Trash2 className="w-5 h-5" />
+                    </button>
+                  )}
+                  {!onEdit && !onChangePassword && !onDelete && (
+                    <span className="text-gray-400 dark:text-gray-600 text-xs">
+                      {t('common.noActions') || 'No actions'}
+                    </span>
+                  )}
                 </div>
               </td>
             </tr>

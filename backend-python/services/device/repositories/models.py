@@ -67,11 +67,13 @@ class DeviceModel(Base):
     # Audit tracking
     created_by_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
     updated_by_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
+    deleted_by_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
 
     # Metadata
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
     released_at = Column(DateTime(timezone=True), nullable=True)  # When device was released/deactivated
+    deleted_at = Column(DateTime(timezone=True), nullable=True, index=True)  # Soft delete
 
     # Relationships (using string references to avoid circular imports)
     organization = relationship("OrganizationModel", foreign_keys=[organization_id])
@@ -79,7 +81,8 @@ class DeviceModel(Base):
     background_audio = relationship("ContentModel", foreign_keys=[background_audio_id])
     creator = relationship("UserModel", foreign_keys=[created_by_id])
     updater = relationship("UserModel", foreign_keys=[updated_by_id])
-    
+    deleter = relationship("UserModel", foreign_keys=[deleted_by_id])
+
     # Many-to-many relationships
     tags = relationship("TagModel", secondary="device_tags", back_populates="devices")
     commands = relationship("DeviceCommandModel", back_populates="device", cascade="all, delete-orphan")
@@ -240,9 +243,16 @@ class DeviceGroupModel(Base):
     deleted_at = Column(DateTime(timezone=True), nullable=True, index=True)
 
     # Audit
-    created_by_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    created_by_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    updated_by_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    deleted_by_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at = Column(DateTime(timezone=True), onupdate=func.now(), nullable=True)
+
+    # Relationships for audit
+    creator = relationship("UserModel", foreign_keys=[created_by_id])
+    updater = relationship("UserModel", foreign_keys=[updated_by_id])
+    deleter = relationship("UserModel", foreign_keys=[deleted_by_id])
 
 
 class DeviceGroupMemberModel(Base):

@@ -3,6 +3,7 @@ Create Tag Use Case
 Business logic for creating a new tag
 """
 
+from typing import Optional
 from ..domain.interfaces import ITagRepository
 from ..domain.tag import Tag
 from shared.errors import ValidationError, ConflictError
@@ -20,6 +21,7 @@ class CreateTagUseCase:
         organization_id: int,
         description: str = None,
         color: str = "#3B82F6",
+        created_by_id: Optional[int] = None,
     ) -> Tag:
         """
         Execute create tag use case
@@ -29,6 +31,7 @@ class CreateTagUseCase:
             organization_id: Organization ID
             description: Optional description
             color: Hex color code (default: #3B82F6)
+            created_by_id: User ID who created the tag (audit trail)
 
         Returns:
             Created Tag entity
@@ -50,6 +53,7 @@ class CreateTagUseCase:
             description=description,
             color=color,
             organization_id=organization_id,
+            created_by_id=created_by_id,
         )
 
         # Persist to database

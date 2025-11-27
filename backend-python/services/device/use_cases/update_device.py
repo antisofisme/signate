@@ -28,7 +28,8 @@ class UpdateDeviceUseCase:
         is_volume_enabled: Optional[bool] = None,
         is_personalization_supported: Optional[bool] = None,
         privacy_mode: Optional[str] = None,
-        current_user_org_id: Optional[int] = None
+        current_user_org_id: Optional[int] = None,
+        updated_by_id: Optional[int] = None
     ) -> Device:
         """
         Update device settings
@@ -43,6 +44,7 @@ class UpdateDeviceUseCase:
             is_personalization_supported: Optional personalization support
             privacy_mode: Optional privacy mode setting
             current_user_org_id: Current user's organization ID for authorization
+            updated_by_id: User ID who updates this device (audit trail)
 
         Returns:
             Updated Device entity
@@ -98,6 +100,10 @@ class UpdateDeviceUseCase:
                 raise ValueError(f"Invalid privacy_mode. Must be one of: {', '.join(valid_modes)}")
             device.privacy_mode = privacy_mode
 
+        # Set audit trail
+        if updated_by_id is not None:
+            device.updated_by_id = updated_by_id
+
         # Save changes
         updated_device = self.device_repo.update(device)
 
@@ -121,13 +127,19 @@ class UpdateDeviceUseCase:
         device.status = 'inactive'
         return self.device_repo.update(device)
 
-    def delete_device(self, device_id: int, current_user_org_id: Optional[int] = None) -> bool:
+    def delete_device(
+        self,
+        device_id: int,
+        current_user_org_id: Optional[int] = None,
+        deleted_by_id: Optional[int] = None
+    ) -> bool:
         """
-        Delete a device permanently
+        Soft delete a device (set deleted_at timestamp)
 
         Args:
             device_id: Device ID to delete
             current_user_org_id: Current user's organization ID for authorization
+            deleted_by_id: User ID who deleted this device (audit trail)
 
         Returns:
             True if deleted successfully, False if device not found
@@ -135,14 +147,24 @@ class UpdateDeviceUseCase:
         Raises:
             PermissionError: If user tries to delete device from another organization
         """
-        # SECURITY: Verify user can only delete devices in their organization
-        if current_user_org_id is not None:
-            device = self.device_repo.find_by_id(device_id)
-            if device and device.organization_id != current_user_org_id:
-                raise PermissionError(
-                    f"Cannot delete device {device_id}: belongs to organization {device.organization_id}, "
-                    f"user belongs to organization {current_user_org_id}"
-                )
+        from datetime import datetime, timezone
 
-        # Repository delete() handles device not found case
-        return self.device_repo.delete(device_id)
+        # SECURITY: Verify user can only delete devices in their organization
+        device = self.device_repo.find_by_id(device_id)
+        if not device:
+            return False
+
+        if current_user_org_id is not None and device.organization_id != current_user_org_id:
+            raise PermissionError(
+                f"Cannot delete device {device_id}: belongs to organization {device.organization_id}, "
+                f"user belongs to organization {current_user_org_id}"
+            )
+
+        # Soft delete with audit trail
+        device.deleted_at = datetime.now(timezone.utc)
+        device.status = 'inactive'
+        if deleted_by_id is not None:
+            device.deleted_by_id = deleted_by_id
+
+        self.device_repo.update(device)
+        return True

@@ -9,6 +9,14 @@ import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import { Folder, Plus, Users, Edit, Trash2, MoreVertical, Grid, List, ChevronRight, ChevronDown, Settings, X, Check, Monitor } from 'lucide-react'
 import { getApiErrorMessage } from '@/shared/utils/types'
+import { useCanPerformAction } from '@/features/rbac/hooks/usePermissions'
+import {
+  CardGridSkeleton,
+  EmptyState,
+  ErrorDisplay,
+  ConfirmDialog
+} from '@/shared/components'
+import { Button } from '@/components/ui/button'
 import { groupsApi } from '../api/groupsApi'
 import { deviceApi } from '../api/deviceApi'
 import type { DeviceGroup, CreateDeviceGroupRequest, UpdateDeviceGroupRequest } from '../types/groups'
@@ -25,9 +33,16 @@ export function DeviceGroups() {
   const [selectedGroup, setSelectedGroup] = useState<DeviceGroup | null>(null)
   const [viewMode, setViewMode] = useState<ViewMode>('grid')
   const [expandedNodes, setExpandedNodes] = useState<Set<number>>(new Set())
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
+  const [groupToDelete, setGroupToDelete] = useState<DeviceGroup | null>(null)
+
+  // Check permissions using useCanPerformAction
+  const { hasPermission: canCreate } = useCanPerformAction('device_groups', 'create')
+  const { hasPermission: canEdit } = useCanPerformAction('device_groups', 'edit')
+  const { hasPermission: canDelete } = useCanPerformAction('device_groups', 'delete')
 
   // Fetch all groups
-  const { data: groupsData, isLoading } = useQuery({
+  const { data: groupsData, isLoading, error, refetch } = useQuery({
     queryKey: ['device-groups'],
     queryFn: groupsApi.getGroups,
   })
@@ -102,9 +117,16 @@ export function DeviceGroups() {
     setIsDeviceModalOpen(true)
   }
 
-  const handleDeleteGroup = (groupId: number) => {
-    if (confirm(t('deviceGroups.confirmDelete'))) {
-      deleteGroupMutation.mutate(groupId)
+  const handleDeleteGroup = (group: DeviceGroup) => {
+    setGroupToDelete(group)
+    setDeleteConfirmOpen(true)
+  }
+
+  const confirmDelete = () => {
+    if (groupToDelete) {
+      deleteGroupMutation.mutate(groupToDelete.id)
+      setDeleteConfirmOpen(false)
+      setGroupToDelete(null)
     }
   }
 
@@ -144,11 +166,18 @@ export function DeviceGroups() {
     return rootGroups
   }
 
+  // Loading state
   if (isLoading) {
+    return <CardGridSkeleton count={6} columns={3} />
+  }
+
+  // Error state
+  if (error) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-gray-500">{t('deviceGroups.loadingGroups')}</div>
-      </div>
+      <ErrorDisplay
+        error={error}
+        onRetry={refetch}
+      />
     )
   }
 
@@ -185,30 +214,30 @@ export function DeviceGroups() {
           </button>
         </div>
 
-        <button
-          onClick={() => setIsCreateModalOpen(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-        >
-          <Plus className="w-4 h-4" />
-          {t('deviceGroups.createGroup')}
-        </button>
+        {canCreate && (
+          <button
+            onClick={() => setIsCreateModalOpen(true)}
+            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            <Plus className="w-4 h-4" />
+            {t('deviceGroups.createGroup')}
+          </button>
+        )}
       </div>
 
       {/* Groups Display */}
       {groups.length === 0 ? (
-        <div className="text-center py-12 bg-gray-50 dark:bg-gray-800 rounded-lg">
-          <Folder className="w-16 h-16 mx-auto text-gray-400 mb-4" />
-          <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">{t('deviceGroups.noGroups')}</h3>
-          <p className="text-gray-600 dark:text-gray-400 mb-4">
-            {t('deviceGroups.noGroupsDescription')}
-          </p>
-          <button
-            onClick={() => setIsCreateModalOpen(true)}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-          >
-            {t('deviceGroups.createFirstGroup')}
-          </button>
-        </div>
+        <EmptyState
+          icon={Folder}
+          title={t('deviceGroups.noGroups')}
+          description={t('deviceGroups.noGroupsDescription')}
+          action={canCreate && (
+            <Button onClick={() => setIsCreateModalOpen(true)}>
+              <Plus className="w-4 h-4 mr-2" />
+              {t('deviceGroups.createFirstGroup')}
+            </Button>
+          )}
+        />
       ) : viewMode === 'grid' ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {groups.map((group) => (
@@ -218,6 +247,8 @@ export function DeviceGroups() {
               onEdit={handleEditClick}
               onManageDevices={handleManageDevices}
               onDelete={handleDeleteGroup}
+              canEdit={canEdit}
+              canDelete={canDelete}
             />
           ))}
         </div>
@@ -233,6 +264,8 @@ export function DeviceGroups() {
               onEdit={handleEditClick}
               onManageDevices={handleManageDevices}
               onDelete={handleDeleteGroup}
+              canEdit={canEdit}
+              canDelete={canDelete}
             />
           ))}
         </div>
@@ -272,6 +305,24 @@ export function DeviceGroups() {
           }}
         />
       )}
+
+      {/* Delete Confirmation Dialog */}
+      <ConfirmDialog
+        open={deleteConfirmOpen}
+        onOpenChange={(open) => {
+          if (!open) {
+            setDeleteConfirmOpen(false)
+            setGroupToDelete(null)
+          }
+        }}
+        onConfirm={confirmDelete}
+        title={t('deviceGroups.confirmDelete')}
+        description={groupToDelete ? t('deviceGroups.confirmDeleteMessage', { name: groupToDelete.name }) : ''}
+        variant="danger"
+        confirmLabel={t('common.delete')}
+        cancelLabel={t('common.cancel')}
+        isLoading={deleteGroupMutation.isPending}
+      />
     </div>
   )
 }
@@ -282,11 +333,15 @@ function GroupCard({
   onEdit,
   onManageDevices,
   onDelete,
+  canEdit,
+  canDelete,
 }: {
   group: DeviceGroup
   onEdit: (group: DeviceGroup) => void
   onManageDevices: (group: DeviceGroup) => void
-  onDelete: (id: number) => void
+  onDelete: (group: DeviceGroup) => void
+  canEdit: boolean
+  canDelete: boolean
 }) {
   const { t } = useTranslation()
   const { data: stats } = useQuery({
@@ -354,19 +409,23 @@ function GroupCard({
           <Settings className="w-4 h-4 inline mr-1" />
           {t('deviceGroups.manageDevices')}
         </button>
-        <button
-          onClick={() => onEdit(group)}
-          className="flex-1 px-3 py-2 text-sm bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
-        >
-          <Edit className="w-4 h-4 inline mr-1" />
-          {t('deviceGroups.edit')}
-        </button>
-        <button
-          onClick={() => onDelete(group.id)}
-          className="px-3 py-2 text-sm bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors"
-        >
-          <Trash2 className="w-4 h-4 inline" />
-        </button>
+        {canEdit && (
+          <button
+            onClick={() => onEdit(group)}
+            className="flex-1 px-3 py-2 text-sm bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+          >
+            <Edit className="w-4 h-4 inline mr-1" />
+            {t('deviceGroups.edit')}
+          </button>
+        )}
+        {canDelete && (
+          <button
+            onClick={() => onDelete(group)}
+            className="px-3 py-2 text-sm bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors"
+          >
+            <Trash2 className="w-4 h-4 inline" />
+          </button>
+        )}
       </div>
     </div>
   )
@@ -381,6 +440,8 @@ function TreeNode({
   onEdit,
   onManageDevices,
   onDelete,
+  canEdit,
+  canDelete,
 }: {
   group: DeviceGroup & { children?: DeviceGroup[] }
   level: number
@@ -388,7 +449,9 @@ function TreeNode({
   onToggle: (id: number) => void
   onEdit: (group: DeviceGroup) => void
   onManageDevices: (group: DeviceGroup) => void
-  onDelete: (id: number) => void
+  onDelete: (group: DeviceGroup) => void
+  canEdit: boolean
+  canDelete: boolean
 }) {
   const { t } = useTranslation()
   const hasChildren = group.children && group.children.length > 0
@@ -477,20 +540,24 @@ function TreeNode({
           >
             <Settings className="w-4 h-4" />
           </button>
-          <button
-            onClick={() => onEdit(group)}
-            className="p-1.5 text-gray-600 hover:text-blue-600 dark:text-gray-400 dark:hover:text-blue-400 rounded hover:bg-blue-50 dark:hover:bg-blue-900/20"
-            title={t('deviceGroups.editGroup')}
-          >
-            <Edit className="w-4 h-4" />
-          </button>
-          <button
-            onClick={() => onDelete(group.id)}
-            className="p-1.5 text-gray-600 hover:text-red-600 dark:text-gray-400 dark:hover:text-red-400 rounded hover:bg-red-50 dark:hover:bg-red-900/20"
-            title={t('deviceGroups.deleteGroup')}
-          >
-            <Trash2 className="w-4 h-4" />
-          </button>
+          {canEdit && (
+            <button
+              onClick={() => onEdit(group)}
+              className="p-1.5 text-gray-600 hover:text-blue-600 dark:text-gray-400 dark:hover:text-blue-400 rounded hover:bg-blue-50 dark:hover:bg-blue-900/20"
+              title={t('deviceGroups.editGroup')}
+            >
+              <Edit className="w-4 h-4" />
+            </button>
+          )}
+          {canDelete && (
+            <button
+              onClick={() => onDelete(group)}
+              className="p-1.5 text-gray-600 hover:text-red-600 dark:text-gray-400 dark:hover:text-red-400 rounded hover:bg-red-50 dark:hover:bg-red-900/20"
+              title={t('deviceGroups.deleteGroup')}
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
+          )}
         </div>
       </div>
 
@@ -507,6 +574,8 @@ function TreeNode({
               onEdit={onEdit}
               onManageDevices={onManageDevices}
               onDelete={onDelete}
+              canEdit={canEdit}
+              canDelete={canDelete}
             />
           ))}
         </div>

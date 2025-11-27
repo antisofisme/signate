@@ -139,8 +139,8 @@ class ContentRepository(IContentRepository):
 
         return self._to_entity(db_content) if db_content else None
 
-    def update(self, content: Content) -> Content:
-        """Update content metadata"""
+    def update(self, content: Content, updated_by_id: Optional[int] = None) -> Content:
+        """Update content metadata with audit tracking"""
         db_content = self.db.query(ContentModel).filter(
             ContentModel.id == content.id
         ).first()
@@ -165,14 +165,20 @@ class ContentRepository(IContentRepository):
         db_content.thumbnail_generated_at = content.thumbnail_generated_at
         db_content.upload_status = content.upload_status
 
+        # Audit tracking
+        if updated_by_id is not None:
+            db_content.updated_by_id = updated_by_id
+
         self.db.commit()
         self.db.refresh(db_content)
 
         return self._to_entity(db_content)
 
-    def soft_delete(self, content_id: int, organization_id: int) -> bool:
+    def soft_delete(
+        self, content_id: int, organization_id: int, deleted_by_id: Optional[int] = None
+    ) -> bool:
         """
-        Soft delete content and cleanup playlist associations
+        Soft delete content and cleanup playlist associations with audit tracking
 
         CRITICAL FIX: Remove content from all playlists to prevent orphaned data
         """
@@ -199,9 +205,11 @@ class ContentRepository(IContentRepository):
                 f"Removed content {content_id} from {deleted_count} playlist(s) during soft delete"
             )
 
-        # Soft delete the content
+        # Soft delete the content with audit tracking
         db_content.deleted_at = datetime.now(timezone.utc)
         db_content.is_active = False
+        if deleted_by_id is not None:
+            db_content.deleted_by_id = deleted_by_id
         self.db.commit()
 
         # CRITICAL FIX: Invalidate content resolver cache for affected devices
@@ -414,7 +422,10 @@ class ContentRepository(IContentRepository):
             thumbnail_generated_at=db_content.thumbnail_generated_at,
             upload_status=db_content.upload_status,
             organization_id=db_content.organization_id,
+            # Audit trail fields
             uploaded_by_id=db_content.uploaded_by_id,
+            updated_by_id=getattr(db_content, 'updated_by_id', None),
+            deleted_by_id=getattr(db_content, 'deleted_by_id', None),
             created_at=db_content.created_at,
             updated_at=db_content.updated_at,
             deleted_at=db_content.deleted_at

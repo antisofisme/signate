@@ -15,7 +15,8 @@ from shared.api_routes import DeviceRoutes
 from shared.errors import handle_errors, NotFoundError, ValidationError
 from shared.responses import success_response
 from shared.logging import RequestLogger, AuditLogger
-from shared.auth import get_current_user, CurrentUser, get_current_device, CurrentDevice
+from shared.auth import get_current_device, CurrentDevice
+from shared.middleware import require_permission
 from shared.cache import cache, device_cache_key, list_cache_key
 from shared.metrics import track_cache_operation, update_device_metrics
 from typing import Optional
@@ -468,7 +469,7 @@ async def activate_device(
     http_request: Request,
     background_tasks: BackgroundTasks,
     use_case: ActivateDeviceUseCase = Depends(get_activate_device_use_case),
-    current_user: CurrentUser = Depends(get_current_user)
+    current_user: dict = Depends(require_permission("devices", "create"))
 ):
     """
     Activate device with code (called by CMS admin)
@@ -476,6 +477,8 @@ async def activate_device(
     Admin enters the 6-digit code shown on screen to activate device
     Device is assigned to admin's organization automatically
     Uses centralized error handling and logging
+
+    Requires: devices.create permission
     """
     start_time = time.time()
 
@@ -483,7 +486,7 @@ async def activate_device(
     # Pass admin's organization_id from JWT token
     result = use_case.execute(
         unique_code=request_body.unique_code,
-        organization_id=current_user.organization_id,
+        organization_id=current_user["organization_id"],
         device_name=request_body.device_name,
         room_number=request_body.room_number,
         location_type=request_body.location_type
@@ -507,20 +510,21 @@ async def activate_device(
     )
 
     # Invalidate device cache
-    cache.invalidate_device(device.id, current_user.organization_id)
+    cache.invalidate_device(device.id, current_user["organization_id"])
 
     # Audit log
     audit_logger.log_action(
-        user_id=current_user.id,
+        user_id=current_user["user_id"],
         action="device.activate",
         resource_type="device",
         resource_id=device.id,
         details={
             "unique_code": request_body.unique_code,
             "device_name": request_body.device_name,
-            "organization_id": current_user.organization_id,
-            "ip_address": http_request.client.host if http_request.client else None
-        }
+            "organization_id": current_user["organization_id"]
+        },
+        ip_address=http_request.client.host if http_request.client else None,
+        organization_id=current_user["organization_id"]
     )
 
     # WebSocket broadcast - Schedule as background task
@@ -546,7 +550,7 @@ def list_devices(
     status_filter: Optional[str] = Query(None, description="Filter by status: active, pending, inactive"),
     online_only: bool = Query(False, description="Show only online devices"),
     use_case: ListDevicesUseCase = Depends(get_list_devices_use_case),
-    current_user: CurrentUser = Depends(get_current_user)
+    current_user: dict = Depends(require_permission("devices", "read"))
 ):
     """
     List devices with scope filter (called by CMS)
@@ -555,6 +559,8 @@ def list_devices(
     - my_org (default): Devices assigned to current user's organization
     - unassigned: Devices with organization_id = NULL (global pool for claiming)
     - all: All devices (super admin only)
+
+    Requires: devices.read permission
     """
     # Validate scope
     valid_scopes = ["my_org", "unassigned", "all"]
@@ -565,7 +571,8 @@ def list_devices(
         )
 
     # Check super admin for 'all' scope
-    if scope == "all" and current_user.role != "super_admin":
+    user_role = current_user.get("role", "")
+    if scope == "all" and user_role.upper() not in ["SUPER_ADMIN", "ADMIN"]:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Only super admins can view all devices"
@@ -574,7 +581,7 @@ def list_devices(
     # Generate cache key with scope
     cache_key = list_cache_key(
         entity="devices",
-        org_id=current_user.organization_id if scope == "my_org" else "global",
+        org_id=current_user["organization_id"] if scope == "my_org" else "global",
         status_filter=status_filter,
         online_only=online_only,
         scope=scope
@@ -591,7 +598,7 @@ def list_devices(
     try:
         # Determine organization_id based on scope
         if scope == "my_org":
-            organization_id = current_user.organization_id
+            organization_id = current_user["organization_id"]
             if not organization_id:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
@@ -645,40 +652,42 @@ def list_devices(
 def get_device(
     device_id: int,
     device_repo: DeviceRepository = Depends(get_device_repository),
-    current_user: CurrentUser = Depends(get_current_user)
+    current_user: dict = Depends(require_permission("devices", "read"))
 ):
     """
     Get device details (called by CMS)
+
+    Requires: devices.read permission
     """
     # Generate cache key
     cache_key = device_cache_key(device_id)
-    
+
     # Try cache first
     cached_result = cache.get(cache_key)
     if cached_result:
         track_cache_operation("get", hit=True)
         # Verify organization access
-        if cached_result.get('organization_id') != current_user.organization_id:
+        if cached_result.get('organization_id') != current_user["organization_id"]:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"Device with ID {device_id} not found"
             )
         return DeviceResponse(**cached_result)
-    
+
     track_cache_operation("get", hit=False)
-    
+
     try:
         # SECURITY FIX: Add organization isolation
-        device = device_repo.find_by_id(device_id, organization_id=current_user.organization_id)
+        device = device_repo.find_by_id(device_id, organization_id=current_user["organization_id"])
 
         if not device:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"Device with ID {device_id} not found"
             )
-            
+
         # Verify organization access
-        if device.organization_id != current_user.organization_id:
+        if device.organization_id != current_user["organization_id"]:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"Device with ID {device_id} not found"
@@ -748,13 +757,14 @@ def update_device(
     device_id: int,
     request_body: UpdateDeviceRequest,
     http_request: Request,
-    current_user: CurrentUser = Depends(get_current_user),
+    current_user: dict = Depends(require_permission("devices", "update")),
     use_case: UpdateDeviceUseCase = Depends(get_update_device_use_case)
 ):
     """
     Update device settings (called by CMS)
     Uses centralized error handling and logging
-    ⚠️ SECURITY FIX: Added current_user authorization (CVSS 9.1)
+
+    Requires: devices.update permission
     """
     start_time = time.time()
 
@@ -768,7 +778,8 @@ def update_device(
         is_volume_enabled=request_body.is_volume_enabled,
         is_personalization_supported=request_body.is_personalization_supported,
         privacy_mode=request_body.privacy_mode,
-        current_user_org_id=current_user.organization_id
+        current_user_org_id=current_user["organization_id"],
+        updated_by_id=current_user["user_id"]
     )
 
     # Convert to response with is_online computed field
@@ -787,17 +798,18 @@ def update_device(
 
     # Invalidate device cache
     cache.invalidate_device(device_id, device.organization_id)
-    
+
     # Audit log
     audit_logger.log_action(
-        user_id=current_user.id,
+        user_id=current_user["user_id"],
         action="device.update",
         resource_type="device",
         resource_id=device_id,
         details={
-            "device_name": request_body.device_name,
-            "ip_address": http_request.client.host if http_request.client else None
-        }
+            "device_name": request_body.device_name
+        },
+        ip_address=http_request.client.host if http_request.client else None,
+        organization_id=current_user["organization_id"]
     )
 
     # Return standardized success response
@@ -812,18 +824,23 @@ def update_device(
 def delete_device(
     device_id: int,
     http_request: Request,
-    current_user: CurrentUser = Depends(get_current_user),
+    current_user: dict = Depends(require_permission("devices", "delete")),
     use_case: UpdateDeviceUseCase = Depends(get_update_device_use_case)
 ):
     """
     Delete device (called by CMS)
     Uses centralized error handling and logging
-    ⚠️ SECURITY FIX: Added current_user authorization (CVSS 9.1)
+
+    Requires: devices.delete permission
     """
     start_time = time.time()
 
     # Execute delete use case (will raise NotFoundError if device not found)
-    success = use_case.delete_device(device_id, current_user_org_id=current_user.organization_id)
+    success = use_case.delete_device(
+        device_id,
+        current_user_org_id=current_user["organization_id"],
+        deleted_by_id=current_user["user_id"]
+    )
 
     if not success:
         raise NotFoundError(
@@ -845,13 +862,15 @@ def delete_device(
 
     # Audit log
     audit_logger.log_action(
-        user_id=current_user.id,
+        user_id=current_user["user_id"],
         action="device.delete",
         resource_type="device",
         resource_id=device_id,
         details={
-            "ip_address": http_request.client.host if http_request.client else None
-        }
+            "soft_delete": True
+        },
+        ip_address=http_request.client.host if http_request.client else None,
+        organization_id=current_user["organization_id"]
     )
 
     return None
@@ -862,7 +881,7 @@ def delete_device(
 def release_device_by_admin(
     device_id: int,
     http_request: Request,
-    current_user: CurrentUser = Depends(get_current_user),
+    current_user: dict = Depends(require_permission("devices", "update")),
     device_repo: DeviceRepository = Depends(get_device_repository)
 ):
     """
@@ -879,13 +898,15 @@ def release_device_by_admin(
     This is DIFFERENT from hard reset:
     - CMS Release: Keep org_id → re-register to SAME org
     - Hard Reset: Clear org_id → re-register to GLOBAL pending
+
+    Requires: devices.update permission
     """
     from datetime import datetime, timezone
 
     start_time = time.time()
 
     # Get device
-    device = device_repo.find_by_id(device_id, organization_id=current_user.organization_id)
+    device = device_repo.find_by_id(device_id, organization_id=current_user["organization_id"])
 
     if not device:
         raise NotFoundError(
@@ -895,7 +916,7 @@ def release_device_by_admin(
         )
 
     # Verify ownership
-    if device.organization_id != current_user.organization_id:
+    if device.organization_id != current_user["organization_id"]:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="You don't have permission to release this device"
@@ -922,19 +943,19 @@ def release_device_by_admin(
     )
 
     # Invalidate device cache
-    cache.invalidate_device(device_id, current_user.organization_id)
+    cache.invalidate_device(device_id, current_user["organization_id"])
 
     # Audit log
     audit_logger.log_action(
-        user_id=current_user.id,
+        user_id=current_user["user_id"],
         action="device.release",
         resource_type="device",
         resource_id=device_id,
         details={
-            "device_name": device.device_name,
-            "organization_id": device.organization_id,
-            "ip_address": http_request.client.host if http_request.client else None
-        }
+            "device_name": device.device_name
+        },
+        ip_address=http_request.client.host if http_request.client else None,
+        organization_id=current_user["organization_id"]
     )
 
     return response

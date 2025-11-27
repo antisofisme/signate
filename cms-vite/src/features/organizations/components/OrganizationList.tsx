@@ -5,14 +5,16 @@
  * Table display of organizations with actions
  */
 
-import { Building, Shield, Edit, Trash2, Users, Monitor } from 'lucide-react';
+import { Building, Shield, Edit, Trash2, Users, Monitor, Plus } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { EmptyState } from '@/shared/components';
+import { Button } from '@/components/ui/button';
 import type { Organization } from '../types/organization';
 
 interface OrganizationListProps {
   organizations: Organization[];
-  onEdit: (org: Organization) => void;
-  onDelete: (org: Organization) => void;
+  onEdit?: (org: Organization) => void;
+  onDelete?: (org: Organization) => void;
 }
 
 export function OrganizationList({
@@ -21,6 +23,19 @@ export function OrganizationList({
   onDelete,
 }: OrganizationListProps) {
   const { t } = useTranslation();
+
+  // Show empty state if no organizations
+  if (!organizations || organizations.length === 0) {
+    return (
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow">
+        <EmptyState
+          icon={Building}
+          title={t('organizations.noOrganizations', 'No organizations')}
+          description={t('organizations.noOrganizationsDescription', 'There are no organizations yet. Create your first organization to get started.')}
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
@@ -39,13 +54,15 @@ export function OrganizationList({
             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
               {t('organizations.status')}
             </th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-              {t('organizations.actions')}
-            </th>
+            {(onEdit || onDelete) && (
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                {t('organizations.actions')}
+              </th>
+            )}
           </tr>
         </thead>
         <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-          {organizations?.map((org) => (
+          {organizations.map((org) => (
             <tr key={org.id}>
               <td className="px-6 py-4 whitespace-nowrap">
                 <div className="flex items-center">
@@ -78,22 +95,30 @@ export function OrganizationList({
                   {org.is_active ? t('organizations.active') : t('organizations.inactive')}
                 </span>
               </td>
-              <td className="px-6 py-4 whitespace-nowrap text-sm">
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => onEdit(org)}
-                    className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
-                  >
-                    <Edit className="w-5 h-5" />
-                  </button>
-                  <button
-                    onClick={() => onDelete(org)}
-                    className="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"
-                  >
-                    <Trash2 className="w-5 h-5" />
-                  </button>
-                </div>
-              </td>
+              {(onEdit || onDelete) && (
+                <td className="px-6 py-4 whitespace-nowrap text-sm">
+                  <div className="flex items-center gap-2">
+                    {onEdit && (
+                      <button
+                        onClick={() => onEdit(org)}
+                        className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
+                        title={t('organizations.editOrganization', 'Edit organization')}
+                      >
+                        <Edit className="w-5 h-5" />
+                      </button>
+                    )}
+                    {onDelete && (
+                      <button
+                        onClick={() => onDelete(org)}
+                        className="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"
+                        title={t('organizations.deleteOrganization', 'Delete organization')}
+                      >
+                        <Trash2 className="w-5 h-5" />
+                      </button>
+                    )}
+                  </div>
+                </td>
+              )}
             </tr>
           ))}
         </tbody>

@@ -22,9 +22,20 @@ class UpdatePlaylistUseCase:
         is_active: Optional[bool] = None,
         priority: Optional[int] = None,
         schedule: Optional[Dict[str, Any]] = None,
+        updated_by_id: Optional[int] = None,
     ) -> Playlist:
         """
         Update playlist
+
+        Args:
+            playlist_id: Playlist ID to update
+            organization_id: Organization ID for ownership check
+            name: New name (optional)
+            description: New description (optional)
+            is_active: New active status (optional)
+            priority: New priority (optional)
+            schedule: New schedule (optional)
+            updated_by_id: User ID who updated the playlist (audit trail)
 
         Raises:
             ValueError: If playlist not found or validation fails
@@ -43,5 +54,5 @@ class UpdatePlaylistUseCase:
             schedule=schedule,
         )
 
-        # Persist changes
-        return self.playlist_repo.update(playlist)
+        # Persist changes with audit tracking
+        return self.playlist_repo.update(playlist, updated_by_id=updated_by_id)

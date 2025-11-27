@@ -6,7 +6,7 @@
  */
 
 import { useState } from 'react';
-import { Plus, Building, Shield, Loader2 } from 'lucide-react';
+import { Plus, Building, Shield } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import {
   useOrganizations,
@@ -16,7 +16,9 @@ import {
 } from '../hooks/useOrganizations';
 import { OrganizationList } from '../components/OrganizationList';
 import { OrganizationForm } from '../components/OrganizationForm';
-import { DeleteConfirmModal } from '@/shared/components/DeleteConfirmModal';
+import { ConfirmDialog, TableSkeleton, AccessDenied } from '@/shared/components';
+import { Button } from '@/components/ui/button';
+import { useCanPerformAction } from '@/features/rbac/hooks/usePermissions';
 import type {
   Organization,
   CreateOrganizationRequest,
@@ -29,6 +31,12 @@ export default function OrganizationsPage() {
   const createMutation = useCreateOrganization();
   const updateMutation = useUpdateOrganization();
   const deleteMutation = useDeleteOrganization();
+
+  // Permission checks
+  const { hasPermission: canView } = useCanPerformAction('organizations', 'view');
+  const { hasPermission: canCreate } = useCanPerformAction('organizations', 'create');
+  const { hasPermission: canEdit } = useCanPerformAction('organizations', 'edit');
+  const { hasPermission: canDelete } = useCanPerformAction('organizations', 'delete');
 
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingOrg, setEditingOrg] = useState<Organization | null>(null);
@@ -65,10 +73,24 @@ export default function OrganizationsPage() {
     });
   };
 
+  // Access control
+  if (!canView) {
+    return <AccessDenied />;
+  }
+
+  // Loading state
   if (isLoading) {
     return (
-      <div className="flex justify-center items-center h-64">
-        <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+      <div className="space-y-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {[...Array(3)].map((_, i) => (
+            <div key={i} className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 animate-pulse">
+              <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/2 mb-2"></div>
+              <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded w-1/3"></div>
+            </div>
+          ))}
+        </div>
+        <TableSkeleton rows={5} columns={5} />
       </div>
     );
   }
@@ -121,21 +143,23 @@ export default function OrganizationsPage() {
       </div>
 
       {/* Actions */}
-      <div className="mb-6 flex justify-end">
-        <button
-          onClick={() => setShowCreateModal(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-        >
-          <Plus className="w-5 h-5" />
-          {t('organizations.createOrganization')}
-        </button>
-      </div>
+      {canCreate && (
+        <div className="mb-6 flex justify-end">
+          <Button
+            onClick={() => setShowCreateModal(true)}
+            className="flex items-center gap-2"
+          >
+            <Plus className="w-5 h-5" />
+            {t('organizations.createOrganization')}
+          </Button>
+        </div>
+      )}
 
       {/* Organizations Table */}
       <OrganizationList
         organizations={organizations}
-        onEdit={setEditingOrg}
-        onDelete={setDeletingOrg}
+        onEdit={canEdit ? setEditingOrg : undefined}
+        onDelete={canDelete ? setDeletingOrg : undefined}
       />
 
       {/* Modals */}
@@ -156,17 +180,16 @@ export default function OrganizationsPage() {
         />
       )}
 
-      {deletingOrg && (
-        <DeleteConfirmModal
-          isOpen={!!deletingOrg}
-          title={t('organizations.deleteOrganization')}
-          message={t('organizations.deleteConfirmMessage')}
-          itemName={deletingOrg.name}
-          onClose={() => setDeletingOrg(null)}
-          onConfirm={handleDelete}
-          isLoading={deleteMutation.isPending}
-        />
-      )}
+      <ConfirmDialog
+        open={!!deletingOrg}
+        onOpenChange={(open) => !open && setDeletingOrg(null)}
+        title={t('organizations.deleteOrganization')}
+        description={`${t('organizations.deleteConfirmMessage')} "${deletingOrg?.name}"?`}
+        variant="danger"
+        confirmLabel={t('organizations.delete', 'Delete')}
+        onConfirm={handleDelete}
+        isLoading={deleteMutation.isPending}
+      />
     </>
   );
 }

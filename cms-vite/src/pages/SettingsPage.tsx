@@ -25,43 +25,54 @@ export default function SettingsPage() {
     {
       id: 'organizations' as TabType,
       name: t('settings.tabs.organizations', 'Organizations'),
+      title: t('settings.organizations.title', 'Organizations'),
+      description: t('settings.organizations.description', 'Manage organizations and their settings'),
       icon: Building,
       component: OrganizationsTab,
     },
     {
       id: 'users' as TabType,
       name: t('settings.tabs.users', 'Users'),
+      title: t('settings.users.title', 'User Management'),
+      description: t('settings.users.description', 'Manage user accounts, roles and permissions'),
       icon: Users,
       component: UsersTab,
     },
     {
       id: 'sessions' as TabType,
       name: t('settings.tabs.sessions', 'Active Sessions'),
+      title: t('settings.sessions.title', 'Active Sessions'),
+      description: t('settings.sessions.description', 'Monitor and manage active user sessions'),
       icon: Shield,
       component: SessionsTab,
     },
     {
       id: 'roles' as TabType,
       name: t('settings.tabs.roles', 'Roles & Permissions'),
+      title: t('settings.roles.title', 'Roles & Permissions'),
+      description: t('settings.roles.description', 'Configure roles and access permissions'),
       icon: Key,
       component: RolesTab,
     },
     {
       id: 'audit' as TabType,
       name: t('settings.tabs.auditLogs', 'Audit Logs'),
+      title: t('settings.audit.title', 'Audit Logs'),
+      description: t('settings.audit.description', 'View system activity and audit trail'),
       icon: FileText,
       component: AuditLogsTab,
     },
   ];
 
-  const ActiveComponent = tabs.find((tab) => tab.id === activeTab)?.component;
+  const activeTabData = tabs.find((tab) => tab.id === activeTab);
+  const ActiveComponent = activeTabData?.component;
 
   return (
     <>
-      {/* Sticky Page Header */}
+      {/* Sticky Page Header - Dynamic based on active tab */}
       <PageHeader
-        title={t('settings.title', 'Settings')}
-        description={t('settings.description', 'Manage system settings, organizations, users, and audit logs')}
+        title={activeTabData?.title || t('settings.title', 'Settings')}
+        description={activeTabData?.description || t('settings.description', 'Manage system settings, organizations, users, and audit logs')}
       />
 
       {/* Content */}

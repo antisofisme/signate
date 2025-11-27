@@ -130,14 +130,21 @@ class ScheduleRepository:
     def delete_schedule(
         self,
         schedule_id: int,
-        organization_id: int
+        organization_id: int,
+        deleted_by_id: Optional[int] = None
     ) -> bool:
-        """Delete schedule"""
+        """Soft delete schedule with audit tracking"""
         schedule = self.get_schedule_by_id(schedule_id, organization_id)
         if not schedule:
             return False
 
-        self.db.delete(schedule)
+        # Soft delete with audit tracking
+        from datetime import datetime, timezone
+        schedule.deleted_at = datetime.now(timezone.utc)
+        schedule.is_active = False
+        if deleted_by_id is not None:
+            schedule.deleted_by_id = deleted_by_id
+
         self.db.commit()
         return True
 

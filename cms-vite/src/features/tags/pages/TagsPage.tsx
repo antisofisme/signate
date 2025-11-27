@@ -11,7 +11,8 @@ import { useTranslation } from 'react-i18next';
 import { useTags, useCreateTag, useUpdateTag, useDeleteTag } from '../hooks/useTags';
 import { TagList } from '../components/TagList';
 import { TagForm } from '../components/TagForm';
-import { DeleteConfirmModal } from '@/shared/components/DeleteConfirmModal';
+import { ConfirmDialog, AccessDenied, PageSkeleton } from '@/shared/components';
+import { useCanPerformAction } from '@/features/rbac/hooks/usePermissions';
 import type { Tag, TagSortBy, CreateTagRequest, UpdateTagRequest } from '../types/tag';
 
 export default function TagsPage() {
@@ -22,11 +23,27 @@ export default function TagsPage() {
   const [editingTag, setEditingTag] = useState<Tag | null>(null);
   const [deletingTag, setDeletingTag] = useState<Tag | null>(null);
 
+  // Permission checks
+  const { hasPermission: canRead, isLoading: isLoadingReadPermission } = useCanPerformAction('tags', 'view');
+  const { hasPermission: canCreate } = useCanPerformAction('tags', 'create');
+  const { hasPermission: canUpdate } = useCanPerformAction('tags', 'edit');
+  const { hasPermission: canDelete } = useCanPerformAction('tags', 'delete');
+
   // React Query hooks
   const { data: tags = [], isLoading } = useTags({ sort_by: sortBy });
   const createTagMutation = useCreateTag();
   const updateTagMutation = useUpdateTag();
   const deleteTagMutation = useDeleteTag();
+
+  // Show loading while checking permissions
+  if (isLoadingReadPermission) {
+    return <PageSkeleton />;
+  }
+
+  // Check read permission
+  if (!canRead) {
+    return <AccessDenied />;
+  }
 
   // Filter tags by search query
   const filteredTags = tags.filter((tag) =>
@@ -96,23 +113,25 @@ export default function TagsPage() {
         </div>
 
         {/* Create Button */}
-        <button
-          onClick={() => setIsCreateModalOpen(true)}
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2"
-        >
-          <Plus className="h-4 w-4" />
-          {t('tags.createTag')}
-        </button>
+        {canCreate && (
+          <button
+            onClick={() => setIsCreateModalOpen(true)}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2"
+          >
+            <Plus className="h-4 w-4" />
+            {t('tags.createTag')}
+          </button>
+        )}
       </div>
 
       {/* Content */}
       <div className="space-y-6">
         <TagList
-        tags={filteredTags}
-        isLoading={isLoading}
-        searchQuery={searchQuery}
-        onEdit={setEditingTag}
-        onDelete={setDeletingTag}
+          tags={filteredTags}
+          isLoading={isLoading}
+          searchQuery={searchQuery}
+          onEdit={canUpdate ? setEditingTag : undefined}
+          onDelete={canDelete ? setDeletingTag : undefined}
         />
       </div>
 
@@ -135,12 +154,14 @@ export default function TagsPage() {
       )}
 
       {deletingTag && (
-        <DeleteConfirmModal
-          isOpen={!!deletingTag}
+        <ConfirmDialog
+          open={!!deletingTag}
+          onOpenChange={(open) => !open && setDeletingTag(null)}
           title={t('tags.deleteTitle')}
-          message={t('tags.deleteMessage')}
-          itemName={deletingTag.tag_name}
-          onClose={() => setDeletingTag(null)}
+          description={`${t('tags.deleteMessage')} "${deletingTag.tag_name}"?`}
+          variant="danger"
+          confirmLabel={t('tags.delete')}
+          cancelLabel={t('tags.cancel')}
           onConfirm={handleDeleteConfirm}
           isLoading={deleteTagMutation.isPending}
         />

@@ -93,6 +93,8 @@ class PlaylistRepository(IPlaylistRepository):
             is_pms_template=model.is_pms_template,
             organization_id=model.organization_id,
             created_by_id=model.created_by_id,
+            updated_by_id=getattr(model, 'updated_by_id', None),
+            deleted_by_id=getattr(model, 'deleted_by_id', None),
             created_at=model.created_at,
             updated_at=model.updated_at,
             deleted_at=model.deleted_at,
@@ -201,8 +203,8 @@ class PlaylistRepository(IPlaylistRepository):
 
         return self._model_to_entity(playlist_model, include_stats=True)
 
-    def update(self, playlist: Playlist) -> Playlist:
-        """Update playlist"""
+    def update(self, playlist: Playlist, updated_by_id: Optional[int] = None) -> Playlist:
+        """Update playlist with audit tracking"""
         db_playlist = self.db.query(PlaylistModel).filter(
             and_(
                 PlaylistModel.id == playlist.id,
@@ -223,6 +225,10 @@ class PlaylistRepository(IPlaylistRepository):
         db_playlist.is_pms_template = playlist.is_pms_template
         db_playlist.updated_at = playlist.updated_at
 
+        # Audit tracking
+        if updated_by_id is not None:
+            db_playlist.updated_by_id = updated_by_id
+
         self.db.commit()
         self.db.refresh(db_playlist)
 
@@ -231,8 +237,14 @@ class PlaylistRepository(IPlaylistRepository):
 
         return self._model_to_entity(db_playlist, include_stats=True)
 
-    def delete(self, playlist_id: int, organization_id: int, soft: bool = False) -> bool:
-        """Delete playlist (soft or hard)"""
+    def delete(
+        self,
+        playlist_id: int,
+        organization_id: int,
+        soft: bool = True,
+        deleted_by_id: Optional[int] = None
+    ) -> bool:
+        """Delete playlist (soft or hard) with audit tracking"""
         db_playlist = self.db.query(PlaylistModel).filter(
             and_(
                 PlaylistModel.id == playlist_id,
@@ -244,9 +256,12 @@ class PlaylistRepository(IPlaylistRepository):
             return False
 
         if soft:
-            # Soft delete
+            # Soft delete with audit tracking
             from datetime import datetime, timezone
             db_playlist.deleted_at = datetime.now(timezone.utc)
+            db_playlist.is_active = False
+            if deleted_by_id is not None:
+                db_playlist.deleted_by_id = deleted_by_id
             self.db.commit()
         else:
             # Hard delete (cascades to contents and assignments)

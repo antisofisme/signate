@@ -22,8 +22,16 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { usePagination } from '@/shared/hooks';
-import { Pagination } from '@/shared/components';
+import {
+  Pagination,
+  TableSkeleton,
+  EmptyState,
+  ErrorDisplay,
+  ConfirmDialog
+} from '@/shared/components';
+import { Button } from '@/components/ui/button';
 import { getApiErrorMessage } from '@/shared/utils/types';
+import { useCanPerformAction } from '@/features/rbac/hooks/usePermissions';
 import {
   useContentList,
   useDeleteContent,
@@ -36,68 +44,6 @@ import { EditContentModal } from './EditContentModal';
 import { BulkEditModal } from './BulkEditModal';
 import { BulkTagModal } from './BulkTagModal';
 import { ContentPreviewModal } from './ContentPreviewModal';
-
-// Delete Confirmation Modal
-interface DeleteConfirmModalProps {
-  isOpen: boolean;
-  title: string;
-  message: string;
-  itemName: string;
-  onClose: () => void;
-  onConfirm: () => void;
-  isLoading: boolean;
-}
-
-function DeleteConfirmModal({
-  isOpen,
-  title,
-  message,
-  itemName,
-  onClose,
-  onConfirm,
-  isLoading,
-}: DeleteConfirmModalProps) {
-  const { t } = useTranslation();
-  if (!isOpen) return null;
-
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-md">
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-          {title}
-        </h3>
-        <p className="text-gray-700 dark:text-gray-300 mb-2">{message}</p>
-        <p className="text-gray-900 dark:text-white font-semibold mb-6">
-          {itemName}
-        </p>
-
-        <div className="flex justify-end gap-3">
-          <button
-            onClick={onClose}
-            disabled={isLoading}
-            className="px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg disabled:opacity-50"
-          >
-            {t('contents.buttons.cancel')}
-          </button>
-          <button
-            onClick={onConfirm}
-            disabled={isLoading}
-            className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 flex items-center gap-2"
-          >
-            {isLoading ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin" />
-                {t('contents.buttons.deleting')}
-              </>
-            ) : (
-              t('contents.buttons.delete')
-            )}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
 
 // Preview Modal
 interface PreviewModalProps {
@@ -239,6 +185,13 @@ function getContentTypeIcon(type: ContentType) {
 }
 
 export function ContentTable() {
+  const { t } = useTranslation();
+
+  // Permission checks
+  const { hasPermission: canCreate } = useCanPerformAction('contents', 'create');
+  const { hasPermission: canUpdate } = useCanPerformAction('contents', 'edit');
+  const { hasPermission: canDelete } = useCanPerformAction('contents', 'delete');
+
   // Standardized pagination hook
   const pagination = usePagination({ pageSize: 20 });
 
@@ -256,7 +209,7 @@ export function ContentTable() {
   const [showBulkTagModal, setShowBulkTagModal] = useState(false);
 
   // Hooks - merge filters with pagination
-  const { data: contentData, isLoading } = useContentList({
+  const { data: contentData, isLoading, error } = useContentList({
     ...filters,
     skip: pagination.skip,
     limit: pagination.limit,
@@ -377,13 +330,15 @@ export function ContentTable() {
             <Filter className="w-4 h-4" />
             Filters
           </button>
-          <button
-            onClick={() => setShowUploadModal(true)}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2"
-          >
-            <Upload className="w-4 h-4" />
-            Upload Content
-          </button>
+          {canCreate && (
+            <button
+              onClick={() => setShowUploadModal(true)}
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2"
+            >
+              <Upload className="w-4 h-4" />
+              Upload Content
+            </button>
+          )}
         </div>
       </div>
 
@@ -464,37 +419,46 @@ export function ContentTable() {
             {selectedIds.size} item(s) selected
           </p>
           <div className="flex gap-2">
-            <button
-              onClick={handleBulkEdit}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2"
-            >
-              <Edit className="w-4 h-4" />
-              Bulk Edit
-            </button>
-            <button
-              onClick={handleBulkTag}
-              className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 flex items-center gap-2"
-            >
-              <Filter className="w-4 h-4" />
-              Bulk Tag
-            </button>
-            <button
-              onClick={handleBulkDelete}
-              className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 flex items-center gap-2"
-            >
-              <Trash2 className="w-4 h-4" />
-              Delete Selected
-            </button>
+            {canUpdate && (
+              <>
+                <button
+                  onClick={handleBulkEdit}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2"
+                >
+                  <Edit className="w-4 h-4" />
+                  Bulk Edit
+                </button>
+                <button
+                  onClick={handleBulkTag}
+                  className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 flex items-center gap-2"
+                >
+                  <Filter className="w-4 h-4" />
+                  Bulk Tag
+                </button>
+              </>
+            )}
+            {canDelete && (
+              <button
+                onClick={handleBulkDelete}
+                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 flex items-center gap-2"
+              >
+                <Trash2 className="w-4 h-4" />
+                Delete Selected
+              </button>
+            )}
           </div>
         </div>
       )}
 
       {/* Table */}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
-        {isLoading ? (
-          <div className="flex items-center justify-center py-12">
-            <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
-          </div>
+        {error ? (
+          <ErrorDisplay
+            error={error}
+            onRetry={() => window.location.reload()}
+          />
+        ) : isLoading ? (
+          <TableSkeleton columns={7} rows={10} />
         ) : contentData && contentData.data.length > 0 ? (
           <>
             <div className="overflow-x-auto">
@@ -590,13 +554,15 @@ export function ContentTable() {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm">
                         <div className="flex items-center gap-2">
-                          <button
-                            onClick={() => handleEdit(content)}
-                            className="text-green-600 hover:text-green-700 dark:text-green-400"
-                            title="Edit"
-                          >
-                            <Edit className="w-4 h-4" />
-                          </button>
+                          {canUpdate && (
+                            <button
+                              onClick={() => handleEdit(content)}
+                              className="text-green-600 hover:text-green-700 dark:text-green-400"
+                              title="Edit"
+                            >
+                              <Edit className="w-4 h-4" />
+                            </button>
+                          )}
                           <button
                             onClick={() => handlePreview(content)}
                             className="text-blue-600 hover:text-blue-700 dark:text-blue-400"
@@ -611,13 +577,15 @@ export function ContentTable() {
                           >
                             <Download className="w-4 h-4" />
                           </button>
-                          <button
-                            onClick={() => setContentToDelete(content)}
-                            className="text-red-600 hover:text-red-700 dark:text-red-400"
-                            title="Delete"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
+                          {canDelete && (
+                            <button
+                              onClick={() => setContentToDelete(content)}
+                              className="text-red-600 hover:text-red-700 dark:text-red-400"
+                              title="Delete"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -637,16 +605,19 @@ export function ContentTable() {
             />
           </>
         ) : (
-          <div className="text-center py-12">
-            <FileImage className="w-12 h-12 mx-auto text-gray-400 dark:text-gray-600 mb-4" />
-            <p className="text-gray-500 dark:text-gray-400">No content found</p>
-            <button
-              onClick={() => setShowUploadModal(true)}
-              className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-            >
-              Upload Your First Content
-            </button>
-          </div>
+          <EmptyState
+            icon={FileImage}
+            title="No content found"
+            description="Upload your first media file to get started"
+            action={
+              canCreate && (
+                <Button onClick={() => setShowUploadModal(true)}>
+                  <Upload className="w-4 h-4 mr-2" />
+                  Upload Content
+                </Button>
+              )
+            }
+          />
         )}
       </div>
 
@@ -656,13 +627,14 @@ export function ContentTable() {
         onClose={() => setShowUploadModal(false)}
       />
 
-      {/* Delete Confirmation Modal */}
-      <DeleteConfirmModal
-        isOpen={!!contentToDelete}
+      {/* Delete Confirmation Dialog */}
+      <ConfirmDialog
+        open={!!contentToDelete}
+        onOpenChange={(open) => !open && setContentToDelete(null)}
         title="Delete Content"
-        message="Are you sure you want to delete this content? This action cannot be undone."
-        itemName={contentToDelete?.title || ''}
-        onClose={() => setContentToDelete(null)}
+        description={`Are you sure you want to delete "${contentToDelete?.title}"? This action cannot be undone.`}
+        variant="danger"
+        confirmLabel="Delete"
         onConfirm={handleDelete}
         isLoading={deleteMutation.isPending}
       />

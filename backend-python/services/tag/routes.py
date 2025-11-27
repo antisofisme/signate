@@ -3,7 +3,7 @@ Tag API Routes
 HTTP endpoints for tag management
 """
 
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, Query, status, Request
 from sqlalchemy.orm import Session
 from typing import List
 from shared.database import get_db
@@ -11,7 +11,7 @@ from shared.api_routes import TagRoutes
 from shared.errors import handle_errors
 from shared.responses import success_response
 from shared.logging import RequestLogger, AuditLogger
-from shared.middleware import get_current_active_user
+from shared.middleware import get_current_active_user, require_permission
 import time
 
 from .dtos import (
@@ -161,23 +161,25 @@ def get_get_content_tags_use_case(
 @handle_errors
 def create_tag(
     request_body: CreateTagRequest,
+    http_request: Request,
     use_case: CreateTagUseCase = Depends(get_create_tag_use_case),
-    current_user: dict = Depends(get_current_active_user),
+    current_user: dict = Depends(require_permission("tags", "create")),
     audit_logger: AuditLogger = Depends(get_audit_logger)
 ):
     """
     Create a new tag
 
-    Requires authentication. Tag name must be unique within organization.
+    Requires 'tags:create' permission. Tag name must be unique within organization.
     """
     start_time = time.time()
 
-    # Execute use case
+    # Execute use case with audit tracking
     tag = use_case.execute(
         tag_name=request_body.tag_name,
         organization_id=current_user["organization_id"],
         description=request_body.description,
         color=request_body.color,
+        created_by_id=current_user["user_id"],
     )
 
     # Convert to response
@@ -202,6 +204,7 @@ def create_tag(
         resource_type="tag",
         resource_id=tag.id,
         details={"tag_name": tag.tag_name, "color": tag.color},
+        ip_address=http_request.client.host if http_request.client else None,
         organization_id=current_user["organization_id"]
     )
 
@@ -219,12 +222,12 @@ def create_tag(
 def list_tags(
     sort_by: str = Query(default="newest", description="Sort order: newest, oldest, name_asc, name_desc"),
     use_case: ListTagsUseCase = Depends(get_list_tags_use_case),
-    current_user: dict = Depends(get_current_active_user)
+    current_user: dict = Depends(require_permission("tags", "read"))
 ):
     """
     List all tags for current organization
 
-    Requires authentication. Supports sorting by creation date or name.
+    Requires 'tags:read' permission. Supports sorting by creation date or name.
     """
     start_time = time.time()
 
@@ -264,12 +267,12 @@ def list_tags(
 def get_tag(
     tag_id: int,
     use_case: GetTagUseCase = Depends(get_get_tag_use_case),
-    current_user: dict = Depends(get_current_active_user)
+    current_user: dict = Depends(require_permission("tags", "read"))
 ):
     """
     Get a single tag by ID
 
-    Requires authentication. Returns 404 if tag not found or doesn't belong to organization.
+    Requires 'tags:read' permission. Returns 404 if tag not found or doesn't belong to organization.
     """
     start_time = time.time()
 
@@ -309,12 +312,12 @@ def get_tag(
 def get_tag_usage(
     tag_id: int,
     use_case: GetTagUseCase = Depends(get_get_tag_use_case),
-    current_user: dict = Depends(get_current_active_user)
+    current_user: dict = Depends(require_permission("tags", "read"))
 ):
     """
     Get tag with usage statistics
 
-    Returns tag info plus counts of devices and content using this tag.
+    Requires 'tags:read' permission. Returns tag info plus counts of devices and content using this tag.
     """
     start_time = time.time()
 
@@ -358,24 +361,26 @@ def get_tag_usage(
 def update_tag(
     tag_id: int,
     request_body: UpdateTagRequest,
+    http_request: Request,
     use_case: UpdateTagUseCase = Depends(get_update_tag_use_case),
-    current_user: dict = Depends(get_current_active_user),
+    current_user: dict = Depends(require_permission("tags", "update")),
     audit_logger: AuditLogger = Depends(get_audit_logger)
 ):
     """
     Update an existing tag
 
-    Requires authentication. Can update tag_name, description, and/or color.
+    Requires 'tags:update' permission. Can update tag_name, description, and/or color.
     """
     start_time = time.time()
 
-    # Execute use case
+    # Execute use case with audit tracking
     tag = use_case.execute(
         tag_id=tag_id,
         organization_id=current_user["organization_id"],
         tag_name=request_body.tag_name,
         description=request_body.description,
         color=request_body.color,
+        updated_by_id=current_user["user_id"],
     )
 
     # Convert to response
@@ -404,6 +409,7 @@ def update_tag(
             "description": request_body.description,
             "color": request_body.color
         },
+        ip_address=http_request.client.host if http_request.client else None,
         organization_id=current_user["organization_id"]
     )
 
@@ -420,24 +426,26 @@ def update_tag(
 @handle_errors
 def delete_tag(
     tag_id: int,
+    http_request: Request,
     force: bool = Query(default=False, description="Force delete even if tag is in use"),
     use_case: DeleteTagUseCase = Depends(get_delete_tag_use_case),
-    current_user: dict = Depends(get_current_active_user),
+    current_user: dict = Depends(require_permission("tags", "delete")),
     audit_logger: AuditLogger = Depends(get_audit_logger)
 ):
     """
-    Delete a tag
+    Delete a tag (soft delete)
 
-    Requires authentication. By default, fails if tag is in use.
+    Requires 'tags:delete' permission. By default, fails if tag is in use.
     Use force=true to delete regardless of usage.
     """
     start_time = time.time()
 
-    # Execute use case
+    # Execute use case with audit tracking
     result = use_case.execute(
         tag_id=tag_id,
         organization_id=current_user["organization_id"],
-        force=force
+        force=force,
+        deleted_by_id=current_user["user_id"],
     )
 
     # Calculate duration
@@ -459,6 +467,7 @@ def delete_tag(
         resource_type="tag",
         resource_id=tag_id,
         details={"force": force},
+        ip_address=http_request.client.host if http_request.client else None,
         organization_id=current_user["organization_id"]
     )
 
@@ -481,22 +490,24 @@ def delete_tag(
 def assign_tag_to_content(
     tag_id: int,
     request_body: AssignTagRequest,
+    http_request: Request,
     use_case: AssignTagToContentUseCase = Depends(get_assign_tag_to_content_use_case),
-    current_user: dict = Depends(get_current_active_user),
+    current_user: dict = Depends(require_permission("tags", "update")),
     audit_logger: AuditLogger = Depends(get_audit_logger)
 ):
     """
     Assign a tag to a single content item
 
-    Requires authentication. Both tag and content must belong to the same organization.
+    Requires 'tags:update' permission. Both tag and content must belong to the same organization.
     """
     start_time = time.time()
 
-    # Execute use case
+    # Execute use case with audit tracking
     result = use_case.execute(
         tag_id=tag_id,
         content_id=request_body.content_id,
-        organization_id=current_user["organization_id"]
+        organization_id=current_user["organization_id"],
+        assigned_by_id=current_user["user_id"],
     )
 
     # Calculate duration
@@ -519,6 +530,7 @@ def assign_tag_to_content(
             resource_type="tag",
             resource_id=tag_id,
             details={"content_id": request_body.content_id},
+            ip_address=http_request.client.host if http_request.client else None,
             organization_id=current_user["organization_id"]
         )
 
@@ -534,22 +546,24 @@ def assign_tag_to_content(
 def assign_tag_to_contents(
     tag_id: int,
     request_body: AssignTagToContentsRequest,
+    http_request: Request,
     use_case: AssignTagToContentsUseCase = Depends(get_assign_tag_to_contents_use_case),
-    current_user: dict = Depends(get_current_active_user),
+    current_user: dict = Depends(require_permission("tags", "update")),
     audit_logger: AuditLogger = Depends(get_audit_logger)
 ):
     """
     Bulk assign a tag to multiple content items
 
-    Requires authentication. Returns counts of successful/skipped/failed assignments.
+    Requires 'tags:update' permission. Returns counts of successful/skipped/failed assignments.
     """
     start_time = time.time()
 
-    # Execute use case
+    # Execute use case with audit tracking
     result = use_case.execute(
         tag_id=tag_id,
         content_ids=request_body.content_ids,
-        organization_id=current_user["organization_id"]
+        organization_id=current_user["organization_id"],
+        assigned_by_id=current_user["user_id"],
     )
 
     # Calculate duration
@@ -576,6 +590,7 @@ def assign_tag_to_contents(
             "skipped": result["skipped"],
             "failed": result["failed"]
         },
+        ip_address=http_request.client.host if http_request.client else None,
         organization_id=current_user["organization_id"]
     )
 
@@ -591,14 +606,15 @@ def assign_tag_to_contents(
 def unassign_tag_from_content(
     tag_id: int,
     request_body: UnassignTagRequest,
+    http_request: Request,
     use_case: UnassignTagFromContentUseCase = Depends(get_unassign_tag_from_content_use_case),
-    current_user: dict = Depends(get_current_active_user),
+    current_user: dict = Depends(require_permission("tags", "update")),
     audit_logger: AuditLogger = Depends(get_audit_logger)
 ):
     """
     Unassign a tag from a single content item
 
-    Requires authentication. Both tag and content must belong to the same organization.
+    Requires 'tags:update' permission. Both tag and content must belong to the same organization.
     """
     start_time = time.time()
 
@@ -629,6 +645,7 @@ def unassign_tag_from_content(
             resource_type="tag",
             resource_id=tag_id,
             details={"content_id": request_body.content_id},
+            ip_address=http_request.client.host if http_request.client else None,
             organization_id=current_user["organization_id"]
         )
 
@@ -644,14 +661,15 @@ def unassign_tag_from_content(
 def unassign_tag_from_contents(
     tag_id: int,
     request_body: UnassignTagFromContentsRequest,
+    http_request: Request,
     use_case: UnassignTagFromContentsUseCase = Depends(get_unassign_tag_from_contents_use_case),
-    current_user: dict = Depends(get_current_active_user),
+    current_user: dict = Depends(require_permission("tags", "update")),
     audit_logger: AuditLogger = Depends(get_audit_logger)
 ):
     """
     Bulk unassign a tag from multiple content items
 
-    Requires authentication. Returns counts of successful/not found unassignments.
+    Requires 'tags:update' permission. Returns counts of successful/not found unassignments.
     """
     start_time = time.time()
 
@@ -685,6 +703,7 @@ def unassign_tag_from_contents(
             "unassigned": result["unassigned"],
             "not_found": result["not_found"]
         },
+        ip_address=http_request.client.host if http_request.client else None,
         organization_id=current_user["organization_id"]
     )
 
@@ -699,12 +718,12 @@ def unassign_tag_from_contents(
 def get_content_tags(
     content_id: int,
     use_case: GetContentTagsUseCase = Depends(get_get_content_tags_use_case),
-    current_user: dict = Depends(get_current_active_user)
+    current_user: dict = Depends(require_permission("tags", "read"))
 ):
     """
     Get all tags assigned to a content item
 
-    Requires authentication. Content must belong to the user's organization.
+    Requires 'tags:read' permission. Content must belong to the user's organization.
     """
     start_time = time.time()
 

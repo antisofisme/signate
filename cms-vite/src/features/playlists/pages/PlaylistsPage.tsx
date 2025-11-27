@@ -6,6 +6,7 @@
  */
 
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   usePlaylistList,
   useCreatePlaylist,
@@ -14,12 +15,29 @@ import {
 } from '../hooks/usePlaylist';
 import { PlaylistList } from '../components/PlaylistList';
 import { PlaylistForm } from '../components/PlaylistForm';
-import { DeleteConfirmModal } from '@/shared/components/DeleteConfirmModal';
+import { ConfirmDialog, AccessDenied, ErrorDisplay } from '@/shared/components';
 import PlaylistContentModal from '../components/PlaylistContentModal';
 import PlaylistAssignmentModal from '../components/PlaylistAssignmentModal';
+import { useCanPerformAction } from '@/features/rbac/hooks/usePermissions';
 import type { Playlist, CreatePlaylistRequest, UpdatePlaylistRequest } from '../types/playlist';
 
 export default function PlaylistsPage() {
+  const { t } = useTranslation();
+
+  // Permission checks
+  const { hasPermission: canRead, isLoading: loadingReadPerm } = useCanPerformAction('playlists', 'view');
+  const { hasPermission: canCreate } = useCanPerformAction('playlists', 'create');
+  const { hasPermission: canUpdate } = useCanPerformAction('playlists', 'edit');
+  const { hasPermission: canDelete } = useCanPerformAction('playlists', 'delete');
+
+  // Show access denied if no read permission
+  if (loadingReadPerm) {
+    return null; // Or a loading spinner
+  }
+
+  if (!canRead) {
+    return <AccessDenied />;
+  }
   // State
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingPlaylist, setEditingPlaylist] = useState<Playlist | null>(null);
@@ -29,7 +47,7 @@ export default function PlaylistsPage() {
   const [assignmentModalPlaylist, setAssignmentModalPlaylist] = useState<Playlist | null>(null);
 
   // Hooks
-  const { data: playlistsData, isLoading } = usePlaylistList({ is_active: filterActive });
+  const { data: playlistsData, isLoading, error, refetch } = usePlaylistList({ is_active: filterActive });
   const createMutation = useCreatePlaylist();
   const updateMutation = useUpdatePlaylist();
   const deleteMutation = useDeletePlaylist();
@@ -101,32 +119,45 @@ export default function PlaylistsPage() {
           </button>
         </div>
 
-        <button
-          onClick={() => setShowCreateModal(true)}
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2"
-        >
-          <span>+</span>
-          Buat Playlist
-        </button>
+        {canCreate && (
+          <button
+            onClick={() => setShowCreateModal(true)}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2"
+          >
+            <span>+</span>
+            {t('playlists.createPlaylist')}
+          </button>
+        )}
       </div>
 
       {/* Content */}
       <div className="space-y-6">
+        {/* Error State */}
+        {error && (
+          <ErrorDisplay
+            error={error}
+            onRetry={refetch}
+            title={t('playlists.messages.loadError')}
+          />
+        )}
+
         {/* Playlists List */}
-        <PlaylistList
+        {!error && (
+          <PlaylistList
         playlists={playlistsData?.items || []}
         isLoading={isLoading}
-        onEdit={setEditingPlaylist}
-        onDelete={setDeletingPlaylist}
+        onEdit={canUpdate ? setEditingPlaylist : undefined}
+        onDelete={canDelete ? setDeletingPlaylist : undefined}
         onManageContent={setContentModalPlaylist}
         onManageAssignments={setAssignmentModalPlaylist}
-        onCreateNew={() => setShowCreateModal(true)}
-        />
+        onCreateNew={canCreate ? () => setShowCreateModal(true) : undefined}
+          />
+        )}
 
         {/* Total Count */}
-        {playlistsData && playlistsData.total > 0 && (
+        {!error && playlistsData && playlistsData.total > 0 && (
           <div className="mt-4 text-sm text-gray-600 dark:text-gray-400">
-            Total: {playlistsData.total} playlist
+            {t('playlists.messages.totalPlaylists', { count: playlistsData.total })}
           </div>
         )}
       </div>
@@ -150,12 +181,14 @@ export default function PlaylistsPage() {
       )}
 
       {deletingPlaylist && (
-        <DeleteConfirmModal
-          isOpen={true}
-          title="Hapus Playlist?"
-          message="Apakah Anda yakin ingin menghapus playlist:"
-          itemName={deletingPlaylist.name}
-          onClose={() => setDeletingPlaylist(null)}
+        <ConfirmDialog
+          open={true}
+          onOpenChange={(open) => !open && setDeletingPlaylist(null)}
+          title={t('playlists.deletePlaylist')}
+          description={t('playlists.messages.confirmDelete', { name: deletingPlaylist.name })}
+          variant="danger"
+          confirmLabel={t('common.delete')}
+          cancelLabel={t('common.cancel')}
           onConfirm={handleDelete}
           isLoading={deleteMutation.isPending}
         />

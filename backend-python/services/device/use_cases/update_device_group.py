@@ -26,6 +26,7 @@ class UpdateDeviceGroupUseCase:
         group_type: Optional[str] = None,
         sort_order: Optional[int] = None,
         default_playlist_id: Optional[int] = None,
+        updated_by_id: Optional[int] = None,
     ) -> DeviceGroup:
         """
         Update an existing device group
@@ -84,9 +85,10 @@ class UpdateDeviceGroupUseCase:
             group_type=group_type if group_type is not None else existing_group.group_type,
             sort_order=sort_order if sort_order is not None else existing_group.sort_order,
             default_playlist_id=default_playlist_id if default_playlist_id is not None else existing_group.default_playlist_id,
+            updated_by_id=updated_by_id,
         )
 
         # Persist changes
-        result = self.repo.update(updated_group)
+        result = self.repo.update(updated_group, updated_by_id=updated_by_id)
 
         return result

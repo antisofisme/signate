@@ -3,11 +3,11 @@
  */
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { toast } from 'sonner';
+import { toast } from '@/lib/notifications/toast';
+import { handleAPIError } from '@/lib/errors/errorHandler';
 import { logsApi } from '../api/logsApi';
 import type { LogFilters } from '../types/logs';
 import { deviceKeys } from './useDevices';
-import { getApiErrorMessage } from '@/shared/utils/types';
 
 // Query keys
 export const logKeys = {
@@ -91,7 +91,7 @@ export const useClearLogs = () => {
       toast.success('Console logs cleared successfully');
     },
     onError: (error: unknown) => {
-      toast.error(getApiErrorMessage(error, 'Failed to clear console logs'));
+      toast.error(handleAPIError(error).message);
     },
   });
 };

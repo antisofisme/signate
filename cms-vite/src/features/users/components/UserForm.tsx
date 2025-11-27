@@ -1,17 +1,70 @@
 /**
  * User Form Component
  *
- * Form for creating/editing users (simplified)
+ * Form for creating/editing users
+ * Following CMS UI Development skill standards
  */
 
-import { useState } from 'react';
+import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Loader2 } from 'lucide-react';
+import { useForm, FormProvider } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
+import { Loader2, UserPlus, Save } from 'lucide-react';
+import { USER_ROLES } from '@/lib/constants/app';
+import { Button, Modal, FormInput, FormSelect, FormSwitch } from '@/shared/components';
 import type { User, CreateUserRequest, UpdateUserRequest } from '../types/user';
+
+// Role options
+const roleOptions = [
+  { value: USER_ROLES.SUPER_ADMIN, label: 'Super Admin' },
+  { value: USER_ROLES.ADMIN, label: 'Admin' },
+  { value: USER_ROLES.MANAGER, label: 'Manager' },
+  { value: USER_ROLES.VIEWER, label: 'Viewer' },
+];
+
+// Validation schemas
+const baseSchema = {
+  username: z
+    .string()
+    .min(3, 'Username must be at least 3 characters')
+    .max(50, 'Username must be less than 50 characters')
+    .regex(/^[a-zA-Z0-9_-]+$/, 'Username can only contain letters, numbers, underscores, and hyphens'),
+  email: z
+    .string()
+    .email('Invalid email address')
+    .max(100, 'Email must be less than 100 characters'),
+  full_name: z
+    .string()
+    .min(2, 'Full name must be at least 2 characters')
+    .max(100, 'Full name must be less than 100 characters')
+    .optional()
+    .or(z.literal('')),
+  role: z.enum([USER_ROLES.SUPER_ADMIN, USER_ROLES.ADMIN, USER_ROLES.MANAGER, USER_ROLES.VIEWER] as const),
+  organization_id: z.string().min(1, 'Please select an organization'), // String for form, converted to number on submit
+};
+
+const createUserSchema = z.object({
+  ...baseSchema,
+  password: z
+    .string()
+    .min(8, 'Password must be at least 8 characters')
+    .regex(/[A-Z]/, 'Password must contain at least one uppercase letter')
+    .regex(/[a-z]/, 'Password must contain at least one lowercase letter')
+    .regex(/[0-9]/, 'Password must contain at least one number'),
+});
+
+const updateUserSchema = z.object({
+  ...baseSchema,
+  is_active: z.boolean(),
+});
+
+type CreateUserFormData = z.infer<typeof createUserSchema>;
+type UpdateUserFormData = z.infer<typeof updateUserSchema>;
 
 interface UserFormProps {
   user?: User;
-  organizations: any[];
+  organizations: Array<{ id: number; name: string }>;
   onClose: () => void;
   onSubmit: (data: CreateUserRequest | UpdateUserRequest) => void;
   isLoading: boolean;
@@ -19,58 +72,179 @@ interface UserFormProps {
 
 export function UserForm({ user, organizations, onClose, onSubmit, isLoading }: UserFormProps) {
   const { t } = useTranslation();
-  const [username, setUsername] = useState(user?.username || '');
-  const [email, setEmail] = useState(user?.email || '');
-  const [fullName, setFullName] = useState(user?.full_name || '');
-  const [password, setPassword] = useState('');
-  const [role, setRole] = useState(user?.role || 'viewer');
-  const [orgId, setOrgId] = useState(user?.organization_id || organizations[0]?.id || 0);
-  const [isActive, setIsActive] = useState(user?.is_active ?? true);
+  const isEditing = !!user;
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (user) {
-      onSubmit({ username, email, full_name: fullName, role, organization_id: orgId, is_active: isActive } as UpdateUserRequest);
+  // Organization options
+  const organizationOptions = organizations.map(org => ({
+    value: org.id.toString(),
+    label: org.name,
+  }));
+
+  // Form setup
+  const methods = useForm<CreateUserFormData | UpdateUserFormData>({
+    resolver: zodResolver(isEditing ? updateUserSchema : createUserSchema),
+    defaultValues: isEditing
+      ? {
+          username: user.username,
+          email: user.email,
+          full_name: user.full_name || '',
+          role: user.role,
+          organization_id: user.organization_id.toString(),
+          is_active: user.is_active,
+        }
+      : {
+          username: '',
+          email: '',
+          full_name: '',
+          password: '',
+          role: USER_ROLES.VIEWER,
+          organization_id: organizations[0]?.id.toString() || '0',
+        },
+  });
+
+  const handleSubmit = (data: CreateUserFormData | UpdateUserFormData) => {
+    if (isEditing) {
+      // For update, we only send email, full_name, role, is_active
+      const editData = data as UpdateUserFormData;
+      const updateData: UpdateUserRequest = {
+        email: editData.email,
+        full_name: editData.full_name || undefined,
+        role: editData.role,
+        is_active: editData.is_active,
+      };
+      onSubmit(updateData);
     } else {
-      onSubmit({ username, email, full_name: fullName, password, role, organization_id: orgId } as CreateUserRequest);
+      // For create, we need all fields including organization_id as number
+      const createData = data as CreateUserFormData;
+      const formData: CreateUserRequest = {
+        username: createData.username,
+        email: createData.email,
+        password: createData.password,
+        full_name: createData.full_name || '',
+        role: createData.role,
+        organization_id: Number(createData.organization_id),
+      };
+      onSubmit(formData);
     }
   };
 
+  const handleClose = () => {
+    methods.reset();
+    onClose();
+  };
+
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 overflow-y-auto">
-      <div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-2xl my-8">
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-          {user ? t('users.form.editUser') : t('users.form.createUser')}
-        </h3>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <input type="text" value={username} onChange={(e) => setUsername(e.target.value)} required placeholder={t('users.form.usernamePlaceholder')} className="w-full px-3 py-2 border dark:bg-gray-700 dark:text-white rounded-lg" />
-          <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required placeholder={t('users.form.emailPlaceholder')} className="w-full px-3 py-2 border dark:bg-gray-700 dark:text-white rounded-lg" />
-          <input type="text" value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder={t('users.form.fullNamePlaceholder')} className="w-full px-3 py-2 border dark:bg-gray-700 dark:text-white rounded-lg" />
-          {!user && <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required placeholder={t('users.form.passwordPlaceholder')} className="w-full px-3 py-2 border dark:bg-gray-700 dark:text-white rounded-lg" />}
-          <select value={role} onChange={(e) => setRole(e.target.value as any)} className="w-full px-3 py-2 border dark:bg-gray-700 dark:text-white rounded-lg">
-            <option value="super_admin">{t('users.roles.super_admin')}</option>
-            <option value="admin">{t('users.roles.admin')}</option>
-            <option value="editor">{t('users.roles.editor')}</option>
-            <option value="viewer">{t('users.roles.viewer')}</option>
-          </select>
-          <select value={orgId} onChange={(e) => setOrgId(parseInt(e.target.value))} className="w-full px-3 py-2 border dark:bg-gray-700 dark:text-white rounded-lg">
-            {organizations.map(org => <option key={org.id} value={org.id}>{org.name}</option>)}
-          </select>
-          {user && (
-            <div className="flex items-center gap-2">
-              <input type="checkbox" checked={isActive} onChange={(e) => setIsActive(e.target.checked)} className="w-4 h-4" />
-              <label className="text-sm text-gray-700 dark:text-gray-300">{t('users.form.activeLabel')}</label>
-            </div>
+    <Modal
+      isOpen={true}
+      onClose={handleClose}
+      title={
+        isEditing
+          ? t('users.form.editUser') || 'Edit User'
+          : t('users.form.createUser') || 'Create User'
+      }
+      maxWidth="2xl"
+    >
+      <FormProvider {...methods}>
+        <form onSubmit={methods.handleSubmit(handleSubmit)} className="space-y-4">
+          {/* Username */}
+          <FormInput
+            name="username"
+            label={t('users.form.username') || 'Username'}
+            placeholder={t('users.form.usernamePlaceholder') || 'Enter username'}
+            disabled={isEditing} // Username cannot be changed
+            autoComplete="username"
+          />
+
+          {/* Email */}
+          <FormInput
+            name="email"
+            type="email"
+            label={t('users.form.email') || 'Email'}
+            placeholder={t('users.form.emailPlaceholder') || 'Enter email address'}
+            autoComplete="email"
+          />
+
+          {/* Full Name */}
+          <FormInput
+            name="full_name"
+            label={t('users.form.fullName') || 'Full Name'}
+            placeholder={t('users.form.fullNamePlaceholder') || 'Enter full name (optional)'}
+            autoComplete="name"
+          />
+
+          {/* Password (create only) */}
+          {!isEditing && (
+            <FormInput
+              name="password"
+              type="password"
+              label={t('users.form.password') || 'Password'}
+              placeholder={t('users.form.passwordPlaceholder') || 'Enter password'}
+              autoComplete="new-password"
+              description={t('users.form.passwordHelp') || 'Min 8 characters, at least 1 uppercase, 1 lowercase, and 1 number'}
+            />
           )}
-          <div className="flex justify-end gap-3">
-            <button type="button" onClick={onClose} className="px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg">{t('users.actions.cancel')}</button>
-            <button type="submit" disabled={isLoading} className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2">
-              {isLoading ? <><Loader2 className="w-4 h-4 animate-spin" />{t('users.form.saving')}</> : user ? t('users.actions.update') : t('users.actions.create')}
-            </button>
+
+          {/* Role */}
+          <FormSelect
+            name="role"
+            label={t('users.form.role') || 'Role'}
+            options={roleOptions}
+            placeholder={t('users.form.selectRole') || 'Select role'}
+          />
+
+          {/* Organization */}
+          <FormSelect
+            name="organization_id"
+            label={t('users.form.organization') || 'Organization'}
+            options={organizationOptions}
+            placeholder={t('users.form.selectOrganization') || 'Select organization'}
+          />
+
+          {/* Active Status (edit only) */}
+          {isEditing && (
+            <FormSwitch
+              name="is_active"
+              label={t('users.form.activeLabel') || 'Active User'}
+              description={t('users.form.activeHelp') || 'Inactive users cannot log in'}
+            />
+          )}
+
+          {/* Actions */}
+          <div className="flex justify-end gap-3 pt-4">
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={handleClose}
+              disabled={isLoading}
+            >
+              {t('common.cancel') || 'Cancel'}
+            </Button>
+            <Button
+              type="submit"
+              variant="primary"
+              disabled={isLoading}
+            >
+              {isLoading ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  {t('users.form.saving') || 'Saving...'}
+                </>
+              ) : isEditing ? (
+                <>
+                  <Save className="w-4 h-4 mr-2" />
+                  {t('users.actions.update') || 'Update User'}
+                </>
+              ) : (
+                <>
+                  <UserPlus className="w-4 h-4 mr-2" />
+                  {t('users.actions.create') || 'Create User'}
+                </>
+              )}
+            </Button>
           </div>
         </form>
-      </div>
-    </div>
+      </FormProvider>
+    </Modal>
   );
 }
 

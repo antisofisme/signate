@@ -79,6 +79,10 @@ class Content:
     updated_at: Optional[datetime] = None
     deleted_at: Optional[datetime] = None
 
+    # Audit trail fields
+    updated_by_id: Optional[int] = None
+    deleted_by_id: Optional[int] = None
+
     # Valid types
     VALID_TYPES = ['image', 'video', 'audio']
 
@@ -189,7 +193,9 @@ class Content:
         self.thumbnail_url = thumbnail_url
         self.thumbnail_generated_at = datetime.now(timezone.utc)
 
-    def soft_delete(self):
-        """Mark content as soft-deleted"""
+    def soft_delete(self, deleted_by_id: Optional[int] = None):
+        """Mark content as soft-deleted with audit trail"""
         self.deleted_at = datetime.now(timezone.utc)
         self.is_active = False
+        if deleted_by_id is not None:
+            self.deleted_by_id = deleted_by_id

@@ -38,6 +38,13 @@ import {
 import type { Device, DeviceStatus, DeviceType } from '../types/device';
 import { toast } from 'sonner';
 import { PendingDeviceCard } from './PendingDeviceCard';
+import {
+  TableSkeleton,
+  EmptyState,
+  ErrorDisplay,
+  ConfirmDialog,
+} from '@/shared/components';
+import { useCanPerformAction } from '@/features/rbac/hooks/usePermissions';
 
 // Lazy load modal components for better initial page load
 const TVRegisterModal = lazy(() =>
@@ -78,87 +85,13 @@ function ModalLoadingFallback() {
   );
 }
 
-// Delete Confirmation Modal
-interface DeleteConfirmModalProps {
-  isOpen: boolean;
-  device: Device | null;
-  onClose: () => void;
-  onConfirm: () => void;
-  isLoading: boolean;
-}
-
-function DeleteConfirmModal({
-  isOpen,
-  device,
-  onClose,
-  onConfirm,
-  isLoading,
-}: DeleteConfirmModalProps) {
-  const { t } = useTranslation();
-  if (!isOpen || !device) return null;
-
-  const titleId = `delete-modal-title-${device.id}`;
-  const descId = `delete-modal-desc-${device.id}`;
-
-  return (
-    <div
-      className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
-      role="presentation"
-      onClick={onClose}
-    >
-      <div
-        className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-md"
-        role="alertdialog"
-        aria-modal="true"
-        aria-labelledby={titleId}
-        aria-describedby={descId}
-        onClick={(e) => e.stopPropagation()}
-      >
-        <h3 id={titleId} className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-          {t('devices.modals.deleteDevice', 'Delete Device')}
-        </h3>
-        <div id={descId}>
-          <p className="text-gray-700 dark:text-gray-300 mb-2">
-            {t('devices.confirmDelete')}
-          </p>
-          <p className="text-gray-900 dark:text-white font-semibold mb-6">
-            {device.device_name}
-          </p>
-        </div>
-
-        <div className="flex justify-end gap-3" role="group" aria-label={t('devices.modals.confirmActions', 'Confirmation actions')}>
-          <button
-            onClick={onClose}
-            disabled={isLoading}
-            className="px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg disabled:opacity-50 transition-colors focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
-            aria-label={t('devices.buttons.cancelDelete', 'Cancel deletion')}
-          >
-            {t('devices.buttons.cancel')}
-          </button>
-          <button
-            onClick={onConfirm}
-            disabled={isLoading}
-            className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 flex items-center gap-2 transition-colors focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
-            aria-label={t('devices.buttons.confirmDelete', 'Confirm deletion of {name}', { name: device.device_name })}
-            aria-busy={isLoading}
-          >
-            {isLoading ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
-                {t('devices.buttons.deleting')}
-              </>
-            ) : (
-              t('devices.buttons.delete')
-            )}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 export function DeviceTable() {
   const { t } = useTranslation();
+
+  // Permission checks
+  const { hasPermission: canCreate } = useCanPerformAction('devices', 'create');
+  const { hasPermission: canUpdate } = useCanPerformAction('devices', 'edit');
+  const { hasPermission: canDelete } = useCanPerformAction('devices', 'delete');
 
   // Scope filter (my_org or unassigned)
   const [scope, setScope] = useState<'my_org' | 'unassigned'>('my_org');
@@ -345,24 +278,28 @@ export function DeviceTable() {
             </button>
 
             {/* Register TV Button */}
-            <button
-              onClick={() => setTvRegisterModal(true)}
-              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-            >
-              <Plus className="w-4 h-4" />
-              <Tv className="w-4 h-4" />
-              {t('devices.buttons.registerTV')}
-            </button>
+            {canCreate && (
+              <button
+                onClick={() => setTvRegisterModal(true)}
+                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                <Plus className="w-4 h-4" />
+                <Tv className="w-4 h-4" />
+                {t('devices.buttons.registerTV')}
+              </button>
+            )}
 
             {/* Register Monitor Button */}
-            <button
-              onClick={() => setMonitorRegisterModal(true)}
-              className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
-            >
-              <Plus className="w-4 h-4" />
-              <Monitor className="w-4 h-4" />
-              {t('devices.buttons.registerMonitor')}
-            </button>
+            {canCreate && (
+              <button
+                onClick={() => setMonitorRegisterModal(true)}
+                className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+              >
+                <Plus className="w-4 h-4" />
+                <Monitor className="w-4 h-4" />
+                {t('devices.buttons.registerMonitor')}
+              </button>
+            )}
 
             {/* Filter Button */}
             <button
@@ -445,17 +382,33 @@ export function DeviceTable() {
       {/* Table */}
       <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
         {isLoading ? (
-          <div className="flex items-center justify-center py-12">
-            <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
-          </div>
+          <TableSkeleton columns={6} rows={5} />
         ) : error ? (
-          <div className="text-center py-12 text-red-600">
-            {t('devices.messages.errorLoading')}
-          </div>
+          <ErrorDisplay
+            error={error}
+            onRetry={handleRefresh}
+            className="py-12"
+          />
         ) : devices.length === 0 ? (
-          <div className="text-center py-12 text-gray-500 dark:text-gray-400">
-            {t('devices.messages.noDevicesFound')}
-          </div>
+          <EmptyState
+            icon={Monitor}
+            title={t('devices.messages.noDevicesFound')}
+            description={
+              scope === 'my_org'
+                ? t('devices.messages.noDevicesInOrg', 'No devices registered in your organization yet.')
+                : t('devices.messages.noUnassignedDevices', 'No unassigned devices available.')
+            }
+            action={
+              canCreate && scope === 'my_org' && (
+                <button
+                  onClick={() => setTvRegisterModal(true)}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                >
+                  {t('devices.buttons.registerTV')}
+                </button>
+              )
+            }
+          />
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full">
@@ -541,40 +494,46 @@ export function DeviceTable() {
                         </button>
 
                         {/* Content Management - Opens separate UnifiedContentAssignmentModal */}
-                        <button
-                          onClick={() =>
-                            setContentAssignmentModal({ isOpen: true, device, defaultTab: 'direct' })
-                          }
-                          className="p-2 rounded-lg text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50 dark:text-indigo-400 dark:hover:text-indigo-300 dark:hover:bg-indigo-900/20 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
-                          title={t('devices.actions.manageContent')}
-                          aria-label={t('devices.actions.manageContentFor', { name: device.device_name })}
-                        >
-                          <FileText className="w-4 h-4" aria-hidden="true" />
-                        </button>
+                        {canUpdate && (
+                          <button
+                            onClick={() =>
+                              setContentAssignmentModal({ isOpen: true, device, defaultTab: 'direct' })
+                            }
+                            className="p-2 rounded-lg text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50 dark:text-indigo-400 dark:hover:text-indigo-300 dark:hover:bg-indigo-900/20 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+                            title={t('devices.actions.manageContent')}
+                            aria-label={t('devices.actions.manageContentFor', { name: device.device_name })}
+                          >
+                            <FileText className="w-4 h-4" aria-hidden="true" />
+                          </button>
+                        )}
 
                         {/* Edit/Settings - Opens standalone Settings Modal */}
-                        <button
-                          onClick={() =>
-                            setSettingsModal({ isOpen: true, device })
-                          }
-                          className="p-2 rounded-lg text-gray-600 hover:text-gray-800 hover:bg-gray-100 dark:text-gray-400 dark:hover:text-gray-300 dark:hover:bg-gray-700 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-                          title={t('devices.actions.editSettings')}
-                          aria-label={t('devices.actions.editSettingsFor', { name: device.device_name })}
-                        >
-                          <Edit className="w-4 h-4" aria-hidden="true" />
-                        </button>
+                        {canUpdate && (
+                          <button
+                            onClick={() =>
+                              setSettingsModal({ isOpen: true, device })
+                            }
+                            className="p-2 rounded-lg text-gray-600 hover:text-gray-800 hover:bg-gray-100 dark:text-gray-400 dark:hover:text-gray-300 dark:hover:bg-gray-700 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                            title={t('devices.actions.editSettings')}
+                            aria-label={t('devices.actions.editSettingsFor', { name: device.device_name })}
+                          >
+                            <Edit className="w-4 h-4" aria-hidden="true" />
+                          </button>
+                        )}
 
                         {/* Delete Device */}
-                        <button
-                          onClick={() =>
-                            setDeleteModal({ isOpen: true, device })
-                          }
-                          className="p-2 rounded-lg text-red-600 hover:text-red-800 hover:bg-red-50 dark:text-red-400 dark:hover:text-red-300 dark:hover:bg-red-900/20 transition-colors focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
-                          title={t('devices.actions.deleteDevice')}
-                          aria-label={t('devices.actions.deleteDeviceFor', { name: device.device_name })}
-                        >
-                          <Trash2 className="w-4 h-4" aria-hidden="true" />
-                        </button>
+                        {canDelete && (
+                          <button
+                            onClick={() =>
+                              setDeleteModal({ isOpen: true, device })
+                            }
+                            className="p-2 rounded-lg text-red-600 hover:text-red-800 hover:bg-red-50 dark:text-red-400 dark:hover:text-red-300 dark:hover:bg-red-900/20 transition-colors focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
+                            title={t('devices.actions.deleteDevice')}
+                            aria-label={t('devices.actions.deleteDeviceFor', { name: device.device_name })}
+                          >
+                            <Trash2 className="w-4 h-4" aria-hidden="true" />
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -585,13 +544,21 @@ export function DeviceTable() {
         )}
       </div>
 
-      {/* Delete Confirmation Modal - Not lazy loaded (small component) */}
-      <DeleteConfirmModal
-        isOpen={deleteModal.isOpen}
-        device={deleteModal.device}
-        onClose={() => setDeleteModal({ isOpen: false, device: null })}
+      {/* Delete Confirmation Dialog */}
+      <ConfirmDialog
+        open={deleteModal.isOpen}
+        onOpenChange={(open) => !open && setDeleteModal({ isOpen: false, device: null })}
+        title={t('devices.modals.deleteDevice', 'Delete Device')}
+        description={
+          deleteModal.device
+            ? t('devices.confirmDelete') + ` "${deleteModal.device.device_name}"?`
+            : ''
+        }
+        confirmLabel={t('devices.buttons.delete')}
+        cancelLabel={t('devices.buttons.cancel')}
         onConfirm={handleDelete}
         isLoading={deleteMutation.isPending}
+        variant="danger"
       />
 
       {/* Lazy loaded modals - Only loaded when needed */}

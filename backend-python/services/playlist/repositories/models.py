@@ -9,6 +9,7 @@ from sqlalchemy.sql import func
 from datetime import datetime
 
 from shared.database import Base
+from services.auth.repositories.models import UserModel
 
 
 class PlaylistModel(Base):
@@ -30,6 +31,8 @@ class PlaylistModel(Base):
     # Multi-tenancy & User tracking
     organization_id = Column(Integer, ForeignKey("organizations.id", ondelete="CASCADE"), nullable=False, index=True)
     created_by_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
+    updated_by_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    deleted_by_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
 
     # Audit timestamps
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
@@ -39,6 +42,9 @@ class PlaylistModel(Base):
     # Relationships
     contents = relationship("PlaylistContentModel", back_populates="playlist", cascade="all, delete-orphan")
     assignments = relationship("PlaylistAssignmentModel", back_populates="playlist", cascade="all, delete-orphan")
+    creator = relationship("UserModel", foreign_keys=[created_by_id])
+    updater = relationship("UserModel", foreign_keys=[updated_by_id])
+    deleter = relationship("UserModel", foreign_keys=[deleted_by_id])
 
     def __repr__(self):
         return f"<PlaylistModel(id={self.id}, name='{self.name}', org={self.organization_id})>"

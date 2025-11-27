@@ -33,13 +33,23 @@ class TagModel(Base):
     # Multi-tenant
     organization_id = Column(Integer, ForeignKey("organizations.id"), nullable=False, index=True)
 
+    # Audit tracking (Migration 051 + 052)
+    created_by_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    updated_by_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    deleted_by_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+
     # Timestamps
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now(), nullable=True)
+    deleted_at = Column(DateTime(timezone=True), nullable=True, index=True)  # Soft delete
 
     # Relationships (using string references to avoid circular imports)
     organization = relationship("OrganizationModel", foreign_keys=[organization_id])
     assigned_playlist = relationship("PlaylistModel", foreign_keys=[assigned_playlist_id])
     devices = relationship("DeviceModel", secondary="device_tags", back_populates="tags")
+    creator = relationship("UserModel", foreign_keys=[created_by_id])
+    updater = relationship("UserModel", foreign_keys=[updated_by_id])
+    deleter = relationship("UserModel", foreign_keys=[deleted_by_id])
 
     def __repr__(self):
         return f"<TagModel(id={self.id}, name='{self.tag_name}', org={self.organization_id})>"
@@ -59,8 +69,12 @@ class ContentTag(Base):
     content_id = Column(Integer, ForeignKey("contents.id", ondelete="CASCADE"), nullable=False)
     tag_id = Column(Integer, ForeignKey("tags.id", ondelete="CASCADE"), nullable=False)
 
-    # Audit
+    # Audit (Migration 052)
+    assigned_by_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+
+    # Relationships
+    assigner = relationship("UserModel", foreign_keys=[assigned_by_id])
 
     def __repr__(self):
         return f"<ContentTag(id={self.id}, content_id={self.content_id}, tag_id={self.tag_id})>"

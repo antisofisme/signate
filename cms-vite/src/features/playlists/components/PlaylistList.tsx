@@ -3,18 +3,20 @@
  * Table display of playlists with actions
  */
 
-import { Pencil, Trash2, Clock, FileText, List, Monitor, Plus, Loader2 } from 'lucide-react';
+import { Pencil, Trash2, Clock, FileText, List, Monitor, Plus } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { TableSkeleton, EmptyState } from '@/shared/components';
+import { Button } from '@/components/ui/button';
 import type { Playlist } from '../types/playlist';
 
 interface PlaylistListProps {
   playlists: Playlist[];
   isLoading: boolean;
-  onEdit: (playlist: Playlist) => void;
-  onDelete: (playlist: Playlist) => void;
+  onEdit?: (playlist: Playlist) => void;
+  onDelete?: (playlist: Playlist) => void;
   onManageContent: (playlist: Playlist) => void;
   onManageAssignments: (playlist: Playlist) => void;
-  onCreateNew: () => void;
+  onCreateNew?: () => void;
 }
 
 export function PlaylistList({
@@ -43,35 +45,24 @@ export function PlaylistList({
   };
 
   if (isLoading) {
-    return (
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
-        <div className="flex items-center justify-center py-12">
-          <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
-        </div>
-      </div>
-    );
+    return <TableSkeleton rows={5} columns={6} />;
   }
 
   if (playlists.length === 0) {
     return (
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
-        <div className="text-center py-12">
-          <List className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
-            {t('playlists.messages.noPlaylists')}
-          </h3>
-          <p className="text-gray-600 dark:text-gray-400 mb-4">
-            Start by creating your first playlist
-          </p>
-          <button
-            onClick={onCreateNew}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 inline-flex items-center gap-2"
-          >
-            <Plus className="w-4 h-4" />
-            {t('playlists.createPlaylist')}
-          </button>
-        </div>
-      </div>
+      <EmptyState
+        icon={List}
+        title={t('playlists.messages.noPlaylists')}
+        description={t('playlists.messages.noPlaylistsDesc')}
+        action={
+          onCreateNew && (
+            <Button onClick={onCreateNew}>
+              <Plus className="w-4 h-4 mr-2" />
+              {t('playlists.createPlaylist')}
+            </Button>
+          )
+        }
+      />
     );
   }
 
@@ -155,24 +146,28 @@ export function PlaylistList({
                   <button
                     onClick={() => onManageAssignments(playlist)}
                     className="p-2 text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20 rounded-lg"
-                    title="Manage Assignments"
+                    title={t('playlists.manageAssignments')}
                   >
                     <Monitor className="w-4 h-4" />
                   </button>
-                  <button
-                    onClick={() => onEdit(playlist)}
-                    className="p-2 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg"
-                    title="Edit"
-                  >
-                    <Pencil className="w-4 h-4" />
-                  </button>
-                  <button
-                    onClick={() => onDelete(playlist)}
-                    className="p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg"
-                    title="Hapus"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
+                  {onEdit && (
+                    <button
+                      onClick={() => onEdit(playlist)}
+                      className="p-2 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg"
+                      title={t('common.edit')}
+                    >
+                      <Pencil className="w-4 h-4" />
+                    </button>
+                  )}
+                  {onDelete && (
+                    <button
+                      onClick={() => onDelete(playlist)}
+                      className="p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg"
+                      title={t('common.delete')}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  )}
                 </div>
               </td>
             </tr>

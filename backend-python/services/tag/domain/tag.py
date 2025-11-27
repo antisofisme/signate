@@ -25,8 +25,14 @@ class Tag:
         color: str,
         organization_id: int,
         created_at: Optional[datetime] = None,
+        updated_at: Optional[datetime] = None,
+        deleted_at: Optional[datetime] = None,
         priority: Optional[int] = None,
         assigned_playlist_id: Optional[int] = None,
+        # Audit trail fields
+        created_by_id: Optional[int] = None,
+        updated_by_id: Optional[int] = None,
+        deleted_by_id: Optional[int] = None,
     ):
         self.id = id
         self.tag_name = tag_name
@@ -34,8 +40,14 @@ class Tag:
         self.color = color
         self.organization_id = organization_id
         self.created_at = created_at or datetime.now(timezone.utc)
+        self.updated_at = updated_at
+        self.deleted_at = deleted_at
         self.priority = priority or 50  # Default priority
         self.assigned_playlist_id = assigned_playlist_id
+        # Audit trail
+        self.created_by_id = created_by_id
+        self.updated_by_id = updated_by_id
+        self.deleted_by_id = deleted_by_id
 
         # Business validation
         self._validate()
@@ -76,9 +88,19 @@ class Tag:
             "color": self.color,
             "organization_id": self.organization_id,
             "created_at": self.created_at.isoformat() if self.created_at else None,
+            "updated_at": self.updated_at.isoformat() if self.updated_at else None,
+            "deleted_at": self.deleted_at.isoformat() if self.deleted_at else None,
             "priority": self.priority,
             "assigned_playlist_id": self.assigned_playlist_id,
+            # Audit trail
+            "created_by": self.created_by_id,
+            "updated_by": self.updated_by_id,
+            "deleted_by": self.deleted_by_id,
         }
+
+    def is_deleted(self) -> bool:
+        """Check if tag is soft deleted"""
+        return self.deleted_at is not None
 
     def __repr__(self):
         return f"<Tag(id={self.id}, name='{self.tag_name}', color='{self.color}')>"

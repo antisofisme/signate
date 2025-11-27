@@ -28,8 +28,14 @@ class TagRepository(ITagRepository):
             color=model.color,
             organization_id=model.organization_id,
             created_at=model.created_at,
+            updated_at=model.updated_at,
+            deleted_at=model.deleted_at,
             priority=model.priority,
             assigned_playlist_id=model.assigned_playlist_id,
+            # Audit trail
+            created_by_id=model.created_by_id,
+            updated_by_id=model.updated_by_id,
+            deleted_by_id=model.deleted_by_id,
         )
 
     def _entity_to_model(self, entity: Tag) -> TagModel:
@@ -43,6 +49,8 @@ class TagRepository(ITagRepository):
             created_at=entity.created_at,
             priority=entity.priority,
             assigned_playlist_id=entity.assigned_playlist_id,
+            # Audit trail
+            created_by_id=entity.created_by_id,
         )
 
     def create(self, tag: Tag) -> Tag:
@@ -54,36 +62,39 @@ class TagRepository(ITagRepository):
         return self._model_to_entity(model)
 
     def find_by_id(self, tag_id: int, organization_id: int) -> Optional[Tag]:
-        """Find tag by ID within organization"""
+        """Find tag by ID within organization (excludes soft deleted)"""
         model = (
             self.db.query(TagModel)
             .filter(
                 TagModel.id == tag_id,
-                TagModel.organization_id == organization_id
+                TagModel.organization_id == organization_id,
+                TagModel.deleted_at.is_(None)  # Exclude soft deleted
             )
             .first()
         )
         return self._model_to_entity(model) if model else None
 
     def find_by_name(self, tag_name: str, organization_id: int) -> Optional[Tag]:
-        """Find tag by name within organization"""
+        """Find tag by name within organization (excludes soft deleted)"""
         model = (
             self.db.query(TagModel)
             .filter(
                 TagModel.tag_name == tag_name,
-                TagModel.organization_id == organization_id
+                TagModel.organization_id == organization_id,
+                TagModel.deleted_at.is_(None)  # Exclude soft deleted
             )
             .first()
         )
         return self._model_to_entity(model) if model else None
 
     def find_all(self, organization_id: int, sort_by: str = "newest") -> List[Tag]:
-        """Find all tags for organization with sorting"""
+        """Find all tags for organization with sorting (excludes soft deleted)"""
         query = self.db.query(TagModel).options(
             selectinload(TagModel.devices),
             selectinload(TagModel.assigned_playlist)
         ).filter(
-            TagModel.organization_id == organization_id
+            TagModel.organization_id == organization_id,
+            TagModel.deleted_at.is_(None)  # Exclude soft deleted
         )
 
         # Apply sorting
@@ -99,13 +110,14 @@ class TagRepository(ITagRepository):
         models = query.all()
         return [self._model_to_entity(model) for model in models]
 
-    def update(self, tag: Tag) -> Tag:
-        """Update existing tag"""
+    def update(self, tag: Tag, updated_by_id: Optional[int] = None) -> Tag:
+        """Update existing tag with audit tracking"""
         model = (
             self.db.query(TagModel)
             .filter(
                 TagModel.id == tag.id,
-                TagModel.organization_id == tag.organization_id
+                TagModel.organization_id == tag.organization_id,
+                TagModel.deleted_at.is_(None)  # Cannot update deleted tags
             )
             .first()
         )
@@ -118,17 +130,24 @@ class TagRepository(ITagRepository):
         model.description = tag.description
         model.color = tag.color
 
+        # Audit trail
+        if updated_by_id is not None:
+            model.updated_by_id = updated_by_id
+
         self.db.commit()
         self.db.refresh(model)
         return self._model_to_entity(model)
 
-    def delete(self, tag_id: int, organization_id: int) -> bool:
-        """Delete tag by ID"""
+    def delete(self, tag_id: int, organization_id: int, deleted_by_id: Optional[int] = None) -> bool:
+        """Soft delete tag by ID with audit tracking"""
+        from datetime import datetime, timezone
+
         model = (
             self.db.query(TagModel)
             .filter(
                 TagModel.id == tag_id,
-                TagModel.organization_id == organization_id
+                TagModel.organization_id == organization_id,
+                TagModel.deleted_at.is_(None)  # Not already deleted
             )
             .first()
         )
@@ -136,7 +155,11 @@ class TagRepository(ITagRepository):
         if not model:
             return False
 
-        self.db.delete(model)
+        # Soft delete with audit trail
+        model.deleted_at = datetime.now(timezone.utc)
+        if deleted_by_id is not None:
+            model.deleted_by_id = deleted_by_id
+
         self.db.commit()
         return True
 
@@ -157,8 +180,10 @@ class TagRepository(ITagRepository):
             "content_count": content_count,
         }
 
-    def assign_to_content(self, tag_id: int, content_id: int, organization_id: int) -> bool:
-        """Assign tag to a content item"""
+    def assign_to_content(
+        self, tag_id: int, content_id: int, organization_id: int, assigned_by_id: Optional[int] = None
+    ) -> bool:
+        """Assign tag to a content item with audit tracking"""
         from services.content.repositories.models import ContentModel as Content
 
         # Verify tag belongs to organization
@@ -191,8 +216,12 @@ class TagRepository(ITagRepository):
         if existing:
             return False  # Already assigned
 
-        # Create assignment
-        assignment = ContentTag(content_id=content_id, tag_id=tag_id)
+        # Create assignment with audit tracking
+        assignment = ContentTag(
+            content_id=content_id,
+            tag_id=tag_id,
+            assigned_by_id=assigned_by_id
+        )
         self.db.add(assignment)
         self.db.commit()
         return True
@@ -221,8 +250,10 @@ class TagRepository(ITagRepository):
         self.db.commit()
         return True
 
-    def assign_to_contents(self, tag_id: int, content_ids: List[int], organization_id: int) -> dict:
-        """Bulk assign tag to multiple content items"""
+    def assign_to_contents(
+        self, tag_id: int, content_ids: List[int], organization_id: int, assigned_by_id: Optional[int] = None
+    ) -> dict:
+        """Bulk assign tag to multiple content items with audit tracking"""
         from services.content.repositories.models import ContentModel as Content
 
         # Verify tag belongs to organization
@@ -256,10 +287,10 @@ class TagRepository(ITagRepository):
         # Calculate new assignments
         new_assignments = [cid for cid in valid_ids if cid not in assigned_ids]
 
-        # Bulk insert new assignments
+        # Bulk insert new assignments with audit tracking
         if new_assignments:
             assignments = [
-                ContentTag(content_id=cid, tag_id=tag_id)
+                ContentTag(content_id=cid, tag_id=tag_id, assigned_by_id=assigned_by_id)
                 for cid in new_assignments
             ]
             self.db.bulk_save_objects(assignments)

@@ -194,6 +194,14 @@ class DeviceRepository(IDeviceRepository):
         device_model.privacy_mode = device.privacy_mode
         device_model.assigned_playlist_id = device.assigned_playlist_id
 
+        # Audit trail fields
+        if device.updated_by_id is not None:
+            device_model.updated_by_id = device.updated_by_id
+        if device.deleted_by_id is not None:
+            device_model.deleted_by_id = device.deleted_by_id
+        if device.deleted_at is not None:
+            device_model.deleted_at = device.deleted_at
+
         self.db.commit()
         self.db.refresh(device_model)
         return self._to_entity(device_model)
@@ -274,5 +282,10 @@ class DeviceRepository(IDeviceRepository):
             assigned_playlist_id=model.assigned_playlist_id,
             created_at=model.created_at,
             updated_at=model.updated_at,
-            released_at=model.released_at
+            released_at=model.released_at,
+            deleted_at=model.deleted_at,
+            # Audit trail fields
+            created_by_id=model.created_by_id,
+            updated_by_id=model.updated_by_id,
+            deleted_by_id=model.deleted_by_id
         )

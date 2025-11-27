@@ -40,6 +40,12 @@ class Device:
     created_at: Optional[datetime]
     updated_at: Optional[datetime]
     released_at: Optional[datetime]
+    deleted_at: Optional[datetime]
+
+    # Audit trail fields
+    created_by_id: Optional[int]
+    updated_by_id: Optional[int]
+    deleted_by_id: Optional[int]
 
     # Fields WITH defaults - MUST come last
     rotation: int = 0

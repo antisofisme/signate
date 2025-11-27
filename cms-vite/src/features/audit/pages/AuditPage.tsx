@@ -7,7 +7,7 @@
 
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Filter } from 'lucide-react';
+import { Filter, FileText } from 'lucide-react';
 import { useAuditLogs } from '../hooks/useAuditLogs';
 import { useUsers } from '@/features/users/hooks/useUsers';
 import { useOrganizations } from '@/features/organizations/hooks/useOrganizations';
@@ -16,9 +16,14 @@ import { AuditLogTable } from '../components/AuditLogTable';
 import { AuditLogStats } from '../components/AuditLogStats';
 import type { AuditLogFilters as Filters } from '../types/auditLog';
 import { usePagination } from '@/shared/hooks';
+import { useCanPerformAction } from '@/features/rbac/hooks/usePermissions';
+import { Button, PageSkeleton, AccessDenied, EmptyState } from '@/shared/components';
 
 export default function AuditPage() {
   const { t } = useTranslation();
+
+  // Permission check
+  const { hasPermission: canView, isLoading: isCheckingPermission } = useCanPerformAction('audit_logs', 'view');
 
   // Standardized pagination hook
   const pagination = usePagination({ pageSize: 20 });
@@ -45,17 +50,30 @@ export default function AuditPage() {
     pagination.resetPage();
   };
 
+  // Loading state for permission check
+  if (isCheckingPermission) {
+    return <PageSkeleton />;
+  }
+
+  // Access denied state
+  if (!canView) {
+    return <AccessDenied />;
+  }
+
+  // Empty state when no logs
+  const hasNoLogs = !isLoading && data && data.logs.length === 0;
+
   return (
     <div className="space-y-6">
       {/* Filter Toggle */}
       <div className="flex justify-end">
-        <button
+        <Button
+          variant="secondary"
           onClick={() => setShowFilters(!showFilters)}
-          className="flex items-center gap-2 px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
         >
-          <Filter className="w-5 h-5" />
+          <Filter className="w-5 h-5 mr-2" />
           {showFilters ? t('audit.hideFilters') : t('audit.showFilters')}
-        </button>
+        </Button>
       </div>
 
       {/* Filters */}
@@ -70,18 +88,27 @@ export default function AuditPage() {
       )}
 
       {/* Stats */}
-      {data && <AuditLogStats total={data.total} />}
+      {data && data.total > 0 && <AuditLogStats total={data.total} />}
 
-      {/* Table */}
-      <AuditLogTable
-        logs={data?.logs || []}
-        isLoading={isLoading}
-        currentPage={data?.page || 1}
-        totalPages={data?.total_pages || 1}
-        perPage={data?.per_page || 20}
-        total={data?.total || 0}
-        onPageChange={handlePageChange}
-      />
+      {/* Empty State */}
+      {hasNoLogs ? (
+        <EmptyState
+          icon={FileText}
+          title={t('audit.noLogsFound', 'No audit logs found')}
+          description={t('audit.noLogsFound', 'No activity has been recorded yet')}
+        />
+      ) : (
+        /* Table */
+        <AuditLogTable
+          logs={data?.logs || []}
+          isLoading={isLoading}
+          currentPage={data?.page || 1}
+          totalPages={data?.total_pages || 1}
+          perPage={data?.per_page || 20}
+          total={data?.total || 0}
+          onPageChange={handlePageChange}
+        />
+      )}
     </div>
   );
 }

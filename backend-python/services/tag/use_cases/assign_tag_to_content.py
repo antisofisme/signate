@@ -3,6 +3,7 @@ Assign Tag to Content Use Case
 Business logic for assigning tags to content items
 """
 
+from typing import Optional
 from ..domain.interfaces import ITagRepository
 
 
@@ -12,15 +13,29 @@ class AssignTagToContentUseCase:
     def __init__(self, tag_repo: ITagRepository):
         self.tag_repo = tag_repo
 
-    def execute(self, tag_id: int, content_id: int, organization_id: int) -> dict:
+    def execute(
+        self,
+        tag_id: int,
+        content_id: int,
+        organization_id: int,
+        assigned_by_id: Optional[int] = None,
+    ) -> dict:
         """
         Assign tag to content
+
+        Args:
+            tag_id: Tag ID to assign
+            content_id: Content ID to assign to
+            organization_id: Organization ID
+            assigned_by_id: User ID who assigned the tag (audit trail)
 
         Returns:
             {"success": bool, "message": str}
         """
         try:
-            assigned = self.tag_repo.assign_to_content(tag_id, content_id, organization_id)
+            assigned = self.tag_repo.assign_to_content(
+                tag_id, content_id, organization_id, assigned_by_id=assigned_by_id
+            )
 
             if assigned:
                 return {

@@ -5,10 +5,23 @@
  * Page wrapper for Device Groups management
  */
 
-import { PageHeader } from '@/shared/components'
+import { PageHeader, AccessDenied, PageSkeleton } from '@/shared/components'
+import { useCanPerformAction } from '@/features/rbac/hooks/usePermissions'
 import { DeviceGroups } from '@/features/devices/components/DeviceGroups'
 
 export default function DeviceGroupsPage() {
+  const { hasPermission, isLoading } = useCanPerformAction('device_groups', 'view')
+
+  // Show loading while checking permission
+  if (isLoading) {
+    return <PageSkeleton />
+  }
+
+  // Check view permission
+  if (!hasPermission) {
+    return <AccessDenied />
+  }
+
   return (
     <>
       <PageHeader

@@ -1,8 +1,11 @@
 /**
- * Dashboard Page
+ * Dashboard Page (Control Room)
  *
  * LAYER 1: PRESENTATION
- * Main dashboard with comprehensive system overview
+ * Real-time system monitoring and live status overview
+ *
+ * Focus: Live device status, current alerts, active playlists, recent activity
+ * (Analytics page focuses on historical trends and reports)
  *
  * NOTE: Auto-polling removed for performance optimization.
  * Use the Refresh button to manually update data.
@@ -11,12 +14,12 @@
 import { useState, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAuthStore } from '@/lib/stores/authStore';
-import { PageHeader, RefreshButton } from '@/shared/components';
+import { PageHeader, RefreshButton, PageSkeleton, AccessDenied } from '@/shared/components';
+import { useCanPerformAction } from '@/features/rbac/hooks/usePermissions';
 import {
   useDashboardStats,
   useDeviceHealth,
   useLiveDevices,
-  useContentPerformance,
   useActivePlaylistAssignments,
   useRecentActivity,
   useSystemAlerts,
@@ -25,7 +28,6 @@ import {
 import OverviewMetrics from '@/features/dashboard/components/OverviewMetrics';
 import DeviceHealthOverview from '@/features/dashboard/components/DeviceHealthOverview';
 import LiveDeviceMonitor from '@/features/dashboard/components/LiveDeviceMonitor';
-import ContentPerformanceAnalytics from '@/features/dashboard/components/ContentPerformanceAnalytics';
 import ActivePlaylistsTable from '@/features/dashboard/components/ActivePlaylistsTable';
 import RecentActivityFeed from '@/features/dashboard/components/RecentActivityFeed';
 import SystemAlertsPanel from '@/features/dashboard/components/SystemAlertsPanel';
@@ -38,11 +40,23 @@ export default function DashboardPage() {
   const { user } = useAuthStore();
   const [isRefreshing, setIsRefreshing] = useState(false);
 
+  // Permission check
+  const { hasPermission: canView, isLoading: isCheckingPermission } = useCanPerformAction('dashboard', 'view');
+
+  // Show loading skeleton while checking permissions
+  if (isCheckingPermission) {
+    return <PageSkeleton />;
+  }
+
+  // Show access denied if user lacks permission
+  if (!canView) {
+    return <AccessDenied />;
+  }
+
   // Fetch all dashboard data with refetch functions
   const { data: stats, isLoading: statsLoading, refetch: refetchStats } = useDashboardStats();
   const { data: deviceHealth, isLoading: healthLoading, refetch: refetchHealth } = useDeviceHealth();
   const { data: liveDevices, isLoading: devicesLoading, refetch: refetchDevices } = useLiveDevices();
-  const { data: contentPerformance, isLoading: contentLoading, refetch: refetchContent } = useContentPerformance(10);
   const { data: playlists, isLoading: playlistsLoading, refetch: refetchPlaylists } = useActivePlaylistAssignments();
   const { data: recentActivity, isLoading: activityLoading, refetch: refetchActivity } = useRecentActivity(20);
   const { data: systemAlerts, isLoading: alertsLoading, refetch: refetchAlerts } = useSystemAlerts();
@@ -59,7 +73,6 @@ export default function DashboardPage() {
         refetchStats(),
         refetchHealth(),
         refetchDevices(),
-        refetchContent(),
         refetchPlaylists(),
         refetchActivity(),
         refetchAlerts(),
@@ -73,7 +86,6 @@ export default function DashboardPage() {
     refetchStats,
     refetchHealth,
     refetchDevices,
-    refetchContent,
     refetchPlaylists,
     refetchActivity,
     refetchAlerts,
@@ -113,17 +125,11 @@ export default function DashboardPage() {
         {/* Section 3: Live Device Monitor */}
         <LiveDeviceMonitor devices={liveDevices} isLoading={devicesLoading} />
 
-        {/* Two Column Layout */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Section 4: Content Performance Analytics */}
-          <ContentPerformanceAnalytics data={contentPerformance} isLoading={contentLoading} />
-
-          {/* Section 7: Recent Activity Feed */}
-          <RecentActivityFeed data={recentActivity} isLoading={activityLoading} />
-        </div>
-
-        {/* Section 5: Active Playlists & Assignments */}
+        {/* Section 4: Active Playlists & Assignments */}
         <ActivePlaylistsTable data={playlists} isLoading={playlistsLoading} />
+
+        {/* Recent Activity Feed - Full Width */}
+        <RecentActivityFeed data={recentActivity} isLoading={activityLoading} />
 
         {/* Two Column Layout */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

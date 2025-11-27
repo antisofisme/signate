@@ -7,10 +7,11 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from typing import Optional
 
+from fastapi import Request
 from shared.database import get_db
 from shared.responses import success_response
 from shared.logging import AuditLogger
-from shared.auth import get_current_user, CurrentUser  # ⚠️ SECURITY FIX: Use real auth
+from shared.middleware import require_permission
 from services.auth.domain.interfaces import IUserRepository
 from services.auth.repositories.user_repo import UserRepository
 
@@ -78,8 +79,8 @@ def get_create_audit_log_use_case(audit_repo = Depends(get_audit_log_repository)
     return CreateAuditLogUseCase(audit_repo)
 
 
-# ⚠️ SECURITY FIX: Removed mock get_current_user() - now imported from shared.auth
-# This was a CRITICAL security vulnerability (CVSS 8.5) - complete authentication bypass!
+# RBAC INTEGRATION: Using require_permission() for granular access control
+# Returns dict with user_id, organization_id for audit trail tracking
 
 
 def get_audit_logger(create_audit_use_case = Depends(get_create_audit_log_use_case)) -> AuditLogger:
@@ -178,8 +179,9 @@ def get_unassign_tags_use_case(
 @router.post("", status_code=status.HTTP_201_CREATED)
 def create_playlist(
     request_body: PlaylistCreateRequest,
+    http_request: Request,
     use_case: CreatePlaylistUseCase = Depends(get_create_playlist_use_case),
-    current_user: dict = Depends(get_current_user),
+    current_user: dict = Depends(require_permission("playlists", "create")),
     audit_logger: AuditLogger = Depends(get_audit_logger),
 ):
     """Create new playlist"""
@@ -190,18 +192,19 @@ def create_playlist(
             is_active=request_body.is_active,
             priority=request_body.priority,
             schedule=request_body.schedule,
-            organization_id=current_user.organization_id,
-            created_by=current_user.id,
+            organization_id=current_user["organization_id"],
+            created_by=current_user["user_id"],
         )
 
         # Audit log
         audit_logger.log_action(
-            user_id=current_user.id,
+            user_id=current_user["user_id"],
             action="playlist.create",
             resource_type="playlist",
             resource_id=playlist.id,
             details={"name": playlist.name, "is_active": playlist.is_active},
-            organization_id=current_user.organization_id,
+            ip_address=http_request.client.host if http_request.client else None,
+            organization_id=current_user["organization_id"],
         )
 
         return success_response(data=playlist.to_dict())
@@ -218,12 +221,12 @@ def list_playlists(
     limit: int = 100,
     is_active: Optional[bool] = None,
     use_case: ListPlaylistsUseCase = Depends(get_list_playlists_use_case),
-    current_user: dict = Depends(get_current_user),
+    current_user: dict = Depends(require_permission("playlists", "read")),
 ):
     """List all playlists for organization"""
     try:
         playlists, total = use_case.execute(
-            organization_id=current_user.organization_id,
+            organization_id=current_user["organization_id"],
             skip=skip,
             limit=limit,
             is_active=is_active,
@@ -244,13 +247,13 @@ def list_playlists(
 def get_playlist(
     playlist_id: int,
     use_case: GetPlaylistUseCase = Depends(get_get_playlist_use_case),
-    current_user: dict = Depends(get_current_user),
+    current_user: dict = Depends(require_permission("playlists", "read")),
 ):
     """Get single playlist by ID"""
     try:
         playlist = use_case.execute(
             playlist_id=playlist_id,
-            organization_id=current_user.organization_id
+            organization_id=current_user["organization_id"]
         )
 
         if not playlist:
@@ -268,25 +271,27 @@ def get_playlist(
 def update_playlist(
     playlist_id: int,
     request_body: PlaylistUpdateRequest,
+    http_request: Request,
     use_case: UpdatePlaylistUseCase = Depends(get_update_playlist_use_case),
-    current_user: dict = Depends(get_current_user),
+    current_user: dict = Depends(require_permission("playlists", "update")),
     audit_logger: AuditLogger = Depends(get_audit_logger),
 ):
     """Update playlist"""
     try:
         playlist = use_case.execute(
             playlist_id=playlist_id,
-            organization_id=current_user.organization_id,
+            organization_id=current_user["organization_id"],
             name=request_body.name,
             description=request_body.description,
             is_active=request_body.is_active,
             priority=request_body.priority,
             schedule=request_body.schedule,
+            updated_by_id=current_user["user_id"],
         )
 
         # Audit log
         audit_logger.log_action(
-            user_id=current_user.id,
+            user_id=current_user["user_id"],
             action="playlist.update",
             resource_type="playlist",
             resource_id=playlist.id,
@@ -294,7 +299,8 @@ def update_playlist(
                 "name": request_body.name,
                 "is_active": request_body.is_active,
             },
-            organization_id=current_user.organization_id,
+            ip_address=http_request.client.host if http_request.client else None,
+            organization_id=current_user["organization_id"],
         )
 
         return success_response(data=playlist.to_dict())
@@ -308,15 +314,17 @@ def update_playlist(
 @router.delete("/{playlist_id}")
 def delete_playlist(
     playlist_id: int,
+    http_request: Request,
     use_case: DeletePlaylistUseCase = Depends(get_delete_playlist_use_case),
-    current_user: dict = Depends(get_current_user),
+    current_user: dict = Depends(require_permission("playlists", "delete")),
     audit_logger: AuditLogger = Depends(get_audit_logger),
 ):
-    """Delete playlist (hard delete with cascade)"""
+    """Delete playlist (soft delete with audit tracking)"""
     try:
         deleted = use_case.execute(
             playlist_id=playlist_id,
-            organization_id=current_user.organization_id
+            organization_id=current_user["organization_id"],
+            deleted_by_id=current_user["user_id"],
         )
 
         if not deleted:
@@ -324,12 +332,13 @@ def delete_playlist(
 
         # Audit log
         audit_logger.log_action(
-            user_id=current_user.id,
+            user_id=current_user["user_id"],
             action="playlist.delete",
             resource_type="playlist",
             resource_id=playlist_id,
             details={"deleted": True},
-            organization_id=current_user.organization_id,
+            ip_address=http_request.client.host if http_request.client else None,
+            organization_id=current_user["organization_id"],
         )
 
         return success_response(data={"message": "Playlist deleted successfully"})
@@ -346,13 +355,13 @@ def delete_playlist(
 def get_playlist_content(
     playlist_id: int,
     use_case: GetPlaylistContentUseCase = Depends(get_get_content_use_case),
-    current_user: dict = Depends(get_current_user),
+    current_user: dict = Depends(require_permission("playlists", "read")),
 ):
     """Get all content in playlist"""
     try:
         content_items = use_case.execute(
             playlist_id=playlist_id,
-            organization_id=current_user.organization_id
+            organization_id=current_user["organization_id"]
         )
 
         return success_response(
@@ -372,8 +381,9 @@ def get_playlist_content(
 def add_content_to_playlist(
     playlist_id: int,
     request_body: AddContentRequest,
+    http_request: Request,
     use_case: AddContentToPlaylistUseCase = Depends(get_add_content_use_case),
-    current_user: dict = Depends(get_current_user),
+    current_user: dict = Depends(require_permission("playlists", "update")),
     audit_logger: AuditLogger = Depends(get_audit_logger),
 ):
     """Add content to playlist (bulk)"""
@@ -381,12 +391,12 @@ def add_content_to_playlist(
         result = use_case.execute(
             playlist_id=playlist_id,
             content_ids=request_body.content_ids,
-            organization_id=current_user.organization_id
+            organization_id=current_user["organization_id"]
         )
 
         # Audit log
         audit_logger.log_action(
-            user_id=current_user.id,
+            user_id=current_user["user_id"],
             action="playlist.add_content",
             resource_type="playlist",
             resource_id=playlist_id,
@@ -394,7 +404,8 @@ def add_content_to_playlist(
                 "content_count": len(request_body.content_ids),
                 "added": result["added"],
             },
-            organization_id=current_user.organization_id,
+            ip_address=http_request.client.host if http_request.client else None,
+            organization_id=current_user["organization_id"],
         )
 
         message = f"Added {result['added']} content(s)"
@@ -418,8 +429,9 @@ def add_content_to_playlist(
 def remove_content_from_playlist(
     playlist_id: int,
     content_item_id: int,
+    http_request: Request,
     use_case: RemoveContentFromPlaylistUseCase = Depends(get_remove_content_use_case),
-    current_user: dict = Depends(get_current_user),
+    current_user: dict = Depends(require_permission("playlists", "update")),
     audit_logger: AuditLogger = Depends(get_audit_logger),
 ):
     """Remove content from playlist"""
@@ -427,7 +439,7 @@ def remove_content_from_playlist(
         removed = use_case.execute(
             playlist_content_id=content_item_id,
             playlist_id=playlist_id,
-            organization_id=current_user.organization_id
+            organization_id=current_user["organization_id"]
         )
 
         if not removed:
@@ -435,12 +447,13 @@ def remove_content_from_playlist(
 
         # Audit log
         audit_logger.log_action(
-            user_id=current_user.id,
+            user_id=current_user["user_id"],
             action="playlist.remove_content",
             resource_type="playlist",
             resource_id=playlist_id,
             details={"content_item_id": content_item_id},
-            organization_id=current_user.organization_id,
+            ip_address=http_request.client.host if http_request.client else None,
+            organization_id=current_user["organization_id"],
         )
 
         return success_response(data={"message": "Content removed from playlist"})
@@ -457,8 +470,9 @@ def remove_content_from_playlist(
 def reorder_playlist_content(
     playlist_id: int,
     request_body: ReorderContentRequest,
+    http_request: Request,
     use_case: ReorderPlaylistContentUseCase = Depends(get_reorder_content_use_case),
-    current_user: dict = Depends(get_current_user),
+    current_user: dict = Depends(require_permission("playlists", "update")),
     audit_logger: AuditLogger = Depends(get_audit_logger),
 ):
     """Reorder and update duration of playlist content"""
@@ -466,17 +480,18 @@ def reorder_playlist_content(
         updated_count = use_case.execute(
             playlist_id=playlist_id,
             content_items=request_body.content_items,
-            organization_id=current_user.organization_id
+            organization_id=current_user["organization_id"]
         )
 
         # Audit log
         audit_logger.log_action(
-            user_id=current_user.id,
+            user_id=current_user["user_id"],
             action="playlist.reorder_content",
             resource_type="playlist",
             resource_id=playlist_id,
             details={"updated_count": updated_count},
-            organization_id=current_user.organization_id,
+            ip_address=http_request.client.host if http_request.client else None,
+            organization_id=current_user["organization_id"],
         )
 
         return success_response(
@@ -498,13 +513,13 @@ def reorder_playlist_content(
 def get_playlist_assignments(
     playlist_id: int,
     use_case: GetPlaylistAssignmentsUseCase = Depends(get_get_assignments_use_case),
-    current_user: dict = Depends(get_current_user),
+    current_user: dict = Depends(require_permission("playlists", "read")),
 ):
     """Get all device and tag assignments"""
     try:
         assignments = use_case.execute(
             playlist_id=playlist_id,
-            organization_id=current_user.organization_id
+            organization_id=current_user["organization_id"]
         )
 
         return success_response(data=assignments)
@@ -519,8 +534,9 @@ def get_playlist_assignments(
 def assign_to_devices(
     playlist_id: int,
     request_body: AssignDevicesRequest,
+    http_request: Request,
     use_case: AssignPlaylistToDevicesUseCase = Depends(get_assign_devices_use_case),
-    current_user: dict = Depends(get_current_user),
+    current_user: dict = Depends(require_permission("playlists", "update")),
     audit_logger: AuditLogger = Depends(get_audit_logger),
 ):
     """Assign playlist to devices (bulk)"""
@@ -528,12 +544,12 @@ def assign_to_devices(
         result = use_case.execute(
             playlist_id=playlist_id,
             device_ids=request_body.device_ids,
-            organization_id=current_user.organization_id
+            organization_id=current_user["organization_id"]
         )
 
         # Audit log
         audit_logger.log_action(
-            user_id=current_user.id,
+            user_id=current_user["user_id"],
             action="playlist.assign_devices",
             resource_type="playlist",
             resource_id=playlist_id,
@@ -541,7 +557,8 @@ def assign_to_devices(
                 "device_count": len(request_body.device_ids),
                 "assigned": result["assigned"],
             },
-            organization_id=current_user.organization_id,
+            ip_address=http_request.client.host if http_request.client else None,
+            organization_id=current_user["organization_id"],
         )
 
         message = f"Assigned to {result['assigned']} device(s)"
@@ -560,8 +577,9 @@ def assign_to_devices(
 def assign_to_tags(
     playlist_id: int,
     request_body: AssignTagsRequest,
+    http_request: Request,
     use_case: AssignPlaylistToTagsUseCase = Depends(get_assign_tags_use_case),
-    current_user: dict = Depends(get_current_user),
+    current_user: dict = Depends(require_permission("playlists", "update")),
     audit_logger: AuditLogger = Depends(get_audit_logger),
 ):
     """Assign playlist to tags (bulk)"""
@@ -569,12 +587,12 @@ def assign_to_tags(
         result = use_case.execute(
             playlist_id=playlist_id,
             tag_ids=request_body.tag_ids,
-            organization_id=current_user.organization_id
+            organization_id=current_user["organization_id"]
         )
 
         # Audit log
         audit_logger.log_action(
-            user_id=current_user.id,
+            user_id=current_user["user_id"],
             action="playlist.assign_tags",
             resource_type="playlist",
             resource_id=playlist_id,
@@ -582,7 +600,8 @@ def assign_to_tags(
                 "tag_count": len(request_body.tag_ids),
                 "assigned": result["assigned"],
             },
-            organization_id=current_user.organization_id,
+            ip_address=http_request.client.host if http_request.client else None,
+            organization_id=current_user["organization_id"],
         )
 
         message = f"Assigned to {result['assigned']} tag(s)"
@@ -601,8 +620,9 @@ def assign_to_tags(
 def unassign_from_devices(
     playlist_id: int,
     request_body: AssignDevicesRequest,
+    http_request: Request,
     use_case: UnassignPlaylistFromDevicesUseCase = Depends(get_unassign_devices_use_case),
-    current_user: dict = Depends(get_current_user),
+    current_user: dict = Depends(require_permission("playlists", "update")),
     audit_logger: AuditLogger = Depends(get_audit_logger),
 ):
     """Unassign playlist from devices"""
@@ -610,17 +630,18 @@ def unassign_from_devices(
         removed = use_case.execute(
             playlist_id=playlist_id,
             device_ids=request_body.device_ids,
-            organization_id=current_user.organization_id
+            organization_id=current_user["organization_id"]
         )
 
         # Audit log
         audit_logger.log_action(
-            user_id=current_user.id,
+            user_id=current_user["user_id"],
             action="playlist.unassign_devices",
             resource_type="playlist",
             resource_id=playlist_id,
             details={"removed_count": removed},
-            organization_id=current_user.organization_id,
+            ip_address=http_request.client.host if http_request.client else None,
+            organization_id=current_user["organization_id"],
         )
 
         return success_response(
@@ -640,8 +661,9 @@ def unassign_from_devices(
 def unassign_from_tags(
     playlist_id: int,
     request_body: AssignTagsRequest,
+    http_request: Request,
     use_case: UnassignPlaylistFromTagsUseCase = Depends(get_unassign_tags_use_case),
-    current_user: dict = Depends(get_current_user),
+    current_user: dict = Depends(require_permission("playlists", "update")),
     audit_logger: AuditLogger = Depends(get_audit_logger),
 ):
     """Unassign playlist from tags"""
@@ -649,17 +671,18 @@ def unassign_from_tags(
         removed = use_case.execute(
             playlist_id=playlist_id,
             tag_ids=request_body.tag_ids,
-            organization_id=current_user.organization_id
+            organization_id=current_user["organization_id"]
         )
 
         # Audit log
         audit_logger.log_action(
-            user_id=current_user.id,
+            user_id=current_user["user_id"],
             action="playlist.unassign_tags",
             resource_type="playlist",
             resource_id=playlist_id,
             details={"removed_count": removed},
-            organization_id=current_user.organization_id,
+            ip_address=http_request.client.host if http_request.client else None,
+            organization_id=current_user["organization_id"],
         )
 
         return success_response(
@@ -681,19 +704,19 @@ def unassign_from_tags(
 def resolve_content_for_device(
     device_id: int,
     playlist_repo: IPlaylistRepository = Depends(get_playlist_repository),
-    current_user: dict = Depends(get_current_user),
+    current_user: dict = Depends(require_permission("playlists", "read")),
     db: Session = Depends(get_db)
 ):
     """
     Resolve what content should play on a device
-    
+
     This endpoint determines the playlist based on:
     1. Active schedules (highest priority)
     2. Direct device assignments
     3. Tag-based assignments
     4. PMS content (for hotel rooms)
     5. Default playlist
-    
+
     Returns the resolved playlist with content items
     """
     try:
@@ -703,14 +726,14 @@ def resolve_content_for_device(
         from services.content.repositories.content_repo import ContentRepository
         from services.schedule.repositories.schedule_repo import ScheduleRepository
         from services.pms.repositories.pms_repo import PMSRepository
-        
+
         # Initialize repositories
         device_repo = DeviceRepository(db)
         tag_repo = TagRepository(db)
         content_repo = ContentRepository(db)
         schedule_repo = ScheduleRepository(db)
         pms_repo = PMSRepository(db)
-        
+
         # Verify device belongs to user's organization
         device = device_repo.find_by_id(device_id)
         if not device:
@@ -718,13 +741,13 @@ def resolve_content_for_device(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"Device {device_id} not found"
             )
-            
-        if device.organization_id != current_user.organization_id:
+
+        if device.organization_id != current_user["organization_id"]:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Cannot access devices from other organizations"
             )
-        
+
         # Initialize content resolver
         resolver = ContentResolver(
             playlist_repo=playlist_repo,
@@ -734,18 +757,18 @@ def resolve_content_for_device(
             content_repo=content_repo,
             pms_repo=pms_repo
         )
-        
+
         # Resolve content
         resolution = resolver.resolve_content_for_device(device_id)
-        
+
         if not resolution:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="No content available for this device"
             )
-            
+
         return resolution
-        
+
     except HTTPException:
         raise
     except Exception as e:

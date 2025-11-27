@@ -25,6 +25,8 @@ class DeviceGroup:
         default_playlist_id: Optional[int] = None,
         deleted_at: Optional[datetime] = None,
         created_by: Optional[int] = None,
+        updated_by_id: Optional[int] = None,
+        deleted_by_id: Optional[int] = None,
         created_at: Optional[datetime] = None,
         updated_at: Optional[datetime] = None,
         # Computed fields
@@ -42,6 +44,8 @@ class DeviceGroup:
         self.default_playlist_id = default_playlist_id
         self.deleted_at = deleted_at
         self.created_by_id = created_by
+        self.updated_by_id = updated_by_id
+        self.deleted_by_id = deleted_by_id
         self.created_at = created_at
         self.updated_at = updated_at
         self.device_count = device_count
@@ -61,6 +65,8 @@ class DeviceGroup:
             "default_playlist_id": self.default_playlist_id,
             "deleted_at": self.deleted_at.isoformat() if self.deleted_at else None,
             "created_by": self.created_by_id,
+            "updated_by": self.updated_by_id,
+            "deleted_by": self.deleted_by_id,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,
             "device_count": self.device_count,

@@ -1,14 +1,15 @@
 """
 Delete Tag Use Case
-Business logic for deleting a tag
+Business logic for deleting a tag (soft delete)
 """
 
+from typing import Optional
 from ..domain.interfaces import ITagRepository
 from shared.errors import ValidationError, ConflictError, NotFoundError
 
 
 class DeleteTagUseCase:
-    """Delete a tag from an organization"""
+    """Delete a tag from an organization (soft delete)"""
 
     def __init__(self, tag_repo: ITagRepository):
         self.tag_repo = tag_repo
@@ -18,14 +19,16 @@ class DeleteTagUseCase:
         tag_id: int,
         organization_id: int,
         force: bool = False,
+        deleted_by_id: Optional[int] = None,
     ) -> dict:
         """
-        Execute delete tag use case
+        Execute delete tag use case (soft delete)
 
         Args:
             tag_id: Tag ID to delete
             organization_id: Organization ID
             force: If False, check usage before deletion
+            deleted_by_id: User ID who deleted the tag (audit trail)
 
         Returns:
             Dictionary with success status and message
@@ -54,8 +57,8 @@ class DeleteTagUseCase:
                     f"Please remove tag assignments first or use force=true."
                 )
 
-        # Delete tag
-        success = self.tag_repo.delete(tag_id, organization_id)
+        # Soft delete tag with audit tracking
+        success = self.tag_repo.delete(tag_id, organization_id, deleted_by_id=deleted_by_id)
 
         if not success:
             raise ConflictError(

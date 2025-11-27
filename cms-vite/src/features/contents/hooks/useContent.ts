@@ -3,8 +3,8 @@
  */
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { toast } from 'sonner';
-import { getApiErrorMessage } from '@/shared/utils/types';
+import { toast } from '@/lib/notifications/toast';
+import { handleAPIError } from '@/lib/errors/errorHandler';
 import type { ContentFilters, ContentUploadData } from '../types/content';
 import {
   getContentList,
@@ -74,7 +74,7 @@ export const useUploadContent = () => {
       toast.success('Content uploaded successfully');
     },
     onError: (error: unknown) => {
-      toast.error(getApiErrorMessage(error, 'Failed to upload content'));
+      toast.error(handleAPIError(error).message);
     },
   });
 };
@@ -115,7 +115,7 @@ export const useBulkUploadContent = () => {
       }
     },
     onError: (error: unknown) => {
-      toast.error(getApiErrorMessage(error, 'Failed to upload files'));
+      toast.error(handleAPIError(error).message);
     },
   });
 };
@@ -136,7 +136,7 @@ export const useUpdateContent = () => {
       toast.success('Content updated successfully');
     },
     onError: (error: unknown) => {
-      toast.error(getApiErrorMessage(error, 'Failed to update content'));
+      toast.error(handleAPIError(error).message);
     },
   });
 };
@@ -163,7 +163,7 @@ export const useDeleteContent = () => {
       toast.success('Content deleted successfully');
     },
     onError: (error: unknown) => {
-      toast.error(getApiErrorMessage(error, 'Failed to delete content'));
+      toast.error(handleAPIError(error).message);
     },
   });
 };
@@ -190,7 +190,7 @@ export const useBulkDeleteContent = () => {
       toast.success(`${ids.length} content(s) deleted successfully`);
     },
     onError: (error: unknown) => {
-      toast.error(getApiErrorMessage(error, 'Failed to delete content'));
+      toast.error(handleAPIError(error).message);
     },
   });
 };

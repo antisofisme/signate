@@ -11,15 +11,19 @@ Handles device management operations:
 - Group device management
 """
 
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi import APIRouter, Depends, HTTPException, status, Query, Request
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 from shared.database import get_db
 from shared.auth import get_current_user, CurrentUser
-from shared.middleware import get_current_active_user
+from shared.middleware import get_current_active_user, require_permission
+from shared.logging import AuditLogger
 from pydantic import BaseModel
 from typing import List, Optional
 from datetime import datetime
+
+# Initialize audit logger
+audit_logger = AuditLogger()
 
 from .dtos import (
     CreateDeviceGroupRequest,
@@ -770,8 +774,9 @@ def unassign_playlist_from_device(
 @management_router.post("/groups", response_model=DeviceGroupResponse, status_code=status.HTTP_201_CREATED)
 def create_device_group(
     request: CreateDeviceGroupRequest,
+    http_request: Request,
     db: Session = Depends(get_db),
-    current_user: CurrentUser = Depends(get_current_user),
+    current_user: dict = Depends(require_permission("device_groups", "create")),
 ):
     """
     Create a new device group
@@ -782,18 +787,35 @@ def create_device_group(
     - **group_type**: Type (chain, hotel, floor, location, custom)
     - **sort_order**: Display order
     - **default_playlist_id**: Default playlist for devices in this group
+
+    Requires: device_groups.create permission
     """
     try:
         use_case = CreateDeviceGroupUseCase(db)
         group = use_case.execute(
             name=request.name,
-            organization_id=current_user.organization_id,
+            organization_id=current_user["organization_id"],
             description=request.description,
             parent_group_id=request.parent_group_id,
             group_type=request.group_type,
             sort_order=request.sort_order,
             default_playlist_id=request.default_playlist_id,
-            created_by=current_user.id,
+            created_by=current_user["user_id"],
+        )
+
+        # Audit log
+        audit_logger.log_action(
+            user_id=current_user["user_id"],
+            action="device_group.create",
+            resource_type="device_group",
+            resource_id=group.id,
+            details={
+                "name": group.name,
+                "parent_group_id": request.parent_group_id,
+                "group_type": request.group_type,
+            },
+            ip_address=http_request.client.host if http_request.client else None,
+            organization_id=current_user["organization_id"],
         )
 
         return DeviceGroupResponse(**group.to_dict())
@@ -810,16 +832,18 @@ def create_device_group(
 def get_device_groups(
     include_deleted: bool = False,
     db: Session = Depends(get_db),
-    current_user: CurrentUser = Depends(get_current_user),
+    current_user: dict = Depends(require_permission("device_groups", "view")),
 ):
     """
     Get all device groups for the organization
 
     - **include_deleted**: Include soft-deleted groups (default: false)
+
+    Requires: device_groups.view permission
     """
     try:
         use_case = GetDeviceGroupsUseCase(db)
-        groups = use_case.get_all_by_organization(current_user.organization_id, include_deleted)
+        groups = use_case.get_all_by_organization(current_user["organization_id"], include_deleted)
 
         group_responses = [DeviceGroupResponse(**g.to_dict()) for g in groups]
 
@@ -834,14 +858,16 @@ def get_device_groups(
 @management_router.get("/groups/roots", response_model=DeviceGroupListResponse)
 def get_root_groups(
     db: Session = Depends(get_db),
-    current_user: CurrentUser = Depends(get_current_user),
+    current_user: dict = Depends(require_permission("device_groups", "view")),
 ):
     """
     Get root device groups (no parent) for the organization
+
+    Requires: device_groups.view permission
     """
     try:
         use_case = GetDeviceGroupsUseCase(db)
-        groups = use_case.get_root_groups(current_user.organization_id)
+        groups = use_case.get_root_groups(current_user["organization_id"])
 
         group_responses = [DeviceGroupResponse(**g.to_dict()) for g in groups]
 
@@ -857,14 +883,16 @@ def get_root_groups(
 def get_device_group(
     group_id: int,
     db: Session = Depends(get_db),
-    current_user: CurrentUser = Depends(get_current_user),
+    current_user: dict = Depends(require_permission("device_groups", "view")),
 ):
     """
     Get a single device group by ID
+
+    Requires: device_groups.view permission
     """
     try:
         use_case = GetDeviceGroupsUseCase(db)
-        group = use_case.get_by_id(group_id, current_user.organization_id)
+        group = use_case.get_by_id(group_id, current_user["organization_id"])
 
         if not group:
             raise HTTPException(
@@ -888,14 +916,16 @@ def get_device_group(
 def get_group_children(
     group_id: int,
     db: Session = Depends(get_db),
-    current_user: CurrentUser = Depends(get_current_user),
+    current_user: dict = Depends(require_permission("device_groups", "view")),
 ):
     """
     Get child groups of a parent group
+
+    Requires: device_groups.view permission
     """
     try:
         use_case = GetDeviceGroupsUseCase(db)
-        children = use_case.get_children(group_id, current_user.organization_id)
+        children = use_case.get_children(group_id, current_user["organization_id"])
 
         group_responses = [DeviceGroupResponse(**g.to_dict()) for g in children]
 
@@ -914,16 +944,18 @@ def get_group_devices(
     group_id: int,
     recursive: bool = False,
     db: Session = Depends(get_db),
-    current_user: CurrentUser = Depends(get_current_user),
+    current_user: dict = Depends(require_permission("device_groups", "view")),
 ):
     """
     Get device IDs in a group
 
     - **recursive**: Include devices in child groups (default: false)
+
+    Requires: device_groups.view permission
     """
     try:
         use_case = GetDeviceGroupsUseCase(db)
-        device_ids = use_case.get_devices_in_group(group_id, current_user.organization_id, recursive)
+        device_ids = use_case.get_devices_in_group(group_id, current_user["organization_id"], recursive)
 
         return GroupDevicesResponse(
             group_id=group_id,
@@ -943,14 +975,16 @@ def get_group_devices(
 def get_group_stats(
     group_id: int,
     db: Session = Depends(get_db),
-    current_user: CurrentUser = Depends(get_current_user),
+    current_user: dict = Depends(require_permission("device_groups", "view")),
 ):
     """
     Get group statistics (device count, online/offline)
+
+    Requires: device_groups.view permission
     """
     try:
         use_case = GetDeviceGroupsUseCase(db)
-        stats = use_case.get_group_stats(group_id, current_user.organization_id)
+        stats = use_case.get_group_stats(group_id, current_user["organization_id"])
 
         return DeviceGroupStatsResponse(
             group_id=group_id,
@@ -972,26 +1006,46 @@ def get_group_stats(
 def update_device_group(
     group_id: int,
     request: UpdateDeviceGroupRequest,
+    http_request: Request,
     db: Session = Depends(get_db),
-    current_user: CurrentUser = Depends(get_current_user),
+    current_user: dict = Depends(require_permission("device_groups", "edit")),
 ):
     """
     Update a device group (supports both PUT and PATCH methods)
 
     **PUT**: Replace entire resource (all fields required)
     **PATCH**: Partial update (only provided fields updated)
+
+    Requires: device_groups.edit permission
     """
     try:
         use_case = UpdateDeviceGroupUseCase(db)
         group = use_case.execute(
             group_id=group_id,
-            organization_id=current_user.organization_id,
+            organization_id=current_user["organization_id"],
             name=request.name,
             description=request.description,
             parent_group_id=request.parent_group_id,
             group_type=request.group_type,
             sort_order=request.sort_order,
             default_playlist_id=request.default_playlist_id,
+            updated_by_id=current_user["user_id"],
+        )
+
+        # Audit log
+        audit_logger.log_action(
+            user_id=current_user["user_id"],
+            action="device_group.update",
+            resource_type="device_group",
+            resource_id=group_id,
+            details={
+                "name": request.name,
+                "description": request.description,
+                "parent_group_id": request.parent_group_id,
+                "group_type": request.group_type,
+            },
+            ip_address=http_request.client.host if http_request.client else None,
+            organization_id=current_user["organization_id"],
         )
 
         return DeviceGroupResponse(**group.to_dict())
@@ -1008,19 +1062,33 @@ def update_device_group(
 def add_device_to_group(
     group_id: int,
     request: AddDeviceToGroupRequest,
+    http_request: Request,
     db: Session = Depends(get_db),
-    current_user: CurrentUser = Depends(get_current_user),
+    current_user: dict = Depends(require_permission("device_groups", "edit")),
 ):
     """
     Add a device to a group
+
+    Requires: device_groups.edit permission
     """
     try:
         use_case = AddDeviceToGroupUseCase(db)
         use_case.execute(
             device_id=request.device_id,
             group_id=group_id,
-            organization_id=current_user.organization_id,
-            added_by=current_user.id,
+            organization_id=current_user["organization_id"],
+            added_by=current_user["user_id"],
+        )
+
+        # Audit log
+        audit_logger.log_action(
+            user_id=current_user["user_id"],
+            action="device_group.add_device",
+            resource_type="device_group",
+            resource_id=group_id,
+            details={"device_id": request.device_id},
+            ip_address=http_request.client.host if http_request.client else None,
+            organization_id=current_user["organization_id"],
         )
 
         return None
@@ -1037,18 +1105,32 @@ def add_device_to_group(
 def remove_device_from_group(
     group_id: int,
     device_id: int,
+    http_request: Request,
     db: Session = Depends(get_db),
-    current_user: CurrentUser = Depends(get_current_user),
+    current_user: dict = Depends(require_permission("device_groups", "edit")),
 ):
     """
     Remove a device from a group
+
+    Requires: device_groups.edit permission
     """
     try:
         use_case = RemoveDeviceFromGroupUseCase(db)
         use_case.execute(
             device_id=device_id,
             group_id=group_id,
-            organization_id=current_user.organization_id,
+            organization_id=current_user["organization_id"],
+        )
+
+        # Audit log
+        audit_logger.log_action(
+            user_id=current_user["user_id"],
+            action="device_group.remove_device",
+            resource_type="device_group",
+            resource_id=group_id,
+            details={"device_id": device_id},
+            ip_address=http_request.client.host if http_request.client else None,
+            organization_id=current_user["organization_id"],
         )
 
         return None
@@ -1064,17 +1146,35 @@ def remove_device_from_group(
 @management_router.delete("/groups/{group_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_device_group(
     group_id: int,
+    http_request: Request,
     db: Session = Depends(get_db),
-    current_user: CurrentUser = Depends(get_current_user),
+    current_user: dict = Depends(require_permission("device_groups", "delete")),
 ):
     """
     Soft delete a device group
 
     Note: Cannot delete groups with child groups. Delete or reassign children first.
+
+    Requires: device_groups.delete permission
     """
     try:
         use_case = DeleteDeviceGroupUseCase(db)
-        use_case.execute(group_id=group_id, organization_id=current_user.organization_id)
+        use_case.execute(
+            group_id=group_id,
+            organization_id=current_user["organization_id"],
+            deleted_by_id=current_user["user_id"],
+        )
+
+        # Audit log
+        audit_logger.log_action(
+            user_id=current_user["user_id"],
+            action="device_group.delete",
+            resource_type="device_group",
+            resource_id=group_id,
+            details={"soft_delete": True},
+            ip_address=http_request.client.host if http_request.client else None,
+            organization_id=current_user["organization_id"],
+        )
 
         return None
     except ValueError as e:

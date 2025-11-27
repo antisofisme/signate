@@ -343,7 +343,15 @@
       "errorLoading": "Error memuat perangkat",
       "noDevicesFound": "Tidak ada perangkat ditemukan",
       "deviceCount": "perangkat",
-      "devicesCount": "perangkat"
+      "devicesCount": "perangkat",
+      "noDevicesInOrg": "Belum ada perangkat terdaftar di organisasi Anda.",
+      "noUnassignedDevices": "Tidak ada perangkat yang belum ditugaskan."
+    },
+    "permissions": {
+      "noAccess": "Anda tidak memiliki izin untuk mengakses halaman ini.",
+      "noCreateAccess": "Anda tidak memiliki izin untuk membuat perangkat.",
+      "noUpdateAccess": "Anda tidak memiliki izin untuk mengedit perangkat.",
+      "noDeleteAccess": "Anda tidak memiliki izin untuk menghapus perangkat."
     }
   },
   "contents": {
@@ -531,8 +539,15 @@
     },
     "messages": {
       "noPlaylists": "Tidak ada playlist ditemukan",
-      "errorLoading": "Error memuat playlist"
+      "noPlaylistsDesc": "Mulai dengan membuat playlist pertama Anda",
+      "errorLoading": "Error memuat playlist",
+      "loadError": "Gagal memuat playlist",
+      "confirmDelete": "Apakah Anda yakin ingin menghapus playlist: {name}?",
+      "totalPlaylists": "Total: {count} playlist"
     },
+    "deletePlaylist": "Hapus Playlist",
+    "manageContent": "Kelola Konten",
+    "manageAssignments": "Kelola Penugasan",
     "buttons": {
       "cancel": "Batal",
       "save": "Simpan",
@@ -656,6 +671,9 @@
     "device": "perangkat",
     "devices": "perangkat",
     "labels": {
+      "name": "Nama",
+      "type": "Tipe",
+      "devices": "Perangkat",
       "time": "Waktu",
       "timezone": "Zona Waktu",
       "start": "Mulai",
@@ -685,6 +703,7 @@
       "hidePreview": "Sembunyikan Preview"
     },
     "noMatches": "Tidak ada jadwal yang cocok dengan filter Anda",
+    "tryDifferentFilters": "Coba sesuaikan pencarian atau kriteria filter Anda",
     "clearFilters": "Hapus filter",
     "deleteModal": {
       "title": "Hapus Jadwal",
@@ -980,7 +999,7 @@
   },
   "analytics": {
     "title": "Analitik & Laporan",
-    "description": "Pantau performa konten dan interaksi perangkat",
+    "description": "Tren historis, performa konten, dan metrik keterlibatan",
     "totalPlays": "Total Putar",
     "completed": "Selesai",
     "uniqueContent": "Konten Unik",
@@ -995,7 +1014,35 @@
     "monthly": "Bulanan",
     "manualRefresh": "Segarkan Manual",
     "clickRefresh": "Klik tombol Segarkan di atas untuk memperbarui data analitik",
-    "showingLast30Days": "Menampilkan data 30 hari terakhir"
+    "showingLast30Days": "Menampilkan data 30 hari terakhir",
+    "last7Days": "7 Hari Terakhir",
+    "last30Days": "30 Hari Terakhir",
+    "last90Days": "90 Hari Terakhir",
+    "export": "Ekspor",
+    "exportPDF": "Ekspor ke PDF",
+    "exportExcel": "Ekspor ke Excel",
+    "exportSuccess": "Laporan berhasil diekspor!",
+    "exportError": "Gagal mengekspor laporan",
+    "topContent": "Konten Teratas",
+    "topContentDesc": "Konten diurutkan berdasarkan total pemutaran",
+    "noContentData": "Tidak ada data performa konten",
+    "plays": "pemutaran",
+    "deviceActivity": "Aktivitas Perangkat",
+    "deviceActivityDesc": "Metrik keterlibatan perangkat",
+    "noDeviceData": "Tidak ada data aktivitas perangkat",
+    "content": "konten",
+    "avgPerContent": "rata-rata/konten",
+    "playbackTrend": "Tren Pemutaran",
+    "playbackTrendDesc": "Aktivitas dari waktu ke waktu untuk periode terpilih",
+    "reportPeriod": "Periode Laporan",
+    "showingSelectedPeriod": "Menampilkan data untuk periode terpilih",
+    "tip": "Tips",
+    "useDashboard": "Untuk monitoring real-time, gunakan Dashboard",
+    "vsLastPeriod": "vs periode lalu",
+    "rate": "tingkat",
+    "contentPlayed": "konten diputar",
+    "withPlayback": "dengan pemutaran",
+    "total": "total"
   },
   "settings": {
     "title": "Pengaturan",
@@ -1006,6 +1053,26 @@
       "sessions": "Sesi Aktif",
       "roles": "Peran & Izin",
       "auditLogs": "Log Audit"
+    },
+    "organizations": {
+      "title": "Organisasi",
+      "description": "Kelola organisasi dan pengaturan kuota"
+    },
+    "users": {
+      "title": "Manajemen Pengguna",
+      "description": "Kelola akun pengguna, peran dan izin"
+    },
+    "sessions": {
+      "title": "Sesi Aktif",
+      "description": "Pantau dan kelola sesi pengguna yang aktif"
+    },
+    "roles": {
+      "title": "Peran & Izin",
+      "description": "Konfigurasi peran dan izin akses"
+    },
+    "audit": {
+      "title": "Log Audit",
+      "description": "Lihat aktivitas sistem dan jejak audit"
     }
   },
   "theme": {
@@ -1054,7 +1121,8 @@
     "edit": "Edit",
     "editGroup": "Edit grup",
     "deleteGroup": "Hapus grup",
-    "confirmDelete": "Apakah Anda yakin ingin menghapus grup ini?",
+    "confirmDelete": "Hapus Grup Perangkat?",
+    "confirmDeleteMessage": "Apakah Anda yakin ingin menghapus grup \"{{name}}\"? Tindakan ini tidak dapat dibatalkan.",
     "toast": {
       "createSuccess": "Grup berhasil dibuat",
       "createSuccessDescription": "\"{{name}}\" telah dibuat",
@@ -1135,6 +1203,7 @@
     "loadingTags": "Memuat tags...",
     "noTagsMatch": "Tidak ada tag yang cocok",
     "noTagsYet": "Belum ada tag",
+    "createFirstTag": "Buat tag pertama Anda untuk mengorganisir konten dan perangkat",
     "tag": "Tag",
     "created": "Dibuat",
     "actions": "Aksi",

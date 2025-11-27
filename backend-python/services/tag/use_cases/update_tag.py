@@ -22,6 +22,7 @@ class UpdateTagUseCase:
         tag_name: Optional[str] = None,
         description: Optional[str] = None,
         color: Optional[str] = None,
+        updated_by_id: Optional[int] = None,
     ) -> Tag:
         """
         Execute update tag use case
@@ -32,6 +33,7 @@ class UpdateTagUseCase:
             tag_name: New tag name (optional)
             description: New description (optional)
             color: New color (optional)
+            updated_by_id: User ID who updated the tag (audit trail)
 
         Returns:
             Updated Tag entity
@@ -65,7 +67,7 @@ class UpdateTagUseCase:
         # Validate updated tag (business rules in Tag entity)
         existing_tag._validate()
 
-        # Persist changes
-        updated_tag = self.tag_repo.update(existing_tag)
+        # Persist changes with audit tracking
+        updated_tag = self.tag_repo.update(existing_tag, updated_by_id=updated_by_id)
 
         return updated_tag

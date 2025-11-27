@@ -3,7 +3,8 @@
  */
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { toast } from 'sonner';
+import { toast } from '@/lib/notifications/toast';
+import { handleAPIError } from '@/lib/errors/errorHandler';
 import { deviceApi } from '../api/deviceApi';
 import type {
   Device,
@@ -11,7 +12,6 @@ import type {
   TVRegisterRequest,
   ActivateDeviceRequest,
 } from '../types/device';
-import { getApiErrorMessage } from '@/shared/utils/types';
 
 // Query keys
 export const deviceKeys = {
@@ -82,7 +82,7 @@ export const useUpdateDevice = () => {
       toast.success('Device updated successfully');
     },
     onError: (error: unknown) => {
-      toast.error(getApiErrorMessage(error, 'Failed to update device'));
+      toast.error(handleAPIError(error).message);
     },
   });
 };
@@ -130,7 +130,7 @@ export const useDeleteDevice = () => {
           queryClient.setQueryData(queryKey, data);
         });
       }
-      toast.error(getApiErrorMessage(error, 'Failed to delete device'));
+      toast.error(handleAPIError(error).message);
     },
     onSettled: () => {
       // Always refetch after error or success to sync with server
@@ -161,7 +161,7 @@ export const useTVRegister = () => {
       toast.success(`TV registered successfully. Activation code: ${device.unique_code}`);
     },
     onError: (error: unknown) => {
-      toast.error(getApiErrorMessage(error, 'Failed to register TV'));
+      toast.error(handleAPIError(error).message);
     },
   });
 };
@@ -184,7 +184,7 @@ export const useMonitorRegister = () => {
       toast.success('Monitor registered successfully');
     },
     onError: (error: unknown) => {
-      toast.error(getApiErrorMessage(error, 'Failed to register monitor'));
+      toast.error(handleAPIError(error).message);
     },
   });
 };
@@ -208,7 +208,7 @@ export const useActivateDevice = () => {
       toast.success(`Device "${device.device_name}" activated successfully`);
     },
     onError: (error: unknown) => {
-      toast.error(getApiErrorMessage(error, 'Failed to activate device'));
+      toast.error(handleAPIError(error).message);
     },
   });
 };
@@ -309,7 +309,7 @@ export const useSendCommand = () => {
       toast.success(`Command "${command.command_type}" sent successfully`);
     },
     onError: (error: unknown) => {
-      toast.error(getApiErrorMessage(error, 'Failed to send command'));
+      toast.error(handleAPIError(error).message);
     },
   });
 };
@@ -351,7 +351,7 @@ export const useAssignTag = () => {
       toast.success('Tag assigned successfully');
     },
     onError: (error: unknown) => {
-      toast.error(getApiErrorMessage(error, 'Failed to assign tag'));
+      toast.error(handleAPIError(error).message);
     },
   });
 };
@@ -377,7 +377,7 @@ export const useUnassignTag = () => {
       toast.success('Tag removed successfully');
     },
     onError: (error: unknown) => {
-      toast.error(getApiErrorMessage(error, 'Failed to remove tag'));
+      toast.error(handleAPIError(error).message);
     },
   });
 };
@@ -424,7 +424,7 @@ export const useAssignContent = () => {
       toast.success('Content assigned successfully');
     },
     onError: (error: unknown) => {
-      toast.error(getApiErrorMessage(error, 'Failed to assign content'));
+      toast.error(handleAPIError(error).message);
     },
   });
 };
@@ -452,7 +452,7 @@ export const useUnassignContent = () => {
       toast.success('Content removed successfully');
     },
     onError: (error: unknown) => {
-      toast.error(getApiErrorMessage(error, 'Failed to remove content'));
+      toast.error(handleAPIError(error).message);
     },
   });
 };
@@ -493,7 +493,7 @@ export const useAssignPlaylist = () => {
       toast.success('Playlist assigned successfully');
     },
     onError: (error: unknown) => {
-      toast.error(getApiErrorMessage(error, 'Failed to assign playlist'));
+      toast.error(handleAPIError(error).message);
     },
   });
 };
@@ -522,7 +522,7 @@ export const useUnassignPlaylist = () => {
       toast.success('Playlist removed successfully');
     },
     onError: (error: unknown) => {
-      toast.error(getApiErrorMessage(error, 'Failed to remove playlist'));
+      toast.error(handleAPIError(error).message);
     },
   });
 };

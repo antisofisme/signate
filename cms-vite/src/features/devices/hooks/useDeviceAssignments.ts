@@ -9,7 +9,8 @@
  */
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { toast } from 'sonner';
+import { toast } from '@/lib/notifications/toast';
+import { handleAPIError } from '@/lib/errors/errorHandler';
 import { deviceAssignmentsApi } from '../api/deviceAssignmentsApi';
 import type {
   PlaylistAssignment,
@@ -20,7 +21,6 @@ import type {
   AssignTagRequest,
   BulkAssignPlaylistRequest,
 } from '../types/assignment';
-import { getApiErrorMessage } from '@/shared/utils/types';
 
 // Query keys for assignment-related queries
 export const assignmentKeys = {
@@ -73,7 +73,7 @@ export const useAssignPlaylist = () => {
       toast.success('Playlist assigned successfully');
     },
     onError: (error: unknown) => {
-      toast.error(getApiErrorMessage(error, 'Failed to assign playlist'));
+      toast.error(handleAPIError(error).message);
     },
   });
 };
@@ -105,7 +105,7 @@ export const useUnassignPlaylist = () => {
       toast.success('Playlist unassigned successfully');
     },
     onError: (error: unknown) => {
-      toast.error(getApiErrorMessage(error, 'Failed to unassign playlist'));
+      toast.error(handleAPIError(error).message);
     },
   });
 };
@@ -142,7 +142,7 @@ export const useBulkAssignPlaylist = () => {
       }
     },
     onError: (error: unknown) => {
-      toast.error(getApiErrorMessage(error, 'Failed to assign playlist to devices'));
+      toast.error(handleAPIError(error).message);
     },
   });
 };
@@ -190,7 +190,7 @@ export const useAssignContent = () => {
       toast.success('Content assigned successfully');
     },
     onError: (error: unknown) => {
-      toast.error(getApiErrorMessage(error, 'Failed to assign content'));
+      toast.error(handleAPIError(error).message);
     },
   });
 };
@@ -222,7 +222,7 @@ export const useUnassignContent = () => {
       toast.success('Content unassigned successfully');
     },
     onError: (error: unknown) => {
-      toast.error(getApiErrorMessage(error, 'Failed to unassign content'));
+      toast.error(handleAPIError(error).message);
     },
   });
 };
@@ -267,7 +267,7 @@ export const useAssignTag = () => {
       toast.success('Tag assigned successfully');
     },
     onError: (error: unknown) => {
-      toast.error(getApiErrorMessage(error, 'Failed to assign tag'));
+      toast.error(handleAPIError(error).message);
     },
   });
 };
@@ -296,7 +296,7 @@ export const useUnassignTag = () => {
       toast.success('Tag unassigned successfully');
     },
     onError: (error: unknown) => {
-      toast.error(getApiErrorMessage(error, 'Failed to unassign tag'));
+      toast.error(handleAPIError(error).message);
     },
   });
 };

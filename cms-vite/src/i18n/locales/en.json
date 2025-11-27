@@ -343,7 +343,15 @@
       "errorLoading": "Error loading devices",
       "noDevicesFound": "No devices found",
       "deviceCount": "device",
-      "devicesCount": "devices"
+      "devicesCount": "devices",
+      "noDevicesInOrg": "No devices registered in your organization yet.",
+      "noUnassignedDevices": "No unassigned devices available."
+    },
+    "permissions": {
+      "noAccess": "You don't have permission to access this page.",
+      "noCreateAccess": "You don't have permission to create devices.",
+      "noUpdateAccess": "You don't have permission to edit devices.",
+      "noDeleteAccess": "You don't have permission to delete devices."
     }
   },
   "contents": {
@@ -531,8 +539,16 @@
     },
     "messages": {
       "noPlaylists": "No playlists found",
-      "errorLoading": "Error loading playlists"
+      "noPlaylistsDesc": "Start by creating your first playlist",
+      "errorLoading": "Error loading playlists",
+      "loadError": "Failed to load playlists",
+      "confirmDelete": "Are you sure you want to delete playlist: {name}?",
+      "totalPlaylists": "Total: {count} playlist",
+      "totalPlaylists_plural": "Total: {count} playlists"
     },
+    "deletePlaylist": "Delete Playlist",
+    "manageContent": "Manage Content",
+    "manageAssignments": "Manage Assignments",
     "buttons": {
       "cancel": "Cancel",
       "save": "Save",
@@ -656,6 +672,9 @@
     "device": "device",
     "devices": "devices",
     "labels": {
+      "name": "Name",
+      "type": "Type",
+      "devices": "Devices",
       "time": "Time",
       "timezone": "Timezone",
       "start": "Start",
@@ -685,6 +704,7 @@
       "hidePreview": "Hide Preview"
     },
     "noMatches": "No schedules match your filters",
+    "tryDifferentFilters": "Try adjusting your search or filter criteria",
     "clearFilters": "Clear filters",
     "deleteModal": {
       "title": "Delete Schedule",
@@ -980,7 +1000,7 @@
   },
   "analytics": {
     "title": "Analytics & Reports",
-    "description": "Track content performance and device engagement",
+    "description": "Historical trends, content performance, and engagement metrics",
     "totalPlays": "Total Plays",
     "completed": "Completed",
     "uniqueContent": "Unique Content",
@@ -995,7 +1015,35 @@
     "monthly": "Monthly",
     "manualRefresh": "Manual Refresh",
     "clickRefresh": "Click the Refresh button above to update analytics data",
-    "showingLast30Days": "Showing data from last 30 days"
+    "showingLast30Days": "Showing data from last 30 days",
+    "last7Days": "Last 7 Days",
+    "last30Days": "Last 30 Days",
+    "last90Days": "Last 90 Days",
+    "export": "Export",
+    "exportPDF": "Export as PDF",
+    "exportExcel": "Export as Excel",
+    "exportSuccess": "Report exported successfully!",
+    "exportError": "Failed to export report",
+    "topContent": "Top Performing Content",
+    "topContentDesc": "Content ranked by total plays",
+    "noContentData": "No content performance data available",
+    "plays": "plays",
+    "deviceActivity": "Device Activity",
+    "deviceActivityDesc": "Device engagement metrics",
+    "noDeviceData": "No device activity data available",
+    "content": "content",
+    "avgPerContent": "avg/content",
+    "playbackTrend": "Playback Trend",
+    "playbackTrendDesc": "Activity over time for the selected period",
+    "reportPeriod": "Report Period",
+    "showingSelectedPeriod": "Showing data for selected period",
+    "tip": "Tip",
+    "useDashboard": "For real-time monitoring, use the Dashboard",
+    "vsLastPeriod": "vs last period",
+    "rate": "rate",
+    "contentPlayed": "content played",
+    "withPlayback": "with playback",
+    "total": "total"
   },
   "settings": {
     "title": "Settings",
@@ -1006,6 +1054,26 @@
       "sessions": "Active Sessions",
       "roles": "Roles & Permissions",
       "auditLogs": "Audit Logs"
+    },
+    "organizations": {
+      "title": "Organizations",
+      "description": "Manage organizations and their quota settings"
+    },
+    "users": {
+      "title": "User Management",
+      "description": "Manage user accounts, roles and permissions"
+    },
+    "sessions": {
+      "title": "Active Sessions",
+      "description": "Monitor and manage active user sessions"
+    },
+    "roles": {
+      "title": "Roles & Permissions",
+      "description": "Configure roles and access permissions"
+    },
+    "audit": {
+      "title": "Audit Logs",
+      "description": "View system activity and audit trail"
     }
   },
   "theme": {
@@ -1054,7 +1122,8 @@
     "edit": "Edit",
     "editGroup": "Edit group",
     "deleteGroup": "Delete group",
-    "confirmDelete": "Are you sure you want to delete this group?",
+    "confirmDelete": "Delete Device Group?",
+    "confirmDeleteMessage": "Are you sure you want to delete group \"{{name}}\"? This action cannot be undone.",
     "toast": {
       "createSuccess": "Group created successfully",
       "createSuccessDescription": "\"{{name}}\" has been created",
@@ -1135,6 +1204,7 @@
     "loadingTags": "Loading tags...",
     "noTagsMatch": "No matching tags",
     "noTagsYet": "No tags yet",
+    "createFirstTag": "Create your first tag to organize your content and devices",
     "tag": "Tag",
     "created": "Created",
     "actions": "Actions",

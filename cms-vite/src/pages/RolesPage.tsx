@@ -6,10 +6,12 @@
 import React, { useState } from 'react';
 import { Plus, Search, Shield, Key } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { PageHeader } from '@/shared/components';
+import { PageHeader, PageSkeleton, EmptyState, ConfirmDialog } from '@/shared/components';
+import { Button } from '@/components/ui/button';
 import { RoleCard } from '@/features/rbac/components/RoleCard';
 import { RoleForm } from '@/features/rbac/components/RoleForm';
 import { useRoles, useCreateRole, useUpdateRole, useDeleteRole } from '@/features/rbac/hooks/useRoles';
+import { useCanPerformAction } from '@/features/rbac/hooks/usePermissions';
 import { getTotalPossiblePermissions, type Permissions } from '@/features/rbac/constants/permissions';
 
 // ============================================================================
@@ -54,6 +56,13 @@ export default function RolesPage() {
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [editingRole, setEditingRole] = useState<Role | null>(null);
   const [viewingRole, setViewingRole] = useState<Role | null>(null);
+  const [deleteItem, setDeleteItem] = useState<Role | null>(null);
+
+  // Permission checks
+  const { hasPermission: canView } = useCanPerformAction('roles', 'view');
+  const { hasPermission: canCreate } = useCanPerformAction('roles', 'create');
+  const { hasPermission: canEdit } = useCanPerformAction('roles', 'edit');
+  const { hasPermission: canDelete } = useCanPerformAction('roles', 'delete');
 
   // Queries
   const { data: rolesData, isLoading: rolesLoading } = useRoles();
@@ -99,17 +108,16 @@ export default function RolesPage() {
 
   const handleDeleteRole = (role: Role) => {
     if (role.is_system_role) {
-      alert(t('rbac.cannotDeleteSystemRole', 'Cannot delete system roles'));
       return;
     }
+    setDeleteItem(role);
+  };
 
-    if (
-      confirm(
-        t('rbac.confirmDeleteRole', `Are you sure you want to delete the role "${role.name}"?`)
-      )
-    ) {
-      deleteRoleMutation.mutate(role.id);
-    }
+  const confirmDelete = () => {
+    if (!deleteItem) return;
+    deleteRoleMutation.mutate(deleteItem.id, {
+      onSuccess: () => setDeleteItem(null),
+    });
   };
 
   const handleViewRole = (role: Role) => {
@@ -122,12 +130,17 @@ export default function RolesPage() {
 
   // Loading state
   if (rolesLoading) {
+    return <PageSkeleton showTable={false} />;
+  }
+
+  // Permission check - no view access
+  if (!canView) {
     return (
-      <div className="flex items-center justify-center h-96">
-        <div className="text-gray-500 dark:text-gray-400">
-          {t('common.loading', 'Loading...')}
-        </div>
-      </div>
+      <EmptyState
+        icon={Shield}
+        title={t('common.noPermission', 'No Permission')}
+        description={t('rbac.noViewPermission', 'You do not have permission to view roles')}
+      />
     );
   }
 
@@ -156,13 +169,12 @@ export default function RolesPage() {
           </div>
 
           {/* Create Button */}
-          <button
-            onClick={() => setShowCreateForm(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors"
-          >
-            <Plus className="w-5 h-5" />
-            {t('rbac.createRole', 'Create Role')}
-          </button>
+          {canCreate && (
+            <Button onClick={() => setShowCreateForm(true)}>
+              <Plus className="w-4 h-4 mr-2" />
+              {t('rbac.createRole', 'Create Role')}
+            </Button>
+          )}
         </div>
 
         {/* Stats */}
@@ -268,28 +280,25 @@ export default function RolesPage() {
                   key={role.id}
                   role={role}
                   onView={handleViewRole}
-                  onEdit={handleEditRole}
-                  onDelete={handleDeleteRole}
+                  onEdit={canEdit ? handleEditRole : undefined}
+                  onDelete={canDelete ? handleDeleteRole : undefined}
                 />
               ))}
             </div>
           ) : (
-            <div className="text-center py-12 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
-              <Shield className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
-                {t('rbac.noCustomRoles', 'No custom roles yet')}
-              </h3>
-              <p className="text-gray-600 dark:text-gray-400 mb-4">
-                {t('rbac.createFirstRole', 'Create your first custom role to get started')}
-              </p>
-              <button
-                onClick={() => setShowCreateForm(true)}
-                className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors"
-              >
-                <Plus className="w-5 h-5" />
-                {t('rbac.createRole', 'Create Role')}
-              </button>
-            </div>
+            <EmptyState
+              icon={Shield}
+              title={t('rbac.noCustomRoles', 'No custom roles yet')}
+              description={t('rbac.createFirstRole', 'Create your first custom role to get started')}
+              action={
+                canCreate ? (
+                  <Button onClick={() => setShowCreateForm(true)}>
+                    <Plus className="w-4 h-4 mr-2" />
+                    {t('rbac.createRole', 'Create Role')}
+                  </Button>
+                ) : undefined
+              }
+            />
           )}
         </div>
       </div>
@@ -328,6 +337,21 @@ export default function RolesPage() {
           />
         </div>
       )}
+
+      {/* Delete Confirmation Dialog */}
+      <ConfirmDialog
+        open={!!deleteItem}
+        onOpenChange={(open) => !open && setDeleteItem(null)}
+        title={t('rbac.deleteRole', 'Delete Role')}
+        description={t(
+          'rbac.confirmDeleteRole',
+          `Are you sure you want to delete "${deleteItem?.name}"? This action cannot be undone.`
+        )}
+        variant="danger"
+        confirmLabel={t('common.delete', 'Delete')}
+        onConfirm={confirmDelete}
+        isLoading={deleteRoleMutation.isPending}
+      />
     </>
   );
 }

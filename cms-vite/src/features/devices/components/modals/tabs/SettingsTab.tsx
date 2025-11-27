@@ -7,10 +7,30 @@
  * - Danger zone (deactivate, delete)
  */
 
-import { useState, useEffect } from 'react';
+import { useEffect } from 'react';
+import { useForm, FormProvider } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
 import { Save, Loader2, AlertTriangle } from 'lucide-react';
 import type { Device } from '../../../types/device';
 import { useUpdateDevice } from '../../../hooks/useDevices';
+import { FormInput, FormSelect, FormSwitch, InlineError } from '@/shared/components';
+
+// Zod validation schema
+const deviceSettingsSchema = z.object({
+  device_name: z
+    .string()
+    .min(1, 'Device name is required')
+    .max(200, 'Device name must be less than 200 characters')
+    .trim(),
+  rotation: z.string().refine((val) => ['0', '90', '180', '270'].includes(val), {
+    message: 'Rotation must be 0, 90, 180, or 270 degrees',
+  }),
+  volume_enabled: z.boolean(),
+  room_number: z.string().max(50, 'Room number must be less than 50 characters').optional(),
+});
+
+type DeviceSettingsForm = z.infer<typeof deviceSettingsSchema>;
 
 interface SettingsTabProps {
   device: Device;
@@ -18,159 +38,104 @@ interface SettingsTabProps {
 }
 
 export function SettingsTab({ device, onSuccess }: SettingsTabProps) {
-  const [formData, setFormData] = useState({
-    device_name: '',
-    rotation: 0,
-    volume_enabled: true,
-    room_number: '',
-  });
-  const [error, setError] = useState<string | null>(null);
-
   const updateMutation = useUpdateDevice();
 
-  // Initialize form when device changes
+  // Initialize React Hook Form with Zod resolver
+  const methods = useForm<DeviceSettingsForm>({
+    resolver: zodResolver(deviceSettingsSchema),
+    defaultValues: {
+      device_name: device.device_name,
+      rotation: String(device.rotation || 0),
+      volume_enabled: device.is_volume_enabled !== false,
+      room_number: device.room_number || '',
+    },
+  });
+
+  const { handleSubmit, reset } = methods;
+
+  // Reset form when device changes
   useEffect(() => {
-    if (device) {
-      setFormData({
-        device_name: device.device_name,
-        rotation: device.rotation || 0,
-        volume_enabled: device.is_volume_enabled !== false,
-        room_number: device.room_number || '',
-      });
-    }
-  }, [device]);
+    reset({
+      device_name: device.device_name,
+      rotation: String(device.rotation || 0),
+      volume_enabled: device.is_volume_enabled !== false,
+      room_number: device.room_number || '',
+    });
+  }, [device, reset]);
 
   // Handle submit
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError(null);
-
-    // Validation
-    if (!formData.device_name.trim()) {
-      setError('Device name is required');
-      return;
-    }
-
+  const onSubmit = async (data: DeviceSettingsForm) => {
     try {
       await updateMutation.mutateAsync({
         id: device.id,
         data: {
-          device_name: formData.device_name.trim(),
-          rotation: formData.rotation,
-          is_volume_enabled: formData.volume_enabled,
-          room_number: formData.room_number.trim() || undefined,
+          device_name: data.device_name.trim(),
+          rotation: parseInt(data.rotation, 10),
+          is_volume_enabled: data.volume_enabled,
+          room_number: data.room_number?.trim() || undefined,
         },
       });
 
       onSuccess?.();
-    } catch (err: any) {
-      setError(err?.response?.data?.detail || 'Failed to update device');
+    } catch (err) {
+      // Error is handled by mutation with toast
     }
   };
 
+  const rotationOptions = [
+    { value: '0', label: '0° (Normal)' },
+    { value: '90', label: '90° (Clockwise)' },
+    { value: '180', label: '180° (Upside Down)' },
+    { value: '270', label: '270° (Counter-Clockwise)' },
+  ];
+
   return (
     <div className="p-6">
-      <form onSubmit={handleSubmit} className="space-y-6">
-        {/* Error Message */}
-        {error && (
-          <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3">
-            <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
-          </div>
-        )}
+      <FormProvider {...methods}>
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+          {/* Basic Settings */}
+          <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+            <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4">
+              Basic Settings
+            </h3>
 
-        {/* Basic Settings */}
-        <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
-          <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4">
-            Basic Settings
-          </h3>
-
-          <div className="space-y-4">
-            {/* Device Name */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Device Name <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="text"
-                value={formData.device_name}
-                onChange={(e) => {
-                  setFormData((prev) => ({ ...prev, device_name: e.target.value }));
-                  setError(null);
-                }}
+            <div className="space-y-4">
+              {/* Device Name */}
+              <FormInput
+                name="device_name"
+                label="Device Name"
                 placeholder="e.g., Lobby TV 1, Room 101 Display"
-                maxLength={200}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                disabled={updateMutation.isPending}
                 required
-              />
-            </div>
-
-            {/* Rotation */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Screen Rotation
-              </label>
-              <select
-                value={formData.rotation}
-                onChange={(e) =>
-                  setFormData((prev) => ({ ...prev, rotation: parseInt(e.target.value) }))
-                }
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 disabled={updateMutation.isPending}
-              >
-                <option value={0}>0° (Normal)</option>
-                <option value={90}>90° (Clockwise)</option>
-                <option value={180}>180° (Upside Down)</option>
-                <option value={270}>270° (Counter-Clockwise)</option>
-              </select>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                Adjust screen orientation for portrait/landscape displays
-              </p>
-            </div>
+              />
 
-            {/* Volume Enabled */}
-            <div>
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={formData.volume_enabled}
-                  onChange={(e) =>
-                    setFormData((prev) => ({ ...prev, volume_enabled: e.target.checked }))
-                  }
-                  className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-                  disabled={updateMutation.isPending}
-                />
-                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                  Enable Audio/Volume
-                </span>
-              </label>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 ml-6">
-                Allow audio playback for video content
-              </p>
-            </div>
+              {/* Rotation */}
+              <FormSelect
+                name="rotation"
+                label="Screen Rotation"
+                options={rotationOptions}
+                description="Adjust screen orientation for portrait/landscape displays"
+                disabled={updateMutation.isPending}
+              />
 
-            {/* Room Number */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Room Number (Optional)
-              </label>
-              <input
-                type="text"
-                value={formData.room_number}
-                onChange={(e) =>
-                  setFormData((prev) => ({ ...prev, room_number: e.target.value }))
-                }
+              {/* Volume Enabled */}
+              <FormSwitch
+                name="volume_enabled"
+                label="Enable Audio/Volume"
+                description="Allow audio playback for video content"
+                disabled={updateMutation.isPending}
+              />
+
+              {/* Room Number */}
+              <FormInput
+                name="room_number"
+                label="Room Number (Optional)"
                 placeholder="e.g., 101, A-205, Lobby"
-                maxLength={50}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                description="For hotel/office deployments"
                 disabled={updateMutation.isPending}
               />
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                For hotel/office deployments
-              </p>
             </div>
           </div>
-        </div>
 
         {/* Save Button */}
         <div className="flex justify-end">
@@ -227,7 +192,8 @@ export function SettingsTab({ device, onSuccess }: SettingsTabProps) {
             </button>
           </div>
         </div>
-      </form>
+        </form>
+      </FormProvider>
     </div>
   );
 }
