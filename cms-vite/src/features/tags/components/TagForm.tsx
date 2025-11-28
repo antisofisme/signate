@@ -48,11 +48,12 @@ export function TagForm({ tag, onClose, onSubmit, isLoading }: TagFormProps) {
     defaultValues: {
       tag_name: tag?.tag_name || '',
       description: tag?.description || '',
-      color: tag?.color || '#3B82F6',
+      // Normalize color to uppercase to match TAG_COLORS values
+      color: tag?.color?.toUpperCase() || '#3B82F6',
     },
   });
 
-  const { handleSubmit, watch, reset, formState: { isDirty } } = methods;
+  const { handleSubmit, watch, reset } = methods;
 
   // Reset form when tag changes
   useEffect(() => {
@@ -60,7 +61,8 @@ export function TagForm({ tag, onClose, onSubmit, isLoading }: TagFormProps) {
       reset({
         tag_name: tag.tag_name,
         description: tag.description || '',
-        color: tag.color,
+        // Normalize color to uppercase to match TAG_COLORS values
+        color: tag.color?.toUpperCase() || '#3B82F6',
       });
     }
   }, [tag, reset]);
@@ -137,7 +139,7 @@ export function TagForm({ tag, onClose, onSubmit, isLoading }: TagFormProps) {
             <Button
               type="submit"
               variant="primary"
-              disabled={isLoading || !isDirty}
+              disabled={isLoading}
               loading={isLoading}
               leftIcon={isEditing ? <Save className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
             >

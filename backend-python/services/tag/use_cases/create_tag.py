@@ -47,11 +47,12 @@ class CreateTagUseCase:
             )
 
         # Create new tag entity (validation happens in constructor)
+        # Normalize color to uppercase for consistency
         tag = Tag(
             id=None,  # Will be assigned by database
             tag_name=tag_name,
             description=description,
-            color=color,
+            color=color.upper() if color else "#3B82F6",
             organization_id=organization_id,
             created_by_id=created_by_id,
         )

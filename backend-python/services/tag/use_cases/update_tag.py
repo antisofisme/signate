@@ -62,7 +62,8 @@ class UpdateTagUseCase:
         if description is not None:
             existing_tag.description = description
         if color is not None:
-            existing_tag.color = color
+            # Normalize color to uppercase for consistency
+            existing_tag.color = color.upper()
 
         # Validate updated tag (business rules in Tag entity)
         existing_tag._validate()

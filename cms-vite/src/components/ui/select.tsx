@@ -32,10 +32,28 @@ function useSelectContext() {
 
 export function Select({ value, onValueChange, children, disabled = false }: SelectProps) {
   const [open, setOpen] = React.useState(false);
+  const containerRef = React.useRef<HTMLDivElement>(null);
+
+  // Close dropdown when clicking outside the entire select container
+  React.useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+
+    if (open) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [open]);
 
   return (
     <SelectContext.Provider value={{ value, onValueChange, open, setOpen }}>
-      <div className="relative inline-block w-full">{children}</div>
+      <div ref={containerRef} className="relative inline-block w-full">{children}</div>
     </SelectContext.Provider>
   );
 }
@@ -52,27 +70,9 @@ export function SelectTrigger({
   disabled = false,
 }: SelectTriggerProps) {
   const { open, setOpen } = useSelectContext();
-  const triggerRef = React.useRef<HTMLButtonElement>(null);
-
-  React.useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (triggerRef.current && !triggerRef.current.contains(e.target as Node)) {
-        setOpen(false);
-      }
-    };
-
-    if (open) {
-      document.addEventListener('mousedown', handleClickOutside);
-    }
-
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, [open, setOpen]);
 
   return (
     <button
-      ref={triggerRef}
       type="button"
       disabled={disabled}
       onClick={() => setOpen(!open)}
