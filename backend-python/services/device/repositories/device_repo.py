@@ -201,6 +201,8 @@ class DeviceRepository(IDeviceRepository):
             device_model.deleted_by_id = device.deleted_by_id
         if device.deleted_at is not None:
             device_model.deleted_at = device.deleted_at
+        if device.released_at is not None:
+            device_model.released_at = device.released_at
 
         self.db.commit()
         self.db.refresh(device_model)
@@ -246,6 +248,53 @@ class DeviceRepository(IDeviceRepository):
             DeviceModel.status == 'active',
             DeviceModel.last_seen_at >= five_minutes_ago
         ).all()
+
+        return [self._to_entity(model) for model in device_models]
+
+    def list_released_by_organization(self, organization_id: int) -> List[Device]:
+        """
+        List released devices for Unsigned Pool
+
+        These are devices that were deleted from Device List by admin.
+        They still belong to the same organization and can be re-claimed.
+
+        Args:
+            organization_id: Organization ID (required - released devices keep their org)
+
+        Returns:
+            List of Device entities with status='released'
+        """
+        device_models = self.db.query(DeviceModel).options(
+            selectinload(DeviceModel.assigned_playlist),
+            selectinload(DeviceModel.tags),
+            selectinload(DeviceModel.commands),
+            selectinload(DeviceModel.health_metrics)
+        ).filter(
+            DeviceModel.organization_id == organization_id,
+            DeviceModel.status == 'released'
+        ).order_by(DeviceModel.released_at.desc()).all()
+
+        return [self._to_entity(model) for model in device_models]
+
+    def list_active_by_organization(self, organization_id: int) -> List[Device]:
+        """
+        List active devices for Device List (main tab)
+
+        Args:
+            organization_id: Organization ID
+
+        Returns:
+            List of Device entities with status in ('active', 'inactive')
+        """
+        device_models = self.db.query(DeviceModel).options(
+            selectinload(DeviceModel.assigned_playlist),
+            selectinload(DeviceModel.tags),
+            selectinload(DeviceModel.commands),
+            selectinload(DeviceModel.health_metrics)
+        ).filter(
+            DeviceModel.organization_id == organization_id,
+            DeviceModel.status.in_(['active', 'inactive'])
+        ).order_by(DeviceModel.created_at.desc()).all()
 
         return [self._to_entity(model) for model in device_models]
 

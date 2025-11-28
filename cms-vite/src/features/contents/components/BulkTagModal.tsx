@@ -12,7 +12,7 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Tag, Plus, Loader2 } from 'lucide-react';
-import { Modal } from '@/shared/components';
+import { Modal, Button } from '@/shared/components';
 import { useTags, useAssignTagToContents } from '@/shared/hooks/useSharedTags';
 import type { Content } from '../types/content';
 
@@ -72,32 +72,25 @@ export function BulkTagModal({ isOpen, onClose, selectedContent }: BulkTagModalP
   const footer = (
     <div className="border-t border-gray-200 dark:border-gray-700 px-6 py-4">
       <div className="flex justify-end gap-3">
-        <button
-          type="button"
+        <Button
+          variant="ghost"
           onClick={handleClose}
           disabled={assignMutation.isPending}
-          className="px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg disabled:opacity-50 transition-colors"
         >
           {t('common.cancel')}
-        </button>
-        <button
-          type="button"
+        </Button>
+        <Button
+          variant="primary"
           onClick={handleAssign}
           disabled={!selectedTagId || assignMutation.isPending}
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 transition-colors"
+          loading={assignMutation.isPending}
+          leftIcon={!assignMutation.isPending ? <Plus className="w-4 h-4" /> : undefined}
         >
-          {assignMutation.isPending ? (
-            <>
-              <Loader2 className="w-4 h-4 animate-spin" />
-              {t('contents.actions.assigningTag')}
-            </>
-          ) : (
-            <>
-              <Plus className="w-4 h-4" />
-              {t('contents.actions.assignTag')}
-            </>
-          )}
-        </button>
+          {assignMutation.isPending
+            ? t('contents.actions.assigningTag')
+            : t('contents.actions.assignTag')
+          }
+        </Button>
       </div>
     </div>
   );

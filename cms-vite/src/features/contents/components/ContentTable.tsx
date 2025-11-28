@@ -18,7 +18,6 @@ import {
   Download,
   Edit,
   Filter,
-  X,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { usePagination } from '@/shared/hooks';
@@ -27,9 +26,9 @@ import {
   TableSkeleton,
   EmptyState,
   ErrorDisplay,
-  ConfirmDialog
+  ConfirmDialog,
+  Button,
 } from '@/shared/components';
-import { Button } from '@/components/ui/button';
 import { getApiErrorMessage } from '@/shared/utils/types';
 import { useCanPerformAction } from '@/features/rbac/hooks/usePermissions';
 import {
@@ -44,133 +43,6 @@ import { EditContentModal } from './EditContentModal';
 import { BulkEditModal } from './BulkEditModal';
 import { BulkTagModal } from './BulkTagModal';
 import { ContentPreviewModal } from './ContentPreviewModal';
-
-// Preview Modal
-interface PreviewModalProps {
-  isOpen: boolean;
-  content: Content | null;
-  onClose: () => void;
-}
-
-function PreviewModal({ isOpen, content, onClose }: PreviewModalProps) {
-  if (!isOpen || !content) return null;
-
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
-      <div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-            {content.title}
-          </h3>
-          <button
-            onClick={onClose}
-            className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
-
-        <div className="mb-4">
-          {content.content_type === 'image' && (
-            <img
-              src={content.file_url}
-              alt={content.title}
-              className="w-full rounded-lg"
-            />
-          )}
-          {content.content_type === 'video' && (
-            <video src={content.file_url} controls className="w-full rounded-lg" />
-          )}
-          {content.content_type === 'audio' && (
-            <audio src={content.file_url} controls className="w-full" />
-          )}
-        </div>
-
-        <div className="grid grid-cols-2 gap-4 text-sm">
-          {/* Basic Info */}
-          <div>
-            <p className="text-gray-500 dark:text-gray-400">Type</p>
-            <p className="text-gray-900 dark:text-white font-medium capitalize">
-              {content.content_type}
-            </p>
-          </div>
-          <div>
-            <p className="text-gray-500 dark:text-gray-400">File Size</p>
-            <p className="text-gray-900 dark:text-white font-medium">
-              {formatFileSize(content.file_size)}
-            </p>
-          </div>
-
-          {/* Filename & MIME Type */}
-          <div className="col-span-2">
-            <p className="text-gray-500 dark:text-gray-400">Original Filename</p>
-            <p className="text-gray-900 dark:text-white font-medium break-all">
-              {content.original_filename}
-            </p>
-          </div>
-          <div>
-            <p className="text-gray-500 dark:text-gray-400">MIME Type</p>
-            <p className="text-gray-900 dark:text-white font-medium">
-              {content.mime_type}
-            </p>
-          </div>
-
-          {/* Display Duration */}
-          <div>
-            <p className="text-gray-500 dark:text-gray-400">Display Duration</p>
-            <p className="text-gray-900 dark:text-white font-medium">
-              {content.duration}s
-            </p>
-          </div>
-
-          {/* Resolution & Dimensions */}
-          <div>
-            <p className="text-gray-500 dark:text-gray-400">Resolution</p>
-            <p className="text-gray-900 dark:text-white font-medium">
-              {content.resolution || 'N/A'}
-            </p>
-          </div>
-
-          {/* Status */}
-          <div>
-            <p className="text-gray-500 dark:text-gray-400">Upload Status</p>
-            <p className="text-gray-900 dark:text-white font-medium capitalize">
-              {content.upload_status}
-            </p>
-          </div>
-          <div>
-            <p className="text-gray-500 dark:text-gray-400">Transcoding Status</p>
-            <p className="text-gray-900 dark:text-white font-medium capitalize">
-              {content.transcoding_status}
-            </p>
-          </div>
-
-          {/* Upload Info */}
-          <div>
-            <p className="text-gray-500 dark:text-gray-400">Uploaded At</p>
-            <p className="text-gray-900 dark:text-white font-medium">
-              {new Date(content.created_at).toLocaleString()}
-            </p>
-          </div>
-          <div>
-            <p className="text-gray-500 dark:text-gray-400">Uploaded By</p>
-            <p className="text-gray-900 dark:text-white font-medium">
-              User ID: {content.uploaded_by || 'N/A'}
-            </p>
-          </div>
-
-          {/* Description */}
-          {content.description && (
-            <div className="col-span-2">
-              <p className="text-gray-500 dark:text-gray-400">Description</p>
-              <p className="text-gray-900 dark:text-white">{content.description}</p>
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
 
 // Get content type icon
 function getContentTypeIcon(type: ContentType) {
@@ -314,21 +186,21 @@ export function ContentTable() {
     <div className="space-y-4">
       {/* Action Bar - No duplicate header, title is in PageHeader */}
       <div className="flex items-center justify-end gap-2">
-        <button
+        <Button
+          variant="secondary"
           onClick={() => setShowFilters(!showFilters)}
-          className="px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 flex items-center gap-2"
+          leftIcon={<Filter className="w-4 h-4" />}
         >
-          <Filter className="w-4 h-4" />
           Filters
-        </button>
+        </Button>
         {canCreate && (
-          <button
+          <Button
+            variant="primary"
             onClick={() => setShowUploadModal(true)}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2"
+            leftIcon={<Upload className="w-4 h-4" />}
           >
-            <Upload className="w-4 h-4" />
             Upload Content
-          </button>
+          </Button>
         )}
       </div>
 
@@ -384,12 +256,9 @@ export function ContentTable() {
               </select>
             </div>
             <div className="flex items-end">
-              <button
-                onClick={clearFilters}
-                className="px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
-              >
+              <Button variant="ghost" onClick={clearFilters}>
                 Clear Filters
-              </button>
+              </Button>
             </div>
           </div>
         </div>
@@ -411,30 +280,31 @@ export function ContentTable() {
           <div className="flex gap-2">
             {canUpdate && (
               <>
-                <button
+                <Button
+                  variant="primary"
                   onClick={handleBulkEdit}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2"
+                  leftIcon={<Edit className="w-4 h-4" />}
                 >
-                  <Edit className="w-4 h-4" />
                   Bulk Edit
-                </button>
-                <button
+                </Button>
+                <Button
+                  variant="secondary"
                   onClick={handleBulkTag}
-                  className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 flex items-center gap-2"
+                  leftIcon={<Filter className="w-4 h-4" />}
+                  className="!bg-purple-600 hover:!bg-purple-700 !text-white"
                 >
-                  <Filter className="w-4 h-4" />
                   Bulk Tag
-                </button>
+                </Button>
               </>
             )}
             {canDelete && (
-              <button
+              <Button
+                variant="danger"
                 onClick={handleBulkDelete}
-                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 flex items-center gap-2"
+                leftIcon={<Trash2 className="w-4 h-4" />}
               >
-                <Trash2 className="w-4 h-4" />
                 Delete Selected
-              </button>
+              </Button>
             )}
           </div>
         </div>
@@ -543,38 +413,46 @@ export function ContentTable() {
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm">
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-1">
                           {canUpdate && (
-                            <button
+                            <Button
+                              variant="icon"
+                              size="sm"
                               onClick={() => handleEdit(content)}
-                              className="text-green-600 hover:text-green-700 dark:text-green-400"
                               title="Edit"
+                              className="!text-green-600 hover:!text-green-700 dark:!text-green-400"
                             >
                               <Edit className="w-4 h-4" />
-                            </button>
+                            </Button>
                           )}
-                          <button
+                          <Button
+                            variant="icon"
+                            size="sm"
                             onClick={() => handlePreview(content)}
-                            className="text-blue-600 hover:text-blue-700 dark:text-blue-400"
                             title="Preview"
+                            className="!text-blue-600 hover:!text-blue-700 dark:!text-blue-400"
                           >
                             <Eye className="w-4 h-4" />
-                          </button>
-                          <button
+                          </Button>
+                          <Button
+                            variant="icon"
+                            size="sm"
                             onClick={() => handleDownload(content)}
-                            className="text-gray-600 hover:text-gray-700 dark:text-gray-400"
                             title="Download"
+                            className="!text-gray-600 hover:!text-gray-700 dark:!text-gray-400"
                           >
                             <Download className="w-4 h-4" />
-                          </button>
+                          </Button>
                           {canDelete && (
-                            <button
+                            <Button
+                              variant="icon"
+                              size="sm"
                               onClick={() => setContentToDelete(content)}
-                              className="text-red-600 hover:text-red-700 dark:text-red-400"
                               title="Delete"
+                              className="!text-red-600 hover:!text-red-700 dark:!text-red-400"
                             >
                               <Trash2 className="w-4 h-4" />
-                            </button>
+                            </Button>
                           )}
                         </div>
                       </td>

@@ -546,8 +546,8 @@ async def activate_device(
 
 @router.get(DeviceRoutes.LIST, response_model=DeviceListResponse)
 def list_devices(
-    scope: str = Query("my_org", description="Scope: my_org (default), unassigned, or all"),
-    status_filter: Optional[str] = Query(None, description="Filter by status: active, pending, inactive"),
+    scope: str = Query("my_org", description="Scope: my_org (default), released, pending, or all"),
+    status_filter: Optional[str] = Query(None, description="Filter by status: active, pending, inactive, released"),
     online_only: bool = Query(False, description="Show only online devices"),
     use_case: ListDevicesUseCase = Depends(get_list_devices_use_case),
     current_user: dict = Depends(require_permission("devices", "read"))
@@ -556,14 +556,16 @@ def list_devices(
     List devices with scope filter (called by CMS)
 
     Scopes:
-    - my_org (default): Devices assigned to current user's organization
-    - unassigned: Devices with organization_id = NULL (global pool for claiming)
+    - my_org (default): Active/inactive devices in Device List
+    - released: Released devices in Unsigned Pool (same organization)
+    - pending: Pending devices waiting to be claimed (org_id = NULL)
+    - unassigned: Alias for pending (backward compatibility)
     - all: All devices (super admin only)
 
     Requires: devices.read permission
     """
     # Validate scope
-    valid_scopes = ["my_org", "unassigned", "all"]
+    valid_scopes = ["my_org", "released", "pending", "unassigned", "all"]
     if scope not in valid_scopes:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -597,15 +599,16 @@ def list_devices(
 
     try:
         # Determine organization_id based on scope
-        if scope == "my_org":
+        if scope == "my_org" or scope == "released":
+            # Both my_org and released need user's organization
             organization_id = current_user["organization_id"]
             if not organization_id:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail="User must belong to an organization"
                 )
-        elif scope == "unassigned":
-            # Query devices with organization_id = NULL
+        elif scope in ["unassigned", "pending"]:
+            # Query devices with organization_id = NULL (pending/unassigned)
             organization_id = None
         else:  # all
             # Super admin - query all devices
@@ -1049,10 +1052,14 @@ def hard_reset_device(
     # Store original state for audit
     original_org_id = device.organization_id
     original_status = device.status
+    original_code = device.unique_code
 
-    # Set status to released (same action as CMS release)
+    # Hard reset: set status to released AND clear unique_code
+    # This disconnects the device record from the player
+    # Player will request new code and create NEW device record
     device.status = 'released'
     device.released_at = datetime.now(timezone.utc)
+    device.unique_code = None  # Clear code - player will get new one
 
     updated_device = device_repo.update(device)
 

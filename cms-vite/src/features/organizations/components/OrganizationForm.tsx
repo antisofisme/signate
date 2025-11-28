@@ -8,10 +8,8 @@
 import { useForm, FormProvider } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { Loader2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { FormInput, FormTextarea } from '@/shared/components';
-import { Button } from '@/components/ui/button';
+import { Modal, Button, FormInput, FormTextarea } from '@/shared/components';
 import type {
   Organization,
   CreateOrganizationRequest,
@@ -86,111 +84,113 @@ export function OrganizationForm({
     }
   };
 
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 overflow-y-auto">
-      <div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-2xl my-8">
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-          {organization ? t('organizations.editOrganization') : t('organizations.createOrganization')}
-        </h3>
-
-        <FormProvider {...methods}>
-          <form onSubmit={methods.handleSubmit(handleFormSubmit)} className="space-y-4">
-            {/* Name */}
-            <FormInput
-              name="name"
-              label={`${t('organizations.organizationName')} *`}
-              placeholder={t('organizations.organizationNamePlaceholder', 'Enter organization name')}
-              required
-            />
-
-            {/* Description */}
-            <FormTextarea
-              name="description"
-              label={t('organizations.description')}
-              placeholder={t('organizations.descriptionPlaceholder')}
-              rows={3}
-            />
-
-            {/* Address */}
-            <FormTextarea
-              name="address"
-              label={t('organizations.address')}
-              placeholder={t('organizations.addressPlaceholder')}
-              rows={2}
-            />
-
-            {/* Contact Info - Grid */}
-            <div className="grid grid-cols-2 gap-4">
-              <FormInput
-                name="contact_email"
-                label={t('organizations.contactEmail')}
-                type="email"
-                placeholder={t('organizations.contactEmailPlaceholder')}
-              />
-              <FormInput
-                name="contact_phone"
-                label={t('organizations.contactPhone')}
-                type="tel"
-                placeholder={t('organizations.contactPhonePlaceholder')}
-              />
-            </div>
-
-            {/* Logo URL */}
-            <FormInput
-              name="logo_url"
-              label={t('organizations.logoUrl')}
-              type="url"
-              placeholder={t('organizations.logoUrlPlaceholder')}
-            />
-
-            {/* Active Status - only for Edit */}
-            {organization && (
-              <div className="flex items-center gap-2 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
-                <input
-                  type="checkbox"
-                  id="isActive"
-                  {...methods.register('is_active')}
-                  className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                />
-                <label
-                  htmlFor="isActive"
-                  className="text-sm font-medium text-gray-700 dark:text-gray-300 cursor-pointer"
-                >
-                  {t('organizations.organizationIsActive')}
-                </label>
-              </div>
-            )}
-
-            {/* Action Buttons */}
-            <div className="flex justify-end gap-3 pt-4">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={onClose}
-                disabled={isLoading}
-              >
-                {t('organizations.cancel')}
-              </Button>
-              <Button
-                type="submit"
-                disabled={isLoading}
-              >
-                {isLoading ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                    {t('organizations.saving')}
-                  </>
-                ) : organization ? (
-                  t('organizations.update')
-                ) : (
-                  t('organizations.create')
-                )}
-              </Button>
-            </div>
-          </form>
-        </FormProvider>
+  // Footer with action buttons
+  const footer = (
+    <div className="border-t border-gray-200 dark:border-gray-700 px-6 py-4">
+      <div className="flex justify-end gap-3">
+        <Button
+          variant="ghost"
+          onClick={onClose}
+          disabled={isLoading}
+        >
+          {t('organizations.cancel')}
+        </Button>
+        <Button
+          variant="primary"
+          type="submit"
+          form="organization-form"
+          disabled={isLoading}
+          loading={isLoading}
+        >
+          {organization ? t('organizations.update') : t('organizations.create')}
+        </Button>
       </div>
     </div>
+  );
+
+  return (
+    <Modal
+      isOpen={true}
+      onClose={onClose}
+      title={organization ? t('organizations.editOrganization') : t('organizations.createOrganization')}
+      maxWidth="2xl"
+      footer={footer}
+      closeOnBackdropClick={!isLoading}
+    >
+      <FormProvider {...methods}>
+        <form
+          id="organization-form"
+          onSubmit={methods.handleSubmit(handleFormSubmit)}
+          className="p-6 space-y-4"
+        >
+          {/* Name */}
+          <FormInput
+            name="name"
+            label={`${t('organizations.organizationName')} *`}
+            placeholder={t('organizations.organizationNamePlaceholder', 'Enter organization name')}
+            required
+          />
+
+          {/* Description */}
+          <FormTextarea
+            name="description"
+            label={t('organizations.description')}
+            placeholder={t('organizations.descriptionPlaceholder')}
+            rows={3}
+          />
+
+          {/* Address */}
+          <FormTextarea
+            name="address"
+            label={t('organizations.address')}
+            placeholder={t('organizations.addressPlaceholder')}
+            rows={2}
+          />
+
+          {/* Contact Info - Grid */}
+          <div className="grid grid-cols-2 gap-4">
+            <FormInput
+              name="contact_email"
+              label={t('organizations.contactEmail')}
+              type="email"
+              placeholder={t('organizations.contactEmailPlaceholder')}
+            />
+            <FormInput
+              name="contact_phone"
+              label={t('organizations.contactPhone')}
+              type="tel"
+              placeholder={t('organizations.contactPhonePlaceholder')}
+            />
+          </div>
+
+          {/* Logo URL */}
+          <FormInput
+            name="logo_url"
+            label={t('organizations.logoUrl')}
+            type="url"
+            placeholder={t('organizations.logoUrlPlaceholder')}
+          />
+
+          {/* Active Status - only for Edit */}
+          {organization && (
+            <div className="flex items-center gap-2 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+              <input
+                type="checkbox"
+                id="isActive"
+                {...methods.register('is_active')}
+                className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+              />
+              <label
+                htmlFor="isActive"
+                className="text-sm font-medium text-gray-700 dark:text-gray-300 cursor-pointer"
+              >
+                {t('organizations.organizationIsActive')}
+              </label>
+            </div>
+          )}
+        </form>
+      </FormProvider>
+    </Modal>
   );
 }
 

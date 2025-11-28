@@ -27,9 +27,8 @@ import {
   WifiOff,
 } from 'lucide-react';
 import { usePagination } from '@/shared/hooks';
-import { Pagination } from '@/shared/components';
+import { Pagination, Button } from '@/shared/components';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import { useDeviceLogs, useClearLogs, useConnectionLogs } from '../hooks/useDeviceLogs';
@@ -275,7 +274,7 @@ export function DeviceLogsViewer({
                 Clear
               </Button>
 
-              <Button variant={autoRefresh ? 'default' : 'outline'} size="sm" onClick={() => setAutoRefresh(!autoRefresh)} className="h-8 px-2 text-xs">
+              <Button variant={autoRefresh ? 'primary' : 'outline'} size="sm" onClick={() => setAutoRefresh(!autoRefresh)} className="h-8 px-2 text-xs">
                 <RefreshCw className={`w-3 h-3 mr-1 ${autoRefresh ? 'animate-spin' : ''}`} />
                 Auto
               </Button>

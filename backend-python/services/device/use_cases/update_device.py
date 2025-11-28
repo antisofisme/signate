@@ -134,15 +134,22 @@ class UpdateDeviceUseCase:
         deleted_by_id: Optional[int] = None
     ) -> bool:
         """
-        Soft delete a device (set deleted_at timestamp)
+        Release a device (move to Unsigned Pool)
+
+        When admin deletes a device from Device List:
+        - status = 'released' (not 'inactive')
+        - released_at = current timestamp
+        - organization_id = KEPT (device still belongs to same org)
+        - Device will appear in Unsigned Pool for same organization
+        - Device can be re-claimed from Unsigned Pool
 
         Args:
-            device_id: Device ID to delete
+            device_id: Device ID to delete/release
             current_user_org_id: Current user's organization ID for authorization
             deleted_by_id: User ID who deleted this device (audit trail)
 
         Returns:
-            True if deleted successfully, False if device not found
+            True if released successfully, False if device not found
 
         Raises:
             PermissionError: If user tries to delete device from another organization
@@ -160,9 +167,10 @@ class UpdateDeviceUseCase:
                 f"user belongs to organization {current_user_org_id}"
             )
 
-        # Soft delete with audit trail
-        device.deleted_at = datetime.now(timezone.utc)
-        device.status = 'inactive'
+        # Release device (move to Unsigned Pool)
+        # Note: organization_id is KEPT - device still belongs to same org
+        device.status = 'released'
+        device.released_at = datetime.now(timezone.utc)
         if deleted_by_id is not None:
             device.deleted_by_id = deleted_by_id
 

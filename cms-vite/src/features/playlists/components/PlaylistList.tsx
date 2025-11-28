@@ -5,8 +5,7 @@
 
 import { Pencil, Trash2, Clock, FileText, List, Monitor, Plus } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { TableSkeleton, EmptyState } from '@/shared/components';
-import { Button } from '@/components/ui/button';
+import { TableSkeleton, EmptyState, Button } from '@/shared/components';
 import type { Playlist } from '../types/playlist';
 
 interface PlaylistListProps {

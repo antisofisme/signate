@@ -7,8 +7,7 @@
 
 import { Building, Shield, Edit, Trash2, Users, Monitor, Plus } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { EmptyState } from '@/shared/components';
-import { Button } from '@/components/ui/button';
+import { EmptyState, Button } from '@/shared/components';
 import type { Organization } from '../types/organization';
 
 interface OrganizationListProps {

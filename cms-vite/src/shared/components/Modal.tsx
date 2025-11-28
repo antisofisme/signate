@@ -19,6 +19,7 @@
 import { ReactNode, useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
+import Button from './common/Button';
 
 // Constants - centralized configuration
 const MODAL_Z_INDEX = 9999;
@@ -233,13 +234,14 @@ export function Modal({
               )}
             </div>
             {showCloseButton && (
-              <button
+              <Button
+                variant="icon"
+                size="md"
                 onClick={onClose}
-                className="p-2 rounded-lg bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-500 dark:text-gray-400 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
                 aria-label="Close modal"
               >
                 <X className="w-5 h-5" aria-hidden="true" />
-              </button>
+              </Button>
             )}
           </div>
         )}

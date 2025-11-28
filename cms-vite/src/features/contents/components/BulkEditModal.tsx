@@ -11,10 +11,10 @@
 
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Save, Loader2, FileImage, FileVideo, FileAudio } from 'lucide-react';
+import { Save, FileImage, FileVideo, FileAudio, Loader2 } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { Modal } from '@/shared/components';
+import { Modal, Button } from '@/shared/components';
 import { apiClient } from '@/lib/api/client';
 import { API_ENDPOINTS } from '@/lib/api/endpoints';
 import type { Content } from '../types/content';
@@ -146,32 +146,26 @@ export function BulkEditModal({ isOpen, onClose, selectedContent }: BulkEditModa
   const footer = (
     <div className="border-t border-gray-200 dark:border-gray-700 px-6 py-4">
       <div className="flex justify-end gap-3">
-        <button
-          type="button"
+        <Button
+          variant="ghost"
           onClick={handleClose}
           disabled={updating}
-          className="px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg disabled:opacity-50 transition-colors"
         >
           {t('contents.buttons.cancel')}
-        </button>
-        <button
+        </Button>
+        <Button
+          variant="primary"
           type="submit"
           form="bulk-edit-form"
           disabled={updating || (bulkDuration === '' && bulkIsActive === null)}
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 transition-colors"
+          loading={updating}
+          leftIcon={!updating ? <Save className="w-4 h-4" /> : undefined}
         >
-          {updating ? (
-            <>
-              <Loader2 className="w-4 h-4 animate-spin" />
-              {t('contents.buttons.updatingItems', { count: selectedContent.length })}
-            </>
-          ) : (
-            <>
-              <Save className="w-4 h-4" />
-              {t('contents.buttons.updateAll')}
-            </>
-          )}
-        </button>
+          {updating
+            ? t('contents.buttons.updatingItems', { count: selectedContent.length })
+            : t('contents.buttons.updateAll')
+          }
+        </Button>
       </div>
     </div>
   );

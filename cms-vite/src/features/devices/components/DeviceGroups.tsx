@@ -14,9 +14,9 @@ import {
   CardGridSkeleton,
   EmptyState,
   ErrorDisplay,
-  ConfirmDialog
+  ConfirmDialog,
+  Button
 } from '@/shared/components'
-import { Button } from '@/components/ui/button'
 import { groupsApi } from '../api/groupsApi'
 import { deviceApi } from '../api/deviceApi'
 import type { DeviceGroup, CreateDeviceGroupRequest, UpdateDeviceGroupRequest } from '../types/groups'

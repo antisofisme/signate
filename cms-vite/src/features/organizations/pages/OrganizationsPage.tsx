@@ -16,8 +16,7 @@ import {
 } from '../hooks/useOrganizations';
 import { OrganizationList } from '../components/OrganizationList';
 import { OrganizationForm } from '../components/OrganizationForm';
-import { ConfirmDialog, TableSkeleton, AccessDenied } from '@/shared/components';
-import { Button } from '@/components/ui/button';
+import { ConfirmDialog, TableSkeleton, AccessDenied, Button } from '@/shared/components';
 import { useCanPerformAction } from '@/features/rbac/hooks/usePermissions';
 import type {
   Organization,

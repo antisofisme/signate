@@ -7,8 +7,7 @@
 
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { PageHeader, AccessDenied } from '@/shared/components';
-import { Button } from '@/components/ui/button';
+import { PageHeader, AccessDenied, Button } from '@/shared/components';
 import { ArrowLeft, TrendingUp } from 'lucide-react';
 import { useOrganizationQuota } from '../hooks/useOrganizationQuota';
 import { QuotaDashboard } from '../components/QuotaDashboard';

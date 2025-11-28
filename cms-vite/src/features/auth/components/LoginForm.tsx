@@ -5,9 +5,9 @@
 
 import { useState, FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Loader2 } from 'lucide-react';
 import { useLogin } from '../hooks/useAuth';
 import { validators } from '@/lib/validation/schemas';
+import { Button } from '@/shared/components';
 
 export function LoginForm() {
   const { t } = useTranslation();
@@ -125,26 +125,17 @@ export function LoginForm() {
       </div>
 
       {/* Submit Button */}
-      <button
+      <Button
         type="submit"
+        variant="primary"
+        fullWidth
         disabled={isPending || !username || !password}
+        loading={isPending}
         aria-busy={isPending}
         aria-label={isPending ? t('auth.loggingIn', 'Logging in...') : t('auth.login', 'Login')}
-        className={`w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white transition-colors ${
-          isPending || !username || !password
-            ? 'bg-gray-400 cursor-not-allowed'
-            : 'bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500'
-        }`}
       >
-        {isPending ? (
-          <span className="flex items-center">
-            <Loader2 className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" aria-hidden="true" />
-            <span>{t('auth.loggingIn', 'Logging in...')}</span>
-          </span>
-        ) : (
-          t('auth.login', 'Login')
-        )}
-      </button>
+        {isPending ? t('auth.loggingIn', 'Logging in...') : t('auth.login', 'Login')}
+      </Button>
     </form>
   );
 }

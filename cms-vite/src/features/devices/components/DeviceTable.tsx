@@ -43,6 +43,7 @@ import {
   EmptyState,
   ErrorDisplay,
   ConfirmDialog,
+  Button,
 } from '@/shared/components';
 import { useCanPerformAction } from '@/features/rbac/hooks/usePermissions';
 
@@ -93,8 +94,8 @@ export function DeviceTable() {
   const { hasPermission: canUpdate } = useCanPerformAction('devices', 'edit');
   const { hasPermission: canDelete } = useCanPerformAction('devices', 'delete');
 
-  // Scope filter (my_org or unassigned)
-  const [scope, setScope] = useState<'my_org' | 'unassigned'>('my_org');
+  // Scope filter (my_org for Device List, released for Unsigned Pool)
+  const [scope, setScope] = useState<'my_org' | 'released'>('my_org');
 
   // Filters
   const [statusFilter, setStatusFilter] = useState<DeviceStatus | 'all'>('all');
@@ -237,13 +238,13 @@ export function DeviceTable() {
             {t('devices.tabs.myDevices')}
           </button>
           <button
-            onClick={() => setScope('unassigned')}
+            onClick={() => setScope('released')}
             role="tab"
-            aria-selected={scope === 'unassigned'}
+            aria-selected={scope === 'released'}
             aria-controls="device-table-panel"
-            id="tab-unassigned"
+            id="tab-released"
             className={`flex-1 px-6 py-3 text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500 ${
-              scope === 'unassigned'
+              scope === 'released'
                 ? 'text-blue-600 dark:text-blue-400 border-b-2 border-blue-600 dark:border-blue-400'
                 : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
             }`}
@@ -267,52 +268,47 @@ export function DeviceTable() {
 
           <div className="flex items-center gap-2">
             {/* Refresh Button */}
-            <button
+            <Button
+              variant="outline"
               onClick={handleRefresh}
               disabled={isFetching}
-              className="flex items-center gap-2 px-3 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors disabled:opacity-50"
               title={t('common.refresh', 'Refresh')}
               aria-label={t('common.refresh', 'Refresh device list')}
-            >
-              <RefreshCw className={`w-4 h-4 ${isFetching ? 'animate-spin' : ''}`} />
-            </button>
+              leftIcon={<RefreshCw className={`w-4 h-4 ${isFetching ? 'animate-spin' : ''}`} />}
+            />
 
             {/* Register TV Button */}
             {canCreate && (
-              <button
+              <Button
+                variant="primary"
                 onClick={() => setTvRegisterModal(true)}
-                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                leftIcon={<><Plus className="w-4 h-4" /><Tv className="w-4 h-4" /></>}
               >
-                <Plus className="w-4 h-4" />
-                <Tv className="w-4 h-4" />
                 {t('devices.buttons.registerTV')}
-              </button>
+              </Button>
             )}
 
             {/* Register Monitor Button */}
             {canCreate && (
-              <button
+              <Button
+                variant="secondary"
                 onClick={() => setMonitorRegisterModal(true)}
-                className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+                leftIcon={<><Plus className="w-4 h-4" /><Monitor className="w-4 h-4" /></>}
+                className="!bg-purple-600 hover:!bg-purple-700 !text-white"
               >
-                <Plus className="w-4 h-4" />
-                <Monitor className="w-4 h-4" />
                 {t('devices.buttons.registerMonitor')}
-              </button>
+              </Button>
             )}
 
             {/* Filter Button */}
-            <button
+            <Button
+              variant={showFilters ? 'primary' : 'outline'}
               onClick={() => setShowFilters(!showFilters)}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg border transition-colors ${
-                showFilters
-                  ? 'bg-blue-50 dark:bg-blue-900 border-blue-200 dark:border-blue-700 text-blue-700 dark:text-blue-200'
-                  : 'border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
-              }`}
+              leftIcon={<Filter className="w-4 h-4" />}
+              className={showFilters ? '!bg-blue-50 dark:!bg-blue-900 !text-blue-700 dark:!text-blue-200' : ''}
             >
-              <Filter className="w-4 h-4" />
               {t('devices.filters.filters')}
-            </button>
+            </Button>
           </div>
         </div>
 
@@ -400,12 +396,12 @@ export function DeviceTable() {
             }
             action={
               canCreate && scope === 'my_org' && (
-                <button
+                <Button
+                  variant="primary"
                   onClick={() => setTvRegisterModal(true)}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
                 >
                   {t('devices.buttons.registerTV')}
-                </button>
+                </Button>
               )
             }
           />
@@ -470,69 +466,69 @@ export function DeviceTable() {
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <div className="flex items-center justify-end gap-1" role="group" aria-label={t('devices.table.actionsFor', { name: device.device_name })}>
                         {/* View Logs - Opens Device Logs Modal */}
-                        <button
-                          onClick={() =>
-                            setLogsModal({ isOpen: true, device })
-                          }
-                          className="p-2 rounded-lg text-purple-600 hover:text-purple-800 hover:bg-purple-50 dark:text-purple-400 dark:hover:text-purple-300 dark:hover:bg-purple-900/20 transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2"
+                        <Button
+                          variant="icon"
+                          size="sm"
+                          onClick={() => setLogsModal({ isOpen: true, device })}
                           title={t('devices.actions.viewLogs')}
                           aria-label={t('devices.actions.viewLogsFor', { name: device.device_name })}
+                          className="!text-purple-600 hover:!text-purple-800 dark:!text-purple-400"
                         >
                           <Terminal className="w-4 h-4" aria-hidden="true" />
-                        </button>
+                        </Button>
 
                         {/* View Device - Opens unified modal (Overview tab) */}
-                        <button
-                          onClick={() =>
-                            setDeviceManagementModal({ isOpen: true, device, defaultTab: 'overview' })
-                          }
-                          className="p-2 rounded-lg text-gray-600 hover:text-gray-800 hover:bg-gray-100 dark:text-gray-400 dark:hover:text-gray-300 dark:hover:bg-gray-700 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                        <Button
+                          variant="icon"
+                          size="sm"
+                          onClick={() => setDeviceManagementModal({ isOpen: true, device, defaultTab: 'overview' })}
                           title={t('devices.actions.viewDevice')}
                           aria-label={t('devices.actions.viewDeviceFor', { name: device.device_name })}
+                          className="!text-gray-600 hover:!text-gray-800 dark:!text-gray-400"
                         >
                           <Eye className="w-4 h-4" aria-hidden="true" />
-                        </button>
+                        </Button>
 
                         {/* Content Management - Opens separate UnifiedContentAssignmentModal */}
                         {canUpdate && (
-                          <button
-                            onClick={() =>
-                              setContentAssignmentModal({ isOpen: true, device, defaultTab: 'direct' })
-                            }
-                            className="p-2 rounded-lg text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50 dark:text-indigo-400 dark:hover:text-indigo-300 dark:hover:bg-indigo-900/20 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+                          <Button
+                            variant="icon"
+                            size="sm"
+                            onClick={() => setContentAssignmentModal({ isOpen: true, device, defaultTab: 'direct' })}
                             title={t('devices.actions.manageContent')}
                             aria-label={t('devices.actions.manageContentFor', { name: device.device_name })}
+                            className="!text-indigo-600 hover:!text-indigo-800 dark:!text-indigo-400"
                           >
                             <FileText className="w-4 h-4" aria-hidden="true" />
-                          </button>
+                          </Button>
                         )}
 
                         {/* Edit/Settings - Opens standalone Settings Modal */}
                         {canUpdate && (
-                          <button
-                            onClick={() =>
-                              setSettingsModal({ isOpen: true, device })
-                            }
-                            className="p-2 rounded-lg text-gray-600 hover:text-gray-800 hover:bg-gray-100 dark:text-gray-400 dark:hover:text-gray-300 dark:hover:bg-gray-700 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                          <Button
+                            variant="icon"
+                            size="sm"
+                            onClick={() => setSettingsModal({ isOpen: true, device })}
                             title={t('devices.actions.editSettings')}
                             aria-label={t('devices.actions.editSettingsFor', { name: device.device_name })}
+                            className="!text-gray-600 hover:!text-gray-800 dark:!text-gray-400"
                           >
                             <Edit className="w-4 h-4" aria-hidden="true" />
-                          </button>
+                          </Button>
                         )}
 
                         {/* Delete Device */}
                         {canDelete && (
-                          <button
-                            onClick={() =>
-                              setDeleteModal({ isOpen: true, device })
-                            }
-                            className="p-2 rounded-lg text-red-600 hover:text-red-800 hover:bg-red-50 dark:text-red-400 dark:hover:text-red-300 dark:hover:bg-red-900/20 transition-colors focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
+                          <Button
+                            variant="icon"
+                            size="sm"
+                            onClick={() => setDeleteModal({ isOpen: true, device })}
                             title={t('devices.actions.deleteDevice')}
                             aria-label={t('devices.actions.deleteDeviceFor', { name: device.device_name })}
+                            className="!text-red-600 hover:!text-red-800 dark:!text-red-400"
                           >
                             <Trash2 className="w-4 h-4" aria-hidden="true" />
-                          </button>
+                          </Button>
                         )}
                       </div>
                     </td>

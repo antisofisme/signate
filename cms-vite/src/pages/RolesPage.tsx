@@ -6,8 +6,7 @@
 import React, { useState } from 'react';
 import { Plus, Search, Shield, Key } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { PageHeader, PageSkeleton, EmptyState, ConfirmDialog } from '@/shared/components';
-import { Button } from '@/components/ui/button';
+import { PageHeader, PageSkeleton, EmptyState, ConfirmDialog, Button } from '@/shared/components';
 import { RoleCard } from '@/features/rbac/components/RoleCard';
 import { RoleForm } from '@/features/rbac/components/RoleForm';
 import { useRoles, useCreateRole, useUpdateRole, useDeleteRole } from '@/features/rbac/hooks/useRoles';

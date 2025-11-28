@@ -5,10 +5,10 @@
 
 import { useState, FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Loader2 } from 'lucide-react';
 import { useRegister } from '../hooks/useAuth';
 import { validators } from '@/lib/validation/schemas';
 import { PasswordStrengthIndicator } from './PasswordStrengthIndicator';
+import { Button } from '@/shared/components';
 
 export function RegisterForm() {
   const { t } = useTranslation();
@@ -266,8 +266,10 @@ export function RegisterForm() {
       </div>
 
       {/* Submit Button */}
-      <button
+      <Button
         type="submit"
+        variant="primary"
+        fullWidth
         disabled={
           isPending ||
           !formData.username ||
@@ -276,26 +278,10 @@ export function RegisterForm() {
           !formData.password ||
           !formData.confirmPassword
         }
-        className={`w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white ${
-          isPending ||
-          !formData.username ||
-          !formData.email ||
-          !formData.full_name ||
-          !formData.password ||
-          !formData.confirmPassword
-            ? 'bg-gray-400 cursor-not-allowed'
-            : 'bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500'
-        }`}
+        loading={isPending}
       >
-        {isPending ? (
-          <span className="flex items-center">
-            <Loader2 className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" />
-            Loading...
-          </span>
-        ) : (
-          'Daftar'
-        )}
-      </button>
+        {isPending ? 'Loading...' : 'Daftar'}
+      </Button>
     </form>
   );
 }

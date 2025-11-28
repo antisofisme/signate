@@ -13,8 +13,8 @@ import {
   DialogBody,
   DialogFooter,
 } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import Button from '../common/Button';
 
 type ConfirmVariant = 'danger' | 'warning' | 'info';
 
@@ -35,17 +35,17 @@ const variantConfig = {
   danger: {
     icon: Trash2,
     iconClass: 'text-red-500 bg-red-100 dark:bg-red-900/20',
-    buttonClass: 'bg-red-600 hover:bg-red-700 text-white',
+    buttonVariant: 'danger' as const,
   },
   warning: {
     icon: AlertTriangle,
     iconClass: 'text-amber-500 bg-amber-100 dark:bg-amber-900/20',
-    buttonClass: 'bg-amber-600 hover:bg-amber-700 text-white',
+    buttonVariant: 'warning' as const,
   },
   info: {
     icon: Info,
     iconClass: 'text-blue-500 bg-blue-100 dark:bg-blue-900/20',
-    buttonClass: 'bg-blue-600 hover:bg-blue-700 text-white',
+    buttonVariant: 'primary' as const,
   },
 };
 
@@ -100,7 +100,7 @@ export function ConfirmDialog({
         <DialogFooter>
           <Button
             type="button"
-            variant="outline"
+            variant="ghost"
             onClick={handleCancel}
             disabled={isLoading}
           >
@@ -108,18 +108,12 @@ export function ConfirmDialog({
           </Button>
           <Button
             type="button"
+            variant={config.buttonVariant}
             onClick={handleConfirm}
             disabled={isLoading}
-            className={config.buttonClass}
+            loading={isLoading}
           >
-            {isLoading ? (
-              <span className="flex items-center gap-2">
-                <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
-                {t('common.processing', 'Processing...')}
-              </span>
-            ) : (
-              confirmLabel || t('common.confirm', 'Confirm')
-            )}
+            {confirmLabel || t('common.confirm', 'Confirm')}
           </Button>
         </DialogFooter>
       </DialogContent>

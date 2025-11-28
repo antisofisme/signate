@@ -9,7 +9,7 @@ import { Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: 'primary' | 'secondary' | 'danger' | 'success' | 'warning' | 'ghost' | 'outline';
+  variant?: 'primary' | 'secondary' | 'danger' | 'success' | 'warning' | 'ghost' | 'outline' | 'icon';
   size?: 'sm' | 'md' | 'lg';
   loading?: boolean;
   fullWidth?: boolean;
@@ -49,17 +49,28 @@ const Button = memo<ButtonProps>(function Button({
     warning: 'bg-orange-600 text-white hover:bg-orange-700 focus:ring-orange-500 shadow-sm hover:shadow-md',
     ghost: 'bg-transparent text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 focus:ring-gray-400',
     outline: 'bg-transparent border-2 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 hover:border-gray-400 dark:hover:border-gray-500 focus:ring-gray-400',
+    icon: 'p-2 bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600 focus:ring-blue-500',
+  };
+
+  // Size styles for icon variant (square buttons)
+  const iconSizeStyles = {
+    sm: 'p-1.5',
+    md: 'p-2',
+    lg: 'p-2.5',
   };
 
   // Loading spinner using lucide-react
   const LoadingSpinner = () => <Loader2 className="h-4 w-4 animate-spin" />;
+
+  // For icon variant, use icon-specific sizing
+  const appliedSizeStyles = variant === 'icon' ? iconSizeStyles[size] : sizeStyles[size];
 
   return (
     <button
       type={type}
       className={cn(
         baseStyles,
-        sizeStyles[size],
+        appliedSizeStyles,
         variantStyles[variant],
         fullWidth && 'w-full',
         className
@@ -69,7 +80,7 @@ const Button = memo<ButtonProps>(function Button({
     >
       {loading && <LoadingSpinner />}
       {!loading && leftIcon && <span className="inline-flex">{leftIcon}</span>}
-      <span>{children}</span>
+      {children && <span>{children}</span>}
       {!loading && rightIcon && <span className="inline-flex">{rightIcon}</span>}
     </button>
   );

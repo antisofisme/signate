@@ -9,7 +9,7 @@ import { Check, Copy, Tv } from 'lucide-react';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
-import { Modal } from '@/shared/components';
+import { Modal, Button } from '@/shared/components';
 import type { Device } from '../../types/device';
 
 interface ActivationCodeModalProps {
@@ -77,12 +77,9 @@ export function ActivationCodeModal({
   const footer = (
     <div className="border-t border-gray-200 dark:border-gray-700 px-6 py-4">
       <div className="flex justify-end">
-        <button
-          onClick={onClose}
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-        >
+        <Button variant="primary" onClick={onClose}>
           {t('devices.modals.gotIt')}
-        </button>
+        </Button>
       </div>
     </div>
   );
@@ -108,17 +105,18 @@ export function ActivationCodeModal({
                 {activationCode || '------'}
               </div>
               {/* Copy Button */}
-              <button
+              <Button
+                variant="icon"
                 onClick={handleCopy}
-                className="p-2 hover:bg-blue-100 dark:hover:bg-blue-800 rounded-lg transition-colors"
                 title={t('devices.actions.copyCode')}
+                className="hover:bg-blue-100 dark:hover:bg-blue-800"
               >
                 {copied ? (
                   <Check className="w-5 h-5 text-green-600 dark:text-green-400" />
                 ) : (
                   <Copy className="w-5 h-5 text-gray-600 dark:text-gray-400" />
                 )}
-              </button>
+              </Button>
             </div>
 
             {/* Timer */}
