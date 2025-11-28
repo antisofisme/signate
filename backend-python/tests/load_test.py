@@ -13,9 +13,10 @@ from datetime import datetime, timezone
 from typing import List, Dict, Any
 import statistics
 
-# Configuration
-BASE_URL = "http://192.168.5.12:8001"
-API_PREFIX = "/api/v1"
+# Configuration - Use environment variables or defaults
+import os
+BASE_URL = os.environ.get("API_BASE_URL", "http://localhost:8001")
+API_PREFIX = os.environ.get("API_PREFIX", "/api/v1")
 
 # Test user credentials
 TEST_USERS = [

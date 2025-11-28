@@ -36,6 +36,11 @@ class OrganizationRoutes:
     DELETE = f"{BASE}/{{org_id}}"
     VALIDATE_PIN = f"{BASE}/{{org_id}}/validate-pin"
 
+    # Quota management
+    QUOTA = f"{BASE}/{{org_id}}/quota"
+    QUOTA_USAGE = f"{BASE}/{{org_id}}/quota/usage"
+    QUOTA_UPDATE = f"{BASE}/{{org_id}}/quota"
+
 
 # =============================================================================
 # USER MANAGEMENT SERVICE ROUTES
@@ -69,6 +74,7 @@ class DeviceRoutes:
     GET = f"{BASE}/{{device_id}}"
     UPDATE = f"{BASE}/{{device_id}}"
     DELETE = f"{BASE}/{{device_id}}"
+    ME = f"{BASE}/me"  # Get current device info (for authenticated devices)
 
     # Registration endpoints
     REQUEST_CODE = f"{BASE}/request-code"  # Player endpoint (public)
@@ -308,17 +314,6 @@ class SessionRoutes:
     # Admin endpoints
     BY_USER = f"{BASE}/user/{{user_id}}"  # Admin: get user's sessions
     BY_IP = f"{BASE}/ip/{{ip_address}}"  # Admin: get sessions by IP
-
-
-# =============================================================================
-# AUDIT SERVICE ROUTES
-# =============================================================================
-class AuditRoutes:
-    """Audit logging endpoints"""
-    BASE = f"{API_V1}/audit-logs"
-
-    LIST = BASE
-    GET = f"{BASE}/{{log_id}}"
 
 
 # =============================================================================

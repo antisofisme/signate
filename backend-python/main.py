@@ -249,7 +249,7 @@ def health_check():
 app.include_router(auth_router, tags=["Authentication"])
 # Device service - consolidated routes (10 files → 3 files)
 # Order matters: management and monitoring before core routes for path matching
-app.include_router(device_management_router, prefix="/api/v1/devices", tags=["Device Management"])
+app.include_router(device_management_router, prefix=f"{API_V1}/devices", tags=["Device Management"])
 app.include_router(device_monitoring_router, tags=["Device Monitoring"])  # Already has /api/v1/devices prefix
 app.include_router(device_router, tags=["Device Core"])  # Core CRUD operations
 app.include_router(organization_router, tags=["Organization Management"])
@@ -263,15 +263,15 @@ app.include_router(playlist_router, tags=["Playlist Management"])
 app.include_router(playlist_client_router, tags=["Client - Player/Viewer"])
 app.include_router(rbac_router, tags=["RBAC - Role Management"])
 app.include_router(session_router, tags=["Session Management"])
-app.include_router(analytics_router, prefix="/api/v1/analytics", tags=["Analytics & Reporting"])
+app.include_router(analytics_router, prefix=f"{API_V1}/analytics", tags=["Analytics & Reporting"])
 app.include_router(dashboard_router, tags=["Dashboard"])  # Routes already include /api/v1/dashboard
-app.include_router(pms_router, prefix="/api/v1", tags=["PMS Integration"])
+app.include_router(pms_router, prefix=API_V1, tags=["PMS Integration"])
 app.include_router(pms_websocket_router, tags=["PMS WebSocket"])
-app.include_router(widget_router, prefix="/api/v1", tags=["Widget System"])
-app.include_router(template_router, prefix="/api/v1", tags=["Template System"])
-app.include_router(translation_router, prefix="/api/v1", tags=["Translation System"])
-app.include_router(schedule_router, prefix="/api/v1", tags=["Schedule System"])
-app.include_router(weather_router, prefix="/api/v1", tags=["Weather Service"])
+app.include_router(widget_router, prefix=API_V1, tags=["Widget System"])
+app.include_router(template_router, prefix=API_V1, tags=["Template System"])
+app.include_router(translation_router, prefix=API_V1, tags=["Translation System"])
+app.include_router(schedule_router, prefix=API_V1, tags=["Schedule System"])
+app.include_router(weather_router, prefix=API_V1, tags=["Weather Service"])
 app.include_router(menu_router, tags=["Digital Menu"])  # Routes already include /api/v1
 app.include_router(public_menu_router, tags=["Public Menu Viewer"])  # Routes already include /api/v1/public
 app.include_router(websocket_router, prefix="/api", tags=["WebSocket"])
