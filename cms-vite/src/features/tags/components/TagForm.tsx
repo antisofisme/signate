@@ -138,23 +138,10 @@ export function TagForm({ tag, onClose, onSubmit, isLoading }: TagFormProps) {
               type="submit"
               variant="primary"
               disabled={isLoading || !isDirty}
+              loading={isLoading}
+              leftIcon={isEditing ? <Save className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
             >
-              {isLoading ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  {isEditing ? t('tags.updating') : t('tags.creating')}
-                </>
-              ) : isEditing ? (
-                <>
-                  <Save className="w-4 h-4 mr-2" />
-                  {t('tags.update')}
-                </>
-              ) : (
-                <>
-                  <Plus className="w-4 h-4 mr-2" />
-                  {t('tags.create')}
-                </>
-              )}
+              {isEditing ? t('tags.update') : t('tags.create')}
             </Button>
           </div>
         </form>

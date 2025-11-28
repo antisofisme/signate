@@ -77,8 +77,9 @@ export function QuotaDashboard({
               size="sm"
               onClick={onRefresh}
               disabled={isLoading}
+              loading={isLoading}
+              leftIcon={<RefreshCw className="h-4 w-4" />}
             >
-              <RefreshCw className={cn("h-4 w-4 mr-2", isLoading && "animate-spin")} />
               Refresh
             </Button>
           </div>

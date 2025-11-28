@@ -8,9 +8,9 @@
 // ============================================================================
 
 export interface Session {
-  id: string
+  id: number
   user_id: number
-  token_jti: string
+  token_jti?: string
   ip_address: string
   user_agent: string
   device_info?: DeviceInfo
@@ -18,16 +18,20 @@ export interface Session {
   is_current: boolean
   created_at: string
   last_activity: string
+  last_activity_at?: string  // Backend uses this
   expires_at: string
 }
 
 export interface DeviceInfo {
-  device_type: 'desktop' | 'mobile' | 'tablet' | 'unknown'
-  browser: string
+  device_type?: 'desktop' | 'mobile' | 'tablet' | 'unknown'
+  browser?: string
   browser_version?: string
-  os: string
+  os?: string
   os_version?: string
   platform?: string
+  local_ip?: string  // Local IP detected via WebRTC
+  user_agent?: string
+  [key: string]: unknown  // Allow additional fields from backend
 }
 
 export interface LocationInfo {
@@ -75,7 +79,7 @@ export interface SessionFilters {
 }
 
 export interface RevokeSessionRequest {
-  session_id: string
+  session_id: number
   reason?: string
 }
 
@@ -147,4 +151,42 @@ export interface SessionSecurity {
   hasWarnings: boolean
   warningCount: number
   riskLevel: 'low' | 'medium' | 'high'
+}
+
+// ============================================================================
+// All Sessions Types (Admin View with User/Org Info)
+// ============================================================================
+
+export type SessionType = 'web' | 'api' | 'mobile' | 'device'
+
+export interface AllSession {
+  id: number
+  user_id: number
+  organization_id: number | null  // Can be null for super admin
+  ip_address: string
+  user_agent?: string
+  device_info?: Record<string, any>
+  session_type: SessionType
+  created_at: string
+  last_activity_at: string
+  expires_at: string
+  // User info
+  username: string
+  email: string
+  full_name?: string
+  role: string
+  // Organization info
+  organization_name?: string
+}
+
+export interface AllSessionsListResponse {
+  items: AllSession[]
+  total: number
+  skip: number
+  limit: number
+}
+
+export interface AllSessionsParams {
+  skip?: number
+  limit?: number
 }

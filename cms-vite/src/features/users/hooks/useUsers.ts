@@ -32,7 +32,7 @@ export function useUsers(filters?: UserListFilters) {
     queryKey: userKeys.list(orgId, filters),
     queryFn: () => usersApi.list(filters),
     staleTime: 1 * 60 * 1000, // 1 minute
-    enabled: !!orgId, // Only fetch when organization is selected
+    // Note: Backend handles org filtering via JWT or X-Organization-Id header
   });
 }
 

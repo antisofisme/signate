@@ -3,12 +3,14 @@ Session Repository
 Data access layer for UserSession model
 """
 
-from typing import Optional, List
+from typing import Optional, List, Tuple
 from datetime import datetime, timedelta, timezone
 import hashlib
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import and_
 from .models import UserSession
+from services.auth.repositories.models import UserModel, OrganizationModel
+from services.rbac.repositories.models import Role
 
 
 class SessionRepository:
@@ -276,6 +278,61 @@ class SessionRepository:
         self.db.commit()
         return count
 
+    def cleanup_old_sessions(self, days_old: int = 7) -> dict:
+        """
+        Clean up old sessions (both expired and revoked)
+
+        Deletes sessions that are:
+        - Expired AND older than days_old days
+        - Revoked AND older than days_old days
+
+        Args:
+            days_old: Delete sessions older than this many days (default: 7)
+
+        Returns:
+            Dictionary with cleanup statistics:
+            - expired_deleted: Number of expired sessions deleted
+            - revoked_deleted: Number of revoked sessions deleted
+            - total_deleted: Total sessions deleted
+        """
+        from sqlalchemy import or_
+
+        cutoff_date = datetime.now(timezone.utc) - timedelta(days=days_old)
+
+        # Find sessions to delete:
+        # 1. Expired sessions older than cutoff
+        # 2. Revoked sessions older than cutoff
+        sessions_to_delete = self.db.query(UserSession).filter(
+            or_(
+                # Expired sessions: expires_at < cutoff_date
+                UserSession.expires_at < cutoff_date,
+                # Revoked sessions: revoked_at < cutoff_date
+                and_(
+                    UserSession.revoked_at.isnot(None),
+                    UserSession.revoked_at < cutoff_date
+                )
+            )
+        ).all()
+
+        expired_count = 0
+        revoked_count = 0
+
+        for session in sessions_to_delete:
+            if session.revoked_at is not None:
+                revoked_count += 1
+            else:
+                expired_count += 1
+            self.db.delete(session)
+
+        self.db.commit()
+
+        return {
+            "expired_deleted": expired_count,
+            "revoked_deleted": revoked_count,
+            "total_deleted": expired_count + revoked_count,
+            "cutoff_date": cutoff_date.isoformat()
+        }
+
     def get_session_stats(self, user_id: Optional[int] = None) -> dict:
         """
         Get session statistics
@@ -378,3 +435,81 @@ class SessionRepository:
         session.last_activity_at = datetime.now(timezone.utc)
         self.db.commit()
         return True
+
+    def get_all_active_sessions(
+        self,
+        organization_id: Optional[int] = None,
+        skip: int = 0,
+        limit: int = 50
+    ) -> Tuple[List[dict], int]:
+        """
+        Get all active sessions with user and organization info
+
+        Args:
+            organization_id: Filter by organization (None = all orgs for super admin)
+            skip: Pagination offset
+            limit: Pagination limit
+
+        Returns:
+            Tuple of (list of session dicts with user/org info, total count)
+        """
+        now = datetime.now(timezone.utc)
+
+        # Base query for active sessions
+        query = self.db.query(
+            UserSession,
+            UserModel.username,
+            UserModel.email,
+            UserModel.full_name,
+            Role.name.label('role_name'),
+            OrganizationModel.name.label('organization_name')
+        ).join(
+            UserModel, UserSession.user_id == UserModel.id
+        ).join(
+            Role, UserModel.role_id == Role.id
+        ).outerjoin(
+            OrganizationModel, UserSession.organization_id == OrganizationModel.id
+        ).filter(
+            and_(
+                UserSession.revoked_at.is_(None),
+                UserSession.expires_at > now
+            )
+        )
+
+        # Filter by organization if specified
+        if organization_id is not None:
+            query = query.filter(UserSession.organization_id == organization_id)
+
+        # Get total count
+        total = query.count()
+
+        # Get paginated results
+        results = query.order_by(
+            UserSession.last_activity_at.desc()
+        ).offset(skip).limit(limit).all()
+
+        # Convert to dict with user/org info
+        sessions = []
+        for session, username, email, full_name, role_name, org_name in results:
+            session_dict = {
+                "id": session.id,
+                "user_id": session.user_id,
+                "organization_id": session.organization_id,
+                "ip_address": session.ip_address,
+                "user_agent": session.user_agent,
+                "device_info": session.device_info,
+                "session_type": session.session_type,
+                "created_at": session.created_at,
+                "last_activity_at": session.last_activity_at,
+                "expires_at": session.expires_at,
+                # User info
+                "username": username,
+                "email": email,
+                "full_name": full_name,
+                "role": role_name,
+                # Organization info
+                "organization_name": org_name
+            }
+            sessions.append(session_dict)
+
+        return sessions, total

@@ -31,7 +31,7 @@ export const usePlaylistList = (filters?: { is_active?: boolean; skip?: number; 
     queryKey: playlistKeys.list(orgId, filters),
     queryFn: () => playlistApi.list(filters),
     staleTime: 30000, // 30 seconds
-    enabled: !!orgId, // Only fetch when organization is selected
+    // Note: Backend handles org filtering via JWT or X-Organization-Id header
   });
 };
 

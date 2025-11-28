@@ -363,6 +363,10 @@
   },
   "contents": {
     "title": "Manajemen Konten",
+    "empty": {
+      "title": "Tidak ada konten",
+      "description": "Unggah file media pertama Anda untuk memulai"
+    },
     "addContent": "Tambah Konten",
     "contentName": "Nama Konten",
     "contentType": "Tipe Konten",
@@ -1254,6 +1258,25 @@
     "noActiveSessionsDescription": "Anda tidak memiliki sesi aktif saat ini",
     "unknownDevice": "Tidak Dikenal",
     "confirmRevokeSession": "Apakah Anda yakin ingin mencabut sesi ini?\\n\\nPerangkat: {{device}}\\nIP: {{ip}}\\n\\nAnda akan keluar dari perangkat tersebut.",
+    "mySessions": "Sesi Saya",
+    "allUsersSessions": "Sesi Semua Pengguna",
+    "superAdminView": "Tampilan Super Admin",
+    "adminView": "Tampilan Admin Organisasi",
+    "superAdminViewDesc": "Melihat semua sesi aktif dari semua organisasi",
+    "adminViewDesc": "Melihat semua sesi aktif di organisasi Anda",
+    "user": "Pengguna",
+    "organization": "Organisasi",
+    "sessionType": "Tipe",
+    "ipAddress": "Alamat IP",
+    "lastActivity": "Aktivitas Terakhir",
+    "expiresAt": "Kedaluwarsa",
+    "showingResults": "Menampilkan {{count}} dari {{total}} sesi aktif",
+    "noAllActiveSessions": "Tidak ada sesi aktif",
+    "noAllActiveSessionsDesc": "Tidak ada sesi aktif saat ini",
+    "justNow": "Baru saja",
+    "minutesAgo": "{{count}} menit lalu",
+    "hoursAgo": "{{count}} jam lalu",
+    "daysAgo": "{{count}} hari lalu",
     "modal": {
       "title": "Keluar dari Semua Perangkat?",
       "description": "Ini akan mengeluarkan Anda dari semua sesi aktif kecuali yang ini. Anda perlu login lagi di perangkat tersebut.",
@@ -1311,7 +1334,9 @@
       "update": "Perbarui",
       "delete": "Hapus",
       "manage": "Kelola"
-    }
+    },
+    "noCustomRoles": "Belum ada role kustom",
+    "createFirstRole": "Buat role kustom pertama Anda untuk memulai"
   },
   "organizations": {
     "title": "Organisasi",
@@ -1357,6 +1382,10 @@
   "users": {
     "title": "Manajemen Pengguna",
     "description": "Kelola akun pengguna dan izin akses",
+    "empty": {
+      "title": "Tidak ada pengguna",
+      "description": "Mulai dengan menambahkan pengguna pertama Anda"
+    },
     "stats": {
       "totalUsers": "Total Pengguna",
       "active": "Aktif"
@@ -1423,6 +1452,10 @@
     "inactive": "Tidak Aktif",
     "noMenusFound": "Menu tidak ditemukan",
     "failedToLoad": "Gagal memuat menu. Silakan coba lagi.",
+    "empty": {
+      "title": "Belum ada menu",
+      "description": "Buat menu digital pertama Anda untuk memulai"
+    },
     "types": {
       "restaurant": "Restoran",
       "laundry": "Laundry",

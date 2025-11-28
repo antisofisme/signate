@@ -81,7 +81,7 @@ def get_excel_exporter() -> ExcelExporter:
 
 # ========== Menu CRUD Endpoints ==========
 
-@router.post("", response_model=MenuResponseDTO, status_code=201)
+@router.post("", status_code=201)
 async def create_menu(
     payload: MenuCreateDTO,
     current_user: CurrentUser = Depends(get_current_user),
@@ -127,7 +127,7 @@ async def create_menu(
     return success_response(data=response)
 
 
-@router.get("", response_model=MenuListResponseDTO)
+@router.get("")
 def list_menus(
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=100),
@@ -170,7 +170,7 @@ def list_menus(
     })
 
 
-@router.get("/{menu_id}", response_model=MenuResponseDTO)
+@router.get("/{menu_id}")
 def get_menu(
     menu_id: int,
     current_user: CurrentUser = Depends(get_current_user),
@@ -197,7 +197,7 @@ def get_menu(
     return success_response(data=response)
 
 
-@router.patch("/{menu_id}", response_model=MenuResponseDTO)
+@router.patch("/{menu_id}")
 def update_menu(
     menu_id: int,
     payload: MenuUpdateDTO,
@@ -269,7 +269,7 @@ def delete_menu(
 
 # ========== Menu Item Endpoints ==========
 
-@router.get("/{menu_id}/items", response_model=MenuItemListResponseDTO)
+@router.get("/{menu_id}/items")
 def list_menu_items(
     menu_id: int,
     skip: int = Query(0, ge=0),
@@ -303,7 +303,7 @@ def list_menu_items(
     })
 
 
-@router.post("/{menu_id}/items", response_model=MenuItemResponseDTO, status_code=201)
+@router.post("/{menu_id}/items", status_code=201)
 def add_menu_item(
     menu_id: int,
     payload: MenuItemCreateDTO,
@@ -338,7 +338,7 @@ def add_menu_item(
 
 # ========== Excel Import/Export Endpoints ==========
 
-@router.post("/{menu_id}/import", response_model=MenuImportResultDTO)
+@router.post("/{menu_id}/import")
 async def import_items_from_excel(
     menu_id: int,
     file: UploadFile = File(...),

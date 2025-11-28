@@ -20,6 +20,24 @@ import type {
 
 const BASE_URL = '/api/v1/menus';
 
+/**
+ * Helper to unwrap API response - handles both interceptor-unwrapped and wrapped responses
+ */
+function unwrapResponse<T>(response: any): T {
+  // If already unwrapped by interceptor (data is directly accessible without 'success' wrapper)
+  if (response.data && !('success' in response.data) && !('data' in response.data)) {
+    return response.data as T;
+  }
+
+  // If still wrapped (has data.data structure)
+  if (response.data?.data) {
+    return response.data.data as T;
+  }
+
+  // Fallback to response.data
+  return response.data as T;
+}
+
 export const menuApi = {
   // ========== Menu CRUD ==========
 
@@ -28,7 +46,7 @@ export const menuApi = {
    */
   list: async (params?: MenuListParams): Promise<MenuListResponse> => {
     const response = await apiClient.get(BASE_URL, { params });
-    return response.data.data;
+    return unwrapResponse<MenuListResponse>(response);
   },
 
   /**
@@ -36,7 +54,7 @@ export const menuApi = {
    */
   create: async (data: MenuCreateRequest): Promise<Menu> => {
     const response = await apiClient.post(BASE_URL, data);
-    return response.data.data;
+    return unwrapResponse<Menu>(response);
   },
 
   /**
@@ -44,7 +62,7 @@ export const menuApi = {
    */
   get: async (id: number): Promise<Menu> => {
     const response = await apiClient.get(`${BASE_URL}/${id}`);
-    return response.data.data;
+    return unwrapResponse<Menu>(response);
   },
 
   /**
@@ -52,7 +70,7 @@ export const menuApi = {
    */
   update: async (id: number, data: MenuUpdateRequest): Promise<Menu> => {
     const response = await apiClient.patch(`${BASE_URL}/${id}`, data);
-    return response.data.data;
+    return unwrapResponse<Menu>(response);
   },
 
   /**
@@ -72,7 +90,7 @@ export const menuApi = {
     params?: MenuItemListParams
   ): Promise<MenuItemListResponse> => {
     const response = await apiClient.get(`${BASE_URL}/${menuId}/items`, { params });
-    return response.data.data;
+    return unwrapResponse<MenuItemListResponse>(response);
   },
 
   /**
@@ -80,7 +98,7 @@ export const menuApi = {
    */
   addItem: async (menuId: number, data: MenuItemCreateRequest): Promise<MenuItem> => {
     const response = await apiClient.post(`${BASE_URL}/${menuId}/items`, data);
-    return response.data.data;
+    return unwrapResponse<MenuItem>(response);
   },
 
   /**
@@ -92,7 +110,7 @@ export const menuApi = {
     data: MenuItemUpdateRequest
   ): Promise<MenuItem> => {
     const response = await apiClient.patch(`${BASE_URL}/${menuId}/items/${itemId}`, data);
-    return response.data.data;
+    return unwrapResponse<MenuItem>(response);
   },
 
   /**
@@ -125,7 +143,7 @@ export const menuApi = {
       }
     );
 
-    return response.data.data;
+    return unwrapResponse<MenuImportResult>(response);
   },
 
   /**
@@ -153,7 +171,8 @@ export const menuApi = {
    */
   getImportHistory: async (menuId: number): Promise<MenuImportHistory[]> => {
     const response = await apiClient.get(`${BASE_URL}/${menuId}/import-history`);
-    return response.data.data.items;
+    const data = unwrapResponse<{ items: MenuImportHistory[] }>(response);
+    return data.items;
   },
 
   // ========== QR Code ==========
@@ -163,7 +182,7 @@ export const menuApi = {
    */
   regenerateQRCode: async (menuId: number): Promise<Menu> => {
     const response = await apiClient.post(`${BASE_URL}/${menuId}/regenerate-qr`);
-    return response.data.data;
+    return unwrapResponse<Menu>(response);
   },
 
   /**

@@ -98,13 +98,13 @@ function UsersPageContent() {
 
   const getRoleBadgeColor = (role: UserRole) => {
     switch (role) {
-      case 'super_admin':
+      case 'SUPER_ADMIN':
         return 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200';
-      case 'admin':
+      case 'ADMIN':
         return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200';
-      case 'manager':
+      case 'CONTENT_MANAGER':
         return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200';
-      case 'viewer':
+      case 'VIEWER':
         return 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300';
       default:
         return 'bg-gray-100 text-gray-800';
@@ -173,10 +173,10 @@ function UsersPageContent() {
               className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
             >
               <option value="">All Roles</option>
-              <option value="super_admin">Super Admin</option>
-              <option value="admin">Admin</option>
-              <option value="manager">Manager</option>
-              <option value="viewer">Viewer</option>
+              <option value="SUPER_ADMIN">Super Admin</option>
+              <option value="ADMIN">Admin</option>
+              <option value="CONTENT_MANAGER">Manager</option>
+              <option value="VIEWER">Viewer</option>
             </select>
           </div>
 
@@ -407,7 +407,7 @@ function UserModal({ user, organizations, onClose, onSubmit, isLoading }: UserMo
     email: user?.email || '',
     password: '',
     full_name: user?.full_name || '',
-    role: user?.role || ('viewer' as UserRole),
+    role: user?.role || ('VIEWER' as UserRole),
     organization_id: user?.organization_id || organizations[0]?.id || 0,
   });
 
@@ -523,10 +523,10 @@ function UserModal({ user, organizations, onClose, onSubmit, isLoading }: UserMo
               className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
               required
             >
-              <option value="viewer">Viewer</option>
-              <option value="manager">Manager</option>
-              <option value="admin">Admin</option>
-              <option value="super_admin">Super Admin</option>
+              <option value="VIEWER">Viewer</option>
+              <option value="CONTENT_MANAGER">Manager</option>
+              <option value="ADMIN">Admin</option>
+              <option value="SUPER_ADMIN">Super Admin</option>
             </select>
           </div>
 

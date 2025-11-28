@@ -70,8 +70,8 @@ export default function AuditPage() {
         <Button
           variant="secondary"
           onClick={() => setShowFilters(!showFilters)}
+          leftIcon={<Filter className="w-4 h-4" />}
         >
-          <Filter className="w-5 h-5 mr-2" />
           {showFilters ? t('audit.hideFilters') : t('audit.showFilters')}
         </Button>
       </div>

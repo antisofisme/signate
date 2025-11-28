@@ -78,8 +78,7 @@ export default function OrganizationQuotaPage() {
           </AlertDescription>
         </Alert>
         <div className="mt-4">
-          <Button onClick={() => navigate(-1)} variant="outline">
-            <ArrowLeft className="h-4 w-4 mr-2" />
+          <Button onClick={() => navigate(-1)} variant="outline" leftIcon={<ArrowLeft className="h-4 w-4" />}>
             {t('organizations.goBack')}
           </Button>
         </div>
@@ -99,8 +98,8 @@ export default function OrganizationQuotaPage() {
               variant="outline"
               size="sm"
               onClick={() => navigate('/settings')}
+              leftIcon={<ArrowLeft className="h-4 w-4" />}
             >
-              <ArrowLeft className="h-4 w-4 mr-2" />
               {t('organizations.backToSettings')}
             </Button>
           </div>

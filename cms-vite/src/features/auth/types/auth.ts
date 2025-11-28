@@ -12,7 +12,7 @@ export interface User {
   username: string;
   email: string;
   full_name: string;
-  role: 'admin' | 'manager' | 'user';
+  role: 'SUPER_ADMIN' | 'ADMIN' | 'CONTENT_MANAGER' | 'VIEWER';  // Must match backend
   organization_id: number | null;
   is_active: boolean;
 
@@ -51,6 +51,11 @@ export interface AuthState {
 export interface LoginRequest {
   username: string;
   password: string;
+  device_info?: {
+    platform?: string;
+    user_agent?: string;
+    local_ip?: string;
+  };
 }
 
 export interface LoginResponse {

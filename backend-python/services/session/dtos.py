@@ -15,7 +15,7 @@ from datetime import datetime
 class SessionCreateRequest(BaseModel):
     """Create session request (internal use)"""
     user_id: int
-    organization_id: int
+    organization_id: Optional[int]  # Can be None for super admin
     access_token: str
     refresh_token: Optional[str] = None
     ip_address: str
@@ -39,7 +39,7 @@ class SessionResponse(BaseModel):
     """Session response"""
     id: int
     user_id: int
-    organization_id: int
+    organization_id: Optional[int]  # Can be None for super admin
     ip_address: str
     user_agent: Optional[str]
     device_info: Optional[Dict]
@@ -61,6 +61,35 @@ class SessionListResponse(BaseModel):
     active: int
     expired: int
     revoked: int
+
+
+class AllSessionResponse(BaseModel):
+    """Session with user and organization info (for admin view)"""
+    id: int
+    user_id: int
+    organization_id: Optional[int]  # Can be None for super admin
+    ip_address: str
+    user_agent: Optional[str]
+    device_info: Optional[Dict]
+    session_type: str
+    created_at: datetime
+    last_activity_at: datetime
+    expires_at: datetime
+    # User info
+    username: str
+    email: str
+    full_name: Optional[str]
+    role: str
+    # Organization info
+    organization_name: Optional[str]
+
+
+class AllSessionsListResponse(BaseModel):
+    """All sessions list response with pagination"""
+    items: List[AllSessionResponse]
+    total: int
+    skip: int
+    limit: int
 
 
 class SessionStatsResponse(BaseModel):

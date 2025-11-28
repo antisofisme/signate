@@ -12,6 +12,7 @@ import { useAuthStore } from '@/lib/stores/authStore';
 import { handleAPIError } from '@/lib/errors/errorHandler';
 import { toast } from '@/lib/notifications/toast';
 import { logger } from '@/shared/utils/logger';
+import { getDeviceInfo } from '@/shared/utils/networkUtils';
 import type {
   LoginRequest,
   RegisterRequest,
@@ -35,6 +36,7 @@ export function useCurrentUser() {
 
 /**
  * Login mutation
+ * Automatically includes device info (platform, user_agent, local_ip)
  */
 export function useLogin() {
   const navigate = useNavigate();
@@ -42,7 +44,18 @@ export function useLogin() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (credentials: LoginRequest) => authApi.login(credentials),
+    mutationFn: async (credentials: LoginRequest) => {
+      // Get device info including local IP
+      const deviceInfo = await getDeviceInfo();
+
+      // Merge with credentials
+      const loginData: LoginRequest = {
+        ...credentials,
+        device_info: deviceInfo,
+      };
+
+      return authApi.login(loginData);
+    },
     onSuccess: (data) => {
       // Save to Zustand store (persisted to localStorage)
       setAuth(data.user, data.token, data.organizations);

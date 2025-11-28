@@ -10,6 +10,7 @@ import type {
   SessionFilters,
   RevokeSessionRequest,
   RevokeAllSessionsRequest,
+  AllSessionsParams,
 } from '../types/session.types'
 import { getApiErrorMessage } from '@/shared/utils/types'
 
@@ -22,9 +23,10 @@ export const sessionKeys = {
   lists: () => [...sessionKeys.all, 'list'] as const,
   list: (filters?: SessionFilters) => [...sessionKeys.lists(), filters] as const,
   details: () => [...sessionKeys.all, 'detail'] as const,
-  detail: (id: string) => [...sessionKeys.details(), id] as const,
+  detail: (id: number) => [...sessionKeys.details(), id] as const,
   stats: () => [...sessionKeys.all, 'stats'] as const,
   active: () => [...sessionKeys.all, 'active'] as const,
+  allActive: (params?: AllSessionsParams) => [...sessionKeys.all, 'all-active', params] as const,
   userSessions: (userId: number) => ['users', userId, 'sessions'] as const,
 }
 
@@ -46,7 +48,7 @@ export function useSessions(filters?: SessionFilters) {
 /**
  * Get single session by ID
  */
-export function useSession(id: string | undefined) {
+export function useSession(id: number | undefined) {
   return useQuery({
     queryKey: sessionKeys.detail(id!),
     queryFn: () => sessionApi.getSession(id!),
@@ -87,6 +89,20 @@ export function useUserSessions(userId: number | undefined) {
     queryFn: () => sessionApi.getUserSessions(userId!),
     enabled: !!userId,
     staleTime: 1 * 60 * 1000,
+  })
+}
+
+/**
+ * Get all active sessions with user and organization info (admin only)
+ * - Super Admin: sees all sessions from all organizations
+ * - Admin: sees sessions from their organization only
+ */
+export function useAllActiveSessions(params?: AllSessionsParams) {
+  return useQuery({
+    queryKey: sessionKeys.allActive(params),
+    queryFn: () => sessionApi.getAllActiveSessions(params),
+    staleTime: 30 * 1000, // 30 seconds
+    refetchInterval: 60 * 1000, // Auto-refresh every minute
   })
 }
 

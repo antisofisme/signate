@@ -38,7 +38,7 @@ export const useDeviceList = (filters?: {
     queryKey: deviceKeys.list(orgId, filters),
     queryFn: () => deviceApi.list(filters),
     staleTime: 30000, // 30 seconds - data is fresh for this duration
-    enabled: !!orgId, // Only fetch when organization is selected
+    // Note: Backend handles org filtering via JWT (regular users) or X-Organization-Id header (super admin)
   });
 };
 

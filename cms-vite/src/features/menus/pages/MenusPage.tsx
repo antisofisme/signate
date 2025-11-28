@@ -65,8 +65,7 @@ export default function MenusPage() {
         {/* Action Bar */}
         <div className="flex items-center justify-end">
           {canCreate && (
-            <Button onClick={() => setShowCreateForm(true)}>
-              <Plus className="w-5 h-5 mr-2" />
+            <Button onClick={() => setShowCreateForm(true)} leftIcon={<Plus className="w-4 h-4" />}>
               {t('menus.createMenu')}
             </Button>
           )}

@@ -128,18 +128,10 @@ export function ChangePasswordDialog({
               type="submit"
               variant="primary"
               disabled={isLoading}
+              loading={isLoading}
+              leftIcon={<Key className="w-4 h-4" />}
             >
-              {isLoading ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  {t('users.changePassword.changing') || 'Changing...'}
-                </>
-              ) : (
-                <>
-                  <Key className="w-4 h-4 mr-2" />
-                  {t('users.actions.change') || 'Change Password'}
-                </>
-              )}
+              {t('users.actions.change') || 'Change Password'}
             </Button>
           </div>
         </form>

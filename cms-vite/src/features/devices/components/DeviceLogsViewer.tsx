@@ -264,18 +264,15 @@ export function DeviceLogsViewer({
 
               <div className="flex-1" />
 
-              <Button variant="outline" size="sm" onClick={() => refetch()} disabled={isFetching} className="h-8 px-2 text-xs">
-                <RefreshCw className={`w-3 h-3 mr-1 ${isFetching ? 'animate-spin' : ''}`} />
+              <Button variant="outline" size="sm" onClick={() => refetch()} disabled={isFetching} loading={isFetching} leftIcon={<RefreshCw className="w-3 h-3" />} className="h-8 px-2 text-xs">
                 Refresh
               </Button>
 
-              <Button variant="outline" size="sm" onClick={handleClearLogs} disabled={clearLogsMutation.isPending} className="h-8 px-2 text-xs">
-                <Trash2 className="w-3 h-3 mr-1" />
+              <Button variant="outline" size="sm" onClick={handleClearLogs} disabled={clearLogsMutation.isPending} loading={clearLogsMutation.isPending} leftIcon={<Trash2 className="w-3 h-3" />} className="h-8 px-2 text-xs">
                 Clear
               </Button>
 
-              <Button variant={autoRefresh ? 'primary' : 'outline'} size="sm" onClick={() => setAutoRefresh(!autoRefresh)} className="h-8 px-2 text-xs">
-                <RefreshCw className={`w-3 h-3 mr-1 ${autoRefresh ? 'animate-spin' : ''}`} />
+              <Button variant={autoRefresh ? 'primary' : 'outline'} size="sm" onClick={() => setAutoRefresh(!autoRefresh)} leftIcon={<RefreshCw className={`w-3 h-3 ${autoRefresh ? 'animate-spin' : ''}`} />} className="h-8 px-2 text-xs">
                 Auto
               </Button>
             </div>

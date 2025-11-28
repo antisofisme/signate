@@ -310,16 +310,33 @@ export function ContentTable() {
         </div>
       )}
 
-      {/* Table */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
-        {error ? (
-          <ErrorDisplay
-            error={error}
-            onRetry={() => window.location.reload()}
-          />
-        ) : isLoading ? (
+      {/* Empty State - No box wrapper */}
+      {!isLoading && !error && (!contentData || contentData.data.length === 0) && (
+        <EmptyState
+          icon={FileImage}
+          title={t('contents.empty.title', 'No content found')}
+          description={t('contents.empty.description', 'Upload your first media file to get started')}
+        />
+      )}
+
+      {/* Error State */}
+      {error && (
+        <ErrorDisplay
+          error={error}
+          onRetry={() => window.location.reload()}
+        />
+      )}
+
+      {/* Loading State */}
+      {isLoading && (
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
           <TableSkeleton columns={7} rows={10} />
-        ) : contentData && contentData.data.length > 0 ? (
+        </div>
+      )}
+
+      {/* Table - Only when has data */}
+      {!isLoading && !error && contentData && contentData.data.length > 0 && (
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
           <>
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
@@ -472,22 +489,8 @@ export function ContentTable() {
               className="px-6 bg-gray-50 dark:bg-gray-900"
             />
           </>
-        ) : (
-          <EmptyState
-            icon={FileImage}
-            title="No content found"
-            description="Upload your first media file to get started"
-            action={
-              canCreate && (
-                <Button onClick={() => setShowUploadModal(true)}>
-                  <Upload className="w-4 h-4 mr-2" />
-                  Upload Content
-                </Button>
-              )
-            }
-          />
-        )}
-      </div>
+        </div>
+      )}
 
       {/* Upload Modal */}
       <UploadModal

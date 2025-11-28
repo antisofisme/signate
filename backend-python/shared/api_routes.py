@@ -312,6 +312,7 @@ class SessionRoutes:
     ACTIVE = f"{BASE}/active"
 
     # Admin endpoints
+    ALL_ACTIVE = f"{BASE}/all-active"  # Admin: get all active sessions (multi-tenancy)
     BY_USER = f"{BASE}/user/{{user_id}}"  # Admin: get user's sessions
     BY_IP = f"{BASE}/ip/{{ip_address}}"  # Admin: get sessions by IP
 

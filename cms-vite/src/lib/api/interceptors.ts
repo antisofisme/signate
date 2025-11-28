@@ -1,24 +1,39 @@
 /**
  * API Interceptors
  * Request and response interceptors for axios
+ *
+ * CRITICAL: Includes X-Organization-Id header for multi-tenancy support
  */
 
 import { AxiosInstance, AxiosError, InternalAxiosRequestConfig, AxiosRequestHeaders } from 'axios';
 import { useAuthStore } from '../stores/authStore';
 
 /**
- * Setup request interceptor - Add auth token to requests
+ * Setup request interceptor - Add auth token and organization header to requests
+ *
+ * Multi-tenancy support:
+ * - Always sends X-Organization-Id header when an organization is selected
+ * - For SUPER_ADMIN: Backend uses this header to filter data
+ * - For regular users: Backend ignores header (uses JWT org_id for security)
  */
 export function setupRequestInterceptor(axiosInstance: AxiosInstance) {
   axiosInstance.interceptors.request.use(
     (config: InternalAxiosRequestConfig) => {
-      const { token } = useAuthStore.getState();
+      const { token, selectedOrgId } = useAuthStore.getState();
 
+      if (!config.headers) {
+        config.headers = {} as AxiosRequestHeaders;
+      }
+
+      // Add Authorization header
       if (token) {
-        if (!config.headers) {
-          config.headers = {} as AxiosRequestHeaders;
-        }
         config.headers.Authorization = `Bearer ${token}`;
+      }
+
+      // Add X-Organization-Id header for multi-tenancy
+      // This is critical for SUPER_ADMIN to switch between organizations
+      if (selectedOrgId) {
+        config.headers['X-Organization-Id'] = selectedOrgId.toString();
       }
 
       return config;

@@ -28,6 +28,7 @@ import {
 import { useUpdateQuota } from '../hooks/useOrganizationQuota';
 import type { OrganizationQuota, UpdateQuotaRequest } from '../types/organization';
 import { useAuthStore } from '@/lib/stores/authStore';
+import { USER_ROLES } from '@/lib/constants/app';
 
 // Validation schema
 const quotaSchema = z.object({
@@ -50,7 +51,7 @@ export function QuotaSettingsForm({ quota, organizationId }: QuotaSettingsFormPr
   const updateQuotaMutation = useUpdateQuota();
 
   // Check if user is admin (only admins can update quotas)
-  const isAdmin = user?.role === 'admin';
+  const isAdmin = user?.role === USER_ROLES.ADMIN || user?.role === USER_ROLES.SUPER_ADMIN;
 
   const {
     register,
@@ -318,9 +319,10 @@ export function QuotaSettingsForm({ quota, organizationId }: QuotaSettingsFormPr
             <Button
               type="submit"
               disabled={!isDirty || isSubmitting || updateQuotaMutation.isPending}
+              loading={isSubmitting || updateQuotaMutation.isPending}
+              leftIcon={<Save className="h-4 w-4" />}
             >
-              <Save className="h-4 w-4 mr-2" />
-              {isSubmitting || updateQuotaMutation.isPending ? 'Saving...' : 'Save Changes'}
+              Save Changes
             </Button>
           </div>
         </form>

@@ -174,10 +174,37 @@ async def periodic_cleanup():
             cleanup_rate_limiter()
         await asyncio.sleep(300)  # Every 5 minutes
 
+
+async def periodic_session_cleanup():
+    """
+    Run periodic session cleanup
+    Deletes expired and revoked sessions older than 7 days
+    Runs every 6 hours
+    """
+    from shared.database import SessionLocal
+    from services.session.repositories.session_repo import SessionRepository
+
+    while True:
+        # Wait 6 hours between cleanups
+        await asyncio.sleep(6 * 60 * 60)  # 6 hours
+
+        with suppress(Exception):
+            db = SessionLocal()
+            try:
+                session_repo = SessionRepository(db)
+                result = session_repo.cleanup_old_sessions(days_old=7)
+                if result["total_deleted"] > 0:
+                    print(f"✓ Session cleanup: deleted {result['total_deleted']} old sessions "
+                          f"(expired: {result['expired_deleted']}, revoked: {result['revoked_deleted']})")
+            finally:
+                db.close()
+
 # Start background tasks
 @app.on_event("startup")
 async def startup_background_tasks():
     asyncio.create_task(periodic_cleanup())
+    asyncio.create_task(periodic_session_cleanup())
+    print("✓ Session cleanup task: Started (runs every 6 hours)")
     # Start WebSocket ping task
     await websocket_manager.start_ping_task()
     # Start schedule executor

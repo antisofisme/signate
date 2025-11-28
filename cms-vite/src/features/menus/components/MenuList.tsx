@@ -4,9 +4,11 @@
  */
 
 import { useState } from 'react';
-import { Edit, Trash2, List, QrCode, Copy, Download, ExternalLink } from 'lucide-react';
+import { Edit, Trash2, List, QrCode, Copy, Download, ExternalLink, UtensilsCrossed } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { useMenus, useDeleteMenu } from '../hooks/useMenus';
 import { useDownloadQRCode } from '../hooks/useMenuImport';
+import { EmptyState } from '@/shared/components';
 import type { Menu, MenuType } from '../types/menu';
 import { toast } from 'sonner';
 
@@ -25,6 +27,7 @@ export const MenuList = ({
   menuTypeFilter = '',
   isActiveFilter = '',
 }: MenuListProps) => {
+  const { t } = useTranslation();
   const [currentPage, setCurrentPage] = useState(0);
   const pageSize = 20;
 
@@ -88,9 +91,11 @@ export const MenuList = ({
 
   if (!filteredMenus.length) {
     return (
-      <div className="text-center py-12 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
-        <p className="text-gray-500 dark:text-gray-400">No menus found</p>
-      </div>
+      <EmptyState
+        icon={UtensilsCrossed}
+        title={t('menus.empty.title', 'No menus found')}
+        description={t('menus.empty.description', 'Create your first digital menu to get started')}
+      />
     );
   }
 

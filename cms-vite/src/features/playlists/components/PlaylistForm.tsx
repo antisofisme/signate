@@ -121,23 +121,10 @@ export function PlaylistForm({ playlist, onClose, onSubmit, isLoading }: Playlis
               type="submit"
               variant="primary"
               disabled={isLoading}
+              loading={isLoading}
+              leftIcon={isEditing ? <Save className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
             >
-              {isLoading ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  {t('playlists.buttons.saving')}
-                </>
-              ) : isEditing ? (
-                <>
-                  <Save className="w-4 h-4 mr-2" />
-                  {t('playlists.buttons.update')}
-                </>
-              ) : (
-                <>
-                  <Plus className="w-4 h-4 mr-2" />
-                  {t('playlists.buttons.create')}
-                </>
-              )}
+              {isEditing ? t('playlists.buttons.update') : t('playlists.buttons.create')}
             </Button>
           </div>
         </form>

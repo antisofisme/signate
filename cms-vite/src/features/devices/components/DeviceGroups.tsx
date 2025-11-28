@@ -231,12 +231,6 @@ export function DeviceGroups() {
           icon={Folder}
           title={t('deviceGroups.noGroups')}
           description={t('deviceGroups.noGroupsDescription')}
-          action={canCreate && (
-            <Button onClick={() => setIsCreateModalOpen(true)}>
-              <Plus className="w-4 h-4 mr-2" />
-              {t('deviceGroups.createFirstGroup')}
-            </Button>
-          )}
         />
       ) : viewMode === 'grid' ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">

@@ -33,7 +33,7 @@ export const useContentList = (filters?: ContentFilters) => {
     queryKey: contentKeys.list(orgId, filters),
     queryFn: () => getContentList(filters),
     staleTime: 30000, // 30 seconds
-    enabled: !!orgId, // Only fetch when organization is selected
+    // Note: Backend handles org filtering via JWT or X-Organization-Id header
   });
 };
 
@@ -206,6 +206,6 @@ export const useContentStats = () => {
     queryKey: contentKeys.stats(orgId),
     queryFn: () => getContentStats(),
     staleTime: 60000, // 1 minute
-    enabled: !!orgId, // Only fetch when organization is selected
+    // Note: Backend handles org filtering via JWT or X-Organization-Id header
   });
 };

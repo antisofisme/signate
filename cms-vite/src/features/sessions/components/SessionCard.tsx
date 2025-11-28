@@ -3,7 +3,6 @@
  * Displays session information in a card format
  */
 
-import React from 'react'
 import {
   Monitor,
   Smartphone,
@@ -15,9 +14,12 @@ import {
   CheckCircle,
   Loader2,
   AlertTriangle,
+  Calendar,
+  Timer,
 } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import type { Session } from '../types/session.types'
+import { parseUserAgent, getBrowserString, getOSString } from '@/shared/utils/userAgentParser'
 
 interface SessionCardProps {
   session: Session
@@ -27,12 +29,14 @@ interface SessionCardProps {
 
 export function SessionCard({ session, onRevoke, isRevoking }: SessionCardProps) {
   const isCurrent = session.is_current
-  const deviceInfo = session.device_info
   const location = session.location
 
-  // Get device icon
+  // Parse user agent for display
+  const parsedUA = parseUserAgent(session.user_agent)
+
+  // Get device icon based on parsed user agent
   const getDeviceIcon = () => {
-    switch (deviceInfo?.device_type) {
+    switch (parsedUA.device) {
       case 'mobile':
         return <Smartphone className="w-5 h-5" />
       case 'tablet':
@@ -50,7 +54,8 @@ export function SessionCard({ session, onRevoke, isRevoking }: SessionCardProps)
   }
 
   // Format time
-  const formatTime = (dateString: string) => {
+  const formatTime = (dateString: string | undefined) => {
+    if (!dateString) return 'Unknown'
     try {
       return formatDistanceToNow(new Date(dateString), { addSuffix: true })
     } catch {
@@ -84,12 +89,10 @@ export function SessionCard({ session, onRevoke, isRevoking }: SessionCardProps)
           <div className={`p-2 rounded-lg ${getDeviceColor()}`}>{getDeviceIcon()}</div>
           <div>
             <h3 className="font-semibold text-gray-900 dark:text-white">
-              {deviceInfo?.browser || 'Unknown Browser'}
-              {deviceInfo?.browser_version && ` ${deviceInfo.browser_version}`}
+              {getBrowserString(parsedUA)}
             </h3>
             <p className="text-sm text-gray-600 dark:text-gray-400">
-              {deviceInfo?.os || 'Unknown OS'}
-              {deviceInfo?.os_version && ` ${deviceInfo.os_version}`}
+              {getOSString(parsedUA)}
             </p>
           </div>
         </div>
@@ -114,25 +117,31 @@ export function SessionCard({ session, onRevoke, isRevoking }: SessionCardProps)
       {/* Info Grid */}
       <div className="space-y-2 mb-4">
         {/* Location */}
-        {location && (location.city || location.country) && (
-          <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
-            <MapPin className="w-4 h-4 flex-shrink-0" />
-            <span>
-              {[location.city, location.region, location.country].filter(Boolean).join(', ')}
-            </span>
-          </div>
-        )}
+        <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+          <MapPin className="w-4 h-4 flex-shrink-0" />
+          <span>
+            {location && (location.city || location.country)
+              ? [location.city, location.region, location.country].filter(Boolean).join(', ')
+              : 'Location unknown'}
+          </span>
+        </div>
 
         {/* IP Address */}
         <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
           <Globe className="w-4 h-4 flex-shrink-0" />
-          <span className="font-mono">{session.ip_address}</span>
+          <span className="font-mono">{session.ip_address || 'Unknown'}</span>
         </div>
 
         {/* Last Activity */}
         <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
           <Clock className="w-4 h-4 flex-shrink-0" />
-          <span>Last active {formatTime(session.last_activity)}</span>
+          <span>Last active {formatTime(session.last_activity || session.last_activity_at)}</span>
+        </div>
+
+        {/* Expires At */}
+        <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+          <Timer className="w-4 h-4 flex-shrink-0" />
+          <span>Expires {formatTime(session.expires_at)}</span>
         </div>
       </div>
 

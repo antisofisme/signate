@@ -223,23 +223,10 @@ export function UserForm({ user, organizations, onClose, onSubmit, isLoading }: 
               type="submit"
               variant="primary"
               disabled={isLoading}
+              loading={isLoading}
+              leftIcon={isEditing ? <Save className="w-4 h-4" /> : <UserPlus className="w-4 h-4" />}
             >
-              {isLoading ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  {t('users.form.saving') || 'Saving...'}
-                </>
-              ) : isEditing ? (
-                <>
-                  <Save className="w-4 h-4 mr-2" />
-                  {t('users.actions.update') || 'Update User'}
-                </>
-              ) : (
-                <>
-                  <UserPlus className="w-4 h-4 mr-2" />
-                  {t('users.actions.create') || 'Create User'}
-                </>
-              )}
+              {isEditing ? (t('users.actions.update') || 'Update User') : (t('users.actions.create') || 'Create User')}
             </Button>
           </div>
         </form>

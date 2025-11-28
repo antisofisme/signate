@@ -4,17 +4,25 @@ Request/Response models for API layer
 """
 
 from pydantic import BaseModel, EmailStr, Field
-from typing import Optional, List
+from typing import Optional, List, Dict
 
 
 # =============================================================================
 # REQUEST DTOs
 # =============================================================================
 
+class DeviceInfoRequest(BaseModel):
+    """Device info from frontend"""
+    platform: Optional[str] = None
+    user_agent: Optional[str] = None
+    local_ip: Optional[str] = None
+
+
 class LoginRequest(BaseModel):
     """Login request"""
     username: str = Field(..., min_length=3)
     password: str = Field(..., min_length=8)
+    device_info: Optional[DeviceInfoRequest] = None
 
 
 class RegisterRequest(BaseModel):

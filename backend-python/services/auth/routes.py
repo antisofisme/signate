@@ -139,17 +139,33 @@ def login(
     start_time = time.time()
 
     # Extract client information for session tracking
-    ip_address = http_request.client.host if http_request.client else "unknown"
+    # Get real client IP from proxy headers (X-Forwarded-For, X-Real-IP) or direct connection
+    ip_address = (
+        http_request.headers.get("x-forwarded-for", "").split(",")[0].strip() or
+        http_request.headers.get("x-real-ip", "") or
+        (http_request.client.host if http_request.client else "unknown")
+    )
     user_agent = http_request.headers.get("user-agent", "unknown")
 
-    # Parse device info from user agent (simple parsing)
+    # Get device_info from frontend request (includes local_ip detected via WebRTC)
+    frontend_device_info = request_body.device_info
+
+    # Build device_info - prefer frontend values if available
     device_info = {
         "user_agent": user_agent,
-        "platform": "unknown"
+        "platform": "unknown",
+        "local_ip": None  # New field for local/private IP
     }
 
-    # Simple platform detection
-    if user_agent:
+    # Merge frontend device_info if provided
+    if frontend_device_info:
+        if frontend_device_info.platform:
+            device_info["platform"] = frontend_device_info.platform
+        if frontend_device_info.local_ip:
+            device_info["local_ip"] = frontend_device_info.local_ip
+
+    # Fallback platform detection from user-agent if not provided by frontend
+    if device_info["platform"] == "unknown" and user_agent:
         ua_lower = user_agent.lower()
         if "windows" in ua_lower:
             device_info["platform"] = "Windows"

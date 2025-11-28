@@ -71,3 +71,31 @@ export interface SessionFilterParams {
   ip_address?: string;
   limit?: number;
 }
+
+// All sessions types (for admin view with user/org info)
+export interface AllSession {
+  id: number;
+  user_id: number;
+  organization_id: number;
+  ip_address: string;
+  user_agent?: string;
+  device_info?: Record<string, any>;
+  session_type: SessionType;
+  created_at: string;
+  last_activity_at: string;
+  expires_at: string;
+  // User info
+  username: string;
+  email: string;
+  full_name?: string;
+  role: string;
+  // Organization info
+  organization_name?: string;
+}
+
+export interface AllSessionsListResponse {
+  items: AllSession[];
+  total: number;
+  skip: number;
+  limit: number;
+}

@@ -169,8 +169,7 @@ export default function RolesPage() {
 
           {/* Create Button */}
           {canCreate && (
-            <Button onClick={() => setShowCreateForm(true)}>
-              <Plus className="w-4 h-4 mr-2" />
+            <Button onClick={() => setShowCreateForm(true)} leftIcon={<Plus className="w-4 h-4" />}>
               {t('rbac.createRole', 'Create Role')}
             </Button>
           )}
@@ -289,14 +288,6 @@ export default function RolesPage() {
               icon={Shield}
               title={t('rbac.noCustomRoles', 'No custom roles yet')}
               description={t('rbac.createFirstRole', 'Create your first custom role to get started')}
-              action={
-                canCreate ? (
-                  <Button onClick={() => setShowCreateForm(true)}>
-                    <Plus className="w-4 h-4 mr-2" />
-                    {t('rbac.createRole', 'Create Role')}
-                  </Button>
-                ) : undefined
-              }
             />
           )}
         </div>

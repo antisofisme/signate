@@ -44,7 +44,7 @@ export const useSchedules = (filters?: ScheduleFilters) => {
     queryKey: scheduleKeys.list(orgId, filters),
     queryFn: () => getSchedules(filters),
     staleTime: 5 * 60 * 1000, // 5 minutes
-    enabled: !!orgId, // Only fetch when organization is selected
+    // Note: Backend handles org filtering via JWT or X-Organization-Id header
   })
 }
 
@@ -95,8 +95,9 @@ export const useOccurrences = (data: GetOccurrencesRequest, enabled = true) => {
   return useQuery({
     queryKey: scheduleKeys.occurrences(orgId, data),
     queryFn: () => getOccurrences(data),
-    enabled: enabled && !!orgId,
+    enabled,
     staleTime: 2 * 60 * 1000, // 2 minutes
+    // Note: Backend handles org filtering via JWT or X-Organization-Id header
   })
 }
 

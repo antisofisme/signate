@@ -271,11 +271,12 @@ export const API_ENDPOINTS = {
   // ========================================
   SESSIONS: {
     LIST: '/api/v1/sessions',
-    GET: (id: string) => `/api/v1/sessions/${id}`,
-    DELETE: (id: string) => `/api/v1/sessions/${id}`,
+    GET: (id: number) => `/api/v1/sessions/${id}`,
+    DELETE: (id: number) => `/api/v1/sessions/${id}`,
     REVOKE_ALL: '/api/v1/sessions/revoke-all',
     STATS: '/api/v1/sessions/stats',
     ACTIVE: '/api/v1/sessions/active',
+    ALL_ACTIVE: '/api/v1/sessions/all-active',
     USER_SESSIONS: (userId: number) => `/api/v1/sessions/user/${userId}`,
     IP_SESSIONS: (ip: string) => `/api/v1/sessions/ip/${ip}`,
   },

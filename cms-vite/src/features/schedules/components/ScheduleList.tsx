@@ -390,19 +390,6 @@ export const ScheduleList = ({
           icon={Calendar}
           title={t('schedules.noMatches')}
           description={t('schedules.tryDifferentFilters')}
-          action={
-            <button
-              onClick={() => {
-                setSearchQuery('')
-                setFilterStatus('all')
-                setFilterPriority('all')
-                setFilterRecurrence('all')
-              }}
-              className="px-4 py-2 text-sm font-medium text-purple-600 hover:text-purple-700 dark:text-purple-400 dark:hover:text-purple-300"
-            >
-              {t('schedules.clearFilters')}
-            </button>
-          }
         />
       )}
     </div>

@@ -12,6 +12,8 @@ import type {
   SessionFilters,
   RevokeSessionRequest,
   RevokeAllSessionsRequest,
+  AllSessionsListResponse,
+  AllSessionsParams,
 } from '../types/session.types'
 
 // ============================================================================
@@ -31,7 +33,7 @@ export const getSessions = async (filters?: SessionFilters): Promise<SessionList
 /**
  * Get single session by ID
  */
-export const getSession = async (id: string): Promise<Session> => {
+export const getSession = async (id: number): Promise<Session> => {
   const response = await apiClient.get(API_ENDPOINTS.SESSIONS.GET(id))
   return response.data
 }
@@ -68,6 +70,16 @@ export const getSessionsByIP = async (ip: string): Promise<SessionListResponse> 
   return response.data
 }
 
+/**
+ * Get all active sessions with user and organization info (admin only)
+ * - Super Admin: sees all sessions from all organizations
+ * - Admin: sees sessions from their organization only
+ */
+export const getAllActiveSessions = async (params?: AllSessionsParams): Promise<AllSessionsListResponse> => {
+  const response = await apiClient.get(API_ENDPOINTS.SESSIONS.ALL_ACTIVE, { params })
+  return response.data
+}
+
 // ============================================================================
 // Session Actions
 // ============================================================================
@@ -100,6 +112,7 @@ export default {
   getSession,
   getSessionStats,
   getActiveSessions,
+  getAllActiveSessions,
   getUserSessions,
   getSessionsByIP,
   revokeSession,

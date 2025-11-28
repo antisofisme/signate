@@ -97,14 +97,6 @@ export default function UsersPage() {
         icon={Users}
         title={t('users.empty.title') || 'No users found'}
         description={t('users.empty.description') || 'Get started by adding your first user'}
-        action={
-          canCreate && (
-            <Button onClick={() => setShowCreateModal(true)}>
-              <Plus className="w-4 h-4 mr-2" />
-              {t('users.actions.createUser') || 'Add User'}
-            </Button>
-          )
-        }
       />
     );
   }
@@ -130,8 +122,7 @@ export default function UsersPage() {
       {/* Actions */}
       {canCreate && (
         <div className="mb-6 flex justify-end">
-          <Button onClick={() => setShowCreateModal(true)}>
-            <Plus className="w-5 h-5 mr-2" />
+          <Button onClick={() => setShowCreateModal(true)} leftIcon={<Plus className="w-4 h-4" />}>
             {t('users.actions.createUser') || 'Add User'}
           </Button>
         </div>

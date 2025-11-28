@@ -375,37 +375,38 @@ export function DeviceTable() {
         </div>
       )}
 
-      {/* Table */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
-        {isLoading ? (
+      {/* Empty State - No box wrapper */}
+      {!isLoading && !error && devices.length === 0 && (
+        <EmptyState
+          icon={Monitor}
+          title={t('devices.messages.noDevicesFound')}
+          description={
+            scope === 'my_org'
+              ? t('devices.messages.noDevicesInOrg', 'No devices registered in your organization yet.')
+              : t('devices.messages.noUnassignedDevices', 'No unassigned devices available.')
+          }
+        />
+      )}
+
+      {/* Error State */}
+      {error && (
+        <ErrorDisplay
+          error={error}
+          onRetry={handleRefresh}
+          className="py-12"
+        />
+      )}
+
+      {/* Loading State */}
+      {isLoading && (
+        <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
           <TableSkeleton columns={6} rows={5} />
-        ) : error ? (
-          <ErrorDisplay
-            error={error}
-            onRetry={handleRefresh}
-            className="py-12"
-          />
-        ) : devices.length === 0 ? (
-          <EmptyState
-            icon={Monitor}
-            title={t('devices.messages.noDevicesFound')}
-            description={
-              scope === 'my_org'
-                ? t('devices.messages.noDevicesInOrg', 'No devices registered in your organization yet.')
-                : t('devices.messages.noUnassignedDevices', 'No unassigned devices available.')
-            }
-            action={
-              canCreate && scope === 'my_org' && (
-                <Button
-                  variant="primary"
-                  onClick={() => setTvRegisterModal(true)}
-                >
-                  {t('devices.buttons.registerTV')}
-                </Button>
-              )
-            }
-          />
-        ) : (
+        </div>
+      )}
+
+      {/* Table - Only when has data */}
+      {!isLoading && !error && devices.length > 0 && (
+        <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead className="bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">
@@ -537,8 +538,8 @@ export function DeviceTable() {
               </tbody>
             </table>
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* Delete Confirmation Dialog */}
       <ConfirmDialog

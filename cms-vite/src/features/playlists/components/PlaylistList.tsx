@@ -53,14 +53,6 @@ export function PlaylistList({
         icon={List}
         title={t('playlists.messages.noPlaylists')}
         description={t('playlists.messages.noPlaylistsDesc')}
-        action={
-          onCreateNew && (
-            <Button onClick={onCreateNew}>
-              <Plus className="w-4 h-4 mr-2" />
-              {t('playlists.createPlaylist')}
-            </Button>
-          )
-        }
       />
     );
   }

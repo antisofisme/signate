@@ -10,12 +10,14 @@ from shared.database import get_db
 from shared.api_routes import SessionRoutes
 from shared.errors import handle_errors
 from shared.responses import success_response
-from shared.auth import get_current_user, require_admin, CurrentUser
+from shared.auth import get_current_user, require_admin, require_super_admin, CurrentUser, is_super_admin
 from shared.pagination import PaginationParams
+from shared.middleware import require_permission
 
 from .dtos import (
     SessionResponse, SessionListResponse, SessionStatsResponse,
-    SessionRevokeResponse, SessionFilterParams
+    SessionRevokeResponse, SessionFilterParams, AllSessionResponse,
+    AllSessionsListResponse
 )
 from .repositories.session_repo import SessionRepository
 from .use_cases.get_sessions import GetSessionsUseCase
@@ -105,10 +107,10 @@ def revoke_session(
 
     Users can only revoke their own sessions
     """
+    from services.session.repositories.models import UserSession
+
     # Verify session belongs to current user
-    session = session_repo.db.query(session_repo.db.query(
-        __import__('services.session.repositories.models', fromlist=['UserSession']).UserSession
-    ).filter_by(id=session_id).first())
+    session = session_repo.db.query(UserSession).filter_by(id=session_id).first()
 
     if not session or session.user_id != current_user.id:
         from shared.errors import AuthorizationError
@@ -224,3 +226,73 @@ def revoke_all_user_sessions_admin(
     result = use_case.revoke_all_user_sessions(user_id)
 
     return SessionRevokeResponse(**result)
+
+
+@router.post("/api/v1/sessions/admin/cleanup")
+@handle_errors
+def cleanup_old_sessions(
+    days_old: int = Query(7, ge=1, le=30, description="Delete sessions older than X days"),
+    current_user: CurrentUser = Depends(require_super_admin),
+    session_repo: SessionRepository = Depends(get_session_repository)
+):
+    """
+    Admin: Clean up old sessions (expired and revoked)
+
+    Requires super admin role.
+    Deletes sessions that are expired or revoked and older than specified days.
+    """
+    result = session_repo.cleanup_old_sessions(days_old=days_old)
+
+    return success_response(
+        data={
+            "message": f"Cleaned up {result['total_deleted']} old sessions",
+            "expired_deleted": result["expired_deleted"],
+            "revoked_deleted": result["revoked_deleted"],
+            "total_deleted": result["total_deleted"],
+            "cutoff_date": result["cutoff_date"]
+        }
+    )
+
+
+@router.get(SessionRoutes.ALL_ACTIVE)
+@handle_errors
+async def get_all_active_sessions(
+    skip: int = Query(0, ge=0, description="Number of records to skip"),
+    limit: int = Query(50, ge=1, le=100, description="Maximum records to return"),
+    current_user: dict = Depends(require_permission("sessions", "read")),
+    session_repo: SessionRepository = Depends(get_session_repository)
+):
+    """
+    Get all active sessions with user and organization info (multi-tenancy)
+
+    Permission required: sessions:read
+
+    - Super Admin: sees all sessions from all organizations
+    - Users with sessions:read permission: sees sessions from their organization only
+    """
+    # Check if super admin (can see all organizations)
+    user_role = current_user.get("role", "").upper()
+
+    if user_role == "SUPER_ADMIN":
+        # Super Admin sees all sessions from all organizations
+        sessions, total = session_repo.get_all_active_sessions(
+            organization_id=None,
+            skip=skip,
+            limit=limit
+        )
+    else:
+        # Other users with sessions:read permission see their organization only
+        sessions, total = session_repo.get_all_active_sessions(
+            organization_id=current_user.get("organization_id"),
+            skip=skip,
+            limit=limit
+        )
+
+    return success_response(
+        data=AllSessionsListResponse(
+            items=[AllSessionResponse(**s) for s in sessions],
+            total=total,
+            skip=skip,
+            limit=limit
+        ).model_dump()
+    )

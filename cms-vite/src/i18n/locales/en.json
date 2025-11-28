@@ -363,6 +363,10 @@
   },
   "contents": {
     "title": "Content Management",
+    "empty": {
+      "title": "No content found",
+      "description": "Upload your first media file to get started"
+    },
     "addContent": "Add Content",
     "contentName": "Content Name",
     "contentType": "Content Type",
@@ -1255,6 +1259,25 @@
     "noActiveSessionsDescription": "You don't have any active sessions at the moment",
     "unknownDevice": "Unknown",
     "confirmRevokeSession": "Are you sure you want to revoke this session?\\n\\nDevice: {{device}}\\nIP: {{ip}}\\n\\nYou will be logged out from that device.",
+    "mySessions": "My Sessions",
+    "allUsersSessions": "All Users Sessions",
+    "superAdminView": "Super Admin View",
+    "adminView": "Organization Admin View",
+    "superAdminViewDesc": "Viewing all active sessions across all organizations",
+    "adminViewDesc": "Viewing all active sessions in your organization",
+    "user": "User",
+    "organization": "Organization",
+    "sessionType": "Type",
+    "ipAddress": "IP Address",
+    "lastActivity": "Last Activity",
+    "expiresAt": "Expires",
+    "showingResults": "Showing {{count}} of {{total}} active sessions",
+    "noAllActiveSessions": "No active sessions",
+    "noAllActiveSessionsDesc": "There are no active sessions at the moment",
+    "justNow": "Just now",
+    "minutesAgo": "{{count}} min ago",
+    "hoursAgo": "{{count}} hours ago",
+    "daysAgo": "{{count}} days ago",
     "modal": {
       "title": "Logout from All Devices?",
       "description": "This will logout all your active sessions except this one. You'll need to login again on those devices.",
@@ -1312,7 +1335,9 @@
       "update": "Update",
       "delete": "Delete",
       "manage": "Manage"
-    }
+    },
+    "noCustomRoles": "No custom roles yet",
+    "createFirstRole": "Create your first custom role to get started"
   },
   "organizations": {
     "title": "Organizations",
@@ -1358,6 +1383,10 @@
   "users": {
     "title": "User Management",
     "description": "Manage user accounts and access permissions",
+    "empty": {
+      "title": "No users found",
+      "description": "Get started by adding your first user"
+    },
     "stats": {
       "totalUsers": "Total Users",
       "active": "Active"
@@ -1424,6 +1453,10 @@
     "inactive": "Inactive",
     "noMenusFound": "No menus found",
     "failedToLoad": "Failed to load menus. Please try again.",
+    "empty": {
+      "title": "No menus found",
+      "description": "Create your first digital menu to get started"
+    },
     "types": {
       "restaurant": "Restaurant",
       "laundry": "Laundry",

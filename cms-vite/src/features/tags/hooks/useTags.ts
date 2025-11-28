@@ -31,7 +31,7 @@ export function useTags(filters?: TagListFilters) {
     queryKey: tagKeys.list(orgId, filters),
     queryFn: () => tagsApi.list(filters),
     staleTime: 2 * 60 * 1000, // 2 minutes
-    enabled: !!orgId, // Only fetch when organization is selected
+    // Note: Backend handles org filtering via JWT or X-Organization-Id header
   });
 }
 
