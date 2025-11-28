@@ -81,12 +81,8 @@ class ActivateDeviceUseCase:
                 details={"device_id": device.id, "status": device.status}
             )
 
-        # Check if code expired
-        if not device.can_activate():
-            raise ValidationError(
-                message="Kode aktivasi sudah kadaluarsa. Silakan request kode baru dari device.",
-                details={"expires_at": device.code_expires_at.isoformat() if device.code_expires_at else None}
-            )
+        # ✨ SIMPLIFIED: No expiry check - codes are valid until activated
+        # Device just needs to be in pending status (checked above via is_active)
 
         # 🆕 Check organization device quota before activation
         # TODO: Re-enable when organizations table has quota columns (max_devices, settings)

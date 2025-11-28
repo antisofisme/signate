@@ -1,11 +1,15 @@
 """
 Request Activation Code Use Case
 Generate 6-digit code for device activation
+
+✨ SIMPLIFIED: Activation codes no longer expire
+- Codes are valid until device is activated or manually deleted
+- Backend is the single source of truth for code generation
 """
 
 import secrets  # 🔒 SECURITY: Use secrets instead of random for cryptographically secure codes
 import string
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from typing import Dict, Optional
 
 from ..domain.device import Device
@@ -45,6 +49,8 @@ class RequestActivationCodeUseCase:
         - Ensures backend is the single source of truth for activation codes
         - Player no longer generates codes client-side
 
+        ✨ SIMPLIFIED: Codes no longer expire - valid until activated
+
         Args:
             code: Optional 6-digit activation code (backend generates if not provided)
             device_token: Optional device JWT token (currently not used)
@@ -54,48 +60,21 @@ class RequestActivationCodeUseCase:
             platform: Platform info
 
         Returns:
-            Dict with unique_code, expires_at, device_id
+            Dict with unique_code, device_id
         """
 
         # 🎯 CHECK FOR EXISTING PENDING DEVICE (Code Persistence)
-        # If device_uuid exists and matches a pending/released device, check expiry
+        # If device_uuid exists and matches a pending/released device, reuse same code
         if device_uuid:
             existing_device = self.device_repo.find_by_uuid(device_uuid)
             if existing_device and existing_device.status in ['pending', 'released']:
-                # ✨ NEW: Check if code expired - if yes, generate new code
-                if existing_device.can_activate():
-                    # Code still valid - reuse it
-                    print(f"[Device Registration] ✅ Found existing device with UUID {device_uuid}, reusing valid code: {existing_device.unique_code}")
-                    return {
-                        'unique_code': existing_device.unique_code,
-                        'expires_at': existing_device.code_expires_at.isoformat() if existing_device.code_expires_at else None,
-                        'device_id': existing_device.id,
-                        'device_token': None
-                    }
-                else:
-                    # Code expired - generate new code and update device
-                    print(f"[Device Registration] ⚠️ Code expired for device {existing_device.id}, generating new code...")
-
-                    # Validate new code is unique
-                    existing_code_check = self.device_repo.find_by_code(code)
-                    if existing_code_check and existing_code_check.id != existing_device.id:
-                        raise ValueError(f"Activation code {code} is already in use. Please generate a new code.")
-
-                    # Update device with new code
-                    expires_at = datetime.now(timezone.utc) + timedelta(minutes=10)
-                    existing_device.unique_code = code
-                    existing_device.code_expires_at = expires_at
-
-                    # Save to database
-                    updated_device = self.device_repo.update(existing_device)
-
-                    print(f"[Device Registration] ✅ Device {updated_device.id} updated with new code: {code}")
-                    return {
-                        'unique_code': updated_device.unique_code,
-                        'expires_at': updated_device.code_expires_at.isoformat(),
-                        'device_id': updated_device.id,
-                        'device_token': None
-                    }
+                # Code never expires - always reuse existing code
+                print(f"[Device Registration] ✅ Found existing device with UUID {device_uuid}, reusing code: {existing_device.unique_code}")
+                return {
+                    'unique_code': existing_device.unique_code,
+                    'device_id': existing_device.id,
+                    'device_token': None
+                }
 
         # ✨ NEW FLOW: Always create device as unassigned
         # Organization will be assigned when admin claims the device
@@ -124,9 +103,7 @@ class RequestActivationCodeUseCase:
                     # If code was backend-generated, this should never happen (bug in _generate_unique_code)
                     raise ValueError(f"Activation code {code} is already in use. Please generate a new code.")
 
-                # Code expires in 10 minutes
-                expires_at = datetime.now(timezone.utc) + timedelta(minutes=10)
-
+                # ✨ SIMPLIFIED: No expiry - code is valid until activated
                 # Create device entity (always unassigned - organization_id = None)
                 device = Device(
                     id=None,
@@ -135,7 +112,7 @@ class RequestActivationCodeUseCase:
                     organization_id=None,  # ✨ Always NULL - assigned during admin approval
                     status='pending',
                     unique_code=code,
-                    code_expires_at=expires_at,
+                    code_expires_at=None,  # ✨ No expiry - code valid until activated
                     device_uuid=device_uuid,
                     platform=platform,
                     ip_address=None,
@@ -209,7 +186,6 @@ class RequestActivationCodeUseCase:
 
         return {
             'unique_code': created_device.unique_code,
-            'expires_at': created_device.code_expires_at.isoformat(),
             'device_id': created_device.id,
             'device_token': device_jwt_token  # JWT token for re-registration (only if org assigned)
         }

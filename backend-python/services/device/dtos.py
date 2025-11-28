@@ -155,7 +155,6 @@ class SaveDeviceLogsResponse(BaseModel):
 class ActivationCodeResponse(BaseModel):
     """Activation code response - for player"""
     unique_code: str
-    expires_at: str  # ISO format
     device_id: int
     device_token: Optional[str] = None  # 🔑 JWT token for re-registration (only if org assigned)
 
@@ -246,7 +245,6 @@ class HeartbeatResponse(BaseModel):
 class ActivationStatusResponse(BaseModel):
     """Check activation status - for player polling"""
     activated: bool  # Player expects 'activated' not 'is_activated'
-    expired: bool = False  # True if activation code has expired
     device_id: Optional[int] = None
     device_name: Optional[str] = None
     organization_id: Optional[int] = None  # For player to know which org it belongs to

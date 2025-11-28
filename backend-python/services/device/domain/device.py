@@ -71,10 +71,12 @@ class Device:
         return self.status == 'pending'
 
     def can_activate(self) -> bool:
-        """Check if device can be activated"""
-        if not self.code_expires_at:
-            return False
-        return datetime.now(timezone.utc) < self.code_expires_at
+        """Check if device can be activated
+
+        ✨ SIMPLIFIED: No expiry check - codes are valid until activated
+        Device can be activated if it's in pending or released status
+        """
+        return self.status in ('pending', 'released')
 
     def needs_heartbeat(self) -> bool:
         """Check if device needs heartbeat (offline > 5 min)"""
