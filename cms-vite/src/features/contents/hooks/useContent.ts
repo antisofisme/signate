@@ -5,6 +5,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from '@/lib/notifications/toast';
 import { handleAPIError } from '@/lib/errors/errorHandler';
+import { useSelectedOrgId, contentKeys as sharedContentKeys } from '@/shared/hooks';
 import type { ContentFilters, ContentUploadData } from '../types/content';
 import {
   getContentList,
@@ -17,24 +18,22 @@ import {
   getContentStats,
 } from '../api/contentApi';
 
-// Query keys
-export const contentKeys = {
-  all: ['content'] as const,
-  lists: () => [...contentKeys.all, 'list'] as const,
-  list: (filters?: ContentFilters) => [...contentKeys.lists(), filters] as const,
-  details: () => [...contentKeys.all, 'detail'] as const,
-  detail: (id: number) => [...contentKeys.details(), id] as const,
-  stats: () => [...contentKeys.all, 'stats'] as const,
-};
+// Re-export shared content keys for backward compatibility
+export const contentKeys = sharedContentKeys;
 
 /**
  * Get list of content with filters
+ *
+ * Query key includes orgId for proper cache isolation between organizations.
  */
 export const useContentList = (filters?: ContentFilters) => {
+  const orgId = useSelectedOrgId();
+
   return useQuery({
-    queryKey: contentKeys.list(filters),
+    queryKey: contentKeys.list(orgId, filters),
     queryFn: () => getContentList(filters),
     staleTime: 30000, // 30 seconds
+    enabled: !!orgId, // Only fetch when organization is selected
   });
 };
 
@@ -197,11 +196,16 @@ export const useBulkDeleteContent = () => {
 
 /**
  * Get content statistics
+ *
+ * Query key includes orgId for proper cache isolation between organizations.
  */
 export const useContentStats = () => {
+  const orgId = useSelectedOrgId();
+
   return useQuery({
-    queryKey: contentKeys.stats(),
+    queryKey: contentKeys.stats(orgId),
     queryFn: () => getContentStats(),
     staleTime: 60000, // 1 minute
+    enabled: !!orgId, // Only fetch when organization is selected
   });
 };

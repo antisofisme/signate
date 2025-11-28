@@ -5,6 +5,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { getApiErrorMessage } from '@/shared/utils/types';
+import { useSelectedOrgId, playlistKeys as sharedPlaylistKeys } from '@/shared/hooks';
 import { playlistApi } from '../api/playlistApi';
 import type {
   CreatePlaylistRequest,
@@ -15,25 +16,22 @@ import type {
   AssignTagsRequest,
 } from '../types/playlist';
 
-// Query keys factory
-export const playlistKeys = {
-  all: ['playlists'] as const,
-  lists: () => [...playlistKeys.all, 'list'] as const,
-  list: (filters?: any) => [...playlistKeys.lists(), filters] as const,
-  details: () => [...playlistKeys.all, 'detail'] as const,
-  detail: (id: number) => [...playlistKeys.details(), id] as const,
-  content: (id: number) => [...playlistKeys.detail(id), 'content'] as const,
-  assignments: (id: number) => [...playlistKeys.detail(id), 'assignments'] as const,
-};
+// Re-export shared playlist keys for backward compatibility
+export const playlistKeys = sharedPlaylistKeys;
 
 /**
  * Get list of playlists
+ *
+ * Query key includes orgId for proper cache isolation between organizations.
  */
 export const usePlaylistList = (filters?: { is_active?: boolean; skip?: number; limit?: number }) => {
+  const orgId = useSelectedOrgId();
+
   return useQuery({
-    queryKey: playlistKeys.list(filters),
+    queryKey: playlistKeys.list(orgId, filters),
     queryFn: () => playlistApi.list(filters),
     staleTime: 30000, // 30 seconds
+    enabled: !!orgId, // Only fetch when organization is selected
   });
 };
 

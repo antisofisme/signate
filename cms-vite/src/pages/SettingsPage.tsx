@@ -13,13 +13,30 @@ import UsersTab from '@/features/users/pages/UsersPage';
 import SessionsTab from '@/features/sessions/pages/SessionsPage';
 import RolesTab from '@/pages/RolesPage';
 import AuditLogsTab from '@/features/audit/pages/AuditPage';
-import { PageHeader } from '@/shared/components';
+import { PageHeader, AccessDenied, PageSkeleton } from '@/shared/components';
+import { useCanPerformAction } from '@/features/rbac/hooks/usePermissions';
 
 type TabType = 'organizations' | 'users' | 'sessions' | 'roles' | 'audit';
 
 export default function SettingsPage() {
   const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState<TabType>('organizations');
+
+  // Check permissions - Settings requires admin access
+  const { hasPermission, isLoading: isCheckingPermission } = useCanPerformAction(
+    'settings',
+    'read'
+  );
+
+  // Show loading state while checking permissions
+  if (isCheckingPermission) {
+    return <PageSkeleton />;
+  }
+
+  // Show access denied if no permission
+  if (!hasPermission) {
+    return <AccessDenied />;
+  }
 
   const tabs = [
     {

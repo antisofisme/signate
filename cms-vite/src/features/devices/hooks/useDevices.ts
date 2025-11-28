@@ -5,6 +5,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from '@/lib/notifications/toast';
 import { handleAPIError } from '@/lib/errors/errorHandler';
+import { useSelectedOrgId, deviceKeys as sharedDeviceKeys } from '@/shared/hooks';
 import { deviceApi } from '../api/deviceApi';
 import type {
   Device,
@@ -13,22 +14,8 @@ import type {
   ActivateDeviceRequest,
 } from '../types/device';
 
-// Query keys
-export const deviceKeys = {
-  all: ['devices'] as const,
-  lists: () => [...deviceKeys.all, 'list'] as const,
-  list: (filters?: {
-    scope?: string;
-    status?: string;
-    device_type?: string;
-    skip?: number;
-    limit?: number;
-  }) => [...deviceKeys.lists(), filters] as const,
-  details: () => [...deviceKeys.all, 'detail'] as const,
-  detail: (id: number) => [...deviceKeys.details(), id] as const,
-  logs: (id: number) => [...deviceKeys.all, 'logs', id] as const,
-  commands: (id: number) => [...deviceKeys.all, 'commands', id] as const,
-};
+// Re-export shared device keys for backward compatibility
+export const deviceKeys = sharedDeviceKeys;
 
 /**
  * Get list of devices with filters
@@ -36,6 +23,8 @@ export const deviceKeys = {
  * NOTE: Auto-polling removed for performance optimization.
  * Use refetch() from the returned query for manual refresh.
  * Data is considered fresh for 30 seconds (staleTime).
+ *
+ * Query key includes orgId for proper cache isolation between organizations.
  */
 export const useDeviceList = (filters?: {
   status?: string;
@@ -43,11 +32,13 @@ export const useDeviceList = (filters?: {
   skip?: number;
   limit?: number;
 }) => {
+  const orgId = useSelectedOrgId();
+
   return useQuery({
-    queryKey: deviceKeys.list(filters),
+    queryKey: deviceKeys.list(orgId, filters),
     queryFn: () => deviceApi.list(filters),
     staleTime: 30000, // 30 seconds - data is fresh for this duration
-    // refetchInterval removed - use manual refresh for performance
+    enabled: !!orgId, // Only fetch when organization is selected
   });
 };
 

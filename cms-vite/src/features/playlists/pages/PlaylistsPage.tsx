@@ -15,7 +15,7 @@ import {
 } from '../hooks/usePlaylist';
 import { PlaylistList } from '../components/PlaylistList';
 import { PlaylistForm } from '../components/PlaylistForm';
-import { ConfirmDialog, AccessDenied, ErrorDisplay } from '@/shared/components';
+import { ConfirmDialog, AccessDenied, ErrorDisplay, PageSkeleton } from '@/shared/components';
 import PlaylistContentModal from '../components/PlaylistContentModal';
 import PlaylistAssignmentModal from '../components/PlaylistAssignmentModal';
 import { useCanPerformAction } from '@/features/rbac/hooks/usePermissions';
@@ -30,11 +30,12 @@ export default function PlaylistsPage() {
   const { hasPermission: canUpdate } = useCanPerformAction('playlists', 'edit');
   const { hasPermission: canDelete } = useCanPerformAction('playlists', 'delete');
 
-  // Show access denied if no read permission
+  // Show loading state while checking permissions
   if (loadingReadPerm) {
-    return null; // Or a loading spinner
+    return <PageSkeleton />;
   }
 
+  // Show access denied if no read permission
   if (!canRead) {
     return <AccessDenied />;
   }

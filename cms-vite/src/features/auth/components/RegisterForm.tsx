@@ -1,287 +1,150 @@
 /**
  * Register Form Component
- * Form untuk registrasi user baru dengan validation
+ * Form untuk registrasi user baru dengan React Hook Form + Zod validation
  */
 
-import { useState, FormEvent } from 'react';
+import { useForm, FormProvider } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
 import { useTranslation } from 'react-i18next';
 import { useRegister } from '../hooks/useAuth';
-import { validators } from '@/lib/validation/schemas';
 import { PasswordStrengthIndicator } from './PasswordStrengthIndicator';
-import { Button } from '@/shared/components';
+import { Button, FormInput } from '@/shared/components';
+
+// Validation schema
+const registerSchema = z
+  .object({
+    username: z
+      .string()
+      .min(1, 'Username harus diisi')
+      .min(3, 'Username minimal 3 karakter')
+      .max(50, 'Username maksimal 50 karakter')
+      .regex(/^[a-zA-Z0-9_-]+$/, 'Username hanya boleh huruf, angka, underscore, dan dash'),
+    email: z
+      .string()
+      .min(1, 'Email harus diisi')
+      .email('Format email tidak valid')
+      .max(100, 'Email maksimal 100 karakter'),
+    full_name: z
+      .string()
+      .min(1, 'Nama lengkap harus diisi')
+      .min(3, 'Nama lengkap minimal 3 karakter')
+      .max(100, 'Nama lengkap maksimal 100 karakter'),
+    password: z
+      .string()
+      .min(1, 'Password harus diisi')
+      .min(8, 'Password minimal 8 karakter')
+      .regex(/[A-Z]/, 'Password harus mengandung minimal 1 huruf besar')
+      .regex(/[a-z]/, 'Password harus mengandung minimal 1 huruf kecil')
+      .regex(/[0-9]/, 'Password harus mengandung minimal 1 angka'),
+    confirmPassword: z.string().min(1, 'Konfirmasi password harus diisi'),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    message: 'Password tidak cocok',
+    path: ['confirmPassword'],
+  });
+
+type RegisterFormData = z.infer<typeof registerSchema>;
 
 export function RegisterForm() {
   const { t } = useTranslation();
-  const [formData, setFormData] = useState({
-    username: '',
-    email: '',
-    full_name: '',
-    password: '',
-    confirmPassword: '',
-  });
-
-  const [errors, setErrors] = useState<{
-    username?: string;
-    email?: string;
-    full_name?: string;
-    password?: string;
-    confirmPassword?: string;
-  }>({});
-
   const { mutate: register, isPending } = useRegister();
 
-  /**
-   * Validate username field
-   */
-  const validateUsername = (value: string) => {
-    const result = validators.username(value);
-    if (!result.valid) {
-      setErrors((prev) => ({ ...prev, username: result.error }));
-      return false;
-    }
-    setErrors((prev) => ({ ...prev, username: undefined }));
-    return true;
-  };
+  // Form setup with React Hook Form + Zod
+  const methods = useForm<RegisterFormData>({
+    resolver: zodResolver(registerSchema),
+    defaultValues: {
+      username: '',
+      email: '',
+      full_name: '',
+      password: '',
+      confirmPassword: '',
+    },
+  });
 
-  /**
-   * Validate email field
-   */
-  const validateEmail = (value: string) => {
-    const result = validators.email(value);
-    if (!result.valid) {
-      setErrors((prev) => ({ ...prev, email: result.error }));
-      return false;
-    }
-    setErrors((prev) => ({ ...prev, email: undefined }));
-    return true;
-  };
+  // Watch password for strength indicator
+  const password = methods.watch('password');
 
-  /**
-   * Validate full name field
-   */
-  const validateFullName = (value: string) => {
-    if (!validators.required(value)) {
-      setErrors((prev) => ({ ...prev, full_name: 'Nama lengkap harus diisi' }));
-      return false;
-    }
-    if (!validators.minLength(value, 3)) {
-      setErrors((prev) => ({ ...prev, full_name: 'Nama lengkap minimal 3 karakter' }));
-      return false;
-    }
-    setErrors((prev) => ({ ...prev, full_name: undefined }));
-    return true;
-  };
-
-  /**
-   * Validate password field
-   */
-  const validatePassword = (value: string) => {
-    const result = validators.password(value);
-    if (!result.valid) {
-      setErrors((prev) => ({ ...prev, password: result.error }));
-      return false;
-    }
-    setErrors((prev) => ({ ...prev, password: undefined }));
-    return true;
-  };
-
-  /**
-   * Validate confirm password field
-   */
-  const validateConfirmPassword = (value: string) => {
-    if (!validators.required(value)) {
-      setErrors((prev) => ({ ...prev, confirmPassword: 'Konfirmasi password harus diisi' }));
-      return false;
-    }
-    if (value !== formData.password) {
-      setErrors((prev) => ({ ...prev, confirmPassword: 'Password tidak cocok' }));
-      return false;
-    }
-    setErrors((prev) => ({ ...prev, confirmPassword: undefined }));
-    return true;
-  };
-
-  /**
-   * Handle input change
-   */
-  const handleChange = (field: keyof typeof formData) => (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData((prev) => ({ ...prev, [field]: e.target.value }));
-  };
-
-  /**
-   * Handle form submit
-   */
-  const handleSubmit = (e: FormEvent) => {
-    e.preventDefault();
-
-    // Validate all fields
-    const isUsernameValid = validateUsername(formData.username);
-    const isEmailValid = validateEmail(formData.email);
-    const isFullNameValid = validateFullName(formData.full_name);
-    const isPasswordValid = validatePassword(formData.password);
-    const isConfirmPasswordValid = validateConfirmPassword(formData.confirmPassword);
-
-    if (
-      !isUsernameValid ||
-      !isEmailValid ||
-      !isFullNameValid ||
-      !isPasswordValid ||
-      !isConfirmPasswordValid
-    ) {
-      return;
-    }
-
-    // Submit registration
+  const handleSubmit = (data: RegisterFormData) => {
     register({
-      username: formData.username,
-      email: formData.email,
-      full_name: formData.full_name,
-      password: formData.password,
+      username: data.username,
+      email: data.email,
+      full_name: data.full_name,
+      password: data.password,
     });
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
-      {/* Username Field */}
-      <div>
-        <label htmlFor="username" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-          Username
-        </label>
-        <input
-          id="username"
-          type="text"
-          value={formData.username}
-          onChange={handleChange('username')}
-          onBlur={(e) => validateUsername(e.target.value)}
-          disabled={isPending}
-          className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-            errors.username
-              ? 'border-red-500 focus:ring-red-500'
-              : 'border-gray-300 dark:border-gray-600 focus:ring-blue-500'
-          } ${isPending ? 'bg-gray-100 dark:bg-gray-700 cursor-not-allowed' : 'bg-white dark:bg-gray-800'}`}
+    <FormProvider {...methods}>
+      <form onSubmit={methods.handleSubmit(handleSubmit)} className="space-y-6">
+        {/* Username Field */}
+        <FormInput
+          name="username"
+          label="Username"
           placeholder={t('auth.placeholders.username')}
+          disabled={isPending}
+          autoComplete="username"
+          required
         />
-        {errors.username && (
-          <p className="mt-1 text-sm text-red-600">{errors.username}</p>
-        )}
-      </div>
 
-      {/* Email Field */}
-      <div>
-        <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-          Email
-        </label>
-        <input
-          id="email"
+        {/* Email Field */}
+        <FormInput
+          name="email"
           type="email"
-          value={formData.email}
-          onChange={handleChange('email')}
-          onBlur={(e) => validateEmail(e.target.value)}
-          disabled={isPending}
-          className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-            errors.email
-              ? 'border-red-500 focus:ring-red-500'
-              : 'border-gray-300 dark:border-gray-600 focus:ring-blue-500'
-          } ${isPending ? 'bg-gray-100 dark:bg-gray-700 cursor-not-allowed' : 'bg-white dark:bg-gray-800'}`}
+          label="Email"
           placeholder={t('auth.placeholders.email')}
-        />
-        {errors.email && (
-          <p className="mt-1 text-sm text-red-600">{errors.email}</p>
-        )}
-      </div>
-
-      {/* Full Name Field */}
-      <div>
-        <label htmlFor="full_name" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-          Nama Lengkap
-        </label>
-        <input
-          id="full_name"
-          type="text"
-          value={formData.full_name}
-          onChange={handleChange('full_name')}
-          onBlur={(e) => validateFullName(e.target.value)}
           disabled={isPending}
-          className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-            errors.full_name
-              ? 'border-red-500 focus:ring-red-500'
-              : 'border-gray-300 dark:border-gray-600 focus:ring-blue-500'
-          } ${isPending ? 'bg-gray-100 dark:bg-gray-700 cursor-not-allowed' : 'bg-white dark:bg-gray-800'}`}
+          autoComplete="email"
+          required
+        />
+
+        {/* Full Name Field */}
+        <FormInput
+          name="full_name"
+          label={t('auth.labels.fullName', 'Nama Lengkap')}
           placeholder={t('auth.placeholders.fullName')}
-        />
-        {errors.full_name && (
-          <p className="mt-1 text-sm text-red-600">{errors.full_name}</p>
-        )}
-      </div>
-
-      {/* Password Field */}
-      <div>
-        <label htmlFor="password" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-          Password
-        </label>
-        <input
-          id="password"
-          type="password"
-          value={formData.password}
-          onChange={handleChange('password')}
-          onBlur={(e) => validatePassword(e.target.value)}
           disabled={isPending}
-          className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-            errors.password
-              ? 'border-red-500 focus:ring-red-500'
-              : 'border-gray-300 dark:border-gray-600 focus:ring-blue-500'
-          } ${isPending ? 'bg-gray-100 dark:bg-gray-700 cursor-not-allowed' : 'bg-white dark:bg-gray-800'}`}
-          placeholder={t('auth.placeholders.password')}
+          autoComplete="name"
+          required
         />
-        {errors.password && (
-          <p className="mt-1 text-sm text-red-600">{errors.password}</p>
-        )}
 
-        {/* Password Strength Indicator */}
-        <PasswordStrengthIndicator password={formData.password} showRequirements={true} />
-      </div>
+        {/* Password Field */}
+        <div className="space-y-2">
+          <FormInput
+            name="password"
+            type="password"
+            label="Password"
+            placeholder={t('auth.placeholders.password')}
+            disabled={isPending}
+            autoComplete="new-password"
+            required
+          />
+          {/* Password Strength Indicator */}
+          <PasswordStrengthIndicator password={password} showRequirements={true} />
+        </div>
 
-      {/* Confirm Password Field */}
-      <div>
-        <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-          Konfirmasi Password
-        </label>
-        <input
-          id="confirmPassword"
+        {/* Confirm Password Field */}
+        <FormInput
+          name="confirmPassword"
           type="password"
-          value={formData.confirmPassword}
-          onChange={handleChange('confirmPassword')}
-          onBlur={(e) => validateConfirmPassword(e.target.value)}
-          disabled={isPending}
-          className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-            errors.confirmPassword
-              ? 'border-red-500 focus:ring-red-500'
-              : 'border-gray-300 dark:border-gray-600 focus:ring-blue-500'
-          } ${isPending ? 'bg-gray-100 dark:bg-gray-700 cursor-not-allowed' : 'bg-white dark:bg-gray-800'}`}
+          label={t('auth.labels.confirmPassword', 'Konfirmasi Password')}
           placeholder={t('auth.placeholders.confirmPassword')}
+          disabled={isPending}
+          autoComplete="new-password"
+          required
         />
-        {errors.confirmPassword && (
-          <p className="mt-1 text-sm text-red-600">{errors.confirmPassword}</p>
-        )}
-      </div>
 
-      {/* Submit Button */}
-      <Button
-        type="submit"
-        variant="primary"
-        fullWidth
-        disabled={
-          isPending ||
-          !formData.username ||
-          !formData.email ||
-          !formData.full_name ||
-          !formData.password ||
-          !formData.confirmPassword
-        }
-        loading={isPending}
-      >
-        {isPending ? 'Loading...' : 'Daftar'}
-      </Button>
-    </form>
+        {/* Submit Button */}
+        <Button
+          type="submit"
+          variant="primary"
+          fullWidth
+          disabled={isPending}
+          loading={isPending}
+        >
+          {isPending ? t('auth.registering', 'Loading...') : t('auth.register', 'Daftar')}
+        </Button>
+      </form>
+    </FormProvider>
   );
 }

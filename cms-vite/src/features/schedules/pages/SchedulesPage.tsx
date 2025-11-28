@@ -9,7 +9,7 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ClipboardList, Calendar, Plus } from 'lucide-react';
 import { useCanPerformAction } from '@/features/rbac/hooks/usePermissions';
-import { AccessDenied, ConfirmDialog } from '@/shared/components';
+import { AccessDenied, ConfirmDialog, ErrorDisplay, PageSkeleton } from '@/shared/components';
 import {
   useSchedules,
   useOccurrences,
@@ -48,8 +48,13 @@ export const SchedulesPage = () => {
   const { hasPermission: canEdit } = useCanPerformAction('schedules', 'edit');
   const { hasPermission: canDelete } = useCanPerformAction('schedules', 'delete');
 
+  // Show loading state while checking permissions
+  if (loadingViewPerm) {
+    return <PageSkeleton />;
+  }
+
   // Return access denied if no view permission
-  if (!loadingViewPerm && !canView) {
+  if (!canView) {
     return <AccessDenied />;
   }
 
@@ -58,7 +63,7 @@ export const SchedulesPage = () => {
   const endOfMonth = new Date(selectedDate.getFullYear(), selectedDate.getMonth() + 1, 0);
 
   // Queries
-  const { data, isLoading } = useSchedules();
+  const { data, isLoading, error, refetch } = useSchedules();
   const occurrencesQuery = useOccurrences(
     {
       start_date: startOfMonth.toISOString().split('T')[0],
@@ -182,7 +187,17 @@ export const SchedulesPage = () => {
         )}
       </div>
 
+      {/* Error State */}
+      {error && (
+        <ErrorDisplay
+          error={error}
+          onRetry={refetch}
+          title={t('schedules.messages.loadError', 'Failed to load schedules')}
+        />
+      )}
+
       {/* Content */}
+      {!error && (
       <div className="space-y-6">
         {viewMode === 'list' ? (
           <ScheduleList
@@ -210,6 +225,7 @@ export const SchedulesPage = () => {
           />
         )}
       </div>
+      )}
 
       {/* Modals */}
       {(modalMode === 'create' || modalMode === 'edit') && (

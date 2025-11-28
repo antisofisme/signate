@@ -9,20 +9,29 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { tagsApi } from '@/features/tags/api/tagsApi';
 import { handleAPIError } from '@/lib/errors/errorHandler';
 import { toast } from '@/lib/notifications/toast';
+import { useSelectedOrgId, tagKeys } from '@/shared/hooks';
 import type {
   CreateTagRequest,
   UpdateTagRequest,
   TagListFilters,
 } from '../types/tag';
 
+// Export tag keys for use in other components
+export { tagKeys };
+
 /**
  * Get all tags with optional sorting
+ *
+ * Query key includes orgId for proper cache isolation between organizations.
  */
 export function useTags(filters?: TagListFilters) {
+  const orgId = useSelectedOrgId();
+
   return useQuery({
-    queryKey: ['tags', filters],
+    queryKey: tagKeys.list(orgId, filters),
     queryFn: () => tagsApi.list(filters),
     staleTime: 2 * 60 * 1000, // 2 minutes
+    enabled: !!orgId, // Only fetch when organization is selected
   });
 }
 
@@ -31,10 +40,10 @@ export function useTags(filters?: TagListFilters) {
  */
 export function useTag(id: number) {
   return useQuery({
-    queryKey: ['tags', id],
+    queryKey: tagKeys.detail(id),
     queryFn: () => tagsApi.get(id),
     staleTime: 2 * 60 * 1000, // 2 minutes
-    enabled: !!id,
+    enabled: !!id && id > 0,
   });
 }
 
@@ -43,10 +52,10 @@ export function useTag(id: number) {
  */
 export function useTagUsage(id: number) {
   return useQuery({
-    queryKey: ['tags', id, 'usage'],
+    queryKey: tagKeys.usage(id),
     queryFn: () => tagsApi.getUsage(id),
     staleTime: 1 * 60 * 1000, // 1 minute
-    enabled: !!id,
+    enabled: !!id && id > 0,
   });
 }
 
@@ -60,7 +69,7 @@ export function useCreateTag() {
     mutationFn: (tagData: CreateTagRequest) => tagsApi.create(tagData),
     onSuccess: (data) => {
       // Invalidate tag list
-      queryClient.invalidateQueries({ queryKey: ['tags'] });
+      queryClient.invalidateQueries({ queryKey: tagKeys.all });
 
       // Show success toast
       toast.success(`Tag "${data.tag_name}" berhasil dibuat`);
@@ -83,8 +92,8 @@ export function useUpdateTag() {
       tagsApi.update(id, data),
     onSuccess: (data, variables) => {
       // Invalidate queries
-      queryClient.invalidateQueries({ queryKey: ['tags'] });
-      queryClient.invalidateQueries({ queryKey: ['tags', variables.id] });
+      queryClient.invalidateQueries({ queryKey: tagKeys.all });
+      queryClient.invalidateQueries({ queryKey: tagKeys.detail(variables.id) });
 
       // Show success toast
       toast.success(`Tag "${data.tag_name}" berhasil diupdate`);
@@ -107,8 +116,8 @@ export function useDeleteTag() {
       tagsApi.delete(id, force),
     onSuccess: (_, variables) => {
       // Invalidate queries
-      queryClient.invalidateQueries({ queryKey: ['tags'] });
-      queryClient.removeQueries({ queryKey: ['tags', variables.id] });
+      queryClient.invalidateQueries({ queryKey: tagKeys.all });
+      queryClient.removeQueries({ queryKey: tagKeys.detail(variables.id) });
 
       // Show success toast
       toast.success('Tag berhasil dihapus');
@@ -131,12 +140,12 @@ export function useAssignTagToContents() {
       tagsApi.assignToContents(tagId, contentIds),
     onSuccess: (result, variables) => {
       // Invalidate tag queries to update usage counts
-      queryClient.invalidateQueries({ queryKey: ['tags'] });
-      queryClient.invalidateQueries({ queryKey: ['tags', variables.tagId] });
+      queryClient.invalidateQueries({ queryKey: tagKeys.all });
+      queryClient.invalidateQueries({ queryKey: tagKeys.detail(variables.tagId) });
 
       // Invalidate content tags for all affected content
       variables.contentIds.forEach(contentId => {
-        queryClient.invalidateQueries({ queryKey: ['content', contentId, 'tags'] });
+        queryClient.invalidateQueries({ queryKey: ['content', 'tags', contentId] });
       });
 
       // Show success toast with details
@@ -166,12 +175,12 @@ export function useUnassignTagFromContents() {
       tagsApi.unassignFromContents(tagId, contentIds),
     onSuccess: (result, variables) => {
       // Invalidate tag queries to update usage counts
-      queryClient.invalidateQueries({ queryKey: ['tags'] });
-      queryClient.invalidateQueries({ queryKey: ['tags', variables.tagId] });
+      queryClient.invalidateQueries({ queryKey: tagKeys.all });
+      queryClient.invalidateQueries({ queryKey: tagKeys.detail(variables.tagId) });
 
       // Invalidate content tags for all affected content
       variables.contentIds.forEach(contentId => {
-        queryClient.invalidateQueries({ queryKey: ['content', contentId, 'tags'] });
+        queryClient.invalidateQueries({ queryKey: ['content', 'tags', contentId] });
       });
 
       // Show success toast
@@ -189,9 +198,9 @@ export function useUnassignTagFromContents() {
  */
 export function useContentTags(contentId: number) {
   return useQuery({
-    queryKey: ['content', contentId, 'tags'],
+    queryKey: ['content', 'tags', contentId],
     queryFn: () => tagsApi.getContentTags(contentId),
     staleTime: 2 * 60 * 1000, // 2 minutes
-    enabled: !!contentId,
+    enabled: !!contentId && contentId > 0,
   });
 }

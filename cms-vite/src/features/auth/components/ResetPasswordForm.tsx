@@ -1,212 +1,128 @@
 /**
  * Reset Password Form Component
- * Form untuk reset password dengan token
+ * Form untuk reset password dengan token menggunakan React Hook Form + Zod validation
  */
 
-import { useState, FormEvent } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Loader2 } from 'lucide-react';
+import { useForm, FormProvider } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
 import { useResetPassword } from '../hooks/useAuth';
-import { validators } from '@/lib/validation/schemas';
+import { Button, FormInput } from '@/shared/components';
+
+// Validation schema
+const resetPasswordSchema = z
+  .object({
+    token: z.string().min(1, 'Token harus diisi'),
+    newPassword: z
+      .string()
+      .min(1, 'Password baru harus diisi')
+      .min(6, 'Password minimal 6 karakter'),
+    confirmPassword: z.string().min(1, 'Konfirmasi password harus diisi'),
+  })
+  .refine((data) => data.newPassword === data.confirmPassword, {
+    message: 'Password tidak cocok',
+    path: ['confirmPassword'],
+  });
+
+type ResetPasswordFormData = z.infer<typeof resetPasswordSchema>;
 
 export function ResetPasswordForm() {
   const { t } = useTranslation();
   const [searchParams] = useSearchParams();
   const tokenFromUrl = searchParams.get('token') || '';
 
-  const [token, setToken] = useState(tokenFromUrl);
-  const [newPassword, setNewPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [errors, setErrors] = useState<{
-    token?: string;
-    newPassword?: string;
-    confirmPassword?: string;
-  }>({});
-
   const { mutate: resetPassword, isPending } = useResetPassword();
 
-  /**
-   * Validate token field
-   */
-  const validateToken = (value: string) => {
-    if (!validators.required(value)) {
-      setErrors((prev) => ({ ...prev, token: 'Token harus diisi' }));
-      return false;
-    }
-    setErrors((prev) => ({ ...prev, token: undefined }));
-    return true;
-  };
+  // Form setup with React Hook Form + Zod
+  const methods = useForm<ResetPasswordFormData>({
+    resolver: zodResolver(resetPasswordSchema),
+    defaultValues: {
+      token: tokenFromUrl,
+      newPassword: '',
+      confirmPassword: '',
+    },
+  });
 
-  /**
-   * Validate new password field
-   */
-  const validateNewPassword = (value: string) => {
-    if (!validators.required(value)) {
-      setErrors((prev) => ({ ...prev, newPassword: 'Password baru harus diisi' }));
-      return false;
-    }
-    if (!validators.minLength(value, 6)) {
-      setErrors((prev) => ({
-        ...prev,
-        newPassword: 'Password minimal 6 karakter',
-      }));
-      return false;
-    }
-    setErrors((prev) => ({ ...prev, newPassword: undefined }));
-    return true;
-  };
-
-  /**
-   * Validate confirm password field
-   */
-  const validateConfirmPassword = (value: string) => {
-    if (!validators.required(value)) {
-      setErrors((prev) => ({ ...prev, confirmPassword: 'Konfirmasi password harus diisi' }));
-      return false;
-    }
-    if (value !== newPassword) {
-      setErrors((prev) => ({ ...prev, confirmPassword: 'Password tidak cocok' }));
-      return false;
-    }
-    setErrors((prev) => ({ ...prev, confirmPassword: undefined }));
-    return true;
-  };
-
-  /**
-   * Handle form submit
-   */
-  const handleSubmit = (e: FormEvent) => {
-    e.preventDefault();
-
-    // Validate all fields
-    const isTokenValid = validateToken(token);
-    const isNewPasswordValid = validateNewPassword(newPassword);
-    const isConfirmPasswordValid = validateConfirmPassword(confirmPassword);
-
-    if (!isTokenValid || !isNewPasswordValid || !isConfirmPasswordValid) {
-      return;
-    }
-
-    // Submit reset password
+  const handleSubmit = (data: ResetPasswordFormData) => {
     resetPassword({
-      token,
-      new_password: newPassword,
+      token: data.token,
+      new_password: data.newPassword,
     });
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
-      {/* Info Message */}
-      <div className="rounded-md bg-blue-50 p-4">
-        <div className="flex">
-          <div className="ml-3">
-            <p className="text-sm text-blue-700">
-              Masukkan token reset password dan password baru Anda.
-            </p>
+    <FormProvider {...methods}>
+      <form onSubmit={methods.handleSubmit(handleSubmit)} className="space-y-6">
+        {/* Info Message */}
+        <div className="rounded-md bg-blue-50 dark:bg-blue-900/20 p-4">
+          <div className="flex">
+            <div className="ml-3">
+              <p className="text-sm text-blue-700 dark:text-blue-300">
+                {t(
+                  'auth.messages.resetPasswordInfo',
+                  'Masukkan token reset password dan password baru Anda.'
+                )}
+              </p>
+            </div>
           </div>
         </div>
-      </div>
 
-      {/* Token Field */}
-      <div>
-        <label htmlFor="token" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-          Token Reset
-        </label>
-        <input
-          id="token"
-          type="text"
-          value={token}
-          onChange={(e) => setToken(e.target.value)}
-          onBlur={(e) => validateToken(e.target.value)}
-          disabled={isPending}
-          className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-            errors.token
-              ? 'border-red-500 focus:ring-red-500'
-              : 'border-gray-300 dark:border-gray-600 focus:ring-blue-500'
-          } ${isPending ? 'bg-gray-100 dark:bg-gray-700 cursor-not-allowed' : 'bg-white dark:bg-gray-800'}`}
+        {/* Token Field */}
+        <FormInput
+          name="token"
+          label={t('auth.labels.resetToken', 'Token Reset')}
           placeholder={t('auth.placeholders.token')}
-        />
-        {errors.token && <p className="mt-1 text-sm text-red-600">{errors.token}</p>}
-      </div>
-
-      {/* New Password Field */}
-      <div>
-        <label htmlFor="newPassword" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-          Password Baru
-        </label>
-        <input
-          id="newPassword"
-          type="password"
-          value={newPassword}
-          onChange={(e) => setNewPassword(e.target.value)}
-          onBlur={(e) => validateNewPassword(e.target.value)}
           disabled={isPending}
-          className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-            errors.newPassword
-              ? 'border-red-500 focus:ring-red-500'
-              : 'border-gray-300 dark:border-gray-600 focus:ring-blue-500'
-          } ${isPending ? 'bg-gray-100 dark:bg-gray-700 cursor-not-allowed' : 'bg-white dark:bg-gray-800'}`}
+          required
+        />
+
+        {/* New Password Field */}
+        <FormInput
+          name="newPassword"
+          type="password"
+          label={t('auth.labels.newPassword', 'Password Baru')}
           placeholder={t('auth.placeholders.newPassword')}
-        />
-        {errors.newPassword && (
-          <p className="mt-1 text-sm text-red-600">{errors.newPassword}</p>
-        )}
-      </div>
-
-      {/* Confirm Password Field */}
-      <div>
-        <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-          Konfirmasi Password Baru
-        </label>
-        <input
-          id="confirmPassword"
-          type="password"
-          value={confirmPassword}
-          onChange={(e) => setConfirmPassword(e.target.value)}
-          onBlur={(e) => validateConfirmPassword(e.target.value)}
           disabled={isPending}
-          className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-            errors.confirmPassword
-              ? 'border-red-500 focus:ring-red-500'
-              : 'border-gray-300 dark:border-gray-600 focus:ring-blue-500'
-          } ${isPending ? 'bg-gray-100 dark:bg-gray-700 cursor-not-allowed' : 'bg-white dark:bg-gray-800'}`}
-          placeholder={t('auth.placeholders.repeatPassword')}
+          autoComplete="new-password"
+          required
         />
-        {errors.confirmPassword && (
-          <p className="mt-1 text-sm text-red-600">{errors.confirmPassword}</p>
-        )}
-      </div>
 
-      {/* Submit Button */}
-      <button
-        type="submit"
-        disabled={isPending || !token || !newPassword || !confirmPassword}
-        className={`w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white ${
-          isPending || !token || !newPassword || !confirmPassword
-            ? 'bg-gray-400 cursor-not-allowed'
-            : 'bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500'
-        }`}
-      >
-        {isPending ? (
-          <span className="flex items-center">
-            <Loader2 className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" />
-            Mereset Password...
-          </span>
-        ) : (
-          'Reset Password'
-        )}
-      </button>
+        {/* Confirm Password Field */}
+        <FormInput
+          name="confirmPassword"
+          type="password"
+          label={t('auth.labels.confirmNewPassword', 'Konfirmasi Password Baru')}
+          placeholder={t('auth.placeholders.repeatPassword')}
+          disabled={isPending}
+          autoComplete="new-password"
+          required
+        />
 
-      {/* Back to Login Link */}
-      <div className="text-center">
-        <Link
-          to="/login"
-          className="text-sm font-medium text-blue-600 hover:text-blue-500"
+        {/* Submit Button */}
+        <Button
+          type="submit"
+          variant="primary"
+          fullWidth
+          disabled={isPending}
+          loading={isPending}
         >
-          Kembali ke Login
-        </Link>
-      </div>
-    </form>
+          {isPending
+            ? t('auth.resettingPassword', 'Mereset Password...')
+            : t('auth.resetPassword', 'Reset Password')}
+        </Button>
+
+        {/* Back to Login Link */}
+        <div className="text-center">
+          <Link
+            to="/login"
+            className="text-sm font-medium text-blue-600 hover:text-blue-500 dark:text-blue-400 dark:hover:text-blue-300"
+          >
+            {t('auth.backToLogin', 'Kembali ke Login')}
+          </Link>
+        </div>
+      </form>
+    </FormProvider>
   );
 }

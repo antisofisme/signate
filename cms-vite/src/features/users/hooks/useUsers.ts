@@ -9,6 +9,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { usersApi } from '@/features/users/api/usersApi';
 import { handleAPIError } from '@/lib/errors/errorHandler';
 import { toast } from '@/lib/notifications/toast';
+import { useSelectedOrgId, userKeys } from '@/shared/hooks';
 import type {
   CreateUserRequest,
   UpdateUserRequest,
@@ -16,14 +17,22 @@ import type {
   UserListFilters,
 } from '../types/user';
 
+// Export user keys for use in other components
+export { userKeys };
+
 /**
  * Get all users with filters
+ *
+ * Query key includes orgId for proper cache isolation between organizations.
  */
 export function useUsers(filters?: UserListFilters) {
+  const orgId = useSelectedOrgId();
+
   return useQuery({
-    queryKey: ['users', filters],
+    queryKey: userKeys.list(orgId, filters),
     queryFn: () => usersApi.list(filters),
     staleTime: 1 * 60 * 1000, // 1 minute
+    enabled: !!orgId, // Only fetch when organization is selected
   });
 }
 
@@ -32,10 +41,10 @@ export function useUsers(filters?: UserListFilters) {
  */
 export function useUser(id: number) {
   return useQuery({
-    queryKey: ['users', id],
+    queryKey: userKeys.detail(id),
     queryFn: () => usersApi.get(id),
     staleTime: 2 * 60 * 1000, // 2 minutes
-    enabled: !!id,
+    enabled: !!id && id > 0,
   });
 }
 
@@ -49,7 +58,7 @@ export function useCreateUser() {
     mutationFn: (userData: CreateUserRequest) => usersApi.create(userData),
     onSuccess: (data) => {
       // Invalidate user list
-      queryClient.invalidateQueries({ queryKey: ['users'] });
+      queryClient.invalidateQueries({ queryKey: userKeys.all });
 
       // Invalidate dashboard (user count changes)
       queryClient.invalidateQueries({ queryKey: ['dashboard'] });
@@ -78,8 +87,8 @@ export function useUpdateUser() {
       usersApi.update(id, data),
     onSuccess: (data, variables) => {
       // Invalidate queries
-      queryClient.invalidateQueries({ queryKey: ['users'] });
-      queryClient.invalidateQueries({ queryKey: ['users', variables.id] });
+      queryClient.invalidateQueries({ queryKey: userKeys.all });
+      queryClient.invalidateQueries({ queryKey: userKeys.detail(variables.id) });
 
       // Invalidate RBAC queries (role may have changed)
       queryClient.invalidateQueries({ queryKey: ['roles'] });
@@ -111,7 +120,7 @@ export function useChangePassword() {
     }) => usersApi.changePassword(id, data),
     onSuccess: (data, variables) => {
       // Invalidate user queries
-      queryClient.invalidateQueries({ queryKey: ['users', variables.id] });
+      queryClient.invalidateQueries({ queryKey: userKeys.detail(variables.id) });
 
       // Show success toast
       toast.success(`Password untuk "${data.username}" berhasil diubah`);
@@ -133,8 +142,8 @@ export function useDeleteUser() {
     mutationFn: (id: number) => usersApi.delete(id),
     onSuccess: (_, id) => {
       // Invalidate queries
-      queryClient.invalidateQueries({ queryKey: ['users'] });
-      queryClient.removeQueries({ queryKey: ['users', id] });
+      queryClient.invalidateQueries({ queryKey: userKeys.all });
+      queryClient.removeQueries({ queryKey: userKeys.detail(id) });
 
       // Invalidate dashboard (user count changes)
       queryClient.invalidateQueries({ queryKey: ['dashboard'] });
@@ -146,7 +155,7 @@ export function useDeleteUser() {
       queryClient.invalidateQueries({ queryKey: ['roles'] });
 
       // Invalidate audit logs (may reference this user)
-      queryClient.invalidateQueries({ queryKey: ['auditLogs'] });
+      queryClient.invalidateQueries({ queryKey: ['audit'] });
 
       // Show success toast
       toast.success('User berhasil dihapus');

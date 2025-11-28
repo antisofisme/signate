@@ -1,6 +1,6 @@
 /**
  * Playlist Form Component
- * Form for creating/editing playlists
+ * Form for creating/editing playlists using shared Modal and React Hook Form
  */
 
 import { useEffect } from 'react';
@@ -8,8 +8,8 @@ import { useForm, FormProvider } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useTranslation } from 'react-i18next';
-import { Loader2 } from 'lucide-react';
-import { FormInput, FormTextarea, FormSwitch } from '@/shared/components';
+import { Loader2, Save, Plus } from 'lucide-react';
+import { Modal, Button, FormInput, FormTextarea, FormSwitch } from '@/shared/components';
 import type { Playlist, CreatePlaylistRequest, UpdatePlaylistRequest } from '../types/playlist';
 
 // Zod validation schema
@@ -31,6 +31,7 @@ interface PlaylistFormProps {
 
 export function PlaylistForm({ playlist, onClose, onSubmit, isLoading }: PlaylistFormProps) {
   const { t } = useTranslation();
+  const isEditing = !!playlist;
 
   const methods = useForm<PlaylistFormData>({
     resolver: zodResolver(playlistSchema),
@@ -60,80 +61,88 @@ export function PlaylistForm({ playlist, onClose, onSubmit, isLoading }: Playlis
     onSubmit(data);
   };
 
+  const handleClose = () => {
+    methods.reset();
+    onClose();
+  };
+
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white dark:bg-gray-800 rounded-lg w-full max-w-lg max-h-[90vh] overflow-y-auto">
-        <div className="p-6">
-          <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-6">
-            {playlist ? t('playlists.editPlaylist') : t('playlists.createPlaylist')}
-          </h3>
+    <Modal
+      isOpen={true}
+      onClose={handleClose}
+      title={isEditing ? t('playlists.editPlaylist') : t('playlists.createPlaylist')}
+      maxWidth="lg"
+    >
+      <FormProvider {...methods}>
+        <form onSubmit={handleSubmit(onFormSubmit)} className="p-6 space-y-4">
+          {/* Name */}
+          <FormInput
+            name="name"
+            label={t('playlists.playlistName')}
+            placeholder={t('playlists.placeholders.name')}
+            required
+          />
 
-          <FormProvider {...methods}>
-            <form onSubmit={handleSubmit(onFormSubmit)} className="space-y-4">
-              {/* Name */}
-              <FormInput
-                name="name"
-                label={t('playlists.playlistName')}
-                placeholder={t('playlists.placeholders.name')}
-                required
-              />
+          {/* Description */}
+          <FormTextarea
+            name="description"
+            label={t('playlists.description')}
+            placeholder={t('playlists.placeholders.description')}
+            rows={3}
+          />
 
-              {/* Description */}
-              <FormTextarea
-                name="description"
-                label={t('playlists.description')}
-                placeholder={t('playlists.placeholders.description')}
-                rows={3}
-              />
+          {/* Priority */}
+          <FormInput
+            name="priority"
+            type="number"
+            label={t('playlists.priority')}
+            placeholder="0"
+            min={0}
+            max={100}
+          />
 
-              {/* Priority */}
-              <FormInput
-                name="priority"
-                type="number"
-                label={t('playlists.priority')}
-                placeholder="0"
-                min={0}
-                max={100}
-              />
+          {/* Active Status */}
+          <FormSwitch
+            name="is_active"
+            label={t('playlists.active')}
+          />
 
-              {/* Active Status */}
-              <FormSwitch
-                name="is_active"
-                label={t('playlists.active')}
-              />
-
-              {/* Actions */}
-              <div className="flex justify-end gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
-                <button
-                  type="button"
-                  onClick={onClose}
-                  disabled={isLoading}
-                  className="px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg disabled:opacity-50"
-                >
-                  {t('playlists.buttons.cancel')}
-                </button>
-                <button
-                  type="submit"
-                  disabled={isLoading}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2"
-                >
-                  {isLoading ? (
-                    <>
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      {t('playlists.buttons.saving')}
-                    </>
-                  ) : (
-                    <>
-                      {playlist ? t('playlists.buttons.update') : t('playlists.buttons.create')}
-                    </>
-                  )}
-                </button>
-              </div>
-            </form>
-          </FormProvider>
-        </div>
-      </div>
-    </div>
+          {/* Actions */}
+          <div className="flex justify-end gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={handleClose}
+              disabled={isLoading}
+            >
+              {t('playlists.buttons.cancel')}
+            </Button>
+            <Button
+              type="submit"
+              variant="primary"
+              disabled={isLoading}
+            >
+              {isLoading ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  {t('playlists.buttons.saving')}
+                </>
+              ) : isEditing ? (
+                <>
+                  <Save className="w-4 h-4 mr-2" />
+                  {t('playlists.buttons.update')}
+                </>
+              ) : (
+                <>
+                  <Plus className="w-4 h-4 mr-2" />
+                  {t('playlists.buttons.create')}
+                </>
+              )}
+            </Button>
+          </div>
+        </form>
+      </FormProvider>
+    </Modal>
   );
 }
 

@@ -6,3 +6,36 @@
 
 export { usePagination } from './usePagination';
 export type { PaginationConfig, UsePaginationReturn } from './usePagination';
+
+// Organization-aware query utilities
+export {
+  useSelectedOrgId,
+  createOrgScopedKeys,
+  // Query key factories
+  deviceKeys,
+  contentKeys,
+  playlistKeys,
+  scheduleKeys,
+  tagKeys,
+  userKeys,
+  roleKeys,
+  auditKeys,
+  dashboardKeys,
+  analyticsKeys,
+  templateKeys,
+  widgetKeys,
+  sessionKeys,
+  menuKeys,
+  translationKeys,
+  organizationKeys,
+  weatherKeys,
+  pmsKeys,
+} from './useOrgQuery';
+
+// Organization switch handlers
+export {
+  useOrgSwitch,
+  useInvalidateOnOrgSwitch,
+  useOrgSwitchCallback,
+} from './useOrgSwitch';
+export type { OrgSwitchConfig } from './useOrgSwitch';

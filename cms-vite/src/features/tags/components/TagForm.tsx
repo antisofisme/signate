@@ -1,15 +1,15 @@
 /**
  * Tag Form Component
- * Form for creating/editing tags
+ * Form for creating/editing tags using shared Modal and React Hook Form
  */
 
 import { useEffect } from 'react';
 import { useForm, FormProvider } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Save, Plus } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { FormInput, FormSelect, FormTextarea } from '@/shared/components';
+import { Modal, Button, FormInput, FormSelect, FormTextarea } from '@/shared/components';
 import type { Tag, CreateTagRequest, UpdateTagRequest } from '../types/tag';
 
 const TAG_COLORS = [
@@ -40,6 +40,7 @@ interface TagFormProps {
 
 export function TagForm({ tag, onClose, onSubmit, isLoading }: TagFormProps) {
   const { t } = useTranslation();
+  const isEditing = !!tag;
 
   // React Hook Form setup
   const methods = useForm<TagFormData>({
@@ -71,6 +72,11 @@ export function TagForm({ tag, onClose, onSubmit, isLoading }: TagFormProps) {
     onSubmit(data);
   };
 
+  const handleClose = () => {
+    methods.reset();
+    onClose();
+  };
+
   // Convert color options for FormSelect
   const colorOptions = TAG_COLORS.map((color) => ({
     label: t(`tags.colors.${color.label.toLowerCase()}`),
@@ -78,75 +84,82 @@ export function TagForm({ tag, onClose, onSubmit, isLoading }: TagFormProps) {
   }));
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-          {tag ? t('tags.editTag') : t('tags.createNewTag')}
-        </h3>
+    <Modal
+      isOpen={true}
+      onClose={handleClose}
+      title={isEditing ? t('tags.editTag') : t('tags.createNewTag')}
+      maxWidth="md"
+    >
+      <FormProvider {...methods}>
+        <form onSubmit={handleSubmit(onFormSubmit)} className="p-6 space-y-4">
+          {/* Name */}
+          <FormInput
+            name="tag_name"
+            label={t('tags.tagName')}
+            placeholder={t('tags.tagNamePlaceholder')}
+            required
+          />
 
-        <FormProvider {...methods}>
-          <form onSubmit={handleSubmit(onFormSubmit)} className="space-y-4">
-            {/* Name */}
-            <FormInput
-              name="tag_name"
-              label={t('tags.tagName')}
-              placeholder={t('tags.tagNamePlaceholder')}
-              required
+          {/* Color */}
+          <div>
+            <FormSelect
+              name="color"
+              label={t('tags.color')}
+              options={colorOptions}
             />
-
-            {/* Color */}
-            <div>
-              <FormSelect
-                name="color"
-                label={t('tags.color')}
-                options={colorOptions}
+            <div className="mt-2 flex items-center gap-2">
+              <div
+                className="w-8 h-8 rounded border-2 border-gray-300 dark:border-gray-600"
+                style={{ backgroundColor: selectedColor }}
               />
-              <div className="mt-2 flex items-center gap-2">
-                <div
-                  className="w-8 h-8 rounded border-2 border-gray-300 dark:border-gray-600"
-                  style={{ backgroundColor: selectedColor }}
-                />
-                <span className="text-sm text-gray-600 dark:text-gray-400">{t('tags.preview')}</span>
-              </div>
+              <span className="text-sm text-gray-600 dark:text-gray-400">{t('tags.preview')}</span>
             </div>
+          </div>
 
-            {/* Description */}
-            <FormTextarea
-              name="description"
-              label={t('tags.description')}
-              placeholder={t('tags.descriptionPlaceholder')}
-              rows={3}
-            />
+          {/* Description */}
+          <FormTextarea
+            name="description"
+            label={t('tags.description')}
+            placeholder={t('tags.descriptionPlaceholder')}
+            rows={3}
+          />
 
-            {/* Buttons */}
-            <div className="flex justify-end gap-3 pt-4">
-              <button
-                type="button"
-                onClick={onClose}
-                disabled={isLoading}
-                className="px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg disabled:opacity-50"
-              >
-                {t('tags.cancel')}
-              </button>
-              <button
-                type="submit"
-                disabled={isLoading || !isDirty}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2"
-              >
-                {isLoading ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    {tag ? t('tags.updating') : t('tags.creating')}
-                  </>
-                ) : (
-                  <>{tag ? t('tags.update') : t('tags.create')}</>
-                )}
-              </button>
-            </div>
-          </form>
-        </FormProvider>
-      </div>
-    </div>
+          {/* Actions */}
+          <div className="flex justify-end gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={handleClose}
+              disabled={isLoading}
+            >
+              {t('tags.cancel')}
+            </Button>
+            <Button
+              type="submit"
+              variant="primary"
+              disabled={isLoading || !isDirty}
+            >
+              {isLoading ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  {isEditing ? t('tags.updating') : t('tags.creating')}
+                </>
+              ) : isEditing ? (
+                <>
+                  <Save className="w-4 h-4 mr-2" />
+                  {t('tags.update')}
+                </>
+              ) : (
+                <>
+                  <Plus className="w-4 h-4 mr-2" />
+                  {t('tags.create')}
+                </>
+              )}
+            </Button>
+          </div>
+        </form>
+      </FormProvider>
+    </Modal>
   );
 }
 

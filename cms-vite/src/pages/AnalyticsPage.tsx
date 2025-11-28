@@ -10,8 +10,11 @@
  */
 
 import { useState, useCallback, lazy, Suspense } from 'react'
+import { useTranslation } from 'react-i18next'
 import { RefreshCw } from 'lucide-react'
 import { AnalyticsOverview } from '@/features/analytics/components/AnalyticsOverview'
+import { AccessDenied, PageSkeleton } from '@/shared/components'
+import { useCanPerformAction } from '@/features/rbac/hooks/usePermissions'
 import {
   useAnalyticsStats,
   useContentPerformance,
@@ -46,6 +49,29 @@ function ChartSkeleton() {
 }
 
 export function AnalyticsPage() {
+  const { t } = useTranslation()
+
+  // Check permissions
+  const { hasPermission, isLoading: isCheckingPermission } = useCanPerformAction(
+    'analytics',
+    'read'
+  )
+
+  // Show loading state while checking permissions
+  if (isCheckingPermission) {
+    return <PageSkeleton />
+  }
+
+  // Show access denied if no permission
+  if (!hasPermission) {
+    return <AccessDenied />
+  }
+
+  return <AnalyticsPageContent />
+}
+
+function AnalyticsPageContent() {
+  const { t } = useTranslation()
   const [interval, setInterval] = useState<'day' | 'week' | 'month'>('day')
   const [limit, setLimit] = useState(10)
   const [isRefreshing, setIsRefreshing] = useState(false)
@@ -81,10 +107,10 @@ export function AnalyticsPage() {
           onClick={handleRefresh}
           disabled={isRefreshing}
           className="flex items-center gap-2 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          aria-label="Refresh analytics data"
+          aria-label={t('analytics.refreshAriaLabel', 'Refresh analytics data')}
         >
           <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
-          {isRefreshing ? 'Refreshing...' : 'Refresh'}
+          {isRefreshing ? t('analytics.refreshing', 'Refreshing...') : t('analytics.refresh', 'Refresh')}
         </button>
       </div>
 
@@ -102,18 +128,18 @@ export function AnalyticsPage() {
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <div>
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Playback Timeline</h3>
-                <p className="text-sm text-gray-600 dark:text-gray-400">Activity over time</p>
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{t('analytics.playbackTimeline', 'Playback Timeline')}</h3>
+                <p className="text-sm text-gray-600 dark:text-gray-400">{t('analytics.activityOverTime', 'Activity over time')}</p>
               </div>
               <select
                 value={interval}
                 onChange={(e) => setInterval(e.target.value as 'day' | 'week' | 'month')}
                 className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                aria-label="Select time interval"
+                aria-label={t('analytics.selectTimeInterval', 'Select time interval')}
               >
-                <option value="day">Daily</option>
-                <option value="week">Weekly</option>
-                <option value="month">Monthly</option>
+                <option value="day">{t('analytics.intervals.daily', 'Daily')}</option>
+                <option value="week">{t('analytics.intervals.weekly', 'Weekly')}</option>
+                <option value="month">{t('analytics.intervals.monthly', 'Monthly')}</option>
               </select>
             </div>
             <Suspense fallback={<ChartSkeleton />}>
@@ -130,15 +156,15 @@ export function AnalyticsPage() {
         <div className="rounded-lg border border-gray-200 dark:border-gray-700 p-4 bg-gray-50 dark:bg-gray-800/50">
           <div className="flex items-center justify-between">
             <div>
-              <h3 className="font-semibold text-gray-900 dark:text-white">Manual Refresh</h3>
+              <h3 className="font-semibold text-gray-900 dark:text-white">{t('analytics.manualRefresh', 'Manual Refresh')}</h3>
               <p className="text-sm text-gray-600 dark:text-gray-400">
-                Click the Refresh button above to update analytics data
+                {t('analytics.manualRefreshDescription', 'Click the Refresh button above to update analytics data')}
               </p>
             </div>
             <div className="text-sm text-gray-600 dark:text-gray-400">
               {stats?.period_start && stats?.period_end && (
                 <span>
-                  Showing data from last 30 days
+                  {t('analytics.showingDataPeriod', 'Showing data from last 30 days')}
                 </span>
               )}
             </div>

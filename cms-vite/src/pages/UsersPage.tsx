@@ -6,6 +6,7 @@
  */
 
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Plus, Pencil, Trash2, Key, Shield } from 'lucide-react';
 import {
   useUsers,
@@ -15,6 +16,8 @@ import {
   useChangePassword,
 } from '@/features/users/hooks/useUsers';
 import { useOrganizations } from '@/features/organizations/hooks/useOrganizations';
+import { useCanPerformAction } from '@/features/rbac/hooks/usePermissions';
+import { PageHeader, AccessDenied, PageSkeleton } from '@/shared/components';
 import type {
   User,
   CreateUserRequest,
@@ -22,9 +25,31 @@ import type {
   UserListFilters,
 } from '@/features/users/types/user';
 import type { UserRole } from '@/lib/auth/permissions';
-import { PageHeader } from '@/shared/components';
 
 export default function UsersPage() {
+  const { t } = useTranslation();
+
+  // Check permissions
+  const { hasPermission, isLoading: isCheckingPermission } = useCanPerformAction(
+    'users',
+    'read'
+  );
+
+  // Show loading state while checking permissions
+  if (isCheckingPermission) {
+    return <PageSkeleton />;
+  }
+
+  // Show access denied if no permission
+  if (!hasPermission) {
+    return <AccessDenied />;
+  }
+
+  return <UsersPageContent />;
+}
+
+function UsersPageContent() {
+  const { t } = useTranslation();
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [deletingUser, setDeletingUser] = useState<User | null>(null);
