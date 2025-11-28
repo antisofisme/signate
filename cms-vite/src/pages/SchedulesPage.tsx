@@ -14,7 +14,7 @@ export default function SchedulesPage() {
     <>
       <PageHeader
         title={t('navigation.schedules')}
-        description={t('navigation.schedules')}
+        description={t('schedules.subtitle', 'Schedule when playlists play on your devices')}
       />
       <SchedulesPageContent />
     </>

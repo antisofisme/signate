@@ -59,17 +59,19 @@ export default function MenusPage() {
       <PageHeader
         title={t('menus.title')}
         description={t('menus.subtitle')}
-        actions={
-          canCreate && (
+      />
+
+      <div className="space-y-6">
+        {/* Action Bar */}
+        <div className="flex items-center justify-end">
+          {canCreate && (
             <Button onClick={() => setShowCreateForm(true)}>
               <Plus className="w-5 h-5 mr-2" />
               {t('menus.createMenu')}
             </Button>
-          )
-        }
-      />
+          )}
+        </div>
 
-      <div className="space-y-6">
         {/* Filters */}
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 border border-gray-200 dark:border-gray-700">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">

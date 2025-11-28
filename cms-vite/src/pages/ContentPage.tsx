@@ -30,7 +30,7 @@ export default function ContentPage() {
       {/* Sticky Page Header */}
       <PageHeader
         title={t('contents.title')}
-        description={t('contents.title')}
+        description={t('contents.subtitle', 'Manage your media files (images, videos, audio)')}
       />
 
       {/* Content Table */}

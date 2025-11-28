@@ -312,34 +312,24 @@ export function ContentTable() {
 
   return (
     <div className="space-y-4">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
-            Content Library
-          </h2>
-          <p className="text-gray-600 dark:text-gray-400 mt-1">
-            Manage your media files (images, videos, audio)
-          </p>
-        </div>
-        <div className="flex gap-2">
+      {/* Action Bar - No duplicate header, title is in PageHeader */}
+      <div className="flex items-center justify-end gap-2">
+        <button
+          onClick={() => setShowFilters(!showFilters)}
+          className="px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 flex items-center gap-2"
+        >
+          <Filter className="w-4 h-4" />
+          Filters
+        </button>
+        {canCreate && (
           <button
-            onClick={() => setShowFilters(!showFilters)}
-            className="px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 flex items-center gap-2"
+            onClick={() => setShowUploadModal(true)}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2"
           >
-            <Filter className="w-4 h-4" />
-            Filters
+            <Upload className="w-4 h-4" />
+            Upload Content
           </button>
-          {canCreate && (
-            <button
-              onClick={() => setShowUploadModal(true)}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2"
-            >
-              <Upload className="w-4 h-4" />
-              Upload Content
-            </button>
-          )}
-        </div>
+        )}
       </div>
 
       {/* Filters */}

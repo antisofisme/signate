@@ -9,7 +9,6 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { LogOut, Shield } from 'lucide-react';
 import {
-  PageHeader,
   PageSkeleton,
   EmptyState,
   ConfirmDialog,
@@ -88,13 +87,7 @@ export default function SessionsPage() {
   }
 
   return (
-    <>
-      <PageHeader
-        title={t('sessions.title')}
-        description={t('sessions.description')}
-      />
-
-      <div className="space-y-6">
+    <div className="space-y-6">
         {/* Stats Cards */}
         <SessionStats
           total={sessionsData?.total || 0}
@@ -161,7 +154,6 @@ export default function SessionsPage() {
             description={t('sessions.noActiveSessionsDescription')}
           />
         )}
-      </div>
 
       {/* Revoke Session Confirmation Dialog */}
       <ConfirmDialog
@@ -186,6 +178,6 @@ export default function SessionsPage() {
         onClose={() => setShowRevokeAllModal(false)}
         onConfirm={handleRevokeAll}
       />
-    </>
+    </div>
   );
 }

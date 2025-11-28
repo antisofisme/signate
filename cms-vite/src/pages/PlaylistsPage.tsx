@@ -14,7 +14,7 @@ export default function PlaylistsPage() {
     <>
       <PageHeader
         title={t('playlists.title')}
-        description={t('playlists.title')}
+        description={t('playlists.subtitle', 'Create and manage content playlists for your devices')}
       />
       <PlaylistsPageContent />
     </>

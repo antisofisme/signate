@@ -92,7 +92,12 @@ export default function UsersPage() {
       <PageHeader
         title="Users"
         description="Manage user accounts and permissions"
-        actions={
+      />
+
+      {/* Content */}
+      <div className="space-y-6">
+        {/* Action Bar */}
+        <div className="flex items-center justify-end">
           <button
             onClick={() => setShowCreateModal(true)}
             className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
@@ -100,13 +105,9 @@ export default function UsersPage() {
             <Plus className="w-5 h-5" />
             Create User
           </button>
-        }
-      />
+        </div>
 
-      {/* Content */}
-      <div className="space-y-6">
-
-      {/* Filters */}
+        {/* Filters */}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
