@@ -21,6 +21,7 @@ import type { ShellUI } from './shell-ui';
 class KeyboardShortcutsManager {
   private static instance: KeyboardShortcutsManager;
   private shellUI: typeof ShellUI | null = null;
+  private keydownHandler: ((e: KeyboardEvent) => void) | null = null;
 
   private constructor() {
     // Private constructor for singleton
@@ -128,9 +129,16 @@ class KeyboardShortcutsManager {
    * Call once on page load
    */
   public init(): void {
+    // Prevent double initialization
+    if (this.keydownHandler) {
+      SharedLogger.warn('[Keyboard] Already initialized, skipping');
+      return;
+    }
+
     SharedLogger.log('[Keyboard] Initializing Keyboard Shortcuts');
 
-    document.addEventListener('keydown', (e: KeyboardEvent) => {
+    // Store handler reference for cleanup
+    this.keydownHandler = (e: KeyboardEvent) => {
       // Press 's' to toggle shell debug info
       if (e.key === 's' || e.key === 'S') {
         this.handleDebugToggle();
@@ -150,9 +158,22 @@ class KeyboardShortcutsManager {
       if (e.key === 'Escape' && document.fullscreenElement) {
         this.handleEscapeKey();
       }
-    });
+    };
+
+    document.addEventListener('keydown', this.keydownHandler);
 
     SharedLogger.log('[Keyboard] Keyboard Shortcuts initialized');
+  }
+
+  /**
+   * Cleanup keyboard shortcuts
+   */
+  public destroy(): void {
+    if (this.keydownHandler) {
+      document.removeEventListener('keydown', this.keydownHandler);
+      this.keydownHandler = null;
+      SharedLogger.log('[Keyboard] Keyboard Shortcuts destroyed');
+    }
   }
 }
 

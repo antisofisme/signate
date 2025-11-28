@@ -13,6 +13,7 @@
  */
 
 import { SharedLogger } from '@shared/logger';
+import { SharedDeviceState } from '@shared/device';
 
 /**
  * Device status enumeration
@@ -176,16 +177,16 @@ export class Device {
   }
 
   /**
-   * Load from localStorage
+   * Load from SharedDeviceState (localStorage abstraction)
    */
   static fromStorage(): Device | null {
-    const id = localStorage.getItem('device_id');
-    const code = localStorage.getItem('device_code');
-    const name = localStorage.getItem('device_name');
-    const status = localStorage.getItem('device_status') as DeviceStatus;
-    const organization_id = localStorage.getItem('organization_id');
-    const platform = localStorage.getItem('platform');
-    const device_token = localStorage.getItem('device_token');
+    const id = SharedDeviceState.getDeviceId();
+    const code = SharedDeviceState.getDeviceCode();
+    const name = SharedDeviceState.getDeviceName();
+    const status = SharedDeviceState.getDeviceStatus() as DeviceStatus;
+    const organization_id = SharedDeviceState.getOrganizationId();
+    const platform = SharedDeviceState.getPlatform();
+    const device_token = SharedDeviceState.getDeviceToken();
 
     if (!id) return null;
 
@@ -201,15 +202,16 @@ export class Device {
   }
 
   /**
-   * Save to localStorage
+   * Save to SharedDeviceState (localStorage abstraction)
    */
   saveToStorage(): void {
-    const storage = this.toStorage();
-    Object.entries(storage).forEach(([key, value]) => {
-      if (value !== null && value !== undefined) {
-        localStorage.setItem(key, String(value));
-      }
-    });
+    if (this.id) SharedDeviceState.setDeviceId(this.id);
+    if (this.code) SharedDeviceState.setDeviceCode(this.code);
+    if (this.name) SharedDeviceState.setDeviceName(this.name);
+    if (this.status) SharedDeviceState.setDeviceStatus(this.status);
+    if (this.organization_id) SharedDeviceState.setOrganizationId(this.organization_id);
+    if (this.platform) SharedDeviceState.setPlatform(this.platform);
+    if (this.device_token) SharedDeviceState.setDeviceToken(this.device_token);
   }
 }
 

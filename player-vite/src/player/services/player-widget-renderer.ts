@@ -14,6 +14,8 @@ export class PlayerWidgetRenderer {
   private widgetContainer?: HTMLElement;
   private currentWidgets: Map<string, Widget> = new Map();
   private isActive = false;
+  private updateIntervalId: number | null = null;
+  private eventCleanup: (() => void)[] = [];
 
   constructor() {
     logger.info('[PlayerWidgetRenderer] Service initialized');
@@ -208,18 +210,20 @@ export class PlayerWidgetRenderer {
    * Setup event listeners
    */
   private setupEventListeners(): void {
-    // Listen for widget update events
-    eventBus.on('widgets:update', () => {
+    // Listen for widget update events - store cleanup function
+    const widgetUpdateCleanup = eventBus.on('widgets:update', () => {
       this.updateWidgets();
     });
+    this.eventCleanup.push(widgetUpdateCleanup);
 
-    // Listen for template variable changes
-    eventBus.on('variables:changed', () => {
+    // Listen for template variable changes - store cleanup function
+    const variablesChangedCleanup = eventBus.on('variables:changed', () => {
       this.updateWidgets();
     });
+    this.eventCleanup.push(variablesChangedCleanup);
 
-    // Update time-based widgets every second
-    setInterval(() => {
+    // Update time-based widgets every second - track interval
+    this.updateIntervalId = window.setInterval(() => {
       if (this.isActive) {
         // Only update time-sensitive widgets
         this.currentWidgets.forEach(() => {
@@ -303,8 +307,18 @@ export class PlayerWidgetRenderer {
    * Destroy the widget renderer
    */
   destroy(): void {
+    // Clear update interval
+    if (this.updateIntervalId !== null) {
+      clearInterval(this.updateIntervalId);
+      this.updateIntervalId = null;
+    }
+
+    // Clean up event listeners
+    this.eventCleanup.forEach(cleanup => cleanup());
+    this.eventCleanup = [];
+
     this.clearWidgets();
-    
+
     if (this.widgetContainer) {
       this.widgetContainer.remove();
       this.widgetContainer = undefined;

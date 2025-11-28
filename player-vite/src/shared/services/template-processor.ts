@@ -36,6 +36,7 @@ export interface WeatherData {
 export class TemplateProcessor {
   private variables: Map<string, TemplateVariable> = new Map();
   private refreshTimers: Map<string, number> = new Map();
+  private systemIntervals: number[] = []; // Track system variable refresh intervals
   private pmsData: PMSData | null = null;
   private weatherData: WeatherData | null = null;
   private deviceId: string | null = null;
@@ -203,24 +204,27 @@ export class TemplateProcessor {
    * Start refreshing system variables
    */
   private startSystemVariableRefresh(): void {
-    // Update time every second
-    setInterval(() => {
+    // Update time every second - track interval
+    const timeInterval = window.setInterval(() => {
       this.updateVariable('current_time', new Date().toLocaleTimeString());
     }, 1000);
+    this.systemIntervals.push(timeInterval);
 
-    // Update date variables every minute
-    setInterval(() => {
+    // Update date variables every minute - track interval
+    const dateInterval = window.setInterval(() => {
       const now = new Date();
       this.updateVariable('current_date', now.toLocaleDateString());
       this.updateVariable('day_of_week', now.toLocaleDateString('en-US', { weekday: 'long' }));
     }, 60000);
+    this.systemIntervals.push(dateInterval);
 
-    // Update month/year every hour
-    setInterval(() => {
+    // Update month/year every hour - track interval
+    const monthYearInterval = window.setInterval(() => {
       const now = new Date();
       this.updateVariable('month', now.toLocaleDateString('en-US', { month: 'long' }));
       this.updateVariable('year', now.getFullYear());
     }, 3600000);
+    this.systemIntervals.push(monthYearInterval);
   }
 
   /**
@@ -419,12 +423,16 @@ export class TemplateProcessor {
     // Clear all refresh timers
     this.refreshTimers.forEach(timer => clearInterval(timer));
     this.refreshTimers.clear();
-    
+
+    // Clear system variable intervals
+    this.systemIntervals.forEach(intervalId => clearInterval(intervalId));
+    this.systemIntervals = [];
+
     // Clear data
     this.variables.clear();
     this.pmsData = null;
     this.weatherData = null;
-    
+
     logger.info('[TemplateProcessor] Service destroyed');
   }
 }

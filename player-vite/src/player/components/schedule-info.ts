@@ -10,6 +10,8 @@ import { SharedEventBus } from '@shared/events/shared-event-bus';
 export class ScheduleInfo {
   private container?: HTMLElement;
   private isVisible = false;
+  private updateIntervalId: number | null = null;
+  private eventCleanup: (() => void) | null = null;
 
   /**
    * Initialize schedule info component
@@ -38,13 +40,13 @@ export class ScheduleInfo {
 
     playerContainer.appendChild(this.container);
 
-    // Listen for schedule changes
-    SharedEventBus.on('schedule:changed', () => {
+    // Listen for schedule changes - store cleanup function
+    this.eventCleanup = SharedEventBus.on('schedule:changed', () => {
       this.update();
     });
 
-    // Update periodically
-    setInterval(() => {
+    // Update periodically - track interval
+    this.updateIntervalId = window.setInterval(() => {
       if (this.isVisible) {
         this.update();
       }
@@ -148,10 +150,24 @@ export class ScheduleInfo {
    * Destroy component
    */
   destroy(): void {
+    // Clear update interval
+    if (this.updateIntervalId !== null) {
+      clearInterval(this.updateIntervalId);
+      this.updateIntervalId = null;
+    }
+
+    // Clean up event listener
+    if (this.eventCleanup) {
+      this.eventCleanup();
+      this.eventCleanup = null;
+    }
+
     if (this.container) {
       this.container.remove();
       this.container = undefined;
     }
+
+    SharedLogger.debug('[ScheduleInfo] Destroyed');
   }
 }
 

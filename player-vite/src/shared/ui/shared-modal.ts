@@ -30,6 +30,7 @@ export interface CustomModalOptions {
 class SharedModalClass {
   private modalElement: HTMLElement | null = null;
   private isProcessing: boolean = false; // Prevent rapid consecutive calls
+  private escapeHandler: ((e: KeyboardEvent) => void) | null = null; // Track escape handler for cleanup
 
   show(options: ModalOptions): void {
     // Silently remove existing modal without triggering close() checks
@@ -124,6 +125,12 @@ class SharedModalClass {
     if (this.isProcessing) {
       SharedLogger.warn('[Modal] Cannot close - modal is processing');
       return;
+    }
+
+    // Clean up escape handler if exists
+    if (this.escapeHandler) {
+      document.removeEventListener('keydown', this.escapeHandler);
+      this.escapeHandler = null;
     }
 
     if (this.modalElement) {
@@ -421,15 +428,14 @@ class SharedModalClass {
       }
     });
 
-    // Close on Escape key
-    const escapeHandler = (e: KeyboardEvent) => {
+    // Close on Escape key - store handler for cleanup
+    this.escapeHandler = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         this.close();
         onClose?.();
-        document.removeEventListener('keydown', escapeHandler);
       }
     };
-    document.addEventListener('keydown', escapeHandler);
+    document.addEventListener('keydown', this.escapeHandler);
 
     this.injectStyles();
 

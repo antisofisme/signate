@@ -43,8 +43,10 @@ export class PlayerScheduleManager {
   private schedules: Schedule[] = [];
   private currentSchedule: Schedule | null = null;
   private checkInterval: number | null = null;
+  private syncInterval: number | null = null; // Track sync interval
   private lastCheck: Date | null = null;
   private organizationId: number | null = null;
+  private eventCleanup: (() => void) | null = null; // Track event listener cleanup
 
   constructor() {
     SharedLogger.info('[PlayerScheduleManager] Initializing...');
@@ -263,13 +265,13 @@ export class PlayerScheduleManager {
    * Setup event listeners
    */
   private setupEventListeners(): void {
-    // Re-sync schedules when device comes online
-    SharedEventBus.on('device:online', () => {
+    // Re-sync schedules when device comes online - store cleanup function
+    this.eventCleanup = SharedEventBus.on('device:online', () => {
       this.syncSchedules();
     });
-    
-    // Re-sync schedules periodically
-    setInterval(() => {
+
+    // Re-sync schedules periodically - track interval
+    this.syncInterval = window.setInterval(() => {
       this.syncSchedules();
     }, 300000); // 5 minutes
   }
@@ -292,11 +294,24 @@ export class PlayerScheduleManager {
    * Stop schedule manager
    */
   stop(): void {
+    // Clear check interval
     if (this.checkInterval) {
       clearInterval(this.checkInterval);
       this.checkInterval = null;
     }
-    
+
+    // Clear sync interval
+    if (this.syncInterval) {
+      clearInterval(this.syncInterval);
+      this.syncInterval = null;
+    }
+
+    // Clean up event listener
+    if (this.eventCleanup) {
+      this.eventCleanup();
+      this.eventCleanup = null;
+    }
+
     SharedLogger.info('[PlayerScheduleManager] Stopped');
   }
 }

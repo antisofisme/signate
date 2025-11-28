@@ -14,6 +14,7 @@
 
 import { config } from '@shared/config';
 import { SharedLogger } from '@shared/logger';
+import { SharedDeviceState } from '@shared/device';
 import type { APIClient, APIResponse, RequestOptions, APIError } from './api-client.types';
 
 /**
@@ -35,7 +36,7 @@ class SharedAPIClientClass implements APIClient {
 
     // Add Authorization header if device token exists (unless skipped)
     if (!options.skipAuth) {
-      const deviceToken = localStorage.getItem('device_token');
+      const deviceToken = SharedDeviceState.getDeviceToken();
       if (deviceToken) {
         defaultHeaders.Authorization = `Bearer ${deviceToken}`;
       }

@@ -18,10 +18,10 @@ import { ShellRegistration } from './shell-registration';
 import { ShellActivationPoll } from './shell-activation-poll';
 import type { ShellBootstrap as IShellBootstrap, VerifyDeviceResponse } from '@shell/types/shell.types';
 import { ServiceRegistry, getPlayerHLSCache } from '@shared/services/service-registry';
-import { getPlayerMediaCache, getPlayerHeartbeat, getPlayerPlaylistSync, getPlayerCommandExecutor, getPlayerHealthReporter, getSharedWebSocket, getDeviceInfoPopup, getPlayerVideoJS } from '@shared/services';
-// Import PlayerVideoJS and PlayerBackgroundAudio to ensure they're registered before use
+import { getPlayerMediaCache, getPlayerHeartbeat, getPlayerPlaylistSync, getPlayerCommandExecutor, getPlayerHealthReporter, getSharedWebSocket, getDeviceInfoPopup, getPlayerVideoJS, getPlayerBackgroundAudio } from '@shared/services';
+// Side-effect imports to ensure services are registered before use
 import '@player/services/player-videojs';
-import { PlayerBackgroundAudio } from '@player/services';
+import '@player/services/player-background-audio';
 
 /**
  * Shell Bootstrap Class
@@ -247,9 +247,12 @@ class ShellBootstrapClass implements IShellBootstrap {
         'PlayerMediaCache'
       );
 
-      // 2.5. Initialize Background Audio Player
-      PlayerBackgroundAudio.init();
-      SharedLogger.log('[ShellBootstrap] ✅ PlayerBackgroundAudio initialized');
+      // 2.5. Initialize Background Audio Player (via ServiceRegistry to maintain Shell-Player separation)
+      const PlayerBackgroundAudio = getPlayerBackgroundAudio();
+      if (PlayerBackgroundAudio) {
+        PlayerBackgroundAudio.init();
+        SharedLogger.log('[ShellBootstrap] ✅ PlayerBackgroundAudio initialized');
+      }
 
       // 3. Initialize HLS Cache
       const PlayerHLSCache = getPlayerHLSCache();

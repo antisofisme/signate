@@ -6,6 +6,7 @@
 import { SharedLogger } from '@shared/logger';
 import { SharedToast, SharedModal } from '@shared/ui';
 import { getPlayerMediaCache } from '@shared/services';
+import { SharedDeviceState } from '@shared/device';
 
 class ClearCacheHandlerClass {
   private button: HTMLButtonElement | null = null;
@@ -91,26 +92,32 @@ class ClearCacheHandlerClass {
 
       // Clear localStorage (optional - preserve device registration)
       try {
-        const keysToPreserve = ['device_id', 'device_token', 'activation_code', 'device_uuid'];
-        const preservedData: Record<string, string> = {};
+        // Backup critical device data using SharedDeviceState
+        const preservedState = {
+          deviceId: SharedDeviceState.getDeviceId(),
+          deviceToken: SharedDeviceState.getDeviceToken(),
+          deviceCode: SharedDeviceState.getDeviceCode(),
+          deviceStatus: SharedDeviceState.getDeviceStatus(),
+          deviceName: SharedDeviceState.getDeviceName(),
+          organizationId: SharedDeviceState.getOrganizationId(),
+          deviceUUID: SharedDeviceState.getPreference<string>('device_uuid', null),
+        };
 
-        // Backup critical keys
-        keysToPreserve.forEach(key => {
-          const value = localStorage.getItem(key);
-          if (value) preservedData[key] = value;
-        });
-
-        // Clear all
+        // Clear all localStorage
         const storageLength = localStorage.length;
         localStorage.clear();
         clearedItems++;
 
-        // Restore critical keys
-        Object.entries(preservedData).forEach(([key, value]) => {
-          localStorage.setItem(key, value);
-        });
+        // Restore critical device data using SharedDeviceState
+        if (preservedState.deviceId) SharedDeviceState.setDeviceId(preservedState.deviceId);
+        if (preservedState.deviceToken) SharedDeviceState.setDeviceToken(preservedState.deviceToken);
+        if (preservedState.deviceCode) SharedDeviceState.setDeviceCode(preservedState.deviceCode);
+        if (preservedState.deviceStatus) SharedDeviceState.setDeviceStatus(preservedState.deviceStatus);
+        if (preservedState.deviceName) SharedDeviceState.setDeviceName(preservedState.deviceName);
+        if (preservedState.organizationId) SharedDeviceState.setOrganizationId(preservedState.organizationId);
+        if (preservedState.deviceUUID) SharedDeviceState.setPreference('device_uuid', preservedState.deviceUUID);
 
-        SharedLogger.success(`[ClearCache] Cleared ${storageLength} localStorage items (preserved device data)`);
+        SharedLogger.success(`[ClearCache] Cleared ${storageLength} localStorage items (preserved device data via SharedDeviceState)`);
       } catch (err) {
         SharedLogger.error('[ClearCache] Error clearing localStorage:', err);
       }

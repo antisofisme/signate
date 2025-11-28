@@ -81,19 +81,18 @@ class ShellRegistrationClass implements IShellRegistration {
   }
 
   /**
-   * Get retry count from localStorage
+   * Get retry count using SharedDeviceState
    */
   getRetryCount(): number {
-    const count = localStorage.getItem('registration_retry_count');
-    return count ? parseInt(count, 10) : 0;
+    return SharedDeviceState.getPreference<number>('registration_retry_count', 0);
   }
 
   /**
-   * Increment retry count
+   * Increment retry count using SharedDeviceState
    */
   incrementRetryCount(): number {
     const count = this.getRetryCount() + 1;
-    localStorage.setItem('registration_retry_count', count.toString());
+    SharedDeviceState.setPreference('registration_retry_count', count);
     return count;
   }
 
@@ -101,7 +100,7 @@ class ShellRegistrationClass implements IShellRegistration {
    * Clear retry count (on success or manual reset)
    */
   clearRetryCount(): void {
-    localStorage.removeItem('registration_retry_count');
+    SharedDeviceState.removePreference('registration_retry_count');
   }
 
   /**

@@ -21,6 +21,13 @@ class FullscreenManagerClass {
   private static instance: FullscreenManagerClass;
   private displaySettings: any = null;
   private shellUI: any = null;
+  private isInitialized = false;
+
+  // Event handler references for cleanup
+  private mousemoveHandler: ((e: MouseEvent) => void) | null = null;
+  private fullscreenChangeHandler: (() => void) | null = null;
+  private enterBtnHandler: (() => void) | null = null;
+  private exitBtnHandler: (() => void) | null = null;
 
   private constructor() {
     // Private constructor for singleton
@@ -113,7 +120,8 @@ class FullscreenManagerClass {
     let hoverTimeout: number | null = null;
     let isInArea = false;
 
-    document.addEventListener('mousemove', (e: MouseEvent) => {
+    // Store handler reference for cleanup
+    this.mousemoveHandler = (e: MouseEvent) => {
       const screenWidth = window.innerWidth;
       // const screenHeight = window.innerHeight;
       const mouseX = e.clientX;
@@ -178,17 +186,22 @@ class FullscreenManagerClass {
         factoryResetBtn?.classList.remove('show');
         deviceInfoBtn?.classList.remove('show');
       }
-    });
+    };
+
+    document.addEventListener('mousemove', this.mousemoveHandler);
   }
 
   /**
    * Setup fullscreen change event listeners for different browsers
    */
   private setupFullscreenListeners(): void {
-    document.addEventListener('fullscreenchange', () => this.updateFullscreenState());
-    document.addEventListener('webkitfullscreenchange', () => this.updateFullscreenState());
-    document.addEventListener('mozfullscreenchange', () => this.updateFullscreenState());
-    document.addEventListener('MSFullscreenChange', () => this.updateFullscreenState());
+    // Store handler reference for cleanup
+    this.fullscreenChangeHandler = () => this.updateFullscreenState();
+
+    document.addEventListener('fullscreenchange', this.fullscreenChangeHandler);
+    document.addEventListener('webkitfullscreenchange', this.fullscreenChangeHandler);
+    document.addEventListener('mozfullscreenchange', this.fullscreenChangeHandler);
+    document.addEventListener('MSFullscreenChange', this.fullscreenChangeHandler);
   }
 
   /**
@@ -197,7 +210,8 @@ class FullscreenManagerClass {
   private setupEnterButton(): void {
     const enterBtn = document.getElementById('enter-fullscreen-btn');
     if (enterBtn) {
-      enterBtn.addEventListener('click', () => {
+      // Store handler reference for cleanup
+      this.enterBtnHandler = () => {
         SharedLogger.log('[Fullscreen] Enter button clicked');
         if (!document.fullscreenElement) {
           SharedLogger.log('[Fullscreen] Entering fullscreen via button...');
@@ -222,7 +236,8 @@ class FullscreenManagerClass {
         } else {
           SharedLogger.log('[Fullscreen] Already in fullscreen');
         }
-      });
+      };
+      enterBtn.addEventListener('click', this.enterBtnHandler);
       SharedLogger.log('[Fullscreen] Enter button listener attached');
     } else {
       SharedLogger.error('[Fullscreen] Enter button not found!');
@@ -235,7 +250,8 @@ class FullscreenManagerClass {
   private setupExitButton(): void {
     const exitBtn = document.getElementById('exit-fullscreen-btn');
     if (exitBtn) {
-      exitBtn.addEventListener('click', () => {
+      // Store handler reference for cleanup
+      this.exitBtnHandler = () => {
         SharedLogger.log('[Fullscreen] Exit button clicked');
         if (document.fullscreenElement) {
           SharedLogger.log('[Fullscreen] Exiting fullscreen via button...');
@@ -243,7 +259,8 @@ class FullscreenManagerClass {
         } else {
           SharedLogger.log('[Fullscreen] Already not in fullscreen');
         }
-      });
+      };
+      exitBtn.addEventListener('click', this.exitBtnHandler);
       SharedLogger.log('[Fullscreen] Exit button listener attached');
     } else {
       SharedLogger.error('[Fullscreen] Exit button not found!');
@@ -255,6 +272,12 @@ class FullscreenManagerClass {
    * Call once on page load
    */
   public init(): void {
+    // Prevent double initialization
+    if (this.isInitialized) {
+      SharedLogger.warn('[Fullscreen] Already initialized, skipping');
+      return;
+    }
+
     SharedLogger.log('[Fullscreen] Initializing Fullscreen Manager');
 
     // Setup all listeners and handlers
@@ -266,7 +289,45 @@ class FullscreenManagerClass {
     // Set initial state
     this.updateFullscreenState();
 
+    this.isInitialized = true;
     SharedLogger.log('[Fullscreen] Fullscreen Manager initialized');
+  }
+
+  /**
+   * Cleanup fullscreen management
+   */
+  public destroy(): void {
+    // Remove mousemove handler
+    if (this.mousemoveHandler) {
+      document.removeEventListener('mousemove', this.mousemoveHandler);
+      this.mousemoveHandler = null;
+    }
+
+    // Remove fullscreen change handlers
+    if (this.fullscreenChangeHandler) {
+      document.removeEventListener('fullscreenchange', this.fullscreenChangeHandler);
+      document.removeEventListener('webkitfullscreenchange', this.fullscreenChangeHandler);
+      document.removeEventListener('mozfullscreenchange', this.fullscreenChangeHandler);
+      document.removeEventListener('MSFullscreenChange', this.fullscreenChangeHandler);
+      this.fullscreenChangeHandler = null;
+    }
+
+    // Remove button handlers
+    const enterBtn = document.getElementById('enter-fullscreen-btn');
+    const exitBtn = document.getElementById('exit-fullscreen-btn');
+
+    if (enterBtn && this.enterBtnHandler) {
+      enterBtn.removeEventListener('click', this.enterBtnHandler);
+      this.enterBtnHandler = null;
+    }
+
+    if (exitBtn && this.exitBtnHandler) {
+      exitBtn.removeEventListener('click', this.exitBtnHandler);
+      this.exitBtnHandler = null;
+    }
+
+    this.isInitialized = false;
+    SharedLogger.log('[Fullscreen] Fullscreen Manager destroyed');
   }
 }
 
