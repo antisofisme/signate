@@ -370,6 +370,50 @@
       "title": "Tidak ada konten",
       "description": "Unggah file media pertama Anda untuk memulai"
     },
+    "viewMode": {
+      "table": "Tabel",
+      "gallery": "Galeri"
+    },
+    "gallery": {
+      "searchPlaceholder": "Cari konten...",
+      "itemsFound": "{{count}} item ditemukan",
+      "filtered": "difilter",
+      "noSearchResults": "Coba sesuaikan filter Anda",
+      "sort": {
+        "newest": "Terbaru",
+        "oldest": "Terlama",
+        "name_asc": "Nama (A-Z)",
+        "name_desc": "Nama (Z-A)",
+        "size_desc": "Terbesar",
+        "size_asc": "Terkecil",
+        "duration_desc": "Terpanjang",
+        "duration_asc": "Terpendek"
+      }
+    },
+    "sidebar": {
+      "title": "Detail Konten",
+      "emptyTitle": "Tidak Ada Pilihan",
+      "emptyDescription": "Klik konten untuk melihat detail",
+      "titleField": "Judul",
+      "titlePlaceholder": "Masukkan judul...",
+      "status": "Status",
+      "metadata": "Informasi File",
+      "filename": "Nama File",
+      "resolution": "Resolusi",
+      "size": "Ukuran",
+      "duration": "Durasi Tampilan",
+      "uploaded": "Diupload",
+      "uploadedBy": "Diupload oleh",
+      "transcoding": "Status Transcoding",
+      "hlsAvailable": "Streaming HLS Tersedia",
+      "usedIn": "Digunakan Di"
+    },
+    "transcoding": {
+      "pending": "Menunggu",
+      "processing": "Memproses",
+      "completed": "Selesai",
+      "failed": "Gagal"
+    },
     "addContent": "Tambah Konten",
     "contentName": "Nama Konten",
     "contentType": "Tipe Konten",

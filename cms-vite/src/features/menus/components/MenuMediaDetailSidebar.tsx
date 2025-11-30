@@ -17,7 +17,6 @@ import {
   HardDrive,
   Maximize,
   User,
-  ExternalLink,
   Save,
   Pencil,
 } from 'lucide-react';
@@ -104,11 +103,6 @@ export function MenuMediaDetailSidebar({ media, onUpdate, onDelete, onClose }: M
     toast.success(t('menus.media.messages.downloadStarted', 'Download started'));
   };
 
-  const handleOpenInNewTab = () => {
-    if (!media?.url) return;
-    window.open(media.url, '_blank');
-  };
-
   const handleSaveTitle = async () => {
     if (!media) return;
     try {
@@ -180,24 +174,6 @@ export function MenuMediaDetailSidebar({ media, onUpdate, onDelete, onClose }: M
 
       {/* Content - Scrollable */}
       <div className="flex-1 overflow-y-auto">
-        {/* Preview Image */}
-        <div className="p-4 border-b border-gray-200 dark:border-gray-700">
-          <div className="relative bg-gray-100 dark:bg-gray-700 rounded-lg overflow-hidden">
-            <img
-              src={media.url}
-              alt={media.alt_text || media.original_filename}
-              className="w-full h-auto max-h-[250px] object-contain"
-            />
-            <button
-              onClick={handleOpenInNewTab}
-              className="absolute top-2 right-2 p-1.5 bg-black/50 hover:bg-black/70 rounded-md transition-colors"
-              title={t('menus.media.actions.openInNewTab', 'Open in new tab')}
-            >
-              <ExternalLink className="w-4 h-4 text-white" />
-            </button>
-          </div>
-        </div>
-
         {/* Editable Fields */}
         <div className="p-4 space-y-4 border-b border-gray-200 dark:border-gray-700">
           {/* Title - Editable */}

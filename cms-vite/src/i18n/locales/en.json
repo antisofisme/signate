@@ -370,6 +370,50 @@
       "title": "No content found",
       "description": "Upload your first media file to get started"
     },
+    "viewMode": {
+      "table": "Table",
+      "gallery": "Gallery"
+    },
+    "gallery": {
+      "searchPlaceholder": "Search content...",
+      "itemsFound": "{{count}} items found",
+      "filtered": "filtered",
+      "noSearchResults": "Try adjusting your filters",
+      "sort": {
+        "newest": "Newest First",
+        "oldest": "Oldest First",
+        "name_asc": "Name (A-Z)",
+        "name_desc": "Name (Z-A)",
+        "size_desc": "Largest First",
+        "size_asc": "Smallest First",
+        "duration_desc": "Longest First",
+        "duration_asc": "Shortest First"
+      }
+    },
+    "sidebar": {
+      "title": "Content Details",
+      "emptyTitle": "No Selection",
+      "emptyDescription": "Click on content to view details",
+      "titleField": "Title",
+      "titlePlaceholder": "Enter title...",
+      "status": "Status",
+      "metadata": "File Information",
+      "filename": "Filename",
+      "resolution": "Resolution",
+      "size": "Size",
+      "duration": "Display Duration",
+      "uploaded": "Uploaded",
+      "uploadedBy": "Uploaded by",
+      "transcoding": "Transcoding Status",
+      "hlsAvailable": "HLS Streaming Available",
+      "usedIn": "Used In"
+    },
+    "transcoding": {
+      "pending": "Pending",
+      "processing": "Processing",
+      "completed": "Completed",
+      "failed": "Failed"
+    },
     "addContent": "Add Content",
     "contentName": "Content Name",
     "contentType": "Content Type",
