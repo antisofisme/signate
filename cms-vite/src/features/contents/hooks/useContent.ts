@@ -37,20 +37,19 @@ export const useContentList = (filters?: ContentFilters) => {
   const orgId = useSelectedOrgId();
   const hasHydrated = useAuthStore((state) => state._hasHydrated);
 
-  // Debug log to track orgId and query status
-  console.log('[useContentList] orgId:', orgId, 'hasHydrated:', hasHydrated, 'enabled:', hasHydrated && !!orgId);
-
   return useQuery({
     queryKey: contentKeys.list(orgId, filters),
     queryFn: () => {
-      console.log('[useContentList] Fetching content list...');
+      console.log('[useContentList] Fetching content list, orgId:', orgId);
       return getContentList(filters);
     },
-    staleTime: 30000, // 30 seconds
-    // CRITICAL: Wait for BOTH hydration complete AND orgId available
-    // This prevents query from running with stale/undefined orgId
+    // CRITICAL: Disable all caching to ensure fresh data
+    staleTime: 0,
+    gcTime: 0, // Don't cache at all
+    refetchOnMount: true,
+    refetchOnWindowFocus: true,
+    // Wait for auth store hydration AND orgId
     enabled: hasHydrated && !!orgId,
-    // Note: Backend handles org filtering via JWT or X-Organization-Id header
   });
 };
 
@@ -373,8 +372,11 @@ export const useDeletedContentList = (filters?: ContentFilters) => {
   return useQuery({
     queryKey: contentKeys.deleted(orgId, filters),
     queryFn: () => getDeletedContentList(filters),
-    staleTime: 30000, // 30 seconds
-    enabled: hasHydrated && !!orgId, // Wait for hydration AND orgId
+    staleTime: 0,
+    gcTime: 0,
+    refetchOnMount: true,
+    refetchOnWindowFocus: true,
+    enabled: hasHydrated && !!orgId,
   });
 };
 

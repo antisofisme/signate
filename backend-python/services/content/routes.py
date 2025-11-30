@@ -126,6 +126,9 @@ async def upload_content(
             organization_id=current_user["organization_id"]
         )
 
+        # CRITICAL: Invalidate content list cache so new content appears immediately
+        cache.invalidate_content(content.id, current_user["organization_id"])
+
         return created_response(
             data=ContentResponse.from_entity(content).dict(),
             message="Content uploaded successfully"
@@ -220,6 +223,11 @@ async def bulk_upload_content(
                 "error": f"Upload failed: {str(e)}"
             })
             failed += 1
+
+    # CRITICAL: Invalidate content list cache once after all uploads
+    # This ensures the list shows all newly uploaded content
+    if successful > 0:
+        cache.invalidate_content(0, current_user["organization_id"])  # 0 = invalidate all lists
 
     return created_response(
         data={
@@ -820,6 +828,9 @@ async def restore_content(
             ip_address=request.client.host if request.client else None,
             organization_id=current_user["organization_id"]
         )
+
+        # CRITICAL: Invalidate cache so restored content appears in list
+        cache.invalidate_content(content_id, current_user["organization_id"])
 
         return success_response(
             data=ContentResponse.from_entity(content).dict() if content else None,

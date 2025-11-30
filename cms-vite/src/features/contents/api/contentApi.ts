@@ -16,6 +16,7 @@ import type {
 
 /**
  * Get list of content with filters
+ * Includes cache-busting timestamp to ensure fresh data
  */
 export const getContentList = async (
   filters?: ContentFilters
@@ -27,6 +28,9 @@ export const getContentList = async (
   if (filters?.content_type) params.append('content_type', filters.content_type);
   if (filters?.is_active !== undefined)
     params.append('is_active', filters.is_active.toString());
+
+  // Cache-busting: add timestamp to prevent browser/CDN caching
+  params.append('_t', Date.now().toString());
 
   const response = await apiClient.get<ContentListResponse>(
     `${API_ENDPOINTS.CONTENT.LIST}?${params.toString()}`
@@ -192,6 +196,7 @@ export const bulkDeleteContent = async (ids: number[]): Promise<void> => {
 
 /**
  * Get list of deleted content (Recycle Bin)
+ * Includes cache-busting timestamp to ensure fresh data
  */
 export const getDeletedContentList = async (
   filters?: ContentFilters
@@ -201,6 +206,9 @@ export const getDeletedContentList = async (
   if (filters?.skip !== undefined) params.append('skip', filters.skip.toString());
   if (filters?.limit !== undefined) params.append('limit', filters.limit.toString());
   if (filters?.content_type) params.append('content_type', filters.content_type);
+
+  // Cache-busting: add timestamp to prevent browser/CDN caching
+  params.append('_t', Date.now().toString());
 
   const response = await apiClient.get<ContentListResponse>(
     `${API_ENDPOINTS.CONTENT.LIST_DELETED}?${params.toString()}`
