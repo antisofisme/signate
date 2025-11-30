@@ -139,9 +139,9 @@ export function ContentTable() {
   const handleDownload = async (content: Content) => {
     try {
       await downloadContent(content.id, content.original_filename);
-      toast.success('Download started');
+      toast.success(t('contents.messages.downloadStarted'));
     } catch (error: unknown) {
-      toast.error(getApiErrorMessage(error, 'Failed to download file'));
+      toast.error(getApiErrorMessage(error, t('contents.messages.downloadFailed')));
     }
   };
 
@@ -195,7 +195,7 @@ export function ContentTable() {
 
   const handleBulkEdit = () => {
     if (selectedIds.size === 0) {
-      toast.error('Please select at least one content item');
+      toast.error(t('contents.messages.selectAtLeastOne'));
       return;
     }
     setShowBulkEditModal(true);
@@ -203,7 +203,7 @@ export function ContentTable() {
 
   const handleBulkTag = () => {
     if (selectedIds.size === 0) {
-      toast.error('Please select at least one content item');
+      toast.error(t('contents.messages.selectAtLeastOne'));
       return;
     }
     setShowBulkTagModal(true);
@@ -211,10 +211,10 @@ export function ContentTable() {
 
   const handleBulkDelete = async () => {
     if (selectedIds.size === 0) {
-      toast.error('Please select at least one content item');
+      toast.error(t('contents.messages.selectAtLeastOne'));
       return;
     }
-    if (confirm(`Are you sure you want to delete ${selectedIds.size} content items?`)) {
+    if (confirm(t('contents.dialogs.bulkDeleteMessage', { count: selectedIds.size }))) {
       await bulkDeleteMutation.mutateAsync(Array.from(selectedIds));
       setSelectedIds(new Set());
     }
@@ -237,7 +237,7 @@ export function ContentTable() {
           onClick={() => setShowFilters(!showFilters)}
           leftIcon={<Filter className="w-4 h-4" />}
         >
-          Filters
+          {t('contents.actions.filters')}
         </Button>
         {canCreate && (
           <Button
@@ -245,7 +245,7 @@ export function ContentTable() {
             onClick={() => setShowUploadModal(true)}
             leftIcon={<Upload className="w-4 h-4" />}
           >
-            Upload Content
+            {t('contents.actions.upload')}
           </Button>
         )}
       </div>
@@ -256,7 +256,7 @@ export function ContentTable() {
           <div className="grid grid-cols-3 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Content Type
+                {t('contents.filters.contentType')}
               </label>
               <select
                 value={filters.content_type || ''}
@@ -268,15 +268,15 @@ export function ContentTable() {
                 }
                 className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white"
               >
-                <option value="">All Types</option>
-                <option value="image">Image</option>
-                <option value="video">Video</option>
-                <option value="audio">Audio</option>
+                <option value="">{t('contents.filters.allTypes')}</option>
+                <option value="image">{t('contents.filters.image')}</option>
+                <option value="video">{t('contents.filters.video')}</option>
+                <option value="audio">{t('contents.filters.audio')}</option>
               </select>
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Status
+                {t('contents.filters.status')}
               </label>
               <select
                 value={
@@ -296,14 +296,14 @@ export function ContentTable() {
                 }
                 className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white"
               >
-                <option value="">All Status</option>
-                <option value="true">Active</option>
-                <option value="false">Inactive</option>
+                <option value="">{t('contents.filters.allStatus')}</option>
+                <option value="true">{t('contents.filters.active')}</option>
+                <option value="false">{t('contents.filters.inactive')}</option>
               </select>
             </div>
             <div className="flex items-end">
               <Button variant="ghost" onClick={clearFilters}>
-                Clear Filters
+                {t('contents.actions.clearFilters')}
               </Button>
             </div>
           </div>
@@ -313,7 +313,7 @@ export function ContentTable() {
       {/* Content Stats */}
       {contentData && (
         <div className="text-sm text-gray-600 dark:text-gray-400">
-          Showing {contentData.data.length} of {contentData.pagination.total} items
+          {t('contents.stats.showingItems', { count: contentData.data.length, total: contentData.pagination.total })}
         </div>
       )}
 
@@ -321,7 +321,7 @@ export function ContentTable() {
       {selectedIds.size > 0 && (
         <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 flex items-center justify-between">
           <p className="text-sm font-medium text-blue-900 dark:text-blue-300">
-            {selectedIds.size} item(s) selected
+            {t('contents.selection.itemsSelected', { count: selectedIds.size })}
           </p>
           <div className="flex gap-2">
             {canUpdate && (
@@ -331,7 +331,7 @@ export function ContentTable() {
                   onClick={handleBulkEdit}
                   leftIcon={<Edit className="w-4 h-4" />}
                 >
-                  Bulk Edit
+                  {t('contents.actions.bulkEdit')}
                 </Button>
                 <Button
                   variant="secondary"
@@ -339,7 +339,7 @@ export function ContentTable() {
                   leftIcon={<Filter className="w-4 h-4" />}
                   className="!bg-purple-600 hover:!bg-purple-700 !text-white"
                 >
-                  Bulk Tag
+                  {t('contents.actions.bulkTag')}
                 </Button>
               </>
             )}
@@ -349,7 +349,7 @@ export function ContentTable() {
                 onClick={handleBulkDelete}
                 leftIcon={<Trash2 className="w-4 h-4" />}
               >
-                Delete Selected
+                {t('contents.actions.deleteSelected')}
               </Button>
             )}
           </div>
@@ -397,22 +397,22 @@ export function ContentTable() {
                       />
                     </th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-[35%]">
-                      Content
+                      {t('contents.table.content')}
                     </th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-20">
-                      Type
+                      {t('contents.table.type')}
                     </th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-24">
-                      Size
+                      {t('contents.table.size')}
                     </th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-20">
-                      Duration
+                      {t('contents.table.duration')}
                     </th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-20">
-                      Status
+                      {t('contents.table.status')}
                     </th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-32">
-                      Actions
+                      {t('contents.table.actions')}
                     </th>
                   </tr>
                 </thead>
@@ -461,11 +461,11 @@ export function ContentTable() {
                                   <div className="flex items-center gap-2">
                                     <Copy className="w-4 h-4 text-orange-600" />
                                     <span className="font-medium text-orange-800 dark:text-orange-200">
-                                      {group.duplicate_count} Duplicate Files
+                                      {t('contents.duplicates.count', { count: group.duplicate_count })}
                                     </span>
                                   </div>
                                   <span className="text-xs text-orange-600 dark:text-orange-400 font-mono">
-                                    Hash: {group.file_hash.slice(0, 16)}...
+                                    {t('contents.duplicates.hash')}: {group.file_hash.slice(0, 16)}...
                                   </span>
                                 </div>
                               </div>
@@ -478,11 +478,11 @@ export function ContentTable() {
                             </td>
                             <td className="px-4 py-3 whitespace-nowrap">
                               <span className="px-2 py-1 text-xs font-medium rounded-full bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200">
-                                Same File
+                                {t('contents.duplicates.sameFile')}
                               </span>
                             </td>
                             <td className="px-4 py-3 text-sm text-orange-600 dark:text-orange-400">
-                              Click to {isExpanded ? 'collapse' : 'expand'}
+                              {isExpanded ? t('contents.duplicates.clickToCollapse') : t('contents.duplicates.clickToExpand')}
                             </td>
                           </tr>
                         );
@@ -545,23 +545,23 @@ export function ContentTable() {
                                     {itemUsage.playlists.length > 0 && (
                                       <div className="flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400">
                                         <List className="w-3 h-3" />
-                                        <span>{itemUsage.playlists.length} playlist</span>
+                                        <span>{t('contents.usage.playlists', { count: itemUsage.playlists.length })}</span>
                                       </div>
                                     )}
                                     {itemUsage.tags.length > 0 && (
                                       <div className="flex items-center gap-1 text-xs text-purple-600 dark:text-purple-400">
                                         <Tag className="w-3 h-3" />
-                                        <span>{itemUsage.tags.length} tag</span>
+                                        <span>{t('contents.usage.tags', { count: itemUsage.tags.length })}</span>
                                       </div>
                                     )}
                                     {itemUsage.devices.length > 0 && (
                                       <div className="flex items-center gap-1 text-xs text-green-600 dark:text-green-400">
                                         <Monitor className="w-3 h-3" />
-                                        <span>{itemUsage.devices.length} device</span>
+                                        <span>{t('contents.usage.devices', { count: itemUsage.devices.length })}</span>
                                       </div>
                                     )}
                                     {!itemHasUsage && (
-                                      <span className="text-xs text-gray-400">Not used</span>
+                                      <span className="text-xs text-gray-400">{t('contents.usage.notUsed')}</span>
                                     )}
                                   </div>
                                 </td>
@@ -580,10 +580,10 @@ export function ContentTable() {
                                           : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'
                                       }`}
                                     >
-                                      {fullContent.is_active ? 'Active' : 'Inactive'}
+                                      {fullContent.is_active ? t('contents.status.active') : t('contents.status.inactive')}
                                     </span>
                                     {!itemHasUsage && (
-                                      <span className="w-2 h-2 rounded-full bg-green-400" title="Safe to delete" />
+                                      <span className="w-2 h-2 rounded-full bg-green-400" title={t('contents.usage.safeToDelete')} />
                                     )}
                                   </div>
                                 </td>
@@ -597,7 +597,7 @@ export function ContentTable() {
                                           e.stopPropagation();
                                           handleEdit(fullContent);
                                         }}
-                                        title="Edit"
+                                        title={t('contents.actions.edit')}
                                         className="!text-green-600 hover:!text-green-700 dark:!text-green-400"
                                       >
                                         <Edit className="w-4 h-4" />
@@ -610,7 +610,7 @@ export function ContentTable() {
                                         e.stopPropagation();
                                         handlePreview(fullContent);
                                       }}
-                                      title="Preview"
+                                      title={t('contents.actions.preview')}
                                       className="!text-blue-600 hover:!text-blue-700 dark:!text-blue-400"
                                     >
                                       <Eye className="w-4 h-4" />
@@ -622,7 +622,7 @@ export function ContentTable() {
                                         e.stopPropagation();
                                         handleDownload(fullContent);
                                       }}
-                                      title="Download"
+                                      title={t('contents.actions.download')}
                                       className="!text-gray-600 hover:!text-gray-700 dark:!text-gray-400"
                                     >
                                       <Download className="w-4 h-4" />
@@ -635,7 +635,7 @@ export function ContentTable() {
                                           e.stopPropagation();
                                           setContentToDelete(fullContent);
                                         }}
-                                        title="Delete"
+                                        title={t('contents.actions.delete')}
                                         className="!text-red-600 hover:!text-red-700 dark:!text-red-400"
                                       >
                                         <Trash2 className="w-4 h-4" />
@@ -709,7 +709,7 @@ export function ContentTable() {
                                     : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'
                                 }`}
                               >
-                                {content.is_active ? 'Active' : 'Inactive'}
+                                {content.is_active ? t('contents.status.active') : t('contents.status.inactive')}
                               </span>
                             </td>
                             <td className="px-4 py-3 whitespace-nowrap text-sm">
@@ -719,7 +719,7 @@ export function ContentTable() {
                                     variant="icon"
                                     size="sm"
                                     onClick={() => handleEdit(content)}
-                                    title="Edit"
+                                    title={t('contents.actions.edit')}
                                     className="!text-green-600 hover:!text-green-700 dark:!text-green-400"
                                   >
                                     <Edit className="w-4 h-4" />
@@ -729,7 +729,7 @@ export function ContentTable() {
                                   variant="icon"
                                   size="sm"
                                   onClick={() => handlePreview(content)}
-                                  title="Preview"
+                                  title={t('contents.actions.preview')}
                                   className="!text-blue-600 hover:!text-blue-700 dark:!text-blue-400"
                                 >
                                   <Eye className="w-4 h-4" />
@@ -738,7 +738,7 @@ export function ContentTable() {
                                   variant="icon"
                                   size="sm"
                                   onClick={() => handleDownload(content)}
-                                  title="Download"
+                                  title={t('contents.actions.download')}
                                   className="!text-gray-600 hover:!text-gray-700 dark:!text-gray-400"
                                 >
                                   <Download className="w-4 h-4" />
@@ -748,7 +748,7 @@ export function ContentTable() {
                                     variant="icon"
                                     size="sm"
                                     onClick={() => setContentToDelete(content)}
-                                    title="Delete"
+                                    title={t('contents.actions.delete')}
                                     className="!text-red-600 hover:!text-red-700 dark:!text-red-400"
                                   >
                                     <Trash2 className="w-4 h-4" />
@@ -790,10 +790,10 @@ export function ContentTable() {
       <ConfirmDialog
         open={!!contentToDelete}
         onOpenChange={(open) => !open && setContentToDelete(null)}
-        title="Delete Content"
-        description={`Are you sure you want to delete "${contentToDelete?.title}"? This action cannot be undone.`}
+        title={t('contents.dialogs.deleteTitle')}
+        description={t('contents.dialogs.deleteMessage', { name: contentToDelete?.title })}
         variant="danger"
-        confirmLabel="Delete"
+        confirmLabel={t('contents.actions.delete')}
         onConfirm={handleDelete}
         isLoading={deleteMutation.isPending}
       />

@@ -392,9 +392,12 @@
       "zoomIn": "Perbesar",
       "close": "Tutup (ESC)",
       "upload": "Upload Konten",
+      "filters": "Filter",
+      "clearFilters": "Hapus Filter",
       "bulkEdit": "Edit Massal",
       "bulkTag": "Tag Massal",
       "bulkDelete": "Hapus Massal",
+      "deleteSelected": "Hapus Terpilih",
       "bulkTagAssignment": "Penetapan Tag Massal",
       "assignTagToItems": "Tetapkan tag ke {{count}} item konten",
       "selectTag": "Pilih Tag",
@@ -461,24 +464,101 @@
       "description": "Masukkan deskripsi konten (opsional)",
       "searchContent": "Cari berdasarkan judul atau deskripsi..."
     },
-    "filters": {
-      "allTypes": "Semua Tipe"
-    },
     "table": {
       "content": "Konten",
+      "type": "Tipe",
+      "size": "Ukuran",
+      "duration": "Durasi",
+      "status": "Status",
+      "actions": "Aksi",
       "createdAt": "Dibuat Pada",
-      "actions": "Aksi"
+      "deleted": "Dihapus"
+    },
+    "filters": {
+      "allTypes": "Semua Tipe",
+      "allStatus": "Semua Status",
+      "clearFilters": "Hapus Filter",
+      "contentType": "Tipe Konten",
+      "status": "Status",
+      "image": "Gambar",
+      "video": "Video",
+      "audio": "Audio",
+      "active": "Aktif",
+      "inactive": "Tidak Aktif"
+    },
+    "stats": {
+      "showingItems": "Menampilkan {{count}} dari {{total}} item",
+      "showingDeleted": "Menampilkan {{count}} dari {{total}} item terhapus",
+      "noDeletedContent": "Tidak ada konten terhapus di tempat sampah"
+    },
+    "selection": {
+      "itemsSelected": "{{count}} item dipilih",
+      "clearSelection": "Hapus pilihan",
+      "selectAtLeastOne": "Pilih setidaknya satu item konten"
+    },
+    "duplicates": {
+      "duplicateFiles": "{{count}} File Duplikat",
+      "count": "{{count}} File Duplikat",
+      "hash": "Hash",
+      "sameFile": "File Sama",
+      "clickToExpand": "Klik untuk memperluas",
+      "clickToCollapse": "Klik untuk menciutkan"
+    },
+    "usage": {
+      "playlist": "{{count}} playlist",
+      "playlists": "{{count}} playlist",
+      "tag": "{{count}} tag",
+      "tags": "{{count}} tag",
+      "device": "{{count}} perangkat",
+      "devices": "{{count}} perangkat",
+      "notUsed": "Tidak digunakan",
+      "safeToDelete": "Aman untuk dihapus"
+    },
+    "deleted": {
+      "empty": {
+        "title": "Tempat Sampah Kosong",
+        "description": "Konten yang dihapus akan muncul di sini untuk pemulihan"
+      },
+      "showingItems": "Menampilkan {{count}} dari {{total}} item terhapus",
+      "noItems": "Tidak ada konten terhapus di tempat sampah",
+      "deletedAt": "Dihapus",
+      "restore": "Pulihkan",
+      "deletePermanently": "Hapus Permanen",
+      "deletePermanentlyCount": "Hapus {{count}} secara permanen",
+      "deleteCount": "Hapus {{count}} secara permanen",
+      "deleteItems": "Hapus {{count}} item",
+      "dialogs": {
+        "restoreTitle": "Pulihkan Konten",
+        "restoreMessage": "Apakah Anda yakin ingin memulihkan \"{{name}}\"? Konten akan dipindahkan kembali ke konten aktif.",
+        "permanentDeleteTitle": "Hapus Konten Secara Permanen",
+        "permanentDeleteMessage": "Apakah Anda yakin ingin menghapus \"{{name}}\" secara permanen? Tindakan ini tidak dapat dibatalkan dan file akan dihapus dari penyimpanan.",
+        "bulkPermanentDeleteTitle": "Hapus Konten Terpilih Secara Permanen",
+        "bulkPermanentDeleteMessage": "Apakah Anda yakin ingin menghapus {{count}} item secara permanen? Tindakan ini tidak dapat dibatalkan dan semua file akan dihapus dari penyimpanan."
+      }
     },
     "messages": {
       "noContent": "Tidak ada konten ditemukan",
       "errorLoading": "Error memuat konten",
       "selectedCount": "{{count}} dipilih",
+      "selectAtLeastOne": "Pilih setidaknya satu item konten",
       "setAtLeastOneField": "Harap atur setidaknya satu field untuk diperbarui",
       "successfullyUpdated": "Berhasil memperbarui {{count}} item konten",
       "updatedWithFailures": "Berhasil memperbarui {{successCount}} item, {{failCount}} gagal",
       "videoNotSupported": "Browser Anda tidak mendukung pemutaran video.",
       "audioNotSupported": "Browser Anda tidak mendukung pemutaran audio.",
-      "previewNotAvailable": "Pratinjau tidak tersedia untuk tipe konten ini"
+      "previewNotAvailable": "Pratinjau tidak tersedia untuk tipe konten ini",
+      "downloadStarted": "Unduhan dimulai",
+      "downloadFailed": "Gagal mengunduh file",
+      "uploadSuccess": "Konten berhasil diunggah",
+      "uploadPartial": "{{success}} berhasil, {{failed}} gagal. Periksa hasil untuk detail.",
+      "uploadMultipleSuccess": "{{count}} file berhasil diunggah",
+      "updateSuccess": "Konten berhasil diperbarui",
+      "deleteSuccess": "Konten berhasil dihapus",
+      "bulkDeleteSuccess": "{{count}} konten berhasil dihapus",
+      "restoreSuccess": "Konten berhasil dipulihkan",
+      "permanentDeleteSuccess": "Konten dihapus secara permanen",
+      "bulkPermanentDeleteSuccess": "{{count}} item dihapus secara permanen",
+      "confirmBulkDelete": "Apakah Anda yakin ingin menghapus {{count}} item konten?"
     },
     "preview": {
       "zoomOut": "Perkecil",
@@ -497,7 +577,14 @@
       "pending": "Menunggu",
       "updating": "Memperbarui...",
       "success": "✓ Berhasil",
-      "failed": "✗ Gagal"
+      "failed": "✗ Gagal",
+      "active": "Aktif",
+      "inactive": "Tidak Aktif"
+    },
+    "dialogs": {
+      "deleteTitle": "Hapus Konten",
+      "deleteMessage": "Apakah Anda yakin ingin menghapus \"{{name}}\"? Tindakan ini tidak dapat dibatalkan.",
+      "bulkDeleteMessage": "Apakah Anda yakin ingin menghapus {{count}} item konten?"
     },
     "buttons": {
       "cancel": "Batal",
@@ -558,7 +645,29 @@
       "errorLoading": "Error memuat playlist",
       "loadError": "Gagal memuat playlist",
       "confirmDelete": "Apakah Anda yakin ingin menghapus playlist: {{name}}?",
-      "totalPlaylists": "Total: {{count}} playlist"
+      "totalPlaylists": "Total: {{count}} playlist",
+      "createSuccess": "Playlist berhasil dibuat",
+      "createError": "Gagal membuat playlist",
+      "updateSuccess": "Playlist berhasil diperbarui",
+      "updateError": "Gagal memperbarui playlist",
+      "deleteSuccess": "Playlist berhasil dihapus",
+      "deleteError": "Gagal menghapus playlist",
+      "addContentSuccess": "{{count}} item konten ditambahkan",
+      "addContentPartialMissing": "{{added}} item ditambahkan, {{missing}} tidak ditemukan",
+      "addContentPartialDuplicate": "{{added}} item ditambahkan, {{duplicate}} sudah ada",
+      "addContentError": "Gagal menambahkan konten",
+      "removeContentSuccess": "Konten dihapus dari playlist",
+      "removeContentError": "Gagal menghapus konten",
+      "reorderSuccess": "Konten berhasil diurutkan ulang",
+      "reorderError": "Gagal mengurutkan ulang konten",
+      "assignDevicesSuccess": "Ditetapkan ke {{count}} perangkat",
+      "assignDevicesError": "Gagal menetapkan perangkat",
+      "assignTagsSuccess": "Ditetapkan ke {{count}} tag",
+      "assignTagsError": "Gagal menetapkan tag",
+      "unassignDevicesSuccess": "Dibatalkan dari {{count}} perangkat",
+      "unassignDevicesError": "Gagal membatalkan penetapan perangkat",
+      "unassignTagsSuccess": "Dibatalkan dari {{count}} tag",
+      "unassignTagsError": "Gagal membatalkan penetapan tag"
     },
     "deletePlaylist": "Hapus Playlist",
     "manageContent": "Kelola Konten",
@@ -716,6 +825,10 @@
       "deleteSchedule": "Hapus Jadwal",
       "showPreview": "Tampilkan Preview",
       "hidePreview": "Sembunyikan Preview"
+    },
+    "card": {
+      "clickToEditTime": "Klik untuk edit waktu jadwal",
+      "nowPlaying": "Sedang diputar"
     },
     "noMatches": "Tidak ada jadwal yang cocok dengan filter Anda",
     "tryDifferentFilters": "Coba sesuaikan pencarian atau kriteria filter Anda",
@@ -988,6 +1101,21 @@
         "timezoneInfo": "Semua waktu akan dijadwalkan dalam zona waktu ini",
         "exceptionDatesInfo": "Lewati tanggal tertentu meskipun cocok dengan pola pengulangan"
       }
+    },
+    "messages": {
+      "createSuccess": "Jadwal berhasil dibuat",
+      "createError": "Gagal membuat jadwal",
+      "updateSuccess": "Jadwal berhasil diperbarui",
+      "updateError": "Gagal memperbarui jadwal",
+      "deleteSuccess": "Jadwal berhasil dihapus",
+      "deleteError": "Gagal menghapus jadwal",
+      "activateSuccess": "Jadwal diaktifkan",
+      "activateError": "Gagal mengaktifkan jadwal",
+      "deactivateSuccess": "Jadwal dinonaktifkan",
+      "deactivateError": "Gagal menonaktifkan jadwal",
+      "pauseSuccess": "Jadwal dijeda",
+      "pauseError": "Gagal menjeda jadwal",
+      "conflictCheckError": "Gagal memeriksa konflik"
     }
   },
   "dashboard": {
@@ -1443,8 +1571,145 @@
   "menus": {
     "title": "Menu Digital",
     "subtitle": "Kelola menu digital Anda untuk restoran, laundry, spa, dan lainnya",
+    "portal": {
+      "title": "Menu Portal",
+      "description": "Satu link untuk semua menu organisasi Anda",
+      "tooltip": "Bagikan link ini agar pelanggan dapat melihat semua menu Anda dalam satu halaman dengan navigasi tab.",
+      "copied": "Link portal berhasil disalin!",
+      "copyFailed": "Gagal menyalin link",
+      "copy": "Salin link",
+      "open": "Buka portal"
+    },
     "mediaTitle": "Media Menu",
     "mediaSubtitle": "Unggah dan kelola gambar untuk item menu digital Anda",
+    "media": {
+      "tabs": {
+        "active": "Media Aktif",
+        "duplicates": "Duplikat",
+        "deleted": "Tempat Sampah"
+      },
+      "viewMode": {
+        "table": "Tabel",
+        "gallery": "Galeri"
+      },
+      "actions": {
+        "uploadImage": "Unggah Gambar",
+        "filters": "Filter",
+        "clearFilters": "Hapus Filter",
+        "deleteSelected": "Hapus Terpilih",
+        "permanentlyDelete": "Hapus Permanen",
+        "permanentlyDeleteAll": "Hapus Permanen Semua",
+        "preview": "Pratinjau",
+        "edit": "Edit",
+        "copyUrl": "Salin URL",
+        "download": "Unduh",
+        "delete": "Hapus",
+        "restore": "Pulihkan",
+        "openInNewTab": "Buka di Tab Baru"
+      },
+      "allowedTypes": "Diizinkan: JPG, PNG, GIF, WebP (maks 10MB)",
+      "dragDrop": "Seret dan lepas gambar di sini",
+      "dropHere": "Lepaskan gambar di sini untuk mengunggah",
+      "uploadHint": "atau klik untuk memilih file",
+      "uploading": "Mengunggah...",
+      "fileTooLarge": "File terlalu besar (maks 10MB)",
+      "invalidType": "Tipe file tidak valid",
+      "loadError": "Gagal memuat media",
+      "noImages": "Belum ada gambar yang diunggah",
+      "noSearchResults": "Tidak ada gambar yang cocok dengan pencarian",
+      "searchPlaceholder": "Cari gambar...",
+      "totalCount": "{{count}} gambar",
+      "copyUrl": "Salin URL",
+      "urlCopied": "URL berhasil disalin",
+      "copyFailed": "Gagal menyalin URL",
+      "delete": "Hapus",
+      "deleteTitle": "Hapus Gambar",
+      "deleteMessage": "Apakah Anda yakin ingin menghapus gambar ini?",
+      "gallery": {
+        "searchPlaceholder": "Cari gambar...",
+        "imagesFound": "{{count}} gambar ditemukan",
+        "filtered": "Terfilter: {{count}} dari {{total}}",
+        "noSearchResults": "Tidak ada gambar yang cocok dengan pencarian"
+      },
+      "sidebar": {
+        "title": "Detail Gambar",
+        "emptyTitle": "Tidak Ada Gambar Dipilih",
+        "emptyDescription": "Pilih gambar untuk melihat detail",
+        "filename": "Nama File",
+        "size": "Ukuran",
+        "dimensions": "Dimensi",
+        "uploaded": "Diunggah",
+        "uploadedBy": "Diunggah oleh",
+        "metadata": "Metadata",
+        "title_field": "Judul",
+        "titlePlaceholder": "Masukkan judul gambar",
+        "noTitle": "Tidak ada judul",
+        "alt_text": "Teks Alt",
+        "altPlaceholder": "Masukkan teks alt untuk aksesibilitas",
+        "noAltText": "Tidak ada teks alt",
+        "usedIn": "Digunakan Di",
+        "usageComingSoon": "Pelacakan penggunaan segera hadir"
+      },
+      "table": {
+        "image": "Gambar",
+        "type": "Tipe",
+        "size": "Ukuran",
+        "dimensions": "Dimensi",
+        "actions": "Aksi",
+        "deletedAt": "Dihapus Pada"
+      },
+      "filters": {
+        "search": "Cari",
+        "searchPlaceholder": "Cari berdasarkan nama file..."
+      },
+      "stats": {
+        "showingImages": "Menampilkan {{count}} dari {{total}} gambar",
+        "showingDeleted": "Menampilkan {{count}} dari {{total}} gambar terhapus"
+      },
+      "selection": {
+        "itemsSelected": "{{count}} item dipilih"
+      },
+      "empty": {
+        "title": "Tidak ada gambar",
+        "description": "Unggah gambar pertama Anda untuk memulai",
+        "recycleBinTitle": "Tempat sampah kosong",
+        "recycleBinDescription": "Gambar yang dihapus akan muncul di sini"
+      },
+      "dialogs": {
+        "deleteTitle": "Hapus Gambar",
+        "deleteMessage": "Apakah Anda yakin ingin menghapus \"{{name}}\"? Gambar akan dipindahkan ke tempat sampah.",
+        "restoreTitle": "Pulihkan Gambar",
+        "restoreMessage": "Apakah Anda yakin ingin memulihkan \"{{name}}\"?",
+        "permanentDeleteTitle": "Hapus Permanen",
+        "permanentDeleteMessage": "Apakah Anda yakin ingin menghapus \"{{name}}\" secara permanen? Tindakan ini tidak dapat dibatalkan!",
+        "bulkDeleteTitle": "Hapus Beberapa Gambar",
+        "bulkDeleteMessage": "Apakah Anda yakin ingin menghapus {{count}} gambar?",
+        "bulkPermanentDeleteTitle": "Hapus Permanen Terpilih",
+        "bulkPermanentDeleteMessage": "Apakah Anda yakin ingin menghapus {{count}} gambar secara permanen? Tindakan ini tidak dapat dibatalkan!"
+      },
+      "messages": {
+        "urlCopied": "URL berhasil disalin",
+        "urlCopyFailed": "Gagal menyalin URL",
+        "downloadStarted": "Unduhan dimulai",
+        "selectAtLeastOne": "Pilih setidaknya satu gambar"
+      },
+      "duplicates": {
+        "emptyTitle": "Tidak Ada Duplikat",
+        "emptyDescription": "Semua file media menu Anda unik. Bagus dalam menjaga kebersihan pustaka!",
+        "groupsFound": "{{count}} Grup Duplikat Ditemukan",
+        "groupsFound_plural": "{{count}} Grup Duplikat Ditemukan",
+        "summaryMessage": "File-file ini memiliki konten yang sama (hash). Anda dapat menghapus duplikat untuk menghemat {{size}} penyimpanan.",
+        "duplicateCount": "{{count}} Duplikat",
+        "sizeEach": "{{size}} masing-masing",
+        "wastedStorage": "Terbuang: {{size}}",
+        "original": "Asli",
+        "usedInItems": "Digunakan di {{count}} item menu",
+        "usedInItems_plural": "Digunakan di {{count}} item menu",
+        "inUseCannotDelete": "Sedang digunakan - tidak dapat dihapus",
+        "deleteDialogTitle": "Hapus Duplikat",
+        "deleteDialogMessage": "Apakah Anda yakin ingin menghapus \"{{name}}\"? Gambar akan dipindahkan ke tempat sampah."
+      }
+    },
     "createMenu": "Buat Menu",
     "editMenu": "Edit Menu",
     "createNewMenu": "Buat Menu Baru",
@@ -1519,12 +1784,73 @@
       "previous": "Sebelumnya",
       "next": "Berikutnya"
     },
+    "bulkEdit": {
+      "title": "Edit Massal Item Menu",
+      "itemsModified": "item diubah",
+      "noChanges": "Tidak ada perubahan",
+      "saving": "Menyimpan...",
+      "saveAll": "Simpan Semua Perubahan",
+      "noItems": "Tidak ada item untuk diedit",
+      "active": "Aktif",
+      "image": "Gambar",
+      "name": "Nama",
+      "price": "Harga",
+      "category": "Kategori",
+      "addNewItem": "Tambah Item Baru",
+      "unsavedChanges": "Perubahan Belum Disimpan",
+      "confirmDiscard": "Anda memiliki perubahan yang belum disimpan. Yakin ingin membuangnya?",
+      "confirmDelete": "Yakin ingin menghapus item ini?",
+      "selectImages": "Pilih Gambar",
+      "newItem": "Item Baru",
+      "selectedCount": "{{count}} gambar dipilih",
+      "selectMultipleImages": "Klik gambar untuk memilih (multi-select)",
+      "clearAll": "Hapus Semua",
+      "noMedia": "Tidak ada gambar tersedia. Upload gambar di tab Menu Media.",
+      "firstImagePrimary": "Gambar pertama yang dipilih akan menjadi thumbnail utama",
+      "changeImage": "Klik untuk mengubah gambar",
+      "namePlaceholder": "Nama item",
+      "descriptionPlaceholder": "Deskripsi (opsional)",
+      "variantPlaceholder": "Varian...",
+      "highlight": "Sorot",
+      "available": "Tersedia"
+    },
     "items": {
       "title": "{{menuName}} - Item",
       "totalItems": "Total {{count}} item",
+      "itemsTotal": "{{count}} item",
       "importExcel": "Impor Excel",
       "noItemsYet": "Belum ada item",
+      "noItems": "Tidak ada item ditemukan",
       "importFromExcel": "Impor dari Excel",
+      "addItem": "Tambah Item",
+      "editItem": "Edit Item",
+      "name": "Nama",
+      "namePlaceholder": "Masukkan nama item",
+      "description": "Deskripsi",
+      "descriptionPlaceholder": "Masukkan deskripsi item",
+      "category": "Kategori",
+      "categoryPlaceholder": "misal: Makanan Utama, Dessert",
+      "subcategory": "Subkategori",
+      "subcategoryPlaceholder": "misal: Pasta, Panggang",
+      "price": "Harga",
+      "currency": "IDR",
+      "image": "Gambar",
+      "selectImage": "Pilih Gambar",
+      "selectFromMedia": "Pilih dari Media",
+      "removeImage": "Hapus Gambar",
+      "noMediaAvailable": "Tidak ada media tersedia",
+      "hideMedia": "Sembunyikan Pemilih Media",
+      "status": "Status",
+      "isActive": "Aktif",
+      "isAvailable": "Tersedia",
+      "isFeatured": "Unggulan",
+      "unavailable": "Tidak Tersedia",
+      "actions": "Aksi",
+      "confirmDelete": "Apakah Anda yakin ingin menghapus item ini?",
+      "import": "Impor",
+      "export": "Ekspor",
+      "exportSuccess": "Item berhasil diekspor",
+      "exportError": "Gagal mengekspor item",
       "table": {
         "itemName": "Nama Item",
         "category": "Kategori",

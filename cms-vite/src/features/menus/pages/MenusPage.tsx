@@ -13,6 +13,7 @@ import { useCanPerformAction } from '@/features/rbac/hooks/usePermissions';
 import { MenuList } from '../components/MenuList';
 import { MenuForm } from '../components/MenuForm';
 import { MenuItemsManager } from '../components/MenuItemsManager';
+import { PortalInfoBox } from '../components/PortalInfoBox';
 import type { Menu, MenuType } from '../types/menu';
 
 export default function MenusPage() {
@@ -62,6 +63,9 @@ export default function MenusPage() {
       />
 
       <div className="space-y-6">
+        {/* Portal Info Box */}
+        <PortalInfoBox />
+
         {/* Action Bar */}
         <div className="flex items-center justify-end">
           {canCreate && (

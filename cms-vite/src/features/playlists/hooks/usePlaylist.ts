@@ -3,6 +3,7 @@
  */
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { getApiErrorMessage } from '@/shared/utils/types';
 import { useSelectedOrgId, playlistKeys as sharedPlaylistKeys } from '@/shared/hooks';
@@ -72,6 +73,7 @@ export const usePlaylistAssignments = (id: number, enabled = true) => {
  * Create new playlist
  */
 export const useCreatePlaylist = () => {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const orgId = useSelectedOrgId();
 
@@ -84,10 +86,10 @@ export const useCreatePlaylist = () => {
       // Invalidate dashboard queries (playlist count changes)
       queryClient.invalidateQueries({ queryKey: ['dashboard'] });
 
-      toast.success('Playlist created successfully');
+      toast.success(t('playlists.messages.createSuccess'));
     },
     onError: (error: unknown) => {
-      toast.error(getApiErrorMessage(error, 'Failed to create playlist'));
+      toast.error(getApiErrorMessage(error, t('playlists.messages.createError')));
     },
   });
 };
@@ -96,6 +98,7 @@ export const useCreatePlaylist = () => {
  * Update playlist
  */
 export const useUpdatePlaylist = () => {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const orgId = useSelectedOrgId();
 
@@ -106,10 +109,10 @@ export const useUpdatePlaylist = () => {
       // Invalidate with orgId to match the actual query key
       queryClient.invalidateQueries({ queryKey: playlistKeys.lists(orgId) });
       queryClient.invalidateQueries({ queryKey: playlistKeys.detail(variables.id) });
-      toast.success('Playlist updated successfully');
+      toast.success(t('playlists.messages.updateSuccess'));
     },
     onError: (error: unknown) => {
-      toast.error(getApiErrorMessage(error, 'Failed to update playlist'));
+      toast.error(getApiErrorMessage(error, t('playlists.messages.updateError')));
     },
   });
 };
@@ -118,6 +121,7 @@ export const useUpdatePlaylist = () => {
  * Delete playlist
  */
 export const useDeletePlaylist = () => {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const orgId = useSelectedOrgId();
 
@@ -142,10 +146,10 @@ export const useDeletePlaylist = () => {
       // Invalidate dashboard queries (playlist count and active playlists change)
       queryClient.invalidateQueries({ queryKey: ['dashboard'] });
 
-      toast.success('Playlist deleted successfully');
+      toast.success(t('playlists.messages.deleteSuccess'));
     },
     onError: (error: unknown) => {
-      toast.error(getApiErrorMessage(error, 'Failed to delete playlist'));
+      toast.error(getApiErrorMessage(error, t('playlists.messages.deleteError')));
     },
   });
 };
@@ -158,6 +162,7 @@ export const useDeletePlaylist = () => {
  * Add content to playlist
  */
 export const useAddContentToPlaylist = () => {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -168,15 +173,15 @@ export const useAddContentToPlaylist = () => {
       queryClient.invalidateQueries({ queryKey: playlistKeys.detail(variables.id) });
 
       if (result.skipped_missing && result.skipped_missing.length > 0) {
-        toast.warning(`${result.added} items added, ${result.skipped_missing.length} not found`);
+        toast.warning(t('playlists.messages.addContentPartialMissing', { added: result.added, missing: result.skipped_missing.length }));
       } else if (result.skipped_duplicate && result.skipped_duplicate.length > 0) {
-        toast.warning(`${result.added} items added, ${result.skipped_duplicate.length} already exist`);
+        toast.warning(t('playlists.messages.addContentPartialDuplicate', { added: result.added, duplicate: result.skipped_duplicate.length }));
       } else {
-        toast.success(`${result.added} content items added`);
+        toast.success(t('playlists.messages.addContentSuccess', { count: result.added }));
       }
     },
     onError: (error: unknown) => {
-      toast.error(getApiErrorMessage(error, 'Failed to add content'));
+      toast.error(getApiErrorMessage(error, t('playlists.messages.addContentError')));
     },
   });
 };
@@ -185,6 +190,7 @@ export const useAddContentToPlaylist = () => {
  * Remove content from playlist
  */
 export const useRemoveContentFromPlaylist = () => {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -193,10 +199,10 @@ export const useRemoveContentFromPlaylist = () => {
     onSuccess: (result, variables) => {
       queryClient.invalidateQueries({ queryKey: playlistKeys.content(variables.playlistId) });
       queryClient.invalidateQueries({ queryKey: playlistKeys.detail(variables.playlistId) });
-      toast.success('Content removed from playlist');
+      toast.success(t('playlists.messages.removeContentSuccess'));
     },
     onError: (error: unknown) => {
-      toast.error(getApiErrorMessage(error, 'Failed to remove content'));
+      toast.error(getApiErrorMessage(error, t('playlists.messages.removeContentError')));
     },
   });
 };
@@ -205,6 +211,7 @@ export const useRemoveContentFromPlaylist = () => {
  * Reorder playlist content
  */
 export const useReorderPlaylistContent = () => {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -212,10 +219,10 @@ export const useReorderPlaylistContent = () => {
       playlistApi.reorderContent(id, data),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: playlistKeys.content(variables.id) });
-      toast.success('Content reordered successfully');
+      toast.success(t('playlists.messages.reorderSuccess'));
     },
     onError: (error: unknown) => {
-      toast.error(getApiErrorMessage(error, 'Failed to reorder content'));
+      toast.error(getApiErrorMessage(error, t('playlists.messages.reorderError')));
     },
   });
 };
@@ -228,6 +235,7 @@ export const useReorderPlaylistContent = () => {
  * Assign playlist to devices
  */
 export const useAssignPlaylistToDevices = () => {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -250,10 +258,10 @@ export const useAssignPlaylistToDevices = () => {
       // Invalidate dashboard queries (active playlists may change)
       queryClient.invalidateQueries({ queryKey: ['dashboard'] });
 
-      toast.success(`Assigned to ${result.assigned} devices`);
+      toast.success(t('playlists.messages.assignDevicesSuccess', { count: result.assigned }));
     },
     onError: (error: unknown) => {
-      toast.error(getApiErrorMessage(error, 'Failed to assign devices'));
+      toast.error(getApiErrorMessage(error, t('playlists.messages.assignDevicesError')));
     },
   });
 };
@@ -262,6 +270,7 @@ export const useAssignPlaylistToDevices = () => {
  * Assign playlist to tags
  */
 export const useAssignPlaylistToTags = () => {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -276,10 +285,10 @@ export const useAssignPlaylistToTags = () => {
       // Invalidate dashboard queries (active playlists may change)
       queryClient.invalidateQueries({ queryKey: ['dashboard'] });
 
-      toast.success(`Assigned to ${result.assigned} tags`);
+      toast.success(t('playlists.messages.assignTagsSuccess', { count: result.assigned }));
     },
     onError: (error: unknown) => {
-      toast.error(getApiErrorMessage(error, 'Failed to assign tags'));
+      toast.error(getApiErrorMessage(error, t('playlists.messages.assignTagsError')));
     },
   });
 };
@@ -288,6 +297,7 @@ export const useAssignPlaylistToTags = () => {
  * Unassign playlist from devices
  */
 export const useUnassignPlaylistFromDevices = () => {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -310,10 +320,10 @@ export const useUnassignPlaylistFromDevices = () => {
       // Invalidate dashboard queries (active playlists may change)
       queryClient.invalidateQueries({ queryKey: ['dashboard'] });
 
-      toast.success(`Unassigned from ${result.removed} devices`);
+      toast.success(t('playlists.messages.unassignDevicesSuccess', { count: result.removed }));
     },
     onError: (error: unknown) => {
-      toast.error(getApiErrorMessage(error, 'Failed to unassign devices'));
+      toast.error(getApiErrorMessage(error, t('playlists.messages.unassignDevicesError')));
     },
   });
 };
@@ -322,6 +332,7 @@ export const useUnassignPlaylistFromDevices = () => {
  * Unassign playlist from tags
  */
 export const useUnassignPlaylistFromTags = () => {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -336,10 +347,10 @@ export const useUnassignPlaylistFromTags = () => {
       // Invalidate dashboard queries (active playlists may change)
       queryClient.invalidateQueries({ queryKey: ['dashboard'] });
 
-      toast.success(`Unassigned from ${result.removed} tags`);
+      toast.success(t('playlists.messages.unassignTagsSuccess', { count: result.removed }));
     },
     onError: (error: unknown) => {
-      toast.error(getApiErrorMessage(error, 'Failed to unassign tags'));
+      toast.error(getApiErrorMessage(error, t('playlists.messages.unassignTagsError')));
     },
   });
 };

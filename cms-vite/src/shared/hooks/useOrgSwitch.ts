@@ -10,7 +10,7 @@ import { useEffect, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { ORG_SWITCH_EVENT_NAME } from '@/lib/stores/authStore';
 import type { OrgSwitchEvent } from '@/features/auth/types/userPreferences';
-import { toast } from '@/lib/notifications/toast';
+import { toast } from 'sonner';
 import { logger } from '@/shared/utils/logger';
 
 /**

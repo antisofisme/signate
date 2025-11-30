@@ -10,6 +10,7 @@
 
 import { useState, useCallback, useMemo, lazy, Suspense } from 'react';
 import { useTranslation } from 'react-i18next';
+import { toast } from 'sonner';
 import { PageHeader, PageSkeleton, AccessDenied, RefreshButton } from '@/shared/components';
 import { useCanPerformAction } from '@/features/rbac/hooks/usePermissions';
 import { AnalyticsOverview } from '../components/AnalyticsOverview';
@@ -134,9 +135,9 @@ export default function AnalyticsPage() {
       // TODO: Implement PDF export
       console.log('Exporting PDF with data:', { stats, contentPerformance, timeline, deviceEngagement });
       await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate export
-      alert(t('analytics.exportSuccess', 'Report exported successfully!'));
+      toast.success(t('analytics.exportSuccess', 'Report exported successfully!'));
     } catch {
-      alert(t('analytics.exportError', 'Failed to export report'));
+      toast.error(t('analytics.exportError', 'Failed to export report'));
     } finally {
       setIsExporting(false);
     }
@@ -148,9 +149,9 @@ export default function AnalyticsPage() {
       // TODO: Implement Excel export
       console.log('Exporting Excel with data:', { stats, contentPerformance, deviceEngagement });
       await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate export
-      alert(t('analytics.exportSuccess', 'Report exported successfully!'));
+      toast.success(t('analytics.exportSuccess', 'Report exported successfully!'));
     } catch {
-      alert(t('analytics.exportError', 'Failed to export report'));
+      toast.error(t('analytics.exportError', 'Failed to export report'));
     } finally {
       setIsExporting(false);
     }

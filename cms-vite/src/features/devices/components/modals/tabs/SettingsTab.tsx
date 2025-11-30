@@ -11,6 +11,7 @@ import { useEffect } from 'react';
 import { useForm, FormProvider } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+import { toast } from 'sonner';
 import { Save, Loader2, AlertTriangle } from 'lucide-react';
 import type { Device } from '../../../types/device';
 import { useUpdateDevice } from '../../../hooks/useDevices';
@@ -178,14 +179,14 @@ export function SettingsTab({ device, onSuccess }: SettingsTabProps) {
           <div className="space-y-2">
             <button
               type="button"
-              onClick={() => alert('Deactivate device functionality coming soon')}
+              onClick={() => toast.info('Deactivate device functionality coming soon')}
               className="w-full px-4 py-2 border border-red-300 dark:border-red-700 text-red-700 dark:text-red-400 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/20 transition-colors text-sm font-medium"
             >
               Deactivate Device
             </button>
             <button
               type="button"
-              onClick={() => alert('Delete device functionality coming soon')}
+              onClick={() => toast.info('Delete device functionality coming soon')}
               className="w-full px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm font-medium"
             >
               Delete Device

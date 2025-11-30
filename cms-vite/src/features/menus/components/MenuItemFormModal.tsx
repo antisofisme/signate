@@ -1,17 +1,19 @@
 /**
  * Menu Item Form Modal Component
  * Add or Edit menu items with image selection from menu media
+ * Category field uses dropdown populated from menu's categories
  */
 
 import { useState, useEffect } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useTranslation } from 'react-i18next';
-import { X, Image as ImageIcon, Check, Loader2 } from 'lucide-react';
+import { X, Image as ImageIcon, Check, Loader2, Plus } from 'lucide-react';
 import { Modal, Button } from '@/shared/components';
 import { useAddMenuItem, useUpdateMenuItem } from '../hooks/useMenuItems';
 import { useMenuMedia } from '../hooks/useMenuMedia';
+import { useMenuCategories } from '../hooks/useMenuCategories';
 import type { MenuItem, MenuMedia } from '../types/menu';
 
 // Form validation schema
@@ -29,6 +31,26 @@ const menuItemSchema = z.object({
 });
 
 type MenuItemFormData = z.infer<typeof menuItemSchema>;
+
+/**
+ * Compare two URLs ignoring protocol and query parameters
+ */
+const isSameMediaUrl = (url1: string | null, url2: string | null): boolean => {
+  if (!url1 || !url2) return false;
+
+  // Extract pathname from URLs for comparison
+  const getPathname = (url: string): string => {
+    try {
+      const parsed = new URL(url);
+      return parsed.pathname;
+    } catch {
+      // If URL parsing fails, return the original string (might be relative path)
+      return url.split('?')[0].replace(/^https?:\/\/[^/]+/, '');
+    }
+  };
+
+  return getPathname(url1) === getPathname(url2);
+};
 
 interface MenuItemFormModalProps {
   isOpen: boolean;
@@ -49,15 +71,19 @@ export const MenuItemFormModal = ({
   const isEditMode = !!item;
   const [showMediaPicker, setShowMediaPicker] = useState(false);
   const [selectedImageUrl, setSelectedImageUrl] = useState<string | null>(item?.image_url || null);
+  const [showCustomCategory, setShowCustomCategory] = useState(false);
 
   const addMutation = useAddMenuItem(menuId);
   const updateMutation = useUpdateMenuItem(menuId);
   const { data: mediaData, isLoading: isLoadingMedia } = useMenuMedia();
+  const { data: categoriesData, isLoading: isLoadingCategories } = useMenuCategories(menuId);
 
   const {
     register,
     handleSubmit,
     reset,
+    watch,
+    setValue,
     formState: { errors, isSubmitting },
   } = useForm<MenuItemFormData>({
     resolver: zodResolver(menuItemSchema),
@@ -74,6 +100,8 @@ export const MenuItemFormModal = ({
       is_available: item?.is_available ?? true,
     },
   });
+
+  const currentCategory = watch('category');
 
   // Reset form when item changes
   useEffect(() => {
@@ -92,8 +120,17 @@ export const MenuItemFormModal = ({
       });
       setSelectedImageUrl(item?.image_url || null);
       setShowMediaPicker(false);
+      setShowCustomCategory(false);
     }
   }, [item, isOpen, reset]);
+
+  // Check if current category is in the list or custom
+  useEffect(() => {
+    if (categoriesData && currentCategory) {
+      const isInList = categoriesData.items.some(cat => cat.name === currentCategory);
+      setShowCustomCategory(!isInList && currentCategory !== '');
+    }
+  }, [categoriesData, currentCategory]);
 
   const onSubmit = async (data: MenuItemFormData) => {
     const payload = {
@@ -131,7 +168,21 @@ export const MenuItemFormModal = ({
     setSelectedImageUrl(null);
   };
 
+  const handleCategoryChange = (value: string) => {
+    if (value === '__custom__') {
+      setShowCustomCategory(true);
+      setValue('category', '');
+    } else {
+      setShowCustomCategory(false);
+      setValue('category', value);
+    }
+  };
+
   const isPending = isSubmitting || addMutation.isPending || updateMutation.isPending;
+
+  // Get categories list
+  const categories = categoriesData?.items || [];
+  const hasCategories = categories.length > 0;
 
   return (
     <Modal
@@ -216,7 +267,7 @@ export const MenuItemFormModal = ({
                     onClick={() => handleSelectImage(media)}
                     className={`
                       relative aspect-square rounded-md overflow-hidden border-2 transition-all
-                      ${selectedImageUrl === media.url
+                      ${isSameMediaUrl(selectedImageUrl, media.url)
                         ? 'border-blue-500 ring-2 ring-blue-200'
                         : 'border-transparent hover:border-gray-300 dark:hover:border-gray-600'
                       }
@@ -227,7 +278,7 @@ export const MenuItemFormModal = ({
                       alt={media.alt_text || media.original_filename}
                       className="w-full h-full object-cover"
                     />
-                    {selectedImageUrl === media.url && (
+                    {isSameMediaUrl(selectedImageUrl, media.url) && (
                       <div className="absolute inset-0 bg-blue-500 bg-opacity-30 flex items-center justify-center">
                         <Check className="w-5 h-5 text-white" />
                       </div>
@@ -306,24 +357,79 @@ export const MenuItemFormModal = ({
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               {t('menus.items.category', 'Category')}
             </label>
-            <input
-              type="text"
-              {...register('category')}
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-blue-500 focus:border-blue-500"
-              placeholder={t('menus.items.categoryPlaceholder', 'e.g. Main Course')}
-            />
+            {isLoadingCategories ? (
+              <div className="flex items-center justify-center py-2">
+                <Loader2 className="w-4 h-4 animate-spin text-blue-600" />
+              </div>
+            ) : showCustomCategory ? (
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  {...register('category')}
+                  className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-blue-500 focus:border-blue-500"
+                  placeholder={t('menus.items.categoryPlaceholder', 'e.g. Main Course')}
+                  autoFocus
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowCustomCategory(false);
+                    setValue('category', '');
+                  }}
+                  className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            ) : (
+              <select
+                value={currentCategory || ''}
+                onChange={(e) => handleCategoryChange(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-blue-500 focus:border-blue-500"
+              >
+                <option value="">-- Select Category --</option>
+                {categories.map((cat) => (
+                  <option key={cat.id} value={cat.name}>
+                    {cat.name}
+                  </option>
+                ))}
+                {hasCategories && <option disabled>──────────</option>}
+                <option value="__custom__">+ Add Custom Category</option>
+              </select>
+            )}
+            {!hasCategories && !showCustomCategory && (
+              <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                {t('menus.items.noCategoriesHint', 'No categories defined. Add categories in Menu Edit.')}
+              </p>
+            )}
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              {t('menus.items.subcategory', 'Subcategory')}
+              {t('menus.items.variant', 'Variant')}
             </label>
             <input
               type="text"
               {...register('subcategory')}
               className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-blue-500 focus:border-blue-500"
-              placeholder={t('menus.items.subcategoryPlaceholder', 'e.g. Indonesian')}
+              placeholder={t('menus.items.variantPlaceholder', 'e.g. Spicy, Large')}
             />
           </div>
+        </div>
+
+        {/* Tags */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            {t('menus.items.tags', 'Tags')}
+          </label>
+          <input
+            type="text"
+            {...register('tags')}
+            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-blue-500 focus:border-blue-500"
+            placeholder={t('menus.items.tagsPlaceholder', 'e.g. spicy, bestseller, halal (comma separated)')}
+          />
+          <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+            {t('menus.items.tagsHint', 'Separate multiple tags with commas')}
+          </p>
         </div>
 
         {/* Status Toggles - Horizontal */}

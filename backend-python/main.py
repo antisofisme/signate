@@ -335,6 +335,17 @@ if QR_CODES_DIR.exists():
 else:
     print(f"⚠ QR codes directory not found: {QR_CODES_DIR}")
 
+# Mount static files for menu media
+MENU_MEDIA_DIR = Path(settings.UPLOAD_DIR)
+if MENU_MEDIA_DIR.exists():
+    app.mount("/menu-media-files", StaticFiles(directory=str(MENU_MEDIA_DIR)), name="menu-media-files")
+    print(f"✓ Static files mounted: /menu-media-files -> {MENU_MEDIA_DIR}")
+else:
+    # Create the directory if it doesn't exist
+    MENU_MEDIA_DIR.mkdir(parents=True, exist_ok=True)
+    app.mount("/menu-media-files", StaticFiles(directory=str(MENU_MEDIA_DIR)), name="menu-media-files")
+    print(f"✓ Static files mounted: /menu-media-files -> {MENU_MEDIA_DIR} (created)")
+
 
 # =============================================================================
 # ERROR HANDLERS

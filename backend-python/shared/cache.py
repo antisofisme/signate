@@ -187,6 +187,17 @@ class CacheService:
         """Invalidate all organization caches"""
         self.clear_pattern(f"org:{org_id}:*")
 
+    def invalidate_menu_media(self, media_id: int = None, org_id: Optional[int] = None):
+        """Invalidate menu media caches"""
+        if media_id:
+            self.delete(f"menu_media:{media_id}")
+            self.clear_pattern(f"menu_media:{media_id}:*")
+        self.clear_pattern("menu_media:list:*")
+        self.clear_pattern("menu_media:deleted:*")
+        self.clear_pattern("*:menu_media:*")
+        if org_id:
+            self.clear_pattern(f"org:{org_id}:menu_media:*")
+
     def invalidate_session(self, token: str):
         """Invalidate session cache when session is revoked (Fix #13)"""
         if token and len(token) >= 16:

@@ -197,7 +197,8 @@ class MenuCategoryRepository:
         name: str,
         display_order: int = 0,
         icon: Optional[str] = None,
-        translations: Optional[Dict[str, Any]] = None
+        translations: Optional[Dict[str, Any]] = None,
+        menu_id: Optional[int] = None
     ) -> MenuCategoryModel:
         """Create category preset"""
         category = MenuCategoryModel(
@@ -206,14 +207,15 @@ class MenuCategoryRepository:
             name=name,
             display_order=display_order,
             icon=icon,
-            translations=translations
+            translations=translations,
+            menu_id=menu_id
         )
 
         self.db.add(category)
         self.db.commit()
         self.db.refresh(category)
 
-        logger.info(f"Created category preset {category.id} for {menu_type}")
+        logger.info(f"Created category preset {category.id} for menu {menu_id} ({menu_type})")
         return category
 
     def find_by_menu_type(
@@ -221,10 +223,25 @@ class MenuCategoryRepository:
         organization_id: int,
         menu_type: str
     ) -> List[MenuCategoryModel]:
-        """Find all categories for menu type"""
+        """Find all categories for menu type (legacy - global categories)"""
         return self.db.query(MenuCategoryModel).filter(
             MenuCategoryModel.organization_id == organization_id,
-            MenuCategoryModel.menu_type == menu_type
+            MenuCategoryModel.menu_type == menu_type,
+            MenuCategoryModel.menu_id.is_(None)  # Only global categories
+        ).order_by(
+            MenuCategoryModel.display_order.asc(),
+            MenuCategoryModel.name.asc()
+        ).all()
+
+    def find_by_menu(
+        self,
+        menu_id: int,
+        organization_id: int
+    ) -> List[MenuCategoryModel]:
+        """Find all categories for a specific menu"""
+        return self.db.query(MenuCategoryModel).filter(
+            MenuCategoryModel.organization_id == organization_id,
+            MenuCategoryModel.menu_id == menu_id
         ).order_by(
             MenuCategoryModel.display_order.asc(),
             MenuCategoryModel.name.asc()
@@ -241,8 +258,65 @@ class MenuCategoryRepository:
             MenuCategoryModel.organization_id == organization_id
         ).first()
 
+    def find_by_name(
+        self,
+        menu_id: int,
+        name: str
+    ) -> Optional[MenuCategoryModel]:
+        """Find category by name within a menu"""
+        return self.db.query(MenuCategoryModel).filter(
+            MenuCategoryModel.menu_id == menu_id,
+            MenuCategoryModel.name == name
+        ).first()
+
+    def update(
+        self,
+        category: MenuCategoryModel,
+        name: Optional[str] = None,
+        display_order: Optional[int] = None,
+        icon: Optional[str] = None,
+        translations: Optional[Dict[str, Any]] = None
+    ) -> MenuCategoryModel:
+        """Update category"""
+        if name is not None:
+            category.name = name
+        if display_order is not None:
+            category.display_order = display_order
+        if icon is not None:
+            category.icon = icon
+        if translations is not None:
+            category.translations = translations
+
+        self.db.commit()
+        self.db.refresh(category)
+        logger.info(f"Updated category preset {category.id}")
+        return category
+
     def delete(self, category: MenuCategoryModel) -> None:
         """Delete category preset"""
         self.db.delete(category)
         self.db.commit()
         logger.info(f"Deleted category preset {category.id}")
+
+    def reorder(
+        self,
+        menu_id: int,
+        category_orders: List[Dict[str, int]]
+    ) -> bool:
+        """Reorder categories for a menu
+
+        Args:
+            menu_id: The menu ID
+            category_orders: List of {"id": int, "display_order": int}
+        """
+        for order in category_orders:
+            category = self.db.query(MenuCategoryModel).filter(
+                MenuCategoryModel.id == order["id"],
+                MenuCategoryModel.menu_id == menu_id
+            ).first()
+            if category:
+                category.display_order = order["display_order"]
+
+        self.db.commit()
+        logger.info(f"Reordered categories for menu {menu_id}")
+        return True

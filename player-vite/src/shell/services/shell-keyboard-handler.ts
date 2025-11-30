@@ -122,13 +122,33 @@ class ShellKeyboardHandlerClass {
   }
 
   /**
+   * Check if keyboard input should be ignored (when typing in input fields)
+   */
+  private isTypingInInput(): boolean {
+    const activeElement = document.activeElement;
+    if (!activeElement) return false;
+
+    const tagName = activeElement.tagName.toLowerCase();
+    const isInput = tagName === 'input' || tagName === 'textarea';
+    const isContentEditable = activeElement.getAttribute('contenteditable') === 'true';
+
+    return isInput || isContentEditable;
+  }
+
+  /**
    * Handle keydown event
    */
   private handleKeyDown = (event: KeyboardEvent): void => {
+    // Skip keyboard handling when user is typing in input fields
+    // Allow Escape to still work for closing modals etc.
+    if (this.isTypingInInput() && event.key !== 'Escape') {
+      return;
+    }
+
     const eventData = this.mapKeyEvent(event);
 
     if (eventData) {
-      // Prevent default for navigation keys
+      // Prevent default for navigation keys (but not when typing)
       if (['arrow_up', 'arrow_down', 'arrow_left', 'arrow_right', 'enter', 'back'].includes(eventData.type)) {
         event.preventDefault();
       }

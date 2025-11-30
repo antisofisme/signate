@@ -11,6 +11,7 @@
 
 import { useState } from 'react';
 import { Upload, Download, CheckCircle, AlertCircle } from 'lucide-react';
+import { toast } from 'sonner';
 import { Modal } from '@/shared/components';
 import { useImportMenuItems, useDownloadTemplate } from '../hooks/useMenuImport';
 import type { MenuImportResult } from '../types/menu';
@@ -45,7 +46,7 @@ export const ExcelImportModal = ({
         !file.name.endsWith('.xlsx') &&
         !file.name.endsWith('.xls')
       ) {
-        alert('Please select an Excel file (.xlsx or .xls)');
+        toast.warning('Please select an Excel file (.xlsx or .xls)');
         return;
       }
       setSelectedFile(file);

@@ -16,7 +16,9 @@ from .repositories import (
     MenuRepository,
     MenuItemRepository,
     MenuImportHistoryRepository,
-    MenuViewRepository
+    MenuViewRepository,
+    MenuCategoryRepository,
+    MenuItemMediaRepository
 )
 from .infrastructure import QRCodeGenerator, ExcelImporter, ExcelExporter
 from .use_cases import CreateMenuUseCase, BulkImportItemsUseCase
@@ -31,7 +33,24 @@ from .dtos import (
     MenuItemListResponseDTO,
     MenuItemReorderDTO,
     MenuImportResultDTO,
-    MenuImportHistoryListDTO
+    MenuImportHistoryListDTO,
+    MenuItemMediaSimpleDTO,
+    # Category DTOs
+    MenuCategoryCreateDTO,
+    MenuCategoryUpdateDTO,
+    MenuCategoryResponseDTO,
+    MenuCategoryListDTO,
+    MenuCategoryReorderDTO,
+    # Menu Item Media DTOs
+    MenuItemMediaAddDTO,
+    MenuItemMediaResponseDTO,
+    MenuItemMediaListDTO,
+    MenuItemMediaBulkSetDTO,
+    MenuItemMediaReorderDTO,
+    MenuMediaResponseDTO,
+    # PIN verification
+    PINVerifyDTO,
+    PINVerifyResponseDTO
 )
 
 router = APIRouter(prefix="/api/v1/menus", tags=["menus"])
@@ -77,6 +96,16 @@ def get_excel_importer() -> ExcelImporter:
 def get_excel_exporter() -> ExcelExporter:
     """Get Excel exporter"""
     return ExcelExporter()
+
+
+def get_category_repository(db: Session = Depends(get_db)) -> MenuCategoryRepository:
+    """Inject menu category repository"""
+    return MenuCategoryRepository(db)
+
+
+def get_item_media_repository(db: Session = Depends(get_db)) -> MenuItemMediaRepository:
+    """Inject menu item media repository"""
+    return MenuItemMediaRepository(db)
 
 
 # ========== Menu CRUD Endpoints ==========
@@ -308,7 +337,49 @@ def list_menu_items(
         category=category
     )
 
-    item_responses = [MenuItemResponseDTO.model_validate(item) for item in items]
+    # Convert items to response DTOs with media
+    item_responses = []
+    for item in items:
+        item_dict = {
+            "id": item.id,
+            "menu_id": item.menu_id,
+            "organization_id": item.organization_id,
+            "name": item.name,
+            "description": item.description,
+            "price": item.price,
+            "currency": item.currency,
+            "image_url": item.image_url,
+            "video_url": item.video_url,
+            "content_id": item.content_id,
+            "category": item.category,
+            "subcategory": item.subcategory,
+            "tags": item.tags,
+            "display_order": item.display_order,
+            "is_active": item.is_active,
+            "is_featured": item.is_featured,
+            "is_available": item.is_available,
+            "translations": item.translations,
+            "created_at": item.created_at,
+            "updated_at": item.updated_at,
+            "media": []
+        }
+
+        # Convert media_items relationship to simple media array
+        if hasattr(item, 'media_items') and item.media_items:
+            for mim in item.media_items:
+                if mim.menu_media:
+                    media_url = None
+                    if mim.menu_media.file_path:
+                        media_url = f"{settings.PUBLIC_BASE_URL}/uploads/menu-media/{mim.menu_media.filename}"
+                    item_dict["media"].append({
+                        "id": mim.menu_media_id,
+                        "url": media_url,
+                        "mime_type": mim.menu_media.mime_type,
+                        "is_primary": mim.is_primary,
+                        "display_order": mim.display_order
+                    })
+
+        item_responses.append(MenuItemResponseDTO.model_validate(item_dict))
 
     return success_response(data={
         "items": item_responses,
@@ -480,15 +551,19 @@ def export_menu_to_excel(
     # Get all items for this menu
     items = menu_item_repo.find_all_for_export(menu_id, current_user.organization_id)
 
-    # Convert to dict list
+    # Convert to dict list with all columns
     items_data = [
         {
             "name": item.name,
             "price": item.price,
+            "currency": item.currency,
             "description": item.description,
             "category": item.category,
-            "image_url": item.image_url,
-            "video_url": item.video_url,
+            "subcategory": item.subcategory,
+            "tags": item.tags,
+            "is_active": item.is_active,
+            "is_featured": item.is_featured,
+            "is_available": item.is_available,
         }
         for item in items
     ]
@@ -504,3 +579,517 @@ def export_menu_to_excel(
             "Content-Disposition": f'attachment; filename="{menu.name}_menu.xlsx"'
         }
     )
+
+
+# ========== PIN Verification Endpoint ==========
+
+@router.post("/verify-pin")
+def verify_organization_pin(
+    payload: PINVerifyDTO,
+    current_user: CurrentUser = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Verify organization PIN for sensitive operations like deletion"""
+    from services.auth.repositories.models import OrganizationModel
+
+    org = db.query(OrganizationModel).filter(
+        OrganizationModel.id == current_user.organization_id
+    ).first()
+
+    if not org:
+        raise HTTPException(status_code=404, detail="Organization not found")
+
+    # Check if PIN matches
+    if org.pin == payload.pin:
+        return success_response(data=PINVerifyResponseDTO(
+            verified=True,
+            message="PIN verified successfully"
+        ))
+    else:
+        return success_response(data=PINVerifyResponseDTO(
+            verified=False,
+            message="Invalid PIN"
+        ))
+
+
+@router.delete("/{menu_id}/with-pin", status_code=204)
+def delete_menu_with_pin(
+    menu_id: int,
+    payload: PINVerifyDTO,
+    current_user: CurrentUser = Depends(get_current_user),
+    menu_repo: MenuRepository = Depends(get_menu_repository),
+    audit_logger: AuditLogger = Depends(get_audit_logger),
+    db: Session = Depends(get_db)
+):
+    """Delete menu with PIN verification"""
+    from services.auth.repositories.models import OrganizationModel
+
+    # Verify PIN first
+    org = db.query(OrganizationModel).filter(
+        OrganizationModel.id == current_user.organization_id
+    ).first()
+
+    if not org:
+        raise HTTPException(status_code=404, detail="Organization not found")
+
+    if org.pin != payload.pin:
+        raise HTTPException(status_code=403, detail="Invalid PIN")
+
+    # Find and delete menu
+    menu = menu_repo.find_by_id(menu_id, current_user.organization_id)
+    if not menu:
+        raise HTTPException(status_code=404, detail="Menu not found")
+
+    menu_repo.soft_delete(menu)
+
+    # Audit log
+    audit_logger.log_action(
+        user_id=current_user.id,
+        action="menu.delete_with_pin",
+        resource_type="menu",
+        resource_id=menu.id,
+        details={"name": menu.name, "pin_verified": True},
+        organization_id=current_user.organization_id
+    )
+
+    return None
+
+
+# ========== Menu Category Endpoints (Per-Menu) ==========
+
+@router.get("/{menu_id}/categories")
+def list_menu_categories(
+    menu_id: int,
+    current_user: CurrentUser = Depends(get_current_user),
+    menu_repo: MenuRepository = Depends(get_menu_repository),
+    category_repo: MenuCategoryRepository = Depends(get_category_repository)
+):
+    """List categories for a specific menu"""
+    # Verify menu exists
+    menu = menu_repo.find_by_id(menu_id, current_user.organization_id)
+    if not menu:
+        raise HTTPException(status_code=404, detail="Menu not found")
+
+    categories = category_repo.find_by_menu(menu_id, current_user.organization_id)
+    category_responses = [MenuCategoryResponseDTO.model_validate(cat) for cat in categories]
+
+    return success_response(data=MenuCategoryListDTO(
+        items=category_responses,
+        total=len(category_responses)
+    ))
+
+
+@router.post("/{menu_id}/categories", status_code=201)
+def create_menu_category(
+    menu_id: int,
+    payload: MenuCategoryCreateDTO,
+    current_user: CurrentUser = Depends(get_current_user),
+    menu_repo: MenuRepository = Depends(get_menu_repository),
+    category_repo: MenuCategoryRepository = Depends(get_category_repository),
+    audit_logger: AuditLogger = Depends(get_audit_logger)
+):
+    """Create a category for a specific menu"""
+    # Verify menu exists
+    menu = menu_repo.find_by_id(menu_id, current_user.organization_id)
+    if not menu:
+        raise HTTPException(status_code=404, detail="Menu not found")
+
+    # Check if category with same name exists
+    existing = category_repo.find_by_name(menu_id, payload.name)
+    if existing:
+        raise HTTPException(status_code=400, detail="Category with this name already exists")
+
+    # Create category
+    category = category_repo.create(
+        organization_id=current_user.organization_id,
+        menu_type=menu.menu_type,
+        name=payload.name,
+        display_order=payload.display_order,
+        icon=payload.icon,
+        translations=payload.translations,
+        menu_id=menu_id
+    )
+
+    # Audit log
+    audit_logger.log_action(
+        user_id=current_user.id,
+        action="menu.create_category",
+        resource_type="menu",
+        resource_id=menu.id,
+        details={"category_id": category.id, "category_name": category.name},
+        organization_id=current_user.organization_id
+    )
+
+    return success_response(data=MenuCategoryResponseDTO.model_validate(category))
+
+
+@router.patch("/{menu_id}/categories/{category_id}")
+def update_menu_category(
+    menu_id: int,
+    category_id: int,
+    payload: MenuCategoryUpdateDTO,
+    current_user: CurrentUser = Depends(get_current_user),
+    menu_repo: MenuRepository = Depends(get_menu_repository),
+    category_repo: MenuCategoryRepository = Depends(get_category_repository),
+    audit_logger: AuditLogger = Depends(get_audit_logger)
+):
+    """Update a menu category"""
+    # Verify menu exists
+    menu = menu_repo.find_by_id(menu_id, current_user.organization_id)
+    if not menu:
+        raise HTTPException(status_code=404, detail="Menu not found")
+
+    # Find category
+    category = category_repo.find_by_id(category_id, current_user.organization_id)
+    if not category or category.menu_id != menu_id:
+        raise HTTPException(status_code=404, detail="Category not found")
+
+    # Check for duplicate name if changing name
+    if payload.name and payload.name != category.name:
+        existing = category_repo.find_by_name(menu_id, payload.name)
+        if existing:
+            raise HTTPException(status_code=400, detail="Category with this name already exists")
+
+    # Update
+    update_data = payload.model_dump(exclude_unset=True)
+    category = category_repo.update(category, **update_data)
+
+    # Audit log
+    audit_logger.log_action(
+        user_id=current_user.id,
+        action="menu.update_category",
+        resource_type="menu",
+        resource_id=menu.id,
+        details={"category_id": category.id, "changes": update_data},
+        organization_id=current_user.organization_id
+    )
+
+    return success_response(data=MenuCategoryResponseDTO.model_validate(category))
+
+
+@router.delete("/{menu_id}/categories/{category_id}", status_code=204)
+def delete_menu_category(
+    menu_id: int,
+    category_id: int,
+    current_user: CurrentUser = Depends(get_current_user),
+    menu_repo: MenuRepository = Depends(get_menu_repository),
+    category_repo: MenuCategoryRepository = Depends(get_category_repository),
+    audit_logger: AuditLogger = Depends(get_audit_logger)
+):
+    """Delete a menu category"""
+    # Verify menu exists
+    menu = menu_repo.find_by_id(menu_id, current_user.organization_id)
+    if not menu:
+        raise HTTPException(status_code=404, detail="Menu not found")
+
+    # Find category
+    category = category_repo.find_by_id(category_id, current_user.organization_id)
+    if not category or category.menu_id != menu_id:
+        raise HTTPException(status_code=404, detail="Category not found")
+
+    category_name = category.name
+    category_repo.delete(category)
+
+    # Audit log
+    audit_logger.log_action(
+        user_id=current_user.id,
+        action="menu.delete_category",
+        resource_type="menu",
+        resource_id=menu.id,
+        details={"category_id": category_id, "category_name": category_name},
+        organization_id=current_user.organization_id
+    )
+
+    return None
+
+
+@router.post("/{menu_id}/categories/reorder")
+def reorder_menu_categories(
+    menu_id: int,
+    payload: MenuCategoryReorderDTO,
+    current_user: CurrentUser = Depends(get_current_user),
+    menu_repo: MenuRepository = Depends(get_menu_repository),
+    category_repo: MenuCategoryRepository = Depends(get_category_repository)
+):
+    """Reorder categories for a menu"""
+    # Verify menu exists
+    menu = menu_repo.find_by_id(menu_id, current_user.organization_id)
+    if not menu:
+        raise HTTPException(status_code=404, detail="Menu not found")
+
+    category_repo.reorder(menu_id, payload.category_orders)
+
+    # Return updated list
+    categories = category_repo.find_by_menu(menu_id, current_user.organization_id)
+    category_responses = [MenuCategoryResponseDTO.model_validate(cat) for cat in categories]
+
+    return success_response(data=MenuCategoryListDTO(
+        items=category_responses,
+        total=len(category_responses)
+    ))
+
+
+# ========== Menu Item Media Endpoints (Multiple Media per Item) ==========
+
+@router.get("/{menu_id}/items/{item_id}/media")
+def list_item_media(
+    menu_id: int,
+    item_id: int,
+    current_user: CurrentUser = Depends(get_current_user),
+    menu_repo: MenuRepository = Depends(get_menu_repository),
+    menu_item_repo: MenuItemRepository = Depends(get_menu_item_repository),
+    item_media_repo: MenuItemMediaRepository = Depends(get_item_media_repository)
+):
+    """List all media for a menu item"""
+    # Verify menu exists
+    menu = menu_repo.find_by_id(menu_id, current_user.organization_id)
+    if not menu:
+        raise HTTPException(status_code=404, detail="Menu not found")
+
+    # Verify item exists
+    item = menu_item_repo.find_by_id(item_id, menu_id, current_user.organization_id)
+    if not item:
+        raise HTTPException(status_code=404, detail="Menu item not found")
+
+    # Get media with details
+    media_list = item_media_repo.get_media_for_item_with_details(item_id)
+
+    # Build response
+    responses = []
+    for m in media_list:
+        media_response = MenuMediaResponseDTO.model_validate(m["media"]) if m["media"] else None
+        response = MenuItemMediaResponseDTO(
+            id=m["id"],
+            menu_item_id=m["menu_item_id"],
+            menu_media_id=m["menu_media_id"],
+            display_order=m["display_order"],
+            is_primary=m["is_primary"],
+            created_at=m["created_at"],
+            media=media_response
+        )
+        responses.append(response)
+
+    return success_response(data=MenuItemMediaListDTO(
+        items=responses,
+        total=len(responses)
+    ))
+
+
+@router.post("/{menu_id}/items/{item_id}/media", status_code=201)
+def add_media_to_item(
+    menu_id: int,
+    item_id: int,
+    payload: MenuItemMediaAddDTO,
+    current_user: CurrentUser = Depends(get_current_user),
+    menu_repo: MenuRepository = Depends(get_menu_repository),
+    menu_item_repo: MenuItemRepository = Depends(get_menu_item_repository),
+    item_media_repo: MenuItemMediaRepository = Depends(get_item_media_repository),
+    audit_logger: AuditLogger = Depends(get_audit_logger)
+):
+    """Add media to a menu item"""
+    # Verify menu exists
+    menu = menu_repo.find_by_id(menu_id, current_user.organization_id)
+    if not menu:
+        raise HTTPException(status_code=404, detail="Menu not found")
+
+    # Verify item exists
+    item = menu_item_repo.find_by_id(item_id, menu_id, current_user.organization_id)
+    if not item:
+        raise HTTPException(status_code=404, detail="Menu item not found")
+
+    try:
+        item_media = item_media_repo.add_media_to_item(
+            menu_item_id=item_id,
+            menu_media_id=payload.menu_media_id,
+            display_order=payload.display_order,
+            is_primary=payload.is_primary
+        )
+    except Exception as e:
+        if "unique_menu_item_media" in str(e) or "duplicate" in str(e).lower():
+            raise HTTPException(status_code=400, detail="Media already added to this item")
+        raise
+
+    # Audit log
+    audit_logger.log_action(
+        user_id=current_user.id,
+        action="menu.add_item_media",
+        resource_type="menu_item",
+        resource_id=item.id,
+        details={"media_id": payload.menu_media_id, "is_primary": payload.is_primary},
+        organization_id=current_user.organization_id
+    )
+
+    return success_response(data=MenuItemMediaResponseDTO.model_validate(item_media))
+
+
+@router.delete("/{menu_id}/items/{item_id}/media/{media_id}", status_code=204)
+def remove_media_from_item(
+    menu_id: int,
+    item_id: int,
+    media_id: int,
+    current_user: CurrentUser = Depends(get_current_user),
+    menu_repo: MenuRepository = Depends(get_menu_repository),
+    menu_item_repo: MenuItemRepository = Depends(get_menu_item_repository),
+    item_media_repo: MenuItemMediaRepository = Depends(get_item_media_repository),
+    audit_logger: AuditLogger = Depends(get_audit_logger)
+):
+    """Remove media from a menu item"""
+    # Verify menu exists
+    menu = menu_repo.find_by_id(menu_id, current_user.organization_id)
+    if not menu:
+        raise HTTPException(status_code=404, detail="Menu not found")
+
+    # Verify item exists
+    item = menu_item_repo.find_by_id(item_id, menu_id, current_user.organization_id)
+    if not item:
+        raise HTTPException(status_code=404, detail="Menu item not found")
+
+    success = item_media_repo.remove_media_from_item(item_id, media_id)
+    if not success:
+        raise HTTPException(status_code=404, detail="Media not found on this item")
+
+    # Audit log
+    audit_logger.log_action(
+        user_id=current_user.id,
+        action="menu.remove_item_media",
+        resource_type="menu_item",
+        resource_id=item.id,
+        details={"media_id": media_id},
+        organization_id=current_user.organization_id
+    )
+
+    return None
+
+
+@router.post("/{menu_id}/items/{item_id}/media/bulk")
+def bulk_set_item_media(
+    menu_id: int,
+    item_id: int,
+    payload: MenuItemMediaBulkSetDTO,
+    current_user: CurrentUser = Depends(get_current_user),
+    menu_repo: MenuRepository = Depends(get_menu_repository),
+    menu_item_repo: MenuItemRepository = Depends(get_menu_item_repository),
+    item_media_repo: MenuItemMediaRepository = Depends(get_item_media_repository),
+    audit_logger: AuditLogger = Depends(get_audit_logger)
+):
+    """Bulk set media for a menu item (replaces existing)"""
+    # Verify menu exists
+    menu = menu_repo.find_by_id(menu_id, current_user.organization_id)
+    if not menu:
+        raise HTTPException(status_code=404, detail="Menu not found")
+
+    # Verify item exists
+    item = menu_item_repo.find_by_id(item_id, menu_id, current_user.organization_id)
+    if not item:
+        raise HTTPException(status_code=404, detail="Menu item not found")
+
+    # Bulk set media
+    item_media_repo.bulk_set_media(
+        menu_item_id=item_id,
+        media_ids=payload.media_ids,
+        primary_media_id=payload.primary_media_id
+    )
+
+    # Get updated list
+    media_list = item_media_repo.get_media_for_item_with_details(item_id)
+    responses = []
+    for m in media_list:
+        media_response = MenuMediaResponseDTO.model_validate(m["media"]) if m["media"] else None
+        response = MenuItemMediaResponseDTO(
+            id=m["id"],
+            menu_item_id=m["menu_item_id"],
+            menu_media_id=m["menu_media_id"],
+            display_order=m["display_order"],
+            is_primary=m["is_primary"],
+            created_at=m["created_at"],
+            media=media_response
+        )
+        responses.append(response)
+
+    # Audit log
+    audit_logger.log_action(
+        user_id=current_user.id,
+        action="menu.bulk_set_item_media",
+        resource_type="menu_item",
+        resource_id=item.id,
+        details={"media_ids": payload.media_ids, "primary_media_id": payload.primary_media_id},
+        organization_id=current_user.organization_id
+    )
+
+    return success_response(data=MenuItemMediaListDTO(
+        items=responses,
+        total=len(responses)
+    ))
+
+
+@router.post("/{menu_id}/items/{item_id}/media/{media_id}/set-primary")
+def set_primary_media(
+    menu_id: int,
+    item_id: int,
+    media_id: int,
+    current_user: CurrentUser = Depends(get_current_user),
+    menu_repo: MenuRepository = Depends(get_menu_repository),
+    menu_item_repo: MenuItemRepository = Depends(get_menu_item_repository),
+    item_media_repo: MenuItemMediaRepository = Depends(get_item_media_repository)
+):
+    """Set a media as primary for a menu item"""
+    # Verify menu exists
+    menu = menu_repo.find_by_id(menu_id, current_user.organization_id)
+    if not menu:
+        raise HTTPException(status_code=404, detail="Menu not found")
+
+    # Verify item exists
+    item = menu_item_repo.find_by_id(item_id, menu_id, current_user.organization_id)
+    if not item:
+        raise HTTPException(status_code=404, detail="Menu item not found")
+
+    success = item_media_repo.set_primary(item_id, media_id)
+    if not success:
+        raise HTTPException(status_code=404, detail="Media not found on this item")
+
+    return success_response(data={"message": "Primary media set successfully"})
+
+
+@router.post("/{menu_id}/items/{item_id}/media/reorder")
+def reorder_item_media(
+    menu_id: int,
+    item_id: int,
+    payload: MenuItemMediaReorderDTO,
+    current_user: CurrentUser = Depends(get_current_user),
+    menu_repo: MenuRepository = Depends(get_menu_repository),
+    menu_item_repo: MenuItemRepository = Depends(get_menu_item_repository),
+    item_media_repo: MenuItemMediaRepository = Depends(get_item_media_repository)
+):
+    """Reorder media for a menu item"""
+    # Verify menu exists
+    menu = menu_repo.find_by_id(menu_id, current_user.organization_id)
+    if not menu:
+        raise HTTPException(status_code=404, detail="Menu not found")
+
+    # Verify item exists
+    item = menu_item_repo.find_by_id(item_id, menu_id, current_user.organization_id)
+    if not item:
+        raise HTTPException(status_code=404, detail="Menu item not found")
+
+    item_media_repo.update_display_order(item_id, payload.media_orders)
+
+    # Get updated list
+    media_list = item_media_repo.get_media_for_item_with_details(item_id)
+    responses = []
+    for m in media_list:
+        media_response = MenuMediaResponseDTO.model_validate(m["media"]) if m["media"] else None
+        response = MenuItemMediaResponseDTO(
+            id=m["id"],
+            menu_item_id=m["menu_item_id"],
+            menu_media_id=m["menu_media_id"],
+            display_order=m["display_order"],
+            is_primary=m["is_primary"],
+            created_at=m["created_at"],
+            media=media_response
+        )
+        responses.append(response)
+
+    return success_response(data=MenuItemMediaListDTO(
+        items=responses,
+        total=len(responses)
+    ))

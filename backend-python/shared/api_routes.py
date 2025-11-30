@@ -357,3 +357,23 @@ class PMSRoutes:
     
     # Trigger sync
     TRIGGER_SYNC = f"{BASE}/trigger-sync/{{organization_id}}"
+
+
+# =============================================================================
+# MENU MEDIA SERVICE ROUTES
+# =============================================================================
+class MenuMediaRoutes:
+    """Menu media management endpoints"""
+    BASE = f"{API_V1}/menu-media"
+
+    # Basic CRUD
+    LIST = BASE
+    UPLOAD = BASE
+    GET = f"{BASE}/{{media_id}}"
+    UPDATE = f"{BASE}/{{media_id}}"
+    DELETE = f"{BASE}/{{media_id}}"
+
+    # Recycle bin endpoints
+    LIST_DELETED = f"{BASE}/deleted"
+    RESTORE = f"{BASE}/{{media_id}}/restore"
+    PERMANENT_DELETE = f"{BASE}/{{media_id}}/permanent"

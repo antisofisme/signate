@@ -22,6 +22,7 @@ import { cn } from '@/lib/utils';
 import { UploadList } from './UploadList';
 import { useUploadQueueStore } from '@/lib/stores/uploadQueueStore';
 import { useUploadProcessor } from '../hooks/useUploadProcessor';
+import { Z_INDEX } from '@/shared/constants/zIndex';
 
 export function UploadQueuePanel() {
   const { t } = useTranslation();
@@ -84,7 +85,7 @@ export function UploadQueuePanel() {
   // Minimized badge view - Circular floating button
   if (isMinimized) {
     return (
-      <div className="fixed bottom-6 right-6" style={{ zIndex: 99999 }}>
+      <div className="fixed bottom-6 right-6" style={{ zIndex: Z_INDEX.UPLOAD_QUEUE }}>
         <button
           onClick={toggleMinimize}
           className={cn(
@@ -138,7 +139,7 @@ export function UploadQueuePanel() {
 
   // Expanded panel view
   return (
-    <div className="fixed bottom-4 right-4 w-80" style={{ zIndex: 99999 }}>
+    <div className="fixed bottom-4 right-4 w-80" style={{ zIndex: Z_INDEX.UPLOAD_QUEUE }}>
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-2xl border border-gray-200 dark:border-gray-700 overflow-hidden">
         {/* Header */}
         <div

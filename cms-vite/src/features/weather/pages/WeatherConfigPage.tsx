@@ -5,6 +5,7 @@
  */
 
 import { useState } from 'react';
+import { toast } from 'sonner';
 import { PageHeader } from '@/shared/components';
 import {
   useWeatherConfig,
@@ -69,7 +70,7 @@ export default function WeatherConfigPage() {
   const handleTest = () => {
     const defaultLocation = locations?.find((loc) => loc.is_default);
     if (!defaultLocation) {
-      alert('Please add a default location first');
+      toast.warning('Please add a default location first');
       return;
     }
 

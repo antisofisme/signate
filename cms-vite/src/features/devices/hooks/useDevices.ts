@@ -3,7 +3,7 @@
  */
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { toast } from '@/lib/notifications/toast';
+import { toast } from 'sonner';
 import { handleAPIError } from '@/lib/errors/errorHandler';
 import { useSelectedOrgId, deviceKeys as sharedDeviceKeys } from '@/shared/hooks';
 import { deviceApi } from '../api/deviceApi';

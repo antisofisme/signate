@@ -10,7 +10,6 @@ import { Outlet } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import Topbar from './Topbar';
 import { useUIStore } from '@/lib/stores/uiStore';
-import { ToastContainer } from '@/lib/notifications/ToastContainer';
 import { useOrgSwitch } from '@/shared/hooks/useOrgSwitch';
 
 export default function DashboardLayout() {
@@ -38,9 +37,6 @@ export default function DashboardLayout() {
           <Outlet />
         </main>
       </div>
-
-      {/* Toast Notifications */}
-      <ToastContainer />
     </div>
   );
 }

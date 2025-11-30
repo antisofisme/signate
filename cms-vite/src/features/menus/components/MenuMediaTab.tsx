@@ -50,7 +50,7 @@ export const MenuMediaTab = () => {
         continue;
       }
       try {
-        await uploadMutation.mutateAsync(file);
+        await uploadMutation.mutateAsync({ file });
       } catch {
         // Error handled in hook
       }
@@ -256,7 +256,7 @@ export const MenuMediaTab = () => {
       {/* Total count */}
       {data && data.total > 0 && (
         <div className="text-sm text-gray-500 dark:text-gray-400 text-center">
-          {t('menus.media.totalCount', '{{count}} images total', { count: data.total })}
+          {t('menus.media.totalCount', { count: data.total, defaultValue: '{{count}} images total' })}
         </div>
       )}
 

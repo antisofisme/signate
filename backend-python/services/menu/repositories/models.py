@@ -40,6 +40,10 @@ class MenuModel(Base):
     whatsapp_number = Column(String(20), nullable=True)
     phone_number = Column(String(20), nullable=True)
     contact_label = Column(String(100), nullable=True)
+    outlet_extension = Column(String(50), nullable=True)  # Phone extension badge
+
+    # Footer customization
+    footer_description = Column(Text, nullable=True)
 
     # Multi-language support (future)
     translations = Column(JSONB, nullable=True)
@@ -128,6 +132,7 @@ class MenuItemModel(Base):
     organization = relationship("OrganizationModel", foreign_keys=[organization_id])
     content = relationship("ContentModel", foreign_keys=[content_id])
     menu_media = relationship("MenuMediaModel", foreign_keys=[menu_media_id])
+    media_items = relationship("MenuItemMediaModel", back_populates="menu_item", foreign_keys="MenuItemMediaModel.menu_item_id", lazy="selectin")
 
 
 class MenuImportHistoryModel(Base):
@@ -224,6 +229,7 @@ class MenuMediaModel(Base):
         index=True
     )
     uploaded_by_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    deleted_by_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
 
     # File information
     filename = Column(String(255), nullable=False)
@@ -231,6 +237,7 @@ class MenuMediaModel(Base):
     file_path = Column(String(500), nullable=False)
     file_size = Column(Integer, default=0, nullable=False)
     mime_type = Column(String(100), nullable=False)
+    file_hash = Column(String(64), nullable=True, index=True)  # SHA-256 for deduplication
 
     # Image metadata
     width = Column(Integer, nullable=True)
@@ -254,6 +261,7 @@ class MenuMediaModel(Base):
     # Relationships
     organization = relationship("OrganizationModel", foreign_keys=[organization_id])
     uploader = relationship("UserModel", foreign_keys=[uploaded_by_id])
+    deleter = relationship("UserModel", foreign_keys=[deleted_by_id])
 
 
 class MenuCategoryModel(Base):
@@ -268,6 +276,12 @@ class MenuCategoryModel(Base):
         Integer,
         ForeignKey("organizations.id", ondelete="CASCADE"),
         nullable=False,
+        index=True
+    )
+    menu_id = Column(
+        Integer,
+        ForeignKey("menus.id", ondelete="CASCADE"),
+        nullable=True,  # Nullable for backward compatibility
         index=True
     )
 
@@ -285,3 +299,37 @@ class MenuCategoryModel(Base):
 
     # Relationships
     organization = relationship("OrganizationModel", foreign_keys=[organization_id])
+    menu = relationship("MenuModel", foreign_keys=[menu_id])
+
+
+class MenuItemMediaModel(Base):
+    """Junction table for multiple media per menu item"""
+    __tablename__ = "menu_item_media"
+
+    # Primary key
+    id = Column(Integer, primary_key=True, index=True)
+
+    # Foreign keys
+    menu_item_id = Column(
+        Integer,
+        ForeignKey("menu_items.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True
+    )
+    menu_media_id = Column(
+        Integer,
+        ForeignKey("menu_media.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True
+    )
+
+    # Display settings
+    display_order = Column(Integer, default=0, nullable=False)
+    is_primary = Column(Boolean, default=False, nullable=False)
+
+    # Metadata
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+
+    # Relationships
+    menu_item = relationship("MenuItemModel", foreign_keys=[menu_item_id], back_populates="media_items")
+    menu_media = relationship("MenuMediaModel", foreign_keys=[menu_media_id], lazy="selectin")

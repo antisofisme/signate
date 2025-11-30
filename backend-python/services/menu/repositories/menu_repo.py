@@ -241,12 +241,11 @@ class MenuItemRepository:
         menu_id: int,
         organization_id: int
     ) -> List[MenuItemModel]:
-        """Find all active items for menu export (no pagination)"""
+        """Find all items for menu export (no pagination, includes inactive)"""
         return self.db.query(MenuItemModel).filter(
             MenuItemModel.menu_id == menu_id,
             MenuItemModel.organization_id == organization_id,
-            MenuItemModel.deleted_at.is_(None),
-            MenuItemModel.is_active == True
+            MenuItemModel.deleted_at.is_(None)
         ).order_by(
             MenuItemModel.display_order.asc(),
             MenuItemModel.created_at.asc()

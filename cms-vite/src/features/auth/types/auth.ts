@@ -26,9 +26,24 @@ export interface Organization {
   id: number;
   name: string;
   organization_pin?: string; // REMOVED: Organization PIN (No-PIN flow)
+  portal_slug?: string; // URL-friendly slug for menu portal (format: org-name-id)
   is_active: boolean;
   created_at?: string;
   updated_at?: string;
+}
+
+/**
+ * Generate portal slug from organization name and ID
+ * Used as fallback if portal_slug is not provided from backend
+ */
+export function generatePortalSlug(name: string, id: number): string {
+  const slug = name
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, '') // remove special chars
+    .replace(/\s+/g, '-')          // spaces to dashes
+    .replace(/-+/g, '-')           // multiple dashes to single
+    .replace(/^-|-$/g, '');        // trim dashes
+  return `${slug}-${id}`;
 }
 
 // =============================================================================

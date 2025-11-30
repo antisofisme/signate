@@ -85,3 +85,73 @@ export const useDeleteMenuItem = (menuId: number) => {
     },
   });
 };
+
+// ========== Bulk Update Helper ==========
+
+export type BulkUpdateStatus = 'idle' | 'saving' | 'success' | 'error';
+
+export interface BulkUpdateProgress {
+  id: number;
+  status: BulkUpdateStatus;
+}
+
+export interface BulkUpdateResult {
+  success: number;
+  failed: number;
+  errors: Array<{ id: number; error: string }>;
+}
+
+/**
+ * Hook for bulk updating menu items
+ * Uses sequential PATCH calls with progress tracking
+ */
+export const useBulkUpdateMenuItems = (menuId: number) => {
+  const queryClient = useQueryClient();
+
+  const bulkUpdate = async (
+    items: Array<{ id: number; data: MenuItemUpdateRequest }>,
+    onProgress?: (progress: BulkUpdateProgress) => void
+  ): Promise<BulkUpdateResult> => {
+    const results: BulkUpdateResult = {
+      success: 0,
+      failed: 0,
+      errors: [],
+    };
+
+    for (const item of items) {
+      onProgress?.({ id: item.id, status: 'saving' });
+
+      try {
+        await menuApi.updateItem(menuId, item.id, item.data);
+        onProgress?.({ id: item.id, status: 'success' });
+        results.success++;
+      } catch (error) {
+        onProgress?.({ id: item.id, status: 'error' });
+        results.failed++;
+        results.errors.push({
+          id: item.id,
+          error: getApiErrorMessage(error, 'Update failed'),
+        });
+      }
+    }
+
+    // Invalidate queries after all updates
+    await queryClient.invalidateQueries({ queryKey: menuKeys.items(menuId) });
+    await queryClient.invalidateQueries({ queryKey: menuKeys.detail(menuId) });
+
+    // Show summary toast
+    if (results.failed === 0) {
+      toast.success(`Successfully updated ${results.success} items`);
+    } else if (results.success === 0) {
+      toast.error(`Failed to update all ${results.failed} items`);
+    } else {
+      toast.warning(
+        `Updated ${results.success} items, ${results.failed} failed`
+      );
+    }
+
+    return results;
+  };
+
+  return { bulkUpdate };
+};

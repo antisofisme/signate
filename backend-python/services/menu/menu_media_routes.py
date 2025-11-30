@@ -2,9 +2,10 @@
 
 import os
 import uuid
+import hashlib
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Query
 from sqlalchemy.orm import Session
-from typing import Optional
+from typing import Optional, List
 from datetime import datetime
 from PIL import Image
 import io
@@ -13,9 +14,15 @@ from shared.database import get_db
 from shared.responses import success_response
 from shared.auth import get_current_user, CurrentUser
 from shared.config import settings
+from shared.cache import cache
 
 from .repositories import MenuMediaRepository
 from .dtos import MenuMediaResponseDTO, MenuMediaListDTO, MenuMediaUpdateDTO
+
+
+def calculate_file_hash(content: bytes) -> str:
+    """Calculate SHA-256 hash of file content"""
+    return hashlib.sha256(content).hexdigest()
 
 router = APIRouter(prefix="/api/v1/menu-media", tags=["menu-media"])
 
@@ -33,7 +40,7 @@ def get_menu_media_repository(db: Session = Depends(get_db)) -> MenuMediaReposit
 
 def build_media_url(file_path: str) -> str:
     """Build full URL for menu media"""
-    return f"{settings.API_URL}/menu-media-files/{file_path}"
+    return f"{settings.PUBLIC_BASE_URL}/menu-media-files/{file_path}"
 
 
 # ========== Menu Media Endpoints ==========
@@ -70,6 +77,76 @@ def list_menu_media(
     })
 
 
+# IMPORTANT: Static routes MUST be before /{media_id} to avoid path conflict
+
+@router.get("/duplicates")
+def list_duplicate_menu_media(
+    current_user: CurrentUser = Depends(get_current_user),
+    media_repo: MenuMediaRepository = Depends(get_menu_media_repository)
+):
+    """
+    List all duplicate files (same hash) with their usage info.
+    Returns groups of duplicates for deduplication management.
+    """
+    duplicates = media_repo.find_duplicates_with_usage(current_user.organization_id)
+
+    # Calculate total storage that could be saved
+    total_wasted = 0
+    for group in duplicates:
+        # All duplicates beyond the first one are "wasted" storage
+        wasted = group["file_size"] * (group["duplicate_count"] - 1)
+        total_wasted += wasted
+        group["wasted_storage"] = wasted
+
+    return success_response(data={
+        "duplicates": duplicates,
+        "total_groups": len(duplicates),
+        "total_wasted_bytes": total_wasted,
+        "total_wasted_readable": _format_size(total_wasted)
+    })
+
+
+def _format_size(size_bytes: int) -> str:
+    """Format bytes to human-readable size"""
+    for unit in ['B', 'KB', 'MB', 'GB']:
+        if size_bytes < 1024.0:
+            return f"{size_bytes:.2f} {unit}"
+        size_bytes /= 1024.0
+    return f"{size_bytes:.2f} TB"
+
+
+@router.get("/deleted")
+def list_deleted_menu_media(
+    skip: int = Query(0, ge=0),
+    limit: int = Query(50, ge=1, le=100),
+    search: Optional[str] = None,
+    current_user: CurrentUser = Depends(get_current_user),
+    media_repo: MenuMediaRepository = Depends(get_menu_media_repository)
+):
+    """List all deleted menu media (Recycle Bin)"""
+    media_list, total = media_repo.find_all_deleted(
+        organization_id=current_user.organization_id,
+        skip=skip,
+        limit=limit,
+        search=search
+    )
+
+    # Build response with URLs
+    items = []
+    for media in media_list:
+        response = MenuMediaResponseDTO.model_validate(media)
+        response.url = build_media_url(media.file_path)
+        items.append(response)
+
+    return success_response(data={
+        "items": items,
+        "total": total,
+        "skip": skip,
+        "limit": limit,
+        "has_next": (skip + limit) < total
+    })
+
+
 @router.post("", status_code=201)
 async def upload_menu_media(
     file: UploadFile = File(...),
@@ -78,7 +155,7 @@ async def upload_menu_media(
     current_user: CurrentUser = Depends(get_current_user),
     media_repo: MenuMediaRepository = Depends(get_menu_media_repository)
 ):
-    """Upload new menu media image"""
+    """Upload new menu media image with deduplication support"""
     # Validate file extension
     original_filename = file.filename or "unknown"
     ext = os.path.splitext(original_filename)[1].lower()
@@ -107,24 +184,38 @@ async def upload_menu_media(
     except Exception:
         raise HTTPException(status_code=400, detail="Invalid image file")
 
-    # Generate unique filename
-    unique_id = uuid.uuid4().hex[:12]
-    timestamp = datetime.now().strftime("%Y%m%d")
-    filename = f"menu_{timestamp}_{unique_id}{ext}"
+    # Calculate file hash for deduplication
+    file_hash = calculate_file_hash(content)
 
-    # Create directory for organization
-    org_dir = f"menu_media/org_{current_user.organization_id}"
-    upload_dir = os.path.join(settings.UPLOAD_DIR, org_dir)
-    os.makedirs(upload_dir, exist_ok=True)
+    # Check for existing file with same hash (deduplication)
+    is_duplicate = False
+    existing = media_repo.find_by_hash(file_hash, current_user.organization_id)
 
-    # Save file
-    file_path = f"{org_dir}/{filename}"
-    full_path = os.path.join(settings.UPLOAD_DIR, file_path)
+    if existing:
+        # Duplicate found - reuse existing file path but create new record
+        is_duplicate = True
+        file_path = existing.file_path
+        filename = existing.filename
+        print(f"[MenuMedia] Reusing storage from media ID {existing.id} (same file hash)")
+    else:
+        # New file - save to disk
+        unique_id = uuid.uuid4().hex[:12]
+        timestamp = datetime.now().strftime("%Y%m%d")
+        filename = f"menu_{timestamp}_{unique_id}{ext}"
 
-    with open(full_path, "wb") as f:
-        f.write(content)
+        # Create directory for organization
+        org_dir = f"menu_media/org_{current_user.organization_id}"
+        upload_dir = os.path.join(settings.UPLOAD_DIR, org_dir)
+        os.makedirs(upload_dir, exist_ok=True)
 
-    # Create database record
+        # Save file
+        file_path = f"{org_dir}/{filename}"
+        full_path = os.path.join(settings.UPLOAD_DIR, file_path)
+
+        with open(full_path, "wb") as f:
+            f.write(content)
+
+    # Create database record (even for duplicates - new record pointing to same file)
     media = media_repo.create(
         organization_id=current_user.organization_id,
         filename=filename,
@@ -136,11 +227,16 @@ async def upload_menu_media(
         width=width,
         height=height,
         title=title,
-        alt_text=alt_text
+        alt_text=alt_text,
+        file_hash=file_hash
     )
 
     response = MenuMediaResponseDTO.model_validate(media)
     response.url = build_media_url(media.file_path)
+    response.is_duplicate = is_duplicate
+
+    # CRITICAL: Invalidate cache so new media appears immediately
+    cache.invalidate_menu_media(media.id, current_user.organization_id)
 
     return success_response(data=response)
 
@@ -189,11 +285,89 @@ def delete_menu_media(
     current_user: CurrentUser = Depends(get_current_user),
     media_repo: MenuMediaRepository = Depends(get_menu_media_repository)
 ):
-    """Soft delete menu media"""
+    """Soft delete menu media (move to recycle bin)"""
     media = media_repo.find_by_id(media_id, current_user.organization_id)
     if not media:
         raise HTTPException(status_code=404, detail="Media not found")
 
-    media_repo.soft_delete(media)
+    media_repo.soft_delete(media, deleted_by_id=current_user.id)
+
+    # CRITICAL: Invalidate cache
+    cache.invalidate_menu_media(media_id, current_user.organization_id)
 
     return None
+
+
+# ========== Recycle Bin Endpoints ==========
+
+@router.post("/{media_id}/restore")
+def restore_menu_media(
+    media_id: int,
+    current_user: CurrentUser = Depends(get_current_user),
+    media_repo: MenuMediaRepository = Depends(get_menu_media_repository)
+):
+    """Restore menu media from recycle bin"""
+    # Find deleted media (include_deleted=True)
+    media = media_repo.find_by_id(media_id, current_user.organization_id, include_deleted=True)
+    if not media:
+        raise HTTPException(status_code=404, detail="Media not found")
+
+    if not media.deleted_at:
+        raise HTTPException(status_code=400, detail="Media is not deleted")
+
+    media = media_repo.restore(media)
+
+    response = MenuMediaResponseDTO.model_validate(media)
+    response.url = build_media_url(media.file_path)
+
+    # CRITICAL: Invalidate cache
+    cache.invalidate_menu_media(media_id, current_user.organization_id)
+
+    return success_response(data=response, message="Media restored successfully")
+
+
+@router.delete("/{media_id}/permanent", status_code=204)
+def permanent_delete_menu_media(
+    media_id: int,
+    current_user: CurrentUser = Depends(get_current_user),
+    media_repo: MenuMediaRepository = Depends(get_menu_media_repository)
+):
+    """Permanently delete menu media (cannot be recovered)"""
+    # Find deleted media (include_deleted=True)
+    media = media_repo.find_by_id(media_id, current_user.organization_id, include_deleted=True)
+    if not media:
+        raise HTTPException(status_code=404, detail="Media not found")
+
+    if not media.deleted_at:
+        raise HTTPException(status_code=400, detail="Media must be soft-deleted first")
+
+    media_repo.hard_delete(media)
+
+    # CRITICAL: Invalidate cache
+    cache.invalidate_menu_media(media_id, current_user.organization_id)
+
+    return None
+
+
+@router.post("/bulk-permanent-delete", status_code=200)
+def bulk_permanent_delete_menu_media(
+    media_ids: List[int],
+    current_user: CurrentUser = Depends(get_current_user),
+    media_repo: MenuMediaRepository = Depends(get_menu_media_repository)
+):
+    """Permanently delete multiple menu media items"""
+    deleted_count = 0
+
+    for media_id in media_ids:
+        media = media_repo.find_by_id(media_id, current_user.organization_id, include_deleted=True)
+        if media and media.deleted_at:
+            media_repo.hard_delete(media)
+            deleted_count += 1
+
+    # CRITICAL: Invalidate cache
+    cache.invalidate_menu_media(None, current_user.organization_id)
+
+    return success_response(
+        data={"deleted_count": deleted_count},
+        message=f"Permanently deleted {deleted_count} media items"
+    )

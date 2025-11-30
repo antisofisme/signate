@@ -12,6 +12,8 @@ export * from './types/menu';
 export * from './hooks/useMenus';
 export * from './hooks/useMenuItems';
 export * from './hooks/useMenuImport';
+export * from './hooks/useMenuCategories';
+export * from './hooks/useDistinctVariants';
 
 // Components
 export * from './components';

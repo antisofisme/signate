@@ -105,6 +105,25 @@ export const useDeleteMenu = () => {
 };
 
 /**
+ * Hook to delete menu with PIN verification
+ * Note: PIN verification is done separately in the modal, this just deletes after verification
+ */
+export const useDeleteMenuWithPIN = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (id: number) => menuApi.delete(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: menuKeys.lists() });
+      toast.success('Menu deleted successfully');
+    },
+    onError: (error: unknown) => {
+      toast.error(getApiErrorMessage(error, 'Failed to delete menu'));
+    },
+  });
+};
+
+/**
  * Hook to regenerate QR code
  */
 export const useRegenerateQRCode = () => {

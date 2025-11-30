@@ -2,14 +2,16 @@
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.orm import Session
-from typing import Optional
+from typing import Optional, List
 
 from shared.database import get_db
 from shared.responses import success_response
+from shared.config import settings
 
-from .repositories import MenuRepository, MenuItemRepository, MenuViewRepository
+from .repositories import MenuRepository, MenuItemRepository, MenuViewRepository, MenuItemMediaRepository
 from .use_cases import GetPublicMenuUseCase
 from .dtos import PublicMenuItemListDTO
+from services.auth.repositories.models import OrganizationModel
 
 router = APIRouter(prefix="/api/v1/public/menu", tags=["public-menu"])
 
@@ -29,6 +31,11 @@ def get_menu_item_repository(db: Session = Depends(get_db)) -> MenuItemRepositor
 def get_menu_view_repository(db: Session = Depends(get_db)) -> MenuViewRepository:
     """Inject menu view repository"""
     return MenuViewRepository(db)
+
+
+def get_menu_item_media_repository(db: Session = Depends(get_db)) -> MenuItemMediaRepository:
+    """Inject menu item media repository"""
+    return MenuItemMediaRepository(db)
 
 
 def extract_client_info(request: Request) -> dict:
@@ -70,7 +77,8 @@ async def get_public_menu(
     request: Request = None,
     menu_repo: MenuRepository = Depends(get_menu_repository),
     menu_item_repo: MenuItemRepository = Depends(get_menu_item_repository),
-    menu_view_repo: MenuViewRepository = Depends(get_menu_view_repository)
+    menu_view_repo: MenuViewRepository = Depends(get_menu_view_repository),
+    menu_item_media_repo: MenuItemMediaRepository = Depends(get_menu_item_media_repository)
 ):
     """
     Get menu and items by public URL code (no authentication)
@@ -82,7 +90,7 @@ async def get_public_menu(
     client_info = extract_client_info(request)
 
     # Execute use case
-    use_case = GetPublicMenuUseCase(menu_repo, menu_item_repo, menu_view_repo)
+    use_case = GetPublicMenuUseCase(menu_repo, menu_item_repo, menu_view_repo, menu_item_media_repo)
 
     try:
         result = await use_case.execute(
@@ -134,3 +142,68 @@ async def track_contact_click(
     )
 
     return success_response(data={"tracked": True})
+
+
+# ========== Portal Endpoint (All Menus for Organization) ==========
+
+@router.get("/portal/{portal_slug}")
+async def get_portal_menus(
+    portal_slug: str,
+    db: Session = Depends(get_db),
+    menu_repo: MenuRepository = Depends(get_menu_repository)
+):
+    """
+    Get all active menus for an organization portal.
+
+    This endpoint returns organization info and a list of all active menus
+    for the unified menu portal view.
+
+    URL format: /api/v1/public/menu/portal/{portal_slug}
+    Example: /api/v1/public/menu/portal/hotel-signage-demo-22
+    """
+    # Find organization by portal_slug
+    org = db.query(OrganizationModel).filter(
+        OrganizationModel.portal_slug == portal_slug,
+        OrganizationModel.is_active == True
+    ).first()
+
+    if not org:
+        raise HTTPException(status_code=404, detail="Portal not found")
+
+    # Get all active menus for this organization
+    from .repositories.models import MenuModel
+
+    menus = db.query(MenuModel).filter(
+        MenuModel.organization_id == org.id,
+        MenuModel.is_active == True,
+        MenuModel.deleted_at.is_(None)
+    ).order_by(
+        MenuModel.name.asc()  # Order by name alphabetically
+    ).all()
+
+    # Build response with menu URLs
+    player_url = settings.PLAYER_URL
+
+    menu_list = []
+    for menu in menus:
+        menu_list.append({
+            "id": menu.id,
+            "name": menu.name,
+            "menu_type": menu.menu_type,
+            "public_url_code": menu.public_url_code,
+            "public_url": f"{player_url}/menu/{menu.public_url_code}",
+            "description": menu.description,
+            "display_mode": menu.display_mode,
+            "theme_color": menu.theme_color
+        })
+
+    return success_response(data={
+        "organization": {
+            "id": org.id,
+            "name": org.name,
+            "portal_slug": org.portal_slug,
+            "logo_url": org.logo_url
+        },
+        "menus": menu_list,
+        "total": len(menu_list)
+    })

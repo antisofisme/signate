@@ -47,6 +47,9 @@ import { SharedToast } from '@shared/ui';
 // Menu Viewer for public menu display
 import { MenuViewer } from './menu';
 
+// Portal Viewer for unified menu portal
+import { PortalViewer } from './portal';
+
 // Import connection logging services
 import { ConnectionLogger } from '@shared/services/connection-logger';
 import { NetworkSpeedTest } from '@shared/services/network-speed-test';
@@ -90,6 +93,23 @@ const isMenuRoute = (): { isMenu: boolean; publicCode: string | null } => {
 };
 
 /**
+ * Check if current URL is a portal route
+ * Format: /portal/{portal_slug}
+ * Example: /portal/hotel-signage-demo-22
+ */
+const isPortalRoute = (): { isPortal: boolean; portalSlug: string | null } => {
+  const path = window.location.pathname;
+  // Match slug format: lowercase letters, numbers, and dashes
+  const portalMatch = path.match(/^\/portal\/([a-z0-9-]+)$/);
+
+  if (portalMatch) {
+    return { isPortal: true, portalSlug: portalMatch[1] };
+  }
+
+  return { isPortal: false, portalSlug: null };
+};
+
+/**
  * Initialize Menu Viewer for public menu display
  */
 const initMenuViewer = async (publicCode: string) => {
@@ -122,10 +142,57 @@ const initMenuViewer = async (publicCode: string) => {
 };
 
 /**
+ * Initialize Portal Viewer for unified menu portal
+ */
+const initPortalViewer = async (portalSlug: string) => {
+  console.log('[PortalViewer] Initializing for slug:', portalSlug);
+
+  // Hide other containers
+  const shellContainer = document.getElementById('shell-container');
+  const playerContainer = document.getElementById('player-container');
+  const menuContainer = document.getElementById('menu-container');
+
+  if (shellContainer) shellContainer.style.display = 'none';
+  if (playerContainer) playerContainer.style.display = 'none';
+  if (menuContainer) menuContainer.style.display = 'block';
+
+  // Hide all floating buttons
+  const floatingButtons = document.querySelectorAll(
+    '#enter-fullscreen-btn, #exit-fullscreen-btn, #clear-cache-btn, #factory-reset-btn, #device-info-btn, #connection-status'
+  );
+  floatingButtons.forEach((btn) => {
+    (btn as HTMLElement).style.display = 'none';
+  });
+
+  // Get or create container
+  const container = document.getElementById('menu-container');
+  if (!container) {
+    console.error('[PortalViewer] Container not found');
+    return;
+  }
+
+  // Initialize Portal Viewer
+  const viewer = new PortalViewer(container, {
+    apiBaseUrl: config.api.baseURL,
+    portalSlug: portalSlug,
+  });
+
+  await viewer.load();
+};
+
+/**
  * Initialize application
  */
 const initApp = async () => {
   SharedLogger.log('🔍 Initializing app...');
+
+  // Check if this is a portal route - if so, show PortalViewer
+  const { isPortal, portalSlug } = isPortalRoute();
+  if (isPortal && portalSlug) {
+    SharedLogger.log('🏨 Portal route detected, initializing Portal Viewer...');
+    await initPortalViewer(portalSlug);
+    return; // Exit early, don't initialize player
+  }
 
   // Check if this is a menu route - if so, show MenuViewer instead of Player
   const { isMenu, publicCode } = isMenuRoute();

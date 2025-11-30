@@ -54,6 +54,7 @@ class OrganizationResponse(BaseModel):
     id: int
     name: str
     organization_pin: Optional[str] = None  # REMOVED: Organization PIN (No-PIN flow)
+    portal_slug: Optional[str] = None  # URL-friendly slug for menu portal
     is_active: bool
 
     class Config:

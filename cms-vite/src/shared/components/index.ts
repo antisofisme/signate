@@ -50,3 +50,6 @@ export {
   InlineError,
   AccessDenied,
 } from './feedback';
+
+// Toast Provider (Sonner with theme sync & dynamic positioning)
+export { ToastProvider } from './ToastProvider';

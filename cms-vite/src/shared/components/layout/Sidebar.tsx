@@ -45,10 +45,10 @@ interface NavItem {
 }
 
 interface NavGroup {
+  key: string; // Fixed key for state tracking (not translated)
   name: string;
   icon: any;
   items: NavItem[];
-  defaultOpen?: boolean;
 }
 
 export default function Sidebar() {
@@ -83,6 +83,7 @@ export default function Sidebar() {
   // Grouped navigation
   const navigationGroups: NavGroup[] = [
     {
+      key: 'devices',
       name: t('navigation.groups.devices'),
       icon: Monitor,
       items: [
@@ -91,6 +92,7 @@ export default function Sidebar() {
       ],
     },
     {
+      key: 'content',
       name: t('navigation.groups.content'),
       icon: FileImage,
       items: [
@@ -101,6 +103,7 @@ export default function Sidebar() {
       ],
     },
     {
+      key: 'menu-digital',
       name: t('navigation.groups.menuDigital'),
       icon: UtensilsCrossed,
       items: [
@@ -221,18 +224,17 @@ export default function Sidebar() {
               );
             })}
 
-            {/* Grouped Navigation (Devices, Content) */}
+            {/* Grouped Navigation (Devices, Content, Menu Digital) */}
             {navigationGroups.map((group) => {
-              const groupKey = group.name.toLowerCase().replace(/\s+/g, '-');
-              const isOpen = openGroups[groupKey];
+              const isOpen = openGroups[group.key] ?? true; // Default to open if key not found
               const hasActiveItem = isGroupActive(group.items);
               const GroupIcon = group.icon;
 
               return (
-                <div key={group.name} className="space-y-1">
+                <div key={group.key} className="space-y-1">
                   {/* Group Header */}
                   <button
-                    onClick={() => toggleGroup(groupKey)}
+                    onClick={() => toggleGroup(group.key)}
                     className={`flex items-center justify-between w-full px-3 py-2.5 rounded-lg transition-colors ${
                       hasActiveItem
                         ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400'
@@ -303,16 +305,15 @@ export default function Sidebar() {
 
             {/* Bottom Groups (Insights, Security) */}
             {bottomGroups.map((group) => {
-              const groupKey = group.name.toLowerCase().replace(/\s+/g, '-');
-              const isOpen = openGroups[groupKey];
+              const isOpen = openGroups[group.key] ?? true;
               const hasActiveItem = isGroupActive(group.items);
               const GroupIcon = group.icon;
 
               return (
-                <div key={group.name} className="space-y-1">
+                <div key={group.key} className="space-y-1">
                   {/* Group Header */}
                   <button
-                    onClick={() => toggleGroup(groupKey)}
+                    onClick={() => toggleGroup(group.key)}
                     className={`flex items-center justify-between w-full px-3 py-2.5 rounded-lg transition-colors ${
                       hasActiveItem
                         ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400'

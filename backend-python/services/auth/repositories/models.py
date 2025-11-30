@@ -28,6 +28,9 @@ class OrganizationModel(Base):
     max_users = Column(Integer, default=5, nullable=False)
     settings = Column(JSON, default={}, nullable=True)  # JSONB for additional settings
 
+    # Public portal URL slug (format: organization-name-id)
+    portal_slug = Column(String(100), unique=True, index=True, nullable=True)
+
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 

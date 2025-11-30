@@ -20,9 +20,9 @@ import { ReactNode, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 import Button from './common/Button';
+import { Z_INDEX } from '@/shared/constants/zIndex';
 
 // Constants - centralized configuration
-const MODAL_Z_INDEX = 9999;
 const MODAL_ROOT_ID = 'modal-root';
 
 const MAX_WIDTH_CLASSES = {
@@ -48,7 +48,7 @@ const overlayStyles: React.CSSProperties = {
   bottom: 0,
   width: '100vw',
   height: '100vh',
-  zIndex: MODAL_Z_INDEX,
+  zIndex: Z_INDEX.MODAL,
   margin: 0,
   marginTop: 0,
 };

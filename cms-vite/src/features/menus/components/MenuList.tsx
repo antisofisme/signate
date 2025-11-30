@@ -3,12 +3,13 @@
  * Displays all menus in a table with actions
  */
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Edit, Trash2, List, QrCode, Copy, Download, ExternalLink, UtensilsCrossed } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { useMenus, useDeleteMenu } from '../hooks/useMenus';
+import { useMenus, useDeleteMenuWithPIN } from '../hooks/useMenus';
 import { useDownloadQRCode } from '../hooks/useMenuImport';
 import { EmptyState } from '@/shared/components';
+import { PinVerificationModal } from './PinVerificationModal';
 import type { Menu, MenuType } from '../types/menu';
 import { toast } from 'sonner';
 
@@ -29,6 +30,8 @@ export const MenuList = ({
 }: MenuListProps) => {
   const { t } = useTranslation();
   const [currentPage, setCurrentPage] = useState(0);
+  const [menuToDelete, setMenuToDelete] = useState<Menu | null>(null);
+  const [showPinModal, setShowPinModal] = useState(false);
   const pageSize = 20;
 
   // Fetch menus
@@ -39,17 +42,28 @@ export const MenuList = ({
     is_active: isActiveFilter === '' ? undefined : isActiveFilter,
   });
 
-  const deleteMutation = useDeleteMenu();
+  const deleteWithPINMutation = useDeleteMenuWithPIN();
   const downloadQRMutation = useDownloadQRCode();
 
-  // Client-side search filter
-  const filteredMenus = data?.items.filter((menu) =>
-    menu.name.toLowerCase().includes(searchQuery.toLowerCase())
-  ) || [];
+  // Client-side search filter and alphabetical sorting
+  const filteredMenus = useMemo(() => {
+    if (!data?.items) return [];
+    return [...data.items]
+      .filter((menu) => menu.name.toLowerCase().includes(searchQuery.toLowerCase()))
+      .sort((a, b) => a.name.localeCompare(b.name, 'id', { sensitivity: 'base' }));
+  }, [data?.items, searchQuery]);
 
-  const handleDelete = async (menu: Menu) => {
-    if (window.confirm(`Are you sure you want to delete menu "${menu.name}"?`)) {
-      deleteMutation.mutate(menu.id);
+  const handleDelete = (menu: Menu) => {
+    setMenuToDelete(menu);
+    setShowPinModal(true);
+  };
+
+  const handlePinVerified = () => {
+    if (menuToDelete) {
+      // PIN was verified in modal, now just need to confirm deletion
+      // The modal will close and we show success
+      deleteWithPINMutation.mutate(menuToDelete.id);
+      setMenuToDelete(null);
     }
   };
 
@@ -206,7 +220,7 @@ export const MenuList = ({
                       onClick={() => handleDelete(menu)}
                       className="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 transition-colors"
                       title="Delete Menu"
-                      disabled={deleteMutation.isPending}
+                      disabled={deleteWithPINMutation.isPending}
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>
@@ -243,6 +257,16 @@ export const MenuList = ({
           </div>
         </div>
       )}
+
+      {/* PIN Verification Modal */}
+      <PinVerificationModal
+        open={showPinModal}
+        onOpenChange={setShowPinModal}
+        onVerified={handlePinVerified}
+        title="Delete Menu"
+        description="Enter your organization PIN to confirm menu deletion."
+        menuName={menuToDelete?.name}
+      />
     </div>
   );
 };

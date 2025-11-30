@@ -3,15 +3,16 @@
  * Manage items for a menu - Add, Edit, Delete, Import, Export
  */
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Upload, Download, Trash2, Star, Pencil, Image as ImageIcon, Plus, Loader2 } from 'lucide-react';
+import { Upload, Download, Trash2, Star, Pencil, Image as ImageIcon, Plus, Loader2, Edit3 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Modal, Button } from '@/shared/components';
 import { useMenuItems, useDeleteMenuItem } from '../hooks/useMenuItems';
 import { menuApi } from '../api/menuApi';
 import { ExcelImportModal } from './ExcelImportModal';
 import { MenuItemFormModal } from './MenuItemFormModal';
+import { MenuItemsBulkEditModal } from './MenuItemsBulkEditModal';
 import type { Menu, MenuItem } from '../types/menu';
 
 interface MenuItemsManagerProps {
@@ -24,6 +25,7 @@ export const MenuItemsManager = ({ menu, onClose }: MenuItemsManagerProps) => {
   const [showImportModal, setShowImportModal] = useState(false);
   const [editingItem, setEditingItem] = useState<MenuItem | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showBulkEditModal, setShowBulkEditModal] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [currentPage, setCurrentPage] = useState(0);
   const pageSize = 50;
@@ -33,6 +35,14 @@ export const MenuItemsManager = ({ menu, onClose }: MenuItemsManagerProps) => {
     limit: pageSize,
   });
   const deleteMutation = useDeleteMenuItem(menu.id);
+
+  // Sort items alphabetically by name
+  const sortedItems = useMemo(() => {
+    if (!data?.items) return [];
+    return [...data.items].sort((a, b) =>
+      a.name.localeCompare(b.name, 'id', { sensitivity: 'base' })
+    );
+  }, [data?.items]);
 
   const handleDelete = async (item: MenuItem) => {
     if (window.confirm(t('menus.items.confirmDelete', `Are you sure you want to delete "${item.name}"?`))) {
@@ -80,10 +90,22 @@ export const MenuItemsManager = ({ menu, onClose }: MenuItemsManagerProps) => {
           {menu.name}
         </h2>
         <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-          {data?.total || 0} {t('menus.items.itemsTotal', 'items')}
+          {t('menus.items.itemsTotal', { count: data?.total || 0, defaultValue: '{{count}} items' })}
         </p>
       </div>
       <div className="flex items-center space-x-2">
+        {/* Bulk Edit Button */}
+        {data && data.items.length > 0 && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowBulkEditModal(true)}
+            leftIcon={<Edit3 className="w-4 h-4" />}
+          >
+            {t('menus.items.bulkEdit', 'Bulk Edit')}
+          </Button>
+        )}
+
         {/* Add Item Button */}
         <Button
           variant="primary"
@@ -145,7 +167,7 @@ export const MenuItemsManager = ({ menu, onClose }: MenuItemsManagerProps) => {
             <div className="flex items-center justify-center py-12">
               <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
             </div>
-          ) : data && data.items.length > 0 ? (
+          ) : sortedItems.length > 0 ? (
             <div className="space-y-4">
               {/* Items Table */}
               <div className="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700 overflow-hidden">
@@ -162,6 +184,9 @@ export const MenuItemsManager = ({ menu, onClose }: MenuItemsManagerProps) => {
                         {t('menus.items.category', 'Category')}
                       </th>
                       <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                        {t('menus.items.tags', 'Tags')}
+                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                         {t('menus.items.price', 'Price')}
                       </th>
                       <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
@@ -173,7 +198,7 @@ export const MenuItemsManager = ({ menu, onClose }: MenuItemsManagerProps) => {
                     </tr>
                   </thead>
                   <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                    {data.items.map((item) => (
+                    {sortedItems.map((item) => (
                       <tr key={item.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
                         {/* Image Column */}
                         <td className="px-4 py-3">
@@ -213,6 +238,23 @@ export const MenuItemsManager = ({ menu, onClose }: MenuItemsManagerProps) => {
                             <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200">
                               {item.category}
                             </span>
+                          ) : (
+                            <span className="text-gray-400">-</span>
+                          )}
+                        </td>
+                        {/* Tags Column */}
+                        <td className="px-4 py-3">
+                          {item.tags ? (
+                            <div className="flex flex-wrap gap-1 max-w-xs">
+                              {item.tags.split(',').map((tag, idx) => (
+                                <span
+                                  key={idx}
+                                  className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-purple-100 dark:bg-purple-900 text-purple-800 dark:text-purple-200"
+                                >
+                                  {tag.trim()}
+                                </span>
+                              ))}
+                            </div>
                           ) : (
                             <span className="text-gray-400">-</span>
                           )}
@@ -359,6 +401,19 @@ export const MenuItemsManager = ({ menu, onClose }: MenuItemsManagerProps) => {
           }}
         />
       )}
+
+      {/* Bulk Edit Modal */}
+      <MenuItemsBulkEditModal
+        isOpen={showBulkEditModal}
+        onClose={() => setShowBulkEditModal(false)}
+        menuId={menu.id}
+        menuName={menu.name}
+        items={data?.items || []}
+        onSuccess={() => {
+          setShowBulkEditModal(false);
+          refetch();
+        }}
+      />
     </>
   );
 };

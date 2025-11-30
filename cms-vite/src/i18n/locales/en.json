@@ -392,9 +392,12 @@
       "zoomIn": "Zoom In",
       "close": "Close (ESC)",
       "upload": "Upload Content",
+      "filters": "Filters",
+      "clearFilters": "Clear Filters",
       "bulkEdit": "Bulk Edit",
       "bulkTag": "Bulk Tag",
       "bulkDelete": "Bulk Delete",
+      "deleteSelected": "Delete Selected",
       "bulkTagAssignment": "Bulk Tag Assignment",
       "assignTagToItems": "Assign tag to {{count}} content items",
       "selectTag": "Select Tag",
@@ -461,24 +464,101 @@
       "description": "Enter content description (optional)",
       "searchContent": "Search by title or description..."
     },
-    "filters": {
-      "allTypes": "All Types"
-    },
     "table": {
       "content": "Content",
+      "type": "Type",
+      "size": "Size",
+      "duration": "Duration",
+      "status": "Status",
+      "actions": "Actions",
       "createdAt": "Created At",
-      "actions": "Actions"
+      "deleted": "Deleted"
+    },
+    "filters": {
+      "allTypes": "All Types",
+      "allStatus": "All Status",
+      "clearFilters": "Clear Filters",
+      "contentType": "Content Type",
+      "status": "Status",
+      "image": "Image",
+      "video": "Video",
+      "audio": "Audio",
+      "active": "Active",
+      "inactive": "Inactive"
+    },
+    "stats": {
+      "showingItems": "Showing {{count}} of {{total}} items",
+      "showingDeleted": "Showing {{count}} of {{total}} deleted items",
+      "noDeletedContent": "No deleted content in recycle bin"
+    },
+    "selection": {
+      "itemsSelected": "{{count}} item(s) selected",
+      "clearSelection": "Clear selection",
+      "selectAtLeastOne": "Please select at least one content item"
+    },
+    "duplicates": {
+      "duplicateFiles": "{{count}} Duplicate Files",
+      "count": "{{count}} Duplicate Files",
+      "hash": "Hash",
+      "sameFile": "Same File",
+      "clickToExpand": "Click to expand",
+      "clickToCollapse": "Click to collapse"
+    },
+    "usage": {
+      "playlist": "{{count}} playlist",
+      "playlists": "{{count}} playlists",
+      "tag": "{{count}} tag",
+      "tags": "{{count}} tags",
+      "device": "{{count}} device",
+      "devices": "{{count}} devices",
+      "notUsed": "Not used",
+      "safeToDelete": "Safe to delete"
+    },
+    "deleted": {
+      "empty": {
+        "title": "Recycle Bin is Empty",
+        "description": "Deleted content will appear here for recovery"
+      },
+      "showingItems": "Showing {{count}} of {{total}} deleted items",
+      "noItems": "No deleted content in recycle bin",
+      "deletedAt": "Deleted",
+      "restore": "Restore",
+      "deletePermanently": "Delete Permanently",
+      "deletePermanentlyCount": "Delete {{count}} permanently",
+      "deleteCount": "Delete {{count}} permanently",
+      "deleteItems": "Delete {{count}} item(s)",
+      "dialogs": {
+        "restoreTitle": "Restore Content",
+        "restoreMessage": "Are you sure you want to restore \"{{name}}\"? It will be moved back to active content.",
+        "permanentDeleteTitle": "Permanently Delete Content",
+        "permanentDeleteMessage": "Are you sure you want to permanently delete \"{{name}}\"? This action cannot be undone and the file will be removed from storage.",
+        "bulkPermanentDeleteTitle": "Permanently Delete Selected Content",
+        "bulkPermanentDeleteMessage": "Are you sure you want to permanently delete {{count}} item(s)? This action cannot be undone and all files will be removed from storage."
+      }
     },
     "messages": {
       "noContent": "No content found",
       "errorLoading": "Error loading content",
       "selectedCount": "{{count}} selected",
+      "selectAtLeastOne": "Please select at least one content item",
       "setAtLeastOneField": "Please set at least one field to update",
       "successfullyUpdated": "Successfully updated {{count}} content items",
       "updatedWithFailures": "Updated {{successCount}} items, {{failCount}} failed",
       "videoNotSupported": "Your browser does not support video playback.",
       "audioNotSupported": "Your browser does not support audio playback.",
-      "previewNotAvailable": "Preview not available for this content type"
+      "previewNotAvailable": "Preview not available for this content type",
+      "downloadStarted": "Download started",
+      "downloadFailed": "Failed to download file",
+      "uploadSuccess": "Content uploaded successfully",
+      "uploadPartial": "{{success}} uploaded, {{failed}} failed. Check results for details.",
+      "uploadMultipleSuccess": "{{count}} files uploaded successfully",
+      "updateSuccess": "Content updated successfully",
+      "deleteSuccess": "Content deleted successfully",
+      "bulkDeleteSuccess": "{{count}} content(s) deleted successfully",
+      "restoreSuccess": "Content restored successfully",
+      "permanentDeleteSuccess": "Content permanently deleted",
+      "bulkPermanentDeleteSuccess": "{{count}} item(s) permanently deleted",
+      "confirmBulkDelete": "Are you sure you want to delete {{count}} content items?"
     },
     "preview": {
       "zoomOut": "Zoom Out",
@@ -497,7 +577,14 @@
       "pending": "Pending",
       "updating": "Updating...",
       "success": "✓ Success",
-      "failed": "✗ Failed"
+      "failed": "✗ Failed",
+      "active": "Active",
+      "inactive": "Inactive"
+    },
+    "dialogs": {
+      "deleteTitle": "Delete Content",
+      "deleteMessage": "Are you sure you want to delete \"{{name}}\"? This action cannot be undone.",
+      "bulkDeleteMessage": "Are you sure you want to delete {{count}} content items?"
     },
     "buttons": {
       "cancel": "Cancel",
@@ -559,7 +646,29 @@
       "loadError": "Failed to load playlists",
       "confirmDelete": "Are you sure you want to delete playlist: {{name}}?",
       "totalPlaylists": "Total: {{count}} playlist",
-      "totalPlaylists_plural": "Total: {{count}} playlists"
+      "totalPlaylists_plural": "Total: {{count}} playlists",
+      "createSuccess": "Playlist created successfully",
+      "createError": "Failed to create playlist",
+      "updateSuccess": "Playlist updated successfully",
+      "updateError": "Failed to update playlist",
+      "deleteSuccess": "Playlist deleted successfully",
+      "deleteError": "Failed to delete playlist",
+      "addContentSuccess": "{{count}} content items added",
+      "addContentPartialMissing": "{{added}} items added, {{missing}} not found",
+      "addContentPartialDuplicate": "{{added}} items added, {{duplicate}} already exist",
+      "addContentError": "Failed to add content",
+      "removeContentSuccess": "Content removed from playlist",
+      "removeContentError": "Failed to remove content",
+      "reorderSuccess": "Content reordered successfully",
+      "reorderError": "Failed to reorder content",
+      "assignDevicesSuccess": "Assigned to {{count}} devices",
+      "assignDevicesError": "Failed to assign devices",
+      "assignTagsSuccess": "Assigned to {{count}} tags",
+      "assignTagsError": "Failed to assign tags",
+      "unassignDevicesSuccess": "Unassigned from {{count}} devices",
+      "unassignDevicesError": "Failed to unassign devices",
+      "unassignTagsSuccess": "Unassigned from {{count}} tags",
+      "unassignTagsError": "Failed to unassign tags"
     },
     "deletePlaylist": "Delete Playlist",
     "manageContent": "Manage Content",
@@ -717,6 +826,10 @@
       "deleteSchedule": "Delete Schedule",
       "showPreview": "Show Preview",
       "hidePreview": "Hide Preview"
+    },
+    "card": {
+      "clickToEditTime": "Click to edit schedule time",
+      "nowPlaying": "Now playing"
     },
     "noMatches": "No schedules match your filters",
     "tryDifferentFilters": "Try adjusting your search or filter criteria",
@@ -989,6 +1102,21 @@
         "timezoneInfo": "All times will be scheduled in this timezone",
         "exceptionDatesInfo": "Skip specific dates even if they match the recurrence pattern"
       }
+    },
+    "messages": {
+      "createSuccess": "Schedule created successfully",
+      "createError": "Failed to create schedule",
+      "updateSuccess": "Schedule updated successfully",
+      "updateError": "Failed to update schedule",
+      "deleteSuccess": "Schedule deleted successfully",
+      "deleteError": "Failed to delete schedule",
+      "activateSuccess": "Schedule activated",
+      "activateError": "Failed to activate schedule",
+      "deactivateSuccess": "Schedule deactivated",
+      "deactivateError": "Failed to deactivate schedule",
+      "pauseSuccess": "Schedule paused",
+      "pauseError": "Failed to pause schedule",
+      "conflictCheckError": "Failed to check conflicts"
     }
   },
   "dashboard": {
@@ -1444,8 +1572,145 @@
   "menus": {
     "title": "Digital Menus",
     "subtitle": "Manage your digital menus for restaurant, laundry, spa, and more",
+    "portal": {
+      "title": "Menu Portal",
+      "description": "One link for all menus in your organization",
+      "tooltip": "Share this link so customers can view all your menus in one page with tab navigation.",
+      "copied": "Portal link copied successfully!",
+      "copyFailed": "Failed to copy link",
+      "copy": "Copy link",
+      "open": "Open portal"
+    },
     "mediaTitle": "Menu Media",
     "mediaSubtitle": "Upload and manage images for your digital menu items",
+    "media": {
+      "tabs": {
+        "active": "Active Media",
+        "duplicates": "Duplicates",
+        "deleted": "Recycle Bin"
+      },
+      "viewMode": {
+        "table": "Table",
+        "gallery": "Gallery"
+      },
+      "actions": {
+        "uploadImage": "Upload Image",
+        "filters": "Filters",
+        "clearFilters": "Clear Filters",
+        "deleteSelected": "Delete Selected",
+        "permanentlyDelete": "Permanently Delete",
+        "permanentlyDeleteAll": "Permanently Delete All",
+        "preview": "Preview",
+        "edit": "Edit",
+        "copyUrl": "Copy URL",
+        "download": "Download",
+        "delete": "Delete",
+        "restore": "Restore",
+        "openInNewTab": "Open in New Tab"
+      },
+      "allowedTypes": "Allowed: JPG, PNG, GIF, WebP (max 10MB)",
+      "dragDrop": "Drag and drop images here",
+      "dropHere": "Drop images here to upload",
+      "uploadHint": "or click to select files",
+      "uploading": "Uploading...",
+      "fileTooLarge": "File too large (max 10MB)",
+      "invalidType": "Invalid file type",
+      "loadError": "Failed to load media",
+      "noImages": "No images uploaded yet",
+      "noSearchResults": "No images match your search",
+      "searchPlaceholder": "Search images...",
+      "totalCount": "{{count}} images",
+      "copyUrl": "Copy URL",
+      "urlCopied": "URL copied to clipboard",
+      "copyFailed": "Failed to copy URL",
+      "delete": "Delete",
+      "deleteTitle": "Delete Image",
+      "deleteMessage": "Are you sure you want to delete this image?",
+      "gallery": {
+        "searchPlaceholder": "Search images...",
+        "imagesFound": "{{count}} images found",
+        "filtered": "Filtered: {{count}} of {{total}}",
+        "noSearchResults": "No images match your search"
+      },
+      "sidebar": {
+        "title": "Image Details",
+        "emptyTitle": "No Image Selected",
+        "emptyDescription": "Select an image to view details",
+        "filename": "Filename",
+        "size": "Size",
+        "dimensions": "Dimensions",
+        "uploaded": "Uploaded",
+        "uploadedBy": "Uploaded by",
+        "metadata": "Metadata",
+        "title_field": "Title",
+        "titlePlaceholder": "Enter image title",
+        "noTitle": "No title",
+        "alt_text": "Alt Text",
+        "altPlaceholder": "Enter alt text for accessibility",
+        "noAltText": "No alt text",
+        "usedIn": "Used In",
+        "usageComingSoon": "Usage tracking coming soon"
+      },
+      "table": {
+        "image": "Image",
+        "type": "Type",
+        "size": "Size",
+        "dimensions": "Dimensions",
+        "actions": "Actions",
+        "deletedAt": "Deleted At"
+      },
+      "filters": {
+        "search": "Search",
+        "searchPlaceholder": "Search by filename..."
+      },
+      "stats": {
+        "showingImages": "Showing {{count}} of {{total}} images",
+        "showingDeleted": "Showing {{count}} of {{total}} deleted images"
+      },
+      "selection": {
+        "itemsSelected": "{{count}} item(s) selected"
+      },
+      "empty": {
+        "title": "No images found",
+        "description": "Upload your first image to get started",
+        "recycleBinTitle": "Recycle bin is empty",
+        "recycleBinDescription": "Deleted images will appear here"
+      },
+      "dialogs": {
+        "deleteTitle": "Delete Image",
+        "deleteMessage": "Are you sure you want to delete \"{{name}}\"? This will move it to the recycle bin.",
+        "restoreTitle": "Restore Image",
+        "restoreMessage": "Are you sure you want to restore \"{{name}}\"?",
+        "permanentDeleteTitle": "Permanently Delete",
+        "permanentDeleteMessage": "Are you sure you want to permanently delete \"{{name}}\"? This action cannot be undone!",
+        "bulkDeleteTitle": "Delete Multiple Images",
+        "bulkDeleteMessage": "Are you sure you want to delete {{count}} images?",
+        "bulkPermanentDeleteTitle": "Permanently Delete Selected",
+        "bulkPermanentDeleteMessage": "Are you sure you want to permanently delete {{count}} images? This action cannot be undone!"
+      },
+      "messages": {
+        "urlCopied": "URL copied to clipboard",
+        "urlCopyFailed": "Failed to copy URL",
+        "downloadStarted": "Download started",
+        "selectAtLeastOne": "Please select at least one image"
+      },
+      "duplicates": {
+        "emptyTitle": "No Duplicates Found",
+        "emptyDescription": "All your menu media files are unique. Great job keeping your library clean!",
+        "groupsFound": "{{count}} Duplicate Group Found",
+        "groupsFound_plural": "{{count}} Duplicate Groups Found",
+        "summaryMessage": "These files have the same content (hash). You can delete duplicates to save {{size}} of storage.",
+        "duplicateCount": "{{count}} Duplicates",
+        "sizeEach": "{{size}} each",
+        "wastedStorage": "Wasted: {{size}}",
+        "original": "Original",
+        "usedInItems": "Used in {{count}} menu item",
+        "usedInItems_plural": "Used in {{count}} menu items",
+        "inUseCannotDelete": "In use - cannot delete",
+        "deleteDialogTitle": "Delete Duplicate",
+        "deleteDialogMessage": "Are you sure you want to delete \"{{name}}\"? This will move it to the recycle bin."
+      }
+    },
     "createMenu": "Create Menu",
     "editMenu": "Edit Menu",
     "createNewMenu": "Create New Menu",
@@ -1520,12 +1785,73 @@
       "previous": "Previous",
       "next": "Next"
     },
+    "bulkEdit": {
+      "title": "Bulk Edit Menu Items",
+      "itemsModified": "items modified",
+      "noChanges": "No changes",
+      "saving": "Saving...",
+      "saveAll": "Save All Changes",
+      "noItems": "No items to edit",
+      "active": "Active",
+      "image": "Image",
+      "name": "Name",
+      "price": "Price",
+      "category": "Category",
+      "addNewItem": "Add New Item",
+      "unsavedChanges": "Unsaved Changes",
+      "confirmDiscard": "You have unsaved changes. Are you sure you want to discard them?",
+      "confirmDelete": "Are you sure you want to delete this item?",
+      "selectImages": "Select Images",
+      "newItem": "New Item",
+      "selectedCount": "{{count}} image(s) selected",
+      "selectMultipleImages": "Click images to select (multi-select)",
+      "clearAll": "Clear All",
+      "noMedia": "No images available. Upload images in the Menu Media tab.",
+      "firstImagePrimary": "First selected image will be the primary thumbnail",
+      "changeImage": "Click to change image",
+      "namePlaceholder": "Item name",
+      "descriptionPlaceholder": "Description (optional)",
+      "variantPlaceholder": "Variants...",
+      "highlight": "Highlight",
+      "available": "Avail"
+    },
     "items": {
       "title": "{{menuName}} - Items",
       "totalItems": "{{count}} items total",
+      "itemsTotal": "{{count}} items",
       "importExcel": "Import Excel",
       "noItemsYet": "No items yet",
+      "noItems": "No items found",
       "importFromExcel": "Import from Excel",
+      "addItem": "Add Item",
+      "editItem": "Edit Item",
+      "name": "Name",
+      "namePlaceholder": "Enter item name",
+      "description": "Description",
+      "descriptionPlaceholder": "Enter item description",
+      "category": "Category",
+      "categoryPlaceholder": "e.g., Main Course, Dessert",
+      "subcategory": "Subcategory",
+      "subcategoryPlaceholder": "e.g., Pasta, Grilled",
+      "price": "Price",
+      "currency": "IDR",
+      "image": "Image",
+      "selectImage": "Select Image",
+      "selectFromMedia": "Select from Media",
+      "removeImage": "Remove Image",
+      "noMediaAvailable": "No media available",
+      "hideMedia": "Hide Media Selector",
+      "status": "Status",
+      "isActive": "Active",
+      "isAvailable": "Available",
+      "isFeatured": "Featured",
+      "unavailable": "Unavailable",
+      "actions": "Actions",
+      "confirmDelete": "Are you sure you want to delete this item?",
+      "import": "Import",
+      "export": "Export",
+      "exportSuccess": "Items exported successfully",
+      "exportError": "Failed to export items",
       "table": {
         "itemName": "Item Name",
         "category": "Category",

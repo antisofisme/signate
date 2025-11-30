@@ -8,7 +8,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { usersApi } from '@/features/users/api/usersApi';
 import { handleAPIError } from '@/lib/errors/errorHandler';
-import { toast } from '@/lib/notifications/toast';
+import { toast } from 'sonner';
 import { useSelectedOrgId, userKeys } from '@/shared/hooks';
 import type {
   CreateUserRequest,

@@ -4,6 +4,7 @@
  */
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import { getApiErrorMessage } from '@/shared/utils/types'
 import { useSelectedOrgId, scheduleKeys } from '@/shared/hooks'
@@ -105,16 +106,17 @@ export const useOccurrences = (data: GetOccurrencesRequest, enabled = true) => {
  * Mutation: Create schedule
  */
 export const useCreateSchedule = () => {
+  const { t } = useTranslation()
   const queryClient = useQueryClient()
 
   return useMutation({
     mutationFn: (data: CreateScheduleRequest) => createSchedule(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: scheduleKeys.all })
-      toast.success('Schedule created successfully')
+      toast.success(t('schedules.messages.createSuccess'))
     },
     onError: (error: unknown) => {
-      toast.error(getApiErrorMessage(error, 'Failed to create schedule'))
+      toast.error(getApiErrorMessage(error, t('schedules.messages.createError')))
     },
   })
 }
@@ -123,6 +125,7 @@ export const useCreateSchedule = () => {
  * Mutation: Update schedule
  */
 export const useUpdateSchedule = () => {
+  const { t } = useTranslation()
   const queryClient = useQueryClient()
 
   return useMutation({
@@ -131,10 +134,10 @@ export const useUpdateSchedule = () => {
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: scheduleKeys.all })
       queryClient.invalidateQueries({ queryKey: scheduleKeys.detail(variables.id) })
-      toast.success('Schedule updated successfully')
+      toast.success(t('schedules.messages.updateSuccess'))
     },
     onError: (error: unknown) => {
-      toast.error(getApiErrorMessage(error, 'Failed to update schedule'))
+      toast.error(getApiErrorMessage(error, t('schedules.messages.updateError')))
     },
   })
 }
@@ -143,6 +146,7 @@ export const useUpdateSchedule = () => {
  * Mutation: Delete schedule
  */
 export const useDeleteSchedule = () => {
+  const { t } = useTranslation()
   const queryClient = useQueryClient()
 
   return useMutation({
@@ -150,11 +154,11 @@ export const useDeleteSchedule = () => {
     onSuccess: async () => {
       // Force refetch all schedule-related queries
       await queryClient.invalidateQueries({ queryKey: scheduleKeys.all, refetchType: 'all' })
-      toast.success('Schedule deleted successfully')
+      toast.success(t('schedules.messages.deleteSuccess'))
     },
     onError: (error: unknown) => {
       console.error('Delete schedule error:', error)
-      toast.error(getApiErrorMessage(error, 'Failed to delete schedule'))
+      toast.error(getApiErrorMessage(error, t('schedules.messages.deleteError')))
     },
   })
 }
@@ -163,6 +167,7 @@ export const useDeleteSchedule = () => {
  * Mutation: Activate schedule
  */
 export const useActivateSchedule = () => {
+  const { t } = useTranslation()
   const queryClient = useQueryClient()
 
   return useMutation({
@@ -170,10 +175,10 @@ export const useActivateSchedule = () => {
     onSuccess: async (_, id) => {
       await queryClient.invalidateQueries({ queryKey: scheduleKeys.all, refetchType: 'all' })
       queryClient.invalidateQueries({ queryKey: scheduleKeys.detail(id) })
-      toast.success('Schedule activated')
+      toast.success(t('schedules.messages.activateSuccess'))
     },
     onError: (error: unknown) => {
-      toast.error(getApiErrorMessage(error, 'Failed to activate schedule'))
+      toast.error(getApiErrorMessage(error, t('schedules.messages.activateError')))
     },
   })
 }
@@ -182,6 +187,7 @@ export const useActivateSchedule = () => {
  * Mutation: Deactivate schedule
  */
 export const useDeactivateSchedule = () => {
+  const { t } = useTranslation()
   const queryClient = useQueryClient()
 
   return useMutation({
@@ -189,10 +195,10 @@ export const useDeactivateSchedule = () => {
     onSuccess: async (_, id) => {
       await queryClient.invalidateQueries({ queryKey: scheduleKeys.all, refetchType: 'all' })
       queryClient.invalidateQueries({ queryKey: scheduleKeys.detail(id) })
-      toast.success('Schedule deactivated')
+      toast.success(t('schedules.messages.deactivateSuccess'))
     },
     onError: (error: unknown) => {
-      toast.error(getApiErrorMessage(error, 'Failed to deactivate schedule'))
+      toast.error(getApiErrorMessage(error, t('schedules.messages.deactivateError')))
     },
   })
 }
@@ -201,6 +207,7 @@ export const useDeactivateSchedule = () => {
  * Mutation: Pause schedule
  */
 export const usePauseSchedule = () => {
+  const { t } = useTranslation()
   const queryClient = useQueryClient()
 
   return useMutation({
@@ -208,10 +215,10 @@ export const usePauseSchedule = () => {
     onSuccess: async (_, id) => {
       await queryClient.invalidateQueries({ queryKey: scheduleKeys.all, refetchType: 'all' })
       queryClient.invalidateQueries({ queryKey: scheduleKeys.detail(id) })
-      toast.success('Schedule paused')
+      toast.success(t('schedules.messages.pauseSuccess'))
     },
     onError: (error: unknown) => {
-      toast.error(getApiErrorMessage(error, 'Failed to pause schedule'))
+      toast.error(getApiErrorMessage(error, t('schedules.messages.pauseError')))
     },
   })
 }
@@ -220,10 +227,12 @@ export const usePauseSchedule = () => {
  * Mutation: Check conflicts
  */
 export const useCheckConflicts = () => {
+  const { t } = useTranslation()
+
   return useMutation({
     mutationFn: (data: ConflictCheckRequest) => checkConflicts(data),
     onError: (error: unknown) => {
-      toast.error(getApiErrorMessage(error, 'Failed to check conflicts'))
+      toast.error(getApiErrorMessage(error, t('schedules.messages.conflictCheckError')))
     },
   })
 }

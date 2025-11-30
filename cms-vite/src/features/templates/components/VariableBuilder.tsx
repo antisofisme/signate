@@ -4,6 +4,7 @@
  */
 
 import { useState } from 'react'
+import { toast } from 'sonner'
 import type { VariableType } from '../types/template.types'
 
 interface Variable {
@@ -38,7 +39,7 @@ export const VariableBuilder = ({
   const handleAddVariable = () => {
     if (!newVarName.trim()) return
     if (variables[newVarName]) {
-      alert('Variable already exists')
+      toast.warning('Variable already exists')
       return
     }
 

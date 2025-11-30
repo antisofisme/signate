@@ -140,7 +140,7 @@ export function DeletedContentTable() {
         <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <span className="text-sm font-medium text-red-700 dark:text-red-300">
-              {selectedIds.size} item{selectedIds.size > 1 ? 's' : ''} selected
+              {t('contents.selection.itemsSelected', { count: selectedIds.size })}
             </span>
             <Button
               variant="ghost"
@@ -148,7 +148,7 @@ export function DeletedContentTable() {
               onClick={clearSelection}
               className="text-red-600 hover:text-red-700"
             >
-              Clear selection
+              {t('contents.selection.clearSelection')}
             </Button>
           </div>
           {canDelete && (
@@ -158,7 +158,7 @@ export function DeletedContentTable() {
               onClick={() => setShowBulkDeleteConfirm(true)}
               leftIcon={<Trash2 className="w-4 h-4" />}
             >
-              Delete {selectedIds.size} permanently
+              {t('contents.deleted.deletePermanentlyCount', { count: selectedIds.size })}
             </Button>
           )}
         </div>
@@ -168,8 +168,8 @@ export function DeletedContentTable() {
       {contentData && (
         <div className="text-sm text-gray-600 dark:text-gray-400">
           {contentData.data.length > 0
-            ? `Showing ${contentData.data.length} of ${contentData.pagination.total} deleted items`
-            : 'No deleted content in recycle bin'}
+            ? t('contents.deleted.showingItems', { count: contentData.data.length, total: contentData.pagination.total })
+            : t('contents.deleted.noItems')}
         </div>
       )}
 
@@ -214,19 +214,19 @@ export function DeletedContentTable() {
                     />
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-[30%]">
-                    Content
+                    {t('contents.table.content')}
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-20">
-                    Type
+                    {t('contents.table.type')}
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-24">
-                    Size
+                    {t('contents.table.size')}
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-32">
-                    Deleted
+                    {t('contents.deleted.deletedAt')}
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-32">
-                    Actions
+                    {t('contents.table.actions')}
                   </th>
                 </tr>
               </thead>
@@ -292,7 +292,7 @@ export function DeletedContentTable() {
                           variant="icon"
                           size="sm"
                           onClick={() => handlePreview(content)}
-                          title="Preview"
+                          title={t('contents.actions.preview')}
                           className="!text-blue-600 hover:!text-blue-700 dark:!text-blue-400"
                         >
                           <Eye className="w-4 h-4" />
@@ -302,7 +302,7 @@ export function DeletedContentTable() {
                             variant="icon"
                             size="sm"
                             onClick={() => setContentToRestore(content)}
-                            title="Restore"
+                            title={t('contents.deleted.restore')}
                             className="!text-green-600 hover:!text-green-700 dark:!text-green-400"
                           >
                             <RotateCcw className="w-4 h-4" />
@@ -313,7 +313,7 @@ export function DeletedContentTable() {
                             variant="icon"
                             size="sm"
                             onClick={() => setContentToDelete(content)}
-                            title="Delete Permanently"
+                            title={t('contents.deleted.deletePermanently')}
                             className="!text-red-600 hover:!text-red-700 dark:!text-red-400"
                           >
                             <Trash2 className="w-4 h-4" />
@@ -355,10 +355,10 @@ export function DeletedContentTable() {
       <ConfirmDialog
         open={!!contentToRestore}
         onOpenChange={(open) => !open && setContentToRestore(null)}
-        title="Restore Content"
-        description={`Are you sure you want to restore "${contentToRestore?.title}"? It will be moved back to active content.`}
+        title={t('contents.deleted.dialogs.restoreTitle')}
+        description={t('contents.deleted.dialogs.restoreMessage', { name: contentToRestore?.title })}
         variant="info"
-        confirmLabel="Restore"
+        confirmLabel={t('contents.deleted.restore')}
         onConfirm={handleRestore}
         isLoading={restoreMutation.isPending}
       />
@@ -367,10 +367,10 @@ export function DeletedContentTable() {
       <ConfirmDialog
         open={!!contentToDelete}
         onOpenChange={(open) => !open && setContentToDelete(null)}
-        title="Permanently Delete Content"
-        description={`Are you sure you want to permanently delete "${contentToDelete?.title}"? This action cannot be undone and the file will be removed from storage.`}
+        title={t('contents.deleted.dialogs.permanentDeleteTitle')}
+        description={t('contents.deleted.dialogs.permanentDeleteMessage', { name: contentToDelete?.title })}
         variant="danger"
-        confirmLabel="Delete Permanently"
+        confirmLabel={t('contents.deleted.deletePermanently')}
         onConfirm={handlePermanentDelete}
         isLoading={permanentDeleteMutation.isPending}
       />
@@ -379,10 +379,10 @@ export function DeletedContentTable() {
       <ConfirmDialog
         open={showBulkDeleteConfirm}
         onOpenChange={setShowBulkDeleteConfirm}
-        title="Permanently Delete Selected Content"
-        description={`Are you sure you want to permanently delete ${selectedIds.size} item(s)? This action cannot be undone and all files will be removed from storage.`}
+        title={t('contents.deleted.dialogs.bulkPermanentDeleteTitle')}
+        description={t('contents.deleted.dialogs.bulkPermanentDeleteMessage', { count: selectedIds.size })}
         variant="danger"
-        confirmLabel={`Delete ${selectedIds.size} item(s)`}
+        confirmLabel={t('contents.deleted.deletePermanentlyCount', { count: selectedIds.size })}
         onConfirm={handleBulkPermanentDelete}
         isLoading={bulkPermanentDeleteMutation.isPending}
       />

@@ -3,8 +3,9 @@
 from typing import Dict, Any, Tuple, List, Optional
 import asyncio
 
-from ..repositories import MenuRepository, MenuItemRepository, MenuViewRepository
+from ..repositories import MenuRepository, MenuItemRepository, MenuViewRepository, MenuItemMediaRepository
 from ..repositories.models import MenuModel, MenuItemModel
+from shared.config import settings
 import logging
 
 logger = logging.getLogger(__name__)
@@ -17,11 +18,13 @@ class GetPublicMenuUseCase:
         self,
         menu_repo: MenuRepository,
         menu_item_repo: MenuItemRepository,
-        menu_view_repo: MenuViewRepository
+        menu_view_repo: MenuViewRepository,
+        menu_item_media_repo: MenuItemMediaRepository
     ):
         self.menu_repo = menu_repo
         self.menu_item_repo = menu_item_repo
         self.menu_view_repo = menu_view_repo
+        self.menu_item_media_repo = menu_item_media_repo
 
     async def execute(
         self,
@@ -81,6 +84,29 @@ class GetPublicMenuUseCase:
                 )
             )
 
+            # Build items with media
+            items_with_media = []
+            for item in items:
+                # Get multiple media for this item
+                media_list = self._get_item_media(item.id)
+
+                items_with_media.append({
+                    "id": item.id,
+                    "name": item.name,
+                    "description": item.description,
+                    "price": float(item.price) if item.price else None,
+                    "currency": item.currency,
+                    "image_url": item.image_url,
+                    "video_url": item.video_url,
+                    "category": item.category,
+                    "subcategory": item.subcategory,
+                    "tags": item.tags,
+                    "is_featured": item.is_featured,
+                    "is_available": item.is_available,
+                    "translations": item.translations,
+                    "media": media_list,  # Array of media for carousel
+                })
+
             # Build response
             return {
                 "menu": {
@@ -93,26 +119,11 @@ class GetPublicMenuUseCase:
                     "whatsapp_number": menu.whatsapp_number,
                     "phone_number": menu.phone_number,
                     "contact_label": menu.contact_label,
+                    "outlet_extension": menu.outlet_extension,
+                    "footer_description": menu.footer_description,
                     "translations": menu.translations,
                 },
-                "items": [
-                    {
-                        "id": item.id,
-                        "name": item.name,
-                        "description": item.description,
-                        "price": float(item.price) if item.price else None,
-                        "currency": item.currency,
-                        "image_url": item.image_url,
-                        "video_url": item.video_url,
-                        "category": item.category,
-                        "subcategory": item.subcategory,
-                        "tags": item.tags,
-                        "is_featured": item.is_featured,
-                        "is_available": item.is_available,
-                        "translations": item.translations,
-                    }
-                    for item in items
-                ],
+                "items": items_with_media,
                 "total": total,
                 "skip": skip,
                 "limit": limit,
@@ -122,6 +133,37 @@ class GetPublicMenuUseCase:
         except Exception as e:
             logger.error(f"Failed to get public menu: {e}")
             raise
+
+    def _get_media_url(self, file_path: str) -> str:
+        """Build full URL for media file"""
+        if not file_path:
+            return ""
+        # Already a full URL
+        if file_path.startswith("http://") or file_path.startswith("https://"):
+            return file_path
+        # Build full URL from relative path
+        base_url = settings.PUBLIC_BASE_URL.rstrip("/")
+        return f"{base_url}/menu-media-files/{file_path}"
+
+    def _get_item_media(self, menu_item_id: int) -> List[Dict[str, Any]]:
+        """Get all media for a menu item"""
+        try:
+            media_details = self.menu_item_media_repo.get_media_for_item_with_details(menu_item_id)
+            return [
+                {
+                    "id": m["media"].id,
+                    "url": self._get_media_url(m["media"].file_path),
+                    "thumbnail_url": self._get_media_url(m["media"].thumbnail_path) if m["media"].thumbnail_path else None,
+                    "type": "video" if m["media"].mime_type.startswith("video/") else "image",
+                    "title": m["media"].title,
+                    "is_primary": m["is_primary"],
+                    "display_order": m["display_order"],
+                }
+                for m in media_details
+            ]
+        except Exception as e:
+            logger.warning(f"Failed to get media for item {menu_item_id}: {e}")
+            return []
 
     async def _track_view(
         self,

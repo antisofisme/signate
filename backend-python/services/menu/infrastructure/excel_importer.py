@@ -16,14 +16,21 @@ class ExcelImporter:
     Expected column format:
     - Column A: Name (required)
     - Column B: Price (optional, numeric)
-    - Column C: Description (optional)
-    - Column D: Category (optional)
-    - Column E: Image URL (optional)
-    - Column F: Video URL (optional)
+    - Column C: Currency (optional, default IDR)
+    - Column D: Description (optional)
+    - Column E: Category (optional)
+    - Column F: Variant (optional)
+    - Column G: Tags (optional)
+    - Column H: Is Active (optional, boolean, default True)
+    - Column I: Is Featured (optional, boolean, default False)
+    - Column J: Is Available (optional, boolean, default True)
     """
 
     REQUIRED_COLUMNS = ["Name"]
-    OPTIONAL_COLUMNS = ["Price", "Description", "Category", "Image URL", "Video URL"]
+    OPTIONAL_COLUMNS = [
+        "Price", "Currency", "Description", "Category", "Variant", "Tags",
+        "Is Active", "Is Featured", "Is Available"
+    ]
     ALL_COLUMNS = REQUIRED_COLUMNS + OPTIONAL_COLUMNS
 
     def parse(
@@ -99,6 +106,13 @@ class ExcelImporter:
                         if description.lower() == 'nan' or not description:
                             description = None
 
+                    # Extract currency (optional, default IDR)
+                    currency = "IDR"
+                    if pd.notna(row.get("Currency")):
+                        currency_val = str(row["Currency"]).strip().upper()
+                        if currency_val and currency_val.lower() != 'nan':
+                            currency = currency_val
+
                     # Extract category (optional)
                     category = None
                     if pd.notna(row.get("Category")):
@@ -106,19 +120,34 @@ class ExcelImporter:
                         if category.lower() == 'nan' or not category:
                             category = None
 
-                    # Extract image URL (optional)
-                    image_url = None
-                    if pd.notna(row.get("Image URL")):
-                        image_url = str(row["Image URL"]).strip()
-                        if image_url.lower() == 'nan' or not image_url:
-                            image_url = None
+                    # Extract variant (maps to subcategory field)
+                    subcategory = None
+                    if pd.notna(row.get("Variant")):
+                        subcategory = str(row["Variant"]).strip()
+                        if subcategory.lower() == 'nan' or not subcategory:
+                            subcategory = None
 
-                    # Extract video URL (optional)
-                    video_url = None
-                    if pd.notna(row.get("Video URL")):
-                        video_url = str(row["Video URL"]).strip()
-                        if video_url.lower() == 'nan' or not video_url:
-                            video_url = None
+                    # Extract tags (optional)
+                    tags = None
+                    if pd.notna(row.get("Tags")):
+                        tags = str(row["Tags"]).strip()
+                        if tags.lower() == 'nan' or not tags:
+                            tags = None
+
+                    # Parse boolean fields
+                    def parse_boolean(value, default: bool) -> bool:
+                        if pd.isna(value):
+                            return default
+                        str_value = str(value).strip().lower()
+                        if str_value in ('true', 'yes', '1', 'ya', 'aktif', 'active'):
+                            return True
+                        elif str_value in ('false', 'no', '0', 'tidak', 'inactive'):
+                            return False
+                        return default
+
+                    is_active = parse_boolean(row.get("Is Active"), True)
+                    is_featured = parse_boolean(row.get("Is Featured"), False)
+                    is_available = parse_boolean(row.get("Is Available"), True)
 
                     # Create item dict
                     item_data = {
@@ -127,13 +156,14 @@ class ExcelImporter:
                         "name": name,
                         "description": description,
                         "price": price,
+                        "currency": currency,
                         "category": category,
-                        "image_url": image_url,
-                        "video_url": video_url,
+                        "subcategory": subcategory,
+                        "tags": tags,
                         "display_order": idx,  # Auto-order by row index
-                        "is_active": True,
-                        "is_featured": False,
-                        "is_available": True,
+                        "is_active": is_active,
+                        "is_featured": is_featured,
+                        "is_available": is_available,
                     }
 
                     valid_items.append(item_data)
@@ -170,18 +200,18 @@ class ExcelExporter:
         data = {
             "Name": ["Nasi Goreng Special", "Mie Goreng Seafood", "Es Teh Manis"],
             "Price": [35000, 32000, 5000],
+            "Currency": ["IDR", "IDR", "IDR"],
             "Description": [
                 "Spicy fried rice with chicken and vegetables",
                 "Stir-fried noodles with seafood",
                 "Sweet iced tea",
             ],
             "Category": ["Main Course", "Main Course", "Beverages"],
-            "Image URL": [
-                "https://api.zhmhotels.online/content/nasi-goreng.jpg",
-                "",
-                "",
-            ],
-            "Video URL": ["", "", ""],
+            "Variant": ["Pedas", "Original", ""],
+            "Tags": ["spicy,chicken", "seafood", "cold,sweet"],
+            "Is Active": ["Yes", "Yes", "Yes"],
+            "Is Featured": ["Yes", "No", "No"],
+            "Is Available": ["Yes", "Yes", "No"],
         }
 
         # Create DataFrame
@@ -227,10 +257,14 @@ class ExcelExporter:
         data = {
             "Name": [],
             "Price": [],
+            "Currency": [],
             "Description": [],
             "Category": [],
-            "Image URL": [],
-            "Video URL": [],
+            "Variant": [],
+            "Tags": [],
+            "Is Active": [],
+            "Is Featured": [],
+            "Is Available": [],
         }
 
         for item in items:
@@ -238,10 +272,14 @@ class ExcelExporter:
             data["Price"].append(
                 float(item["price"]) if item.get("price") else ""
             )
+            data["Currency"].append(item.get("currency", "IDR"))
             data["Description"].append(item.get("description", ""))
             data["Category"].append(item.get("category", ""))
-            data["Image URL"].append(item.get("image_url", ""))
-            data["Video URL"].append(item.get("video_url", ""))
+            data["Variant"].append(item.get("subcategory", ""))
+            data["Tags"].append(item.get("tags", ""))
+            data["Is Active"].append("Yes" if item.get("is_active", True) else "No")
+            data["Is Featured"].append("Yes" if item.get("is_featured", False) else "No")
+            data["Is Available"].append("Yes" if item.get("is_available", True) else "No")
 
         # Create DataFrame
         df = pd.DataFrame(data)

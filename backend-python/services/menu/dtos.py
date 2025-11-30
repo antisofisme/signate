@@ -19,13 +19,17 @@ class MenuCreateDTO(BaseModel):
     # Display settings
     is_active: bool = True
     show_prices: bool = True
-    display_mode: str = Field(default='grid', pattern="^(grid|list|carousel)$")
+    display_mode: str = Field(default='grid', pattern="^(grid|list|carousel|minimalist)$")
     theme_color: Optional[str] = Field(None, pattern="^#[0-9A-Fa-f]{6}$")
 
     # Contact buttons
     whatsapp_number: Optional[str] = Field(None, max_length=20)
     phone_number: Optional[str] = Field(None, max_length=20)
     contact_label: Optional[str] = Field(None, max_length=100)
+    outlet_extension: Optional[str] = Field(None, max_length=50)
+
+    # Footer customization
+    footer_description: Optional[str] = None
 
     # Scheduling (future)
     available_days: Optional[str] = None
@@ -44,13 +48,17 @@ class MenuUpdateDTO(BaseModel):
     # Display settings
     is_active: Optional[bool] = None
     show_prices: Optional[bool] = None
-    display_mode: Optional[str] = Field(None, pattern="^(grid|list|carousel)$")
+    display_mode: Optional[str] = Field(None, pattern="^(grid|list|carousel|minimalist)$")
     theme_color: Optional[str] = Field(None, pattern="^#[0-9A-Fa-f]{6}$")
 
     # Contact buttons
     whatsapp_number: Optional[str] = Field(None, max_length=20)
     phone_number: Optional[str] = Field(None, max_length=20)
     contact_label: Optional[str] = Field(None, max_length=100)
+    outlet_extension: Optional[str] = Field(None, max_length=50)
+
+    # Footer customization
+    footer_description: Optional[str] = None
 
     # Scheduling
     available_days: Optional[str] = None
@@ -78,6 +86,10 @@ class MenuResponseDTO(BaseModel):
     whatsapp_number: Optional[str]
     phone_number: Optional[str]
     contact_label: Optional[str]
+    outlet_extension: Optional[str]
+
+    # Footer customization
+    footer_description: Optional[str]
 
     # Scheduling
     available_days: Optional[str]
@@ -117,6 +129,18 @@ class MenuListResponseDTO(BaseModel):
 # ==============================================================================
 # Menu Item DTOs
 # ==============================================================================
+
+class MenuItemMediaSimpleDTO(BaseModel):
+    """Simplified DTO for menu item media in list responses"""
+    id: int  # menu_media_id
+    url: Optional[str] = None
+    mime_type: Optional[str] = None
+    is_primary: bool = False
+    display_order: int = 0
+
+    class Config:
+        from_attributes = True
+
 
 class MenuItemCreateDTO(BaseModel):
     """DTO for creating a menu item"""
@@ -188,6 +212,9 @@ class MenuItemResponseDTO(BaseModel):
     image_url: Optional[str]
     video_url: Optional[str]
     content_id: Optional[int]
+
+    # Multiple media items
+    media: List[MenuItemMediaSimpleDTO] = []
 
     # Categorization
     category: Optional[str]
@@ -285,6 +312,10 @@ class PublicMenuResponseDTO(BaseModel):
     whatsapp_number: Optional[str]
     phone_number: Optional[str]
     contact_label: Optional[str]
+    outlet_extension: Optional[str]
+
+    # Footer customization
+    footer_description: Optional[str]
 
     # Multi-language
     translations: Optional[Dict[str, Any]]
@@ -365,12 +396,22 @@ class MenuCategoryCreateDTO(BaseModel):
     display_order: int = Field(default=0, ge=0)
     icon: Optional[str] = Field(None, max_length=50)
     translations: Optional[Dict[str, Any]] = None
+    menu_id: Optional[int] = None  # For per-menu categories
+
+
+class MenuCategoryUpdateDTO(BaseModel):
+    """DTO for updating a menu category"""
+    name: Optional[str] = Field(None, min_length=1, max_length=100)
+    display_order: Optional[int] = Field(None, ge=0)
+    icon: Optional[str] = Field(None, max_length=50)
+    translations: Optional[Dict[str, Any]] = None
 
 
 class MenuCategoryResponseDTO(BaseModel):
     """DTO for menu category response"""
     id: int
     organization_id: int
+    menu_id: Optional[int] = None  # For per-menu categories
     menu_type: str
     name: str
     display_order: int
@@ -388,6 +429,25 @@ class MenuCategoryListDTO(BaseModel):
     total: int
 
 
+class MenuCategoryReorderDTO(BaseModel):
+    """DTO for reordering categories"""
+    category_orders: List[Dict[str, int]] = Field(..., min_length=1)
+    # Example: [{"id": 1, "display_order": 0}, {"id": 2, "display_order": 1}]
+
+    @field_validator('category_orders')
+    @classmethod
+    def validate_category_orders(cls, v):
+        """Validate that each item has id and display_order"""
+        for item in v:
+            if 'id' not in item or 'display_order' not in item:
+                raise ValueError("Each item must have 'id' and 'display_order'")
+            if not isinstance(item['id'], int) or not isinstance(item['display_order'], int):
+                raise ValueError("'id' and 'display_order' must be integers")
+            if item['display_order'] < 0:
+                raise ValueError("'display_order' must be non-negative")
+        return v
+
+
 # ==============================================================================
 # Menu Media DTOs
 # ==============================================================================
@@ -401,6 +461,7 @@ class MenuMediaResponseDTO(BaseModel):
     file_path: str
     file_size: int
     mime_type: str
+    file_hash: Optional[str] = None  # SHA-256 hash for deduplication
     width: Optional[int]
     height: Optional[int]
     thumbnail_path: Optional[str]
@@ -408,11 +469,15 @@ class MenuMediaResponseDTO(BaseModel):
     alt_text: Optional[str]
     is_active: bool
     uploaded_by_id: Optional[int]
+    deleted_by_id: Optional[int]
     created_at: datetime
     updated_at: Optional[datetime]
+    deleted_at: Optional[datetime]
 
     # Computed field - full URL
     url: Optional[str] = None
+    # Flag for deduplication detection
+    is_duplicate: bool = False
 
     class Config:
         from_attributes = True
@@ -432,3 +497,75 @@ class MenuMediaUpdateDTO(BaseModel):
     title: Optional[str] = Field(None, max_length=200)
     alt_text: Optional[str] = Field(None, max_length=255)
     is_active: Optional[bool] = None
+
+
+# ==============================================================================
+# Menu Item Media DTOs (Multiple media per item)
+# ==============================================================================
+
+class MenuItemMediaAddDTO(BaseModel):
+    """DTO for adding media to a menu item"""
+    menu_media_id: int
+    display_order: int = Field(default=0, ge=0)
+    is_primary: bool = False
+
+
+class MenuItemMediaResponseDTO(BaseModel):
+    """DTO for menu item media response"""
+    id: int
+    menu_item_id: int
+    menu_media_id: int
+    display_order: int
+    is_primary: bool
+    created_at: datetime
+    # Include media details
+    media: Optional[MenuMediaResponseDTO] = None
+
+    class Config:
+        from_attributes = True
+
+
+class MenuItemMediaListDTO(BaseModel):
+    """DTO for menu item media list"""
+    items: List[MenuItemMediaResponseDTO]
+    total: int
+
+
+class MenuItemMediaBulkSetDTO(BaseModel):
+    """DTO for bulk setting media on a menu item"""
+    media_ids: List[int] = Field(..., min_length=0)  # Can be empty to clear
+    primary_media_id: Optional[int] = None
+
+
+class MenuItemMediaReorderDTO(BaseModel):
+    """DTO for reordering media on a menu item"""
+    media_orders: List[Dict[str, int]] = Field(..., min_length=1)
+    # Example: [{"menu_media_id": 1, "display_order": 0}, {"menu_media_id": 2, "display_order": 1}]
+
+    @field_validator('media_orders')
+    @classmethod
+    def validate_media_orders(cls, v):
+        """Validate that each item has menu_media_id and display_order"""
+        for item in v:
+            if 'menu_media_id' not in item or 'display_order' not in item:
+                raise ValueError("Each item must have 'menu_media_id' and 'display_order'")
+            if not isinstance(item['menu_media_id'], int) or not isinstance(item['display_order'], int):
+                raise ValueError("'menu_media_id' and 'display_order' must be integers")
+            if item['display_order'] < 0:
+                raise ValueError("'display_order' must be non-negative")
+        return v
+
+
+# ==============================================================================
+# PIN Verification DTOs
+# ==============================================================================
+
+class PINVerifyDTO(BaseModel):
+    """DTO for PIN verification request"""
+    pin: str = Field(..., min_length=6, max_length=8)
+
+
+class PINVerifyResponseDTO(BaseModel):
+    """DTO for PIN verification response"""
+    verified: bool
+    message: str

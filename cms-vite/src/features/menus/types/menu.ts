@@ -3,7 +3,7 @@
  */
 
 export type MenuType = 'restaurant' | 'laundry' | 'spa' | 'room_service' | 'other';
-export type DisplayMode = 'grid' | 'list' | 'carousel';
+export type DisplayMode = 'grid' | 'list' | 'carousel' | 'minimalist';
 export type DeviceType = 'mobile' | 'tablet' | 'desktop';
 export type ContactType = 'whatsapp' | 'phone';
 
@@ -24,6 +24,10 @@ export interface Menu {
   whatsapp_number?: string;
   phone_number?: string;
   contact_label?: string;
+  outlet_extension?: string;
+
+  // Footer customization
+  footer_description?: string;
 
   // Scheduling (future)
   available_days?: string;
@@ -49,6 +53,13 @@ export interface Menu {
   updated_at?: string;
 }
 
+export interface MenuItemMedia {
+  id: number;
+  url: string;
+  type: 'image' | 'video';
+  is_primary: boolean;
+}
+
 export interface MenuItem {
   id: number;
   menu_id: number;
@@ -64,6 +75,7 @@ export interface MenuItem {
   image_url?: string;
   video_url?: string;
   content_id?: number;
+  media?: MenuItemMedia[]; // Multiple media items
 
   // Categorization
   category?: string;
@@ -110,6 +122,8 @@ export interface MenuCreateRequest {
   whatsapp_number?: string;
   phone_number?: string;
   contact_label?: string;
+  outlet_extension?: string;
+  footer_description?: string;
   available_days?: string;
   available_hours?: string;
   translations?: Record<string, any>;
@@ -126,6 +140,8 @@ export interface MenuUpdateRequest {
   whatsapp_number?: string;
   phone_number?: string;
   contact_label?: string;
+  outlet_extension?: string;
+  footer_description?: string;
   available_days?: string;
   available_hours?: string;
   translations?: Record<string, any>;
@@ -216,6 +232,7 @@ export interface MenuMedia {
   file_path: string;
   file_size: number;
   mime_type: string;
+  file_hash?: string;  // SHA-256 hash for deduplication
   width?: number;
   height?: number;
   thumbnail_path?: string;
@@ -223,9 +240,48 @@ export interface MenuMedia {
   alt_text?: string;
   is_active: boolean;
   uploaded_by_id?: number;
+  deleted_by_id?: number;
   created_at: string;
   updated_at?: string;
+  deleted_at?: string;
   url?: string;
+  is_duplicate?: boolean;  // Flag when uploaded file is duplicate
+}
+
+// Menu Media Duplicate types
+export interface MenuMediaDuplicateUsage {
+  menu_items: Array<{
+    id: number;
+    name: string;
+    menu_id: number;
+    menu_name: string;
+  }>;
+  used_count: number;
+}
+
+export interface MenuMediaDuplicateItem {
+  id: number;
+  title: string;
+  original_filename: string;
+  created_at: string;
+  is_active: boolean;
+  usage: MenuMediaDuplicateUsage;
+}
+
+export interface MenuMediaDuplicateGroup {
+  file_hash: string;
+  file_size: number;
+  mime_type: string;
+  duplicate_count: number;
+  wasted_storage: number;
+  media: MenuMediaDuplicateItem[];
+}
+
+export interface MenuMediaDuplicatesResponse {
+  duplicates: MenuMediaDuplicateGroup[];
+  total_groups: number;
+  total_wasted_bytes: number;
+  total_wasted_readable: string;
 }
 
 export interface MenuMediaListResponse {
@@ -234,4 +290,91 @@ export interface MenuMediaListResponse {
   skip: number;
   limit: number;
   has_next: boolean;
+}
+
+export interface MenuMediaFilters {
+  skip?: number;
+  limit?: number;
+  search?: string;
+  mime_type?: string;
+  is_active?: boolean;
+}
+
+// Menu Category types (per-menu categories)
+export interface MenuCategory {
+  id: number;
+  organization_id: number;
+  menu_id?: number;
+  menu_type: MenuType;
+  name: string;
+  display_order: number;
+  icon?: string;
+  translations?: Record<string, any>;
+  created_at: string;
+}
+
+export interface MenuCategoryCreateRequest {
+  menu_type: MenuType;
+  name: string;
+  display_order?: number;
+  icon?: string;
+  translations?: Record<string, any>;
+  menu_id?: number;
+}
+
+export interface MenuCategoryUpdateRequest {
+  name?: string;
+  display_order?: number;
+  icon?: string;
+  translations?: Record<string, any>;
+}
+
+export interface MenuCategoryListResponse {
+  items: MenuCategory[];
+  total: number;
+}
+
+export interface MenuCategoryReorderRequest {
+  category_orders: Array<{ id: number; display_order: number }>;
+}
+
+// Menu Item Media types (multiple media per item)
+export interface MenuItemMedia {
+  id: number;
+  menu_item_id: number;
+  menu_media_id: number;
+  display_order: number;
+  is_primary: boolean;
+  created_at: string;
+  media?: MenuMedia;
+}
+
+export interface MenuItemMediaAddRequest {
+  menu_media_id: number;
+  display_order?: number;
+  is_primary?: boolean;
+}
+
+export interface MenuItemMediaListResponse {
+  items: MenuItemMedia[];
+  total: number;
+}
+
+export interface MenuItemMediaBulkSetRequest {
+  media_ids: number[];
+  primary_media_id?: number;
+}
+
+export interface MenuItemMediaReorderRequest {
+  media_orders: Array<{ menu_media_id: number; display_order: number }>;
+}
+
+// PIN Verification types
+export interface PINVerifyRequest {
+  pin: string;
+}
+
+export interface PINVerifyResponse {
+  verified: boolean;
+  message: string;
 }

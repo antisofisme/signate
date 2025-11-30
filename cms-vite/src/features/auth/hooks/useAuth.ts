@@ -10,7 +10,7 @@ import { useNavigate } from 'react-router-dom';
 import { authApi } from '../api/authApi';
 import { useAuthStore } from '@/lib/stores/authStore';
 import { handleAPIError } from '@/lib/errors/errorHandler';
-import { toast } from '@/lib/notifications/toast';
+import { toast } from 'sonner';
 import { logger } from '@/shared/utils/logger';
 import { getDeviceInfo } from '@/shared/utils/networkUtils';
 import type {

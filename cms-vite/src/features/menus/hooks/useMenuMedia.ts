@@ -7,23 +7,51 @@ import { toast } from 'sonner';
 import { menuApi } from '../api/menuApi';
 import { getApiErrorMessage } from '@/shared/utils/types';
 import { useSelectedOrgId } from '@/shared/hooks/useOrgQuery';
+import { useAuthStore } from '@/lib/stores/authStore';
+import type { MenuMediaFilters } from '../types/menu';
 
 // Query keys
 export const menuMediaKeys = {
   all: ['menu-media'] as const,
-  list: (orgId?: number) => [...menuMediaKeys.all, 'list', orgId] as const,
+  lists: (orgId?: number) => [...menuMediaKeys.all, 'list', orgId] as const,
+  list: (orgId?: number, filters?: MenuMediaFilters) => [...menuMediaKeys.lists(orgId), filters] as const,
+  deletedLists: (orgId?: number) => [...menuMediaKeys.all, 'deleted', orgId] as const,
+  deleted: (orgId?: number, filters?: MenuMediaFilters) => [...menuMediaKeys.deletedLists(orgId), filters] as const,
   detail: (id: number) => [...menuMediaKeys.all, 'detail', id] as const,
+  duplicates: (orgId?: number) => [...menuMediaKeys.all, 'duplicates', orgId] as const,
 };
 
 /**
- * Hook to list menu media
+ * Hook to list menu media with filters and pagination
  */
-export const useMenuMedia = () => {
+export const useMenuMediaList = (filters?: MenuMediaFilters) => {
   const orgId = useSelectedOrgId();
+  const hasHydrated = useAuthStore((state) => state._hasHydrated);
 
   return useQuery({
-    queryKey: menuMediaKeys.list(orgId),
-    queryFn: () => menuApi.listMedia(),
+    queryKey: menuMediaKeys.list(orgId, filters),
+    queryFn: () => menuApi.listMedia(filters),
+    staleTime: 0,
+    gcTime: 0,
+    refetchOnMount: true,
+    enabled: hasHydrated && !!orgId,
+  });
+};
+
+/**
+ * Hook to list deleted menu media (Recycle Bin)
+ */
+export const useDeletedMenuMediaList = (filters?: MenuMediaFilters) => {
+  const orgId = useSelectedOrgId();
+  const hasHydrated = useAuthStore((state) => state._hasHydrated);
+
+  return useQuery({
+    queryKey: menuMediaKeys.deleted(orgId, filters),
+    queryFn: () => menuApi.listDeletedMedia(filters),
+    staleTime: 0,
+    gcTime: 0,
+    refetchOnMount: true,
+    enabled: hasHydrated && !!orgId,
   });
 };
 
@@ -34,7 +62,8 @@ export const useUploadMenuMedia = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (file: File) => menuApi.uploadMedia(file),
+    mutationFn: ({ file, title, altText }: { file: File; title?: string; altText?: string }) =>
+      menuApi.uploadMedia(file, title, altText),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: menuMediaKeys.all });
       toast.success('Image uploaded successfully');
@@ -65,7 +94,7 @@ export const useUpdateMenuMedia = () => {
 };
 
 /**
- * Hook to delete menu media
+ * Hook to delete menu media (soft delete - move to recycle bin)
  */
 export const useDeleteMenuMedia = () => {
   const queryClient = useQueryClient();
@@ -74,10 +103,82 @@ export const useDeleteMenuMedia = () => {
     mutationFn: (id: number) => menuApi.deleteMedia(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: menuMediaKeys.all });
-      toast.success('Image deleted successfully');
+      toast.success('Image moved to recycle bin');
     },
     onError: (error: unknown) => {
       toast.error(getApiErrorMessage(error, 'Failed to delete image'));
     },
   });
 };
+
+/**
+ * Hook to restore menu media from recycle bin
+ */
+export const useRestoreMenuMedia = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (id: number) => menuApi.restoreMedia(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: menuMediaKeys.all });
+      toast.success('Image restored successfully');
+    },
+    onError: (error: unknown) => {
+      toast.error(getApiErrorMessage(error, 'Failed to restore image'));
+    },
+  });
+};
+
+/**
+ * Hook to permanently delete menu media
+ */
+export const usePermanentDeleteMenuMedia = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (id: number) => menuApi.permanentDeleteMedia(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: menuMediaKeys.all });
+      toast.success('Image permanently deleted');
+    },
+    onError: (error: unknown) => {
+      toast.error(getApiErrorMessage(error, 'Failed to permanently delete image'));
+    },
+  });
+};
+
+/**
+ * Hook to bulk permanent delete menu media
+ */
+export const useBulkPermanentDeleteMenuMedia = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (ids: number[]) => menuApi.bulkPermanentDeleteMedia(ids),
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: menuMediaKeys.all });
+      toast.success(`${data.deleted_count} images permanently deleted`);
+    },
+    onError: (error: unknown) => {
+      toast.error(getApiErrorMessage(error, 'Failed to delete images'));
+    },
+  });
+};
+
+/**
+ * Hook to get duplicate menu media (files with same hash)
+ */
+export const useDuplicateMenuMedia = () => {
+  const orgId = useSelectedOrgId();
+  const hasHydrated = useAuthStore((state) => state._hasHydrated);
+
+  return useQuery({
+    queryKey: menuMediaKeys.duplicates(orgId),
+    queryFn: () => menuApi.getDuplicateMedia(),
+    staleTime: 30000, // 30 seconds
+    enabled: hasHydrated && !!orgId,
+  });
+};
+
+// Legacy hook for backward compatibility
+export const useMenuMedia = useMenuMediaList;

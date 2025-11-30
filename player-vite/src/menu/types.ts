@@ -8,12 +8,24 @@ export interface PublicMenu {
   description: string | null;
   menu_type: 'restaurant' | 'laundry' | 'spa' | 'room_service' | 'other';
   show_prices: boolean;
-  display_mode: 'grid' | 'list' | 'carousel';
+  display_mode: 'grid' | 'list' | 'carousel' | 'minimalist';
   theme_color: string | null;
   whatsapp_number: string | null;
   phone_number: string | null;
   contact_label: string | null;
+  outlet_extension: string | null;
+  footer_description: string | null;
   translations: Record<string, unknown> | null;
+}
+
+export interface MenuItemMedia {
+  id: number;
+  url: string;
+  thumbnail_url: string | null;
+  type: 'image' | 'video';
+  title: string | null;
+  is_primary: boolean;
+  display_order: number;
 }
 
 export interface PublicMenuItem {
@@ -30,6 +42,7 @@ export interface PublicMenuItem {
   is_featured: boolean;
   is_available: boolean;
   translations: Record<string, unknown> | null;
+  media?: MenuItemMedia[];  // Multiple media for carousel
 }
 
 export interface PublicMenuResponse {
