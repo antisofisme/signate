@@ -6,6 +6,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from '@/lib/notifications/toast';
 import { handleAPIError } from '@/lib/errors/errorHandler';
 import { useSelectedOrgId, contentKeys as sharedContentKeys } from '@/shared/hooks';
+import { useAuthStore } from '@/lib/stores/authStore';
 import type { ContentFilters, ContentUploadData } from '../types/content';
 import {
   getContentList,
@@ -34,9 +35,10 @@ export const contentKeys = sharedContentKeys;
  */
 export const useContentList = (filters?: ContentFilters) => {
   const orgId = useSelectedOrgId();
+  const hasHydrated = useAuthStore((state) => state._hasHydrated);
 
   // Debug log to track orgId and query status
-  console.log('[useContentList] orgId:', orgId, 'enabled:', !!orgId, 'filters:', filters);
+  console.log('[useContentList] orgId:', orgId, 'hasHydrated:', hasHydrated, 'enabled:', hasHydrated && !!orgId);
 
   return useQuery({
     queryKey: contentKeys.list(orgId, filters),
@@ -45,7 +47,9 @@ export const useContentList = (filters?: ContentFilters) => {
       return getContentList(filters);
     },
     staleTime: 30000, // 30 seconds
-    enabled: !!orgId, // Only fetch when orgId is available (after hydration)
+    // CRITICAL: Wait for BOTH hydration complete AND orgId available
+    // This prevents query from running with stale/undefined orgId
+    enabled: hasHydrated && !!orgId,
     // Note: Backend handles org filtering via JWT or X-Organization-Id header
   });
 };
@@ -364,12 +368,13 @@ export const useContentStats = () => {
  */
 export const useDeletedContentList = (filters?: ContentFilters) => {
   const orgId = useSelectedOrgId();
+  const hasHydrated = useAuthStore((state) => state._hasHydrated);
 
   return useQuery({
     queryKey: contentKeys.deleted(orgId, filters),
     queryFn: () => getDeletedContentList(filters),
     staleTime: 30000, // 30 seconds
-    enabled: !!orgId, // Only fetch when orgId is available
+    enabled: hasHydrated && !!orgId, // Wait for hydration AND orgId
   });
 };
 
