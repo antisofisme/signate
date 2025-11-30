@@ -128,9 +128,14 @@ export const SchedulesPage = () => {
 
   const confirmDelete = async () => {
     if (!selectedSchedule) return;
-    await deleteMutation.mutateAsync(selectedSchedule.id);
-    setShowDeleteConfirm(false);
-    setSelectedSchedule(null);
+    try {
+      await deleteMutation.mutateAsync(selectedSchedule.id);
+      setShowDeleteConfirm(false);
+      setSelectedSchedule(null);
+    } catch (error) {
+      // Error is already handled by the mutation's onError
+      console.error('Delete failed:', error);
+    }
   };
 
   // Convert occurrences to calendar events
@@ -264,7 +269,7 @@ export const SchedulesPage = () => {
           description={t('schedules.deleteModal.confirmMessage') + '\n\n' +
             `${t('schedules.labels.name')}: ${selectedSchedule.name}\n` +
             `${t('schedules.labels.type')}: ${selectedSchedule.recurrence_type}\n` +
-            `${t('schedules.labels.devices')}: ${selectedSchedule.device_ids.length} ${t(selectedSchedule.device_ids.length !== 1 ? 'schedules.devices' : 'schedules.device')}`
+            `${t('schedules.labels.playlist')}: ${selectedSchedule.playlist_name || '-'}`
           }
           confirmLabel={t('schedules.deleteModal.deleteButton')}
           cancelLabel={t('schedules.deleteModal.cancel')}

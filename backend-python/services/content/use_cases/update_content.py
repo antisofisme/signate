@@ -43,15 +43,11 @@ class UpdateContentUseCase:
             ValueError: If content not found or access denied
         """
 
-        # Get existing content
-        content = self.content_repo.find_by_id(content_id)
+        # Get existing content (with organization isolation)
+        content = self.content_repo.find_by_id(content_id, organization_id)
 
         if not content:
             raise ValueError(f"Content with ID {content_id} not found")
-
-        # Check organization ownership
-        if content.organization_id != organization_id:
-            raise ValueError("Access denied: Content belongs to different organization")
 
         # Update only provided fields
         if title is not None:

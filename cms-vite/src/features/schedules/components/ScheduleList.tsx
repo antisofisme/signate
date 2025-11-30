@@ -5,16 +5,46 @@
 
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { CheckCircle, XCircle, Clock, Calendar, ClipboardList, Smartphone, Eye, Pause, X, Play, Edit, Trash2 } from 'lucide-react'
+import { CheckCircle, XCircle, Clock, Calendar, ClipboardList, Eye, Pause, X, Play, Edit, Trash2 } from 'lucide-react'
 import { TableSkeleton, EmptyState } from '@/shared/components'
 import {
   PRIORITY_LEVELS,
   RECURRENCE_TYPES,
+  getScheduleStatus,
   type Schedule,
   type ScheduleStatus,
   type PriorityLevel,
   type RecurrenceType,
+  type PriorityInfo,
+  type RecurrenceTypeInfo,
 } from '../types/schedule.types'
+
+// Helper to convert numeric priority to PriorityLevel key
+const getPriorityInfo = (priority: PriorityLevel | number): PriorityInfo => {
+  if (typeof priority === 'string' && PRIORITY_LEVELS[priority]) {
+    return PRIORITY_LEVELS[priority]
+  }
+  // Convert number to string key
+  if (typeof priority === 'number') {
+    if (priority <= 10) return PRIORITY_LEVELS.low
+    if (priority <= 50) return PRIORITY_LEVELS.normal
+    if (priority <= 75) return PRIORITY_LEVELS.high
+    return PRIORITY_LEVELS.critical
+  }
+  return PRIORITY_LEVELS.normal // fallback
+}
+
+// Helper to get recurrence type info with fallback
+const getRecurrenceInfo = (recurrenceType: RecurrenceType | string): RecurrenceTypeInfo => {
+  if (recurrenceType && RECURRENCE_TYPES[recurrenceType as RecurrenceType]) {
+    return RECURRENCE_TYPES[recurrenceType as RecurrenceType]
+  }
+  // Map 'yearly' to 'custom' if needed
+  if (recurrenceType === 'yearly') {
+    return RECURRENCE_TYPES.custom
+  }
+  return RECURRENCE_TYPES.once // fallback
+}
 import { formatDateTime } from '@/shared/utils/formatters'
 import { renderIcon } from '@/shared/utils/iconHelper'
 
@@ -51,11 +81,13 @@ export const ScheduleList = ({
 
   // Filter schedules
   const filteredSchedules = schedules.filter((schedule) => {
-    const matchesSearch = 
+    const matchesSearch =
       schedule.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       (schedule.playlist_name?.toLowerCase().includes(searchQuery.toLowerCase()))
 
-    const matchesStatus = filterStatus === 'all' || schedule.status === filterStatus
+    // Derive status from is_active and dates
+    const derivedStatus = getScheduleStatus(schedule)
+    const matchesStatus = filterStatus === 'all' || derivedStatus === filterStatus
     const matchesPriority = filterPriority === 'all' || schedule.priority === filterPriority
     const matchesRecurrence = filterRecurrence === 'all' || schedule.recurrence_type === filterRecurrence
 
@@ -144,8 +176,10 @@ export const ScheduleList = ({
       {/* Schedule cards */}
       <div className="space-y-4">
         {filteredSchedules.map((schedule) => {
-          const priority = PRIORITY_LEVELS[schedule.priority]
-          const recurrenceType = RECURRENCE_TYPES[schedule.recurrence_type]
+          const priority = getPriorityInfo(schedule.priority)
+          const recurrenceType = getRecurrenceInfo(schedule.recurrence_type)
+          // Derive status from is_active and dates
+          const status = getScheduleStatus(schedule)
 
           return (
             <div
@@ -170,33 +204,33 @@ export const ScheduleList = ({
 
                     {/* Status badge */}
                     <div className={`px-3 py-1 rounded-full text-sm font-medium flex items-center gap-1.5 ${
-                      schedule.status === 'active'
+                      status === 'active'
                         ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300'
-                        : schedule.status === 'inactive'
+                        : status === 'inactive'
                         ? 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
-                        : schedule.status === 'paused'
+                        : status === 'paused'
                         ? 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300'
                         : 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300'
                     }`}>
-                      {schedule.status === 'active' && (
+                      {status === 'active' && (
                         <>
                           <CheckCircle className="w-4 h-4" />
                           <span>{t('schedules.status.active')}</span>
                         </>
                       )}
-                      {schedule.status === 'inactive' && (
+                      {status === 'inactive' && (
                         <>
                           <XCircle className="w-4 h-4" />
                           <span>{t('schedules.status.inactive')}</span>
                         </>
                       )}
-                      {schedule.status === 'paused' && (
+                      {status === 'paused' && (
                         <>
                           <Clock className="w-4 h-4" />
                           <span>{t('schedules.status.paused')}</span>
                         </>
                       )}
-                      {schedule.status === 'expired' && (
+                      {status === 'expired' && (
                         <>
                           <Clock className="w-4 h-4" />
                           <span>{t('schedules.status.expired')}</span>
@@ -235,25 +269,13 @@ export const ScheduleList = ({
                       </div>
                     )}
 
-                    {/* Devices count */}
-                    <div className="inline-flex items-center gap-1 px-3 py-1 bg-cyan-100 dark:bg-cyan-900/30 text-cyan-700 dark:text-cyan-300 rounded-full text-sm">
-                      <Smartphone className="w-4 h-4" />
-                      <span>
-                        {schedule.device_ids.length}{' '}
-                        {t(schedule.device_ids.length !== 1 ? 'schedules.devices' : 'schedules.device')}
-                      </span>
-                    </div>
                   </div>
 
                   {/* Schedule details */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm text-gray-600 dark:text-gray-400">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm text-gray-600 dark:text-gray-400">
                     <div>
                       <span className="font-medium">{t('schedules.labels.time')}:</span>{' '}
                       {schedule.start_time} - {schedule.end_time}
-                    </div>
-                    <div>
-                      <span className="font-medium">{t('schedules.labels.timezone')}:</span>{' '}
-                      {schedule.timezone}
                     </div>
                     <div>
                       <span className="font-medium">{t('schedules.labels.start')}:</span>{' '}
@@ -313,7 +335,7 @@ export const ScheduleList = ({
                     {t('schedules.actions.view')}
                   </button>
 
-                  {canUpdate && schedule.status === 'active' && (
+                  {canUpdate && status === 'active' && (
                     <>
                       <button
                         onClick={() => onPause(schedule)}
@@ -334,7 +356,7 @@ export const ScheduleList = ({
                     </>
                   )}
 
-                  {canUpdate && schedule.status === 'inactive' && (
+                  {canUpdate && status === 'inactive' && (
                     <button
                       onClick={() => onActivate(schedule)}
                       className="px-3 py-1.5 text-sm bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded hover:bg-green-100 dark:hover:bg-green-900/50 flex items-center gap-1"
@@ -345,7 +367,7 @@ export const ScheduleList = ({
                     </button>
                   )}
 
-                  {canUpdate && schedule.status === 'paused' && (
+                  {canUpdate && status === 'paused' && (
                     <button
                       onClick={() => onActivate(schedule)}
                       className="px-3 py-1.5 text-sm bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded hover:bg-green-100 dark:hover:bg-green-900/50 flex items-center gap-1"
@@ -356,7 +378,7 @@ export const ScheduleList = ({
                     </button>
                   )}
 
-                  {canUpdate && schedule.status !== 'expired' && (
+                  {canUpdate && status !== 'expired' && (
                     <button
                       onClick={() => onEdit(schedule)}
                       className="px-3 py-1.5 text-sm bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded hover:bg-blue-100 dark:hover:bg-blue-900/50 flex items-center gap-1"

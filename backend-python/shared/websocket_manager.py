@@ -30,6 +30,8 @@ class WebSocketEventType(Enum):
     CONTENT_UPDATED = "content.updated"
     CONTENT_DELETED = "content.deleted"
     CONTENT_TRANSCODED = "content.transcoded"
+    CONTENT_TRANSCODING_PROGRESS = "content.transcoding_progress"  # Real-time progress
+    CONTENT_TRANSCODING_FAILED = "content.transcoding_failed"
 
     # Playlist events
     PLAYLIST_CREATED = "playlist.created"

@@ -109,6 +109,13 @@ export const API_ENDPOINTS = {
     BULK_DELETE: '/api/v1/contents/bulk-delete',
     BULK_UPDATE: '/api/v1/contents/bulk-update',
     STATS: '/api/v1/contents/stats',
+    // Deleted content (Recycle Bin)
+    LIST_DELETED: '/api/v1/contents/deleted',
+    RESTORE: (id: number) => `/api/v1/contents/${id}/restore`,
+    PERMANENT_DELETE: (id: number) => `/api/v1/contents/${id}/permanent`,
+
+    // Duplicate detection
+    DUPLICATES: '/api/v1/contents/duplicates',
   },
 
   // ========================================

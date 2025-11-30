@@ -3,9 +3,12 @@ Schedule DTOs
 Request and Response models for schedule endpoints
 """
 
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any, Literal
 from pydantic import BaseModel, Field
 from datetime import datetime, date, time
+
+# Schedule mode type
+ScheduleMode = Literal["override", "rotate"]
 
 
 # ============================================================================
@@ -49,6 +52,7 @@ class CreateScheduleRequest(BaseModel):
     exception_dates: Optional[List[str]] = Field(None, description="Exception dates (YYYY-MM-DD)")
 
     priority: int = Field(0, ge=0, le=100, description="Priority (0-100, higher wins)")
+    mode: ScheduleMode = Field("rotate", description="Playback mode: 'override' (exclusive) or 'rotate' (join rotation)")
     is_active: bool = Field(True, description="Active status")
 
     class Config:
@@ -69,6 +73,7 @@ class CreateScheduleRequest(BaseModel):
                 },
                 "exception_dates": ["2025-01-15", "2025-02-20"],
                 "priority": 10,
+                "mode": "rotate",
                 "is_active": True
             }
         }
@@ -91,6 +96,7 @@ class UpdateScheduleRequest(BaseModel):
     exception_dates: Optional[List[str]] = None
 
     priority: Optional[int] = Field(None, ge=0, le=100)
+    mode: Optional[ScheduleMode] = Field(None, description="Playback mode: 'override' or 'rotate'")
     is_active: Optional[bool] = None
 
 
@@ -113,6 +119,7 @@ class ScheduleResponse(BaseModel):
     exception_dates: Optional[List[str]] = Field(None, validation_alias="exceptions")  # Map from DB column
 
     priority: int
+    mode: ScheduleMode = Field(default="rotate", description="Playback mode")
     is_active: bool
 
     created_at: datetime

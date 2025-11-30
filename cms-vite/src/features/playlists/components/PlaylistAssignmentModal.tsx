@@ -17,7 +17,7 @@
 
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Monitor, Tag, Plus, Trash2 } from 'lucide-react';
+import { Monitor, Tag, Plus, Trash2, Loader2 } from 'lucide-react';
 import { Modal } from '@/shared/components';
 import { toast } from 'sonner';
 import {
@@ -27,6 +27,8 @@ import {
   useUnassignPlaylistFromDevices,
   useUnassignPlaylistFromTags,
 } from '../hooks/usePlaylist';
+import { useDeviceList } from '@/features/devices/hooks/useDevices';
+import { useTags } from '@/features/tags/hooks/useTags';
 
 interface PlaylistAssignmentModalProps {
   playlistId: number;
@@ -52,6 +54,10 @@ export default function PlaylistAssignmentModal({
 
   // Fetch assignments
   const { data: assignments, isLoading } = usePlaylistAssignments(playlistId, isOpen);
+
+  // Fetch available devices and tags from API (filtered by organization via backend)
+  const { data: devicesData, isLoading: isLoadingDevices } = useDeviceList({ limit: 1000 });
+  const { data: tagsData, isLoading: isLoadingTags } = useTags();
 
   // Mutations
   const assignDevices = useAssignPlaylistToDevices();
@@ -123,27 +129,20 @@ export default function PlaylistAssignmentModal({
     }
   };
 
-  // Mock available devices/tags (replace with actual API calls)
-  const mockAvailableDevices = [
-    { id: 1, device_name: 'Lobby Display', status: 'online' },
-    { id: 2, device_name: 'Reception TV', status: 'online' },
-    { id: 3, device_name: 'Conference Room', status: 'offline' },
-  ];
-
-  const mockAvailableTags = [
-    { id: 1, tag_name: 'Lobby', color: '#3B82F6' },
-    { id: 2, tag_name: 'Marketing', color: '#10B981' },
-    { id: 3, tag_name: 'Corporate', color: '#F59E0B' },
-  ];
+  // Get real data from API (already filtered by organization via backend)
+  const allDevices = devicesData?.items || [];
+  // Tags API returns array directly, not { items: [] }
+  const allTags = tagsData || [];
 
   const assignedDevices = assignments?.devices || [];
   const assignedTags = assignments?.tags || [];
 
-  const availableDevices = mockAvailableDevices.filter(
+  // Filter out already assigned devices/tags
+  const availableDevices = allDevices.filter(
     (device) => !assignedDevices.some((d) => d.device_id === device.id)
   );
 
-  const availableTags = mockAvailableTags.filter(
+  const availableTags = allTags.filter(
     (tag) => !assignedTags.some((t) => t.id === tag.id)
   );
 
@@ -152,6 +151,8 @@ export default function PlaylistAssignmentModal({
     assignTags.isPending ||
     unassignDevices.isPending ||
     unassignTags.isPending;
+
+  const isLoadingData = isLoading || isLoadingDevices || isLoadingTags;
 
   // Custom header with subtitle
   const customHeader = (
@@ -220,8 +221,9 @@ export default function PlaylistAssignmentModal({
 
         {/* Tab Content */}
         <div className="p-6">
-          {isLoading ? (
-            <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+          {isLoadingData ? (
+            <div className="flex items-center justify-center py-8 text-gray-500 dark:text-gray-400">
+              <Loader2 className="w-5 h-5 animate-spin mr-2" />
               {t('playlists.assignmentModal.loading')}
             </div>
           ) : activeTab === 'devices' ? (
@@ -258,13 +260,14 @@ export default function PlaylistAssignmentModal({
                             }}
                             className="w-4 h-4 text-blue-600 rounded"
                           />
-                          <Monitor className="w-4 h-4 text-gray-400" />
+                          <Monitor className={`w-4 h-4 ${device.is_online ? 'text-green-500' : 'text-gray-400'}`} />
                           <div className="flex-1">
                             <p className="font-medium text-gray-900 dark:text-white">
                               {device.device_name}
                             </p>
                             <p className="text-sm text-gray-500 dark:text-gray-400">
-                              {t('playlists.assignmentModal.devices.status', { status: device.status })}
+                              {device.is_online ? 'Online' : 'Offline'} • {device.device_type}
+                              {device.room_number && ` • ${device.room_number}`}
                             </p>
                           </div>
                         </label>
@@ -390,12 +393,17 @@ export default function PlaylistAssignmentModal({
                           />
                           <div
                             className="w-4 h-4 rounded-full flex-shrink-0"
-                            style={{ backgroundColor: tag.color }}
+                            style={{ backgroundColor: tag.color || '#3B82F6' }}
                           />
                           <div className="flex-1">
                             <p className="font-medium text-gray-900 dark:text-white">
                               {tag.tag_name}
                             </p>
+                            {tag.description && (
+                              <p className="text-sm text-gray-500 dark:text-gray-400">
+                                {tag.description}
+                              </p>
+                            )}
                           </div>
                         </label>
                       ))

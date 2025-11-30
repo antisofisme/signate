@@ -52,6 +52,7 @@ from services.schedule.routes import router as schedule_router
 from services.weather.routes import router as weather_router
 from services.menu.routes import router as menu_router
 from services.menu.public_routes import router as public_menu_router
+from services.menu.menu_media_routes import router as menu_media_router
 from services.dashboard.routes import router as dashboard_router
 from shared.websocket_routes import router as websocket_router
 
@@ -301,6 +302,7 @@ app.include_router(schedule_router, prefix=API_V1, tags=["Schedule System"])
 app.include_router(weather_router, prefix=API_V1, tags=["Weather Service"])
 app.include_router(menu_router, tags=["Digital Menu"])  # Routes already include /api/v1
 app.include_router(public_menu_router, tags=["Public Menu Viewer"])  # Routes already include /api/v1/public
+app.include_router(menu_media_router, tags=["Menu Media"])  # Routes already include /api/v1
 app.include_router(websocket_router, prefix="/api", tags=["WebSocket"])
 
 

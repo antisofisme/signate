@@ -12,6 +12,7 @@ import RecurrenceBuilder from './RecurrenceBuilder'
 import ConflictDetector from './ConflictDetector'
 import {
   PRIORITY_LEVELS,
+  SCHEDULE_MODES,
   TIMEZONES,
   type Schedule,
   type CreateScheduleRequest,
@@ -19,7 +20,26 @@ import {
   type RecurrenceType,
   type RecurrencePattern,
   type PriorityLevel,
+  type ScheduleMode,
 } from '../types/schedule.types'
+
+// Helper to convert numeric priority to PriorityLevel
+const numberToPriority = (priority: PriorityLevel | number): PriorityLevel => {
+  if (typeof priority === 'string') return priority
+  if (priority <= 10) return 'low'
+  if (priority <= 50) return 'normal'
+  if (priority <= 75) return 'high'
+  return 'critical'
+}
+
+// Helper to map backend recurrence type to frontend
+const mapRecurrenceType = (type: string): RecurrenceType => {
+  if (type === 'yearly') return 'custom'
+  if (['once', 'daily', 'weekly', 'monthly', 'custom'].includes(type)) {
+    return type as RecurrenceType
+  }
+  return 'once'
+}
 import { apiClient } from '@/lib/api/client'
 import { API_ENDPOINTS } from '@/lib/api/endpoints'
 import { renderIcon } from '@/shared/utils/iconHelper'
@@ -29,13 +49,13 @@ const scheduleFormSchema = z.object({
   name: z.string().min(1, 'Schedule name is required').max(255),
   description: z.string().optional(),
   playlist_id: z.number().min(1, 'Please select a playlist'),
-  device_ids: z.array(z.number()).min(1, 'Please select at least one device'),
   start_date: z.string().min(1, 'Start date is required'),
   end_date: z.string().optional(),
   start_time: z.string().min(1, 'Start time is required'),
   end_time: z.string().min(1, 'End time is required'),
   recurrence_type: z.enum(['once', 'daily', 'weekly', 'monthly', 'custom']),
   priority: z.enum(['low', 'normal', 'high', 'critical']),
+  mode: z.enum(['override', 'rotate']),
   timezone: z.string().min(1, 'Timezone is required'),
 })
 
@@ -54,12 +74,6 @@ interface Playlist {
   name: string
 }
 
-interface Device {
-  id: number
-  name: string
-  status: string
-}
-
 export const ScheduleForm = ({
   schedule,
   onSubmit,
@@ -68,7 +82,6 @@ export const ScheduleForm = ({
   showButtons = true,
 }: ScheduleFormProps) => {
   const [playlists, setPlaylists] = useState<Playlist[]>([])
-  const [devices, setDevices] = useState<Device[]>([])
   const [loadingData, setLoadingData] = useState(true)
   const [recurrencePattern, setRecurrencePattern] = useState<RecurrencePattern>(
     schedule?.recurrence_pattern || {}
@@ -93,26 +106,26 @@ export const ScheduleForm = ({
           name: schedule.name,
           description: schedule.description,
           playlist_id: schedule.playlist_id,
-          device_ids: schedule.device_ids,
           start_date: schedule.start_date,
           end_date: schedule.end_date,
           start_time: schedule.start_time,
           end_time: schedule.end_time,
-          recurrence_type: schedule.recurrence_type,
-          priority: schedule.priority,
-          timezone: schedule.timezone,
+          recurrence_type: mapRecurrenceType(schedule.recurrence_type as string),
+          priority: numberToPriority(schedule.priority),
+          mode: schedule.mode || 'rotate',
+          timezone: schedule.timezone || 'Asia/Jakarta',
         }
       : {
           name: '',
           description: '',
           playlist_id: 0,
-          device_ids: [],
           start_date: new Date().toISOString().split('T')[0],
           end_date: '',
           start_time: '09:00',
           end_time: '18:00',
           recurrence_type: 'once',
           priority: 'normal',
+          mode: 'rotate',
           timezone: 'Asia/Jakarta',
         },
   })
@@ -120,22 +133,23 @@ export const ScheduleForm = ({
   const recurrenceType = watch('recurrence_type')
   const startDate = watch('start_date')
   const endDate = watch('end_date')
-  const selectedDeviceIds = watch('device_ids')
 
-  // Fetch playlists and devices
+  // Fetch playlists
   useEffect(() => {
     const fetchData = async () => {
       setLoadingData(true)
       try {
-        const [playlistsRes, devicesRes] = await Promise.all([
-          apiClient.get(API_ENDPOINTS.PLAYLISTS.LIST),
-          apiClient.get(API_ENDPOINTS.DEVICES.LIST),
-        ])
+        const playlistsRes = await apiClient.get(API_ENDPOINTS.PLAYLISTS.LIST)
 
-        setPlaylists(playlistsRes.data.playlists || [])
-        setDevices(devicesRes.data.devices || [])
+        // Handle both wrapped and unwrapped API responses
+        const playlistData = playlistsRes.data?.data?.items || playlistsRes.data?.items || playlistsRes.data || []
+
+        setPlaylists(Array.isArray(playlistData) ? playlistData.map((p: any) => ({
+          id: p.id,
+          name: p.name
+        })) : [])
       } catch (error) {
-        console.error('Failed to fetch data:', error)
+        console.error('Failed to fetch playlists:', error)
       } finally {
         setLoadingData(false)
       }
@@ -166,36 +180,66 @@ export const ScheduleForm = ({
     return mapping[priority] ?? 50
   }
 
+  // Format time to HH:MM:SS if only HH:MM
+  const formatTime = (time: string): string => {
+    if (time && time.length === 5) {
+      return `${time}:00`
+    }
+    return time
+  }
+
   const handleFormSubmit = (data: ScheduleFormData) => {
+    // Map 'custom' to 'yearly' for backend compatibility
+    const mappedRecurrenceType = data.recurrence_type === 'custom' ? 'yearly' : data.recurrence_type
+
+    // Build form data without timezone (backend doesn't support it yet)
     const formData = {
-      ...data,
-      priority: priorityToNumber(data.priority), // Convert to number for backend
-      recurrence_pattern: recurrenceType === 'once' ? undefined : recurrencePattern,
+      name: data.name,
+      description: data.description,
+      playlist_id: data.playlist_id,
+      start_date: data.start_date,
+      end_date: data.end_date || undefined,
+      start_time: formatTime(data.start_time),
+      end_time: formatTime(data.end_time),
+      recurrence_type: mappedRecurrenceType,
+      recurrence_pattern: mappedRecurrenceType === 'once' ? undefined : recurrencePattern,
       exception_dates: exceptionDates.length > 0 ? exceptionDates : undefined,
+      priority: priorityToNumber(data.priority), // Convert to number for backend
+      mode: data.mode,
+      is_active: true, // Default to active
     }
 
     if (isEdit && schedule) {
       // For edit, only send changed fields
       const updateData: UpdateScheduleRequest = {}
 
-      // Compare each field properly (including arrays)
+      // Compare each field properly
       if (!isEqual(formData.name, schedule.name)) updateData.name = formData.name
       if (!isEqual(formData.description, schedule.description)) updateData.description = formData.description
-      if (!isEqual(formData.device_ids, schedule.device_ids)) updateData.device_ids = formData.device_ids
       if (!isEqual(formData.start_date, schedule.start_date)) updateData.start_date = formData.start_date
       if (!isEqual(formData.end_date, schedule.end_date)) updateData.end_date = formData.end_date
-      if (!isEqual(formData.start_time, schedule.start_time)) updateData.start_time = formData.start_time
-      if (!isEqual(formData.end_time, schedule.end_time)) updateData.end_time = formData.end_time
+      // Compare times after formatting
+      const scheduleStartTime = formatTime(schedule.start_time)
+      const scheduleEndTime = formatTime(schedule.end_time)
+      if (!isEqual(formData.start_time, scheduleStartTime)) updateData.start_time = formData.start_time
+      if (!isEqual(formData.end_time, scheduleEndTime)) updateData.end_time = formData.end_time
+      if (!isEqual(formData.recurrence_type, schedule.recurrence_type)) {
+        updateData.recurrence_type = formData.recurrence_type as RecurrenceType
+      }
       if (!isEqual(formData.recurrence_pattern, schedule.recurrence_pattern)) {
         updateData.recurrence_pattern = formData.recurrence_pattern
       }
       if (!isEqual(formData.exception_dates, schedule.exception_dates)) {
         updateData.exception_dates = formData.exception_dates
       }
-      if (formData.priority !== priorityToNumber(schedule.priority)) {
+      // Compare priority - convert schedule.priority to number for comparison
+      const schedulePriorityNum = typeof schedule.priority === 'number'
+        ? schedule.priority
+        : priorityToNumber(schedule.priority as PriorityLevel)
+      if (formData.priority !== schedulePriorityNum) {
         updateData.priority = formData.priority as unknown as PriorityLevel
       }
-      if (!isEqual(formData.timezone, schedule.timezone)) updateData.timezone = formData.timezone
+      if (!isEqual(formData.mode, schedule.mode)) updateData.mode = formData.mode
 
       onSubmit(updateData)
     } else {
@@ -213,13 +257,11 @@ export const ScheduleForm = ({
     setExceptionDates(exceptionDates.filter((d) => d !== date))
   }
 
-  const selectedDevices = devices.filter((d) => selectedDeviceIds.includes(d.id))
-
   if (loadingData) {
     return (
       <div className="text-center py-12">
         <div className="animate-spin h-8 w-8 border-4 border-purple-500 border-t-transparent rounded-full mx-auto mb-4"></div>
-        <p className="text-gray-600">Loading playlists and devices...</p>
+        <p className="text-gray-600">Loading playlists...</p>
       </div>
     )
   }
@@ -292,53 +334,6 @@ export const ScheduleForm = ({
           <p id="playlist-error" className="mt-1 text-sm text-red-600" role="alert">{errors.playlist_id.message}</p>
         )}
       </div>
-
-      {/* Device Selection */}
-      <fieldset>
-        <legend className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
-          Devices <span className="text-red-500" aria-hidden="true">*</span> ({selectedDevices.length} selected)
-        </legend>
-        <div
-          className="max-h-40 overflow-y-auto border border-gray-300 dark:border-gray-600 rounded-md p-3 bg-white dark:bg-gray-800"
-          role="group"
-          aria-label="Select devices for schedule"
-          aria-describedby={errors.device_ids ? 'devices-error' : undefined}
-        >
-          <div className="space-y-2">
-            {devices.map((device) => (
-              <label key={device.id} className="flex items-center gap-3 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 p-1 rounded">
-                <input
-                  type="checkbox"
-                  value={device.id}
-                  checked={selectedDeviceIds.includes(device.id)}
-                  onChange={(e) => {
-                    const id = Number(e.target.value)
-                    if (e.target.checked) {
-                      setValue('device_ids', [...selectedDeviceIds, id])
-                    } else {
-                      setValue('device_ids', selectedDeviceIds.filter((d) => d !== id))
-                    }
-                  }}
-                  disabled={isLoading}
-                  className="w-4 h-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500 focus:ring-2"
-                  aria-label={`Select ${device.name}`}
-                />
-                <span className="text-sm text-gray-700 dark:text-gray-300">{device.name}</span>
-                <span className={`text-xs px-2 py-0.5 rounded ${
-                  device.status === 'online'
-                    ? 'bg-green-100 text-green-700'
-                    : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400'
-                }`}>
-                  {device.status}
-                </span>
-              </label>
-            ))}
-          </div>
-        </div>
-        {errors.device_ids && (
-          <p id="devices-error" className="mt-1 text-sm text-red-600" role="alert">{errors.device_ids.message}</p>
-        )}
-      </fieldset>
 
       {/* Schedule Timing */}
       <div className="space-y-4">
@@ -534,6 +529,62 @@ export const ScheduleForm = ({
         </p>
       </div>
 
+      {/* Schedule Mode */}
+      <div>
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+          Playback Mode *
+        </label>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {Object.values(SCHEDULE_MODES).map((modeInfo) => {
+            const selected = watch('mode') === modeInfo.mode
+
+            return (
+              <button
+                key={modeInfo.mode}
+                type="button"
+                onClick={() => setValue('mode', modeInfo.mode)}
+                disabled={isLoading}
+                className={`
+                  p-4 rounded-lg border-2 transition-all text-left
+                  ${
+                    selected
+                      ? modeInfo.mode === 'override'
+                        ? 'border-red-500 bg-red-50 dark:bg-red-900/30 shadow-md'
+                        : 'border-blue-500 bg-blue-50 dark:bg-blue-900/30 shadow-md'
+                      : 'border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 hover:border-gray-300 dark:hover:border-gray-500'
+                  }
+                  ${isLoading ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
+                `}
+              >
+                <div className="flex items-start gap-3">
+                  <div className={`mt-0.5 ${selected ? (modeInfo.mode === 'override' ? 'text-red-600' : 'text-blue-600') : 'text-gray-400'}`}>
+                    {renderIcon(modeInfo.icon, { className: 'w-6 h-6' })}
+                  </div>
+                  <div className="flex-1">
+                    <h4 className={`font-semibold ${selected ? 'text-gray-900 dark:text-white' : 'text-gray-700 dark:text-gray-300'}`}>
+                      {modeInfo.label}
+                    </h4>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                      {modeInfo.description}
+                    </p>
+                  </div>
+                  {selected && (
+                    <div className={`w-5 h-5 rounded-full flex items-center justify-center ${modeInfo.mode === 'override' ? 'bg-red-500' : 'bg-blue-500'}`}>
+                      <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                      </svg>
+                    </div>
+                  )}
+                </div>
+              </button>
+            )
+          })}
+        </div>
+        <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+          <strong>Override:</strong> Stops all other content. <strong>Rotate:</strong> Plays together with others.
+        </p>
+      </div>
+
       {/* Conflict Detection */}
       <div className="flex items-center justify-between p-4 bg-yellow-50 dark:bg-yellow-900 border border-yellow-200 dark:border-yellow-800 rounded-lg">
         <div>
@@ -555,7 +606,6 @@ export const ScheduleForm = ({
       {showConflictDetector && (
         <ConflictDetector
           playlistId={watch('playlist_id')}
-          deviceIds={selectedDeviceIds}
           startDate={startDate}
           endDate={endDate}
           startTime={watch('start_time')}

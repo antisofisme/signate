@@ -73,11 +73,13 @@ export const usePlaylistAssignments = (id: number, enabled = true) => {
  */
 export const useCreatePlaylist = () => {
   const queryClient = useQueryClient();
+  const orgId = useSelectedOrgId();
 
   return useMutation({
     mutationFn: (data: CreatePlaylistRequest) => playlistApi.create(data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: playlistKeys.lists() });
+      // Invalidate with orgId to match the actual query key
+      queryClient.invalidateQueries({ queryKey: playlistKeys.lists(orgId) });
 
       // Invalidate dashboard queries (playlist count changes)
       queryClient.invalidateQueries({ queryKey: ['dashboard'] });
@@ -95,12 +97,14 @@ export const useCreatePlaylist = () => {
  */
 export const useUpdatePlaylist = () => {
   const queryClient = useQueryClient();
+  const orgId = useSelectedOrgId();
 
   return useMutation({
     mutationFn: ({ id, data }: { id: number; data: UpdatePlaylistRequest }) =>
       playlistApi.update(id, data),
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: playlistKeys.lists() });
+      // Invalidate with orgId to match the actual query key
+      queryClient.invalidateQueries({ queryKey: playlistKeys.lists(orgId) });
       queryClient.invalidateQueries({ queryKey: playlistKeys.detail(variables.id) });
       toast.success('Playlist updated successfully');
     },
@@ -115,11 +119,13 @@ export const useUpdatePlaylist = () => {
  */
 export const useDeletePlaylist = () => {
   const queryClient = useQueryClient();
+  const orgId = useSelectedOrgId();
 
   return useMutation({
     mutationFn: (id: number) => playlistApi.delete(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: playlistKeys.lists() });
+      // Invalidate with orgId to match the actual query key
+      queryClient.invalidateQueries({ queryKey: playlistKeys.lists(orgId) });
 
       // Invalidate device queries (devices may have had this playlist assigned)
       queryClient.invalidateQueries({ queryKey: ['devices'] });

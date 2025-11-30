@@ -61,7 +61,7 @@ def extract_client_info(request: Request) -> dict:
 
 # ========== Public Endpoints ==========
 
-@router.get("/{public_url_code}", response_model=PublicMenuItemListDTO)
+@router.get("/{public_url_code}")
 async def get_public_menu(
     public_url_code: str,
     skip: int = Query(0, ge=0),

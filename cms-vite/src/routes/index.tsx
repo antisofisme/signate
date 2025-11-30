@@ -43,6 +43,7 @@ const PMSConfigPage = lazy(() => import('@/features/pms/pages/PMSConfigPage'));
 const WeatherConfigPage = lazy(() => import('@/features/weather/pages/WeatherConfigPage'));
 const OrganizationQuotaPage = lazy(() => import('@/features/organizations/pages/OrganizationQuotaPage'));
 const MenusPage = lazy(() => import('@/features/menus/pages/MenusPage'));
+const MenuMediaPage = lazy(() => import('@/features/menus/pages/MenuMediaPage'));
 
 // Wrapper for lazy loaded components
 const LazyPage = ({ component: Component }: { component: React.LazyExoticComponent<() => JSX.Element> }) => (
@@ -130,6 +131,10 @@ export const router = createBrowserRouter([
       {
         path: 'menus',
         element: <LazyPage component={MenusPage} />,
+      },
+      {
+        path: 'menus/media',
+        element: <LazyPage component={MenuMediaPage} />,
       },
       // Schedules
       {

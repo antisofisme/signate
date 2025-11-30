@@ -49,7 +49,19 @@ class ContentRepository(IContentRepository):
             audio_bitrate=content.audio_bitrate,
             audio_sample_rate=content.audio_sample_rate,
             audio_channels=content.audio_channels,
+            # HLS info (for duplicates that reuse existing transcoded files)
+            hls_master_playlist_path=content.hls_master_playlist_path,
+            hls_master_playlist_url=content.hls_master_playlist_url,
+            hls_variants=content.hls_variants,
+            # Thumbnail info (for duplicates that reuse existing thumbnails)
+            thumbnail_path=content.thumbnail_path,
+            thumbnail_url=content.thumbnail_url,
+            thumbnail_generated_at=content.thumbnail_generated_at,
+            # Status & Transcoding tracking
             transcoding_status=content.transcoding_status,
+            transcoding_job_id=content.transcoding_job_id,
+            transcoding_progress=content.transcoding_progress,
+            transcoding_error=content.transcoding_error,
             upload_status=content.upload_status,
             organization_id=content.organization_id,
             uploaded_by_id=content.uploaded_by_id)
@@ -140,9 +152,10 @@ class ContentRepository(IContentRepository):
         return self._to_entity(db_content) if db_content else None
 
     def update(self, content: Content, updated_by_id: Optional[int] = None) -> Content:
-        """Update content metadata with audit tracking"""
+        """Update content metadata with audit tracking (excludes soft-deleted)"""
         db_content = self.db.query(ContentModel).filter(
-            ContentModel.id == content.id
+            ContentModel.id == content.id,
+            ContentModel.deleted_at.is_(None)  # Exclude soft-deleted
         ).first()
 
         if not db_content:
@@ -193,6 +206,7 @@ class ContentRepository(IContentRepository):
 
         # CRITICAL FIX: Remove content from all playlists BEFORE soft delete
         from services.playlist.repositories.models import PlaylistContentModel
+        from shared.logging import app_logger as logger
 
         deleted_count = self.db.query(PlaylistContentModel).filter(
             PlaylistContentModel.content_id == content_id
@@ -200,7 +214,6 @@ class ContentRepository(IContentRepository):
 
         # Log cleanup for audit trail
         if deleted_count > 0:
-            from shared.logging import logger
             logger.info(
                 f"Removed content {content_id} from {deleted_count} playlist(s) during soft delete"
             )
@@ -216,8 +229,9 @@ class ContentRepository(IContentRepository):
         # This ensures devices fetch updated content immediately
         try:
             from shared.cache import cache
-            cache.invalidate_pattern("content_resolution:*")
-            logger.info(f"Invalidated content resolution cache for deleted content {content_id}")
+            cache.clear_pattern("content_resolution:*")
+            cache.invalidate_content(content_id, organization_id)
+            logger.info(f"Invalidated cache for deleted content {content_id}")
         except Exception as e:
             logger.warning(f"Failed to invalidate cache: {e}")
             # Don't fail the deletion if cache invalidation fails
@@ -225,7 +239,7 @@ class ContentRepository(IContentRepository):
         return True
 
     def find_deleted_content(self, days: int = 30) -> List[Content]:
-        """Find soft-deleted content older than specified days"""
+        """Find soft-deleted content older than specified days (for cleanup)"""
         threshold = datetime.now(timezone.utc) - timedelta(days=days)
 
         db_contents = self.db.query(ContentModel).filter(
@@ -234,6 +248,51 @@ class ContentRepository(IContentRepository):
         ).all()
 
         return [self._to_entity(c) for c in db_contents]
+
+    def find_all_deleted(
+        self,
+        organization_id: int,
+        skip: int = 0,
+        limit: int = 20,
+        content_type: Optional[str] = None
+    ) -> Tuple[List[Content], int]:
+        """List soft-deleted content for an organization (recycle bin)"""
+        query = self.db.query(ContentModel).filter(
+            ContentModel.organization_id == organization_id,
+            ContentModel.deleted_at.isnot(None)  # Only deleted content
+        )
+
+        # Apply filters
+        if content_type:
+            query = query.filter(ContentModel.content_type == content_type)
+
+        # Get total count
+        total = query.count()
+
+        # Get paginated results (most recently deleted first)
+        db_contents = query.order_by(ContentModel.deleted_at.desc()).offset(skip).limit(limit).all()
+
+        contents = [self._to_entity(c) for c in db_contents]
+        return contents, total
+
+    def restore(self, content_id: int, organization_id: int) -> bool:
+        """Restore soft-deleted content"""
+        db_content = self.db.query(ContentModel).filter(
+            ContentModel.id == content_id,
+            ContentModel.organization_id == organization_id,
+            ContentModel.deleted_at.isnot(None)  # Must be deleted
+        ).first()
+
+        if not db_content:
+            return False
+
+        # Restore content
+        db_content.deleted_at = None
+        db_content.deleted_by_id = None
+        db_content.is_active = True
+
+        self.db.commit()
+        return True
 
     def hard_delete(self, content_id: int) -> bool:
         """Permanently delete content"""
@@ -298,9 +357,10 @@ class ContentRepository(IContentRepository):
         job_id: Optional[str] = None,
         error: Optional[str] = None
     ) -> bool:
-        """Update transcoding status"""
+        """Update transcoding status (excludes soft-deleted)"""
         db_content = self.db.query(ContentModel).filter(
-            ContentModel.id == content_id
+            ContentModel.id == content_id,
+            ContentModel.deleted_at.is_(None)  # Exclude soft-deleted
         ).first()
 
         if not db_content:
@@ -322,9 +382,10 @@ class ContentRepository(IContentRepository):
         master_playlist_url: str,
         variants: Dict[str, Any]
     ) -> bool:
-        """Update HLS transcoding information"""
+        """Update HLS transcoding information (excludes soft-deleted)"""
         db_content = self.db.query(ContentModel).filter(
-            ContentModel.id == content_id
+            ContentModel.id == content_id,
+            ContentModel.deleted_at.is_(None)  # Exclude soft-deleted
         ).first()
 
         if not db_content:
@@ -345,9 +406,10 @@ class ContentRepository(IContentRepository):
         thumbnail_path: str,
         thumbnail_url: str
     ) -> bool:
-        """Update thumbnail information"""
+        """Update thumbnail information (excludes soft-deleted)"""
         db_content = self.db.query(ContentModel).filter(
-            ContentModel.id == content_id
+            ContentModel.id == content_id,
+            ContentModel.deleted_at.is_(None)  # Exclude soft-deleted
         ).first()
 
         if not db_content:
@@ -359,6 +421,118 @@ class ContentRepository(IContentRepository):
 
         self.db.commit()
         return True
+
+    def find_duplicates_with_usage(self, organization_id: int) -> List[Dict[str, Any]]:
+        """
+        Find duplicate files (same hash) with their usage info.
+        Returns groups of duplicates with playlist, tag, and device usage.
+        """
+        from sqlalchemy import text
+
+        # Step 1: Find hashes that have duplicates (count > 1)
+        duplicate_hashes = self.db.execute(text("""
+            SELECT file_hash, COUNT(*) as cnt, MIN(file_size) as file_size,
+                   MIN(content_type) as content_type, MIN(thumbnail_url) as thumbnail_url
+            FROM contents
+            WHERE organization_id = :org_id AND deleted_at IS NULL AND file_hash IS NOT NULL
+            GROUP BY file_hash
+            HAVING COUNT(*) > 1
+            ORDER BY COUNT(*) DESC
+        """), {"org_id": organization_id}).fetchall()
+
+        if not duplicate_hashes:
+            return []
+
+        result = []
+
+        for row in duplicate_hashes:
+            file_hash = row.file_hash
+
+            # Get all contents with this hash
+            contents = self.db.query(ContentModel).filter(
+                ContentModel.organization_id == organization_id,
+                ContentModel.file_hash == file_hash,
+                ContentModel.deleted_at.is_(None)
+            ).order_by(ContentModel.created_at.asc()).all()
+
+            contents_with_usage = []
+            for content in contents:
+                # Get usage info for this content
+                usage = self._get_content_usage(content.id)
+
+                contents_with_usage.append({
+                    "id": content.id,
+                    "title": content.title,
+                    "original_filename": content.original_filename,
+                    "created_at": content.created_at.isoformat() if content.created_at else None,
+                    "is_active": content.is_active,
+                    "usage": usage
+                })
+
+            result.append({
+                "file_hash": file_hash[:16] + "...",  # Truncate for display
+                "file_size": row.file_size,
+                "content_type": row.content_type,
+                "thumbnail_url": row.thumbnail_url,
+                "duplicate_count": len(contents),
+                "contents": contents_with_usage
+            })
+
+        return result
+
+    def _get_content_usage(self, content_id: int) -> Dict[str, List[Dict[str, Any]]]:
+        """Get usage info for a content (playlists, tags, devices)"""
+        from sqlalchemy import text
+
+        # Get playlists using this content
+        playlists = self.db.execute(text("""
+            SELECT p.id, p.name
+            FROM playlists p
+            JOIN playlist_contents pc ON p.id = pc.playlist_id
+            WHERE pc.content_id = :content_id AND p.deleted_at IS NULL
+        """), {"content_id": content_id}).fetchall()
+
+        # Get tags assigned to this content
+        tags = self.db.execute(text("""
+            SELECT t.id, t.tag_name, t.color
+            FROM tags t
+            JOIN content_tags ct ON t.id = ct.tag_id
+            WHERE ct.content_id = :content_id AND t.deleted_at IS NULL
+        """), {"content_id": content_id}).fetchall()
+
+        # Get devices with direct content assignments
+        direct_devices = self.db.execute(text("""
+            SELECT d.id, d.device_name, 'direct' as via
+            FROM devices d
+            JOIN content_assignments ca ON d.id = ca.device_id
+            WHERE ca.content_id = :content_id AND d.deleted_at IS NULL
+        """), {"content_id": content_id}).fetchall()
+
+        # Get devices via tag assignments
+        tag_devices = self.db.execute(text("""
+            SELECT DISTINCT d.id, d.device_name, CONCAT('tag:', t.tag_name) as via
+            FROM devices d
+            JOIN device_tags dt ON d.id = dt.device_id
+            JOIN tags t ON dt.tag_id = t.id
+            JOIN content_tags ct ON t.id = ct.tag_id
+            WHERE ct.content_id = :content_id
+              AND d.deleted_at IS NULL
+              AND t.deleted_at IS NULL
+        """), {"content_id": content_id}).fetchall()
+
+        # Combine device lists (dedupe by id)
+        device_dict = {}
+        for d in direct_devices:
+            device_dict[d.id] = {"id": d.id, "name": d.device_name, "via": d.via}
+        for d in tag_devices:
+            if d.id not in device_dict:
+                device_dict[d.id] = {"id": d.id, "name": d.device_name, "via": d.via}
+
+        return {
+            "playlists": [{"id": p.id, "name": p.name} for p in playlists],
+            "tags": [{"id": t.id, "name": t.tag_name, "color": t.color} for t in tags],
+            "devices": list(device_dict.values())
+        }
 
     def _to_entity(self, db_content: ContentModel) -> Content:
         """Convert database model to domain entity"""

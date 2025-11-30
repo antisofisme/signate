@@ -90,6 +90,7 @@ class MenuItemModel(Base):
         index=True
     )
     content_id = Column(Integer, ForeignKey("contents.id", ondelete="SET NULL"), nullable=True)
+    menu_media_id = Column(Integer, ForeignKey("menu_media.id", ondelete="SET NULL"), nullable=True)
 
     # Item details
     name = Column(String(255), nullable=False)
@@ -126,6 +127,7 @@ class MenuItemModel(Base):
     menu = relationship("MenuModel", back_populates="items", foreign_keys=[menu_id])
     organization = relationship("OrganizationModel", foreign_keys=[organization_id])
     content = relationship("ContentModel", foreign_keys=[content_id])
+    menu_media = relationship("MenuMediaModel", foreign_keys=[menu_media_id])
 
 
 class MenuImportHistoryModel(Base):
@@ -205,6 +207,53 @@ class MenuViewModel(Base):
     # Relationships
     menu = relationship("MenuModel", back_populates="views", foreign_keys=[menu_id])
     organization = relationship("OrganizationModel", foreign_keys=[organization_id])
+
+
+class MenuMediaModel(Base):
+    """Menu Media database model - images specifically for menus"""
+    __tablename__ = "menu_media"
+
+    # Primary key
+    id = Column(Integer, primary_key=True, index=True)
+
+    # Foreign keys
+    organization_id = Column(
+        Integer,
+        ForeignKey("organizations.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True
+    )
+    uploaded_by_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+
+    # File information
+    filename = Column(String(255), nullable=False)
+    original_filename = Column(String(255), nullable=False)
+    file_path = Column(String(500), nullable=False)
+    file_size = Column(Integer, default=0, nullable=False)
+    mime_type = Column(String(100), nullable=False)
+
+    # Image metadata
+    width = Column(Integer, nullable=True)
+    height = Column(Integer, nullable=True)
+
+    # Thumbnail
+    thumbnail_path = Column(String(500), nullable=True)
+
+    # Display
+    title = Column(String(200), nullable=True)
+    alt_text = Column(String(255), nullable=True)
+
+    # Status
+    is_active = Column(Boolean, default=True, nullable=False)
+
+    # Audit trail
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    deleted_at = Column(DateTime(timezone=True), nullable=True, index=True)
+
+    # Relationships
+    organization = relationship("OrganizationModel", foreign_keys=[organization_id])
+    uploader = relationship("UserModel", foreign_keys=[uploaded_by_id])
 
 
 class MenuCategoryModel(Base):

@@ -2,10 +2,10 @@
 -- PostgreSQL database dump
 --
 
-\restrict a6ME8Qbdf2miEEVuawFBO4aXS5lLbi43HuQpQaEIsuLEpd9HHEwP5iY5WpzIVZi
+\restrict T2RLGBUNpLdVl7vymTfPA1Ko6SrZRfg6AKiiVTg0uiOK1GR8SOYO9FqeHtBK568
 
--- Dumped from database version 15.14
--- Dumped by pg_dump version 15.14
+-- Dumped from database version 15.15
+-- Dumped by pg_dump version 15.15
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -613,7 +613,7 @@ COMMENT ON COLUMN public.content_assignments.assigned_at IS 'When assignment was
 -- Name: COLUMN content_assignments.assigned_by_id; Type: COMMENT; Schema: public; Owner: signage_user
 --
 
-COMMENT ON COLUMN public.content_assignments.assigned_by_id IS 'User who created the assignment';
+COMMENT ON COLUMN public.content_assignments.assigned_by_id IS 'User who made this assignment';
 
 
 --
@@ -785,6 +785,8 @@ CREATE TABLE public.contents (
     created_at timestamp with time zone DEFAULT now(),
     updated_at timestamp with time zone,
     deleted_at timestamp with time zone,
+    updated_by_id integer,
+    deleted_by_id integer,
     CONSTRAINT check_contents_audio_bitrate_positive CHECK (((audio_bitrate IS NULL) OR (audio_bitrate > 0))),
     CONSTRAINT check_contents_bitrate_positive CHECK (((bitrate IS NULL) OR (bitrate > 0))),
     CONSTRAINT check_contents_duration_positive CHECK (((duration IS NULL) OR (duration > 0))),
@@ -852,6 +854,13 @@ COMMENT ON COLUMN public.contents.uploaded_by_id IS 'User ID who uploaded this c
 --
 
 COMMENT ON COLUMN public.contents.updated_at IS 'Timestamp when content was last modified (renamed from last_updated)';
+
+
+--
+-- Name: COLUMN contents.updated_by_id; Type: COMMENT; Schema: public; Owner: signage_user
+--
+
+COMMENT ON COLUMN public.contents.updated_by_id IS 'User who last modified this content';
 
 
 --
@@ -1022,8 +1031,8 @@ CREATE TABLE public.device_commands (
     retry_count integer DEFAULT 0,
     max_retries integer DEFAULT 3,
     updated_at timestamp with time zone,
-    CONSTRAINT device_commands_command_type_check CHECK (((command_type)::text = ANY ((ARRAY['reset'::character varying, 'refresh'::character varying, 'reload'::character varying, 'speed_test'::character varying, 'update_content'::character varying, 'reboot'::character varying, 'screenshot'::character varying, 'volume'::character varying, 'brightness'::character varying])::text[]))),
-    CONSTRAINT device_commands_status_check CHECK (((status)::text = ANY ((ARRAY['pending'::character varying, 'sent'::character varying, 'executed'::character varying, 'failed'::character varying, 'expired'::character varying])::text[])))
+    CONSTRAINT device_commands_command_type_check CHECK (((command_type)::text = ANY (ARRAY[('reset'::character varying)::text, ('refresh'::character varying)::text, ('reload'::character varying)::text, ('speed_test'::character varying)::text, ('update_content'::character varying)::text, ('reboot'::character varying)::text, ('screenshot'::character varying)::text, ('volume'::character varying)::text, ('brightness'::character varying)::text]))),
+    CONSTRAINT device_commands_status_check CHECK (((status)::text = ANY (ARRAY[('pending'::character varying)::text, ('sent'::character varying)::text, ('executed'::character varying)::text, ('failed'::character varying)::text, ('expired'::character varying)::text])))
 );
 
 
@@ -1116,13 +1125,13 @@ CREATE TABLE public.device_connection_logs (
     http_status integer,
     test_trigger character varying(10),
     test_duration_ms integer,
-    CONSTRAINT check_connection_type CHECK (((connection_type IS NULL) OR ((connection_type)::text = ANY ((ARRAY['wifi'::character varying, 'ethernet'::character varying, 'cellular'::character varying, 'bluetooth'::character varying, 'wimax'::character varying, 'other'::character varying, 'none'::character varying, 'unknown'::character varying])::text[])))),
-    CONSTRAINT check_effective_type CHECK (((effective_type IS NULL) OR ((effective_type)::text = ANY ((ARRAY['slow-2g'::character varying, '2g'::character varying, '3g'::character varying, '4g'::character varying, '5g'::character varying, 'unknown'::character varying])::text[])))),
+    CONSTRAINT check_connection_type CHECK (((connection_type IS NULL) OR ((connection_type)::text = ANY (ARRAY[('wifi'::character varying)::text, ('ethernet'::character varying)::text, ('cellular'::character varying)::text, ('bluetooth'::character varying)::text, ('wimax'::character varying)::text, ('other'::character varying)::text, ('none'::character varying)::text, ('unknown'::character varying)::text])))),
+    CONSTRAINT check_effective_type CHECK (((effective_type IS NULL) OR ((effective_type)::text = ANY (ARRAY[('slow-2g'::character varying)::text, ('2g'::character varying)::text, ('3g'::character varying)::text, ('4g'::character varying)::text, ('5g'::character varying)::text, ('unknown'::character varying)::text])))),
     CONSTRAINT check_rtt_ms CHECK (((rtt_ms IS NULL) OR (rtt_ms >= 0))),
     CONSTRAINT check_test_duration_ms CHECK (((test_duration_ms IS NULL) OR (test_duration_ms >= 0))),
-    CONSTRAINT check_test_trigger CHECK (((test_trigger IS NULL) OR ((test_trigger)::text = ANY ((ARRAY['auto'::character varying, 'manual'::character varying])::text[])))),
+    CONSTRAINT check_test_trigger CHECK (((test_trigger IS NULL) OR ((test_trigger)::text = ANY (ARRAY[('auto'::character varying)::text, ('manual'::character varying)::text])))),
     CONSTRAINT device_connection_logs_download_speed_mbps_check CHECK ((download_speed_mbps >= (0)::numeric)),
-    CONSTRAINT device_connection_logs_event_type_check CHECK (((event_type)::text = ANY ((ARRAY['network'::character varying, 'server'::character varying, 'speed_test'::character varying])::text[]))),
+    CONSTRAINT device_connection_logs_event_type_check CHECK (((event_type)::text = ANY (ARRAY[('network'::character varying)::text, ('server'::character varying)::text, ('speed_test'::character varying)::text]))),
     CONSTRAINT device_connection_logs_latency_ms_check CHECK ((latency_ms >= 0)),
     CONSTRAINT device_connection_logs_upload_speed_mbps_check CHECK ((upload_speed_mbps >= (0)::numeric))
 );
@@ -1310,6 +1319,8 @@ CREATE TABLE public.devices (
     assigned_playlist_id integer,
     volume_level integer DEFAULT 75 NOT NULL,
     background_audio_id integer,
+    deleted_by_id integer,
+    deleted_at timestamp with time zone,
     CONSTRAINT check_devices_screen_height_positive CHECK (((screen_height IS NULL) OR (screen_height > 0))),
     CONSTRAINT check_devices_screen_width_positive CHECK (((screen_width IS NULL) OR (screen_width > 0))),
     CONSTRAINT check_devices_viewport_height_positive CHECK (((viewport_height IS NULL) OR (viewport_height > 0))),
@@ -1545,7 +1556,9 @@ CREATE TABLE public.device_groups (
     deleted_at timestamp with time zone,
     created_by_id integer,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
-    updated_at timestamp with time zone
+    updated_at timestamp with time zone,
+    updated_by_id integer,
+    deleted_by_id integer
 );
 
 
@@ -1777,7 +1790,7 @@ CREATE TABLE public.device_logs (
     user_agent character varying(500),
     url character varying(1000),
     recorded_at timestamp with time zone DEFAULT now() NOT NULL,
-    CONSTRAINT device_logs_log_level_check CHECK (((log_level)::text = ANY ((ARRAY['log'::character varying, 'info'::character varying, 'warn'::character varying, 'error'::character varying, 'debug'::character varying])::text[])))
+    CONSTRAINT device_logs_log_level_check CHECK (((log_level)::text = ANY (ARRAY[('log'::character varying)::text, ('info'::character varying)::text, ('warn'::character varying)::text, ('error'::character varying)::text, ('debug'::character varying)::text])))
 );
 
 
@@ -1859,7 +1872,7 @@ CREATE TABLE public.device_speed_tests (
     test_duration_ms integer,
     error_message text,
     tested_at timestamp with time zone DEFAULT now() NOT NULL,
-    CONSTRAINT device_speed_tests_quality_check CHECK (((quality)::text = ANY ((ARRAY['good'::character varying, 'fair'::character varying, 'poor'::character varying])::text[])))
+    CONSTRAINT device_speed_tests_quality_check CHECK (((quality)::text = ANY (ARRAY[('good'::character varying)::text, ('fair'::character varying)::text, ('poor'::character varying)::text])))
 );
 
 
@@ -2017,6 +2030,239 @@ ALTER SEQUENCE public.devices_id_seq OWNED BY public.devices.id;
 
 
 --
+-- Name: menu_categories; Type: TABLE; Schema: public; Owner: signage_user
+--
+
+CREATE TABLE public.menu_categories (
+    id integer NOT NULL,
+    organization_id integer NOT NULL,
+    menu_type character varying(50) NOT NULL,
+    name character varying(100) NOT NULL,
+    display_order integer NOT NULL,
+    icon character varying(50),
+    translations jsonb,
+    created_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+ALTER TABLE public.menu_categories OWNER TO signage_user;
+
+--
+-- Name: menu_categories_id_seq; Type: SEQUENCE; Schema: public; Owner: signage_user
+--
+
+CREATE SEQUENCE public.menu_categories_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER TABLE public.menu_categories_id_seq OWNER TO signage_user;
+
+--
+-- Name: menu_categories_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: signage_user
+--
+
+ALTER SEQUENCE public.menu_categories_id_seq OWNED BY public.menu_categories.id;
+
+
+--
+-- Name: menu_import_history; Type: TABLE; Schema: public; Owner: signage_user
+--
+
+CREATE TABLE public.menu_import_history (
+    id integer NOT NULL,
+    menu_id integer NOT NULL,
+    organization_id integer NOT NULL,
+    imported_by_id integer,
+    filename character varying(255) NOT NULL,
+    file_size integer,
+    rows_total integer NOT NULL,
+    rows_success integer NOT NULL,
+    rows_failed integer NOT NULL,
+    errors jsonb,
+    imported_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+ALTER TABLE public.menu_import_history OWNER TO signage_user;
+
+--
+-- Name: menu_import_history_id_seq; Type: SEQUENCE; Schema: public; Owner: signage_user
+--
+
+CREATE SEQUENCE public.menu_import_history_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER TABLE public.menu_import_history_id_seq OWNER TO signage_user;
+
+--
+-- Name: menu_import_history_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: signage_user
+--
+
+ALTER SEQUENCE public.menu_import_history_id_seq OWNED BY public.menu_import_history.id;
+
+
+--
+-- Name: menu_items; Type: TABLE; Schema: public; Owner: signage_user
+--
+
+CREATE TABLE public.menu_items (
+    id integer NOT NULL,
+    menu_id integer NOT NULL,
+    organization_id integer NOT NULL,
+    content_id integer,
+    name character varying(255) NOT NULL,
+    description text,
+    price numeric(12,2),
+    currency character varying(3) NOT NULL,
+    image_url character varying(500),
+    video_url character varying(500),
+    category character varying(100),
+    subcategory character varying(100),
+    tags character varying(200),
+    display_order integer NOT NULL,
+    is_active boolean NOT NULL,
+    is_featured boolean NOT NULL,
+    is_available boolean NOT NULL,
+    translations jsonb,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone,
+    deleted_at timestamp with time zone
+);
+
+
+ALTER TABLE public.menu_items OWNER TO signage_user;
+
+--
+-- Name: menu_items_id_seq; Type: SEQUENCE; Schema: public; Owner: signage_user
+--
+
+CREATE SEQUENCE public.menu_items_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER TABLE public.menu_items_id_seq OWNER TO signage_user;
+
+--
+-- Name: menu_items_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: signage_user
+--
+
+ALTER SEQUENCE public.menu_items_id_seq OWNED BY public.menu_items.id;
+
+
+--
+-- Name: menu_views; Type: TABLE; Schema: public; Owner: signage_user
+--
+
+CREATE TABLE public.menu_views (
+    id integer NOT NULL,
+    menu_id integer NOT NULL,
+    organization_id integer NOT NULL,
+    viewer_ip character varying(45),
+    user_agent text,
+    device_type character varying(20),
+    contact_clicked boolean NOT NULL,
+    contact_type character varying(20),
+    viewed_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+ALTER TABLE public.menu_views OWNER TO signage_user;
+
+--
+-- Name: menu_views_id_seq; Type: SEQUENCE; Schema: public; Owner: signage_user
+--
+
+CREATE SEQUENCE public.menu_views_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER TABLE public.menu_views_id_seq OWNER TO signage_user;
+
+--
+-- Name: menu_views_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: signage_user
+--
+
+ALTER SEQUENCE public.menu_views_id_seq OWNED BY public.menu_views.id;
+
+
+--
+-- Name: menus; Type: TABLE; Schema: public; Owner: signage_user
+--
+
+CREATE TABLE public.menus (
+    id integer NOT NULL,
+    organization_id integer NOT NULL,
+    name character varying(255) NOT NULL,
+    description text,
+    menu_type character varying(50) NOT NULL,
+    is_active boolean NOT NULL,
+    show_prices boolean NOT NULL,
+    display_mode character varying(20) NOT NULL,
+    theme_color character varying(7),
+    whatsapp_number character varying(20),
+    phone_number character varying(20),
+    contact_label character varying(100),
+    translations jsonb,
+    available_days character varying(50),
+    available_hours character varying(20),
+    public_url_code character varying(12) NOT NULL,
+    qr_code_path character varying(500),
+    qr_code_generated_at timestamp with time zone,
+    created_by_id integer,
+    updated_by_id integer,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone,
+    deleted_at timestamp with time zone,
+    deleted_by_id integer
+);
+
+
+ALTER TABLE public.menus OWNER TO signage_user;
+
+--
+-- Name: menus_id_seq; Type: SEQUENCE; Schema: public; Owner: signage_user
+--
+
+CREATE SEQUENCE public.menus_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER TABLE public.menus_id_seq OWNER TO signage_user;
+
+--
+-- Name: menus_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: signage_user
+--
+
+ALTER SEQUENCE public.menus_id_seq OWNED BY public.menus.id;
+
+
+--
 -- Name: mv_organization_health_summary; Type: MATERIALIZED VIEW; Schema: public; Owner: signage_user
 --
 
@@ -2094,6 +2340,8 @@ CREATE TABLE public.organizations (
     max_devices integer DEFAULT 10 NOT NULL,
     max_users integer DEFAULT 5 NOT NULL,
     settings jsonb DEFAULT '{}'::jsonb,
+    created_by_id integer,
+    updated_by_id integer,
     CONSTRAINT check_organizations_max_devices_positive CHECK ((max_devices > 0)),
     CONSTRAINT check_organizations_max_users_positive CHECK ((max_users > 0))
 );
@@ -2106,6 +2354,20 @@ ALTER TABLE public.organizations OWNER TO signage_user;
 --
 
 COMMENT ON COLUMN public.organizations.pin IS 'Organization PIN/code for access control (optional)';
+
+
+--
+-- Name: COLUMN organizations.created_by_id; Type: COMMENT; Schema: public; Owner: signage_user
+--
+
+COMMENT ON COLUMN public.organizations.created_by_id IS 'User who created this organization';
+
+
+--
+-- Name: COLUMN organizations.updated_by_id; Type: COMMENT; Schema: public; Owner: signage_user
+--
+
+COMMENT ON COLUMN public.organizations.updated_by_id IS 'User who last modified this organization';
 
 
 --
@@ -2206,6 +2468,7 @@ CREATE TABLE public.playlist_assignments (
     device_id integer,
     tag_id integer,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
+    assigned_by_id integer,
     CONSTRAINT check_assignment_type CHECK ((((device_id IS NOT NULL) AND (tag_id IS NULL)) OR ((device_id IS NULL) AND (tag_id IS NOT NULL))))
 );
 
@@ -2217,6 +2480,13 @@ ALTER TABLE public.playlist_assignments OWNER TO signage_user;
 --
 
 COMMENT ON TABLE public.playlist_assignments IS 'Polymorphic assignments: playlist can be assigned to devices OR tags';
+
+
+--
+-- Name: COLUMN playlist_assignments.assigned_by_id; Type: COMMENT; Schema: public; Owner: signage_user
+--
+
+COMMENT ON COLUMN public.playlist_assignments.assigned_by_id IS 'User who made this assignment';
 
 
 --
@@ -2373,6 +2643,8 @@ CREATE TABLE public.playlists (
     is_default boolean DEFAULT false NOT NULL,
     is_pms_template boolean DEFAULT false NOT NULL,
     background_audio_id integer,
+    updated_by_id integer,
+    deleted_by_id integer,
     CONSTRAINT check_playlists_priority_non_negative CHECK ((priority >= 0))
 );
 
@@ -2724,6 +2996,8 @@ CREATE TABLE public.schedules (
     tag_ids jsonb,
     applies_to_all boolean DEFAULT false,
     updated_by_id integer,
+    deleted_by_id integer,
+    deleted_at timestamp with time zone,
     CONSTRAINT check_schedules_date_range CHECK (((end_date IS NULL) OR (end_date >= start_date))),
     CONSTRAINT check_schedules_priority_non_negative CHECK (((priority IS NULL) OR (priority >= 0))),
     CONSTRAINT check_schedules_time_range CHECK (((end_time IS NULL) OR (start_time IS NULL) OR (end_date IS NOT NULL) OR (end_time > start_time)))
@@ -2808,7 +3082,12 @@ CREATE TABLE public.tags (
     organization_id integer NOT NULL,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     priority integer DEFAULT 50 NOT NULL,
-    assigned_playlist_id integer
+    assigned_playlist_id integer,
+    created_by_id integer,
+    updated_by_id integer,
+    deleted_by_id integer,
+    deleted_at timestamp with time zone,
+    updated_at timestamp with time zone
 );
 
 
@@ -2833,6 +3112,27 @@ COMMENT ON COLUMN public.tags.color IS 'Hex color code for tag display (e.g., #3
 --
 
 COMMENT ON COLUMN public.tags.organization_id IS 'Organization ID for multi-tenant isolation';
+
+
+--
+-- Name: COLUMN tags.created_by_id; Type: COMMENT; Schema: public; Owner: signage_user
+--
+
+COMMENT ON COLUMN public.tags.created_by_id IS 'User who created this tag';
+
+
+--
+-- Name: COLUMN tags.updated_by_id; Type: COMMENT; Schema: public; Owner: signage_user
+--
+
+COMMENT ON COLUMN public.tags.updated_by_id IS 'User who last modified this tag';
+
+
+--
+-- Name: COLUMN tags.updated_at; Type: COMMENT; Schema: public; Owner: signage_user
+--
+
+COMMENT ON COLUMN public.tags.updated_at IS 'Timestamp when tag was last updated';
 
 
 --
@@ -2929,11 +3229,27 @@ CREATE TABLE public.translations (
     field_name character varying(100) NOT NULL,
     translated_value text NOT NULL,
     created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
-    updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP
+    updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    created_by_id integer,
+    updated_by_id integer
 );
 
 
 ALTER TABLE public.translations OWNER TO signage_user;
+
+--
+-- Name: COLUMN translations.created_by_id; Type: COMMENT; Schema: public; Owner: signage_user
+--
+
+COMMENT ON COLUMN public.translations.created_by_id IS 'User who created this translation';
+
+
+--
+-- Name: COLUMN translations.updated_by_id; Type: COMMENT; Schema: public; Owner: signage_user
+--
+
+COMMENT ON COLUMN public.translations.updated_by_id IS 'User who last modified this translation';
+
 
 --
 -- Name: translations_id_seq; Type: SEQUENCE; Schema: public; Owner: signage_user
@@ -2976,7 +3292,7 @@ CREATE TABLE public.user_sessions (
     revoked_at timestamp with time zone,
     session_type character varying(20) DEFAULT 'web'::character varying NOT NULL,
     CONSTRAINT check_refresh_token_expires CHECK (((refresh_token IS NULL) OR (expires_at > created_at))),
-    CONSTRAINT user_sessions_session_type_check CHECK (((session_type)::text = ANY ((ARRAY['web'::character varying, 'api'::character varying, 'mobile'::character varying, 'device'::character varying])::text[])))
+    CONSTRAINT user_sessions_session_type_check CHECK (((session_type)::text = ANY (ARRAY[('web'::character varying)::text, ('api'::character varying)::text, ('mobile'::character varying)::text, ('device'::character varying)::text])))
 );
 
 
@@ -3079,6 +3395,20 @@ CREATE TABLE public.users (
 
 
 ALTER TABLE public.users OWNER TO signage_user;
+
+--
+-- Name: COLUMN users.username; Type: COMMENT; Schema: public; Owner: signage_user
+--
+
+COMMENT ON COLUMN public.users.username IS 'Username unique within organization';
+
+
+--
+-- Name: COLUMN users.email; Type: COMMENT; Schema: public; Owner: signage_user
+--
+
+COMMENT ON COLUMN public.users.email IS 'Email globally unique (for login)';
+
 
 --
 -- Name: COLUMN users.organization_id; Type: COMMENT; Schema: public; Owner: signage_user
@@ -3266,6 +3596,41 @@ ALTER TABLE ONLY public.devices ALTER COLUMN id SET DEFAULT nextval('public.devi
 
 
 --
+-- Name: menu_categories id; Type: DEFAULT; Schema: public; Owner: signage_user
+--
+
+ALTER TABLE ONLY public.menu_categories ALTER COLUMN id SET DEFAULT nextval('public.menu_categories_id_seq'::regclass);
+
+
+--
+-- Name: menu_import_history id; Type: DEFAULT; Schema: public; Owner: signage_user
+--
+
+ALTER TABLE ONLY public.menu_import_history ALTER COLUMN id SET DEFAULT nextval('public.menu_import_history_id_seq'::regclass);
+
+
+--
+-- Name: menu_items id; Type: DEFAULT; Schema: public; Owner: signage_user
+--
+
+ALTER TABLE ONLY public.menu_items ALTER COLUMN id SET DEFAULT nextval('public.menu_items_id_seq'::regclass);
+
+
+--
+-- Name: menu_views id; Type: DEFAULT; Schema: public; Owner: signage_user
+--
+
+ALTER TABLE ONLY public.menu_views ALTER COLUMN id SET DEFAULT nextval('public.menu_views_id_seq'::regclass);
+
+
+--
+-- Name: menus id; Type: DEFAULT; Schema: public; Owner: signage_user
+--
+
+ALTER TABLE ONLY public.menus ALTER COLUMN id SET DEFAULT nextval('public.menus_id_seq'::regclass);
+
+
+--
 -- Name: organizations id; Type: DEFAULT; Schema: public; Owner: signage_user
 --
 
@@ -3375,6 +3740,614 @@ ALTER TABLE ONLY public.users ALTER COLUMN id SET DEFAULT nextval('public.users_
 --
 
 ALTER TABLE ONLY public.widgets ALTER COLUMN id SET DEFAULT nextval('public.widgets_id_seq'::regclass);
+
+
+--
+-- Data for Name: audit_logs; Type: TABLE DATA; Schema: public; Owner: signage_user
+--
+
+COPY public.audit_logs (id, user_id, organization_id, action, resource_type, resource_id, details, ip_address, user_agent, created_at) FROM stdin;
+90	33	\N	role.create	role	10	{"role_name": "audit_test_role", "organization_id": null, "is_system_role": true, "permissions_count": 1}	\N	\N	2025-11-27 09:19:22.049267+00
+\.
+
+
+--
+-- Data for Name: content_assignments; Type: TABLE DATA; Schema: public; Owner: signage_user
+--
+
+COPY public.content_assignments (id, device_id, content_id, priority, schedule, assigned_at, assigned_by_id, expires_at, organization_id, tag_id, created_at, updated_at, is_muted) FROM stdin;
+\.
+
+
+--
+-- Data for Name: content_playback_logs; Type: TABLE DATA; Schema: public; Owner: signage_user
+--
+
+COPY public.content_playback_logs (id, content_id, playlist_id, device_id, organization_id, started_at, ended_at, duration_seconds, is_completed, skip_reason, source, created_at) FROM stdin;
+\.
+
+
+--
+-- Data for Name: content_tags; Type: TABLE DATA; Schema: public; Owner: signage_user
+--
+
+COPY public.content_tags (id, content_id, tag_id, created_at) FROM stdin;
+\.
+
+
+--
+-- Data for Name: contents; Type: TABLE DATA; Schema: public; Owner: signage_user
+--
+
+COPY public.contents (id, title, description, content_type, file_path, file_url, storage_key, file_hash, duration, is_active, file_size, mime_type, original_filename, file_extension, resolution, width, height, codec, fps, bitrate, media_duration, video_start_time, video_end_time, audio_codec, audio_bitrate, audio_sample_rate, audio_channels, transcoding_status, transcoding_job_id, transcoding_progress, transcoding_error, hls_master_playlist_path, hls_master_playlist_url, hls_variants, thumbnail_path, thumbnail_url, thumbnail_generated_at, upload_status, organization_id, uploaded_by_id, created_at, updated_at, deleted_at, updated_by_id, deleted_by_id) FROM stdin;
+\.
+
+
+--
+-- Data for Name: device_commands; Type: TABLE DATA; Schema: public; Owner: signage_user
+--
+
+COPY public.device_commands (id, device_id, organization_id, command_type, parameters, reason, status, sent_at, executed_at, error_message, created_by_id, expires_at, created_at, command_data, priority, failed_at, result, retry_count, max_retries, updated_at) FROM stdin;
+\.
+
+
+--
+-- Data for Name: device_connection_logs; Type: TABLE DATA; Schema: public; Owner: signage_user
+--
+
+COPY public.device_connection_logs (id, device_id, logged_at, event_type, status, latency_ms, error_message, download_speed_mbps, upload_speed_mbps, metadata, created_at, connection_type, effective_type, rtt_ms, endpoint, http_status, test_trigger, test_duration_ms) FROM stdin;
+\.
+
+
+--
+-- Data for Name: device_group_members; Type: TABLE DATA; Schema: public; Owner: signage_user
+--
+
+COPY public.device_group_members (id, device_id, group_id, joined_at, added_by_id) FROM stdin;
+\.
+
+
+--
+-- Data for Name: device_groups; Type: TABLE DATA; Schema: public; Owner: signage_user
+--
+
+COPY public.device_groups (id, name, description, parent_group_id, organization_id, group_type, sort_order, default_playlist_id, deleted_at, created_by_id, created_at, updated_at, updated_by_id, deleted_by_id) FROM stdin;
+\.
+
+
+--
+-- Data for Name: device_health_metrics; Type: TABLE DATA; Schema: public; Owner: signage_user
+--
+
+COPY public.device_health_metrics (id, device_id, organization_id, cpu_usage, memory_usage, disk_usage, temperature, network_status, bandwidth_up, bandwidth_down, latency, display_status, resolution, refresh_rate, browser_version, user_agent, recorded_at, memory_total_mb, memory_used_mb, disk_total_gb, disk_used_gb, network_latency_ms, network_download_mbps, network_upload_mbps, connection_quality, display_resolution, display_refresh_rate, gpu_usage, player_version, player_uptime_hours, content_errors_count, last_error_message, last_error_at, overall_status, is_alert_triggered, alert_message, metadata, created_at) FROM stdin;
+\.
+
+
+--
+-- Data for Name: device_logs; Type: TABLE DATA; Schema: public; Owner: signage_user
+--
+
+COPY public.device_logs (id, device_id, organization_id, log_level, message, source, stack_trace, user_agent, url, recorded_at) FROM stdin;
+\.
+
+
+--
+-- Data for Name: device_speed_tests; Type: TABLE DATA; Schema: public; Owner: signage_user
+--
+
+COPY public.device_speed_tests (id, device_id, organization_id, download_speed, upload_speed, latency, jitter, packet_loss, dns_server, server_endpoint, quality, test_duration_ms, error_message, tested_at) FROM stdin;
+\.
+
+
+--
+-- Data for Name: device_tags; Type: TABLE DATA; Schema: public; Owner: signage_user
+--
+
+COPY public.device_tags (id, device_id, tag_id, assigned_at, assigned_by_id) FROM stdin;
+\.
+
+
+--
+-- Data for Name: devices; Type: TABLE DATA; Schema: public; Owner: signage_user
+--
+
+COPY public.devices (id, device_type, device_name, organization_id, unique_code, code_expires_at, device_uuid, ip_address, platform, screen_width, screen_height, viewport_width, viewport_height, device_pixel_ratio, user_agent, connection_type, connection_speed, model_name, firmware_version, status, last_seen_at, rotation, is_volume_enabled, room_number, location_type, is_personalization_supported, privacy_mode, created_at, updated_at, released_at, created_by_id, updated_by_id, assigned_playlist_id, volume_level, background_audio_id, deleted_by_id, deleted_at) FROM stdin;
+\.
+
+
+--
+-- Data for Name: menu_categories; Type: TABLE DATA; Schema: public; Owner: signage_user
+--
+
+COPY public.menu_categories (id, organization_id, menu_type, name, display_order, icon, translations, created_at) FROM stdin;
+\.
+
+
+--
+-- Data for Name: menu_import_history; Type: TABLE DATA; Schema: public; Owner: signage_user
+--
+
+COPY public.menu_import_history (id, menu_id, organization_id, imported_by_id, filename, file_size, rows_total, rows_success, rows_failed, errors, imported_at) FROM stdin;
+\.
+
+
+--
+-- Data for Name: menu_items; Type: TABLE DATA; Schema: public; Owner: signage_user
+--
+
+COPY public.menu_items (id, menu_id, organization_id, content_id, name, description, price, currency, image_url, video_url, category, subcategory, tags, display_order, is_active, is_featured, is_available, translations, created_at, updated_at, deleted_at) FROM stdin;
+\.
+
+
+--
+-- Data for Name: menu_views; Type: TABLE DATA; Schema: public; Owner: signage_user
+--
+
+COPY public.menu_views (id, menu_id, organization_id, viewer_ip, user_agent, device_type, contact_clicked, contact_type, viewed_at) FROM stdin;
+\.
+
+
+--
+-- Data for Name: menus; Type: TABLE DATA; Schema: public; Owner: signage_user
+--
+
+COPY public.menus (id, organization_id, name, description, menu_type, is_active, show_prices, display_mode, theme_color, whatsapp_number, phone_number, contact_label, translations, available_days, available_hours, public_url_code, qr_code_path, qr_code_generated_at, created_by_id, updated_by_id, created_at, updated_at, deleted_at, deleted_by_id) FROM stdin;
+\.
+
+
+--
+-- Data for Name: organizations; Type: TABLE DATA; Schema: public; Owner: signage_user
+--
+
+COPY public.organizations (id, name, pin, description, address, contact_email, contact_phone, logo_url, is_active, created_at, updated_at, max_devices, max_users, settings, created_by_id, updated_by_id) FROM stdin;
+21	System	\N	\N	\N	\N	\N	\N	t	2025-11-27 06:55:30.300904+00	\N	10	5	{}	\N	\N
+22	Hotel Signage Demo	\N	\N	\N	\N	\N	\N	t	2025-11-27 06:55:30.300904+00	\N	10	5	{}	\N	\N
+\.
+
+
+--
+-- Data for Name: password_reset_tokens; Type: TABLE DATA; Schema: public; Owner: signage_user
+--
+
+COPY public.password_reset_tokens (id, user_id, token_hash, email, expires_at, created_at, consumed_at) FROM stdin;
+\.
+
+
+--
+-- Data for Name: playlist_assignments; Type: TABLE DATA; Schema: public; Owner: signage_user
+--
+
+COPY public.playlist_assignments (id, playlist_id, device_id, tag_id, created_at, assigned_by_id) FROM stdin;
+\.
+
+
+--
+-- Data for Name: playlist_contents; Type: TABLE DATA; Schema: public; Owner: signage_user
+--
+
+COPY public.playlist_contents (id, playlist_id, content_id, order_index, duration, created_at, is_muted) FROM stdin;
+\.
+
+
+--
+-- Data for Name: playlist_widgets; Type: TABLE DATA; Schema: public; Owner: signage_user
+--
+
+COPY public.playlist_widgets (id, playlist_id, widget_id, "position", display_duration, z_index, created_at) FROM stdin;
+\.
+
+
+--
+-- Data for Name: playlists; Type: TABLE DATA; Schema: public; Owner: signage_user
+--
+
+COPY public.playlists (id, name, description, is_active, priority, schedule, organization_id, created_by_id, created_at, updated_at, deleted_at, is_default, is_pms_template, background_audio_id, updated_by_id, deleted_by_id) FROM stdin;
+\.
+
+
+--
+-- Data for Name: pms_configurations; Type: TABLE DATA; Schema: public; Owner: signage_user
+--
+
+COPY public.pms_configurations (id, organization_id, api_key, is_active, last_synced_at, sync_interval_minutes, created_by_id, created_at, updated_at) FROM stdin;
+\.
+
+
+--
+-- Data for Name: pms_guests; Type: TABLE DATA; Schema: public; Owner: signage_user
+--
+
+COPY public.pms_guests (id, organization_id, guest_name, room_number, checkin_date, checkout_date, email, phone, country, reservation_no, synced_at, created_at, updated_at, title, balance, loyalty_level, language, special_requests) FROM stdin;
+\.
+
+
+--
+-- Data for Name: pms_rooms; Type: TABLE DATA; Schema: public; Owner: signage_user
+--
+
+COPY public.pms_rooms (id, organization_id, room_number, room_type, status, floor, bed_type, max_occupancy, synced_at, last_updated, created_at, updated_at) FROM stdin;
+\.
+
+
+--
+-- Data for Name: roles; Type: TABLE DATA; Schema: public; Owner: signage_user
+--
+
+COPY public.roles (id, name, description, organization_id, is_system_role, permissions, created_at, updated_at, created_by_id, updated_by_id) FROM stdin;
+5	SUPER_ADMIN	System Super Administrator	\N	t	{"tags": ["read", "create", "edit", "delete", "manage"], "menus": ["read", "create", "edit", "delete", "manage"], "roles": ["read", "create", "edit", "delete", "manage"], "users": ["read", "create", "edit", "delete", "manage"], "system": ["read", "manage"], "devices": ["read", "create", "edit", "delete", "manage"], "contents": ["read", "create", "edit", "delete", "manage"], "sessions": ["read", "manage"], "settings": ["read", "edit", "manage"], "analytics": ["read", "manage"], "dashboard": ["read", "manage"], "playlists": ["read", "create", "edit", "delete", "manage"], "schedules": ["read", "create", "edit", "delete", "manage"], "audit_logs": ["read", "manage"], "device_groups": ["read", "create", "edit", "delete", "manage"], "organizations": ["read", "create", "edit", "delete", "manage"]}	2025-11-27 06:55:25.056295+00	2025-11-27 07:20:51.398852+00	\N	\N
+6	ADMIN	Organization Administrator	\N	t	{"tags": ["read", "create", "edit", "delete"], "menus": ["read", "create", "edit", "delete"], "roles": ["read", "create", "edit", "delete"], "users": ["read", "create", "edit", "delete"], "devices": ["read", "create", "edit", "delete"], "contents": ["read", "create", "edit", "delete"], "sessions": ["read"], "settings": ["read", "edit"], "analytics": ["read"], "dashboard": ["read"], "playlists": ["read", "create", "edit", "delete"], "schedules": ["read", "create", "edit", "delete"], "audit_logs": ["read"], "device_groups": ["read", "create", "edit", "delete"], "organizations": ["read", "edit"]}	2025-11-27 06:55:25.056295+00	2025-11-27 07:20:51.398852+00	\N	\N
+7	CONTENT_MANAGER	Content Manager	\N	t	{"tags": ["read", "create", "edit"], "menus": ["read", "create", "edit"], "devices": ["read"], "contents": ["read", "create", "edit", "delete"], "dashboard": ["read"], "playlists": ["read", "create", "edit", "delete"], "schedules": ["read", "create", "edit"]}	2025-11-27 06:55:25.056295+00	2025-11-27 07:20:51.398852+00	\N	\N
+8	VIEWER	View Only	\N	t	{"devices": ["read"], "contents": ["read"], "analytics": ["read"], "dashboard": ["read"], "playlists": ["read"], "schedules": ["read"]}	2025-11-27 06:55:25.056295+00	2025-11-27 07:20:51.398852+00	\N	\N
+\.
+
+
+--
+-- Data for Name: schedules; Type: TABLE DATA; Schema: public; Owner: signage_user
+--
+
+COPY public.schedules (id, organization_id, name, description, playlist_id, start_date, end_date, start_time, end_time, recurrence_type, recurrence_pattern, exceptions, priority, is_active, created_by_id, created_at, updated_at, device_ids, tag_ids, applies_to_all, updated_by_id, deleted_by_id, deleted_at) FROM stdin;
+\.
+
+
+--
+-- Data for Name: tags; Type: TABLE DATA; Schema: public; Owner: signage_user
+--
+
+COPY public.tags (id, tag_name, description, color, organization_id, created_at, priority, assigned_playlist_id, created_by_id, updated_by_id, deleted_by_id, deleted_at, updated_at) FROM stdin;
+\.
+
+
+--
+-- Data for Name: templates; Type: TABLE DATA; Schema: public; Owner: signage_user
+--
+
+COPY public.templates (id, organization_id, name, description, template_type, content, variables, preview_data, is_active, created_by_id, created_at, updated_at, updated_by_id) FROM stdin;
+\.
+
+
+--
+-- Data for Name: translations; Type: TABLE DATA; Schema: public; Owner: signage_user
+--
+
+COPY public.translations (id, organization_id, entity_type, entity_id, language_code, field_name, translated_value, created_at, updated_at, created_by_id, updated_by_id) FROM stdin;
+\.
+
+
+--
+-- Data for Name: user_sessions; Type: TABLE DATA; Schema: public; Owner: signage_user
+--
+
+COPY public.user_sessions (id, user_id, organization_id, session_token, refresh_token, ip_address, user_agent, device_info, created_at, last_activity_at, expires_at, revoked_at, session_type) FROM stdin;
+388	33	\N	6d9022114a9a9211739c2707ba639e719e7d2034535882f351492f5ed0f56d02	\N	172.18.0.1	curl/8.5.0	{"platform": "unknown", "user_agent": "curl/8.5.0"}	2025-11-27 06:55:59.141035+00	2025-11-27 06:55:59.141035+00	2025-12-27 06:55:59.377072+00	\N	web
+389	34	22	1e65bfb80f31f21dc1e1f995c4de3bfff5e7f16a1de341a69790610aa1214f97	\N	172.18.0.1	curl/8.5.0	{"platform": "unknown", "user_agent": "curl/8.5.0"}	2025-11-27 06:56:15.179212+00	2025-11-27 06:56:15.179212+00	2025-12-27 06:56:15.41217+00	\N	web
+400	33	\N	63d55cede1813ba471f783fc82e9d8d417278e515013f2d4abf004b13f5818b6	\N	172.18.0.1	curl/8.5.0	{"platform": "unknown", "user_agent": "curl/8.5.0"}	2025-11-27 09:17:20.203613+00	2025-11-27 09:19:22.035742+00	2025-12-27 09:17:20.463917+00	\N	web
+425	33	\N	5c89be33599dce1159654ee61f40f2eccda37dd1aba62f3b3a924d05472df55d	\N	172.18.0.1	curl/8.5.0	{"platform": "unknown", "user_agent": "curl/8.5.0"}	2025-11-27 15:42:40.372145+00	2025-11-27 15:42:40.372145+00	2025-12-27 15:42:40.603947+00	\N	web
+402	33	\N	914a6fd2b043bdbda77d5b2664d883fdfa0b09ba7d667816fe010c3a46656792	\N	172.18.0.1	Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36	{"platform": "Windows", "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36"}	2025-11-27 09:18:23.7643+00	2025-11-27 09:20:18.541087+00	2025-12-27 09:18:24.197245+00	\N	web
+391	33	\N	162a2865ca8b51364fa17304bc6f5c124a93b8b1c837a94dc459742940011e85	\N	172.18.0.1	curl/8.5.0	{"platform": "unknown", "user_agent": "curl/8.5.0"}	2025-11-27 07:33:14.050388+00	2025-11-27 07:33:14.050388+00	2025-12-27 07:33:14.30016+00	\N	web
+392	33	\N	28ed3d27676354729c77baae3cca29a9fc648333f787e47569460612f4d13591	\N	172.18.0.1	curl/8.5.0	{"platform": "unknown", "user_agent": "curl/8.5.0"}	2025-11-27 07:33:26.62675+00	2025-11-27 07:33:26.883152+00	2025-12-27 07:33:26.857406+00	\N	web
+403	34	22	25b3b74120758b19b8ba55409653975d3144439a7f7edc91017f24baca6a859c	\N	172.18.0.1	Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36	{"platform": "Windows", "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36"}	2025-11-27 10:04:31.088741+00	2025-11-27 10:32:35.780837+00	2025-12-27 10:04:31.354656+00	\N	web
+404	34	22	4de558e68473ca293bf1c42b66c37e79097eeb405c5400fd60aa1dbe703de90d	\N	172.18.0.1	Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36	{"platform": "Windows", "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36"}	2025-11-27 10:35:53.691128+00	2025-11-27 10:35:54.033915+00	2025-12-27 10:35:53.947694+00	\N	web
+390	33	\N	a644d2dbacfc85207823c1f3611ce429dc65ea9b0b52a4d2e99fad876eaf63e1	\N	172.18.0.1	Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36	{"platform": "Windows", "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36"}	2025-11-27 07:23:38.941146+00	2025-11-27 07:34:52.38823+00	2025-12-27 07:23:39.200934+00	\N	web
+405	34	22	e1635d8021594d32e4ba94710c134beca11d17753fe7e974dfcdde6ef8b8bfc5	\N	172.18.0.1	Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36	{"platform": "Windows", "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36"}	2025-11-27 12:31:26.273136+00	2025-11-27 12:54:46.375471+00	2025-12-27 12:31:26.558057+00	\N	web
+406	34	22	ddd32094a4357d3abc47be2949fef01b1b05ac6959b630acb3771d137c311af3	\N	172.18.0.1	Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36	{"platform": "Windows", "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36"}	2025-11-27 13:23:54.942991+00	2025-11-27 13:23:55.336324+00	2025-12-27 13:23:55.183559+00	\N	web
+394	33	\N	ea9bbebd88058dbe6a55025bcf68a6d32434f21b71df11967a53313543312974	\N	172.18.0.1	curl/8.5.0	{"platform": "unknown", "user_agent": "curl/8.5.0"}	2025-11-27 08:03:53.135889+00	2025-11-27 08:03:53.135889+00	2025-12-27 08:03:53.398441+00	\N	web
+407	34	22	86a9864303c994a36a702185d7daf5a08d6108e94cc9269d9fc4468b19aacd87	\N	172.18.0.1	Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36	{"platform": "Windows", "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36"}	2025-11-27 13:58:21.379081+00	2025-11-27 13:58:21.777528+00	2025-12-27 13:58:21.619275+00	\N	web
+393	34	22	232a63643c0ceedb8f03e5580fb9806f4ab8128fd06bc18e3f8d3c034adf0752	\N	172.18.0.1	Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36	{"platform": "Windows", "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36"}	2025-11-27 07:34:40.240089+00	2025-11-27 08:04:04.01778+00	2025-12-27 07:34:40.474507+00	\N	web
+395	33	\N	380504ae8abcc4a73a001af416ec4aedffc5eb9ecc460b328f3ead20c5af38f3	\N	172.18.0.1	Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36	{"platform": "Windows", "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36"}	2025-11-27 08:04:24.260438+00	2025-11-27 08:04:37.977489+00	2025-12-27 08:04:24.567882+00	\N	web
+396	33	\N	db048e78f7ee678c9e3eae224ee4f4d990236dbebfbe5e3b7c2fe8a816b31c46	\N	172.18.0.1	curl/8.5.0	{"platform": "unknown", "user_agent": "curl/8.5.0"}	2025-11-27 08:05:41.350131+00	2025-11-27 08:05:41.350131+00	2025-12-27 08:05:41.591413+00	\N	web
+408	34	22	76b6cc73863a6b397a5fb1f03358aff32993de0e8c27470aa7bc2b7b4b8a0380	\N	172.18.0.1	Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36	{"platform": "Windows", "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36"}	2025-11-27 15:01:33.386482+00	2025-11-27 15:26:54.966964+00	2025-12-27 15:01:33.630605+00	2025-11-27 15:26:54.976198+00	web
+397	34	22	0c1c1cf9a20619e2f9e6aa1d42c4418acbf466ea189c34c38dbedd547e164bae	\N	172.18.0.1	Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36	{"platform": "Windows", "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36"}	2025-11-27 08:23:38.9291+00	2025-11-27 08:23:42.534688+00	2025-12-27 08:23:39.171432+00	\N	web
+398	33	\N	1ad1f24d910d50beeecf310b3d7569cedcfce33b2d821e88b3062e006e0bd8a8	\N	172.18.0.1	curl/8.5.0	{"platform": "unknown", "user_agent": "curl/8.5.0"}	2025-11-27 09:05:03.729105+00	2025-11-27 09:05:03.729105+00	2025-12-27 09:05:03.99592+00	\N	web
+399	33	\N	cde2248edcf974707d29da0164d81dc4e6839c3278e37c269d55efe9407bbd92	\N	172.18.0.1	curl/8.5.0	{"platform": "unknown", "user_agent": "curl/8.5.0"}	2025-11-27 09:05:13.012173+00	2025-11-27 09:06:44.571412+00	2025-12-27 09:05:13.245441+00	\N	web
+401	34	22	66ff02e8cef6db829c8f26e634df25e3bad5847b08e3414913cca6243d48f753	\N	172.18.0.1	Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36	{"platform": "Windows", "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36"}	2025-11-27 09:18:07.027221+00	2025-11-27 09:18:07.440877+00	2025-12-27 09:18:07.264253+00	\N	web
+410	33	\N	4d6341a95e073a539def9cd64a418ae7f61336925a23f1da2c1487bcb8e652f7	\N	172.18.0.1	Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36	{"platform": "Windows", "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36"}	2025-11-27 15:04:47.458278+00	2025-11-27 15:04:47.458278+00	2025-12-27 15:04:47.701086+00	\N	web
+423	33	\N	9c897e08baabd70871f1a6655b63c9dc68158e48636cda8195dcfaa35c13dc66	\N	172.18.0.1	Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36	{"platform": "Windows", "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36"}	2025-11-27 15:41:03.739797+00	2025-11-27 15:46:59.695117+00	2025-12-27 15:41:03.974577+00	\N	web
+409	34	22	3d6126d89dd403d27d25a652b019b1ead1a9e4997a6340c6cb64f039f211f762	\N	172.18.0.1	Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36	{"platform": "Windows", "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36"}	2025-11-27 15:04:35.837562+00	2025-11-27 15:11:19.114879+00	2025-12-27 15:04:36.068725+00	\N	web
+424	34	22	5ea9e18eb1fa1e57970fd542c232462a41b8ae3cb1af2848daf674bcd4cc4294	\N	172.18.0.1	Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36	{"platform": "Windows", "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36"}	2025-11-27 15:41:27.98143+00	2025-11-27 15:48:41.505765+00	2025-12-27 15:41:28.215152+00	\N	web
+428	33	\N	4beeb90a29a5a491ffcfbb837224d186cf2a36eb56767551a3c1ede4564062ee	\N	172.18.0.1	curl/8.5.0	{"platform": "unknown", "user_agent": "curl/8.5.0"}	2025-11-27 15:53:45.854894+00	2025-11-27 15:53:45.854894+00	2025-12-27 15:53:46.109977+00	\N	web
+429	34	22	5372a4aa867a9ab66d3ae887a32efc98fbbc22ce9c3867a9fcbcd8490b41c857	\N	172.18.0.1	curl/8.5.0	{"platform": "unknown", "user_agent": "curl/8.5.0"}	2025-11-27 15:54:00.316735+00	2025-11-27 15:54:00.316735+00	2025-12-27 15:54:00.551954+00	\N	web
+411	34	22	b4b1dc99edcf5678aabb08f946e6751f304c28a170d586475dbedafe052756c7	\N	172.18.0.1	Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36	{"platform": "Windows", "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36"}	2025-11-27 15:12:23.512271+00	2025-11-27 15:29:34.080475+00	2025-12-27 15:12:23.772056+00	2025-11-27 15:29:34.085893+00	web
+413	33	\N	d18f4ab37a9732af62838f7b16b3d9d587ec79d2b98b647a07f69310a2df4732	\N	172.18.0.1	Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36	{"platform": "Windows", "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36"}	2025-11-27 15:29:35.615808+00	2025-11-27 15:29:35.615808+00	2025-12-27 15:29:35.855291+00	2025-11-27 15:29:39.890455+00	web
+414	34	22	16a963f2251d2d901f51d52c7c858bd5b779614fecb8b3ba00c5515efc22aa71	\N	172.18.0.1	Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36	{"platform": "Windows", "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36"}	2025-11-27 15:29:44.05805+00	2025-11-27 15:30:36.65993+00	2025-12-27 15:29:44.293248+00	2025-11-27 15:30:36.666291+00	web
+415	34	22	141a3d96b401b200e291735157bd5e0cf97a506f798143508b6277e331fd10fe	\N	172.18.0.1	Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36	{"platform": "Windows", "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36"}	2025-11-27 15:30:38.608436+00	2025-11-27 15:30:38.608436+00	2025-12-27 15:30:38.84306+00	\N	web
+412	33	\N	594e8e9dc910f48fe3583688866650eebe39f49ef2a0bdcf09f7507a97cda949	\N	172.18.0.1	Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36	{"platform": "Windows", "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36"}	2025-11-27 15:27:00.90223+00	2025-11-27 15:32:28.482681+00	2025-12-27 15:27:01.139107+00	\N	web
+417	34	22	10db20bc731c8bdf83ef2c9a2e1dea4408c13a6772bab80c682c81157fdea2c3	\N	172.18.0.1	curl/8.5.0	{"platform": "unknown", "user_agent": "curl/8.5.0"}	2025-11-27 15:32:58.137026+00	2025-11-27 15:32:58.137026+00	2025-12-27 15:32:58.372567+00	\N	web
+419	33	\N	76ee9a5d39653b02825edba89b126650e4c171bec98cb83c45274f2d53762761	\N	172.18.0.1	curl/8.5.0	{"platform": "unknown", "user_agent": "curl/8.5.0"}	2025-11-27 15:36:10.202017+00	2025-11-27 15:36:10.202017+00	2025-12-27 15:36:10.434578+00	\N	web
+420	33	\N	b7a2e2fda23a53abec27c54c41c6e68eeb4b119580f18cf959dea52ae37fc3a0	\N	172.18.0.1	curl/8.5.0	{"platform": "unknown", "user_agent": "curl/8.5.0"}	2025-11-27 15:36:26.997063+00	2025-11-27 15:36:26.997063+00	2025-12-27 15:36:27.230618+00	\N	web
+418	33	\N	4b8b331f9cca82186ae5856aed8a141d0978c39e3299495ee976fabed3a2fd08	\N	172.18.0.1	Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36	{"platform": "Windows", "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36"}	2025-11-27 15:33:21.510623+00	2025-11-27 15:36:37.866849+00	2025-12-27 15:33:21.747496+00	2025-11-27 15:36:37.871214+00	web
+416	34	22	08414113672adfd2ad78e0028af92ef831d150bd589b271f9d48970e843caaa7	\N	172.18.0.1	Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36	{"platform": "Windows", "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36"}	2025-11-27 15:30:45.085433+00	2025-11-27 15:30:45.085433+00	2025-12-27 15:30:45.318072+00	2025-11-27 15:36:48.069734+00	web
+421	33	\N	121067eca76ee78ef0370fa3c58b5b50c6403445cf24920f160aa80d1963d1db	\N	172.18.0.1	Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36	{"platform": "Windows", "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36"}	2025-11-27 15:36:39.471803+00	2025-11-27 15:36:39.471803+00	2025-12-27 15:36:39.705112+00	2025-11-27 15:41:00.272864+00	web
+422	34	22	8c68ab4910f0e2b2bc921da3718bfc1f47a8f60680e891e33b6feb5fe619e1af	\N	172.18.0.1	Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36	{"platform": "Windows", "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36"}	2025-11-27 15:36:52.576748+00	2025-11-27 15:40:43.488157+00	2025-12-27 15:36:52.816777+00	2025-11-27 15:41:24.447543+00	web
+426	33	\N	e5432c6d6b1ef3a33e447673371008d513565103a3b8369283640f421df0e431	\N	172.18.0.1	Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36	{"platform": "Windows", "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36"}	2025-11-27 15:50:19.212347+00	2025-11-27 16:01:37.082722+00	2025-12-27 15:50:19.446151+00	\N	web
+427	34	22	41fcf439639ead644a0a82b71f9b00c24e6ae712fc070abd1f0f85369288b8fc	\N	172.18.0.1	Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36	{"platform": "Windows", "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36"}	2025-11-27 15:51:46.432909+00	2025-11-27 16:06:12.00162+00	2025-12-27 15:51:46.688965+00	\N	web
+430	33	\N	68fc66e6236c76d565f7a93c390304efe1d558ab63816ad78ab6c9eed76e7f73	\N	172.18.0.1	curl/8.5.0	{"platform": "unknown", "user_agent": "curl/8.5.0"}	2025-11-27 16:20:20.491177+00	2025-11-27 16:20:20.491177+00	2025-12-27 16:20:20.750303+00	\N	web
+431	33	\N	f01f375f6b896f8a4ed9a783eef4665a941ef4a842452e9bdf4f1a231e5ba241	\N	172.18.0.1	curl/8.5.0	{"platform": "unknown", "user_agent": "curl/8.5.0"}	2025-11-27 16:20:31.357039+00	2025-11-27 16:22:29.750349+00	2025-12-27 16:20:31.596252+00	\N	web
+432	34	22	263bad276440387c339ee9d59f1b89013eb07aa61ee68175f8f9f759a157470a	\N	172.18.0.1	curl/8.5.0	{"platform": "unknown", "user_agent": "curl/8.5.0"}	2025-11-27 16:23:12.329954+00	2025-11-27 16:23:32.63393+00	2025-12-27 16:23:12.565249+00	\N	web
+433	33	\N	4f010782e5de28777a822367da9c0bf5c459d45266fdf132fe4256f139861aa2	\N	172.18.0.1	Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36	{"platform": "Windows", "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36"}	2025-11-27 16:24:20.165792+00	2025-11-27 16:24:34.252617+00	2025-12-27 16:24:20.398976+00	\N	web
+434	34	22	c2fa87d7248bab52a8c1dd61dbde223996bfed2a05430a7ac12950203449fe65	\N	172.18.0.1	Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36	{"platform": "Windows", "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36"}	2025-11-27 16:24:38.425374+00	2025-11-27 16:25:35.079531+00	2025-12-27 16:24:38.661032+00	\N	web
+435	34	22	f4c49c44f91b6c7d1ea4d4f465f5b6331c3c5ca2cfb011a5a0e02e9e90e7f033	\N	172.18.0.1	curl/8.5.0	{"platform": "unknown", "user_agent": "curl/8.5.0"}	2025-11-27 16:26:26.350672+00	2025-11-27 16:26:26.350672+00	2025-12-27 16:26:26.583592+00	\N	web
+437	34	22	7d1811cb33671f4ae022d049c0eca809e518a5b1f5d878e211e6657cd561b0f9	\N	172.18.0.1	curl/8.5.0	{"platform": "unknown", "user_agent": "curl/8.5.0"}	2025-11-27 16:26:43.324427+00	2025-11-27 16:26:43.324427+00	2025-12-27 16:26:43.5575+00	\N	web
+438	34	22	a92ed0fd9a4ae8893ea6c98a01985a39acfa44d9437bbb5ea2351783005f8a42	\N	172.18.0.1	curl/8.5.0	{"platform": "unknown", "user_agent": "curl/8.5.0"}	2025-11-27 16:28:32.174938+00	2025-11-27 16:28:32.174938+00	2025-12-27 16:28:32.438903+00	\N	web
+439	34	22	a3f376c7a522c24987dd504d47c6be84fe46d1c4a50e6a25be57054b6c92d133	\N	172.18.0.1	curl/8.5.0	{"platform": "unknown", "user_agent": "curl/8.5.0"}	2025-11-27 16:33:22.184076+00	2025-11-27 16:33:22.184076+00	2025-12-27 16:33:22.416359+00	\N	web
+440	34	22	e17049e52c0721213549517fdcacb2c7ed06c198104870644763d49934c480e3	\N	172.18.0.1	curl/8.5.0	{"platform": "unknown", "user_agent": "curl/8.5.0"}	2025-11-27 16:33:37.779654+00	2025-11-27 16:33:37.779654+00	2025-12-27 16:33:38.015846+00	\N	web
+441	34	22	18d86b8e9fb36e8a21b04b3bdb2af6d475f1c95cc1764cbf38583449891342f9	\N	172.18.0.1	curl/8.5.0	{"platform": "unknown", "user_agent": "curl/8.5.0"}	2025-11-27 16:35:52.199732+00	2025-11-27 16:35:52.199732+00	2025-12-27 16:35:52.461621+00	\N	web
+442	34	22	08de6a184db0b9748f4a2c5123f3353e10cf3945383b322619d4ab86e5ac4510	\N	172.18.0.1	curl/8.5.0	{"platform": "unknown", "user_agent": "curl/8.5.0"}	2025-11-27 16:37:59.563113+00	2025-11-27 16:37:59.563113+00	2025-12-27 16:37:59.801561+00	\N	web
+443	34	22	df18f63ac2343a50f3b49f83057329e8059c3f92ad7abaddffc37b3d75e9a561	\N	172.18.0.1	curl/8.5.0	{"platform": "unknown", "user_agent": "curl/8.5.0"}	2025-11-27 16:38:09.057809+00	2025-11-27 16:38:09.057809+00	2025-12-27 16:38:09.292942+00	\N	web
+436	34	22	ff984963b9ab2be6392e80c870556f6d4c95e9d7887e0df109401a38f7755362	\N	172.18.0.1	Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36	{"platform": "Windows", "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36"}	2025-11-27 16:26:37.064494+00	2025-11-27 16:51:03.164169+00	2025-12-27 16:26:37.296405+00	2025-11-27 16:51:04.412773+00	web
+444	34	22	c231be9c02a7a6573d24840be13c2b122aed2654af5dc18456b155b977b926ff	\N	172.18.0.1	Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36	{"platform": "Windows", "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36"}	2025-11-27 16:51:05.937645+00	2025-11-27 16:57:03.409042+00	2025-12-27 16:51:06.173718+00	\N	web
+445	33	\N	f4b58df4843e1b56fccf94d6fda34deb85a90eabc22a559e35d62b81741536e4	\N	172.18.0.1	Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36	{"platform": "Windows", "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36"}	2025-11-27 16:57:16.900508+00	2025-11-27 16:57:16.900508+00	2025-12-27 16:57:17.161376+00	\N	web
+446	34	22	682a90275dd34d74cc920a5b877c7bc80530a4e64ac6f9442967cc206cc131bf	\N	172.18.0.1	Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36	{"platform": "Windows", "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36"}	2025-11-27 17:24:27.780074+00	2025-11-27 17:37:41.366479+00	2025-12-27 17:24:28.04441+00	\N	web
+\.
+
+
+--
+-- Data for Name: users; Type: TABLE DATA; Schema: public; Owner: signage_user
+--
+
+COPY public.users (id, username, email, password_hash, full_name, organization_id, is_active, created_at, updated_at, role_id) FROM stdin;
+33	superadmin	superadmin@system.local	$2b$12$KK.KGcUEcVCSYotdWlLOP.7oHoGtQbdqWUbBVsvf36r2ne56ywwd2	Super Administrator	\N	t	2025-11-27 06:55:47.551294+00	\N	5
+34	tenantadmin	admin@hotel-demo.com	$2b$12$KK.KGcUEcVCSYotdWlLOP.7oHoGtQbdqWUbBVsvf36r2ne56ywwd2	Hotel Admin	22	t	2025-11-27 06:55:47.551294+00	\N	6
+\.
+
+
+--
+-- Data for Name: widgets; Type: TABLE DATA; Schema: public; Owner: signage_user
+--
+
+COPY public.widgets (id, organization_id, name, description, widget_type, config, layout, is_active, created_by_id, created_at, updated_at, updated_by_id) FROM stdin;
+\.
+
+
+--
+-- Name: audit_logs_id_seq; Type: SEQUENCE SET; Schema: public; Owner: signage_user
+--
+
+SELECT pg_catalog.setval('public.audit_logs_id_seq', 90, true);
+
+
+--
+-- Name: content_assignments_id_seq; Type: SEQUENCE SET; Schema: public; Owner: signage_user
+--
+
+SELECT pg_catalog.setval('public.content_assignments_id_seq', 30, true);
+
+
+--
+-- Name: content_playback_logs_id_seq; Type: SEQUENCE SET; Schema: public; Owner: signage_user
+--
+
+SELECT pg_catalog.setval('public.content_playback_logs_id_seq', 1, false);
+
+
+--
+-- Name: content_tags_id_seq; Type: SEQUENCE SET; Schema: public; Owner: signage_user
+--
+
+SELECT pg_catalog.setval('public.content_tags_id_seq', 7, true);
+
+
+--
+-- Name: contents_id_seq; Type: SEQUENCE SET; Schema: public; Owner: signage_user
+--
+
+SELECT pg_catalog.setval('public.contents_id_seq', 21, true);
+
+
+--
+-- Name: device_commands_id_seq; Type: SEQUENCE SET; Schema: public; Owner: signage_user
+--
+
+SELECT pg_catalog.setval('public.device_commands_id_seq', 6, true);
+
+
+--
+-- Name: device_connection_logs_id_seq; Type: SEQUENCE SET; Schema: public; Owner: signage_user
+--
+
+SELECT pg_catalog.setval('public.device_connection_logs_id_seq', 11225, true);
+
+
+--
+-- Name: device_group_members_id_seq; Type: SEQUENCE SET; Schema: public; Owner: signage_user
+--
+
+SELECT pg_catalog.setval('public.device_group_members_id_seq', 1, true);
+
+
+--
+-- Name: device_groups_id_seq; Type: SEQUENCE SET; Schema: public; Owner: signage_user
+--
+
+SELECT pg_catalog.setval('public.device_groups_id_seq', 13, true);
+
+
+--
+-- Name: device_health_metrics_id_seq; Type: SEQUENCE SET; Schema: public; Owner: signage_user
+--
+
+SELECT pg_catalog.setval('public.device_health_metrics_id_seq', 1, false);
+
+
+--
+-- Name: device_logs_id_seq; Type: SEQUENCE SET; Schema: public; Owner: signage_user
+--
+
+SELECT pg_catalog.setval('public.device_logs_id_seq', 72440, true);
+
+
+--
+-- Name: device_speed_tests_id_seq; Type: SEQUENCE SET; Schema: public; Owner: signage_user
+--
+
+SELECT pg_catalog.setval('public.device_speed_tests_id_seq', 1, false);
+
+
+--
+-- Name: device_tags_id_seq; Type: SEQUENCE SET; Schema: public; Owner: signage_user
+--
+
+SELECT pg_catalog.setval('public.device_tags_id_seq', 7, true);
+
+
+--
+-- Name: devices_id_seq; Type: SEQUENCE SET; Schema: public; Owner: signage_user
+--
+
+SELECT pg_catalog.setval('public.devices_id_seq', 7658, true);
+
+
+--
+-- Name: menu_categories_id_seq; Type: SEQUENCE SET; Schema: public; Owner: signage_user
+--
+
+SELECT pg_catalog.setval('public.menu_categories_id_seq', 1, false);
+
+
+--
+-- Name: menu_import_history_id_seq; Type: SEQUENCE SET; Schema: public; Owner: signage_user
+--
+
+SELECT pg_catalog.setval('public.menu_import_history_id_seq', 1, false);
+
+
+--
+-- Name: menu_items_id_seq; Type: SEQUENCE SET; Schema: public; Owner: signage_user
+--
+
+SELECT pg_catalog.setval('public.menu_items_id_seq', 1, false);
+
+
+--
+-- Name: menu_views_id_seq; Type: SEQUENCE SET; Schema: public; Owner: signage_user
+--
+
+SELECT pg_catalog.setval('public.menu_views_id_seq', 1, false);
+
+
+--
+-- Name: menus_id_seq; Type: SEQUENCE SET; Schema: public; Owner: signage_user
+--
+
+SELECT pg_catalog.setval('public.menus_id_seq', 2, true);
+
+
+--
+-- Name: organizations_id_seq; Type: SEQUENCE SET; Schema: public; Owner: signage_user
+--
+
+SELECT pg_catalog.setval('public.organizations_id_seq', 22, true);
+
+
+--
+-- Name: password_reset_tokens_id_seq; Type: SEQUENCE SET; Schema: public; Owner: signage_user
+--
+
+SELECT pg_catalog.setval('public.password_reset_tokens_id_seq', 1, false);
+
+
+--
+-- Name: playlist_assignments_id_seq; Type: SEQUENCE SET; Schema: public; Owner: signage_user
+--
+
+SELECT pg_catalog.setval('public.playlist_assignments_id_seq', 4, true);
+
+
+--
+-- Name: playlist_contents_id_seq; Type: SEQUENCE SET; Schema: public; Owner: signage_user
+--
+
+SELECT pg_catalog.setval('public.playlist_contents_id_seq', 5, true);
+
+
+--
+-- Name: playlist_widgets_id_seq; Type: SEQUENCE SET; Schema: public; Owner: signage_user
+--
+
+SELECT pg_catalog.setval('public.playlist_widgets_id_seq', 1, false);
+
+
+--
+-- Name: playlists_id_seq; Type: SEQUENCE SET; Schema: public; Owner: signage_user
+--
+
+SELECT pg_catalog.setval('public.playlists_id_seq', 23, true);
+
+
+--
+-- Name: pms_configurations_id_seq; Type: SEQUENCE SET; Schema: public; Owner: signage_user
+--
+
+SELECT pg_catalog.setval('public.pms_configurations_id_seq', 1, false);
+
+
+--
+-- Name: pms_guests_id_seq; Type: SEQUENCE SET; Schema: public; Owner: signage_user
+--
+
+SELECT pg_catalog.setval('public.pms_guests_id_seq', 1, false);
+
+
+--
+-- Name: pms_rooms_id_seq; Type: SEQUENCE SET; Schema: public; Owner: signage_user
+--
+
+SELECT pg_catalog.setval('public.pms_rooms_id_seq', 1, false);
+
+
+--
+-- Name: roles_id_seq; Type: SEQUENCE SET; Schema: public; Owner: signage_user
+--
+
+SELECT pg_catalog.setval('public.roles_id_seq', 10, true);
+
+
+--
+-- Name: schedules_id_seq; Type: SEQUENCE SET; Schema: public; Owner: signage_user
+--
+
+SELECT pg_catalog.setval('public.schedules_id_seq', 3, true);
+
+
+--
+-- Name: tags_id_seq; Type: SEQUENCE SET; Schema: public; Owner: signage_user
+--
+
+SELECT pg_catalog.setval('public.tags_id_seq', 13, true);
+
+
+--
+-- Name: templates_id_seq; Type: SEQUENCE SET; Schema: public; Owner: signage_user
+--
+
+SELECT pg_catalog.setval('public.templates_id_seq', 1, true);
+
+
+--
+-- Name: translations_id_seq; Type: SEQUENCE SET; Schema: public; Owner: signage_user
+--
+
+SELECT pg_catalog.setval('public.translations_id_seq', 1, false);
+
+
+--
+-- Name: user_sessions_id_seq; Type: SEQUENCE SET; Schema: public; Owner: signage_user
+--
+
+SELECT pg_catalog.setval('public.user_sessions_id_seq', 446, true);
+
+
+--
+-- Name: users_id_seq; Type: SEQUENCE SET; Schema: public; Owner: signage_user
+--
+
+SELECT pg_catalog.setval('public.users_id_seq', 34, true);
+
+
+--
+-- Name: widgets_id_seq; Type: SEQUENCE SET; Schema: public; Owner: signage_user
+--
+
+SELECT pg_catalog.setval('public.widgets_id_seq', 1, false);
 
 
 --
@@ -3495,6 +4468,46 @@ ALTER TABLE ONLY public.device_tags
 
 ALTER TABLE ONLY public.devices
     ADD CONSTRAINT devices_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: menu_categories menu_categories_pkey; Type: CONSTRAINT; Schema: public; Owner: signage_user
+--
+
+ALTER TABLE ONLY public.menu_categories
+    ADD CONSTRAINT menu_categories_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: menu_import_history menu_import_history_pkey; Type: CONSTRAINT; Schema: public; Owner: signage_user
+--
+
+ALTER TABLE ONLY public.menu_import_history
+    ADD CONSTRAINT menu_import_history_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: menu_items menu_items_pkey; Type: CONSTRAINT; Schema: public; Owner: signage_user
+--
+
+ALTER TABLE ONLY public.menu_items
+    ADD CONSTRAINT menu_items_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: menu_views menu_views_pkey; Type: CONSTRAINT; Schema: public; Owner: signage_user
+--
+
+ALTER TABLE ONLY public.menu_views
+    ADD CONSTRAINT menu_views_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: menus menus_pkey; Type: CONSTRAINT; Schema: public; Owner: signage_user
+--
+
+ALTER TABLE ONLY public.menus
+    ADD CONSTRAINT menus_pkey PRIMARY KEY (id);
 
 
 --
@@ -3792,6 +4805,14 @@ ALTER TABLE ONLY public.user_sessions
 
 
 --
+-- Name: users users_org_username_unique; Type: CONSTRAINT; Schema: public; Owner: signage_user
+--
+
+ALTER TABLE ONLY public.users
+    ADD CONSTRAINT users_org_username_unique UNIQUE (organization_id, username);
+
+
+--
 -- Name: users users_pkey; Type: CONSTRAINT; Schema: public; Owner: signage_user
 --
 
@@ -4002,6 +5023,13 @@ CREATE INDEX idx_contents_org_active ON public.contents USING btree (organizatio
 --
 
 CREATE INDEX idx_contents_org_type ON public.contents USING btree (organization_id, content_type, created_at DESC) WHERE (deleted_at IS NULL);
+
+
+--
+-- Name: idx_contents_updated_by; Type: INDEX; Schema: public; Owner: signage_user
+--
+
+CREATE INDEX idx_contents_updated_by ON public.contents USING btree (updated_by_id);
 
 
 --
@@ -4278,6 +5306,13 @@ CREATE UNIQUE INDEX idx_mv_org_health_org ON public.mv_organization_health_summa
 
 
 --
+-- Name: idx_organizations_created_by; Type: INDEX; Schema: public; Owner: signage_user
+--
+
+CREATE INDEX idx_organizations_created_by ON public.organizations USING btree (created_by_id);
+
+
+--
 -- Name: idx_password_reset_tokens_expires; Type: INDEX; Schema: public; Owner: signage_user
 --
 
@@ -4359,6 +5394,13 @@ CREATE INDEX idx_playback_organization ON public.content_playback_logs USING btr
 --
 
 CREATE INDEX idx_playback_playlist ON public.content_playback_logs USING btree (playlist_id, started_at DESC) WHERE (playlist_id IS NOT NULL);
+
+
+--
+-- Name: idx_playlist_assignments_assigned_by; Type: INDEX; Schema: public; Owner: signage_user
+--
+
+CREATE INDEX idx_playlist_assignments_assigned_by ON public.playlist_assignments USING btree (assigned_by_id);
 
 
 --
@@ -4691,6 +5733,13 @@ CREATE INDEX idx_speed_tested ON public.device_speed_tests USING btree (tested_a
 
 
 --
+-- Name: idx_tags_created_by; Type: INDEX; Schema: public; Owner: signage_user
+--
+
+CREATE INDEX idx_tags_created_by ON public.tags USING btree (created_by_id);
+
+
+--
 -- Name: idx_tags_org_tagname_lookup; Type: INDEX; Schema: public; Owner: signage_user
 --
 
@@ -4733,6 +5782,13 @@ CREATE INDEX idx_templates_updated_by ON public.templates USING btree (updated_b
 
 
 --
+-- Name: idx_translations_created_by; Type: INDEX; Schema: public; Owner: signage_user
+--
+
+CREATE INDEX idx_translations_created_by ON public.translations USING btree (created_by_id);
+
+
+--
 -- Name: idx_translations_entity; Type: INDEX; Schema: public; Owner: signage_user
 --
 
@@ -4751,6 +5807,13 @@ CREATE INDEX idx_translations_lang ON public.translations USING btree (language_
 --
 
 CREATE INDEX idx_translations_org ON public.translations USING btree (organization_id);
+
+
+--
+-- Name: idx_users_org_username; Type: INDEX; Schema: public; Owner: signage_user
+--
+
+CREATE INDEX idx_users_org_username ON public.users USING btree (organization_id, username);
 
 
 --
@@ -4880,6 +5943,160 @@ CREATE UNIQUE INDEX ix_devices_unique_code ON public.devices USING btree (unique
 
 
 --
+-- Name: ix_menu_categories_id; Type: INDEX; Schema: public; Owner: signage_user
+--
+
+CREATE INDEX ix_menu_categories_id ON public.menu_categories USING btree (id);
+
+
+--
+-- Name: ix_menu_categories_menu_type; Type: INDEX; Schema: public; Owner: signage_user
+--
+
+CREATE INDEX ix_menu_categories_menu_type ON public.menu_categories USING btree (menu_type);
+
+
+--
+-- Name: ix_menu_categories_organization_id; Type: INDEX; Schema: public; Owner: signage_user
+--
+
+CREATE INDEX ix_menu_categories_organization_id ON public.menu_categories USING btree (organization_id);
+
+
+--
+-- Name: ix_menu_import_history_id; Type: INDEX; Schema: public; Owner: signage_user
+--
+
+CREATE INDEX ix_menu_import_history_id ON public.menu_import_history USING btree (id);
+
+
+--
+-- Name: ix_menu_import_history_imported_at; Type: INDEX; Schema: public; Owner: signage_user
+--
+
+CREATE INDEX ix_menu_import_history_imported_at ON public.menu_import_history USING btree (imported_at);
+
+
+--
+-- Name: ix_menu_import_history_menu_id; Type: INDEX; Schema: public; Owner: signage_user
+--
+
+CREATE INDEX ix_menu_import_history_menu_id ON public.menu_import_history USING btree (menu_id);
+
+
+--
+-- Name: ix_menu_import_history_organization_id; Type: INDEX; Schema: public; Owner: signage_user
+--
+
+CREATE INDEX ix_menu_import_history_organization_id ON public.menu_import_history USING btree (organization_id);
+
+
+--
+-- Name: ix_menu_items_category; Type: INDEX; Schema: public; Owner: signage_user
+--
+
+CREATE INDEX ix_menu_items_category ON public.menu_items USING btree (category);
+
+
+--
+-- Name: ix_menu_items_deleted_at; Type: INDEX; Schema: public; Owner: signage_user
+--
+
+CREATE INDEX ix_menu_items_deleted_at ON public.menu_items USING btree (deleted_at);
+
+
+--
+-- Name: ix_menu_items_id; Type: INDEX; Schema: public; Owner: signage_user
+--
+
+CREATE INDEX ix_menu_items_id ON public.menu_items USING btree (id);
+
+
+--
+-- Name: ix_menu_items_is_featured; Type: INDEX; Schema: public; Owner: signage_user
+--
+
+CREATE INDEX ix_menu_items_is_featured ON public.menu_items USING btree (is_featured);
+
+
+--
+-- Name: ix_menu_items_menu_id; Type: INDEX; Schema: public; Owner: signage_user
+--
+
+CREATE INDEX ix_menu_items_menu_id ON public.menu_items USING btree (menu_id);
+
+
+--
+-- Name: ix_menu_items_organization_id; Type: INDEX; Schema: public; Owner: signage_user
+--
+
+CREATE INDEX ix_menu_items_organization_id ON public.menu_items USING btree (organization_id);
+
+
+--
+-- Name: ix_menu_views_id; Type: INDEX; Schema: public; Owner: signage_user
+--
+
+CREATE INDEX ix_menu_views_id ON public.menu_views USING btree (id);
+
+
+--
+-- Name: ix_menu_views_menu_id; Type: INDEX; Schema: public; Owner: signage_user
+--
+
+CREATE INDEX ix_menu_views_menu_id ON public.menu_views USING btree (menu_id);
+
+
+--
+-- Name: ix_menu_views_organization_id; Type: INDEX; Schema: public; Owner: signage_user
+--
+
+CREATE INDEX ix_menu_views_organization_id ON public.menu_views USING btree (organization_id);
+
+
+--
+-- Name: ix_menu_views_viewed_at; Type: INDEX; Schema: public; Owner: signage_user
+--
+
+CREATE INDEX ix_menu_views_viewed_at ON public.menu_views USING btree (viewed_at);
+
+
+--
+-- Name: ix_menus_deleted_at; Type: INDEX; Schema: public; Owner: signage_user
+--
+
+CREATE INDEX ix_menus_deleted_at ON public.menus USING btree (deleted_at);
+
+
+--
+-- Name: ix_menus_id; Type: INDEX; Schema: public; Owner: signage_user
+--
+
+CREATE INDEX ix_menus_id ON public.menus USING btree (id);
+
+
+--
+-- Name: ix_menus_menu_type; Type: INDEX; Schema: public; Owner: signage_user
+--
+
+CREATE INDEX ix_menus_menu_type ON public.menus USING btree (menu_type);
+
+
+--
+-- Name: ix_menus_organization_id; Type: INDEX; Schema: public; Owner: signage_user
+--
+
+CREATE INDEX ix_menus_organization_id ON public.menus USING btree (organization_id);
+
+
+--
+-- Name: ix_menus_public_url_code; Type: INDEX; Schema: public; Owner: signage_user
+--
+
+CREATE UNIQUE INDEX ix_menus_public_url_code ON public.menus USING btree (public_url_code);
+
+
+--
 -- Name: ix_organizations_id; Type: INDEX; Schema: public; Owner: signage_user
 --
 
@@ -4912,13 +6129,6 @@ CREATE UNIQUE INDEX ix_users_email ON public.users USING btree (email);
 --
 
 CREATE INDEX ix_users_id ON public.users USING btree (id);
-
-
---
--- Name: ix_users_username; Type: INDEX; Schema: public; Owner: signage_user
---
-
-CREATE UNIQUE INDEX ix_users_username ON public.users USING btree (username);
 
 
 --
@@ -5089,11 +6299,27 @@ ALTER TABLE ONLY public.content_tags
 
 
 --
+-- Name: contents contents_deleted_by_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: signage_user
+--
+
+ALTER TABLE ONLY public.contents
+    ADD CONSTRAINT contents_deleted_by_id_fkey FOREIGN KEY (deleted_by_id) REFERENCES public.users(id) ON DELETE SET NULL;
+
+
+--
 -- Name: contents contents_organization_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: signage_user
 --
 
 ALTER TABLE ONLY public.contents
     ADD CONSTRAINT contents_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES public.organizations(id) ON DELETE CASCADE;
+
+
+--
+-- Name: contents contents_updated_by_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: signage_user
+--
+
+ALTER TABLE ONLY public.contents
+    ADD CONSTRAINT contents_updated_by_id_fkey FOREIGN KEY (updated_by_id) REFERENCES public.users(id) ON DELETE SET NULL;
 
 
 --
@@ -5177,6 +6403,14 @@ ALTER TABLE ONLY public.device_groups
 
 
 --
+-- Name: device_groups device_groups_deleted_by_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: signage_user
+--
+
+ALTER TABLE ONLY public.device_groups
+    ADD CONSTRAINT device_groups_deleted_by_id_fkey FOREIGN KEY (deleted_by_id) REFERENCES public.users(id) ON DELETE SET NULL;
+
+
+--
 -- Name: device_groups device_groups_organization_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: signage_user
 --
 
@@ -5190,6 +6424,14 @@ ALTER TABLE ONLY public.device_groups
 
 ALTER TABLE ONLY public.device_groups
     ADD CONSTRAINT device_groups_parent_group_id_fkey FOREIGN KEY (parent_group_id) REFERENCES public.device_groups(id) ON DELETE CASCADE;
+
+
+--
+-- Name: device_groups device_groups_updated_by_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: signage_user
+--
+
+ALTER TABLE ONLY public.device_groups
+    ADD CONSTRAINT device_groups_updated_by_id_fkey FOREIGN KEY (updated_by_id) REFERENCES public.users(id) ON DELETE SET NULL;
 
 
 --
@@ -5289,6 +6531,14 @@ ALTER TABLE ONLY public.devices
 
 
 --
+-- Name: devices devices_deleted_by_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: signage_user
+--
+
+ALTER TABLE ONLY public.devices
+    ADD CONSTRAINT devices_deleted_by_id_fkey FOREIGN KEY (deleted_by_id) REFERENCES public.users(id) ON DELETE SET NULL;
+
+
+--
 -- Name: devices devices_organization_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: signage_user
 --
 
@@ -5305,11 +6555,139 @@ ALTER TABLE ONLY public.devices
 
 
 --
+-- Name: menu_categories menu_categories_organization_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: signage_user
+--
+
+ALTER TABLE ONLY public.menu_categories
+    ADD CONSTRAINT menu_categories_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES public.organizations(id) ON DELETE CASCADE;
+
+
+--
+-- Name: menu_import_history menu_import_history_imported_by_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: signage_user
+--
+
+ALTER TABLE ONLY public.menu_import_history
+    ADD CONSTRAINT menu_import_history_imported_by_id_fkey FOREIGN KEY (imported_by_id) REFERENCES public.users(id) ON DELETE SET NULL;
+
+
+--
+-- Name: menu_import_history menu_import_history_menu_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: signage_user
+--
+
+ALTER TABLE ONLY public.menu_import_history
+    ADD CONSTRAINT menu_import_history_menu_id_fkey FOREIGN KEY (menu_id) REFERENCES public.menus(id) ON DELETE CASCADE;
+
+
+--
+-- Name: menu_import_history menu_import_history_organization_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: signage_user
+--
+
+ALTER TABLE ONLY public.menu_import_history
+    ADD CONSTRAINT menu_import_history_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES public.organizations(id) ON DELETE CASCADE;
+
+
+--
+-- Name: menu_items menu_items_content_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: signage_user
+--
+
+ALTER TABLE ONLY public.menu_items
+    ADD CONSTRAINT menu_items_content_id_fkey FOREIGN KEY (content_id) REFERENCES public.contents(id) ON DELETE SET NULL;
+
+
+--
+-- Name: menu_items menu_items_menu_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: signage_user
+--
+
+ALTER TABLE ONLY public.menu_items
+    ADD CONSTRAINT menu_items_menu_id_fkey FOREIGN KEY (menu_id) REFERENCES public.menus(id) ON DELETE CASCADE;
+
+
+--
+-- Name: menu_items menu_items_organization_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: signage_user
+--
+
+ALTER TABLE ONLY public.menu_items
+    ADD CONSTRAINT menu_items_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES public.organizations(id) ON DELETE CASCADE;
+
+
+--
+-- Name: menu_views menu_views_menu_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: signage_user
+--
+
+ALTER TABLE ONLY public.menu_views
+    ADD CONSTRAINT menu_views_menu_id_fkey FOREIGN KEY (menu_id) REFERENCES public.menus(id) ON DELETE CASCADE;
+
+
+--
+-- Name: menu_views menu_views_organization_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: signage_user
+--
+
+ALTER TABLE ONLY public.menu_views
+    ADD CONSTRAINT menu_views_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES public.organizations(id) ON DELETE CASCADE;
+
+
+--
+-- Name: menus menus_created_by_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: signage_user
+--
+
+ALTER TABLE ONLY public.menus
+    ADD CONSTRAINT menus_created_by_id_fkey FOREIGN KEY (created_by_id) REFERENCES public.users(id) ON DELETE SET NULL;
+
+
+--
+-- Name: menus menus_deleted_by_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: signage_user
+--
+
+ALTER TABLE ONLY public.menus
+    ADD CONSTRAINT menus_deleted_by_id_fkey FOREIGN KEY (deleted_by_id) REFERENCES public.users(id) ON DELETE SET NULL;
+
+
+--
+-- Name: menus menus_organization_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: signage_user
+--
+
+ALTER TABLE ONLY public.menus
+    ADD CONSTRAINT menus_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES public.organizations(id) ON DELETE CASCADE;
+
+
+--
+-- Name: menus menus_updated_by_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: signage_user
+--
+
+ALTER TABLE ONLY public.menus
+    ADD CONSTRAINT menus_updated_by_id_fkey FOREIGN KEY (updated_by_id) REFERENCES public.users(id) ON DELETE SET NULL;
+
+
+--
+-- Name: organizations organizations_created_by_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: signage_user
+--
+
+ALTER TABLE ONLY public.organizations
+    ADD CONSTRAINT organizations_created_by_id_fkey FOREIGN KEY (created_by_id) REFERENCES public.users(id) ON DELETE SET NULL;
+
+
+--
+-- Name: organizations organizations_updated_by_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: signage_user
+--
+
+ALTER TABLE ONLY public.organizations
+    ADD CONSTRAINT organizations_updated_by_id_fkey FOREIGN KEY (updated_by_id) REFERENCES public.users(id) ON DELETE SET NULL;
+
+
+--
 -- Name: password_reset_tokens password_reset_tokens_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: signage_user
 --
 
 ALTER TABLE ONLY public.password_reset_tokens
     ADD CONSTRAINT password_reset_tokens_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
+
+
+--
+-- Name: playlist_assignments playlist_assignments_assigned_by_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: signage_user
+--
+
+ALTER TABLE ONLY public.playlist_assignments
+    ADD CONSTRAINT playlist_assignments_assigned_by_id_fkey FOREIGN KEY (assigned_by_id) REFERENCES public.users(id) ON DELETE SET NULL;
 
 
 --
@@ -5385,11 +6763,27 @@ ALTER TABLE ONLY public.playlists
 
 
 --
+-- Name: playlists playlists_deleted_by_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: signage_user
+--
+
+ALTER TABLE ONLY public.playlists
+    ADD CONSTRAINT playlists_deleted_by_id_fkey FOREIGN KEY (deleted_by_id) REFERENCES public.users(id) ON DELETE SET NULL;
+
+
+--
 -- Name: playlists playlists_organization_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: signage_user
 --
 
 ALTER TABLE ONLY public.playlists
     ADD CONSTRAINT playlists_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES public.organizations(id) ON DELETE CASCADE;
+
+
+--
+-- Name: playlists playlists_updated_by_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: signage_user
+--
+
+ALTER TABLE ONLY public.playlists
+    ADD CONSTRAINT playlists_updated_by_id_fkey FOREIGN KEY (updated_by_id) REFERENCES public.users(id) ON DELETE SET NULL;
 
 
 --
@@ -5457,6 +6851,14 @@ ALTER TABLE ONLY public.schedules
 
 
 --
+-- Name: schedules schedules_deleted_by_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: signage_user
+--
+
+ALTER TABLE ONLY public.schedules
+    ADD CONSTRAINT schedules_deleted_by_id_fkey FOREIGN KEY (deleted_by_id) REFERENCES public.users(id) ON DELETE SET NULL;
+
+
+--
 -- Name: schedules schedules_organization_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: signage_user
 --
 
@@ -5489,11 +6891,35 @@ ALTER TABLE ONLY public.tags
 
 
 --
+-- Name: tags tags_created_by_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: signage_user
+--
+
+ALTER TABLE ONLY public.tags
+    ADD CONSTRAINT tags_created_by_id_fkey FOREIGN KEY (created_by_id) REFERENCES public.users(id) ON DELETE SET NULL;
+
+
+--
+-- Name: tags tags_deleted_by_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: signage_user
+--
+
+ALTER TABLE ONLY public.tags
+    ADD CONSTRAINT tags_deleted_by_id_fkey FOREIGN KEY (deleted_by_id) REFERENCES public.users(id) ON DELETE SET NULL;
+
+
+--
 -- Name: tags tags_organization_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: signage_user
 --
 
 ALTER TABLE ONLY public.tags
     ADD CONSTRAINT tags_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES public.organizations(id);
+
+
+--
+-- Name: tags tags_updated_by_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: signage_user
+--
+
+ALTER TABLE ONLY public.tags
+    ADD CONSTRAINT tags_updated_by_id_fkey FOREIGN KEY (updated_by_id) REFERENCES public.users(id) ON DELETE SET NULL;
 
 
 --
@@ -5521,11 +6947,27 @@ ALTER TABLE ONLY public.templates
 
 
 --
+-- Name: translations translations_created_by_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: signage_user
+--
+
+ALTER TABLE ONLY public.translations
+    ADD CONSTRAINT translations_created_by_id_fkey FOREIGN KEY (created_by_id) REFERENCES public.users(id) ON DELETE SET NULL;
+
+
+--
 -- Name: translations translations_organization_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: signage_user
 --
 
 ALTER TABLE ONLY public.translations
     ADD CONSTRAINT translations_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES public.organizations(id) ON DELETE CASCADE;
+
+
+--
+-- Name: translations translations_updated_by_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: signage_user
+--
+
+ALTER TABLE ONLY public.translations
+    ADD CONSTRAINT translations_updated_by_id_fkey FOREIGN KEY (updated_by_id) REFERENCES public.users(id) ON DELETE SET NULL;
 
 
 --
@@ -5631,8 +7073,15 @@ COMMENT ON POLICY device_groups_isolation ON public.device_groups IS 'Multi-tena
 
 
 --
+-- Name: mv_organization_health_summary; Type: MATERIALIZED VIEW DATA; Schema: public; Owner: signage_user
+--
+
+REFRESH MATERIALIZED VIEW public.mv_organization_health_summary;
+
+
+--
 -- PostgreSQL database dump complete
 --
 
-\unrestrict a6ME8Qbdf2miEEVuawFBO4aXS5lLbi43HuQpQaEIsuLEpd9HHEwP5iY5WpzIVZi
+\unrestrict T2RLGBUNpLdVl7vymTfPA1Ko6SrZRfg6AKiiVTg0uiOK1GR8SOYO9FqeHtBK568
 

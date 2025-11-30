@@ -40,6 +40,8 @@ export interface Content {
   // Timestamps
   created_at: string;
   updated_at?: string;
+  deleted_at?: string;
+  deleted_by_id?: number;
 }
 
 export interface ContentUploadData {
@@ -76,4 +78,35 @@ export interface ContentResponse {
   data: Content;
   message?: string;
   timestamp: string;
+}
+
+// Duplicate Detection Types
+export interface ContentUsage {
+  playlists: { id: number; name: string }[];
+  tags: { id: number; name: string; color: string }[];
+  devices: { id: number; name: string; via: string }[];
+}
+
+export interface DuplicateContentItem {
+  id: number;
+  title: string;
+  original_filename: string;
+  created_at: string;
+  is_active: boolean;
+  usage: ContentUsage;
+}
+
+export interface DuplicateGroup {
+  file_hash: string;
+  file_size: number;
+  content_type: ContentType;
+  thumbnail_url?: string;
+  duplicate_count: number;
+  contents: DuplicateContentItem[];
+}
+
+export interface DuplicateContentResponse {
+  success: boolean;
+  data: DuplicateGroup[];
+  message: string;
 }

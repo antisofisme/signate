@@ -8,7 +8,7 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Eye } from 'lucide-react';
 import { Modal } from '@/shared/components';
-import type { Schedule } from '../types/schedule.types';
+import { getScheduleStatus, type Schedule } from '../types/schedule.types';
 import { SchedulePreviewCalendar } from './SchedulePreviewCalendar';
 import { useNextOccurrences, useSchedulePreview } from '../hooks/useAdvancedSchedules';
 
@@ -16,20 +16,35 @@ interface ScheduleViewModalProps {
   isOpen: boolean;
   schedule: Schedule;
   onClose: () => void;
-  onEdit: () => void;
+  onEdit?: () => void; // Optional - only provided if user has edit permission
 }
 
 export function ScheduleViewModal({ isOpen, schedule, onClose, onEdit }: ScheduleViewModalProps) {
   const { t } = useTranslation();
   const [showPreview, setShowPreview] = useState(false);
 
-  // Map priority level to number
-  const priorityMap: Record<string, number> = {
-    low: 1,
-    normal: 2,
-    high: 3,
-    critical: 4
-  };
+  // Helper to convert numeric priority to number for preview
+  const getPriorityNumber = (priority: string | number): number => {
+    if (typeof priority === 'number') {
+      if (priority <= 10) return 1  // low
+      if (priority <= 50) return 2  // normal
+      if (priority <= 75) return 3  // high
+      return 4 // critical
+    }
+    // String priority
+    const priorityMap: Record<string, number> = {
+      low: 1,
+      normal: 2,
+      high: 3,
+      critical: 4
+    }
+    return priorityMap[priority] || 2
+  }
+
+  const priorityNumber = getPriorityNumber(schedule.priority)
+
+  // Derive status from is_active and dates
+  const status = getScheduleStatus(schedule)
 
   // Fetch next occurrences (raw data)
   const { data: occurrencesData, isLoading: isLoadingPreview } = useNextOccurrences(
@@ -40,7 +55,7 @@ export function ScheduleViewModal({ isOpen, schedule, onClose, onEdit }: Schedul
   // Transform to preview format
   const previewOccurrences = useSchedulePreview(
     occurrencesData,
-    priorityMap[schedule.priority] || 2
+    priorityNumber
   );
 
   // Footer with action buttons
@@ -60,13 +75,15 @@ export function ScheduleViewModal({ isOpen, schedule, onClose, onEdit }: Schedul
 
       {/* Right: Edit & Close */}
       <div className="flex gap-3" role="group" aria-label={t('schedules.viewModal.primaryActions', 'Primary actions')}>
-        <button
-          onClick={onEdit}
-          className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-          aria-label={t('schedules.actions.editSchedule')}
-        >
-          {t('schedules.actions.editSchedule')}
-        </button>
+        {onEdit && (
+          <button
+            onClick={onEdit}
+            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+            aria-label={t('schedules.actions.editSchedule')}
+          >
+            {t('schedules.actions.editSchedule')}
+          </button>
+        )}
         <button
           onClick={onClose}
           className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
@@ -113,13 +130,15 @@ export function ScheduleViewModal({ isOpen, schedule, onClose, onEdit }: Schedul
                 </dt>
                 <dd className="mt-1">
                   <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                    schedule.status === 'active'
+                    status === 'active'
                       ? 'bg-green-100 text-green-800'
-                      : schedule.status === 'paused'
+                      : status === 'paused'
                       ? 'bg-yellow-100 text-yellow-800'
+                      : status === 'expired'
+                      ? 'bg-red-100 text-red-800'
                       : 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-300'
                   }`}>
-                    {t(`schedules.status.${schedule.status}`)}
+                    {t(`schedules.status.${status}`)}
                   </span>
                 </dd>
               </div>
@@ -158,12 +177,14 @@ export function ScheduleViewModal({ isOpen, schedule, onClose, onEdit }: Schedul
                   {schedule.start_time} - {schedule.end_time}
                 </dd>
               </div>
-              <div>
-                <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">
-                  {t('schedules.viewModal.fields.timezone')}
-                </dt>
-                <dd className="mt-1 text-sm text-gray-900 dark:text-white">{schedule.timezone}</dd>
-              </div>
+              {schedule.timezone && (
+                <div>
+                  <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                    {t('schedules.viewModal.fields.timezone')}
+                  </dt>
+                  <dd className="mt-1 text-sm text-gray-900 dark:text-white">{schedule.timezone}</dd>
+                </div>
+              )}
             </dl>
           </div>
 
@@ -197,19 +218,6 @@ export function ScheduleViewModal({ isOpen, schedule, onClose, onEdit }: Schedul
                   {schedule.playlist_name || `Playlist #${schedule.playlist_id}`}
                 </dd>
               </div>
-              <div>
-                <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">
-                  {t('schedules.viewModal.fields.devices')}
-                </dt>
-                <dd className="mt-1 text-sm text-gray-900 dark:text-white">
-                  {t(
-                    schedule.device_ids.length !== 1
-                      ? 'schedules.viewModal.fields.devicesAssigned_plural'
-                      : 'schedules.viewModal.fields.devicesAssigned',
-                    { count: schedule.device_ids.length }
-                  )}
-                </dd>
-              </div>
             </dl>
           </div>
 
@@ -225,7 +233,7 @@ export function ScheduleViewModal({ isOpen, schedule, onClose, onEdit }: Schedul
               <SchedulePreviewCalendar
                 occurrences={previewOccurrences}
                 playlistName={schedule.playlist_name}
-                priority={priorityMap[schedule.priority] || 2}
+                priority={priorityNumber}
                 exceptionDates={schedule.exception_dates || []}
               />
             ) : null}

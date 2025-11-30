@@ -91,7 +91,7 @@ export function ConfirmDialog({
               <Icon className="w-5 h-5" />
             </div>
             <div className="flex-1">
-              <DialogDescription className="mt-0 text-gray-600 dark:text-gray-400">
+              <DialogDescription className="mt-0 text-gray-600 dark:text-gray-400 whitespace-pre-wrap">
                 {description}
               </DialogDescription>
             </div>

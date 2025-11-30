@@ -7,6 +7,7 @@ from fastapi import UploadFile
 from typing import Optional
 import os
 import logging
+from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
@@ -17,6 +18,7 @@ from ..infrastructure.storage.metadata_extractor import MetadataExtractor
 from shared.file_security import SecureFileHandler
 from shared.virus_scanner import get_virus_scanner
 from shared.websocket_manager import websocket_manager, WebSocketEventType
+from shared.config import settings
 from services.organization.domain.quota_service import OrganizationQuotaService
 import asyncio
 
@@ -25,9 +27,30 @@ class UploadContentUseCase:
     """Upload content with custom storage"""
 
     # Supported file extensions
-    IMAGE_EXTENSIONS = {'.jpg', '.jpeg', '.png', '.webp', '.gif', '.bmp'}
-    VIDEO_EXTENSIONS = {'.mp4', '.webm', '.mkv', '.avi', '.mov', '.m4v', '.flv'}
-    AUDIO_EXTENSIONS = {'.mp3', '.aac', '.m4a', '.ogg', '.wav', '.flac', '.wma'}
+    IMAGE_EXTENSIONS = {
+        '.jpg', '.jpeg', '.png', '.webp', '.gif', '.bmp',
+        '.tiff', '.tif',   # Print quality
+        '.heic', '.heif',  # Apple/iPhone photos
+        '.avif',           # Modern format
+    }
+    VIDEO_EXTENSIONS = {
+        '.mp4', '.webm', '.mkv', '.avi', '.mov', '.m4v', '.flv',
+        '.wmv',            # Windows Media Video
+        '.mpg',            # Legacy MPEG Video (use .mpg for video, .mpeg for audio)
+        '.3gp', '.3g2',    # Mobile video
+        '.mts', '.m2ts',   # HD Camcorder (AVCHD)
+        '.ts',             # MPEG Transport Stream
+        '.ogv',            # Ogg Video
+    }
+    AUDIO_EXTENSIONS = {
+        '.mp3', '.aac', '.m4a', '.ogg', '.wav', '.flac', '.wma',
+        '.mpeg',           # MPEG Audio (WhatsApp)
+        '.opus',           # Modern codec
+        '.amr',            # Mobile recordings
+        '.aiff', '.aif',   # Apple format
+        '.oga',            # Ogg Audio
+        '.weba',           # WebM Audio
+    }
 
     # Max file sizes (bytes) - configurable via environment variables
     @staticmethod
@@ -48,6 +71,55 @@ class UploadContentUseCase:
         self.storage = storage_service
         self.metadata = metadata_extractor
 
+    def _generate_image_thumbnail_sync(self, source_path: str) -> Optional[dict]:
+        """
+        Generate thumbnail synchronously for images.
+        Images are fast to process (<500ms), so we do it inline for immediate response.
+
+        Returns:
+            dict with thumbnail_path and thumbnail_url, or None if failed
+        """
+        try:
+            from PIL import Image
+
+            source = Path(source_path)
+            if not source.exists():
+                logger.warning(f"Source file not found for thumbnail: {source_path}")
+                return None
+
+            # Create thumbnails directory
+            thumb_dir = Path("/data/signage/content/thumbnails")
+            thumb_dir.mkdir(parents=True, exist_ok=True)
+
+            # Thumbnail output path
+            thumb_filename = f"{source.stem}_thumb.jpg"
+            thumb_path = thumb_dir / thumb_filename
+
+            # Generate thumbnail
+            with Image.open(source) as img:
+                # Convert RGBA to RGB if necessary
+                if img.mode in ('RGBA', 'LA', 'P'):
+                    background = Image.new('RGB', img.size, (255, 255, 255))
+                    if img.mode == 'P':
+                        img = img.convert('RGBA')
+                    background.paste(img, mask=img.split()[-1] if img.mode == 'RGBA' else None)
+                    img = background
+
+                # Create thumbnail
+                img.thumbnail((320, 320), Image.Resampling.LANCZOS)
+                img.save(thumb_path, 'JPEG', quality=85, optimize=True)
+
+            print(f"[Upload] Image thumbnail generated synchronously: {thumb_path}")
+
+            return {
+                'thumbnail_path': str(thumb_path),
+                'thumbnail_url': f"{settings.PUBLIC_BASE_URL}/thumbnails/{thumb_filename}"
+            }
+
+        except Exception as e:
+            logger.warning(f"Failed to generate image thumbnail synchronously: {e}")
+            return None
+
     async def execute(
         self,
         file: UploadFile,
@@ -64,11 +136,15 @@ class UploadContentUseCase:
         Steps:
         1. Validate file (type, size, extension)
         2. Save to local filesystem via StorageService
-        3. Check for duplicates (hash-based)
+        3. Scan for viruses
         4. Extract metadata via FFprobe/Pillow
         5. Create domain entity
         6. Save to database
         7. Queue background tasks (transcoding, thumbnail)
+
+        Note: If a file with the same hash exists, we REUSE the storage
+        to save disk space, but create a new content record with new ID.
+        This allows multiple content entries pointing to the same file.
 
         Args:
             file: Uploaded file
@@ -83,8 +159,7 @@ class UploadContentUseCase:
             Created Content entity
 
         Raises:
-            ValueError: If validation fails
-            DuplicateError: If file already exists
+            ValueError: If validation fails (type, size, virus)
             StorageException: If storage operation fails
         """
 
@@ -114,10 +189,11 @@ class UploadContentUseCase:
             organization_id=organization_id
         )
 
-        # 2.5. Scan for viruses (CRITICAL FIX P0-14)
+        # 2.5. Scan for viruses (CRITICAL FIX P0-14) - Now async for non-blocking
         try:
             scanner = get_virus_scanner()
-            is_clean, scan_result = scanner.scan_file(storage_result['file_path'])
+            # Use async version for non-blocking operation
+            is_clean, scan_result = await scanner.scan_file_async(storage_result['file_path'])
 
             if not is_clean:
                 # Virus detected - cleanup uploaded file
@@ -132,17 +208,54 @@ class UploadContentUseCase:
             logger.warning(f"Virus scan unavailable, allowing upload: {e}")
             print(f"[Virus Scan] WARNING: Scan unavailable - {e}")
 
-        # 3. Check for duplicate files (same hash + org)
+        # 3. Check for existing file with same hash - REUSE physical file if exists
+        # This saves disk space while allowing multiple content records
+        # NOTE: storage_key must be UNIQUE per record, but file_path can be shared
         existing = self.content_repo.find_by_hash(
             file_hash=storage_result['file_hash'],
             organization_id=organization_id
         )
+
+        # Track if we're reusing existing file (to skip transcoding later)
+        is_duplicate = False
+        existing_hls_info = None
+        existing_thumbnail_info = None
+
         if existing:
-            # Cleanup uploaded file
-            await self.storage.delete_file(storage_result['storage_key'])
-            raise ValueError(
-                f"File already exists: {existing.title} (ID: {existing.id})"
-            )
+            is_duplicate = True
+
+            # Reuse storage from existing file (save disk space)
+            # Delete the newly uploaded file since we'll use the existing one
+            new_storage_key = storage_result['storage_key']  # Keep unique key for this record
+            await self.storage.delete_file(new_storage_key)
+
+            # Use existing file's path/url but KEEP unique storage_key for DB uniqueness
+            storage_result = {
+                'file_path': existing.file_path,
+                'file_url': existing.file_url,
+                'storage_key': new_storage_key,  # Keep NEW unique key (not existing's key!)
+                'file_hash': existing.file_hash,
+                'file_size': existing.file_size,
+            }
+
+            # Copy HLS info from existing (if transcoded)
+            if existing.hls_master_playlist_path:
+                existing_hls_info = {
+                    'master_playlist_path': existing.hls_master_playlist_path,
+                    'master_playlist_url': existing.hls_master_playlist_url,
+                    'hls_variants': existing.hls_variants,
+                }
+
+            # Copy thumbnail info from existing (check URL since path might be empty)
+            if existing.thumbnail_url or existing.thumbnail_path:
+                existing_thumbnail_info = {
+                    'thumbnail_path': existing.thumbnail_path,
+                    'thumbnail_url': existing.thumbnail_url,
+                }
+                print(f"[Upload] Copying thumbnail from existing: {existing.thumbnail_url}")
+
+            logger.info(f"[Upload] Reusing storage from existing content ID {existing.id}")
+            print(f"[Upload] Reusing storage from content ID {existing.id} (same file hash)")
 
         # 4. Extract metadata
         metadata = await self.metadata.extract(
@@ -155,6 +268,25 @@ class UploadContentUseCase:
             duration = int(metadata['duration'])
 
         # 6. Create domain entity
+        # Determine transcoding status based on duplicate detection
+        if is_duplicate and existing_hls_info:
+            # Duplicate with existing HLS - mark as completed
+            transcoding_status = 'completed'
+        elif is_duplicate and content_type == 'image':
+            # Duplicate image - no transcoding needed
+            transcoding_status = 'not_required'
+        else:
+            # New file - needs transcoding
+            transcoding_status = 'pending'
+
+        # 6b. Generate thumbnail synchronously for images (fast, <500ms)
+        # For non-duplicates, generate now so it's included in the initial response
+        if content_type == 'image' and not is_duplicate:
+            sync_thumbnail = self._generate_image_thumbnail_sync(storage_result['file_path'])
+            if sync_thumbnail:
+                existing_thumbnail_info = sync_thumbnail
+                print(f"[Upload] Thumbnail ready immediately: {sync_thumbnail['thumbnail_url']}")
+
         content = Content(
             id=None,
             title=title,
@@ -190,9 +322,18 @@ class UploadContentUseCase:
             audio_sample_rate=metadata.get('audio_sample_rate'),
             audio_channels=metadata.get('audio_channels', 2),
 
+            # HLS info (copied from existing if duplicate)
+            hls_master_playlist_path=existing_hls_info['master_playlist_path'] if existing_hls_info else None,
+            hls_master_playlist_url=existing_hls_info['master_playlist_url'] if existing_hls_info else None,
+            hls_variants=existing_hls_info['hls_variants'] if existing_hls_info else None,
+
+            # Thumbnail info (copied from existing if duplicate)
+            thumbnail_path=existing_thumbnail_info['thumbnail_path'] if existing_thumbnail_info else None,
+            thumbnail_url=existing_thumbnail_info['thumbnail_url'] if existing_thumbnail_info else None,
+
             # Status
             upload_status='completed',
-            transcoding_status='pending',  # Will be processed by Celery
+            transcoding_status=transcoding_status,
 
             # Multi-tenant
             organization_id=organization_id,
@@ -216,14 +357,16 @@ class UploadContentUseCase:
             # Re-raise original exception
             raise
 
-        # 8. Queue background tasks
-        if content_type == 'video':
-            from tasks.content_tasks import transcode_to_hls
-            transcode_to_hls.delay(saved_content.id)
-
-        if content_type in ['video', 'image']:
-            from tasks.content_tasks import generate_thumbnail
-            generate_thumbnail.delay(saved_content.id)
+        # 8. Queue background tasks (only if NOT duplicate - duplicates reuse existing)
+        if is_duplicate:
+            print(f"[Upload] Skipping background tasks - duplicate file reuses existing HLS/thumbnail")
+        else:
+            if content_type == 'video':
+                from tasks.content_tasks import transcode_to_hls, generate_thumbnail
+                transcode_to_hls.delay(saved_content.id)
+                # Video thumbnails still async (require ffmpeg, takes longer)
+                generate_thumbnail.delay(saved_content.id)
+            # Note: Image thumbnails are now generated synchronously in step 6b
             
         # 9. Send WebSocket notification (if manager is initialized)
         if websocket_manager is not None:
@@ -285,9 +428,15 @@ class UploadContentUseCase:
                 f"and {len(self.IMAGE_EXTENSIONS) + len(self.VIDEO_EXTENSIONS) + len(self.AUDIO_EXTENSIONS)} more"
             )
 
-        # Validate MIME type
+        # Validate MIME type (with fallback for application/octet-stream)
+        # Some browsers/clients don't set correct MIME type for less common formats
         mime = file.content_type or ''
-        if content_type == 'image' and not mime.startswith('image/'):
+
+        # Allow application/octet-stream as fallback since we already validated extension
+        if mime == 'application/octet-stream' or mime == '':
+            # Extension is already validated, allow it
+            logger.info(f"[Upload] Allowing {ext} with MIME '{mime}' (extension-based validation passed)")
+        elif content_type == 'image' and not mime.startswith('image/'):
             raise ValueError(f"MIME type mismatch. Expected image/*, got {mime}")
         elif content_type == 'video' and not mime.startswith('video/'):
             raise ValueError(f"MIME type mismatch. Expected video/*, got {mime}")

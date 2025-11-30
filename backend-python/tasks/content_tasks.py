@@ -8,6 +8,7 @@ Features:
 - Master playlist (master.m3u8) + quality variants
 - Automatic URL generation for streaming
 - Better error handling with categorization
+- WebSocket progress notifications (Phase 3)
 """
 
 import os
@@ -19,12 +20,46 @@ from sqlalchemy.orm import Session
 from PIL import Image
 import hashlib
 import json
+import redis
 from datetime import datetime, timedelta, timezone
 from typing import List, Dict, Optional
 
 from shared.database import SessionLocal
 from shared.config import settings
 from services.content.repositories.models import ContentModel
+
+
+def send_websocket_notification(org_id: int, event_type: str, data: dict):
+    """
+    Send WebSocket notification from Celery task via Redis pub/sub.
+
+    The WebSocket manager's Redis listener will pick this up and broadcast
+    to all connected clients in the organization.
+
+    Args:
+        org_id: Organization ID to broadcast to
+        event_type: Event type string (e.g., 'content.transcoding_progress')
+        data: Event data dictionary
+    """
+    try:
+        redis_url = settings.REDIS_URL
+        r = redis.from_url(redis_url)
+
+        message = json.dumps({
+            'type': event_type,
+            'data': data,
+            'timestamp': datetime.now(timezone.utc).isoformat()
+        })
+
+        # Publish to organization channel
+        channel = f"org:{org_id}"
+        r.publish(channel, message)
+
+        print(f"[WebSocket] Sent {event_type} to {channel}")
+
+    except Exception as e:
+        # Don't fail the task if WebSocket notification fails
+        print(f"[WebSocket] Failed to send notification: {e}")
 
 
 def get_video_resolution(video_path: Path) -> tuple[int, int]:
@@ -143,6 +178,19 @@ def transcode_to_hls(self, content_id: int):
         content.transcoding_job_id = self.request.id
         db.commit()
 
+        # Send WebSocket notification - transcoding started
+        send_websocket_notification(
+            org_id=content.organization_id,
+            event_type='content.transcoding_progress',
+            data={
+                'content_id': content_id,
+                'title': content.title,
+                'status': 'processing',
+                'progress': 0,
+                'message': 'Starting transcoding...'
+            }
+        )
+
         # Get file paths
         source_path = Path(content.file_path)
         if not source_path.exists():
@@ -254,6 +302,22 @@ def transcode_to_hls(self, content_id: int):
                 content.transcoding_progress = progress
                 db.commit()
 
+                # Send WebSocket notification - variant completed
+                send_websocket_notification(
+                    org_id=content.organization_id,
+                    event_type='content.transcoding_progress',
+                    data={
+                        'content_id': content_id,
+                        'title': content.title,
+                        'status': 'processing',
+                        'progress': progress,
+                        'current_variant': variant_name,
+                        'completed_variants': transcoded_variants.copy(),
+                        'total_variants': len(variants),
+                        'message': f'Completed {variant_name} ({idx + 1}/{len(variants)})'
+                    }
+                )
+
             except ffmpeg.Error as e:
                 error_message = e.stderr.decode() if e.stderr else str(e)
                 print(f"[Transcode] FFmpeg error for variant {variant_name}: {error_message}")
@@ -270,32 +334,45 @@ def transcode_to_hls(self, content_id: int):
         segment_count = sum(len(list((hls_dir / variant['name']).glob('*.ts'))) for variant in variants if (hls_dir / variant['name']).exists())
 
         # Calculate relative path for both path and URL
-        # Example path: /data/signage/content/uploads/videos/2025/11/org_4/uuid_hls/master.m3u8
-        # We need to extract: year, month, org_id, uuid from full path
+        # Path structure: /data/signage/content/uploads/videos/{year}/{month}/org_{org_id}/{uuid}_hls/master.m3u8
 
         # Get path components
         full_path_str = str(master_playlist_path)
-
-        # Extract year and month from path (e.g., /2025/11/)
-        # Path structure: .../videos/2025/11/org_4/uuid_hls/master.m3u8
         path_parts = full_path_str.split('/')
 
-        # Find 'videos' index and extract components after it
-        videos_idx = path_parts.index('videos')
-        year = path_parts[videos_idx + 1]  # Year (e.g., '2025')
-        month = path_parts[videos_idx + 2]  # Month (e.g., '11')
-        org_folder = path_parts[videos_idx + 3]  # 'org_4'
-        org_id = org_folder.split('_')[1]  # Extract '4' from 'org_4'
-        hls_folder = path_parts[videos_idx + 4]  # 'uuid_hls'
-        content_uuid = hls_folder.replace('_hls', '')  # Remove '_hls' suffix to get UUID
+        # Find 'videos' index (plural - matches storage structure)
+        try:
+            videos_idx = path_parts.index('videos')
+        except ValueError:
+            # Fallback for legacy 'video' (singular) structure
+            print(f"[Transcode] Warning: 'videos' not found, trying 'video'")
+            try:
+                videos_idx = path_parts.index('video')
+                # Legacy path: {org_id}/video/{year}/{month}/{uuid}_hls
+                org_id = path_parts[videos_idx - 1]
+                year = path_parts[videos_idx + 1]
+                month = path_parts[videos_idx + 2]
+                hls_folder = path_parts[videos_idx + 3]
+                content_uuid = hls_folder.replace('_hls', '')
+                hls_url = f"{settings.PUBLIC_BASE_URL}/content/hls/{year}/{month}/org_{org_id}/{content_uuid}/master.m3u8"
+                relative_path = Path(year, month, hls_folder, 'master.m3u8')
+            except ValueError:
+                raise ValueError(f"Could not find video folder in path: {full_path_str}")
+        else:
+            # New path: videos/{year}/{month}/org_{org_id}/{uuid}_hls
+            year = path_parts[videos_idx + 1]       # Year (e.g., '2025')
+            month = path_parts[videos_idx + 2]      # Month (e.g., '11')
+            org_folder = path_parts[videos_idx + 3] # 'org_22'
+            org_id = org_folder.split('_')[1]       # Extract '22' from 'org_22'
+            hls_folder = path_parts[videos_idx + 4] # 'uuid_hls'
+            content_uuid = hls_folder.replace('_hls', '')  # Remove '_hls' suffix
 
-        # Relative path for database (from videos/ onwards)
-        relative_path = Path(*path_parts[videos_idx+1:])  # '2025/11/org_4/uuid_hls/master.m3u8'
+            # Relative path for database
+            relative_path = Path(year, month, org_folder, hls_folder, 'master.m3u8')
 
-        # Construct HLS URL
-        # Pattern: {PUBLIC_BASE_URL}/content/hls/{year}/{month}/org_{org_id}/{uuid}/master.m3u8
-        # Note: HLS router has prefix="/content/hls" (no /api/v1/)
-        hls_url = f"{settings.PUBLIC_BASE_URL}/content/hls/{year}/{month}/org_{org_id}/{content_uuid}/master.m3u8"
+            # Construct HLS URL
+            # Pattern: {PUBLIC_BASE_URL}/content/hls/{year}/{month}/org_{org_id}/{uuid}/master.m3u8
+            hls_url = f"{settings.PUBLIC_BASE_URL}/content/hls/{year}/{month}/{org_folder}/{content_uuid}/master.m3u8"
 
         # Update content record
         content.transcoding_status = 'completed'
@@ -310,6 +387,23 @@ def transcode_to_hls(self, content_id: int):
         print(f"[Transcode] HLS ABR transcode completed for content {content_id}")
         print(f"[Transcode] Variants: {transcoded_variants}")
         print(f"[Transcode] Total segments: {segment_count}")
+
+        # Send WebSocket notification - transcoding completed
+        send_websocket_notification(
+            org_id=content.organization_id,
+            event_type='content.transcoded',
+            data={
+                'content_id': content_id,
+                'title': content.title,
+                'status': 'completed',
+                'progress': 100,
+                'hls_url': hls_url,
+                'variants': transcoded_variants,
+                'segment_count': segment_count,
+                'duration': duration,
+                'message': 'Transcoding completed successfully'
+            }
+        )
 
         return {
             'content_id': content_id,
@@ -327,10 +421,25 @@ def transcode_to_hls(self, content_id: int):
         print(error_msg)
 
         if content:
-            content.transcoding_status = 'failed' if retry_count >= 2 else 'pending'
+            is_final_failure = retry_count >= 2
+            content.transcoding_status = 'failed' if is_final_failure else 'pending'
             content.transcoding_error = f"{error_msg} (Attempt {retry_count + 1}/3)"[:500]
             content.transcoding_progress = 0
             db.commit()
+
+            # Send WebSocket notification for final failure
+            if is_final_failure:
+                send_websocket_notification(
+                    org_id=content.organization_id,
+                    event_type='content.transcoding_failed',
+                    data={
+                        'content_id': content_id,
+                        'title': content.title,
+                        'status': 'failed',
+                        'error': str(e)[:200],
+                        'message': f'Transcoding failed: {str(e)[:100]}'
+                    }
+                )
 
         # Re-raise to trigger retry
         raise
@@ -342,10 +451,24 @@ def transcode_to_hls(self, content_id: int):
         print(error_msg)
 
         if content:
-            content.transcoding_status = 'failed' if retry_count >= 2 else 'pending'
+            is_final_failure = retry_count >= 2
+            content.transcoding_status = 'failed' if is_final_failure else 'pending'
             content.transcoding_error = f"{error_msg} (Attempt {retry_count + 1}/3)"[:500]
             content.transcoding_progress = 0
             db.commit()
+
+            if is_final_failure:
+                send_websocket_notification(
+                    org_id=content.organization_id,
+                    event_type='content.transcoding_failed',
+                    data={
+                        'content_id': content_id,
+                        'title': content.title,
+                        'status': 'failed',
+                        'error': 'Source file not found',
+                        'message': 'Transcoding failed: Source file not found'
+                    }
+                )
 
         # Re-raise to trigger retry
         raise
@@ -358,10 +481,24 @@ def transcode_to_hls(self, content_id: int):
         print(error_msg)
 
         if content:
-            content.transcoding_status = 'failed' if retry_count >= 2 else 'pending'
+            is_final_failure = retry_count >= 2
+            content.transcoding_status = 'failed' if is_final_failure else 'pending'
             content.transcoding_error = f"FFmpeg error: {error_message}"[:500]
             content.transcoding_progress = 0
             db.commit()
+
+            if is_final_failure:
+                send_websocket_notification(
+                    org_id=content.organization_id,
+                    event_type='content.transcoding_failed',
+                    data={
+                        'content_id': content_id,
+                        'title': content.title,
+                        'status': 'failed',
+                        'error': error_message[:200],
+                        'message': f'Transcoding failed: FFmpeg error'
+                    }
+                )
 
         # Re-raise to trigger auto-retry (handled by autoretry_for)
         raise
@@ -375,10 +512,24 @@ def transcode_to_hls(self, content_id: int):
         print(f"[Transcode] Content ID: {content_id}")
 
         if content:
-            content.transcoding_status = 'failed' if retry_count >= 2 else 'pending'
+            is_final_failure = retry_count >= 2
+            content.transcoding_status = 'failed' if is_final_failure else 'pending'
             content.transcoding_error = f"{error_msg} (Attempt {retry_count + 1}/3)"[:500]
             content.transcoding_progress = 0
             db.commit()
+
+            if is_final_failure:
+                send_websocket_notification(
+                    org_id=content.organization_id,
+                    event_type='content.transcoding_failed',
+                    data={
+                        'content_id': content_id,
+                        'title': content.title,
+                        'status': 'failed',
+                        'error': str(e)[:200],
+                        'message': f'Transcoding failed: {type(e).__name__}'
+                    }
+                )
 
         # Re-raise to trigger retry
         raise

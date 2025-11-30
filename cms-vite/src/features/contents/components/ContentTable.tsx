@@ -5,7 +5,7 @@
  * Content management table with upload, filter, and preview
  */
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Upload,
@@ -18,6 +18,12 @@ import {
   Download,
   Edit,
   Filter,
+  ChevronDown,
+  ChevronRight,
+  Copy,
+  List,
+  Tag,
+  Monitor,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { usePagination } from '@/shared/hooks';
@@ -35,8 +41,9 @@ import {
   useContentList,
   useDeleteContent,
   useBulkDeleteContent,
+  useDuplicateContent,
 } from '../hooks/useContent';
-import type { Content, ContentType, ContentFilters } from '../types/content';
+import type { Content, ContentType, ContentFilters, DuplicateGroup, ContentUsage } from '../types/content';
 import { formatFileSize, downloadContent } from '../api/contentApi';
 import { UploadModal } from './UploadModal';
 import { EditContentModal } from './EditContentModal';
@@ -86,8 +93,47 @@ export function ContentTable() {
     skip: pagination.skip,
     limit: pagination.limit,
   });
+  const { data: duplicateData } = useDuplicateContent();
   const deleteMutation = useDeleteContent();
   const bulkDeleteMutation = useBulkDeleteContent();
+
+  // State for expanded duplicate groups
+  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
+
+  // Build duplicate lookup map
+  const duplicateMap = useMemo(() => {
+    const map = new Map<number, { hash: string; usage: ContentUsage; group: DuplicateGroup }>();
+    const groups = Array.isArray(duplicateData) ? duplicateData : (duplicateData as any)?.data || [];
+
+    groups.forEach((group: DuplicateGroup) => {
+      group.contents.forEach((item) => {
+        map.set(item.id, {
+          hash: group.file_hash,
+          usage: item.usage,
+          group,
+        });
+      });
+    });
+    return map;
+  }, [duplicateData]);
+
+  // Toggle group expansion
+  const toggleGroupExpand = (hash: string) => {
+    setExpandedGroups((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(hash)) {
+        newSet.delete(hash);
+      } else {
+        newSet.add(hash);
+      }
+      return newSet;
+    });
+  };
+
+  // Check if content has usage
+  const hasUsage = (usage: ContentUsage): boolean => {
+    return usage.playlists.length > 0 || usage.tags.length > 0 || usage.devices.length > 0;
+  };
 
   // Handlers
   const handleDownload = async (content: Content) => {
@@ -339,10 +385,10 @@ export function ContentTable() {
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
           <>
             <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+              <table className="w-full table-fixed divide-y divide-gray-200 dark:divide-gray-700">
                 <thead className="bg-gray-50 dark:bg-gray-900">
                   <tr>
-                    <th className="px-6 py-3 text-center w-12">
+                    <th className="px-4 py-3 text-center w-12">
                       <input
                         type="checkbox"
                         checked={selectedIds.size > 0 && selectedIds.size === contentData?.data.length}
@@ -350,131 +396,373 @@ export function ContentTable() {
                         className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
                       />
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-[35%]">
                       Content
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-20">
                       Type
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-24">
                       Size
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-20">
                       Duration
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-20">
                       Status
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-32">
                       Actions
                     </th>
                   </tr>
                 </thead>
                 <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                  {contentData.data.map((content) => (
-                    <tr key={content.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
-                      <td className="px-6 py-3 text-center">
-                        <input
-                          type="checkbox"
-                          checked={selectedIds.has(content.id)}
-                          onChange={() => toggleSelection(content.id)}
-                          className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
-                        />
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center">
-                          {content.thumbnail_url ? (
-                            <img
-                              src={content.thumbnail_url}
-                              alt={content.title}
-                              className="w-10 h-10 rounded object-cover mr-3"
-                            />
-                          ) : (
-                            <div className="w-10 h-10 bg-gray-200 dark:bg-gray-700 rounded flex items-center justify-center mr-3">
-                              {getContentTypeIcon(content.content_type)}
-                            </div>
-                          )}
-                          <div>
-                            <p className="text-sm font-medium text-gray-900 dark:text-white">
-                              {content.title}
-                            </p>
-                            {content.description && (
-                              <p className="text-xs text-gray-500 dark:text-gray-400 truncate max-w-xs">
-                                {content.description}
-                              </p>
-                            )}
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center gap-2 text-sm text-gray-900 dark:text-white capitalize">
-                          {getContentTypeIcon(content.content_type)}
-                          {content.content_type}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-                        {formatFileSize(content.file_size)}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-                        {content.duration}s
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span
-                          className={`px-2 py-1 text-xs font-medium rounded-full ${
-                            content.is_active
-                              ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
-                              : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'
-                          }`}
-                        >
-                          {content.is_active ? 'Active' : 'Inactive'}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm">
-                        <div className="flex items-center gap-1">
-                          {canUpdate && (
-                            <Button
-                              variant="icon"
-                              size="sm"
-                              onClick={() => handleEdit(content)}
-                              title="Edit"
-                              className="!text-green-600 hover:!text-green-700 dark:!text-green-400"
-                            >
-                              <Edit className="w-4 h-4" />
-                            </Button>
-                          )}
-                          <Button
-                            variant="icon"
-                            size="sm"
-                            onClick={() => handlePreview(content)}
-                            title="Preview"
-                            className="!text-blue-600 hover:!text-blue-700 dark:!text-blue-400"
+                  {(() => {
+                    const renderedGroups = new Set<string>();
+                    const rows: React.ReactNode[] = [];
+
+                    contentData.data.forEach((content) => {
+                      const dupInfo = duplicateMap.get(content.id);
+
+                      // If this content is part of a duplicate group
+                      if (dupInfo && !renderedGroups.has(dupInfo.hash)) {
+                        renderedGroups.add(dupInfo.hash);
+                        const group = dupInfo.group;
+                        const isExpanded = expandedGroups.has(dupInfo.hash);
+
+                        // Render group header row
+                        rows.push(
+                          <tr
+                            key={`group-${dupInfo.hash}`}
+                            className="bg-orange-50 dark:bg-orange-900/20 hover:bg-orange-100 dark:hover:bg-orange-900/30 cursor-pointer"
+                            onClick={() => toggleGroupExpand(dupInfo.hash)}
                           >
-                            <Eye className="w-4 h-4" />
-                          </Button>
-                          <Button
-                            variant="icon"
-                            size="sm"
-                            onClick={() => handleDownload(content)}
-                            title="Download"
-                            className="!text-gray-600 hover:!text-gray-700 dark:!text-gray-400"
-                          >
-                            <Download className="w-4 h-4" />
-                          </Button>
-                          {canDelete && (
-                            <Button
-                              variant="icon"
-                              size="sm"
-                              onClick={() => setContentToDelete(content)}
-                              title="Delete"
-                              className="!text-red-600 hover:!text-red-700 dark:!text-red-400"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
+                            <td className="px-4 py-3 text-center">
+                              {isExpanded ? (
+                                <ChevronDown className="w-4 h-4 text-orange-600" />
+                              ) : (
+                                <ChevronRight className="w-4 h-4 text-orange-600" />
+                              )}
+                            </td>
+                            <td className="px-4 py-3" colSpan={2}>
+                              <div className="flex items-center gap-3">
+                                {group.thumbnail_url ? (
+                                  <img
+                                    src={group.thumbnail_url}
+                                    alt="Duplicate group"
+                                    className="w-10 h-10 rounded object-cover flex-shrink-0"
+                                  />
+                                ) : (
+                                  <div className="w-10 h-10 bg-orange-200 dark:bg-orange-800 rounded flex items-center justify-center flex-shrink-0">
+                                    {getContentTypeIcon(group.content_type)}
+                                  </div>
+                                )}
+                                <div>
+                                  <div className="flex items-center gap-2">
+                                    <Copy className="w-4 h-4 text-orange-600" />
+                                    <span className="font-medium text-orange-800 dark:text-orange-200">
+                                      {group.duplicate_count} Duplicate Files
+                                    </span>
+                                  </div>
+                                  <span className="text-xs text-orange-600 dark:text-orange-400 font-mono">
+                                    Hash: {group.file_hash.slice(0, 16)}...
+                                  </span>
+                                </div>
+                              </div>
+                            </td>
+                            <td className="px-4 py-3 whitespace-nowrap text-sm text-orange-700 dark:text-orange-300">
+                              {formatFileSize(group.file_size)}
+                            </td>
+                            <td className="px-4 py-3 whitespace-nowrap text-sm text-orange-700 dark:text-orange-300">
+                              -
+                            </td>
+                            <td className="px-4 py-3 whitespace-nowrap">
+                              <span className="px-2 py-1 text-xs font-medium rounded-full bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200">
+                                Same File
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 text-sm text-orange-600 dark:text-orange-400">
+                              Click to {isExpanded ? 'collapse' : 'expand'}
+                            </td>
+                          </tr>
+                        );
+
+                        // If expanded, render all children from the group
+                        if (isExpanded) {
+                          group.contents.forEach((dupItem) => {
+                            // Find the full content data
+                            const fullContent = contentData.data.find((c) => c.id === dupItem.id);
+                            if (!fullContent) return;
+
+                            const itemUsage = dupItem.usage;
+                            const itemHasUsage = hasUsage(itemUsage);
+
+                            rows.push(
+                              <tr
+                                key={`dup-${dupItem.id}`}
+                                className="hover:bg-gray-50 dark:hover:bg-gray-700 bg-gray-50/50 dark:bg-gray-800/50"
+                              >
+                                <td className="px-4 py-3 text-center">
+                                  <div className="flex items-center justify-center">
+                                    <div className="w-4 border-l-2 border-b-2 border-orange-300 dark:border-orange-700 h-4 mr-1" />
+                                    <input
+                                      type="checkbox"
+                                      checked={selectedIds.has(fullContent.id)}
+                                      onChange={(e) => {
+                                        e.stopPropagation();
+                                        toggleSelection(fullContent.id);
+                                      }}
+                                      className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
+                                    />
+                                  </div>
+                                </td>
+                                <td className="px-4 py-3">
+                                  <div className="flex items-center min-w-0 pl-4">
+                                    {fullContent.thumbnail_url ? (
+                                      <img
+                                        src={fullContent.thumbnail_url}
+                                        alt={fullContent.title}
+                                        className="w-8 h-8 rounded object-cover mr-3 flex-shrink-0"
+                                      />
+                                    ) : (
+                                      <div className="w-8 h-8 bg-gray-200 dark:bg-gray-700 rounded flex items-center justify-center mr-3 flex-shrink-0">
+                                        {getContentTypeIcon(fullContent.content_type)}
+                                      </div>
+                                    )}
+                                    <div className="min-w-0 flex-1">
+                                      <p className="text-sm font-medium text-gray-900 dark:text-white truncate" title={fullContent.title}>
+                                        {fullContent.title}
+                                      </p>
+                                      <p className="text-xs text-gray-400 truncate" title={fullContent.original_filename}>
+                                        {fullContent.original_filename}
+                                      </p>
+                                    </div>
+                                  </div>
+                                </td>
+                                <td className="px-4 py-3 whitespace-nowrap">
+                                  {/* Usage indicators */}
+                                  <div className="flex flex-col gap-0.5">
+                                    {itemUsage.playlists.length > 0 && (
+                                      <div className="flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400">
+                                        <List className="w-3 h-3" />
+                                        <span>{itemUsage.playlists.length} playlist</span>
+                                      </div>
+                                    )}
+                                    {itemUsage.tags.length > 0 && (
+                                      <div className="flex items-center gap-1 text-xs text-purple-600 dark:text-purple-400">
+                                        <Tag className="w-3 h-3" />
+                                        <span>{itemUsage.tags.length} tag</span>
+                                      </div>
+                                    )}
+                                    {itemUsage.devices.length > 0 && (
+                                      <div className="flex items-center gap-1 text-xs text-green-600 dark:text-green-400">
+                                        <Monitor className="w-3 h-3" />
+                                        <span>{itemUsage.devices.length} device</span>
+                                      </div>
+                                    )}
+                                    {!itemHasUsage && (
+                                      <span className="text-xs text-gray-400">Not used</span>
+                                    )}
+                                  </div>
+                                </td>
+                                <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+                                  {formatFileSize(fullContent.file_size)}
+                                </td>
+                                <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+                                  {fullContent.duration}s
+                                </td>
+                                <td className="px-4 py-3 whitespace-nowrap">
+                                  <div className="flex items-center gap-2">
+                                    <span
+                                      className={`px-2 py-1 text-xs font-medium rounded-full ${
+                                        fullContent.is_active
+                                          ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+                                          : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'
+                                      }`}
+                                    >
+                                      {fullContent.is_active ? 'Active' : 'Inactive'}
+                                    </span>
+                                    {!itemHasUsage && (
+                                      <span className="w-2 h-2 rounded-full bg-green-400" title="Safe to delete" />
+                                    )}
+                                  </div>
+                                </td>
+                                <td className="px-4 py-3 whitespace-nowrap text-sm">
+                                  <div className="flex items-center gap-1">
+                                    {canUpdate && (
+                                      <Button
+                                        variant="icon"
+                                        size="sm"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          handleEdit(fullContent);
+                                        }}
+                                        title="Edit"
+                                        className="!text-green-600 hover:!text-green-700 dark:!text-green-400"
+                                      >
+                                        <Edit className="w-4 h-4" />
+                                      </Button>
+                                    )}
+                                    <Button
+                                      variant="icon"
+                                      size="sm"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handlePreview(fullContent);
+                                      }}
+                                      title="Preview"
+                                      className="!text-blue-600 hover:!text-blue-700 dark:!text-blue-400"
+                                    >
+                                      <Eye className="w-4 h-4" />
+                                    </Button>
+                                    <Button
+                                      variant="icon"
+                                      size="sm"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleDownload(fullContent);
+                                      }}
+                                      title="Download"
+                                      className="!text-gray-600 hover:!text-gray-700 dark:!text-gray-400"
+                                    >
+                                      <Download className="w-4 h-4" />
+                                    </Button>
+                                    {canDelete && (
+                                      <Button
+                                        variant="icon"
+                                        size="sm"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setContentToDelete(fullContent);
+                                        }}
+                                        title="Delete"
+                                        className="!text-red-600 hover:!text-red-700 dark:!text-red-400"
+                                      >
+                                        <Trash2 className="w-4 h-4" />
+                                      </Button>
+                                    )}
+                                  </div>
+                                </td>
+                              </tr>
+                            );
+                          });
+                        }
+                      }
+                      // Skip content that's already rendered as part of a group
+                      else if (dupInfo) {
+                        return;
+                      }
+                      // Regular content (not a duplicate)
+                      else {
+                        rows.push(
+                          <tr key={content.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
+                            <td className="px-4 py-3 text-center">
+                              <input
+                                type="checkbox"
+                                checked={selectedIds.has(content.id)}
+                                onChange={() => toggleSelection(content.id)}
+                                className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
+                              />
+                            </td>
+                            <td className="px-4 py-3">
+                              <div className="flex items-center min-w-0">
+                                {content.thumbnail_url ? (
+                                  <img
+                                    src={content.thumbnail_url}
+                                    alt={content.title}
+                                    className="w-10 h-10 rounded object-cover mr-3 flex-shrink-0"
+                                  />
+                                ) : (
+                                  <div className="w-10 h-10 bg-gray-200 dark:bg-gray-700 rounded flex items-center justify-center mr-3 flex-shrink-0">
+                                    {getContentTypeIcon(content.content_type)}
+                                  </div>
+                                )}
+                                <div className="min-w-0 flex-1">
+                                  <p className="text-sm font-medium text-gray-900 dark:text-white truncate" title={content.title}>
+                                    {content.title}
+                                  </p>
+                                  {content.description && (
+                                    <p className="text-xs text-gray-500 dark:text-gray-400 truncate" title={content.description}>
+                                      {content.description}
+                                    </p>
+                                  )}
+                                </div>
+                              </div>
+                            </td>
+                            <td className="px-4 py-3 whitespace-nowrap">
+                              <div className="flex items-center gap-1 text-sm text-gray-900 dark:text-white capitalize">
+                                {getContentTypeIcon(content.content_type)}
+                                <span className="hidden sm:inline">{content.content_type}</span>
+                              </div>
+                            </td>
+                            <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+                              {formatFileSize(content.file_size)}
+                            </td>
+                            <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+                              {content.duration}s
+                            </td>
+                            <td className="px-4 py-3 whitespace-nowrap">
+                              <span
+                                className={`px-2 py-1 text-xs font-medium rounded-full ${
+                                  content.is_active
+                                    ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+                                    : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'
+                                }`}
+                              >
+                                {content.is_active ? 'Active' : 'Inactive'}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 whitespace-nowrap text-sm">
+                              <div className="flex items-center gap-1">
+                                {canUpdate && (
+                                  <Button
+                                    variant="icon"
+                                    size="sm"
+                                    onClick={() => handleEdit(content)}
+                                    title="Edit"
+                                    className="!text-green-600 hover:!text-green-700 dark:!text-green-400"
+                                  >
+                                    <Edit className="w-4 h-4" />
+                                  </Button>
+                                )}
+                                <Button
+                                  variant="icon"
+                                  size="sm"
+                                  onClick={() => handlePreview(content)}
+                                  title="Preview"
+                                  className="!text-blue-600 hover:!text-blue-700 dark:!text-blue-400"
+                                >
+                                  <Eye className="w-4 h-4" />
+                                </Button>
+                                <Button
+                                  variant="icon"
+                                  size="sm"
+                                  onClick={() => handleDownload(content)}
+                                  title="Download"
+                                  className="!text-gray-600 hover:!text-gray-700 dark:!text-gray-400"
+                                >
+                                  <Download className="w-4 h-4" />
+                                </Button>
+                                {canDelete && (
+                                  <Button
+                                    variant="icon"
+                                    size="sm"
+                                    onClick={() => setContentToDelete(content)}
+                                    title="Delete"
+                                    className="!text-red-600 hover:!text-red-700 dark:!text-red-400"
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                  </Button>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      }
+                    });
+
+                    return rows;
+                  })()}
                 </tbody>
               </table>
             </div>

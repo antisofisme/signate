@@ -16,6 +16,10 @@ import {
   deleteContent,
   bulkDeleteContent,
   getContentStats,
+  getDeletedContentList,
+  restoreContent,
+  permanentDeleteContent,
+  getDuplicateContent,
 } from '../api/contentApi';
 
 // Re-export shared content keys for backward compatibility
@@ -25,14 +29,23 @@ export const contentKeys = sharedContentKeys;
  * Get list of content with filters
  *
  * Query key includes orgId for proper cache isolation between organizations.
+ * CRITICAL: Only fetch when orgId is available (after auth store hydration)
+ * to prevent query key mismatch between undefined and actual orgId.
  */
 export const useContentList = (filters?: ContentFilters) => {
   const orgId = useSelectedOrgId();
 
+  // Debug log to track orgId and query status
+  console.log('[useContentList] orgId:', orgId, 'enabled:', !!orgId, 'filters:', filters);
+
   return useQuery({
     queryKey: contentKeys.list(orgId, filters),
-    queryFn: () => getContentList(filters),
+    queryFn: () => {
+      console.log('[useContentList] Fetching content list...');
+      return getContentList(filters);
+    },
     staleTime: 30000, // 30 seconds
+    enabled: !!orgId, // Only fetch when orgId is available (after hydration)
     // Note: Backend handles org filtering via JWT or X-Organization-Id header
   });
 };
@@ -53,6 +66,7 @@ export const useContent = (id: number, enabled = true) => {
  */
 export const useUploadContent = () => {
   const queryClient = useQueryClient();
+  const orgId = useSelectedOrgId();
 
   return useMutation({
     mutationFn: ({
@@ -63,12 +77,21 @@ export const useUploadContent = () => {
       onProgress?: (progress: number) => void;
     }) => uploadContent(data, onProgress),
     onSuccess: () => {
-      // Invalidate content list to refetch
-      queryClient.invalidateQueries({ queryKey: contentKeys.lists() });
-      queryClient.invalidateQueries({ queryKey: contentKeys.stats() });
-
-      // Invalidate dashboard queries (content count and storage change)
-      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+      // Refetch content list so new upload appears immediately
+      queryClient.invalidateQueries({
+        queryKey: contentKeys.lists(orgId),
+        refetchType: 'active'  // Refetch active queries immediately
+      });
+      // Stats can be lazy-loaded (not critical for UX)
+      queryClient.invalidateQueries({
+        queryKey: contentKeys.stats(orgId),
+        refetchType: 'none'
+      });
+      // Invalidate quota since storage changed
+      queryClient.invalidateQueries({
+        queryKey: ['organization-quota'],
+        refetchType: 'none'
+      });
 
       toast.success('Content uploaded successfully');
     },
@@ -83,6 +106,7 @@ export const useUploadContent = () => {
  */
 export const useBulkUploadContent = () => {
   const queryClient = useQueryClient();
+  const orgId = useSelectedOrgId();
 
   return useMutation({
     mutationFn: ({
@@ -97,12 +121,20 @@ export const useBulkUploadContent = () => {
       onProgress?: (progress: number) => void;
     }) => bulkUploadContent(files, duration, is_active, onProgress),
     onSuccess: (response) => {
-      // Invalidate content list to refetch
-      queryClient.invalidateQueries({ queryKey: contentKeys.lists() });
-      queryClient.invalidateQueries({ queryKey: contentKeys.stats() });
-
-      // Invalidate dashboard queries (content count and storage change)
-      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+      // Refetch content list so new uploads appear immediately
+      queryClient.invalidateQueries({
+        queryKey: contentKeys.lists(orgId),
+        refetchType: 'active'  // Refetch active queries immediately
+      });
+      // Stats can be lazy-loaded (not critical for UX)
+      queryClient.invalidateQueries({
+        queryKey: contentKeys.stats(orgId),
+        refetchType: 'none'
+      });
+      queryClient.invalidateQueries({
+        queryKey: ['organization-quota'],
+        refetchType: 'none'
+      });
 
       const { summary } = response.data;
       if (summary.failed > 0) {
@@ -124,6 +156,7 @@ export const useBulkUploadContent = () => {
  */
 export const useUpdateContent = () => {
   const queryClient = useQueryClient();
+  const orgId = useSelectedOrgId();
 
   return useMutation({
     mutationFn: ({ id, data }: { id: number; data: any }) =>
@@ -131,7 +164,7 @@ export const useUpdateContent = () => {
     onSuccess: (response, variables) => {
       // Invalidate specific content and list
       queryClient.invalidateQueries({ queryKey: contentKeys.detail(variables.id) });
-      queryClient.invalidateQueries({ queryKey: contentKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: contentKeys.lists(orgId) });
       toast.success('Content updated successfully');
     },
     onError: (error: unknown) => {
@@ -141,54 +174,166 @@ export const useUpdateContent = () => {
 };
 
 /**
- * Delete content
+ * Delete content with optimistic update for instant UI feedback
  */
 export const useDeleteContent = () => {
   const queryClient = useQueryClient();
+  const orgId = useSelectedOrgId();
 
   return useMutation({
     mutationFn: (id: number) => deleteContent(id),
-    onSuccess: async () => {
-      // Force refetch content list immediately
-      await queryClient.invalidateQueries({
-        queryKey: contentKeys.lists(),
-        refetchType: 'all',
-      });
-      await queryClient.invalidateQueries({ queryKey: contentKeys.stats() });
+    // Optimistic update: Remove from UI immediately
+    onMutate: async (deletedId: number) => {
+      // Cancel any outgoing refetches to prevent race conditions
+      // Use orgId to match the exact query keys used by useContentList
+      await queryClient.cancelQueries({ queryKey: contentKeys.lists(orgId) });
 
-      // Invalidate dashboard queries (content count and storage change)
-      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+      // Snapshot previous value for rollback
+      const previousLists = queryClient.getQueriesData({ queryKey: contentKeys.lists(orgId) });
 
-      toast.success('Content deleted successfully');
+      // Optimistically update all content list caches
+      // Handle both response formats: { data: [...] } or { data: { items: [...] } }
+      queryClient.setQueriesData(
+        { queryKey: contentKeys.lists(orgId) },
+        (old: any) => {
+          if (!old?.data) return old;
+
+          // Format 1: data is array directly (API response)
+          if (Array.isArray(old.data)) {
+            return {
+              ...old,
+              data: old.data.filter((item: any) => item.id !== deletedId),
+            };
+          }
+
+          // Format 2: data has items array (paginated response)
+          if (old.data.items) {
+            return {
+              ...old,
+              data: {
+                ...old.data,
+                items: old.data.items.filter((item: any) => item.id !== deletedId),
+                total: Math.max(0, (old.data.total || 0) - 1),
+              },
+            };
+          }
+
+          return old;
+        }
+      );
+
+      return { previousLists };
     },
-    onError: (error: unknown) => {
+    onSuccess: () => {
+      // Show toast
+      toast.success('Content deleted successfully');
+
+      // Invalidate deleted content list so recycle bin updates immediately
+      queryClient.invalidateQueries({
+        queryKey: contentKeys.deletedLists(orgId),
+        refetchType: 'active'  // Refetch active queries immediately
+      });
+
+      // Invalidate duplicates - count will change after delete
+      queryClient.invalidateQueries({
+        queryKey: contentKeys.duplicates(orgId),
+        refetchType: 'active'  // Refetch active queries immediately
+      });
+
+      // Mark stats as stale (will refetch on next view, not immediately)
+      queryClient.invalidateQueries({
+        queryKey: contentKeys.stats(orgId),
+        refetchType: 'none'  // Don't refetch now, just mark stale
+      });
+    },
+    onError: (error: unknown, _deletedId, context) => {
+      // Rollback on error
+      if (context?.previousLists) {
+        context.previousLists.forEach(([queryKey, data]) => {
+          queryClient.setQueryData(queryKey, data);
+        });
+      }
       toast.error(handleAPIError(error).message);
     },
   });
 };
 
 /**
- * Bulk delete content
+ * Bulk delete content with optimistic update
  */
 export const useBulkDeleteContent = () => {
   const queryClient = useQueryClient();
+  const orgId = useSelectedOrgId();
 
   return useMutation({
     mutationFn: (ids: number[]) => bulkDeleteContent(ids),
-    onSuccess: async (_, ids) => {
-      // Force refetch content list immediately
-      await queryClient.invalidateQueries({
-        queryKey: contentKeys.lists(),
-        refetchType: 'all',
-      });
-      await queryClient.invalidateQueries({ queryKey: contentKeys.stats() });
+    // Optimistic update: Remove from UI immediately
+    onMutate: async (deletedIds: number[]) => {
+      // Use orgId to match the exact query keys used by useContentList
+      await queryClient.cancelQueries({ queryKey: contentKeys.lists(orgId) });
 
-      // Invalidate dashboard queries (content count and storage change)
-      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+      const previousLists = queryClient.getQueriesData({ queryKey: contentKeys.lists(orgId) });
 
-      toast.success(`${ids.length} content(s) deleted successfully`);
+      // Handle both response formats
+      queryClient.setQueriesData(
+        { queryKey: contentKeys.lists(orgId) },
+        (old: any) => {
+          if (!old?.data) return old;
+
+          // Format 1: data is array directly
+          if (Array.isArray(old.data)) {
+            return {
+              ...old,
+              data: old.data.filter((item: any) => !deletedIds.includes(item.id)),
+            };
+          }
+
+          // Format 2: data has items array
+          if (old.data.items) {
+            return {
+              ...old,
+              data: {
+                ...old.data,
+                items: old.data.items.filter((item: any) => !deletedIds.includes(item.id)),
+                total: Math.max(0, (old.data.total || 0) - deletedIds.length),
+              },
+            };
+          }
+
+          return old;
+        }
+      );
+
+      return { previousLists };
     },
-    onError: (error: unknown) => {
+    onSuccess: (_, ids) => {
+      // Show toast
+      toast.success(`${ids.length} content(s) deleted successfully`);
+
+      // Invalidate deleted content list so recycle bin updates immediately
+      queryClient.invalidateQueries({
+        queryKey: contentKeys.deletedLists(orgId),
+        refetchType: 'active'  // Refetch active queries immediately
+      });
+
+      // Invalidate duplicates - count will change after delete
+      queryClient.invalidateQueries({
+        queryKey: contentKeys.duplicates(orgId),
+        refetchType: 'active'  // Refetch active queries immediately
+      });
+
+      // Mark stats as stale (will refetch on next view)
+      queryClient.invalidateQueries({
+        queryKey: contentKeys.stats(orgId),
+        refetchType: 'none'
+      });
+    },
+    onError: (error: unknown, _deletedIds, context) => {
+      if (context?.previousLists) {
+        context.previousLists.forEach(([queryKey, data]) => {
+          queryClient.setQueryData(queryKey, data);
+        });
+      }
       toast.error(handleAPIError(error).message);
     },
   });
@@ -207,5 +352,179 @@ export const useContentStats = () => {
     queryFn: () => getContentStats(),
     staleTime: 60000, // 1 minute
     // Note: Backend handles org filtering via JWT or X-Organization-Id header
+  });
+};
+
+// ==============================================================================
+// Deleted Content (Recycle Bin) Hooks
+// ==============================================================================
+
+/**
+ * Get list of deleted content (Recycle Bin)
+ */
+export const useDeletedContentList = (filters?: ContentFilters) => {
+  const orgId = useSelectedOrgId();
+
+  return useQuery({
+    queryKey: contentKeys.deleted(orgId, filters),
+    queryFn: () => getDeletedContentList(filters),
+    staleTime: 30000, // 30 seconds
+    enabled: !!orgId, // Only fetch when orgId is available
+  });
+};
+
+/**
+ * Restore deleted content from Recycle Bin
+ */
+export const useRestoreContent = () => {
+  const queryClient = useQueryClient();
+  const orgId = useSelectedOrgId();
+
+  return useMutation({
+    mutationFn: (id: number) => restoreContent(id),
+    onSuccess: () => {
+      // Invalidate both active and deleted lists
+      queryClient.invalidateQueries({ queryKey: contentKeys.lists(orgId) });
+      queryClient.invalidateQueries({ queryKey: contentKeys.deletedLists(orgId) });
+      queryClient.invalidateQueries({ queryKey: contentKeys.stats(orgId), refetchType: 'none' });
+      toast.success('Content restored successfully');
+    },
+    onError: (error: unknown) => {
+      toast.error(handleAPIError(error).message);
+    },
+  });
+};
+
+/**
+ * Permanently delete content (cannot be recovered)
+ */
+export const usePermanentDeleteContent = () => {
+  const queryClient = useQueryClient();
+  const orgId = useSelectedOrgId();
+
+  return useMutation({
+    mutationFn: (id: number) => permanentDeleteContent(id),
+    // Optimistic update: Remove from UI immediately
+    onMutate: async (deletedId: number) => {
+      await queryClient.cancelQueries({ queryKey: contentKeys.deletedLists(orgId) });
+      const previousLists = queryClient.getQueriesData({ queryKey: contentKeys.deletedLists(orgId) });
+
+      queryClient.setQueriesData(
+        { queryKey: contentKeys.deletedLists(orgId) },
+        (old: any) => {
+          if (!old?.data) return old;
+
+          if (Array.isArray(old.data)) {
+            return {
+              ...old,
+              data: old.data.filter((item: any) => item.id !== deletedId),
+            };
+          }
+
+          if (old.data.items) {
+            return {
+              ...old,
+              data: {
+                ...old.data,
+                items: old.data.items.filter((item: any) => item.id !== deletedId),
+                total: Math.max(0, (old.data.total || 0) - 1),
+              },
+            };
+          }
+
+          return old;
+        }
+      );
+
+      return { previousLists };
+    },
+    onSuccess: () => {
+      toast.success('Content permanently deleted');
+      queryClient.invalidateQueries({ queryKey: contentKeys.stats(orgId), refetchType: 'none' });
+    },
+    onError: (error: unknown, _deletedId, context) => {
+      if (context?.previousLists) {
+        context.previousLists.forEach(([queryKey, data]) => {
+          queryClient.setQueryData(queryKey, data);
+        });
+      }
+      toast.error(handleAPIError(error).message);
+    },
+  });
+};
+
+/**
+ * Bulk permanently delete content (cannot be recovered)
+ * Deletes multiple items sequentially
+ */
+export const useBulkPermanentDeleteContent = () => {
+  const queryClient = useQueryClient();
+  const orgId = useSelectedOrgId();
+
+  return useMutation({
+    mutationFn: async (ids: number[]) => {
+      // Delete each item sequentially
+      for (const id of ids) {
+        await permanentDeleteContent(id);
+      }
+    },
+    // Optimistic update: Remove from UI immediately
+    onMutate: async (deletedIds: number[]) => {
+      await queryClient.cancelQueries({ queryKey: contentKeys.deletedLists(orgId) });
+      const previousLists = queryClient.getQueriesData({ queryKey: contentKeys.deletedLists(orgId) });
+
+      queryClient.setQueriesData(
+        { queryKey: contentKeys.deletedLists(orgId) },
+        (old: any) => {
+          if (!old?.data) return old;
+
+          if (Array.isArray(old.data)) {
+            return {
+              ...old,
+              data: old.data.filter((item: any) => !deletedIds.includes(item.id)),
+              pagination: old.pagination ? {
+                ...old.pagination,
+                total: Math.max(0, (old.pagination.total || 0) - deletedIds.length),
+              } : undefined,
+            };
+          }
+
+          return old;
+        }
+      );
+
+      return { previousLists };
+    },
+    onSuccess: (_, ids) => {
+      toast.success(`${ids.length} item(s) permanently deleted`);
+      queryClient.invalidateQueries({ queryKey: contentKeys.stats(orgId), refetchType: 'none' });
+    },
+    onError: (error: unknown, _deletedIds, context) => {
+      if (context?.previousLists) {
+        context.previousLists.forEach(([queryKey, data]) => {
+          queryClient.setQueryData(queryKey, data);
+        });
+      }
+      toast.error(handleAPIError(error).message);
+    },
+  });
+};
+
+// ==============================================================================
+// Duplicate Content Detection Hooks
+// ==============================================================================
+
+/**
+ * Get duplicate content groups with usage info
+ * Shows content that share the same file hash (identical files)
+ */
+export const useDuplicateContent = () => {
+  const orgId = useSelectedOrgId();
+
+  return useQuery({
+    queryKey: contentKeys.duplicates(orgId),
+    queryFn: () => getDuplicateContent(),
+    staleTime: 60000, // 1 minute
+    enabled: !!orgId,
   });
 };

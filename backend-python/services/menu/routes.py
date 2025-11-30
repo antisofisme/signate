@@ -170,6 +170,22 @@ def list_menus(
     })
 
 
+# ========== Excel Template (MUST be before /{menu_id} routes) ==========
+
+@router.get("/excel-template")
+def download_excel_template(
+    excel_exporter: ExcelExporter = Depends(get_excel_exporter)
+):
+    """Download Excel template for menu import"""
+    template_bytes = excel_exporter.generate_template()
+
+    return StreamingResponse(
+        BytesIO(template_bytes),
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": "attachment; filename=menu_template.xlsx"}
+    )
+
+
 @router.get("/{menu_id}")
 def get_menu(
     menu_id: int,
@@ -336,6 +352,80 @@ def add_menu_item(
     return success_response(data=MenuItemResponseDTO.model_validate(item))
 
 
+@router.patch("/{menu_id}/items/{item_id}")
+def update_menu_item(
+    menu_id: int,
+    item_id: int,
+    payload: MenuItemUpdateDTO,
+    current_user: CurrentUser = Depends(get_current_user),
+    menu_repo: MenuRepository = Depends(get_menu_repository),
+    menu_item_repo: MenuItemRepository = Depends(get_menu_item_repository),
+    audit_logger: AuditLogger = Depends(get_audit_logger)
+):
+    """Update menu item"""
+    # Verify menu exists and belongs to organization
+    menu = menu_repo.find_by_id(menu_id, current_user.organization_id)
+    if not menu:
+        raise HTTPException(status_code=404, detail="Menu not found")
+
+    # Find item
+    item = menu_item_repo.find_by_id(item_id, menu_id, current_user.organization_id)
+    if not item:
+        raise HTTPException(status_code=404, detail="Menu item not found")
+
+    # Update only provided fields
+    update_data = payload.model_dump(exclude_unset=True)
+    item = menu_item_repo.update(item, **update_data)
+
+    # Audit log
+    audit_logger.log_action(
+        user_id=current_user.id,
+        action="menu.update_item",
+        resource_type="menu",
+        resource_id=menu.id,
+        details={"item_id": item.id, "item_name": item.name, "changes": update_data},
+        organization_id=current_user.organization_id
+    )
+
+    return success_response(data=MenuItemResponseDTO.model_validate(item))
+
+
+@router.delete("/{menu_id}/items/{item_id}", status_code=204)
+def delete_menu_item(
+    menu_id: int,
+    item_id: int,
+    current_user: CurrentUser = Depends(get_current_user),
+    menu_repo: MenuRepository = Depends(get_menu_repository),
+    menu_item_repo: MenuItemRepository = Depends(get_menu_item_repository),
+    audit_logger: AuditLogger = Depends(get_audit_logger)
+):
+    """Delete menu item"""
+    # Verify menu exists and belongs to organization
+    menu = menu_repo.find_by_id(menu_id, current_user.organization_id)
+    if not menu:
+        raise HTTPException(status_code=404, detail="Menu not found")
+
+    # Find item
+    item = menu_item_repo.find_by_id(item_id, menu_id, current_user.organization_id)
+    if not item:
+        raise HTTPException(status_code=404, detail="Menu item not found")
+
+    # Soft delete item
+    menu_item_repo.soft_delete(item)
+
+    # Audit log
+    audit_logger.log_action(
+        user_id=current_user.id,
+        action="menu.delete_item",
+        resource_type="menu",
+        resource_id=menu.id,
+        details={"item_id": item_id, "item_name": item.name},
+        organization_id=current_user.organization_id
+    )
+
+    return None
+
+
 # ========== Excel Import/Export Endpoints ==========
 
 @router.post("/{menu_id}/import")
@@ -370,15 +460,47 @@ async def import_items_from_excel(
     return success_response(data=result)
 
 
-@router.get("/excel-template")
-def download_excel_template(
+@router.get("/{menu_id}/export")
+def export_menu_to_excel(
+    menu_id: int,
+    current_user: CurrentUser = Depends(get_current_user),
+    menu_repo: MenuRepository = Depends(get_menu_repository),
+    menu_item_repo: MenuItemRepository = Depends(get_menu_item_repository),
     excel_exporter: ExcelExporter = Depends(get_excel_exporter)
 ):
-    """Download Excel template for menu import"""
-    template_bytes = excel_exporter.generate_template()
+    """Export menu items to Excel file"""
+    from fastapi.responses import StreamingResponse
+    from io import BytesIO
 
+    # Get menu
+    menu = menu_repo.find_by_id(menu_id, current_user.organization_id)
+    if not menu:
+        raise HTTPException(status_code=404, detail="Menu not found")
+
+    # Get all items for this menu
+    items = menu_item_repo.find_all_for_export(menu_id, current_user.organization_id)
+
+    # Convert to dict list
+    items_data = [
+        {
+            "name": item.name,
+            "price": item.price,
+            "description": item.description,
+            "category": item.category,
+            "image_url": item.image_url,
+            "video_url": item.video_url,
+        }
+        for item in items
+    ]
+
+    # Generate Excel file
+    excel_bytes = excel_exporter.export_menu(menu.name, items_data)
+
+    # Return as streaming response
     return StreamingResponse(
-        BytesIO(template_bytes),
+        BytesIO(excel_bytes),
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        headers={"Content-Disposition": "attachment; filename=menu_template.xlsx"}
+        headers={
+            "Content-Disposition": f'attachment; filename="{menu.name}_menu.xlsx"'
+        }
     )

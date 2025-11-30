@@ -8,8 +8,24 @@ export const APP_VERSION = '1.0.0-phase2';
 
 // File upload limits
 export const MAX_FILE_SIZE_MB = 100;
-export const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
-export const ALLOWED_VIDEO_TYPES = ['video/mp4', 'video/webm', 'video/ogg'];
+
+// Allowed MIME types - Match backend support (Updated 2025-11-29)
+export const ALLOWED_IMAGE_TYPES = [
+  'image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/bmp',
+  'image/tiff', 'image/heic', 'image/heif', 'image/avif',
+];
+
+export const ALLOWED_VIDEO_TYPES = [
+  'video/mp4', 'video/webm', 'video/ogg', 'video/quicktime', 'video/x-msvideo',
+  'video/x-matroska', 'video/x-m4v', 'video/x-flv', 'video/x-ms-wmv',
+  'video/mpeg', 'video/3gpp', 'video/3gpp2', 'video/mp2t',
+];
+
+export const ALLOWED_AUDIO_TYPES = [
+  'audio/mpeg', 'audio/mp3', 'audio/aac', 'audio/mp4', 'audio/ogg', 'audio/wav',
+  'audio/flac', 'audio/x-ms-wma', 'audio/x-m4a',
+  'audio/opus', 'audio/amr', 'audio/aiff', 'audio/x-aiff', 'audio/webm',
+];
 
 // Pagination
 export const DEFAULT_PAGE_SIZE = 10;

@@ -163,6 +163,7 @@ class CacheService:
         self.delete(f"content:{content_id}")
         self.clear_pattern(f"content:{content_id}:*")
         self.clear_pattern("contents:list:*")
+        self.clear_pattern("*:contents:list:*")  # Match org-prefixed keys
         if org_id:
             self.clear_pattern(f"org:{org_id}:contents:*")
     

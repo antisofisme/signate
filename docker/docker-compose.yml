@@ -151,7 +151,7 @@ services:
     healthcheck:
       test: ["CMD-SHELL", "celery -A celery_app inspect ping -t 10 || exit 1"]
       interval: 30s
-      timeout: 15s
+      timeout: 30s
       start_period: 60s
       retries: 3
 

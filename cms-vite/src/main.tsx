@@ -6,6 +6,7 @@ import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
 import { Toaster } from 'sonner'
 import { WebSocketProvider } from '@/lib/websocket'
 import { PageErrorBoundary } from '@/shared/components'
+import { UploadQueuePanel } from '@/features/uploads/components/UploadQueuePanel'
 import { router } from './routes'
 import './i18n' // Initialize i18n
 import './styles/globals.css'
@@ -26,6 +27,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
         <WebSocketProvider debug={false}>
           <RouterProvider router={router} />
           <Toaster position="top-right" richColors />
+          <UploadQueuePanel />
           <ReactQueryDevtools initialIsOpen={false} />
         </WebSocketProvider>
       </QueryClientProvider>

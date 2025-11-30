@@ -5,7 +5,8 @@ from .models import (
     MenuItemModel,
     MenuImportHistoryModel,
     MenuViewModel,
-    MenuCategoryModel
+    MenuCategoryModel,
+    MenuMediaModel
 )
 from .menu_repo import MenuRepository, MenuItemRepository
 from .menu_analytics_repo import (
@@ -13,6 +14,7 @@ from .menu_analytics_repo import (
     MenuViewRepository,
     MenuCategoryRepository
 )
+from .menu_media_repo import MenuMediaRepository
 
 __all__ = [
     # Models
@@ -21,10 +23,12 @@ __all__ = [
     "MenuImportHistoryModel",
     "MenuViewModel",
     "MenuCategoryModel",
+    "MenuMediaModel",
     # Repositories
     "MenuRepository",
     "MenuItemRepository",
     "MenuImportHistoryRepository",
     "MenuViewRepository",
     "MenuCategoryRepository",
+    "MenuMediaRepository",
 ]

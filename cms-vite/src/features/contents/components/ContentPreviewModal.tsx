@@ -242,7 +242,7 @@ export function ContentPreviewModal({ content, isOpen, onClose }: ContentPreview
           </div>
 
           <div className="text-gray-400">
-            {t('contents.preview.pressEscToClose', { key: <kbd className="px-2 py-1 bg-gray-700 rounded text-xs">ESC</kbd> })}
+            {t('contents.preview.pressEscToClose')}
           </div>
         </div>
       </div>

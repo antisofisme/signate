@@ -16,6 +16,7 @@ import type {
   MenuItemListParams,
   MenuImportResult,
   MenuImportHistory,
+  MenuMedia,
 } from '../types/menu';
 
 const BASE_URL = '/api/v1/menus';
@@ -193,5 +194,46 @@ export const menuApi = {
       responseType: 'blob',
     });
     return response.data;
+  },
+
+  // ========== Menu Media ==========
+
+  /**
+   * List menu media
+   */
+  listMedia: async (): Promise<{ items: MenuMedia[]; total: number }> => {
+    const response = await apiClient.get('/api/v1/menu-media');
+    return unwrapResponse<{ items: MenuMedia[]; total: number }>(response);
+  },
+
+  /**
+   * Upload menu media
+   */
+  uploadMedia: async (file: File): Promise<MenuMedia> => {
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const response = await apiClient.post('/api/v1/menu-media', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return unwrapResponse<MenuMedia>(response);
+  },
+
+  /**
+   * Update menu media
+   */
+  updateMedia: async (
+    id: number,
+    data: { title?: string; alt_text?: string }
+  ): Promise<MenuMedia> => {
+    const response = await apiClient.patch(`/api/v1/menu-media/${id}`, data);
+    return unwrapResponse<MenuMedia>(response);
+  },
+
+  /**
+   * Delete menu media
+   */
+  deleteMedia: async (id: number): Promise<void> => {
+    await apiClient.delete(`/api/v1/menu-media/${id}`);
   },
 };

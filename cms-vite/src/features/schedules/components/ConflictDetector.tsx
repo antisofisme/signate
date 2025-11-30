@@ -11,7 +11,6 @@ import type { RecurrenceType, RecurrencePattern } from '../types/schedule.types'
 
 interface ConflictDetectorProps {
   playlistId: number
-  deviceIds: number[]
   startDate: string
   endDate?: string
   startTime: string
@@ -23,7 +22,6 @@ interface ConflictDetectorProps {
 
 export const ConflictDetector = ({
   playlistId,
-  deviceIds,
   startDate,
   endDate,
   startTime,
@@ -36,11 +34,10 @@ export const ConflictDetector = ({
   const checkConflicts = useCheckConflicts()
 
   useEffect(() => {
-    // Check conflicts when props change
-    if (playlistId && deviceIds.length > 0 && startDate && startTime && endTime) {
+    // Check conflicts when props change (devices inherited from playlist)
+    if (playlistId && startDate && startTime && endTime) {
       checkConflicts.mutate({
         playlist_id: playlistId,
-        device_ids: deviceIds,
         start_date: startDate,
         end_date: endDate,
         start_time: startTime,
@@ -50,7 +47,7 @@ export const ConflictDetector = ({
         exclude_schedule_id: excludeScheduleId,
       })
     }
-  }, [playlistId, deviceIds, startDate, endDate, startTime, endTime, recurrenceType, recurrencePattern, excludeScheduleId])
+  }, [playlistId, startDate, endDate, startTime, endTime, recurrenceType, recurrencePattern, excludeScheduleId])
 
   if (checkConflicts.isPending) {
     return (

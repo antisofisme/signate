@@ -236,6 +236,22 @@ class MenuItemRepository:
 
         return items, total
 
+    def find_all_for_export(
+        self,
+        menu_id: int,
+        organization_id: int
+    ) -> List[MenuItemModel]:
+        """Find all active items for menu export (no pagination)"""
+        return self.db.query(MenuItemModel).filter(
+            MenuItemModel.menu_id == menu_id,
+            MenuItemModel.organization_id == organization_id,
+            MenuItemModel.deleted_at.is_(None),
+            MenuItemModel.is_active == True
+        ).order_by(
+            MenuItemModel.display_order.asc(),
+            MenuItemModel.created_at.asc()
+        ).all()
+
     def update(self, item: MenuItemModel, **kwargs) -> MenuItemModel:
         """Update menu item"""
         for key, value in kwargs.items():

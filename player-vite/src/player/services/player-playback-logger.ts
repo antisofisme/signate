@@ -258,9 +258,10 @@ class PlayerPlaybackLoggerClass {
       SharedLogger.error('[PlaybackLogger] Failed to log playback start:', error);
 
       // Queue for offline sync
+      const offlineDeviceId = SharedDeviceState.getDeviceId();
       const payload = {
         content_id: item.content_id,
-        device_id: deviceId,
+        device_id: offlineDeviceId,
         playlist_id: playlistId,
         started_at: new Date().toISOString(),
       };
@@ -315,15 +316,17 @@ class PlayerPlaybackLoggerClass {
       SharedLogger.error('[PlaybackLogger] Failed to log playback end:', error);
 
       // Queue for offline sync (include log_id for later processing)
-      const endTime = Date.now();
-      const durationSeconds = Math.floor((endTime - this.startTime!) / 1000);
-      const queuePayload = {
-        log_id: this.currentLog.logId,
-        ended_at: new Date().toISOString(),
-        duration_seconds: durationSeconds,
-        completed: completed,
-      };
-      this.queueEntry('end', queuePayload);
+      if (this.currentLog && this.startTime) {
+        const endTime = Date.now();
+        const durationSeconds = Math.floor((endTime - this.startTime) / 1000);
+        const queuePayload = {
+          log_id: this.currentLog.logId,
+          ended_at: new Date().toISOString(),
+          duration_seconds: durationSeconds,
+          completed: completed,
+        };
+        this.queueEntry('end', queuePayload);
+      }
 
       // Don't throw - analytics failure shouldn't break playback
 

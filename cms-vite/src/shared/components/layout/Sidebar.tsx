@@ -29,6 +29,8 @@ import {
   ChevronDown,
   ChevronRight,
   UtensilsCrossed,
+  Image,
+  List,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useUIStore } from '@/lib/stores/uiStore';
@@ -57,9 +59,11 @@ export default function Sidebar() {
   const logoutMutation = useLogout();
 
   // Track which groups are open (using group name as key)
+  // All groups default to open (auto-expand)
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({
     devices: true,
     content: true,
+    'menu-digital': true,
     // customization: false, // HIDDEN: Belum dikembangkan
     // integrations: false, // HIDDEN: Belum dikembangkan
   });
@@ -96,6 +100,14 @@ export default function Sidebar() {
         { name: t('navigation.tags'), href: '/tags', icon: Tag },
       ],
     },
+    {
+      name: t('navigation.groups.menuDigital'),
+      icon: UtensilsCrossed,
+      items: [
+        { name: t('navigation.menuList'), href: '/menus', icon: List },
+        { name: t('navigation.menuMedia'), href: '/menus/media', icon: Image },
+      ],
+    },
     // HIDDEN: Belum dikembangkan
     // {
     //   name: 'Customization',
@@ -119,7 +131,6 @@ export default function Sidebar() {
 
   // Standalone feature items (rendered between groups and bottom)
   const standaloneFeatures: NavItem[] = [
-    { name: t('navigation.digitalMenus'), href: '/menus', icon: UtensilsCrossed },
     { name: t('navigation.analytics'), href: '/analytics', icon: BarChart3 },
   ];
 

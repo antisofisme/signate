@@ -131,8 +131,12 @@ async def upload_content(
             message="Content uploaded successfully"
         )
     except ValueError as e:
+        import logging
+        logging.error(f"[Upload] ValueError: {str(e)} - file: {file.filename}, content_type: {file.content_type}")
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
+        import logging
+        logging.error(f"[Upload] Exception: {str(e)} - file: {file.filename}")
         raise HTTPException(status_code=500, detail=f"Upload failed: {str(e)}")
 
 
@@ -379,6 +383,82 @@ async def get_content_stats(
         raise HTTPException(status_code=500, detail=f"Stats failed: {str(e)}")
 
 
+# ==============================================================================
+# Deleted Content (Recycle Bin) - MUST be before GET to avoid route conflict
+# ==============================================================================
+
+@router.get(ContentRoutes.LIST_DELETED, response_model=dict)
+async def list_deleted_content(
+    skip: int = 0,
+    limit: int = 20,
+    content_type: Optional[str] = None,
+    content_repo: IContentRepository = Depends(get_content_repository),
+    current_user: dict = Depends(require_permission("contents", "read"))
+):
+    """
+    List soft-deleted content (Recycle Bin)
+
+    Requires 'contents:read' permission.
+    Query params:
+    - skip: Offset for pagination (default 0)
+    - limit: Number of records (default 20)
+    - content_type: Filter by type (image/video/audio)
+    """
+    try:
+        contents, total = content_repo.find_all_deleted(
+            organization_id=current_user["organization_id"],
+            skip=skip,
+            limit=limit,
+            content_type=content_type
+        )
+
+        # Convert skip/limit to page/page_size
+        page = (skip // limit) + 1 if limit > 0 else 1
+        page_size = limit
+
+        return paginated_response(
+            data=[ContentResponse.from_entity(c).dict() for c in contents],
+            total=total,
+            page=page,
+            page_size=page_size
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"List deleted failed: {str(e)}")
+
+
+# ==============================================================================
+# Duplicate Detection - MUST be before GET to avoid route conflict
+# ==============================================================================
+
+@router.get(ContentRoutes.DUPLICATES, response_model=dict)
+async def get_duplicate_content(
+    content_repo: IContentRepository = Depends(get_content_repository),
+    current_user: dict = Depends(require_permission("contents", "read"))
+):
+    """
+    Get duplicate content groups with usage info
+
+    Requires 'contents:read' permission.
+    Returns groups of content that share the same file (identical hash),
+    with information about where each content is used (playlists, tags, devices).
+    """
+    try:
+        duplicates = content_repo.find_duplicates_with_usage(
+            organization_id=current_user["organization_id"]
+        )
+
+        # Calculate totals
+        total_groups = len(duplicates)
+        total_duplicates = sum(group["duplicate_count"] for group in duplicates)
+
+        return success_response(
+            data=duplicates,
+            message=f"Found {total_groups} duplicate groups with {total_duplicates} total files"
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Get duplicates failed: {str(e)}")
+
+
 @router.get(ContentRoutes.GET, response_model=dict)
 async def get_content(
     content_id: int,
@@ -510,7 +590,7 @@ async def download_content(
         raise HTTPException(status_code=500, detail=f"Download failed: {str(e)}")
 
 
-@router.delete("/{content_id}", status_code=204)
+@router.delete(ContentRoutes.DELETE, status_code=204)
 async def delete_content(
     content_id: int,
     request: Request,
@@ -697,3 +777,142 @@ async def bulk_update_content(
         },
         message=f"Bulk update completed: {updated_count} updated, {failed_count} failed"
     )
+
+
+# ==============================================================================
+# Restore & Permanent Delete (paths with content_id - safe after GET)
+# ==============================================================================
+
+@router.post(ContentRoutes.RESTORE, response_model=dict)
+async def restore_content(
+    content_id: int,
+    request: Request,
+    content_repo: IContentRepository = Depends(get_content_repository),
+    audit_logger: AuditLogger = Depends(get_audit_logger),
+    current_user: dict = Depends(require_permission("contents", "edit"))
+):
+    """
+    Restore soft-deleted content from Recycle Bin
+
+    Requires 'contents:edit' permission.
+    - Restores content to active state
+    - Clears deleted_at and deleted_by_id
+    """
+    try:
+        restored = content_repo.restore(content_id, current_user["organization_id"])
+
+        if not restored:
+            raise HTTPException(status_code=404, detail="Content not found in recycle bin")
+
+        # Get restored content for response
+        content = content_repo.find_by_id(content_id, current_user["organization_id"])
+
+        # Audit log
+        audit_logger.log_action(
+            user_id=current_user["user_id"],
+            action="content.restore",
+            resource_type="content",
+            resource_id=content_id,
+            details={
+                "title": content.title if content else None,
+                "content_type": content.content_type if content else None
+            },
+            ip_address=request.client.host if request.client else None,
+            organization_id=current_user["organization_id"]
+        )
+
+        return success_response(
+            data=ContentResponse.from_entity(content).dict() if content else None,
+            message="Content restored successfully"
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Restore failed: {str(e)}")
+
+
+@router.delete(ContentRoutes.PERMANENT_DELETE, status_code=204)
+async def permanent_delete_content(
+    content_id: int,
+    request: Request,
+    content_repo: IContentRepository = Depends(get_content_repository),
+    storage_service: IStorageService = Depends(get_storage_service),
+    audit_logger: AuditLogger = Depends(get_audit_logger),
+    current_user: dict = Depends(require_permission("contents", "delete"))
+):
+    """
+    Permanently delete content (cannot be recovered)
+
+    Requires 'contents:delete' permission.
+    - Only works on soft-deleted content (must be in recycle bin first)
+    - Deletes file from storage
+    - Removes database record permanently
+    """
+    from .repositories.models import ContentModel
+
+    try:
+        # Get content to verify it's soft-deleted and belongs to org
+        db = content_repo.db
+        db_content = db.query(ContentModel).filter(
+            ContentModel.id == content_id,
+            ContentModel.organization_id == current_user["organization_id"],
+            ContentModel.deleted_at.isnot(None)  # Must be soft-deleted first
+        ).first()
+
+        if not db_content:
+            raise HTTPException(
+                status_code=404,
+                detail="Content not found in recycle bin. Only deleted content can be permanently removed."
+            )
+
+        # Store info for audit log before deletion
+        content_title = db_content.title
+        content_type = db_content.content_type
+        storage_key = db_content.storage_key
+        file_size = db_content.file_size
+
+        # Check if other content records use the same storage
+        # (for deduplicated files, don't delete storage if still in use)
+        same_storage_count = db.query(ContentModel).filter(
+            ContentModel.storage_key == storage_key,
+            ContentModel.id != content_id
+        ).count()
+
+        # Delete file from storage only if no other records use it
+        if same_storage_count == 0 and storage_key:
+            try:
+                await storage_service.delete_file(storage_key)
+            except Exception as e:
+                import logging
+                logging.warning(f"Failed to delete storage file: {e}")
+                # Continue with DB deletion even if storage delete fails
+
+        # Permanently delete from database
+        deleted = content_repo.hard_delete(content_id)
+
+        if not deleted:
+            raise HTTPException(status_code=500, detail="Failed to delete content from database")
+
+        # Audit log
+        audit_logger.log_action(
+            user_id=current_user["user_id"],
+            action="content.permanent_delete",
+            resource_type="content",
+            resource_id=content_id,
+            details={
+                "title": content_title,
+                "content_type": content_type,
+                "file_size": file_size,
+                "storage_deleted": same_storage_count == 0
+            },
+            ip_address=request.client.host if request.client else None,
+            organization_id=current_user["organization_id"]
+        )
+
+        return None  # 204 No Content
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Permanent delete failed: {str(e)}")

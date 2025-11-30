@@ -12,6 +12,9 @@ export type DayOfWeek = 'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'frida
 // Priority levels
 export type PriorityLevel = 'low' | 'normal' | 'high' | 'critical'
 
+// Schedule mode - how the schedule behaves when active
+export type ScheduleMode = 'override' | 'rotate'
+
 // Schedule status
 export type ScheduleStatus = 'active' | 'inactive' | 'expired' | 'paused'
 
@@ -22,18 +25,18 @@ export interface Schedule {
   description?: string
   playlist_id: number
   playlist_name?: string
-  device_ids: number[]
-  device_names?: string[]
   start_date: string
   end_date?: string
   start_time: string
   end_time: string
-  recurrence_type: RecurrenceType
+  recurrence_type: RecurrenceType | string
   recurrence_pattern?: RecurrencePattern
-  priority: PriorityLevel
-  status: ScheduleStatus
+  priority: PriorityLevel | number
+  mode: ScheduleMode
+  is_active: boolean // From backend
+  status?: ScheduleStatus // Derived from is_active for UI display
   exception_dates?: string[]
-  timezone: string
+  timezone?: string
   created_at: string
   updated_at: string
   // Audit trail fields (Migration 046)
@@ -41,6 +44,21 @@ export interface Schedule {
   updated_by_id?: number
   last_run?: string
   next_run?: string
+}
+
+// Helper to derive status from is_active and dates
+export const getScheduleStatus = (schedule: Schedule): ScheduleStatus => {
+  // Check if expired (end_date passed)
+  if (schedule.end_date) {
+    const endDate = new Date(schedule.end_date)
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    if (endDate < today) {
+      return 'expired'
+    }
+  }
+  // Use is_active for active/inactive
+  return schedule.is_active ? 'active' : 'inactive'
 }
 
 // Recurrence pattern details
@@ -101,6 +119,32 @@ export const PRIORITY_LEVELS: Record<PriorityLevel, PriorityInfo> = {
     icon: 'AlertCircle',
     description: 'Highest priority, always runs',
     weight: 4,
+  },
+}
+
+// Schedule mode information
+export interface ScheduleModeInfo {
+  mode: ScheduleMode
+  label: string
+  icon: string
+  description: string
+  color: string
+}
+
+export const SCHEDULE_MODES: Record<ScheduleMode, ScheduleModeInfo> = {
+  override: {
+    mode: 'override',
+    label: 'Override',
+    icon: 'Ban',
+    description: 'Stop all other content when this schedule is active. Only this scheduled content will play.',
+    color: 'red',
+  },
+  rotate: {
+    mode: 'rotate',
+    label: 'Rotate',
+    icon: 'RefreshCw',
+    description: 'Play alongside other content. Takes turns in rotation with other active content.',
+    color: 'blue',
   },
 }
 
@@ -192,31 +236,32 @@ export interface CreateScheduleRequest {
   name: string
   description?: string
   playlist_id: number
-  device_ids: number[]
   start_date: string
   end_date?: string
   start_time: string
   end_time: string
-  recurrence_type: RecurrenceType
+  recurrence_type: RecurrenceType | string
   recurrence_pattern?: RecurrencePattern
-  priority: PriorityLevel
+  priority: PriorityLevel | number
+  mode: ScheduleMode
   exception_dates?: string[]
-  timezone: string
+  is_active?: boolean
 }
 
 export interface UpdateScheduleRequest {
   name?: string
   description?: string
-  device_ids?: number[]
   start_date?: string
   end_date?: string
   start_time?: string
   end_time?: string
+  recurrence_type?: RecurrenceType | string
   recurrence_pattern?: RecurrencePattern
-  priority?: PriorityLevel
+  priority?: PriorityLevel | number
+  mode?: ScheduleMode
   status?: ScheduleStatus
   exception_dates?: string[]
-  timezone?: string
+  is_active?: boolean
 }
 
 // Schedule conflict detection
@@ -233,7 +278,6 @@ export interface ScheduleConflict {
 
 export interface ConflictCheckRequest {
   playlist_id: number
-  device_ids: number[]
   start_date: string
   end_date?: string
   start_time: string

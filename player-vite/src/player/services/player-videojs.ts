@@ -362,13 +362,44 @@ class PlayerVideoJSClass implements IPlayerVideoJS {
   }
 
   /**
-   * Get MIME type for video source
+   * Get MIME type for video/audio source
+   * Updated 2025-11-29: Comprehensive MIME type detection
    */
   private getMimeType(url: string, contentType?: string): string {
-    if (url.includes('.m3u8')) return 'application/x-mpegURL'; // HLS
-    if (url.includes('.mpd')) return 'application/dash+xml';  // DASH
-    if (url.includes('.webm')) return 'video/webm';
-    if (url.includes('.mp4')) return 'video/mp4';
+    const lowerUrl = url.toLowerCase();
+
+    // Streaming formats
+    if (lowerUrl.includes('.m3u8')) return 'application/x-mpegURL'; // HLS
+    if (lowerUrl.includes('.mpd')) return 'application/dash+xml';  // DASH
+
+    // Video formats
+    if (lowerUrl.includes('.mp4')) return 'video/mp4';
+    if (lowerUrl.includes('.webm')) return 'video/webm';
+    if (lowerUrl.includes('.mkv')) return 'video/x-matroska';
+    if (lowerUrl.includes('.avi')) return 'video/x-msvideo';
+    if (lowerUrl.includes('.mov')) return 'video/quicktime';
+    if (lowerUrl.includes('.m4v')) return 'video/x-m4v';
+    if (lowerUrl.includes('.flv')) return 'video/x-flv';
+    if (lowerUrl.includes('.wmv')) return 'video/x-ms-wmv';
+    if (lowerUrl.includes('.mpg') || lowerUrl.includes('.mpeg')) return 'video/mpeg';
+    if (lowerUrl.includes('.3gp')) return 'video/3gpp';
+    if (lowerUrl.includes('.3g2')) return 'video/3gpp2';
+    if (lowerUrl.includes('.mts') || lowerUrl.includes('.m2ts') || lowerUrl.includes('.ts')) return 'video/mp2t';
+    if (lowerUrl.includes('.ogv')) return 'video/ogg';
+
+    // Audio formats
+    if (lowerUrl.includes('.mp3')) return 'audio/mpeg';
+    if (lowerUrl.includes('.aac')) return 'audio/aac';
+    if (lowerUrl.includes('.m4a')) return 'audio/mp4';
+    if (lowerUrl.includes('.ogg') || lowerUrl.includes('.oga')) return 'audio/ogg';
+    if (lowerUrl.includes('.wav')) return 'audio/wav';
+    if (lowerUrl.includes('.flac')) return 'audio/flac';
+    if (lowerUrl.includes('.wma')) return 'audio/x-ms-wma';
+    if (lowerUrl.includes('.opus')) return 'audio/opus';
+    if (lowerUrl.includes('.amr')) return 'audio/amr';
+    if (lowerUrl.includes('.aiff') || lowerUrl.includes('.aif')) return 'audio/aiff';
+    if (lowerUrl.includes('.weba')) return 'audio/webm';
+
     return contentType || 'video/mp4'; // Default fallback
   }
 

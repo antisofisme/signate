@@ -8,6 +8,9 @@ from sqlalchemy.sql import func, text
 from sqlalchemy.orm import relationship
 from shared.database import Base
 
+# Note: Relationships to OrganizationModel and UserModel are commented out
+# to avoid circular import issues. If needed, use lazy loading or back_populates.
+
 
 class ContentModel(Base):
     """Content database model"""
@@ -80,11 +83,12 @@ class ContentModel(Base):
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
     deleted_at = Column(DateTime(timezone=True), nullable=True)
 
-    # Relationships
-    organization = relationship("OrganizationModel", foreign_keys=[organization_id])
-    uploader = relationship("UserModel", foreign_keys=[uploaded_by_id])
-    updater = relationship("UserModel", foreign_keys=[updated_by_id])
-    deleter = relationship("UserModel", foreign_keys=[deleted_by_id])
+    # Relationships - Commented out to avoid circular import issues
+    # These can be added back if needed with proper lazy loading configuration
+    # organization = relationship("OrganizationModel", foreign_keys=[organization_id])
+    # uploader = relationship("UserModel", foreign_keys=[uploaded_by_id])
+    # updater = relationship("UserModel", foreign_keys=[updated_by_id])
+    # deleter = relationship("UserModel", foreign_keys=[deleted_by_id])
 
     # Composite indexes
     __table_args__ = (

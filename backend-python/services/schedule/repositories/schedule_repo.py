@@ -44,6 +44,7 @@ class ScheduleRepository:
             recurrence_pattern=recurrence_pattern_dict,
             exceptions=request.exception_dates,  # Map DTO exception_dates to DB exceptions column
             priority=request.priority,
+            mode=request.mode,  # 'override' or 'rotate' (Migration 056)
             is_active=request.is_active,
             created_by_id=created_by_id  # Audit trail (Migration 046)
         )
@@ -58,13 +59,14 @@ class ScheduleRepository:
         schedule_id: int,
         organization_id: int
     ) -> Optional[Schedule]:
-        """Get schedule by ID"""
+        """Get schedule by ID (excludes soft-deleted)"""
         return self.db.query(Schedule).options(
             selectinload(Schedule.playlist)
         ).filter(
             and_(
                 Schedule.id == schedule_id,
-                Schedule.organization_id == organization_id
+                Schedule.organization_id == organization_id,
+                Schedule.deleted_at == None  # Exclude soft-deleted
             )
         ).first()
 
@@ -77,11 +79,14 @@ class ScheduleRepository:
         skip: int = 0,
         limit: int = 100
     ) -> Tuple[List[Schedule], int]:
-        """Get schedules with filters"""
+        """Get schedules with filters (excludes soft-deleted)"""
         query = self.db.query(Schedule).options(
             selectinload(Schedule.playlist)
         ).filter(
-            Schedule.organization_id == organization_id
+            and_(
+                Schedule.organization_id == organization_id,
+                Schedule.deleted_at == None  # Exclude soft-deleted
+            )
         )
 
         if playlist_id is not None:
@@ -164,6 +169,7 @@ class ScheduleRepository:
             and_(
                 Schedule.organization_id == organization_id,
                 Schedule.is_active == True,
+                Schedule.deleted_at == None,  # Exclude soft-deleted
                 Schedule.start_date <= check_date,
                 or_(
                     Schedule.end_date == None,
@@ -207,6 +213,7 @@ class ScheduleRepository:
                 Schedule.organization_id == organization_id,
                 Schedule.playlist_id == playlist_id,
                 Schedule.is_active == True,
+                Schedule.deleted_at == None,  # Exclude soft-deleted
                 # Date overlap check
                 Schedule.start_date <= (end_date or start_date),
                 or_(
@@ -242,13 +249,14 @@ class ScheduleRepository:
         organization_id: int,
         playlist_id: int
     ) -> List[Schedule]:
-        """Get all schedules for a playlist"""
+        """Get all schedules for a playlist (excludes soft-deleted)"""
         return self.db.query(Schedule).options(
             selectinload(Schedule.playlist)
         ).filter(
             and_(
                 Schedule.organization_id == organization_id,
-                Schedule.playlist_id == playlist_id
+                Schedule.playlist_id == playlist_id,
+                Schedule.deleted_at == None  # Exclude soft-deleted
             )
         ).order_by(Schedule.priority.desc()).all()
 
@@ -273,14 +281,15 @@ class ScheduleRepository:
     ) -> List[Schedule]:
         """Find all active schedules for an organization at current time"""
         current_date = current_time.date()
-        
-        # Query active schedules
+
+        # Query active schedules (excludes soft-deleted)
         query = self.db.query(Schedule).options(
             selectinload(Schedule.playlist)
         ).filter(
             and_(
                 Schedule.organization_id == organization_id,
                 Schedule.is_active == True,
+                Schedule.deleted_at == None,  # Exclude soft-deleted
                 # Date range check
                 or_(
                     Schedule.start_date == None,
@@ -292,5 +301,5 @@ class ScheduleRepository:
                 )
             )
         )
-        
+
         return query.order_by(Schedule.priority.desc()).all()

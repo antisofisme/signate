@@ -27,18 +27,23 @@ class CreatePlaylistUseCase:
         Create new playlist
 
         Raises:
-            ValueError: If validation fails
+            ValueError: If validation fails (duplicate name, quota exceeded)
         """
+        # Check for duplicate name in organization
+        existing = self.playlist_repo.find_by_name(name, organization_id)
+        if existing:
+            raise ValueError(f"Playlist dengan nama '{name}' sudah ada")
+
         # Check organization playlist quota
         db_session = self.playlist_repo.db
         quota_service = OrganizationQuotaService(db_session)
-        
+
         # Enforce playlist quota atomically (CRITICAL FIX P0-9)
         try:
             quota_service.enforce_playlist_quota_atomic(organization_id)
         except ValueError as e:
             raise ValueError(f"Quota exceeded: {str(e)}")
-        
+
         # Create domain entity (with validation)
         playlist = Playlist(
             name=name,

@@ -2,7 +2,7 @@
  * Menus Page
  *
  * LAYER 1: PRESENTATION
- * Main page for digital menu management - orchestration only
+ * Main page for digital menu management - Menu List
  */
 
 import { useState } from 'react';

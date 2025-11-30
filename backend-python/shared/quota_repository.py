@@ -4,7 +4,7 @@ Handles cross-service resource counting for quota enforcement
 """
 
 from typing import Dict
-from sqlalchemy import func, Table, MetaData, Column, Integer, BigInteger
+from sqlalchemy import func, Table, MetaData, Column, Integer, BigInteger, text
 from sqlalchemy.orm import Session
 
 
@@ -27,11 +27,11 @@ class QuotaRepository:
         """Count active devices for an organization"""
         # Use raw SQL to avoid importing DeviceModel
         result = self.db.execute(
-            """
+            text("""
             SELECT COUNT(*)
             FROM devices
             WHERE organization_id = :org_id
-            """,
+            """),
             {"org_id": organization_id}
         ).scalar()
 
@@ -41,21 +41,21 @@ class QuotaRepository:
         """Count users for an organization"""
         if active_only:
             result = self.db.execute(
-                """
+                text("""
                 SELECT COUNT(*)
                 FROM users
                 WHERE organization_id = :org_id
                   AND is_active = true
-                """,
+                """),
                 {"org_id": organization_id}
             ).scalar()
         else:
             result = self.db.execute(
-                """
+                text("""
                 SELECT COUNT(*)
                 FROM users
                 WHERE organization_id = :org_id
-                """,
+                """),
                 {"org_id": organization_id}
             ).scalar()
 
@@ -69,14 +69,14 @@ class QuotaRepository:
             Dict with 'count' (number of items) and 'total_size' (bytes)
         """
         result = self.db.execute(
-            """
+            text("""
             SELECT
                 COUNT(*) as count,
                 COALESCE(SUM(file_size), 0) as total_size
             FROM contents
             WHERE organization_id = :org_id
               AND deleted_at IS NULL
-            """,
+            """),
             {"org_id": organization_id}
         ).first()
 
@@ -88,12 +88,12 @@ class QuotaRepository:
     def count_playlists(self, organization_id: int) -> int:
         """Count active playlists for an organization"""
         result = self.db.execute(
-            """
+            text("""
             SELECT COUNT(*)
             FROM playlists
             WHERE organization_id = :org_id
               AND deleted_at IS NULL
-            """,
+            """),
             {"org_id": organization_id}
         ).scalar()
 
@@ -101,18 +101,17 @@ class QuotaRepository:
 
     def count_devices_with_lock(self, organization_id: int) -> int:
         """
-        Count devices with row-level lock for atomic quota enforcement
+        Count devices for atomic quota enforcement
 
-        This uses SELECT ... FOR UPDATE to prevent race conditions
-        during concurrent device creation.
+        Note: Row-level lock is handled by caller (quota_service locks organization row).
+        COUNT(*) cannot use FOR UPDATE in PostgreSQL.
         """
         result = self.db.execute(
-            """
+            text("""
             SELECT COUNT(*)
             FROM devices
             WHERE organization_id = :org_id
-            FOR UPDATE
-            """,
+            """),
             {"org_id": organization_id}
         ).scalar()
 
@@ -120,16 +119,18 @@ class QuotaRepository:
 
     def count_users_with_lock(self, organization_id: int) -> int:
         """
-        Count active users with row-level lock for atomic quota enforcement
+        Count active users for atomic quota enforcement
+
+        Note: Row-level lock is handled by caller (quota_service locks organization row).
+        COUNT(*) cannot use FOR UPDATE in PostgreSQL.
         """
         result = self.db.execute(
-            """
+            text("""
             SELECT COUNT(*)
             FROM users
             WHERE organization_id = :org_id
               AND is_active = true
-            FOR UPDATE
-            """,
+            """),
             {"org_id": organization_id}
         ).scalar()
 
@@ -137,18 +138,20 @@ class QuotaRepository:
 
     def get_content_stats_with_lock(self, organization_id: int) -> Dict[str, int]:
         """
-        Get content statistics with row-level lock for atomic quota enforcement
+        Get content statistics for atomic quota enforcement
+
+        Note: Row-level lock is handled by caller (quota_service locks organization row).
+        Aggregate functions cannot use FOR UPDATE in PostgreSQL.
         """
         result = self.db.execute(
-            """
+            text("""
             SELECT
                 COUNT(*) as count,
                 COALESCE(SUM(file_size), 0) as total_size
             FROM contents
             WHERE organization_id = :org_id
               AND deleted_at IS NULL
-            FOR UPDATE
-            """,
+            """),
             {"org_id": organization_id}
         ).first()
 
@@ -159,16 +162,18 @@ class QuotaRepository:
 
     def count_playlists_with_lock(self, organization_id: int) -> int:
         """
-        Count playlists with row-level lock for atomic quota enforcement
+        Count playlists for atomic quota enforcement
+
+        Note: Row-level lock is handled by caller (quota_service locks organization row).
+        COUNT(*) cannot use FOR UPDATE in PostgreSQL.
         """
         result = self.db.execute(
-            """
+            text("""
             SELECT COUNT(*)
             FROM playlists
             WHERE organization_id = :org_id
               AND deleted_at IS NULL
-            FOR UPDATE
-            """,
+            """),
             {"org_id": organization_id}
         ).scalar()
 

@@ -206,3 +206,32 @@ export interface MenuItemListParams {
   is_active?: boolean;
   is_featured?: boolean;
 }
+
+// Menu Media types
+export interface MenuMedia {
+  id: number;
+  organization_id: number;
+  filename: string;
+  original_filename: string;
+  file_path: string;
+  file_size: number;
+  mime_type: string;
+  width?: number;
+  height?: number;
+  thumbnail_path?: string;
+  title?: string;
+  alt_text?: string;
+  is_active: boolean;
+  uploaded_by_id?: number;
+  created_at: string;
+  updated_at?: string;
+  url?: string;
+}
+
+export interface MenuMediaListResponse {
+  items: MenuMedia[];
+  total: number;
+  skip: number;
+  limit: number;
+  has_next: boolean;
+}

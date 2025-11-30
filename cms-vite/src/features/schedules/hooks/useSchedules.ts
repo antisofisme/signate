@@ -147,11 +147,13 @@ export const useDeleteSchedule = () => {
 
   return useMutation({
     mutationFn: (id: number) => deleteSchedule(id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: scheduleKeys.all })
+    onSuccess: async () => {
+      // Force refetch all schedule-related queries
+      await queryClient.invalidateQueries({ queryKey: scheduleKeys.all, refetchType: 'all' })
       toast.success('Schedule deleted successfully')
     },
     onError: (error: unknown) => {
+      console.error('Delete schedule error:', error)
       toast.error(getApiErrorMessage(error, 'Failed to delete schedule'))
     },
   })

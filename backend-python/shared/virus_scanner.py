@@ -1,11 +1,14 @@
 """
 ClamAV Virus Scanner Integration
 Scans uploaded files for viruses before saving to storage
+
+OPTIMIZED: Added async scan method for non-blocking operation
 """
 
 import os
 import socket
 import struct
+import asyncio
 from pathlib import Path
 from typing import Tuple
 import logging
@@ -117,6 +120,100 @@ class VirusScanner:
             raise TimeoutError(f"Virus scan timed out after {self.timeout} seconds")
 
         except Exception as e:
+            logger.error(f"Error scanning file {file_path.name}: {e}")
+            raise
+
+    async def scan_file_async(self, file_path) -> Tuple[bool, str]:
+        """
+        Scan file for viruses using ClamAV (async version)
+
+        Non-blocking implementation using asyncio for better performance
+        in async web frameworks like FastAPI.
+
+        Args:
+            file_path: Path to file to scan (Path object or string)
+
+        Returns:
+            Tuple of (is_clean, result_message)
+        """
+        try:
+            # Convert string to Path if needed
+            if isinstance(file_path, str):
+                file_path = Path(file_path)
+
+            # Check if file exists
+            if not file_path.exists():
+                raise FileNotFoundError(f"File not found: {file_path}")
+
+            # Connect to ClamAV daemon using asyncio
+            try:
+                reader, writer = await asyncio.wait_for(
+                    asyncio.open_connection(self.host, self.port),
+                    timeout=5  # Connection timeout
+                )
+            except (ConnectionRefusedError, OSError, asyncio.TimeoutError) as e:
+                logger.error(f"Cannot connect to ClamAV at {self.host}:{self.port}: {e}")
+                raise ConnectionError(
+                    f"ClamAV service unavailable. Please ensure ClamAV is running."
+                )
+
+            try:
+                # Send INSTREAM command
+                writer.write(b'zINSTREAM\0')
+                await writer.drain()
+
+                # Stream file data to ClamAV in chunks
+                with open(file_path, 'rb') as f:
+                    while True:
+                        chunk = f.read(8192)  # 8KB chunks
+                        if not chunk:
+                            break
+
+                        # Send chunk size (4 bytes, network byte order) + data
+                        size = struct.pack(b'!L', len(chunk))
+                        writer.write(size + chunk)
+                        await writer.drain()
+
+                # Send zero-length chunk to indicate end of file
+                writer.write(struct.pack(b'!L', 0))
+                await writer.drain()
+
+                # Receive scan result with timeout
+                result = b''
+                try:
+                    result = await asyncio.wait_for(
+                        reader.read(4096),
+                        timeout=self.timeout
+                    )
+                except asyncio.TimeoutError:
+                    logger.error(f"ClamAV scan timeout for {file_path.name}")
+                    raise TimeoutError(f"Virus scan timed out after {self.timeout} seconds")
+
+                # Parse result
+                response = result.decode('utf-8', errors='ignore').strip()
+
+                logger.info(f"ClamAV async scan result for {file_path.name}: {response}")
+
+                # Check result
+                if 'OK' in response:
+                    return (True, "File is clean")
+                elif 'FOUND' in response:
+                    # Extract virus name
+                    virus_name = response.split(':')[1].strip().replace(' FOUND', '')
+                    logger.warning(f"Virus detected in {file_path.name}: {virus_name}")
+                    return (False, f"Virus detected: {virus_name}")
+                else:
+                    # Unknown response
+                    logger.error(f"Unknown ClamAV response: {response}")
+                    return (False, f"Scan error: {response}")
+
+            finally:
+                writer.close()
+                await writer.wait_closed()
+
+        except Exception as e:
+            if isinstance(e, (ConnectionError, TimeoutError, FileNotFoundError)):
+                raise
             logger.error(f"Error scanning file {file_path.name}: {e}")
             raise
 

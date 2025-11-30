@@ -216,3 +216,16 @@ class IContentRepository(ABC):
             True if updated, False if not found
         """
         pass
+
+    @abstractmethod
+    def find_duplicates_with_usage(self, organization_id: int) -> List[Dict[str, Any]]:
+        """
+        Find duplicate files (same hash) with their usage info.
+
+        Args:
+            organization_id: Organization ID
+
+        Returns:
+            List of duplicate groups with content and usage info
+        """
+        pass

@@ -1,22 +1,21 @@
 /**
  * Upload Modal Component
  *
- * File upload modal with progress tracking, validation, and quota checks
+ * File upload modal with validation and quota checks
  *
- * ✅ REFACTORED: Now uses shared Modal component
- * - Fixed header (title)
- * - Fixed footer (buttons)
- * - Scrollable content (form fields)
- * - Click outside to close
+ * ✅ REFACTORED: Now uses Upload Queue
+ * - Files added to queue instead of blocking upload
+ * - Modal closes immediately after adding to queue
+ * - Progress tracked in UploadQueuePanel (bottom-right)
  */
 
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Upload, Loader2, FileImage, FileVideo, FileAudio, Trash2, AlertTriangle } from 'lucide-react';
 import { Modal } from '@/shared/components';
-import { useBulkUploadContent } from '../hooks/useContent';
 import { useCheckContentQuota } from '@/features/organizations/hooks/useOrganizationQuota';
 import { useAuthStore } from '@/lib/stores/authStore';
+import { useUploadQueueStore } from '@/lib/stores/uploadQueueStore';
 import { toast } from 'sonner';
 
 interface UploadModalProps {
@@ -24,11 +23,22 @@ interface UploadModalProps {
   onClose: () => void;
 }
 
-// File type validation - Match backend support
+// File type validation - Match backend support (Updated 2025-11-29)
 const ALLOWED_TYPES = {
-  image: ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/bmp'],
-  video: ['video/mp4', 'video/webm', 'video/quicktime', 'video/x-msvideo', 'video/x-matroska', 'video/x-m4v', 'video/x-flv'],
-  audio: ['audio/mpeg', 'audio/mp3', 'audio/aac', 'audio/mp4', 'audio/ogg', 'audio/wav', 'audio/flac', 'audio/x-ms-wma', 'audio/x-m4a'],
+  image: [
+    'image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/bmp',
+    'image/tiff', 'image/heic', 'image/heif', 'image/avif',
+  ],
+  video: [
+    'video/mp4', 'video/webm', 'video/quicktime', 'video/x-msvideo', 'video/x-matroska',
+    'video/x-m4v', 'video/x-flv', 'video/x-ms-wmv',
+    'video/mpeg', 'video/3gpp', 'video/3gpp2', 'video/mp2t', 'video/ogg',
+  ],
+  audio: [
+    'audio/mpeg', 'audio/mp3', 'audio/aac', 'audio/mp4', 'audio/ogg', 'audio/wav',
+    'audio/flac', 'audio/x-ms-wma', 'audio/x-m4a',
+    'audio/opus', 'audio/amr', 'audio/aiff', 'audio/x-aiff', 'audio/webm',
+  ],
 };
 
 const MAX_FILE_SIZE = {
@@ -40,13 +50,11 @@ const MAX_FILE_SIZE = {
 export function UploadModal({ isOpen, onClose }: UploadModalProps) {
   const { t } = useTranslation();
   const { user } = useAuthStore();
+  const { addToQueue } = useUploadQueueStore();
   const [files, setFiles] = useState<File[]>([]);
   const [duration, setDuration] = useState(10);
   const [isActive, setIsActive] = useState(true);
-  const [uploadProgress, setUploadProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
-
-  const uploadMutation = useBulkUploadContent();
 
   // Calculate total file size
   const totalFileSize = files.reduce((sum, file) => sum + file.size, 0);
@@ -76,7 +84,6 @@ export function UploadModal({ isOpen, onClose }: UploadModalProps) {
     setFiles([]);
     setDuration(10);
     setIsActive(true);
-    setUploadProgress(0);
     setError(null);
   };
 
@@ -131,9 +138,10 @@ export function UploadModal({ isOpen, onClose }: UploadModalProps) {
     setFiles((prev) => prev.filter((_, i) => i !== index));
   };
 
-  // Handle upload
-  const handleUpload = async (e: React.FormEvent) => {
+  // Handle upload - Add files to queue
+  const handleUpload = (e: React.FormEvent) => {
     e.preventDefault();
+    console.log('[UploadModal] handleUpload called, files:', files.length);
 
     if (files.length === 0) {
       setError(t('contents.upload.errors.selectAtLeastOne'));
@@ -148,29 +156,26 @@ export function UploadModal({ isOpen, onClose }: UploadModalProps) {
       return;
     }
 
-    try {
-      await uploadMutation.mutateAsync({
-        files,
-        duration,
-        is_active: isActive,
-        onProgress: setUploadProgress,
-      });
+    console.log('[UploadModal] Calling addToQueue with', files.length, 'files');
+    // Add files to upload queue
+    addToQueue(files, { duration, isActive });
+    console.log('[UploadModal] addToQueue called successfully');
 
-      // Success - close modal and reset
-      resetForm();
-      onClose();
-    } catch (err) {
-      // Error is handled by the mutation hook with toast
-      console.error('Upload error:', err);
-    }
+    // Show toast notification
+    toast.success(
+      t('uploads.addedToQueue', {
+        count: files.length,
+        defaultValue: `${files.length} file(s) added to queue`,
+      })
+    );
+
+    // Close modal immediately and reset form
+    resetForm();
+    onClose();
   };
 
   // Handle close
   const handleClose = () => {
-    if (uploadMutation.isPending) {
-      // Don't allow closing during upload
-      return;
-    }
     resetForm();
     onClose();
   };
@@ -193,23 +198,17 @@ export function UploadModal({ isOpen, onClose }: UploadModalProps) {
         <button
           type="button"
           onClick={handleClose}
-          disabled={uploadMutation.isPending}
-          className="px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg disabled:opacity-50 transition-colors"
+          className="px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
         >
           {t('contents.buttons.cancel')}
         </button>
         <button
           type="submit"
           form="upload-content-form"
-          disabled={files.length === 0 || uploadMutation.isPending || isQuotaExceeded || quotaLoading}
+          disabled={files.length === 0 || isQuotaExceeded || quotaLoading}
           className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 transition-colors"
         >
-          {uploadMutation.isPending ? (
-            <>
-              <Loader2 className="w-4 h-4 animate-spin" />
-              {t('contents.buttons.uploadingFiles', { count: files.length })}
-            </>
-          ) : quotaLoading ? (
+          {quotaLoading ? (
             <>
               <Loader2 className="w-4 h-4 animate-spin" />
               {t('contents.buttons.checkingQuota')}
@@ -222,7 +221,7 @@ export function UploadModal({ isOpen, onClose }: UploadModalProps) {
           ) : (
             <>
               <Upload className="w-4 h-4" />
-              {files.length > 0 ? t('contents.buttons.uploadWithCount', { count: files.length }) : t('contents.buttons.upload')}
+              {files.length > 0 ? t('contents.buttons.addToQueue', { count: files.length, defaultValue: `Add ${files.length} to Queue` }) : t('contents.buttons.upload')}
             </>
           )}
         </button>
@@ -237,7 +236,7 @@ export function UploadModal({ isOpen, onClose }: UploadModalProps) {
       title={t('contents.modals.uploadContent')}
       maxWidth="2xl"
       footer={footer}
-      closeOnBackdropClick={!uploadMutation.isPending}
+      closeOnBackdropClick={true}
       className="h-[90vh]"
     >
       {/* Scrollable content */}
@@ -271,29 +270,31 @@ export function UploadModal({ isOpen, onClose }: UploadModalProps) {
             <div className="grid grid-cols-3 gap-4 text-xs">
               <div>
                 <p className="font-medium text-blue-800 dark:text-blue-400 mb-1">
-                  {t('contents.upload.fileTypes.images')}
+                  {t('contents.upload.fileTypes.images')} (11)
                 </p>
                 <p className="text-blue-700 dark:text-blue-300 space-x-1">
-                  <span>.jpg</span> <span>.jpeg</span> <span>.png</span> <span>.webp</span>{' '}
-                  <span>.gif</span> <span>.bmp</span>
+                  <span>.jpg</span> <span>.png</span> <span>.webp</span> <span>.gif</span>{' '}
+                  <span>.bmp</span> <span>.tiff</span> <span>.heic</span> <span>.avif</span>
                 </p>
               </div>
               <div>
                 <p className="font-medium text-blue-800 dark:text-blue-400 mb-1">
-                  {t('contents.upload.fileTypes.videos')}
+                  {t('contents.upload.fileTypes.videos')} (16)
                 </p>
                 <p className="text-blue-700 dark:text-blue-300 space-x-1">
                   <span>.mp4</span> <span>.webm</span> <span>.mkv</span> <span>.avi</span>{' '}
-                  <span>.mov</span> <span>.m4v</span> <span>.flv</span>
+                  <span>.mov</span> <span>.m4v</span> <span>.wmv</span> <span>.mpg</span>{' '}
+                  <span>.3gp</span> <span>.mts</span> <span>.ts</span> <span>.ogv</span>
                 </p>
               </div>
               <div>
                 <p className="font-medium text-blue-800 dark:text-blue-400 mb-1">
-                  {t('contents.upload.fileTypes.audio')}
+                  {t('contents.upload.fileTypes.audio')} (14)
                 </p>
                 <p className="text-blue-700 dark:text-blue-300 space-x-1">
                   <span>.mp3</span> <span>.aac</span> <span>.m4a</span> <span>.ogg</span>{' '}
-                  <span>.wav</span> <span>.flac</span> <span>.wma</span>
+                  <span>.wav</span> <span>.flac</span> <span>.wma</span> <span>.opus</span>{' '}
+                  <span>.amr</span> <span>.aiff</span> <span>.oga</span> <span>.weba</span>
                 </p>
               </div>
             </div>
@@ -309,16 +310,13 @@ export function UploadModal({ isOpen, onClose }: UploadModalProps) {
                 type="file"
                 accept="image/*,video/*,audio/*"
                 onChange={handleFileChange}
-                disabled={uploadMutation.isPending}
                 className="hidden"
                 id="file-upload"
                 multiple
               />
               <label
                 htmlFor="file-upload"
-                className={`cursor-pointer ${
-                  uploadMutation.isPending ? 'pointer-events-none opacity-50' : ''
-                }`}
+                className="cursor-pointer"
               >
                 <div className="flex flex-col items-center">
                   <div className="text-gray-400 dark:text-gray-500 mb-3">
@@ -359,8 +357,7 @@ export function UploadModal({ isOpen, onClose }: UploadModalProps) {
                     <button
                       type="button"
                       onClick={() => handleRemoveFile(index)}
-                      disabled={uploadMutation.isPending}
-                      className="text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 disabled:opacity-50"
+                      className="text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>
@@ -386,8 +383,7 @@ export function UploadModal({ isOpen, onClose }: UploadModalProps) {
               type="number"
               value={duration}
               onChange={(e) => setDuration(parseInt(e.target.value))}
-              disabled={uploadMutation.isPending}
-              className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white disabled:opacity-50"
+              className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white"
               min={1}
               max={86400}
               required
@@ -404,7 +400,6 @@ export function UploadModal({ isOpen, onClose }: UploadModalProps) {
               id="is-active"
               checked={isActive}
               onChange={(e) => setIsActive(e.target.checked)}
-              disabled={uploadMutation.isPending}
               className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
             />
             <label
@@ -414,26 +409,6 @@ export function UploadModal({ isOpen, onClose }: UploadModalProps) {
               {t('contents.form.activeLabel')}
             </label>
           </div>
-
-          {/* Upload Progress */}
-          {uploadMutation.isPending && (
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                  {t('contents.upload.uploading')}
-                </span>
-                <span className="text-sm text-gray-600 dark:text-gray-400">
-                  {uploadProgress}%
-                </span>
-              </div>
-              <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
-                <div
-                  className="bg-blue-600 h-2 rounded-full transition-all duration-300"
-                  style={{ width: `${uploadProgress}%` }}
-                />
-              </div>
-            </div>
-          )}
 
         </form>
       </div>

@@ -11,6 +11,7 @@ import type {
   ContentFilters,
   ContentListResponse,
   ContentResponse,
+  DuplicateContentResponse,
 } from '../types/content';
 
 /**
@@ -190,20 +191,74 @@ export const bulkDeleteContent = async (ids: number[]): Promise<void> => {
 };
 
 /**
- * Get content statistics
+ * Get list of deleted content (Recycle Bin)
  */
-export const getContentStats = async (): Promise<{
+export const getDeletedContentList = async (
+  filters?: ContentFilters
+): Promise<ContentListResponse> => {
+  const params = new URLSearchParams();
+
+  if (filters?.skip !== undefined) params.append('skip', filters.skip.toString());
+  if (filters?.limit !== undefined) params.append('limit', filters.limit.toString());
+  if (filters?.content_type) params.append('content_type', filters.content_type);
+
+  const response = await apiClient.get<ContentListResponse>(
+    `${API_ENDPOINTS.CONTENT.LIST_DELETED}?${params.toString()}`
+  );
+
+  return response.data;
+};
+
+/**
+ * Restore deleted content from Recycle Bin
+ */
+export const restoreContent = async (id: number): Promise<ContentResponse> => {
+  const response = await apiClient.post<ContentResponse>(
+    API_ENDPOINTS.CONTENT.RESTORE(id)
+  );
+  return response.data;
+};
+
+/**
+ * Permanently delete content (cannot be recovered)
+ */
+export const permanentDeleteContent = async (id: number): Promise<void> => {
+  await apiClient.delete(API_ENDPOINTS.CONTENT.PERMANENT_DELETE(id));
+};
+
+/**
+ * Get duplicate content groups with usage info
+ */
+export const getDuplicateContent = async (): Promise<DuplicateContentResponse> => {
+  const response = await apiClient.get<DuplicateContentResponse>(
+    API_ENDPOINTS.CONTENT.DUPLICATES
+  );
+  return response.data;
+};
+
+/**
+ * Content stats response type (matches backend ContentStatsResponse)
+ */
+export interface ContentStatsResponse {
   success: boolean;
   data: {
     total_files: number;
-    total_size: number;
+    total_size_bytes: number;
+    total_size_readable: string;
     by_type: {
-      image: { count: number; size: number };
-      video: { count: number; size: number };
-      audio: { count: number; size: number };
+      [key: string]: {
+        count: number;
+        size_bytes: number;
+        size_readable: string;
+      };
     };
   };
-}> => {
+}
+
+/**
+ * Get content statistics
+ */
+export const getContentStats = async (): Promise<ContentStatsResponse> => {
   const response = await apiClient.get(API_ENDPOINTS.CONTENT.STATS);
   return response.data;
 };

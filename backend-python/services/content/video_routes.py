@@ -4,6 +4,7 @@ Handles HTTP Range requests (RFC 7233) for video streaming
 """
 
 import os
+import mimetypes
 from pathlib import Path
 from typing import Optional
 
@@ -14,10 +15,56 @@ router = APIRouter(tags=["video-streaming"])
 
 CONTENT_DIR = Path("/data/signage/content/uploads")
 
+# Video MIME type mapping for common extensions
+VIDEO_MIME_TYPES = {
+    ".mp4": "video/mp4",
+    ".webm": "video/webm",
+    ".mkv": "video/x-matroska",
+    ".avi": "video/x-msvideo",
+    ".mov": "video/quicktime",
+    ".m4v": "video/x-m4v",
+    ".flv": "video/x-flv",
+    ".wmv": "video/x-ms-wmv",
+    ".mpg": "video/mpeg",
+    ".mpeg": "video/mpeg",
+    ".3gp": "video/3gpp",
+    ".3g2": "video/3gpp2",
+    ".mts": "video/mp2t",
+    ".m2ts": "video/mp2t",
+    ".ts": "video/mp2t",
+    ".ogv": "video/ogg",
+}
+
+
+def get_video_mime_type(file_path: Path) -> str:
+    """
+    Get the MIME type for a video file based on extension.
+
+    Args:
+        file_path: Path to the video file
+
+    Returns:
+        MIME type string, defaults to video/mp4 if unknown
+    """
+    ext = file_path.suffix.lower()
+
+    # Check our custom mapping first
+    if ext in VIDEO_MIME_TYPES:
+        return VIDEO_MIME_TYPES[ext]
+
+    # Fallback to mimetypes library
+    mime_type, _ = mimetypes.guess_type(str(file_path))
+    if mime_type and mime_type.startswith("video/"):
+        return mime_type
+
+    # Default fallback
+    return "video/mp4"
+
 
 def get_video_path(file_path: str) -> Path:
     """
     Get full video file path and validate it exists.
+    Supports both new and legacy path structures.
 
     Args:
         file_path: Relative path like "videos/2025/11/org_4/filename.mp4"
@@ -28,25 +75,67 @@ def get_video_path(file_path: str) -> Path:
     Raises:
         HTTPException: If file not found or invalid
     """
+    import glob as glob_module
+
     # Remove leading slash if present
     file_path = file_path.lstrip("/")
 
-    # Construct full path
-    full_path = CONTENT_DIR / file_path
+    # Try different path structures
+    paths_to_try = []
 
-    # Security: Ensure path is within CONTENT_DIR
-    try:
-        full_path = full_path.resolve()
-        if not str(full_path).startswith(str(CONTENT_DIR.resolve())):
-            raise HTTPException(status_code=403, detail="Access denied")
-    except Exception:
-        raise HTTPException(status_code=400, detail="Invalid path")
+    # Parse path components
+    # Format: {type}s/{year}/{month}/org_{org_id}/{filename}
+    parts = file_path.split("/")
+    if len(parts) >= 5:
+        type_plural = parts[0]  # e.g., "videos", "images", "audios"
+        type_singular = type_plural.rstrip("s")  # "video", "image", "audio"
+        year = parts[1]
+        month = parts[2]
+        org_folder = parts[3]  # "org_22"
+        filename = parts[4]
 
-    # Check if file exists
-    if not full_path.exists() or not full_path.is_file():
-        raise HTTPException(status_code=404, detail="File not found")
+        # Extract org_id from "org_22"
+        org_id = org_folder.replace("org_", "") if org_folder.startswith("org_") else org_folder
 
-    return full_path
+        # Get filename parts (uuid and extension)
+        name_without_ext = Path(filename).stem
+        ext = Path(filename).suffix
+
+        # 1. New structure (expected): uploads/{type}s/{year}/{month}/org_{org_id}/{filename}
+        paths_to_try.append(CONTENT_DIR / file_path)
+
+        # 2. Legacy structure: uploads/{org_id}/{type}/{year}/{month}/{filename}
+        legacy_path = CONTENT_DIR / org_id / type_singular / year / month / filename
+        paths_to_try.append(legacy_path)
+
+        # 3. Legacy with hash suffix: uploads/{org_id}/{type}/{year}/{month}/{uuid}_*{ext}
+        # Files might have hash suffix like: uuid_abc12345.ext
+        legacy_dir = CONTENT_DIR / org_id / type_singular / year / month
+        if legacy_dir.exists():
+            pattern = str(legacy_dir / f"{name_without_ext}_*{ext}")
+            matching_files = glob_module.glob(pattern)
+            for match in matching_files:
+                paths_to_try.append(Path(match))
+
+    else:
+        # Simple path, just try as-is
+        paths_to_try.append(CONTENT_DIR / file_path)
+
+    # Try each path
+    for full_path in paths_to_try:
+        try:
+            full_path = full_path.resolve()
+            # Security: Ensure path is within CONTENT_DIR
+            if not str(full_path).startswith(str(CONTENT_DIR.resolve())):
+                continue
+            # Check if file exists
+            if full_path.exists() and full_path.is_file():
+                return full_path
+        except Exception:
+            continue
+
+    # No valid path found
+    raise HTTPException(status_code=404, detail=f"File not found: {file_path}")
 
 
 def parse_range_header(range_header: str, file_size: int) -> Optional[tuple[int, int]]:
@@ -157,6 +246,9 @@ async def stream_video(
     # Get Range header
     range_header = request.headers.get("range")
 
+    # Get appropriate MIME type based on file extension
+    mime_type = get_video_mime_type(file_path)
+
     # No Range header - return full file
     if not range_header:
         def iter_full_file():
@@ -166,7 +258,7 @@ async def stream_video(
 
         return StreamingResponse(
             iter_full_file(),
-            media_type="video/mp4",
+            media_type=mime_type,
             headers={
                 "Accept-Ranges": "bytes",
                 "Content-Length": str(file_size),
@@ -193,7 +285,7 @@ async def stream_video(
     return StreamingResponse(
         iter_file_range(file_path, start, end),
         status_code=206,
-        media_type="video/mp4",
+        media_type=mime_type,
         headers={
             "Accept-Ranges": "bytes",
             "Content-Range": f"bytes {start}-{end}/{file_size}",
@@ -235,6 +327,42 @@ async def serve_image(
         headers={
             "Content-Length": str(file_path.stat().st_size),
             "Access-Control-Allow-Origin": "*",  # Allow CORS for caching
+            "Access-Control-Allow-Methods": "GET, OPTIONS",
+            "Access-Control-Allow-Headers": "*",
+        }
+    )
+
+
+@router.get("/content/audios/{year}/{month:int}/org_{org_num}/{filename}")
+async def serve_audio(
+    year: str,
+    month: int,
+    org_num: int,
+    filename: str
+):
+    """
+    Serve audio files with consistent URL structure.
+    """
+    relative_path = f"audios/{year}/{month:02d}/org_{org_num}/{filename}"
+    file_path = get_video_path(relative_path)
+
+    # Determine content type from extension
+    import mimetypes
+    content_type, _ = mimetypes.guess_type(str(file_path))
+    content_type = content_type or "audio/mpeg"
+
+    def iter_file():
+        with open(file_path, "rb") as f:
+            while chunk := f.read(8192):
+                yield chunk
+
+    return StreamingResponse(
+        iter_file(),
+        media_type=content_type,
+        headers={
+            "Content-Length": str(file_path.stat().st_size),
+            "Accept-Ranges": "bytes",
+            "Access-Control-Allow-Origin": "*",
             "Access-Control-Allow-Methods": "GET, OPTIONS",
             "Access-Control-Allow-Headers": "*",
         }

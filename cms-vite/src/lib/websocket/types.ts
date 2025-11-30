@@ -16,6 +16,10 @@ export type WebSocketMessageType =
   | 'playback:end'
   | 'playback:update'
   | 'content:sync'
+  | 'content:uploaded'
+  | 'content:transcoding_progress'
+  | 'content:transcoded'
+  | 'content:transcoding_failed'
   | 'playlist:sync'
   | 'command:ack'
   | 'command:complete'
@@ -120,6 +124,37 @@ export interface ContentSyncData {
   content_ids: number[]
   sync_status: 'started' | 'in_progress' | 'completed' | 'failed'
   progress?: number
+}
+
+export interface ContentTranscodingProgressData {
+  content_id: number
+  title: string
+  status: 'processing' | 'completed' | 'failed'
+  progress: number
+  current_variant?: string
+  completed_variants?: string[]
+  total_variants?: number
+  message: string
+}
+
+export interface ContentTranscodedData {
+  content_id: number
+  title: string
+  status: 'completed'
+  progress: 100
+  hls_url: string
+  variants: string[]
+  segment_count: number
+  duration: number
+  message: string
+}
+
+export interface ContentTranscodingFailedData {
+  content_id: number
+  title: string
+  status: 'failed'
+  error: string
+  message: string
 }
 
 export interface PlaylistSyncData {

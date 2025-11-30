@@ -44,6 +44,9 @@ import { FullscreenManager, HardResetHandler, ClearCacheHandler } from '@shell/c
 import { DeviceInfoPopup, ConnectionLogPopup } from '@player/components';
 import { SharedToast } from '@shared/ui';
 
+// Menu Viewer for public menu display
+import { MenuViewer } from './menu';
+
 // Import connection logging services
 import { ConnectionLogger } from '@shared/services/connection-logger';
 import { NetworkSpeedTest } from '@shared/services/network-speed-test';
@@ -72,10 +75,65 @@ void NetworkSpeedTest;
 void PlayerPlaylistSync;
 
 /**
+ * Check if current URL is a public menu route
+ * Format: /menu/{public_url_code}
+ */
+const isMenuRoute = (): { isMenu: boolean; publicCode: string | null } => {
+  const path = window.location.pathname;
+  const menuMatch = path.match(/^\/menu\/([a-zA-Z0-9]+)$/);
+
+  if (menuMatch) {
+    return { isMenu: true, publicCode: menuMatch[1] };
+  }
+
+  return { isMenu: false, publicCode: null };
+};
+
+/**
+ * Initialize Menu Viewer for public menu display
+ */
+const initMenuViewer = async (publicCode: string) => {
+  console.log('[MenuViewer] Initializing for code:', publicCode);
+
+  // Hide other containers
+  const shellContainer = document.getElementById('shell-container');
+  const playerContainer = document.getElementById('player-container');
+  const menuContainer = document.getElementById('menu-container');
+
+  if (shellContainer) shellContainer.style.display = 'none';
+  if (playerContainer) playerContainer.style.display = 'none';
+  if (menuContainer) menuContainer.style.display = 'block';
+
+  // Hide all floating buttons
+  const floatingButtons = document.querySelectorAll(
+    '#enter-fullscreen-btn, #exit-fullscreen-btn, #clear-cache-btn, #factory-reset-btn, #device-info-btn, #connection-status'
+  );
+  floatingButtons.forEach((btn) => {
+    (btn as HTMLElement).style.display = 'none';
+  });
+
+  // Initialize Menu Viewer
+  const viewer = new MenuViewer({
+    apiBaseUrl: config.api.baseURL,
+    publicCode: publicCode,
+  });
+
+  await viewer.init('menu-container');
+};
+
+/**
  * Initialize application
  */
 const initApp = async () => {
   SharedLogger.log('🔍 Initializing app...');
+
+  // Check if this is a menu route - if so, show MenuViewer instead of Player
+  const { isMenu, publicCode } = isMenuRoute();
+  if (isMenu && publicCode) {
+    SharedLogger.log('🍽️ Menu route detected, initializing Menu Viewer...');
+    await initMenuViewer(publicCode);
+    return; // Exit early, don't initialize player
+  }
 
   // Verify containers exist (should already be in index.html)
   const shellContainer = document.getElementById('shell-container');

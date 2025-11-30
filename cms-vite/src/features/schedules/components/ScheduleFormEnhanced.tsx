@@ -29,7 +29,6 @@ const scheduleFormSchema = z.object({
   name: z.string().min(1, 'Schedule name is required').max(255),
   description: z.string().optional(),
   playlist_id: z.number().min(1, 'Please select a playlist'),
-  device_ids: z.array(z.number()).min(1, 'Please select at least one device'),
   start_date: z.string().min(1, 'Start date is required'),
   end_date: z.string().optional(),
   start_time: z.string().min(1, 'Start time is required'),
@@ -53,12 +52,6 @@ interface Playlist {
   name: string
 }
 
-interface Device {
-  id: number
-  name: string
-  status: string
-}
-
 export const ScheduleFormEnhanced = ({
   schedule,
   onSubmit,
@@ -66,7 +59,6 @@ export const ScheduleFormEnhanced = ({
   isLoading = false,
 }: ScheduleFormEnhancedProps) => {
   const [playlists, setPlaylists] = useState<Playlist[]>([])
-  const [devices, setDevices] = useState<Device[]>([])
   const [loadingData, setLoadingData] = useState(true)
   const [recurrencePattern, setRecurrencePattern] = useState<RecurrencePattern>(
     schedule?.recurrence_pattern || {}
@@ -79,9 +71,19 @@ export const ScheduleFormEnhanced = ({
   const isEdit = !!schedule
 
   // Convert priority level to numeric (0-100)
-  const getPriorityNumeric = (level: string): number => {
+  const getPriorityNumeric = (level: string | number): number => {
+    if (typeof level === 'number') return level
     const map: Record<string, number> = { low: 25, normal: 50, high: 75, critical: 100 }
     return map[level] || 50
+  }
+
+  // Map backend recurrence type to frontend
+  const mapRecurrenceType = (type: string): RecurrenceType => {
+    if (type === 'yearly') return 'custom'
+    if (['once', 'daily', 'weekly', 'monthly', 'custom'].includes(type)) {
+      return type as RecurrenceType
+    }
+    return 'once'
   }
 
   const {
@@ -97,20 +99,18 @@ export const ScheduleFormEnhanced = ({
           name: schedule.name,
           description: schedule.description,
           playlist_id: schedule.playlist_id,
-          device_ids: schedule.device_ids,
           start_date: schedule.start_date,
           end_date: schedule.end_date,
           start_time: schedule.start_time,
           end_time: schedule.end_time,
-          recurrence_type: schedule.recurrence_type,
+          recurrence_type: mapRecurrenceType(schedule.recurrence_type as string),
           priority: getPriorityNumeric(schedule.priority),
-          timezone: schedule.timezone,
+          timezone: schedule.timezone || 'Asia/Jakarta',
         }
       : {
           name: '',
           description: '',
           playlist_id: 0,
-          device_ids: [],
           start_date: new Date().toISOString().split('T')[0],
           end_date: '',
           start_time: '09:00',
@@ -125,19 +125,15 @@ export const ScheduleFormEnhanced = ({
   const recurrenceType = watch('recurrence_type')
   const priority = watch('priority')
 
-  // Fetch playlists and devices
+  // Fetch playlists
   useEffect(() => {
     const fetchData = async () => {
       setLoadingData(true)
       try {
-        const [playlistsRes, devicesRes] = await Promise.all([
-          axios.get('/api/v1/playlists'),
-          axios.get('/api/v1/devices'),
-        ])
+        const playlistsRes = await axios.get('/api/v1/playlists')
         setPlaylists(playlistsRes.data.playlists || [])
-        setDevices(devicesRes.data.devices || [])
       } catch (error) {
-        console.error('Failed to fetch data:', error)
+        console.error('Failed to fetch playlists:', error)
       } finally {
         setLoadingData(false)
       }
@@ -301,35 +297,6 @@ export const ScheduleFormEnhanced = ({
               </option>
             ))}
           </select>
-        </FieldWithValidation>
-
-        <FieldWithValidation
-          label={`Devices (${formValues.device_ids.length} selected)`}
-          error={errors.device_ids?.message}
-          required
-        >
-          <div className="max-h-32 overflow-y-auto border border-gray-300 dark:border-gray-600 rounded-md p-2 bg-white dark:bg-gray-800">
-            {devices.map((device) => (
-              <label key={device.id} className="flex items-center gap-2 p-1 hover:bg-gray-50 dark:hover:bg-gray-700 rounded">
-                <input
-                  type="checkbox"
-                  value={device.id}
-                  checked={formValues.device_ids.includes(device.id)}
-                  onChange={(e) => {
-                    const id = Number(e.target.value)
-                    if (e.target.checked) {
-                      setValue('device_ids', [...formValues.device_ids, id])
-                    } else {
-                      setValue('device_ids', formValues.device_ids.filter((d) => d !== id))
-                    }
-                  }}
-                  disabled={isLoading}
-                  className="w-4 h-4"
-                />
-                <span className="text-sm text-gray-700 dark:text-gray-300">{device.name}</span>
-              </label>
-            ))}
-          </div>
         </FieldWithValidation>
       </div>
 

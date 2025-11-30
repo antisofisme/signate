@@ -100,7 +100,7 @@ class ClearCacheHandlerClass {
           deviceStatus: SharedDeviceState.getDeviceStatus(),
           deviceName: SharedDeviceState.getDeviceName(),
           organizationId: SharedDeviceState.getOrganizationId(),
-          deviceUUID: SharedDeviceState.getPreference<string>('device_uuid', null),
+          deviceUUID: SharedDeviceState.getPreference<string>('device_uuid', undefined),
         };
 
         // Clear all localStorage

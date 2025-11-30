@@ -386,3 +386,49 @@ class MenuCategoryListDTO(BaseModel):
     """DTO for menu category list"""
     items: List[MenuCategoryResponseDTO]
     total: int
+
+
+# ==============================================================================
+# Menu Media DTOs
+# ==============================================================================
+
+class MenuMediaResponseDTO(BaseModel):
+    """DTO for menu media response"""
+    id: int
+    organization_id: int
+    filename: str
+    original_filename: str
+    file_path: str
+    file_size: int
+    mime_type: str
+    width: Optional[int]
+    height: Optional[int]
+    thumbnail_path: Optional[str]
+    title: Optional[str]
+    alt_text: Optional[str]
+    is_active: bool
+    uploaded_by_id: Optional[int]
+    created_at: datetime
+    updated_at: Optional[datetime]
+
+    # Computed field - full URL
+    url: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
+
+class MenuMediaListDTO(BaseModel):
+    """DTO for menu media list"""
+    items: List[MenuMediaResponseDTO]
+    total: int
+    skip: int
+    limit: int
+    has_next: bool
+
+
+class MenuMediaUpdateDTO(BaseModel):
+    """DTO for updating menu media"""
+    title: Optional[str] = Field(None, max_length=200)
+    alt_text: Optional[str] = Field(None, max_length=255)
+    is_active: Optional[bool] = None

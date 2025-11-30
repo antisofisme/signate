@@ -84,12 +84,14 @@ class LocalFilesystemStorage(IStorageService):
             safe_filename = SecureFileHandler.sanitize_filename(file.filename)
         except ValueError as e:
             raise ValueError(f"Invalid filename: {str(e)}")
-        
-        # Generate unique filename
+
+        # Generate unique filename (UUID ensures uniqueness)
         unique_id = str(uuid.uuid4())
         file_extension = Path(safe_filename).suffix.lower()
 
         # Build organized directory structure
+        # Format: {type}s/{year}/{month}/org_{org_id}/{uuid}.{ext}
+        # This MUST match video_routes.py expected structure
         now = datetime.now(timezone.utc)
         type_folder = f"{content_type}s"  # images, videos, audios
         year_folder = str(now.year)
@@ -100,19 +102,20 @@ class LocalFilesystemStorage(IStorageService):
         target_dir = self.uploads_dir / type_folder / year_folder / month_folder / org_folder
         target_dir.mkdir(parents=True, exist_ok=True)
 
-        # Full file path with secure filename
+        # Full file path with secure filename (NO hash suffix - UUID is unique enough)
         filename = f"{unique_id}{file_extension}"
         file_path = target_dir / filename
-        
-        # Verify path is within allowed directory
-        file_path = SecureFileHandler.generate_safe_path(
-            self.uploads_dir, 
-            filename, 
-            organization_id, 
-            content_type
-        )
 
-        # Storage key (relative path from uploads/)
+        # Verify path is within allowed directory (security check without changing structure)
+        try:
+            resolved_path = file_path.resolve()
+            resolved_base = self.uploads_dir.resolve()
+            if not str(resolved_path).startswith(str(resolved_base)):
+                raise ValueError("Path traversal attempt detected")
+        except Exception:
+            raise ValueError("Invalid file path")
+
+        # Storage key (relative path from uploads/) - MUST match serving routes
         storage_key = f"{type_folder}/{year_folder}/{month_folder}/{org_folder}/{filename}"
 
         # Calculate file hash and size while saving

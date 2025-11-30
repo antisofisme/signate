@@ -19,25 +19,54 @@ class SecureFileHandler:
     
     # Allowed file extensions by content type
     ALLOWED_EXTENSIONS = {
-        "image": {".jpg", ".jpeg", ".png", ".gif", ".webp", ".bmp"},
-        "video": {".mp4", ".avi", ".mkv", ".mov", ".webm", ".flv", ".wmv"},
-        "audio": {".mp3", ".wav", ".flac", ".aac", ".ogg", ".m4a", ".wma"},
+        "image": {
+            ".jpg", ".jpeg", ".png", ".gif", ".webp", ".bmp",
+            ".tiff", ".tif",   # Print quality
+            ".heic", ".heif",  # Apple/iPhone photos
+            ".avif",           # Modern format
+        },
+        "video": {
+            ".mp4", ".avi", ".mkv", ".mov", ".webm", ".flv", ".wmv",
+            ".m4v",            # Apple video format
+            ".mpg",            # Legacy MPEG Video (use .mpg for video, .mpeg for audio)
+            ".3gp", ".3g2",    # Mobile video
+            ".mts", ".m2ts",   # HD Camcorder (AVCHD)
+            ".ts",             # MPEG Transport Stream
+            ".ogv",            # Ogg Video
+        },
+        "audio": {
+            ".mp3", ".wav", ".flac", ".aac", ".ogg", ".m4a", ".wma",
+            ".mpeg",           # MPEG Audio (WhatsApp)
+            ".opus",           # Modern codec
+            ".amr",            # Mobile recordings
+            ".aiff", ".aif",   # Apple format
+            ".oga",            # Ogg Audio
+            ".weba",           # WebM Audio
+        },
         "document": {".pdf", ".doc", ".docx", ".xls", ".xlsx", ".ppt", ".pptx"},
     }
     
     # MIME type mapping
     MIME_TYPES = {
         "image": {
-            "image/jpeg", "image/png", "image/gif", "image/webp", 
-            "image/bmp", "image/x-ms-bmp"
+            "image/jpeg", "image/png", "image/gif", "image/webp",
+            "image/bmp", "image/x-ms-bmp",
+            # New formats
+            "image/tiff", "image/heic", "image/heif", "image/avif",
         },
         "video": {
             "video/mp4", "video/x-msvideo", "video/x-matroska",
-            "video/quicktime", "video/webm", "video/x-flv", "video/x-ms-wmv"
+            "video/quicktime", "video/webm", "video/x-flv", "video/x-ms-wmv",
+            "video/x-m4v",  # Apple video format (.m4v)
+            "video/x-ms-asf",  # WMV/ASF format (detected by python-magic)
+            # New formats
+            "video/mpeg", "video/3gpp", "video/3gpp2", "video/mp2t", "video/ogg",
         },
         "audio": {
             "audio/mpeg", "audio/wav", "audio/x-wav", "audio/flac",
-            "audio/aac", "audio/ogg", "audio/mp4", "audio/x-ms-wma"
+            "audio/aac", "audio/ogg", "audio/mp4", "audio/x-ms-wma",
+            # New formats
+            "audio/opus", "audio/amr", "audio/aiff", "audio/x-aiff", "audio/webm",
         },
     }
     

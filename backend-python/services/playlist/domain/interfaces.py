@@ -36,6 +36,11 @@ class IPlaylistRepository(ABC):
         pass
 
     @abstractmethod
+    def find_by_name(self, name: str, organization_id: int) -> Optional[Playlist]:
+        """Find playlist by name (with organization filter, excludes soft-deleted)"""
+        pass
+
+    @abstractmethod
     def update(self, playlist: Playlist) -> Playlist:
         """Update playlist"""
         pass

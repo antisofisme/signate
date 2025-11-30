@@ -106,6 +106,12 @@ export const contentKeys = {
   detail: (id: number) => ['content', 'detail', id] as const,
   stats: (orgId?: number) => ['content', 'stats', orgId] as const,
   tags: (contentId: number) => ['content', 'tags', contentId] as const,
+  // Deleted content (Recycle Bin)
+  deletedLists: (orgId?: number) => ['content', 'deleted', orgId] as const,
+  deleted: (orgId?: number, filters?: unknown) =>
+    ['content', 'deleted', orgId, filters] as const,
+  // Duplicate content detection
+  duplicates: (orgId?: number) => ['content', 'duplicates', orgId] as const,
 };
 
 // Playlists

@@ -45,6 +45,12 @@ class UpdatePlaylistUseCase:
         if not playlist:
             raise ValueError(f"Playlist {playlist_id} not found or access denied")
 
+        # Check for duplicate name if name is being changed
+        if name and name != playlist.name:
+            existing = self.playlist_repo.find_by_name(name, organization_id)
+            if existing and existing.id != playlist_id:
+                raise ValueError(f"Playlist dengan nama '{name}' sudah ada")
+
         # Update with validation
         playlist.update_details(
             name=name,

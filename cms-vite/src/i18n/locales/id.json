@@ -109,9 +109,12 @@
     "auditLogs": "Log Audit",
     "settings": "Pengaturan",
     "digitalMenus": "Menu Digital",
+    "menuList": "Daftar Menu",
+    "menuMedia": "Media Menu",
     "groups": {
       "devices": "Perangkat",
       "content": "Konten",
+      "menuDigital": "Menu Digital",
       "customization": "Kustomisasi",
       "integrations": "Integrasi"
     }
@@ -303,7 +306,7 @@
         "codeExpired": "Kode aktivasi sudah kedaluwarsa. Silakan refresh perangkat untuk mendapatkan kode baru.",
         "invalidCode": "Kode aktivasi tidak valid. Silakan verifikasi kode 6 digit di layar perangkat Anda.",
         "alreadyActivated": "Perangkat sudah diaktifkan. Silakan gunakan perangkat lain atau hubungi dukungan.",
-        "activationFailed": "Gagal mengaktifkan perangkat (Error {status})",
+        "activationFailed": "Gagal mengaktifkan perangkat (Error {{status}})",
         "updateFailed": "Gagal memperbarui perangkat",
         "commandFailed": "Gagal mengirim perintah"
       }
@@ -393,12 +396,12 @@
       "bulkTag": "Tag Massal",
       "bulkDelete": "Hapus Massal",
       "bulkTagAssignment": "Penetapan Tag Massal",
-      "assignTagToItems": "Tetapkan tag ke {count} item konten",
+      "assignTagToItems": "Tetapkan tag ke {{count}} item konten",
       "selectTag": "Pilih Tag",
       "noTagsAvailable": "Tidak ada tag tersedia",
       "createTagsFirst": "Buat tag terlebih dahulu untuk menetapkannya ke konten",
       "selectedTag": "Tag Terpilih:",
-      "contentToBeTagged": "Konten yang akan diberi tag ({count}):",
+      "contentToBeTagged": "Konten yang akan diberi tag ({{count}}):",
       "assigningTag": "Menetapkan...",
       "assignTag": "Tetapkan Tag"
     },
@@ -406,10 +409,10 @@
       "deleteContent": "Hapus Konten",
       "deleteMultiple": "Hapus Beberapa Konten",
       "confirmDelete": "Apakah Anda yakin ingin menghapus konten ini?",
-      "confirmBulkDelete": "Apakah Anda yakin ingin menghapus {count} konten yang dipilih?",
+      "confirmBulkDelete": "Apakah Anda yakin ingin menghapus {{count}} konten yang dipilih?",
       "editContent": "Edit Konten",
       "bulkEdit": "Edit Massal Konten",
-      "editingItems": "Mengedit {count} item konten",
+      "editingItems": "Mengedit {{count}} item konten",
       "uploadContent": "Upload Konten"
     },
     "upload": {
@@ -417,7 +420,7 @@
         "exceeded": "Kuota Konten Terlampaui",
         "cannotUpload": "Tidak dapat mengupload konten lagi. Batas penyimpanan atau item tercapai.",
         "limitReached": "Batas Kuota Konten Tercapai",
-        "totalFileSize": "Total ukuran file: {size} MB"
+        "totalFileSize": "Total ukuran file: {{size}} MB"
       },
       "fileTypes": {
         "title": "📎 Jenis File & Batas yang Didukung",
@@ -428,11 +431,11 @@
       "filesLabel": "File * (mendukung multiple file)",
       "clickOrDrag": "Klik untuk memilih file atau drag and drop",
       "selectMultiple": "Pilih satu atau beberapa file sekaligus",
-      "selectedFiles": "File Terpilih ({count})",
+      "selectedFiles": "File Terpilih ({{count}})",
       "uploading": "Mengupload...",
       "errors": {
-        "invalidFileType": "{filename}: Jenis file tidak valid",
-        "tooLarge": "{filename}: Terlalu besar (maks {maxSize}MB)",
+        "invalidFileType": "{{filename}}: Jenis file tidak valid",
+        "tooLarge": "{{filename}}: Terlalu besar (maks {{maxSize}}MB)",
         "selectAtLeastOne": "Harap pilih setidaknya satu file untuk diupload"
       }
     },
@@ -451,7 +454,7 @@
       "dontChange": "Jangan ubah",
       "active": "Aktif",
       "inactive": "Tidak Aktif",
-      "selectedContent": "Konten Terpilih ({count})"
+      "selectedContent": "Konten Terpilih ({{count}})"
     },
     "placeholders": {
       "title": "Masukkan judul konten",
@@ -469,10 +472,10 @@
     "messages": {
       "noContent": "Tidak ada konten ditemukan",
       "errorLoading": "Error memuat konten",
-      "selectedCount": "{count} dipilih",
+      "selectedCount": "{{count}} dipilih",
       "setAtLeastOneField": "Harap atur setidaknya satu field untuk diperbarui",
-      "successfullyUpdated": "Berhasil memperbarui {count} item konten",
-      "updatedWithFailures": "Berhasil memperbarui {successCount} item, {failCount} gagal",
+      "successfullyUpdated": "Berhasil memperbarui {{count}} item konten",
+      "updatedWithFailures": "Berhasil memperbarui {{successCount}} item, {{failCount}} gagal",
       "videoNotSupported": "Browser Anda tidak mendukung pemutaran video.",
       "audioNotSupported": "Browser Anda tidak mendukung pemutaran audio.",
       "previewNotAvailable": "Pratinjau tidak tersedia untuk tipe konten ini"
@@ -480,13 +483,13 @@
     "preview": {
       "zoomOut": "Perkecil",
       "zoomIn": "Perbesar",
-      "resolution": "Resolusi: {resolution}",
-      "duration": "Durasi: {duration}",
+      "resolution": "Resolusi: {{resolution}}",
+      "duration": "Durasi: {{duration}}",
       "hlsStreaming": "Streaming HLS",
-      "original": "Original: {filename}",
-      "uploaded": "Diupload: {date}",
-      "transcoding": "Transcoding: {status}",
-      "pressEscToClose": "Tekan {key} untuk menutup",
+      "original": "Original: {{filename}}",
+      "uploaded": "Diupload: {{date}}",
+      "transcoding": "Transcoding: {{status}}",
+      "pressEscToClose": "Tekan ESC untuk menutup",
       "download": "Unduh",
       "closeEsc": "Tutup (ESC)"
     },
@@ -502,13 +505,14 @@
       "deleting": "Menghapus...",
       "updating": "Memperbarui...",
       "saveChanges": "Simpan Perubahan",
-      "updatingItems": "Memperbarui {count} item...",
+      "updatingItems": "Memperbarui {{count}} item...",
       "updateAll": "Perbarui Semua",
-      "uploadingFiles": "Mengupload {count} file...",
+      "uploadingFiles": "Mengupload {{count}} file...",
       "checkingQuota": "Memeriksa kuota...",
       "quotaExceeded": "Kuota Terlampaui",
       "upload": "Upload",
-      "uploadWithCount": "Upload ({count})"
+      "uploadWithCount": "Upload ({{count}})",
+      "addToQueue": "Tambah {{count}} ke Antrian"
     }
   },
   "playlists": {
@@ -553,8 +557,8 @@
       "noPlaylistsDesc": "Mulai dengan membuat playlist pertama Anda",
       "errorLoading": "Error memuat playlist",
       "loadError": "Gagal memuat playlist",
-      "confirmDelete": "Apakah Anda yakin ingin menghapus playlist: {name}?",
-      "totalPlaylists": "Total: {count} playlist"
+      "confirmDelete": "Apakah Anda yakin ingin menghapus playlist: {{name}}?",
+      "totalPlaylists": "Total: {{count}} playlist"
     },
     "deletePlaylist": "Hapus Playlist",
     "manageContent": "Kelola Konten",
@@ -570,7 +574,7 @@
     },
     "bulkAssign": {
       "title": "Tetapkan Perangkat ke Playlist",
-      "subtitle": "Pilih perangkat untuk ditetapkan ke \"{playlistName}\"",
+      "subtitle": "Pilih perangkat untuk ditetapkan ke \"{{playlistName}}\"",
       "searchPlaceholder": "Cari perangkat...",
       "filters": {
         "all": "Semua",
@@ -578,18 +582,18 @@
         "offline": "Offline"
       },
       "selection": {
-        "count": "{selected} dari {total} perangkat dipilih",
+        "count": "{{selected}} dari {{total}} perangkat dipilih",
         "selectAll": "Pilih Semua",
         "deselectAll": "Batal Pilih Semua"
       },
       "conflict": {
-        "title": "{count} perangkat sudah ditetapkan",
-        "title_plural": "{count} perangkat sudah ditetapkan",
+        "title": "{{count}} perangkat sudah ditetapkan",
+        "title_plural": "{{count}} perangkat sudah ditetapkan",
         "description": "Perangkat ini sudah memiliki playlist ini dan akan dilewati."
       },
       "loading": "Memuat perangkat...",
       "noDevices": "Tidak ada perangkat yang cocok dengan filter Anda",
-      "room": "Ruang {number}",
+      "room": "Ruang {{number}}",
       "alreadyAssigned": "Sudah ditetapkan",
       "status": {
         "online": "Online",
@@ -599,22 +603,22 @@
         "tv": "TV",
         "monitor": "Monitor"
       },
-      "assignButton": "Tetapkan ke {count} Perangkat",
-      "assignButton_plural": "Tetapkan ke {count} Perangkat"
+      "assignButton": "Tetapkan ke {{count}} Perangkat",
+      "assignButton_plural": "Tetapkan ke {{count}} Perangkat"
     },
     "contentModal": {
       "title": "Kelola Konten",
       "addContentToPlaylist": "Tambah Konten ke Playlist",
       "addContent": "Tambah Konten",
-      "contentItems": "Item Konten ({count})",
-      "position": "Posisi: {position}",
-      "contentFallback": "Konten #{id}",
+      "contentItems": "Item Konten ({{count}})",
+      "position": "Posisi: {{position}}",
+      "contentFallback": "Konten #{{id}}",
       "noAvailableContent": "Tidak ada konten yang tersedia untuk ditambahkan",
       "noContentYet": "Belum ada konten dalam playlist ini",
       "loading": "Memuat konten...",
       "adding": "Menambahkan...",
-      "addItems": "Tambah {count} item",
-      "addItems_plural": "Tambah {count} item",
+      "addItems": "Tambah {{count}} item",
+      "addItems_plural": "Tambah {{count}} item",
       "confirmRemove": "Hapus konten ini dari playlist?",
       "reorderedSuccess": "Konten berhasil diurutkan ulang",
       "durationUpdated": "Durasi diperbarui",
@@ -625,34 +629,34 @@
     "assignmentModal": {
       "title": "Penugasan Playlist",
       "tabs": {
-        "devices": "Perangkat ({count})",
-        "tags": "Tag ({count})"
+        "devices": "Perangkat ({{count}})",
+        "tags": "Tag ({{count}})"
       },
       "loading": "Memuat penugasan...",
       "devices": {
         "assignToDevices": "Tetapkan ke Perangkat",
         "noAvailableDevices": "Tidak ada perangkat yang tersedia untuk ditetapkan",
-        "assignedDevices": "Perangkat Ditugaskan ({count})",
+        "assignedDevices": "Perangkat Ditugaskan ({{count}})",
         "notAssignedYet": "Belum ditetapkan ke perangkat manapun",
-        "deviceFallback": "Perangkat #{id}",
-        "status": "Status: {status}",
-        "location": "Lokasi: {location}",
+        "deviceFallback": "Perangkat #{{id}}",
+        "status": "Status: {{status}}",
+        "location": "Lokasi: {{location}}",
         "noLocation": "Tidak ada lokasi",
         "assigning": "Menetapkan...",
-        "assignDevices": "Tetapkan {count} perangkat",
-        "assignDevices_plural": "Tetapkan {count} perangkat",
+        "assignDevices": "Tetapkan {{count}} perangkat",
+        "assignDevices_plural": "Tetapkan {{count}} perangkat",
         "confirmUnassign": "Lepaskan playlist ini dari perangkat?"
       },
       "tags": {
         "assignToTags": "Tetapkan ke Tag",
         "noAvailableTags": "Tidak ada tag yang tersedia untuk ditetapkan",
-        "assignedTags": "Tag Ditugaskan ({count})",
+        "assignedTags": "Tag Ditugaskan ({{count}})",
         "notAssignedYet": "Belum ditetapkan ke tag manapun",
-        "tagFallback": "Tag #{id}",
-        "tagId": "ID Tag: {id}",
+        "tagFallback": "Tag #{{id}}",
+        "tagId": "ID Tag: {{id}}",
         "assigning": "Menetapkan...",
-        "assignTags": "Tetapkan {count} tag",
-        "assignTags_plural": "Tetapkan {count} tag",
+        "assignTags": "Tetapkan {{count}} tag",
+        "assignTags_plural": "Tetapkan {{count}} tag",
         "confirmUnassign": "Lepaskan playlist ini dari tag?"
       },
       "selectAtLeastOneDevice": "Pilih setidaknya satu perangkat",
@@ -672,7 +676,7 @@
       "allPriority": "Semua Prioritas",
       "allTypes": "Semua Tipe"
     },
-    "showing": "Menampilkan {filtered} dari {total} jadwal",
+    "showing": "Menampilkan {{filtered}} dari {{total}} jadwal",
     "status": {
       "active": "Aktif",
       "inactive": "Tidak Aktif",
@@ -693,7 +697,7 @@
       "lastRun": "Terakhir dijalankan",
       "nextRun": "Selanjutnya",
       "exceptionDates": "Tanggal pengecualian",
-      "more": "+{count} lagi"
+      "more": "+{{count}} lagi"
     },
     "actions": {
       "view": "Lihat",
@@ -741,8 +745,8 @@
         "recurrenceType": "Tipe:",
         "playlist": "Playlist",
         "devices": "Perangkat",
-        "devicesAssigned": "{count} perangkat ditugaskan",
-        "devicesAssigned_plural": "{count} perangkat ditugaskan"
+        "devicesAssigned": "{{count}} perangkat ditugaskan",
+        "devicesAssigned_plural": "{{count}} perangkat ditugaskan"
       },
       "close": "Tutup"
     },
@@ -764,8 +768,8 @@
       "failedToCheck": "Gagal memeriksa konflik",
       "noConflicts": "Tidak ada konflik terdeteksi",
       "noConflictsDesc": "Jadwal ini dapat dibuat tanpa konflik",
-      "conflictsDetected": "{count} konflik terdeteksi",
-      "conflictsDetected_plural": "{count} konflik terdeteksi",
+      "conflictsDetected": "{{count}} konflik terdeteksi",
+      "conflictsDetected_plural": "{{count}} konflik terdeteksi",
       "reviewConflicts": "Silakan tinjau konflik di bawah dan sesuaikan jadwal Anda",
       "timeOverlaps": "Tumpang Tindih Waktu",
       "deviceConflicts": "Konflik Perangkat",
@@ -784,12 +788,12 @@
       "clearAll": "Hapus Semua",
       "add": "Tambah",
       "pleaseSelectDate": "Silakan pilih tanggal",
-      "dateAfter": "Tanggal harus pada atau setelah {date}",
-      "dateBefore": "Tanggal harus pada atau sebelum {date}",
+      "dateAfter": "Tanggal harus pada atau setelah {{date}}",
+      "dateBefore": "Tanggal harus pada atau sebelum {{date}}",
       "alreadyInList": "Tanggal ini sudah ada dalam daftar pengecualian",
       "confirmClearAll": "Apakah Anda yakin ingin menghapus semua tanggal pengecualian?",
-      "countDates": "{count} tanggal pengecualian",
-      "countDates_plural": "{count} tanggal pengecualian",
+      "countDates": "{{count}} tanggal pengecualian",
+      "countDates_plural": "{{count}} tanggal pengecualian",
       "removeDate": "Hapus tanggal pengecualian",
       "noExceptionDates": "Belum ada tanggal pengecualian",
       "addDatesDesc": "Tambahkan tanggal dimana jadwal ini harus dilewati",
@@ -817,13 +821,13 @@
         "reset": "Atur Ulang (50)",
         "increase": "+10"
       },
-      "relatedSchedules": "Jadwal Terkait ({count})",
+      "relatedSchedules": "Jadwal Terkait ({{count}})",
       "conflictsDetected": "Konflik Prioritas Terdeteksi",
       "noConflictsDetected": "Tidak ada konflik prioritas terdeteksi",
       "applyChange": "Terapkan Perubahan Prioritas",
       "suggestions": {
-        "adjustToAvoidTie": "Sesuaikan ke {value} untuk menghindari nilai prioritas yang sama",
-        "hasHigherPriority": "{name} memiliki prioritas lebih tinggi"
+        "adjustToAvoidTie": "Sesuaikan ke {{value}} untuk menghindari nilai prioritas yang sama",
+        "hasHigherPriority": "{{name}} memiliki prioritas lebih tinggi"
       }
     },
     "previewCalendar": {
@@ -841,13 +845,13 @@
       "legend": {
         "exception": "Pengecualian"
       },
-      "priorityLabel": "Prioritas {value}",
+      "priorityLabel": "Prioritas {{value}}",
       "exceptionWillNotRun": "Tanggal pengecualian - tidak akan dijalankan",
       "showingNext": "Menampilkan",
       "occurrence": "kejadian berikutnya",
       "occurrences": "kejadian berikutnya",
-      "exceptionCount": "({count} pengecualian)",
-      "exceptionCount_plural": "({count} pengecualian)",
+      "exceptionCount": "({{count}} pengecualian)",
+      "exceptionCount_plural": "({{count}} pengecualian)",
       "loadingPreview": "Memuat preview..."
     },
     "recurrenceBuilder": {
@@ -871,12 +875,12 @@
       "scheduleWillRepeat": "Jadwal akan diulangi:",
       "summary": {
         "everyDay": "Setiap hari",
-        "everyDays": "Setiap {interval} hari",
+        "everyDays": "Setiap {{interval}} hari",
         "noDaysSelected": "Tidak ada hari dipilih",
         "everyDayOfWeek": "Setiap hari dalam seminggu",
-        "everyDays_weekly": "Setiap {days}",
+        "everyDays_weekly": "Setiap {{days}}",
         "lastDayOfMonth": "Hari terakhir setiap bulan",
-        "dayOfMonth": "Tanggal {day} setiap bulan",
+        "dayOfMonth": "Tanggal {{day}} setiap bulan",
         "noExpressionDefined": "Tidak ada ekspresi didefinisikan",
         "oneTimeOnly": "Satu kali saja"
       }
@@ -902,13 +906,13 @@
       "naturalLanguage": {
         "runOnce": "Jalankan sekali pada tanggal yang ditentukan",
         "runEveryDay": "Jalankan setiap hari",
-        "runEveryDays": "Jalankan setiap {interval} hari",
+        "runEveryDays": "Jalankan setiap {{interval}} hari",
         "selectDaysOfWeek": "Pilih hari dalam seminggu",
-        "runEvery": "Jalankan setiap {days}",
+        "runEvery": "Jalankan setiap {{days}}",
         "runLastDayMonth": "Jalankan pada hari terakhir setiap bulan",
-        "runDayOfMonth": "Jalankan pada tanggal {day} setiap bulan",
+        "runDayOfMonth": "Jalankan pada tanggal {{day}} setiap bulan",
         "selectDayOfMonth": "Pilih tanggal bulan",
-        "customPattern": "Pola kustom: {expression}",
+        "customPattern": "Pola kustom: {{expression}}",
         "enterCronExpression": "Masukkan ekspresi cron"
       },
       "dailyPattern": {
@@ -936,7 +940,7 @@
         "scheduleName": "Nama Jadwal",
         "description": "Deskripsi",
         "playlist": "Playlist",
-        "devices": "Perangkat ({count} dipilih)",
+        "devices": "Perangkat ({{count}} dipilih)",
         "startDate": "Tanggal Mulai",
         "endDate": "Tanggal Selesai",
         "startTime": "Waktu Mulai",
@@ -1001,11 +1005,11 @@
     "inactive": "Tidak Aktif",
     "notAvailable": "N/A",
     "metrics": {
-      "onlineDevices": "{online} online ({percentage}%)",
+      "onlineDevices": "{{online}} online ({{percentage}}%)",
       "acrossAllDevices": "Di semua perangkat",
       "playbackCompletion": "Penyelesaian pemutaran konten",
       "totalPlaybackEvents": "Total event pemutaran",
-      "playbackEventsCount": "{count} event pemutaran"
+      "playbackEventsCount": "{{count}} event pemutaran"
     }
   },
   "analytics": {
@@ -1184,7 +1188,7 @@
   },
   "tags": {
     "title": "Manajemen Tag",
-    "description": "Organisir konten dan perangkat Anda dengan tag",
+    "description": "Deskripsi",
     "searchPlaceholder": "Cari tags...",
     "sortNewest": "Terbaru",
     "sortOldest": "Terlama",
@@ -1206,7 +1210,6 @@
       "gray": "Abu-abu"
     },
     "preview": "Preview",
-    "description": "Deskripsi",
     "descriptionPlaceholder": "Deskripsi opsional",
     "cancel": "Batal",
     "create": "Buat",
@@ -1288,13 +1291,12 @@
   },
   "rbac": {
     "title": "Manajemen Peran",
-    "description": "Kelola peran dan izin untuk kontrol akses",
+    "description": "Deskripsi",
     "editRole": "Edit Peran",
     "createNewRole": "Buat Peran Baru",
     "roleName": "Nama Peran",
     "roleNamePlaceholder": "contoh: Manajer Konten",
     "systemRoleCannotBeRenamed": "Peran sistem tidak dapat diubah namanya",
-    "description": "Deskripsi",
     "descriptionPlaceholder": "Deskripsi singkat peran ini...",
     "descriptionHelp": "Opsional. Membantu pengguna memahami tujuan peran.",
     "active": "Aktif",
@@ -1340,7 +1342,7 @@
   },
   "organizations": {
     "title": "Organisasi",
-    "description": "Kelola organisasi tenant dan pengaturannya",
+    "description": "Deskripsi",
     "totalOrganizations": "Total Organisasi",
     "active": "Aktif",
     "inactive": "Tidak Aktif",
@@ -1349,7 +1351,6 @@
     "deleteOrganization": "Hapus Organisasi",
     "deleteConfirmMessage": "Apakah Anda yakin ingin menghapus organisasi ini?",
     "organizationName": "Nama Organisasi",
-    "description": "Deskripsi",
     "descriptionPlaceholder": "Deskripsi singkat tentang organisasi",
     "address": "Alamat",
     "addressPlaceholder": "Alamat fisik",
@@ -1442,6 +1443,8 @@
   "menus": {
     "title": "Menu Digital",
     "subtitle": "Kelola menu digital Anda untuk restoran, laundry, spa, dan lainnya",
+    "mediaTitle": "Media Menu",
+    "mediaSubtitle": "Unggah dan kelola gambar untuk item menu digital Anda",
     "createMenu": "Buat Menu",
     "editMenu": "Edit Menu",
     "createNewMenu": "Buat Menu Baru",
@@ -1566,5 +1569,30 @@
         "importing": "Mengimpor..."
       }
     }
+  },
+  "uploads": {
+    "queue": {
+      "title": "Antrian Upload",
+      "uploading": "Mengupload {{count}} file...",
+      "empty": "Tidak ada upload dalam antrian",
+      "allComplete": "Semua upload selesai"
+    },
+    "status": {
+      "pending": "Menunggu...",
+      "uploading": "Mengupload...",
+      "completed": "Selesai",
+      "failed": "Gagal",
+      "cancelled": "Dibatalkan"
+    },
+    "actions": {
+      "cancel": "Batalkan",
+      "retry": "Coba Lagi",
+      "remove": "Hapus",
+      "retryAll": "Coba semua lagi",
+      "clearCompleted": "Hapus yang selesai",
+      "clearAll": "Hapus semua"
+    },
+    "addedToQueue": "{{count}} file ditambahkan ke antrian",
+    "fileNotAvailable": "File tidak tersedia (halaman telah dimuat ulang)"
   }
 }

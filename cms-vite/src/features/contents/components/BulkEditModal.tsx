@@ -80,8 +80,10 @@ export function BulkEditModal({ isOpen, onClose, selectedContent }: BulkEditModa
 
     await Promise.all(updatePromises);
 
-    // Invalidate queries
-    queryClient.invalidateQueries({ queryKey: contentKeys.lists() });
+    // Invalidate ALL content queries using predicate for guaranteed matching
+    queryClient.invalidateQueries({
+      predicate: (query) => query.queryKey[0] === 'content',
+    });
 
     setUpdating(false);
 

@@ -156,6 +156,14 @@ class ContentRoutes:
     PREVIEW = f"{BASE}/{{content_id}}/preview"
     STATS = f"{BASE}/stats"  # Storage statistics
 
+    # Deleted content (Recycle Bin)
+    LIST_DELETED = f"{BASE}/deleted"
+    RESTORE = f"{BASE}/{{content_id}}/restore"
+    PERMANENT_DELETE = f"{BASE}/{{content_id}}/permanent"
+
+    # Duplicate detection
+    DUPLICATES = f"{BASE}/duplicates"
+
     # Playlists
     PLAYLIST_LIST = PLAYLISTS
     PLAYLIST_CREATE = PLAYLISTS

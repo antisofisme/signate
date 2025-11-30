@@ -1,9 +1,11 @@
 """
 Metadata Extractor using FFprobe
 Extracts media information from video, audio, and image files
+
+OPTIMIZED: Uses asyncio.create_subprocess_exec() for non-blocking FFprobe calls
 """
 
-import subprocess
+import asyncio
 import json
 import os
 from pathlib import Path
@@ -56,30 +58,39 @@ class MetadataExtractor:
         file_path: str,
         content_type: str
     ) -> Dict[str, Any]:
-        """Extract metadata from video/audio using FFprobe"""
+        """Extract metadata from video/audio using FFprobe (async)"""
         try:
-            # FFprobe command to get JSON output
-            cmd = [
+            # FFprobe timeout
+            timeout = int(os.getenv('FFPROBE_TIMEOUT', '30'))
+
+            # Use async subprocess for non-blocking execution
+            process = await asyncio.create_subprocess_exec(
                 'ffprobe',
                 '-v', 'quiet',
                 '-print_format', 'json',
                 '-show_format',
                 '-show_streams',
-                file_path
-            ]
-
-            result = subprocess.run(
-                cmd,
-                capture_output=True,
-                text=True,
-                timeout=int(os.getenv('FFPROBE_TIMEOUT', '30'))  # Default: 30 seconds
+                file_path,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE
             )
 
-            if result.returncode != 0:
-                print(f"FFprobe failed: {result.stderr}")
+            try:
+                stdout, stderr = await asyncio.wait_for(
+                    process.communicate(),
+                    timeout=timeout
+                )
+            except asyncio.TimeoutError:
+                process.kill()
+                await process.wait()
+                print(f"FFprobe timeout for {file_path}")
                 return {}
 
-            data = json.loads(result.stdout)
+            if process.returncode != 0:
+                print(f"FFprobe failed: {stderr.decode()}")
+                return {}
+
+            data = json.loads(stdout.decode())
 
             # Extract relevant information
             metadata = {}
@@ -130,9 +141,6 @@ class MetadataExtractor:
 
             return metadata
 
-        except subprocess.TimeoutExpired:
-            print(f"FFprobe timeout for {file_path}")
-            return {}
         except Exception as e:
             print(f"Metadata extraction failed: {e}")
             return {}

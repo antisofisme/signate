@@ -11,29 +11,29 @@ import { getApiErrorMessage } from '@/shared/utils/types';
 import { organizationsApi } from '../api/organizationsApi';
 import type { UpdateQuotaRequest } from '../types/organization';
 
-// Query keys
+// Query keys - IMPORTANT: Don't include dynamic values like fileSize in keys!
 export const quotaKeys = {
   all: ['organization-quota'] as const,
   detail: (orgId: number) => [...quotaKeys.all, orgId] as const,
   check: {
     device: (orgId: number) => [...quotaKeys.all, orgId, 'check-device'] as const,
     user: (orgId: number) => [...quotaKeys.all, orgId, 'check-user'] as const,
-    content: (orgId: number, fileSize: number) =>
-      [...quotaKeys.all, orgId, 'check-content', fileSize] as const,
+    // FIXED: Don't include fileSize in key to avoid cache fragmentation
+    content: (orgId: number) => [...quotaKeys.all, orgId, 'check-content'] as const,
   },
 };
 
 /**
  * Hook to fetch organization quota
- * Auto-refetches every 30 seconds to keep quota status fresh
+ * Uses long staleTime since quota rarely changes
  */
 export function useOrganizationQuota(orgId: number | undefined) {
   return useQuery({
     queryKey: orgId ? quotaKeys.detail(orgId) : ['no-org'],
     queryFn: () => organizationsApi.getQuota(orgId!),
     enabled: !!orgId,
-    staleTime: 30 * 1000, // 30 seconds
-    refetchInterval: 60 * 1000, // Refetch every minute
+    staleTime: 5 * 60 * 1000, // 5 minutes - quota rarely changes
+    // REMOVED refetchInterval - unnecessary background polling
   });
 }
 
@@ -82,13 +82,60 @@ export function useCheckUserQuota(orgId: number | undefined) {
 
 /**
  * Hook to check if organization can add content with specified size
+ * FIXED: Uses cached organization quota to calculate available space client-side
+ * instead of API call per file size change (prevents cache fragmentation)
  */
 export function useCheckContentQuota(orgId: number | undefined, fileSizeBytes: number) {
-  return useQuery({
-    queryKey: orgId ? quotaKeys.check.content(orgId, fileSizeBytes) : ['no-org'],
-    queryFn: () => organizationsApi.checkContentQuota(orgId!, fileSizeBytes),
-    enabled: !!orgId && fileSizeBytes > 0,
-  });
+  // Get organization quota (cached)
+  const { data: quotaData, isLoading } = useOrganizationQuota(orgId);
+
+  // Convert GB to bytes for comparison
+  const GB_TO_BYTES = 1024 * 1024 * 1024;
+  // quotaData is OrganizationQuota directly (not wrapped in SuccessResponse)
+  const contentQuota = quotaData?.content;
+
+  // Calculate quota check locally instead of API call per file size change
+  const maxSizeBytes = contentQuota?.max_size_gb != null
+    ? contentQuota.max_size_gb * GB_TO_BYTES
+    : Infinity;
+  const usedSizeBytes = contentQuota?.current_size_gb != null
+    ? contentQuota.current_size_gb * GB_TO_BYTES
+    : 0;
+  const availableSizeBytes = contentQuota?.available_size_gb != null
+    ? contentQuota.available_size_gb * GB_TO_BYTES
+    : Infinity;
+
+  // Check if upload would exceed quota
+  const canUpload = isFinite(maxSizeBytes)
+    ? usedSizeBytes + fileSizeBytes <= maxSizeBytes
+    : true; // Allow if no quota set
+
+  return {
+    data: {
+      allowed: canUpload,  // Match QuotaCheckResult interface
+      can_add: canUpload,
+      current: usedSizeBytes,
+      current_used: usedSizeBytes,
+      max: maxSizeBytes,
+      limit: maxSizeBytes,
+      available: availableSizeBytes,
+      remaining: availableSizeBytes,
+      requested_size: fileSizeBytes,
+      reason: canUpload ? undefined : `File size (${formatBytes(fileSizeBytes)}) exceeds remaining quota (${formatBytes(availableSizeBytes)})`,
+    },
+    isLoading,
+    isError: false,
+  };
+}
+
+// Helper to format bytes
+function formatBytes(bytes: number): string {
+  if (bytes === 0) return '0 B';
+  if (!isFinite(bytes)) return 'Unlimited';
+  const k = 1024;
+  const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
 }
 
 /**

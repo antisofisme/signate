@@ -203,6 +203,21 @@ class PlaylistRepository(IPlaylistRepository):
 
         return self._model_to_entity(playlist_model, include_stats=True)
 
+    def find_by_name(self, name: str, organization_id: int) -> Optional[Playlist]:
+        """Find playlist by name with organization filter (excludes soft-deleted)"""
+        playlist_model = self.db.query(PlaylistModel).filter(
+            and_(
+                PlaylistModel.name == name,
+                PlaylistModel.organization_id == organization_id,
+                PlaylistModel.deleted_at.is_(None)
+            )
+        ).first()
+
+        if not playlist_model:
+            return None
+
+        return self._model_to_entity(playlist_model)
+
     def update(self, playlist: Playlist, updated_by_id: Optional[int] = None) -> Playlist:
         """Update playlist with audit tracking"""
         db_playlist = self.db.query(PlaylistModel).filter(

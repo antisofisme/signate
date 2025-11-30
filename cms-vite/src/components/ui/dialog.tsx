@@ -13,23 +13,27 @@ interface DialogProps {
 }
 
 export function Dialog({ open, onOpenChange, children }: DialogProps) {
+  // Store onOpenChange in ref to avoid dependency issues
+  const onOpenChangeRef = React.useRef(onOpenChange);
+  onOpenChangeRef.current = onOpenChange;
+
   React.useEffect(() => {
+    if (!open) return;
+
     const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && open) {
-        onOpenChange(false);
+      if (e.key === 'Escape') {
+        onOpenChangeRef.current(false);
       }
     };
 
-    if (open) {
-      document.addEventListener('keydown', handleEscape);
-      document.body.style.overflow = 'hidden';
-    }
+    document.addEventListener('keydown', handleEscape);
+    document.body.style.overflow = 'hidden';
 
     return () => {
       document.removeEventListener('keydown', handleEscape);
       document.body.style.overflow = '';
     };
-  }, [open, onOpenChange]);
+  }, [open]); // Only depend on open
 
   if (!open) return null;
 

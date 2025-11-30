@@ -12,9 +12,23 @@ import interactionPlugin from '@fullcalendar/interaction'
 import listPlugin from '@fullcalendar/list'
 import { EventInput, EventClickArg, DateSelectArg, EventDropArg } from '@fullcalendar/core'
 import type { EventResizeDoneArg } from '@fullcalendar/interaction'
-import type { Schedule, ScheduleOccurrence } from '../types/schedule.types'
+import type { Schedule, ScheduleOccurrence, PriorityLevel, PriorityInfo } from '../types/schedule.types'
 import { PRIORITY_LEVELS } from '../types/schedule.types'
 import { renderIcon } from '@/shared/utils/iconHelper'
+
+// Helper to convert numeric priority to PriorityLevel key
+const getPriorityInfo = (priority: PriorityLevel | number): PriorityInfo => {
+  if (typeof priority === 'string' && PRIORITY_LEVELS[priority]) {
+    return PRIORITY_LEVELS[priority]
+  }
+  if (typeof priority === 'number') {
+    if (priority <= 10) return PRIORITY_LEVELS.low
+    if (priority <= 50) return PRIORITY_LEVELS.normal
+    if (priority <= 75) return PRIORITY_LEVELS.high
+    return PRIORITY_LEVELS.critical
+  }
+  return PRIORITY_LEVELS.normal
+}
 
 interface FullCalendarViewProps {
   schedules: Schedule[]
@@ -46,8 +60,8 @@ export function FullCalendarView({
   const events: EventInput[] = useMemo(() => {
     return occurrences.map((occurrence) => {
       const schedule = schedules.find((s) => s.id === occurrence.schedule_id)
-      const priority = schedule?.priority || 'normal'
-      const priorityInfo = PRIORITY_LEVELS[priority]
+      const priorityInfo = getPriorityInfo(schedule?.priority || 'normal')
+      const priorityLevel = priorityInfo.level // Get string key from info
 
       // Combine date with time for full DateTime
       const startDateTime = new Date(`${occurrence.occurrence_date}T${occurrence.start_time}`)
@@ -58,15 +72,15 @@ export function FullCalendarView({
         title: occurrence.schedule_name,
         start: startDateTime,
         end: endDateTime,
-        backgroundColor: getPriorityColor(priority),
-        borderColor: getPriorityColor(priority, true),
+        backgroundColor: getPriorityColor(priorityLevel),
+        borderColor: getPriorityColor(priorityLevel, true),
         textColor: '#FFFFFF',
         editable: editable,
         extendedProps: {
           scheduleId: occurrence.schedule_id,
           schedule,
           occurrence,
-          priority,
+          priority: priorityLevel,
           priorityLabel: priorityInfo.label,
           priorityIcon: priorityInfo.icon,
           playlistName: occurrence.playlist_name,

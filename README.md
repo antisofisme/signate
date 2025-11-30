@@ -97,6 +97,37 @@ npm run dev
 - **Role-based Access Control** - Super Admin, Admin, User roles
 - **High Performance** - PgBouncer pooling, Redis caching
 
+## Supported File Formats
+
+### Currently Supported
+
+| Type | Extensions | Count |
+|------|------------|-------|
+| **Image** | `.jpg` `.jpeg` `.png` `.webp` `.gif` `.bmp` `.tiff` `.tif` `.heic` `.heif` `.avif` | 11 |
+| **Video** | `.mp4` `.webm` `.mkv` `.avi` `.mov` `.m4v` `.flv` `.wmv` `.mpg` `.mpeg` `.3gp` `.3g2` `.mts` `.m2ts` `.ts` `.ogv` | 16 |
+| **Audio** | `.mp3` `.aac` `.m4a` `.ogg` `.wav` `.flac` `.wma` `.mpeg` `.opus` `.amr` `.aiff` `.aif` `.oga` `.weba` | 14 |
+
+**Total: 41 ekstensi file didukung**
+
+### Forbidden (Security Risk)
+
+| Extensions | Reason |
+|------------|--------|
+| `.svg` | Can contain JavaScript/XSS |
+| `.exe` `.bat` `.sh` `.ps1` | Executables |
+| `.html` `.js` `.php` | Scripts |
+| `.zip` `.rar` `.7z` | Archives (malware risk) |
+
+### File Size Limits
+
+| Type | Max Size | Environment Variable |
+|------|----------|---------------------|
+| Image | 50 MB | `MAX_IMAGE_SIZE_MB` |
+| Video | 500 MB | `MAX_VIDEO_SIZE_MB` |
+| Audio | 100 MB | `MAX_AUDIO_SIZE_MB` |
+
+> See full documentation: [`docs/features/SUPPORTED_FILE_FORMATS.md`](docs/features/SUPPORTED_FILE_FORMATS.md)
+
 ## Default Credentials
 
 - Username: `admin`  

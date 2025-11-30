@@ -49,6 +49,7 @@ class Schedule(Base):
 
     # Priority & Status
     priority = Column(Integer, default=0, index=True)    # Higher = more important
+    mode = Column(String(20), default='rotate', index=True)  # 'override' or 'rotate'
     is_active = Column(Boolean, default=True, index=True)
     
     # Targeting
