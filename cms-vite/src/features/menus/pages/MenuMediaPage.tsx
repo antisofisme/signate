@@ -66,24 +66,24 @@ export default function MenuMediaPage() {
         />
 
         {/* View Mode Toggle - Available on all tabs */}
-        <div className="flex items-center gap-1 bg-gray-100 dark:bg-gray-800 rounded-lg p-1">
+        <div className="flex items-center gap-1 bg-gray-100 dark:bg-gray-800 p-1 rounded-lg">
           <Button
             variant={viewMode === 'table' ? 'primary' : 'ghost'}
             size="sm"
             onClick={() => setViewMode('table')}
+            leftIcon={<Table2 className="w-4 h-4" />}
             title={t('menus.media.viewMode.table', 'Table View')}
-            className={viewMode === 'table' ? '' : '!text-gray-600 dark:!text-gray-400'}
           >
-            <Table2 className="w-4 h-4" />
+            {t('menus.media.viewMode.table', 'Table')}
           </Button>
           <Button
             variant={viewMode === 'gallery' ? 'primary' : 'ghost'}
             size="sm"
             onClick={() => setViewMode('gallery')}
+            leftIcon={<LayoutGrid className="w-4 h-4" />}
             title={t('menus.media.viewMode.gallery', 'Gallery View')}
-            className={viewMode === 'gallery' ? '' : '!text-gray-600 dark:!text-gray-400'}
           >
-            <LayoutGrid className="w-4 h-4" />
+            {t('menus.media.viewMode.gallery', 'Gallery')}
           </Button>
         </div>
       </div>
