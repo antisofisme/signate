@@ -100,8 +100,14 @@ export class PortalViewer {
     // Store reference to content container
     this.menuContentContainer = document.getElementById('portal-menu-content');
 
+    // Calculate and set portal header height for sticky category menu
+    this.updateHeaderHeight();
+
     // Attach tab click handlers
     this.attachTabHandlers();
+
+    // Listen for resize to update header height
+    window.addEventListener('resize', () => this.updateHeaderHeight());
 
     // Load first menu
     this.loadMenu(0);
@@ -188,6 +194,19 @@ export class PortalViewer {
 
     // Load the menu into the container
     await this.menuViewer.init(menuContainerId);
+  }
+
+  /**
+   * Calculate and set portal header height as CSS variable
+   * This allows the menu category to stick below the portal header
+   */
+  private updateHeaderHeight(): void {
+    const header = this.container.querySelector('.portal-viewer__header') as HTMLElement;
+    if (header) {
+      const headerHeight = header.offsetHeight;
+      this.container.style.setProperty('--portal-header-height', `${headerHeight}px`);
+      console.log('[Portal] Header height set:', headerHeight);
+    }
   }
 
   /**

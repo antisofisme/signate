@@ -65,7 +65,7 @@ class TagAssignmentResponse(BaseModel):
     assigned_at: datetime
 
 
-@management_router.get("/devices/{device_id}/tags")
+@management_router.get("/{device_id}/tags")
 def get_device_tags(
     device_id: int,
     db: Session = Depends(get_db),
@@ -121,7 +121,7 @@ def get_device_tags(
     }
 
 
-@management_router.post("/devices/{device_id}/tags", status_code=status.HTTP_201_CREATED)
+@management_router.post("/{device_id}/tags", status_code=status.HTTP_201_CREATED)
 def assign_tag_to_device(
     device_id: int,
     request: AssignTagRequest,
@@ -217,7 +217,7 @@ def assign_tag_to_device(
         )
 
 
-@management_router.delete("/devices/{device_id}/tags/{tag_id}", status_code=status.HTTP_204_NO_CONTENT)
+@management_router.delete("/{device_id}/tags/{tag_id}", status_code=status.HTTP_204_NO_CONTENT)
 def unassign_tag_from_device(
     device_id: int,
     tag_id: int,
@@ -295,7 +295,7 @@ class ContentAssignmentResponse(BaseModel):
     expires_at: Optional[datetime] = None
 
 
-@management_router.get("/devices/{device_id}/contents")
+@management_router.get("/{device_id}/contents")
 def get_device_contents(
     device_id: int,
     db: Session = Depends(get_db),
@@ -356,7 +356,7 @@ def get_device_contents(
     }
 
 
-@management_router.post("/devices/{device_id}/contents", status_code=status.HTTP_201_CREATED)
+@management_router.post("/{device_id}/contents", status_code=status.HTTP_201_CREATED)
 def assign_content_to_device(
     device_id: int,
     request: AssignContentRequest,
@@ -489,7 +489,7 @@ def assign_content_to_device(
         )
 
 
-@management_router.delete("/devices/{device_id}/contents/{content_id}", status_code=status.HTTP_204_NO_CONTENT)
+@management_router.delete("/{device_id}/contents/{content_id}", status_code=status.HTTP_204_NO_CONTENT)
 def unassign_content_from_device(
     device_id: int,
     content_id: int,
@@ -561,7 +561,7 @@ class PlaylistAssignmentResponse(BaseModel):
     assigned_at: datetime
 
 
-@management_router.get("/devices/{device_id}/playlists")
+@management_router.get("/{device_id}/playlists")
 def get_device_playlists(
     device_id: int,
     db: Session = Depends(get_db),
@@ -617,7 +617,7 @@ def get_device_playlists(
     }
 
 
-@management_router.post("/devices/{device_id}/playlists", status_code=status.HTTP_201_CREATED)
+@management_router.post("/{device_id}/playlists", status_code=status.HTTP_201_CREATED)
 def assign_playlist_to_device(
     device_id: int,
     request: AssignPlaylistRequest,
@@ -712,7 +712,7 @@ def assign_playlist_to_device(
         )
 
 
-@management_router.delete("/devices/{device_id}/playlists/{playlist_id}", status_code=status.HTTP_204_NO_CONTENT)
+@management_router.delete("/{device_id}/playlists/{playlist_id}", status_code=status.HTTP_204_NO_CONTENT)
 def unassign_playlist_from_device(
     device_id: int,
     playlist_id: int,

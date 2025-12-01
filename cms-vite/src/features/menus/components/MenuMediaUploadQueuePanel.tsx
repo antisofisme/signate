@@ -1,8 +1,10 @@
 /**
  * Menu Media Upload Queue Panel
  * Floating indicator showing upload progress
+ * Reports its height to store for toast positioning
  */
 
+import { useEffect, useRef, useCallback } from 'react';
 import {
   Upload,
   X,
@@ -48,8 +50,54 @@ export function MenuMediaUploadQueuePanel() {
   const clearCompleted = useMenuMediaUploadStore((state) => state.clearCompleted);
   const clearQueue = useMenuMediaUploadStore((state) => state.clearQueue);
   const getSummary = useMenuMediaUploadStore((state) => state.getSummary);
+  const setPanelHeight = useMenuMediaUploadStore((state) => state.setPanelHeight);
+
+  // Refs for measuring panel height
+  const minimizedRef = useRef<HTMLDivElement>(null);
+  const expandedRef = useRef<HTMLDivElement>(null);
 
   const summary = getSummary();
+
+  // Measure and report panel height to store
+  const measureHeight = useCallback(() => {
+    const ref = isMinimized ? minimizedRef : expandedRef;
+    if (ref.current) {
+      const rect = ref.current.getBoundingClientRect();
+      // Include the bottom offset (bottom-6 = 24px)
+      const bottomOffset = 24;
+      const totalHeight = rect.height + bottomOffset + 8; // +8 for gap between toast and panel
+      setPanelHeight(totalHeight);
+    }
+  }, [isMinimized, setPanelHeight]);
+
+  // Reset height when unmounted
+  useEffect(() => {
+    return () => {
+      setPanelHeight(0);
+    };
+  }, [setPanelHeight]);
+
+  // Measure height on mount, minimize toggle, and item changes
+  useEffect(() => {
+    if (items.length > 0) {
+      measureHeight();
+    }
+  }, [measureHeight, items.length, isMinimized]);
+
+  // Use ResizeObserver for dynamic height changes
+  useEffect(() => {
+    if (items.length === 0) return;
+
+    const ref = isMinimized ? minimizedRef : expandedRef;
+    if (!ref.current) return;
+
+    const observer = new ResizeObserver(() => {
+      measureHeight();
+    });
+
+    observer.observe(ref.current);
+    return () => observer.disconnect();
+  }, [isMinimized, measureHeight, items.length]);
 
   // Don't render if no items
   if (items.length === 0) {
@@ -72,7 +120,7 @@ export function MenuMediaUploadQueuePanel() {
   // Minimized badge view
   if (isMinimized) {
     return (
-      <div className="fixed bottom-6 right-6" style={{ zIndex: Z_INDEX.UPLOAD_QUEUE }}>
+      <div ref={minimizedRef} className="fixed bottom-6 right-6" style={{ zIndex: Z_INDEX.UPLOAD_QUEUE }}>
         <button
           onClick={toggleMinimize}
           className={cn(
@@ -100,6 +148,7 @@ export function MenuMediaUploadQueuePanel() {
   // Expanded panel
   return (
     <div
+      ref={expandedRef}
       className="fixed bottom-6 right-6 w-80 bg-white dark:bg-gray-800 rounded-lg shadow-2xl border border-gray-200 dark:border-gray-700 overflow-hidden"
       style={{ zIndex: Z_INDEX.UPLOAD_QUEUE }}
     >

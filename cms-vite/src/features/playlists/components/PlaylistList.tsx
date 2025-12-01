@@ -5,7 +5,7 @@
 
 import { Pencil, Trash2, Clock, FileText, List, Monitor, Plus } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { TableSkeleton, EmptyState, Button } from '@/shared/components';
+import { TableSkeleton, EmptyState, Button, TABLE_STYLES } from '@/shared/components';
 import type { Playlist } from '../types/playlist';
 
 interface PlaylistListProps {
@@ -58,33 +58,33 @@ export function PlaylistList({
   }
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
-      <table className="w-full">
-        <thead className="bg-gray-50 dark:bg-gray-700">
+    <div className={TABLE_STYLES.container}>
+      <table className={TABLE_STYLES.table}>
+        <thead className={TABLE_STYLES.thead}>
           <tr>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+            <th className={TABLE_STYLES.th}>
               {t('playlists.name')}
             </th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+            <th className={TABLE_STYLES.th}>
               Status
             </th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+            <th className={TABLE_STYLES.th}>
               Priority
             </th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+            <th className={TABLE_STYLES.th}>
               {t('playlists.items')}
             </th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+            <th className={TABLE_STYLES.th}>
               {t('playlists.duration')}
             </th>
-            <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+            <th className={TABLE_STYLES.th}>
               {t('common.actions')}
             </th>
           </tr>
         </thead>
-        <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+        <tbody className={TABLE_STYLES.tbody}>
           {playlists.map((playlist) => (
-            <tr key={playlist.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
+            <tr key={playlist.id} className={TABLE_STYLES.tr}>
               <td className="px-6 py-4">
                 <div>
                   <div className="font-medium text-gray-900 dark:text-white">
@@ -125,8 +125,8 @@ export function PlaylistList({
                   {formatDuration(playlist.total_duration)}
                 </div>
               </td>
-              <td className="px-6 py-4 text-right">
-                <div className="flex items-center justify-end gap-2">
+              <td className={TABLE_STYLES.td}>
+                <div className="flex items-center gap-2">
                   <button
                     onClick={() => onManageContent(playlist)}
                     className="p-2 text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-900/20 rounded-lg"

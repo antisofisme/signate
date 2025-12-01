@@ -8,7 +8,7 @@ import { Edit, Trash2, List, QrCode, Copy, Download, ExternalLink, UtensilsCross
 import { useTranslation } from 'react-i18next';
 import { useMenus, useDeleteMenuWithPIN } from '../hooks/useMenus';
 import { useDownloadQRCode } from '../hooks/useMenuImport';
-import { EmptyState } from '@/shared/components';
+import { EmptyState, TABLE_STYLES } from '@/shared/components';
 import { PinVerificationModal } from './PinVerificationModal';
 import type { Menu, MenuType } from '../types/menu';
 import { toast } from 'sonner';
@@ -116,33 +116,33 @@ export const MenuList = ({
   return (
     <div className="space-y-4">
       {/* Table */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700 overflow-hidden">
-        <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-          <thead className="bg-gray-50 dark:bg-gray-900">
+      <div className={TABLE_STYLES.container}>
+        <table className={TABLE_STYLES.table}>
+          <thead className={TABLE_STYLES.thead}>
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+              <th className={TABLE_STYLES.th}>
                 Menu Name
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+              <th className={TABLE_STYLES.th}>
                 Type
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+              <th className={TABLE_STYLES.th}>
                 Items
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+              <th className={TABLE_STYLES.th}>
                 Status
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+              <th className={TABLE_STYLES.th}>
                 Public Access
               </th>
-              <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+              <th className={TABLE_STYLES.th}>
                 Actions
               </th>
             </tr>
           </thead>
-          <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+          <tbody className={TABLE_STYLES.tbody}>
             {filteredMenus.map((menu) => (
-              <tr key={menu.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
+              <tr key={menu.id} className={TABLE_STYLES.tr}>
                 <td className="px-6 py-4 whitespace-nowrap">
                   <div>
                     <div className="text-sm font-medium text-gray-900 dark:text-white">{menu.name}</div>
@@ -200,8 +200,8 @@ export const MenuList = ({
                     )}
                   </div>
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                  <div className="flex items-center justify-end space-x-2">
+                <td className={TABLE_STYLES.td}>
+                  <div className="flex items-center gap-2">
                     <button
                       onClick={() => onEdit(menu)}
                       className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 transition-colors"

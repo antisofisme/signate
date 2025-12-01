@@ -29,9 +29,10 @@ interface OverviewTabProps {
   device: Device;
   isOnline: boolean;
   onRefresh?: () => void;
+  onOpenPreview?: () => void;
 }
 
-export function OverviewTab({ device, isOnline, onRefresh }: OverviewTabProps) {
+export function OverviewTab({ device, isOnline, onRefresh, onOpenPreview }: OverviewTabProps) {
   const sendCommand = useSendCommand();
 
   // Handle quick command
@@ -99,11 +100,11 @@ export function OverviewTab({ device, isOnline, onRefresh }: OverviewTabProps) {
           </button>
 
           <button
-            onClick={() => toast.info('Preview feature coming soon')}
-            disabled={!isOnline}
+            onClick={onOpenPreview}
+            disabled={!onOpenPreview}
             className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors flex flex-col items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2"
             aria-label="Preview device display"
-            aria-disabled={!isOnline}
+            aria-disabled={!onOpenPreview}
           >
             <Eye className="w-5 h-5 text-green-600 dark:text-green-400" aria-hidden="true" />
             <span className="text-sm font-medium text-gray-700 dark:text-gray-300">

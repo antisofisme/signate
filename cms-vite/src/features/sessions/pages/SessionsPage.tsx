@@ -17,7 +17,8 @@ import {
   PageSkeleton,
   EmptyState,
   ConfirmDialog,
-  AccessDenied
+  AccessDenied,
+  TABLE_STYLES,
 } from '@/shared/components';
 import { useCanPerformAction } from '@/features/rbac/hooks/usePermissions';
 import { useAuthStore } from '@/lib/stores/authStore';
@@ -264,36 +265,36 @@ export default function SessionsPage() {
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
             </div>
           ) : allSessionsData && allSessionsData.items.length > 0 ? (
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700 overflow-hidden">
+            <div className={TABLE_STYLES.container}>
               <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                  <thead className="bg-gray-50 dark:bg-gray-900">
+                <table className={TABLE_STYLES.table}>
+                  <thead className={TABLE_STYLES.thead}>
                     <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                      <th className={TABLE_STYLES.th}>
                         {t('sessions.user', 'User')}
                       </th>
                       {showOrgColumn && (
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                        <th className={TABLE_STYLES.th}>
                           {t('sessions.organization', 'Organization')}
                         </th>
                       )}
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                      <th className={TABLE_STYLES.th}>
                         {t('sessions.browser', 'Browser')}
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                      <th className={TABLE_STYLES.th}>
                         {t('sessions.ipAddress', 'IP Address')}
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                      <th className={TABLE_STYLES.th}>
                         {t('sessions.lastActivity', 'Last Activity')}
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                      <th className={TABLE_STYLES.th}>
                         {t('sessions.expiresAt', 'Expires')}
                       </th>
                     </tr>
                   </thead>
-                  <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                  <tbody className={TABLE_STYLES.tbody}>
                     {allSessionsData.items.map((session: AllSession) => (
-                      <tr key={session.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
+                      <tr key={session.id} className={TABLE_STYLES.tr}>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex items-center">
                             <div className="flex-shrink-0 h-10 w-10 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center">

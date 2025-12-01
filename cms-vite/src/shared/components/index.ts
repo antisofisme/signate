@@ -51,5 +51,9 @@ export {
   AccessDenied,
 } from './feedback';
 
+// Data Display
+export { DataTable, TABLE_STYLES } from './DataTable';
+export type { Column, DataTableProps } from './DataTable';
+
 // Toast Provider (Sonner with theme sync & dynamic positioning)
 export { ToastProvider } from './ToastProvider';

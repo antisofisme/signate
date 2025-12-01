@@ -19,16 +19,17 @@ class ExcelImporter:
     - Column C: Currency (optional, default IDR)
     - Column D: Description (optional)
     - Column E: Category (optional)
-    - Column F: Variant (optional)
-    - Column G: Tags (optional)
-    - Column H: Is Active (optional, boolean, default True)
-    - Column I: Is Featured (optional, boolean, default False)
-    - Column J: Is Available (optional, boolean, default True)
+    - Column F: Subcategory (optional) - category-based grouping (Nasi, Mie, Ayam)
+    - Column G: Variant (optional) - item variations (Hot, Cold, Large, Small)
+    - Column H: Tags (optional)
+    - Column I: Is Active (optional, boolean, default True)
+    - Column J: Is Featured (optional, boolean, default False)
+    - Column K: Is Available (optional, boolean, default True)
     """
 
     REQUIRED_COLUMNS = ["Name"]
     OPTIONAL_COLUMNS = [
-        "Price", "Currency", "Description", "Category", "Variant", "Tags",
+        "Price", "Currency", "Description", "Category", "Subcategory", "Variant", "Tags",
         "Is Active", "Is Featured", "Is Available"
     ]
     ALL_COLUMNS = REQUIRED_COLUMNS + OPTIONAL_COLUMNS
@@ -120,12 +121,19 @@ class ExcelImporter:
                         if category.lower() == 'nan' or not category:
                             category = None
 
-                    # Extract variant (maps to subcategory field)
+                    # Extract subcategory (optional) - category-based grouping
                     subcategory = None
-                    if pd.notna(row.get("Variant")):
-                        subcategory = str(row["Variant"]).strip()
+                    if pd.notna(row.get("Subcategory")):
+                        subcategory = str(row["Subcategory"]).strip()
                         if subcategory.lower() == 'nan' or not subcategory:
                             subcategory = None
+
+                    # Extract variant (optional) - item variations like Hot, Cold
+                    variant = None
+                    if pd.notna(row.get("Variant")):
+                        variant = str(row["Variant"]).strip()
+                        if variant.lower() == 'nan' or not variant:
+                            variant = None
 
                     # Extract tags (optional)
                     tags = None
@@ -159,6 +167,7 @@ class ExcelImporter:
                         "currency": currency,
                         "category": category,
                         "subcategory": subcategory,
+                        "variant": variant,
                         "tags": tags,
                         "display_order": idx,  # Auto-order by row index
                         "is_active": is_active,
@@ -207,7 +216,8 @@ class ExcelExporter:
                 "Sweet iced tea",
             ],
             "Category": ["Main Course", "Main Course", "Beverages"],
-            "Variant": ["Pedas", "Original", ""],
+            "Subcategory": ["Nasi", "Mie", ""],
+            "Variant": ["Pedas", "Original", "Cold"],
             "Tags": ["spicy,chicken", "seafood", "cold,sweet"],
             "Is Active": ["Yes", "Yes", "Yes"],
             "Is Featured": ["Yes", "No", "No"],
@@ -260,6 +270,7 @@ class ExcelExporter:
             "Currency": [],
             "Description": [],
             "Category": [],
+            "Subcategory": [],
             "Variant": [],
             "Tags": [],
             "Is Active": [],
@@ -275,7 +286,8 @@ class ExcelExporter:
             data["Currency"].append(item.get("currency", "IDR"))
             data["Description"].append(item.get("description", ""))
             data["Category"].append(item.get("category", ""))
-            data["Variant"].append(item.get("subcategory", ""))
+            data["Subcategory"].append(item.get("subcategory", ""))
+            data["Variant"].append(item.get("variant", ""))
             data["Tags"].append(item.get("tags", ""))
             data["Is Active"].append("Yes" if item.get("is_active", True) else "No")
             data["Is Featured"].append("Yes" if item.get("is_featured", False) else "No")

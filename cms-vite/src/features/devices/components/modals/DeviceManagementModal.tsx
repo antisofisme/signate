@@ -26,6 +26,7 @@ import type { Device } from '../../types/device';
 import { OverviewTab } from './tabs/OverviewTab';
 import { HealthTab } from './tabs/HealthTab';
 import { CommandsTab } from './tabs/CommandsTab';
+import { DevicePreviewModal } from './DevicePreviewModal';
 
 export type DeviceTabId = 'overview' | 'health' | 'commands';
 
@@ -64,6 +65,7 @@ export function DeviceManagementModal({
     },
   ];
   const [activeTab, setActiveTab] = useState<DeviceTabId>(defaultTab);
+  const [showPreview, setShowPreview] = useState(false);
 
   if (!device) return null;
 
@@ -131,6 +133,7 @@ export function DeviceManagementModal({
   );
 
   return (
+    <>
     <Modal
       isOpen={isOpen}
       onClose={onClose}
@@ -141,7 +144,12 @@ export function DeviceManagementModal({
       {/* Tab Panels */}
       <div className="overflow-y-auto max-h-[calc(90vh-180px)]">
         <TabPanel activeTab={activeTab} tabId="overview">
-          <OverviewTab device={device} isOnline={isOnline} onRefresh={onRefresh} />
+          <OverviewTab
+            device={device}
+            isOnline={isOnline}
+            onRefresh={onRefresh}
+            onOpenPreview={() => setShowPreview(true)}
+          />
         </TabPanel>
 
         <TabPanel activeTab={activeTab} tabId="health">
@@ -153,5 +161,13 @@ export function DeviceManagementModal({
         </TabPanel>
       </div>
     </Modal>
+
+      {/* Device Preview Modal */}
+      <DevicePreviewModal
+        isOpen={showPreview}
+        device={device}
+        onClose={() => setShowPreview(false)}
+      />
+    </>
   );
 }

@@ -157,6 +157,7 @@ class MenuItemCreateDTO(BaseModel):
     # Categorization
     category: Optional[str] = Field(None, max_length=100)
     subcategory: Optional[str] = Field(None, max_length=100)
+    variant: Optional[str] = Field(None, max_length=200)  # Item variations: Hot, Cold, Large, Small
     tags: Optional[str] = Field(None, max_length=200)
 
     # Display
@@ -184,6 +185,7 @@ class MenuItemUpdateDTO(BaseModel):
     # Categorization
     category: Optional[str] = Field(None, max_length=100)
     subcategory: Optional[str] = Field(None, max_length=100)
+    variant: Optional[str] = Field(None, max_length=200)  # Item variations: Hot, Cold, Large, Small
     tags: Optional[str] = Field(None, max_length=200)
 
     # Display
@@ -219,6 +221,7 @@ class MenuItemResponseDTO(BaseModel):
     # Categorization
     category: Optional[str]
     subcategory: Optional[str]
+    variant: Optional[str]  # Item variations: Hot, Cold, Large, Small
     tags: Optional[str]
 
     # Display
@@ -339,6 +342,7 @@ class PublicMenuItemResponseDTO(BaseModel):
     # Categorization
     category: Optional[str]
     subcategory: Optional[str]
+    variant: Optional[str]  # Item variations: Hot, Cold, Large, Small
     tags: Optional[str]
 
     # Display
@@ -396,6 +400,7 @@ class MenuCategoryCreateDTO(BaseModel):
     display_order: int = Field(default=0, ge=0)
     icon: Optional[str] = Field(None, max_length=50)
     translations: Optional[Dict[str, Any]] = None
+    subcategories: List[str] = Field(default_factory=list)  # ["Nasi", "Mie", "Ayam"]
     menu_id: Optional[int] = None  # For per-menu categories
 
 
@@ -405,6 +410,7 @@ class MenuCategoryUpdateDTO(BaseModel):
     display_order: Optional[int] = Field(None, ge=0)
     icon: Optional[str] = Field(None, max_length=50)
     translations: Optional[Dict[str, Any]] = None
+    subcategories: Optional[List[str]] = None  # ["Nasi", "Mie", "Ayam"]
 
 
 class MenuCategoryResponseDTO(BaseModel):
@@ -417,6 +423,7 @@ class MenuCategoryResponseDTO(BaseModel):
     display_order: int
     icon: Optional[str]
     translations: Optional[Dict[str, Any]]
+    subcategories: List[str] = []  # ["Nasi", "Mie", "Ayam"]
     created_at: datetime
 
     class Config:
@@ -452,6 +459,33 @@ class MenuCategoryReorderDTO(BaseModel):
 # Menu Media DTOs
 # ==============================================================================
 
+class MenuMediaVariantDTO(BaseModel):
+    """DTO for a single image variant"""
+    url: str
+    width: int
+    height: int
+    size: int
+    format: str = "webp"
+    animated: Optional[bool] = None
+    frames: Optional[int] = None
+
+    class Config:
+        from_attributes = True
+
+
+class MenuMediaVariantsDTO(BaseModel):
+    """DTO for all image variants"""
+    thumb: Optional[MenuMediaVariantDTO] = None
+    small: Optional[MenuMediaVariantDTO] = None
+    hd: Optional[MenuMediaVariantDTO] = None
+    four_k: Optional[MenuMediaVariantDTO] = None  # '4k' is not valid Python identifier
+    original: Optional[MenuMediaVariantDTO] = None
+    fallback: Optional[MenuMediaVariantDTO] = None
+
+    class Config:
+        from_attributes = True
+
+
 class MenuMediaResponseDTO(BaseModel):
     """DTO for menu media response"""
     id: int
@@ -478,6 +512,15 @@ class MenuMediaResponseDTO(BaseModel):
     url: Optional[str] = None
     # Flag for deduplication detection
     is_duplicate: bool = False
+
+    # Image optimization fields
+    variants: Optional[Dict[str, Any]] = None  # WebP variants: {thumb, small, hd, 4k, original, fallback}
+    content_hash: Optional[str] = None  # For cache invalidation
+    processing_status: Optional[str] = None  # pending, processing, completed, failed
+    optimized_at: Optional[datetime] = None
+    original_width: Optional[int] = None
+    original_height: Optional[int] = None
+    is_animated: bool = False
 
     class Config:
         from_attributes = True

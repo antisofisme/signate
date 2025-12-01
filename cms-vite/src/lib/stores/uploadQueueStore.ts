@@ -31,6 +31,10 @@ interface UploadQueueStore extends UploadQueueState {
   _hasHydrated: boolean;
   setHasHydrated: (state: boolean) => void;
 
+  // Panel height for toast positioning
+  panelHeight: number;
+  setPanelHeight: (height: number) => void;
+
   // Queue actions
   addToQueue: (files: File[], options: AddToQueueOptions) => void;
   removeFromQueue: (id: string) => void;
@@ -69,10 +73,16 @@ export const useUploadQueueStore = create<UploadQueueStore>()(
       isMinimized: false,
       isProcessing: false,
       _hasHydrated: false,
+      panelHeight: 0,
 
       // Set hydration status
       setHasHydrated: (state) => {
         set({ _hasHydrated: state });
+      },
+
+      // Set panel height for toast positioning
+      setPanelHeight: (height) => {
+        set({ panelHeight: height });
       },
 
       // Add files to queue

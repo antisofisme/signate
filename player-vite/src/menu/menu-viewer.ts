@@ -32,6 +32,7 @@ export class MenuViewer {
   private currentMediaIndex = 0;
   private currentPreviewData: PreviewData | null = null;
   private highlightedCarouselIntervals: Map<number, ReturnType<typeof setInterval>> = new Map();
+  private expandedSubcategories: Set<string> = new Set();
 
   constructor(config: MenuViewerConfig) {
     this.config = config;
@@ -102,6 +103,84 @@ export class MenuViewer {
   }
 
   /**
+   * Group items by subcategory
+   * Returns object with subcategory as key, items as value
+   * Items without subcategory go to 'Lainnya' group
+   */
+  private groupItemsBySubcategory(items: PublicMenuItem[]): Map<string, PublicMenuItem[]> {
+    const groups = new Map<string, PublicMenuItem[]>();
+    const OTHER_GROUP = 'Lainnya';
+
+    items.forEach(item => {
+      const subcategory = item.subcategory || OTHER_GROUP;
+      if (!groups.has(subcategory)) {
+        groups.set(subcategory, []);
+      }
+      groups.get(subcategory)!.push(item);
+    });
+
+    // Sort groups: named subcategories first (sorted), then 'Lainnya' at the end
+    const sortedGroups = new Map<string, PublicMenuItem[]>();
+    const sortedKeys = Array.from(groups.keys())
+      .filter(k => k !== OTHER_GROUP)
+      .sort((a, b) => a.localeCompare(b, 'id'));
+
+    sortedKeys.forEach(key => {
+      sortedGroups.set(key, groups.get(key)!);
+    });
+
+    // Add 'Lainnya' at the end if it exists
+    if (groups.has(OTHER_GROUP)) {
+      sortedGroups.set(OTHER_GROUP, groups.get(OTHER_GROUP)!);
+    }
+
+    return sortedGroups;
+  }
+
+  /**
+   * Toggle subcategory expand/collapse state
+   */
+  private toggleSubcategory(subcategory: string): void {
+    if (this.expandedSubcategories.has(subcategory)) {
+      this.expandedSubcategories.delete(subcategory);
+    } else {
+      this.expandedSubcategories.add(subcategory);
+    }
+    this.updateSubcategoryUI(subcategory);
+  }
+
+  /**
+   * Update subcategory section UI (expand/collapse) without full re-render
+   */
+  private updateSubcategoryUI(subcategory: string): void {
+    const section = document.querySelector(`[data-subcategory="${subcategory}"]`);
+    if (!section) return;
+
+    const header = section.querySelector('.menu-viewer__subcategory-header');
+    const items = section.querySelector('.menu-viewer__subcategory-items');
+    const chevron = header?.querySelector('.menu-viewer__subcategory-chevron');
+
+    if (this.expandedSubcategories.has(subcategory)) {
+      items?.classList.remove('menu-viewer__subcategory-items--collapsed');
+      chevron?.classList.add('menu-viewer__subcategory-chevron--expanded');
+    } else {
+      items?.classList.add('menu-viewer__subcategory-items--collapsed');
+      chevron?.classList.remove('menu-viewer__subcategory-chevron--expanded');
+    }
+  }
+
+  /**
+   * Check if we should show subcategory grouping (has at least one item with subcategory)
+   */
+  private hasSubcategoriesInCurrentView(): boolean {
+    const categoryItems = this.selectedCategory
+      ? this.items.filter(item => item.category === this.selectedCategory)
+      : this.items;
+
+    return categoryItems.some(item => item.subcategory);
+  }
+
+  /**
    * Get filtered items based on selected category and search term, sorted alphabetically
    */
   private getFilteredItems(): PublicMenuItem[] {
@@ -129,36 +208,6 @@ export class MenuViewer {
   private handleSearchInput(value: string): void {
     this.searchTerm = value;
     this.updateItemsOnly();
-    this.updateClearButton();
-  }
-
-  /**
-   * Update clear button visibility without re-rendering
-   */
-  private updateClearButton(): void {
-    const searchContainer = document.querySelector('.menu-viewer__search-container');
-    if (!searchContainer) return;
-
-    let clearBtn = document.getElementById('search-clear');
-
-    if (this.searchTerm && !clearBtn) {
-      // Create clear button if it doesn't exist
-      clearBtn = document.createElement('button');
-      clearBtn.className = 'menu-viewer__search-clear';
-      clearBtn.id = 'search-clear';
-      clearBtn.innerHTML = '&times;';
-      clearBtn.addEventListener('click', () => {
-        this.searchTerm = '';
-        const input = document.getElementById('menu-search-input') as HTMLInputElement;
-        if (input) input.value = '';
-        this.updateItemsOnly();
-        this.updateClearButton();
-      });
-      searchContainer.appendChild(clearBtn);
-    } else if (!this.searchTerm && clearBtn) {
-      // Remove clear button if search is empty
-      clearBtn.remove();
-    }
   }
 
   /**
@@ -173,12 +222,17 @@ export class MenuViewer {
 
     const filteredItems = this.getFilteredItems();
 
-    // Update items HTML (all items in order, highlighted items have special styling)
-    itemsContainer.innerHTML = filteredItems.map(item =>
-      item.is_featured
-        ? this.renderHighlightedItem(item)
-        : this.renderNormalItem(item)
-    ).join('');
+    // Update items HTML (grouped by subcategory if applicable, or flat list)
+    // When searching, always show flat list for better search experience
+    if (this.hasSubcategoriesInCurrentView() && !this.searchTerm) {
+      itemsContainer.innerHTML = this.renderGroupedItems(filteredItems);
+    } else {
+      itemsContainer.innerHTML = filteredItems.map(item =>
+        item.is_featured
+          ? this.renderHighlightedItem(item)
+          : this.renderNormalItem(item)
+      ).join('');
+    }
 
     // Handle empty state
     if (emptyContainer) {
@@ -193,6 +247,9 @@ export class MenuViewer {
 
     // Re-attach event listeners for items
     this.attachItemEventListeners();
+
+    // Bind subcategory toggle events
+    this.bindSubcategoryToggleEvents();
   }
 
   /**
@@ -224,6 +281,20 @@ export class MenuViewer {
 
         this.highlightedCarouselIntervals.set(itemId, interval);
       }
+    });
+  }
+
+  /**
+   * Bind subcategory toggle events for expand/collapse
+   */
+  private bindSubcategoryToggleEvents(): void {
+    document.querySelectorAll('[data-toggle-subcategory]').forEach(header => {
+      header.addEventListener('click', (e) => {
+        const subcategory = (e.currentTarget as HTMLElement).dataset.toggleSubcategory;
+        if (subcategory) {
+          this.toggleSubcategory(subcategory);
+        }
+      });
     });
   }
 
@@ -547,6 +618,37 @@ export class MenuViewer {
   // =====================================================================
 
   /**
+   * Render items grouped by subcategory with expand/collapse sections
+   */
+  private renderGroupedItems(items: PublicMenuItem[]): string {
+    const groups = this.groupItemsBySubcategory(items);
+
+    return Array.from(groups.entries()).map(([subcategory, groupItems]) => {
+      const isExpanded = this.expandedSubcategories.has(subcategory);
+      const itemCount = groupItems.length;
+
+      return `
+        <div class="menu-viewer__subcategory-section" data-subcategory="${subcategory}">
+          <button class="menu-viewer__subcategory-header" data-toggle-subcategory="${subcategory}">
+            <span class="menu-viewer__subcategory-name">${subcategory}</span>
+            <span class="menu-viewer__subcategory-count">${itemCount}</span>
+            <svg class="menu-viewer__subcategory-chevron ${isExpanded ? 'menu-viewer__subcategory-chevron--expanded' : ''}" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="6 9 12 15 18 9"></polyline>
+            </svg>
+          </button>
+          <div class="menu-viewer__subcategory-items ${isExpanded ? '' : 'menu-viewer__subcategory-items--collapsed'}">
+            ${groupItems.map(item =>
+              item.is_featured
+                ? this.renderHighlightedItem(item)
+                : this.renderNormalItem(item)
+            ).join('')}
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  /**
    * Render the menu in minimalist mode
    */
   private renderMinimalist(): void {
@@ -575,28 +677,38 @@ export class MenuViewer {
 
         <!-- Sticky Filter Bar (Categories + Search) -->
         <div class="menu-viewer__sticky-filter">
-          <!-- Category Tabs -->
-          ${this.categories.length > 0 ? `
-            <div class="menu-viewer__minimalist-categories">
-              <button
-                class="menu-viewer__minimalist-tab ${!this.selectedCategory ? 'menu-viewer__minimalist-tab--active' : ''}"
-                data-category=""
-              >
-                All
-              </button>
-              ${this.categories.map(cat => `
+          <div class="menu-viewer__filter-row">
+            <!-- Category Tabs -->
+            ${this.categories.length > 0 ? `
+              <div class="menu-viewer__minimalist-categories">
                 <button
-                  class="menu-viewer__minimalist-tab ${this.selectedCategory === cat ? 'menu-viewer__minimalist-tab--active' : ''}"
-                  data-category="${cat}"
+                  class="menu-viewer__minimalist-tab ${!this.selectedCategory ? 'menu-viewer__minimalist-tab--active' : ''}"
+                  data-category=""
                 >
-                  ${cat}
+                  All
                 </button>
-              `).join('')}
-            </div>
-          ` : ''}
+                ${this.categories.map(cat => `
+                  <button
+                    class="menu-viewer__minimalist-tab ${this.selectedCategory === cat ? 'menu-viewer__minimalist-tab--active' : ''}"
+                    data-category="${cat}"
+                  >
+                    ${cat}
+                  </button>
+                `).join('')}
+              </div>
+            ` : ''}
 
-          <!-- Search Input -->
-          <div class="menu-viewer__search-container">
+            <!-- Search Toggle Button -->
+            <button class="menu-viewer__search-toggle" id="search-toggle" title="Search">
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="11" cy="11" r="8"></circle>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+              </svg>
+            </button>
+          </div>
+
+          <!-- Expandable Search Input -->
+          <div class="menu-viewer__search-container ${this.searchTerm ? 'menu-viewer__search-container--expanded' : ''}" id="search-container">
             <svg class="menu-viewer__search-icon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <circle cx="11" cy="11" r="8"></circle>
               <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
@@ -608,19 +720,20 @@ export class MenuViewer {
               placeholder="Search menu..."
               value="${this.searchTerm}"
             />
-            ${this.searchTerm ? `
-              <button class="menu-viewer__search-clear" id="search-clear">&times;</button>
-            ` : ''}
+            <button class="menu-viewer__search-close" id="search-close">&times;</button>
           </div>
         </div>
 
-        <!-- Minimalist Items (all items in order, highlighted items have special styling) -->
+        <!-- Minimalist Items (grouped by subcategory if available, or all items in order) -->
         <div class="menu-viewer__minimalist-items">
-          ${filteredItems.map(item =>
-            item.is_featured
-              ? this.renderHighlightedItem(item)
-              : this.renderNormalItem(item)
-          ).join('')}
+          ${this.hasSubcategoriesInCurrentView() && !this.searchTerm
+            ? this.renderGroupedItems(filteredItems)
+            : filteredItems.map(item =>
+                item.is_featured
+                  ? this.renderHighlightedItem(item)
+                  : this.renderNormalItem(item)
+              ).join('')
+          }
         </div>
 
         ${filteredItems.length === 0 ? `
@@ -1014,8 +1127,31 @@ export class MenuViewer {
       });
     });
 
-    // Search input - use 'input' event for real-time updates
+    // Search toggle button - expand search
+    const searchToggle = document.getElementById('search-toggle');
+    const searchContainer = document.getElementById('search-container');
     const searchInput = document.getElementById('menu-search-input') as HTMLInputElement;
+    const searchClose = document.getElementById('search-close');
+
+    if (searchToggle && searchContainer) {
+      searchToggle.addEventListener('click', () => {
+        searchContainer.classList.add('menu-viewer__search-container--expanded');
+        searchInput?.focus();
+      });
+    }
+
+    // Search close button - collapse search
+    if (searchClose && searchContainer) {
+      searchClose.addEventListener('click', () => {
+        // Clear search and collapse
+        this.searchTerm = '';
+        if (searchInput) searchInput.value = '';
+        this.updateItemsOnly();
+        searchContainer.classList.remove('menu-viewer__search-container--expanded');
+      });
+    }
+
+    // Search input - use 'input' event for real-time updates
     if (searchInput) {
       // Handle input event (typing, pasting, etc)
       searchInput.addEventListener('input', (e) => {
@@ -1032,10 +1168,17 @@ export class MenuViewer {
           }
         }
       });
-    }
 
-    // Initial clear button setup (subsequent updates handled dynamically)
-    this.updateClearButton();
+      // Close search on Escape
+      searchInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && searchContainer) {
+          this.searchTerm = '';
+          searchInput.value = '';
+          this.updateItemsOnly();
+          searchContainer.classList.remove('menu-viewer__search-container--expanded');
+        }
+      });
+    }
 
     // FAB Toggle (show/hide contact options)
     const fabMain = document.getElementById('fab-main');
@@ -1140,6 +1283,9 @@ export class MenuViewer {
 
     // Initialize highlighted item carousels (auto-slide + swipe)
     this.initHighlightedCarousels();
+
+    // Bind subcategory toggle events for expand/collapse
+    this.bindSubcategoryToggleEvents();
   }
 
   /**

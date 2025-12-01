@@ -52,6 +52,10 @@ export const MenuForm = ({ menu, onClose, onSuccess }: MenuFormProps) => {
   const [editingCategory, setEditingCategory] = useState<MenuCategory | null>(null);
   const [newCategoryName, setNewCategoryName] = useState('');
 
+  // Subcategory management state
+  const [addingSubcategoryForId, setAddingSubcategoryForId] = useState<number | null>(null);
+  const [newSubcategoryName, setNewSubcategoryName] = useState('');
+
   // Fetch categories for this menu (only in edit mode)
   const { data: categoriesData, isLoading: isLoadingCategories } = useMenuCategories(
     menu?.id || 0,
@@ -168,6 +172,30 @@ export const MenuForm = ({ menu, onClose, onSuccess }: MenuFormProps) => {
     setShowCategoryForm(false);
     setEditingCategory(null);
     setNewCategoryName('');
+  };
+
+  // Subcategory handlers
+  const handleAddSubcategory = async (category: MenuCategory) => {
+    if (!newSubcategoryName.trim()) return;
+
+    const updatedSubcategories = [...(category.subcategories || []), newSubcategoryName.trim()];
+    await updateCategoryMutation.mutateAsync({
+      categoryId: category.id,
+      data: { subcategories: updatedSubcategories },
+    });
+
+    setNewSubcategoryName('');
+    setAddingSubcategoryForId(null);
+  };
+
+  const handleRemoveSubcategory = async (category: MenuCategory, subcategoryToRemove: string) => {
+    const updatedSubcategories = (category.subcategories || []).filter(
+      (sub) => sub !== subcategoryToRemove
+    );
+    await updateCategoryMutation.mutateAsync({
+      categoryId: category.id,
+      data: { subcategories: updatedSubcategories },
+    });
   };
 
   const isCategoryMutating =
@@ -315,31 +343,108 @@ export const MenuForm = ({ menu, onClose, onSuccess }: MenuFormProps) => {
                 <Loader2 className="w-5 h-5 animate-spin text-blue-600" />
               </div>
             ) : categoriesData && categoriesData.items.length > 0 ? (
-              <div className="space-y-2">
+              <div className="space-y-3">
                 {categoriesData.items.map((category) => (
                   <div
                     key={category.id}
-                    className="flex items-center justify-between p-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg"
+                    className="p-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg"
                   >
-                    <span className="text-sm text-gray-900 dark:text-white">{category.name}</span>
-                    <div className="flex items-center gap-1">
-                      <button
-                        type="button"
-                        onClick={() => startEditCategory(category)}
-                        className="p-1.5 text-gray-500 hover:text-blue-600 dark:text-gray-400 dark:hover:text-blue-400 transition-colors"
-                        title="Edit"
-                      >
-                        <Edit2 className="w-4 h-4" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleDeleteCategory(category.id)}
-                        className="p-1.5 text-gray-500 hover:text-red-600 dark:text-gray-400 dark:hover:text-red-400 transition-colors"
-                        title="Delete"
-                        disabled={deleteCategoryMutation.isPending}
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                    {/* Category header */}
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium text-gray-900 dark:text-white">{category.name}</span>
+                      <div className="flex items-center gap-1">
+                        <button
+                          type="button"
+                          onClick={() => startEditCategory(category)}
+                          className="p-1.5 text-gray-500 hover:text-blue-600 dark:text-gray-400 dark:hover:text-blue-400 transition-colors"
+                          title="Edit"
+                        >
+                          <Edit2 className="w-4 h-4" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteCategory(category.id)}
+                          className="p-1.5 text-gray-500 hover:text-red-600 dark:text-gray-400 dark:hover:text-red-400 transition-colors"
+                          title="Delete"
+                          disabled={deleteCategoryMutation.isPending}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Subcategories section */}
+                    <div className="mt-2 pt-2 border-t border-gray-100 dark:border-gray-700">
+                      <span className="text-xs text-gray-500 dark:text-gray-400">Subcategories:</span>
+                      <div className="mt-1 flex flex-wrap gap-2 items-center">
+                        {/* Subcategory chips */}
+                        {(category.subcategories || []).map((sub) => (
+                          <span
+                            key={sub}
+                            className="inline-flex items-center gap-1 px-2 py-1 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 text-xs rounded-md"
+                          >
+                            {sub}
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveSubcategory(category, sub)}
+                              className="hover:text-red-600 dark:hover:text-red-400"
+                              title="Remove"
+                            >
+                              <X className="w-3 h-3" />
+                            </button>
+                          </span>
+                        ))}
+
+                        {/* Add subcategory input or button */}
+                        {addingSubcategoryForId === category.id ? (
+                          <div className="flex items-center gap-1">
+                            <input
+                              type="text"
+                              value={newSubcategoryName}
+                              onChange={(e) => setNewSubcategoryName(e.target.value)}
+                              placeholder="Subcategory name"
+                              className="px-2 py-1 border border-gray-300 dark:border-gray-600 rounded text-xs bg-white dark:bg-gray-700 text-gray-900 dark:text-white w-32"
+                              autoFocus
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                  e.preventDefault();
+                                  handleAddSubcategory(category);
+                                } else if (e.key === 'Escape') {
+                                  setAddingSubcategoryForId(null);
+                                  setNewSubcategoryName('');
+                                }
+                              }}
+                            />
+                            <button
+                              type="button"
+                              onClick={() => handleAddSubcategory(category)}
+                              disabled={!newSubcategoryName.trim() || updateCategoryMutation.isPending}
+                              className="p-1 text-blue-600 hover:text-blue-700 disabled:opacity-50"
+                            >
+                              <Plus className="w-4 h-4" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setAddingSubcategoryForId(null);
+                                setNewSubcategoryName('');
+                              }}
+                              className="p-1 text-gray-500 hover:text-gray-700"
+                            >
+                              <X className="w-4 h-4" />
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => setAddingSubcategoryForId(category.id)}
+                            className="inline-flex items-center gap-1 px-2 py-1 border border-dashed border-gray-300 dark:border-gray-600 text-gray-500 dark:text-gray-400 text-xs rounded-md hover:border-blue-500 hover:text-blue-500 transition-colors"
+                          >
+                            <Plus className="w-3 h-3" />
+                            Add
+                          </button>
+                        )}
+                      </div>
                     </div>
                   </div>
                 ))}

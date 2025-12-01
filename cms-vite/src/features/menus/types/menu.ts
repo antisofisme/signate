@@ -80,6 +80,7 @@ export interface MenuItem {
   // Categorization
   category?: string;
   subcategory?: string;
+  variant?: string;  // Item variations: Hot, Cold, Large, Small
   tags?: string;
 
   // Display
@@ -164,6 +165,7 @@ export interface MenuItemCreateRequest {
   content_id?: number;
   category?: string;
   subcategory?: string;
+  variant?: string;  // Item variations: Hot, Cold, Large, Small
   tags?: string;
   display_order?: number;
   is_active?: boolean;
@@ -182,6 +184,7 @@ export interface MenuItemUpdateRequest {
   content_id?: number;
   category?: string;
   subcategory?: string;
+  variant?: string;  // Item variations: Hot, Cold, Large, Small
   tags?: string;
   display_order?: number;
   is_active?: boolean;
@@ -310,6 +313,7 @@ export interface MenuCategory {
   display_order: number;
   icon?: string;
   translations?: Record<string, any>;
+  subcategories: string[];  // ["Nasi", "Mie", "Ayam"]
   created_at: string;
 }
 
@@ -319,6 +323,7 @@ export interface MenuCategoryCreateRequest {
   display_order?: number;
   icon?: string;
   translations?: Record<string, any>;
+  subcategories?: string[];  // ["Nasi", "Mie", "Ayam"]
   menu_id?: number;
 }
 
@@ -327,6 +332,7 @@ export interface MenuCategoryUpdateRequest {
   display_order?: number;
   icon?: string;
   translations?: Record<string, any>;
+  subcategories?: string[];  // ["Nasi", "Mie", "Ayam"]
 }
 
 export interface MenuCategoryListResponse {
@@ -377,4 +383,79 @@ export interface PINVerifyRequest {
 export interface PINVerifyResponse {
   verified: boolean;
   message: string;
+}
+
+// ========== Editable Item Types for View/Edit Mode ==========
+
+export type EditableItemStatus = 'idle' | 'saving' | 'success' | 'error';
+
+/**
+ * Extended MenuItem for inline editing with change tracking
+ * Used by MenuItemsManager in Edit Mode
+ */
+export interface EditableItem {
+  id: number;
+  menu_id: number;
+  organization_id: number;
+
+  // Item details
+  name: string;
+  description: string;
+  price: number | null;
+  currency: string;
+
+  // Media
+  image_url: string | null;
+  video_url?: string;
+  content_id?: number;
+  media_ids: number[]; // Selected media IDs for this item
+
+  // Categorization
+  category: string;
+  subcategory: string;
+  variant: string;
+  tags: string;
+
+  // Display
+  display_order: number;
+  is_active: boolean;
+  is_featured: boolean;
+  is_available: boolean;
+
+  // Edit tracking
+  hasChanges: boolean;
+  status: EditableItemStatus;
+  mediaChanged: boolean;
+  isNew?: boolean; // Flag for new items not yet saved (negative IDs)
+}
+
+/**
+ * Convert MenuItem to EditableItem
+ */
+export function toEditableItem(item: MenuItem): EditableItem {
+  return {
+    id: item.id,
+    menu_id: item.menu_id,
+    organization_id: item.organization_id,
+    name: item.name,
+    description: item.description || '',
+    price: item.price ?? null,
+    currency: item.currency,
+    image_url: item.image_url || null,
+    video_url: item.video_url,
+    content_id: item.content_id,
+    media_ids: [], // Will be populated after fetching media
+    category: item.category || '',
+    subcategory: item.subcategory || '',
+    variant: item.variant || '',
+    tags: item.tags || '',
+    display_order: item.display_order,
+    is_active: item.is_active,
+    is_featured: item.is_featured,
+    is_available: item.is_available,
+    hasChanges: false,
+    status: 'idle',
+    mediaChanged: false,
+    isNew: false,
+  };
 }

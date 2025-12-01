@@ -7,7 +7,7 @@
 
 import { Building, Shield, Edit, Trash2, Users, Monitor, Plus } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { EmptyState, Button } from '@/shared/components';
+import { EmptyState, Button, TABLE_STYLES } from '@/shared/components';
 import type { Organization } from '../types/organization';
 
 interface OrganizationListProps {
@@ -37,32 +37,32 @@ export function OrganizationList({
   }
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
-      <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-        <thead className="bg-gray-50 dark:bg-gray-900">
+    <div className={TABLE_STYLES.container}>
+      <table className={TABLE_STYLES.table}>
+        <thead className={TABLE_STYLES.thead}>
           <tr>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+            <th className={TABLE_STYLES.th}>
               {t('organizations.name')}
             </th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+            <th className={TABLE_STYLES.th}>
               {t('organizations.users')}
             </th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+            <th className={TABLE_STYLES.th}>
               {t('organizations.devices')}
             </th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+            <th className={TABLE_STYLES.th}>
               {t('organizations.status')}
             </th>
             {(onEdit || onDelete) && (
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+              <th className={TABLE_STYLES.th}>
                 {t('organizations.actions')}
               </th>
             )}
           </tr>
         </thead>
-        <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+        <tbody className={TABLE_STYLES.tbody}>
           {organizations.map((org) => (
-            <tr key={org.id}>
+            <tr key={org.id} className={TABLE_STYLES.tr}>
               <td className="px-6 py-4 whitespace-nowrap">
                 <div className="flex items-center">
                   <Building className="w-5 h-5 text-gray-400 mr-2" />

@@ -6,6 +6,12 @@ Centralized API with Clean Architecture
 # Application Version
 __version__ = "1.0.0"
 
+# Register additional MIME types for static files
+import mimetypes
+mimetypes.add_type("image/webp", ".webp")
+mimetypes.add_type("image/heic", ".heic")
+mimetypes.add_type("image/heif", ".heif")
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -345,6 +351,12 @@ else:
     MENU_MEDIA_DIR.mkdir(parents=True, exist_ok=True)
     app.mount("/menu-media-files", StaticFiles(directory=str(MENU_MEDIA_DIR)), name="menu-media-files")
     print(f"✓ Static files mounted: /menu-media-files -> {MENU_MEDIA_DIR} (created)")
+
+# Mount static files for optimized menu media (WebP variants)
+MENU_MEDIA_OPTIMIZED_DIR = Path(settings.UPLOAD_DIR) / "menu_media_optimized"
+MENU_MEDIA_OPTIMIZED_DIR.mkdir(parents=True, exist_ok=True)
+app.mount("/menu-media-optimized", StaticFiles(directory=str(MENU_MEDIA_OPTIMIZED_DIR)), name="menu-media-optimized")
+print(f"✓ Static files mounted: /menu-media-optimized -> {MENU_MEDIA_OPTIMIZED_DIR}")
 
 
 # =============================================================================

@@ -109,6 +109,7 @@ class MenuItemModel(Base):
     # Categorization
     category = Column(String(100), nullable=True, index=True)
     subcategory = Column(String(100), nullable=True)
+    variant = Column(String(200), nullable=True)  # Item variations: Hot, Cold, Large, Small
     tags = Column(String(200), nullable=True)
 
     # Display
@@ -253,6 +254,15 @@ class MenuMediaModel(Base):
     # Status
     is_active = Column(Boolean, default=True, nullable=False)
 
+    # Image optimization (WebP variants)
+    variants = Column(JSONB, nullable=True)  # {thumb, small, hd, 4k, original, fallback}
+    content_hash = Column(String(64), nullable=True, index=True)  # For cache invalidation
+    processing_status = Column(String(20), default='pending')  # pending, processing, completed, failed
+    optimized_at = Column(DateTime(timezone=True), nullable=True)
+    original_width = Column(Integer, nullable=True)  # Original dimensions before processing
+    original_height = Column(Integer, nullable=True)
+    is_animated = Column(Boolean, default=False)  # True for animated GIFs
+
     # Audit trail
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
@@ -293,6 +303,9 @@ class MenuCategoryModel(Base):
 
     # Multi-language
     translations = Column(JSONB, nullable=True)
+
+    # Subcategories - array of subcategory names
+    subcategories = Column(JSONB, default=[], nullable=False)  # ["Nasi", "Mie", "Ayam"]
 
     # Metadata
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)

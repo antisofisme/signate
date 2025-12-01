@@ -5,7 +5,7 @@
 
 import { Pencil, Trash2, Tag as TagIcon } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { TableSkeleton, EmptyState } from '@/shared/components';
+import { TableSkeleton, EmptyState, TABLE_STYLES } from '@/shared/components';
 import { TagBadge } from './TagBadge';
 import type { Tag } from '../types/tag';
 
@@ -41,38 +41,38 @@ export function TagList({
   }
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
-      <table className="w-full">
-        <thead className="bg-gray-50 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600">
+    <div className={TABLE_STYLES.container}>
+      <table className={TABLE_STYLES.table}>
+        <thead className={TABLE_STYLES.thead}>
           <tr>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+            <th className={TABLE_STYLES.th}>
               {t('tags.tag')}
             </th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+            <th className={TABLE_STYLES.th}>
               {t('tags.description')}
             </th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+            <th className={TABLE_STYLES.th}>
               {t('tags.created')}
             </th>
-            <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+            <th className={TABLE_STYLES.th}>
               {t('tags.actions')}
             </th>
           </tr>
         </thead>
-        <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+        <tbody className={TABLE_STYLES.tbody}>
           {tags.map((tag) => (
-            <tr key={tag.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
-              <td className="px-6 py-4 whitespace-nowrap">
+            <tr key={tag.id} className={TABLE_STYLES.tr}>
+              <td className={TABLE_STYLES.td}>
                 <TagBadge tag={tag} />
               </td>
-              <td className="px-6 py-4 text-gray-700 dark:text-gray-300">
+              <td className={TABLE_STYLES.td}>
                 {tag.description || '-'}
               </td>
-              <td className="px-6 py-4 text-gray-600 dark:text-gray-400">
+              <td className={`${TABLE_STYLES.td} ${TABLE_STYLES.muted}`}>
                 {new Date(tag.created_at).toLocaleDateString('id-ID')}
               </td>
-              <td className="px-6 py-4 whitespace-nowrap text-right">
-                <div className="flex items-center justify-end gap-2">
+              <td className={TABLE_STYLES.td}>
+                <div className="flex items-center gap-2">
                   {onEdit && (
                     <button
                       onClick={() => onEdit(tag)}

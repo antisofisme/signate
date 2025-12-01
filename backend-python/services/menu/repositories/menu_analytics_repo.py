@@ -198,6 +198,7 @@ class MenuCategoryRepository:
         display_order: int = 0,
         icon: Optional[str] = None,
         translations: Optional[Dict[str, Any]] = None,
+        subcategories: Optional[List[str]] = None,
         menu_id: Optional[int] = None
     ) -> MenuCategoryModel:
         """Create category preset"""
@@ -208,6 +209,7 @@ class MenuCategoryRepository:
             display_order=display_order,
             icon=icon,
             translations=translations,
+            subcategories=subcategories or [],
             menu_id=menu_id
         )
 
@@ -275,7 +277,8 @@ class MenuCategoryRepository:
         name: Optional[str] = None,
         display_order: Optional[int] = None,
         icon: Optional[str] = None,
-        translations: Optional[Dict[str, Any]] = None
+        translations: Optional[Dict[str, Any]] = None,
+        subcategories: Optional[List[str]] = None
     ) -> MenuCategoryModel:
         """Update category"""
         if name is not None:
@@ -286,6 +289,8 @@ class MenuCategoryRepository:
             category.icon = icon
         if translations is not None:
             category.translations = translations
+        if subcategories is not None:
+            category.subcategories = subcategories
 
         self.db.commit()
         self.db.refresh(category)

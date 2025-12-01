@@ -260,7 +260,7 @@ class ConnectionLogListResponse(BaseModel):
 # EXTENDED OPERATIONS (TV/Monitor Registration, Content Resolution)
 # ============================================================================
 
-@monitoring_router.post(DeviceRoutes.TV_REGISTER, status_code=status.HTTP_201_CREATED)
+@monitoring_router.post("/tv", status_code=status.HTTP_201_CREATED)
 def register_tv_device(
     request: TVRegisterRequest,
     db: Session = Depends(get_db)
@@ -306,7 +306,7 @@ def register_tv_device(
     }
 
 
-@monitoring_router.post(DeviceRoutes.MONITOR_REGISTER, status_code=status.HTTP_201_CREATED)
+@monitoring_router.post("/monitor", status_code=status.HTTP_201_CREATED)
 def register_monitor_device(
     request: MonitorRegisterRequest,
     db: Session = Depends(get_db)
@@ -359,7 +359,7 @@ def register_monitor_device(
     }
 
 
-@monitoring_router.post(DeviceRoutes.RELEASE, status_code=status.HTTP_200_OK)
+@monitoring_router.post("/{device_id}/release", status_code=status.HTTP_200_OK)
 def release_device(
     device_id: int,
     db: Session = Depends(get_db)
@@ -427,7 +427,7 @@ def release_device(
     }
 
 
-@monitoring_router.get(DeviceRoutes.CONTENT_RESOLVED)
+@monitoring_router.get("/{device_id}/content/resolved")
 def get_resolved_content(
     device_id: int,
     db: Session = Depends(get_db)
@@ -607,7 +607,7 @@ def get_resolved_content(
         }
 
 
-@monitoring_router.post(DeviceRoutes.SPEED_TEST, response_model=SpeedTestResponse, status_code=status.HTTP_201_CREATED)
+@monitoring_router.post("/{device_id}/speed-test", response_model=SpeedTestResponse, status_code=status.HTTP_201_CREATED)
 def record_speed_test(
     device_id: int,
     request: SpeedTestRequest,
@@ -683,7 +683,7 @@ def record_speed_test(
     )
 
 
-@monitoring_router.get(DeviceRoutes.SPEED_TESTS)
+@monitoring_router.get("/{device_id}/speed-tests")
 def get_speed_test_history(
     device_id: int,
     limit: int = Query(100, ge=1, le=500),

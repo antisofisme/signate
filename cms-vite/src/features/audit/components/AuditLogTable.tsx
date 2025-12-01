@@ -6,6 +6,7 @@
 import { useTranslation } from 'react-i18next';
 import { ChevronLeft, ChevronRight, FileText } from 'lucide-react';
 import { format } from 'date-fns';
+import { TABLE_STYLES } from '@/shared/components';
 import type { AuditLog } from '../types/auditLog';
 
 interface AuditLogTableProps {
@@ -73,34 +74,34 @@ export function AuditLogTable({
   }
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
+    <div className={TABLE_STYLES.container}>
       <div className="overflow-x-auto">
-        <table className="w-full">
-          <thead className="bg-gray-50 dark:bg-gray-700">
+        <table className={TABLE_STYLES.table}>
+          <thead className={TABLE_STYLES.thead}>
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+              <th className={TABLE_STYLES.th}>
                 {t('audit.table.timestamp')}
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+              <th className={TABLE_STYLES.th}>
                 {t('audit.table.user')}
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+              <th className={TABLE_STYLES.th}>
                 {t('audit.table.action')}
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+              <th className={TABLE_STYLES.th}>
                 {t('audit.table.resource')}
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+              <th className={TABLE_STYLES.th}>
                 {t('audit.table.details')}
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+              <th className={TABLE_STYLES.th}>
                 {t('audit.table.ipAddress')}
               </th>
             </tr>
           </thead>
-          <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+          <tbody className={TABLE_STYLES.tbody}>
             {logs.map((log) => (
-              <tr key={log.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
+              <tr key={log.id} className={TABLE_STYLES.tr}>
                 <td className="px-6 py-4 whitespace-nowrap">
                   <div className="text-sm text-gray-900 dark:text-white">
                     {format(new Date(log.created_at), 'MMM dd, yyyy')}

@@ -1,6 +1,8 @@
 /**
  * Menu Media Upload Modal Component
  * Uses global queue store for persistent upload tracking
+ *
+ * Refactored to match Content UploadModal structure
  */
 
 import { useState, useRef, ChangeEvent } from 'react';
@@ -8,13 +10,11 @@ import { useTranslation } from 'react-i18next';
 import {
   Upload,
   Loader2,
-  X,
   FileImage,
-  Check,
-  AlertCircle,
+  Trash2,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { Button } from '@/shared/components';
+import { Modal } from '@/shared/components';
 import { useUploadMenuMedia } from '../hooks/useMenuMedia';
 import { useMenuMediaUploadStore } from '@/lib/stores/menuMediaUploadStore';
 
@@ -22,6 +22,10 @@ interface MenuMediaUploadModalProps {
   isOpen: boolean;
   onClose: () => void;
 }
+
+// File type validation
+const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 
 export function MenuMediaUploadModal({ isOpen, onClose }: MenuMediaUploadModalProps) {
   const { t } = useTranslation();
@@ -34,21 +38,16 @@ export function MenuMediaUploadModal({ isOpen, onClose }: MenuMediaUploadModalPr
 
   // Global queue store
   const addToQueue = useMenuMediaUploadStore((state) => state.addToQueue);
-  const items = useMenuMediaUploadStore((state) => state.items);
   const updateStatus = useMenuMediaUploadStore((state) => state.updateStatus);
   const setProcessing = useMenuMediaUploadStore((state) => state.setProcessing);
-  const getSummary = useMenuMediaUploadStore((state) => state.getSummary);
 
   // File validation
   const validateFile = (file: File): string | null => {
-    const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
-    const maxSize = 10 * 1024 * 1024; // 10MB
-
-    if (!allowedTypes.includes(file.type)) {
-      return 'Invalid file type. Only JPG, PNG, GIF, WebP allowed.';
+    if (!ALLOWED_TYPES.includes(file.type)) {
+      return t('menuMedia.upload.errors.invalidType', { defaultValue: 'Invalid file type. Only JPG, PNG, GIF, WebP allowed.' });
     }
-    if (file.size > maxSize) {
-      return 'File is too large. Maximum size is 10MB.';
+    if (file.size > MAX_FILE_SIZE) {
+      return t('menuMedia.upload.errors.tooLarge', { defaultValue: 'File is too large. Maximum size is 10MB.' });
     }
     return null;
   };
@@ -74,7 +73,7 @@ export function MenuMediaUploadModal({ isOpen, onClose }: MenuMediaUploadModalPr
 
     // Show error toast for invalid files
     if (newErrors.size > 0) {
-      toast.error(`${newErrors.size} file(s) rejected due to validation errors`);
+      toast.error(t('menuMedia.upload.errors.rejected', { count: newErrors.size, defaultValue: `${newErrors.size} file(s) rejected due to validation errors` }));
     }
   };
 
@@ -90,7 +89,8 @@ export function MenuMediaUploadModal({ isOpen, onClose }: MenuMediaUploadModalPr
   };
 
   // Process upload - Add to queue and start uploading
-  const handleUpload = async () => {
+  const handleUpload = async (e: React.FormEvent) => {
+    e.preventDefault();
     if (localFiles.length === 0) return;
 
     // Add to global queue
@@ -107,6 +107,14 @@ export function MenuMediaUploadModal({ isOpen, onClose }: MenuMediaUploadModalPr
     clearLocalFiles();
     onClose();
 
+    // Show toast notification
+    toast.success(
+      t('menuMedia.upload.addedToQueue', {
+        count: newItems.length,
+        defaultValue: `${newItems.length} file(s) added to queue`,
+      })
+    );
+
     // Process uploads
     for (const item of newItems) {
       updateStatus(item.id, 'uploading');
@@ -120,7 +128,6 @@ export function MenuMediaUploadModal({ isOpen, onClose }: MenuMediaUploadModalPr
     }
 
     setProcessing(false);
-    toast.success(`${newItems.length} image(s) uploaded`);
   };
 
   // Handle file input change
@@ -158,112 +165,149 @@ export function MenuMediaUploadModal({ isOpen, onClose }: MenuMediaUploadModalPr
   const formatFileSize = (bytes: number) => {
     if (bytes < 1024) return `${bytes} B`;
     if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+    return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
   };
 
-  if (!isOpen) return null;
+  // Footer with action buttons
+  const footer = (
+    <div className="border-t border-gray-200 dark:border-gray-700 px-6 py-4">
+      <div className="flex justify-end gap-3">
+        <button
+          type="button"
+          onClick={handleClose}
+          className="px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+        >
+          {t('common.cancel', { defaultValue: 'Cancel' })}
+        </button>
+        <button
+          type="submit"
+          form="upload-menu-media-form"
+          disabled={localFiles.length === 0}
+          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 transition-colors"
+        >
+          <Upload className="w-4 h-4" />
+          {localFiles.length > 0
+            ? t('menuMedia.upload.addToQueue', { count: localFiles.length, defaultValue: `Add ${localFiles.length} to Queue` })
+            : t('menuMedia.upload.upload', { defaultValue: 'Upload' })}
+        </button>
+      </div>
+    </div>
+  );
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      {/* Backdrop */}
-      <div
-        className="absolute inset-0 bg-black bg-opacity-50"
-        onClick={handleClose}
-      />
-
-      {/* Modal */}
-      <div className="relative bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] flex flex-col">
-        {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-            Upload Images
-          </h2>
-          <button
-            onClick={handleClose}
-            className="text-gray-400 hover:text-gray-500"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
-
-        {/* Content */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-4">
-          {/* Drop Zone */}
-          <div
-            onClick={() => fileInputRef.current?.click()}
-            onDrop={handleDrop}
-            onDragOver={handleDragOver}
-            onDragLeave={handleDragLeave}
-            className={`
-              border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors
-              ${isDragging
-                ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
-                : 'border-gray-300 dark:border-gray-600 hover:border-blue-400 dark:hover:border-blue-500'
-              }
-            `}
-          >
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/jpeg,image/png,image/gif,image/webp"
-              multiple
-              onChange={handleInputChange}
-              className="hidden"
-            />
-            <Upload className="w-10 h-10 text-gray-400 mx-auto mb-3" />
-            <p className="text-gray-600 dark:text-gray-400 mb-1">
-              {isDragging ? 'Drop images here...' : 'Drag & drop images here, or click to select'}
-            </p>
-            <p className="text-sm text-gray-500">JPG, PNG, GIF, WebP - Max 10MB</p>
+    <Modal
+      isOpen={isOpen}
+      onClose={handleClose}
+      title={t('menuMedia.upload.title', { defaultValue: 'Upload Images' })}
+      maxWidth="2xl"
+      footer={footer}
+      closeOnBackdropClick={true}
+      className="h-[90vh]"
+    >
+      {/* Scrollable content */}
+      <div className="flex-1 overflow-y-auto p-6">
+        <form id="upload-menu-media-form" onSubmit={handleUpload} className="space-y-6">
+          {/* Supported File Types Info */}
+          <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+            <h3 className="text-sm font-semibold text-blue-900 dark:text-blue-300 mb-2">
+              {t('menuMedia.upload.fileTypes.title', { defaultValue: 'Supported File Types' })}
+            </h3>
+            <div className="text-xs">
+              <p className="font-medium text-blue-800 dark:text-blue-400 mb-1">
+                {t('menuMedia.upload.fileTypes.images', { defaultValue: 'Images' })} (4)
+              </p>
+              <p className="text-blue-700 dark:text-blue-300 space-x-1">
+                <span>.jpg</span> <span>.png</span> <span>.gif</span> <span>.webp</span>
+              </p>
+              <p className="text-blue-600 dark:text-blue-400 mt-2 text-xs">
+                {t('menuMedia.upload.fileTypes.maxSize', { defaultValue: 'Maximum file size: 10MB per image' })}
+              </p>
+            </div>
           </div>
 
-          {/* Selected Files */}
-          {localFiles.length > 0 && (
-            <div className="space-y-2">
-              <div className="flex items-center justify-between text-sm text-gray-600 dark:text-gray-400">
-                <span>{localFiles.length} file(s) ready to upload</span>
-                <button
-                  onClick={clearLocalFiles}
-                  className="text-blue-600 hover:text-blue-700"
-                >
-                  Clear All
-                </button>
+          {/* File Upload Area */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              {t('menuMedia.upload.filesLabel', { defaultValue: 'Select Images' })}
+            </label>
+            <div
+              onClick={() => fileInputRef.current?.click()}
+              onDrop={handleDrop}
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
+              className={`
+                border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-colors
+                ${isDragging
+                  ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
+                  : 'border-gray-300 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500'
+                }
+              `}
+            >
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/jpeg,image/png,image/gif,image/webp"
+                multiple
+                onChange={handleInputChange}
+                className="hidden"
+              />
+              <div className="flex flex-col items-center">
+                <div className="text-gray-400 dark:text-gray-500 mb-3">
+                  <Upload className="w-12 h-12" />
+                </div>
+                <p className="text-sm font-medium text-gray-900 dark:text-white mb-1">
+                  {isDragging
+                    ? t('menuMedia.upload.dropHere', { defaultValue: 'Drop images here...' })
+                    : t('menuMedia.upload.clickOrDrag', { defaultValue: 'Click to select or drag images here' })}
+                </p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  {t('menuMedia.upload.selectMultiple', { defaultValue: 'You can select multiple images at once' })}
+                </p>
               </div>
+            </div>
 
-              <div className="max-h-60 overflow-y-auto space-y-2">
+            {/* Selected Files List */}
+            {localFiles.length > 0 && (
+              <div className="mt-4 space-y-2 max-h-60 overflow-y-auto">
+                <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                  {t('menuMedia.upload.selectedFiles', { count: localFiles.length, defaultValue: `${localFiles.length} file(s) selected` })}
+                </p>
                 {localFiles.map((file, index) => (
                   <div
-                    key={index}
-                    className="flex items-center gap-3 p-3 rounded-lg border border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-800"
+                    key={`${file.name}-${index}`}
+                    className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg"
                   >
-                    <FileImage className="w-4 h-4 text-gray-400" />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
-                        {file.name}
-                      </p>
-                      <p className="text-xs text-gray-500 dark:text-gray-400">
-                        {formatFileSize(file.size)}
-                      </p>
+                    <div className="flex items-center gap-3 flex-1 min-w-0">
+                      <FileImage className="w-6 h-6 text-green-600" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                          {file.name}
+                        </p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">
+                          {formatFileSize(file.size)}
+                        </p>
+                      </div>
                     </div>
                     <button
+                      type="button"
                       onClick={() => removeLocalFile(index)}
-                      className="text-gray-400 hover:text-gray-600"
+                      className="text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
                     >
-                      <X className="w-4 h-4" />
+                      <Trash2 className="w-4 h-4" />
                     </button>
                   </div>
                 ))}
               </div>
-            </div>
-          )}
+            )}
+          </div>
 
           {/* Validation Errors */}
           {validationErrors.size > 0 && (
-            <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
-              <p className="text-sm font-medium text-red-800 dark:text-red-300 mb-2">
-                {validationErrors.size} file(s) rejected:
+            <div className="bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 px-4 py-3 rounded-lg text-sm">
+              <p className="font-medium mb-2">
+                {t('menuMedia.upload.errors.title', { count: validationErrors.size, defaultValue: `${validationErrors.size} file(s) rejected:` })}
               </p>
-              <ul className="text-xs text-red-700 dark:text-red-400 space-y-1">
+              <ul className="text-xs space-y-1">
                 {Array.from(validationErrors.entries()).map(([name, error]) => (
                   <li key={name}>
                     <span className="font-medium">{name}:</span> {error}
@@ -272,24 +316,8 @@ export function MenuMediaUploadModal({ isOpen, onClose }: MenuMediaUploadModalPr
               </ul>
             </div>
           )}
-        </div>
-
-        {/* Footer */}
-        <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-200 dark:border-gray-700">
-          <Button variant="secondary" onClick={handleClose}>
-            Cancel
-          </Button>
-          {localFiles.length > 0 && (
-            <Button
-              variant="primary"
-              onClick={handleUpload}
-              leftIcon={<Upload className="w-4 h-4" />}
-            >
-              Upload {localFiles.length} file(s)
-            </Button>
-          )}
-        </div>
+        </form>
       </div>
-    </div>
+    </Modal>
   );
 }

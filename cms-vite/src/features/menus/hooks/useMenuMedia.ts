@@ -182,3 +182,40 @@ export const useDuplicateMenuMedia = () => {
 
 // Legacy hook for backward compatibility
 export const useMenuMedia = useMenuMediaList;
+
+// ========== Menu Item Media Hooks ==========
+
+import { menuKeys } from './useMenus';
+import type { MenuItemMediaBulkSetRequest } from '../types/menu';
+
+/**
+ * Hook to fetch media for a specific menu item
+ */
+export const useItemMedia = (menuId: number, itemId: number | null) => {
+  return useQuery({
+    queryKey: [...menuKeys.items(menuId), 'media', itemId],
+    queryFn: () => menuApi.listItemMedia(menuId, itemId!),
+    enabled: !!menuId && !!itemId,
+    staleTime: 0,
+  });
+};
+
+/**
+ * Hook to bulk set media for a menu item (replaces all existing)
+ */
+export const useBulkSetItemMedia = (menuId: number) => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ itemId, data }: { itemId: number; data: MenuItemMediaBulkSetRequest }) =>
+      menuApi.bulkSetItemMedia(menuId, itemId, data),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: menuKeys.items(menuId) });
+      queryClient.invalidateQueries({ queryKey: [...menuKeys.items(menuId), 'media', variables.itemId] });
+      // Don't show toast here - let the parent handle it
+    },
+    onError: (error: unknown) => {
+      toast.error(getApiErrorMessage(error, 'Failed to update images'));
+    },
+  });
+};

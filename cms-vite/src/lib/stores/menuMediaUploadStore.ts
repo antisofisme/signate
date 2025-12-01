@@ -17,6 +17,7 @@ interface MenuMediaUploadStore {
   items: MenuMediaQueueItem[];
   isMinimized: boolean;
   isProcessing: boolean;
+  panelHeight: number;
 
   // Actions
   addToQueue: (files: File[]) => void;
@@ -27,6 +28,7 @@ interface MenuMediaUploadStore {
   clearCompleted: () => void;
   setProcessing: (isProcessing: boolean) => void;
   toggleMinimize: () => void;
+  setPanelHeight: (height: number) => void;
 
   // Computed
   getPendingItems: () => MenuMediaQueueItem[];
@@ -45,6 +47,7 @@ export const useMenuMediaUploadStore = create<MenuMediaUploadStore>((set, get) =
   items: [],
   isMinimized: false,
   isProcessing: false,
+  panelHeight: 0,
 
   addToQueue: (files) => {
     const newItems: MenuMediaQueueItem[] = files.map((file) => ({
@@ -97,6 +100,10 @@ export const useMenuMediaUploadStore = create<MenuMediaUploadStore>((set, get) =
 
   toggleMinimize: () => {
     set((state) => ({ isMinimized: !state.isMinimized }));
+  },
+
+  setPanelHeight: (height) => {
+    set({ panelHeight: height });
   },
 
   getPendingItems: () => {

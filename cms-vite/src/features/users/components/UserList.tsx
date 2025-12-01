@@ -7,6 +7,7 @@
 
 import { useTranslation } from 'react-i18next';
 import { Shield, Edit, Trash2, Key, Building } from 'lucide-react';
+import { TABLE_STYLES } from '@/shared/components';
 import type { User } from '../types/user';
 
 interface UserListProps {
@@ -38,30 +39,30 @@ export function UserList({
   };
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
-      <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-        <thead className="bg-gray-50 dark:bg-gray-900">
+    <div className={TABLE_STYLES.container}>
+      <table className={TABLE_STYLES.table}>
+        <thead className={TABLE_STYLES.thead}>
           <tr>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+            <th className={TABLE_STYLES.th}>
               {t('users.table.user')}
             </th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+            <th className={TABLE_STYLES.th}>
               {t('users.table.role')}
             </th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+            <th className={TABLE_STYLES.th}>
               {t('users.table.organization')}
             </th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+            <th className={TABLE_STYLES.th}>
               {t('users.table.status')}
             </th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+            <th className={TABLE_STYLES.th}>
               {t('users.table.actions')}
             </th>
           </tr>
         </thead>
-        <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+        <tbody className={TABLE_STYLES.tbody}>
           {users?.map((user) => (
-            <tr key={user.id}>
+            <tr key={user.id} className={TABLE_STYLES.tr}>
               <td className="px-6 py-4 whitespace-nowrap">
                 <div>
                   <div className="text-sm font-medium text-gray-900 dark:text-white">

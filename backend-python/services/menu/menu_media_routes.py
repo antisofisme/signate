@@ -10,6 +10,13 @@ from datetime import datetime
 from PIL import Image
 import io
 
+# Register HEIC/HEIF opener for iPhone photos support
+try:
+    from pillow_heif import register_heif_opener
+    register_heif_opener()
+except ImportError:
+    pass  # pillow-heif not installed, HEIC support disabled
+
 from shared.database import get_db
 from shared.responses import success_response
 from shared.auth import get_current_user, CurrentUser
@@ -18,6 +25,9 @@ from shared.cache import cache
 
 from .repositories import MenuMediaRepository
 from .dtos import MenuMediaResponseDTO, MenuMediaListDTO, MenuMediaUpdateDTO
+from .image_optimizer import get_image_optimizer
+
+from loguru import logger
 
 
 def calculate_file_hash(content: bytes) -> str:
@@ -26,8 +36,8 @@ def calculate_file_hash(content: bytes) -> str:
 
 router = APIRouter(prefix="/api/v1/menu-media", tags=["menu-media"])
 
-# Allowed image types
-ALLOWED_EXTENSIONS = {'.jpg', '.jpeg', '.png', '.gif', '.webp'}
+# Allowed image types (including HEIC/HEIF for iPhone photos)
+ALLOWED_EXTENSIONS = {'.jpg', '.jpeg', '.png', '.gif', '.webp', '.heic', '.heif'}
 MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB
 
 
@@ -147,6 +157,122 @@ def list_deleted_menu_media(
     })
 
 
+@router.get("/manifest")
+def get_media_manifest(
+    menu_id: Optional[int] = None,
+    variant: str = Query("hd", description="Preferred variant: thumb, small, hd, 4k, original"),
+    since: Optional[str] = Query(None, description="ISO timestamp for incremental sync"),
+    current_user: CurrentUser = Depends(get_current_user),
+    media_repo: MenuMediaRepository = Depends(get_menu_media_repository)
+):
+    """
+    Get manifest of all menu media for player offline caching.
+
+    Returns optimized variant URLs with content hashes for cache invalidation.
+    Player can use this to:
+    - Download all media to IndexedDB for offline playback
+    - Detect changes via content_hash comparison
+    - Download appropriate variant based on display resolution
+
+    Query params:
+    - menu_id: Optional filter by specific menu
+    - variant: Preferred variant (thumb, small, hd, 4k, original)
+    - since: ISO timestamp for incremental sync (returns only changed items)
+    """
+    # Get all active media
+    media_list, total = media_repo.find_all(
+        organization_id=current_user.organization_id,
+        skip=0,
+        limit=10000,  # Get all for manifest
+        is_active=True
+    )
+
+    # Filter by update time if 'since' provided
+    if since:
+        try:
+            since_dt = datetime.fromisoformat(since.replace('Z', '+00:00'))
+            media_list = [
+                m for m in media_list
+                if (m.updated_at and m.updated_at >= since_dt) or
+                   (m.optimized_at and m.optimized_at >= since_dt) or
+                   (m.created_at and m.created_at >= since_dt)
+            ]
+        except ValueError:
+            pass  # Invalid date format, return all
+
+    # If menu_id specified, filter to media used by that menu
+    if menu_id:
+        # Get menu items for this menu
+        from sqlalchemy import text
+        menu_media_ids = media_repo.db.execute(text("""
+            SELECT DISTINCT menu_media_id
+            FROM menu_items
+            WHERE menu_id = :menu_id
+              AND menu_media_id IS NOT NULL
+              AND deleted_at IS NULL
+        """), {"menu_id": menu_id}).fetchall()
+
+        allowed_ids = {row.menu_media_id for row in menu_media_ids}
+        media_list = [m for m in media_list if m.id in allowed_ids]
+
+    # Build manifest
+    manifest_items = []
+    total_size = 0
+
+    for media in media_list:
+        # Get the requested variant URL
+        variant_url = None
+        variant_info = None
+
+        if media.variants:
+            # Try requested variant, fallback to hd, then original
+            for try_variant in [variant, 'hd', 'original', 'fallback']:
+                if try_variant in media.variants:
+                    variant_info = media.variants[try_variant]
+                    variant_url = variant_info.get('url')
+                    break
+
+        # Fallback to original file if no variants
+        if not variant_url:
+            variant_url = f"/menu-media-files/{media.file_path}"
+            variant_info = {
+                "width": media.width,
+                "height": media.height,
+                "size": media.file_size,
+                "format": media.mime_type.split('/')[-1] if media.mime_type else "jpeg"
+            }
+
+        item = {
+            "id": media.id,
+            "content_hash": media.content_hash or media.file_hash,
+            "variant": variant if media.variants and variant in media.variants else "original",
+            "url": variant_url,
+            "width": variant_info.get("width") if variant_info else media.width,
+            "height": variant_info.get("height") if variant_info else media.height,
+            "size": variant_info.get("size") if variant_info else media.file_size,
+            "format": variant_info.get("format") if variant_info else "jpeg",
+            "is_animated": media.is_animated,
+            "title": media.title or media.original_filename,
+            "updated_at": (media.optimized_at or media.updated_at or media.created_at).isoformat() if (media.optimized_at or media.updated_at or media.created_at) else None
+        }
+
+        # Also include fallback URL for browsers without WebP support
+        if media.variants and 'fallback' in media.variants:
+            item["fallback_url"] = media.variants['fallback'].get('url')
+
+        manifest_items.append(item)
+        total_size += item["size"] or 0
+
+    return success_response(data={
+        "items": manifest_items,
+        "total": len(manifest_items),
+        "total_size": total_size,
+        "total_size_readable": _format_size(total_size),
+        "variant": variant,
+        "generated_at": datetime.utcnow().isoformat()
+    })
+
+
 @router.post("", status_code=201)
 async def upload_menu_media(
     file: UploadFile = File(...),
@@ -228,8 +354,61 @@ async def upload_menu_media(
         height=height,
         title=title,
         alt_text=alt_text,
-        file_hash=file_hash
+        file_hash=file_hash,
+        processing_status="pending"  # Start with pending status
     )
+
+    # Generate optimized WebP variants
+    optimization_result = None
+    if is_duplicate and existing and existing.variants:
+        # Reuse existing variants from duplicate
+        logger.info(f"[MenuMedia] Reusing variants from media ID {existing.id}")
+        optimization_result = {
+            "variants": existing.variants,
+            "content_hash": existing.content_hash,
+            "original_width": existing.original_width,
+            "original_height": existing.original_height,
+            "is_animated": existing.is_animated,
+            "processing_status": "completed",
+            "optimized_at": existing.optimized_at.isoformat() if existing.optimized_at else None
+        }
+    else:
+        # Generate new variants
+        try:
+            optimizer = get_image_optimizer()
+            full_path = os.path.join(settings.UPLOAD_DIR, file_path)
+
+            logger.info(f"[MenuMedia] Generating WebP variants for media {media.id}")
+            optimization_result = optimizer.optimize_image(
+                media_id=media.id,
+                organization_id=current_user.organization_id,
+                source_path=full_path,
+                source_content=content
+            )
+            logger.info(f"[MenuMedia] Optimization complete: status={optimization_result.get('processing_status')}")
+        except Exception as e:
+            logger.error(f"[MenuMedia] Optimization failed for media {media.id}: {e}")
+            optimization_result = {
+                "processing_status": "failed",
+                "error": str(e)
+            }
+
+    # Update media with optimization results
+    if optimization_result:
+        update_data = {
+            "variants": optimization_result.get("variants"),
+            "content_hash": optimization_result.get("content_hash"),
+            "original_width": optimization_result.get("original_width"),
+            "original_height": optimization_result.get("original_height"),
+            "is_animated": optimization_result.get("is_animated", False),
+            "processing_status": optimization_result.get("processing_status", "pending")
+        }
+
+        # Only set optimized_at if completed
+        if optimization_result.get("processing_status") == "completed":
+            update_data["optimized_at"] = datetime.utcnow()
+
+        media = media_repo.update(media, **update_data)
 
     response = MenuMediaResponseDTO.model_validate(media)
     response.url = build_media_url(media.file_path)
@@ -371,3 +550,5 @@ def bulk_permanent_delete_menu_media(
         data={"deleted_count": deleted_count},
         message=f"Permanently deleted {deleted_count} media items"
     )
+
+

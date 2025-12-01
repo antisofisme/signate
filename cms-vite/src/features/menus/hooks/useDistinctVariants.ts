@@ -1,5 +1,5 @@
 /**
- * Hook to get distinct variants (subcategory values) for a menu
+ * Hook to get distinct variants for a menu
  * Used for auto-suggest in bulk edit modal
  */
 
@@ -8,7 +8,7 @@ import { menuApi } from '../api/menuApi';
 import { menuKeys } from './useMenus';
 
 /**
- * Extract unique variants from menu items subcategory field
+ * Extract unique variants from menu items variant field
  */
 export const useDistinctVariants = (menuId: number, enabled: boolean = true) => {
   return useQuery({
@@ -17,13 +17,13 @@ export const useDistinctVariants = (menuId: number, enabled: boolean = true) => 
       // Fetch all items to extract variants
       const response = await menuApi.listItems(menuId, { limit: 1000 });
 
-      // Extract unique subcategories (variants)
+      // Extract unique variants
       const variantSet = new Set<string>();
 
       response.items.forEach((item) => {
-        if (item.subcategory) {
+        if (item.variant) {
           // Split by comma and add each variant
-          item.subcategory.split(',').forEach((v) => {
+          item.variant.split(',').forEach((v) => {
             const trimmed = v.trim();
             if (trimmed) {
               variantSet.add(trimmed);

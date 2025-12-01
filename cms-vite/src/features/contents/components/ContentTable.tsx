@@ -34,6 +34,7 @@ import {
   ErrorDisplay,
   ConfirmDialog,
   Button,
+  TABLE_STYLES,
 } from '@/shared/components';
 import { getApiErrorMessage } from '@/shared/utils/types';
 import { useCanPerformAction } from '@/features/rbac/hooks/usePermissions';
@@ -375,18 +376,18 @@ export function ContentTable() {
 
       {/* Loading State */}
       {isLoading && (
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
+        <div className={TABLE_STYLES.container}>
           <TableSkeleton columns={7} rows={10} />
         </div>
       )}
 
       {/* Table - Only when has data */}
       {!isLoading && !error && contentData && contentData.data.length > 0 && (
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
+        <div className={TABLE_STYLES.container}>
           <>
             <div className="overflow-x-auto">
-              <table className="w-full table-fixed divide-y divide-gray-200 dark:divide-gray-700">
-                <thead className="bg-gray-50 dark:bg-gray-900">
+              <table className={`${TABLE_STYLES.table} table-fixed`}>
+                <thead className={TABLE_STYLES.thead}>
                   <tr>
                     <th className="px-4 py-3 text-center w-12">
                       <input
@@ -396,27 +397,27 @@ export function ContentTable() {
                         className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
                       />
                     </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-[35%]">
+                    <th className={`${TABLE_STYLES.th} w-[35%]`}>
                       {t('contents.table.content')}
                     </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-20">
+                    <th className={`${TABLE_STYLES.th} w-20`}>
                       {t('contents.table.type')}
                     </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-24">
+                    <th className={`${TABLE_STYLES.th} w-24`}>
                       {t('contents.table.size')}
                     </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-20">
+                    <th className={`${TABLE_STYLES.th} w-20`}>
                       {t('contents.table.duration')}
                     </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-20">
+                    <th className={`${TABLE_STYLES.th} w-20`}>
                       {t('contents.table.status')}
                     </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-32">
+                    <th className={`${TABLE_STYLES.th} w-32`}>
                       {t('contents.table.actions')}
                     </th>
                   </tr>
                 </thead>
-                <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                <tbody className={TABLE_STYLES.tbody}>
                   {(() => {
                     const renderedGroups = new Set<string>();
                     const rows: React.ReactNode[] = [];
@@ -655,7 +656,7 @@ export function ContentTable() {
                       // Regular content (not a duplicate)
                       else {
                         rows.push(
-                          <tr key={content.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
+                          <tr key={content.id} className={TABLE_STYLES.tr}>
                             <td className="px-4 py-3 text-center">
                               <input
                                 type="checkbox"

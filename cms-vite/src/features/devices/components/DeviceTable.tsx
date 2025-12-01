@@ -44,6 +44,7 @@ import {
   ErrorDisplay,
   ConfirmDialog,
   Button,
+  TABLE_STYLES,
 } from '@/shared/components';
 import { useCanPerformAction } from '@/features/rbac/hooks/usePermissions';
 
@@ -277,26 +278,14 @@ export function DeviceTable() {
               leftIcon={<RefreshCw className={`w-4 h-4 ${isFetching ? 'animate-spin' : ''}`} />}
             />
 
-            {/* Register TV Button */}
+            {/* Register Device Button */}
             {canCreate && (
               <Button
                 variant="primary"
-                onClick={() => setTvRegisterModal(true)}
-                leftIcon={<><Plus className="w-4 h-4" /><Tv className="w-4 h-4" /></>}
-              >
-                {t('devices.buttons.registerTV')}
-              </Button>
-            )}
-
-            {/* Register Monitor Button */}
-            {canCreate && (
-              <Button
-                variant="secondary"
                 onClick={() => setMonitorRegisterModal(true)}
                 leftIcon={<><Plus className="w-4 h-4" /><Monitor className="w-4 h-4" /></>}
-                className="!bg-purple-600 hover:!bg-purple-700 !text-white"
               >
-                {t('devices.buttons.registerMonitor')}
+                {t('devices.buttons.registerDevice', 'Register Device')}
               </Button>
             )}
 
@@ -399,73 +388,73 @@ export function DeviceTable() {
 
       {/* Loading State */}
       {isLoading && (
-        <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+        <div className={TABLE_STYLES.container}>
           <TableSkeleton columns={6} rows={5} />
         </div>
       )}
 
       {/* Table - Only when has data */}
       {!isLoading && !error && devices.length > 0 && (
-        <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+        <div className={TABLE_STYLES.container}>
           <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">
+            <table className={TABLE_STYLES.table}>
+              <thead className={TABLE_STYLES.thead}>
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  <th className={TABLE_STYLES.th}>
                     {t('devices.table.device')}
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  <th className={TABLE_STYLES.th}>
                     {t('devices.type')}
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  <th className={TABLE_STYLES.th}>
                     {t('devices.statusLabel')}
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  <th className={TABLE_STYLES.th}>
                     {t('devices.table.ipAddress')}
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  <th className={TABLE_STYLES.th}>
                     {t('devices.lastSeen')}
                   </th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  <th className={TABLE_STYLES.th}>
                     {t('devices.table.actions')}
                   </th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+              <tbody className={TABLE_STYLES.tbody}>
                 {devices.map((device) => (
                   <tr
                     key={device.id}
-                    className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
+                    className={TABLE_STYLES.tr}
                   >
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm font-medium text-gray-900 dark:text-white">
+                    <td className={TABLE_STYLES.tdNoWrap}>
+                      <div className="font-medium">
                         {device.device_name}
                       </div>
                       {device.model_name && (
-                        <div className="text-sm text-gray-500 dark:text-gray-400">
+                        <div className={TABLE_STYLES.muted}>
                           {device.model_name}
                         </div>
                       )}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+                    <td className={TABLE_STYLES.tdNoWrap}>
+                      <div className="flex items-center gap-2">
                         {getTypeIcon(device.device_type)}
                         <span className="capitalize">{device.device_type}</span>
                       </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <td className={TABLE_STYLES.tdNoWrap}>
                       {getStatusBadge(device)}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300">
+                    <td className={`${TABLE_STYLES.tdNoWrap} ${TABLE_STYLES.muted}`}>
                       {device.ip_address || '-'}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300">
+                    <td className={`${TABLE_STYLES.tdNoWrap} ${TABLE_STYLES.muted}`}>
                       {device.last_seen_at
                         ? new Date(device.last_seen_at).toLocaleString()
                         : '-'}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                      <div className="flex items-center justify-end gap-1" role="group" aria-label={t('devices.table.actionsFor', { name: device.device_name })}>
+                    <td className={TABLE_STYLES.td}>
+                      <div className="flex items-center gap-2" role="group" aria-label={t('devices.table.actionsFor', { name: device.device_name })}>
                         {/* View Logs - Opens Device Logs Modal */}
                         <Button
                           variant="icon"

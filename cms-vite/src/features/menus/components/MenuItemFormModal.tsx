@@ -9,11 +9,13 @@ import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useTranslation } from 'react-i18next';
-import { X, Image as ImageIcon, Check, Loader2, Plus } from 'lucide-react';
+import { X, Image as ImageIcon, Check, Loader2, Plus, Star } from 'lucide-react';
 import { Modal, Button } from '@/shared/components';
 import { useAddMenuItem, useUpdateMenuItem } from '../hooks/useMenuItems';
-import { useMenuMedia } from '../hooks/useMenuMedia';
+import { useMenuMedia, useBulkSetItemMedia, useItemMedia } from '../hooks/useMenuMedia';
 import { useMenuCategories } from '../hooks/useMenuCategories';
+import { useDistinctVariants } from '../hooks/useDistinctVariants';
+import { VariantAutocomplete } from './VariantAutocomplete';
 import type { MenuItem, MenuMedia } from '../types/menu';
 
 // Form validation schema
@@ -24,6 +26,7 @@ const menuItemSchema = z.object({
   currency: z.string().default('IDR'),
   category: z.string().max(100).optional().nullable(),
   subcategory: z.string().max(100).optional().nullable(),
+  variant: z.string().max(200).optional().nullable(),  // Item variations: Hot, Cold, Large, Small
   tags: z.string().max(200).optional().nullable(),
   is_active: z.boolean().default(true),
   is_featured: z.boolean().default(false),
@@ -31,26 +34,6 @@ const menuItemSchema = z.object({
 });
 
 type MenuItemFormData = z.infer<typeof menuItemSchema>;
-
-/**
- * Compare two URLs ignoring protocol and query parameters
- */
-const isSameMediaUrl = (url1: string | null, url2: string | null): boolean => {
-  if (!url1 || !url2) return false;
-
-  // Extract pathname from URLs for comparison
-  const getPathname = (url: string): string => {
-    try {
-      const parsed = new URL(url);
-      return parsed.pathname;
-    } catch {
-      // If URL parsing fails, return the original string (might be relative path)
-      return url.split('?')[0].replace(/^https?:\/\/[^/]+/, '');
-    }
-  };
-
-  return getPathname(url1) === getPathname(url2);
-};
 
 interface MenuItemFormModalProps {
   isOpen: boolean;
@@ -70,13 +53,23 @@ export const MenuItemFormModal = ({
   const { t } = useTranslation();
   const isEditMode = !!item;
   const [showMediaPicker, setShowMediaPicker] = useState(false);
-  const [selectedImageUrl, setSelectedImageUrl] = useState<string | null>(item?.image_url || null);
+  // Multi-image selection: track selected media IDs and which is primary
+  const [selectedMediaIds, setSelectedMediaIds] = useState<Set<number>>(new Set());
+  const [primaryMediaId, setPrimaryMediaId] = useState<number | null>(null);
   const [showCustomCategory, setShowCustomCategory] = useState(false);
 
   const addMutation = useAddMenuItem(menuId);
   const updateMutation = useUpdateMenuItem(menuId);
+  const bulkSetMediaMutation = useBulkSetItemMedia(menuId);
   const { data: mediaData, isLoading: isLoadingMedia } = useMenuMedia();
   const { data: categoriesData, isLoading: isLoadingCategories } = useMenuCategories(menuId);
+  const { data: variantSuggestions } = useDistinctVariants(menuId);
+
+  // Fetch existing media for the item being edited
+  const { data: itemMediaData, isLoading: isLoadingItemMedia } = useItemMedia(
+    menuId,
+    isEditMode && item ? item.id : null
+  );
 
   const {
     register,
@@ -84,6 +77,7 @@ export const MenuItemFormModal = ({
     reset,
     watch,
     setValue,
+    control,
     formState: { errors, isSubmitting },
   } = useForm<MenuItemFormData>({
     resolver: zodResolver(menuItemSchema),
@@ -94,6 +88,7 @@ export const MenuItemFormModal = ({
       currency: item?.currency || 'IDR',
       category: item?.category || '',
       subcategory: item?.subcategory || '',
+      variant: item?.variant || '',
       tags: item?.tags || '',
       is_active: item?.is_active ?? true,
       is_featured: item?.is_featured ?? false,
@@ -113,16 +108,48 @@ export const MenuItemFormModal = ({
         currency: item?.currency || 'IDR',
         category: item?.category || '',
         subcategory: item?.subcategory || '',
+        variant: item?.variant || '',
         tags: item?.tags || '',
         is_active: item?.is_active ?? true,
         is_featured: item?.is_featured ?? false,
         is_available: item?.is_available ?? true,
       });
-      setSelectedImageUrl(item?.image_url || null);
+
+      // Reset media selection when opening (will be populated from itemMediaData)
+      if (!isEditMode) {
+        setSelectedMediaIds(new Set());
+        setPrimaryMediaId(null);
+      }
+
       setShowMediaPicker(false);
       setShowCustomCategory(false);
     }
-  }, [item, isOpen, reset]);
+  }, [item, isOpen, reset, isEditMode]);
+
+  // Initialize selected media from fetched itemMediaData (for edit mode)
+  useEffect(() => {
+    if (isOpen && isEditMode && itemMediaData?.items && itemMediaData.items.length > 0) {
+      const mediaIds = new Set<number>();
+      let primaryId: number | null = null;
+
+      itemMediaData.items.forEach((m) => {
+        // menu_media_id is the actual media ID in the menu_media table
+        if (m.menu_media_id) {
+          mediaIds.add(m.menu_media_id);
+          if (m.is_primary) {
+            primaryId = m.menu_media_id;
+          }
+        }
+      });
+
+      setSelectedMediaIds(mediaIds);
+      setPrimaryMediaId(primaryId || (mediaIds.size > 0 ? Array.from(mediaIds)[0] : null));
+    } else if (isOpen && isEditMode && itemMediaData?.items?.length === 0) {
+      // Item has no media assigned
+      setSelectedMediaIds(new Set());
+      setPrimaryMediaId(null);
+    }
+  }, [isOpen, isEditMode, itemMediaData]);
 
   // Check if current category is in the list or custom
   useEffect(() => {
@@ -133,6 +160,11 @@ export const MenuItemFormModal = ({
   }, [categoriesData, currentCategory]);
 
   const onSubmit = async (data: MenuItemFormData) => {
+    // Get primary image URL for backward compatibility
+    const primaryMedia = primaryMediaId && mediaData?.items
+      ? mediaData.items.find(m => m.id === primaryMediaId)
+      : null;
+
     const payload = {
       name: data.name,
       description: data.description || undefined,
@@ -140,32 +172,89 @@ export const MenuItemFormModal = ({
       currency: data.currency,
       category: data.category || undefined,
       subcategory: data.subcategory || undefined,
+      variant: data.variant || undefined,
       tags: data.tags || undefined,
-      image_url: selectedImageUrl || undefined,
+      image_url: primaryMedia?.url || undefined,
       is_active: data.is_active,
       is_featured: data.is_featured,
       is_available: data.is_available,
     };
 
     if (isEditMode && item) {
+      // Update menu item
       await updateMutation.mutateAsync({
         itemId: item.id,
         data: payload,
       });
+
+      // Bulk set media (replaces existing)
+      if (selectedMediaIds.size > 0) {
+        await bulkSetMediaMutation.mutateAsync({
+          itemId: item.id,
+          data: {
+            media_ids: Array.from(selectedMediaIds),
+            primary_media_id: primaryMediaId || undefined,
+          },
+        });
+      }
     } else {
-      await addMutation.mutateAsync(payload);
+      // For new items, first create the item
+      const newItem = await addMutation.mutateAsync(payload);
+
+      // Then set media if any selected
+      if (selectedMediaIds.size > 0 && newItem?.id) {
+        await bulkSetMediaMutation.mutateAsync({
+          itemId: newItem.id,
+          data: {
+            media_ids: Array.from(selectedMediaIds),
+            primary_media_id: primaryMediaId || undefined,
+          },
+        });
+      }
     }
     onSuccess?.();
     onClose();
   };
 
-  const handleSelectImage = (media: MenuMedia) => {
-    setSelectedImageUrl(media.url || null);
-    setShowMediaPicker(false);
+  // Toggle media selection (multi-select)
+  const handleToggleMedia = (media: MenuMedia) => {
+    setSelectedMediaIds(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(media.id)) {
+        newSet.delete(media.id);
+        // If removing primary, pick a new primary
+        if (primaryMediaId === media.id) {
+          setPrimaryMediaId(newSet.size > 0 ? Array.from(newSet)[0] : null);
+        }
+      } else {
+        newSet.add(media.id);
+        // If first selection, make it primary
+        if (!primaryMediaId) {
+          setPrimaryMediaId(media.id);
+        }
+      }
+      return newSet;
+    });
   };
 
-  const handleRemoveImage = () => {
-    setSelectedImageUrl(null);
+  // Set a media as primary (with star icon click)
+  const handleSetPrimary = (mediaId: number, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (selectedMediaIds.has(mediaId)) {
+      setPrimaryMediaId(mediaId);
+    }
+  };
+
+  // Remove all selected images
+  const handleRemoveAllImages = () => {
+    setSelectedMediaIds(new Set());
+    setPrimaryMediaId(null);
+  };
+
+  // Get selected media objects for preview
+  const getSelectedMediaList = (): MenuMedia[] => {
+    if (!mediaData?.items) return [];
+    return mediaData.items.filter(m => selectedMediaIds.has(m.id));
   };
 
   const handleCategoryChange = (value: string) => {
@@ -178,11 +267,23 @@ export const MenuItemFormModal = ({
     }
   };
 
-  const isPending = isSubmitting || addMutation.isPending || updateMutation.isPending;
+  const isPending = isSubmitting || addMutation.isPending || updateMutation.isPending || bulkSetMediaMutation.isPending;
 
   // Get categories list
   const categories = categoriesData?.items || [];
   const hasCategories = categories.length > 0;
+
+  // Footer component with sticky buttons
+  const footerContent = (
+    <div className="flex justify-end space-x-3 px-6 py-4 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
+      <Button type="button" variant="outline" onClick={onClose}>
+        {t('common.cancel', 'Cancel')}
+      </Button>
+      <Button type="submit" form="menuItemForm" loading={isPending}>
+        {isEditMode ? t('common.save', 'Save') : t('common.add', 'Add')}
+      </Button>
+    </div>
+  );
 
   return (
     <Modal
@@ -193,25 +294,73 @@ export const MenuItemFormModal = ({
         : t('menus.items.addItem', 'Add Menu Item')
       }
       maxWidth="2xl"
+      footer={footerContent}
     >
-      <form onSubmit={handleSubmit(onSubmit)} className="p-6 space-y-5">
-        {/* Image Selection */}
+      <form id="menuItemForm" onSubmit={handleSubmit(onSubmit)} className="p-6 space-y-5">
+        {/* Image Selection - Multi-select */}
         <div>
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-            {t('menus.items.image', 'Image')}
+            {t('menus.items.images', 'Images')}
+            {selectedMediaIds.size > 0 && (
+              <span className="ml-2 text-xs font-normal text-gray-500">
+                ({selectedMediaIds.size} selected)
+              </span>
+            )}
           </label>
-          <div className="flex items-start space-x-4">
-            {/* Current Image Preview */}
-            <div className="w-24 h-24 bg-gray-100 dark:bg-gray-700 rounded-lg overflow-hidden flex items-center justify-center flex-shrink-0">
-              {selectedImageUrl ? (
-                <img src={selectedImageUrl} alt="Item" className="w-full h-full object-cover" />
-              ) : (
-                <ImageIcon className="w-10 h-10 text-gray-400" />
-              )}
-            </div>
 
-            {/* Image Actions */}
-            <div className="flex flex-col space-y-2">
+          {/* Selected Images Preview */}
+          <div className="flex flex-wrap items-start gap-3 mb-3">
+            {isEditMode && isLoadingItemMedia ? (
+              <div className="flex items-center gap-2 text-gray-500">
+                <Loader2 className="w-4 h-4 animate-spin" />
+                <span className="text-sm">Loading assigned images...</span>
+              </div>
+            ) : getSelectedMediaList().length > 0 ? (
+              getSelectedMediaList().map((media) => (
+                <div
+                  key={media.id}
+                  className={`relative w-20 h-20 rounded-lg overflow-hidden border-2 ${
+                    primaryMediaId === media.id
+                      ? 'border-yellow-500 ring-2 ring-yellow-200'
+                      : 'border-gray-200 dark:border-gray-600'
+                  }`}
+                >
+                  <img src={media.url} alt={media.title || ''} className="w-full h-full object-cover" />
+                  {/* Primary badge */}
+                  {primaryMediaId === media.id && (
+                    <div className="absolute top-0.5 left-0.5 bg-yellow-500 text-white text-[9px] px-1 rounded font-medium">
+                      Primary
+                    </div>
+                  )}
+                  {/* Remove button */}
+                  <button
+                    type="button"
+                    onClick={() => handleToggleMedia(media)}
+                    className="absolute top-0.5 right-0.5 bg-red-500 text-white rounded-full p-0.5 hover:bg-red-600"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                  {/* Set as primary button */}
+                  {primaryMediaId !== media.id && (
+                    <button
+                      type="button"
+                      onClick={(e) => handleSetPrimary(media.id, e)}
+                      className="absolute bottom-0.5 right-0.5 bg-gray-800/70 text-yellow-400 rounded-full p-0.5 hover:bg-gray-800"
+                      title="Set as primary"
+                    >
+                      <Star className="w-3 h-3" />
+                    </button>
+                  )}
+                </div>
+              ))
+            ) : (
+              <div className="w-20 h-20 bg-gray-100 dark:bg-gray-700 rounded-lg flex items-center justify-center">
+                <ImageIcon className="w-8 h-8 text-gray-400" />
+              </div>
+            )}
+
+            {/* Action buttons */}
+            <div className="flex flex-col justify-center space-y-1.5">
               <Button
                 type="button"
                 variant="outline"
@@ -220,30 +369,36 @@ export const MenuItemFormModal = ({
               >
                 {showMediaPicker
                   ? t('menus.items.hideMedia', 'Hide Media')
-                  : t('menus.items.selectImage', 'Select Image')
+                  : t('menus.items.selectImages', 'Select Images')
                 }
               </Button>
-              {selectedImageUrl && (
+              {selectedMediaIds.size > 0 && (
                 <Button
                   type="button"
                   variant="ghost"
                   size="sm"
-                  onClick={handleRemoveImage}
-                  className="text-red-600 hover:text-red-700"
+                  onClick={handleRemoveAllImages}
+                  className="text-red-600 hover:text-red-700 text-xs"
                 >
-                  {t('menus.items.removeImage', 'Remove')}
+                  {t('menus.items.removeAll', 'Remove All')}
                 </Button>
               )}
             </div>
           </div>
+          <p className="text-xs text-gray-500 dark:text-gray-400">
+            {t('menus.items.multiImageHint', 'Click images to select. Click star to set primary.')}
+          </p>
         </div>
 
-        {/* Media Picker */}
+        {/* Media Picker - Multi-select */}
         {showMediaPicker && (
           <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-3 bg-gray-50 dark:bg-gray-800/50">
             <div className="flex items-center justify-between mb-3">
               <h4 className="text-sm font-medium text-gray-900 dark:text-white">
                 {t('menus.items.selectFromMedia', 'Select from Menu Media')}
+                <span className="ml-2 text-xs font-normal text-gray-500">
+                  (click to toggle selection)
+                </span>
               </h4>
               <button
                 type="button"
@@ -260,31 +415,53 @@ export const MenuItemFormModal = ({
               </div>
             ) : mediaData && mediaData.items.length > 0 ? (
               <div className="grid grid-cols-5 sm:grid-cols-7 gap-2 max-h-48 overflow-y-auto">
-                {mediaData.items.map((media) => (
-                  <button
-                    key={media.id}
-                    type="button"
-                    onClick={() => handleSelectImage(media)}
-                    className={`
-                      relative aspect-square rounded-md overflow-hidden border-2 transition-all
-                      ${isSameMediaUrl(selectedImageUrl, media.url)
-                        ? 'border-blue-500 ring-2 ring-blue-200'
-                        : 'border-transparent hover:border-gray-300 dark:hover:border-gray-600'
-                      }
-                    `}
-                  >
-                    <img
-                      src={media.url}
-                      alt={media.alt_text || media.original_filename}
-                      className="w-full h-full object-cover"
-                    />
-                    {isSameMediaUrl(selectedImageUrl, media.url) && (
-                      <div className="absolute inset-0 bg-blue-500 bg-opacity-30 flex items-center justify-center">
-                        <Check className="w-5 h-5 text-white" />
-                      </div>
-                    )}
-                  </button>
-                ))}
+                {mediaData.items.map((media) => {
+                  const isSelected = selectedMediaIds.has(media.id);
+                  const isPrimary = primaryMediaId === media.id;
+
+                  return (
+                    <button
+                      key={media.id}
+                      type="button"
+                      onClick={() => handleToggleMedia(media)}
+                      className={`
+                        relative aspect-square rounded-md overflow-hidden border-2 transition-all
+                        ${isSelected
+                          ? isPrimary
+                            ? 'border-yellow-500 ring-2 ring-yellow-200'
+                            : 'border-blue-500 ring-2 ring-blue-200'
+                          : 'border-transparent hover:border-gray-300 dark:hover:border-gray-600'
+                        }
+                      `}
+                    >
+                      <img
+                        src={media.url}
+                        alt={media.alt_text || media.original_filename}
+                        className="w-full h-full object-cover"
+                      />
+                      {isSelected && (
+                        <div className={`absolute inset-0 ${isPrimary ? 'bg-yellow-500' : 'bg-blue-500'} bg-opacity-30 flex items-center justify-center`}>
+                          {isPrimary ? (
+                            <Star className="w-5 h-5 text-white fill-white" />
+                          ) : (
+                            <Check className="w-5 h-5 text-white" />
+                          )}
+                        </div>
+                      )}
+                      {/* Click to set as primary when already selected */}
+                      {isSelected && !isPrimary && (
+                        <button
+                          type="button"
+                          onClick={(e) => handleSetPrimary(media.id, e)}
+                          className="absolute bottom-0.5 right-0.5 bg-gray-800/70 text-yellow-400 rounded-full p-0.5 hover:bg-gray-800 z-10"
+                          title="Set as primary"
+                        >
+                          <Star className="w-3 h-3" />
+                        </button>
+                      )}
+                    </button>
+                  );
+                })}
               </div>
             ) : (
               <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-4">
@@ -405,15 +582,79 @@ export const MenuItemFormModal = ({
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              {t('menus.items.variant', 'Variant')}
+              {t('menus.items.subcategory', 'Subcategory')}
             </label>
-            <input
-              type="text"
-              {...register('subcategory')}
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-blue-500 focus:border-blue-500"
-              placeholder={t('menus.items.variantPlaceholder', 'e.g. Spicy, Large')}
-            />
+            {(() => {
+              // Get subcategories for selected category
+              const selectedCat = categories.find(cat => cat.name === currentCategory);
+              const subcategories = selectedCat?.subcategories || [];
+              const hasSubcategories = subcategories.length > 0;
+
+              if (!currentCategory) {
+                return (
+                  <input
+                    type="text"
+                    {...register('subcategory')}
+                    disabled
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400"
+                    placeholder={t('menus.items.selectCategoryFirst', 'Select category first')}
+                  />
+                );
+              }
+
+              if (hasSubcategories) {
+                return (
+                  <select
+                    {...register('subcategory')}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    <option value="">-- Select Subcategory --</option>
+                    {subcategories.map((sub) => (
+                      <option key={sub} value={sub}>
+                        {sub}
+                      </option>
+                    ))}
+                  </select>
+                );
+              }
+
+              return (
+                <input
+                  type="text"
+                  {...register('subcategory')}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-blue-500 focus:border-blue-500"
+                  placeholder={t('menus.items.subcategoryPlaceholder', 'e.g. Hot, Cold')}
+                />
+              );
+            })()}
+            {currentCategory && (
+              <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                {t('menus.items.subcategoryHint', 'Subcategories can be managed in Menu Edit → Categories')}
+              </p>
+            )}
           </div>
+        </div>
+
+        {/* Variant */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            {t('menus.items.variant', 'Variant')}
+          </label>
+          <Controller
+            name="variant"
+            control={control}
+            render={({ field }) => (
+              <VariantAutocomplete
+                value={field.value || ''}
+                suggestions={variantSuggestions || []}
+                onChange={field.onChange}
+                placeholder={t('menus.items.variantPlaceholder', 'e.g. Hot, Cold, Large, Small...')}
+              />
+            )}
+          />
+          <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+            {t('menus.items.variantHint', 'Press Enter or comma to add variant')}
+          </p>
         </div>
 
         {/* Tags */}
@@ -471,15 +712,6 @@ export const MenuItemFormModal = ({
           </div>
         </div>
 
-        {/* Form Actions */}
-        <div className="flex justify-end space-x-3 pt-4 border-t border-gray-200 dark:border-gray-700">
-          <Button type="button" variant="outline" onClick={onClose}>
-            {t('common.cancel', 'Cancel')}
-          </Button>
-          <Button type="submit" loading={isPending}>
-            {isEditMode ? t('common.save', 'Save') : t('common.add', 'Add')}
-          </Button>
-        </div>
       </form>
     </Modal>
   );

@@ -3,36 +3,33 @@
  *
  * Wrapper for Sonner Toaster with:
  * - Dark/Light theme support (synced with app theme)
- * - Dynamic positioning above Upload Queue panel
+ * - Dynamic positioning above Upload Queue panel (uses actual measured height)
+ * - Supports both Content and Menu Media upload queues
  * - Consistent z-index hierarchy
  */
 
 import { Toaster } from 'sonner';
 import { useUIStore } from '@/lib/stores/uiStore';
 import { useUploadQueueStore } from '@/lib/stores/uploadQueueStore';
+import { useMenuMediaUploadStore } from '@/lib/stores/menuMediaUploadStore';
 import { Z_INDEX } from '@/shared/constants/zIndex';
 
-// Upload queue panel dimensions
-const UPLOAD_QUEUE_MINIMIZED_HEIGHT = 56 + 24; // w-14 h-14 button + bottom-6 padding
-const UPLOAD_QUEUE_EXPANDED_HEIGHT = 350 + 24; // approximate expanded height + padding
-const BASE_OFFSET = 24; // default offset from edge
+const BASE_OFFSET = 16; // default offset from edge (bottom-4 = 16px)
+const RIGHT_OFFSET = 16; // right offset to align with upload queue (right-4 = 16px)
 
 export function ToastProvider() {
   const theme = useUIStore((state) => state.theme);
-  const uploadItems = useUploadQueueStore((state) => state.items);
-  const isMinimized = useUploadQueueStore((state) => state.isMinimized);
+  // Use actual measured panel height from both stores
+  // Only one should be visible at a time (Content vs Menu Media page)
+  const contentPanelHeight = useUploadQueueStore((state) => state.panelHeight);
+  const menuMediaPanelHeight = useMenuMediaUploadStore((state) => state.panelHeight);
 
-  // Calculate bottom offset based on upload queue visibility
-  const hasUploadItems = uploadItems.length > 0;
-  let bottomOffset = BASE_OFFSET;
+  // Use the max of both heights (only one should be non-zero at a time)
+  const panelHeight = Math.max(contentPanelHeight, menuMediaPanelHeight);
 
-  if (hasUploadItems) {
-    if (isMinimized) {
-      bottomOffset = UPLOAD_QUEUE_MINIMIZED_HEIGHT;
-    } else {
-      bottomOffset = UPLOAD_QUEUE_EXPANDED_HEIGHT;
-    }
-  }
+  // Calculate bottom offset based on upload queue panel height
+  // panelHeight is 0 when no upload queue is visible
+  const bottomOffset = panelHeight > 0 ? panelHeight : BASE_OFFSET;
 
   return (
     <Toaster
@@ -41,7 +38,6 @@ export function ToastProvider() {
       richColors
       expand={false}
       visibleToasts={4}
-      offset={bottomOffset}
       gap={8}
       toastOptions={{
         style: { zIndex: Z_INDEX.TOAST },
@@ -49,6 +45,13 @@ export function ToastProvider() {
         duration: 4000,
       }}
       closeButton
+      style={{
+        // Override default positioning to keep right alignment fixed
+        // while only adjusting bottom offset dynamically
+        '--offset': `${RIGHT_OFFSET}px`,
+        bottom: `${bottomOffset}px`,
+        right: `${RIGHT_OFFSET}px`,
+      } as React.CSSProperties}
     />
   );
 }

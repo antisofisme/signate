@@ -32,7 +32,7 @@
   font-size: 1.25rem;
   font-weight: 600;
   text-align: center;
-  margin: 0 0 1rem;
+  margin: 0 0 0.50rem;
   color: #1f2937;
 }
 
@@ -41,7 +41,7 @@
   display: flex;
   gap: 8px;
   overflow-x: auto;
-  padding: 12px 16px;
+  padding: 0 16px;
   justify-content: center;
   flex-wrap: wrap;
   -webkit-overflow-scrolling: touch;
@@ -54,10 +54,10 @@
 
 .portal-viewer__tab {
   flex-shrink: 0;
-  padding: 8px 16px;
-  border: 1px solid #e2e8f0;
-  border-radius: 20px;
-  background: white;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 4px;
+  background: #f1f5f9;
   color: #64748b;
   font-size: 0.875rem;
   font-weight: 500;
@@ -68,8 +68,8 @@
 }
 
 .portal-viewer__tab:hover {
-  border-color: #3b82f6;
-  color: #3b82f6;
+  background: #334155;
+  color: white;
 }
 
 .portal-viewer__tab:focus-visible {
@@ -77,19 +77,16 @@
 }
 
 .portal-viewer__tab--active {
-  background: #3b82f6;
-  border-color: #3b82f6;
+  background: #0f172a;
   color: white;
 }
 
 .portal-viewer__tab--active:hover {
-  background: #2563eb;
-  border-color: #2563eb;
+  background: #1e293b;
 }
 
 /* ========== Content Area ========== */
 .portal-viewer__content {
-  padding: 1rem;
   min-height: calc(100vh - 120px);
 }
 
@@ -98,13 +95,24 @@
   background: white;
   border-radius: 1rem;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-  overflow: hidden;
+  /* Note: overflow: hidden removed to allow sticky positioning inside */
 }
 
 /* Style nested menu viewer inside portal */
 .portal-viewer__menu-container .menu-viewer {
   background: white;
   min-height: calc(100vh - 160px);
+}
+
+/* When menu viewer is inside portal, category menu should stick below portal header */
+.portal-viewer__menu-container .menu-viewer__sticky-filter,
+.portal-viewer__menu-container .menu-viewer__categories {
+  top: var(--portal-header-height, 0px);
+}
+
+/* Darker background for menu items inside portal */
+.portal-viewer__menu-container .menu-viewer__minimalist-items {
+  background: #182130;
 }
 
 /* ========== Loading State ========== */
@@ -218,7 +226,7 @@
   }
 
   .portal-viewer__header {
-    background: #1f2937;
+    background: #010721;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
   }
 
@@ -233,14 +241,12 @@
   }
 
   .portal-viewer__tab:hover {
-    background: #4b5563;
-    border-color: #3b82f6;
-    color: #3b82f6;
+    background: #334155;
+    color: white;
   }
 
   .portal-viewer__tab--active {
-    background: #3b82f6;
-    border-color: #3b82f6;
+    background: #0f172a;
     color: white;
   }
 

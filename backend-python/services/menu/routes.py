@@ -353,6 +353,7 @@ def list_menu_items(
             "content_id": item.content_id,
             "category": item.category,
             "subcategory": item.subcategory,
+            "variant": item.variant,
             "tags": item.tags,
             "display_order": item.display_order,
             "is_active": item.is_active,
@@ -707,6 +708,7 @@ def create_menu_category(
         display_order=payload.display_order,
         icon=payload.icon,
         translations=payload.translations,
+        subcategories=payload.subcategories,
         menu_id=menu_id
     )
 

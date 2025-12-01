@@ -2,9 +2,10 @@
  * UploadQueuePanel Component
  *
  * Fixed panel at bottom-right showing upload queue status
+ * Reports its height to store for toast positioning
  */
 
-import { useEffect } from 'react';
+import { useEffect, useRef, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   ChevronDown,
@@ -35,17 +36,56 @@ export function UploadQueuePanel() {
   const clearCompleted = useUploadQueueStore((state) => state.clearCompleted);
   const retryAllFailed = useUploadQueueStore((state) => state.retryAllFailed);
   const clearAll = useUploadQueueStore((state) => state.clearAll);
+  const setPanelHeight = useUploadQueueStore((state) => state.setPanelHeight);
+
+  // Refs for measuring panel height
+  const minimizedRef = useRef<HTMLDivElement>(null);
+  const expandedRef = useRef<HTMLDivElement>(null);
 
   // Start the upload processor
   useUploadProcessor();
 
   const summary = getSummary();
 
+  // Measure and report panel height to store
+  const measureHeight = useCallback(() => {
+    const ref = isMinimized ? minimizedRef : expandedRef;
+    if (ref.current) {
+      const rect = ref.current.getBoundingClientRect();
+      // Include the bottom offset (bottom-6 = 24px for minimized, bottom-4 = 16px for expanded)
+      const bottomOffset = isMinimized ? 24 : 16;
+      const totalHeight = rect.height + bottomOffset + 8; // +8 for gap between toast and panel
+      setPanelHeight(totalHeight);
+    }
+  }, [isMinimized, setPanelHeight]);
+
   // Debug: Log on mount
   useEffect(() => {
     console.log('[UploadQueuePanel] Component mounted');
-    return () => console.log('[UploadQueuePanel] Component unmounted');
-  }, []);
+    return () => {
+      console.log('[UploadQueuePanel] Component unmounted');
+      // Reset height when unmounted
+      setPanelHeight(0);
+    };
+  }, [setPanelHeight]);
+
+  // Measure height on mount, minimize toggle, and item changes
+  useEffect(() => {
+    measureHeight();
+  }, [measureHeight, items.length, isMinimized]);
+
+  // Use ResizeObserver for dynamic height changes
+  useEffect(() => {
+    const ref = isMinimized ? minimizedRef : expandedRef;
+    if (!ref.current) return;
+
+    const observer = new ResizeObserver(() => {
+      measureHeight();
+    });
+
+    observer.observe(ref.current);
+    return () => observer.disconnect();
+  }, [isMinimized, measureHeight]);
 
   // Debug: Log when items change
   useEffect(() => {
@@ -55,7 +95,7 @@ export function UploadQueuePanel() {
   // Debug logging
   console.log('[UploadQueuePanel] Render - items:', items.length, 'isMinimized:', isMinimized);
 
-  // Don't render if no items
+  // Don't render if no items - reset height
   if (items.length === 0) {
     console.log('[UploadQueuePanel] No items, not rendering');
     return null;
@@ -85,7 +125,7 @@ export function UploadQueuePanel() {
   // Minimized badge view - Circular floating button
   if (isMinimized) {
     return (
-      <div className="fixed bottom-6 right-6" style={{ zIndex: Z_INDEX.UPLOAD_QUEUE }}>
+      <div ref={minimizedRef} className="fixed bottom-6 right-6" style={{ zIndex: Z_INDEX.UPLOAD_QUEUE }}>
         <button
           onClick={toggleMinimize}
           className={cn(
@@ -139,7 +179,7 @@ export function UploadQueuePanel() {
 
   // Expanded panel view
   return (
-    <div className="fixed bottom-4 right-4 w-80" style={{ zIndex: Z_INDEX.UPLOAD_QUEUE }}>
+    <div ref={expandedRef} className="fixed bottom-4 right-4 w-80" style={{ zIndex: Z_INDEX.UPLOAD_QUEUE }}>
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-2xl border border-gray-200 dark:border-gray-700 overflow-hidden">
         {/* Header */}
         <div

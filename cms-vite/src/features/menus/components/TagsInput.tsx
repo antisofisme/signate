@@ -69,11 +69,11 @@ export const TagsInput = ({
   return (
     <div
       className={cn(
-        'flex flex-wrap items-center gap-1.5 min-h-[32px] px-2 py-1 border rounded-md bg-white dark:bg-gray-700',
+        'flex flex-wrap items-center gap-1.5 h-[32px] px-2 py-1 border rounded-md',
+        'bg-white dark:bg-gray-900 text-gray-900 dark:text-white',
+        'border-gray-300 dark:border-gray-600',
         'focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-blue-500',
-        disabled
-          ? 'bg-gray-100 dark:bg-gray-800 cursor-not-allowed opacity-60'
-          : 'border-gray-300 dark:border-gray-600'
+        disabled && 'bg-gray-100 dark:bg-gray-800 cursor-not-allowed opacity-60'
       )}
       onClick={() => !disabled && inputRef.current?.focus()}
     >
