@@ -19,7 +19,8 @@ class ListContentUseCase:
         skip: int = 0,
         limit: int = 20,
         content_type: Optional[str] = None,
-        is_active: Optional[bool] = None
+        is_active: Optional[bool] = None,
+        tag_ids: Optional[List[int]] = None
     ) -> Tuple[List[Content], int]:
         """
         List content with filters
@@ -30,6 +31,7 @@ class ListContentUseCase:
             limit: Number of records (default 20)
             content_type: Filter by type (image/video/audio)
             is_active: Filter by active status
+            tag_ids: Filter by tag IDs (content must have ALL specified tags)
 
         Returns:
             Tuple of (content list, total count)
@@ -39,5 +41,6 @@ class ListContentUseCase:
             skip=skip,
             limit=limit,
             content_type=content_type,
-            is_active=is_active
+            is_active=is_active,
+            tag_ids=tag_ids
         )

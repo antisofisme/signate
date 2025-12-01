@@ -48,6 +48,10 @@ export class MenuViewer {
       return;
     }
 
+    // Add class to html for CSS fallback (browsers that don't support :has())
+    document.documentElement.classList.add('menu-mode-active');
+    document.body.classList.add('menu-mode-active');
+
     // Show loading state
     this.isLoading = true;
     this.render();

@@ -4,10 +4,10 @@
  */
 
 import { useState, useMemo } from 'react';
-import { Edit, Trash2, List, QrCode, Copy, Download, ExternalLink, UtensilsCrossed } from 'lucide-react';
+import { Edit, Trash2, List, Copy, Download, ExternalLink, UtensilsCrossed, Loader2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import QRCode from 'qrcode';
 import { useMenus, useDeleteMenuWithPIN } from '../hooks/useMenus';
-import { useDownloadQRCode } from '../hooks/useMenuImport';
 import { EmptyState, TABLE_STYLES } from '@/shared/components';
 import { PinVerificationModal } from './PinVerificationModal';
 import type { Menu, MenuType } from '../types/menu';
@@ -32,6 +32,7 @@ export const MenuList = ({
   const [currentPage, setCurrentPage] = useState(0);
   const [menuToDelete, setMenuToDelete] = useState<Menu | null>(null);
   const [showPinModal, setShowPinModal] = useState(false);
+  const [downloadingQRMenuId, setDownloadingQRMenuId] = useState<number | null>(null);
   const pageSize = 20;
 
   // Fetch menus
@@ -43,7 +44,6 @@ export const MenuList = ({
   });
 
   const deleteWithPINMutation = useDeleteMenuWithPIN();
-  const downloadQRMutation = useDownloadQRCode();
 
   // Client-side search filter and alphabetical sorting
   const filteredMenus = useMemo(() => {
@@ -74,11 +74,40 @@ export const MenuList = ({
     }
   };
 
-  const handleDownloadQR = (menu: Menu) => {
-    downloadQRMutation.mutate({
-      menuId: menu.id,
-      menuName: menu.name,
-    });
+  const handleDownloadQR = async (menu: Menu) => {
+    if (!menu.public_url) {
+      toast.error('Menu tidak memiliki URL publik');
+      return;
+    }
+
+    try {
+      setDownloadingQRMenuId(menu.id);
+
+      // Generate QR code as data URL
+      const dataUrl = await QRCode.toDataURL(menu.public_url, {
+        width: 512,
+        margin: 2,
+        color: {
+          dark: '#000000',
+          light: '#FFFFFF',
+        },
+      });
+
+      // Create download link
+      const link = document.createElement('a');
+      link.href = dataUrl;
+      link.download = `menu_${menu.name.replace(/[^a-zA-Z0-9]/g, '_')}_qr.png`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      toast.success('QR Code berhasil diunduh!');
+    } catch (error) {
+      console.error('Failed to generate QR code:', error);
+      toast.error('Gagal mengunduh QR Code');
+    } finally {
+      setDownloadingQRMenuId(null);
+    }
   };
 
   const handleOpenPublicUrl = (menu: Menu) => {
@@ -188,14 +217,18 @@ export const MenuList = ({
                     >
                       <ExternalLink className="w-4 h-4" />
                     </button>
-                    {menu.qr_code_url && (
+                    {menu.public_url && (
                       <button
                         onClick={() => handleDownloadQR(menu)}
-                        className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+                        className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors disabled:opacity-50"
                         title="Download QR Code"
-                        disabled={downloadQRMutation.isPending}
+                        disabled={downloadingQRMenuId === menu.id}
                       >
-                        <Download className="w-4 h-4" />
+                        {downloadingQRMenuId === menu.id ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <Download className="w-4 h-4" />
+                        )}
                       </button>
                     )}
                   </div>

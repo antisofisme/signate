@@ -289,9 +289,9 @@ export function DeviceGroups() {
         />
       )}
 
-      {/* Device Assignment Modal */}
+      {/* Device View Modal (View-Only) */}
       {isDeviceModalOpen && selectedGroup && (
-        <DeviceAssignmentModal
+        <DeviceViewModal
           group={selectedGroup}
           onClose={() => {
             setIsDeviceModalOpen(false)
@@ -401,7 +401,7 @@ function GroupCard({
           className="flex-1 px-3 py-2 text-sm bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors"
         >
           <Settings className="w-4 h-4 inline mr-1" />
-          {t('deviceGroups.manageDevices')}
+          {t('deviceGroups.assignment.manageDevices')}
         </button>
         {canEdit && (
           <button
@@ -530,7 +530,7 @@ function TreeNode({
           <button
             onClick={() => onManageDevices(group)}
             className="p-1.5 text-gray-600 hover:text-blue-600 dark:text-gray-400 dark:hover:text-blue-400 rounded hover:bg-blue-50 dark:hover:bg-blue-900/20"
-            title={t('deviceGroups.manageDevices')}
+            title={t('deviceGroups.assignment.manageDevices')}
           >
             <Settings className="w-4 h-4" />
           </button>
@@ -874,7 +874,7 @@ function CreateGroupModal({
 }
 
 // Device Assignment Modal Component
-function DeviceAssignmentModal({
+function DeviceViewModal({
   group,
   onClose,
 }: {
@@ -884,6 +884,10 @@ function DeviceAssignmentModal({
   const { t } = useTranslation()
   const queryClient = useQueryClient()
   const [searchQuery, setSearchQuery] = useState('')
+  const [viewMode, setViewMode] = useState<'assigned' | 'all'>('assigned')
+
+  // Check permissions
+  const { hasPermission: canEdit } = useCanPerformAction('device_groups', 'edit')
 
   // Fetch all devices
   const { data: devicesData, isLoading: isLoadingDevices } = useQuery({
@@ -897,44 +901,66 @@ function DeviceAssignmentModal({
     queryFn: () => groupsApi.getGroupDevices(group.id),
   })
 
-  // Add device mutation
+  // Add device to group mutation
   const addDeviceMutation = useMutation({
     mutationFn: (deviceId: number) => groupsApi.addDeviceToGroup(group.id, deviceId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['device-group-devices', group.id] })
       queryClient.invalidateQueries({ queryKey: ['device-group-stats', group.id] })
-      queryClient.invalidateQueries({ queryKey: ['device-groups'] })
+      toast.success(t('deviceGroups.assignment.deviceAdded'))
+    },
+    onError: (error: unknown) => {
+      toast.error(getApiErrorMessage(error, t('deviceGroups.assignment.addError')))
     },
   })
 
-  // Remove device mutation
+  // Remove device from group mutation
   const removeDeviceMutation = useMutation({
     mutationFn: (deviceId: number) => groupsApi.removeDeviceFromGroup(group.id, deviceId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['device-group-devices', group.id] })
       queryClient.invalidateQueries({ queryKey: ['device-group-stats', group.id] })
-      queryClient.invalidateQueries({ queryKey: ['device-groups'] })
+      toast.success(t('deviceGroups.assignment.deviceRemoved'))
+    },
+    onError: (error: unknown) => {
+      toast.error(getApiErrorMessage(error, t('deviceGroups.assignment.removeError')))
     },
   })
 
   const devices = devicesData?.items || []
   const assignedDeviceIds = new Set(groupDevicesData?.devices || [])
 
-  // Filter devices by search query
-  const filteredDevices = devices.filter(device =>
+  // Filter devices based on view mode and search
+  const assignedDevices = devices.filter(device => assignedDeviceIds.has(device.id))
+  const unassignedDevices = devices.filter(device => !assignedDeviceIds.has(device.id))
+
+  const devicesToShow = viewMode === 'assigned' ? assignedDevices : devices
+  const filteredDevices = devicesToShow.filter(device =>
     device.device_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     device.ip_address?.toLowerCase().includes(searchQuery.toLowerCase())
   )
 
-  const handleToggleDevice = (deviceId: number) => {
-    if (assignedDeviceIds.has(deviceId)) {
-      removeDeviceMutation.mutate(deviceId)
+  const isLoading = isLoadingDevices || isLoadingGroupDevices
+
+  // ESC key handler to close modal
+  useEffect(() => {
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose()
+      }
+    }
+    window.addEventListener('keydown', handleEsc)
+    return () => window.removeEventListener('keydown', handleEsc)
+  }, [onClose])
+
+  const handleToggleDevice = (device: Device) => {
+    const isAssigned = assignedDeviceIds.has(device.id)
+    if (isAssigned) {
+      removeDeviceMutation.mutate(device.id)
     } else {
-      addDeviceMutation.mutate(deviceId)
+      addDeviceMutation.mutate(device.id)
     }
   }
-
-  const isLoading = isLoadingDevices || isLoadingGroupDevices
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
@@ -942,7 +968,9 @@ function DeviceAssignmentModal({
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
           <div>
-            <h2 className="text-xl font-bold text-gray-900 dark:text-white">{t('deviceGroups.assignment.title')}</h2>
+            <h2 className="text-xl font-bold text-gray-900 dark:text-white">
+              {canEdit ? t('deviceGroups.assignment.title') : t('deviceGroups.viewDevices.title')}
+            </h2>
             <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
               {t('deviceGroups.assignment.group')}: {group.name}
             </p>
@@ -954,6 +982,32 @@ function DeviceAssignmentModal({
             <X className="w-6 h-6" />
           </button>
         </div>
+
+        {/* View Mode Toggle (only show if canEdit) */}
+        {canEdit && (
+          <div className="flex gap-2 p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50">
+            <button
+              onClick={() => setViewMode('assigned')}
+              className={`flex-1 px-3 py-2 text-sm font-medium rounded-lg transition-colors ${
+                viewMode === 'assigned'
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600'
+              }`}
+            >
+              {t('deviceGroups.assignment.assignedDevices')} ({assignedDevices.length})
+            </button>
+            <button
+              onClick={() => setViewMode('all')}
+              className={`flex-1 px-3 py-2 text-sm font-medium rounded-lg transition-colors ${
+                viewMode === 'all'
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600'
+              }`}
+            >
+              {t('deviceGroups.assignment.allDevices')} ({devices.length})
+            </button>
+          </div>
+        )}
 
         {/* Search */}
         <div className="p-4 border-b border-gray-200 dark:border-gray-700">
@@ -970,25 +1024,28 @@ function DeviceAssignmentModal({
         <div className="flex-1 overflow-y-auto p-4">
           {isLoading ? (
             <div className="flex items-center justify-center h-32">
-              <div className="text-gray-500">{t('deviceGroups.assignment.loadingDevices')}</div>
+              <div className="text-gray-500">{t('deviceGroups.viewDevices.loadingDevices')}</div>
             </div>
           ) : filteredDevices.length === 0 ? (
             <div className="text-center py-8 text-gray-500 dark:text-gray-400">
-              {t('deviceGroups.assignment.noDevices')}
+              {viewMode === 'assigned' && assignedDevices.length === 0
+                ? t('deviceGroups.viewDevices.noDevicesInGroup')
+                : t('deviceGroups.viewDevices.noMatchingDevices')}
             </div>
           ) : (
             <div className="space-y-2">
               {filteredDevices.map((device) => {
-                const isAssigned = assignedDeviceIds.has(device.id)
                 const isOnline = device.status === 'active'
+                const isAssigned = assignedDeviceIds.has(device.id)
+                const isPending = addDeviceMutation.isPending || removeDeviceMutation.isPending
 
                 return (
                   <div
                     key={device.id}
-                    className={`flex items-center justify-between p-3 rounded-lg border transition-colors ${
+                    className={`flex items-center p-3 rounded-lg border transition-colors ${
                       isAssigned
                         ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800'
-                        : 'bg-white dark:bg-gray-700 border-gray-200 dark:border-gray-600 hover:border-gray-300 dark:hover:border-gray-500'
+                        : 'bg-white dark:bg-gray-700 border-gray-200 dark:border-gray-600'
                     }`}
                   >
                     <div className="flex items-center gap-3 flex-1 min-w-0">
@@ -1023,22 +1080,24 @@ function DeviceAssignmentModal({
                         )}
                       </div>
                     </div>
-
-                    <button
-                      onClick={() => handleToggleDevice(device.id)}
-                      disabled={addDeviceMutation.isPending || removeDeviceMutation.isPending}
-                      className={`flex-shrink-0 p-2 rounded-lg transition-colors ${
-                        isAssigned
-                          ? 'bg-blue-600 text-white hover:bg-blue-700'
-                          : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-600 dark:text-gray-300 dark:hover:bg-gray-500'
-                      } disabled:opacity-50 disabled:cursor-not-allowed`}
-                    >
-                      {isAssigned ? (
-                        <Check className="w-5 h-5" />
-                      ) : (
-                        <Plus className="w-5 h-5" />
-                      )}
-                    </button>
+                    {canEdit && (
+                      <button
+                        onClick={() => handleToggleDevice(device)}
+                        disabled={isPending}
+                        className={`flex-shrink-0 p-2 rounded-lg transition-colors ${
+                          isAssigned
+                            ? 'text-red-600 hover:bg-red-100 dark:hover:bg-red-900/30'
+                            : 'text-green-600 hover:bg-green-100 dark:hover:bg-green-900/30'
+                        } disabled:opacity-50`}
+                        title={isAssigned ? t('deviceGroups.assignment.remove') : t('deviceGroups.assignment.add')}
+                      >
+                        {isAssigned ? (
+                          <X className="w-5 h-5" />
+                        ) : (
+                          <Plus className="w-5 h-5" />
+                        )}
+                      </button>
+                    )}
                   </div>
                 )
               })}
@@ -1049,13 +1108,13 @@ function DeviceAssignmentModal({
         {/* Footer */}
         <div className="flex items-center justify-between p-4 border-t border-gray-200 dark:border-gray-700">
           <div className="text-sm text-gray-600 dark:text-gray-400">
-            {t(assignedDeviceIds.size !== 1 ? 'deviceGroups.assignment.devicesAssignedPlural' : 'deviceGroups.assignment.devicesAssigned', { count: assignedDeviceIds.size })}
+            {t('deviceGroups.viewDevices.totalDevices', { count: assignedDevices.length })}
           </div>
           <button
             onClick={onClose}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            className="px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
           >
-            {t('deviceGroups.assignment.done')}
+            {t('common.close')}
           </button>
         </div>
       </div>

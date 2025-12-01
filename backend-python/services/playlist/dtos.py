@@ -52,6 +52,11 @@ class AssignTagsRequest(BaseModel):
     tag_ids: List[int] = Field(..., min_items=1, description="List of tag IDs")
 
 
+class DuplicatePlaylistRequest(BaseModel):
+    """Duplicate playlist request"""
+    new_name: Optional[str] = Field(None, max_length=255, description="Optional custom name for duplicated playlist")
+
+
 # ========== Response DTOs ==========
 
 class PlaylistResponse(BaseModel):

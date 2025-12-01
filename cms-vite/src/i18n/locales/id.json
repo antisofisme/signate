@@ -172,10 +172,17 @@
     },
     "actions": {
       "viewLogs": "Lihat log perangkat",
+      "viewLogsFor": "Lihat log untuk {{name}}",
       "viewDevice": "Lihat perangkat",
+      "viewDeviceFor": "Lihat perangkat {{name}}",
       "manageContent": "Kelola konten, tag & playlist",
+      "manageContentFor": "Kelola konten untuk {{name}}",
       "editSettings": "Edit pengaturan perangkat",
+      "editSettingsFor": "Edit pengaturan untuk {{name}}",
+      "manageTags": "Kelola tag",
+      "manageTagsFor": "Kelola tag untuk {{name}}",
       "deleteDevice": "Hapus perangkat",
+      "deleteDeviceFor": "Hapus perangkat {{name}}",
       "assignToDevice": "Tetapkan ke perangkat",
       "removeFromDevice": "Hapus dari perangkat",
       "copyCode": "Salin kode",
@@ -521,9 +528,11 @@
     "filters": {
       "allTypes": "Semua Tipe",
       "allStatus": "Semua Status",
+      "allTags": "Semua Tag",
       "clearFilters": "Hapus Filter",
       "contentType": "Tipe Konten",
       "status": "Status",
+      "tags": "Tag",
       "image": "Gambar",
       "video": "Video",
       "audio": "Audio",
@@ -711,8 +720,11 @@
       "unassignDevicesSuccess": "Dibatalkan dari {{count}} perangkat",
       "unassignDevicesError": "Gagal membatalkan penetapan perangkat",
       "unassignTagsSuccess": "Dibatalkan dari {{count}} tag",
-      "unassignTagsError": "Gagal membatalkan penetapan tag"
+      "unassignTagsError": "Gagal membatalkan penetapan tag",
+      "duplicateSuccess": "Playlist diduplikat sebagai \"{{name}}\"",
+      "duplicateError": "Gagal menduplikat playlist"
     },
+    "duplicate": "Duplikat",
     "deletePlaylist": "Hapus Playlist",
     "manageContent": "Kelola Konten",
     "manageAssignments": "Kelola Penugasan",
@@ -1355,7 +1367,25 @@
       "noDevices": "Tidak ada perangkat ditemukan",
       "devicesAssigned": "{{count}} perangkat ditugaskan",
       "devicesAssignedPlural": "{{count}} perangkat ditugaskan",
-      "done": "Selesai"
+      "done": "Selesai",
+      "manageDevices": "Kelola Perangkat",
+      "assignedDevices": "Perangkat Ditugaskan",
+      "allDevices": "Semua Perangkat",
+      "deviceAdded": "Perangkat ditambahkan ke grup",
+      "deviceRemoved": "Perangkat dihapus dari grup",
+      "addError": "Gagal menambahkan perangkat",
+      "removeError": "Gagal menghapus perangkat",
+      "add": "Tambah ke grup",
+      "remove": "Hapus dari grup"
+    },
+    "viewDevices": {
+      "title": "Perangkat dalam Grup",
+      "button": "Lihat Perangkat",
+      "searchPlaceholder": "Cari perangkat dalam grup...",
+      "loadingDevices": "Memuat perangkat...",
+      "noDevicesInGroup": "Tidak ada perangkat dalam grup ini",
+      "noMatchingDevices": "Tidak ada perangkat yang cocok",
+      "totalDevices": "{{count}} perangkat dalam grup"
     }
   },
   "tags": {

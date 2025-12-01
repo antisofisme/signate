@@ -154,6 +154,32 @@ export const useDeletePlaylist = () => {
   });
 };
 
+/**
+ * Duplicate playlist with all contents
+ */
+export const useDuplicatePlaylist = () => {
+  const { t } = useTranslation();
+  const queryClient = useQueryClient();
+  const orgId = useSelectedOrgId();
+
+  return useMutation({
+    mutationFn: ({ id, newName }: { id: number; newName?: string }) =>
+      playlistApi.duplicate(id, newName),
+    onSuccess: (newPlaylist) => {
+      // Invalidate with orgId to match the actual query key
+      queryClient.invalidateQueries({ queryKey: playlistKeys.lists(orgId) });
+
+      // Invalidate dashboard queries (playlist count changes)
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+
+      toast.success(t('playlists.messages.duplicateSuccess', { name: newPlaylist.name }));
+    },
+    onError: (error: unknown) => {
+      toast.error(getApiErrorMessage(error, t('playlists.messages.duplicateError')));
+    },
+  });
+};
+
 // ========================================
 // Content Management Hooks
 // ========================================

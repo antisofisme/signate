@@ -12,6 +12,7 @@ import {
   useCreatePlaylist,
   useUpdatePlaylist,
   useDeletePlaylist,
+  useDuplicatePlaylist,
 } from '../hooks/usePlaylist';
 import { PlaylistList } from '../components/PlaylistList';
 import { PlaylistForm } from '../components/PlaylistForm';
@@ -52,6 +53,7 @@ export default function PlaylistsPage() {
   const createMutation = useCreatePlaylist();
   const updateMutation = useUpdatePlaylist();
   const deleteMutation = useDeletePlaylist();
+  const duplicateMutation = useDuplicatePlaylist();
 
   // Handlers
   const handleCreate = (data: CreatePlaylistRequest) => {
@@ -81,6 +83,10 @@ export default function PlaylistsPage() {
         setDeletingPlaylist(null);
       },
     });
+  };
+
+  const handleDuplicate = (playlist: Playlist) => {
+    duplicateMutation.mutate({ id: playlist.id });
   };
 
   return (
@@ -145,13 +151,14 @@ export default function PlaylistsPage() {
         {/* Playlists List */}
         {!error && (
           <PlaylistList
-        playlists={playlistsData?.items || []}
-        isLoading={isLoading}
-        onEdit={canUpdate ? setEditingPlaylist : undefined}
-        onDelete={canDelete ? setDeletingPlaylist : undefined}
-        onManageContent={setContentModalPlaylist}
-        onManageAssignments={setAssignmentModalPlaylist}
-        onCreateNew={canCreate ? () => setShowCreateModal(true) : undefined}
+            playlists={playlistsData?.items || []}
+            isLoading={isLoading}
+            onEdit={canUpdate ? setEditingPlaylist : undefined}
+            onDelete={canDelete ? setDeletingPlaylist : undefined}
+            onDuplicate={canCreate ? handleDuplicate : undefined}
+            onManageContent={setContentModalPlaylist}
+            onManageAssignments={setAssignmentModalPlaylist}
+            onCreateNew={canCreate ? () => setShowCreateModal(true) : undefined}
           />
         )}
 

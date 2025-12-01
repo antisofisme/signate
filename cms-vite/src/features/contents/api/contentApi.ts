@@ -28,13 +28,19 @@ export const getContentList = async (
   if (filters?.content_type) params.append('content_type', filters.content_type);
   if (filters?.is_active !== undefined)
     params.append('is_active', filters.is_active.toString());
+  if (filters?.tag_ids && filters.tag_ids.length > 0)
+    params.append('tag_ids', filters.tag_ids.join(','));
 
   // Cache-busting: add timestamp to prevent browser/CDN caching
   params.append('_t', Date.now().toString());
 
-  const response = await apiClient.get<ContentListResponse>(
-    `${API_ENDPOINTS.CONTENT.LIST}?${params.toString()}`
-  );
+  const url = `${API_ENDPOINTS.CONTENT.LIST}?${params.toString()}`;
+  console.log('[contentApi] Fetching content with URL:', url);
+  console.log('[contentApi] Filters received:', filters);
+
+  const response = await apiClient.get<ContentListResponse>(url);
+
+  console.log('[contentApi] Response received, items:', response.data.data?.length, 'total:', response.data.pagination?.total);
 
   return response.data;
 };

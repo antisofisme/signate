@@ -44,6 +44,7 @@ import {
   useBulkDeleteContent,
   useDuplicateContent,
 } from '../hooks/useContent';
+import { useTags } from '@/features/tags/hooks/useTags';
 import type { Content, ContentType, ContentFilters, DuplicateGroup, ContentUsage } from '../types/content';
 import { formatFileSize, downloadContent } from '../api/contentApi';
 import { UploadModal } from './UploadModal';
@@ -95,6 +96,7 @@ export function ContentTable() {
     limit: pagination.limit,
   });
   const { data: duplicateData } = useDuplicateContent();
+  const { data: tagsData } = useTags();
   const deleteMutation = useDeleteContent();
   const bulkDeleteMutation = useBulkDeleteContent();
 
@@ -147,7 +149,12 @@ export function ContentTable() {
   };
 
   const handleFilterChange = (key: keyof ContentFilters, value: any) => {
-    setFilters((prev) => ({ ...prev, [key]: value }));
+    console.log('[ContentTable] Filter change:', key, '=', value);
+    setFilters((prev) => {
+      const newFilters = { ...prev, [key]: value };
+      console.log('[ContentTable] New filters:', newFilters);
+      return newFilters;
+    });
     pagination.resetPage();
   };
 
@@ -254,7 +261,7 @@ export function ContentTable() {
       {/* Filters */}
       {showFilters && (
         <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg space-y-4">
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-4 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 {t('contents.filters.contentType')}
@@ -300,6 +307,28 @@ export function ContentTable() {
                 <option value="">{t('contents.filters.allStatus')}</option>
                 <option value="true">{t('contents.filters.active')}</option>
                 <option value="false">{t('contents.filters.inactive')}</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                {t('contents.filters.tags')}
+              </label>
+              <select
+                value={filters.tag_ids?.length === 1 ? filters.tag_ids[0].toString() : ''}
+                onChange={(e) =>
+                  handleFilterChange(
+                    'tag_ids',
+                    e.target.value ? [parseInt(e.target.value)] : undefined
+                  )
+                }
+                className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white"
+              >
+                <option value="">{t('contents.filters.allTags')}</option>
+                {tagsData?.map((tag) => (
+                  <option key={tag.id} value={tag.id}>
+                    {tag.tag_name}
+                  </option>
+                ))}
               </select>
             </div>
             <div className="flex items-end">

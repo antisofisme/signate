@@ -22,6 +22,7 @@ from .use_cases.list_playlists import ListPlaylistsUseCase
 from .use_cases.get_playlist import GetPlaylistUseCase
 from .use_cases.update_playlist import UpdatePlaylistUseCase
 from .use_cases.delete_playlist import DeletePlaylistUseCase
+from .use_cases.duplicate_playlist import DuplicatePlaylistUseCase
 from .use_cases.manage_playlist_content import (
     AddContentToPlaylistUseCase,
     GetPlaylistContentUseCase,
@@ -45,6 +46,7 @@ from .dtos import (
     ReorderContentRequest,
     AssignDevicesRequest,
     AssignTagsRequest,
+    DuplicatePlaylistRequest,
     PlaylistContentListResponse,
     PlaylistContentItemResponse,
     BulkOperationResponse,
@@ -118,6 +120,12 @@ def get_delete_playlist_use_case(
     playlist_repo: IPlaylistRepository = Depends(get_playlist_repository)
 ) -> DeletePlaylistUseCase:
     return DeletePlaylistUseCase(playlist_repo)
+
+
+def get_duplicate_playlist_use_case(
+    playlist_repo: IPlaylistRepository = Depends(get_playlist_repository)
+) -> DuplicatePlaylistUseCase:
+    return DuplicatePlaylistUseCase(playlist_repo)
 
 
 def get_add_content_use_case(
@@ -345,6 +353,46 @@ def delete_playlist(
 
     except HTTPException:
         raise
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+
+
+@router.post("/{playlist_id}/duplicate", status_code=status.HTTP_201_CREATED)
+def duplicate_playlist(
+    playlist_id: int,
+    request_body: DuplicatePlaylistRequest,
+    http_request: Request,
+    use_case: DuplicatePlaylistUseCase = Depends(get_duplicate_playlist_use_case),
+    current_user: dict = Depends(require_permission("playlists", "create")),
+    audit_logger: AuditLogger = Depends(get_audit_logger),
+):
+    """Duplicate playlist with all contents"""
+    try:
+        playlist = use_case.execute(
+            playlist_id=playlist_id,
+            organization_id=current_user["organization_id"],
+            new_name=request_body.new_name,
+            created_by=current_user["user_id"],
+        )
+
+        # Audit log
+        audit_logger.log_action(
+            user_id=current_user["user_id"],
+            action="playlist.duplicate",
+            resource_type="playlist",
+            resource_id=playlist.id,
+            details={
+                "source_playlist_id": playlist_id,
+                "new_name": playlist.name,
+            },
+            ip_address=http_request.client.host if http_request.client else None,
+            organization_id=current_user["organization_id"],
+        )
+
+        return success_response(data=playlist.to_dict())
+
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
 

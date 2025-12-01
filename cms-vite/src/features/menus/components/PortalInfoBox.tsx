@@ -4,9 +4,10 @@
  */
 
 import { useState } from 'react';
-import { Link2, Copy, Check, ExternalLink, Info } from 'lucide-react';
+import { Link2, Copy, Check, ExternalLink, Info, Download, Loader2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
+import QRCode from 'qrcode';
 import { useCurrentOrganization } from '@/features/auth/hooks/useAuth';
 import { generatePortalSlug } from '@/features/auth/types/auth';
 
@@ -17,6 +18,7 @@ export function PortalInfoBox() {
   const { t } = useTranslation();
   const organization = useCurrentOrganization();
   const [copied, setCopied] = useState(false);
+  const [isDownloadingQR, setIsDownloadingQR] = useState(false);
 
   if (!organization) {
     return null;
@@ -39,6 +41,37 @@ export function PortalInfoBox() {
 
   const handleOpenPortal = () => {
     window.open(portalUrl, '_blank', 'noopener,noreferrer');
+  };
+
+  const handleDownloadQR = async () => {
+    try {
+      setIsDownloadingQR(true);
+
+      // Generate QR code as data URL
+      const dataUrl = await QRCode.toDataURL(portalUrl, {
+        width: 512,
+        margin: 2,
+        color: {
+          dark: '#000000',
+          light: '#FFFFFF',
+        },
+      });
+
+      // Create download link
+      const link = document.createElement('a');
+      link.href = dataUrl;
+      link.download = `portal_${portalSlug}_qr.png`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      toast.success(t('menus.portal.qrDownloaded', 'QR Code berhasil diunduh!'));
+    } catch (error) {
+      console.error('Failed to generate QR code:', error);
+      toast.error(t('menus.portal.qrFailed', 'Gagal mengunduh QR Code'));
+    } finally {
+      setIsDownloadingQR(false);
+    }
   };
 
   return (
@@ -100,6 +133,20 @@ export function PortalInfoBox() {
               title={t('menus.portal.open', 'Buka portal')}
             >
               <ExternalLink className="w-4 h-4" />
+            </button>
+
+            {/* Download QR Code */}
+            <button
+              onClick={handleDownloadQR}
+              disabled={isDownloadingQR}
+              className="flex-shrink-0 p-2 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              title={t('menus.portal.downloadQR', 'Download QR Code')}
+            >
+              {isDownloadingQR ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Download className="w-4 h-4" />
+              )}
             </button>
           </div>
         </div>

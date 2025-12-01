@@ -248,6 +248,7 @@ async def list_content(
     limit: int = 20,
     content_type: Optional[str] = None,
     is_active: Optional[bool] = None,
+    tag_ids: Optional[str] = None,  # Comma-separated tag IDs
     list_use_case: ListContentUseCase = Depends(get_list_content_use_case),
     current_user: dict = Depends(require_permission("contents", "read"))
 ):
@@ -260,15 +261,25 @@ async def list_content(
     - limit: Number of records (default 20)
     - content_type: Filter by type (image/video/audio)
     - is_active: Filter by active status (true/false)
+    - tag_ids: Comma-separated list of tag IDs to filter by (content must have ALL specified tags)
     """
-    # Generate cache key
+    # Parse tag_ids from comma-separated string
+    tag_id_list: Optional[list] = None
+    if tag_ids:
+        try:
+            tag_id_list = [int(x.strip()) for x in tag_ids.split(",") if x.strip()]
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid tag_ids format. Use comma-separated integers.")
+
+    # Generate cache key (include tag_ids for unique cache)
     cache_key = list_cache_key(
         entity="contents",
         org_id=current_user["organization_id"],
         page=(skip // limit) + 1 if limit > 0 else 1,
         limit=limit,
         content_type=content_type,
-        is_active=is_active
+        is_active=is_active,
+        tag_ids=tag_ids  # Include in cache key
     )
 
     # Try cache first
@@ -285,7 +296,8 @@ async def list_content(
             skip=skip,
             limit=limit,
             content_type=content_type,
-            is_active=is_active
+            is_active=is_active,
+            tag_ids=tag_id_list
         )
 
         # Convert skip/limit to page/page_size for paginated_response

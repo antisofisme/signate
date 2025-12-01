@@ -3,6 +3,27 @@
  * Mobile-first responsive design
  */
 
+/* =====================================================================
+   GLOBAL OVERRIDES FOR MENU MODE
+   Force dark background on ALL browsers including mobile
+   ===================================================================== */
+
+/* When menu is displayed, override html/body to dark */
+html:has(#menu-container[style*="display: block"]),
+html:has(#menu-container[style*="display:block"]),
+body:has(#menu-container[style*="display: block"]),
+body:has(#menu-container[style*="display:block"]) {
+  background: #0f172a !important;
+  background-color: #0f172a !important;
+}
+
+/* Fallback for browsers that don't support :has() */
+.menu-mode-active,
+.menu-mode-active body {
+  background: #0f172a !important;
+  background-color: #0f172a !important;
+}
+
 /* Menu container setup */
 #menu-container {
   position: fixed;
@@ -13,13 +34,17 @@
   overflow-y: auto;
   overflow-x: hidden;
   -webkit-overflow-scrolling: touch;
+  /* Force dark background */
+  background: #0f172a !important;
+  background-color: #0f172a !important;
 }
 
 /* CSS Variables */
 .menu-viewer {
   --theme-color: #3b82f6;
-  --theme-color-light: color-mix(in srgb, var(--theme-color) 20%, white);
-  --theme-color-dark: color-mix(in srgb, var(--theme-color) 80%, black);
+  /* Fallback for browsers that don't support color-mix */
+  --theme-color-light: #dbeafe;
+  --theme-color-dark: #1e40af;
   --bg-color: #f8fafc;
   --card-bg: #ffffff;
   --text-primary: #1e293b;
@@ -33,20 +58,35 @@
   --radius-lg: 16px;
 }
 
+/* Modern browsers with color-mix support */
+@supports (color: color-mix(in srgb, red, blue)) {
+  .menu-viewer {
+    --theme-color-light: color-mix(in srgb, var(--theme-color) 20%, white);
+    --theme-color-dark: color-mix(in srgb, var(--theme-color) 80%, black);
+  }
+}
+
 /* Base Styles */
 .menu-viewer {
   min-height: 100vh;
+  min-height: 100dvh; /* Dynamic viewport height for mobile */
   max-width: 480px; /* Mobile-first: limit width on desktop */
   margin: 0 auto; /* Center on desktop */
   background: var(--bg-color);
+  background-color: #f8fafc; /* Fallback */
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   color: var(--text-primary);
   box-shadow: 0 0 40px rgba(0, 0, 0, 0.1); /* Subtle shadow on desktop */
 }
 
-/* Desktop background behind menu */
-#menu-container {
-  background: #000000; /* Black background */
+/* Minimalist mode - force dark background and use flexbox for footer fill */
+.menu-viewer--minimalist {
+  background: #0f172a !important;
+  background-color: #0f172a !important;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  min-height: 100dvh; /* Dynamic viewport for mobile */
 }
 
 /* Loading State */
@@ -461,12 +501,12 @@
    MINIMALIST DISPLAY MODE
    ===================================================================== */
 
-/* Minimalist Theme Variables */
+/* Minimalist Theme Variables - ALWAYS DARK */
 .menu-viewer--minimalist {
-  --minimalist-bg: #fafafa;
-  --minimalist-text: #1a1a1a;
-  --minimalist-muted: #666666;
-  --minimalist-border: #e5e5e5;
+  --minimalist-bg: #0f172a;
+  --minimalist-text: #f1f5f9;
+  --minimalist-muted: #94a3b8;
+  --minimalist-border: #334155;
   --minimalist-accent: var(--theme-color);
 }
 
@@ -513,8 +553,8 @@
   position: sticky;
   top: 0;
   z-index: 100;
-  background: var(--minimalist-bg);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  background: #0f172a;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
   padding-bottom: 10px;
 }
 
@@ -542,9 +582,9 @@
   width: 36px;
   height: 36px;
   border-radius: 50%;
-  border: 1px solid var(--minimalist-border);
-  background: white;
-  color: var(--minimalist-muted);
+  border: 1px solid #334155;
+  background: #1e293b;
+  color: #94a3b8;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -568,10 +608,10 @@
 .menu-viewer__minimalist-tab {
   flex-shrink: 0;
   padding: 8px 16px;
-  border: 1px solid var(--minimalist-border);
+  border: 1px solid #334155;
   border-radius: 20px;
-  background: transparent;
-  color: var(--minimalist-muted);
+  background: #1e293b;
+  color: #94a3b8;
   font-size: 0.875rem;
   font-weight: 500;
   cursor: pointer;
@@ -597,8 +637,8 @@
   gap: 8px;
   margin: 8px 16px 0;
   padding: 10px 14px;
-  background: white;
-  border: 1px solid var(--minimalist-border);
+  background: #1e293b;
+  border: 1px solid #334155;
   border-radius: 24px;
   transition: all 0.2s ease;
   animation: slideDown 0.2s ease;
@@ -633,8 +673,8 @@
   align-items: center;
   justify-content: center;
   border: none;
-  background: var(--minimalist-border);
-  color: var(--minimalist-muted);
+  background: #334155;
+  color: #94a3b8;
   font-size: 1.125rem;
   border-radius: 50%;
   cursor: pointer;
@@ -648,7 +688,7 @@
 
 .menu-viewer__search-icon {
   flex-shrink: 0;
-  color: var(--minimalist-muted);
+  color: #94a3b8;
 }
 
 .menu-viewer__search-input {
@@ -656,27 +696,29 @@
   border: none;
   outline: none;
   font-size: 0.9375rem;
-  color: #1a1a1a !important; /* Force dark text color */
+  color: #f1f5f9 !important; /* Light text for dark background */
   background: transparent;
-  caret-color: #1a1a1a; /* Cursor color */
-  -webkit-text-fill-color: #1a1a1a; /* Fix for webkit browsers */
+  caret-color: #f1f5f9; /* Cursor color */
+  -webkit-text-fill-color: #f1f5f9; /* Fix for webkit browsers */
 }
 
 .menu-viewer__search-input::placeholder {
-  color: #94a3b8;
-  -webkit-text-fill-color: #94a3b8;
+  color: #64748b;
+  -webkit-text-fill-color: #64748b;
 }
 
 .menu-viewer__search-input:focus {
-  color: #1a1a1a !important;
-  -webkit-text-fill-color: #1a1a1a;
+  color: #f1f5f9 !important;
+  -webkit-text-fill-color: #f1f5f9;
 }
 
-/* Minimalist Items Container */
+/* Minimalist Items Container - Grows to fill space */
 .menu-viewer__minimalist-items {
   padding: 16px;
   padding-bottom: 20px;
   background: #182130;
+  flex-grow: 1; /* Fill available space */
+  min-height: 300px; /* Minimum height */
 }
 
 /* Highlighted Item (Featured with Image) */
@@ -806,7 +848,7 @@
 /* Normal Item (Minimalist Text) */
 .menu-viewer__normal-item {
   padding: 16px 0;
-  border-bottom: 1px solid var(--minimalist-border);
+  border-bottom: 1px solid #334155;
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
@@ -833,12 +875,12 @@
   font-size: 1rem;
   font-weight: 500;
   margin: 0;
-  color: var(--minimalist-text);
+  color: #f1f5f9;
 }
 
 .menu-viewer__normal-item-desc {
   font-size: 0.875rem;
-  color: var(--minimalist-muted);
+  color: #94a3b8;
   margin: 0;
   line-height: 1.4;
 }
@@ -924,7 +966,7 @@
   font-size: 1rem;
   font-weight: 600;
   white-space: nowrap;
-  color: var(--minimalist-text);
+  color: #f1f5f9;
 }
 
 /* ========== Subcategory Expand/Collapse ========== */
@@ -937,13 +979,13 @@
   align-items: center;
   width: 100%;
   padding: 14px 16px;
-  background: var(--minimalist-bg);
+  background: #0a1628;
   border: none;
-  border-bottom: 1px solid var(--minimalist-border);
+  border-bottom: 1px solid #334155;
   cursor: pointer;
   font-size: 0.95rem;
   font-weight: 600;
-  color: var(--minimalist-text);
+  color: #f1f5f9;
   transition: background 0.2s;
   text-align: left;
 }
@@ -955,7 +997,7 @@
 .menu-viewer__subcategory-arrow {
   width: 24px;
   font-size: 0.8rem;
-  color: var(--minimalist-muted);
+  color: #94a3b8;
   transition: transform 0.3s ease;
 }
 
@@ -968,7 +1010,7 @@
 }
 
 .menu-viewer__subcategory-count {
-  color: var(--minimalist-muted);
+  color: #94a3b8;
   font-weight: 400;
   font-size: 0.85rem;
   margin-left: 8px;
@@ -1011,14 +1053,14 @@
   width: 32px;
   height: 32px;
   border-radius: 50%;
-  border: 1px solid var(--minimalist-border);
-  background: white;
+  border: 1px solid #334155;
+  background: #1e293b;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
   transition: all 0.2s ease;
-  color: var(--minimalist-muted);
+  color: #94a3b8;
 }
 
 .menu-viewer__preview-btn:hover {
@@ -1440,10 +1482,14 @@
   display: none;
 }
 
-/* Adjust footer margin for FAB */
+/* Adjust footer margin for FAB - Make it taller to cover empty space */
 .menu-viewer--minimalist .menu-viewer__footer {
-  padding-bottom: 80px;
-  background: var(--minimalist-bg);
+  padding: 24px 16px 120px; /* Increased padding bottom */
+  background: #0f172a;
+  color: #94a3b8;
+  /* Make footer fill remaining space when content is short */
+  flex-grow: 1;
+  min-height: 200px;
 }
 
 /* Footer description text */

@@ -171,3 +171,17 @@ class IPlaylistRepository(ABC):
         Returns: {"content_count": int, "total_duration": int}
         """
         pass
+
+    @abstractmethod
+    def duplicate(
+        self,
+        playlist_id: int,
+        organization_id: int,
+        new_name: str,
+        created_by_id: Optional[int] = None,
+    ) -> Optional['Playlist']:
+        """
+        Duplicate a playlist with all its contents
+        Returns the new duplicated playlist or None if source not found
+        """
+        pass

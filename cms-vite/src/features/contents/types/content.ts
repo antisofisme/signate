@@ -57,6 +57,7 @@ export interface ContentFilters {
   limit?: number;
   content_type?: ContentType;
   is_active?: boolean;
+  tag_ids?: number[];
 }
 
 export interface ContentListResponse {

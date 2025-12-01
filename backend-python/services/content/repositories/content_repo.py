@@ -118,9 +118,12 @@ class ContentRepository(IContentRepository):
         skip: int = 0,
         limit: int = 20,
         content_type: Optional[str] = None,
-        is_active: Optional[bool] = None
+        is_active: Optional[bool] = None,
+        tag_ids: Optional[List[int]] = None
     ) -> Tuple[List[Content], int]:
-        """List content with filters"""
+        """List content with filters including tag-based filtering"""
+        from services.tag.repositories.models import ContentTag
+
         query = self.db.query(ContentModel).filter(
             ContentModel.organization_id == organization_id,
             ContentModel.deleted_at.is_(None)
@@ -131,6 +134,15 @@ class ContentRepository(IContentRepository):
             query = query.filter(ContentModel.content_type == content_type)
         if is_active is not None:
             query = query.filter(ContentModel.is_active == is_active)
+
+        # Filter by tags (content must have ALL specified tags)
+        if tag_ids and len(tag_ids) > 0:
+            # Subquery to find content IDs that have all the specified tags
+            for tag_id in tag_ids:
+                subquery = self.db.query(ContentTag.content_id).filter(
+                    ContentTag.tag_id == tag_id
+                ).subquery()
+                query = query.filter(ContentModel.id.in_(subquery))
 
         # Get total count
         total = query.count()

@@ -747,5 +747,63 @@ class PlaylistRepository(IPlaylistRepository):
                 )
             )
         ).first()
-        
+
         return self._model_to_entity(model) if model else None
+
+    def duplicate(
+        self,
+        playlist_id: int,
+        organization_id: int,
+        new_name: str,
+        created_by_id: Optional[int] = None,
+    ) -> Optional[Playlist]:
+        """
+        Duplicate a playlist with all its contents.
+        Does NOT copy device/tag assignments.
+        """
+        # Get source playlist
+        source = self.db.query(PlaylistModel).filter(
+            and_(
+                PlaylistModel.id == playlist_id,
+                PlaylistModel.organization_id == organization_id,
+                PlaylistModel.deleted_at.is_(None)
+            )
+        ).first()
+
+        if not source:
+            return None
+
+        # Create new playlist with same settings
+        new_playlist = PlaylistModel(
+            name=new_name,
+            description=source.description,
+            is_active=source.is_active,
+            priority=source.priority,
+            schedule=source.schedule,
+            is_default=False,  # Never copy default status
+            is_pms_template=False,  # Never copy PMS template status
+            organization_id=organization_id,
+            created_by_id=created_by_id,
+        )
+
+        self.db.add(new_playlist)
+        self.db.flush()  # Get the new ID
+
+        # Copy playlist contents
+        source_contents = self.db.query(PlaylistContentModel).filter(
+            PlaylistContentModel.playlist_id == playlist_id
+        ).order_by(PlaylistContentModel.order_index).all()
+
+        for item in source_contents:
+            new_content = PlaylistContentModel(
+                playlist_id=new_playlist.id,
+                content_id=item.content_id,
+                order_index=item.order_index,
+                duration=item.duration,
+            )
+            self.db.add(new_content)
+
+        self.db.commit()
+        self.db.refresh(new_playlist)
+
+        return self._model_to_entity(new_playlist, include_stats=True)

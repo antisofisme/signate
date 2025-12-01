@@ -64,8 +64,17 @@ export function useMenuItemsEditor({
   items,
   enabled,
 }: UseMenuItemsEditorOptions): UseMenuItemsEditorReturn {
+  // Initialize editable items immediately (not via useEffect to avoid flicker)
+  const initialEditableItems = useMemo(() => {
+    if (!enabled || items.length === 0) return [];
+    const sortedItems = [...items].sort((a, b) =>
+      a.name.localeCompare(b.name, undefined, { sensitivity: 'base' })
+    );
+    return sortedItems.map(toEditableItem);
+  }, [enabled, items]);
+
   // State
-  const [editableItems, setEditableItems] = useState<EditableItem[]>([]);
+  const [editableItems, setEditableItems] = useState<EditableItem[]>(initialEditableItems);
   const [isSaving, setIsSaving] = useState(false);
   const [isLoadingItemMedia, setIsLoadingItemMedia] = useState(false);
   const [selectedItemIdForMedia, setSelectedItemIdForMedia] = useState<number | null>(null);
@@ -77,17 +86,12 @@ export function useMenuItemsEditor({
   const deleteMutation = useDeleteMenuItem(menuId);
   const addMutation = useAddMenuItem(menuId);
 
-  // Initialize editable items when enabled or items change
+  // Sync editableItems when initialEditableItems changes (e.g., when items are refetched)
   useEffect(() => {
-    if (enabled && items.length > 0) {
-      // Sort items alphabetically by name, then initialize
-      const sortedItems = [...items].sort((a, b) =>
-        a.name.localeCompare(b.name, undefined, { sensitivity: 'base' })
-      );
-
-      setEditableItems(sortedItems.map(toEditableItem));
+    if (enabled && initialEditableItems.length > 0) {
+      setEditableItems(initialEditableItems);
     }
-  }, [enabled, items]);
+  }, [enabled, initialEditableItems]);
 
   // Fetch existing media for all items when enabled
   useEffect(() => {

@@ -330,52 +330,65 @@ export const MenuItemsManager = ({ menu, onClose }: MenuItemsManagerProps) => {
     </div>
   );
 
-  // Footer for Edit mode
-  const editModeFooter = isEditMode ? (
+  // Footer - always visible to maintain consistent height
+  const modalFooter = (
     <div className="border-t border-gray-200 dark:border-gray-700 px-6 py-4 flex items-center justify-between bg-gray-50 dark:bg-gray-900">
-      <div className="flex items-center gap-4">
-        <span className="text-sm text-gray-600 dark:text-gray-400">
-          {editor.modifiedCount > 0 ? (
-            <span className="text-amber-600 dark:text-amber-400 font-medium">
-              {editor.modifiedCount} {t('menus.bulkEdit.itemsModified', 'items modified')}
+      {isEditMode ? (
+        <>
+          <div className="flex items-center gap-4">
+            <span className="text-sm text-gray-600 dark:text-gray-400">
+              {editor.modifiedCount > 0 ? (
+                <span className="text-amber-600 dark:text-amber-400 font-medium">
+                  {editor.modifiedCount} {t('menus.bulkEdit.itemsModified', 'items modified')}
+                </span>
+              ) : (
+                t('menus.bulkEdit.noChanges', 'No changes')
+              )}
             </span>
-          ) : (
-            t('menus.bulkEdit.noChanges', 'No changes')
-          )}
-        </span>
-        {editor.failedCount > 0 && (
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={editor.handleRetryFailed}
-            disabled={editor.isSaving}
-            leftIcon={<RefreshCw className="w-3 h-3" />}
-          >
-            Retry {editor.failedCount} failed
+            {editor.failedCount > 0 && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={editor.handleRetryFailed}
+                disabled={editor.isSaving}
+                leftIcon={<RefreshCw className="w-3 h-3" />}
+              >
+                Retry {editor.failedCount} failed
+              </Button>
+            )}
+          </div>
+          <div className="flex gap-3">
+            <Button
+              variant="outline"
+              onClick={handleModeToggle}
+              disabled={editor.isSaving}
+            >
+              {t('common.cancel', 'Cancel')}
+            </Button>
+            <Button
+              variant="primary"
+              onClick={handleSaveAll}
+              disabled={editor.modifiedCount === 0 || editor.isSaving}
+              loading={editor.isSaving}
+            >
+              {editor.isSaving
+                ? t('menus.bulkEdit.saving', 'Saving...')
+                : t('menus.bulkEdit.saveAll', 'Save All Changes')}
+            </Button>
+          </div>
+        </>
+      ) : (
+        <>
+          <span className="text-sm text-gray-500 dark:text-gray-400">
+            {t('menus.items.viewModeHint', 'Click Edit Mode to make changes')}
+          </span>
+          <Button variant="outline" onClick={onClose}>
+            {t('common.close', 'Close')}
           </Button>
-        )}
-      </div>
-      <div className="flex gap-3">
-        <Button
-          variant="outline"
-          onClick={handleModeToggle}
-          disabled={editor.isSaving}
-        >
-          {t('common.cancel', 'Cancel')}
-        </Button>
-        <Button
-          variant="primary"
-          onClick={handleSaveAll}
-          disabled={editor.modifiedCount === 0 || editor.isSaving}
-          loading={editor.isSaving}
-        >
-          {editor.isSaving
-            ? t('menus.bulkEdit.saving', 'Saving...')
-            : t('menus.bulkEdit.saveAll', 'Save All Changes')}
-        </Button>
-      </div>
+        </>
+      )}
     </div>
-  ) : undefined;
+  );
 
   return (
     <>
@@ -385,11 +398,11 @@ export const MenuItemsManager = ({ menu, onClose }: MenuItemsManagerProps) => {
         maxWidth="6xl"
         showHeader={false}
         customHeader={customHeader}
-        footer={editModeFooter}
+        footer={modalFooter}
         closeOnBackdropClick={!isEditMode || editor.modifiedCount === 0}
       >
-        {/* Scrollable content */}
-        <div className="flex-1 overflow-y-auto p-6">
+        {/* Content area - Modal handles scrolling */}
+        <div className="p-6 min-h-[calc(100vh-320px)]">
           {isLoading ? (
             <div className="flex items-center justify-center py-12">
               <Loader2 className="w-8 h-8 animate-spin text-blue-600" />

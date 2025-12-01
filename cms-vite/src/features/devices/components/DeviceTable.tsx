@@ -17,17 +17,11 @@ import {
   Loader2,
   Edit,
   Filter,
-  X,
   Circle,
   Plus,
   Eye,
   Terminal,
-  Tag,
   FileText,
-  List,
-  Wifi,
-  Play,
-  Activity,
   RefreshCw,
 } from 'lucide-react';
 import {
@@ -140,6 +134,7 @@ export function DeviceTable() {
     isOpen: boolean;
     device: Device | null;
   }>({ isOpen: false, device: null });
+
 
   // Build filters for API
   const apiFilters = {
@@ -623,6 +618,7 @@ export function DeviceTable() {
             onClose={() => setLogsModal({ isOpen: false, device: null })}
           />
         )}
+
       </Suspense>
     </>
   );

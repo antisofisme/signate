@@ -34,7 +34,10 @@ import { toast } from 'sonner';
 import { Button, ConfirmDialog } from '@/shared/components';
 import { useCanPerformAction } from '@/features/rbac/hooks/usePermissions';
 import { useUpdateContent, useDeleteContent } from '../hooks/useContent';
+import { useContentTags, useUnassignTagFromContents } from '@/features/tags/hooks/useTags';
 import { formatFileSize, downloadContent } from '../api/contentApi';
+import { AddToPlaylistModal } from './AddToPlaylistModal';
+import { AssignToDeviceModal } from './AssignToDeviceModal';
 import type { Content, ContentType, TranscodingStatus, ContentUsage } from '../types/content';
 
 // Format date
@@ -118,10 +121,16 @@ export function ContentDetailSidebar({
   const [editTitle, setEditTitle] = useState('');
   const [editDuration, setEditDuration] = useState(0);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showAddToPlaylist, setShowAddToPlaylist] = useState(false);
+  const [showAssignToDevice, setShowAssignToDevice] = useState(false);
 
   // Mutations
   const updateMutation = useUpdateContent();
   const deleteMutation = useDeleteContent();
+  const unassignTagMutation = useUnassignTagFromContents();
+
+  // Fetch actual tags for this content
+  const { data: contentTags = [], refetch: refetchTags } = useContentTags(content?.id || 0);
 
   // Reset edit state when content changes
   useEffect(() => {
@@ -192,8 +201,22 @@ export function ContentDetailSidebar({
     onDelete?.();
   };
 
-  // Check if usage exists
-  const hasUsage = usage && (usage.playlists.length > 0 || usage.tags.length > 0 || usage.devices.length > 0);
+  const handleRemoveTag = async (tagId: number) => {
+    if (!content) return;
+    try {
+      await unassignTagMutation.mutateAsync({
+        tagId,
+        contentIds: [content.id],
+      });
+      // Refetch tags after successful removal
+      refetchTags();
+    } catch {
+      // Error handled by mutation
+    }
+  };
+
+  // Check if usage exists (tags are now shown separately with remove buttons)
+  const hasUsage = usage && (usage.playlists.length > 0 || usage.devices.length > 0);
 
   // Empty state
   if (!content) {
@@ -465,34 +488,60 @@ export function ContentDetailSidebar({
           </div>
         )}
 
-        {/* Usage Info */}
-        {hasUsage && (
+        {/* Tags Section - Individual tags with remove button */}
+        {contentTags.length > 0 && (
+          <div className="p-4 border-b border-gray-200 dark:border-gray-700">
+            <h4 className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase mb-3">
+              {t('contents.sidebar.tags', 'Tags')}
+            </h4>
+            <div className="flex flex-wrap gap-2">
+              {contentTags.map((tag) => (
+                <div
+                  key={tag.id}
+                  className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium"
+                  style={{
+                    backgroundColor: tag.color ? `${tag.color}20` : '#e5e7eb',
+                    color: tag.color || '#374151',
+                    border: `1px solid ${tag.color || '#d1d5db'}`,
+                  }}
+                >
+                  <span>{tag.tag_name}</span>
+                  {canUpdate && (
+                    <button
+                      onClick={() => handleRemoveTag(tag.id)}
+                      disabled={unassignTagMutation.isPending}
+                      className="ml-0.5 p-0.5 rounded-full hover:bg-black/10 dark:hover:bg-white/10 transition-colors"
+                      title={t('contents.actions.removeTag', 'Remove tag')}
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Usage Info - Playlists and Devices */}
+        {usage && (usage.playlists.length > 0 || usage.devices.length > 0) && (
           <div className="p-4 border-b border-gray-200 dark:border-gray-700">
             <h4 className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase mb-3">
               {t('contents.sidebar.usedIn', 'Used In')}
             </h4>
             <div className="space-y-2">
-              {usage!.playlists.length > 0 && (
+              {usage.playlists.length > 0 && (
                 <div className="flex items-center gap-2 text-sm">
                   <List className="w-4 h-4 text-blue-500" />
                   <span className="text-gray-900 dark:text-white">
-                    {usage!.playlists.length} {t('contents.usage.playlists', 'playlist(s)')}
+                    {usage.playlists.length} {t('contents.usage.playlists', 'playlist(s)')}
                   </span>
                 </div>
               )}
-              {usage!.tags.length > 0 && (
-                <div className="flex items-center gap-2 text-sm">
-                  <Tag className="w-4 h-4 text-purple-500" />
-                  <span className="text-gray-900 dark:text-white">
-                    {usage!.tags.length} {t('contents.usage.tags', 'tag(s)')}
-                  </span>
-                </div>
-              )}
-              {usage!.devices.length > 0 && (
+              {usage.devices.length > 0 && (
                 <div className="flex items-center gap-2 text-sm">
                   <Monitor className="w-4 h-4 text-green-500" />
                   <span className="text-gray-900 dark:text-white">
-                    {usage!.devices.length} {t('contents.usage.devices', 'device(s)')}
+                    {usage.devices.length} {t('contents.usage.devices', 'device(s)')}
                   </span>
                 </div>
               )}
@@ -513,6 +562,28 @@ export function ContentDetailSidebar({
           >
             {t('contents.actions.download', 'Download')}
           </Button>
+          {canUpdate && (
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => setShowAddToPlaylist(true)}
+              leftIcon={<List className="w-4 h-4" />}
+              className="flex-1"
+            >
+              {t('contents.actions.addToPlaylist', 'Add to Playlist')}
+            </Button>
+          )}
+          {canUpdate && (
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => setShowAssignToDevice(true)}
+              leftIcon={<Monitor className="w-4 h-4" />}
+              className="flex-1"
+            >
+              {t('contents.actions.assignToDevice', 'Assign to Device')}
+            </Button>
+          )}
           {canDelete && (
             <Button
               variant="danger"
@@ -537,6 +608,20 @@ export function ContentDetailSidebar({
         confirmLabel={t('contents.actions.delete')}
         onConfirm={handleDelete}
         isLoading={deleteMutation.isPending}
+      />
+
+      {/* Add to Playlist Modal */}
+      <AddToPlaylistModal
+        open={showAddToPlaylist}
+        onOpenChange={setShowAddToPlaylist}
+        content={content}
+      />
+
+      {/* Assign to Device Modal */}
+      <AssignToDeviceModal
+        open={showAssignToDevice}
+        onOpenChange={setShowAssignToDevice}
+        content={content}
       />
     </div>
   );

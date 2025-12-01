@@ -145,6 +145,7 @@ export const API_ENDPOINTS = {
     CREATE: '/api/v1/playlists',
     UPDATE: (id: number) => `/api/v1/playlists/${id}`,
     DELETE: (id: number) => `/api/v1/playlists/${id}`,
+    DUPLICATE: (id: number) => `/api/v1/playlists/${id}/duplicate`,
 
     // Content Management
     GET_CONTENT: (id: number) => `/api/v1/playlists/${id}/content`,

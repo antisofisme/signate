@@ -172,10 +172,17 @@
     },
     "actions": {
       "viewLogs": "View device logs",
+      "viewLogsFor": "View logs for {{name}}",
       "viewDevice": "View device",
+      "viewDeviceFor": "View device {{name}}",
       "manageContent": "Manage content, tags & playlists",
+      "manageContentFor": "Manage content for {{name}}",
       "editSettings": "Edit device settings",
+      "editSettingsFor": "Edit settings for {{name}}",
+      "manageTags": "Manage tags",
+      "manageTagsFor": "Manage tags for {{name}}",
       "deleteDevice": "Delete device",
+      "deleteDeviceFor": "Delete device {{name}}",
       "assignToDevice": "Assign to device",
       "removeFromDevice": "Remove from device",
       "copyCode": "Copy code",
@@ -521,9 +528,11 @@
     "filters": {
       "allTypes": "All Types",
       "allStatus": "All Status",
+      "allTags": "All Tags",
       "clearFilters": "Clear Filters",
       "contentType": "Content Type",
       "status": "Status",
+      "tags": "Tags",
       "image": "Image",
       "video": "Video",
       "audio": "Audio",
@@ -712,8 +721,11 @@
       "unassignDevicesSuccess": "Unassigned from {{count}} devices",
       "unassignDevicesError": "Failed to unassign devices",
       "unassignTagsSuccess": "Unassigned from {{count}} tags",
-      "unassignTagsError": "Failed to unassign tags"
+      "unassignTagsError": "Failed to unassign tags",
+      "duplicateSuccess": "Playlist duplicated as \"{{name}}\"",
+      "duplicateError": "Failed to duplicate playlist"
     },
+    "duplicate": "Duplicate",
     "deletePlaylist": "Delete Playlist",
     "manageContent": "Manage Content",
     "manageAssignments": "Manage Assignments",
@@ -1356,7 +1368,25 @@
       "noDevices": "No devices found",
       "devicesAssigned": "{{count}} device assigned",
       "devicesAssignedPlural": "{{count}} devices assigned",
-      "done": "Done"
+      "done": "Done",
+      "manageDevices": "Manage Devices",
+      "assignedDevices": "Assigned Devices",
+      "allDevices": "All Devices",
+      "deviceAdded": "Device added to group",
+      "deviceRemoved": "Device removed from group",
+      "addError": "Failed to add device",
+      "removeError": "Failed to remove device",
+      "add": "Add to group",
+      "remove": "Remove from group"
+    },
+    "viewDevices": {
+      "title": "Devices in Group",
+      "button": "View Devices",
+      "searchPlaceholder": "Search devices in group...",
+      "loadingDevices": "Loading devices...",
+      "noDevicesInGroup": "No devices in this group",
+      "noMatchingDevices": "No matching devices found",
+      "totalDevices": "{{count}} device(s) in group"
     }
   },
   "tags": {

@@ -183,6 +183,20 @@ export const playlistApi = {
     await apiClient.delete(API_ENDPOINTS.PLAYLISTS.DELETE(id));
   },
 
+  /**
+   * Duplicate playlist with all its contents
+   * @param id - Playlist ID to duplicate
+   * @param newName - Optional custom name for the new playlist
+   * @returns Duplicated playlist
+   */
+  duplicate: async (id: number, newName?: string): Promise<Playlist> => {
+    const response = await apiClient.post<DetailResponse>(
+      API_ENDPOINTS.PLAYLISTS.DUPLICATE(id),
+      { new_name: newName }
+    );
+    return unwrapResponse<Playlist>(response);
+  },
+
   // ========================================
   // Content Management
   // ========================================

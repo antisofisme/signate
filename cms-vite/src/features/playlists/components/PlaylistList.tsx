@@ -3,7 +3,7 @@
  * Table display of playlists with actions
  */
 
-import { Pencil, Trash2, Clock, FileText, List, Monitor, Plus } from 'lucide-react';
+import { Pencil, Trash2, Clock, FileText, List, Monitor, Plus, Copy } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { TableSkeleton, EmptyState, Button, TABLE_STYLES } from '@/shared/components';
 import type { Playlist } from '../types/playlist';
@@ -13,6 +13,7 @@ interface PlaylistListProps {
   isLoading: boolean;
   onEdit?: (playlist: Playlist) => void;
   onDelete?: (playlist: Playlist) => void;
+  onDuplicate?: (playlist: Playlist) => void;
   onManageContent: (playlist: Playlist) => void;
   onManageAssignments: (playlist: Playlist) => void;
   onCreateNew?: () => void;
@@ -23,6 +24,7 @@ export function PlaylistList({
   isLoading,
   onEdit,
   onDelete,
+  onDuplicate,
   onManageContent,
   onManageAssignments,
   onCreateNew,
@@ -141,6 +143,15 @@ export function PlaylistList({
                   >
                     <Monitor className="w-4 h-4" />
                   </button>
+                  {onDuplicate && (
+                    <button
+                      onClick={() => onDuplicate(playlist)}
+                      className="p-2 text-orange-600 hover:bg-orange-50 dark:hover:bg-orange-900/20 rounded-lg"
+                      title={t('playlists.duplicate', 'Duplicate')}
+                    >
+                      <Copy className="w-4 h-4" />
+                    </button>
+                  )}
                   {onEdit && (
                     <button
                       onClick={() => onEdit(playlist)}
