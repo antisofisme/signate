@@ -726,8 +726,8 @@ body:has(#menu-container[style*="display:block"]) {
   margin: 16px 0 24px;
   border-radius: 12px;
   overflow: hidden;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-  background: white;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  background: #1e293b;
 }
 
 .menu-viewer__highlighted-media {
@@ -806,7 +806,7 @@ body:has(#menu-container[style*="display:block"]) {
 
 .menu-viewer__highlighted-content {
   padding: 16px;
-  background: white;
+  background: #1e293b;
 }
 
 .menu-viewer__highlighted-header {
@@ -824,6 +824,7 @@ body:has(#menu-container[style*="display:block"]) {
   display: flex;
   align-items: center;
   gap: 6px;
+  color: #f1f5f9;
 }
 
 .menu-viewer__highlighted-star {

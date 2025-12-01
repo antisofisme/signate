@@ -38,6 +38,7 @@ export interface PublicMenuItem {
   video_url: string | null;
   category: string | null;
   subcategory: string | null;
+  variant: string | null;  // Item variations: Hot, Cold, Large, Small
   tags: string | null;
   is_featured: boolean;
   is_available: boolean;

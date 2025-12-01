@@ -120,6 +120,7 @@ class GetPublicMenuUseCase:
                     "video_url": item.video_url,
                     "category": item.category,
                     "subcategory": item.subcategory,
+                    "variant": item.variant,  # Item variations: Hot, Cold, Large, Small
                     "tags": item.tags,
                     "is_featured": item.is_featured,
                     "is_available": item.is_available,

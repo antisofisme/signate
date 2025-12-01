@@ -304,17 +304,18 @@ export class MenuViewer {
 
   /**
    * Render variant badges (split by comma)
+   * Variant = item variations like Hot, Cold, Large, Small (NOT subcategory)
    */
-  private renderVariantBadges(subcategory: string | null): string {
-    if (!subcategory) return '';
+  private renderVariantBadges(variant: string | null): string {
+    if (!variant) return '';
 
-    const variants = subcategory.split(',').map(v => v.trim()).filter(v => v);
+    const variants = variant.split(',').map(v => v.trim()).filter(v => v);
     if (variants.length === 0) return '';
 
     return `
       <div class="menu-viewer__variant-badges">
-        ${variants.map(variant => `
-          <span class="menu-viewer__variant-badge">${variant}</span>
+        ${variants.map(v => `
+          <span class="menu-viewer__variant-badge">${v}</span>
         `).join('')}
       </div>
     `;
@@ -799,6 +800,7 @@ export class MenuViewer {
 
   /**
    * Render a highlighted/featured item with carousel support
+   * @param item - The menu item to render
    */
   private renderHighlightedItem(item: PublicMenuItem): string {
     const mediaArray = this.getItemMediaArray(item);
@@ -850,7 +852,7 @@ export class MenuViewer {
               ${item.description || ''}${this.renderInlineTags(item.tags)}
             </p>
           ` : ''}
-          ${this.renderVariantBadges(item.subcategory)}
+          ${this.renderVariantBadges(item.variant)}
           ${!item.is_available ? `
             <span class="menu-viewer__unavailable-badge">Not Available</span>
           ` : ''}
@@ -888,6 +890,7 @@ export class MenuViewer {
 
   /**
    * Render a normal item (minimalist text-only, click name for preview)
+   * @param item - The menu item to render
    */
   private renderNormalItem(item: PublicMenuItem): string {
     const mediaArray = this.getItemMediaArray(item);
@@ -917,14 +920,14 @@ export class MenuViewer {
                 data-preview-desc="${this.escapeHtml(item.description || '')}"
                 data-preview-price="${this.menu?.show_prices && item.price !== null ? this.formatPrice(item.price, item.currency) : ''}"
                 data-preview-media='${mediaJson}'
-                data-preview-variant="${this.escapeHtml(item.subcategory || '')}"
+                data-preview-variant="${this.escapeHtml(item.variant || '')}"
               ` : ''}
             >${item.name}${hasMultipleMedia ? `<span class="menu-viewer__media-count">${mediaArray.length}</span>` : ''}</h3>
           </div>
           ${(item.description || item.tags) ? `
             <p class="menu-viewer__normal-item-desc">${item.description || ''}${this.renderInlineTags(item.tags)}</p>
           ` : ''}
-          ${this.renderVariantBadges(item.subcategory)}
+          ${this.renderVariantBadges(item.variant)}
           ${!item.is_available ? `
             <span class="menu-viewer__unavailable-badge">Not Available</span>
           ` : ''}
