@@ -4,7 +4,7 @@
  */
 
 import './portal-viewer.css';
-import { PortalResponse, PortalMenu, MENU_TYPE_ICONS, MENU_TYPE_LABELS, PortalViewerConfig } from './types';
+import { PortalResponse, PortalMenu, MENU_TYPE_LABELS, PortalViewerConfig } from './types';
 import { MenuViewer } from '../menu/menu-viewer';
 
 export class PortalViewer {
@@ -108,7 +108,7 @@ export class PortalViewer {
   }
 
   /**
-   * Render tab buttons for each menu
+   * Render tab buttons for each menu (styled like category tabs, no emoji)
    */
   private renderTabs(menus: PortalMenu[]): string {
     return menus.map((menu, index) => `
@@ -120,8 +120,7 @@ export class PortalViewer {
         aria-selected="${index === this.currentMenuIndex}"
         aria-controls="portal-menu-content"
       >
-        <span class="portal-viewer__tab-icon">${this.getMenuIcon(menu.menu_type)}</span>
-        <span class="portal-viewer__tab-label">${this.getMenuTypeLabel(menu.menu_type)}</span>
+        ${this.getMenuTypeLabel(menu.menu_type)}
       </button>
     `).join('');
   }
@@ -131,13 +130,6 @@ export class PortalViewer {
    */
   private getMenuTypeLabel(menuType: string): string {
     return MENU_TYPE_LABELS[menuType] || MENU_TYPE_LABELS.other;
-  }
-
-  /**
-   * Get icon for menu type
-   */
-  private getMenuIcon(menuType: string): string {
-    return MENU_TYPE_ICONS[menuType] || MENU_TYPE_ICONS.other;
   }
 
   /**

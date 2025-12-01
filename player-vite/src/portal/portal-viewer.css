@@ -10,10 +10,10 @@
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
 }
 
-/* ========== Header Section ========== */
+/* ========== Header Section (Sticky) ========== */
 .portal-viewer__header {
   background: white;
-  padding: 1rem 1.5rem;
+  padding: 1rem 1.5rem 0;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
   position: sticky;
   top: 0;
@@ -36,12 +36,12 @@
   color: #1f2937;
 }
 
-/* ========== Tab Navigation ========== */
+/* ========== Tab Navigation (styled like category menu) ========== */
 .portal-viewer__tabs {
   display: flex;
-  gap: 0.5rem;
+  gap: 8px;
   overflow-x: auto;
-  padding-bottom: 0.5rem;
+  padding: 12px 16px;
   justify-content: center;
   flex-wrap: wrap;
   -webkit-overflow-scrolling: touch;
@@ -53,48 +53,38 @@
 }
 
 .portal-viewer__tab {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.625rem 1rem;
-  border: none;
-  background: #f3f4f6;
-  border-radius: 9999px;
-  cursor: pointer;
+  flex-shrink: 0;
+  padding: 8px 16px;
+  border: 1px solid #e2e8f0;
+  border-radius: 20px;
+  background: white;
+  color: #64748b;
   font-size: 0.875rem;
   font-weight: 500;
+  cursor: pointer;
   white-space: nowrap;
   transition: all 0.2s ease;
-  color: #4b5563;
   outline: none;
 }
 
 .portal-viewer__tab:hover {
-  background: #e5e7eb;
+  border-color: #3b82f6;
+  color: #3b82f6;
 }
 
 .portal-viewer__tab:focus-visible {
-  box-shadow: 0 0 0 2px #3b82f6;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.3);
 }
 
 .portal-viewer__tab--active {
   background: #3b82f6;
+  border-color: #3b82f6;
   color: white;
 }
 
 .portal-viewer__tab--active:hover {
   background: #2563eb;
-}
-
-.portal-viewer__tab-icon {
-  font-size: 1.125rem;
-  line-height: 1;
-}
-
-.portal-viewer__tab-label {
-  max-width: 120px;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  border-color: #2563eb;
 }
 
 /* ========== Content Area ========== */
@@ -238,15 +228,19 @@
 
   .portal-viewer__tab {
     background: #374151;
+    border-color: #4b5563;
     color: #d1d5db;
   }
 
   .portal-viewer__tab:hover {
     background: #4b5563;
+    border-color: #3b82f6;
+    color: #3b82f6;
   }
 
   .portal-viewer__tab--active {
     background: #3b82f6;
+    border-color: #3b82f6;
     color: white;
   }
 

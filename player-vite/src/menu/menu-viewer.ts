@@ -172,14 +172,13 @@ export class MenuViewer {
     if (!itemsContainer) return;
 
     const filteredItems = this.getFilteredItems();
-    const featuredItems = filteredItems.filter(item => item.is_featured);
-    const normalItems = filteredItems.filter(item => !item.is_featured);
 
-    // Update items HTML
-    itemsContainer.innerHTML = `
-      ${featuredItems.map(item => this.renderHighlightedItem(item)).join('')}
-      ${normalItems.map(item => this.renderNormalItem(item)).join('')}
-    `;
+    // Update items HTML (all items in order, highlighted items have special styling)
+    itemsContainer.innerHTML = filteredItems.map(item =>
+      item.is_featured
+        ? this.renderHighlightedItem(item)
+        : this.renderNormalItem(item)
+    ).join('');
 
     // Handle empty state
     if (emptyContainer) {
@@ -556,10 +555,6 @@ export class MenuViewer {
     const themeColor = this.menu.theme_color || '#3b82f6';
     const filteredItems = this.getFilteredItems();
 
-    // Separate featured and normal items
-    const featuredItems = filteredItems.filter(item => item.is_featured);
-    const normalItems = filteredItems.filter(item => !item.is_featured);
-
     this.container.innerHTML = `
       <div class="menu-viewer menu-viewer--minimalist" style="--theme-color: ${themeColor}">
         <!-- Header -->
@@ -619,13 +614,13 @@ export class MenuViewer {
           </div>
         </div>
 
-        <!-- Minimalist Items -->
+        <!-- Minimalist Items (all items in order, highlighted items have special styling) -->
         <div class="menu-viewer__minimalist-items">
-          <!-- Featured/Highlighted Items -->
-          ${featuredItems.map(item => this.renderHighlightedItem(item)).join('')}
-
-          <!-- Normal Items -->
-          ${normalItems.map(item => this.renderNormalItem(item)).join('')}
+          ${filteredItems.map(item =>
+            item.is_featured
+              ? this.renderHighlightedItem(item)
+              : this.renderNormalItem(item)
+          ).join('')}
         </div>
 
         ${filteredItems.length === 0 ? `
