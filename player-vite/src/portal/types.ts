@@ -40,3 +40,12 @@ export const MENU_TYPE_ICONS: Record<string, string> = {
   room_service: '🛎️',
   other: '📋'
 };
+
+// Menu type display labels
+export const MENU_TYPE_LABELS: Record<string, string> = {
+  restaurant: 'Restaurant',
+  laundry: 'Laundry',
+  spa: 'Spa',
+  room_service: 'Room Service',
+  other: 'Other'
+};

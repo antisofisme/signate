@@ -99,17 +99,22 @@
 
 /* ========== Content Area ========== */
 .portal-viewer__content {
-  padding: 0;
+  padding: 1rem;
   min-height: calc(100vh - 120px);
 }
 
 .portal-viewer__menu-container {
-  min-height: calc(100vh - 120px);
+  min-height: calc(100vh - 160px);
+  background: white;
+  border-radius: 1rem;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  overflow: hidden;
 }
 
-/* Remove extra padding from nested menu viewer */
+/* Style nested menu viewer inside portal */
 .portal-viewer__menu-container .menu-viewer {
-  background: transparent;
+  background: white;
+  min-height: calc(100vh - 160px);
 }
 
 /* ========== Loading State ========== */
@@ -243,6 +248,15 @@
   .portal-viewer__tab--active {
     background: #3b82f6;
     color: white;
+  }
+
+  .portal-viewer__menu-container {
+    background: #1f2937;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  }
+
+  .portal-viewer__menu-container .menu-viewer {
+    background: #1f2937;
   }
 
   .portal-viewer__loading {
