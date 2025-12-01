@@ -24,6 +24,7 @@ import {
   ErrorDisplay,
   ConfirmDialog,
   Button,
+  TABLE_STYLES,
 } from '@/shared/components';
 import { useCanPerformAction } from '@/features/rbac/hooks/usePermissions';
 import {
@@ -199,13 +200,13 @@ export function DeletedContentTable() {
 
       {/* Table */}
       {!isLoading && !error && contentData && contentData.data.length > 0 && (
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
+        <div className={TABLE_STYLES.container}>
           <div className="overflow-x-auto">
-            <table className="w-full table-fixed divide-y divide-gray-200 dark:divide-gray-700">
-              <thead className="bg-gray-50 dark:bg-gray-900">
+            <table className={`${TABLE_STYLES.table} table-fixed`}>
+              <thead className={TABLE_STYLES.thead}>
                 <tr>
                   {/* Checkbox column */}
-                  <th className="px-4 py-3 text-center w-12">
+                  <th className={`${TABLE_STYLES.th} text-center w-12`}>
                     <input
                       type="checkbox"
                       checked={selectedIds.size > 0 && selectedIds.size === contentData?.data.length}
@@ -213,33 +214,33 @@ export function DeletedContentTable() {
                       className="w-4 h-4 text-red-600 bg-gray-100 border-gray-300 rounded focus:ring-red-500 dark:focus:ring-red-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
                     />
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-[30%]">
+                  <th className={`${TABLE_STYLES.th} w-[30%]`}>
                     {t('contents.table.content')}
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-20">
+                  <th className={`${TABLE_STYLES.th} w-20`}>
                     {t('contents.table.type')}
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-24">
+                  <th className={`${TABLE_STYLES.th} w-24`}>
                     {t('contents.table.size')}
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-32">
+                  <th className={`${TABLE_STYLES.th} w-32`}>
                     {t('contents.deleted.deletedAt')}
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-32">
+                  <th className={`${TABLE_STYLES.th} w-32`}>
                     {t('contents.table.actions')}
                   </th>
                 </tr>
               </thead>
-              <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+              <tbody className={TABLE_STYLES.tbody}>
                 {contentData.data.map((content) => (
                   <tr
                     key={content.id}
-                    className={`hover:bg-gray-50 dark:hover:bg-gray-700 ${
+                    className={`${TABLE_STYLES.tr} ${
                       selectedIds.has(content.id) ? 'bg-red-50 dark:bg-red-900/10' : ''
                     }`}
                   >
                     {/* Checkbox */}
-                    <td className="px-4 py-3 text-center">
+                    <td className={`${TABLE_STYLES.td} text-center`}>
                       <input
                         type="checkbox"
                         checked={selectedIds.has(content.id)}
@@ -247,7 +248,7 @@ export function DeletedContentTable() {
                         className="w-4 h-4 text-red-600 bg-gray-100 border-gray-300 rounded focus:ring-red-500 dark:focus:ring-red-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
                       />
                     </td>
-                    <td className="px-4 py-3">
+                    <td className={TABLE_STYLES.td}>
                       <div className="flex items-center min-w-0">
                         {content.thumbnail_url ? (
                           <img
@@ -272,52 +273,46 @@ export function DeletedContentTable() {
                         </div>
                       </div>
                     </td>
-                    <td className="px-4 py-3 whitespace-nowrap">
-                      <div className="flex items-center gap-1 text-sm text-gray-500 dark:text-gray-400 capitalize">
+                    <td className={TABLE_STYLES.td}>
+                      <div className="flex items-center gap-1 text-gray-500 dark:text-gray-400 capitalize">
                         {getContentTypeIcon(content.content_type)}
                         <span className="hidden sm:inline">{content.content_type}</span>
                       </div>
                     </td>
-                    <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                    <td className={`${TABLE_STYLES.td} text-gray-500 dark:text-gray-400`}>
                       {formatFileSize(content.file_size)}
                     </td>
-                    <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                    <td className={`${TABLE_STYLES.td} text-gray-500 dark:text-gray-400`}>
                       {content.deleted_at
                         ? new Date(content.deleted_at).toLocaleDateString()
                         : '-'}
                     </td>
-                    <td className="px-4 py-3 whitespace-nowrap text-sm">
+                    <td className={TABLE_STYLES.td}>
                       <div className="flex items-center gap-1">
-                        <Button
-                          variant="icon"
-                          size="sm"
+                        <button
                           onClick={() => handlePreview(content)}
+                          className={TABLE_STYLES.actionBtnBlue}
                           title={t('contents.actions.preview')}
-                          className="!text-blue-600 hover:!text-blue-700 dark:!text-blue-400"
                         >
                           <Eye className="w-4 h-4" />
-                        </Button>
+                        </button>
                         {canUpdate && (
-                          <Button
-                            variant="icon"
-                            size="sm"
+                          <button
                             onClick={() => setContentToRestore(content)}
+                            className={TABLE_STYLES.actionBtnGreen}
                             title={t('contents.deleted.restore')}
-                            className="!text-green-600 hover:!text-green-700 dark:!text-green-400"
                           >
                             <RotateCcw className="w-4 h-4" />
-                          </Button>
+                          </button>
                         )}
                         {canDelete && (
-                          <Button
-                            variant="icon"
-                            size="sm"
+                          <button
                             onClick={() => setContentToDelete(content)}
+                            className={TABLE_STYLES.actionBtnRed}
                             title={t('contents.deleted.deletePermanently')}
-                            className="!text-red-600 hover:!text-red-700 dark:!text-red-400"
                           >
                             <Trash2 className="w-4 h-4" />
-                          </Button>
+                          </button>
                         )}
                       </div>
                     </td>

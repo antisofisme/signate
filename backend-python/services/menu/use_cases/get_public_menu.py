@@ -136,7 +136,10 @@ class GetPublicMenuUseCase:
                     "menu_type": menu.menu_type,
                     "show_prices": menu.show_prices,
                     "display_mode": menu.display_mode,
-                    "theme_color": menu.theme_color,
+                    # Color scheme (60-30-10 principle)
+                    "primary_color": menu.primary_color or "#ffffff",  # 60% - Background
+                    "secondary_color": menu.secondary_color or "#f3f4f6",  # 30% - Header
+                    "theme_color": menu.theme_color or "#3b82f6",  # 10% - Accent
                     "whatsapp_number": menu.whatsapp_number,
                     "phone_number": menu.phone_number,
                     "contact_label": menu.contact_label,

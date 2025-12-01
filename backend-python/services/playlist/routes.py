@@ -32,9 +32,7 @@ from .use_cases.manage_playlist_content import (
 from .use_cases.manage_playlist_assignments import (
     GetPlaylistAssignmentsUseCase,
     AssignPlaylistToDevicesUseCase,
-    AssignPlaylistToTagsUseCase,
     UnassignPlaylistFromDevicesUseCase,
-    UnassignPlaylistFromTagsUseCase,
 )
 from .domain.content_resolver import ContentResolver, ContentResolution
 from .dtos import (
@@ -45,7 +43,6 @@ from .dtos import (
     AddContentRequest,
     ReorderContentRequest,
     AssignDevicesRequest,
-    AssignTagsRequest,
     DuplicatePlaylistRequest,
     PlaylistContentListResponse,
     PlaylistContentItemResponse,
@@ -164,22 +161,10 @@ def get_assign_devices_use_case(
     return AssignPlaylistToDevicesUseCase(playlist_repo)
 
 
-def get_assign_tags_use_case(
-    playlist_repo: IPlaylistRepository = Depends(get_playlist_repository)
-) -> AssignPlaylistToTagsUseCase:
-    return AssignPlaylistToTagsUseCase(playlist_repo)
-
-
 def get_unassign_devices_use_case(
     playlist_repo: IPlaylistRepository = Depends(get_playlist_repository)
 ) -> UnassignPlaylistFromDevicesUseCase:
     return UnassignPlaylistFromDevicesUseCase(playlist_repo)
-
-
-def get_unassign_tags_use_case(
-    playlist_repo: IPlaylistRepository = Depends(get_playlist_repository)
-) -> UnassignPlaylistFromTagsUseCase:
-    return UnassignPlaylistFromTagsUseCase(playlist_repo)
 
 
 # ========== PLAYLIST CRUD ENDPOINTS ==========
@@ -621,49 +606,6 @@ def assign_to_devices(
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
 
 
-@router.post("/{playlist_id}/assign/tags", status_code=status.HTTP_201_CREATED)
-def assign_to_tags(
-    playlist_id: int,
-    request_body: AssignTagsRequest,
-    http_request: Request,
-    use_case: AssignPlaylistToTagsUseCase = Depends(get_assign_tags_use_case),
-    current_user: dict = Depends(require_permission("playlists", "edit")),
-    audit_logger: AuditLogger = Depends(get_audit_logger),
-):
-    """Assign playlist to tags (bulk)"""
-    try:
-        result = use_case.execute(
-            playlist_id=playlist_id,
-            tag_ids=request_body.tag_ids,
-            organization_id=current_user["organization_id"]
-        )
-
-        # Audit log
-        audit_logger.log_action(
-            user_id=current_user["user_id"],
-            action="playlist.assign_tags",
-            resource_type="playlist",
-            resource_id=playlist_id,
-            details={
-                "tag_count": len(request_body.tag_ids),
-                "assigned": result["assigned"],
-            },
-            ip_address=http_request.client.host if http_request.client else None,
-            organization_id=current_user["organization_id"],
-        )
-
-        message = f"Assigned to {result['assigned']} tag(s)"
-        if result["skipped_duplicate"]:
-            message += f", skipped {len(result['skipped_duplicate'])} duplicates"
-
-        return success_response(data={"message": message, **result})
-
-    except ValueError as e:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
-    except Exception as e:
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
-
-
 @router.delete("/{playlist_id}/assign/devices")
 def unassign_from_devices(
     playlist_id: int,
@@ -695,47 +637,6 @@ def unassign_from_devices(
         return success_response(
             data={
                 "message": f"Unassigned from {removed} device(s)",
-                "removed": removed
-            }
-        )
-
-    except ValueError as e:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
-    except Exception as e:
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
-
-
-@router.delete("/{playlist_id}/assign/tags")
-def unassign_from_tags(
-    playlist_id: int,
-    request_body: AssignTagsRequest,
-    http_request: Request,
-    use_case: UnassignPlaylistFromTagsUseCase = Depends(get_unassign_tags_use_case),
-    current_user: dict = Depends(require_permission("playlists", "edit")),
-    audit_logger: AuditLogger = Depends(get_audit_logger),
-):
-    """Unassign playlist from tags"""
-    try:
-        removed = use_case.execute(
-            playlist_id=playlist_id,
-            tag_ids=request_body.tag_ids,
-            organization_id=current_user["organization_id"]
-        )
-
-        # Audit log
-        audit_logger.log_action(
-            user_id=current_user["user_id"],
-            action="playlist.unassign_tags",
-            resource_type="playlist",
-            resource_id=playlist_id,
-            details={"removed_count": removed},
-            ip_address=http_request.client.host if http_request.client else None,
-            organization_id=current_user["organization_id"],
-        )
-
-        return success_response(
-            data={
-                "message": f"Unassigned from {removed} tag(s)",
                 "removed": removed
             }
         )

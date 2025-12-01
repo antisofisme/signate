@@ -6,15 +6,15 @@
 /* ========== Portal Container ========== */
 .portal-viewer {
   min-height: 100vh;
-  background: linear-gradient(135deg, #f5f7fa 0%, #e4e8eb 100%);
+  background: linear-gradient(135deg, #1f2937 0%, #111827 100%);
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
 }
 
-/* ========== Header Section (Sticky) ========== */
+/* ========== Header Section (Sticky) - ALWAYS DARK ========== */
 .portal-viewer__header {
-  background: white;
+  background: #0f172a;
   padding: 1rem 1.5rem 0;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
   position: sticky;
   top: 0;
   z-index: 100;
@@ -33,7 +33,7 @@
   font-weight: 600;
   text-align: center;
   margin: 0 0 0.50rem;
-  color: #1f2937;
+  color: #f9fafb;
 }
 
 /* ========== Tab Navigation (styled like category menu) ========== */
@@ -57,8 +57,8 @@
   padding: 10px 20px;
   border: none;
   border-radius: 4px;
-  background: #f1f5f9;
-  color: #64748b;
+  background: #374151;
+  color: #d1d5db;
   font-size: 0.875rem;
   font-weight: 500;
   cursor: pointer;
@@ -92,15 +92,15 @@
 
 .portal-viewer__menu-container {
   min-height: calc(100vh - 160px);
-  background: white;
+  background: #0f172a;
   border-radius: 1rem;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
   /* Note: overflow: hidden removed to allow sticky positioning inside */
 }
 
-/* Style nested menu viewer inside portal */
+/* Style nested menu viewer inside portal - ALWAYS DARK */
 .portal-viewer__menu-container .menu-viewer {
-  background: white;
+  background: #0f172a;
   min-height: calc(100vh - 160px);
 }
 
@@ -122,7 +122,7 @@
   align-items: center;
   justify-content: center;
   padding: 4rem 1rem;
-  color: #6b7280;
+  color: #94a3b8;
 }
 
 .portal-viewer__spinner {

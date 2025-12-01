@@ -39,13 +39,17 @@ body:has(#menu-container[style*="display:block"]) {
   background-color: #0f172a !important;
 }
 
-/* CSS Variables */
+/* CSS Variables - 60-30-10 Color Scheme */
 .menu-viewer {
-  --theme-color: #3b82f6;
+  /* 60-30-10 Principle Colors (set via inline style from API) */
+  --primary-color: #ffffff;    /* 60% - Background (set via inline style) */
+  --secondary-color: #f3f4f6;  /* 30% - Header/Categories (set via inline style) */
+  --theme-color: #3b82f6;      /* 10% - Accent (set via inline style) */
   /* Fallback for browsers that don't support color-mix */
   --theme-color-light: #dbeafe;
   --theme-color-dark: #1e40af;
-  --bg-color: #f8fafc;
+  /* Derived from 60-30-10 colors */
+  --bg-color: var(--primary-color);
   --card-bg: #ffffff;
   --text-primary: #1e293b;
   --text-secondary: #64748b;
@@ -79,10 +83,10 @@ body:has(#menu-container[style*="display:block"]) {
   box-shadow: 0 0 40px rgba(0, 0, 0, 0.1); /* Subtle shadow on desktop */
 }
 
-/* Minimalist mode - force dark background and use flexbox for footer fill */
+/* Minimalist mode - uses primary color (60%) as background */
 .menu-viewer--minimalist {
-  background: #0f172a !important;
-  background-color: #0f172a !important;
+  background: var(--primary-color) !important;
+  background-color: var(--primary-color) !important;
   display: flex;
   flex-direction: column;
   min-height: 100vh;
@@ -139,10 +143,10 @@ body:has(#menu-container[style*="display:block"]) {
   color: var(--text-secondary);
 }
 
-/* Header */
+/* Header - uses secondary-color (30%) */
 .menu-viewer__header {
-  background: linear-gradient(135deg, var(--theme-color), var(--theme-color-dark));
-  color: white;
+  background: var(--secondary-color);
+  color: #1e293b;
   padding: 24px 16px;
   display: flex;
   align-items: center;
@@ -152,7 +156,8 @@ body:has(#menu-container[style*="display:block"]) {
 .menu-viewer__header-icon {
   width: 48px;
   height: 48px;
-  background: rgba(255, 255, 255, 0.2);
+  background: var(--theme-color);
+  color: white;
   border-radius: 12px;
   display: flex;
   align-items: center;
@@ -501,13 +506,16 @@ body:has(#menu-container[style*="display:block"]) {
    MINIMALIST DISPLAY MODE
    ===================================================================== */
 
-/* Minimalist Theme Variables - ALWAYS DARK */
+/* Minimalist Theme Variables - Uses 60-30-10 colors from API */
 .menu-viewer--minimalist {
-  --minimalist-bg: #0f172a;
+  /* Derive from 60-30-10 scheme */
+  --minimalist-bg: var(--primary-color);        /* 60% - Background */
+  --minimalist-secondary: var(--secondary-color); /* 30% - Header/Cards */
+  --minimalist-accent: var(--theme-color);       /* 10% - Accent */
+  /* Text colors remain fixed for readability on dark backgrounds */
   --minimalist-text: #f1f5f9;
   --minimalist-muted: #94a3b8;
   --minimalist-border: #334155;
-  --minimalist-accent: var(--theme-color);
 }
 
 /* Minimalist Header */
@@ -548,12 +556,12 @@ body:has(#menu-container[style*="display:block"]) {
   font-size: 0.875rem;
 }
 
-/* Sticky Filter Bar (Categories + Search) */
+/* Sticky Filter Bar (Categories + Search) - Uses secondary color (30%) */
 .menu-viewer__sticky-filter {
   position: sticky;
   top: 0;
   z-index: 100;
-  background: #0f172a;
+  background: var(--minimalist-secondary); /* 30% - Secondary color for filter bar */
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
   padding-bottom: 10px;
 }
@@ -716,7 +724,7 @@ body:has(#menu-container[style*="display:block"]) {
 .menu-viewer__minimalist-items {
   padding: 16px;
   padding-bottom: 20px;
-  background: #182130;
+  background: var(--minimalist-bg); /* 60% - Primary background */
   flex-grow: 1; /* Fill available space */
   min-height: 300px; /* Minimum height */
 }
@@ -727,7 +735,7 @@ body:has(#menu-container[style*="display:block"]) {
   border-radius: 12px;
   overflow: hidden;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-  background: #1e293b;
+  background: var(--minimalist-secondary); /* 30% - Secondary color for cards */
 }
 
 .menu-viewer__highlighted-media {
@@ -806,7 +814,7 @@ body:has(#menu-container[style*="display:block"]) {
 
 .menu-viewer__highlighted-content {
   padding: 16px;
-  background: #1e293b;
+  background: var(--minimalist-secondary); /* 30% - Secondary color */
 }
 
 .menu-viewer__highlighted-header {
@@ -1486,8 +1494,8 @@ body:has(#menu-container[style*="display:block"]) {
 /* Adjust footer margin for FAB - Make it taller to cover empty space */
 .menu-viewer--minimalist .menu-viewer__footer {
   padding: 24px 16px 120px; /* Increased padding bottom */
-  background: #0f172a;
-  color: #94a3b8;
+  background: var(--minimalist-bg); /* 60% - Primary background color */
+  color: var(--minimalist-muted);
   /* Make footer fill remaining space when content is short */
   flex-grow: 1;
   min-height: 200px;

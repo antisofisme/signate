@@ -20,6 +20,7 @@ import {
   ErrorDisplay,
   ConfirmDialog,
   Button,
+  TABLE_STYLES,
 } from '@/shared/components';
 import { useCanPerformAction } from '@/features/rbac/hooks/usePermissions';
 import {
@@ -188,12 +189,12 @@ export function MenuMediaDeletedTable() {
 
       {/* Table */}
       {!isLoading && !error && mediaData && mediaData.items.length > 0 && (
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
+        <div className={TABLE_STYLES.container}>
           <div className="overflow-x-auto">
-            <table className="w-full table-fixed divide-y divide-gray-200 dark:divide-gray-700">
-              <thead className="bg-gray-50 dark:bg-gray-900">
+            <table className={`${TABLE_STYLES.table} table-fixed`}>
+              <thead className={TABLE_STYLES.thead}>
                 <tr>
-                  <th className="px-4 py-3 text-center w-12">
+                  <th className={`${TABLE_STYLES.th} text-center w-12`}>
                     <input
                       type="checkbox"
                       checked={selectedIds.size > 0 && selectedIds.size === mediaData.items.length}
@@ -201,27 +202,27 @@ export function MenuMediaDeletedTable() {
                       className="w-4 h-4 text-red-600 bg-gray-100 border-gray-300 rounded focus:ring-red-500"
                     />
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-[35%]">
+                  <th className={`${TABLE_STYLES.th} w-[35%]`}>
                     {t('menus.media.table.image')}
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-24">
+                  <th className={`${TABLE_STYLES.th} w-24`}>
                     {t('menus.media.table.size')}
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-28">
+                  <th className={`${TABLE_STYLES.th} w-28`}>
                     {t('menus.media.table.dimensions')}
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-36">
+                  <th className={`${TABLE_STYLES.th} w-36`}>
                     {t('menus.media.table.deletedAt')}
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-28">
+                  <th className={`${TABLE_STYLES.th} w-28`}>
                     {t('menus.media.table.actions')}
                   </th>
                 </tr>
               </thead>
-              <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+              <tbody className={TABLE_STYLES.tbody}>
                 {mediaData.items.map((media) => (
-                  <tr key={media.id} className="hover:bg-red-50 dark:hover:bg-red-900/10">
-                    <td className="px-4 py-3 text-center">
+                  <tr key={media.id} className={`${TABLE_STYLES.tr} hover:!bg-red-50 dark:hover:!bg-red-900/10`}>
+                    <td className={`${TABLE_STYLES.td} text-center`}>
                       <input
                         type="checkbox"
                         checked={selectedIds.has(media.id)}
@@ -229,7 +230,7 @@ export function MenuMediaDeletedTable() {
                         className="w-4 h-4 text-red-600 bg-gray-100 border-gray-300 rounded focus:ring-red-500"
                       />
                     </td>
-                    <td className="px-4 py-3">
+                    <td className={TABLE_STYLES.td}>
                       <div className="flex items-center min-w-0">
                         <div className="relative">
                           <img
@@ -251,45 +252,39 @@ export function MenuMediaDeletedTable() {
                         </div>
                       </div>
                     </td>
-                    <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                    <td className={`${TABLE_STYLES.td} text-gray-500 dark:text-gray-400`}>
                       {formatFileSize(media.file_size)}
                     </td>
-                    <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                    <td className={`${TABLE_STYLES.td} text-gray-500 dark:text-gray-400`}>
                       {media.width}x{media.height}
                     </td>
-                    <td className="px-4 py-3 whitespace-nowrap text-sm text-red-600 dark:text-red-400">
+                    <td className={`${TABLE_STYLES.td} text-red-600 dark:text-red-400`}>
                       {formatDate(media.deleted_at)}
                     </td>
-                    <td className="px-4 py-3 whitespace-nowrap text-sm">
+                    <td className={TABLE_STYLES.td}>
                       <div className="flex items-center gap-1">
-                        <Button
-                          variant="icon"
-                          size="sm"
+                        <button
                           onClick={() => handlePreview(media)}
+                          className={TABLE_STYLES.actionBtnBlue}
                           title={t('menus.media.actions.preview')}
-                          className="!text-blue-600 hover:!text-blue-700 dark:!text-blue-400"
                         >
                           <Eye className="w-4 h-4" />
-                        </Button>
-                        <Button
-                          variant="icon"
-                          size="sm"
+                        </button>
+                        <button
                           onClick={() => setMediaToRestore(media)}
+                          className={TABLE_STYLES.actionBtnGreen}
                           title={t('menus.media.actions.restore')}
-                          className="!text-green-600 hover:!text-green-700 dark:!text-green-400"
                         >
                           <RotateCcw className="w-4 h-4" />
-                        </Button>
+                        </button>
                         {canDelete && (
-                          <Button
-                            variant="icon"
-                            size="sm"
+                          <button
                             onClick={() => setMediaToDelete(media)}
+                            className={TABLE_STYLES.actionBtnRed}
                             title={t('menus.media.actions.permanentlyDelete')}
-                            className="!text-red-600 hover:!text-red-700 dark:!text-red-400"
                           >
                             <Trash2 className="w-4 h-4" />
-                          </Button>
+                          </button>
                         )}
                       </div>
                     </td>

@@ -2,11 +2,11 @@
  * Tag Assignment Tab
  *
  * Priority 2 - Medium priority tag-based content assignment
+ * Two-column layout: Available Tags (left) | Assigned Tags (right)
  */
 
-import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Tag as TagIcon, Plus, Trash2, Loader2 } from 'lucide-react';
+import { Tag as TagIcon, Trash2, Loader2, ArrowRight } from 'lucide-react';
 import { useDeviceTags, useAssignTag, useUnassignTag } from '../../../hooks/useDevices';
 import { useTags } from '@/shared/hooks/useSharedTags';
 import type { Device } from '../../../types/device';
@@ -17,7 +17,6 @@ interface TagAssignmentTabProps {
 
 export function TagAssignmentTab({ device }: TagAssignmentTabProps) {
   const { t } = useTranslation();
-  const [selectedTagId, setSelectedTagId] = useState<number | null>(null);
 
   // Fetch assigned tags for this device
   const { data: assignedData, isLoading: loadingAssigned } = useDeviceTags(device.id, true);
@@ -38,12 +37,9 @@ export function TagAssignmentTab({ device }: TagAssignmentTabProps) {
   );
 
   // Handle assign
-  const handleAssign = async () => {
-    if (!selectedTagId) return;
-
+  const handleAssign = async (tagId: number) => {
     try {
-      await assignTag.mutateAsync({ deviceId: device.id, tagId: selectedTagId });
-      setSelectedTagId(null);
+      await assignTag.mutateAsync({ deviceId: device.id, tagId });
     } catch (error) {
       // Error handled by mutation
     }
@@ -69,91 +65,106 @@ export function TagAssignmentTab({ device }: TagAssignmentTabProps) {
         </p>
       </div>
 
-      {/* Content */}
+      {/* Content - 2 Column Grid */}
       {isLoading ? (
         <div className="flex items-center justify-center py-12">
           <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
         </div>
       ) : (
-        <div className="space-y-6">
-          {/* Assign New Tag */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
-              {t('devices.modals.assignNewTag')}
-            </label>
+        <div className="grid grid-cols-2 gap-6">
+          {/* Left Column - Available Tags */}
+          <div className="border-r border-gray-200 dark:border-gray-700 pr-4">
+            <h4 className="font-semibold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
+              <TagIcon className="w-4 h-4" />
+              {t('devices.modals.availableTags', 'Tag Tersedia')} ({availableTags.length})
+            </h4>
             {availableTags.length === 0 ? (
               <p className="text-sm text-gray-500 dark:text-gray-400">
                 {t('devices.modals.allTagsAssigned')}
               </p>
             ) : (
-              <div className="flex gap-2">
-                <select
-                  value={selectedTagId || ''}
-                  onChange={(e) => setSelectedTagId(Number(e.target.value) || null)}
-                  className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                  disabled={assignTag.isPending}
-                >
-                  <option value="">{t('devices.modals.selectTag')}</option>
-                  {availableTags.map((tag) => (
-                    <option key={tag.id} value={tag.id}>
-                      {tag.tag_name}
-                    </option>
-                  ))}
-                </select>
-                <button
-                  onClick={handleAssign}
-                  disabled={!selectedTagId || assignTag.isPending}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2 transition-colors"
-                >
-                  {assignTag.isPending ? (
-                    <>
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      {t('devices.modals.assigning')}
-                    </>
-                  ) : (
-                    <>
-                      <Plus className="w-4 h-4" />
-                      {t('devices.modals.assign')}
-                    </>
-                  )}
-                </button>
+              <div className="space-y-2 max-h-[400px] overflow-y-auto">
+                {availableTags.map((tag) => (
+                  <div
+                    key={tag.id}
+                    className="group relative border border-gray-200 dark:border-gray-700 rounded-lg p-3 hover:border-blue-500 dark:hover:border-blue-400 transition-colors cursor-pointer"
+                    onClick={() => handleAssign(tag.id)}
+                  >
+                    <div className="flex items-center gap-3">
+                      {/* Color indicator */}
+                      <div
+                        className="w-4 h-4 rounded flex-shrink-0"
+                        style={{ backgroundColor: tag.color }}
+                      />
+                      {/* Info */}
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                          {tag.tag_name}
+                        </p>
+                        {tag.description && (
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 truncate">
+                            {tag.description}
+                          </p>
+                        )}
+                      </div>
+                      {/* Assign Button */}
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleAssign(tag.id);
+                        }}
+                        disabled={assignTag.isPending}
+                        className="opacity-0 group-hover:opacity-100 flex-shrink-0 p-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 transition-all"
+                        title={t('devices.modals.assign')}
+                      >
+                        <ArrowRight className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
               </div>
             )}
           </div>
 
-          {/* Currently Assigned Tags */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
-              {t('devices.modals.currentlyAssignedTags')} ({assignedTags.length})
-            </label>
+          {/* Right Column - Assigned Tags */}
+          <div className="pl-4">
+            <h4 className="font-semibold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
+              <TagIcon className="w-4 h-4 text-green-600" />
+              {t('devices.modals.assignedTags', 'Tag Ditetapkan')} ({assignedTags.length})
+            </h4>
             {assignedTags.length === 0 ? (
               <p className="text-sm text-gray-500 dark:text-gray-400">
                 {t('devices.modals.noTagsAssigned')}
               </p>
             ) : (
-              <div className="space-y-2">
+              <div className="space-y-2 max-h-[400px] overflow-y-auto">
                 {assignedTags.map((assigned) => (
                   <div
                     key={assigned.id}
-                    className="flex items-center justify-between p-3 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
+                    className="group relative border border-gray-200 dark:border-gray-700 rounded-lg p-3 transition-colors bg-white dark:bg-gray-800"
                   >
                     <div className="flex items-center gap-3">
+                      {/* Color indicator */}
                       <div
-                        className="w-4 h-4 rounded"
+                        className="w-4 h-4 rounded flex-shrink-0"
                         style={{ backgroundColor: assigned.tag_color }}
                       />
-                      <span className="text-sm font-medium text-gray-900 dark:text-white">
-                        {assigned.tag_name}
-                      </span>
+                      {/* Info */}
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                          {assigned.tag_name}
+                        </p>
+                      </div>
+                      {/* Remove Button */}
+                      <button
+                        onClick={() => handleUnassign(assigned.tag_id)}
+                        disabled={unassignTag.isPending}
+                        className="opacity-0 group-hover:opacity-100 flex-shrink-0 p-2 rounded-lg bg-red-600 text-white hover:bg-red-700 disabled:opacity-50 transition-all"
+                        title={t('devices.modals.removeTag')}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
                     </div>
-                    <button
-                      onClick={() => handleUnassign(assigned.tag_id)}
-                      disabled={unassignTag.isPending}
-                      className="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 disabled:opacity-50"
-                      title={t('devices.modals.removeTag')}
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
                   </div>
                 ))}
               </div>

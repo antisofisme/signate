@@ -26,6 +26,9 @@ const menuFormSchema = z.object({
   is_active: z.boolean().default(true),
   show_prices: z.boolean().default(true),
   display_mode: z.enum(['grid', 'list', 'carousel', 'minimalist']).default('grid'),
+  // Color scheme (60-30-10 principle)
+  primary_color: z.string().regex(/^#[0-9A-Fa-f]{6}$/, 'Invalid color format').optional().or(z.literal('')),
+  secondary_color: z.string().regex(/^#[0-9A-Fa-f]{6}$/, 'Invalid color format').optional().or(z.literal('')),
   theme_color: z.string().regex(/^#[0-9A-Fa-f]{6}$/, 'Invalid color format').optional().or(z.literal('')),
   whatsapp_number: z.string().max(20).optional().or(z.literal('')),
   phone_number: z.string().max(20).optional().or(z.literal('')),
@@ -82,7 +85,10 @@ export const MenuForm = ({ menu, onClose, onSuccess }: MenuFormProps) => {
           is_active: menu.is_active,
           show_prices: menu.show_prices,
           display_mode: menu.display_mode,
-          theme_color: menu.theme_color || '',
+          // Color scheme (60-30-10)
+          primary_color: menu.primary_color || '#ffffff',
+          secondary_color: menu.secondary_color || '#f3f4f6',
+          theme_color: menu.theme_color || '#3b82f6',
           whatsapp_number: menu.whatsapp_number || '',
           phone_number: menu.phone_number || '',
           contact_label: menu.contact_label || '',
@@ -93,6 +99,10 @@ export const MenuForm = ({ menu, onClose, onSuccess }: MenuFormProps) => {
           is_active: true,
           show_prices: true,
           display_mode: 'grid',
+          // Default colors (60-30-10)
+          primary_color: '#ffffff',
+          secondary_color: '#f3f4f6',
+          theme_color: '#3b82f6',
         },
   });
 
@@ -108,7 +118,10 @@ export const MenuForm = ({ menu, onClose, onSuccess }: MenuFormProps) => {
         is_active: data.is_active,
         show_prices: data.show_prices,
         display_mode: data.display_mode,
-        theme_color: data.theme_color || undefined,
+        // Color scheme (60-30-10)
+        primary_color: data.primary_color || '#ffffff',
+        secondary_color: data.secondary_color || '#f3f4f6',
+        theme_color: data.theme_color || '#3b82f6',
         whatsapp_number: data.whatsapp_number || undefined,
         phone_number: data.phone_number || undefined,
         contact_label: data.contact_label || undefined,
@@ -474,25 +487,83 @@ export const MenuForm = ({ menu, onClose, onSuccess }: MenuFormProps) => {
             </select>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-              Theme Color (Hex)
-            </label>
-            <div className="mt-1 flex items-center space-x-2">
-              <input
-                type="color"
-                {...register('theme_color')}
-                className="h-10 w-20 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700"
-              />
-              <input
-                type="text"
-                {...register('theme_color')}
-                className="flex-1 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm focus:border-blue-500 focus:ring-blue-500 px-3 py-2"
-                placeholder="#FF5733"
-              />
+          {/* Color Scheme - 60-30-10 Principle */}
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                Color Scheme (60-30-10)
+              </label>
+              <span className="text-xs text-gray-500 dark:text-gray-400">
+                Primary | Secondary | Accent
+              </span>
             </div>
-            {errors.theme_color && (
-              <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.theme_color.message}</p>
+
+            <div className="grid grid-cols-3 gap-4">
+              {/* Primary Color - 60% */}
+              <div>
+                <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
+                  Background (60%)
+                </label>
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="color"
+                    {...register('primary_color')}
+                    className="h-10 w-full rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 cursor-pointer"
+                  />
+                </div>
+                <input
+                  type="text"
+                  {...register('primary_color')}
+                  className="mt-1 w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm focus:border-blue-500 focus:ring-blue-500 px-2 py-1 text-xs"
+                  placeholder="#ffffff"
+                />
+              </div>
+
+              {/* Secondary Color - 30% */}
+              <div>
+                <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
+                  Header (30%)
+                </label>
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="color"
+                    {...register('secondary_color')}
+                    className="h-10 w-full rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 cursor-pointer"
+                  />
+                </div>
+                <input
+                  type="text"
+                  {...register('secondary_color')}
+                  className="mt-1 w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm focus:border-blue-500 focus:ring-blue-500 px-2 py-1 text-xs"
+                  placeholder="#f3f4f6"
+                />
+              </div>
+
+              {/* Theme/Accent Color - 10% */}
+              <div>
+                <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
+                  Accent (10%)
+                </label>
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="color"
+                    {...register('theme_color')}
+                    className="h-10 w-full rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 cursor-pointer"
+                  />
+                </div>
+                <input
+                  type="text"
+                  {...register('theme_color')}
+                  className="mt-1 w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm focus:border-blue-500 focus:ring-blue-500 px-2 py-1 text-xs"
+                  placeholder="#3b82f6"
+                />
+              </div>
+            </div>
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+              60% Background, 30% Header/Categories, 10% Buttons/Highlights
+            </p>
+            {(errors.primary_color || errors.secondary_color || errors.theme_color) && (
+              <p className="mt-1 text-sm text-red-600 dark:text-red-400">Invalid color format (use #RRGGBB)</p>
             )}
           </div>
 

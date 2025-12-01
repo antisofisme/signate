@@ -18,7 +18,11 @@ export interface Menu {
   is_active: boolean;
   show_prices: boolean;
   display_mode: DisplayMode;
-  theme_color?: string;
+
+  // Color scheme (60-30-10 principle)
+  primary_color?: string;   // 60% - Background
+  secondary_color?: string; // 30% - Header
+  theme_color?: string;     // 10% - Accent
 
   // Contact buttons
   whatsapp_number?: string;
@@ -119,7 +123,10 @@ export interface MenuCreateRequest {
   is_active?: boolean;
   show_prices?: boolean;
   display_mode?: DisplayMode;
-  theme_color?: string;
+  // Color scheme (60-30-10 principle)
+  primary_color?: string;   // 60% - Background
+  secondary_color?: string; // 30% - Header
+  theme_color?: string;     // 10% - Accent
   whatsapp_number?: string;
   phone_number?: string;
   contact_label?: string;
@@ -137,7 +144,10 @@ export interface MenuUpdateRequest {
   is_active?: boolean;
   show_prices?: boolean;
   display_mode?: DisplayMode;
-  theme_color?: string;
+  // Color scheme (60-30-10 principle)
+  primary_color?: string;   // 60% - Background
+  secondary_color?: string; // 30% - Header
+  theme_color?: string;     // 10% - Accent
   whatsapp_number?: string;
   phone_number?: string;
   contact_label?: string;

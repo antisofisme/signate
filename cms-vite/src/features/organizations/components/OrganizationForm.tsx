@@ -5,11 +5,15 @@
  * Form for creating/editing organizations
  */
 
+import { useState } from 'react';
 import { useForm, FormProvider } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useTranslation } from 'react-i18next';
-import { Modal, Button, FormInput, FormTextarea } from '@/shared/components';
+import { Copy, Check, RefreshCw, Shield, Eye, EyeOff } from 'lucide-react';
+import { toast } from 'sonner';
+import { Modal, Button, FormInput, FormTextarea, ConfirmDialog } from '@/shared/components';
+import { useRegeneratePin } from '../hooks/useOrganizations';
 import type {
   Organization,
   CreateOrganizationRequest,
@@ -44,6 +48,15 @@ export function OrganizationForm({
 }: OrganizationFormProps) {
   const { t } = useTranslation();
 
+  // PIN management state
+  const [showPin, setShowPin] = useState(false);
+  const [copiedPin, setCopiedPin] = useState(false);
+  const [showRegenerateConfirm, setShowRegenerateConfirm] = useState(false);
+  const [currentPin, setCurrentPin] = useState(organization?.organization_pin || '');
+
+  // PIN mutations
+  const regeneratePinMutation = useRegeneratePin();
+
   const methods = useForm<OrganizationFormData>({
     resolver: zodResolver(organizationSchema),
     defaultValues: {
@@ -56,6 +69,30 @@ export function OrganizationForm({
       is_active: organization?.is_active ?? true,
     },
   });
+
+  // Copy PIN to clipboard
+  const handleCopyPin = async () => {
+    if (!currentPin) return;
+    try {
+      await navigator.clipboard.writeText(currentPin);
+      setCopiedPin(true);
+      toast.success('PIN berhasil disalin');
+      setTimeout(() => setCopiedPin(false), 2000);
+    } catch {
+      toast.error('Gagal menyalin PIN');
+    }
+  };
+
+  // Regenerate PIN
+  const handleRegeneratePin = () => {
+    if (!organization) return;
+    regeneratePinMutation.mutate(organization.id, {
+      onSuccess: (data) => {
+        setCurrentPin(data.new_pin);
+        setShowRegenerateConfirm(false);
+      },
+    });
+  };
 
   const handleFormSubmit = (data: OrganizationFormData) => {
     if (organization) {
@@ -171,6 +208,76 @@ export function OrganizationForm({
             placeholder={t('organizations.logoUrlPlaceholder')}
           />
 
+          {/* PIN Management Section - only for Edit */}
+          {organization && (
+            <div className="border-t border-gray-200 dark:border-gray-700 pt-4 mt-4">
+              <div className="flex items-center gap-2 mb-3">
+                <Shield className="w-5 h-5 text-amber-600" />
+                <h4 className="text-sm font-semibold text-gray-900 dark:text-white">
+                  {t('organizations.pinManagement', 'PIN Security')}
+                </h4>
+              </div>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
+                {t('organizations.pinDescription', 'PIN digunakan untuk verifikasi operasi sensitif seperti menghapus menu. Jaga kerahasiaan PIN ini.')}
+              </p>
+
+              <div className="flex items-center gap-3">
+                {/* PIN Display */}
+                <div className="flex-1 relative">
+                  <input
+                    type={showPin ? 'text' : 'password'}
+                    value={currentPin || '-'}
+                    readOnly
+                    className="w-full px-3 py-2 bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white font-mono text-center tracking-widest"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPin(!showPin)}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                    title={showPin ? 'Sembunyikan PIN' : 'Tampilkan PIN'}
+                  >
+                    {showPin ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+
+                {/* Copy Button */}
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  onClick={handleCopyPin}
+                  disabled={!currentPin}
+                  title="Salin PIN"
+                >
+                  {copiedPin ? (
+                    <Check className="w-4 h-4 text-green-500" />
+                  ) : (
+                    <Copy className="w-4 h-4" />
+                  )}
+                </Button>
+
+                {/* Regenerate Button */}
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => setShowRegenerateConfirm(true)}
+                  disabled={regeneratePinMutation.isPending}
+                  loading={regeneratePinMutation.isPending}
+                  title="Generate PIN baru"
+                >
+                  <RefreshCw className="w-4 h-4" />
+                </Button>
+              </div>
+
+              {!currentPin && (
+                <p className="text-xs text-amber-600 dark:text-amber-400 mt-2">
+                  ⚠️ PIN belum diatur. Klik tombol refresh untuk generate PIN baru.
+                </p>
+              )}
+            </div>
+          )}
+
           {/* Active Status - only for Edit */}
           {organization && (
             <div className="flex items-center gap-2 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
@@ -190,6 +297,18 @@ export function OrganizationForm({
           )}
         </form>
       </FormProvider>
+
+      {/* Regenerate PIN Confirmation Dialog */}
+      <ConfirmDialog
+        open={showRegenerateConfirm}
+        onOpenChange={setShowRegenerateConfirm}
+        title={t('organizations.regeneratePinTitle', 'Generate PIN Baru?')}
+        description={t('organizations.regeneratePinMessage', 'PIN lama akan digantikan dengan PIN baru yang di-generate secara acak. PIN sebelumnya tidak akan bisa digunakan lagi. Pastikan untuk menyimpan PIN baru.')}
+        variant="warning"
+        confirmLabel={t('organizations.regeneratePin', 'Generate PIN Baru')}
+        onConfirm={handleRegeneratePin}
+        isLoading={regeneratePinMutation.isPending}
+      />
     </Modal>
   );
 }

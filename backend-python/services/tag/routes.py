@@ -12,6 +12,7 @@ from shared.errors import handle_errors
 from shared.responses import success_response
 from shared.logging import RequestLogger, AuditLogger
 from shared.middleware import get_current_active_user, require_permission
+from shared.cache import cache  # For cache invalidation
 import time
 
 from .dtos import (
@@ -31,6 +32,13 @@ from .dtos import (
     BulkTagAssignmentResponse,
     BulkTagUnassignmentResponse,
     ContentTagsResponse,
+    # Device-tag DTOs
+    DeviceTagResponse,
+    DeviceTagsListResponse,
+    AssignTagToDevicesRequest,
+    UnassignTagFromDevicesRequest,
+    BulkDeviceTagAssignmentResponse,
+    BulkDeviceTagUnassignmentResponse,
 )
 from .use_cases import (
     CreateTagUseCase,
@@ -471,6 +479,13 @@ def delete_tag(
         organization_id=current_user["organization_id"]
     )
 
+    # CRITICAL: Invalidate caches after tag deletion (cleans up content_tags, device_tags, etc)
+    org_id = current_user["organization_id"]
+    cache.clear_pattern(f"org:{org_id}:contents:list:*")
+    cache.clear_pattern(f"org:{org_id}:devices:list:*")
+    cache.clear_pattern(f"org:{org_id}:playlists:list:*")
+    cache.clear_pattern(f"org:{org_id}:tags:*")
+
     return {
         "success": True,
         "message": result["message"]
@@ -533,6 +548,9 @@ def assign_tag_to_content(
             ip_address=http_request.client.host if http_request.client else None,
             organization_id=current_user["organization_id"]
         )
+        # CRITICAL: Invalidate content list cache so tag filter works correctly
+        org_id = current_user["organization_id"]
+        cache.clear_pattern(f"org:{org_id}:contents:list:*")
 
     return result
 
@@ -594,6 +612,12 @@ def assign_tag_to_contents(
         organization_id=current_user["organization_id"]
     )
 
+    # CRITICAL: Invalidate content list cache so tag filter works correctly
+    if result["assigned"] > 0:
+        org_id = current_user["organization_id"]
+        # Clear all content list caches for this org (patterns with tag filters)
+        cache.clear_pattern(f"org:{org_id}:contents:list:*")
+
     return result
 
 
@@ -648,6 +672,9 @@ def unassign_tag_from_content(
             ip_address=http_request.client.host if http_request.client else None,
             organization_id=current_user["organization_id"]
         )
+        # CRITICAL: Invalidate content list cache so tag filter works correctly
+        org_id = current_user["organization_id"]
+        cache.clear_pattern(f"org:{org_id}:contents:list:*")
 
     return result
 
@@ -707,6 +734,12 @@ def unassign_tag_from_contents(
         organization_id=current_user["organization_id"]
     )
 
+    # CRITICAL: Invalidate content list cache so tag filter works correctly
+    if result["unassigned"] > 0:
+        org_id = current_user["organization_id"]
+        # Clear all content list caches for this org (patterns with tag filters)
+        cache.clear_pattern(f"org:{org_id}:contents:list:*")
+
     return result
 
 
@@ -753,3 +786,188 @@ def get_content_tags(
         "data": tag_responses,
         "total": len(tag_responses)
     }
+
+
+# =============================================================================
+# DEVICE-TAG ASSIGNMENT ENDPOINTS
+# =============================================================================
+
+@router.get(
+    TagRoutes.GET_DEVICES,
+    response_model=DeviceTagsListResponse
+)
+@handle_errors
+def get_tag_devices(
+    tag_id: int,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(require_permission("tags", "read"))
+):
+    """
+    Get all devices assigned to a tag
+
+    Requires 'tags:read' permission. Returns list of devices with this tag.
+    """
+    start_time = time.time()
+
+    # Get tag repo
+    tag_repo = TagRepository(db)
+
+    # Execute query
+    devices = tag_repo.get_devices_by_tag(
+        tag_id=tag_id,
+        organization_id=current_user["organization_id"]
+    )
+
+    # Convert to response
+    device_responses = [DeviceTagResponse(**d) for d in devices]
+
+    # Calculate duration
+    duration_ms = (time.time() - start_time) * 1000
+
+    # Log request
+    request_logger.log_request(
+        method="GET",
+        path=f"/tags/{tag_id}/devices",
+        status_code=200,
+        duration_ms=duration_ms,
+        user_id=current_user["user_id"]
+    )
+
+    return {
+        "success": True,
+        "data": device_responses,
+        "total": len(device_responses)
+    }
+
+
+@router.post(
+    TagRoutes.ASSIGN_TO_DEVICES,
+    response_model=BulkDeviceTagAssignmentResponse,
+    status_code=status.HTTP_200_OK
+)
+@handle_errors
+def assign_tag_to_devices(
+    tag_id: int,
+    request_body: AssignTagToDevicesRequest,
+    http_request: Request,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(require_permission("tags", "edit")),
+    audit_logger: AuditLogger = Depends(get_audit_logger)
+):
+    """
+    Bulk assign a tag to multiple devices
+
+    Requires 'tags:edit' permission. Tag and devices must belong to same organization.
+    """
+    start_time = time.time()
+
+    # Get tag repo
+    tag_repo = TagRepository(db)
+
+    # Execute assignment
+    result = tag_repo.assign_tag_to_devices(
+        tag_id=tag_id,
+        device_ids=request_body.device_ids,
+        organization_id=current_user["organization_id"]
+    )
+
+    # Calculate duration
+    duration_ms = (time.time() - start_time) * 1000
+
+    # Log request
+    request_logger.log_request(
+        method="POST",
+        path=f"/tags/{tag_id}/assign-devices",
+        status_code=200,
+        duration_ms=duration_ms,
+        user_id=current_user["user_id"]
+    )
+
+    # Audit log
+    audit_logger.log_action(
+        user_id=current_user["user_id"],
+        action="tag.assign_devices",
+        resource_type="tag",
+        resource_id=tag_id,
+        details={
+            "device_count": len(request_body.device_ids),
+            "assigned": result["assigned"],
+            "skipped": result["skipped"],
+            "failed": result["failed"]
+        },
+        ip_address=http_request.client.host if http_request.client else None,
+        organization_id=current_user["organization_id"]
+    )
+
+    # Invalidate device list cache
+    if result["assigned"] > 0:
+        org_id = current_user["organization_id"]
+        cache.clear_pattern(f"org:{org_id}:devices:list:*")
+
+    return result
+
+
+@router.delete(
+    TagRoutes.UNASSIGN_FROM_DEVICES,
+    response_model=BulkDeviceTagUnassignmentResponse,
+    status_code=status.HTTP_200_OK
+)
+@handle_errors
+def unassign_tag_from_devices(
+    tag_id: int,
+    request_body: UnassignTagFromDevicesRequest,
+    http_request: Request,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(require_permission("tags", "edit")),
+    audit_logger: AuditLogger = Depends(get_audit_logger)
+):
+    """
+    Bulk unassign a tag from multiple devices
+
+    Requires 'tags:edit' permission. Tag and devices must belong to same organization.
+    """
+    start_time = time.time()
+
+    # Get tag repo
+    tag_repo = TagRepository(db)
+
+    # Execute unassignment
+    result = tag_repo.unassign_tag_from_devices(
+        tag_id=tag_id,
+        device_ids=request_body.device_ids,
+        organization_id=current_user["organization_id"]
+    )
+
+    # Calculate duration
+    duration_ms = (time.time() - start_time) * 1000
+
+    # Log request
+    request_logger.log_request(
+        method="DELETE",
+        path=f"/tags/{tag_id}/unassign-devices",
+        status_code=200,
+        duration_ms=duration_ms,
+        user_id=current_user["user_id"]
+    )
+
+    # Audit log
+    audit_logger.log_action(
+        user_id=current_user["user_id"],
+        action="tag.unassign_devices",
+        resource_type="tag",
+        resource_id=tag_id,
+        details={
+            "device_count": len(request_body.device_ids),
+            "unassigned": result["unassigned"],
+            "not_found": result["not_found"]
+        },
+        ip_address=http_request.client.host if http_request.client else None,
+        organization_id=current_user["organization_id"]
+    )
+
+    # Invalidate device list cache
+    if result["unassigned"] > 0:
+        org_id = current_user["organization_id"]
+        cache.clear_pattern(f"org:{org_id}:devices:list:*")
+
+    return result

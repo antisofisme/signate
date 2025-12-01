@@ -185,3 +185,25 @@ class UpdateOrganizationQuotaRequest(BaseModel):
     max_content_size_gb: Optional[int] = Field(None, ge=1, le=10000, description="Maximum content storage in GB")
     max_content_items: Optional[int] = Field(None, ge=1, le=100000, description="Maximum content items allowed")
     max_playlists: Optional[int] = Field(None, ge=1, le=1000, description="Maximum playlists allowed")
+
+
+# ============================================================================
+# PIN MANAGEMENT MODELS
+# ============================================================================
+
+class UpdatePinRequest(BaseModel):
+    """Request to update organization PIN"""
+    new_pin: str = Field(..., min_length=6, max_length=8, description="New PIN (6-8 digits)")
+
+    @validator('new_pin')
+    def validate_pin(cls, v):
+        if not v.isdigit():
+            raise ValueError('PIN must contain only digits')
+        return v
+
+
+class RegeneratePinResponse(BaseModel):
+    """Response after regenerating PIN"""
+    organization_id: int
+    new_pin: str
+    message: str = "PIN regenerated successfully"

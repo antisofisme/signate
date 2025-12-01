@@ -99,3 +99,17 @@ export interface UpdateQuotaRequest {
 
 export type OrganizationQuotaResponse = SuccessResponse<OrganizationQuota>;
 export type QuotaCheckResponse = SuccessResponse<QuotaCheckResult>;
+
+// ============================================================================
+// PIN MANAGEMENT TYPES
+// ============================================================================
+
+export interface RegeneratePinResponse {
+  organization_id: number;
+  new_pin: string;
+  message: string;
+}
+
+export interface UpdatePinRequest {
+  new_pin: string;
+}

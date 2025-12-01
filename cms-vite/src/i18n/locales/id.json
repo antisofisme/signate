@@ -664,6 +664,10 @@
     "name": "Nama",
     "description": "Deskripsi",
     "items": "Item",
+    "content": "Konten",
+    "devices": "Device",
+    "contentSuffix": "konten",
+    "deviceSuffix": "device",
     "duration": "Durasi",
     "totalItems": "Total Item",
     "totalDuration": "Durasi Total",
@@ -1391,6 +1395,10 @@
   "tags": {
     "title": "Manajemen Tag",
     "description": "Deskripsi",
+    "contentCount": "Konten",
+    "deviceCount": "Perangkat",
+    "contentSuffix": "konten",
+    "deviceSuffix": "device",
     "searchPlaceholder": "Cari tags...",
     "sortNewest": "Terbaru",
     "sortOldest": "Terlama",
@@ -1428,7 +1436,27 @@
     "created": "Dibuat",
     "actions": "Aksi",
     "edit": "Edit",
-    "delete": "Hapus"
+    "delete": "Hapus",
+    "manageContent": "Kelola Konten",
+    "contentModal": {
+      "title": "Kelola Konten untuk Tag",
+      "loading": "Memuat...",
+      "availableContent": "Konten Tersedia",
+      "assignedContent": "Konten Ditetapkan",
+      "noAssignedContent": "Belum ada konten yang ditetapkan ke tag ini",
+      "allContentAssigned": "Semua konten sudah ditetapkan ke tag ini",
+      "clickToAdd": "Klik konten di sebelah kiri untuk menambahkan",
+      "remove": "Hapus",
+      "add": "Tambah",
+      "close": "Tutup"
+    },
+    "_contentModal_deprecated": {
+      "confirmRemove": "Hapus konten ini dari tag?",
+      "selectAtLeastOne": "Pilih minimal satu konten",
+      "clearSelection": "Hapus Pilihan",
+      "cancel": "Batal",
+      "close": "Tutup"
+    }
   },
   "audit": {
     "title": "Log Audit",

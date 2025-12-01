@@ -17,8 +17,7 @@ import {
 import { PlaylistList } from '../components/PlaylistList';
 import { PlaylistForm } from '../components/PlaylistForm';
 import { ConfirmDialog, AccessDenied, ErrorDisplay, PageSkeleton } from '@/shared/components';
-import PlaylistContentModal from '../components/PlaylistContentModal';
-import PlaylistAssignmentModal from '../components/PlaylistAssignmentModal';
+import PlaylistManagementModal from '../components/PlaylistManagementModal';
 import { useCanPerformAction } from '@/features/rbac/hooks/usePermissions';
 import type { Playlist, CreatePlaylistRequest, UpdatePlaylistRequest } from '../types/playlist';
 
@@ -45,8 +44,7 @@ export default function PlaylistsPage() {
   const [editingPlaylist, setEditingPlaylist] = useState<Playlist | null>(null);
   const [deletingPlaylist, setDeletingPlaylist] = useState<Playlist | null>(null);
   const [filterActive, setFilterActive] = useState<boolean | undefined>(undefined);
-  const [contentModalPlaylist, setContentModalPlaylist] = useState<Playlist | null>(null);
-  const [assignmentModalPlaylist, setAssignmentModalPlaylist] = useState<Playlist | null>(null);
+  const [managementPlaylist, setManagementPlaylist] = useState<Playlist | null>(null);
 
   // Hooks
   const { data: playlistsData, isLoading, error, refetch } = usePlaylistList({ is_active: filterActive });
@@ -156,8 +154,7 @@ export default function PlaylistsPage() {
             onEdit={canUpdate ? setEditingPlaylist : undefined}
             onDelete={canDelete ? setDeletingPlaylist : undefined}
             onDuplicate={canCreate ? handleDuplicate : undefined}
-            onManageContent={setContentModalPlaylist}
-            onManageAssignments={setAssignmentModalPlaylist}
+            onManage={setManagementPlaylist}
             onCreateNew={canCreate ? () => setShowCreateModal(true) : undefined}
           />
         )}
@@ -202,23 +199,13 @@ export default function PlaylistsPage() {
         />
       )}
 
-      {/* Content Management Modal */}
-      {contentModalPlaylist && (
-        <PlaylistContentModal
-          playlistId={contentModalPlaylist.id}
-          playlistName={contentModalPlaylist.name}
+      {/* Playlist Management Modal */}
+      {managementPlaylist && (
+        <PlaylistManagementModal
+          playlistId={managementPlaylist.id}
+          playlistName={managementPlaylist.name}
           isOpen={true}
-          onClose={() => setContentModalPlaylist(null)}
-        />
-      )}
-
-      {/* Assignment Management Modal */}
-      {assignmentModalPlaylist && (
-        <PlaylistAssignmentModal
-          playlistId={assignmentModalPlaylist.id}
-          playlistName={assignmentModalPlaylist.name}
-          isOpen={true}
-          onClose={() => setAssignmentModalPlaylist(null)}
+          onClose={() => setManagementPlaylist(null)}
         />
       )}
     </>

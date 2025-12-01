@@ -460,11 +460,14 @@ export class MenuViewer {
       return;
     }
 
-    const themeColor = this.menu.theme_color || '#3b82f6';
+    // Color scheme (60-30-10 principle)
+    const primaryColor = this.menu.primary_color || '#ffffff';    // 60% - Background
+    const secondaryColor = this.menu.secondary_color || '#f3f4f6'; // 30% - Header/Categories
+    const themeColor = this.menu.theme_color || '#3b82f6';         // 10% - Accent
     const filteredItems = this.getFilteredItems();
 
     this.container.innerHTML = `
-      <div class="menu-viewer" style="--theme-color: ${themeColor}">
+      <div class="menu-viewer" style="--primary-color: ${primaryColor}; --secondary-color: ${secondaryColor}; --theme-color: ${themeColor}">
         <!-- Header -->
         <header class="menu-viewer__header">
           <div class="menu-viewer__header-icon">
@@ -659,11 +662,14 @@ export class MenuViewer {
   private renderMinimalist(): void {
     if (!this.container || !this.menu) return;
 
-    const themeColor = this.menu.theme_color || '#3b82f6';
+    // Color scheme (60-30-10 principle)
+    const primaryColor = this.menu.primary_color || '#0f172a';    // 60% - Background (dark for minimalist)
+    const secondaryColor = this.menu.secondary_color || '#1e293b'; // 30% - Header/Cards
+    const themeColor = this.menu.theme_color || '#3b82f6';         // 10% - Accent
     const filteredItems = this.getFilteredItems();
 
     this.container.innerHTML = `
-      <div class="menu-viewer menu-viewer--minimalist" style="--theme-color: ${themeColor}">
+      <div class="menu-viewer menu-viewer--minimalist" style="--primary-color: ${primaryColor}; --secondary-color: ${secondaryColor}; --theme-color: ${themeColor}">
         <!-- Header -->
         <header class="menu-viewer__header">
           <div class="menu-viewer__header-text">

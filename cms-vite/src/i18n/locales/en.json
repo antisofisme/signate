@@ -664,6 +664,10 @@
     "name": "Name",
     "description": "Description",
     "items": "Items",
+    "content": "Content",
+    "devices": "Devices",
+    "contentSuffix": "content",
+    "deviceSuffix": "devices",
     "duration": "Duration",
     "totalItems": "Total Items",
     "totalDuration": "Total Duration",
@@ -1392,6 +1396,10 @@
   "tags": {
     "title": "Tag Management",
     "description": "Description",
+    "contentCount": "Contents",
+    "deviceCount": "Devices",
+    "contentSuffix": "content",
+    "deviceSuffix": "devices",
     "searchPlaceholder": "Search tags...",
     "sortNewest": "Newest",
     "sortOldest": "Oldest",
@@ -1429,7 +1437,20 @@
     "created": "Created",
     "actions": "Actions",
     "edit": "Edit",
-    "delete": "Delete"
+    "delete": "Delete",
+    "manageContent": "Manage Content",
+    "contentModal": {
+      "title": "Manage Content for Tag",
+      "loading": "Loading...",
+      "availableContent": "Available Content",
+      "assignedContent": "Assigned Content",
+      "noAssignedContent": "No content assigned to this tag yet",
+      "allContentAssigned": "All content is already assigned to this tag",
+      "clickToAdd": "Click content on the left to add",
+      "remove": "Remove",
+      "add": "Add",
+      "close": "Close"
+    }
   },
   "audit": {
     "title": "Audit Logs",

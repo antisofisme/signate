@@ -29,6 +29,7 @@ import {
   ErrorDisplay,
   ConfirmDialog,
   Button,
+  TABLE_STYLES,
 } from '@/shared/components';
 import { useCanPerformAction } from '@/features/rbac/hooks/usePermissions';
 import {
@@ -218,9 +219,9 @@ export function MenuMediaTable() {
     return (
       <tr
         key={isChild ? `dup-${media.id}` : media.id}
-        className={`hover:bg-gray-50 dark:hover:bg-gray-700 ${isChild ? 'bg-gray-50/50 dark:bg-gray-800/50' : ''}`}
+        className={`${TABLE_STYLES.tr} ${isChild ? 'bg-gray-50/50 dark:bg-gray-800/50' : ''}`}
       >
-        <td className="px-4 py-3 text-center">
+        <td className={`${TABLE_STYLES.td} text-center`}>
           <div className="flex items-center justify-center">
             {isChild && (
               <div className="w-4 border-l-2 border-b-2 border-orange-300 dark:border-orange-700 h-4 mr-1" />
@@ -236,7 +237,7 @@ export function MenuMediaTable() {
             />
           </div>
         </td>
-        <td className="px-4 py-3">
+        <td className={TABLE_STYLES.td}>
           <div className={`flex items-center min-w-0 ${isChild ? 'pl-4' : ''}`}>
             <img
               src={media.url}
@@ -253,7 +254,7 @@ export function MenuMediaTable() {
             </div>
           </div>
         </td>
-        <td className="px-4 py-3 whitespace-nowrap">
+        <td className={TABLE_STYLES.td}>
           {/* Usage indicators for duplicates */}
           {isChild && usage ? (
             <div className="flex flex-col gap-0.5">
@@ -273,90 +274,80 @@ export function MenuMediaTable() {
             </span>
           )}
         </td>
-        <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+        <td className={TABLE_STYLES.td}>
           {formatFileSize(media.file_size)}
         </td>
-        <td className="px-4 py-3 whitespace-nowrap">
+        <td className={TABLE_STYLES.td}>
           <div className="flex items-center gap-2">
             {media.width && media.height ? (
-              <span className="text-sm text-gray-900 dark:text-white">{media.width}x{media.height}</span>
+              <span>{media.width}x{media.height}</span>
             ) : (
-              <span className="text-sm text-gray-400">-</span>
+              <span className="text-gray-400">-</span>
             )}
             {isChild && !itemHasUsage && (
               <span className="w-2 h-2 rounded-full bg-green-400" title="Safe to delete" />
             )}
           </div>
         </td>
-        <td className="px-4 py-3 whitespace-nowrap text-sm">
+        <td className={TABLE_STYLES.td}>
           <div className="flex items-center gap-1">
-            <Button
-              variant="icon"
-              size="sm"
+            <button
               onClick={(e) => {
                 e.stopPropagation();
                 handlePreview(media);
               }}
+              className={TABLE_STYLES.actionBtnBlue}
               title={t('menus.media.actions.preview', 'Preview')}
-              className="!text-blue-600 hover:!text-blue-700 dark:!text-blue-400"
             >
               <Eye className="w-4 h-4" />
-            </Button>
+            </button>
             {canUpdate && (
-              <Button
-                variant="icon"
-                size="sm"
+              <button
                 onClick={(e) => {
                   e.stopPropagation();
                   handleEdit(media);
                 }}
+                className={TABLE_STYLES.actionBtnGreen}
                 title={t('menus.media.actions.edit', 'Edit')}
-                className="!text-green-600 hover:!text-green-700 dark:!text-green-400"
               >
                 <Edit className="w-4 h-4" />
-              </Button>
+              </button>
             )}
-            <Button
-              variant="icon"
-              size="sm"
+            <button
               onClick={(e) => {
                 e.stopPropagation();
                 handleCopyUrl(media);
               }}
+              className={TABLE_STYLES.actionBtnPurple}
               title={t('menus.media.actions.copyUrl', 'Copy URL')}
-              className="!text-purple-600 hover:!text-purple-700 dark:!text-purple-400"
             >
               {copiedId === media.id ? (
                 <Check className="w-4 h-4 text-green-500" />
               ) : (
                 <Copy className="w-4 h-4" />
               )}
-            </Button>
-            <Button
-              variant="icon"
-              size="sm"
+            </button>
+            <button
               onClick={(e) => {
                 e.stopPropagation();
                 handleDownload(media);
               }}
+              className={TABLE_STYLES.actionBtnGray}
               title={t('menus.media.actions.download', 'Download')}
-              className="!text-gray-600 hover:!text-gray-700 dark:!text-gray-400"
             >
               <Download className="w-4 h-4" />
-            </Button>
+            </button>
             {canDelete && (
-              <Button
-                variant="icon"
-                size="sm"
+              <button
                 onClick={(e) => {
                   e.stopPropagation();
                   setMediaToDelete(media);
                 }}
+                className={TABLE_STYLES.actionBtnRed}
                 title={t('menus.media.actions.delete', 'Delete')}
-                className="!text-red-600 hover:!text-red-700 dark:!text-red-400"
               >
                 <Trash2 className="w-4 h-4" />
-              </Button>
+              </button>
             )}
           </div>
         </td>
@@ -387,17 +378,17 @@ export function MenuMediaTable() {
         rows.push(
           <tr
             key={`group-${dupInfo.hash}`}
-            className="bg-orange-50 dark:bg-orange-900/20 hover:bg-orange-100 dark:hover:bg-orange-900/30 cursor-pointer"
+            className={`${TABLE_STYLES.tr} bg-orange-50 dark:bg-orange-900/20 cursor-pointer`}
             onClick={() => toggleGroupExpand(dupInfo.hash)}
           >
-            <td className="px-4 py-3 text-center">
+            <td className={`${TABLE_STYLES.td} text-center`}>
               {isExpanded ? (
                 <ChevronDown className="w-4 h-4 text-orange-600" />
               ) : (
                 <ChevronRight className="w-4 h-4 text-orange-600" />
               )}
             </td>
-            <td className="px-4 py-3" colSpan={2}>
+            <td className={TABLE_STYLES.td} colSpan={2}>
               <div className="flex items-center gap-3">
                 {firstMedia?.url ? (
                   <img
@@ -423,15 +414,15 @@ export function MenuMediaTable() {
                 </div>
               </div>
             </td>
-            <td className="px-4 py-3 whitespace-nowrap text-sm text-orange-700 dark:text-orange-300">
+            <td className={`${TABLE_STYLES.td} text-orange-700 dark:text-orange-300`}>
               {formatFileSize(group.file_size)}
             </td>
-            <td className="px-4 py-3 whitespace-nowrap">
+            <td className={TABLE_STYLES.td}>
               <span className="px-2 py-1 text-xs font-medium rounded-full bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200">
                 Same File
               </span>
             </td>
-            <td className="px-4 py-3 text-sm text-orange-600 dark:text-orange-400">
+            <td className={`${TABLE_STYLES.td} text-orange-600 dark:text-orange-400`}>
               Click to {isExpanded ? 'collapse' : 'expand'}
             </td>
           </tr>
@@ -566,12 +557,12 @@ export function MenuMediaTable() {
 
       {/* Table */}
       {!isLoading && !error && mediaData && mediaData.items.length > 0 && (
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
+        <div className={TABLE_STYLES.container}>
           <div className="overflow-x-auto">
-            <table className="w-full table-fixed divide-y divide-gray-200 dark:divide-gray-700">
-              <thead className="bg-gray-50 dark:bg-gray-900">
+            <table className={`${TABLE_STYLES.table} table-fixed`}>
+              <thead className={TABLE_STYLES.thead}>
                 <tr>
-                  <th className="px-4 py-3 text-center w-12">
+                  <th className={`${TABLE_STYLES.th} text-center w-12`}>
                     <input
                       type="checkbox"
                       checked={selectedIds.size > 0 && selectedIds.size === mediaData.items.length}
@@ -579,24 +570,24 @@ export function MenuMediaTable() {
                       className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
                     />
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-[40%]">
+                  <th className={`${TABLE_STYLES.th} w-[40%]`}>
                     {t('menus.media.table.image', 'Image')}
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-24">
+                  <th className={`${TABLE_STYLES.th} w-24`}>
                     {t('menus.media.table.type', 'Type')} / Usage
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-24">
+                  <th className={`${TABLE_STYLES.th} w-24`}>
                     {t('menus.media.table.size', 'Size')}
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-28">
+                  <th className={`${TABLE_STYLES.th} w-28`}>
                     {t('menus.media.table.dimensions', 'Dimensions')}
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-32">
+                  <th className={`${TABLE_STYLES.th} w-32`}>
                     {t('menus.media.table.actions', 'Actions')}
                   </th>
                 </tr>
               </thead>
-              <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+              <tbody className={TABLE_STYLES.tbody}>
                 {renderTableRows()}
               </tbody>
             </table>

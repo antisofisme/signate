@@ -11,6 +11,9 @@ export interface Tag {
   color: string;
   organization_id: number;
   created_at: string;
+  // Computed counts
+  device_count: number;
+  content_count: number;
 }
 
 export interface TagUsage {

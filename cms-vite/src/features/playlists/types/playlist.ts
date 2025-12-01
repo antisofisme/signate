@@ -18,11 +18,12 @@ export interface Playlist {
   // Computed fields
   content_count: number;
   total_duration: number;
+  device_count: number;
 
   // Relationships
   contents?: PlaylistContent[];
   devices?: PlaylistDevice[];
-  tags?: PlaylistTag[];
+  // NOTE: tags field removed - Tags are NOT assigned to Playlists
 }
 
 export interface PlaylistContent {
@@ -46,11 +47,8 @@ export interface PlaylistDevice {
   location?: string;
 }
 
-export interface PlaylistTag {
-  id: number;
-  name: string;
-  color: string;
-}
+// NOTE: PlaylistTag interface removed - Tags are NOT assigned to Playlists
+// Tags are assigned to Devices and Content only
 
 export interface CreatePlaylistRequest {
   name: string;
@@ -84,13 +82,12 @@ export interface AssignDevicesRequest {
   device_ids: number[];
 }
 
-export interface AssignTagsRequest {
-  tag_ids: number[];
-}
+// NOTE: AssignTagsRequest removed - Tags are NOT assigned to Playlists
+// Tags are assigned to Devices and Content only
 
 export interface PlaylistAssignmentsResponse {
   devices: PlaylistDevice[];
-  tags: PlaylistTag[];
+  // NOTE: tags field removed - Tags are NOT assigned to Playlists
 }
 
 export interface BulkOperationResponse {

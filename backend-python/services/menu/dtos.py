@@ -20,7 +20,11 @@ class MenuCreateDTO(BaseModel):
     is_active: bool = True
     show_prices: bool = True
     display_mode: str = Field(default='grid', pattern="^(grid|list|carousel|minimalist)$")
-    theme_color: Optional[str] = Field(None, pattern="^#[0-9A-Fa-f]{6}$")
+
+    # Color scheme (60-30-10 principle)
+    primary_color: Optional[str] = Field('#ffffff', pattern="^#[0-9A-Fa-f]{6}$")  # 60% - Background
+    secondary_color: Optional[str] = Field('#f3f4f6', pattern="^#[0-9A-Fa-f]{6}$")  # 30% - Header
+    theme_color: Optional[str] = Field('#3b82f6', pattern="^#[0-9A-Fa-f]{6}$")  # 10% - Accent
 
     # Contact buttons
     whatsapp_number: Optional[str] = Field(None, max_length=20)
@@ -49,7 +53,11 @@ class MenuUpdateDTO(BaseModel):
     is_active: Optional[bool] = None
     show_prices: Optional[bool] = None
     display_mode: Optional[str] = Field(None, pattern="^(grid|list|carousel|minimalist)$")
-    theme_color: Optional[str] = Field(None, pattern="^#[0-9A-Fa-f]{6}$")
+
+    # Color scheme (60-30-10 principle)
+    primary_color: Optional[str] = Field(None, pattern="^#[0-9A-Fa-f]{6}$")  # 60% - Background
+    secondary_color: Optional[str] = Field(None, pattern="^#[0-9A-Fa-f]{6}$")  # 30% - Header
+    theme_color: Optional[str] = Field(None, pattern="^#[0-9A-Fa-f]{6}$")  # 10% - Accent
 
     # Contact buttons
     whatsapp_number: Optional[str] = Field(None, max_length=20)
@@ -80,7 +88,11 @@ class MenuResponseDTO(BaseModel):
     is_active: bool
     show_prices: bool
     display_mode: str
-    theme_color: Optional[str]
+
+    # Color scheme (60-30-10 principle)
+    primary_color: Optional[str]  # 60% - Background
+    secondary_color: Optional[str]  # 30% - Header
+    theme_color: Optional[str]  # 10% - Accent
 
     # Contact buttons
     whatsapp_number: Optional[str]
@@ -309,7 +321,11 @@ class PublicMenuResponseDTO(BaseModel):
     # Display settings
     show_prices: bool
     display_mode: str
-    theme_color: Optional[str]
+
+    # Color scheme (60-30-10 principle)
+    primary_color: Optional[str]  # 60% - Background
+    secondary_color: Optional[str]  # 30% - Header
+    theme_color: Optional[str]  # 10% - Accent
 
     # Contact buttons
     whatsapp_number: Optional[str]

@@ -111,10 +111,11 @@ def get_playlist_for_device(
     Get content assigned to a device (PUBLIC - No Auth Required)
 
     Supports 3 assignment methods (in priority order):
-    1. Direct Assignment: content_assignments table (device_id + content_id)
-    2. Playlist Assignment: playlist_contents via assigned_playlist_id
-    3. Tag-based Assignment: content_assignments table (tag_id + content_id) - TODO
+    1. Direct Assignment: content_assignments table (device_id + content_id) - HIGHEST
+    2. Tag-based Assignment: device_tags → tags → content_tags - MEDIUM
+    3. Playlist Assignment: playlist_assignments table (device_id + playlist_id) - LOWEST
 
+    All content from all sources is MERGED into a single playlist.
     Used by player to sync content.
     Returns None if no content is assigned.
 
@@ -148,168 +149,228 @@ def get_playlist_for_device(
 
         # Import models
         from services.content.repositories.models import ContentModel
-
-        # ======================================================================
-        # METHOD 1: Check for DIRECT content assignments (HIGHEST PRIORITY)
-        # ======================================================================
         from services.content.repositories.models import ContentAssignmentModel
+        from services.playlist.repositories.models import PlaylistModel, PlaylistContentModel, PlaylistAssignmentModel
+        from services.tag.repositories.models import ContentTag
+        from sqlalchemy import text
 
+        # Track all content items (deduplicated by content_id)
+        all_items = []
+        seen_content_ids = set()
+        sources_summary = []
+
+        def build_content_item(content, order_idx, source, is_muted=False, duration_override=None):
+            """Helper to build content item dict"""
+            # ✅ HLS PRIORITY: Use HLS URL for videos if available
+            playback_url = content.file_url  # Default: direct file
+
+            if content.content_type == 'video' and content.hls_master_playlist_url:
+                playback_url = content.hls_master_playlist_url
+                print(f"[Client Playlist] Content {content.id} ({source}): Using HLS URL")
+
+            return {
+                'id': content.id * 1000 + order_idx,  # Unique ID
+                'content_id': content.id,
+                'duration': duration_override or content.duration,
+                'order': order_idx,
+                'is_muted': is_muted,
+                'source': source,  # For debugging
+                'content': {
+                    'id': content.id,
+                    'name': content.title,
+                    'type': content.content_type,
+                    'file_path': playback_url,
+                    'url': playback_url,
+                    'thumbnail_path': content.thumbnail_url,
+                    'mime_type': content.mime_type,
+                    'metadata': None,
+                    'updated_at': content.updated_at.isoformat() if content.updated_at else None,
+                }
+            }
+
+        # ======================================================================
+        # PRIORITY 1: Direct content assignments (HIGHEST)
+        # ======================================================================
         direct_assignments = db.query(ContentAssignmentModel).filter(
             ContentAssignmentModel.device_id == device_id
         ).order_by(ContentAssignmentModel.priority.asc()).all()
 
-        if direct_assignments and len(direct_assignments) > 0:
+        if direct_assignments:
             print(f"[Client Playlist] Found {len(direct_assignments)} direct assignments for device {device_id}")
+            sources_summary.append(f"{len(direct_assignments)} direct")
 
-            # Build playlist data from direct assignments
-            playlist_data = {
-                'id': 0,  # Virtual playlist ID for direct assignments
-                'name': f'Direct Assignments - Device {device_id}',
-                'description': 'Content directly assigned to this device',
-                'is_active': True,
-                'created_at': None,
-                'updated_at': None,
-                'items': []
-            }
+            for assignment in direct_assignments:
+                if assignment.content_id in seen_content_ids:
+                    continue
 
-            # Build items with content details
-            for idx, assignment in enumerate(direct_assignments):
                 content = db.query(ContentModel).filter(
-                    ContentModel.id == assignment.content_id
+                    ContentModel.id == assignment.content_id,
+                    ContentModel.deleted_at.is_(None)
                 ).first()
 
                 if content:
-                    # ✅ HLS PRIORITY: Use HLS URL for videos if available (adaptive bitrate streaming)
-                    # For videos: Prefer HLS → fallback to direct file
-                    # For images/audio: Use direct file URL
-                    playback_url = content.file_url  # Default: direct file
-
-                    if content.content_type == 'video' and content.hls_master_playlist_url:
-                        # Use HLS for adaptive bitrate streaming
-                        playback_url = content.hls_master_playlist_url
-                        print(f"[Client Playlist] Content {content.id}: Using HLS URL: {playback_url}")
-                    else:
-                        print(f"[Client Playlist] Content {content.id}: Using direct URL: {playback_url}")
-
-                    playlist_data['items'].append({
-                        'id': assignment.id,
-                        'content_id': assignment.content_id,
-                        'duration': content.duration,  # Use content duration
-                        'order': idx,  # Use array index as order
-                        'is_muted': getattr(assignment, 'is_muted', False),  # Per-content mute flag
-                        'content': {
-                            'id': content.id,
-                            'name': content.title,  # Player expects 'name', not 'title'
-                            'type': content.content_type,  # Player expects 'type', not 'content_type'
-                            'file_path': playback_url,  # HLS URL or direct file URL
-                            'url': playback_url,  # For URL-based content
-                            'thumbnail_path': content.thumbnail_url,
-                            'mime_type': content.mime_type,
-                            'metadata': None,  # No metadata for now
-                            'updated_at': content.updated_at.isoformat() if content.updated_at else None,  # For cache validation
-                        }
-                    })
-
-            # If we have items, return them
-            if len(playlist_data['items']) > 0:
-                # Build device settings
-                device_settings = build_device_settings(device, db)
-
-                return PlaylistSyncResponse(
-                    playlist=playlist_data,
-                    device_settings=device_settings,
-                    has_changes=True,
-                    message=f"Retrieved {len(playlist_data['items'])} directly assigned content items"
-                )
+                    seen_content_ids.add(content.id)
+                    all_items.append(build_content_item(
+                        content,
+                        len(all_items),
+                        'direct',
+                        getattr(assignment, 'is_muted', False)
+                    ))
 
         # ======================================================================
-        # METHOD 2: Check for PLAYLIST assignments (FALLBACK)
+        # PRIORITY 2: Tag-based content (MEDIUM)
+        # Device has tags → Tags have content via content_tags
         # ======================================================================
-        if device.assigned_playlist_id:
-            print(f"[Client Playlist] Checking playlist assignment for device {device_id}")
+        # Get all tag IDs assigned to this device
+        device_tag_ids = db.execute(text("""
+            SELECT tag_id FROM device_tags WHERE device_id = :device_id
+        """), {"device_id": device_id}).fetchall()
+
+        if device_tag_ids:
+            tag_ids = [t[0] for t in device_tag_ids]
+            print(f"[Client Playlist] Device {device_id} has tags: {tag_ids}")
+
+            # Get all content associated with these tags via content_tags
+            tag_contents = db.query(ContentTag).filter(
+                ContentTag.tag_id.in_(tag_ids)
+            ).all()
+
+            if tag_contents:
+                tag_content_count = 0
+                for tc in tag_contents:
+                    if tc.content_id in seen_content_ids:
+                        continue
+
+                    content = db.query(ContentModel).filter(
+                        ContentModel.id == tc.content_id,
+                        ContentModel.deleted_at.is_(None)
+                    ).first()
+
+                    if content:
+                        seen_content_ids.add(content.id)
+                        all_items.append(build_content_item(
+                            content,
+                            len(all_items),
+                            f'tag:{tc.tag_id}'
+                        ))
+                        tag_content_count += 1
+
+                if tag_content_count > 0:
+                    print(f"[Client Playlist] Found {tag_content_count} tag-based content for device {device_id}")
+                    sources_summary.append(f"{tag_content_count} tag-based")
+
+        # ======================================================================
+        # PRIORITY 3: Playlist assignments (LOWEST)
+        # Device has playlists assigned via playlist_assignments table
+        # ======================================================================
+        playlist_assignments = db.query(PlaylistAssignmentModel).filter(
+            PlaylistAssignmentModel.device_id == device_id
+        ).all()
+
+        if playlist_assignments:
+            print(f"[Client Playlist] Device {device_id} has {len(playlist_assignments)} playlist assignments")
+
+            for pa in playlist_assignments:
+                # Get playlist
+                playlist = db.query(PlaylistModel).filter(
+                    PlaylistModel.id == pa.playlist_id,
+                    PlaylistModel.deleted_at.is_(None),
+                    PlaylistModel.is_active == True
+                ).first()
+
+                if not playlist:
+                    continue
+
+                # Get playlist contents
+                playlist_contents = db.query(PlaylistContentModel).filter(
+                    PlaylistContentModel.playlist_id == playlist.id
+                ).order_by(PlaylistContentModel.order_index).all()
+
+                playlist_content_count = 0
+                for pc in playlist_contents:
+                    if pc.content_id in seen_content_ids:
+                        continue
+
+                    content = db.query(ContentModel).filter(
+                        ContentModel.id == pc.content_id,
+                        ContentModel.deleted_at.is_(None)
+                    ).first()
+
+                    if content:
+                        seen_content_ids.add(content.id)
+                        all_items.append(build_content_item(
+                            content,
+                            len(all_items),
+                            f'playlist:{playlist.id}',
+                            getattr(pc, 'is_muted', False),
+                            pc.duration
+                        ))
+                        playlist_content_count += 1
+
+                if playlist_content_count > 0:
+                    sources_summary.append(f"{playlist_content_count} from playlist '{playlist.name}'")
+
+        # ======================================================================
+        # FALLBACK: Check legacy assigned_playlist_id on device
+        # ======================================================================
+        if not all_items and device.assigned_playlist_id:
+            print(f"[Client Playlist] Checking legacy playlist assignment for device {device_id}")
 
             playlist_repo = PlaylistRepository(db)
             playlist = playlist_repo.find_by_id(device.assigned_playlist_id, device.organization_id)
 
-            if not playlist:
-                return PlaylistSyncResponse(
-                    playlist=None,
-                    has_changes=False,
-                    message=f"Assigned playlist {device.assigned_playlist_id} not found"
-                )
+            if playlist and playlist.is_active:
+                items = db.query(PlaylistContentModel).filter(
+                    PlaylistContentModel.playlist_id == playlist.id
+                ).order_by(PlaylistContentModel.order_index).all()
 
-            # Check if playlist is active
-            if not playlist.is_active:
-                return PlaylistSyncResponse(
-                    playlist=None,
-                    has_changes=False,
-                    message="Assigned playlist is inactive"
-                )
+                for item in items:
+                    if item.content_id in seen_content_ids:
+                        continue
 
-            # Get playlist items with content details
-            from services.playlist.repositories.models import PlaylistContentModel
+                    content = db.query(ContentModel).filter(
+                        ContentModel.id == item.content_id,
+                        ContentModel.deleted_at.is_(None)
+                    ).first()
 
-            items = db.query(PlaylistContentModel).join(
-                ContentModel, PlaylistContentModel.content_id == ContentModel.id
-            ).filter(
-                PlaylistContentModel.playlist_id == playlist.id
-            ).order_by(PlaylistContentModel.order_index).all()
+                    if content:
+                        seen_content_ids.add(content.id)
+                        all_items.append(build_content_item(
+                            content,
+                            len(all_items),
+                            f'legacy-playlist:{playlist.id}',
+                            getattr(item, 'is_muted', False),
+                            item.duration
+                        ))
 
-            # Build response
+                if all_items:
+                    sources_summary.append(f"{len(all_items)} from legacy playlist '{playlist.name}'")
+
+        # ======================================================================
+        # BUILD FINAL RESPONSE
+        # ======================================================================
+        if all_items:
             playlist_data = {
-                'id': playlist.id,
-                'name': playlist.name,
-                'description': playlist.description,
-                'is_active': playlist.is_active,
-                'created_at': playlist.created_at.isoformat() if playlist.created_at else None,
-                'updated_at': playlist.updated_at.isoformat() if playlist.updated_at else None,
-                'items': []
+                'id': 0,  # Virtual merged playlist
+                'name': f'Merged Content - Device {device_id}',
+                'description': f'Content from: {", ".join(sources_summary)}',
+                'is_active': True,
+                'created_at': None,
+                'updated_at': None,
+                'items': all_items
             }
 
-            # Build items with content details
-            for item in items:
-                content = db.query(ContentModel).filter(ContentModel.id == item.content_id).first()
-                if content:
-                    # ✅ HLS PRIORITY: Use HLS URL for videos if available (same as direct assignments)
-                    playback_url = content.file_url  # Default: direct file
+            # Build device settings
+            device_settings = build_device_settings(device, db)
 
-                    if content.content_type == 'video' and content.hls_master_playlist_url:
-                        playback_url = content.hls_master_playlist_url
-                        print(f"[Client Playlist] Content {content.id}: Using HLS URL: {playback_url}")
+            print(f"[Client Playlist] Returning {len(all_items)} items for device {device_id}: {', '.join(sources_summary)}")
 
-                    playlist_data['items'].append({
-                        'id': item.id,
-                        'content_id': item.content_id,
-                        'duration': item.duration,
-                        'order': item.order_index,
-                        'is_muted': getattr(item, 'is_muted', False),  # Per-content mute flag
-                        'content': {
-                            'id': content.id,
-                            'name': content.title,  # Player expects 'name', not 'title'
-                            'type': content.content_type,  # Player expects 'type', not 'content_type'
-                            'file_path': playback_url,  # HLS URL or direct file URL
-                            'url': playback_url,  # For URL-based content
-                            'thumbnail_path': content.thumbnail_url,
-                            'mime_type': content.mime_type,
-                            'metadata': None,  # No metadata for now
-                            'updated_at': content.updated_at.isoformat() if content.updated_at else None,  # For cache validation
-                        }
-                    })
-
-            # If playlist has content items, return them
-            if len(playlist_data['items']) > 0:
-                # Add background_audio_id to playlist data
-                playlist_data['background_audio_id'] = getattr(playlist, 'background_audio_id', None)
-
-                # Build device settings
-                device_settings = build_device_settings(device, db)
-
-                return PlaylistSyncResponse(
-                    playlist=playlist_data,
-                    device_settings=device_settings,
-                    has_changes=True,
-                    message="Playlist retrieved successfully"
-                )
+            return PlaylistSyncResponse(
+                playlist=playlist_data,
+                device_settings=device_settings,
+                has_changes=True,
+                message=f"Retrieved {len(all_items)} content items ({', '.join(sources_summary)})"
+            )
 
         # ======================================================================
         # NO CONTENT ASSIGNED - Show "Waiting for Content" screen

@@ -3,7 +3,7 @@
  * Table display of playlists with actions
  */
 
-import { Pencil, Trash2, Clock, FileText, List, Monitor, Plus, Copy } from 'lucide-react';
+import { Pencil, Trash2, Clock, FileText, List, FileSymlink, Plus, Copy, Monitor } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { TableSkeleton, EmptyState, Button, TABLE_STYLES } from '@/shared/components';
 import type { Playlist } from '../types/playlist';
@@ -14,8 +14,7 @@ interface PlaylistListProps {
   onEdit?: (playlist: Playlist) => void;
   onDelete?: (playlist: Playlist) => void;
   onDuplicate?: (playlist: Playlist) => void;
-  onManageContent: (playlist: Playlist) => void;
-  onManageAssignments: (playlist: Playlist) => void;
+  onManage: (playlist: Playlist) => void;
   onCreateNew?: () => void;
 }
 
@@ -25,8 +24,7 @@ export function PlaylistList({
   onEdit,
   onDelete,
   onDuplicate,
-  onManageContent,
-  onManageAssignments,
+  onManage,
   onCreateNew,
 }: PlaylistListProps) {
   const { t } = useTranslation();
@@ -46,7 +44,7 @@ export function PlaylistList({
   };
 
   if (isLoading) {
-    return <TableSkeleton rows={5} columns={6} />;
+    return <TableSkeleton rows={5} columns={7} />;
   }
 
   if (playlists.length === 0) {
@@ -74,7 +72,10 @@ export function PlaylistList({
               Priority
             </th>
             <th className={TABLE_STYLES.th}>
-              {t('playlists.items')}
+              {t('playlists.content', 'Konten')}
+            </th>
+            <th className={TABLE_STYLES.th}>
+              {t('playlists.devices', 'Device')}
             </th>
             <th className={TABLE_STYLES.th}>
               {t('playlists.duration')}
@@ -118,7 +119,13 @@ export function PlaylistList({
               <td className="px-6 py-4">
                 <div className="flex items-center text-sm text-gray-900 dark:text-white">
                   <FileText className="w-4 h-4 mr-2 text-gray-400" />
-                  {playlist.content_count} item
+                  {playlist.content_count} {t('playlists.contentSuffix', 'konten')}
+                </div>
+              </td>
+              <td className="px-6 py-4">
+                <div className="flex items-center text-sm text-gray-900 dark:text-white">
+                  <Monitor className="w-4 h-4 mr-2 text-gray-400" />
+                  {playlist.device_count || 0} {t('playlists.deviceSuffix', 'device')}
                 </div>
               </td>
               <td className="px-6 py-4">
@@ -129,33 +136,26 @@ export function PlaylistList({
               </td>
               <td className={TABLE_STYLES.td}>
                 <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => onManageContent(playlist)}
-                    className="p-2 text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-900/20 rounded-lg"
-                    title="Manage Content"
-                  >
-                    <List className="w-4 h-4" />
-                  </button>
-                  <button
-                    onClick={() => onManageAssignments(playlist)}
-                    className="p-2 text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20 rounded-lg"
-                    title={t('playlists.manageAssignments')}
-                  >
-                    <Monitor className="w-4 h-4" />
-                  </button>
                   {onDuplicate && (
                     <button
                       onClick={() => onDuplicate(playlist)}
-                      className="p-2 text-orange-600 hover:bg-orange-50 dark:hover:bg-orange-900/20 rounded-lg"
+                      className={TABLE_STYLES.actionBtnOrange}
                       title={t('playlists.duplicate', 'Duplicate')}
                     >
                       <Copy className="w-4 h-4" />
                     </button>
                   )}
+                  <button
+                    onClick={() => onManage(playlist)}
+                    className={TABLE_STYLES.actionBtnPurple}
+                    title={t('playlists.manage', 'Manage')}
+                  >
+                    <FileSymlink className="w-4 h-4" />
+                  </button>
                   {onEdit && (
                     <button
                       onClick={() => onEdit(playlist)}
-                      className="p-2 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg"
+                      className={TABLE_STYLES.actionBtnBlue}
                       title={t('common.edit')}
                     >
                       <Pencil className="w-4 h-4" />
@@ -164,7 +164,7 @@ export function PlaylistList({
                   {onDelete && (
                     <button
                       onClick={() => onDelete(playlist)}
-                      className="p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg"
+                      className={TABLE_STYLES.actionBtnRed}
                       title={t('common.delete')}
                     >
                       <Trash2 className="w-4 h-4" />

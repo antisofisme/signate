@@ -98,7 +98,8 @@ class IPlaylistRepository(ABC):
         """
         pass
 
-    # ========== Device/Tag Assignments ==========
+    # ========== Device Assignments ==========
+    # NOTE: Tag assignments have been removed - Tags are NOT assigned to Playlists
 
     @abstractmethod
     def get_playlist_assignments(
@@ -107,8 +108,9 @@ class IPlaylistRepository(ABC):
         organization_id: int
     ) -> Dict[str, Any]:
         """
-        Get all assignments for playlist
-        Returns: {"devices": [...], "tags": [...]}
+        Get all device assignments for playlist
+        Returns: {"devices": [...]}
+        NOTE: Tag assignments have been removed
         """
         pass
 
@@ -133,8 +135,8 @@ class IPlaylistRepository(ABC):
         organization_id: int
     ) -> Dict[str, Any]:
         """
-        Bulk assign playlist to tags
-        Returns: {assigned: int, skipped_missing: [], skipped_duplicate: []}
+        DEPRECATED: Tag assignments have been removed - Tags are NOT assigned to Playlists
+        Kept for backward compatibility only. Do not use in new code.
         """
         pass
 
@@ -155,7 +157,10 @@ class IPlaylistRepository(ABC):
         tag_ids: List[int],
         organization_id: int
     ) -> int:
-        """Bulk unassign from tags. Returns: removed count"""
+        """
+        DEPRECATED: Tag assignments have been removed - Tags are NOT assigned to Playlists
+        Kept for backward compatibility only. Do not use in new code.
+        """
         pass
 
     # ========== Utility Methods ==========

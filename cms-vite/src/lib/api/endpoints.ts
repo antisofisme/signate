@@ -33,6 +33,9 @@ export const API_ENDPOINTS = {
     UPDATE: (id: number) => `/api/v1/organizations/${id}`,
     DELETE: (id: number) => `/api/v1/organizations/${id}`,
     VALIDATE_PIN: (id: number) => `/api/v1/organizations/${id}/validate-pin`,
+    // PIN management endpoints
+    REGENERATE_PIN: (id: number) => `/api/v1/organizations/${id}/pin/regenerate`,
+    UPDATE_PIN: (id: number) => `/api/v1/organizations/${id}/pin`,
     // Quota endpoints
     QUOTA: (id: number) => `/api/v1/organizations/${id}/quota`,
     UPDATE_QUOTA: (id: number) => `/api/v1/organizations/${id}/quota`,
@@ -133,6 +136,10 @@ export const API_ENDPOINTS = {
     UNASSIGN_FROM_CONTENT: (tagId: number) => `/api/v1/tags/${tagId}/unassign-content`,
     UNASSIGN_FROM_CONTENTS: (tagId: number) => `/api/v1/tags/${tagId}/unassign-contents`,
     GET_CONTENT_TAGS: (contentId: number) => `/api/v1/contents/${contentId}/tags`,
+    // Device-tag endpoints
+    GET_DEVICES: (tagId: number) => `/api/v1/tags/${tagId}/devices`,
+    ASSIGN_TO_DEVICES: (tagId: number) => `/api/v1/tags/${tagId}/assign-devices`,
+    UNASSIGN_FROM_DEVICES: (tagId: number) => `/api/v1/tags/${tagId}/unassign-devices`,
   },
 
   // ========================================
@@ -153,12 +160,10 @@ export const API_ENDPOINTS = {
     REMOVE_CONTENT: (playlistId: number, itemId: number) => `/api/v1/playlists/${playlistId}/content/${itemId}`,
     REORDER_CONTENT: (id: number) => `/api/v1/playlists/${id}/reorder`,
 
-    // Assignments
+    // Assignments (devices only - tags are NOT assigned to playlists)
     GET_ASSIGNMENTS: (id: number) => `/api/v1/playlists/${id}/assignments`,
     ASSIGN_DEVICES: (id: number) => `/api/v1/playlists/${id}/assign/devices`,
-    ASSIGN_TAGS: (id: number) => `/api/v1/playlists/${id}/assign/tags`,
     UNASSIGN_DEVICES: (id: number) => `/api/v1/playlists/${id}/assign/devices`,
-    UNASSIGN_TAGS: (id: number) => `/api/v1/playlists/${id}/assign/tags`,
   },
 
   // ========================================

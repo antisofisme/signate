@@ -105,6 +105,7 @@ class PlaylistRepository(IPlaylistRepository):
             stats = self.calculate_playlist_stats(model.id, model.organization_id)
             playlist.content_count = stats["content_count"]
             playlist.total_duration = stats["total_duration"]
+            playlist.device_count = stats["device_count"]
 
         return playlist
 
@@ -453,20 +454,21 @@ class PlaylistRepository(IPlaylistRepository):
         playlist_id: int,
         organization_id: int
     ) -> Dict[str, Any]:
-        """Get all assignments for playlist"""
+        """Get all device assignments for playlist
+
+        NOTE: Tags are no longer assigned to Playlists.
+        Tags are assigned to Devices and Content only.
+        """
         # Verify playlist belongs to organization
         playlist = self.find_by_id(playlist_id, organization_id)
         if not playlist:
             raise ValueError(f"Playlist {playlist_id} not found or access denied")
 
-        # Get all assignments
-        assignments = self.db.query(PlaylistAssignmentModel).filter(
-            PlaylistAssignmentModel.playlist_id == playlist_id
+        # Get device assignments only
+        device_assignments = self.db.query(PlaylistAssignmentModel).filter(
+            PlaylistAssignmentModel.playlist_id == playlist_id,
+            PlaylistAssignmentModel.device_id.isnot(None)
         ).all()
-
-        # Separate device and tag assignments
-        device_assignments = [a for a in assignments if a.device_id]
-        tag_assignments = [a for a in assignments if a.tag_id]
 
         # Get device details
         from services.device.repositories.models import DeviceModel
@@ -477,18 +479,8 @@ class PlaylistRepository(IPlaylistRepository):
                 DeviceModel.id.in_(device_ids)
             ).all()
 
-        # Get tag details
-        from services.tag.repositories.models import TagModel
-        tag_ids = [a.tag_id for a in tag_assignments]
-        tags = []
-        if tag_ids:
-            tags = self.db.query(TagModel).filter(
-                TagModel.id.in_(tag_ids)
-            ).all()
-
         return {
-            "devices": [{"id": d.id, "device_name": d.device_name, "location": d.location} for d in devices],
-            "tags": [{"id": t.id, "name": t.tag_name, "color": t.color} for t in tags]
+            "devices": [{"id": d.id, "device_id": d.id, "device_name": d.device_name, "location": d.room_number or d.location_type} for d in devices]
         }
 
     def assign_to_devices(
@@ -557,7 +549,10 @@ class PlaylistRepository(IPlaylistRepository):
         tag_ids: List[int],
         organization_id: int
     ) -> Dict[str, Any]:
-        """Bulk assign playlist to tags"""
+        """DEPRECATED: Tag assignments to Playlists are no longer supported.
+        Tags are assigned to Devices and Content only.
+        This method is kept for backward compatibility but should not be used.
+        """
         # Verify playlist belongs to organization
         playlist = self.find_by_id(playlist_id, organization_id)
         if not playlist:
@@ -645,7 +640,10 @@ class PlaylistRepository(IPlaylistRepository):
         tag_ids: List[int],
         organization_id: int
     ) -> int:
-        """Bulk unassign from tags"""
+        """DEPRECATED: Tag assignments to Playlists are no longer supported.
+        Tags are assigned to Devices and Content only.
+        This method is kept for backward compatibility but should not be used.
+        """
         # Verify playlist belongs to organization
         playlist = self.find_by_id(playlist_id, organization_id)
         if not playlist:
@@ -674,10 +672,16 @@ class PlaylistRepository(IPlaylistRepository):
         playlist_id: int,
         organization_id: int
     ) -> Dict[str, int]:
-        """Calculate content count and total duration"""
+        """Calculate content count, total duration, and device count"""
         # Count content items
         content_count = self.db.query(func.count(PlaylistContentModel.id)).filter(
             PlaylistContentModel.playlist_id == playlist_id
+        ).scalar() or 0
+
+        # Count assigned devices
+        device_count = self.db.query(func.count(PlaylistAssignmentModel.id)).filter(
+            PlaylistAssignmentModel.playlist_id == playlist_id,
+            PlaylistAssignmentModel.device_id.isnot(None)
         ).scalar() or 0
 
         # Calculate total duration
@@ -703,7 +707,8 @@ class PlaylistRepository(IPlaylistRepository):
 
         return {
             "content_count": content_count,
-            "total_duration": total_duration
+            "total_duration": total_duration,
+            "device_count": device_count
         }
     
     def find_default_playlist(self, organization_id: int) -> Optional[Playlist]:

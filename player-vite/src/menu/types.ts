@@ -9,7 +9,10 @@ export interface PublicMenu {
   menu_type: 'restaurant' | 'laundry' | 'spa' | 'room_service' | 'other';
   show_prices: boolean;
   display_mode: 'grid' | 'list' | 'carousel' | 'minimalist';
-  theme_color: string | null;
+  // Color scheme (60-30-10 principle)
+  primary_color: string | null;   // 60% - Background
+  secondary_color: string | null; // 30% - Header/Categories
+  theme_color: string | null;     // 10% - Accent
   whatsapp_number: string | null;
   phone_number: string | null;
   contact_label: string | null;

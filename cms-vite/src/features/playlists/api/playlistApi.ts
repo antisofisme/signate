@@ -16,7 +16,6 @@ import type {
   AddContentRequest,
   ReorderContentRequest,
   AssignDevicesRequest,
-  AssignTagsRequest,
   PlaylistAssignmentsResponse,
   BulkOperationResponse,
   RemoveOperationResponse,
@@ -279,9 +278,10 @@ export const playlistApi = {
   // ========================================
 
   /**
-   * Get playlist assignments (devices and tags)
+   * Get playlist assignments (devices only)
+   * NOTE: Tag assignments have been removed - Tags are NOT assigned to Playlists
    * @param id - Playlist ID
-   * @returns List of assigned devices and tags
+   * @returns List of assigned devices
    */
   getAssignments: async (id: number): Promise<PlaylistAssignmentsResponse> => {
     const response = await apiClient.get<AssignmentsResponse>(
@@ -308,23 +308,6 @@ export const playlistApi = {
   },
 
   /**
-   * Assign playlist to tags
-   * @param id - Playlist ID
-   * @param assignData - Tag IDs to assign
-   * @returns Bulk operation result
-   */
-  assignTags: async (
-    id: number,
-    assignData: AssignTagsRequest
-  ): Promise<BulkOperationResponse> => {
-    const response = await apiClient.post<BulkResponse>(
-      API_ENDPOINTS.PLAYLISTS.ASSIGN_TAGS(id),
-      assignData
-    );
-    return unwrapResponse<BulkOperationResponse>(response);
-  },
-
-  /**
    * Unassign playlist from devices
    * @param id - Playlist ID
    * @param unassignData - Device IDs to unassign
@@ -341,20 +324,4 @@ export const playlistApi = {
     return unwrapResponse<RemoveOperationResponse>(response);
   },
 
-  /**
-   * Unassign playlist from tags
-   * @param id - Playlist ID
-   * @param unassignData - Tag IDs to unassign
-   * @returns Remove operation result
-   */
-  unassignTags: async (
-    id: number,
-    unassignData: AssignTagsRequest
-  ): Promise<RemoveOperationResponse> => {
-    const response = await apiClient.delete<RemoveResponse>(
-      API_ENDPOINTS.PLAYLISTS.UNASSIGN_TAGS(id),
-      { data: unassignData }
-    );
-    return unwrapResponse<RemoveOperationResponse>(response);
-  },
 };

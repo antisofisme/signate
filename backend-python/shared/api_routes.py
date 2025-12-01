@@ -132,6 +132,11 @@ class TagRoutes:
     UNASSIGN_FROM_CONTENTS = f"{BASE}/{{tag_id}}/unassign-contents"
     GET_CONTENT_TAGS = f"{API_V1}/contents/{{content_id}}/tags"
 
+    # Device-Tag Assignment
+    GET_DEVICES = f"{BASE}/{{tag_id}}/devices"
+    ASSIGN_TO_DEVICES = f"{BASE}/{{tag_id}}/assign-devices"
+    UNASSIGN_FROM_DEVICES = f"{BASE}/{{tag_id}}/unassign-devices"
+
 
 # =============================================================================
 # CONTENT SERVICE ROUTES

@@ -30,6 +30,7 @@ class Playlist:
         # Computed fields
         content_count: int = 0,
         total_duration: int = 0,
+        device_count: int = 0,
     ):
         self.id = id
         self.name = name
@@ -51,6 +52,7 @@ class Playlist:
         # Computed fields (not stored in DB)
         self.content_count = content_count
         self.total_duration = total_duration
+        self.device_count = device_count
 
         # Validate on creation
         self._validate()
@@ -133,6 +135,7 @@ class Playlist:
             "deleted_at": self.deleted_at.isoformat() if self.deleted_at else None,
             "content_count": self.content_count,
             "total_duration": self.total_duration,
+            "device_count": self.device_count,
         }
 
     def __repr__(self):

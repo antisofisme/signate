@@ -47,9 +47,8 @@ class AssignDevicesRequest(BaseModel):
     device_ids: List[int] = Field(..., min_items=1, description="List of device IDs")
 
 
-class AssignTagsRequest(BaseModel):
-    """Assign playlist to tags request"""
-    tag_ids: List[int] = Field(..., min_items=1, description="List of tag IDs")
+# NOTE: AssignTagsRequest has been removed
+# Tags are NOT assigned to Playlists (architecture decision)
 
 
 class DuplicatePlaylistRequest(BaseModel):
@@ -134,14 +133,10 @@ class DeviceInfoResponse(BaseModel):
     location: Optional[str]
 
 
-class TagInfoResponse(BaseModel):
-    """Tag info response"""
-    id: int
-    name: str
-    color: str
-
-
 class PlaylistAssignmentsResponse(BaseModel):
-    """Playlist assignments response"""
+    """Playlist assignments response (devices only)
+
+    NOTE: Tags have been removed from playlist assignments.
+    Tags are assigned to Devices and Content only, NOT to Playlists.
+    """
     devices: List[DeviceInfoResponse]
-    tags: List[TagInfoResponse]

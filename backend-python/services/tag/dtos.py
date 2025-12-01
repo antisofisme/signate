@@ -66,6 +66,9 @@ class TagResponse(BaseModel):
     color: str
     organization_id: int
     created_at: datetime
+    # Usage counts (computed)
+    device_count: int = Field(default=0, description="Number of devices using this tag")
+    content_count: int = Field(default=0, description="Number of content items using this tag")
 
     class Config:
         from_attributes = True
@@ -136,3 +139,53 @@ class ContentTagsResponse(BaseModel):
     success: bool = True
     data: List[TagResponse]
     total: int
+
+
+# =============================================================================
+# DEVICE-TAG DTOs
+# =============================================================================
+
+class DeviceTagResponse(BaseModel):
+    """Device info for tag context"""
+    id: int
+    device_name: str
+    device_type: str
+    status: str
+    assigned_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class DeviceTagsListResponse(BaseModel):
+    """List of devices assigned to a tag"""
+    success: bool = True
+    data: List[DeviceTagResponse]
+    total: int
+
+
+class AssignTagToDevicesRequest(BaseModel):
+    """Bulk assign tag to multiple devices request"""
+    device_ids: List[int] = Field(..., min_length=1, description="List of device IDs to assign tag to")
+
+
+class UnassignTagFromDevicesRequest(BaseModel):
+    """Bulk unassign tag from multiple devices request"""
+    device_ids: List[int] = Field(..., min_length=1, description="List of device IDs to unassign tag from")
+
+
+class BulkDeviceTagAssignmentResponse(BaseModel):
+    """Bulk device-tag assignment response"""
+    success: bool = True
+    assigned: int
+    skipped: int
+    failed: int
+    message: str
+
+
+class BulkDeviceTagUnassignmentResponse(BaseModel):
+    """Bulk device-tag unassignment response"""
+    success: bool = True
+    unassigned: int
+    not_found: int
+    message: str

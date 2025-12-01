@@ -33,6 +33,9 @@ class Tag:
         created_by_id: Optional[int] = None,
         updated_by_id: Optional[int] = None,
         deleted_by_id: Optional[int] = None,
+        # Computed counts (set by repository)
+        device_count: int = 0,
+        content_count: int = 0,
     ):
         self.id = id
         self.tag_name = tag_name
@@ -48,6 +51,9 @@ class Tag:
         self.created_by_id = created_by_id
         self.updated_by_id = updated_by_id
         self.deleted_by_id = deleted_by_id
+        # Computed counts
+        self.device_count = device_count
+        self.content_count = content_count
 
         # Business validation
         self._validate()
@@ -96,6 +102,9 @@ class Tag:
             "created_by": self.created_by_id,
             "updated_by": self.updated_by_id,
             "deleted_by": self.deleted_by_id,
+            # Computed counts
+            "device_count": self.device_count,
+            "content_count": self.content_count,
         }
 
     def is_deleted(self) -> bool:

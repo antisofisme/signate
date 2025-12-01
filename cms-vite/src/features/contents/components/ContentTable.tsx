@@ -430,6 +430,9 @@ export function ContentTable() {
                       {t('contents.table.content')}
                     </th>
                     <th className={`${TABLE_STYLES.th} w-20`}>
+                      {t('contents.table.status')}
+                    </th>
+                    <th className={`${TABLE_STYLES.th} w-20`}>
                       {t('contents.table.type')}
                     </th>
                     <th className={`${TABLE_STYLES.th} w-24`}>
@@ -437,9 +440,6 @@ export function ContentTable() {
                     </th>
                     <th className={`${TABLE_STYLES.th} w-20`}>
                       {t('contents.table.duration')}
-                    </th>
-                    <th className={`${TABLE_STYLES.th} w-20`}>
-                      {t('contents.table.status')}
                     </th>
                     <th className={`${TABLE_STYLES.th} w-32`}>
                       {t('contents.table.actions')}
@@ -570,6 +570,22 @@ export function ContentTable() {
                                   </div>
                                 </td>
                                 <td className="px-4 py-3 whitespace-nowrap">
+                                  <div className="flex items-center gap-2">
+                                    <span
+                                      className={`px-2 py-1 text-xs font-medium rounded-full ${
+                                        fullContent.is_active
+                                          ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+                                          : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'
+                                      }`}
+                                    >
+                                      {fullContent.is_active ? t('contents.status.active') : t('contents.status.inactive')}
+                                    </span>
+                                    {!itemHasUsage && (
+                                      <span className="w-2 h-2 rounded-full bg-green-400" title={t('contents.usage.safeToDelete')} />
+                                    )}
+                                  </div>
+                                </td>
+                                <td className="px-4 py-3 whitespace-nowrap">
                                   {/* Usage indicators */}
                                   <div className="flex flex-col gap-0.5">
                                     {itemUsage.playlists.length > 0 && (
@@ -601,75 +617,51 @@ export function ContentTable() {
                                 <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-white">
                                   {fullContent.duration}s
                                 </td>
-                                <td className="px-4 py-3 whitespace-nowrap">
-                                  <div className="flex items-center gap-2">
-                                    <span
-                                      className={`px-2 py-1 text-xs font-medium rounded-full ${
-                                        fullContent.is_active
-                                          ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
-                                          : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'
-                                      }`}
-                                    >
-                                      {fullContent.is_active ? t('contents.status.active') : t('contents.status.inactive')}
-                                    </span>
-                                    {!itemHasUsage && (
-                                      <span className="w-2 h-2 rounded-full bg-green-400" title={t('contents.usage.safeToDelete')} />
-                                    )}
-                                  </div>
-                                </td>
                                 <td className="px-4 py-3 whitespace-nowrap text-sm">
                                   <div className="flex items-center gap-1">
                                     {canUpdate && (
-                                      <Button
-                                        variant="icon"
-                                        size="sm"
+                                      <button
                                         onClick={(e) => {
                                           e.stopPropagation();
                                           handleEdit(fullContent);
                                         }}
+                                        className={TABLE_STYLES.actionBtnGreen}
                                         title={t('contents.actions.edit')}
-                                        className="!text-green-600 hover:!text-green-700 dark:!text-green-400"
                                       >
                                         <Edit className="w-4 h-4" />
-                                      </Button>
+                                      </button>
                                     )}
-                                    <Button
-                                      variant="icon"
-                                      size="sm"
+                                    <button
                                       onClick={(e) => {
                                         e.stopPropagation();
                                         handlePreview(fullContent);
                                       }}
+                                      className={TABLE_STYLES.actionBtnBlue}
                                       title={t('contents.actions.preview')}
-                                      className="!text-blue-600 hover:!text-blue-700 dark:!text-blue-400"
                                     >
                                       <Eye className="w-4 h-4" />
-                                    </Button>
-                                    <Button
-                                      variant="icon"
-                                      size="sm"
+                                    </button>
+                                    <button
                                       onClick={(e) => {
                                         e.stopPropagation();
                                         handleDownload(fullContent);
                                       }}
+                                      className={TABLE_STYLES.actionBtnGray}
                                       title={t('contents.actions.download')}
-                                      className="!text-gray-600 hover:!text-gray-700 dark:!text-gray-400"
                                     >
                                       <Download className="w-4 h-4" />
-                                    </Button>
+                                    </button>
                                     {canDelete && (
-                                      <Button
-                                        variant="icon"
-                                        size="sm"
+                                      <button
                                         onClick={(e) => {
                                           e.stopPropagation();
                                           setContentToDelete(fullContent);
                                         }}
+                                        className={TABLE_STYLES.actionBtnRed}
                                         title={t('contents.actions.delete')}
-                                        className="!text-red-600 hover:!text-red-700 dark:!text-red-400"
                                       >
                                         <Trash2 className="w-4 h-4" />
-                                      </Button>
+                                      </button>
                                     )}
                                   </div>
                                 </td>
@@ -720,6 +712,17 @@ export function ContentTable() {
                               </div>
                             </td>
                             <td className="px-4 py-3 whitespace-nowrap">
+                              <span
+                                className={`px-2 py-1 text-xs font-medium rounded-full ${
+                                  content.is_active
+                                    ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+                                    : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'
+                                }`}
+                              >
+                                {content.is_active ? t('contents.status.active') : t('contents.status.inactive')}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 whitespace-nowrap">
                               <div className="flex items-center gap-1 text-sm text-gray-900 dark:text-white capitalize">
                                 {getContentTypeIcon(content.content_type)}
                                 <span className="hidden sm:inline">{content.content_type}</span>
@@ -731,58 +734,39 @@ export function ContentTable() {
                             <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-white">
                               {content.duration}s
                             </td>
-                            <td className="px-4 py-3 whitespace-nowrap">
-                              <span
-                                className={`px-2 py-1 text-xs font-medium rounded-full ${
-                                  content.is_active
-                                    ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
-                                    : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'
-                                }`}
-                              >
-                                {content.is_active ? t('contents.status.active') : t('contents.status.inactive')}
-                              </span>
-                            </td>
                             <td className="px-4 py-3 whitespace-nowrap text-sm">
                               <div className="flex items-center gap-1">
                                 {canUpdate && (
-                                  <Button
-                                    variant="icon"
-                                    size="sm"
+                                  <button
                                     onClick={() => handleEdit(content)}
+                                    className={TABLE_STYLES.actionBtnGreen}
                                     title={t('contents.actions.edit')}
-                                    className="!text-green-600 hover:!text-green-700 dark:!text-green-400"
                                   >
                                     <Edit className="w-4 h-4" />
-                                  </Button>
+                                  </button>
                                 )}
-                                <Button
-                                  variant="icon"
-                                  size="sm"
+                                <button
                                   onClick={() => handlePreview(content)}
+                                  className={TABLE_STYLES.actionBtnBlue}
                                   title={t('contents.actions.preview')}
-                                  className="!text-blue-600 hover:!text-blue-700 dark:!text-blue-400"
                                 >
                                   <Eye className="w-4 h-4" />
-                                </Button>
-                                <Button
-                                  variant="icon"
-                                  size="sm"
+                                </button>
+                                <button
                                   onClick={() => handleDownload(content)}
+                                  className={TABLE_STYLES.actionBtnGray}
                                   title={t('contents.actions.download')}
-                                  className="!text-gray-600 hover:!text-gray-700 dark:!text-gray-400"
                                 >
                                   <Download className="w-4 h-4" />
-                                </Button>
+                                </button>
                                 {canDelete && (
-                                  <Button
-                                    variant="icon"
-                                    size="sm"
+                                  <button
                                     onClick={() => setContentToDelete(content)}
+                                    className={TABLE_STYLES.actionBtnRed}
                                     title={t('contents.actions.delete')}
-                                    className="!text-red-600 hover:!text-red-700 dark:!text-red-400"
                                   >
                                     <Trash2 className="w-4 h-4" />
-                                  </Button>
+                                  </button>
                                 )}
                               </div>
                             </td>

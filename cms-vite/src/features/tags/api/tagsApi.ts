@@ -186,4 +186,82 @@ export const tagsApi = {
     );
     return response.data.data;
   },
+
+  // =========================================================================
+  // DEVICE-TAG OPERATIONS
+  // =========================================================================
+
+  /**
+   * Get all devices assigned to a tag
+   * @param tagId - Tag ID
+   * @returns List of devices
+   */
+  getTagDevices: async (tagId: number): Promise<{
+    id: number;
+    device_name: string;
+    device_type: string;
+    status: string;
+    assigned_at: string;
+  }[]> => {
+    const response = await apiClient.get<{
+      success: boolean;
+      data: {
+        id: number;
+        device_name: string;
+        device_type: string;
+        status: string;
+        assigned_at: string;
+      }[];
+      total: number;
+    }>(API_ENDPOINTS.TAGS.GET_DEVICES(tagId));
+    return response.data.data;
+  },
+
+  /**
+   * Bulk assign tag to multiple devices
+   * @param tagId - Tag ID
+   * @param deviceIds - Array of device IDs
+   */
+  assignToDevices: async (tagId: number, deviceIds: number[]): Promise<{
+    success: boolean;
+    assigned: number;
+    skipped: number;
+    failed: number;
+    message: string;
+  }> => {
+    const response = await apiClient.post<{
+      success: boolean;
+      assigned: number;
+      skipped: number;
+      failed: number;
+      message: string;
+    }>(
+      API_ENDPOINTS.TAGS.ASSIGN_TO_DEVICES(tagId),
+      { device_ids: deviceIds }
+    );
+    return response.data;
+  },
+
+  /**
+   * Bulk unassign tag from multiple devices
+   * @param tagId - Tag ID
+   * @param deviceIds - Array of device IDs
+   */
+  unassignFromDevices: async (tagId: number, deviceIds: number[]): Promise<{
+    success: boolean;
+    unassigned: number;
+    not_found: number;
+    message: string;
+  }> => {
+    const response = await apiClient.delete<{
+      success: boolean;
+      unassigned: number;
+      not_found: number;
+      message: string;
+    }>(
+      API_ENDPOINTS.TAGS.UNASSIGN_FROM_DEVICES(tagId),
+      { data: { device_ids: deviceIds } }
+    );
+    return response.data;
+  },
 };

@@ -11,6 +11,7 @@ import { useTranslation } from 'react-i18next';
 import { useTags, useCreateTag, useUpdateTag, useDeleteTag } from '../hooks/useTags';
 import { TagList } from '../components/TagList';
 import { TagForm } from '../components/TagForm';
+import TagManagementModal from '../components/TagManagementModal';
 import { ConfirmDialog, AccessDenied, PageSkeleton } from '@/shared/components';
 import { useCanPerformAction } from '@/features/rbac/hooks/usePermissions';
 import type { Tag, TagSortBy, CreateTagRequest, UpdateTagRequest } from '../types/tag';
@@ -22,6 +23,7 @@ export default function TagsPage() {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [editingTag, setEditingTag] = useState<Tag | null>(null);
   const [deletingTag, setDeletingTag] = useState<Tag | null>(null);
+  const [contentManagementTag, setContentManagementTag] = useState<Tag | null>(null);
 
   // Permission checks
   const { hasPermission: canRead, isLoading: isLoadingReadPermission } = useCanPerformAction('tags', 'read');
@@ -75,7 +77,8 @@ export default function TagsPage() {
   const handleDeleteConfirm = async () => {
     if (!deletingTag) return;
     try {
-      await deleteTagMutation.mutateAsync({ id: deletingTag.id });
+      // Always use force=true since backend now handles cleanup of all relationships
+      await deleteTagMutation.mutateAsync({ id: deletingTag.id, force: true });
       setDeletingTag(null);
     } catch (error) {
       // Error handled by mutation
@@ -132,6 +135,7 @@ export default function TagsPage() {
           searchQuery={searchQuery}
           onEdit={canUpdate ? setEditingTag : undefined}
           onDelete={canDelete ? setDeletingTag : undefined}
+          onManageContent={setContentManagementTag}
         />
       </div>
 
@@ -164,6 +168,16 @@ export default function TagsPage() {
           cancelLabel={t('tags.cancel')}
           onConfirm={handleDeleteConfirm}
           isLoading={deleteTagMutation.isPending}
+        />
+      )}
+
+      {contentManagementTag && (
+        <TagManagementModal
+          tagId={contentManagementTag.id}
+          tagName={contentManagementTag.tag_name}
+          tagColor={contentManagementTag.color}
+          isOpen={!!contentManagementTag}
+          onClose={() => setContentManagementTag(null)}
         />
       )}
     </>

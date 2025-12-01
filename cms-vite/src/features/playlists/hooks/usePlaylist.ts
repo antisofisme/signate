@@ -14,7 +14,6 @@ import type {
   AddContentRequest,
   ReorderContentRequest,
   AssignDevicesRequest,
-  AssignTagsRequest,
 } from '../types/playlist';
 
 // Re-export shared playlist keys for backward compatibility
@@ -59,7 +58,8 @@ export const usePlaylistContent = (id: number, enabled = true) => {
 };
 
 /**
- * Get playlist assignments (devices & tags)
+ * Get playlist assignments (devices only)
+ * NOTE: Tag assignments have been removed - Tags are NOT assigned to Playlists
  */
 export const usePlaylistAssignments = (id: number, enabled = true) => {
   return useQuery({
@@ -190,6 +190,7 @@ export const useDuplicatePlaylist = () => {
 export const useAddContentToPlaylist = () => {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
+  const orgId = useSelectedOrgId();
 
   return useMutation({
     mutationFn: ({ id, data }: { id: number; data: AddContentRequest }) =>
@@ -197,6 +198,8 @@ export const useAddContentToPlaylist = () => {
     onSuccess: (result, variables) => {
       queryClient.invalidateQueries({ queryKey: playlistKeys.content(variables.id) });
       queryClient.invalidateQueries({ queryKey: playlistKeys.detail(variables.id) });
+      // Also refresh playlist list to update content_count
+      queryClient.invalidateQueries({ queryKey: playlistKeys.lists(orgId) });
 
       if (result.skipped_missing && result.skipped_missing.length > 0) {
         toast.warning(t('playlists.messages.addContentPartialMissing', { added: result.added, missing: result.skipped_missing.length }));
@@ -218,6 +221,7 @@ export const useAddContentToPlaylist = () => {
 export const useRemoveContentFromPlaylist = () => {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
+  const orgId = useSelectedOrgId();
 
   return useMutation({
     mutationFn: ({ playlistId, itemId }: { playlistId: number; itemId: number }) =>
@@ -225,6 +229,8 @@ export const useRemoveContentFromPlaylist = () => {
     onSuccess: (result, variables) => {
       queryClient.invalidateQueries({ queryKey: playlistKeys.content(variables.playlistId) });
       queryClient.invalidateQueries({ queryKey: playlistKeys.detail(variables.playlistId) });
+      // Also refresh playlist list to update content_count
+      queryClient.invalidateQueries({ queryKey: playlistKeys.lists(orgId) });
       toast.success(t('playlists.messages.removeContentSuccess'));
     },
     onError: (error: unknown) => {
@@ -263,12 +269,16 @@ export const useReorderPlaylistContent = () => {
 export const useAssignPlaylistToDevices = () => {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
+  const orgId = useSelectedOrgId();
 
   return useMutation({
     mutationFn: ({ id, data }: { id: number; data: AssignDevicesRequest }) =>
       playlistApi.assignDevices(id, data),
     onSuccess: (result, variables) => {
       queryClient.invalidateQueries({ queryKey: playlistKeys.assignments(variables.id) });
+
+      // Also refresh playlist list to update device_count
+      queryClient.invalidateQueries({ queryKey: playlistKeys.lists(orgId) });
 
       // Invalidate device queries (assigned devices need to show new playlist)
       queryClient.invalidateQueries({ queryKey: ['devices'] });
@@ -293,44 +303,21 @@ export const useAssignPlaylistToDevices = () => {
 };
 
 /**
- * Assign playlist to tags
- */
-export const useAssignPlaylistToTags = () => {
-  const { t } = useTranslation();
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: ({ id, data }: { id: number; data: AssignTagsRequest }) =>
-      playlistApi.assignTags(id, data),
-    onSuccess: (result, variables) => {
-      queryClient.invalidateQueries({ queryKey: playlistKeys.assignments(variables.id) });
-
-      // Invalidate tag queries (tags now have playlist assignments)
-      queryClient.invalidateQueries({ queryKey: ['tags'] });
-
-      // Invalidate dashboard queries (active playlists may change)
-      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
-
-      toast.success(t('playlists.messages.assignTagsSuccess', { count: result.assigned }));
-    },
-    onError: (error: unknown) => {
-      toast.error(getApiErrorMessage(error, t('playlists.messages.assignTagsError')));
-    },
-  });
-};
-
-/**
  * Unassign playlist from devices
  */
 export const useUnassignPlaylistFromDevices = () => {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
+  const orgId = useSelectedOrgId();
 
   return useMutation({
     mutationFn: ({ id, data }: { id: number; data: AssignDevicesRequest }) =>
       playlistApi.unassignDevices(id, data),
     onSuccess: (result, variables) => {
       queryClient.invalidateQueries({ queryKey: playlistKeys.assignments(variables.id) });
+
+      // Also refresh playlist list to update device_count
+      queryClient.invalidateQueries({ queryKey: playlistKeys.lists(orgId) });
 
       // Invalidate device queries (devices no longer have this playlist)
       queryClient.invalidateQueries({ queryKey: ['devices'] });
@@ -354,29 +341,3 @@ export const useUnassignPlaylistFromDevices = () => {
   });
 };
 
-/**
- * Unassign playlist from tags
- */
-export const useUnassignPlaylistFromTags = () => {
-  const { t } = useTranslation();
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: ({ id, data }: { id: number; data: AssignTagsRequest }) =>
-      playlistApi.unassignTags(id, data),
-    onSuccess: (result, variables) => {
-      queryClient.invalidateQueries({ queryKey: playlistKeys.assignments(variables.id) });
-
-      // Invalidate tag queries (tags no longer have playlist assignments)
-      queryClient.invalidateQueries({ queryKey: ['tags'] });
-
-      // Invalidate dashboard queries (active playlists may change)
-      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
-
-      toast.success(t('playlists.messages.unassignTagsSuccess', { count: result.removed }));
-    },
-    onError: (error: unknown) => {
-      toast.error(getApiErrorMessage(error, t('playlists.messages.unassignTagsError')));
-    },
-  });
-};

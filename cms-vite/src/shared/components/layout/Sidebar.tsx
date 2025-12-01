@@ -97,9 +97,9 @@ export default function Sidebar() {
       icon: FileImage,
       items: [
         { name: t('navigation.contents'), href: '/contents', icon: FileImage },
+        { name: t('navigation.tags'), href: '/tags', icon: Tag },
         { name: t('navigation.playlists'), href: '/playlists', icon: ListVideo },
         { name: t('navigation.schedules'), href: '/schedules', icon: Calendar },
-        { name: t('navigation.tags'), href: '/tags', icon: Tag },
       ],
     },
     {

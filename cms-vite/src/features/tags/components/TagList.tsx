@@ -3,7 +3,7 @@
  * Table display of tags with actions
  */
 
-import { Pencil, Trash2, Tag as TagIcon } from 'lucide-react';
+import { Pencil, Trash2, Tag as TagIcon, FileSymlink, Monitor, File } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { TableSkeleton, EmptyState, TABLE_STYLES } from '@/shared/components';
 import { TagBadge } from './TagBadge';
@@ -15,6 +15,7 @@ interface TagListProps {
   searchQuery: string;
   onEdit?: (tag: Tag) => void;
   onDelete?: (tag: Tag) => void;
+  onManageContent?: (tag: Tag) => void;
 }
 
 export function TagList({
@@ -23,11 +24,12 @@ export function TagList({
   searchQuery,
   onEdit,
   onDelete,
+  onManageContent,
 }: TagListProps) {
   const { t } = useTranslation();
 
   if (isLoading) {
-    return <TableSkeleton columns={4} rows={5} />;
+    return <TableSkeleton columns={6} rows={5} />;
   }
 
   if (tags.length === 0) {
@@ -51,6 +53,12 @@ export function TagList({
             <th className={TABLE_STYLES.th}>
               {t('tags.description')}
             </th>
+            <th className={`${TABLE_STYLES.th} text-center`}>
+              {t('tags.contentCount', 'Contents')}
+            </th>
+            <th className={`${TABLE_STYLES.th} text-center`}>
+              {t('tags.deviceCount', 'Devices')}
+            </th>
             <th className={TABLE_STYLES.th}>
               {t('tags.created')}
             </th>
@@ -68,15 +76,40 @@ export function TagList({
               <td className={TABLE_STYLES.td}>
                 {tag.description || '-'}
               </td>
+              <td className={`${TABLE_STYLES.td} text-center`}>
+                <div className="flex items-center justify-center gap-1.5">
+                  <File className="h-4 w-4 text-gray-400" />
+                  <span className={(tag.content_count ?? 0) > 0 ? 'font-medium' : 'text-gray-400'}>
+                    {tag.content_count ?? 0} {t('tags.contentSuffix', 'konten')}
+                  </span>
+                </div>
+              </td>
+              <td className={`${TABLE_STYLES.td} text-center`}>
+                <div className="flex items-center justify-center gap-1.5">
+                  <Monitor className="h-4 w-4 text-gray-400" />
+                  <span className={(tag.device_count ?? 0) > 0 ? 'font-medium' : 'text-gray-400'}>
+                    {tag.device_count ?? 0} {t('tags.deviceSuffix', 'device')}
+                  </span>
+                </div>
+              </td>
               <td className={`${TABLE_STYLES.td} ${TABLE_STYLES.muted}`}>
                 {new Date(tag.created_at).toLocaleDateString('id-ID')}
               </td>
               <td className={TABLE_STYLES.td}>
                 <div className="flex items-center gap-2">
+                  {onManageContent && (
+                    <button
+                      onClick={() => onManageContent(tag)}
+                      className={TABLE_STYLES.actionBtnGreen}
+                      title={t('tags.manageContent', 'Manage Content')}
+                    >
+                      <FileSymlink className="h-4 w-4" />
+                    </button>
+                  )}
                   {onEdit && (
                     <button
                       onClick={() => onEdit(tag)}
-                      className="p-1.5 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded"
+                      className={TABLE_STYLES.actionBtnBlue}
                       title={t('tags.edit')}
                     >
                       <Pencil className="h-4 w-4" />
@@ -85,13 +118,13 @@ export function TagList({
                   {onDelete && (
                     <button
                       onClick={() => onDelete(tag)}
-                      className="p-1.5 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded"
+                      className={TABLE_STYLES.actionBtnRed}
                       title={t('tags.delete')}
                     >
                       <Trash2 className="h-4 w-4" />
                     </button>
                   )}
-                  {!onEdit && !onDelete && (
+                  {!onEdit && !onDelete && !onManageContent && (
                     <span className="text-sm text-gray-400 dark:text-gray-500">-</span>
                   )}
                 </div>

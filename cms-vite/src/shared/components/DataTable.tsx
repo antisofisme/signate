@@ -43,6 +43,23 @@ export const TABLE_STYLES = {
 
   // Whitespace nowrap cell
   tdNoWrap: 'px-6 py-4 text-sm text-gray-900 dark:text-white whitespace-nowrap',
+
+  // ============================================
+  // ACTION BUTTON STYLES - For table row actions
+  // Background sama dengan thead: bg-gray-50 dark:bg-gray-900 (rgb(17 24 39))
+  // ============================================
+
+  // Base action button
+  actionBtn: 'p-2 bg-gray-50 dark:bg-gray-900 rounded-lg transition-colors',
+
+  // Action button color variants
+  actionBtnPurple: 'p-2 bg-gray-50 dark:bg-gray-900 text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-800 rounded-lg transition-colors',
+  actionBtnGray: 'p-2 bg-gray-50 dark:bg-gray-900 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors',
+  actionBtnIndigo: 'p-2 bg-gray-50 dark:bg-gray-900 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-800 rounded-lg transition-colors',
+  actionBtnBlue: 'p-2 bg-gray-50 dark:bg-gray-900 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-800 rounded-lg transition-colors',
+  actionBtnGreen: 'p-2 bg-gray-50 dark:bg-gray-900 text-green-600 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-800 rounded-lg transition-colors',
+  actionBtnOrange: 'p-2 bg-gray-50 dark:bg-gray-900 text-orange-600 dark:text-orange-400 hover:bg-orange-50 dark:hover:bg-orange-800 rounded-lg transition-colors',
+  actionBtnRed: 'p-2 bg-gray-50 dark:bg-gray-900 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-800 rounded-lg transition-colors',
 } as const;
 
 // ============================================

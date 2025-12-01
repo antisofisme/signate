@@ -26,7 +26,9 @@ from .dtos import (
     OrganizationListResponse,
     OrganizationQuotaResponse,
     QuotaCheckResponse,
-    UpdateOrganizationQuotaRequest
+    UpdateOrganizationQuotaRequest,
+    UpdatePinRequest,
+    RegeneratePinResponse,
 )
 from .use_cases.create_organization import CreateOrganizationUseCase
 from .use_cases.list_organizations import ListOrganizationsUseCase
@@ -626,5 +628,160 @@ def update_organization_quota(
         },
         organization_id=org_id
     )
-    
+
     return quota_response
+
+
+# =============================================================================
+# PIN MANAGEMENT ENDPOINTS
+# =============================================================================
+
+@router.post(f"{OrganizationRoutes.BASE}/{{org_id:int}}/pin/regenerate", response_model=RegeneratePinResponse)
+@handle_errors
+def regenerate_organization_pin(
+    org_id: int,
+    http_request: Request,
+    db: Session = Depends(get_db),
+    audit_logger: AuditLogger = Depends(get_audit_logger),
+    current_user: dict = Depends(require_admin)
+):
+    """
+    Regenerate organization PIN with a new random 6-digit PIN
+
+    Permission: Admin only
+    """
+    import random
+    from services.auth.repositories.models import OrganizationModel
+
+    start_time = time.time()
+
+    # Get organization
+    org = db.query(OrganizationModel).filter(
+        OrganizationModel.id == org_id
+    ).with_for_update().first()
+
+    if not org:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Organization {org_id} not found"
+        )
+
+    # Multi-tenancy: Non-SUPER_ADMIN can only regenerate PIN for their own organization
+    user_role = current_user["role"].lower() if current_user.get("role") else ""
+    if user_role != "super_admin":
+        if current_user["organization_id"] != org_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You can only manage PIN for your own organization"
+            )
+
+    # Generate new 6-digit PIN
+    new_pin = ''.join([str(random.randint(0, 9)) for _ in range(6)])
+
+    # Update organization
+    org.pin = new_pin
+    db.commit()
+
+    # Calculate duration
+    duration_ms = (time.time() - start_time) * 1000
+
+    # Log request
+    request_logger.log_request(
+        method="POST",
+        path=f"/organizations/{org_id}/pin/regenerate",
+        status_code=200,
+        duration_ms=duration_ms
+    )
+
+    # Audit log (don't log the actual PIN for security)
+    audit_logger.log_action(
+        user_id=current_user["user_id"],
+        action="organization.pin_regenerate",
+        resource_type="organization",
+        resource_id=org_id,
+        details={
+            "organization_name": org.name,
+            "ip_address": http_request.client.host if http_request.client else None
+        },
+        organization_id=org_id
+    )
+
+    return RegeneratePinResponse(
+        organization_id=org_id,
+        new_pin=new_pin,
+        message="PIN regenerated successfully"
+    )
+
+
+@router.put(f"{OrganizationRoutes.BASE}/{{org_id:int}}/pin", response_model=RegeneratePinResponse)
+@handle_errors
+def update_organization_pin(
+    org_id: int,
+    request_body: UpdatePinRequest,
+    http_request: Request,
+    db: Session = Depends(get_db),
+    audit_logger: AuditLogger = Depends(get_audit_logger),
+    current_user: dict = Depends(require_admin)
+):
+    """
+    Update organization PIN with a custom PIN
+
+    Permission: Admin only
+    """
+    from services.auth.repositories.models import OrganizationModel
+
+    start_time = time.time()
+
+    # Get organization
+    org = db.query(OrganizationModel).filter(
+        OrganizationModel.id == org_id
+    ).with_for_update().first()
+
+    if not org:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Organization {org_id} not found"
+        )
+
+    # Multi-tenancy: Non-SUPER_ADMIN can only update PIN for their own organization
+    user_role = current_user["role"].lower() if current_user.get("role") else ""
+    if user_role != "super_admin":
+        if current_user["organization_id"] != org_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You can only manage PIN for your own organization"
+            )
+
+    # Update organization PIN
+    org.pin = request_body.new_pin
+    db.commit()
+
+    # Calculate duration
+    duration_ms = (time.time() - start_time) * 1000
+
+    # Log request
+    request_logger.log_request(
+        method="PUT",
+        path=f"/organizations/{org_id}/pin",
+        status_code=200,
+        duration_ms=duration_ms
+    )
+
+    # Audit log (don't log the actual PIN for security)
+    audit_logger.log_action(
+        user_id=current_user["user_id"],
+        action="organization.pin_update",
+        resource_type="organization",
+        resource_id=org_id,
+        details={
+            "organization_name": org.name,
+            "ip_address": http_request.client.host if http_request.client else None
+        },
+        organization_id=org_id
+    )
+
+    return RegeneratePinResponse(
+        organization_id=org_id,
+        new_pin=request_body.new_pin,
+        message="PIN updated successfully"
+    )

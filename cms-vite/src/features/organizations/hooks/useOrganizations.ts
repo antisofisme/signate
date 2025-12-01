@@ -12,6 +12,7 @@ import { toast } from 'sonner';
 import type {
   CreateOrganizationRequest,
   UpdateOrganizationRequest,
+  UpdatePinRequest,
 } from '../types/organization';
 
 /**
@@ -121,6 +122,59 @@ export function useDeleteOrganization() {
 
       // Show success toast
       toast.success('Organization berhasil dihapus');
+    },
+    onError: (error) => {
+      const appError = handleAPIError(error);
+      toast.error(appError.message);
+    },
+  });
+}
+
+// =============================================================================
+// PIN MANAGEMENT HOOKS
+// =============================================================================
+
+/**
+ * Regenerate organization PIN mutation
+ */
+export function useRegeneratePin() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (orgId: number) => organizationsApi.regeneratePin(orgId),
+    onSuccess: (data) => {
+      // Invalidate organization queries to refresh PIN
+      queryClient.invalidateQueries({ queryKey: ['organizations'] });
+      queryClient.invalidateQueries({
+        queryKey: ['organizations', data.organization_id],
+      });
+
+      toast.success('PIN berhasil di-regenerate');
+    },
+    onError: (error) => {
+      const appError = handleAPIError(error);
+      toast.error(appError.message);
+    },
+  });
+}
+
+/**
+ * Update organization PIN mutation
+ */
+export function useUpdatePin() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ orgId, pinData }: { orgId: number; pinData: UpdatePinRequest }) =>
+      organizationsApi.updatePin(orgId, pinData),
+    onSuccess: (data) => {
+      // Invalidate organization queries to refresh PIN
+      queryClient.invalidateQueries({ queryKey: ['organizations'] });
+      queryClient.invalidateQueries({
+        queryKey: ['organizations', data.organization_id],
+      });
+
+      toast.success('PIN berhasil diupdate');
     },
     onError: (error) => {
       const appError = handleAPIError(error);

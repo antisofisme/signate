@@ -17,6 +17,8 @@ import type {
   OrganizationQuota,
   QuotaCheckResult,
   UpdateQuotaRequest,
+  RegeneratePinResponse,
+  UpdatePinRequest,
 } from '../types/organization';
 
 export const organizationsApi = {
@@ -158,6 +160,39 @@ export const organizationsApi = {
   ): Promise<QuotaCheckResult> => {
     const { data } = await apiClient.get<QuotaCheckResult>(
       `${API_ENDPOINTS.ORGANIZATIONS.CHECK_CONTENT_QUOTA(id)}?file_size_bytes=${fileSizeBytes}`
+    );
+    return data;
+  },
+
+  // ==========================================================================
+  // PIN MANAGEMENT
+  // ==========================================================================
+
+  /**
+   * Regenerate organization PIN with a new random PIN
+   * @param id - Organization ID
+   * @returns New PIN response
+   */
+  regeneratePin: async (id: number): Promise<RegeneratePinResponse> => {
+    const { data } = await apiClient.post<RegeneratePinResponse>(
+      API_ENDPOINTS.ORGANIZATIONS.REGENERATE_PIN(id)
+    );
+    return data;
+  },
+
+  /**
+   * Update organization PIN with a custom PIN
+   * @param id - Organization ID
+   * @param pinData - New PIN data
+   * @returns Updated PIN response
+   */
+  updatePin: async (
+    id: number,
+    pinData: UpdatePinRequest
+  ): Promise<RegeneratePinResponse> => {
+    const { data } = await apiClient.put<RegeneratePinResponse>(
+      API_ENDPOINTS.ORGANIZATIONS.UPDATE_PIN(id),
+      pinData
     );
     return data;
   },

@@ -1,6 +1,7 @@
 """
 Playlist Assignment Use Cases
-Bundled: assign/unassign devices and tags
+Bundled: assign/unassign devices
+NOTE: Tag assignments have been removed - Tags are NOT assigned to Playlists
 """
 
 from typing import List, Dict, Any
@@ -8,7 +9,7 @@ from ..domain.interfaces import IPlaylistRepository
 
 
 class GetPlaylistAssignmentsUseCase:
-    """Get all device and tag assignments"""
+    """Get all device assignments for a playlist"""
 
     def __init__(self, playlist_repo: IPlaylistRepository):
         self.playlist_repo = playlist_repo
@@ -19,10 +20,10 @@ class GetPlaylistAssignmentsUseCase:
         organization_id: int,
     ) -> Dict[str, Any]:
         """
-        Get playlist assignments
+        Get playlist assignments (devices only)
 
         Returns:
-            {"devices": [...], "tags": [...]}
+            {"devices": [...]}
         """
         return self.playlist_repo.get_playlist_assignments(
             playlist_id=playlist_id,
@@ -58,34 +59,6 @@ class AssignPlaylistToDevicesUseCase:
         )
 
 
-class AssignPlaylistToTagsUseCase:
-    """Assign playlist to tags (bulk)"""
-
-    def __init__(self, playlist_repo: IPlaylistRepository):
-        self.playlist_repo = playlist_repo
-
-    def execute(
-        self,
-        playlist_id: int,
-        tag_ids: List[int],
-        organization_id: int,
-    ) -> Dict[str, Any]:
-        """
-        Bulk assign to tags
-
-        Returns:
-            {"assigned": int, "skipped_missing": [], "skipped_duplicate": []}
-        """
-        if not tag_ids:
-            raise ValueError("tag_ids cannot be empty")
-
-        return self.playlist_repo.assign_to_tags(
-            playlist_id=playlist_id,
-            tag_ids=tag_ids,
-            organization_id=organization_id,
-        )
-
-
 class UnassignPlaylistFromDevicesUseCase:
     """Unassign playlist from devices (bulk)"""
 
@@ -110,33 +83,5 @@ class UnassignPlaylistFromDevicesUseCase:
         return self.playlist_repo.unassign_from_devices(
             playlist_id=playlist_id,
             device_ids=device_ids,
-            organization_id=organization_id,
-        )
-
-
-class UnassignPlaylistFromTagsUseCase:
-    """Unassign playlist from tags (bulk)"""
-
-    def __init__(self, playlist_repo: IPlaylistRepository):
-        self.playlist_repo = playlist_repo
-
-    def execute(
-        self,
-        playlist_id: int,
-        tag_ids: List[int],
-        organization_id: int,
-    ) -> int:
-        """
-        Bulk unassign from tags
-
-        Returns:
-            Number of removed assignments
-        """
-        if not tag_ids:
-            raise ValueError("tag_ids cannot be empty")
-
-        return self.playlist_repo.unassign_from_tags(
-            playlist_id=playlist_id,
-            tag_ids=tag_ids,
             organization_id=organization_id,
         )

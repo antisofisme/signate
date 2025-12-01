@@ -153,13 +153,13 @@ export const MenuList = ({
                 Menu Name
               </th>
               <th className={TABLE_STYLES.th}>
+                Status
+              </th>
+              <th className={TABLE_STYLES.th}>
                 Type
               </th>
               <th className={TABLE_STYLES.th}>
                 Items
-              </th>
-              <th className={TABLE_STYLES.th}>
-                Status
               </th>
               <th className={TABLE_STYLES.th}>
                 Public Access
@@ -183,14 +183,6 @@ export const MenuList = ({
                   </div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
-                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 capitalize">
-                    {menu.menu_type.replace('_', ' ')}
-                  </span>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                  {menu.items_count} items
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
                   <span
                     className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
                       menu.is_active
@@ -200,6 +192,14 @@ export const MenuList = ({
                   >
                     {menu.is_active ? 'Active' : 'Inactive'}
                   </span>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 capitalize">
+                    {menu.menu_type.replace('_', ' ')}
+                  </span>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                  {menu.items_count} items
                 </td>
                 <td className="px-6 py-4">
                   <div className="flex items-center space-x-2">
@@ -237,21 +237,21 @@ export const MenuList = ({
                   <div className="flex items-center gap-2">
                     <button
                       onClick={() => onEdit(menu)}
-                      className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 transition-colors"
+                      className={TABLE_STYLES.actionBtnBlue}
                       title="Edit Menu"
                     >
                       <Edit className="w-4 h-4" />
                     </button>
                     <button
                       onClick={() => onManageItems(menu)}
-                      className="text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-300 transition-colors"
+                      className={TABLE_STYLES.actionBtnGreen}
                       title="Manage Items"
                     >
                       <List className="w-4 h-4" />
                     </button>
                     <button
                       onClick={() => handleDelete(menu)}
-                      className="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 transition-colors"
+                      className={TABLE_STYLES.actionBtnRed}
                       title="Delete Menu"
                       disabled={deleteWithPINMutation.isPending}
                     >

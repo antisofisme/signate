@@ -34,7 +34,11 @@ class MenuModel(Base):
     is_active = Column(Boolean, default=True, nullable=False)
     show_prices = Column(Boolean, default=True, nullable=False)
     display_mode = Column(String(20), default='grid', nullable=False)
-    theme_color = Column(String(7), nullable=True)
+
+    # Color scheme (60-30-10 principle)
+    primary_color = Column(String(7), default='#ffffff', nullable=True)  # 60% - Background
+    secondary_color = Column(String(7), default='#f3f4f6', nullable=True)  # 30% - Header/Categories
+    theme_color = Column(String(7), nullable=True)  # 10% - Accent (CTAs, highlights)
 
     # Contact buttons
     whatsapp_number = Column(String(20), nullable=True)

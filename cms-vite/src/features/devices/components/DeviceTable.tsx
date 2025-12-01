@@ -21,7 +21,7 @@ import {
   Plus,
   Eye,
   Terminal,
-  FileText,
+  FileSymlink,
   RefreshCw,
 } from 'lucide-react';
 import {
@@ -399,10 +399,10 @@ export function DeviceTable() {
                     {t('devices.table.device')}
                   </th>
                   <th className={TABLE_STYLES.th}>
-                    {t('devices.type')}
+                    {t('devices.statusLabel')}
                   </th>
                   <th className={TABLE_STYLES.th}>
-                    {t('devices.statusLabel')}
+                    {t('devices.type')}
                   </th>
                   <th className={TABLE_STYLES.th}>
                     {t('devices.table.ipAddress')}
@@ -432,13 +432,13 @@ export function DeviceTable() {
                       )}
                     </td>
                     <td className={TABLE_STYLES.tdNoWrap}>
+                      {getStatusBadge(device)}
+                    </td>
+                    <td className={TABLE_STYLES.tdNoWrap}>
                       <div className="flex items-center gap-2">
                         {getTypeIcon(device.device_type)}
                         <span className="capitalize">{device.device_type}</span>
                       </div>
-                    </td>
-                    <td className={TABLE_STYLES.tdNoWrap}>
-                      {getStatusBadge(device)}
                     </td>
                     <td className={`${TABLE_STYLES.tdNoWrap} ${TABLE_STYLES.muted}`}>
                       {device.ip_address || '-'}
@@ -451,69 +451,59 @@ export function DeviceTable() {
                     <td className={TABLE_STYLES.td}>
                       <div className="flex items-center gap-2" role="group" aria-label={t('devices.table.actionsFor', { name: device.device_name })}>
                         {/* View Logs - Opens Device Logs Modal */}
-                        <Button
-                          variant="icon"
-                          size="sm"
+                        <button
                           onClick={() => setLogsModal({ isOpen: true, device })}
+                          className={TABLE_STYLES.actionBtnPurple}
                           title={t('devices.actions.viewLogs')}
                           aria-label={t('devices.actions.viewLogsFor', { name: device.device_name })}
-                          className="!text-purple-600 hover:!text-purple-800 dark:!text-purple-400"
                         >
                           <Terminal className="w-4 h-4" aria-hidden="true" />
-                        </Button>
+                        </button>
 
                         {/* View Device - Opens unified modal (Overview tab) */}
-                        <Button
-                          variant="icon"
-                          size="sm"
+                        <button
                           onClick={() => setDeviceManagementModal({ isOpen: true, device, defaultTab: 'overview' })}
+                          className={TABLE_STYLES.actionBtnGray}
                           title={t('devices.actions.viewDevice')}
                           aria-label={t('devices.actions.viewDeviceFor', { name: device.device_name })}
-                          className="!text-gray-600 hover:!text-gray-800 dark:!text-gray-400"
                         >
                           <Eye className="w-4 h-4" aria-hidden="true" />
-                        </Button>
+                        </button>
 
                         {/* Content Management - Opens separate UnifiedContentAssignmentModal */}
                         {canUpdate && (
-                          <Button
-                            variant="icon"
-                            size="sm"
+                          <button
                             onClick={() => setContentAssignmentModal({ isOpen: true, device, defaultTab: 'direct' })}
+                            className={TABLE_STYLES.actionBtnIndigo}
                             title={t('devices.actions.manageContent')}
                             aria-label={t('devices.actions.manageContentFor', { name: device.device_name })}
-                            className="!text-indigo-600 hover:!text-indigo-800 dark:!text-indigo-400"
                           >
-                            <FileText className="w-4 h-4" aria-hidden="true" />
-                          </Button>
+                            <FileSymlink className="w-4 h-4" aria-hidden="true" />
+                          </button>
                         )}
 
                         {/* Edit/Settings - Opens standalone Settings Modal */}
                         {canUpdate && (
-                          <Button
-                            variant="icon"
-                            size="sm"
+                          <button
                             onClick={() => setSettingsModal({ isOpen: true, device })}
+                            className={TABLE_STYLES.actionBtnBlue}
                             title={t('devices.actions.editSettings')}
                             aria-label={t('devices.actions.editSettingsFor', { name: device.device_name })}
-                            className="!text-gray-600 hover:!text-gray-800 dark:!text-gray-400"
                           >
                             <Edit className="w-4 h-4" aria-hidden="true" />
-                          </Button>
+                          </button>
                         )}
 
                         {/* Delete Device */}
                         {canDelete && (
-                          <Button
-                            variant="icon"
-                            size="sm"
+                          <button
                             onClick={() => setDeleteModal({ isOpen: true, device })}
+                            className={TABLE_STYLES.actionBtnRed}
                             title={t('devices.actions.deleteDevice')}
                             aria-label={t('devices.actions.deleteDeviceFor', { name: device.device_name })}
-                            className="!text-red-600 hover:!text-red-800 dark:!text-red-400"
                           >
                             <Trash2 className="w-4 h-4" aria-hidden="true" />
-                          </Button>
+                          </button>
                         )}
                       </div>
                     </td>
