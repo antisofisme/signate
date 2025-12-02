@@ -18,9 +18,11 @@ from shared.database import get_db
 from shared.auth import get_current_user, CurrentUser
 from shared.middleware import get_current_active_user, require_permission
 from shared.logging import AuditLogger
+from shared.websocket_manager import websocket_manager, WebSocketEventType
 from pydantic import BaseModel
 from typing import List, Optional
 from datetime import datetime
+import asyncio
 
 # Initialize audit logger
 audit_logger = AuditLogger()
@@ -467,6 +469,28 @@ def assign_content_to_device(
         content_query = text("SELECT title, content_type FROM contents WHERE id = :content_id")
         content = db.execute(content_query, {"content_id": request.content_id}).fetchone()
 
+        # Send WebSocket notification to device for immediate content update
+        if websocket_manager is not None:
+            try:
+                # Use asyncio.run() for sync routes (creates new event loop)
+                asyncio.run(
+                    websocket_manager.send_to_device(
+                        device_id=device_id,
+                        event_type=WebSocketEventType.CONTENT_UPDATED,
+                        data={
+                            "device_id": device_id,
+                            "content_id": request.content_id,
+                            "content_name": content.title,
+                            "action": "assigned",
+                            "message": "New content assigned - refresh playlist"
+                        }
+                    )
+                )
+                print(f"[Content Assign] WebSocket notification sent to device {device_id}")
+            except Exception as ws_err:
+                # Don't fail assignment if WebSocket notification fails
+                print(f"[Content Assign] WebSocket notification failed: {ws_err}")
+
         return {
             "id": row.id,
             "device_id": device_id,
@@ -692,6 +716,28 @@ def assign_playlist_to_device(
         # Get playlist details
         playlist_query = text("SELECT name FROM playlists WHERE id = :playlist_id")
         playlist = db.execute(playlist_query, {"playlist_id": request.playlist_id}).fetchone()
+
+        # Send WebSocket notification to device for immediate content update
+        if websocket_manager is not None:
+            try:
+                # Use asyncio.run() for sync routes (creates new event loop)
+                asyncio.run(
+                    websocket_manager.send_to_device(
+                        device_id=device_id,
+                        event_type=WebSocketEventType.PLAYLIST_ASSIGNED,
+                        data={
+                            "device_id": device_id,
+                            "playlist_id": request.playlist_id,
+                            "playlist_name": playlist.name,
+                            "action": "assigned",
+                            "message": "New playlist assigned - refresh content"
+                        }
+                    )
+                )
+                print(f"[Playlist Assign] WebSocket notification sent to device {device_id}")
+            except Exception as ws_err:
+                # Don't fail assignment if WebSocket notification fails
+                print(f"[Playlist Assign] WebSocket notification failed: {ws_err}")
 
         return {
             "id": row.id,

@@ -1,58 +1,58 @@
 /**
  * Mini Health Snapshot Component
- * Displays quick health metrics (CPU, Memory, Disk) in Overview tab
+ * Displays quick health metrics (CPU, Memory, Disk) + alerts in Overview tab
  *
  * Features:
- * - Auto-refresh every 30 seconds (when device online)
+ * - React Query for data fetching with WebSocket invalidation
  * - Color-coded status indicators (green/yellow/red)
+ * - Alerts summary with expandable details
  * - Multiple states: loading, offline, no-data, success
  * - Translation support (EN/ID)
  */
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Activity, ChevronRight } from 'lucide-react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { Activity, AlertTriangle, ChevronDown, ChevronUp } from 'lucide-react';
 import { deviceHealthApi } from '../api/health';
-import type { DeviceHealthMetrics } from '../types/health';
+import { useWebSocketEvents } from '@/lib/websocket';
+import type { DeviceHealthWithAlerts, HealthAlert } from '../types/health';
+import type { DeviceHeartbeatData } from '@/lib/websocket/types';
 
 interface MiniHealthSnapshotProps {
   deviceId: number;
   isOnline: boolean;
-  onViewDetails?: () => void;
 }
 
 export function MiniHealthSnapshot({
   deviceId,
   isOnline,
-  onViewDetails
 }: MiniHealthSnapshotProps) {
   const { t } = useTranslation();
-  const [health, setHealth] = useState<DeviceHealthMetrics | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const queryClient = useQueryClient();
+  const [showAlerts, setShowAlerts] = useState(false);
 
-  // Fetch health data
-  const fetchHealth = async () => {
-    if (!isOnline) {
-      setHealth(null);
-      setIsLoading(false);
-      return;
-    }
+  // Fetch health data with alerts using React Query
+  const { data: healthData, isLoading } = useQuery<DeviceHealthWithAlerts>({
+    queryKey: ['device-health', deviceId],
+    queryFn: () => deviceHealthApi.getHealth(deviceId),
+    enabled: isOnline,
+    staleTime: 20000, // 20 seconds
+    refetchInterval: isOnline ? 30000 : false, // 30s auto-refresh when online
+  });
 
-    setIsLoading(true);
-    const data = await deviceHealthApi.getLatestHealth(deviceId);
-    setHealth(data);
-    setIsLoading(false);
-  };
+  // Subscribe to WebSocket events for live updates
+  useWebSocketEvents({
+    'device:heartbeat': (data: DeviceHeartbeatData) => {
+      if (data.device_id === deviceId) {
+        // Invalidate health query to get fresh data
+        queryClient.invalidateQueries({ queryKey: ['device-health', deviceId] });
+      }
+    },
+  });
 
-  // Initial fetch + auto-refresh
-  useEffect(() => {
-    fetchHealth();
-
-    if (isOnline) {
-      const interval = setInterval(fetchHealth, 30000); // 30s
-      return () => clearInterval(interval);
-    }
-  }, [deviceId, isOnline]);
+  const health = healthData?.health;
+  const alerts = healthData?.alerts || [];
 
   // Calculate overall status based on highest metric
   const getOverallStatus = (): 'healthy' | 'warning' | 'critical' => {
@@ -182,15 +182,41 @@ export function MiniHealthSnapshot({
         </div>
       </div>
 
-      {/* View Details Link */}
-      {onViewDetails && (
-        <button
-          onClick={onViewDetails}
-          className="w-full text-xs text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 flex items-center justify-center gap-1 pt-2 border-t border-gray-200 dark:border-gray-700"
-        >
-          {t('devices.health.viewDetails')}
-          <ChevronRight className="w-3 h-3" />
-        </button>
+      {/* Alerts Section */}
+      {alerts.length > 0 && (
+        <div className="pt-2 border-t border-gray-200 dark:border-gray-700">
+          <button
+            onClick={() => setShowAlerts(!showAlerts)}
+            className="w-full flex items-center justify-between text-xs"
+          >
+            <span className="flex items-center gap-1 text-yellow-600 dark:text-yellow-400 font-medium">
+              <AlertTriangle className="w-3 h-3" />
+              {alerts.length} {t('devices.health.activeAlerts')}
+            </span>
+            {showAlerts ? (
+              <ChevronUp className="w-3 h-3 text-gray-500" />
+            ) : (
+              <ChevronDown className="w-3 h-3 text-gray-500" />
+            )}
+          </button>
+
+          {showAlerts && (
+            <div className="mt-2 space-y-1">
+              {alerts.map((alert: HealthAlert, index: number) => (
+                <div
+                  key={index}
+                  className={`text-xs p-1.5 rounded ${
+                    alert.alert_level === 'critical'
+                      ? 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300'
+                      : 'bg-yellow-50 dark:bg-yellow-900/20 text-yellow-700 dark:text-yellow-300'
+                  }`}
+                >
+                  {alert.alert_message}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       )}
     </div>
   );

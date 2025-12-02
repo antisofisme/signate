@@ -107,6 +107,9 @@ export const MenuForm = ({ menu, onClose, onSuccess }: MenuFormProps) => {
   });
 
   const currentMenuType = watch('menu_type');
+  const watchedPrimaryColor = watch('primary_color');
+  const watchedSecondaryColor = watch('secondary_color');
+  const watchedThemeColor = watch('theme_color');
 
   const onSubmit = async (data: MenuFormData) => {
     try {
@@ -504,19 +507,14 @@ export const MenuForm = ({ menu, onClose, onSuccess }: MenuFormProps) => {
                 <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
                   Background (60%)
                 </label>
-                <div className="flex items-center space-x-2">
-                  <input
-                    type="color"
-                    {...register('primary_color')}
-                    className="h-10 w-full rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 cursor-pointer"
-                  />
-                </div>
                 <input
-                  type="text"
+                  type="color"
                   {...register('primary_color')}
-                  className="mt-1 w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm focus:border-blue-500 focus:ring-blue-500 px-2 py-1 text-xs"
-                  placeholder="#ffffff"
+                  className="h-10 w-full rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 cursor-pointer"
                 />
+                <div className="mt-1 text-xs text-center text-gray-500 dark:text-gray-400 font-mono">
+                  {watchedPrimaryColor || '#ffffff'}
+                </div>
               </div>
 
               {/* Secondary Color - 30% */}
@@ -524,19 +522,14 @@ export const MenuForm = ({ menu, onClose, onSuccess }: MenuFormProps) => {
                 <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
                   Header (30%)
                 </label>
-                <div className="flex items-center space-x-2">
-                  <input
-                    type="color"
-                    {...register('secondary_color')}
-                    className="h-10 w-full rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 cursor-pointer"
-                  />
-                </div>
                 <input
-                  type="text"
+                  type="color"
                   {...register('secondary_color')}
-                  className="mt-1 w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm focus:border-blue-500 focus:ring-blue-500 px-2 py-1 text-xs"
-                  placeholder="#f3f4f6"
+                  className="h-10 w-full rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 cursor-pointer"
                 />
+                <div className="mt-1 text-xs text-center text-gray-500 dark:text-gray-400 font-mono">
+                  {watchedSecondaryColor || '#f3f4f6'}
+                </div>
               </div>
 
               {/* Theme/Accent Color - 10% */}
@@ -544,19 +537,14 @@ export const MenuForm = ({ menu, onClose, onSuccess }: MenuFormProps) => {
                 <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
                   Accent (10%)
                 </label>
-                <div className="flex items-center space-x-2">
-                  <input
-                    type="color"
-                    {...register('theme_color')}
-                    className="h-10 w-full rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 cursor-pointer"
-                  />
-                </div>
                 <input
-                  type="text"
+                  type="color"
                   {...register('theme_color')}
-                  className="mt-1 w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm focus:border-blue-500 focus:ring-blue-500 px-2 py-1 text-xs"
-                  placeholder="#3b82f6"
+                  className="h-10 w-full rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 cursor-pointer"
                 />
+                <div className="mt-1 text-xs text-center text-gray-500 dark:text-gray-400 font-mono">
+                  {watchedThemeColor || '#3b82f6'}
+                </div>
               </div>
             </div>
             <p className="text-xs text-gray-500 dark:text-gray-400">

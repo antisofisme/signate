@@ -469,3 +469,9 @@ class PlayerHealthReporterClass {
 
 // Export singleton instance
 export const PlayerHealthReporter = new PlayerHealthReporterClass();
+
+// Register to ServiceRegistry for global access
+import { ServiceRegistry } from '@shared/services/service-registry';
+if (typeof window !== 'undefined') {
+  ServiceRegistry.register('PlayerHealthReporter', PlayerHealthReporter);
+}

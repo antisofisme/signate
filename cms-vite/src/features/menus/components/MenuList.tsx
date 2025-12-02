@@ -236,18 +236,18 @@ export const MenuList = ({
                 <td className={TABLE_STYLES.td}>
                   <div className="flex items-center gap-2">
                     <button
-                      onClick={() => onEdit(menu)}
-                      className={TABLE_STYLES.actionBtnBlue}
-                      title="Edit Menu"
-                    >
-                      <Edit className="w-4 h-4" />
-                    </button>
-                    <button
                       onClick={() => onManageItems(menu)}
                       className={TABLE_STYLES.actionBtnGreen}
                       title="Manage Items"
                     >
                       <List className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={() => onEdit(menu)}
+                      className={TABLE_STYLES.actionBtnBlue}
+                      title="Edit Menu"
+                    >
+                      <Edit className="w-4 h-4" />
                     </button>
                     <button
                       onClick={() => handleDelete(menu)}

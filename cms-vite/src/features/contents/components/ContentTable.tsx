@@ -65,6 +65,24 @@ function getContentTypeIcon(type: ContentType) {
   }
 }
 
+// Get file type label from mime type (like MenuMediaTable)
+function getFileTypeLabel(mimeType: string): string {
+  if (mimeType.includes('jpeg') || mimeType.includes('jpg')) return 'JPEG';
+  if (mimeType.includes('png')) return 'PNG';
+  if (mimeType.includes('gif')) return 'GIF';
+  if (mimeType.includes('webp')) return 'WebP';
+  if (mimeType.includes('mp4')) return 'MP4';
+  if (mimeType.includes('webm')) return 'WebM';
+  if (mimeType.includes('avi')) return 'AVI';
+  if (mimeType.includes('mov') || mimeType.includes('quicktime')) return 'MOV';
+  if (mimeType.includes('mkv')) return 'MKV';
+  if (mimeType.includes('mp3') || mimeType.includes('mpeg')) return 'MP3';
+  if (mimeType.includes('wav')) return 'WAV';
+  if (mimeType.includes('ogg')) return 'OGG';
+  if (mimeType.includes('flac')) return 'FLAC';
+  return mimeType.split('/')[1]?.toUpperCase() || 'File';
+}
+
 export function ContentTable() {
   const { t } = useTranslation();
 
@@ -619,18 +637,6 @@ export function ContentTable() {
                                 </td>
                                 <td className="px-4 py-3 whitespace-nowrap text-sm">
                                   <div className="flex items-center gap-1">
-                                    {canUpdate && (
-                                      <button
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          handleEdit(fullContent);
-                                        }}
-                                        className={TABLE_STYLES.actionBtnGreen}
-                                        title={t('contents.actions.edit')}
-                                      >
-                                        <Edit className="w-4 h-4" />
-                                      </button>
-                                    )}
                                     <button
                                       onClick={(e) => {
                                         e.stopPropagation();
@@ -651,6 +657,18 @@ export function ContentTable() {
                                     >
                                       <Download className="w-4 h-4" />
                                     </button>
+                                    {canUpdate && (
+                                      <button
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          handleEdit(fullContent);
+                                        }}
+                                        className={TABLE_STYLES.actionBtnGreen}
+                                        title={t('contents.actions.edit')}
+                                      >
+                                        <Edit className="w-4 h-4" />
+                                      </button>
+                                    )}
                                     {canDelete && (
                                       <button
                                         onClick={(e) => {
@@ -723,10 +741,9 @@ export function ContentTable() {
                               </span>
                             </td>
                             <td className="px-4 py-3 whitespace-nowrap">
-                              <div className="flex items-center gap-1 text-sm text-gray-900 dark:text-white capitalize">
-                                {getContentTypeIcon(content.content_type)}
-                                <span className="hidden sm:inline">{content.content_type}</span>
-                              </div>
+                              <span className="px-2 py-1 text-xs font-medium rounded bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300">
+                                {getFileTypeLabel(content.mime_type)}
+                              </span>
                             </td>
                             <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-white">
                               {formatFileSize(content.file_size)}
@@ -736,15 +753,6 @@ export function ContentTable() {
                             </td>
                             <td className="px-4 py-3 whitespace-nowrap text-sm">
                               <div className="flex items-center gap-1">
-                                {canUpdate && (
-                                  <button
-                                    onClick={() => handleEdit(content)}
-                                    className={TABLE_STYLES.actionBtnGreen}
-                                    title={t('contents.actions.edit')}
-                                  >
-                                    <Edit className="w-4 h-4" />
-                                  </button>
-                                )}
                                 <button
                                   onClick={() => handlePreview(content)}
                                   className={TABLE_STYLES.actionBtnBlue}
@@ -759,6 +767,15 @@ export function ContentTable() {
                                 >
                                   <Download className="w-4 h-4" />
                                 </button>
+                                {canUpdate && (
+                                  <button
+                                    onClick={() => handleEdit(content)}
+                                    className={TABLE_STYLES.actionBtnGreen}
+                                    title={t('contents.actions.edit')}
+                                  >
+                                    <Edit className="w-4 h-4" />
+                                  </button>
+                                )}
                                 {canDelete && (
                                   <button
                                     onClick={() => setContentToDelete(content)}

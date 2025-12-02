@@ -130,10 +130,15 @@ async def create_menu(
         is_active=payload.is_active,
         show_prices=payload.show_prices,
         display_mode=payload.display_mode,
+        # Color scheme (60-30-10 principle)
+        primary_color=payload.primary_color,
+        secondary_color=payload.secondary_color,
         theme_color=payload.theme_color,
         whatsapp_number=payload.whatsapp_number,
         phone_number=payload.phone_number,
         contact_label=payload.contact_label,
+        outlet_extension=payload.outlet_extension,
+        footer_description=payload.footer_description,
         available_days=payload.available_days,
         available_hours=payload.available_hours,
         translations=payload.translations
@@ -258,6 +263,13 @@ def update_menu(
 
     # Update only provided fields
     update_data = payload.model_dump(exclude_unset=True)
+
+    # Debug logging for color updates
+    import logging
+    logger = logging.getLogger(__name__)
+    logger.info(f"[MENU_UPDATE] Menu {menu_id} - Received update_data: {update_data}")
+    if 'primary_color' in update_data or 'secondary_color' in update_data or 'theme_color' in update_data:
+        logger.info(f"[MENU_UPDATE] Color update - primary: {update_data.get('primary_color')}, secondary: {update_data.get('secondary_color')}, theme: {update_data.get('theme_color')}")
     menu = menu_repo.update(menu, updated_by_id=current_user.id, **update_data)
 
     # Audit log

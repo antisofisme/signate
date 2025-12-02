@@ -31,17 +31,17 @@ const changePasswordSchema = z.object({
 type ChangePasswordFormData = z.infer<typeof changePasswordSchema>;
 
 interface ChangePasswordDialogProps {
-  user: User;
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
+  isOpen: boolean;
+  user: User | null;
+  onClose: () => void;
   onSubmit: (data: ChangePasswordRequest) => void;
   isLoading: boolean;
 }
 
 export function ChangePasswordDialog({
+  isOpen,
   user,
-  open,
-  onOpenChange,
+  onClose,
   onSubmit,
   isLoading,
 }: ChangePasswordDialogProps) {
@@ -61,18 +61,44 @@ export function ChangePasswordDialog({
 
   const handleClose = () => {
     methods.reset();
-    onOpenChange(false);
+    onClose();
   };
+
+  if (!user) return null;
+
+  const footer = (
+    <div className="flex justify-end gap-3 px-6 py-4 border-t border-gray-200 dark:border-gray-700">
+      <Button
+        type="button"
+        variant="secondary"
+        onClick={handleClose}
+        disabled={isLoading}
+      >
+        {t('common.cancel') || 'Cancel'}
+      </Button>
+      <Button
+        type="submit"
+        form="change-password-form"
+        variant="primary"
+        disabled={isLoading}
+        loading={isLoading}
+        leftIcon={<Key className="w-4 h-4" />}
+      >
+        {t('users.actions.change') || 'Change Password'}
+      </Button>
+    </div>
+  );
 
   return (
     <Modal
-      isOpen={open}
+      isOpen={isOpen}
       onClose={handleClose}
       title={t('users.changePassword.title') || 'Change Password'}
       maxWidth="md"
+      footer={footer}
     >
       <FormProvider {...methods}>
-        <form onSubmit={methods.handleSubmit(handleSubmit)} className="space-y-4">
+        <form id="change-password-form" onSubmit={methods.handleSubmit(handleSubmit)} className="p-6 space-y-4">
           {/* User info */}
           <div className="mb-4">
             <p className="text-sm text-gray-600 dark:text-gray-400">
@@ -112,27 +138,6 @@ export function ChangePasswordDialog({
               <li>• {t('users.changePassword.lowercase') || 'One lowercase letter'}</li>
               <li>• {t('users.changePassword.number') || 'One number'}</li>
             </ul>
-          </div>
-
-          {/* Actions */}
-          <div className="flex justify-end gap-3 pt-4">
-            <Button
-              type="button"
-              variant="secondary"
-              onClick={handleClose}
-              disabled={isLoading}
-            >
-              {t('common.cancel') || 'Cancel'}
-            </Button>
-            <Button
-              type="submit"
-              variant="primary"
-              disabled={isLoading}
-              loading={isLoading}
-              leftIcon={<Key className="w-4 h-4" />}
-            >
-              {t('users.actions.change') || 'Change Password'}
-            </Button>
           </div>
         </form>
       </FormProvider>

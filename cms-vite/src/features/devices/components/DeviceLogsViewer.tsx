@@ -8,26 +8,22 @@
  * - Log detail modal
  * - Clear logs functionality
  * - Sticky header and footer with scrollable content
+ * - Standardized DataTable with compact mode
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import {
   Terminal,
   RefreshCw,
   Trash2,
-  Eye,
   Filter,
-  AlertCircle,
-  Info,
-  Bug,
-  Activity,
   Network,
   Gauge,
   Wifi,
   WifiOff,
 } from 'lucide-react';
 import { usePagination } from '@/shared/hooks';
-import { Pagination, Button } from '@/shared/components';
+import { Pagination, Button, DataTable, type Column } from '@/shared/components';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
@@ -191,36 +187,183 @@ export function DeviceLogsViewer({
     toast.success('Speed test logs refreshed');
   };
 
-  const getEventTypeIcon = (eventType: string) => {
-    switch (eventType) {
-      case 'network':
-        return <Network className="w-4 h-4" />;
-      case 'server':
-        return <Terminal className="w-4 h-4" />;
-      case 'speed_test':
-        return <RefreshCw className="w-4 h-4" />;
-      default:
-        return <Info className="w-4 h-4" />;
-    }
-  };
+  // ============================================
+  // Column Definitions - Standardized for DataTable
+  // ============================================
 
-  const getLevelIcon = (level: string) => {
-    if (!level) return <Info className="w-4 h-4" />; // Default icon for undefined/null
+  // Console Logs Columns
+  const consoleColumns: Column<any>[] = useMemo(() => [
+    {
+      key: 'level',
+      header: 'Level',
+      headerClassName: 'w-20',
+      className: 'whitespace-nowrap',
+      render: (log) => (
+        <Badge
+          variant={
+            log.level === 'error' ? 'destructive' :
+            log.level === 'warn' ? 'default' :
+            log.level === 'info' ? 'secondary' :
+            'outline'
+          }
+          className="text-xs"
+        >
+          {log.level?.toUpperCase() || 'LOG'}
+        </Badge>
+      ),
+    },
+    {
+      key: 'timestamp',
+      header: 'Time',
+      headerClassName: 'w-40',
+      className: 'whitespace-nowrap text-xs text-gray-500 dark:text-gray-400',
+      render: (log) => new Date(log.timestamp).toLocaleString(),
+    },
+    {
+      key: 'message',
+      header: 'Message',
+      className: 'font-mono break-words',
+      render: (log) => (
+        <div>
+          {log.message}
+          {log.stack && (
+            <pre className="mt-1 text-xs text-red-600 dark:text-red-400 whitespace-pre-wrap">
+              {log.stack}
+            </pre>
+          )}
+        </div>
+      ),
+    },
+  ], []);
 
-    switch (level.toLowerCase()) {
-      case 'error':
-        return <AlertCircle className="w-4 h-4" />;
-      case 'warn':
-      case 'warning':
-        return <Activity className="w-4 h-4" />;
-      case 'info':
-        return <Info className="w-4 h-4" />;
-      case 'debug':
-        return <Bug className="w-4 h-4" />;
-      default:
-        return <Terminal className="w-4 h-4" />;
-    }
-  };
+  // Connection Logs Columns
+  const connectionColumns: Column<any>[] = useMemo(() => [
+    {
+      key: 'event_type',
+      header: 'Event Type',
+      headerClassName: 'w-28',
+      className: 'whitespace-nowrap',
+      render: (log) => (
+        <Badge variant="outline" className="text-xs">
+          {log.event_type}
+        </Badge>
+      ),
+    },
+    {
+      key: 'status',
+      header: 'Status',
+      headerClassName: 'w-24',
+      className: 'whitespace-nowrap',
+      render: (log) => (
+        <Badge
+          variant={
+            ['success', 'connected', 'online', 'tested'].includes(log.status) ? 'default' :
+            ['failed', 'disconnected', 'offline'].includes(log.status) ? 'destructive' :
+            'secondary'
+          }
+          className="text-xs"
+        >
+          {log.status}
+        </Badge>
+      ),
+    },
+    {
+      key: 'logged_at',
+      header: 'Time',
+      headerClassName: 'w-40',
+      className: 'whitespace-nowrap text-xs text-gray-500 dark:text-gray-400',
+      render: (log) => new Date(log.logged_at || log.recorded_at).toLocaleString(),
+    },
+    {
+      key: 'latency_ms',
+      header: 'Latency',
+      headerClassName: 'w-20',
+      className: 'whitespace-nowrap',
+      render: (log) => log.latency_ms !== null ? `${log.latency_ms}ms` : '-',
+    },
+    {
+      key: 'error_message',
+      header: 'Error',
+      className: 'text-red-600 dark:text-red-400 font-mono truncate max-w-xs',
+      render: (log) => log.error_message || '-',
+    },
+  ], []);
+
+  // Speed Test Logs Columns
+  const speedTestColumns: Column<any>[] = useMemo(() => [
+    {
+      key: 'logged_at',
+      header: 'Time',
+      headerClassName: 'w-40',
+      className: 'whitespace-nowrap text-xs text-gray-500 dark:text-gray-400',
+      render: (log) => new Date(log.logged_at || log.recorded_at).toLocaleString(),
+    },
+    {
+      key: 'test_trigger',
+      header: 'Trigger',
+      headerClassName: 'w-20',
+      className: 'whitespace-nowrap',
+      render: (log) => (
+        <Badge
+          variant={log.test_trigger === 'manual' ? 'default' : 'outline'}
+          className="text-xs"
+        >
+          {log.test_trigger === 'manual' ? 'Manual' : 'Auto'}
+        </Badge>
+      ),
+    },
+    {
+      key: 'download_speed_mbps',
+      header: 'Download',
+      headerClassName: 'w-28',
+      className: 'whitespace-nowrap',
+      render: (log) => log.download_speed_mbps !== null ? (
+        <span><span className="font-semibold">{Number(log.download_speed_mbps).toFixed(2)}</span> <span className="text-xs text-gray-500">Mbps</span></span>
+      ) : <span className="text-gray-400">-</span>,
+    },
+    {
+      key: 'upload_speed_mbps',
+      header: 'Upload',
+      headerClassName: 'w-28',
+      className: 'whitespace-nowrap',
+      render: (log) => log.upload_speed_mbps !== null ? (
+        <span><span className="font-semibold">{Number(log.upload_speed_mbps).toFixed(2)}</span> <span className="text-xs text-gray-500">Mbps</span></span>
+      ) : <span className="text-gray-400">-</span>,
+    },
+    {
+      key: 'latency_ms',
+      header: 'Latency',
+      headerClassName: 'w-20',
+      className: 'whitespace-nowrap',
+      render: (log) => log.latency_ms !== null ? (
+        <span className="font-semibold">{log.latency_ms}ms</span>
+      ) : <span className="text-gray-400">-</span>,
+    },
+    {
+      key: 'status',
+      header: 'Status',
+      headerClassName: 'w-20',
+      className: 'whitespace-nowrap',
+      render: (log) => (
+        <Badge
+          variant={
+            log.status === 'success' || log.status === 'tested' ? 'default' :
+            log.status === 'failed' ? 'destructive' :
+            'secondary'
+          }
+          className="text-xs"
+        >
+          {log.status}
+        </Badge>
+      ),
+    },
+    {
+      key: 'error_message',
+      header: 'Error',
+      className: 'text-gray-500 dark:text-gray-400 truncate max-w-xs',
+      render: (log) => log.error_message || '-',
+    },
+  ], []);
 
   // Auto-refresh effect
   useEffect(() => {
@@ -296,8 +439,7 @@ export function DeviceLogsViewer({
 
               <div className="flex-1" />
 
-              <Button variant="outline" size="sm" onClick={handleRefreshConnection} disabled={isFetchingConnection} className="h-8 px-2 text-xs">
-                <RefreshCw className={`w-3 h-3 mr-1 ${isFetchingConnection ? 'animate-spin' : ''}`} />
+              <Button variant="outline" size="sm" onClick={handleRefreshConnection} disabled={isFetchingConnection} loading={isFetchingConnection} leftIcon={<RefreshCw className="w-3 h-3" />} className="h-8 px-2 text-xs">
                 Refresh
               </Button>
             </div>
@@ -308,8 +450,7 @@ export function DeviceLogsViewer({
             <div className="flex items-center gap-2 px-3 py-2">
               <div className="flex-1" />
 
-              <Button variant="outline" size="sm" onClick={handleRefreshSpeedTest} disabled={isFetchingSpeedTest} className="h-8 px-2 text-xs">
-                <RefreshCw className={`w-3 h-3 mr-1 ${isFetchingSpeedTest ? 'animate-spin' : ''}`} />
+              <Button variant="outline" size="sm" onClick={handleRefreshSpeedTest} disabled={isFetchingSpeedTest} loading={isFetchingSpeedTest} leftIcon={<RefreshCw className="w-3 h-3" />} className="h-8 px-2 text-xs">
                 Refresh
               </Button>
             </div>
@@ -390,228 +531,47 @@ export function DeviceLogsViewer({
                   </p>
                 </div>
               ) : (
-                <div className="border rounded-lg overflow-hidden">
-                  <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                    <thead className="bg-gray-50 dark:bg-gray-800 sticky top-0">
-                      <tr>
-                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-16">
-                          Level
-                        </th>
-                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-40">
-                          Time
-                        </th>
-                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                          Message
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
-                      {liveConsoleLogs.map((log, index) => (
-                        <tr
-                          key={`${log.timestamp}-${index}`}
-                          className="hover:bg-gray-50 dark:hover:bg-gray-800"
-                        >
-                          <td className="px-3 py-2 whitespace-nowrap">
-                            <Badge
-                              variant={
-                                log.level === 'error' ? 'destructive' :
-                                log.level === 'warn' ? 'default' :
-                                log.level === 'info' ? 'secondary' :
-                                'outline'
-                              }
-                              className="text-xs"
-                            >
-                              {log.level.toUpperCase()}
-                            </Badge>
-                          </td>
-                          <td className="px-3 py-2 whitespace-nowrap text-xs text-gray-500 dark:text-gray-400">
-                            {new Date(log.timestamp).toLocaleString()}
-                          </td>
-                          <td className="px-3 py-2 text-sm text-gray-900 dark:text-gray-100 font-mono break-words">
-                            {log.message}
-                            {log.stack && (
-                              <pre className="mt-1 text-xs text-red-600 dark:text-red-400 whitespace-pre-wrap">
-                                {log.stack}
-                              </pre>
-                            )}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                <DataTable
+                  compact
+                  columns={consoleColumns}
+                  data={liveConsoleLogs.map((log, i) => ({ ...log, _index: i }))}
+                  keyExtractor={(log) => `${log.timestamp}-${log._index}`}
+                  emptyMessage="Waiting for console logs..."
+                  emptyIcon={Terminal}
+                />
               )}
             </div>
           )}
 
           {/* Connection Logs */}
           {activeTab === 'connection' && (
-            <div className="space-y-3 p-3">
-            {/* Connection Logs List */}
-            {isLoadingConnection ? (
-              <div className="space-y-2">
-                {Array.from({ length: 5 }).map((_, i) => (
-                  <Skeleton key={i} className="h-20 w-full" />
-                ))}
-              </div>
-            ) : !hasConnectionLogs ? (
-              <div className="text-center py-12 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700">
-                <Network className="w-12 h-12 mx-auto text-gray-400 mb-3" />
-                <p className="text-gray-500 dark:text-gray-400">No connection logs available</p>
-              </div>
-            ) : (
-              <div className="border rounded-lg overflow-hidden">
-                <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                  <thead className="bg-gray-50 dark:bg-gray-800">
-                    <tr>
-                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-32">
-                        Event Type
-                      </th>
-                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-24">
-                        Status
-                      </th>
-                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-40">
-                        Time
-                      </th>
-                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-24">
-                        Latency
-                      </th>
-                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                        Error Message
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
-                    {connectionLogs.map((log: any) => (
-                      <tr key={log.id} className="hover:bg-gray-50 dark:hover:bg-gray-800">
-                        <td className="px-3 py-2 whitespace-nowrap">
-                          <Badge variant="outline" className="text-xs">
-                            {log.event_type}
-                          </Badge>
-                        </td>
-                        <td className="px-3 py-2 whitespace-nowrap">
-                          <Badge
-                            variant={
-                              log.status === 'success' || log.status === 'connected' || log.status === 'online' ? 'default' :
-                              log.status === 'failed' || log.status === 'disconnected' || log.status === 'offline' ? 'destructive' :
-                              'secondary'
-                            }
-                            className="text-xs"
-                          >
-                            {log.status}
-                          </Badge>
-                        </td>
-                        <td className="px-3 py-2 whitespace-nowrap text-xs text-gray-500 dark:text-gray-400">
-                          {new Date(log.logged_at || log.recorded_at).toLocaleString()}
-                        </td>
-                        <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
-                          {log.latency_ms !== null ? `${log.latency_ms}ms` : '-'}
-                        </td>
-                        <td className="px-3 py-2 text-sm text-red-600 dark:text-red-400 font-mono truncate max-w-md">
-                          {log.error_message || '-'}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
+            <div className="p-3">
+              <DataTable
+                compact
+                columns={connectionColumns}
+                data={connectionLogs}
+                keyExtractor={(log: any) => log.id}
+                isLoading={isLoadingConnection}
+                emptyMessage="No connection logs available"
+                emptyIcon={Network}
+                skeletonRows={8}
+              />
             </div>
           )}
 
           {/* Speed Test Logs */}
           {activeTab === 'speedtest' && (
-            <div className="space-y-3 p-3">
-            {/* Speed Test Logs Table */}
-            {isLoadingSpeedTest ? (
-              <div className="space-y-2">
-                {Array.from({ length: 5 }).map((_, i) => (
-                  <Skeleton key={i} className="h-16 w-full" />
-                ))}
-              </div>
-            ) : !hasSpeedTestLogs ? (
-              <div className="text-center py-12 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700">
-                <Gauge className="w-12 h-12 mx-auto text-gray-400 mb-3" />
-                <p className="text-gray-500 dark:text-gray-400">No speed test logs available</p>
-              </div>
-            ) : (
-              <>
-                <div className="overflow-x-auto bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700">
-                  <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                    <thead className="bg-gray-50 dark:bg-gray-900">
-                      <tr>
-                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                          Timestamp
-                        </th>
-                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                          Download Speed
-                        </th>
-                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                          Upload Speed
-                        </th>
-                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                          Latency
-                        </th>
-                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                          Status
-                        </th>
-                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                          Error
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
-                      {speedTestLogs.map((log: any) => (
-                        <tr key={log.id} className="hover:bg-gray-50 dark:hover:bg-gray-800">
-                          <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
-                            {new Date(log.recorded_at).toLocaleString()}
-                          </td>
-                          <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
-                            {log.download_speed_mbps !== null ? (
-                              <div className="flex items-baseline gap-1">
-                                <span className="font-semibold">{log.download_speed_mbps.toFixed(2)}</span>
-                                <span className="text-xs text-gray-500 dark:text-gray-400">Mbps</span>
-                              </div>
-                            ) : (
-                              <span className="text-gray-400">-</span>
-                            )}
-                          </td>
-                          <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
-                            {log.upload_speed_mbps !== null ? (
-                              <div className="flex items-baseline gap-1">
-                                <span className="font-semibold">{log.upload_speed_mbps.toFixed(2)}</span>
-                                <span className="text-xs text-gray-500 dark:text-gray-400">Mbps</span>
-                              </div>
-                            ) : (
-                              <span className="text-gray-400">-</span>
-                            )}
-                          </td>
-                          <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
-                            {log.latency_ms !== null ? (
-                              <span className="font-semibold">{log.latency_ms}ms</span>
-                            ) : (
-                              <span className="text-gray-400">-</span>
-                            )}
-                          </td>
-                          <td className="px-3 py-2 whitespace-nowrap">
-                            <Badge variant={
-                              log.status === 'success' ? 'default' :
-                              log.status === 'failed' ? 'destructive' :
-                              'secondary'
-                            }>
-                              {log.status}
-                            </Badge>
-                          </td>
-                          <td className="px-3 py-2 text-sm text-gray-500 dark:text-gray-400 max-w-xs truncate">
-                            {log.error_message || '-'}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </>
-            )}
+            <div className="p-3">
+              <DataTable
+                compact
+                columns={speedTestColumns}
+                data={speedTestLogs}
+                keyExtractor={(log: any) => log.id}
+                isLoading={isLoadingSpeedTest}
+                emptyMessage="No speed test logs available"
+                emptyIcon={Gauge}
+                skeletonRows={8}
+              />
             </div>
           )}
         </div>

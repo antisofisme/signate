@@ -32,6 +32,7 @@ class WebSocketEventType(Enum):
     CONTENT_TRANSCODED = "content.transcoded"
     CONTENT_TRANSCODING_PROGRESS = "content.transcoding_progress"  # Real-time progress
     CONTENT_TRANSCODING_FAILED = "content.transcoding_failed"
+    CONTENT_THUMBNAIL_READY = "content.thumbnail_ready"  # Thumbnail generated
 
     # Playlist events
     PLAYLIST_CREATED = "playlist.created"
@@ -231,33 +232,40 @@ class ConnectionManager:
                 
         logger.info(f"Admin user {user_id} disconnected")
     
+    def _convert_event_type_to_frontend(self, event_type: WebSocketEventType) -> str:
+        """
+        Convert backend event type (dot notation) to frontend format (colon notation)
+        e.g., 'content.thumbnail_ready' -> 'content:thumbnail_ready'
+        """
+        return event_type.value.replace('.', ':')
+
     async def send_to_device(
-        self, 
-        device_id: int, 
-        event_type: WebSocketEventType, 
+        self,
+        device_id: int,
+        event_type: WebSocketEventType,
         data: Any
     ) -> bool:
         """
         Send message to specific device
-        
+
         Args:
             device_id: Target device ID
             event_type: Event type
             data: Event data
-            
+
         Returns:
             True if sent successfully
         """
         if device_id not in self._device_connections:
             return False
-            
+
         conn_info = self._device_connections[device_id]
         websocket = conn_info["websocket"]
-        
+
         message = {
-            "event": event_type.value,
+            "type": self._convert_event_type_to_frontend(event_type),
             "data": data,
-            "recorded_at": datetime.now(timezone.utc).isoformat()
+            "timestamp": datetime.now(timezone.utc).isoformat()
         }
         
         try:
@@ -270,22 +278,22 @@ class ConnectionManager:
             return False
     
     async def send_to_admin(
-        self, 
-        user_id: int, 
-        event_type: WebSocketEventType, 
+        self,
+        user_id: int,
+        event_type: WebSocketEventType,
         data: Any
     ) -> bool:
         """Send message to specific admin user"""
         if user_id not in self._admin_connections:
             return False
-            
+
         conn_info = self._admin_connections[user_id]
         websocket = conn_info["websocket"]
-        
+
         message = {
-            "event": event_type.value,
+            "type": self._convert_event_type_to_frontend(event_type),
             "data": data,
-            "recorded_at": datetime.now(timezone.utc).isoformat()
+            "timestamp": datetime.now(timezone.utc).isoformat()
         }
         
         try:
@@ -728,6 +736,14 @@ class ConnectionManager:
             self._command_listener_task = None
             logger.info("Redis command listener stopped")
 
+    def _convert_string_event_to_frontend(self, event_type_str: str) -> str:
+        """
+        Convert event type string to frontend format (colon notation)
+        Handles both dot notation from enums and direct strings from Celery
+        e.g., 'content.thumbnail_ready' -> 'content:thumbnail_ready'
+        """
+        return event_type_str.replace('.', ':')
+
     async def _redis_listener(self):
         """Background task to listen for Redis pub/sub messages"""
         if not self._redis_pubsub:
@@ -759,14 +775,20 @@ class ConnectionManager:
                                 await self._broadcast_console_local(device_id, data)
                         else:
                             # Regular organization message
-                            event_type = WebSocketEventType(data["event"])
-                            event_data = data["data"]
+                            # Handle both 'event' (from _publish_to_redis) and 'type' (from Celery)
+                            event_type_str = data.get("event") or data.get("type")
+                            if not event_type_str:
+                                logger.warning(f"Redis message missing event/type key: {data}")
+                                continue
+
+                            event_data = data.get("data", {})
 
                             # Extract org_id from channel (format: org:123)
                             org_id = int(channel.split(":")[1])
 
-                            # Broadcast to local connections only (avoid double-send)
-                            await self._broadcast_local(org_id, event_type, event_data)
+                            # Convert to frontend format and broadcast directly
+                            frontend_event_type = self._convert_string_event_to_frontend(event_type_str)
+                            await self._broadcast_local_raw(org_id, frontend_event_type, event_data)
 
                     except Exception as e:
                         logger.error(f"Error processing Redis message: {e}")
@@ -849,6 +871,42 @@ class ConnectionManager:
         for user_id in room["admin_ids"]:
             if user_id in self._admin_connections:
                 await self.send_to_admin(user_id, event_type, data)
+
+    async def _broadcast_local_raw(self, organization_id: int, event_type_str: str, data: Any):
+        """
+        Broadcast to local WebSocket connections with raw string event type.
+        Used for messages from Redis/Celery that are already in frontend format.
+        """
+        if organization_id not in self._organization_rooms:
+            return
+
+        room = self._organization_rooms[organization_id]
+
+        message = {
+            "type": event_type_str,
+            "data": data,
+            "timestamp": datetime.now(timezone.utc).isoformat()
+        }
+
+        # Send to local devices
+        for device_id in list(room["device_ids"]):
+            if device_id in self._device_connections:
+                try:
+                    websocket = self._device_connections[device_id]["websocket"]
+                    await websocket.send_json(message)
+                except Exception as e:
+                    logger.error(f"Failed to send to device {device_id}: {e}")
+                    await self.disconnect_device(device_id)
+
+        # Send to local admins
+        for user_id in list(room["admin_ids"]):
+            if user_id in self._admin_connections:
+                try:
+                    websocket = self._admin_connections[user_id]["websocket"]
+                    await websocket.send_json(message)
+                except Exception as e:
+                    logger.error(f"Failed to send to admin {user_id}: {e}")
+                    await self.disconnect_admin(user_id)
 
     async def _broadcast_console_local(self, device_id: int, message: dict):
         """

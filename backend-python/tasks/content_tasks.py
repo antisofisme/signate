@@ -612,7 +612,30 @@ def generate_thumbnail(self, content_id: int):
 
         # Update content record
         content.thumbnail_url = f"{settings.PUBLIC_BASE_URL}/thumbnails/{thumb_filename}"
+        content.thumbnail_path = str(thumb_path)
         db.commit()
+
+        # Invalidate cache so frontend gets fresh data with thumbnail
+        try:
+            from shared.cache import cache
+            cache.invalidate_content(content_id, content.organization_id)
+            print(f"[Thumbnail] Cache invalidated for content {content_id}")
+        except Exception as cache_err:
+            print(f"[Thumbnail] Cache invalidation failed (non-critical): {cache_err}")
+
+        # Send WebSocket notification so frontend updates immediately
+        send_websocket_notification(
+            org_id=content.organization_id,
+            event_type='content.thumbnail_ready',
+            data={
+                'content_id': content_id,
+                'title': content.title,
+                'thumbnail_url': content.thumbnail_url,
+                'message': 'Thumbnail generated successfully'
+            }
+        )
+
+        print(f"[Thumbnail] Completed for content {content_id}: {content.thumbnail_url}")
 
         return {
             'content_id': content_id,

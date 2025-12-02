@@ -14,6 +14,7 @@ import type {
   ContentTranscodingProgressData,
   ContentTranscodedData,
   ContentTranscodingFailedData,
+  ContentThumbnailReadyData,
 } from '@/lib/websocket/types';
 
 /**
@@ -98,6 +99,40 @@ export function useTranscodingProgress() {
         queryKey: contentKeys.lists(orgId),
         refetchType: 'none',  // Don't refetch immediately, just mark stale
       });
+    },
+
+    // Thumbnail generated (for videos - async task)
+    'content:thumbnail_ready': (data: ContentThumbnailReadyData) => {
+      console.log('[Thumbnail] Received thumbnail_ready event:', data);
+
+      // Update the specific content in cache with new thumbnail_url
+      queryClient.setQueriesData(
+        { queryKey: contentKeys.lists(orgId) },
+        (oldData: any) => {
+          if (!oldData?.data) return oldData;
+
+          return {
+            ...oldData,
+            data: oldData.data.map((item: any) =>
+              item.id === data.content_id
+                ? { ...item, thumbnail_url: data.thumbnail_url }
+                : item
+            ),
+          };
+        }
+      );
+
+      // Also update detail cache if exists
+      queryClient.setQueryData(
+        contentKeys.detail(data.content_id),
+        (oldData: any) => {
+          if (!oldData?.data) return oldData;
+          return {
+            ...oldData,
+            data: { ...oldData.data, thumbnail_url: data.thumbnail_url },
+          };
+        }
+      );
     },
   });
 }

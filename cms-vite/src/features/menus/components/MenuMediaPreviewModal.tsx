@@ -1,11 +1,12 @@
 /**
  * Menu Media Preview Modal Component
+ * Uses centralized ModalOverlay for consistent behavior
  */
 
 import { X, Download, Copy, Check } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
-import { Button } from '@/shared/components';
+import { Button, ModalOverlay } from '@/shared/components';
 import type { MenuMedia } from '../types/menu';
 
 interface MenuMediaPreviewModalProps {
@@ -35,6 +36,17 @@ const formatDate = (dateString: string) => {
 export function MenuMediaPreviewModal({ isOpen, media, onClose }: MenuMediaPreviewModalProps) {
   const [copied, setCopied] = useState(false);
 
+  // Close on ESC key
+  useEffect(() => {
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    if (isOpen) {
+      window.addEventListener('keydown', handleEsc);
+      return () => window.removeEventListener('keydown', handleEsc);
+    }
+  }, [isOpen, onClose]);
+
   const handleCopyUrl = async () => {
     try {
       await navigator.clipboard.writeText(media.url || '');
@@ -55,18 +67,13 @@ export function MenuMediaPreviewModal({ isOpen, media, onClose }: MenuMediaPrevi
     toast.success('Download started');
   };
 
-  if (!isOpen) return null;
-
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      {/* Backdrop */}
-      <div
-        className="absolute inset-0 bg-black bg-opacity-75"
-        onClick={onClose}
-      />
-
+    <ModalOverlay isOpen={isOpen} onClose={onClose} backdropOpacity={75}>
       {/* Modal */}
-      <div className="relative bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] flex flex-col">
+      <div
+        className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] flex flex-col mx-4"
+        onClick={(e) => e.stopPropagation()}
+      >
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700">
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white truncate pr-4">
@@ -193,6 +200,6 @@ export function MenuMediaPreviewModal({ isOpen, media, onClose }: MenuMediaPrevi
           </div>
         </div>
       </div>
-    </div>
+    </ModalOverlay>
   );
 }

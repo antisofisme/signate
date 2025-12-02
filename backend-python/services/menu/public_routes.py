@@ -194,6 +194,8 @@ async def get_portal_menus(
             "public_url": f"{player_url}/menu/{menu.public_url_code}",
             "description": menu.description,
             "display_mode": menu.display_mode,
+            "primary_color": menu.primary_color,
+            "secondary_color": menu.secondary_color,
             "theme_color": menu.theme_color
         })
 

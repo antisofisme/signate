@@ -75,6 +75,10 @@ class ShellDisplaySettingsClass {
     window.addEventListener('orientationchange', this.handleOrientationChange);
     window.addEventListener('resize', this.handleResize);
 
+    // Listen to fullscreen changes (need to re-apply rotation on fullscreen enter/exit)
+    document.addEventListener('fullscreenchange', this.handleFullscreenChange);
+    document.addEventListener('webkitfullscreenchange', this.handleFullscreenChange);
+
     SharedLogger.log('[DisplaySettings] Initialized');
     SharedLogger.log('[DisplaySettings] Display:', this.displayInfo);
     SharedLogger.log('[DisplaySettings] TV:', this.tvCapabilities);
@@ -291,6 +295,9 @@ class ShellDisplaySettingsClass {
     SharedLogger.log('[DisplaySettings] Orientation changed');
     this.displayInfo = this.detectDisplayInfo();
     SharedEventBus.emit('display:orientation_change', this.displayInfo);
+
+    // Re-apply rotation with new viewport dimensions
+    this.applyRotation();
   };
 
   /**
@@ -300,6 +307,22 @@ class ShellDisplaySettingsClass {
     SharedLogger.log('[DisplaySettings] Window resized');
     this.displayInfo = this.detectDisplayInfo();
     SharedEventBus.emit('display:resize', this.displayInfo);
+
+    // Re-apply rotation with new viewport dimensions
+    this.applyRotation();
+  };
+
+  /**
+   * Handle fullscreen change
+   */
+  private handleFullscreenChange = (): void => {
+    SharedLogger.log('[DisplaySettings] Fullscreen state changed');
+    this.displayInfo = this.detectDisplayInfo();
+
+    // Small delay to ensure viewport dimensions are updated after fullscreen transition
+    setTimeout(() => {
+      this.applyRotation();
+    }, 100);
   };
 
   /**
@@ -392,63 +415,109 @@ class ShellDisplaySettingsClass {
    * Apply screen rotation from device settings
    * Reads rotation value from SharedDeviceState and applies CSS transform
    * Handles width/height swap for 90/270 degree rotations
+   *
+   * For 90/270 rotation: Container is sized to swapped dimensions and centered
+   * using translate transform combined with rotate transform.
    */
   applyRotation(): void {
     const rotation = SharedDeviceState.getScreenRotation();
     const playerContainer = document.getElementById('player-container');
+    const playerVideo = document.getElementById('player-video');
 
     if (!playerContainer) {
       SharedLogger.warn('[DisplaySettings] Player container not found, cannot apply rotation');
       return;
     }
 
-    // Remove any existing rotation styles
-    playerContainer.style.transform = '';
-    playerContainer.style.width = '';
-    playerContainer.style.height = '';
-    playerContainer.style.position = '';
-    playerContainer.style.top = '';
-    playerContainer.style.left = '';
+    // Get viewport dimensions
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+
+    SharedLogger.log(`[DisplaySettings] Applying rotation: ${rotation}deg (viewport: ${vw}x${vh})`);
+
+    // Reset all styles first
+    playerContainer.style.cssText = '';
+    if (playerVideo) {
+      playerVideo.style.cssText = '';
+    }
 
     if (rotation === 0) {
-      // No rotation needed
-      SharedLogger.log('[DisplaySettings] Applied rotation: 0deg (no rotation)');
+      // No rotation - standard fullscreen
+      playerContainer.style.cssText = `
+        display: block;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        background: #000;
+      `;
+      if (playerVideo) {
+        playerVideo.style.cssText = `
+          width: 100%;
+          height: 100%;
+          object-fit: contain;
+        `;
+      }
+      SharedLogger.log('[DisplaySettings] ✅ No rotation applied');
       return;
     }
 
-    // Get viewport dimensions
-    const viewportWidth = window.innerWidth;
-    const viewportHeight = window.innerHeight;
-
-    // Apply rotation transform
-    playerContainer.style.transformOrigin = 'center center';
-    playerContainer.style.position = 'fixed';
-
     if (rotation === 90 || rotation === 270) {
-      // For 90/270 degrees, we need to swap width and height
-      // and adjust positioning to keep content centered
-      playerContainer.style.width = `${viewportHeight}px`;
-      playerContainer.style.height = `${viewportWidth}px`;
-      playerContainer.style.transform = `rotate(${rotation}deg)`;
+      // For 90/270 degrees:
+      // 1. Container size = swapped dimensions (vh x vw)
+      // 2. Position at center using translate
+      // 3. Apply rotation
 
-      // Center the rotated container
-      if (rotation === 90) {
-        playerContainer.style.top = `${(viewportHeight - viewportWidth) / 2}px`;
-        playerContainer.style.left = `${(viewportWidth - viewportHeight) / 2}px`;
-      } else if (rotation === 270) {
-        playerContainer.style.top = `${(viewportHeight - viewportWidth) / 2}px`;
-        playerContainer.style.left = `${(viewportWidth - viewportHeight) / 2}px`;
+      // Calculate offset to center the rotated container
+      const offsetX = (vw - vh) / 2;
+      const offsetY = (vh - vw) / 2;
+
+      playerContainer.style.cssText = `
+        display: block;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: ${vh}px;
+        height: ${vw}px;
+        background: #000;
+        transform-origin: center center;
+        transform: translate(${offsetX}px, ${offsetY}px) rotate(${rotation}deg);
+      `;
+
+      if (playerVideo) {
+        playerVideo.style.cssText = `
+          width: 100%;
+          height: 100%;
+          object-fit: contain;
+        `;
       }
-    } else if (rotation === 180) {
-      // For 180 degrees, no width/height swap needed
-      playerContainer.style.width = `${viewportWidth}px`;
-      playerContainer.style.height = `${viewportHeight}px`;
-      playerContainer.style.transform = `rotate(180deg)`;
-      playerContainer.style.top = '0';
-      playerContainer.style.left = '0';
-    }
 
-    SharedLogger.log(`[DisplaySettings] Applied rotation: ${rotation}deg (viewport: ${viewportWidth}x${viewportHeight})`);
+      SharedLogger.log(`[DisplaySettings] ✅ Applied ${rotation}deg rotation (container: ${vh}x${vw}, offset: ${offsetX},${offsetY})`);
+    } else if (rotation === 180) {
+      // For 180 degrees - no dimension swap needed
+      playerContainer.style.cssText = `
+        display: block;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        background: #000;
+        transform-origin: center center;
+        transform: rotate(180deg);
+      `;
+
+      if (playerVideo) {
+        playerVideo.style.cssText = `
+          width: 100%;
+          height: 100%;
+          object-fit: contain;
+        `;
+      }
+
+      SharedLogger.log('[DisplaySettings] ✅ Applied 180deg rotation');
+    }
   }
 
   /**
@@ -488,6 +557,8 @@ class ShellDisplaySettingsClass {
   destroy(): void {
     window.removeEventListener('orientationchange', this.handleOrientationChange);
     window.removeEventListener('resize', this.handleResize);
+    document.removeEventListener('fullscreenchange', this.handleFullscreenChange);
+    document.removeEventListener('webkitfullscreenchange', this.handleFullscreenChange);
     this.initialized = false;
     SharedLogger.log('[DisplaySettings] Destroyed');
   }

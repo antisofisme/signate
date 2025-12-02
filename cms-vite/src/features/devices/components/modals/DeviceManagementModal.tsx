@@ -1,20 +1,15 @@
 /**
  * Unified Device Management Modal
  *
- * Single modal with tabs for all device management functions:
- * - Overview: Device info + quick actions
- * - Health: Metrics + diagnostics
+ * Single modal with tabs for device management:
+ * - Overview: Device info + health metrics + alerts + quick actions
  * - Commands: Remote control
- * - Content: Assignment management
- * - Logs: Debugging
- * - Settings: Configuration
  */
 
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   LayoutDashboard,
-  Activity,
   Terminal as TerminalIcon,
   Tv,
   Monitor,
@@ -24,11 +19,10 @@ import type { Device } from '../../types/device';
 
 // Tab components
 import { OverviewTab } from './tabs/OverviewTab';
-import { HealthTab } from './tabs/HealthTab';
 import { CommandsTab } from './tabs/CommandsTab';
 import { DevicePreviewModal } from './DevicePreviewModal';
 
-export type DeviceTabId = 'overview' | 'health' | 'commands';
+export type DeviceTabId = 'overview' | 'commands';
 
 interface DeviceManagementModalProps {
   isOpen: boolean;
@@ -54,17 +48,15 @@ export function DeviceManagementModal({
       icon: LayoutDashboard,
     },
     {
-      id: 'health',
-      label: t('devices.modals.health'),
-      icon: Activity,
-    },
-    {
       id: 'commands',
       label: t('devices.modals.commandsTitle'),
       icon: TerminalIcon,
     },
   ];
-  const [activeTab, setActiveTab] = useState<DeviceTabId>(defaultTab);
+  // Fallback to 'overview' if invalid tab (e.g., old 'health' tab)
+  const [activeTab, setActiveTab] = useState<DeviceTabId>(
+    defaultTab === 'overview' || defaultTab === 'commands' ? defaultTab : 'overview'
+  );
   const [showPreview, setShowPreview] = useState(false);
 
   if (!device) return null;
@@ -150,10 +142,6 @@ export function DeviceManagementModal({
             onRefresh={onRefresh}
             onOpenPreview={() => setShowPreview(true)}
           />
-        </TabPanel>
-
-        <TabPanel activeTab={activeTab} tabId="health">
-          <HealthTab device={device} isOnline={isOnline} />
         </TabPanel>
 
         <TabPanel activeTab={activeTab} tabId="commands">

@@ -168,7 +168,8 @@
       "noDataAvailable": "No health metrics available",
       "deviceOffline": "Device offline",
       "minutesAgo": "{{count}}m ago",
-      "justNow": "just now"
+      "justNow": "just now",
+      "activeAlerts": "active alert(s)"
     },
     "actions": {
       "viewLogs": "View device logs",
@@ -1613,36 +1614,57 @@
     },
     "stats": {
       "totalUsers": "Total Users",
-      "active": "Active"
+      "active": "Active Users"
     },
     "actions": {
-      "createUser": "Create User",
+      "createUser": "Add User",
       "editUser": "Edit User",
       "deleteUser": "Delete User",
       "changePassword": "Change Password",
       "cancel": "Cancel",
-      "change": "Change",
-      "update": "Update",
-      "create": "Create"
+      "change": "Change Password",
+      "update": "Update User",
+      "create": "Create User",
+      "delete": "Delete"
     },
     "delete": {
       "title": "Delete User",
-      "message": "Are you sure you want to delete this user?"
+      "message": "Are you sure you want to delete",
+      "warning": "This action cannot be undone."
     },
     "changePassword": {
       "title": "Change Password",
       "user": "User",
-      "newPasswordPlaceholder": "New password",
+      "email": "Email",
+      "newPassword": "New Password",
+      "newPasswordPlaceholder": "Enter new password",
+      "confirmPassword": "Confirm Password",
+      "confirmPasswordPlaceholder": "Re-enter new password",
+      "requirements": "Password Requirements:",
+      "minLength": "At least 8 characters",
+      "uppercase": "One uppercase letter",
+      "lowercase": "One lowercase letter",
+      "number": "One number",
       "changing": "Changing..."
     },
     "form": {
       "createUser": "Create User",
       "editUser": "Edit User",
-      "usernamePlaceholder": "Username",
-      "emailPlaceholder": "Email",
-      "fullNamePlaceholder": "Full Name",
-      "passwordPlaceholder": "Password",
-      "activeLabel": "Active",
+      "username": "Username",
+      "usernamePlaceholder": "Enter username",
+      "email": "Email",
+      "emailPlaceholder": "Enter email address",
+      "fullName": "Full Name",
+      "fullNamePlaceholder": "Enter full name (optional)",
+      "password": "Password",
+      "passwordPlaceholder": "Enter password",
+      "passwordHelp": "Min 8 characters, at least 1 uppercase, 1 lowercase, and 1 number",
+      "role": "Role",
+      "selectRole": "Select role",
+      "organization": "Organization",
+      "selectOrganization": "Select organization",
+      "activeLabel": "Active User",
+      "activeHelp": "Inactive users cannot log in",
       "saving": "Saving..."
     },
     "table": {
@@ -1656,6 +1678,7 @@
     "roles": {
       "super_admin": "Super Admin",
       "admin": "Admin",
+      "manager": "Manager",
       "editor": "Editor",
       "viewer": "Viewer"
     },

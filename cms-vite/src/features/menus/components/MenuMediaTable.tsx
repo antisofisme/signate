@@ -301,6 +301,16 @@ export function MenuMediaTable() {
             >
               <Eye className="w-4 h-4" />
             </button>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                handleDownload(media);
+              }}
+              className={TABLE_STYLES.actionBtnGray}
+              title={t('menus.media.actions.download', 'Download')}
+            >
+              <Download className="w-4 h-4" />
+            </button>
             {canUpdate && (
               <button
                 onClick={(e) => {
@@ -313,30 +323,6 @@ export function MenuMediaTable() {
                 <Edit className="w-4 h-4" />
               </button>
             )}
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                handleCopyUrl(media);
-              }}
-              className={TABLE_STYLES.actionBtnPurple}
-              title={t('menus.media.actions.copyUrl', 'Copy URL')}
-            >
-              {copiedId === media.id ? (
-                <Check className="w-4 h-4 text-green-500" />
-              ) : (
-                <Copy className="w-4 h-4" />
-              )}
-            </button>
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                handleDownload(media);
-              }}
-              className={TABLE_STYLES.actionBtnGray}
-              title={t('menus.media.actions.download', 'Download')}
-            >
-              <Download className="w-4 h-4" />
-            </button>
             {canDelete && (
               <button
                 onClick={(e) => {

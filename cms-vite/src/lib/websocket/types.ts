@@ -20,6 +20,7 @@ export type WebSocketMessageType =
   | 'content:transcoding_progress'
   | 'content:transcoded'
   | 'content:transcoding_failed'
+  | 'content:thumbnail_ready'
   | 'playlist:sync'
   | 'command:ack'
   | 'command:complete'
@@ -155,6 +156,12 @@ export interface ContentTranscodingFailedData {
   status: 'failed'
   error: string
   message: string
+}
+
+export interface ContentThumbnailReadyData {
+  content_id: number
+  title: string
+  thumbnail_url: string
 }
 
 export interface PlaylistSyncData {

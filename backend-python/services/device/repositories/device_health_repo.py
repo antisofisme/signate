@@ -238,6 +238,11 @@ class DeviceHealthRepository:
 
     def _row_to_domain(self, row, device_id: int) -> DeviceHealthMetric:
         """Convert SQL row to domain model"""
+        # Handle both old stored procedure (alert_triggered) and new column name (is_alert_triggered)
+        is_alert = getattr(row, 'is_alert_triggered', None)
+        if is_alert is None:
+            is_alert = getattr(row, 'alert_triggered', False)
+
         return DeviceHealthMetric(
             id=row.id,
             device_id=device_id,
@@ -262,7 +267,7 @@ class DeviceHealthRepository:
             last_error_message=row.last_error_message,
             last_error_at=row.last_error_at,
             overall_status=row.overall_status,
-            is_alert_triggered=row.is_alert_triggered,
+            is_alert_triggered=is_alert,
             alert_message=row.alert_message,
             metadata=getattr(row, 'metadata', None) or getattr(row, 'extra_data', None) or {},
             recorded_at=row.recorded_at

@@ -101,17 +101,10 @@ export function useDeviceWebSocket() {
 
 /**
  * Hook to listen for device events for a specific device
+ * Automatically invalidates device and health queries on updates
  */
 export function useDeviceWebSocketById(deviceId: number | undefined) {
   const queryClient = useQueryClient()
-
-  useEffect(() => {
-    if (!deviceId) return
-
-    // This hook will automatically filter events for the specific device
-    // The WebSocket client will send all device events, but we only
-    // invalidate queries for the device we're interested in
-  }, [deviceId, queryClient])
 
   useWebSocketEvents({
     'device:status': (data: DeviceStatusData) => {
@@ -119,11 +112,16 @@ export function useDeviceWebSocketById(deviceId: number | undefined) {
         queryClient.invalidateQueries({
           queryKey: ['devices', deviceId]
         })
+        // Also invalidate health when status changes
+        queryClient.invalidateQueries({
+          queryKey: ['device-health', deviceId]
+        })
       }
     },
 
     'device:heartbeat': (data: DeviceHeartbeatData) => {
       if (data.device_id === deviceId) {
+        // Update device data optimistically
         queryClient.setQueryData(['devices', deviceId], (oldData: any) => {
           if (!oldData) return oldData
           return {
@@ -132,6 +130,10 @@ export function useDeviceWebSocketById(deviceId: number | undefined) {
             status: 'online',
             system_info: data.system_info || oldData.system_info,
           }
+        })
+        // Invalidate health query for fresh metrics
+        queryClient.invalidateQueries({
+          queryKey: ['device-health', deviceId]
         })
       }
     },

@@ -441,6 +441,11 @@ class UploadContentUseCase:
         elif content_type == 'video' and not mime.startswith('video/'):
             raise ValueError(f"MIME type mismatch. Expected video/*, got {mime}")
         elif content_type == 'audio' and not mime.startswith('audio/'):
-            raise ValueError(f"MIME type mismatch. Expected audio/*, got {mime}")
+            # Special case: .mpeg files from WhatsApp are audio but browsers detect as video/mpeg
+            # Also allow video/mpeg for .mpeg audio extension
+            if ext == '.mpeg' and mime == 'video/mpeg':
+                logger.info(f"[Upload] Allowing .mpeg with MIME 'video/mpeg' (WhatsApp audio format)")
+            else:
+                raise ValueError(f"MIME type mismatch. Expected audio/*, got {mime}")
 
         return content_type

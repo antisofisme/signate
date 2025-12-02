@@ -137,24 +137,22 @@ export default function UsersPage() {
       />
 
       {/* Modals */}
-      {showCreateModal && (
-        <UserForm
-          organizations={organizations}
-          onClose={() => setShowCreateModal(false)}
-          onSubmit={handleCreate}
-          isLoading={createMutation.isPending}
-        />
-      )}
+      <UserForm
+        isOpen={showCreateModal}
+        organizations={organizations}
+        onClose={() => setShowCreateModal(false)}
+        onSubmit={handleCreate}
+        isLoading={createMutation.isPending}
+      />
 
-      {editingUser && (
-        <UserForm
-          user={editingUser}
-          organizations={organizations}
-          onClose={() => setEditingUser(null)}
-          onSubmit={handleUpdate}
-          isLoading={updateMutation.isPending}
-        />
-      )}
+      <UserForm
+        isOpen={!!editingUser}
+        user={editingUser ?? undefined}
+        organizations={organizations}
+        onClose={() => setEditingUser(null)}
+        onSubmit={handleUpdate}
+        isLoading={updateMutation.isPending}
+      />
 
       <ConfirmDialog
         open={!!deletingUser}
@@ -171,15 +169,13 @@ export default function UsersPage() {
         isLoading={deleteMutation.isPending}
       />
 
-      {changingPasswordUser && (
-        <ChangePasswordDialog
-          user={changingPasswordUser}
-          open={!!changingPasswordUser}
-          onOpenChange={(open) => !open && setChangingPasswordUser(null)}
-          onSubmit={handleChangePassword}
-          isLoading={changePasswordMutation.isPending}
-        />
-      )}
+      <ChangePasswordDialog
+        isOpen={!!changingPasswordUser}
+        user={changingPasswordUser}
+        onClose={() => setChangingPasswordUser(null)}
+        onSubmit={handleChangePassword}
+        isLoading={changePasswordMutation.isPending}
+      />
     </>
   );
 }

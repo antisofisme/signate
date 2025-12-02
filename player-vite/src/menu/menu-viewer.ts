@@ -19,6 +19,82 @@ interface PreviewData {
   }>;
 }
 
+// =====================================================================
+// COLOR UTILITY FUNCTIONS (60-30-10 Color Scheme)
+// =====================================================================
+
+/**
+ * Calculate luminance and determine optimal text color for accessibility
+ * Uses relative luminance formula from WCAG 2.1
+ * @param hexColor - Hex color string (e.g., '#3b82f6')
+ * @returns 'black' or 'white' for optimal contrast
+ */
+function getContrastColor(hexColor: string): string {
+  // Handle invalid or missing color
+  if (!hexColor || hexColor.length < 7) return 'white';
+
+  try {
+    const r = parseInt(hexColor.slice(1, 3), 16);
+    const g = parseInt(hexColor.slice(3, 5), 16);
+    const b = parseInt(hexColor.slice(5, 7), 16);
+
+    // Calculate relative luminance using ITU-R BT.709 coefficients
+    const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+
+    // Return black for light backgrounds, white for dark backgrounds
+    return luminance > 0.5 ? '#1e293b' : '#ffffff';
+  } catch {
+    return 'white';
+  }
+}
+
+/**
+ * Calculate contrast ratio between two colors (WCAG 2.1)
+ * @param hex1 - First hex color
+ * @param hex2 - Second hex color
+ * @returns Contrast ratio (1-21)
+ */
+function getContrastRatio(hex1: string, hex2: string): number {
+  const getLuminance = (hex: string): number => {
+    try {
+      const rgb = [
+        parseInt(hex.slice(1, 3), 16) / 255,
+        parseInt(hex.slice(3, 5), 16) / 255,
+        parseInt(hex.slice(5, 7), 16) / 255,
+      ].map(c => c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4));
+      return 0.2126 * rgb[0] + 0.7152 * rgb[1] + 0.0722 * rgb[2];
+    } catch {
+      return 0;
+    }
+  };
+
+  const l1 = getLuminance(hex1);
+  const l2 = getLuminance(hex2);
+  return (Math.max(l1, l2) + 0.05) / (Math.min(l1, l2) + 0.05);
+}
+
+/**
+ * Validate if color combination meets WCAG AA standard (4.5:1 for normal text)
+ * @param bgColor - Background color
+ * @param textColor - Text color
+ * @returns true if meets WCAG AA standard
+ */
+function isAccessible(bgColor: string, textColor: string): boolean {
+  return getContrastRatio(bgColor, textColor) >= 4.5;
+}
+
+/**
+ * Log accessibility warning if color has low contrast
+ * @param colorName - Name of the color for logging
+ * @param color - Hex color to check
+ * @param against - Color to check against (default: white)
+ */
+function checkColorContrast(colorName: string, color: string, against: string = '#ffffff'): void {
+  if (!isAccessible(color, against)) {
+    console.warn(`[MenuViewer] ${colorName} (${color}) may have low contrast with ${against}. Consider using a darker/lighter variant.`);
+  }
+}
+
 export class MenuViewer {
   private config: MenuViewerConfig;
   private container: HTMLElement | null = null;
@@ -34,8 +110,66 @@ export class MenuViewer {
   private highlightedCarouselIntervals: Map<number, ReturnType<typeof setInterval>> = new Map();
   private expandedSubcategories: Set<string> = new Set();
 
+  // Memory leak prevention - track resources for cleanup
+  private searchDebounceTimer: ReturnType<typeof setTimeout> | null = null;
+  private globalEventListeners: Array<{ element: EventTarget; event: string; handler: EventListenerOrEventListenerObject }> = [];
+  private isDestroyed = false;
+
+  // Constants
+  private readonly SEARCH_DEBOUNCE_DELAY = 150;
+
   constructor(config: MenuViewerConfig) {
     this.config = config;
+  }
+
+  /**
+   * Destroy the menu viewer and clean up all resources
+   * MUST be called when component is unmounted to prevent memory leaks
+   */
+  public destroy(): void {
+    if (this.isDestroyed) return;
+    this.isDestroyed = true;
+
+    console.log('[MenuViewer] Destroying and cleaning up resources');
+
+    // 1. Clear all carousel intervals
+    this.highlightedCarouselIntervals.forEach(interval => clearInterval(interval));
+    this.highlightedCarouselIntervals.clear();
+
+    // 2. Clear search debounce timer
+    if (this.searchDebounceTimer) {
+      clearTimeout(this.searchDebounceTimer);
+      this.searchDebounceTimer = null;
+    }
+
+    // 3. Remove all global event listeners
+    this.globalEventListeners.forEach(({ element, event, handler }) => {
+      element.removeEventListener(event, handler);
+    });
+    this.globalEventListeners = [];
+
+    // 4. Reset body styles
+    document.body.style.overflow = '';
+
+    // 5. Remove menu mode classes (only if standalone, not in portal)
+    const isInsidePortal = this.container?.closest('.portal-viewer') !== null;
+    if (!isInsidePortal) {
+      document.documentElement.classList.remove('menu-mode-active');
+      document.body.classList.remove('menu-mode-active');
+    }
+
+    // 6. Clear container
+    if (this.container) {
+      this.container.innerHTML = '';
+      this.container = null;
+    }
+
+    // 7. Reset state
+    this.menu = null;
+    this.items = [];
+    this.categories = [];
+    this.currentPreviewData = null;
+    this.expandedSubcategories.clear();
   }
 
   /**
@@ -48,9 +182,15 @@ export class MenuViewer {
       return;
     }
 
+    // Check if we're inside a portal (don't override body styles in that case)
+    const isInsidePortal = this.container.closest('.portal-viewer') !== null;
+
     // Add class to html for CSS fallback (browsers that don't support :has())
-    document.documentElement.classList.add('menu-mode-active');
-    document.body.classList.add('menu-mode-active');
+    // Only when standalone menu (not inside portal)
+    if (!isInsidePortal) {
+      document.documentElement.classList.add('menu-mode-active');
+      document.body.classList.add('menu-mode-active');
+    }
 
     // Show loading state
     this.isLoading = true;
@@ -207,11 +347,20 @@ export class MenuViewer {
   }
 
   /**
-   * Handle search input change - only update items, not entire page
+   * Handle search input change with debounce - only update items, not entire page
    */
   private handleSearchInput(value: string): void {
-    this.searchTerm = value;
-    this.updateItemsOnly();
+    // Clear existing debounce timer
+    if (this.searchDebounceTimer) {
+      clearTimeout(this.searchDebounceTimer);
+    }
+
+    // Debounce search to prevent excessive DOM updates
+    this.searchDebounceTimer = setTimeout(() => {
+      this.searchTerm = value;
+      this.updateItemsOnly();
+      this.searchDebounceTimer = null;
+    }, this.SEARCH_DEBOUNCE_DELAY);
   }
 
   /**
@@ -464,10 +613,35 @@ export class MenuViewer {
     const primaryColor = this.menu.primary_color || '#ffffff';    // 60% - Background
     const secondaryColor = this.menu.secondary_color || '#f3f4f6'; // 30% - Header/Categories
     const themeColor = this.menu.theme_color || '#3b82f6';         // 10% - Accent
+
+    // Auto-calculate optimal text colors for accessibility
+    const primaryTextColor = getContrastColor(primaryColor);
+    const secondaryTextColor = getContrastColor(secondaryColor);
+    const themeTextColor = getContrastColor(themeColor);
+
+    // Log warning for low contrast theme color
+    checkColorContrast('Theme color', themeColor);
+
     const filteredItems = this.getFilteredItems();
 
+    // Build CSS variables string with derived colors using color-mix
+    const cssVars = `
+      --primary-color: ${primaryColor};
+      --secondary-color: ${secondaryColor};
+      --theme-color: ${themeColor};
+      --primary-text-color: ${primaryTextColor};
+      --secondary-text-color: ${secondaryTextColor};
+      --theme-text-color: ${themeTextColor};
+      --primary-color-dark: color-mix(in srgb, ${primaryColor}, black 15%);
+      --primary-color-darker: color-mix(in srgb, ${primaryColor}, black 30%);
+      --secondary-color-dark: color-mix(in srgb, ${secondaryColor}, black 20%);
+      --border-color: color-mix(in srgb, ${secondaryColor}, white 10%);
+      --theme-color-light: color-mix(in srgb, ${themeColor} 20%, white);
+      --theme-color-subtle: color-mix(in srgb, ${themeColor} 15%, transparent);
+    `.replace(/\s+/g, ' ').trim();
+
     this.container.innerHTML = `
-      <div class="menu-viewer" style="--primary-color: ${primaryColor}; --secondary-color: ${secondaryColor}; --theme-color: ${themeColor}">
+      <div class="menu-viewer" style="${cssVars}">
         <!-- Header -->
         <header class="menu-viewer__header">
           <div class="menu-viewer__header-icon">
@@ -666,10 +840,35 @@ export class MenuViewer {
     const primaryColor = this.menu.primary_color || '#0f172a';    // 60% - Background (dark for minimalist)
     const secondaryColor = this.menu.secondary_color || '#1e293b'; // 30% - Header/Cards
     const themeColor = this.menu.theme_color || '#3b82f6';         // 10% - Accent
+
+    // Auto-calculate optimal text colors for accessibility
+    const primaryTextColor = getContrastColor(primaryColor);
+    const secondaryTextColor = getContrastColor(secondaryColor);
+    const themeTextColor = getContrastColor(themeColor);
+
+    // Log warning for low contrast theme color
+    checkColorContrast('Theme color', themeColor);
+
     const filteredItems = this.getFilteredItems();
 
+    // Build CSS variables string with derived colors using color-mix
+    const cssVars = `
+      --primary-color: ${primaryColor};
+      --secondary-color: ${secondaryColor};
+      --theme-color: ${themeColor};
+      --primary-text-color: ${primaryTextColor};
+      --secondary-text-color: ${secondaryTextColor};
+      --theme-text-color: ${themeTextColor};
+      --primary-color-dark: color-mix(in srgb, ${primaryColor}, black 15%);
+      --primary-color-darker: color-mix(in srgb, ${primaryColor}, black 30%);
+      --secondary-color-dark: color-mix(in srgb, ${secondaryColor}, black 20%);
+      --border-color: color-mix(in srgb, ${secondaryColor}, white 10%);
+      --theme-color-light: color-mix(in srgb, ${themeColor} 20%, white);
+      --theme-color-subtle: color-mix(in srgb, ${themeColor} 15%, transparent);
+    `.replace(/\s+/g, ' ').trim();
+
     this.container.innerHTML = `
-      <div class="menu-viewer menu-viewer--minimalist" style="--primary-color: ${primaryColor}; --secondary-color: ${secondaryColor}; --theme-color: ${themeColor}">
+      <div class="menu-viewer menu-viewer--minimalist" style="${cssVars}">
         <!-- Header -->
         <header class="menu-viewer__header">
           <div class="menu-viewer__header-text">
@@ -1202,12 +1401,14 @@ export class MenuViewer {
         fabContainer.classList.toggle('menu-viewer__fab-container--open');
       });
 
-      // Close FAB when clicking outside
-      document.addEventListener('click', (e) => {
+      // Close FAB when clicking outside - TRACKED for cleanup
+      const fabClickOutsideHandler = (e: Event) => {
         if (!fabContainer.contains(e.target as Node)) {
           fabContainer.classList.remove('menu-viewer__fab-container--open');
         }
-      });
+      };
+      document.addEventListener('click', fabClickOutsideHandler);
+      this.globalEventListeners.push({ element: document, event: 'click', handler: fabClickOutsideHandler });
     }
 
     // WhatsApp button (FAB option)
@@ -1277,12 +1478,14 @@ export class MenuViewer {
       });
     }
 
-    // Close popup on Escape key
-    document.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape') {
+    // Close popup on Escape key - TRACKED for cleanup
+    const escapeKeyHandler = (e: Event) => {
+      if ((e as KeyboardEvent).key === 'Escape') {
         this.hidePreviewPopup();
       }
-    });
+    };
+    document.addEventListener('keydown', escapeKeyHandler);
+    this.globalEventListeners.push({ element: document, event: 'keydown', handler: escapeKeyHandler });
 
     // Video autoplay on hover for highlighted items
     this.container.querySelectorAll('.menu-viewer__highlighted-media video').forEach(video => {

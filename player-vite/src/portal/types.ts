@@ -18,6 +18,8 @@ export interface PortalMenu {
   public_url: string;
   description: string | null;
   display_mode: 'grid' | 'list' | 'carousel' | 'minimalist';
+  primary_color: string | null;
+  secondary_color: string | null;
   theme_color: string | null;
 }
 

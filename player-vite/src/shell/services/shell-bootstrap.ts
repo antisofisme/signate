@@ -22,6 +22,7 @@ import { getPlayerMediaCache, getPlayerHeartbeat, getPlayerPlaylistSync, getPlay
 // Side-effect imports to ensure services are registered before use
 import '@player/services/player-videojs';
 import '@player/services/player-background-audio';
+import '@player/services/player-health-reporter';
 
 /**
  * Shell Bootstrap Class

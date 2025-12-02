@@ -1,253 +1,21 @@
 /**
  * Content Preview Modal
  *
- * Full-screen modal for previewing content (image, video, audio) before publishing
- * - Image: Full resolution preview with zoom
- * - Video: Embedded player with HLS support
- * - Audio: Audio player with waveform
+ * Modal for previewing content (image, video, audio) with details panel
+ * Uses centralized ModalOverlay for consistent behavior
  */
 
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { X, ZoomIn, ZoomOut, Download, Play, Pause, Volume2, VolumeX } from 'lucide-react';
+import { X, Download, Copy, Check } from 'lucide-react';
+import { toast } from 'sonner';
+import { Button, ModalOverlay } from '@/shared/components';
 import type { Content } from '../types/content';
 
 interface ContentPreviewModalProps {
   content: Content;
   isOpen: boolean;
   onClose: () => void;
-}
-
-export function ContentPreviewModal({ content, isOpen, onClose }: ContentPreviewModalProps) {
-  const { t } = useTranslation();
-  const [zoom, setZoom] = useState(1);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [isMuted, setIsMuted] = useState(false);
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const audioRef = useRef<HTMLAudioElement>(null);
-
-  // Close on ESC key
-  useEffect(() => {
-    const handleEsc = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
-    };
-    if (isOpen) {
-      window.addEventListener('keydown', handleEsc);
-      return () => window.removeEventListener('keydown', handleEsc);
-    }
-  }, [isOpen, onClose]);
-
-  // Reset state when modal closes
-  useEffect(() => {
-    if (!isOpen) {
-      setZoom(1);
-      setIsPlaying(false);
-      setIsMuted(false);
-    }
-  }, [isOpen]);
-
-  if (!isOpen) return null;
-
-  const handleDownload = () => {
-    window.open(content.file_url, '_blank');
-  };
-
-  const togglePlay = () => {
-    const media = content.content_type === 'video' ? videoRef.current : audioRef.current;
-    if (!media) return;
-
-    if (isPlaying) {
-      media.pause();
-    } else {
-      media.play();
-    }
-    setIsPlaying(!isPlaying);
-  };
-
-  const toggleMute = () => {
-    const media = content.content_type === 'video' ? videoRef.current : audioRef.current;
-    if (!media) return;
-    media.muted = !media.muted;
-    setIsMuted(!isMuted);
-  };
-
-  const renderPreview = () => {
-    switch (content.content_type) {
-      case 'image':
-        return (
-          <div className="flex flex-col items-center justify-center h-full gap-4">
-            <div className="relative flex items-center justify-center">
-              <img
-                src={content.file_url}
-                alt={content.title}
-                className="max-w-[85vw] max-h-[calc(100vh-250px)] w-auto h-auto object-contain rounded-lg shadow-2xl"
-                style={{ transform: `scale(${zoom})`, transition: 'transform 0.2s' }}
-                loading="lazy"
-              />
-            </div>
-
-            {/* Zoom Controls */}
-            <div className="flex items-center gap-2 bg-gray-900/80 px-4 py-2 rounded-lg">
-              <button
-                type="button"
-                onClick={() => setZoom(Math.max(0.5, zoom - 0.25))}
-                disabled={zoom <= 0.5}
-                className="p-2 text-white hover:bg-gray-700 rounded disabled:opacity-50"
-                title={t('contents.preview.zoomOut')}
-              >
-                <ZoomOut className="w-5 h-5" />
-              </button>
-              <span className="text-white text-sm min-w-[60px] text-center">
-                {Math.round(zoom * 100)}%
-              </span>
-              <button
-                type="button"
-                onClick={() => setZoom(Math.min(3, zoom + 0.25))}
-                disabled={zoom >= 3}
-                className="p-2 text-white hover:bg-gray-700 rounded disabled:opacity-50"
-                title={t('contents.preview.zoomIn')}
-              >
-                <ZoomIn className="w-5 h-5" />
-              </button>
-            </div>
-          </div>
-        );
-
-      case 'video':
-        return (
-          <div className="flex flex-col items-center justify-center h-full gap-4">
-            <div className="relative flex items-center justify-center">
-              <video
-                ref={videoRef}
-                src={content.hls_master_playlist_url || content.file_url}
-                className="max-w-[85vw] max-h-[calc(100vh-250px)] w-auto h-auto rounded-lg shadow-2xl"
-                controls
-                onPlay={() => setIsPlaying(true)}
-                onPause={() => setIsPlaying(false)}
-                onVolumeChange={(e) => setIsMuted(e.currentTarget.muted)}
-              >
-                {t('contents.messages.videoNotSupported')}
-              </video>
-            </div>
-
-            {/* Video Info */}
-            <div className="text-white text-sm bg-gray-900/80 px-4 py-2 rounded-lg">
-              {content.resolution && <span>{t('contents.preview.resolution', { resolution: content.resolution })}</span>}
-              <span className="ml-4">{t('contents.preview.duration', { duration: formatDuration(content.duration) })}</span>
-              {content.hls_master_playlist_url && (
-                <span className="ml-4 text-green-400">{t('contents.preview.hlsStreaming')}</span>
-              )}
-            </div>
-          </div>
-        );
-
-      case 'audio':
-        return (
-          <div className="flex flex-col items-center justify-center h-full">
-            <div className="bg-gradient-to-br from-purple-500 to-pink-500 rounded-lg p-12 shadow-2xl max-w-2xl w-full">
-              <div className="text-center text-white mb-8">
-                <h2 className="text-3xl font-bold mb-2">{content.title}</h2>
-                {content.description && (
-                  <p className="text-gray-100 opacity-90">{content.description}</p>
-                )}
-              </div>
-
-              <audio
-                ref={audioRef}
-                src={content.file_url}
-                className="w-full"
-                controls
-                controlsList="nodownload"
-                onPlay={() => setIsPlaying(true)}
-                onPause={() => setIsPlaying(false)}
-                onVolumeChange={(e) => setIsMuted(e.currentTarget.muted)}
-              >
-                {t('contents.messages.audioNotSupported')}
-              </audio>
-
-              <div className="mt-6 text-center text-white text-sm">
-                <p>{t('contents.preview.duration', { duration: formatDuration(content.duration) })}</p>
-                <p className="text-gray-100 opacity-75 mt-1">{content.mime_type}</p>
-              </div>
-            </div>
-          </div>
-        );
-
-      default:
-        return (
-          <div className="flex items-center justify-center h-full text-white">
-            <p>{t('contents.messages.previewNotAvailable')}</p>
-          </div>
-        );
-    }
-  };
-
-  return (
-    <div className="fixed inset-0 z-50 bg-black/95 flex flex-col">
-      {/* Header */}
-      <div className="flex items-center justify-between p-4 bg-gray-900/80 backdrop-blur-sm">
-        <div className="flex-1">
-          <h2 className="text-xl font-semibold text-white">{content.title}</h2>
-          <p className="text-sm text-gray-300 mt-1">
-            {content.content_type.toUpperCase()} • {formatFileSize(content.file_size)}
-            {content.resolution && ` • ${content.resolution}`}
-          </p>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={handleDownload}
-            className="p-2 text-white hover:bg-gray-700 rounded-lg transition-colors"
-            title={t('contents.preview.download')}
-          >
-            <Download className="w-5 h-5" />
-          </button>
-
-          <button
-            type="button"
-            onClick={onClose}
-            className="p-2 text-white hover:bg-gray-700 rounded-lg transition-colors"
-            title={t('contents.preview.closeEsc')}
-          >
-            <X className="w-6 h-6" />
-          </button>
-        </div>
-      </div>
-
-      {/* Preview Content */}
-      <div className="flex-1 overflow-hidden p-4">{renderPreview()}</div>
-
-      {/* Footer Info */}
-      <div className="p-4 bg-gray-900/80 backdrop-blur-sm text-sm text-gray-300">
-        <div className="flex items-center justify-between max-w-7xl mx-auto">
-          <div className="flex items-center gap-6">
-            <span>{t('contents.preview.original', { filename: content.original_filename })}</span>
-            <span>{t('contents.preview.uploaded', { date: new Date(content.created_at).toLocaleDateString() })}</span>
-            {content.transcoding_status !== 'completed' && (
-              <span
-                className={`px-2 py-1 rounded text-xs ${
-                  content.transcoding_status === 'processing'
-                    ? 'bg-yellow-500/20 text-yellow-300'
-                    : content.transcoding_status === 'failed'
-                      ? 'bg-red-500/20 text-red-300'
-                      : 'bg-gray-500/20 text-gray-300'
-                }`}
-              >
-                {t('contents.preview.transcoding', {
-                  status: `${content.transcoding_status}${content.transcoding_progress > 0 ? ` (${content.transcoding_progress}%)` : ''}`
-                })}
-              </span>
-            )}
-          </div>
-
-          <div className="text-gray-400">
-            {t('contents.preview.pressEscToClose')}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
 }
 
 // Helper functions
@@ -263,4 +31,290 @@ function formatFileSize(bytes: number): string {
   const sizes = ['Bytes', 'KB', 'MB', 'GB'];
   const i = Math.floor(Math.log(bytes) / Math.log(k));
   return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + ' ' + sizes[i];
+}
+
+// Format date
+const formatDate = (dateString: string) => {
+  return new Date(dateString).toLocaleDateString('id-ID', {
+    day: '2-digit',
+    month: 'long',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+};
+
+// Get file type label from mime type
+const getFileTypeLabel = (mimeType: string) => {
+  if (mimeType.includes('jpeg') || mimeType.includes('jpg')) return 'JPEG';
+  if (mimeType.includes('png')) return 'PNG';
+  if (mimeType.includes('gif')) return 'GIF';
+  if (mimeType.includes('webp')) return 'WebP';
+  if (mimeType.includes('mp4')) return 'MP4';
+  if (mimeType.includes('webm')) return 'WebM';
+  if (mimeType.includes('avi')) return 'AVI';
+  if (mimeType.includes('mov') || mimeType.includes('quicktime')) return 'MOV';
+  if (mimeType.includes('mkv')) return 'MKV';
+  if (mimeType.includes('mp3') || mimeType.includes('mpeg')) return 'MP3';
+  if (mimeType.includes('wav')) return 'WAV';
+  if (mimeType.includes('ogg')) return 'OGG';
+  if (mimeType.includes('flac')) return 'FLAC';
+  return mimeType.split('/')[1]?.toUpperCase() || 'File';
+};
+
+export function ContentPreviewModal({ content, isOpen, onClose }: ContentPreviewModalProps) {
+  const { t } = useTranslation();
+  const [copied, setCopied] = useState(false);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const audioRef = useRef<HTMLAudioElement>(null);
+
+  // Close on ESC key
+  useEffect(() => {
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    if (isOpen) {
+      window.addEventListener('keydown', handleEsc);
+      return () => window.removeEventListener('keydown', handleEsc);
+    }
+  }, [isOpen, onClose]);
+
+  const handleCopyUrl = async () => {
+    try {
+      await navigator.clipboard.writeText(content.file_url || '');
+      setCopied(true);
+      toast.success('URL copied to clipboard');
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      toast.error('Failed to copy URL');
+    }
+  };
+
+  const handleDownload = () => {
+    if (!content.file_url) return;
+    const link = document.createElement('a');
+    link.href = content.file_url;
+    link.download = content.original_filename;
+    link.click();
+    toast.success('Download started');
+  };
+
+  const renderPreview = () => {
+    switch (content.content_type) {
+      case 'image':
+        return (
+          <div className="bg-gray-100 dark:bg-gray-900 rounded-lg overflow-hidden flex items-center justify-center" style={{ minHeight: '300px' }}>
+            <img
+              src={content.file_url}
+              alt={content.title}
+              className="max-w-full max-h-[60vh] object-contain"
+            />
+          </div>
+        );
+
+      case 'video':
+        return (
+          <div className="bg-gray-100 dark:bg-gray-900 rounded-lg overflow-hidden flex items-center justify-center" style={{ minHeight: '300px' }}>
+            <video
+              ref={videoRef}
+              src={content.hls_master_playlist_url || content.file_url}
+              className="max-w-full max-h-[60vh]"
+              controls
+            >
+              {t('contents.messages.videoNotSupported')}
+            </video>
+          </div>
+        );
+
+      case 'audio':
+        return (
+          <div className="bg-gradient-to-br from-purple-500 to-pink-500 rounded-lg p-8 flex flex-col items-center justify-center" style={{ minHeight: '300px' }}>
+            <div className="text-center text-white mb-6">
+              <h2 className="text-2xl font-bold mb-2">{content.title}</h2>
+              {content.description && (
+                <p className="text-gray-100 opacity-90">{content.description}</p>
+              )}
+            </div>
+            <audio
+              ref={audioRef}
+              src={content.file_url}
+              className="w-full max-w-md"
+              controls
+            >
+              {t('contents.messages.audioNotSupported')}
+            </audio>
+          </div>
+        );
+
+      default:
+        return (
+          <div className="bg-gray-100 dark:bg-gray-900 rounded-lg flex items-center justify-center" style={{ minHeight: '300px' }}>
+            <p className="text-gray-500">{t('contents.messages.previewNotAvailable')}</p>
+          </div>
+        );
+    }
+  };
+
+  return (
+    <ModalOverlay isOpen={isOpen} onClose={onClose} backdropOpacity={75}>
+      {/* Modal */}
+      <div
+        className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] flex flex-col mx-4"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-white truncate pr-4">
+            {content.title || content.original_filename}
+          </h2>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={handleCopyUrl}
+              leftIcon={copied ? <Check className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
+            >
+              {copied ? 'Copied!' : 'Copy URL'}
+            </Button>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={handleDownload}
+              leftIcon={<Download className="w-4 h-4" />}
+            >
+              Download
+            </Button>
+            <button
+              onClick={onClose}
+              className="text-gray-400 hover:text-gray-500 ml-2"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+        </div>
+
+        {/* Content */}
+        <div className="flex-1 overflow-auto p-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {/* Preview */}
+            <div className="md:col-span-2">
+              {renderPreview()}
+            </div>
+
+            {/* Details */}
+            <div className="space-y-4">
+              <div>
+                <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">
+                  File Information
+                </h3>
+                <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-4 space-y-3">
+                  <div>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">Filename</p>
+                    <p className="text-sm text-gray-900 dark:text-white break-all">
+                      {content.original_filename}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">Type</p>
+                    <p className="text-sm text-gray-900 dark:text-white">
+                      {getFileTypeLabel(content.mime_type)} ({content.mime_type})
+                    </p>
+                  </div>
+                  {content.resolution && (
+                    <div>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">Resolution</p>
+                      <p className="text-sm text-gray-900 dark:text-white">
+                        {content.resolution}
+                      </p>
+                    </div>
+                  )}
+                  <div>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">File Size</p>
+                    <p className="text-sm text-gray-900 dark:text-white">
+                      {formatFileSize(content.file_size)}
+                    </p>
+                  </div>
+                  {content.duration > 0 && (
+                    <div>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">Duration</p>
+                      <p className="text-sm text-gray-900 dark:text-white">
+                        {formatDuration(content.duration)}
+                      </p>
+                    </div>
+                  )}
+                  <div>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">Uploaded</p>
+                    <p className="text-sm text-gray-900 dark:text-white">
+                      {formatDate(content.created_at)}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {(content.title || content.description) && (
+                <div>
+                  <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">
+                    Metadata
+                  </h3>
+                  <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-4 space-y-3">
+                    {content.title && (
+                      <div>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">Title</p>
+                        <p className="text-sm text-gray-900 dark:text-white">
+                          {content.title}
+                        </p>
+                      </div>
+                    )}
+                    {content.description && (
+                      <div>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">Description</p>
+                        <p className="text-sm text-gray-900 dark:text-white">
+                          {content.description}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Transcoding Status */}
+              {content.transcoding_status && content.transcoding_status !== 'completed' && (
+                <div>
+                  <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">
+                    Processing Status
+                  </h3>
+                  <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-4">
+                    <span
+                      className={`px-2 py-1 rounded text-xs ${
+                        content.transcoding_status === 'processing'
+                          ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
+                          : content.transcoding_status === 'failed'
+                            ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
+                            : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'
+                      }`}
+                    >
+                      {content.transcoding_status}
+                      {content.transcoding_progress > 0 && ` (${content.transcoding_progress}%)`}
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              {/* URL */}
+              <div>
+                <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">
+                  Direct URL
+                </h3>
+                <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-4">
+                  <p className="text-xs text-gray-600 dark:text-gray-400 break-all font-mono">
+                    {content.file_url}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </ModalOverlay>
+  );
 }

@@ -26,8 +26,11 @@ export const TABLE_STYLES = {
   // Table header (thead)
   thead: 'bg-gray-50 dark:bg-gray-900',
 
-  // Header cell (th)
+  // Header cell (th) - Normal
   th: 'px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider',
+
+  // Header cell (th) - Compact
+  thCompact: 'px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider',
 
   // Table body (tbody)
   tbody: 'bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700',
@@ -35,14 +38,20 @@ export const TABLE_STYLES = {
   // Body row (tr)
   tr: 'hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors',
 
-  // Body cell (td)
+  // Body cell (td) - Normal
   td: 'px-6 py-4 text-sm text-gray-900 dark:text-white',
+
+  // Body cell (td) - Compact
+  tdCompact: 'px-3 py-2 text-sm text-gray-900 dark:text-white',
 
   // Secondary/muted text within cells
   muted: 'text-gray-500 dark:text-gray-400',
 
-  // Whitespace nowrap cell
+  // Whitespace nowrap cell - Normal
   tdNoWrap: 'px-6 py-4 text-sm text-gray-900 dark:text-white whitespace-nowrap',
+
+  // Whitespace nowrap cell - Compact
+  tdNoWrapCompact: 'px-3 py-2 text-sm text-gray-900 dark:text-white whitespace-nowrap',
 
   // ============================================
   // ACTION BUTTON STYLES - For table row actions
@@ -104,6 +113,8 @@ export interface DataTableProps<T> {
   className?: string;
   /** Number of skeleton rows when loading */
   skeletonRows?: number;
+  /** Use compact row height (py-2 instead of py-4) */
+  compact?: boolean;
 }
 
 // ============================================
@@ -123,7 +134,11 @@ export function DataTable<T>({
   rowClassName,
   className,
   skeletonRows = 5,
+  compact = false,
 }: DataTableProps<T>) {
+  // Select styles based on compact mode
+  const thStyle = compact ? TABLE_STYLES.thCompact : TABLE_STYLES.th;
+  const tdStyle = compact ? TABLE_STYLES.tdCompact : TABLE_STYLES.td;
   // Loading state
   if (isLoading) {
     return (
@@ -157,7 +172,7 @@ export function DataTable<T>({
               {columns.map((column) => (
                 <th
                   key={column.key}
-                  className={cn(TABLE_STYLES.th, column.headerClassName)}
+                  className={cn(thStyle, column.headerClassName)}
                 >
                   {column.header}
                 </th>
@@ -178,7 +193,7 @@ export function DataTable<T>({
                 {columns.map((column) => (
                   <td
                     key={`${keyExtractor(item)}-${column.key}`}
-                    className={cn(TABLE_STYLES.td, column.className)}
+                    className={cn(tdStyle, column.className)}
                   >
                     {column.render
                       ? column.render(item, rowIndex)

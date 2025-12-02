@@ -29,13 +29,19 @@ export enum WSMessageType {
   COMMAND = 'command',
   COMMAND_RESPONSE = 'command_response',
 
-  // Playlist messages
+  // Playlist messages (legacy format)
   PLAYLIST_UPDATE = 'playlist_update',
   CONTENT_UPDATE = 'content_update',
+
+  // Playlist messages (backend colon format)
+  PLAYLIST_ASSIGNED = 'playlist:assigned',
+  PLAYLIST_UNASSIGNED = 'playlist:unassigned',
+  CONTENT_UPDATED = 'content:updated',
 
   // Device messages
   DEVICE_STATUS = 'device_status',
   DEVICE_CONFIG = 'device_config',
+  DEVICE_COMMAND = 'device:command',
 
   // Player messages
   PLAYER_STATE = 'player_state',
@@ -105,8 +111,8 @@ class SharedWebSocketClass {
       this.state = WSState.CONNECTING;
       SharedLogger.log('[WebSocket] Connecting to:', config.api.wsBaseURL);
 
-      // Build WebSocket URL with auth params
-      const wsUrl = `${config.api.wsBaseURL}/ws/device/${deviceId}?token=${deviceToken}`;
+      // Build WebSocket URL with auth params (backend router mounted at /api)
+      const wsUrl = `${config.api.wsBaseURL}/api/ws/device/${deviceId}?token=${deviceToken}`;
 
       this.ws = new WebSocket(wsUrl);
 
@@ -263,16 +269,29 @@ class SharedWebSocketClass {
    * Handle specific message types
    */
   private handleMessageType(message: WSMessage): void {
-    switch (message.type) {
+    // Handle both enum values and raw string types from backend
+    const msgType = message.type as string;
+
+    switch (msgType) {
       case WSMessageType.COMMAND:
+      case 'device:command':
         SharedEventBus.emit(EventNames.COMMAND_RECEIVED, message.data);
         break;
 
+      // Legacy format
       case WSMessageType.PLAYLIST_UPDATE:
+      case WSMessageType.CONTENT_UPDATE:
         SharedEventBus.emit(EventNames.PLAYLIST_CHANGED, message.data);
         break;
 
-      case WSMessageType.CONTENT_UPDATE:
+      // Backend colon format - playlist/content assignment triggers playlist reload
+      case WSMessageType.PLAYLIST_ASSIGNED:
+      case 'playlist:assigned':
+      case WSMessageType.PLAYLIST_UNASSIGNED:
+      case 'playlist:unassigned':
+      case WSMessageType.CONTENT_UPDATED:
+      case 'content:updated':
+        SharedLogger.log('[WebSocket] 🔄 Playlist/Content changed - triggering reload');
         SharedEventBus.emit(EventNames.PLAYLIST_CHANGED, message.data);
         break;
 
@@ -281,7 +300,7 @@ class SharedWebSocketClass {
         break;
 
       default:
-        SharedLogger.log(`[WebSocket] Unhandled message type: ${message.type}`);
+        SharedLogger.log(`[WebSocket] Unhandled message type: ${msgType}`);
     }
   }
 

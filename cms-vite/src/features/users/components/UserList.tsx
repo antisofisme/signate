@@ -97,15 +97,6 @@ export function UserList({
               </td>
               <td className={TABLE_STYLES.td}>
                 <div className="flex items-center gap-2">
-                  {onEdit && (
-                    <button
-                      onClick={() => onEdit(user)}
-                      className={TABLE_STYLES.actionBtnBlue}
-                      title={t('users.actions.editUser')}
-                    >
-                      <Edit className="w-4 h-4" />
-                    </button>
-                  )}
                   {onChangePassword && (
                     <button
                       onClick={() => onChangePassword(user)}
@@ -113,6 +104,15 @@ export function UserList({
                       title={t('users.actions.changePassword')}
                     >
                       <Key className="w-4 h-4" />
+                    </button>
+                  )}
+                  {onEdit && (
+                    <button
+                      onClick={() => onEdit(user)}
+                      className={TABLE_STYLES.actionBtnBlue}
+                      title={t('users.actions.editUser')}
+                    >
+                      <Edit className="w-4 h-4" />
                     </button>
                   )}
                   {onDelete && (

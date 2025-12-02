@@ -168,7 +168,8 @@
       "noDataAvailable": "Tidak ada data kesehatan",
       "deviceOffline": "Perangkat offline",
       "minutesAgo": "{{count}} menit lalu",
-      "justNow": "baru saja"
+      "justNow": "baru saja",
+      "activeAlerts": "peringatan aktif"
     },
     "actions": {
       "viewLogs": "Lihat log perangkat",
@@ -1619,36 +1620,57 @@
     },
     "stats": {
       "totalUsers": "Total Pengguna",
-      "active": "Aktif"
+      "active": "Pengguna Aktif"
     },
     "actions": {
-      "createUser": "Buat Pengguna",
+      "createUser": "Tambah Pengguna",
       "editUser": "Edit Pengguna",
       "deleteUser": "Hapus Pengguna",
       "changePassword": "Ubah Kata Sandi",
       "cancel": "Batal",
-      "change": "Ubah",
-      "update": "Perbarui",
-      "create": "Buat"
+      "change": "Ubah Kata Sandi",
+      "update": "Perbarui Pengguna",
+      "create": "Buat Pengguna",
+      "delete": "Hapus"
     },
     "delete": {
       "title": "Hapus Pengguna",
-      "message": "Apakah Anda yakin ingin menghapus pengguna ini?"
+      "message": "Apakah Anda yakin ingin menghapus",
+      "warning": "Tindakan ini tidak dapat dibatalkan."
     },
     "changePassword": {
       "title": "Ubah Kata Sandi",
       "user": "Pengguna",
-      "newPasswordPlaceholder": "Kata sandi baru",
+      "email": "Email",
+      "newPassword": "Kata Sandi Baru",
+      "newPasswordPlaceholder": "Masukkan kata sandi baru",
+      "confirmPassword": "Konfirmasi Kata Sandi",
+      "confirmPasswordPlaceholder": "Masukkan ulang kata sandi baru",
+      "requirements": "Persyaratan Kata Sandi:",
+      "minLength": "Minimal 8 karakter",
+      "uppercase": "Satu huruf besar",
+      "lowercase": "Satu huruf kecil",
+      "number": "Satu angka",
       "changing": "Mengubah..."
     },
     "form": {
       "createUser": "Buat Pengguna",
       "editUser": "Edit Pengguna",
-      "usernamePlaceholder": "Nama Pengguna",
-      "emailPlaceholder": "Email",
-      "fullNamePlaceholder": "Nama Lengkap",
-      "passwordPlaceholder": "Kata Sandi",
-      "activeLabel": "Aktif",
+      "username": "Nama Pengguna",
+      "usernamePlaceholder": "Masukkan nama pengguna",
+      "email": "Email",
+      "emailPlaceholder": "Masukkan alamat email",
+      "fullName": "Nama Lengkap",
+      "fullNamePlaceholder": "Masukkan nama lengkap (opsional)",
+      "password": "Kata Sandi",
+      "passwordPlaceholder": "Masukkan kata sandi",
+      "passwordHelp": "Min 8 karakter, minimal 1 huruf besar, 1 huruf kecil, dan 1 angka",
+      "role": "Peran",
+      "selectRole": "Pilih peran",
+      "organization": "Organisasi",
+      "selectOrganization": "Pilih organisasi",
+      "activeLabel": "Pengguna Aktif",
+      "activeHelp": "Pengguna tidak aktif tidak dapat masuk",
       "saving": "Menyimpan..."
     },
     "table": {
@@ -1662,6 +1684,7 @@
     "roles": {
       "super_admin": "Super Admin",
       "admin": "Admin",
+      "manager": "Manajer",
       "editor": "Editor",
       "viewer": "Pemirsa"
     },

@@ -13,11 +13,18 @@ interface SelectProps {
   disabled?: boolean;
 }
 
+interface SelectOption {
+  value: string;
+  label: string;
+}
+
 interface SelectContextValue {
   value: string;
   onValueChange: (value: string) => void;
   open: boolean;
   setOpen: (open: boolean) => void;
+  options: SelectOption[];
+  registerOption: (option: SelectOption) => void;
 }
 
 const SelectContext = React.createContext<SelectContextValue | undefined>(undefined);
@@ -32,7 +39,19 @@ function useSelectContext() {
 
 export function Select({ value, onValueChange, children, disabled = false }: SelectProps) {
   const [open, setOpen] = React.useState(false);
+  const [options, setOptions] = React.useState<SelectOption[]>([]);
   const containerRef = React.useRef<HTMLDivElement>(null);
+
+  // Register option to track labels
+  const registerOption = React.useCallback((option: SelectOption) => {
+    setOptions(prev => {
+      // Avoid duplicates
+      if (prev.some(o => o.value === option.value)) {
+        return prev;
+      }
+      return [...prev, option];
+    });
+  }, []);
 
   // Close dropdown when clicking outside the entire select container
   React.useEffect(() => {
@@ -52,7 +71,7 @@ export function Select({ value, onValueChange, children, disabled = false }: Sel
   }, [open]);
 
   return (
-    <SelectContext.Provider value={{ value, onValueChange, open, setOpen }}>
+    <SelectContext.Provider value={{ value, onValueChange, open, setOpen, options, registerOption }}>
       <div ref={containerRef} className="relative inline-block w-full">{children}</div>
     </SelectContext.Provider>
   );
@@ -101,11 +120,15 @@ interface SelectValueProps {
 }
 
 export function SelectValue({ placeholder = 'Select...' }: SelectValueProps) {
-  const { value } = useSelectContext();
+  const { value, options } = useSelectContext();
+
+  // Find the label for the current value
+  const selectedOption = options.find(o => o.value === value);
+  const displayText = selectedOption?.label || value || placeholder;
 
   return (
-    <span className="block truncate text-gray-900 dark:text-white">
-      {value || placeholder}
+    <span className={`block truncate ${value ? 'text-gray-900 dark:text-white' : 'text-gray-500 dark:text-gray-400'}`}>
+      {displayText}
     </span>
   );
 }
@@ -143,8 +166,15 @@ interface SelectItemProps {
 }
 
 export function SelectItem({ value, children, className = '' }: SelectItemProps) {
-  const { value: selectedValue, onValueChange, setOpen } = useSelectContext();
+  const { value: selectedValue, onValueChange, setOpen, registerOption } = useSelectContext();
   const isSelected = selectedValue === value;
+
+  // Register this option so SelectValue can show the label
+  React.useEffect(() => {
+    // Extract text content from children for the label
+    const label = typeof children === 'string' ? children : value;
+    registerOption({ value, label });
+  }, [value, children, registerOption]);
 
   return (
     <button

@@ -95,6 +95,12 @@ class NetworkSpeedTestClass {
         }
       });
 
+      // Force upload immediately for manual tests (so CMS can see results right away)
+      if (trigger === 'manual') {
+        SharedLogger.log('[NetworkSpeedTest] Manual test - forcing immediate upload');
+        await ConnectionLogger.forceUpload();
+      }
+
       this.isTesting = false;
       return result;
     } catch (error) {

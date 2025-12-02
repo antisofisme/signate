@@ -63,6 +63,7 @@ type CreateUserFormData = z.infer<typeof createUserSchema>;
 type UpdateUserFormData = z.infer<typeof updateUserSchema>;
 
 interface UserFormProps {
+  isOpen: boolean;
   user?: User;
   organizations: Array<{ id: number; name: string }>;
   onClose: () => void;
@@ -70,7 +71,7 @@ interface UserFormProps {
   isLoading: boolean;
 }
 
-export function UserForm({ user, organizations, onClose, onSubmit, isLoading }: UserFormProps) {
+export function UserForm({ isOpen, user, organizations, onClose, onSubmit, isLoading }: UserFormProps) {
   const { t } = useTranslation();
   const isEditing = !!user;
 
@@ -133,9 +134,32 @@ export function UserForm({ user, organizations, onClose, onSubmit, isLoading }: 
     onClose();
   };
 
+  const footer = (
+    <div className="flex justify-end gap-3 px-6 py-4 border-t border-gray-200 dark:border-gray-700">
+      <Button
+        type="button"
+        variant="secondary"
+        onClick={handleClose}
+        disabled={isLoading}
+      >
+        {t('common.cancel') || 'Cancel'}
+      </Button>
+      <Button
+        type="submit"
+        form="user-form"
+        variant="primary"
+        disabled={isLoading}
+        loading={isLoading}
+        leftIcon={isEditing ? <Save className="w-4 h-4" /> : <UserPlus className="w-4 h-4" />}
+      >
+        {isEditing ? (t('users.actions.update') || 'Update User') : (t('users.actions.create') || 'Create User')}
+      </Button>
+    </div>
+  );
+
   return (
     <Modal
-      isOpen={true}
+      isOpen={isOpen}
       onClose={handleClose}
       title={
         isEditing
@@ -143,9 +167,10 @@ export function UserForm({ user, organizations, onClose, onSubmit, isLoading }: 
           : t('users.form.createUser') || 'Create User'
       }
       maxWidth="2xl"
+      footer={footer}
     >
       <FormProvider {...methods}>
-        <form onSubmit={methods.handleSubmit(handleSubmit)} className="space-y-4">
+        <form id="user-form" onSubmit={methods.handleSubmit(handleSubmit)} className="p-6 space-y-4">
           {/* Username */}
           <FormInput
             name="username"
@@ -208,27 +233,6 @@ export function UserForm({ user, organizations, onClose, onSubmit, isLoading }: 
               description={t('users.form.activeHelp') || 'Inactive users cannot log in'}
             />
           )}
-
-          {/* Actions */}
-          <div className="flex justify-end gap-3 pt-4">
-            <Button
-              type="button"
-              variant="secondary"
-              onClick={handleClose}
-              disabled={isLoading}
-            >
-              {t('common.cancel') || 'Cancel'}
-            </Button>
-            <Button
-              type="submit"
-              variant="primary"
-              disabled={isLoading}
-              loading={isLoading}
-              leftIcon={isEditing ? <Save className="w-4 h-4" /> : <UserPlus className="w-4 h-4" />}
-            >
-              {isEditing ? (t('users.actions.update') || 'Update User') : (t('users.actions.create') || 'Create User')}
-            </Button>
-          </div>
         </form>
       </FormProvider>
     </Modal>

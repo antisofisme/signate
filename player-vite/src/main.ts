@@ -295,6 +295,16 @@ const initApp = async () => {
         apiBaseUrl: config.api.baseURL,
       });
 
+      // Initialize SharedWebSocket for real-time updates (playlist/content changes)
+      SharedLogger.log('[Main] Initializing SharedWebSocket for real-time updates...');
+      try {
+        const { SharedWebSocket } = await import('@shared/websocket');
+        SharedWebSocket.connect();
+        SharedLogger.log('[Main] ✅ SharedWebSocket connection initiated');
+      } catch (wsError) {
+        SharedLogger.warn('[Main] ⚠️ SharedWebSocket connection failed:', wsError);
+      }
+
       // Initialize WebSocket control client for console streaming
       SharedLogger.log('[Main] Initializing console WebSocket client...');
 

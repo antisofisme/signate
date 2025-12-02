@@ -244,11 +244,8 @@ export function OverviewTab({ device, isOnline, onRefresh, onOpenPreview }: Over
           </div>
         )}
 
-        {/* Mini Health Snapshot */}
-        <MiniHealthSnapshot
-          deviceId={device.id}
-          isOnline={isOnline}
-        />
+        {/* Mini Health Snapshot with Alerts */}
+        <MiniHealthSnapshot deviceId={device.id} isOnline={isOnline} />
 
         {/* Timestamps Card */}
         <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
