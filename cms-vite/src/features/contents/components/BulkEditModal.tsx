@@ -2,7 +2,7 @@
  * Bulk Edit Modal Component
  * Edit multiple content items at once with simplified bulk update
  *
- * ✅ REFACTORED: Now uses shared Modal component
+ * ✅ REFACTORED: Uses React Hook Form + Zod + Pure Tailwind
  * - Fixed header (title + subtitle)
  * - Fixed footer (action buttons)
  * - Scrollable content (bulk fields + content list with progress tracking)
@@ -11,14 +11,25 @@
 
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useForm, FormProvider } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
 import { Save, FileImage, FileVideo, FileAudio, Loader2 } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { Modal, Button } from '@/shared/components';
+import { Modal, Button, FormInput, FormSelect } from '@/shared/components';
 import { apiClient } from '@/lib/api/client';
 import { API_ENDPOINTS } from '@/lib/api/endpoints';
 import type { Content } from '../types/content';
 import { contentKeys } from '../hooks/useContent';
+
+// Zod validation schema
+const bulkEditSchema = z.object({
+  duration: z.string().optional(), // String to allow empty value
+  is_active: z.string(), // 'true', 'false', or '' for no change
+});
+
+type BulkEditForm = z.infer<typeof bulkEditSchema>;
 
 interface BulkEditModalProps {
   isOpen: boolean;
@@ -32,16 +43,26 @@ export function BulkEditModal({ isOpen, onClose, selectedContent }: BulkEditModa
   const [updating, setUpdating] = useState(false);
   const [updateProgress, setUpdateProgress] = useState<{[key: number]: 'pending' | 'updating' | 'success' | 'error'}>({});
 
-  // Bulk update mode: Apply same changes to all
-  const [bulkDuration, setBulkDuration] = useState<number | ''>('');
-  const [bulkIsActive, setBulkIsActive] = useState<boolean | null>(null);
+  // Initialize React Hook Form with Zod resolver
+  const methods = useForm<BulkEditForm>({
+    resolver: zodResolver(bulkEditSchema),
+    defaultValues: {
+      duration: '',
+      is_active: '',
+    },
+  });
+
+  const { handleSubmit, watch, reset } = methods;
+  const durationValue = watch('duration');
+  const isActiveValue = watch('is_active');
 
   if (!isOpen) return null;
 
-  const handleBulkUpdate = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const onSubmit = async (data: BulkEditForm) => {
+    const duration = data.duration ? parseInt(data.duration, 10) : null;
+    const isActive = data.is_active === '' ? null : data.is_active === 'true';
 
-    if (bulkDuration === '' && bulkIsActive === null) {
+    if (duration === null && isActive === null) {
       toast.error(t('contents.messages.setAtLeastOneField'));
       return;
     }
@@ -64,8 +85,8 @@ export function BulkEditModal({ isOpen, onClose, selectedContent }: BulkEditModa
         setUpdateProgress(prev => ({ ...prev, [content.id]: 'updating' }));
 
         const updateData: any = {};
-        if (bulkDuration !== '') updateData.duration = bulkDuration;
-        if (bulkIsActive !== null) updateData.is_active = bulkIsActive;
+        if (duration !== null) updateData.duration = duration;
+        if (isActive !== null) updateData.is_active = isActive;
 
         await apiClient.put(API_ENDPOINTS.CONTENT.UPDATE(content.id), updateData);
 
@@ -86,6 +107,7 @@ export function BulkEditModal({ isOpen, onClose, selectedContent }: BulkEditModa
     });
 
     setUpdating(false);
+    reset();
 
     // Show result
     if (failCount === 0) {
@@ -144,6 +166,9 @@ export function BulkEditModal({ isOpen, onClose, selectedContent }: BulkEditModa
     </div>
   );
 
+  // Check if any field has a value
+  const hasChanges = (durationValue && durationValue !== '') || (isActiveValue && isActiveValue !== '');
+
   // Footer with action buttons
   const footer = (
     <div className="border-t border-gray-200 dark:border-gray-700 px-6 py-4">
@@ -159,7 +184,7 @@ export function BulkEditModal({ isOpen, onClose, selectedContent }: BulkEditModa
           variant="primary"
           type="submit"
           form="bulk-edit-form"
-          disabled={updating || (bulkDuration === '' && bulkIsActive === null)}
+          disabled={updating || !hasChanges}
           loading={updating}
           leftIcon={!updating ? <Save className="w-4 h-4" /> : undefined}
         >
@@ -171,6 +196,13 @@ export function BulkEditModal({ isOpen, onClose, selectedContent }: BulkEditModa
       </div>
     </div>
   );
+
+  // Active status options
+  const activeStatusOptions = [
+    { value: '', label: t('contents.form.dontChange') },
+    { value: 'true', label: t('contents.form.active') },
+    { value: 'false', label: t('contents.form.inactive') },
+  ];
 
   return (
     <Modal
@@ -184,48 +216,35 @@ export function BulkEditModal({ isOpen, onClose, selectedContent }: BulkEditModa
     >
       {/* Scrollable content */}
       <div className="flex-1 overflow-y-auto p-6">
-        <form id="bulk-edit-form" onSubmit={handleBulkUpdate} className="space-y-6">
-          {/* Bulk Update Fields */}
-          <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
-            <h3 className="text-sm font-semibold text-blue-900 dark:text-blue-300 mb-3">
-              {t('contents.form.applyToAll')}
-            </h3>
-            <div className="grid grid-cols-2 gap-4">
-              {/* Duration */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  {t('contents.form.durationSeconds')}
-                </label>
-                <input
+        <FormProvider {...methods}>
+          <form id="bulk-edit-form" onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+            {/* Bulk Update Fields */}
+            <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+              <h3 className="text-sm font-semibold text-blue-900 dark:text-blue-300 mb-3">
+                {t('contents.form.applyToAll')}
+              </h3>
+              <div className="grid grid-cols-2 gap-4">
+                {/* Duration */}
+                <FormInput
+                  name="duration"
                   type="number"
-                  value={bulkDuration}
-                  onChange={(e) => setBulkDuration(e.target.value ? parseInt(e.target.value) : '')}
-                  disabled={updating}
-                  className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white disabled:opacity-50"
+                  label={t('contents.form.durationSeconds')}
                   placeholder={t('contents.form.leaveEmptyToSkip')}
                   min={1}
                   max={86400}
+                  disabled={updating}
+                />
+
+                {/* Active Status */}
+                <FormSelect
+                  name="is_active"
+                  label={t('contents.form.activeStatus')}
+                  options={activeStatusOptions}
+                  placeholder=""
+                  disabled={updating}
                 />
               </div>
-
-              {/* Active Status */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  {t('contents.form.activeStatus')}
-                </label>
-                <select
-                  value={bulkIsActive === null ? '' : bulkIsActive.toString()}
-                  onChange={(e) => setBulkIsActive(e.target.value === '' ? null : e.target.value === 'true')}
-                  disabled={updating}
-                  className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white disabled:opacity-50"
-                >
-                  <option value="">{t('contents.form.dontChange')}</option>
-                  <option value="true">{t('contents.form.active')}</option>
-                  <option value="false">{t('contents.form.inactive')}</option>
-                </select>
-              </div>
             </div>
-          </div>
 
           {/* Selected Content List */}
           <div>
@@ -256,7 +275,8 @@ export function BulkEditModal({ isOpen, onClose, selectedContent }: BulkEditModa
               ))}
             </div>
           </div>
-        </form>
+          </form>
+        </FormProvider>
       </div>
     </Modal>
   );

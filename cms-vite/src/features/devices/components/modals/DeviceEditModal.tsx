@@ -2,15 +2,29 @@
  * Device Edit Modal Component
  *
  * Edit device settings and configuration
- * Uses centralized Modal component
+ * Uses centralized Modal component + React Hook Form
  */
 
-import { useState, useEffect } from 'react';
+import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useForm, FormProvider } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
 import { Save, Loader2 } from 'lucide-react';
 import { Modal } from '@/shared/components';
+import { FormInput, FormSelect, FormCheckbox } from '@/shared/components/form';
 import { useUpdateDevice } from '../../hooks/useDevices';
 import type { Device } from '../../types/device';
+
+// Form validation schema
+const deviceEditSchema = z.object({
+  device_name: z.string().min(1, 'Nama device harus diisi').max(200),
+  rotation: z.string(), // stored as string, converted to number on submit
+  volume_enabled: z.boolean(),
+  room_number: z.string().max(50).optional(),
+});
+
+type DeviceEditFormData = z.infer<typeof deviceEditSchema>;
 
 interface DeviceEditModalProps {
   isOpen: boolean;
@@ -26,79 +40,76 @@ export function DeviceEditModal({
   onSuccess,
 }: DeviceEditModalProps) {
   const { t } = useTranslation();
-  const [formData, setFormData] = useState({
-    device_name: '',
-    rotation: 0,
-    volume_enabled: true,
-    room_number: '',
-  });
-  const [error, setError] = useState<string | null>(null);
-
   const updateMutation = useUpdateDevice();
+
+  const methods = useForm<DeviceEditFormData>({
+    resolver: zodResolver(deviceEditSchema),
+    defaultValues: {
+      device_name: '',
+      rotation: '0',
+      volume_enabled: true,
+      room_number: '',
+    },
+  });
+
+  const {
+    handleSubmit,
+    reset,
+    setError,
+    formState: { errors },
+  } = methods;
 
   // Initialize form when device changes
   useEffect(() => {
-    if (device) {
-      setFormData({
+    if (device && isOpen) {
+      reset({
         device_name: device.device_name,
-        rotation: device.rotation || 0,
+        rotation: String(device.rotation || 0),
         volume_enabled: device.is_volume_enabled !== false,
         room_number: device.room_number || '',
       });
     }
-  }, [device]);
+  }, [device, isOpen, reset]);
 
   if (!device) return null;
-
-  // Reset form
-  const resetForm = () => {
-    if (device) {
-      setFormData({
-        device_name: device.device_name,
-        rotation: device.rotation || 0,
-        volume_enabled: device.is_volume_enabled !== false,
-        room_number: device.room_number || '',
-      });
-    }
-    setError(null);
-  };
 
   // Handle close
   const handleClose = () => {
     if (!updateMutation.isPending) {
-      resetForm();
+      reset();
       onClose();
     }
   };
 
   // Handle submit
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError(null);
-
-    // Validation
-    if (!formData.device_name.trim()) {
-      setError(t('devices.modals.errors.nameRequired'));
-      return;
-    }
-
+  const onSubmit = async (data: DeviceEditFormData) => {
     try {
       await updateMutation.mutateAsync({
         id: device.id,
         data: {
-          device_name: formData.device_name.trim(),
-          rotation: formData.rotation,
-          is_volume_enabled: formData.volume_enabled,
-          room_number: formData.room_number.trim() || undefined,
+          device_name: data.device_name.trim(),
+          rotation: parseInt(data.rotation, 10),
+          is_volume_enabled: data.volume_enabled,
+          room_number: data.room_number?.trim() || undefined,
         },
       });
 
       onSuccess?.();
       handleClose();
     } catch (err: any) {
-      setError(err?.response?.data?.detail || t('devices.modals.errors.updateFailed'));
+      setError('root', {
+        message: err?.response?.data?.detail || t('devices.modals.errors.updateFailed'),
+      });
     }
   };
+
+  // Rotation options
+  const rotationOptions = [
+    { value: '0', label: t('devices.modals.rotation0') },
+    { value: '90', label: t('devices.modals.rotation90') },
+    { value: '180', label: t('devices.modals.rotation180') },
+    { value: '270', label: t('devices.modals.rotation270') },
+  ];
 
   // Footer
   const footer = (
@@ -142,107 +153,60 @@ export function DeviceEditModal({
       maxWidth="md"
       footer={footer}
     >
-      {/* Form */}
-      <form id="device-edit-form" onSubmit={handleSubmit} className="p-6 space-y-4">
-        {/* Error Message */}
-        {error && (
-          <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3">
-            <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
-          </div>
-        )}
+      <FormProvider {...methods}>
+        <form id="device-edit-form" onSubmit={handleSubmit(onSubmit)} className="p-6 space-y-4">
+          {/* Root Error Message */}
+          {errors.root && (
+            <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3">
+              <p className="text-sm text-red-600 dark:text-red-400">{errors.root.message}</p>
+            </div>
+          )}
 
-        {/* Device Name */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-            {t('devices.modals.deviceNameLabel')} <span className="text-red-500">*</span>
-          </label>
-          <input
-            type="text"
-            value={formData.device_name}
-            onChange={(e) => {
-              setFormData((prev) => ({ ...prev, device_name: e.target.value }));
-              setError(null);
-            }}
+          {/* Device Name */}
+          <FormInput
+            name="device_name"
+            label={t('devices.modals.deviceNameLabel')}
             placeholder={t('devices.placeholders.deviceName')}
-            maxLength={200}
-            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            disabled={updateMutation.isPending}
             required
-          />
-        </div>
-
-        {/* Rotation */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-            {t('devices.modals.screenRotation')}
-          </label>
-          <select
-            value={formData.rotation}
-            onChange={(e) =>
-              setFormData((prev) => ({ ...prev, rotation: parseInt(e.target.value) }))
-            }
-            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             disabled={updateMutation.isPending}
-          >
-            <option value={0}>{t('devices.modals.rotation0')}</option>
-            <option value={90}>{t('devices.modals.rotation90')}</option>
-            <option value={180}>{t('devices.modals.rotation180')}</option>
-            <option value={270}>{t('devices.modals.rotation270')}</option>
-          </select>
-          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-            {t('devices.modals.rotationHelp')}
-          </p>
-        </div>
+            maxLength={200}
+          />
 
-        {/* Volume Enabled */}
-        <div>
-          <label className="flex items-center gap-2 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={formData.volume_enabled}
-              onChange={(e) =>
-                setFormData((prev) => ({ ...prev, volume_enabled: e.target.checked }))
-              }
-              className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-              disabled={updateMutation.isPending}
-            />
-            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-              {t('devices.modals.enableAudio')}
-            </span>
-          </label>
-          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 ml-6">
-            {t('devices.modals.audioHelp')}
-          </p>
-        </div>
+          {/* Rotation */}
+          <FormSelect
+            name="rotation"
+            label={t('devices.modals.screenRotation')}
+            options={rotationOptions}
+            description={t('devices.modals.rotationHelp')}
+            disabled={updateMutation.isPending}
+          />
 
-        {/* Room Number (Optional) */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-            {t('devices.modals.roomNumberOptional')}
-          </label>
-          <input
-            type="text"
-            value={formData.room_number}
-            onChange={(e) =>
-              setFormData((prev) => ({ ...prev, room_number: e.target.value }))
-            }
+          {/* Volume Enabled */}
+          <FormCheckbox
+            name="volume_enabled"
+            label={t('devices.modals.enableAudio')}
+            description={t('devices.modals.audioHelp')}
+            disabled={updateMutation.isPending}
+          />
+
+          {/* Room Number (Optional) */}
+          <FormInput
+            name="room_number"
+            label={t('devices.modals.roomNumberOptional')}
             placeholder={t('devices.placeholders.roomNumber')}
-            maxLength={50}
-            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            description={t('devices.modals.roomHelp')}
             disabled={updateMutation.isPending}
+            maxLength={50}
           />
-          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-            {t('devices.modals.roomHelp')}
-          </p>
-        </div>
 
-        {/* Info Box */}
-        <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
-          <p className="text-sm text-blue-700 dark:text-blue-300">
-            <strong>{t('devices.modals.changesNote')}</strong> {t('devices.modals.changesEffect')}
-          </p>
-        </div>
-      </form>
+          {/* Info Box */}
+          <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
+            <p className="text-sm text-blue-700 dark:text-blue-300">
+              <strong>{t('devices.modals.changesNote')}</strong> {t('devices.modals.changesEffect')}
+            </p>
+          </div>
+        </form>
+      </FormProvider>
     </Modal>
   );
 }

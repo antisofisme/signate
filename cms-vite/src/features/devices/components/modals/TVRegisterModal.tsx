@@ -2,15 +2,30 @@
  * TV Register Modal Component
  *
  * Modal for registering TV devices (WebOS/native apps)
- * Uses centralized Modal component
+ * Uses centralized Modal component + React Hook Form
  */
 
-import { useState } from 'react';
+import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useForm, FormProvider } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
 import { Tv, Loader2 } from 'lucide-react';
 import { Modal } from '@/shared/components';
+import { FormInput, ActivationCodeInput } from '@/shared/components/form';
 import { useTVRegister } from '../../hooks/useDevices';
 import type { Device } from '../../types/device';
+
+// Form validation schema
+const tvRegisterSchema = z.object({
+  activation_code: z
+    .string()
+    .length(6, 'Kode aktivasi harus 6 digit')
+    .regex(/^\d+$/, 'Kode aktivasi hanya boleh angka'),
+  device_name: z.string().min(1, 'Nama device harus diisi').max(200),
+});
+
+type TVRegisterFormData = z.infer<typeof tvRegisterSchema>;
 
 interface TVRegisterModalProps {
   isOpen: boolean;
@@ -20,16 +35,32 @@ interface TVRegisterModalProps {
 
 export function TVRegisterModal({ isOpen, onClose, onSuccess }: TVRegisterModalProps) {
   const { t } = useTranslation();
-  const [formData, setFormData] = useState({
-    activation_code: '',
-    device_name: '',
-    platform: 'webOS',
-    model_name: '',
-    firmware_version: '',
-  });
-  const [error, setError] = useState<string | null>(null);
-
   const registerMutation = useTVRegister();
+
+  const methods = useForm<TVRegisterFormData>({
+    resolver: zodResolver(tvRegisterSchema),
+    defaultValues: {
+      activation_code: '',
+      device_name: '',
+    },
+  });
+
+  const {
+    handleSubmit,
+    reset,
+    setError,
+    formState: { errors },
+  } = methods;
+
+  // Reset form when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      reset({
+        activation_code: '',
+        device_name: '',
+      });
+    }
+  }, [isOpen, reset]);
 
   // Helper to format error messages
   const formatErrorMessage = (err: any): string => {
@@ -44,52 +75,29 @@ export function TVRegisterModal({ isOpen, onClose, onSuccess }: TVRegisterModalP
     return t('devices.modals.errors.failedToActivate');
   };
 
-  // Reset form
-  const resetForm = () => {
-    setFormData({
-      activation_code: '',
-      device_name: '',
-      platform: 'webOS',
-      model_name: '',
-      firmware_version: '',
-    });
-    setError(null);
-  };
-
   // Handle close
   const handleClose = () => {
     if (!registerMutation.isPending) {
-      resetForm();
+      reset();
       onClose();
     }
   };
 
   // Handle submit
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError(null);
-
-    if (!formData.activation_code || formData.activation_code.length !== 6) {
-      setError(t('devices.modals.errors.codeRequired'));
-      return;
-    }
-
-    if (!formData.device_name.trim()) {
-      setError(t('devices.modals.errors.nameRequired'));
-      return;
-    }
-
+  const onSubmit = async (data: TVRegisterFormData) => {
     try {
       const device = await registerMutation.mutateAsync({
-        unique_code: formData.activation_code,
-        device_name: formData.device_name.trim(),
+        unique_code: data.activation_code,
+        device_name: data.device_name.trim(),
       });
 
-      resetForm();
+      reset();
       onSuccess?.(device);
       onClose();
     } catch (err: any) {
-      setError(formatErrorMessage(err));
+      setError('root', {
+        message: formatErrorMessage(err),
+      });
     }
   };
 
@@ -151,66 +159,43 @@ export function TVRegisterModal({ isOpen, onClose, onSuccess }: TVRegisterModalP
       customHeader={customHeader}
       footer={footerContent}
     >
-      {/* Form */}
-      <form id="tv-register-form" onSubmit={handleSubmit} className="p-6 space-y-4">
-        {/* Error Message */}
-        {error && (
-          <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3">
-            <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
-          </div>
-        )}
+      <FormProvider {...methods}>
+        <form id="tv-register-form" onSubmit={handleSubmit(onSubmit)} className="p-6 space-y-4">
+          {/* Root Error Message */}
+          {errors.root && (
+            <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3">
+              <p className="text-sm text-red-600 dark:text-red-400">{errors.root.message}</p>
+            </div>
+          )}
 
-        {/* Activation Code */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-            {t('devices.modals.activationCodeLabel')} <span className="text-red-500">*</span>
-          </label>
-          <input
-            type="text"
-            value={formData.activation_code}
-            onChange={(e) => {
-              const value = e.target.value.replace(/\D/g, '').slice(0, 6);
-              setFormData((prev) => ({ ...prev, activation_code: value }));
-              setError(null);
-            }}
+          {/* Activation Code */}
+          <ActivationCodeInput
+            name="activation_code"
+            label={t('devices.modals.activationCodeLabel')}
             placeholder={t('devices.placeholders.enterCode')}
-            maxLength={6}
-            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white font-mono text-lg tracking-widest text-center focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            disabled={registerMutation.isPending}
+            description={t('devices.modals.codeHelp')}
             required
+            disabled={registerMutation.isPending}
           />
-          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-            {t('devices.modals.codeHelp')}
-          </p>
-        </div>
 
-        {/* Device Name */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-            {t('devices.modals.deviceNameLabel')} <span className="text-red-500">*</span>
-          </label>
-          <input
-            type="text"
-            value={formData.device_name}
-            onChange={(e) => {
-              setFormData((prev) => ({ ...prev, device_name: e.target.value }));
-              setError(null);
-            }}
+          {/* Device Name */}
+          <FormInput
+            name="device_name"
+            label={t('devices.modals.deviceNameLabel')}
             placeholder={t('devices.placeholders.deviceName')}
-            maxLength={200}
-            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            disabled={registerMutation.isPending}
             required
+            disabled={registerMutation.isPending}
+            maxLength={200}
           />
-        </div>
 
-        {/* Info Box */}
-        <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
-          <p className="text-sm text-blue-700 dark:text-blue-300">
-            <strong>{t('devices.modals.howItWorks')}</strong> {t('devices.modals.howItWorksDesc')}
-          </p>
-        </div>
-      </form>
+          {/* Info Box */}
+          <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
+            <p className="text-sm text-blue-700 dark:text-blue-300">
+              <strong>{t('devices.modals.howItWorks')}</strong> {t('devices.modals.howItWorksDesc')}
+            </p>
+          </div>
+        </form>
+      </FormProvider>
     </Modal>
   );
 }

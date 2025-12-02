@@ -2,19 +2,39 @@
  * Edit Content Modal Component
  * Edit individual content metadata
  *
- * ✅ REFACTORED: Now uses shared Modal component
+ * ✅ REFACTORED: Uses React Hook Form + Zod + Pure Tailwind
  * - Fixed header (title)
  * - Fixed footer (buttons)
  * - Scrollable content (form fields)
  * - Click outside to close
  */
 
-import { useState, useEffect } from 'react';
+import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useForm, FormProvider } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
 import { Save, Loader2 } from 'lucide-react';
-import { Modal } from '@/shared/components';
+import { Modal, FormInput, FormTextarea, FormSwitch } from '@/shared/components';
 import { useUpdateContent } from '../hooks/useContent';
 import type { Content } from '../types/content';
+
+// Zod validation schema
+const editContentSchema = z.object({
+  title: z
+    .string()
+    .min(1, 'Title is required')
+    .max(200, 'Title must be less than 200 characters')
+    .trim(),
+  description: z.string().max(1000, 'Description must be less than 1000 characters').optional(),
+  duration: z
+    .number()
+    .min(1, 'Duration must be at least 1 second')
+    .max(86400, 'Duration cannot exceed 24 hours'),
+  is_active: z.boolean(),
+});
+
+type EditContentForm = z.infer<typeof editContentSchema>;
 
 interface EditContentModalProps {
   isOpen: boolean;
@@ -24,40 +44,44 @@ interface EditContentModalProps {
 
 export function EditContentModal({ isOpen, onClose, content }: EditContentModalProps) {
   const { t } = useTranslation();
-  const [title, setTitle] = useState('');
-  const [description, setDescription] = useState('');
-  const [duration, setDuration] = useState(10);
-  const [isActive, setIsActive] = useState(true);
-
   const updateMutation = useUpdateContent();
+
+  // Initialize React Hook Form with Zod resolver
+  const methods = useForm<EditContentForm>({
+    resolver: zodResolver(editContentSchema),
+    defaultValues: {
+      title: '',
+      description: '',
+      duration: 10,
+      is_active: true,
+    },
+  });
+
+  const { handleSubmit, reset, formState: { isValid } } = methods;
 
   // Pre-populate form when content changes
   useEffect(() => {
     if (content) {
-      setTitle(content.title || '');
-      setDescription(content.description || '');
-      setDuration(content.duration || 10);
-      setIsActive(content.is_active ?? true);
+      reset({
+        title: content.title || '',
+        description: content.description || '',
+        duration: content.duration || 10,
+        is_active: content.is_active ?? true,
+      });
     }
-  }, [content]);
+  }, [content, reset]);
 
   if (!content) return null;
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (!title.trim()) {
-      return;
-    }
-
+  const onSubmit = async (data: EditContentForm) => {
     try {
       await updateMutation.mutateAsync({
         id: content.id,
         data: {
-          title: title.trim(),
-          description: description.trim() || undefined,
-          duration,
-          is_active: isActive,
+          title: data.title.trim(),
+          description: data.description?.trim() || undefined,
+          duration: data.duration,
+          is_active: data.is_active,
         },
       });
 
@@ -88,7 +112,7 @@ export function EditContentModal({ isOpen, onClose, content }: EditContentModalP
         <button
           type="submit"
           form="edit-content-form"
-          disabled={!title.trim() || updateMutation.isPending}
+          disabled={!isValid || updateMutation.isPending}
           className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 transition-colors"
         >
           {updateMutation.isPending ? (
@@ -117,94 +141,65 @@ export function EditContentModal({ isOpen, onClose, content }: EditContentModalP
       closeOnBackdropClick={!updateMutation.isPending}
     >
       {/* Scrollable content */}
-      <form id="edit-content-form" onSubmit={handleSubmit} className="p-6 space-y-6">
-        {/* Content Info */}
-        <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
-          <div className="grid grid-cols-2 gap-4 text-sm">
-            <div>
-              <p className="text-gray-500 dark:text-gray-400">{t('contents.form.fileName')}</p>
-              <p className="text-gray-900 dark:text-white font-medium truncate">
-                {content.original_filename}
-              </p>
-            </div>
-            <div>
-              <p className="text-gray-500 dark:text-gray-400">{t('contents.form.type')}</p>
-              <p className="text-gray-900 dark:text-white font-medium">
-                {content.content_type.toUpperCase()}
-              </p>
+      <FormProvider {...methods}>
+        <form id="edit-content-form" onSubmit={handleSubmit(onSubmit)} className="p-6 space-y-6">
+          {/* Content Info */}
+          <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
+            <div className="grid grid-cols-2 gap-4 text-sm">
+              <div>
+                <p className="text-gray-500 dark:text-gray-400">{t('contents.form.fileName')}</p>
+                <p className="text-gray-900 dark:text-white font-medium truncate">
+                  {content.original_filename}
+                </p>
+              </div>
+              <div>
+                <p className="text-gray-500 dark:text-gray-400">{t('contents.form.type')}</p>
+                <p className="text-gray-900 dark:text-white font-medium">
+                  {content.content_type.toUpperCase()}
+                </p>
+              </div>
             </div>
           </div>
-        </div>
 
-        {/* Title */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-            {t('contents.form.title')}
-          </label>
-          <input
-            type="text"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            disabled={updateMutation.isPending}
-            className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white disabled:opacity-50"
+          {/* Title */}
+          <FormInput
+            name="title"
+            label={t('contents.form.title')}
             placeholder={t('contents.placeholders.title')}
             required
-          />
-        </div>
-
-        {/* Description */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-            {t('contents.form.description')}
-          </label>
-          <textarea
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
             disabled={updateMutation.isPending}
-            className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white disabled:opacity-50"
+          />
+
+          {/* Description */}
+          <FormTextarea
+            name="description"
+            label={t('contents.form.description')}
             placeholder={t('contents.placeholders.description')}
             rows={3}
-          />
-        </div>
-
-        {/* Duration */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-            {t('contents.form.displayDuration')}
-          </label>
-          <input
-            type="number"
-            value={duration}
-            onChange={(e) => setDuration(parseInt(e.target.value))}
             disabled={updateMutation.isPending}
-            className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white disabled:opacity-50"
+          />
+
+          {/* Duration */}
+          <FormInput
+            name="duration"
+            type="number"
+            label={t('contents.form.displayDuration')}
+            description={t('contents.form.durationHelp')}
             min={1}
             max={86400}
             required
-          />
-          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-            {t('contents.form.durationHelp')}
-          </p>
-        </div>
-
-        {/* Active Status */}
-        <div className="flex items-center">
-          <input
-            type="checkbox"
-            id="edit-is-active"
-            checked={isActive}
-            onChange={(e) => setIsActive(e.target.checked)}
             disabled={updateMutation.isPending}
-            className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
           />
-          <label
-            htmlFor="edit-is-active"
-            className="ml-2 text-sm font-medium text-gray-700 dark:text-gray-300"
-          >
-            {t('contents.form.activeLabel')}
-          </label>
-        </div>
-      </form>
+
+          {/* Active Status */}
+          <FormSwitch
+            name="is_active"
+            label={t('contents.form.activeLabel')}
+            description={t('contents.form.activeDescription')}
+            disabled={updateMutation.isPending}
+          />
+        </form>
+      </FormProvider>
     </Modal>
   );
 }

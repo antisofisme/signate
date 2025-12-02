@@ -2,15 +2,31 @@
  * Monitor Register Modal Component
  *
  * Modal for registering Monitor devices (browser-based)
- * Uses centralized Modal component
+ * Uses centralized Modal component + React Hook Form
  */
 
-import { useState } from 'react';
+import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useForm, FormProvider } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
 import { Monitor, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Modal } from '@/shared/components';
+import { FormInput, FormSelect, ActivationCodeInput } from '@/shared/components/form';
 import { useMonitorRegister } from '../../hooks/useDevices';
+
+// Form validation schema
+const monitorRegisterSchema = z.object({
+  activation_code: z
+    .string()
+    .length(6, 'Kode aktivasi harus 6 digit')
+    .regex(/^\d+$/, 'Kode aktivasi hanya boleh angka'),
+  device_name: z.string().min(1, 'Nama device harus diisi').max(200),
+  platform: z.string(),
+});
+
+type MonitorRegisterFormData = z.infer<typeof monitorRegisterSchema>;
 
 interface MonitorRegisterModalProps {
   isOpen: boolean;
@@ -24,14 +40,34 @@ export function MonitorRegisterModal({
   onSuccess,
 }: MonitorRegisterModalProps) {
   const { t } = useTranslation();
-  const [formData, setFormData] = useState({
-    activation_code: '',
-    device_name: '',
-    platform: 'browser',
-  });
-  const [error, setError] = useState<string | null>(null);
-
   const registerMutation = useMonitorRegister();
+
+  const methods = useForm<MonitorRegisterFormData>({
+    resolver: zodResolver(monitorRegisterSchema),
+    defaultValues: {
+      activation_code: '',
+      device_name: '',
+      platform: 'browser',
+    },
+  });
+
+  const {
+    handleSubmit,
+    reset,
+    setError,
+    formState: { errors },
+  } = methods;
+
+  // Reset form when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      reset({
+        activation_code: '',
+        device_name: '',
+        platform: 'browser',
+      });
+    }
+  }, [isOpen, reset]);
 
   // Helper to format error messages
   const formatErrorMessage = (err: any): string => {
@@ -81,59 +117,33 @@ export function MonitorRegisterModal({
     return t('devices.modals.errors.activationFailed', { status: status || 'unknown' });
   };
 
-  // Reset form
-  const resetForm = () => {
-    setFormData({
-      activation_code: '',
-      device_name: '',
-      platform: 'browser',
-    });
-    setError(null);
-  };
-
   // Handle close
   const handleClose = () => {
     if (!registerMutation.isPending) {
-      resetForm();
+      reset();
       onClose();
     }
   };
 
   // Handle submit
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError(null);
-
-    // Validation
-    if (!formData.activation_code || formData.activation_code.length !== 6) {
-      setError(t('devices.modals.errors.codeRequired'));
-      return;
-    }
-
-    if (!formData.device_name.trim()) {
-      setError(t('devices.modals.errors.nameRequired'));
-      return;
-    }
-
+  const onSubmit = async (data: MonitorRegisterFormData) => {
     // Log for debugging
     console.log('[MonitorRegisterModal] Submitting registration:', {
-      unique_code: formData.activation_code,
-      device_name: formData.device_name.trim(),
+      unique_code: data.activation_code,
+      device_name: data.device_name.trim(),
     });
 
     try {
       const result = await registerMutation.mutateAsync({
-        unique_code: formData.activation_code,
-        device_name: formData.device_name.trim(),
+        unique_code: data.activation_code,
+        device_name: data.device_name.trim(),
       });
 
       console.log('[MonitorRegisterModal] Registration successful:', result);
 
       // Only close modal and reset form if successful
-      resetForm();
-      if (onSuccess) {
-        onSuccess();
-      }
+      reset();
+      onSuccess?.();
       onClose();
     } catch (err: any) {
       // Enhanced error logging
@@ -144,7 +154,7 @@ export function MonitorRegisterModal({
       const errorMessage = formatErrorMessage(err);
       console.error('[MonitorRegisterModal] Formatted error:', errorMessage);
 
-      setError(errorMessage);
+      setError('root', { message: errorMessage });
 
       // Show toast as additional feedback
       toast.error(errorMessage);
@@ -152,6 +162,15 @@ export function MonitorRegisterModal({
       // DO NOT close modal on error - let user see the error and retry
     }
   };
+
+  // Platform options
+  const platformOptions = [
+    { value: 'browser', label: t('devices.modals.platformWebBrowser') },
+    { value: 'chrome', label: t('devices.modals.platformChrome') },
+    { value: 'firefox', label: t('devices.modals.platformFirefox') },
+    { value: 'edge', label: t('devices.modals.platformEdge') },
+    { value: 'safari', label: t('devices.modals.platformSafari') },
+  ];
 
   // Custom header with icon
   const customHeader = (
@@ -214,87 +233,51 @@ export function MonitorRegisterModal({
       customHeader={customHeader}
       footer={footer}
     >
-      {/* Form */}
-      <form id="monitor-register-form" onSubmit={handleSubmit} className="p-6 space-y-4">
-        {/* Error Message */}
-        {error && (
-          <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3">
-            <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
-          </div>
-        )}
+      <FormProvider {...methods}>
+        <form id="monitor-register-form" onSubmit={handleSubmit(onSubmit)} className="p-6 space-y-4">
+          {/* Root Error Message */}
+          {errors.root && (
+            <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3">
+              <p className="text-sm text-red-600 dark:text-red-400">{errors.root.message}</p>
+            </div>
+          )}
 
-        {/* Activation Code */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-            {t('devices.modals.activationCodeLabel')} <span className="text-red-500">*</span>
-          </label>
-          <input
-            type="text"
-            value={formData.activation_code}
-            onChange={(e) => {
-              const value = e.target.value.replace(/\D/g, '').slice(0, 6);
-              setFormData((prev) => ({ ...prev, activation_code: value }));
-              setError(null);
-            }}
+          {/* Activation Code */}
+          <ActivationCodeInput
+            name="activation_code"
+            label={t('devices.modals.activationCodeLabel')}
             placeholder={t('devices.placeholders.enterCode')}
-            maxLength={6}
-            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white font-mono text-lg tracking-widest text-center focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-            disabled={registerMutation.isPending}
+            description={t('devices.modals.monitorCodeHelp')}
             required
+            disabled={registerMutation.isPending}
           />
-          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-            {t('devices.modals.monitorCodeHelp')}
-          </p>
-        </div>
 
-        {/* Device Name */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-            {t('devices.modals.deviceNameLabel')} <span className="text-red-500">*</span>
-          </label>
-          <input
-            type="text"
-            value={formData.device_name}
-            onChange={(e) => {
-              setFormData((prev) => ({ ...prev, device_name: e.target.value }));
-              setError(null);
-            }}
+          {/* Device Name */}
+          <FormInput
+            name="device_name"
+            label={t('devices.modals.deviceNameLabel')}
             placeholder={t('devices.placeholders.monitorName')}
-            maxLength={200}
-            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-            disabled={registerMutation.isPending}
             required
-          />
-        </div>
-
-        {/* Platform */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-            {t('devices.modals.platform')}
-          </label>
-          <select
-            value={formData.platform}
-            onChange={(e) =>
-              setFormData((prev) => ({ ...prev, platform: e.target.value }))
-            }
-            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500 focus:border-transparent"
             disabled={registerMutation.isPending}
-          >
-            <option value="browser">{t('devices.modals.platformWebBrowser')}</option>
-            <option value="chrome">{t('devices.modals.platformChrome')}</option>
-            <option value="firefox">{t('devices.modals.platformFirefox')}</option>
-            <option value="edge">{t('devices.modals.platformEdge')}</option>
-            <option value="safari">{t('devices.modals.platformSafari')}</option>
-          </select>
-        </div>
+            maxLength={200}
+          />
 
-        {/* Info Box */}
-        <div className="bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-lg p-3">
-          <p className="text-sm text-purple-700 dark:text-purple-300">
-            <strong>{t('devices.modals.howItWorks')}</strong> {t('devices.modals.howItWorksMonitor')}
-          </p>
-        </div>
-      </form>
+          {/* Platform */}
+          <FormSelect
+            name="platform"
+            label={t('devices.modals.platform')}
+            options={platformOptions}
+            disabled={registerMutation.isPending}
+          />
+
+          {/* Info Box */}
+          <div className="bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-lg p-3">
+            <p className="text-sm text-purple-700 dark:text-purple-300">
+              <strong>{t('devices.modals.howItWorks')}</strong> {t('devices.modals.howItWorksMonitor')}
+            </p>
+          </div>
+        </form>
+      </FormProvider>
     </Modal>
   );
 }

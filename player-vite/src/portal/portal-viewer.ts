@@ -289,19 +289,48 @@ export class PortalViewer {
    * Render error state
    */
   private renderError(message: string): void {
+    const isNetworkError = message.toLowerCase().includes('gagal') ||
+                           message.toLowerCase().includes('failed') ||
+                           message.toLowerCase().includes('memuat');
+
     this.container.innerHTML = `
       <div class="portal-viewer portal-viewer--error">
-        <div class="portal-viewer__error">
-          <span class="portal-viewer__error-icon">⚠️</span>
-          <h2>Oops!</h2>
-          <p>${message}</p>
+        <div class="portal-viewer__error-content">
+          <div class="portal-viewer__error-icon ${isNetworkError ? 'portal-viewer__error-icon--network' : ''}">
+            ${isNetworkError ? `
+              <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <path d="M1 1l22 22"/>
+                <path d="M16.72 11.06A10.94 10.94 0 0 1 19 12.55"/>
+                <path d="M5 12.55a10.94 10.94 0 0 1 5.17-2.39"/>
+                <path d="M10.71 5.05A16 16 0 0 1 22.58 9"/>
+                <path d="M1.42 9a15.91 15.91 0 0 1 4.7-2.88"/>
+                <path d="M8.53 16.11a6 6 0 0 1 6.95 0"/>
+                <line x1="12" x2="12.01" y1="20" y2="20"/>
+              </svg>
+            ` : `
+              <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <circle cx="12" cy="12" r="10"/>
+                <path d="M12 8v4"/>
+                <path d="M12 16h.01"/>
+              </svg>
+            `}
+          </div>
+          <h2 class="portal-viewer__error-title">${isNetworkError ? 'Connection Error' : 'Oops!'}</h2>
+          <p class="portal-viewer__error-message">${message}</p>
           <button
             type="button"
-            class="portal-viewer__retry-btn"
+            class="portal-viewer__error-retry"
             onclick="window.location.reload()"
           >
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/>
+              <path d="M21 3v5h-5"/>
+            </svg>
             Coba Lagi
           </button>
+        </div>
+        <div class="portal-viewer__error-footer">
+          <p>Digital Signage Portal</p>
         </div>
       </div>
     `;

@@ -1,9 +1,9 @@
 /**
  * FormCheckbox Component
  * Checkbox with React Hook Form integration
+ * Uses pure Tailwind CSS styling (no shadcn)
  */
 import { useFormContext, Controller } from 'react-hook-form';
-import { Label } from '@/components/ui/label';
 import { Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -43,34 +43,34 @@ export function FormCheckbox({
             onClick={() => field.onChange(!field.value)}
             className={cn(
               'flex h-5 w-5 items-center justify-center rounded border transition-colors',
-              'focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2',
+              'focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2',
               'disabled:cursor-not-allowed disabled:opacity-50',
               field.value
-                ? 'bg-primary border-primary text-primary-foreground'
+                ? 'bg-blue-600 border-blue-600 text-white'
                 : 'border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800',
-              error && 'border-destructive'
+              error && 'border-red-500 dark:border-red-400'
             )}
           >
             {field.value && <Check className="h-3.5 w-3.5" />}
           </button>
           <div className="flex flex-col">
             {label && (
-              <Label
+              <label
                 htmlFor={name}
                 className={cn(
                   'text-sm font-medium text-gray-700 dark:text-gray-300 cursor-pointer',
-                  error && 'text-destructive'
+                  error && 'text-red-500 dark:text-red-400'
                 )}
                 onClick={() => !disabled && field.onChange(!field.value)}
               >
                 {label}
-              </Label>
+              </label>
             )}
             {description && (
-              <p className="text-sm text-muted-foreground">{description}</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{description}</p>
             )}
             {error && (
-              <p className="text-sm text-destructive mt-1" role="alert">
+              <p className="text-xs text-red-500 dark:text-red-400 mt-1" role="alert">
                 {error.message as string}
               </p>
             )}

@@ -1,10 +1,10 @@
 /**
  * FormTextarea Component
  * Textarea with React Hook Form integration and error handling
+ * Uses pure Tailwind CSS styling (no shadcn)
  */
 import { forwardRef } from 'react';
 import { useFormContext, Controller } from 'react-hook-form';
-import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
 
 interface FormTextareaProps
@@ -30,18 +30,16 @@ export const FormTextarea = forwardRef<HTMLTextAreaElement, FormTextareaProps>(
         render={({ field }) => (
           <div className="space-y-2">
             {label && (
-              <Label
+              <label
                 htmlFor={name}
                 className={cn(
-                  'text-sm font-medium text-gray-700 dark:text-gray-300',
-                  error && 'text-destructive'
+                  'block text-sm font-medium text-gray-700 dark:text-gray-300',
+                  error && 'text-red-500 dark:text-red-400'
                 )}
               >
                 {label}
-                {props.required && (
-                  <span className="text-destructive ml-1">*</span>
-                )}
-              </Label>
+                {props.required && <span className="text-red-500 ml-1">*</span>}
+              </label>
             )}
             <textarea
               {...field}
@@ -49,25 +47,34 @@ export const FormTextarea = forwardRef<HTMLTextAreaElement, FormTextareaProps>(
               ref={ref}
               id={name}
               rows={rows}
+              value={field.value ?? ''}
               className={cn(
-                'flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background',
-                'placeholder:text-muted-foreground',
-                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
-                'disabled:cursor-not-allowed disabled:opacity-50',
+                'w-full px-3 py-2',
+                'border rounded-lg',
+                'bg-white dark:bg-gray-700',
+                'text-gray-900 dark:text-white',
+                'placeholder:text-gray-400 dark:placeholder:text-gray-500',
+                'focus:ring-2 focus:ring-blue-500 focus:border-transparent',
+                'disabled:opacity-50 disabled:cursor-not-allowed',
                 'resize-y min-h-[80px]',
-                error && 'border-destructive focus-visible:ring-destructive',
+                'transition-colors duration-150',
+                error
+                  ? 'border-red-500 dark:border-red-400'
+                  : 'border-gray-300 dark:border-gray-600',
                 className
               )}
               aria-invalid={!!error}
-              aria-describedby={error ? `${name}-error` : undefined}
+              aria-describedby={error ? `${name}-error` : description ? `${name}-desc` : undefined}
             />
             {description && !error && (
-              <p className="text-sm text-muted-foreground">{description}</p>
+              <p id={`${name}-desc`} className="text-xs text-gray-500 dark:text-gray-400">
+                {description}
+              </p>
             )}
             {error && (
               <p
                 id={`${name}-error`}
-                className="text-sm text-destructive"
+                className="text-xs text-red-500 dark:text-red-400"
                 role="alert"
               >
                 {error.message as string}

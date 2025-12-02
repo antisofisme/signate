@@ -1,16 +1,9 @@
 /**
  * FormSelect Component
  * Select dropdown with React Hook Form integration and error handling
+ * Uses pure Tailwind CSS styling (no shadcn)
  */
 import { useFormContext, Controller } from 'react-hook-form';
-import { Label } from '@/components/ui/label';
-import {
-  Select,
-  SelectTrigger,
-  SelectValue,
-  SelectContent,
-  SelectItem,
-} from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 
 export interface SelectOption {
@@ -32,7 +25,7 @@ interface FormSelectProps {
 export function FormSelect({
   name,
   label,
-  placeholder = 'Select...',
+  placeholder = 'Pilih...',
   options,
   description,
   required,
@@ -53,45 +46,57 @@ export function FormSelect({
       render={({ field }) => (
         <div className="space-y-2">
           {label && (
-            <Label
+            <label
               htmlFor={name}
               className={cn(
-                'text-sm font-medium text-gray-700 dark:text-gray-300',
-                error && 'text-destructive'
+                'block text-sm font-medium text-gray-700 dark:text-gray-300',
+                error && 'text-red-500 dark:text-red-400'
               )}
             >
               {label}
-              {required && <span className="text-destructive ml-1">*</span>}
-            </Label>
+              {required && <span className="text-red-500 ml-1">*</span>}
+            </label>
           )}
-          <Select
-            value={field.value || ''}
-            onValueChange={field.onChange}
+          <select
+            {...field}
+            id={name}
             disabled={disabled}
+            className={cn(
+              'w-full px-3 py-2',
+              'border rounded-lg',
+              'bg-white dark:bg-gray-700',
+              'text-gray-900 dark:text-white',
+              'focus:ring-2 focus:ring-blue-500 focus:border-transparent',
+              'disabled:opacity-50 disabled:cursor-not-allowed',
+              'transition-colors duration-150',
+              error
+                ? 'border-red-500 dark:border-red-400'
+                : 'border-gray-300 dark:border-gray-600',
+              className
+            )}
+            aria-invalid={!!error}
+            aria-describedby={error ? `${name}-error` : description ? `${name}-desc` : undefined}
           >
-            <SelectTrigger
-              className={cn(
-                className,
-                error && 'border-destructive focus:ring-destructive'
-              )}
-            >
-              <SelectValue placeholder={placeholder} />
-            </SelectTrigger>
-            <SelectContent>
-              {options.map((option) => (
-                <SelectItem key={option.value} value={option.value}>
-                  {option.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+            {placeholder && (
+              <option value="" disabled>
+                {placeholder}
+              </option>
+            )}
+            {options.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
           {description && !error && (
-            <p className="text-sm text-muted-foreground">{description}</p>
+            <p id={`${name}-desc`} className="text-xs text-gray-500 dark:text-gray-400">
+              {description}
+            </p>
           )}
           {error && (
             <p
               id={`${name}-error`}
-              className="text-sm text-destructive"
+              className="text-xs text-red-500 dark:text-red-400"
               role="alert"
             >
               {error.message as string}

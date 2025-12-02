@@ -165,59 +165,160 @@
   }
 }
 
-/* ========== Error State ========== */
+/* ========== Error State - Modern Design ========== */
 .portal-viewer--error {
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
+  min-height: 100vh;
+  min-height: 100dvh;
+  background: linear-gradient(135deg, #1e293b 0%, #0f172a 50%, #1e1b4b 100%);
+  text-align: center;
+  padding: 24px;
+  position: relative;
+  overflow: hidden;
 }
 
-.portal-viewer__error {
-  text-align: center;
-  padding: 3rem 2rem;
+/* Subtle animated background pattern */
+.portal-viewer--error::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-image:
+    radial-gradient(circle at 20% 80%, rgba(99, 102, 241, 0.15) 0%, transparent 50%),
+    radial-gradient(circle at 80% 20%, rgba(168, 85, 247, 0.1) 0%, transparent 50%),
+    radial-gradient(circle at 40% 40%, rgba(59, 130, 246, 0.08) 0%, transparent 40%);
+  animation: portalErrorBgPulse 8s ease-in-out infinite;
+  pointer-events: none;
+}
+
+@keyframes portalErrorBgPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+.portal-viewer__error-content {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
   max-width: 400px;
 }
 
 .portal-viewer__error-icon {
-  font-size: 3rem;
-  display: block;
-  margin-bottom: 1rem;
-}
-
-.portal-viewer__error h2 {
-  font-size: 1.5rem;
-  color: #1f2937;
-  margin: 0 0 0.5rem;
-}
-
-.portal-viewer__error p {
-  color: #6b7280;
-  margin: 0 0 1.5rem;
-}
-
-.portal-viewer__retry-btn {
-  display: inline-flex;
+  width: 120px;
+  height: 120px;
+  background: rgba(239, 68, 68, 0.1);
+  border: 2px solid rgba(239, 68, 68, 0.3);
+  border-radius: 50%;
+  display: flex;
   align-items: center;
   justify-content: center;
-  padding: 0.75rem 1.5rem;
-  background: #3b82f6;
+  margin-bottom: 24px;
+  color: #f87171;
+  animation: portalErrorIconPulse 2s ease-in-out infinite;
+}
+
+.portal-viewer__error-icon--network {
+  background: rgba(251, 191, 36, 0.1);
+  border-color: rgba(251, 191, 36, 0.3);
+  color: #fbbf24;
+  animation-name: portalErrorIconPulseNetwork;
+}
+
+@keyframes portalErrorIconPulse {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.2);
+  }
+  50% {
+    transform: scale(1.02);
+    box-shadow: 0 0 30px 10px rgba(239, 68, 68, 0.1);
+  }
+}
+
+@keyframes portalErrorIconPulseNetwork {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(251, 191, 36, 0.2);
+  }
+  50% {
+    transform: scale(1.02);
+    box-shadow: 0 0 30px 10px rgba(251, 191, 36, 0.1);
+  }
+}
+
+.portal-viewer__error-title {
+  font-size: 1.75rem;
+  font-weight: 600;
+  color: #f8fafc;
+  margin: 0 0 12px 0;
+  letter-spacing: -0.02em;
+}
+
+.portal-viewer__error-message {
+  font-size: 1rem;
+  color: #94a3b8;
+  margin: 0 0 32px 0;
+  line-height: 1.6;
+}
+
+.portal-viewer__error-retry {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 28px;
+  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
   color: white;
   border: none;
-  border-radius: 0.5rem;
-  font-size: 0.875rem;
+  border-radius: 12px;
+  font-size: 1rem;
   font-weight: 500;
   cursor: pointer;
-  transition: background 0.2s;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 15px rgba(99, 102, 241, 0.3);
 }
 
-.portal-viewer__retry-btn:hover {
-  background: #2563eb;
+.portal-viewer__error-retry:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 25px rgba(99, 102, 241, 0.4);
 }
 
-.portal-viewer__retry-btn:focus-visible {
-  outline: 2px solid #3b82f6;
+.portal-viewer__error-retry:active {
+  transform: translateY(0);
+}
+
+.portal-viewer__error-retry svg {
+  transition: transform 0.3s ease;
+}
+
+.portal-viewer__error-retry:hover svg {
+  transform: rotate(45deg);
+}
+
+.portal-viewer__error-retry:focus-visible {
+  outline: 2px solid #818cf8;
   outline-offset: 2px;
-  box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.3);
+}
+
+.portal-viewer__error-footer {
+  position: absolute;
+  bottom: 24px;
+  left: 0;
+  right: 0;
+  text-align: center;
+  z-index: 1;
+}
+
+.portal-viewer__error-footer p {
+  color: #475569;
+  font-size: 0.875rem;
+  margin: 0;
 }
 
 /* ========== Responsive Adjustments ========== */
@@ -305,13 +406,5 @@
   .portal-viewer__spinner {
     border-color: #374151;
     border-top-color: var(--theme-color, #3b82f6);
-  }
-
-  .portal-viewer__error h2 {
-    color: #f9fafb;
-  }
-
-  .portal-viewer__error p {
-    color: #9ca3af;
   }
 }
