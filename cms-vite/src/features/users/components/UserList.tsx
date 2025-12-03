@@ -40,22 +40,23 @@ export function UserList({
 
   return (
     <div className={TABLE_STYLES.container}>
-      <table className={TABLE_STYLES.table}>
-        <thead className={TABLE_STYLES.thead}>
+      <div className="overflow-x-auto">
+        <table className={`${TABLE_STYLES.table} table-fixed`}>
+          <thead className={TABLE_STYLES.thead}>
           <tr>
-            <th className={TABLE_STYLES.th}>
+            <th className={`${TABLE_STYLES.th} w-[25%]`}>
               {t('users.table.user')}
             </th>
-            <th className={TABLE_STYLES.th}>
+            <th className={`${TABLE_STYLES.th} w-20`}>
               {t('users.table.status')}
             </th>
-            <th className={TABLE_STYLES.th}>
+            <th className={`${TABLE_STYLES.th} w-24`}>
               {t('users.table.role')}
             </th>
-            <th className={TABLE_STYLES.th}>
+            <th className={`${TABLE_STYLES.th} w-[20%]`}>
               {t('users.table.organization')}
             </th>
-            <th className={TABLE_STYLES.th}>
+            <th className={`${TABLE_STYLES.th} w-32`}>
               {t('users.table.actions')}
             </th>
           </tr>
@@ -133,8 +134,9 @@ export function UserList({
               </td>
             </tr>
           ))}
-        </tbody>
-      </table>
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }

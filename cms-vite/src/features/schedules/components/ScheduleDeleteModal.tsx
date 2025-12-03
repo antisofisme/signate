@@ -10,8 +10,7 @@
  */
 
 import { useTranslation } from 'react-i18next';
-import { Loader2 } from 'lucide-react';
-import { Modal } from '@/shared/components';
+import { Modal, Button } from '@/shared/components';
 import type { Schedule } from '../types/schedule.types';
 
 interface ScheduleDeleteModalProps {
@@ -38,24 +37,22 @@ export function ScheduleDeleteModal({
   };
 
   const footer = (
-    <div className="border-t border-gray-200 dark:border-gray-700 px-6 py-4">
-      <div className="flex justify-end gap-3">
-        <button
-          onClick={handleClose}
-          disabled={isDeleting}
-          className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 transition-colors"
-        >
-          {t('schedules.deleteModal.cancel')}
-        </button>
-        <button
-          onClick={onConfirm}
-          disabled={isDeleting}
-          className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 disabled:opacity-50 flex items-center gap-2 transition-colors"
-        >
-          {isDeleting && <Loader2 className="w-4 h-4 animate-spin" />}
-          {t('schedules.deleteModal.deleteButton')}
-        </button>
-      </div>
+    <div className="flex justify-end gap-3 px-6 py-4 border-t border-gray-200 dark:border-gray-700">
+      <Button
+        variant="secondary"
+        onClick={handleClose}
+        disabled={isDeleting}
+      >
+        {t('schedules.deleteModal.cancel')}
+      </Button>
+      <Button
+        variant="danger"
+        onClick={onConfirm}
+        disabled={isDeleting}
+        loading={isDeleting}
+      >
+        {t('schedules.deleteModal.deleteButton')}
+      </Button>
     </div>
   );
 

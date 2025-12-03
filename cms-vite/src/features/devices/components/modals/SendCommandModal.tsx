@@ -7,8 +7,8 @@
 
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Send, Loader2, Zap, RotateCw, Camera, Volume2, Sun } from 'lucide-react';
-import { Modal } from '@/shared/components';
+import { Send, Zap, RotateCw, Camera, Volume2, Sun } from 'lucide-react';
+import { Modal, Button } from '@/shared/components';
 import { useSendCommand } from '../../hooks/useDevices';
 import type { Device } from '../../types/device';
 
@@ -126,31 +126,22 @@ export function SendCommandModal({
       subtitle={device.device_name}
       maxWidth="md"
       footer={
-        <div className="border-t border-gray-200 dark:border-gray-700 px-6 py-4 flex justify-end gap-3">
-          <button
+        <div className="flex justify-end gap-3 px-6 py-4 border-t border-gray-200 dark:border-gray-700">
+          <Button
+            variant="secondary"
             onClick={handleClose}
             disabled={sendCommand.isPending}
-            className="px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg disabled:opacity-50 transition-colors"
           >
             {t('devices.buttons.cancel')}
-          </button>
-          <button
+          </Button>
+          <Button
             onClick={handleSend}
             disabled={sendCommand.isPending || !selectedCommand}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2 transition-colors"
+            loading={sendCommand.isPending}
+            leftIcon={<Send className="w-4 h-4" />}
           >
-            {sendCommand.isPending ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin" />
-                {t('devices.modals.sendingCommand')}
-              </>
-            ) : (
-              <>
-                <Send className="w-4 h-4" />
-                {t('devices.modals.sendCommand')}
-              </>
-            )}
-          </button>
+            {sendCommand.isPending ? t('devices.modals.sendingCommand') : t('devices.modals.sendCommand')}
+          </Button>
         </div>
       }
     >

@@ -19,7 +19,7 @@ const PageLoader = () => (
 
 // Lazy load pages for code splitting
 const LoginPage = lazy(() => import('@/pages/LoginPage'));
-const RegisterPage = lazy(() => import('@/pages/RegisterPage'));
+// RegisterPage disabled - B2B model (invitation only)
 const ForgotPasswordPage = lazy(() => import('@/pages/ForgotPasswordPage'));
 const ResetPasswordPage = lazy(() => import('@/pages/ResetPasswordPage'));
 const DashboardPage = lazy(() => import('@/pages/DashboardPage'));
@@ -30,7 +30,6 @@ const TagsPage = lazy(() => import('@/pages/TagsPage'));
 const ContentPage = lazy(() => import('@/pages/ContentPage'));
 const PlaylistsPage = lazy(() => import('@/pages/PlaylistsPage'));
 const DevicesPage = lazy(() => import('@/pages/DevicesPage'));
-const DeviceGroupsPage = lazy(() => import('@/pages/DeviceGroupsPage'));
 const DevicePreviewPage = lazy(() => import('@/pages/DevicePreviewPage'));
 const AnalyticsPage = lazy(() => import('@/features/analytics/pages/AnalyticsPage'));
 const WidgetsPage = lazy(() => import('@/pages/WidgetsPage'));
@@ -58,9 +57,11 @@ export const router = createBrowserRouter([
     path: '/login',
     element: <LazyPage component={LoginPage} />,
   },
+  // Registration disabled - B2B model (invitation only)
+  // Redirect /register to /login
   {
     path: '/register',
-    element: <LazyPage component={RegisterPage} />,
+    element: <Navigate to="/login" replace />,
   },
   {
     path: '/forgot-password',
@@ -105,10 +106,6 @@ export const router = createBrowserRouter([
       {
         path: 'devices',
         element: <LazyPage component={DevicesPage} />,
-      },
-      {
-        path: 'device-groups',
-        element: <LazyPage component={DeviceGroupsPage} />,
       },
       {
         path: 'devices/:id/preview',

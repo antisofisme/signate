@@ -65,6 +65,9 @@ class ShellConnectionStatusClass {
     window.addEventListener('online', this.handleBrowserOnline);
     window.addEventListener('offline', this.handleBrowserOffline);
 
+    // Update UI with initial state
+    this.updateNetworkUI(navigator.onLine);
+
     // Start periodic ping
     this.startPing();
 
@@ -75,11 +78,52 @@ class ShellConnectionStatusClass {
   }
 
   /**
+   * Update network status UI (WiFi icon at top-left)
+   */
+  private updateNetworkUI(isOnline: boolean): void {
+    const networkStatusEl = document.getElementById('network-status');
+    if (!networkStatusEl) return;
+
+    // Update status class
+    networkStatusEl.classList.remove('online', 'offline');
+    networkStatusEl.classList.add(isOnline ? 'online' : 'offline');
+
+    // Update animation class
+    networkStatusEl.classList.remove('pulse', 'warning-blink');
+    networkStatusEl.classList.add(isOnline ? 'pulse' : 'warning-blink');
+
+    // Update tooltip
+    networkStatusEl.title = isOnline ? 'Network: Online' : 'Network: Offline';
+  }
+
+  /**
+   * Update server status UI (Database icon at top-left)
+   */
+  private updateServerUI(isConnected: boolean): void {
+    const serverStatusEl = document.getElementById('server-status');
+    if (!serverStatusEl) return;
+
+    // Update status class
+    serverStatusEl.classList.remove('connected', 'disconnected');
+    serverStatusEl.classList.add(isConnected ? 'connected' : 'disconnected');
+
+    // Update animation class
+    serverStatusEl.classList.remove('pulse', 'warning-blink');
+    serverStatusEl.classList.add(isConnected ? 'pulse' : 'warning-blink');
+
+    // Update tooltip
+    serverStatusEl.title = isConnected ? 'Server: Connected' : 'Server: Disconnected';
+  }
+
+  /**
    * Handle browser online event
    */
   private handleBrowserOnline = (): void => {
     SharedLogger.log('[ConnectionStatus] Browser reports online');
     this.status = 'checking';
+
+    // Update network UI immediately
+    this.updateNetworkUI(true);
 
     // Get network information
     const connection = (navigator as any).connection || (navigator as any).mozConnection || (navigator as any).webkitConnection;
@@ -106,6 +150,9 @@ class ShellConnectionStatusClass {
    */
   private handleBrowserOffline = (): void => {
     SharedLogger.warn('[ConnectionStatus] Browser reports offline');
+
+    // Update network UI immediately
+    this.updateNetworkUI(false);
 
     // Get network information
     const connection = (navigator as any).connection || (navigator as any).mozConnection || (navigator as any).webkitConnection;
@@ -240,6 +287,9 @@ class ShellConnectionStatusClass {
     this.status = 'online';
     this.retryCount = 0;
 
+    // Update server UI (database icon)
+    this.updateServerUI(true);
+
     if (wasOffline) {
       // Connection restored
       SharedEventBus.emit(EventNames.CONNECTION_RESTORED, { latency });
@@ -290,6 +340,9 @@ class ShellConnectionStatusClass {
 
     this.status = 'offline';
     this.retryCount = Math.min(this.retryCount + 1, this.maxRetries);
+
+    // Update server UI (database icon)
+    this.updateServerUI(false);
 
     if (wasOnline) {
       // Connection lost

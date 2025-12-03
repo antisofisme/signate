@@ -349,6 +349,10 @@ export const EventNames = {
   UI_TOAST_SHOW: 'ui:toast:show',
   UI_FULLSCREEN_ENTER: 'ui:fullscreen:enter',
   UI_FULLSCREEN_EXIT: 'ui:fullscreen:exit',
+
+  // PWA events
+  PWA_UPDATE_AVAILABLE: 'pwa:update:available',
+  PWA_UPDATE_APPLIED: 'pwa:update:applied',
 } as const;
 
 export type EventName = typeof EventNames[keyof typeof EventNames];

@@ -70,7 +70,7 @@ export function PMSSyncStatus() {
 
         {/* Sync Stats */}
         {(syncStatus.guests_synced !== undefined || syncStatus.rooms_synced !== undefined) && (
-          <div className="grid grid-cols-2 gap-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4 border-t border-gray-200 dark:border-gray-700">
             {syncStatus.guests_synced !== undefined && (
               <div>
                 <div className="text-2xl font-bold text-gray-900 dark:text-white">

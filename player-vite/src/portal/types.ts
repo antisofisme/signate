@@ -14,6 +14,7 @@ export interface PortalMenu {
   id: number;
   name: string;
   menu_type: 'restaurant' | 'laundry' | 'spa' | 'room_service' | 'other';
+  tab_name: string | null;  // Custom tab label for portal (overrides menu_type label)
   public_url_code: string;
   public_url: string;
   description: string | null;
@@ -21,6 +22,7 @@ export interface PortalMenu {
   primary_color: string | null;
   secondary_color: string | null;
   theme_color: string | null;
+  outlet_extension: string | null;  // Phone extension badge
 }
 
 export interface PortalResponse {

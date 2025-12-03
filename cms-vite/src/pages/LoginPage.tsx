@@ -49,18 +49,7 @@ export default function LoginPage() {
           </Link>
         </div>
 
-        {/* Register Link */}
-        <div className="mt-6 text-center">
-          <p className="text-sm text-gray-600 dark:text-gray-400">
-            Belum punya akun?{' '}
-            <Link
-              to="/register"
-              className="text-blue-600 dark:text-blue-400 hover:underline font-medium"
-            >
-              Daftar disini
-            </Link>
-          </p>
-        </div>
+        {/* Registration disabled - B2B model (invitation only) */}
 
         {/* Default Credentials Hint */}
         <p className="text-center text-sm text-gray-500 dark:text-gray-400 mt-4">

@@ -581,6 +581,105 @@ class PlayerHLSCacheClass {
   }
 
   /**
+   * Get HLS cache statistics
+   * Returns total size and segment count for device info popup
+   */
+  async getCacheStats(): Promise<{ totalSize: number; totalSegments: number; contentCount: number }> {
+    if (!this.db) {
+      return { totalSize: 0, totalSegments: 0, contentCount: 0 };
+    }
+
+    try {
+      // Get all segments and sum their sizes
+      const transaction = this.db.transaction([this.storeName, this.metaStore], 'readonly');
+      const segmentStore = transaction.objectStore(this.storeName);
+      const metaStore = transaction.objectStore(this.metaStore);
+
+      // Count segments and total size
+      const segmentStats = await new Promise<{ totalSize: number; totalSegments: number }>((resolve, reject) => {
+        let totalSize = 0;
+        let totalSegments = 0;
+
+        const request = segmentStore.openCursor();
+        request.onsuccess = (event) => {
+          const cursor = (event.target as IDBRequest).result;
+          if (cursor) {
+            const segment = cursor.value;
+            if (segment.size) {
+              totalSize += segment.size;
+              totalSegments++;
+            }
+            cursor.continue();
+          } else {
+            resolve({ totalSize, totalSegments });
+          }
+        };
+        request.onerror = () => reject(request.error);
+      });
+
+      // Count cached content
+      const contentCount = await new Promise<number>((resolve, reject) => {
+        const request = metaStore.count();
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error);
+      });
+
+      SharedLogger.log(`[PlayerHLSCache] Cache stats: ${segmentStats.totalSegments} segments, ${(segmentStats.totalSize / 1048576).toFixed(2)} MB, ${contentCount} contents`);
+
+      return {
+        totalSize: segmentStats.totalSize,
+        totalSegments: segmentStats.totalSegments,
+        contentCount,
+      };
+    } catch (error) {
+      SharedLogger.error('[PlayerHLSCache] Failed to get cache stats:', error);
+      return { totalSize: 0, totalSegments: 0, contentCount: 0 };
+    }
+  }
+
+  /**
+   * Get cache stats for a specific content ID
+   * Used by Device Info popup to show per-content cache size
+   */
+  async getContentCacheStats(contentId: number): Promise<{ totalSize: number; segmentCount: number } | null> {
+    if (!this.db) {
+      return null;
+    }
+
+    try {
+      const transaction = this.db.transaction([this.storeName], 'readonly');
+      const segmentStore = transaction.objectStore(this.storeName);
+      const index = segmentStore.index('contentId');
+      const range = IDBKeyRange.only(contentId);
+
+      return new Promise<{ totalSize: number; segmentCount: number }>((resolve, reject) => {
+        let totalSize = 0;
+        let segmentCount = 0;
+
+        const request = index.openCursor(range);
+        request.onsuccess = (event) => {
+          const cursor = (event.target as IDBRequest).result;
+          if (cursor) {
+            const segment = cursor.value;
+            if (segment.size) {
+              totalSize += segment.size;
+              segmentCount++;
+            }
+            cursor.continue();
+          } else {
+            SharedLogger.log(`[PlayerHLSCache] Content ${contentId} cache stats: ${segmentCount} segments, ${(totalSize / 1048576).toFixed(2)} MB`);
+            resolve({ totalSize, segmentCount });
+          }
+        };
+        request.onerror = () => reject(request.error);
+      });
+    } catch (error) {
+      SharedLogger.error(`[PlayerHLSCache] Failed to get content ${contentId} cache stats:`, error);
+      return null;
+    }
+  }
+
+  /**
    * Get all cached content metadata
    * Used by Device Info popup to display cached content list
    */

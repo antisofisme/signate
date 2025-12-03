@@ -28,7 +28,6 @@ import {
 import { useUpdateQuota } from '../hooks/useOrganizationQuota';
 import type { OrganizationQuota, UpdateQuotaRequest } from '../types/organization';
 import { useAuthStore } from '@/lib/stores/authStore';
-import { USER_ROLES } from '@/lib/constants/app';
 
 // Validation schema
 const quotaSchema = z.object({
@@ -51,7 +50,7 @@ export function QuotaSettingsForm({ quota, organizationId }: QuotaSettingsFormPr
   const updateQuotaMutation = useUpdateQuota();
 
   // Check if user is admin (only admins can update quotas)
-  const isAdmin = user?.role === USER_ROLES.ADMIN || user?.role === USER_ROLES.SUPER_ADMIN;
+  const isAdmin = user?.role === 'admin' || user?.role === 'super_admin';
 
   const {
     register,

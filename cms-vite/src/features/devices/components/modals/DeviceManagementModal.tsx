@@ -131,10 +131,9 @@ export function DeviceManagementModal({
       onClose={onClose}
       maxWidth="7xl"
       customHeader={customHeader}
-      className="h-[90vh]"
     >
-      {/* Tab Panels */}
-      <div className="overflow-y-auto max-h-[calc(90vh-180px)]">
+      {/* Tab Panels - uses flex-1 from Modal's content area */}
+      <div className="flex-1 min-h-0 overflow-y-auto">
         <TabPanel activeTab={activeTab} tabId="overview">
           <OverviewTab
             device={device}

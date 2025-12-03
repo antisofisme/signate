@@ -12,7 +12,14 @@ import { useTags, useCreateTag, useUpdateTag, useDeleteTag } from '../hooks/useT
 import { TagList } from '../components/TagList';
 import { TagForm } from '../components/TagForm';
 import TagManagementModal from '../components/TagManagementModal';
-import { ConfirmDialog, AccessDenied, PageSkeleton } from '@/shared/components';
+import {
+  ConfirmDialog,
+  AccessDenied,
+  PageSkeleton,
+  Button,
+  PageToolbar,
+  PageStats,
+} from '@/shared/components';
 import { useCanPerformAction } from '@/features/rbac/hooks/usePermissions';
 import type { Tag, TagSortBy, CreateTagRequest, UpdateTagRequest } from '../types/tag';
 
@@ -87,9 +94,9 @@ export default function TagsPage() {
 
   return (
     <>
-      {/* Toolbar */}
-      <div className="mb-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div className="flex items-center gap-4 flex-1 w-full sm:w-auto">
+      {/* Toolbar: Search/Sort kiri, Buttons kanan */}
+      <PageToolbar>
+        <PageToolbar.Left>
           {/* Search */}
           <div className="relative flex-1 max-w-sm">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
@@ -113,19 +120,25 @@ export default function TagsPage() {
             <option value="name_asc">{t('tags.sortNameAsc')}</option>
             <option value="name_desc">{t('tags.sortNameDesc')}</option>
           </select>
-        </div>
+        </PageToolbar.Left>
+        <PageToolbar.Right>
+          {canCreate && (
+            <Button
+              variant="primary"
+              onClick={() => setIsCreateModalOpen(true)}
+              leftIcon={<Plus className="h-4 w-4" />}
+            >
+              {t('tags.createTag')}
+            </Button>
+          )}
+        </PageToolbar.Right>
+      </PageToolbar>
 
-        {/* Create Button */}
-        {canCreate && (
-          <button
-            onClick={() => setIsCreateModalOpen(true)}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2"
-          >
-            <Plus className="h-4 w-4" />
-            {t('tags.createTag')}
-          </button>
-        )}
-      </div>
+      {/* Stats: langsung di atas list */}
+      <PageStats
+        total={tags.length}
+        totalLabel="tags"
+      />
 
       {/* Content */}
       <div className="space-y-6">

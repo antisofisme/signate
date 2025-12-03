@@ -17,11 +17,17 @@ import { Package, LucideIcon } from 'lucide-react';
 // ============================================
 
 export const TABLE_STYLES = {
-  // Container wrapping the table
-  container: 'overflow-hidden rounded-lg border border-gray-200 dark:border-gray-700',
+  // Container wrapping the table (outer border with rounded corners)
+  container: 'rounded-lg border border-gray-200 dark:border-gray-700',
 
-  // The table element itself
+  // Scroll wrapper - enables horizontal scroll on mobile/small screens
+  scrollWrapper: 'overflow-x-auto',
+
+  // The table element itself (min-w-full for desktop, will expand if needed)
   table: 'min-w-full divide-y divide-gray-200 dark:divide-gray-700',
+
+  // Responsive table - forces horizontal scroll on mobile by preventing cell wrap
+  tableResponsive: 'min-w-full divide-y divide-gray-200 dark:divide-gray-700 [&_td]:whitespace-nowrap [&_th]:whitespace-nowrap',
 
   // Table header (thead)
   thead: 'bg-gray-50 dark:bg-gray-900',

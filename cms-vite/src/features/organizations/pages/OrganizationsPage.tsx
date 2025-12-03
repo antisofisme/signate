@@ -6,7 +6,7 @@
  */
 
 import { useState } from 'react';
-import { Plus, Building, Shield } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import {
   useOrganizations,
@@ -16,7 +16,15 @@ import {
 } from '../hooks/useOrganizations';
 import { OrganizationList } from '../components/OrganizationList';
 import { OrganizationForm } from '../components/OrganizationForm';
-import { ConfirmDialog, TableSkeleton, AccessDenied, Button } from '@/shared/components';
+import {
+  ConfirmDialog,
+  TableSkeleton,
+  AccessDenied,
+  Button,
+  PageHeader,
+  PageStats,
+  PageToolbar,
+} from '@/shared/components';
 import { useCanPerformAction } from '@/features/rbac/hooks/usePermissions';
 import type {
   Organization,
@@ -96,63 +104,41 @@ export default function OrganizationsPage() {
 
   return (
     <>
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600 dark:text-gray-400">
-                {t('organizations.totalOrganizations')}
-              </p>
-              <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                {totalOrgs}
-              </p>
-            </div>
-            <Building className="w-10 h-10 text-blue-600 dark:text-blue-400" />
-          </div>
-        </div>
+      {/* Page Header */}
+      <PageHeader
+        title={t('organizations.title', 'Organizations')}
+        description={t('organizations.subtitle', 'Manage tenant organizations')}
+      />
 
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600 dark:text-gray-400">
-                {t('organizations.active')}
-              </p>
-              <p className="text-2xl font-bold text-green-600 dark:text-green-400">
-                {activeOrgs}
-              </p>
-            </div>
-            <Shield className="w-10 h-10 text-green-600 dark:text-green-400" />
-          </div>
-        </div>
+      {/* ROW 1: Stats */}
+      <PageStats
+        total={totalOrgs}
+        totalLabel="organizations"
+        stats={[
+          { label: 'active', value: activeOrgs, color: 'text-green-600 dark:text-green-400' },
+          { label: 'inactive', value: inactiveOrgs, color: 'text-gray-500' },
+        ]}
+      />
 
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600 dark:text-gray-400">
-                {t('organizations.inactive')}
-              </p>
-              <p className="text-2xl font-bold text-gray-600 dark:text-gray-400">
-                {inactiveOrgs}
-              </p>
-            </div>
-            <Shield className="w-10 h-10 text-gray-600 dark:text-gray-400" />
-          </div>
-        </div>
-      </div>
-
-      {/* Actions */}
-      {canCreate && (
-        <div className="mb-6 flex justify-end">
-          <Button
-            onClick={() => setShowCreateModal(true)}
-            className="flex items-center gap-2"
-          >
-            <Plus className="w-5 h-5" />
-            {t('organizations.createOrganization')}
-          </Button>
-        </div>
-      )}
+      {/* ROW 2: Toolbar */}
+      <PageToolbar>
+        <PageToolbar.Left>
+          <span className="text-sm text-gray-500 dark:text-gray-400">
+            {t('organizations.manageTenants', 'Manage tenant organizations and quotas')}
+          </span>
+        </PageToolbar.Left>
+        <PageToolbar.Right>
+          {canCreate && (
+            <Button
+              variant="primary"
+              onClick={() => setShowCreateModal(true)}
+              leftIcon={<Plus className="w-5 h-5" />}
+            >
+              {t('organizations.createOrganization')}
+            </Button>
+          )}
+        </PageToolbar.Right>
+      </PageToolbar>
 
       {/* Organizations Table */}
       <OrganizationList

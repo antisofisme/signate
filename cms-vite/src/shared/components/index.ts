@@ -8,6 +8,12 @@ export { LanguageSwitcher } from './LanguageSwitcher';
 export { default as PageHeader } from './layout/PageHeader';
 export { StatsCard } from './StatsCard';
 
+// Page Layout Components (Standardized Toolbar)
+export { PageToolbar } from './layout/PageToolbar';
+export { PageStats } from './layout/PageStats';
+export { ViewTabs } from './layout/ViewTabs';
+export { FilterButtonGroup } from './layout/FilterButtonGroup';
+
 // Pagination & Navigation
 export { Pagination, PaginationCompact } from './Pagination';
 export type { PaginationProps } from './Pagination';
@@ -54,6 +60,10 @@ export {
 // Data Display
 export { DataTable, TABLE_STYLES } from './DataTable';
 export type { Column, DataTableProps } from './DataTable';
+
+// Status Badge (for processing/upload status indicators)
+export { default as StatusBadge, StatusBadgeSolid } from './StatusBadge';
+export type { StatusBadgeProps, BadgeStatus, BadgeSize } from './StatusBadge';
 
 // Toast Provider (Sonner with theme sync & dynamic positioning)
 export { ToastProvider } from './ToastProvider';

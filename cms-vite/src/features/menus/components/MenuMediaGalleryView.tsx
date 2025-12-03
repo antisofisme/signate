@@ -8,7 +8,6 @@
 import { useState, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-  Upload,
   Search,
   SortAsc,
   SortDesc,
@@ -17,8 +16,7 @@ import {
   ChevronDown,
   ChevronRight,
 } from 'lucide-react';
-import { Button, EmptyState, ErrorDisplay } from '@/shared/components';
-import { useCanPerformAction } from '@/features/rbac/hooks/usePermissions';
+import { EmptyState, ErrorDisplay } from '@/shared/components';
 import { useMenuMediaList, useDuplicateMenuMedia } from '../hooks/useMenuMedia';
 import type { MenuMedia, MenuMediaFilters, MenuMediaDuplicateGroup } from '../types/menu';
 import { MenuMediaGalleryCard } from './MenuMediaGalleryCard';
@@ -38,18 +36,24 @@ const SORT_OPTIONS: { value: SortOption; label: string }[] = [
   { value: 'size_asc', label: 'Smallest First' },
 ];
 
-export function MenuMediaGalleryView() {
-  const { t } = useTranslation();
+interface MenuMediaGalleryViewProps {
+  showUploadModal?: boolean;
+  onCloseUploadModal?: () => void;
+}
 
-  // Permission checks
-  const { hasPermission: canCreate } = useCanPerformAction('menus', 'create');
+export function MenuMediaGalleryView({
+  showUploadModal: showUploadModalProp = false,
+  onCloseUploadModal
+}: MenuMediaGalleryViewProps) {
+  const { t } = useTranslation();
 
   // State
   const [filters, setFilters] = useState<MenuMediaFilters>({});
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState<SortOption>('newest');
   const [selectedMedia, setSelectedMedia] = useState<MenuMedia | null>(null);
-  const [showUploadModal, setShowUploadModal] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const showUploadModal = showUploadModalProp;
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
 
   // Fetch media with max allowed limit (backend allows max 100)
@@ -129,9 +133,21 @@ export function MenuMediaGalleryView() {
     return result;
   }, [mediaData?.items, searchQuery, sortBy]);
 
-  // Handle media selection
+  // Handle media selection - toggle sidebar when clicking media
   const handleSelectMedia = (media: MenuMedia) => {
-    setSelectedMedia((prev) => (prev?.id === media.id ? null : media));
+    if (selectedMedia?.id === media.id) {
+      // Clicking same media - close sidebar
+      setIsSidebarOpen(false);
+    } else {
+      // Clicking different media - select and open sidebar
+      setSelectedMedia(media);
+      setIsSidebarOpen(true);
+    }
+  };
+
+  // Handle sidebar close
+  const handleCloseSidebar = () => {
+    setIsSidebarOpen(false);
   };
 
   // Handle media update from sidebar
@@ -181,17 +197,6 @@ export function MenuMediaGalleryView() {
               ))}
             </select>
           </div>
-
-          {/* Upload Button */}
-          {canCreate && (
-            <Button
-              variant="primary"
-              onClick={() => setShowUploadModal(true)}
-              leftIcon={<Upload className="w-4 h-4" />}
-            >
-              {t('menus.media.actions.uploadImage', 'Upload')}
-            </Button>
-          )}
         </div>
 
         {/* Stats */}
@@ -356,24 +361,25 @@ export function MenuMediaGalleryView() {
         </div>
       </div>
 
-      {/* Sidebar Detail Panel */}
+      {/* Sidebar Detail Panel - Expand/Collapse with animation */}
       <MenuMediaDetailSidebar
         media={selectedMedia}
+        isOpen={isSidebarOpen}
         onUpdate={handleMediaUpdate}
         onDelete={handleMediaDelete}
-        onClose={() => setSelectedMedia(null)}
+        onClose={handleCloseSidebar}
       />
 
       {/* Upload Modal */}
       <MenuMediaUploadModal
         isOpen={showUploadModal}
-        onClose={() => setShowUploadModal(false)}
+        onClose={onCloseUploadModal || (() => {})}
       />
 
       {/* Upload Queue Panel */}
       <MenuMediaUploadQueuePanel />
 
-      {/* CSS for Masonry */}
+      {/* CSS for Masonry and Sidebar Animation */}
       <style>{`
         .masonry-grid {
           column-count: 4;
@@ -397,6 +403,20 @@ export function MenuMediaGalleryView() {
           .masonry-grid {
             column-count: 1;
           }
+        }
+        /* Sidebar slide-in animation */
+        @keyframes slide-in-right {
+          from {
+            transform: translateX(100%);
+            opacity: 0;
+          }
+          to {
+            transform: translateX(0);
+            opacity: 1;
+          }
+        }
+        .animate-slide-in-right {
+          animation: slide-in-right 0.3s ease-out forwards;
         }
       `}</style>
     </div>

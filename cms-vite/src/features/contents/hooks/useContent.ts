@@ -85,15 +85,15 @@ export const useUploadContent = () => {
         queryKey: contentKeys.lists(orgId),
         refetchType: 'active'  // Refetch active queries immediately
       });
-      // Stats can be lazy-loaded (not critical for UX)
+      // Refetch stats immediately so PageStats updates
       queryClient.invalidateQueries({
         queryKey: contentKeys.stats(orgId),
-        refetchType: 'none'
+        refetchType: 'active'
       });
       // Invalidate quota since storage changed
       queryClient.invalidateQueries({
         queryKey: ['organization-quota'],
-        refetchType: 'none'
+        refetchType: 'active'
       });
 
       toast.success('Content uploaded successfully');
@@ -129,14 +129,14 @@ export const useBulkUploadContent = () => {
         queryKey: contentKeys.lists(orgId),
         refetchType: 'active'  // Refetch active queries immediately
       });
-      // Stats can be lazy-loaded (not critical for UX)
+      // Refetch stats immediately so PageStats updates
       queryClient.invalidateQueries({
         queryKey: contentKeys.stats(orgId),
-        refetchType: 'none'
+        refetchType: 'active'
       });
       queryClient.invalidateQueries({
         queryKey: ['organization-quota'],
-        refetchType: 'none'
+        refetchType: 'active'
       });
 
       const { summary } = response.data;
@@ -243,10 +243,10 @@ export const useDeleteContent = () => {
         refetchType: 'active'  // Refetch active queries immediately
       });
 
-      // Mark stats as stale (will refetch on next view, not immediately)
+      // Refetch stats immediately so PageStats updates
       queryClient.invalidateQueries({
         queryKey: contentKeys.stats(orgId),
-        refetchType: 'none'  // Don't refetch now, just mark stale
+        refetchType: 'active'
       });
     },
     onError: (error: unknown, _deletedId, context) => {
@@ -325,10 +325,10 @@ export const useBulkDeleteContent = () => {
         refetchType: 'active'  // Refetch active queries immediately
       });
 
-      // Mark stats as stale (will refetch on next view)
+      // Refetch stats immediately so PageStats updates
       queryClient.invalidateQueries({
         queryKey: contentKeys.stats(orgId),
-        refetchType: 'none'
+        refetchType: 'active'
       });
     },
     onError: (error: unknown, _deletedIds, context) => {
@@ -349,12 +349,16 @@ export const useBulkDeleteContent = () => {
  */
 export const useContentStats = () => {
   const orgId = useSelectedOrgId();
+  const hasHydrated = useAuthStore((state) => state._hasHydrated);
 
   return useQuery({
     queryKey: contentKeys.stats(orgId),
     queryFn: () => getContentStats(),
-    staleTime: 60000, // 1 minute
-    // Note: Backend handles org filtering via JWT or X-Organization-Id header
+    staleTime: 0, // Always refetch for fresh data
+    refetchOnMount: true,
+    refetchOnWindowFocus: true,
+    // Wait for auth store hydration AND orgId before fetching
+    enabled: hasHydrated && !!orgId,
   });
 };
 
@@ -393,7 +397,7 @@ export const useRestoreContent = () => {
       // Invalidate both active and deleted lists
       queryClient.invalidateQueries({ queryKey: contentKeys.lists(orgId) });
       queryClient.invalidateQueries({ queryKey: contentKeys.deletedLists(orgId) });
-      queryClient.invalidateQueries({ queryKey: contentKeys.stats(orgId), refetchType: 'none' });
+      queryClient.invalidateQueries({ queryKey: contentKeys.stats(orgId), refetchType: 'active' });
       toast.success('Content restored successfully');
     },
     onError: (error: unknown) => {
@@ -447,7 +451,7 @@ export const usePermanentDeleteContent = () => {
     },
     onSuccess: () => {
       toast.success('Content permanently deleted');
-      queryClient.invalidateQueries({ queryKey: contentKeys.stats(orgId), refetchType: 'none' });
+      queryClient.invalidateQueries({ queryKey: contentKeys.stats(orgId), refetchType: 'active' });
     },
     onError: (error: unknown, _deletedId, context) => {
       if (context?.previousLists) {
@@ -504,7 +508,7 @@ export const useBulkPermanentDeleteContent = () => {
     },
     onSuccess: (_, ids) => {
       toast.success(`${ids.length} item(s) permanently deleted`);
-      queryClient.invalidateQueries({ queryKey: contentKeys.stats(orgId), refetchType: 'none' });
+      queryClient.invalidateQueries({ queryKey: contentKeys.stats(orgId), refetchType: 'active' });
     },
     onError: (error: unknown, _deletedIds, context) => {
       if (context?.previousLists) {

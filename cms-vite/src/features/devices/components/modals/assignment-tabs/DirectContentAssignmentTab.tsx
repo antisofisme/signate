@@ -330,7 +330,7 @@ export function DirectContentAssignmentTab({ device }: DirectContentAssignmentTa
           <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
         </div>
       ) : (
-        <div className="grid grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* Left Column - Available Content */}
           <div className="border-r border-gray-200 dark:border-gray-700 pr-4">
             <h4 className="font-semibold text-gray-900 dark:text-white mb-3 flex items-center gap-2">

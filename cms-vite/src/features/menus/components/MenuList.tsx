@@ -146,25 +146,26 @@ export const MenuList = ({
     <div className="space-y-4">
       {/* Table */}
       <div className={TABLE_STYLES.container}>
-        <table className={TABLE_STYLES.table}>
-          <thead className={TABLE_STYLES.thead}>
+        <div className="overflow-x-auto">
+          <table className={`${TABLE_STYLES.table} table-fixed`}>
+            <thead className={TABLE_STYLES.thead}>
             <tr>
-              <th className={TABLE_STYLES.th}>
+              <th className={`${TABLE_STYLES.th} w-[25%]`}>
                 Menu Name
               </th>
-              <th className={TABLE_STYLES.th}>
+              <th className={`${TABLE_STYLES.th} w-20`}>
                 Status
               </th>
-              <th className={TABLE_STYLES.th}>
+              <th className={`${TABLE_STYLES.th} w-24`}>
                 Type
               </th>
-              <th className={TABLE_STYLES.th}>
+              <th className={`${TABLE_STYLES.th} w-20`}>
                 Items
               </th>
-              <th className={TABLE_STYLES.th}>
+              <th className={`${TABLE_STYLES.th} w-28`}>
                 Public Access
               </th>
-              <th className={TABLE_STYLES.th}>
+              <th className={`${TABLE_STYLES.th} w-32`}>
                 Actions
               </th>
             </tr>
@@ -261,8 +262,9 @@ export const MenuList = ({
                 </td>
               </tr>
             ))}
-          </tbody>
-        </table>
+            </tbody>
+          </table>
+        </div>
       </div>
 
       {/* Pagination */}

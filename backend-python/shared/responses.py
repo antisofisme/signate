@@ -252,3 +252,49 @@ def validation_error_response(
         details={"errors": errors},
         status_code=400
     )
+
+
+# =============================================================================
+# CLIENT IP EXTRACTION
+# =============================================================================
+
+def get_client_ip(request) -> Optional[str]:
+    """
+    Extract real client IP from HTTP request.
+
+    Checks headers in order of priority:
+    1. X-Forwarded-For (first IP in chain - original client)
+    2. X-Real-IP (set by Nginx)
+    3. request.client.host (direct connection)
+
+    Args:
+        request: FastAPI Request object
+
+    Returns:
+        Client IP address string or None
+
+    Example:
+        >>> get_client_ip(request)
+        "203.0.113.195"
+    """
+    if not request:
+        return None
+
+    # Check X-Forwarded-For header (can contain multiple IPs: client, proxy1, proxy2)
+    x_forwarded_for = request.headers.get("X-Forwarded-For")
+    if x_forwarded_for:
+        # Get the first IP (original client)
+        ips = [ip.strip() for ip in x_forwarded_for.split(",")]
+        if ips:
+            return ips[0]
+
+    # Check X-Real-IP header (set by Nginx)
+    x_real_ip = request.headers.get("X-Real-IP")
+    if x_real_ip:
+        return x_real_ip.strip()
+
+    # Fallback to direct connection IP
+    if request.client and request.client.host:
+        return request.client.host
+
+    return None

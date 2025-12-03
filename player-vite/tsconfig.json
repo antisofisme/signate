@@ -29,7 +29,8 @@
       "@shared/*": ["src/shared/*"],
       "@shell": ["src/shell/index.ts"],
       "@shell/*": ["src/shell/*"],
-      "@player/*": ["src/player/*"]
+      "@player/*": ["src/player/*"],
+      "@pwa/*": ["src/pwa/*"]
     },
 
     // JSX support (if needed later)

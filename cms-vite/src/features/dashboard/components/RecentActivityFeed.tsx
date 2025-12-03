@@ -6,6 +6,7 @@
  */
 
 import { Activity, User, Monitor, FileImage, ListVideo, Settings } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { RecentActivity } from '../api/dashboard.api';
 import { formatDistanceToNow } from 'date-fns';
 
@@ -45,12 +46,14 @@ const getActivityColor = (action: string) => {
 };
 
 export default function RecentActivityFeed({ data, isLoading }: RecentActivityFeedProps) {
+  const { t } = useTranslation();
+
   return (
     <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
           <Activity className="w-5 h-5" />
-          Recent Activity
+          {t('dashboard.activity.title', 'Recent Activity')}
         </h2>
       </div>
 
@@ -93,7 +96,7 @@ export default function RecentActivityFeed({ data, isLoading }: RecentActivityFe
           })
         ) : (
           <div className="py-8 text-center text-gray-500 dark:text-gray-400">
-            No recent activity
+            {t('dashboard.activity.noActivity', 'No recent activity')}
           </div>
         )}
       </div>

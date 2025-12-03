@@ -24,6 +24,7 @@ import {
 import { toast } from 'sonner';
 import { formatDistanceToNow } from 'date-fns';
 import { getApiErrorMessage } from '@/shared/utils/types';
+import { Modal, Button } from '@/shared/components';
 import { deviceCommandApi } from '../api/commands';
 import type { DeviceCommand, CommandType, SendCommandRequest } from '../types/commands';
 
@@ -215,49 +216,45 @@ export function DeviceCommandControl({
 
       {/* Confirmation Dialog */}
       {confirmCommand && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-md border border-gray-200 dark:border-gray-700">
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-              Confirm Command
-            </h3>
+        <Modal
+          isOpen={true}
+          onClose={() => setConfirmCommand(null)}
+          title="Confirm Command"
+          maxWidth="md"
+          closeOnBackdropClick={!sendCommandMutation.isPending}
+          footer={
+            <div className="flex justify-end gap-3 px-6 py-4 border-t border-gray-200 dark:border-gray-700">
+              <Button
+                variant="secondary"
+                onClick={() => setConfirmCommand(null)}
+                disabled={sendCommandMutation.isPending}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="danger"
+                onClick={handleConfirmCommand}
+                disabled={sendCommandMutation.isPending}
+                loading={sendCommandMutation.isPending}
+                leftIcon={<Send className="w-4 h-4" />}
+              >
+                {sendCommandMutation.isPending ? 'Sending...' : 'Send Command'}
+              </Button>
+            </div>
+          }
+        >
+          <div className="p-6">
             <p className="text-gray-700 dark:text-gray-300 mb-2">
               Are you sure you want to send <strong>{confirmCommand}</strong> command to:
             </p>
             <p className="text-gray-900 dark:text-white font-semibold mb-6">
               {deviceName}
             </p>
-            <p className="text-sm text-yellow-600 dark:text-yellow-400 mb-6">
-              ⚠️ This action may interrupt content playback temporarily.
+            <p className="text-sm text-yellow-600 dark:text-yellow-400">
+              This action may interrupt content playback temporarily.
             </p>
-
-            <div className="flex justify-end gap-3">
-              <button
-                onClick={() => setConfirmCommand(null)}
-                disabled={sendCommandMutation.isPending}
-                className="px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg disabled:opacity-50"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleConfirmCommand}
-                disabled={sendCommandMutation.isPending}
-                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 flex items-center gap-2"
-              >
-                {sendCommandMutation.isPending ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    Sending...
-                  </>
-                ) : (
-                  <>
-                    <Send className="w-4 h-4" />
-                    Send Command
-                  </>
-                )}
-              </button>
-            </div>
           </div>
-        </div>
+        </Modal>
       )}
 
       {/* Command History */}

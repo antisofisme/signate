@@ -93,7 +93,6 @@
   "navigation": {
     "dashboard": "Dashboard",
     "devices": "Devices",
-    "deviceGroups": "Device Groups",
     "contents": "Contents",
     "playlists": "Playlists",
     "schedules": "Schedules",
@@ -114,7 +113,8 @@
     "groups": {
       "devices": "Devices",
       "content": "Content",
-      "menuDigital": "Menu Digital",
+      "digitalSignage": "Digital Signage",
+      "menuDigital": "Digital Menu",
       "customization": "Customization",
       "integrations": "Integrations"
     }
@@ -1194,12 +1194,106 @@
     "active": "Active",
     "inactive": "Inactive",
     "notAvailable": "N/A",
+    "refreshAll": "Refresh all dashboard data",
     "metrics": {
+      "totalDevices": "Total Devices",
       "onlineDevices": "{{online}} online ({{percentage}}%)",
+      "totalContent": "Total Content",
+      "activePlaylists": "Active Playlists",
+      "playbackEventsCount": "{{count}} playback events",
+      "totalMenus": "Digital Menus",
+      "activeMenus": "{{active}} active, {{items}} items",
+      "activeSchedules": "Schedules",
+      "runningNow": "{{running}} running, {{ending}} ending",
+      "menuViews": "Menu Views",
+      "contactClicks": "{{clicks}} contact clicks",
       "acrossAllDevices": "Across all devices",
       "playbackCompletion": "Content playback completion",
-      "totalPlaybackEvents": "Total playback events",
-      "playbackEventsCount": "{{count}} playback events"
+      "totalPlaybackEvents": "Total playback events"
+    },
+    "deviceHealth": {
+      "title": "Device Health Overview",
+      "healthy": "Healthy",
+      "warning": "Warning",
+      "error": "Error",
+      "offline": "Offline",
+      "topIssues": "Top Issues",
+      "noIssues": "No issues detected",
+      "device": "device",
+      "devices": "devices",
+      "more": "+{{count}} more"
+    },
+    "liveMonitor": {
+      "title": "Live Device Monitor",
+      "filters": {
+        "all": "All",
+        "online": "Online",
+        "warning": "Warning",
+        "error": "Error",
+        "offline": "Offline"
+      },
+      "table": {
+        "device": "Device",
+        "status": "Status",
+        "location": "Location",
+        "currentContent": "Current Content",
+        "system": "System",
+        "lastSeen": "Last Seen"
+      },
+      "noDevices": "No devices found"
+    },
+    "playlists": {
+      "title": "Active Playlists & Assignments",
+      "updated": "Updated",
+      "devices": "Devices",
+      "content": "Content",
+      "duration": "Duration",
+      "assignedTo": "Assigned to:",
+      "noPlaylists": "No active playlists found"
+    },
+    "activity": {
+      "title": "Recent Activity",
+      "noActivity": "No recent activity"
+    },
+    "alerts": {
+      "title": "System Alerts",
+      "new": "new",
+      "acknowledge": "Acknowledge",
+      "acknowledged": "Acknowledged Alerts",
+      "device": "Device:",
+      "allOperational": "All systems operational"
+    },
+    "systemInfo": {
+      "title": "Storage & System Info",
+      "storageUsage": "Storage Usage",
+      "used": "{{percentage}}% used",
+      "free": "{{size}} free",
+      "contentBreakdown": "Content Breakdown",
+      "databaseSize": "Database Size",
+      "systemUptime": "System Uptime",
+      "noInfo": "No system information available"
+    },
+    "menuAnalytics": {
+      "title": "Menu Analytics by Device",
+      "viewsByDevice": "Views by Device Type",
+      "mobile": "Mobile",
+      "tablet": "Tablet",
+      "desktop": "Desktop",
+      "unknown": "Unknown",
+      "totalViews": "Total Views",
+      "contactClicks": "Contact Clicks",
+      "topMenus": "Top Performing Menus",
+      "noMenus": "No menu data available"
+    },
+    "scheduleOverview": {
+      "title": "Schedule Overview",
+      "totalSchedules": "Total Schedules",
+      "active": "Active",
+      "runningNow": "Running Now",
+      "endingSoon": "Ending Soon",
+      "activeToday": "Active Today",
+      "noSchedules": "No active schedules today",
+      "allDay": "All Day"
     }
   },
   "analytics": {
@@ -1307,92 +1401,6 @@
     "active": "Active",
     "keyboardHint": "Press <kbd>Ctrl/Cmd+K</kbd> to open",
     "select": "Select"
-  },
-  "deviceGroups": {
-    "title": "Device Groups",
-    "description": "Organize devices into groups for bulk management",
-    "loadingGroups": "Loading groups...",
-    "viewMode": {
-      "grid": "Grid",
-      "tree": "Tree"
-    },
-    "createGroup": "Create Group",
-    "noGroups": "No groups yet",
-    "noGroupsDescription": "Create your first device group to organize your devices",
-    "createFirstGroup": "Create First Group",
-    "devices": "device",
-    "devicesPlural": "devices",
-    "online": "online",
-    "offline": "offline",
-    "manageDevices": "Devices",
-    "edit": "Edit",
-    "editGroup": "Edit group",
-    "deleteGroup": "Delete group",
-    "confirmDelete": "Delete Device Group?",
-    "confirmDeleteMessage": "Are you sure you want to delete group \"{{name}}\"? This action cannot be undone.",
-    "toast": {
-      "createSuccess": "Group created successfully",
-      "createSuccessDescription": "\"{{name}}\" has been created",
-      "createError": "Failed to create group",
-      "updateSuccess": "Group updated successfully",
-      "updateSuccessDescription": "Changes to \"{{name}}\" have been saved",
-      "updateError": "Failed to update group",
-      "deleteSuccess": "Group deleted successfully",
-      "deleteError": "Failed to delete group",
-      "tryAgain": "Please try again"
-    },
-    "modal": {
-      "createTitle": "Create Device Group",
-      "editTitle": "Edit Device Group",
-      "groupName": "Group Name",
-      "groupNamePlaceholder": "e.g., Lobby Displays",
-      "description": "Description",
-      "descriptionPlaceholder": "Optional description",
-      "groupType": "Group Type",
-      "types": {
-        "custom": "Custom",
-        "chain": "Chain",
-        "hotel": "Hotel",
-        "floor": "Floor",
-        "location": "Location"
-      },
-      "parentGroup": "Parent Group (Optional)",
-      "noneTopLevel": "None (Top Level)",
-      "hierarchicalHint": "Create hierarchical structure by nesting groups",
-      "cancel": "Cancel",
-      "createGroup": "Create Group",
-      "creating": "Creating...",
-      "updateGroup": "Update Group",
-      "updating": "Updating..."
-    },
-    "assignment": {
-      "title": "Manage Devices",
-      "group": "Group",
-      "searchPlaceholder": "Search devices...",
-      "loadingDevices": "Loading devices...",
-      "noDevices": "No devices found",
-      "devicesAssigned": "{{count}} device assigned",
-      "devicesAssignedPlural": "{{count}} devices assigned",
-      "done": "Done",
-      "manageDevices": "Manage Devices",
-      "assignedDevices": "Assigned Devices",
-      "allDevices": "All Devices",
-      "deviceAdded": "Device added to group",
-      "deviceRemoved": "Device removed from group",
-      "addError": "Failed to add device",
-      "removeError": "Failed to remove device",
-      "add": "Add to group",
-      "remove": "Remove from group"
-    },
-    "viewDevices": {
-      "title": "Devices in Group",
-      "button": "View Devices",
-      "searchPlaceholder": "Search devices in group...",
-      "loadingDevices": "Loading devices...",
-      "noDevicesInGroup": "No devices in this group",
-      "noMatchingDevices": "No matching devices found",
-      "totalDevices": "{{count}} device(s) in group"
-    }
   },
   "tags": {
     "title": "Tag Management",

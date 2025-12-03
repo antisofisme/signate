@@ -59,28 +59,29 @@ export function PlaylistList({
 
   return (
     <div className={TABLE_STYLES.container}>
-      <table className={TABLE_STYLES.table}>
-        <thead className={TABLE_STYLES.thead}>
+      <div className="overflow-x-auto">
+        <table className={`${TABLE_STYLES.table} table-fixed`}>
+          <thead className={TABLE_STYLES.thead}>
           <tr>
-            <th className={TABLE_STYLES.th}>
+            <th className={`${TABLE_STYLES.th} w-[25%]`}>
               {t('playlists.name')}
             </th>
-            <th className={TABLE_STYLES.th}>
+            <th className={`${TABLE_STYLES.th} w-20`}>
               Status
             </th>
-            <th className={TABLE_STYLES.th}>
+            <th className={`${TABLE_STYLES.th} w-20`}>
               Priority
             </th>
-            <th className={TABLE_STYLES.th}>
+            <th className={`${TABLE_STYLES.th} w-24`}>
               {t('playlists.content', 'Konten')}
             </th>
-            <th className={TABLE_STYLES.th}>
+            <th className={`${TABLE_STYLES.th} w-24`}>
               {t('playlists.devices', 'Device')}
             </th>
-            <th className={TABLE_STYLES.th}>
+            <th className={`${TABLE_STYLES.th} w-24`}>
               {t('playlists.duration')}
             </th>
-            <th className={TABLE_STYLES.th}>
+            <th className={`${TABLE_STYLES.th} w-32`}>
               {t('common.actions')}
             </th>
           </tr>
@@ -174,8 +175,9 @@ export function PlaylistList({
               </td>
             </tr>
           ))}
-        </tbody>
-      </table>
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }

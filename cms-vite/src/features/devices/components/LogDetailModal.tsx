@@ -14,7 +14,7 @@
 import { Copy, CheckCircle } from 'lucide-react';
 import { useState } from 'react';
 import { Badge } from '@/components/ui/badge';
-import { Modal } from '@/shared/components';
+import { Modal, Button } from '@/shared/components';
 import type { DeviceLog } from '../types/logs';
 import { LOG_LEVEL_COLORS } from '../types/logs';
 
@@ -86,15 +86,10 @@ ${log.stack_trace ? `Stack Trace:\n${log.stack_trace}` : ''}
 
   // Footer with close button
   const footer = (
-    <div className="border-t border-gray-200 dark:border-gray-700 px-6 py-4 bg-gray-50 dark:bg-gray-900">
-      <div className="flex items-center justify-end">
-        <button
-          onClick={onClose}
-          className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-        >
-          Close
-        </button>
-      </div>
+    <div className="flex justify-end gap-3 px-6 py-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
+      <Button variant="secondary" onClick={onClose}>
+        Close
+      </Button>
     </div>
   );
 

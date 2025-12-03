@@ -8,7 +8,7 @@
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FileText, Trash2, Loader2, Star, Image, Video, Music, ArrowRight, GripVertical } from 'lucide-react';
-import { Modal } from '@/shared/components';
+import { Modal, Button } from '@/shared/components';
 import { useDeviceContents, useAssignContent, useUnassignContent } from '../../hooks/useDevices';
 import { useContentList } from '@/shared/hooks/useSharedContents';
 import type { Device } from '../../types/device';
@@ -310,7 +310,7 @@ export function ContentAssignmentModal({
             <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
           </div>
         ) : (
-          <div className="grid grid-cols-2 gap-6 h-full">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 h-full">
             {/* Left Column - Available Content */}
             <div className="border-r border-gray-200 dark:border-gray-700 pr-4 flex flex-col">
               <h4 className="font-semibold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
@@ -433,16 +433,14 @@ export function ContentAssignmentModal({
         </div>
 
         {/* Close Button */}
-        <div className="px-6 py-4">
-          <div className="flex justify-end">
-            <button
-              onClick={onClose}
-              disabled={assignContent.isPending || unassignContent.isPending}
-              className="px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors disabled:opacity-50"
-            >
-              {t('common.close')}
-            </button>
-          </div>
+        <div className="flex justify-end gap-3 px-6 py-4">
+          <Button
+            variant="secondary"
+            onClick={onClose}
+            disabled={assignContent.isPending || unassignContent.isPending}
+          >
+            {t('common.close')}
+          </Button>
         </div>
       </div>
     </Modal>

@@ -11,6 +11,7 @@ from shared.responses import success_response
 from shared.logging import AuditLogger
 from shared.auth import get_current_user, CurrentUser
 from shared.config import settings
+from shared.rbac import require_permission
 
 from .repositories import (
     MenuRepository,
@@ -113,12 +114,12 @@ def get_item_media_repository(db: Session = Depends(get_db)) -> MenuItemMediaRep
 @router.post("", status_code=201)
 async def create_menu(
     payload: MenuCreateDTO,
-    current_user: CurrentUser = Depends(get_current_user),
+    current_user: CurrentUser = Depends(require_permission("menus", "create")),
     menu_repo: MenuRepository = Depends(get_menu_repository),
     qr_generator: QRCodeGenerator = Depends(get_qr_generator),
     audit_logger: AuditLogger = Depends(get_audit_logger)
 ):
-    """Create new digital menu"""
+    """Create new digital menu (requires menus:create permission)"""
     use_case = CreateMenuUseCase(menu_repo, qr_generator, audit_logger)
 
     menu_data = await use_case.execute(
@@ -167,11 +168,11 @@ def list_menus(
     limit: int = Query(50, ge=1, le=100),
     menu_type: Optional[str] = None,
     is_active: Optional[bool] = None,
-    current_user: CurrentUser = Depends(get_current_user),
+    current_user: CurrentUser = Depends(require_permission("menus", "view")),
     menu_repo: MenuRepository = Depends(get_menu_repository),
     qr_generator: QRCodeGenerator = Depends(get_qr_generator)
 ):
-    """List all menus for current organization"""
+    """List all menus for current organization (requires menus:view permission)"""
     menus, total = menu_repo.find_all(
         organization_id=current_user.organization_id,
         skip=skip,
@@ -223,11 +224,11 @@ def download_excel_template(
 @router.get("/{menu_id}")
 def get_menu(
     menu_id: int,
-    current_user: CurrentUser = Depends(get_current_user),
+    current_user: CurrentUser = Depends(require_permission("menus", "view")),
     menu_repo: MenuRepository = Depends(get_menu_repository),
     qr_generator: QRCodeGenerator = Depends(get_qr_generator)
 ):
-    """Get single menu by ID"""
+    """Get single menu by ID (requires menus:view permission)"""
     menu = menu_repo.find_by_id(menu_id, current_user.organization_id)
     if not menu:
         raise HTTPException(status_code=404, detail="Menu not found")
@@ -251,12 +252,12 @@ def get_menu(
 def update_menu(
     menu_id: int,
     payload: MenuUpdateDTO,
-    current_user: CurrentUser = Depends(get_current_user),
+    current_user: CurrentUser = Depends(require_permission("menus", "edit")),
     menu_repo: MenuRepository = Depends(get_menu_repository),
     qr_generator: QRCodeGenerator = Depends(get_qr_generator),
     audit_logger: AuditLogger = Depends(get_audit_logger)
 ):
-    """Update menu"""
+    """Update menu (requires menus:edit permission)"""
     menu = menu_repo.find_by_id(menu_id, current_user.organization_id)
     if not menu:
         raise HTTPException(status_code=404, detail="Menu not found")
@@ -300,11 +301,11 @@ def update_menu(
 @router.delete("/{menu_id}", status_code=204)
 def delete_menu(
     menu_id: int,
-    current_user: CurrentUser = Depends(get_current_user),
+    current_user: CurrentUser = Depends(require_permission("menus", "delete")),
     menu_repo: MenuRepository = Depends(get_menu_repository),
     audit_logger: AuditLogger = Depends(get_audit_logger)
 ):
-    """Soft delete menu"""
+    """Soft delete menu (requires menus:delete permission)"""
     menu = menu_repo.find_by_id(menu_id, current_user.organization_id)
     if not menu:
         raise HTTPException(status_code=404, detail="Menu not found")
@@ -332,11 +333,11 @@ def list_menu_items(
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=100),
     category: Optional[str] = None,
-    current_user: CurrentUser = Depends(get_current_user),
+    current_user: CurrentUser = Depends(require_permission("menus", "view")),
     menu_repo: MenuRepository = Depends(get_menu_repository),
     menu_item_repo: MenuItemRepository = Depends(get_menu_item_repository)
 ):
-    """List items for menu"""
+    """List items for menu (requires menus:view permission)"""
     # Verify menu exists
     menu = menu_repo.find_by_id(menu_id, current_user.organization_id)
     if not menu:
@@ -407,12 +408,12 @@ def list_menu_items(
 def add_menu_item(
     menu_id: int,
     payload: MenuItemCreateDTO,
-    current_user: CurrentUser = Depends(get_current_user),
+    current_user: CurrentUser = Depends(require_permission("menus", "edit")),
     menu_repo: MenuRepository = Depends(get_menu_repository),
     menu_item_repo: MenuItemRepository = Depends(get_menu_item_repository),
     audit_logger: AuditLogger = Depends(get_audit_logger)
 ):
-    """Add item to menu"""
+    """Add item to menu (requires menus:edit permission)"""
     menu = menu_repo.find_by_id(menu_id, current_user.organization_id)
     if not menu:
         raise HTTPException(status_code=404, detail="Menu not found")
@@ -441,12 +442,12 @@ def update_menu_item(
     menu_id: int,
     item_id: int,
     payload: MenuItemUpdateDTO,
-    current_user: CurrentUser = Depends(get_current_user),
+    current_user: CurrentUser = Depends(require_permission("menus", "edit")),
     menu_repo: MenuRepository = Depends(get_menu_repository),
     menu_item_repo: MenuItemRepository = Depends(get_menu_item_repository),
     audit_logger: AuditLogger = Depends(get_audit_logger)
 ):
-    """Update menu item"""
+    """Update menu item (requires menus:edit permission)"""
     # Verify menu exists and belongs to organization
     menu = menu_repo.find_by_id(menu_id, current_user.organization_id)
     if not menu:
@@ -478,12 +479,12 @@ def update_menu_item(
 def delete_menu_item(
     menu_id: int,
     item_id: int,
-    current_user: CurrentUser = Depends(get_current_user),
+    current_user: CurrentUser = Depends(require_permission("menus", "delete")),
     menu_repo: MenuRepository = Depends(get_menu_repository),
     menu_item_repo: MenuItemRepository = Depends(get_menu_item_repository),
     audit_logger: AuditLogger = Depends(get_audit_logger)
 ):
-    """Delete menu item"""
+    """Delete menu item (requires menus:delete permission)"""
     # Verify menu exists and belongs to organization
     menu = menu_repo.find_by_id(menu_id, current_user.organization_id)
     if not menu:
@@ -517,14 +518,14 @@ async def import_items_from_excel(
     menu_id: int,
     file: UploadFile = File(...),
     replace_existing: bool = Query(False),
-    current_user: CurrentUser = Depends(get_current_user),
+    current_user: CurrentUser = Depends(require_permission("menus", "edit")),
     menu_repo: MenuRepository = Depends(get_menu_repository),
     menu_item_repo: MenuItemRepository = Depends(get_menu_item_repository),
     import_history_repo: MenuImportHistoryRepository = Depends(get_import_history_repository),
     excel_importer: ExcelImporter = Depends(get_excel_importer),
     audit_logger: AuditLogger = Depends(get_audit_logger)
 ):
-    """Import menu items from Excel file"""
+    """Import menu items from Excel file (requires menus:edit permission)"""
     use_case = BulkImportItemsUseCase(
         menu_repo,
         menu_item_repo,
@@ -547,12 +548,12 @@ async def import_items_from_excel(
 @router.get("/{menu_id}/export")
 def export_menu_to_excel(
     menu_id: int,
-    current_user: CurrentUser = Depends(get_current_user),
+    current_user: CurrentUser = Depends(require_permission("menus", "view")),
     menu_repo: MenuRepository = Depends(get_menu_repository),
     menu_item_repo: MenuItemRepository = Depends(get_menu_item_repository),
     excel_exporter: ExcelExporter = Depends(get_excel_exporter)
 ):
-    """Export menu items to Excel file"""
+    """Export menu items to Excel file (requires menus:view permission)"""
     from fastapi.responses import StreamingResponse
     from io import BytesIO
 
@@ -599,10 +600,10 @@ def export_menu_to_excel(
 @router.post("/verify-pin")
 def verify_organization_pin(
     payload: PINVerifyDTO,
-    current_user: CurrentUser = Depends(get_current_user),
+    current_user: CurrentUser = Depends(require_permission("menus", "delete")),
     db: Session = Depends(get_db)
 ):
-    """Verify organization PIN for sensitive operations like deletion"""
+    """Verify organization PIN for sensitive operations (requires menus:delete permission)"""
     from services.auth.repositories.models import OrganizationModel
 
     org = db.query(OrganizationModel).filter(
@@ -629,12 +630,12 @@ def verify_organization_pin(
 def delete_menu_with_pin(
     menu_id: int,
     payload: PINVerifyDTO,
-    current_user: CurrentUser = Depends(get_current_user),
+    current_user: CurrentUser = Depends(require_permission("menus", "delete")),
     menu_repo: MenuRepository = Depends(get_menu_repository),
     audit_logger: AuditLogger = Depends(get_audit_logger),
     db: Session = Depends(get_db)
 ):
-    """Delete menu with PIN verification"""
+    """Delete menu with PIN verification (requires menus:delete permission)"""
     from services.auth.repositories.models import OrganizationModel
 
     # Verify PIN first
@@ -673,11 +674,11 @@ def delete_menu_with_pin(
 @router.get("/{menu_id}/categories")
 def list_menu_categories(
     menu_id: int,
-    current_user: CurrentUser = Depends(get_current_user),
+    current_user: CurrentUser = Depends(require_permission("menus", "view")),
     menu_repo: MenuRepository = Depends(get_menu_repository),
     category_repo: MenuCategoryRepository = Depends(get_category_repository)
 ):
-    """List categories for a specific menu"""
+    """List categories for a specific menu (requires menus:view permission)"""
     # Verify menu exists
     menu = menu_repo.find_by_id(menu_id, current_user.organization_id)
     if not menu:
@@ -696,12 +697,12 @@ def list_menu_categories(
 def create_menu_category(
     menu_id: int,
     payload: MenuCategoryCreateDTO,
-    current_user: CurrentUser = Depends(get_current_user),
+    current_user: CurrentUser = Depends(require_permission("menus", "edit")),
     menu_repo: MenuRepository = Depends(get_menu_repository),
     category_repo: MenuCategoryRepository = Depends(get_category_repository),
     audit_logger: AuditLogger = Depends(get_audit_logger)
 ):
-    """Create a category for a specific menu"""
+    """Create a category for a specific menu (requires menus:edit permission)"""
     # Verify menu exists
     menu = menu_repo.find_by_id(menu_id, current_user.organization_id)
     if not menu:
@@ -742,12 +743,12 @@ def update_menu_category(
     menu_id: int,
     category_id: int,
     payload: MenuCategoryUpdateDTO,
-    current_user: CurrentUser = Depends(get_current_user),
+    current_user: CurrentUser = Depends(require_permission("menus", "edit")),
     menu_repo: MenuRepository = Depends(get_menu_repository),
     category_repo: MenuCategoryRepository = Depends(get_category_repository),
     audit_logger: AuditLogger = Depends(get_audit_logger)
 ):
-    """Update a menu category"""
+    """Update a menu category (requires menus:edit permission)"""
     # Verify menu exists
     menu = menu_repo.find_by_id(menu_id, current_user.organization_id)
     if not menu:
@@ -785,12 +786,12 @@ def update_menu_category(
 def delete_menu_category(
     menu_id: int,
     category_id: int,
-    current_user: CurrentUser = Depends(get_current_user),
+    current_user: CurrentUser = Depends(require_permission("menus", "delete")),
     menu_repo: MenuRepository = Depends(get_menu_repository),
     category_repo: MenuCategoryRepository = Depends(get_category_repository),
     audit_logger: AuditLogger = Depends(get_audit_logger)
 ):
-    """Delete a menu category"""
+    """Delete a menu category (requires menus:delete permission)"""
     # Verify menu exists
     menu = menu_repo.find_by_id(menu_id, current_user.organization_id)
     if not menu:
@@ -821,11 +822,11 @@ def delete_menu_category(
 def reorder_menu_categories(
     menu_id: int,
     payload: MenuCategoryReorderDTO,
-    current_user: CurrentUser = Depends(get_current_user),
+    current_user: CurrentUser = Depends(require_permission("menus", "edit")),
     menu_repo: MenuRepository = Depends(get_menu_repository),
     category_repo: MenuCategoryRepository = Depends(get_category_repository)
 ):
-    """Reorder categories for a menu"""
+    """Reorder categories for a menu (requires menus:edit permission)"""
     # Verify menu exists
     menu = menu_repo.find_by_id(menu_id, current_user.organization_id)
     if not menu:
@@ -849,12 +850,12 @@ def reorder_menu_categories(
 def list_item_media(
     menu_id: int,
     item_id: int,
-    current_user: CurrentUser = Depends(get_current_user),
+    current_user: CurrentUser = Depends(require_permission("menus", "view")),
     menu_repo: MenuRepository = Depends(get_menu_repository),
     menu_item_repo: MenuItemRepository = Depends(get_menu_item_repository),
     item_media_repo: MenuItemMediaRepository = Depends(get_item_media_repository)
 ):
-    """List all media for a menu item"""
+    """List all media for a menu item (requires menus:view permission)"""
     # Verify menu exists
     menu = menu_repo.find_by_id(menu_id, current_user.organization_id)
     if not menu:
@@ -894,13 +895,13 @@ def add_media_to_item(
     menu_id: int,
     item_id: int,
     payload: MenuItemMediaAddDTO,
-    current_user: CurrentUser = Depends(get_current_user),
+    current_user: CurrentUser = Depends(require_permission("menus", "edit")),
     menu_repo: MenuRepository = Depends(get_menu_repository),
     menu_item_repo: MenuItemRepository = Depends(get_menu_item_repository),
     item_media_repo: MenuItemMediaRepository = Depends(get_item_media_repository),
     audit_logger: AuditLogger = Depends(get_audit_logger)
 ):
-    """Add media to a menu item"""
+    """Add media to a menu item (requires menus:edit permission)"""
     # Verify menu exists
     menu = menu_repo.find_by_id(menu_id, current_user.organization_id)
     if not menu:
@@ -941,13 +942,13 @@ def remove_media_from_item(
     menu_id: int,
     item_id: int,
     media_id: int,
-    current_user: CurrentUser = Depends(get_current_user),
+    current_user: CurrentUser = Depends(require_permission("menus", "edit")),
     menu_repo: MenuRepository = Depends(get_menu_repository),
     menu_item_repo: MenuItemRepository = Depends(get_menu_item_repository),
     item_media_repo: MenuItemMediaRepository = Depends(get_item_media_repository),
     audit_logger: AuditLogger = Depends(get_audit_logger)
 ):
-    """Remove media from a menu item"""
+    """Remove media from a menu item (requires menus:edit permission)"""
     # Verify menu exists
     menu = menu_repo.find_by_id(menu_id, current_user.organization_id)
     if not menu:
@@ -980,13 +981,13 @@ def bulk_set_item_media(
     menu_id: int,
     item_id: int,
     payload: MenuItemMediaBulkSetDTO,
-    current_user: CurrentUser = Depends(get_current_user),
+    current_user: CurrentUser = Depends(require_permission("menus", "edit")),
     menu_repo: MenuRepository = Depends(get_menu_repository),
     menu_item_repo: MenuItemRepository = Depends(get_menu_item_repository),
     item_media_repo: MenuItemMediaRepository = Depends(get_item_media_repository),
     audit_logger: AuditLogger = Depends(get_audit_logger)
 ):
-    """Bulk set media for a menu item (replaces existing)"""
+    """Bulk set media for a menu item - replaces existing (requires menus:edit permission)"""
     # Verify menu exists
     menu = menu_repo.find_by_id(menu_id, current_user.organization_id)
     if not menu:
@@ -1041,12 +1042,12 @@ def set_primary_media(
     menu_id: int,
     item_id: int,
     media_id: int,
-    current_user: CurrentUser = Depends(get_current_user),
+    current_user: CurrentUser = Depends(require_permission("menus", "edit")),
     menu_repo: MenuRepository = Depends(get_menu_repository),
     menu_item_repo: MenuItemRepository = Depends(get_menu_item_repository),
     item_media_repo: MenuItemMediaRepository = Depends(get_item_media_repository)
 ):
-    """Set a media as primary for a menu item"""
+    """Set a media as primary for a menu item (requires menus:edit permission)"""
     # Verify menu exists
     menu = menu_repo.find_by_id(menu_id, current_user.organization_id)
     if not menu:
@@ -1069,12 +1070,12 @@ def reorder_item_media(
     menu_id: int,
     item_id: int,
     payload: MenuItemMediaReorderDTO,
-    current_user: CurrentUser = Depends(get_current_user),
+    current_user: CurrentUser = Depends(require_permission("menus", "edit")),
     menu_repo: MenuRepository = Depends(get_menu_repository),
     menu_item_repo: MenuItemRepository = Depends(get_menu_item_repository),
     item_media_repo: MenuItemMediaRepository = Depends(get_item_media_repository)
 ):
-    """Reorder media for a menu item"""
+    """Reorder media for a menu item (requires menus:edit permission)"""
     # Verify menu exists
     menu = menu_repo.find_by_id(menu_id, current_user.organization_id)
     if not menu:

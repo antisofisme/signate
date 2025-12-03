@@ -5,7 +5,11 @@
  * Displays device list with filters and management
  */
 
-import { PageHeader, AccessDenied, PageSkeleton } from '@/shared/components';
+import {
+  PageHeader,
+  AccessDenied,
+  PageSkeleton,
+} from '@/shared/components';
 import { DeviceTable } from '@/features/devices/components/DeviceTable';
 import { PlayerInfoBox } from '@/features/devices/components/PlayerInfoBox';
 import { useDeviceWebSocket } from '@/features/devices/hooks/useDeviceWebSocket';
@@ -35,7 +39,7 @@ export default function DevicesPage() {
 
   return (
     <>
-      {/* Sticky Page Header */}
+      {/* Page Header */}
       <PageHeader
         title={t('devices.title')}
         description={t('devices.subtitle')}
@@ -46,7 +50,7 @@ export default function DevicesPage() {
         {/* Player Info Box */}
         <PlayerInfoBox />
 
-        {/* Device Table */}
+        {/* Device Table (handles scope tabs, toolbar, stats, table) */}
         <DeviceTable />
       </div>
     </>

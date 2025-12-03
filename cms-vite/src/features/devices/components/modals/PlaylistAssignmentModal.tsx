@@ -8,7 +8,7 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { List, Plus, Trash2, Loader2 } from 'lucide-react';
-import { Modal } from '@/shared/components';
+import { Modal, Button } from '@/shared/components';
 import { useDevicePlaylists, useAssignPlaylist, useUnassignPlaylist } from '../../hooks/useDevices';
 import { usePlaylistList } from '@/shared/hooks/useSharedPlaylists';
 import type { Device } from '../../types/device';
@@ -108,16 +108,14 @@ export function PlaylistAssignmentModal({
           </div>
 
           {/* Close Button */}
-          <div className="px-6 py-4">
-            <div className="flex justify-end">
-              <button
-                onClick={onClose}
-                disabled={assignPlaylist.isPending || unassignPlaylist.isPending}
-                className="px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors disabled:opacity-50"
-              >
-                {t('common.close')}
-              </button>
-            </div>
+          <div className="flex justify-end gap-3 px-6 py-4">
+            <Button
+              variant="secondary"
+              onClick={onClose}
+              disabled={assignPlaylist.isPending || unassignPlaylist.isPending}
+            >
+              {t('common.close')}
+            </Button>
           </div>
         </div>
       }
@@ -154,23 +152,14 @@ export function PlaylistAssignmentModal({
                       </option>
                     ))}
                   </select>
-                  <button
+                  <Button
                     onClick={handleAssign}
                     disabled={!selectedPlaylistId || assignPlaylist.isPending}
-                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2 transition-colors"
+                    loading={assignPlaylist.isPending}
+                    leftIcon={<Plus className="w-4 h-4" />}
                   >
-                    {assignPlaylist.isPending ? (
-                      <>
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                        {t('devices.modals.assigning')}
-                      </>
-                    ) : (
-                      <>
-                        <Plus className="w-4 h-4" />
-                        {t('devices.modals.assign')}
-                      </>
-                    )}
-                  </button>
+                    {t('devices.modals.assign')}
+                  </Button>
                 </div>
               )}
             </div>

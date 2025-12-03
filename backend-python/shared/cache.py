@@ -136,15 +136,43 @@ class CacheService:
         except:
             return False
     
-    def increment(self, key: str, amount: int = 1) -> Optional[int]:
-        """Increment counter"""
+    def increment(self, key: str, amount: int = 1, ttl: int = None) -> Optional[int]:
+        """Increment counter with optional TTL for new keys"""
         if not self.redis_client:
             return None
-        
+
         try:
-            return self.redis_client.incr(key, amount)
+            result = self.redis_client.incr(key, amount)
+            # Set expiration if this is a new key (result equals amount)
+            if ttl and result == amount:
+                self.redis_client.expire(key, ttl)
+            return result
         except:
             return None
+
+    def add_to_set(self, key: str, value: str, ttl: int = None) -> bool:
+        """Add value to a Redis set with optional TTL"""
+        if not self.redis_client:
+            return False
+
+        try:
+            result = self.redis_client.sadd(key, value)
+            # Set expiration if TTL provided and this is a new key
+            if ttl:
+                self.redis_client.expire(key, ttl)
+            return bool(result)
+        except:
+            return False
+
+    def set_size(self, key: str) -> int:
+        """Get size of a Redis set"""
+        if not self.redis_client:
+            return 0
+
+        try:
+            return self.redis_client.scard(key)
+        except:
+            return 0
     
     def expire(self, key: str, ttl: int) -> bool:
         """Set expiration on existing key"""

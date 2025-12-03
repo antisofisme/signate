@@ -29,6 +29,7 @@ class MenuModel(Base):
     name = Column(String(255), nullable=False)
     description = Column(Text, nullable=True)
     menu_type = Column(String(50), nullable=False, index=True)
+    tab_name = Column(String(100), nullable=True)  # Custom tab label for portal
 
     # Display settings
     is_active = Column(Boolean, default=True, nullable=False)

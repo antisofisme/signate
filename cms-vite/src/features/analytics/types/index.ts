@@ -95,3 +95,88 @@ export interface PlaybackLogResponse {
   error_details?: Record<string, any>
   created_at: string
 }
+
+// ============================================================================
+// MENU ANALYTICS TYPES (REAL DATA from menu_views table)
+// ============================================================================
+
+export interface MenuViewTrendPoint {
+  date: string
+  views: number
+  contact_clicks: number
+  mobile: number
+  tablet: number
+  desktop: number
+  unknown: number
+}
+
+export interface TopMenuAnalytics {
+  menu_id: number
+  menu_name: string
+  menu_type: string
+  total_views: number
+  contact_clicks: number
+  mobile_views: number
+  tablet_views: number
+  desktop_views: number
+}
+
+export interface PopularHour {
+  hour: number
+  views: number
+  percentage: number
+}
+
+export interface MenuAnalyticsTrend {
+  period_start: string
+  period_end: string
+  total_views: number
+  total_contact_clicks: number
+  views_by_device: {
+    mobile: number
+    tablet: number
+    desktop: number
+    unknown: number
+  }
+  daily_trend: MenuViewTrendPoint[]
+  top_menus: TopMenuAnalytics[]
+  popular_hours: PopularHour[]
+}
+
+// ============================================================================
+// DEVICE HEALTH ANALYTICS TYPES (REAL DATA from device_health_metrics table)
+// ============================================================================
+
+export interface DeviceHealthTrendPoint {
+  date: string
+  avg_cpu_usage: number
+  avg_memory_usage: number
+  avg_disk_usage: number
+  avg_network_latency_ms: number | null
+  devices_reporting: number
+}
+
+export interface DeviceHealthSummary {
+  device_id: number
+  device_name: string
+  latest_cpu_usage: number | null
+  latest_memory_usage: number | null
+  latest_disk_usage: number | null
+  health_score: number
+  status: 'healthy' | 'warning' | 'critical'
+  last_reported_at: string | null
+}
+
+export interface DeviceHealthTrend {
+  period_start: string
+  period_end: string
+  fleet_health_score: number
+  devices_healthy: number
+  devices_warning: number
+  devices_critical: number
+  avg_cpu_usage: number
+  avg_memory_usage: number
+  avg_disk_usage: number
+  daily_trend: DeviceHealthTrendPoint[]
+  device_summaries: DeviceHealthSummary[]
+}

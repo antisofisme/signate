@@ -12,7 +12,7 @@ export interface User {
   username: string;
   email: string;
   full_name: string;
-  role: 'SUPER_ADMIN' | 'ADMIN' | 'CONTENT_MANAGER' | 'VIEWER';  // Must match backend
+  role: 'super_admin' | 'admin' | 'manager' | 'viewer';  // Must match backend (lowercase)
   organization_id: number | null;
   is_active: boolean;
 

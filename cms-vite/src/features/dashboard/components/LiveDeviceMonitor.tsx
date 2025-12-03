@@ -7,6 +7,7 @@
 
 import { useState } from 'react';
 import { Monitor, MapPin, Activity, Cpu, HardDrive, Eye } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { LiveDevice } from '../api/dashboard.api';
 import { formatDistanceToNow } from 'date-fns';
 
@@ -16,6 +17,7 @@ interface LiveDeviceMonitorProps {
 }
 
 export default function LiveDeviceMonitor({ devices, isLoading }: LiveDeviceMonitorProps) {
+  const { t } = useTranslation();
   const [filter, setFilter] = useState<'all' | 'online' | 'offline' | 'warning' | 'error'>('all');
 
   const filteredDevices = devices?.filter((device) => {
@@ -45,12 +47,20 @@ export default function LiveDeviceMonitor({ devices, isLoading }: LiveDeviceMoni
     return 'bg-red-500 dark:bg-red-600';
   };
 
+  const filterLabels: Record<string, string> = {
+    all: t('dashboard.liveMonitor.filters.all', 'All'),
+    online: t('dashboard.liveMonitor.filters.online', 'Online'),
+    warning: t('dashboard.liveMonitor.filters.warning', 'Warning'),
+    error: t('dashboard.liveMonitor.filters.error', 'Error'),
+    offline: t('dashboard.liveMonitor.filters.offline', 'Offline'),
+  };
+
   return (
     <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
           <Activity className="w-5 h-5" />
-          Live Device Monitor
+          {t('dashboard.liveMonitor.title', 'Live Device Monitor')}
         </h2>
 
         {/* Filter Buttons */}
@@ -65,7 +75,7 @@ export default function LiveDeviceMonitor({ devices, isLoading }: LiveDeviceMoni
                   : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
               }`}
             >
-              {status.charAt(0).toUpperCase() + status.slice(1)}
+              {filterLabels[status]}
             </button>
           ))}
         </div>
@@ -77,22 +87,22 @@ export default function LiveDeviceMonitor({ devices, isLoading }: LiveDeviceMoni
           <thead>
             <tr className="border-b border-gray-200 dark:border-gray-700">
               <th className="text-left py-3 px-4 text-sm font-semibold text-gray-900 dark:text-white">
-                Device
+                {t('dashboard.liveMonitor.table.device', 'Device')}
               </th>
               <th className="text-left py-3 px-4 text-sm font-semibold text-gray-900 dark:text-white">
-                Status
+                {t('dashboard.liveMonitor.table.status', 'Status')}
               </th>
               <th className="text-left py-3 px-4 text-sm font-semibold text-gray-900 dark:text-white">
-                Location
+                {t('dashboard.liveMonitor.table.location', 'Location')}
               </th>
               <th className="text-left py-3 px-4 text-sm font-semibold text-gray-900 dark:text-white">
-                Current Content
+                {t('dashboard.liveMonitor.table.currentContent', 'Current Content')}
               </th>
               <th className="text-left py-3 px-4 text-sm font-semibold text-gray-900 dark:text-white">
-                System
+                {t('dashboard.liveMonitor.table.system', 'System')}
               </th>
               <th className="text-left py-3 px-4 text-sm font-semibold text-gray-900 dark:text-white">
-                Last Seen
+                {t('dashboard.liveMonitor.table.lastSeen', 'Last Seen')}
               </th>
             </tr>
           </thead>
@@ -188,7 +198,7 @@ export default function LiveDeviceMonitor({ devices, isLoading }: LiveDeviceMoni
             ) : (
               <tr>
                 <td colSpan={6} className="py-8 text-center text-gray-500 dark:text-gray-400">
-                  No devices found
+                  {t('dashboard.liveMonitor.noDevices', 'No devices found')}
                 </td>
               </tr>
             )}
@@ -241,7 +251,7 @@ export default function LiveDeviceMonitor({ devices, isLoading }: LiveDeviceMoni
             </div>
           ))
         ) : (
-          <div className="py-8 text-center text-gray-500 dark:text-gray-400">No devices found</div>
+          <div className="py-8 text-center text-gray-500 dark:text-gray-400">{t('dashboard.liveMonitor.noDevices', 'No devices found')}</div>
         )}
       </div>
     </div>

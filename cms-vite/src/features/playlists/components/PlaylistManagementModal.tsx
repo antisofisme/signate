@@ -24,7 +24,7 @@ import {
   Tv,
   List,
 } from 'lucide-react';
-import { Modal, Tabs, TabPanel, type Tab } from '@/shared/components';
+import { Modal, Tabs, TabPanel, Button, type Tab } from '@/shared/components';
 import {
   usePlaylistContent,
   usePlaylistAssignments,
@@ -304,16 +304,10 @@ export default function PlaylistManagementModal({
 
   // Footer with close button
   const footer = (
-    <div className="border-t border-gray-200 dark:border-gray-700 px-6 py-4">
-      <div className="flex justify-end">
-        <button
-          onClick={onClose}
-          disabled={isOperationPending}
-          className="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 disabled:opacity-50 transition-colors"
-        >
-          {t('common.close', 'Close')}
-        </button>
-      </div>
+    <div className="flex justify-end gap-3 px-6 py-4 border-t border-gray-200 dark:border-gray-700">
+      <Button variant="secondary" onClick={onClose} disabled={isOperationPending}>
+        {t('common.close', 'Close')}
+      </Button>
     </div>
   );
 
@@ -336,7 +330,7 @@ export default function PlaylistManagementModal({
                 <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
               </div>
             ) : (
-              <div className="grid grid-cols-2 gap-6 h-full">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 h-full">
                 {/* Left Column - Available Content */}
                 <div className="border-r border-gray-200 dark:border-gray-700 pr-4">
                   <h4 className="font-semibold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
@@ -492,7 +486,7 @@ export default function PlaylistManagementModal({
                 <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
               </div>
             ) : (
-              <div className="grid grid-cols-2 gap-6 h-full">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 h-full">
                 {/* Left Column - Available Devices */}
                 <div className="border-r border-gray-200 dark:border-gray-700 pr-4">
                   <h4 className="font-semibold text-gray-900 dark:text-white mb-3 flex items-center gap-2">

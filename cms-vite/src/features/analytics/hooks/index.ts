@@ -13,6 +13,9 @@ import type {
   TimelineDataPoint,
   AnalyticsQueryParams,
   TimelineQueryParams,
+  // New types for real analytics
+  MenuAnalyticsTrend,
+  DeviceHealthTrend,
 } from '../types'
 
 const ANALYTICS_KEYS = {
@@ -27,6 +30,11 @@ const ANALYTICS_KEYS = {
     [...ANALYTICS_KEYS.all, 'device-engagement', params] as const,
   timeline: (params?: TimelineQueryParams) =>
     [...ANALYTICS_KEYS.all, 'timeline', params] as const,
+  // New keys for real analytics
+  menuTrends: (params?: AnalyticsQueryParams) =>
+    [...ANALYTICS_KEYS.all, 'menu-trends', params] as const,
+  deviceHealthTrends: (params?: AnalyticsQueryParams) =>
+    [...ANALYTICS_KEYS.all, 'device-health-trends', params] as const,
 }
 
 /**
@@ -103,6 +111,40 @@ export function usePlaybackTimeline(
     queryKey: ANALYTICS_KEYS.timeline(params),
     queryFn: () => analyticsApi.getTimeline(params),
     staleTime: 300000, // 5 minutes - historical timeline data is stable
+    ...options,
+  })
+}
+
+// ============================================================================
+// REAL ANALYTICS HOOKS (Menu & Device Health)
+// ============================================================================
+
+/**
+ * Hook to fetch menu analytics trends (REAL data from menu_views table)
+ */
+export function useMenuAnalyticsTrends(
+  params?: AnalyticsQueryParams,
+  options?: Omit<UseQueryOptions<MenuAnalyticsTrend>, 'queryKey' | 'queryFn'>
+) {
+  return useQuery({
+    queryKey: ANALYTICS_KEYS.menuTrends(params),
+    queryFn: () => analyticsApi.getMenuTrends(params),
+    staleTime: 60000, // 1 minute
+    ...options,
+  })
+}
+
+/**
+ * Hook to fetch device health trends (REAL data from device_health_metrics table)
+ */
+export function useDeviceHealthTrends(
+  params?: AnalyticsQueryParams,
+  options?: Omit<UseQueryOptions<DeviceHealthTrend>, 'queryKey' | 'queryFn'>
+) {
+  return useQuery({
+    queryKey: ANALYTICS_KEYS.deviceHealthTrends(params),
+    queryFn: () => analyticsApi.getDeviceHealthTrends(params),
+    staleTime: 60000, // 1 minute
     ...options,
   })
 }

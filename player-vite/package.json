@@ -22,11 +22,15 @@
     "test:regression": "playwright test --grep @regression"
   },
   "dependencies": {
-    "clsx": "^2.1.1",
-    "video.js": "^8.10.0",
     "@videojs/http-streaming": "^3.11.0",
+    "clsx": "^2.1.1",
     "lucide-react": "^0.553.0",
-    "tailwind-merge": "^3.3.1"
+    "tailwind-merge": "^3.3.1",
+    "video.js": "^8.10.0",
+    "workbox-precaching": "^7.4.0",
+    "workbox-routing": "^7.4.0",
+    "workbox-strategies": "^7.4.0",
+    "workbox-window": "^7.4.0"
   },
   "devDependencies": {
     "@playwright/test": "^1.40.0",
@@ -48,7 +52,10 @@
     "terser": "^5.44.1",
     "typescript": "^5.3.3",
     "vite": "^5.0.10",
-    "vitest": "^1.0.0"
+    "vite-plugin-pwa": "^1.2.0",
+    "vitest": "^1.0.0",
+    "workbox-cacheable-response": "^7.4.0",
+    "workbox-expiration": "^7.4.0"
   },
   "engines": {
     "node": ">=18.0.0",

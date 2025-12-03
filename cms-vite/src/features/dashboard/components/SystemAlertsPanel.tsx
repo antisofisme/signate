@@ -6,6 +6,7 @@
  */
 
 import { AlertTriangle, Info, AlertCircle, XCircle, Check } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { SystemAlert } from '../api/dashboard.api';
 import { formatDistanceToNow } from 'date-fns';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
@@ -45,6 +46,7 @@ const getSeverityColor = (severity: string) => {
 };
 
 export default function SystemAlertsPanel({ data, isLoading }: SystemAlertsPanelProps) {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
 
   const acknowledgeMutation = useMutation({
@@ -62,11 +64,11 @@ export default function SystemAlertsPanel({ data, isLoading }: SystemAlertsPanel
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
           <AlertTriangle className="w-5 h-5" />
-          System Alerts
+          {t('dashboard.alerts.title', 'System Alerts')}
         </h2>
         {unacknowledgedAlerts.length > 0 && (
           <span className="px-2.5 py-0.5 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 text-xs font-semibold rounded-full">
-            {unacknowledgedAlerts.length} new
+            {unacknowledgedAlerts.length} {t('dashboard.alerts.new', 'new')}
           </span>
         )}
       </div>
@@ -98,7 +100,7 @@ export default function SystemAlertsPanel({ data, isLoading }: SystemAlertsPanel
                         </p>
                         {alert.device_name && (
                           <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">
-                            Device: <span className="font-medium">{alert.device_name}</span>
+                            {t('dashboard.alerts.device', 'Device:')} <span className="font-medium">{alert.device_name}</span>
                           </p>
                         )}
                         <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
@@ -112,7 +114,7 @@ export default function SystemAlertsPanel({ data, isLoading }: SystemAlertsPanel
                       className="px-3 py-1 text-xs font-medium bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors disabled:opacity-50 flex items-center gap-1"
                     >
                       <Check className="w-3 h-3" />
-                      Acknowledge
+                      {t('dashboard.alerts.acknowledge', 'Acknowledge')}
                     </button>
                   </div>
                 </div>
@@ -125,7 +127,7 @@ export default function SystemAlertsPanel({ data, isLoading }: SystemAlertsPanel
                 {unacknowledgedAlerts.length > 0 && (
                   <div className="pt-3 border-t border-gray-200 dark:border-gray-700">
                     <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-2">
-                      Acknowledged Alerts
+                      {t('dashboard.alerts.acknowledged', 'Acknowledged Alerts')}
                     </p>
                   </div>
                 )}
@@ -157,7 +159,7 @@ export default function SystemAlertsPanel({ data, isLoading }: SystemAlertsPanel
         ) : (
           <div className="flex flex-col items-center justify-center py-8 text-center">
             <Check className="w-12 h-12 text-green-500 dark:text-green-400 mb-3" />
-            <p className="text-sm text-gray-500 dark:text-gray-400">All systems operational</p>
+            <p className="text-sm text-gray-500 dark:text-gray-400">{t('dashboard.alerts.allOperational', 'All systems operational')}</p>
           </div>
         )}
       </div>

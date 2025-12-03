@@ -15,6 +15,9 @@ import type {
   PlaybackLogRequest,
   PlaybackEndRequest,
   PlaybackLogResponse,
+  // New types for real analytics
+  MenuAnalyticsTrend,
+  DeviceHealthTrend,
 } from '../types'
 
 const BASE_URL = '/api/v1/analytics'
@@ -104,6 +107,30 @@ export const analyticsApi = {
       `${BASE_URL}/playback/${logId}/end`,
       data
     )
+    return response.data
+  },
+
+  // ============================================================================
+  // REAL ANALYTICS ENDPOINTS (Menu & Device Health)
+  // ============================================================================
+
+  /**
+   * Get menu analytics trends (REAL data from menu_views table)
+   */
+  getMenuTrends: async (params?: AnalyticsQueryParams): Promise<MenuAnalyticsTrend> => {
+    const response = await apiClient.get<MenuAnalyticsTrend>(`${BASE_URL}/menu-trends`, {
+      params,
+    })
+    return response.data
+  },
+
+  /**
+   * Get device health trends (REAL data from device_health_metrics table)
+   */
+  getDeviceHealthTrends: async (params?: AnalyticsQueryParams): Promise<DeviceHealthTrend> => {
+    const response = await apiClient.get<DeviceHealthTrend>(`${BASE_URL}/device-health-trends`, {
+      params,
+    })
     return response.data
   },
 }

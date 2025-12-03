@@ -53,12 +53,12 @@ export const STORAGE_KEYS = {
   LANGUAGE: 'app_language',
 } as const;
 
-// Roles - values must match backend (uppercase)
+// Roles - values must match backend (lowercase)
 export const USER_ROLES = {
-  SUPER_ADMIN: 'SUPER_ADMIN',
-  ADMIN: 'ADMIN',
-  MANAGER: 'CONTENT_MANAGER',
-  VIEWER: 'VIEWER',
+  SUPER_ADMIN: 'super_admin',
+  ADMIN: 'admin',
+  MANAGER: 'manager',
+  VIEWER: 'viewer',
 } as const;
 
 // Device types

@@ -6,7 +6,16 @@
 import React, { useState } from 'react';
 import { Plus, Search, Shield, Key } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { PageHeader, PageSkeleton, EmptyState, ConfirmDialog, Button } from '@/shared/components';
+import {
+  PageHeader,
+  PageSkeleton,
+  EmptyState,
+  ConfirmDialog,
+  Button,
+  ModalOverlay,
+  PageStats,
+  PageToolbar,
+} from '@/shared/components';
 import { RoleCard } from '@/features/rbac/components/RoleCard';
 import { RoleForm } from '@/features/rbac/components/RoleForm';
 import { useRoles, useCreateRole, useUpdateRole, useDeleteRole } from '@/features/rbac/hooks/useRoles';
@@ -152,11 +161,11 @@ export default function RolesPage() {
         description={t('rbac.manageRolesDescription', 'Manage user roles and their permissions')}
       />
 
-      <div className="space-y-6">
-        {/* Search and Actions */}
-        <div className="flex items-center gap-4">
+      {/* Toolbar: Search kiri, Buttons kanan */}
+      <PageToolbar>
+        <PageToolbar.Left>
           {/* Search */}
-          <div className="flex-1 relative">
+          <div className="relative flex-1 max-w-sm">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
             <input
               type="text"
@@ -166,82 +175,33 @@ export default function RolesPage() {
               className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-white"
             />
           </div>
-
-          {/* Create Button */}
+        </PageToolbar.Left>
+        <PageToolbar.Right>
           {canCreate && (
-            <Button onClick={() => setShowCreateForm(true)} leftIcon={<Plus className="w-4 h-4" />}>
+            <Button
+              variant="primary"
+              onClick={() => setShowCreateForm(true)}
+              leftIcon={<Plus className="w-4 h-4" />}
+            >
               {t('rbac.createRole', 'Create Role')}
             </Button>
           )}
-        </div>
+        </PageToolbar.Right>
+      </PageToolbar>
 
-        {/* Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <div className="bg-white dark:bg-gray-800 p-4 rounded-lg border border-gray-200 dark:border-gray-700">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
-                <Shield className="w-5 h-5 text-blue-600 dark:text-blue-400" />
-              </div>
-              <div>
-                <div className="text-2xl font-bold text-gray-900 dark:text-white">
-                  {rolesData?.total || 0}
-                </div>
-                <div className="text-sm text-gray-600 dark:text-gray-400">
-                  {t('rbac.totalRoles', 'Total Roles')}
-                </div>
-              </div>
-            </div>
-          </div>
+      {/* Stats: langsung di atas content */}
+      <PageStats
+        total={rolesData?.total || 0}
+        totalLabel="roles"
+        stats={[
+          { label: 'system', value: systemRoles.length, color: 'text-purple-600 dark:text-purple-400' },
+          { label: 'custom', value: customRoles.length, color: 'text-green-600 dark:text-green-400' },
+          { label: 'permissions', value: totalPermissions, color: 'text-amber-600 dark:text-amber-400' },
+        ]}
+      />
 
-          <div className="bg-white dark:bg-gray-800 p-4 rounded-lg border border-gray-200 dark:border-gray-700">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-lg">
-                <Shield className="w-5 h-5 text-purple-600 dark:text-purple-400" />
-              </div>
-              <div>
-                <div className="text-2xl font-bold text-gray-900 dark:text-white">
-                  {systemRoles.length}
-                </div>
-                <div className="text-sm text-gray-600 dark:text-gray-400">
-                  {t('rbac.systemRoles', 'System Roles')}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white dark:bg-gray-800 p-4 rounded-lg border border-gray-200 dark:border-gray-700">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg">
-                <Shield className="w-5 h-5 text-green-600 dark:text-green-400" />
-              </div>
-              <div>
-                <div className="text-2xl font-bold text-gray-900 dark:text-white">
-                  {customRoles.length}
-                </div>
-                <div className="text-sm text-gray-600 dark:text-gray-400">
-                  {t('rbac.customRoles', 'Custom Roles')}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white dark:bg-gray-800 p-4 rounded-lg border border-gray-200 dark:border-gray-700">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-amber-100 dark:bg-amber-900/30 rounded-lg">
-                <Key className="w-5 h-5 text-amber-600 dark:text-amber-400" />
-              </div>
-              <div>
-                <div className="text-2xl font-bold text-gray-900 dark:text-white">
-                  {totalPermissions}
-                </div>
-                <div className="text-sm text-gray-600 dark:text-gray-400">
-                  {t('rbac.possiblePermissions', 'Possible Permissions')}
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
+      {/* Content */}
+      <div className="space-y-6">
         {/* System Roles Section */}
         {systemRoles.length > 0 && (
           <div className="space-y-4">
@@ -294,39 +254,52 @@ export default function RolesPage() {
       </div>
 
       {/* Create Role Modal */}
-      {showCreateForm && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+      <ModalOverlay
+        isOpen={showCreateForm}
+        onClose={() => setShowCreateForm(false)}
+      >
+        <div className="p-4" onClick={(e) => e.stopPropagation()}>
           <RoleForm
             onSubmit={handleCreateRole}
             onCancel={() => setShowCreateForm(false)}
             isLoading={createRoleMutation.isPending}
           />
         </div>
-      )}
+      </ModalOverlay>
 
       {/* Edit Role Modal */}
-      {editingRole && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <RoleForm
-            role={editingRole}
-            onSubmit={handleUpdateRole}
-            onCancel={() => setEditingRole(null)}
-            isLoading={updateRoleMutation.isPending}
-          />
+      <ModalOverlay
+        isOpen={!!editingRole}
+        onClose={() => setEditingRole(null)}
+      >
+        <div className="p-4" onClick={(e) => e.stopPropagation()}>
+          {editingRole && (
+            <RoleForm
+              role={editingRole}
+              onSubmit={handleUpdateRole}
+              onCancel={() => setEditingRole(null)}
+              isLoading={updateRoleMutation.isPending}
+            />
+          )}
         </div>
-      )}
+      </ModalOverlay>
 
       {/* View Role Modal (Read-only for system roles) */}
-      {viewingRole && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <RoleForm
-            role={viewingRole}
-            onSubmit={() => {}}
-            onCancel={() => setViewingRole(null)}
-            isLoading={false}
-          />
+      <ModalOverlay
+        isOpen={!!viewingRole}
+        onClose={() => setViewingRole(null)}
+      >
+        <div className="p-4" onClick={(e) => e.stopPropagation()}>
+          {viewingRole && (
+            <RoleForm
+              role={viewingRole}
+              onSubmit={() => {}}
+              onCancel={() => setViewingRole(null)}
+              isLoading={false}
+            />
+          )}
         </div>
-      )}
+      </ModalOverlay>
 
       {/* Delete Confirmation Dialog */}
       <ConfirmDialog

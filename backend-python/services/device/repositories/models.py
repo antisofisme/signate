@@ -87,9 +87,6 @@ class DeviceModel(Base):
     tags = relationship("TagModel", secondary="device_tags", back_populates="devices")
     commands = relationship("DeviceCommandModel", back_populates="device", cascade="all, delete-orphan")
     health_metrics = relationship("DeviceHealthMetricModel", back_populates="device", cascade="all, delete-orphan")
-    
-    # Group membership
-    group_memberships = relationship("DeviceGroupMemberModel", back_populates="device", cascade="all, delete-orphan")
 
 
 class DeviceTagModel(Base):
@@ -215,72 +212,6 @@ class DeviceHealthMetricModel(Base):
     organization = relationship("OrganizationModel", foreign_keys=[organization_id])
 
 
-class DeviceGroupModel(Base):
-    """Device Group database model"""
-    __tablename__ = "device_groups"
-
-    # Primary key
-    id = Column(Integer, primary_key=True, index=True)
-
-    # Group info
-    name = Column(String(100), nullable=False)
-    description = Column(String(500), nullable=True)
-
-    # Hierarchy
-    parent_group_id = Column(Integer, ForeignKey("device_groups.id"), nullable=True, index=True)
-
-    # Multi-tenant
-    organization_id = Column(Integer, ForeignKey("organizations.id"), nullable=False, index=True)
-
-    # Metadata
-    group_type = Column(String(50), nullable=True)  # 'chain', 'hotel', 'floor', 'location', 'custom'
-    sort_order = Column(Integer, default=0, nullable=False)
-
-    # Settings
-    default_playlist_id = Column(Integer, ForeignKey("playlists.id"), nullable=True)
-
-    # Soft delete
-    deleted_at = Column(DateTime(timezone=True), nullable=True, index=True)
-
-    # Audit
-    created_by_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
-    updated_by_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
-    deleted_by_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
-    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
-    updated_at = Column(DateTime(timezone=True), onupdate=func.now(), nullable=True)
-
-    # Relationships for audit
-    creator = relationship("UserModel", foreign_keys=[created_by_id])
-    updater = relationship("UserModel", foreign_keys=[updated_by_id])
-    deleter = relationship("UserModel", foreign_keys=[deleted_by_id])
-
-
-class DeviceGroupMemberModel(Base):
-    """Device Group Member database model (Many-to-Many)"""
-    __tablename__ = "device_group_members"
-
-    # Primary key
-    id = Column(Integer, primary_key=True, index=True)
-
-    # Relations
-    device_id = Column(Integer, ForeignKey("devices.id"), nullable=False, index=True)
-    group_id = Column(Integer, ForeignKey("device_groups.id"), nullable=False, index=True)
-
-    # Membership metadata
-    joined_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
-    added_by_id = Column(Integer, ForeignKey("users.id"), nullable=True)
-
-    # Constraints
-    __table_args__ = (
-        UniqueConstraint('device_id', 'group_id', name='uix_device_group_member'),
-        Index('ix_device_group_members_device_id', 'device_id'),
-        Index('ix_device_group_members_group_id', 'group_id'),
-    )
-
-    # Relationships
-    device = relationship("DeviceModel", back_populates="group_memberships")
-    group = relationship("DeviceGroupModel")
-    added_by_user = relationship("UserModel", foreign_keys=[added_by_id])
 
 
 class DeviceConnectionLogModel(Base):

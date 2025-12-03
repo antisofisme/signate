@@ -17,7 +17,15 @@ import { AuditLogStats } from '../components/AuditLogStats';
 import type { AuditLogFilters as Filters } from '../types/auditLog';
 import { usePagination } from '@/shared/hooks';
 import { useCanPerformAction } from '@/features/rbac/hooks/usePermissions';
-import { Button, PageSkeleton, AccessDenied, EmptyState } from '@/shared/components';
+import {
+  Button,
+  PageSkeleton,
+  AccessDenied,
+  EmptyState,
+  PageHeader,
+  PageStats,
+  PageToolbar,
+} from '@/shared/components';
 
 export default function AuditPage() {
   const { t } = useTranslation();
@@ -64,17 +72,38 @@ export default function AuditPage() {
   const hasNoLogs = !isLoading && data && data.logs.length === 0;
 
   return (
-    <div className="space-y-6">
-      {/* Filter Toggle */}
-      <div className="flex justify-end">
-        <Button
-          variant="secondary"
-          onClick={() => setShowFilters(!showFilters)}
-          leftIcon={<Filter className="w-4 h-4" />}
-        >
-          {showFilters ? t('audit.hideFilters') : t('audit.showFilters')}
-        </Button>
-      </div>
+    <>
+      {/* Page Header */}
+      <PageHeader
+        title={t('audit.title', 'Audit Logs')}
+        description={t('audit.subtitle', 'Track system activity and changes')}
+      />
+
+      {/* ROW 1: Stats */}
+      {data && data.total > 0 && (
+        <PageStats
+          total={data.total}
+          totalLabel="logs"
+        />
+      )}
+
+      {/* ROW 2: Toolbar */}
+      <PageToolbar>
+        <PageToolbar.Left>
+          <span className="text-sm text-gray-500 dark:text-gray-400">
+            {t('audit.description', 'View all system activities')}
+          </span>
+        </PageToolbar.Left>
+        <PageToolbar.Right>
+          <Button
+            variant="secondary"
+            onClick={() => setShowFilters(!showFilters)}
+            leftIcon={<Filter className="w-4 h-4" />}
+          >
+            {showFilters ? t('audit.hideFilters') : t('audit.showFilters')}
+          </Button>
+        </PageToolbar.Right>
+      </PageToolbar>
 
       {/* Filters */}
       {showFilters && (
@@ -86,9 +115,6 @@ export default function AuditPage() {
           onClearFilters={handleClearFilters}
         />
       )}
-
-      {/* Stats */}
-      {data && data.total > 0 && <AuditLogStats total={data.total} />}
 
       {/* Empty State */}
       {hasNoLogs ? (
@@ -109,6 +135,6 @@ export default function AuditPage() {
           onPageChange={handlePageChange}
         />
       )}
-    </div>
+    </>
   );
 }

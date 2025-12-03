@@ -12,10 +12,10 @@ import { useForm, FormProvider } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { toast } from 'sonner';
-import { Save, Loader2, AlertTriangle } from 'lucide-react';
+import { Save, AlertTriangle } from 'lucide-react';
 import type { Device } from '../../../types/device';
 import { useUpdateDevice } from '../../../hooks/useDevices';
-import { FormInput, FormSelect, FormSwitch, InlineError } from '@/shared/components';
+import { FormInput, FormSelect, FormSwitch, Button } from '@/shared/components';
 
 // Zod validation schema
 const deviceSettingsSchema = z.object({
@@ -140,23 +140,14 @@ export function SettingsTab({ device, onSuccess }: SettingsTabProps) {
 
         {/* Save Button */}
         <div className="flex justify-end">
-          <button
+          <Button
             type="submit"
             disabled={updateMutation.isPending}
-            className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2 transition-colors"
+            loading={updateMutation.isPending}
+            leftIcon={<Save className="w-4 h-4" />}
           >
-            {updateMutation.isPending ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin" />
-                Saving...
-              </>
-            ) : (
-              <>
-                <Save className="w-4 h-4" />
-                Save Changes
-              </>
-            )}
-          </button>
+            {updateMutation.isPending ? 'Saving...' : 'Save Changes'}
+          </Button>
         </div>
 
         {/* Info Box */}
@@ -177,20 +168,22 @@ export function SettingsTab({ device, onSuccess }: SettingsTabProps) {
             These actions are irreversible. Please be careful.
           </p>
           <div className="space-y-2">
-            <button
+            <Button
               type="button"
+              variant="outline"
               onClick={() => toast.info('Deactivate device functionality coming soon')}
-              className="w-full px-4 py-2 border border-red-300 dark:border-red-700 text-red-700 dark:text-red-400 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/20 transition-colors text-sm font-medium"
+              className="w-full border-red-300 dark:border-red-700 text-red-700 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/20"
             >
               Deactivate Device
-            </button>
-            <button
+            </Button>
+            <Button
               type="button"
+              variant="danger"
               onClick={() => toast.info('Delete device functionality coming soon')}
-              className="w-full px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm font-medium"
+              className="w-full"
             >
               Delete Device
-            </button>
+            </Button>
           </div>
         </div>
         </form>

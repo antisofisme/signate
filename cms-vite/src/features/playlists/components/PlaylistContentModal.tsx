@@ -18,7 +18,7 @@
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Plus, Trash2, GripVertical, Clock } from 'lucide-react';
-import { Modal } from '@/shared/components';
+import { Modal, Button } from '@/shared/components';
 import { toast } from 'sonner';
 import {
   usePlaylistContent,
@@ -208,16 +208,10 @@ export default function PlaylistContentModal({
 
   // Footer with close button
   const footer = (
-    <div className="border-t border-gray-200 dark:border-gray-700 px-6 py-4">
-      <div className="flex justify-end">
-        <button
-          type="button"
-          onClick={onClose}
-          className="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
-        >
-          {t('playlists.contentModal.close')}
-        </button>
-      </div>
+    <div className="flex justify-end gap-3 px-6 py-4 border-t border-gray-200 dark:border-gray-700">
+      <Button variant="secondary" onClick={onClose}>
+        {t('playlists.contentModal.close')}
+      </Button>
     </div>
   );
 
@@ -278,39 +272,34 @@ export default function PlaylistContentModal({
               </div>
 
               <div className="flex gap-2">
-                <button
+                <Button
                   onClick={handleAddContent}
                   disabled={selectedContentIds.length === 0 || addContent.isPending}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                  loading={addContent.isPending}
+                  leftIcon={<Plus className="w-4 h-4" />}
                 >
-                  {addContent.isPending
-                    ? t('playlists.contentModal.adding')
-                    : t(
-                        selectedContentIds.length > 1
-                          ? 'playlists.contentModal.addItems_plural'
-                          : 'playlists.contentModal.addItems',
-                        { count: selectedContentIds.length }
-                      )}
-                </button>
-                <button
+                  {t('playlists.contentModal.addItems', { count: selectedContentIds.length })}
+                </Button>
+                <Button
+                  variant="secondary"
                   onClick={() => {
                     setShowAddContent(false);
                     setSelectedContentIds([]);
                   }}
-                  className="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600"
                 >
                   {t('playlists.contentModal.cancel')}
-                </button>
+                </Button>
               </div>
             </div>
           ) : (
-            <button
+            <Button
+              variant="outline"
               onClick={() => setShowAddContent(true)}
-              className="mb-6 w-full p-4 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg hover:border-blue-500 dark:hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors flex items-center justify-center gap-2 text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400"
+              className="mb-6 w-full p-4 border-2 border-dashed"
+              leftIcon={<Plus className="w-5 h-5" />}
             >
-              <Plus className="w-5 h-5" />
               {t('playlists.contentModal.addContent')}
-            </button>
+            </Button>
           )}
 
           {/* Current Content List */}

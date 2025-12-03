@@ -19,10 +19,13 @@ import { ShellActivationPoll } from './shell-activation-poll';
 import type { ShellBootstrap as IShellBootstrap, VerifyDeviceResponse } from '@shell/types/shell.types';
 import { ServiceRegistry, getPlayerHLSCache } from '@shared/services/service-registry';
 import { getPlayerMediaCache, getPlayerHeartbeat, getPlayerPlaylistSync, getPlayerCommandExecutor, getPlayerHealthReporter, getSharedWebSocket, getDeviceInfoPopup, getPlayerVideoJS, getPlayerBackgroundAudio } from '@shared/services';
+import { registerPWA, getPWAState } from '@pwa/pwa-registration';
 // Side-effect imports to ensure services are registered before use
 import '@player/services/player-videojs';
 import '@player/services/player-background-audio';
 import '@player/services/player-health-reporter';
+import '@player/services/player-command-executor'; // Loads SharedWebSocket as dependency
+import '@shared/websocket/shared-websocket'; // Ensure WebSocket is registered before any getSharedWebSocket() calls
 
 /**
  * Shell Bootstrap Class
@@ -63,6 +66,12 @@ class ShellBootstrapClass implements IShellBootstrap {
     // Route 3: Has device ID and status is active → Start player directly
     if (deviceStatus === 'active') {
       SharedLogger.log('[ShellBootstrap] Device active → Starting player context...');
+
+      // Always refresh token on startup to ensure WebSocket can connect
+      // This handles: missing token, expired token, or invalid token
+      SharedLogger.log('[ShellBootstrap] 🔄 Refreshing device token on startup...');
+      await this.refreshDeviceToken();
+
       // Skip backend verification - trust localStorage state
       // Device was already verified during activation process
       this.startPlayer();
@@ -166,6 +175,48 @@ class ShellBootstrapClass implements IShellBootstrap {
   }
 
   /**
+   * Refresh device token from server
+   * Used when device is active but missing token (activated before token feature)
+   * Uses device fingerprint UUID to get token (always available, unlike device_code)
+   */
+  private async refreshDeviceToken(): Promise<void> {
+    try {
+      // Use fingerprint-based verification which always works
+      // (device_code might not be in localStorage for old devices)
+      const { getOrCreateDeviceUUID } = await import('@shared/utils/device-fingerprint');
+      const deviceUUID = getOrCreateDeviceUUID();
+
+      SharedLogger.log('[ShellBootstrap] Refreshing token via fingerprint:', deviceUUID);
+
+      // Call verify-fingerprint API which returns device_token
+      const response = await SharedAPIClient.get<any>(
+        `${config.api.baseURL}/api/v1/devices/verify-fingerprint/${deviceUUID}`
+      );
+
+      if (response.device && response.token) {
+        SharedDeviceState.setDeviceToken(response.token);
+        SharedLogger.log('[ShellBootstrap] ✅ Device token refreshed successfully');
+
+        // Also restore device_code if missing (for future use)
+        if (response.device.unique_code && !SharedDeviceState.getDeviceCode()) {
+          SharedDeviceState.setDeviceCode(response.device.unique_code);
+          SharedLogger.log('[ShellBootstrap] ✅ Device code also restored');
+        }
+
+        // Update organization PIN if available
+        if (response.device.organization_pin) {
+          SharedDeviceState.setOrganizationPin(response.device.organization_pin);
+        }
+      } else {
+        SharedLogger.warn('[ShellBootstrap] ⚠️ Token refresh failed - no device or token in response');
+      }
+    } catch (error) {
+      SharedLogger.error('[ShellBootstrap] ❌ Failed to refresh device token:', error);
+      // Don't block player startup - WebSocket just won't connect
+    }
+  }
+
+  /**
    * Start player context
    */
   startPlayer(): void {
@@ -262,41 +313,26 @@ class ShellBootstrapClass implements IShellBootstrap {
         SharedLogger.log('[ShellBootstrap] ✅ HLS Cache initialized');
       }
 
-      // 4. Register HLS Service Worker for offline playback (HTTPS only)
-      if ('serviceWorker' in navigator && window.location.protocol === 'https:') {
+      // 4. Register PWA Service Worker for offline app shell and HLS playback
+      // PWA SW handles app shell caching (index.html, JS, CSS) and passes HLS requests through
+      // to the existing IndexedDB caching in player-hls-cache.ts
+      if ('serviceWorker' in navigator) {
         try {
-          const registration = await navigator.serviceWorker.register('/hls-service-worker.js', {
-            scope: '/',
-          });
-          SharedLogger.log('[ShellBootstrap] ✅ HLS Service Worker registered:', registration.scope);
+          const deviceId = SharedDeviceState.getDeviceId() || undefined;
+          const pwaRegistered = await registerPWA(deviceId);
 
-          // Wait for Service Worker to activate
-          if (registration.active) {
-            SharedLogger.log('[ShellBootstrap] Service Worker already active');
+          if (pwaRegistered) {
+            SharedLogger.log('[ShellBootstrap] ✅ PWA Service Worker registered');
+            SharedLogger.log('[ShellBootstrap] PWA State:', getPWAState());
           } else {
-            SharedLogger.log('[ShellBootstrap] Waiting for Service Worker to activate...');
-            await new Promise<void>((resolve) => {
-              const checkState = () => {
-                if (registration.active) {
-                  SharedLogger.log('[ShellBootstrap] Service Worker activated');
-                  resolve();
-                } else {
-                  setTimeout(checkState, 100);
-                }
-              };
-              checkState();
-            });
+            SharedLogger.log('[ShellBootstrap] ℹ️ PWA not registered (disabled or unsupported)');
           }
         } catch (error) {
-          SharedLogger.error('[ShellBootstrap] ❌ Failed to register Service Worker:', error);
+          SharedLogger.error('[ShellBootstrap] ❌ Failed to register PWA Service Worker:', error);
         }
-      } else if (window.location.protocol === 'http:') {
-        // Running on HTTP - Service Worker not available, but system still works
-        SharedLogger.log('[ShellBootstrap] ℹ️ Running on HTTP - Service Worker disabled');
-        SharedLogger.log('[ShellBootstrap] HLS streaming and caching enabled, offline playback requires HTTPS');
       } else {
         SharedLogger.log('[ShellBootstrap] ℹ️ Service Worker not supported in this browser');
-        SharedLogger.log('[ShellBootstrap] HLS caching enabled, offline playback limited');
+        SharedLogger.log('[ShellBootstrap] Offline reload capability limited');
       }
 
       // 5-7. Connection logging services already initialized in main.ts

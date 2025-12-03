@@ -7,7 +7,7 @@
 
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Plus, Shield, Users } from 'lucide-react';
+import { Plus, Users } from 'lucide-react';
 import { useUsers, useCreateUser, useUpdateUser, useDeleteUser, useChangePassword } from '../hooks/useUsers';
 import { useOrganizations } from '@/shared/hooks/useSharedOrganizations';
 import { useCanPerformAction } from '@/features/rbac/hooks/usePermissions';
@@ -16,11 +16,13 @@ import { UserForm } from '../components/UserForm';
 import { ChangePasswordDialog } from '../components/ChangePasswordDialog';
 import {
   Button,
-  StatsCard,
   ConfirmDialog,
   EmptyState,
   PageSkeleton,
   AccessDenied,
+  PageHeader,
+  PageStats,
+  PageToolbar,
 } from '@/shared/components';
 import type { User, CreateUserRequest, UpdateUserRequest, ChangePasswordRequest } from '../types/user';
 
@@ -103,30 +105,36 @@ export default function UsersPage() {
 
   return (
     <>
-      {/* Stats */}
-      <div className="grid grid-cols-2 gap-6 mb-6">
-        <StatsCard
-          label={t('users.stats.totalUsers') || 'Total Users'}
-          value={totalUsers}
-          icon={Users}
-          iconColor="blue"
-        />
-        <StatsCard
-          label={t('users.stats.active') || 'Active Users'}
-          value={activeUsers}
-          icon={Shield}
-          iconColor="green"
-        />
-      </div>
+      {/* Page Header */}
+      <PageHeader
+        title={t('users.title', 'Users')}
+        description={t('users.subtitle', 'Manage users and their permissions')}
+      />
 
-      {/* Actions */}
-      {canCreate && (
-        <div className="mb-6 flex justify-end">
-          <Button onClick={() => setShowCreateModal(true)} leftIcon={<Plus className="w-4 h-4" />}>
-            {t('users.actions.createUser') || 'Add User'}
-          </Button>
-        </div>
-      )}
+      {/* Toolbar: Buttons kanan */}
+      <PageToolbar>
+        <PageToolbar.Right>
+          {canCreate && (
+            <Button
+              variant="primary"
+              onClick={() => setShowCreateModal(true)}
+              leftIcon={<Plus className="w-4 h-4" />}
+            >
+              {t('users.actions.createUser') || 'Add User'}
+            </Button>
+          )}
+        </PageToolbar.Right>
+      </PageToolbar>
+
+      {/* Stats: langsung di atas list */}
+      <PageStats
+        total={totalUsers}
+        totalLabel="users"
+        stats={[
+          { label: 'active', value: activeUsers, color: 'text-green-600 dark:text-green-400' },
+          { label: 'inactive', value: totalUsers - activeUsers, color: 'text-gray-500' },
+        ]}
+      />
 
       {/* User List */}
       <UserList

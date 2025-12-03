@@ -126,3 +126,90 @@ class AnalyticsDashboardResponse(BaseModel):
     stats: PlaybackStatsResponse
     top_content: List[ContentPerformanceResponse]
     top_devices: List[DeviceEngagementResponse]
+
+
+# ============================================================================
+# MENU ANALYTICS DTOs (REAL DATA from menu_views table)
+# ============================================================================
+
+class MenuViewTrendPoint(BaseModel):
+    """Single data point for menu view trends"""
+    date: str
+    views: int
+    contact_clicks: int
+    mobile: int = 0
+    tablet: int = 0
+    desktop: int = 0
+    unknown: int = 0
+
+
+class TopMenuResponse(BaseModel):
+    """Top performing menu response"""
+    menu_id: int
+    menu_name: str
+    menu_type: str
+    total_views: int
+    contact_clicks: int
+    mobile_views: int
+    tablet_views: int
+    desktop_views: int
+
+
+class PopularHourResponse(BaseModel):
+    """Popular viewing hours response"""
+    hour: int  # 0-23
+    views: int
+    percentage: float
+
+
+class MenuAnalyticsTrendResponse(BaseModel):
+    """Complete menu analytics trend response"""
+    period_start: str
+    period_end: str
+    total_views: int
+    total_contact_clicks: int
+    views_by_device: Dict[str, int]
+    daily_trend: List[MenuViewTrendPoint]
+    top_menus: List[TopMenuResponse]
+    popular_hours: List[PopularHourResponse]
+
+
+# ============================================================================
+# DEVICE HEALTH ANALYTICS DTOs (REAL DATA from device_health_metrics table)
+# ============================================================================
+
+class DeviceHealthTrendPoint(BaseModel):
+    """Single data point for device health trends"""
+    date: str
+    avg_cpu_usage: float
+    avg_memory_usage: float
+    avg_disk_usage: float
+    avg_network_latency_ms: Optional[float] = None
+    devices_reporting: int
+
+
+class DeviceHealthSummary(BaseModel):
+    """Health summary for a single device"""
+    device_id: int
+    device_name: str
+    latest_cpu_usage: Optional[float] = None
+    latest_memory_usage: Optional[float] = None
+    latest_disk_usage: Optional[float] = None
+    health_score: int  # 0-100
+    status: str  # 'healthy', 'warning', 'critical'
+    last_reported_at: Optional[datetime] = None
+
+
+class DeviceHealthTrendResponse(BaseModel):
+    """Complete device health trend response"""
+    period_start: str
+    period_end: str
+    fleet_health_score: int  # 0-100
+    devices_healthy: int
+    devices_warning: int
+    devices_critical: int
+    avg_cpu_usage: float
+    avg_memory_usage: float
+    avg_disk_usage: float
+    daily_trend: List[DeviceHealthTrendPoint]
+    device_summaries: List[DeviceHealthSummary]

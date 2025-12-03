@@ -17,7 +17,7 @@ import { SharedEventBus } from '@shared/events/shared-event-bus';
 import { playerScheduleManager } from './player-schedule-manager';
 import { PlayerBackgroundAudio } from './player-background-audio';
 import type { PlaylistSync as IPlaylistSync, PlaylistSyncResponse, Playlist } from '@player/types/player.types';
-import { ServiceRegistry, getPlayerVideoJS } from '@shared/services/service-registry';
+import { ServiceRegistry, getPlayerVideoJS, getPlayerMediaCache, getPlayerHLSCache } from '@shared/services/service-registry';
 import { WaitingForContent } from '@player/components';
 
 /**
@@ -218,6 +218,9 @@ class PlayerPlaylistSyncClass implements IPlaylistSync {
   private notifyPlaylistChange(playlist: Playlist | null): void {
     SharedLogger.log('[PlayerPlaylistSync] 📢 Notifying player about playlist change...');
 
+    // Clean up orphaned cache from removed content (async, don't block)
+    this.cleanupOrphanedCache(this.currentPlaylist, playlist);
+
     // Store current playlist
     this.currentPlaylist = playlist;
 
@@ -233,6 +236,75 @@ class PlayerPlaylistSyncClass implements IPlaylistSync {
       }
     } else {
       SharedLogger.warn('[PlayerPlaylistSync] PlayerVideoJS not available');
+    }
+  }
+
+  /**
+   * Clean up cache for content that was removed from playlist
+   * Only removes content that's no longer in any playlist
+   */
+  private async cleanupOrphanedCache(oldPlaylist: Playlist | null, newPlaylist: Playlist | null): Promise<void> {
+    if (!oldPlaylist?.items || oldPlaylist.items.length === 0) {
+      // No old playlist, nothing to clean up
+      return;
+    }
+
+    try {
+      // Get content IDs from old and new playlists
+      const oldContentIds = new Set(oldPlaylist.items.map(item => item.content_id));
+      const newContentIds = new Set(newPlaylist?.items?.map(item => item.content_id) || []);
+
+      // Find removed content IDs
+      const removedContentIds = [...oldContentIds].filter(id => !newContentIds.has(id));
+
+      if (removedContentIds.length === 0) {
+        SharedLogger.log('[PlayerPlaylistSync] No content removed from playlist');
+        return;
+      }
+
+      SharedLogger.log('[PlayerPlaylistSync] 🗑️ Cleaning up orphaned cache...', {
+        removedCount: removedContentIds.length,
+        removedIds: removedContentIds,
+      });
+
+      // Get caches
+      const PlayerMediaCache = getPlayerMediaCache();
+      const PlayerHLSCache = getPlayerHLSCache();
+
+      // Clean up from MediaCache
+      if (PlayerMediaCache) {
+        for (const contentId of removedContentIds) {
+          // Find and delete by content ID
+          const oldItem = oldPlaylist.items.find(item => item.content_id === contentId);
+          if (oldItem) {
+            const url = oldItem.content?.file_path || oldItem.content?.url;
+            if (url) {
+              try {
+                await PlayerMediaCache.deleteMedia(url);
+                SharedLogger.log(`[PlayerPlaylistSync] ✅ Deleted cache for content ${contentId}`);
+              } catch (e) {
+                // Ignore errors (might not be cached)
+              }
+            }
+          }
+        }
+      }
+
+      // Clean up from HLS cache
+      if (PlayerHLSCache) {
+        for (const contentId of removedContentIds) {
+          try {
+            await PlayerHLSCache.clearCache(contentId);
+            SharedLogger.log(`[PlayerPlaylistSync] ✅ Deleted HLS cache for content ${contentId}`);
+          } catch (e) {
+            // Ignore errors (might not be cached)
+          }
+        }
+      }
+
+      SharedLogger.log('[PlayerPlaylistSync] ✅ Cache cleanup complete');
+    } catch (error) {
+      SharedLogger.error('[PlayerPlaylistSync] Cache cleanup failed:', error);
     }
   }
 

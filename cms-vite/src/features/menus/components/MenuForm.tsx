@@ -22,6 +22,7 @@ import type { Menu, MenuType, MenuCategory } from '../types/menu';
 const menuFormSchema = z.object({
   name: z.string().min(1, 'Name is required').max(255, 'Name is too long'),
   menu_type: z.enum(['restaurant', 'laundry', 'spa', 'room_service', 'other']),
+  tab_name: z.string().max(100).optional().or(z.literal('')),  // Custom tab label for portal
   description: z.string().optional(),
   is_active: z.boolean().default(true),
   show_prices: z.boolean().default(true),
@@ -81,6 +82,7 @@ export const MenuForm = ({ menu, onClose, onSuccess }: MenuFormProps) => {
       ? {
           name: menu.name,
           menu_type: menu.menu_type,
+          tab_name: menu.tab_name || '',
           description: menu.description || '',
           is_active: menu.is_active,
           show_prices: menu.show_prices,
@@ -99,6 +101,7 @@ export const MenuForm = ({ menu, onClose, onSuccess }: MenuFormProps) => {
           is_active: true,
           show_prices: true,
           display_mode: 'grid',
+          tab_name: '',  // Custom tab label for portal
           // Default colors (60-30-10)
           primary_color: '#ffffff',
           secondary_color: '#f3f4f6',
@@ -117,6 +120,7 @@ export const MenuForm = ({ menu, onClose, onSuccess }: MenuFormProps) => {
       const baseData = {
         name: data.name,
         menu_type: data.menu_type,
+        tab_name: data.tab_name || undefined,
         description: data.description || undefined,
         is_active: data.is_active,
         show_prices: data.show_prices,
@@ -287,6 +291,24 @@ export const MenuForm = ({ menu, onClose, onSuccess }: MenuFormProps) => {
             </select>
             {errors.menu_type && (
               <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.menu_type.message}</p>
+            )}
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+              Tab Name (Portal)
+            </label>
+            <input
+              type="text"
+              {...register('tab_name')}
+              className="mt-1 block w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm focus:border-blue-500 focus:ring-blue-500 px-3 py-2"
+              placeholder="e.g., Breakfast, Dinner, Laundry"
+            />
+            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+              Custom label for portal tabs. If empty, menu type will be used.
+            </p>
+            {errors.tab_name && (
+              <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.tab_name.message}</p>
             )}
           </div>
 
@@ -501,7 +523,7 @@ export const MenuForm = ({ menu, onClose, onSuccess }: MenuFormProps) => {
               </span>
             </div>
 
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               {/* Primary Color - 60% */}
               <div>
                 <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">

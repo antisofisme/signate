@@ -104,7 +104,7 @@ export function SpeedHistoryModal({
       {/* Summary Cards */}
       {averages && (
         <div className="px-6 pb-4">
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
               <div className="flex items-center gap-2 text-blue-700 dark:text-blue-300 mb-2">
                 <TrendingDown className="w-4 h-4" />
@@ -140,43 +140,26 @@ export function SpeedHistoryModal({
     </div>
   );
 
-  // Footer with quality criteria and close button
-  const footer = (
-    <div className="border-t border-gray-200 dark:border-gray-700">
-      {/* Quality Criteria */}
-      <div className="px-6 pt-4">
-        <div className="bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600 rounded-lg p-4">
-          <h4 className="text-sm font-semibold text-gray-900 dark:text-white mb-2">
-            Quality Criteria:
-          </h4>
-          <ul className="text-sm text-gray-600 dark:text-gray-400 space-y-1">
-            <li>
-              <span className="font-medium text-green-600 dark:text-green-400">Good:</span> Download ≥ 25 Mbps, Upload ≥ 10 Mbps
-            </li>
-            <li>
-              <span className="font-medium text-yellow-600 dark:text-yellow-400">Fair:</span> Download ≥ 10 Mbps, Upload ≥ 5 Mbps
-            </li>
-            <li>
-              <span className="font-medium text-red-600 dark:text-red-400">Poor:</span> Below fair criteria
-            </li>
-          </ul>
-        </div>
-      </div>
-
-      {/* Footer Actions */}
-      <div className="px-6 py-4">
-        <div className="flex justify-between items-center">
-          <p className="text-sm text-gray-500 dark:text-gray-400">
-            Showing last {speedTests?.length || 0} speed tests
-          </p>
-          <button
-            onClick={onClose}
-            className="px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
-          >
-            Close
-          </button>
-        </div>
-      </div>
+  // Quality criteria info box (will be shown at bottom of content)
+  const qualityCriteriaInfo = (
+    <div className="mt-6 bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600 rounded-lg p-4">
+      <h4 className="text-sm font-semibold text-gray-900 dark:text-white mb-2">
+        Quality Criteria:
+      </h4>
+      <ul className="text-sm text-gray-600 dark:text-gray-400 space-y-1">
+        <li>
+          <span className="font-medium text-green-600 dark:text-green-400">Good:</span> Download ≥ 25 Mbps, Upload ≥ 10 Mbps
+        </li>
+        <li>
+          <span className="font-medium text-yellow-600 dark:text-yellow-400">Fair:</span> Download ≥ 10 Mbps, Upload ≥ 5 Mbps
+        </li>
+        <li>
+          <span className="font-medium text-red-600 dark:text-red-400">Poor:</span> Below fair criteria
+        </li>
+      </ul>
+      <p className="text-xs text-gray-500 dark:text-gray-400 mt-3">
+        Showing last {speedTests?.length || 0} speed tests
+      </p>
     </div>
   );
 
@@ -186,7 +169,6 @@ export function SpeedHistoryModal({
       onClose={onClose}
       maxWidth="4xl"
       customHeader={customHeader}
-      footer={footer}
     >
       {/* Content */}
       <div className="p-6">
@@ -262,6 +244,9 @@ export function SpeedHistoryModal({
                 </tbody>
               </table>
             </div>
+
+            {/* Quality Criteria Info */}
+            {qualityCriteriaInfo}
           </>
         )}
       </div>

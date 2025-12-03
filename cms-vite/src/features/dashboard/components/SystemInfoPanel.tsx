@@ -6,6 +6,7 @@
  */
 
 import { HardDrive, Database, FileImage, Video, File } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { SystemInfo } from '../api/dashboard.api';
 
 interface SystemInfoPanelProps {
@@ -43,6 +44,7 @@ const getContentIcon = (type: string) => {
 };
 
 export default function SystemInfoPanel({ data, isLoading }: SystemInfoPanelProps) {
+  const { t } = useTranslation();
   const storageUsedPercentage = data
     ? Math.round((data.storage_used_bytes / data.storage_total_bytes) * 100)
     : 0;
@@ -51,7 +53,7 @@ export default function SystemInfoPanel({ data, isLoading }: SystemInfoPanelProp
     <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
       <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-6 flex items-center gap-2">
         <HardDrive className="w-5 h-5" />
-        Storage & System Info
+        {t('dashboard.systemInfo.title', 'Storage & System Info')}
       </h2>
 
       {isLoading ? (
@@ -65,7 +67,7 @@ export default function SystemInfoPanel({ data, isLoading }: SystemInfoPanelProp
           <div>
             <div className="flex items-center justify-between mb-2">
               <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                Storage Usage
+                {t('dashboard.systemInfo.storageUsage', 'Storage Usage')}
               </span>
               <span className="text-sm font-semibold text-gray-900 dark:text-white">
                 {formatBytes(data.storage_used_bytes)} / {formatBytes(data.storage_total_bytes)}
@@ -84,15 +86,15 @@ export default function SystemInfoPanel({ data, isLoading }: SystemInfoPanelProp
               />
             </div>
             <div className="flex items-center justify-between mt-1 text-xs text-gray-500 dark:text-gray-400">
-              <span>{storageUsedPercentage}% used</span>
-              <span>{formatBytes(data.storage_free_bytes)} free</span>
+              <span>{t('dashboard.systemInfo.used', '{{percentage}}% used', { percentage: storageUsedPercentage })}</span>
+              <span>{t('dashboard.systemInfo.free', '{{size}} free', { size: formatBytes(data.storage_free_bytes) })}</span>
             </div>
           </div>
 
           {/* Content Breakdown */}
           <div>
             <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">
-              Content Breakdown
+              {t('dashboard.systemInfo.contentBreakdown', 'Content Breakdown')}
             </h3>
             <div className="space-y-3">
               {data.content_by_type.map((content) => {
@@ -129,13 +131,13 @@ export default function SystemInfoPanel({ data, isLoading }: SystemInfoPanelProp
           </div>
 
           {/* System Stats */}
-          <div className="grid grid-cols-2 gap-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4 border-t border-gray-200 dark:border-gray-700">
             <div className="flex items-center gap-3">
               <div className="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-lg">
                 <Database className="w-4 h-4 text-purple-600 dark:text-purple-400" />
               </div>
               <div>
-                <p className="text-xs text-gray-500 dark:text-gray-400">Database Size</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">{t('dashboard.systemInfo.databaseSize', 'Database Size')}</p>
                 <p className="text-sm font-semibold text-gray-900 dark:text-white">
                   {formatBytes(data.database_size_bytes)}
                 </p>
@@ -147,7 +149,7 @@ export default function SystemInfoPanel({ data, isLoading }: SystemInfoPanelProp
                 <HardDrive className="w-4 h-4 text-green-600 dark:text-green-400" />
               </div>
               <div>
-                <p className="text-xs text-gray-500 dark:text-gray-400">System Uptime</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">{t('dashboard.systemInfo.systemUptime', 'System Uptime')}</p>
                 <p className="text-sm font-semibold text-gray-900 dark:text-white">
                   {formatUptime(data.uptime_seconds)}
                 </p>
@@ -157,7 +159,7 @@ export default function SystemInfoPanel({ data, isLoading }: SystemInfoPanelProp
         </div>
       ) : (
         <div className="py-8 text-center text-gray-500 dark:text-gray-400">
-          No system information available
+          {t('dashboard.systemInfo.noInfo', 'No system information available')}
         </div>
       )}
     </div>

@@ -157,7 +157,7 @@ export const TranslationForm = ({
       {isEdit && translation && (
         <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
           <h4 className="text-sm font-semibold text-gray-900 mb-2">Translation Info</h4>
-          <div className="grid grid-cols-2 gap-3 text-xs">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
             <div>
               <span className="text-gray-600">Status:</span>
               <span className={`ml-2 px-2 py-0.5 rounded ${

@@ -44,25 +44,26 @@ export function TagList({
 
   return (
     <div className={TABLE_STYLES.container}>
-      <table className={TABLE_STYLES.table}>
+      <div className="overflow-x-auto">
+        <table className={`${TABLE_STYLES.table} table-fixed`}>
         <thead className={TABLE_STYLES.thead}>
           <tr>
-            <th className={TABLE_STYLES.th}>
+            <th className={`${TABLE_STYLES.th} w-[20%]`}>
               {t('tags.tag')}
             </th>
-            <th className={TABLE_STYLES.th}>
+            <th className={`${TABLE_STYLES.th} w-[25%]`}>
               {t('tags.description')}
             </th>
-            <th className={`${TABLE_STYLES.th} text-center`}>
+            <th className={`${TABLE_STYLES.th} w-24 text-center`}>
               {t('tags.contentCount', 'Contents')}
             </th>
-            <th className={`${TABLE_STYLES.th} text-center`}>
+            <th className={`${TABLE_STYLES.th} w-24 text-center`}>
               {t('tags.deviceCount', 'Devices')}
             </th>
-            <th className={TABLE_STYLES.th}>
+            <th className={`${TABLE_STYLES.th} w-28`}>
               {t('tags.created')}
             </th>
-            <th className={TABLE_STYLES.th}>
+            <th className={`${TABLE_STYLES.th} w-32`}>
               {t('tags.actions')}
             </th>
           </tr>
@@ -132,7 +133,8 @@ export function TagList({
             </tr>
           ))}
         </tbody>
-      </table>
+        </table>
+      </div>
     </div>
   );
 }

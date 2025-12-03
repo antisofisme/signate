@@ -277,7 +277,7 @@ export const DeviceAssignmentTab: React.FC<DeviceAssignmentTabProps> = ({
 
       {/* Assignment Statistics Summary */}
       <div className="border-t pt-4">
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div className="text-center p-3 bg-blue-50 rounded-lg">
             <div className="text-2xl font-bold text-blue-600">
               {playlistsData?.total || 0}

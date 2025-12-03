@@ -10,7 +10,6 @@
 export const PERMISSION_RESOURCES = [
   'dashboard',
   'devices',
-  'device_groups',
   'contents',
   'playlists',
   'schedules',
@@ -55,7 +54,6 @@ export type Permissions = Record<string, string[]>;
 export const RESOURCE_LABELS: Record<PermissionResource, string> = {
   dashboard: 'Dashboard',
   devices: 'Devices',
-  device_groups: 'Device Groups',
   contents: 'Content',
   playlists: 'Playlists',
   schedules: 'Schedules',
@@ -74,7 +72,6 @@ export const RESOURCE_LABELS: Record<PermissionResource, string> = {
 export const RESOURCE_I18N_KEYS: Record<PermissionResource, string> = {
   dashboard: 'rbac.resources.dashboard',
   devices: 'rbac.resources.devices',
-  device_groups: 'rbac.resources.deviceGroups',
   contents: 'rbac.resources.contents',
   playlists: 'rbac.resources.playlists',
   schedules: 'rbac.resources.schedules',
@@ -202,7 +199,6 @@ export const SYSTEM_ROLE_PERMISSIONS: Record<string, Permissions> = {
   SUPER_ADMIN: {
     dashboard: ['read', 'manage'],
     devices: ['read', 'create', 'edit', 'delete', 'manage'],
-    device_groups: ['read', 'create', 'edit', 'delete', 'manage'],
     contents: ['read', 'create', 'edit', 'delete', 'manage'],
     playlists: ['read', 'create', 'edit', 'delete', 'manage'],
     schedules: ['read', 'create', 'edit', 'delete', 'manage'],
@@ -220,7 +216,6 @@ export const SYSTEM_ROLE_PERMISSIONS: Record<string, Permissions> = {
   ADMIN: {
     dashboard: ['read'],
     devices: ['read', 'create', 'edit', 'delete'],
-    device_groups: ['read', 'create', 'edit', 'delete'],
     contents: ['read', 'create', 'edit', 'delete'],
     playlists: ['read', 'create', 'edit', 'delete'],
     schedules: ['read', 'create', 'edit', 'delete'],

@@ -5,6 +5,7 @@
  */
 
 import { MapPin, Plus, Trash2, Star } from 'lucide-react';
+import { Button } from '@/shared/components';
 
 interface Location {
   id: number;
@@ -66,13 +67,12 @@ export function LocationManager({
                     {result.country} • Lat: {result.latitude}, Lon: {result.longitude}
                   </p>
                 </div>
-                <button
+                <Button
                   onClick={() => onAddLocation(result)}
-                  className="flex items-center gap-2 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                  leftIcon={<Plus className="w-4 h-4" />}
                 >
-                  <Plus className="w-4 h-4" />
                   Add
-                </button>
+                </Button>
               </div>
             ))}
           </div>
@@ -108,12 +108,13 @@ export function LocationManager({
                     </p>
                   </div>
                 </div>
-                <button
+                <Button
+                  variant="danger"
+                  size="sm"
                   onClick={() => onDeleteLocation(location.id)}
-                  className="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"
                 >
                   <Trash2 className="w-5 h-5" />
-                </button>
+                </Button>
               </div>
             ))}
           </div>

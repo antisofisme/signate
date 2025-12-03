@@ -6,6 +6,7 @@
  */
 
 import { ListVideo, Monitor, FileImage, Clock } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { ActivePlaylistAssignment } from '../api/dashboard.api';
 import { formatDistanceToNow } from 'date-fns';
 
@@ -21,12 +22,14 @@ const formatDuration = (seconds: number): string => {
 };
 
 export default function ActivePlaylistsTable({ data, isLoading }: ActivePlaylistsTableProps) {
+  const { t } = useTranslation();
+
   return (
     <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
           <ListVideo className="w-5 h-5" />
-          Active Playlists & Assignments
+          {t('dashboard.playlists.title', 'Active Playlists & Assignments')}
         </h2>
       </div>
 
@@ -47,7 +50,7 @@ export default function ActivePlaylistsTable({ data, isLoading }: ActivePlaylist
                     {playlist.playlist_name}
                   </h3>
                   <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                    Updated {formatDistanceToNow(new Date(playlist.last_updated), { addSuffix: true })}
+                    {t('dashboard.playlists.updated', 'Updated')} {formatDistanceToNow(new Date(playlist.last_updated), { addSuffix: true })}
                   </p>
                 </div>
               </div>
@@ -58,7 +61,7 @@ export default function ActivePlaylistsTable({ data, isLoading }: ActivePlaylist
                     <Monitor className="w-4 h-4 text-blue-600 dark:text-blue-400" />
                   </div>
                   <div>
-                    <p className="text-xs text-gray-500 dark:text-gray-400">Devices</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">{t('dashboard.playlists.devices', 'Devices')}</p>
                     <p className="text-sm font-semibold text-gray-900 dark:text-white">
                       {playlist.device_count}
                     </p>
@@ -70,7 +73,7 @@ export default function ActivePlaylistsTable({ data, isLoading }: ActivePlaylist
                     <FileImage className="w-4 h-4 text-green-600 dark:text-green-400" />
                   </div>
                   <div>
-                    <p className="text-xs text-gray-500 dark:text-gray-400">Content</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">{t('dashboard.playlists.content', 'Content')}</p>
                     <p className="text-sm font-semibold text-gray-900 dark:text-white">
                       {playlist.content_count}
                     </p>
@@ -82,7 +85,7 @@ export default function ActivePlaylistsTable({ data, isLoading }: ActivePlaylist
                     <Clock className="w-4 h-4 text-purple-600 dark:text-purple-400" />
                   </div>
                   <div>
-                    <p className="text-xs text-gray-500 dark:text-gray-400">Duration</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">{t('dashboard.playlists.duration', 'Duration')}</p>
                     <p className="text-sm font-semibold text-gray-900 dark:text-white">
                       {formatDuration(playlist.total_duration_seconds)}
                     </p>
@@ -90,7 +93,7 @@ export default function ActivePlaylistsTable({ data, isLoading }: ActivePlaylist
                 </div>
 
                 <div className="col-span-2 lg:col-span-1">
-                  <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Assigned to:</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">{t('dashboard.playlists.assignedTo', 'Assigned to:')}</p>
                   <div className="flex flex-wrap gap-1">
                     {playlist.devices.slice(0, 3).map((device, idx) => (
                       <span
@@ -112,7 +115,7 @@ export default function ActivePlaylistsTable({ data, isLoading }: ActivePlaylist
           ))
         ) : (
           <div className="py-8 text-center text-gray-500 dark:text-gray-400">
-            No active playlists found
+            {t('dashboard.playlists.noPlaylists', 'No active playlists found')}
           </div>
         )}
       </div>

@@ -14,7 +14,6 @@
  */
 
 import { useAuthStore } from '@/lib/stores/authStore';
-import { USER_ROLES } from '@/lib/constants/app';
 import {
   hasPermission,
   hasAnyPermission,
@@ -44,7 +43,7 @@ export function usePermission(resource: string, action: string): boolean {
   const { user } = useAuthStore();
 
   // Admin always has permission
-  if (user?.role === USER_ROLES.ADMIN || user?.role === USER_ROLES.SUPER_ADMIN) return true;
+  if (user?.role === 'admin' || user?.role === 'super_admin') return true;
 
   return hasPermission(user?.permissions, resource, action);
 }
@@ -89,7 +88,7 @@ export function usePermissions() {
      * @returns true if user has permission
      */
     can: (resource: string, action: string): boolean => {
-      if (user?.role === USER_ROLES.ADMIN || user?.role === USER_ROLES.SUPER_ADMIN) return true;
+      if (user?.role === 'admin' || user?.role === 'super_admin') return true;
       return hasPermission(user?.permissions, resource, action);
     },
 
@@ -100,7 +99,7 @@ export function usePermissions() {
      * @returns true if user has any permission
      */
     canAny: (checks: Array<{ resource: string; action: string }>): boolean => {
-      if (user?.role === USER_ROLES.ADMIN || user?.role === USER_ROLES.SUPER_ADMIN) return true;
+      if (user?.role === 'admin' || user?.role === 'super_admin') return true;
       return hasAnyPermission(user?.permissions, checks);
     },
 
@@ -111,7 +110,7 @@ export function usePermissions() {
      * @returns true if user has all permissions
      */
     canAll: (checks: Array<{ resource: string; action: string }>): boolean => {
-      if (user?.role === USER_ROLES.ADMIN || user?.role === USER_ROLES.SUPER_ADMIN) return true;
+      if (user?.role === 'admin' || user?.role === 'super_admin') return true;
       return hasAllPermissions(user?.permissions, checks);
     },
 
@@ -129,7 +128,7 @@ export function usePermissions() {
      * @returns Array of action strings
      */
     getResourcePerms: (resource: string): string[] => {
-      if (user?.role === USER_ROLES.ADMIN || user?.role === USER_ROLES.SUPER_ADMIN) {
+      if (user?.role === 'admin' || user?.role === 'super_admin') {
         // Admin has all actions
         return ['read', 'write', 'delete', 'assign', 'activate'];
       }
@@ -141,7 +140,7 @@ export function usePermissions() {
      * @returns Array of resource names
      */
     getAccessibleResources: (): string[] => {
-      if (user?.role === USER_ROLES.ADMIN || user?.role === USER_ROLES.SUPER_ADMIN) {
+      if (user?.role === 'admin' || user?.role === 'super_admin') {
         // Admin has access to all resources
         return [
           'devices',
@@ -161,7 +160,7 @@ export function usePermissions() {
      * @returns true if user has at least one permission
      */
     hasAnyPermissions: (): boolean => {
-      if (user?.role === USER_ROLES.ADMIN || user?.role === USER_ROLES.SUPER_ADMIN) return true;
+      if (user?.role === 'admin' || user?.role === 'super_admin') return true;
       return hasAnyPermissions(user?.permissions);
     },
 
@@ -205,7 +204,7 @@ export function usePermissions() {
  */
 export function useResourcePermissions(resource: string) {
   const { user } = useAuthStore();
-  const isUserAdmin = user?.role === USER_ROLES.ADMIN || user?.role === USER_ROLES.SUPER_ADMIN;
+  const isUserAdmin = user?.role === 'admin' || user?.role === 'super_admin';
 
   return {
     /**

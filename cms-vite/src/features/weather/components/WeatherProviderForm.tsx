@@ -5,6 +5,7 @@
  */
 
 import { Eye, EyeOff, TestTube, Save } from 'lucide-react';
+import { Button } from '@/shared/components';
 import {
   WEATHER_PROVIDERS,
   TEMPERATURE_UNITS,
@@ -123,7 +124,7 @@ export function WeatherProviderForm({
       {/* Units */}
       <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6">
         <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Units</h3>
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Temperature</label>
             <select
@@ -190,22 +191,23 @@ export function WeatherProviderForm({
 
       {/* Action Buttons */}
       <div className="flex gap-3">
-        <button
+        <Button
+          variant="secondary"
           onClick={onTest}
           disabled={!apiKey || isTesting}
-          className="flex items-center gap-2 px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
+          loading={isTesting}
+          leftIcon={<TestTube className="w-5 h-5" />}
         >
-          <TestTube className="w-5 h-5" />
           {isTesting ? 'Testing...' : 'Test API'}
-        </button>
-        <button
+        </Button>
+        <Button
           onClick={onSave}
           disabled={!apiKey || isSaving}
-          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+          loading={isSaving}
+          leftIcon={<Save className="w-5 h-5" />}
         >
-          <Save className="w-5 h-5" />
           {isSaving ? 'Saving...' : 'Save Configuration'}
-        </button>
+        </Button>
       </div>
     </div>
   );

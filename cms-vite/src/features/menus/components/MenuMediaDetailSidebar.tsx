@@ -47,12 +47,13 @@ const formatDate = (dateStr: string) => {
 
 interface MenuMediaDetailSidebarProps {
   media: MenuMedia | null;
+  isOpen: boolean;
   onUpdate?: (media: MenuMedia) => void;
   onDelete?: () => void;
   onClose?: () => void;
 }
 
-export function MenuMediaDetailSidebar({ media, onUpdate, onDelete, onClose }: MenuMediaDetailSidebarProps) {
+export function MenuMediaDetailSidebar({ media, isOpen, onUpdate, onDelete, onClose }: MenuMediaDetailSidebarProps) {
   const { t } = useTranslation();
 
   // Permission checks
@@ -138,25 +139,18 @@ export function MenuMediaDetailSidebar({ media, onUpdate, onDelete, onClose }: M
     onDelete?.();
   };
 
-  // Empty state
+  // Don't render if not open
+  if (!isOpen) {
+    return null;
+  }
+
+  // Empty state (shouldn't happen since we only open when media is selected)
   if (!media) {
-    return (
-      <div className="w-[360px] flex-shrink-0 bg-white dark:bg-gray-800 border-l border-gray-200 dark:border-gray-700 flex flex-col items-center justify-center p-8 text-center">
-        <div className="w-20 h-20 bg-gray-100 dark:bg-gray-700 rounded-lg flex items-center justify-center mb-4">
-          <FileImage className="w-10 h-10 text-gray-400" />
-        </div>
-        <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
-          {t('menus.media.sidebar.emptyTitle', 'Detail Media')}
-        </h3>
-        <p className="text-sm text-gray-500 dark:text-gray-400">
-          {t('menus.media.sidebar.emptyDescription', 'Pilih media untuk melihat detail')}
-        </p>
-      </div>
-    );
+    return null;
   }
 
   return (
-    <div className="w-[360px] flex-shrink-0 bg-white dark:bg-gray-800 border-l border-gray-200 dark:border-gray-700 flex flex-col overflow-hidden">
+    <div className="w-[360px] flex-shrink-0 bg-white dark:bg-gray-800 border-l border-gray-200 dark:border-gray-700 flex flex-col overflow-hidden animate-slide-in-right">
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700">
         <h3 className="font-medium text-gray-900 dark:text-white">

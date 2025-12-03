@@ -12,7 +12,7 @@
 import { useState } from 'react';
 import { Upload, Download, CheckCircle, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
-import { Modal } from '@/shared/components';
+import { Modal, Button } from '@/shared/components';
 import { useImportMenuItems, useDownloadTemplate } from '../hooks/useMenuImport';
 import type { MenuImportResult } from '../types/menu';
 
@@ -89,26 +89,25 @@ export const ExcelImportModal = ({
 
   // Footer with action buttons
   const footer = (
-    <div className="border-t border-gray-200 dark:border-gray-700 px-6 py-4">
-      <div className="flex justify-end space-x-3">
-        <button
-          type="button"
-          onClick={handleClose}
-          disabled={importMutation.isPending}
-          className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+    <div className="flex justify-end gap-3 px-6 py-4 border-t border-gray-200 dark:border-gray-700">
+      <Button
+        type="button"
+        variant="secondary"
+        onClick={handleClose}
+        disabled={importMutation.isPending}
+      >
+        {importResult ? 'Close' : 'Cancel'}
+      </Button>
+      {!importResult && (
+        <Button
+          onClick={handleImport}
+          disabled={!selectedFile || importMutation.isPending}
+          loading={importMutation.isPending}
+          leftIcon={<Upload className="w-4 h-4" />}
         >
-          {importResult ? 'Close' : 'Cancel'}
-        </button>
-        {!importResult && (
-          <button
-            onClick={handleImport}
-            disabled={!selectedFile || importMutation.isPending}
-            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-          >
-            {importMutation.isPending ? 'Importing...' : 'Import Items'}
-          </button>
-        )}
-      </div>
+          Import Items
+        </Button>
+      )}
     </div>
   );
 
@@ -136,16 +135,15 @@ export const ExcelImportModal = ({
             <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
               Download the Excel template and fill in your menu items following the format.
             </p>
-            <button
+            <Button
+              variant="secondary"
               onClick={handleDownloadTemplate}
               disabled={downloadTemplateMutation.isPending}
-              className="flex items-center space-x-2 px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 disabled:opacity-50 transition-colors"
+              loading={downloadTemplateMutation.isPending}
+              leftIcon={<Download className="w-4 h-4" />}
             >
-              <Download className="w-4 h-4" />
-              <span>
-                {downloadTemplateMutation.isPending ? 'Downloading...' : 'Download Template'}
-              </span>
-            </button>
+              Download Template
+            </Button>
           </div>
 
           {/* Upload File */}

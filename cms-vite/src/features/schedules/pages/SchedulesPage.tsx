@@ -9,7 +9,16 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ClipboardList, Calendar, Plus } from 'lucide-react';
 import { useCanPerformAction } from '@/features/rbac/hooks/usePermissions';
-import { AccessDenied, ConfirmDialog, ErrorDisplay, PageSkeleton } from '@/shared/components';
+import {
+  AccessDenied,
+  ConfirmDialog,
+  ErrorDisplay,
+  PageSkeleton,
+  ViewTabs,
+  PageToolbar,
+  PageStats,
+  Button,
+} from '@/shared/components';
 import {
   useSchedules,
   useOccurrences,
@@ -33,6 +42,12 @@ import type {
 
 type ViewMode = 'list' | 'calendar';
 type ModalMode = 'create' | 'edit' | 'view' | null;
+
+// View mode tabs for List/Calendar switching (standardized layout)
+const VIEW_TABS = [
+  { id: 'list', label: 'List', icon: ClipboardList },
+  { id: 'calendar', label: 'Calendar', icon: Calendar },
+];
 
 export const SchedulesPage = () => {
   const { t } = useTranslation();
@@ -149,48 +164,42 @@ export const SchedulesPage = () => {
     })) || [];
 
   const schedules = data?.schedules || [];
+  const activeSchedules = schedules.filter(s => s.is_active).length;
+  const inactiveSchedules = schedules.length - activeSchedules;
 
   return (
     <>
-      {/* Action Bar */}
-      <div className="mb-6 flex justify-between items-center">
-        {/* View Mode Toggle */}
-        <div className="inline-flex rounded-lg border border-gray-200 dark:border-gray-700">
-          <button
-            onClick={() => setViewMode('list')}
-            className={`px-4 py-2 text-sm font-medium rounded-l-lg flex items-center gap-2 ${
-              viewMode === 'list'
-                ? 'bg-purple-600 text-white'
-                : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
-            }`}
-          >
-            <ClipboardList className="w-4 h-4" />
-            {t('schedules.page.listView')}
-          </button>
-          <button
-            onClick={() => setViewMode('calendar')}
-            className={`px-4 py-2 text-sm font-medium rounded-r-lg flex items-center gap-2 ${
-              viewMode === 'calendar'
-                ? 'bg-purple-600 text-white'
-                : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
-            }`}
-          >
-            <Calendar className="w-4 h-4" />
-            {t('schedules.page.calendarView')}
-          </button>
-        </div>
+      {/* View Mode Tabs (List/Calendar) */}
+      <ViewTabs
+        tabs={VIEW_TABS}
+        activeTab={viewMode}
+        onChange={(id) => setViewMode(id as ViewMode)}
+      />
 
-        {/* Create Button */}
-        {canCreate && (
-          <button
-            onClick={handleCreate}
-            className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 flex items-center gap-2"
-          >
-            <Plus className="w-5 h-5" />
-            <span>{t('schedules.createSchedule')}</span>
-          </button>
-        )}
-      </div>
+      {/* Toolbar: Buttons kanan */}
+      <PageToolbar>
+        <PageToolbar.Right>
+          {canCreate && (
+            <Button
+              variant="primary"
+              onClick={handleCreate}
+              leftIcon={<Plus className="w-4 h-4" />}
+            >
+              {t('schedules.createSchedule')}
+            </Button>
+          )}
+        </PageToolbar.Right>
+      </PageToolbar>
+
+      {/* Stats: langsung di atas tabel */}
+      <PageStats
+        total={schedules.length}
+        totalLabel="schedules"
+        stats={[
+          { label: 'active', value: activeSchedules, color: 'text-green-600 dark:text-green-400' },
+          { label: 'inactive', value: inactiveSchedules, color: 'text-gray-500' },
+        ]}
+      />
 
       {/* Error State */}
       {error && (

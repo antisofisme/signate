@@ -8,7 +8,6 @@
 import { useState, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-  Upload,
   Search,
   SortAsc,
   SortDesc,
@@ -18,7 +17,6 @@ import {
   Copy,
   ChevronDown,
   ChevronRight,
-  Filter,
   Edit,
   Trash2,
   Tag,
@@ -65,11 +63,16 @@ function getContentTypeIcon(type: ContentType) {
   }
 }
 
-export function ContentGalleryView() {
+interface ContentGalleryViewProps {
+  showUploadModal?: boolean;
+  onCloseUploadModal?: () => void;
+  showFilters?: boolean;
+}
+
+export function ContentGalleryView({ showUploadModal = false, onCloseUploadModal, showFilters = false }: ContentGalleryViewProps) {
   const { t } = useTranslation();
 
   // Permission checks
-  const { hasPermission: canCreate } = useCanPerformAction('contents', 'create');
   const { hasPermission: canUpdate } = useCanPerformAction('contents', 'edit');
   const { hasPermission: canDelete } = useCanPerformAction('contents', 'delete');
 
@@ -80,8 +83,7 @@ export function ContentGalleryView() {
   const [contentTypeFilter, setContentTypeFilter] = useState<ContentType | ''>('');
   const [statusFilter, setStatusFilter] = useState<'' | 'active' | 'inactive'>('');
   const [selectedContent, setSelectedContent] = useState<Content | null>(null);
-  const [showUploadModal, setShowUploadModal] = useState(false);
-  const [showFilters, setShowFilters] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
 
   // Bulk selection state
@@ -194,7 +196,18 @@ export function ContentGalleryView() {
 
   // Handle content selection (for sidebar)
   const handleSelectContent = (content: Content) => {
-    setSelectedContent((prev) => (prev?.id === content.id ? null : content));
+    // If clicking same content, close sidebar; otherwise select and open
+    if (selectedContent?.id === content.id) {
+      setIsSidebarOpen(false);
+    } else {
+      setSelectedContent(content);
+      setIsSidebarOpen(true);
+    }
+  };
+
+  // Handle sidebar close
+  const handleCloseSidebar = () => {
+    setIsSidebarOpen(false);
   };
 
   // Handle checkbox selection (for bulk actions)
@@ -227,6 +240,7 @@ export function ContentGalleryView() {
   // Handle content delete from sidebar
   const handleContentDelete = () => {
     setSelectedContent(null);
+    setIsSidebarOpen(false);
   };
 
   // Bulk operations
@@ -265,7 +279,6 @@ export function ContentGalleryView() {
     setSearchQuery('');
     setContentTypeFilter('');
     setStatusFilter('');
-    setShowFilters(false);
   };
 
   // Calculate duplicate group count
@@ -275,7 +288,7 @@ export function ContentGalleryView() {
   }, [duplicateData]);
 
   return (
-    <div className="flex gap-6 h-[calc(100vh-280px)] min-h-[500px]">
+    <div className="flex flex-col lg:flex-row gap-4 lg:gap-6 h-auto lg:h-[calc(100vh-280px)] min-h-[300px] lg:min-h-[500px]">
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col min-w-0">
         {/* Toolbar */}
@@ -291,15 +304,6 @@ export function ContentGalleryView() {
               className="w-full pl-10 pr-4 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             />
           </div>
-
-          {/* Filter Toggle */}
-          <Button
-            variant="secondary"
-            onClick={() => setShowFilters(!showFilters)}
-            leftIcon={<Filter className="w-4 h-4" />}
-          >
-            {t('contents.actions.filters')}
-          </Button>
 
           {/* Sort Dropdown */}
           <div className="flex items-center gap-2">
@@ -320,17 +324,6 @@ export function ContentGalleryView() {
               ))}
             </select>
           </div>
-
-          {/* Upload Button */}
-          {canCreate && (
-            <Button
-              variant="primary"
-              onClick={() => setShowUploadModal(true)}
-              leftIcon={<Upload className="w-4 h-4" />}
-            >
-              {t('contents.actions.upload')}
-            </Button>
-          )}
         </div>
 
         {/* Filter Panel */}
@@ -616,15 +609,16 @@ export function ContentGalleryView() {
       <ContentDetailSidebar
         content={selectedContent}
         usage={selectedContent ? duplicateMap.get(selectedContent.id)?.usage : undefined}
+        isOpen={isSidebarOpen}
         onUpdate={handleContentUpdate}
         onDelete={handleContentDelete}
-        onClose={() => setSelectedContent(null)}
+        onClose={handleCloseSidebar}
       />
 
       {/* Upload Modal */}
       <UploadModal
         isOpen={showUploadModal}
-        onClose={() => setShowUploadModal(false)}
+        onClose={() => onCloseUploadModal?.()}
       />
 
       {/* Bulk Edit Modal */}
@@ -656,7 +650,7 @@ export function ContentGalleryView() {
         isLoading={bulkDeleteMutation.isPending}
       />
 
-      {/* CSS for Masonry */}
+      {/* CSS for Masonry and Animation */}
       <style>{`
         .masonry-grid {
           column-count: 4;
@@ -680,6 +674,19 @@ export function ContentGalleryView() {
           .masonry-grid {
             column-count: 1;
           }
+        }
+        @keyframes slide-in-right {
+          from {
+            transform: translateX(100%);
+            opacity: 0;
+          }
+          to {
+            transform: translateX(0);
+            opacity: 1;
+          }
+        }
+        .animate-slide-in-right {
+          animation: slide-in-right 0.3s ease-out forwards;
         }
       `}</style>
     </div>

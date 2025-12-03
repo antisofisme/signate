@@ -289,6 +289,32 @@ class ShellDisplaySettingsClass {
   }
 
   /**
+   * Detect if running on WebOS TV platform
+   * Uses multiple detection methods for reliability
+   */
+  private isWebOSPlatform(): boolean {
+    // Method 1: Check for webOS API object
+    // @ts-ignore
+    if (typeof window.webOS !== 'undefined') {
+      return true;
+    }
+
+    // Method 2: Check user agent
+    const ua = navigator.userAgent.toLowerCase();
+    if (ua.includes('webos') || ua.includes('web0s')) {
+      return true;
+    }
+
+    // Method 3: Check for LG-specific properties
+    // @ts-ignore
+    if (typeof window.PalmSystem !== 'undefined') {
+      return true;
+    }
+
+    return false;
+  }
+
+  /**
    * Handle orientation change
    */
   private handleOrientationChange = (): void => {
@@ -418,8 +444,30 @@ class ShellDisplaySettingsClass {
    *
    * For 90/270 rotation: Container is sized to swapped dimensions and centered
    * using translate transform combined with rotate transform.
+   *
+   * WebOS TV requires special handling with GPU acceleration hints and timing fixes
    */
   applyRotation(): void {
+    const isWebOS = this.isWebOSPlatform();
+
+    if (isWebOS) {
+      // WebOS needs double requestAnimationFrame for proper rendering
+      // This ensures the DOM is fully ready before applying transforms
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          this.applyRotationInternal();
+        });
+      });
+    } else {
+      this.applyRotationInternal();
+    }
+  }
+
+  /**
+   * Internal rotation application logic
+   * Called directly for standard browsers, or after rAF delay for WebOS
+   */
+  private applyRotationInternal(): void {
     const rotation = SharedDeviceState.getScreenRotation();
     const playerContainer = document.getElementById('player-container');
     const playerVideo = document.getElementById('player-video');
@@ -432,8 +480,9 @@ class ShellDisplaySettingsClass {
     // Get viewport dimensions
     const vw = window.innerWidth;
     const vh = window.innerHeight;
+    const isWebOS = this.isWebOSPlatform();
 
-    SharedLogger.log(`[DisplaySettings] Applying rotation: ${rotation}deg (viewport: ${vw}x${vh})`);
+    SharedLogger.log(`[DisplaySettings] Applying rotation: ${rotation}deg (viewport: ${vw}x${vh}, WebOS: ${isWebOS})`);
 
     // Reset all styles first
     playerContainer.style.cssText = '';
@@ -464,60 +513,188 @@ class ShellDisplaySettingsClass {
     }
 
     if (rotation === 90 || rotation === 270) {
-      // For 90/270 degrees:
-      // 1. Container size = swapped dimensions (vh x vw)
-      // 2. Position at center using translate
-      // 3. Apply rotation
-
-      // Calculate offset to center the rotated container
-      const offsetX = (vw - vh) / 2;
-      const offsetY = (vh - vw) / 2;
-
-      playerContainer.style.cssText = `
-        display: block;
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: ${vh}px;
-        height: ${vw}px;
-        background: #000;
-        transform-origin: center center;
-        transform: translate(${offsetX}px, ${offsetY}px) rotate(${rotation}deg);
-      `;
-
-      if (playerVideo) {
-        playerVideo.style.cssText = `
-          width: 100%;
-          height: 100%;
-          object-fit: contain;
-        `;
+      if (isWebOS) {
+        this.applyWebOSRotation(playerContainer, playerVideo, rotation, vw, vh);
+      } else {
+        this.applyStandardRotation(playerContainer, playerVideo, rotation, vw, vh);
       }
-
-      SharedLogger.log(`[DisplaySettings] ✅ Applied ${rotation}deg rotation (container: ${vh}x${vw}, offset: ${offsetX},${offsetY})`);
     } else if (rotation === 180) {
-      // For 180 degrees - no dimension swap needed
-      playerContainer.style.cssText = `
-        display: block;
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100vw;
-        height: 100vh;
-        background: #000;
-        transform-origin: center center;
-        transform: rotate(180deg);
-      `;
-
-      if (playerVideo) {
-        playerVideo.style.cssText = `
-          width: 100%;
-          height: 100%;
-          object-fit: contain;
-        `;
+      if (isWebOS) {
+        this.applyWebOS180Rotation(playerContainer, playerVideo, vw, vh);
+      } else {
+        this.applyStandard180Rotation(playerContainer, playerVideo);
       }
-
-      SharedLogger.log('[DisplaySettings] ✅ Applied 180deg rotation');
     }
+  }
+
+  /**
+   * Apply rotation for WebOS TV (90/270 degrees)
+   * Uses GPU-accelerated 3D transforms and explicit vendor prefixes
+   */
+  private applyWebOSRotation(
+    playerContainer: HTMLElement,
+    playerVideo: HTMLElement | null,
+    rotation: number,
+    vw: number,
+    vh: number
+  ): void {
+    const offsetX = (vw - vh) / 2;
+    const offsetY = (vh - vw) / 2;
+
+    // WebOS Strategy: Use rotate3d with translateZ for GPU acceleration
+    // The translateZ(0) forces GPU compositing which often fixes transform issues on WebOS
+    const transformValue = `translateZ(0) translate(${offsetX}px, ${offsetY}px) rotate3d(0, 0, 1, ${rotation}deg)`;
+
+    playerContainer.style.cssText = `
+      display: block;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: ${vh}px;
+      height: ${vw}px;
+      background: #000;
+
+      /* GPU acceleration hints for WebOS */
+      will-change: transform;
+      backface-visibility: hidden;
+      -webkit-backface-visibility: hidden;
+      perspective: 1000px;
+      -webkit-perspective: 1000px;
+
+      /* Transform origin with vendor prefix */
+      transform-origin: center center;
+      -webkit-transform-origin: center center;
+
+      /* Transform with all vendor prefixes for WebOS compatibility */
+      transform: ${transformValue};
+      -webkit-transform: ${transformValue};
+      -moz-transform: ${transformValue};
+      -ms-transform: ${transformValue};
+    `;
+
+    if (playerVideo) {
+      playerVideo.style.cssText = `
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+        backface-visibility: hidden;
+        -webkit-backface-visibility: hidden;
+      `;
+    }
+
+    SharedLogger.log(`[DisplaySettings] ✅ Applied WebOS ${rotation}deg rotation (GPU-accelerated, container: ${vh}x${vw})`);
+  }
+
+  /**
+   * Apply 180-degree rotation for WebOS TV
+   */
+  private applyWebOS180Rotation(
+    playerContainer: HTMLElement,
+    playerVideo: HTMLElement | null,
+    vw: number,
+    vh: number
+  ): void {
+    const transformValue = `translateZ(0) rotate3d(0, 0, 1, 180deg)`;
+
+    playerContainer.style.cssText = `
+      display: block;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: ${vw}px;
+      height: ${vh}px;
+      background: #000;
+
+      /* GPU acceleration hints for WebOS */
+      will-change: transform;
+      backface-visibility: hidden;
+      -webkit-backface-visibility: hidden;
+      perspective: 1000px;
+      -webkit-perspective: 1000px;
+
+      /* Transform with vendor prefixes */
+      transform-origin: center center;
+      -webkit-transform-origin: center center;
+      transform: ${transformValue};
+      -webkit-transform: ${transformValue};
+    `;
+
+    if (playerVideo) {
+      playerVideo.style.cssText = `
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+      `;
+    }
+
+    SharedLogger.log('[DisplaySettings] ✅ Applied WebOS 180deg rotation (GPU-accelerated)');
+  }
+
+  /**
+   * Apply rotation for standard browsers (90/270 degrees)
+   */
+  private applyStandardRotation(
+    playerContainer: HTMLElement,
+    playerVideo: HTMLElement | null,
+    rotation: number,
+    vw: number,
+    vh: number
+  ): void {
+    // Calculate offset to center the rotated container
+    const offsetX = (vw - vh) / 2;
+    const offsetY = (vh - vw) / 2;
+
+    playerContainer.style.cssText = `
+      display: block;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: ${vh}px;
+      height: ${vw}px;
+      background: #000;
+      transform-origin: center center;
+      transform: translate(${offsetX}px, ${offsetY}px) rotate(${rotation}deg);
+    `;
+
+    if (playerVideo) {
+      playerVideo.style.cssText = `
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+      `;
+    }
+
+    SharedLogger.log(`[DisplaySettings] ✅ Applied ${rotation}deg rotation (container: ${vh}x${vw}, offset: ${offsetX},${offsetY})`);
+  }
+
+  /**
+   * Apply 180-degree rotation for standard browsers
+   */
+  private applyStandard180Rotation(
+    playerContainer: HTMLElement,
+    playerVideo: HTMLElement | null
+  ): void {
+    playerContainer.style.cssText = `
+      display: block;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: #000;
+      transform-origin: center center;
+      transform: rotate(180deg);
+    `;
+
+    if (playerVideo) {
+      playerVideo.style.cssText = `
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+      `;
+    }
+
+    SharedLogger.log('[DisplaySettings] ✅ Applied 180deg rotation');
   }
 
   /**

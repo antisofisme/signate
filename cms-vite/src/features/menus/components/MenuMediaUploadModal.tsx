@@ -9,12 +9,11 @@ import { useState, useRef, ChangeEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Upload,
-  Loader2,
   FileImage,
   Trash2,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { Modal } from '@/shared/components';
+import { Modal, Button } from '@/shared/components';
 import { useUploadMenuMedia } from '../hooks/useMenuMedia';
 import { useMenuMediaUploadStore } from '@/lib/stores/menuMediaUploadStore';
 
@@ -170,27 +169,24 @@ export function MenuMediaUploadModal({ isOpen, onClose }: MenuMediaUploadModalPr
 
   // Footer with action buttons
   const footer = (
-    <div className="border-t border-gray-200 dark:border-gray-700 px-6 py-4">
-      <div className="flex justify-end gap-3">
-        <button
-          type="button"
-          onClick={handleClose}
-          className="px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
-        >
-          {t('common.cancel', { defaultValue: 'Cancel' })}
-        </button>
-        <button
-          type="submit"
-          form="upload-menu-media-form"
-          disabled={localFiles.length === 0}
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 transition-colors"
-        >
-          <Upload className="w-4 h-4" />
-          {localFiles.length > 0
-            ? t('menuMedia.upload.addToQueue', { count: localFiles.length, defaultValue: `Add ${localFiles.length} to Queue` })
-            : t('menuMedia.upload.upload', { defaultValue: 'Upload' })}
-        </button>
-      </div>
+    <div className="flex justify-end gap-3 px-6 py-4 border-t border-gray-200 dark:border-gray-700">
+      <Button
+        type="button"
+        variant="secondary"
+        onClick={handleClose}
+      >
+        {t('common.cancel', { defaultValue: 'Cancel' })}
+      </Button>
+      <Button
+        type="submit"
+        form="upload-menu-media-form"
+        disabled={localFiles.length === 0}
+        leftIcon={<Upload className="w-4 h-4" />}
+      >
+        {localFiles.length > 0
+          ? t('menuMedia.upload.addToQueue', { count: localFiles.length, defaultValue: `Add ${localFiles.length} to Queue` })
+          : t('menuMedia.upload.upload', { defaultValue: 'Upload' })}
+      </Button>
     </div>
   );
 

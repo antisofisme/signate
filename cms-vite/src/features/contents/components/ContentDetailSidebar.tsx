@@ -97,6 +97,7 @@ function getTranscodingStatusDisplay(status: TranscodingStatus, progress: number
 interface ContentDetailSidebarProps {
   content: Content | null;
   usage?: ContentUsage;
+  isOpen: boolean;
   onUpdate?: (content: Content) => void;
   onDelete?: () => void;
   onClose?: () => void;
@@ -105,6 +106,7 @@ interface ContentDetailSidebarProps {
 export function ContentDetailSidebar({
   content,
   usage,
+  isOpen,
   onUpdate,
   onDelete,
   onClose,
@@ -218,21 +220,14 @@ export function ContentDetailSidebar({
   // Check if usage exists (tags are now shown separately with remove buttons)
   const hasUsage = usage && (usage.playlists.length > 0 || usage.devices.length > 0);
 
-  // Empty state
+  // Don't render if not open
+  if (!isOpen) {
+    return null;
+  }
+
+  // Empty state (shouldn't happen since we only open when content is selected)
   if (!content) {
-    return (
-      <div className="w-[360px] flex-shrink-0 bg-white dark:bg-gray-800 border-l border-gray-200 dark:border-gray-700 flex flex-col items-center justify-center p-8 text-center">
-        <div className="w-20 h-20 bg-gray-100 dark:bg-gray-700 rounded-lg flex items-center justify-center mb-4">
-          <FileImage className="w-10 h-10 text-gray-400" />
-        </div>
-        <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
-          {t('contents.sidebar.emptyTitle', 'No Selection')}
-        </h3>
-        <p className="text-sm text-gray-500 dark:text-gray-400">
-          {t('contents.sidebar.emptyDescription', 'Click on content to view details')}
-        </p>
-      </div>
-    );
+    return null;
   }
 
   const transcodingDisplay = content.content_type === 'video'
@@ -240,7 +235,7 @@ export function ContentDetailSidebar({
     : null;
 
   return (
-    <div className="w-[360px] flex-shrink-0 bg-white dark:bg-gray-800 border-l border-gray-200 dark:border-gray-700 flex flex-col overflow-hidden">
+    <div className="w-[360px] flex-shrink-0 bg-white dark:bg-gray-800 border-l border-gray-200 dark:border-gray-700 flex flex-col overflow-hidden animate-slide-in-right">
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700">
         <div className="flex items-center gap-2">

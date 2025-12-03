@@ -6,12 +6,20 @@
  */
 
 import { Plus } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import WidgetList from '../components/WidgetList';
 import WidgetForm from '../components/WidgetForm';
-import { DeleteConfirmModal } from '@/shared/components';
+import {
+  DeleteConfirmModal,
+  Button,
+  PageHeader,
+  PageStats,
+  PageToolbar,
+} from '@/shared/components';
 import { useWidgetState } from '../hooks/useWidgetState';
 
 export const WidgetsPage = () => {
+  const { t } = useTranslation();
   const {
     widgets,
     isLoading,
@@ -33,16 +41,30 @@ export const WidgetsPage = () => {
 
   return (
     <>
-      {/* Action Bar */}
-      <div className="mb-6 flex justify-end">
-        <button
-          onClick={handleCreate}
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2"
-        >
-          <Plus className="w-4 h-4" />
-          Create Widget
-        </button>
-      </div>
+      {/* Page Header */}
+      <PageHeader
+        title={t('widgets.title', 'Widgets')}
+        description={t('widgets.subtitle', 'Manage display widgets')}
+      />
+
+      {/* Toolbar: Buttons kanan */}
+      <PageToolbar>
+        <PageToolbar.Right>
+          <Button
+            variant="primary"
+            onClick={handleCreate}
+            leftIcon={<Plus className="w-4 h-4" />}
+          >
+            {t('widgets.create', 'Create Widget')}
+          </Button>
+        </PageToolbar.Right>
+      </PageToolbar>
+
+      {/* Stats: langsung di atas list */}
+      <PageStats
+        total={widgets.length}
+        totalLabel="widgets"
+      />
 
       {/* Widget List */}
       <div className="space-y-6">

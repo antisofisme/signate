@@ -8,7 +8,6 @@
 import { useState, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-  Upload,
   Trash2,
   Loader2,
   FileImage,
@@ -83,11 +82,16 @@ function getFileTypeLabel(mimeType: string): string {
   return mimeType.split('/')[1]?.toUpperCase() || 'File';
 }
 
-export function ContentTable() {
+interface ContentTableProps {
+  showUploadModal?: boolean;
+  onCloseUploadModal?: () => void;
+  showFilters?: boolean;
+}
+
+export function ContentTable({ showUploadModal = false, onCloseUploadModal, showFilters = false }: ContentTableProps) {
   const { t } = useTranslation();
 
   // Permission checks
-  const { hasPermission: canCreate } = useCanPerformAction('contents', 'create');
   const { hasPermission: canUpdate } = useCanPerformAction('contents', 'edit');
   const { hasPermission: canDelete } = useCanPerformAction('contents', 'delete');
 
@@ -95,8 +99,6 @@ export function ContentTable() {
   const pagination = usePagination({ pageSize: 20 });
 
   const [filters, setFilters] = useState<ContentFilters>({});
-  const [showFilters, setShowFilters] = useState(false);
-  const [showUploadModal, setShowUploadModal] = useState(false);
   const [selectedContent, setSelectedContent] = useState<Content | null>(null);
   const [contentToDelete, setContentToDelete] = useState<Content | null>(null);
   const [showPreview, setShowPreview] = useState(false);
@@ -256,30 +258,10 @@ export function ContentTable() {
 
   return (
     <div className="space-y-4">
-      {/* Action Bar - No duplicate header, title is in PageHeader */}
-      <div className="flex items-center justify-end gap-2">
-        <Button
-          variant="secondary"
-          onClick={() => setShowFilters(!showFilters)}
-          leftIcon={<Filter className="w-4 h-4" />}
-        >
-          {t('contents.actions.filters')}
-        </Button>
-        {canCreate && (
-          <Button
-            variant="primary"
-            onClick={() => setShowUploadModal(true)}
-            leftIcon={<Upload className="w-4 h-4" />}
-          >
-            {t('contents.actions.upload')}
-          </Button>
-        )}
-      </div>
-
-      {/* Filters */}
+      {/* Filters - controlled by parent */}
       {showFilters && (
         <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg space-y-4">
-          <div className="grid grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 {t('contents.filters.contentType')}
@@ -355,13 +337,6 @@ export function ContentTable() {
               </Button>
             </div>
           </div>
-        </div>
-      )}
-
-      {/* Content Stats */}
-      {contentData && (
-        <div className="text-sm text-gray-600 dark:text-gray-400">
-          {t('contents.stats.showingItems', { count: contentData.data.length, total: contentData.pagination.total })}
         </div>
       )}
 
@@ -814,7 +789,7 @@ export function ContentTable() {
       {/* Upload Modal */}
       <UploadModal
         isOpen={showUploadModal}
-        onClose={() => setShowUploadModal(false)}
+        onClose={() => onCloseUploadModal?.()}
       />
 
       {/* Delete Confirmation Dialog */}

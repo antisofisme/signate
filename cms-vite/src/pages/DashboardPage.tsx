@@ -24,6 +24,8 @@ import {
   useRecentActivity,
   useSystemAlerts,
   useSystemInfo,
+  useMenuStats,
+  useScheduleOverview,
 } from '@/features/dashboard/api/dashboard.api';
 import OverviewMetrics from '@/features/dashboard/components/OverviewMetrics';
 import DeviceHealthOverview from '@/features/dashboard/components/DeviceHealthOverview';
@@ -32,6 +34,8 @@ import ActivePlaylistsTable from '@/features/dashboard/components/ActivePlaylist
 import RecentActivityFeed from '@/features/dashboard/components/RecentActivityFeed';
 import SystemAlertsPanel from '@/features/dashboard/components/SystemAlertsPanel';
 import SystemInfoPanel from '@/features/dashboard/components/SystemInfoPanel';
+import MenuAnalyticsWidget from '@/features/dashboard/components/MenuAnalyticsWidget';
+import ScheduleOverviewWidget from '@/features/dashboard/components/ScheduleOverviewWidget';
 import { QuotaAlertBanner } from '@/features/organizations/components/QuotaAlertBanner';
 import { useOrganizationQuota } from '@/features/organizations/hooks/useOrganizationQuota';
 
@@ -64,6 +68,8 @@ export default function DashboardPage() {
   const { data: recentActivity, isLoading: activityLoading, refetch: refetchActivity } = useRecentActivity(20);
   const { data: systemAlerts, isLoading: alertsLoading, refetch: refetchAlerts } = useSystemAlerts();
   const { data: systemInfo, isLoading: systemInfoLoading, refetch: refetchSystemInfo } = useSystemInfo();
+  const { data: menuStats, isLoading: menuStatsLoading, refetch: refetchMenuStats } = useMenuStats();
+  const { data: scheduleOverview, isLoading: scheduleLoading, refetch: refetchSchedule } = useScheduleOverview();
 
   // Fetch organization quota for alerts (uses effective org for SUPER_ADMIN switching)
   const { data: quota, refetch: refetchQuota } = useOrganizationQuota(effectiveOrgId);
@@ -80,6 +86,8 @@ export default function DashboardPage() {
         refetchActivity(),
         refetchAlerts(),
         refetchSystemInfo(),
+        refetchMenuStats(),
+        refetchSchedule(),
         refetchQuota(),
       ]);
     } finally {
@@ -93,6 +101,8 @@ export default function DashboardPage() {
     refetchActivity,
     refetchAlerts,
     refetchSystemInfo,
+    refetchMenuStats,
+    refetchSchedule,
     refetchQuota,
   ]);
 
@@ -120,7 +130,12 @@ export default function DashboardPage() {
       {/* Dashboard Content */}
       <div className="space-y-6">
         {/* Section 1: Overview Metrics */}
-        <OverviewMetrics stats={stats} isLoading={statsLoading} />
+        <OverviewMetrics
+          stats={stats}
+          menuStats={menuStats}
+          scheduleOverview={scheduleOverview}
+          isLoading={statsLoading || menuStatsLoading || scheduleLoading}
+        />
 
         {/* Section 2: Device Health Overview */}
         <DeviceHealthOverview data={deviceHealth} isLoading={healthLoading} />
@@ -128,18 +143,24 @@ export default function DashboardPage() {
         {/* Section 3: Live Device Monitor */}
         <LiveDeviceMonitor devices={liveDevices} isLoading={devicesLoading} />
 
-        {/* Section 4: Active Playlists & Assignments */}
+        {/* Section 4: Menu Analytics & Schedule Overview - Two Column Layout */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <MenuAnalyticsWidget data={menuStats} isLoading={menuStatsLoading} />
+          <ScheduleOverviewWidget data={scheduleOverview} isLoading={scheduleLoading} />
+        </div>
+
+        {/* Section 5: Active Playlists & Assignments */}
         <ActivePlaylistsTable data={playlists} isLoading={playlistsLoading} />
 
         {/* Recent Activity Feed - Full Width */}
         <RecentActivityFeed data={recentActivity} isLoading={activityLoading} />
 
-        {/* Two Column Layout */}
+        {/* Two Column Layout - Alerts & System Info */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Section 9: System Alerts */}
+          {/* System Alerts */}
           <SystemAlertsPanel data={systemAlerts} isLoading={alertsLoading} />
 
-          {/* Section 10: Storage & System Info */}
+          {/* Storage & System Info */}
           <SystemInfoPanel data={systemInfo} isLoading={systemInfoLoading} />
         </div>
       </div>

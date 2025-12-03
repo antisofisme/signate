@@ -24,6 +24,11 @@ from .dtos import (
     SystemAlertResponse,
     SystemInfoResponse,
     ContentByType,
+    MenuStatsResponse,
+    MenuViewsByDevice,
+    TopMenu,
+    ScheduleOverviewResponse,
+    ActiveSchedule,
 )
 
 from .repositories.dashboard_repo import DashboardRepository
@@ -36,6 +41,8 @@ from .use_cases.get_playback_timeline import GetPlaybackTimelineUseCase
 from .use_cases.get_recent_activity import GetRecentActivityUseCase
 from .use_cases.get_system_alerts import GetSystemAlertsUseCase
 from .use_cases.get_system_info import GetSystemInfoUseCase
+from .use_cases.get_menu_stats import GetMenuStatsUseCase
+from .use_cases.get_schedule_overview import GetScheduleOverviewUseCase
 
 
 router = APIRouter(prefix="/api/v1/dashboard", tags=["Dashboard"])
@@ -305,4 +312,74 @@ def get_system_info(
         content_by_type=content_by_type_dto,
         database_size_bytes=info.database_size_bytes,
         uptime_seconds=info.uptime_seconds
+    )
+
+
+# ============================================================================
+# GET /dashboard/menu-stats - Menu statistics
+# ============================================================================
+
+@router.get("/menu-stats", response_model=MenuStatsResponse)
+def get_menu_stats(
+    current_user: UserModel = Depends(get_current_user),
+    dashboard_repo: DashboardRepository = Depends(get_dashboard_repo)
+):
+    """Get menu statistics for dashboard"""
+    use_case = GetMenuStatsUseCase(dashboard_repo)
+    stats = use_case.execute(current_user.organization_id)
+
+    return MenuStatsResponse(
+        total_menus=stats.total_menus,
+        active_menus=stats.active_menus,
+        total_items=stats.total_items,
+        total_views=stats.total_views,
+        total_contact_clicks=stats.total_contact_clicks,
+        views_by_device=MenuViewsByDevice(
+            mobile=stats.views_by_device.mobile,
+            tablet=stats.views_by_device.tablet,
+            desktop=stats.views_by_device.desktop,
+            unknown=stats.views_by_device.unknown
+        ),
+        top_menus=[
+            TopMenu(
+                menu_id=menu.menu_id,
+                menu_name=menu.menu_name,
+                menu_type=menu.menu_type,
+                views=menu.views,
+                contact_clicks=menu.contact_clicks
+            )
+            for menu in stats.top_menus
+        ]
+    )
+
+
+# ============================================================================
+# GET /dashboard/schedule-overview - Schedule overview
+# ============================================================================
+
+@router.get("/schedule-overview", response_model=ScheduleOverviewResponse)
+def get_schedule_overview(
+    current_user: UserModel = Depends(get_current_user),
+    dashboard_repo: DashboardRepository = Depends(get_dashboard_repo)
+):
+    """Get schedule overview for dashboard"""
+    use_case = GetScheduleOverviewUseCase(dashboard_repo)
+    overview = use_case.execute(current_user.organization_id)
+
+    return ScheduleOverviewResponse(
+        total_schedules=overview.total_schedules,
+        active_schedules=overview.active_schedules,
+        running_now=overview.running_now,
+        ending_soon=overview.ending_soon,
+        active_today=[
+            ActiveSchedule(
+                schedule_id=schedule.schedule_id,
+                name=schedule.name,
+                playlist_name=schedule.playlist_name,
+                priority=schedule.priority,
+                start_time=schedule.start_time,
+                end_time=schedule.end_time
+            )
+            for schedule in overview.active_today
+        ]
     )

@@ -14,8 +14,8 @@ import { useTranslation } from 'react-i18next';
 import { useForm, FormProvider } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Save, Loader2 } from 'lucide-react';
-import { Modal, FormInput, FormTextarea, FormSwitch } from '@/shared/components';
+import { Save } from 'lucide-react';
+import { Modal, Button, FormInput, FormTextarea, FormSwitch } from '@/shared/components';
 import { useUpdateContent } from '../hooks/useContent';
 import type { Content } from '../types/content';
 
@@ -99,35 +99,24 @@ export function EditContentModal({ isOpen, onClose, content }: EditContentModalP
 
   // Footer with action buttons
   const footer = (
-    <div className="border-t border-gray-200 dark:border-gray-700 px-6 py-4">
-      <div className="flex justify-end gap-3">
-        <button
-          type="button"
-          onClick={handleClose}
-          disabled={updateMutation.isPending}
-          className="px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg disabled:opacity-50 transition-colors"
-        >
-          {t('contents.buttons.cancel')}
-        </button>
-        <button
-          type="submit"
-          form="edit-content-form"
-          disabled={!isValid || updateMutation.isPending}
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 transition-colors"
-        >
-          {updateMutation.isPending ? (
-            <>
-              <Loader2 className="w-4 h-4 animate-spin" />
-              {t('contents.buttons.updating')}
-            </>
-          ) : (
-            <>
-              <Save className="w-4 h-4" />
-              {t('contents.buttons.saveChanges')}
-            </>
-          )}
-        </button>
-      </div>
+    <div className="flex justify-end gap-3 px-6 py-4 border-t border-gray-200 dark:border-gray-700">
+      <Button
+        type="button"
+        variant="secondary"
+        onClick={handleClose}
+        disabled={updateMutation.isPending}
+      >
+        {t('contents.buttons.cancel')}
+      </Button>
+      <Button
+        type="submit"
+        form="edit-content-form"
+        disabled={!isValid || updateMutation.isPending}
+        loading={updateMutation.isPending}
+        leftIcon={<Save className="w-4 h-4" />}
+      >
+        {updateMutation.isPending ? t('contents.buttons.updating') : t('contents.buttons.saveChanges')}
+      </Button>
     </div>
   );
 
@@ -145,7 +134,7 @@ export function EditContentModal({ isOpen, onClose, content }: EditContentModalP
         <form id="edit-content-form" onSubmit={handleSubmit(onSubmit)} className="p-6 space-y-6">
           {/* Content Info */}
           <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
-            <div className="grid grid-cols-2 gap-4 text-sm">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
               <div>
                 <p className="text-gray-500 dark:text-gray-400">{t('contents.form.fileName')}</p>
                 <p className="text-gray-900 dark:text-white font-medium truncate">

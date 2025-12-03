@@ -5,8 +5,8 @@
  */
 
 import { useState } from 'react'
-import { ClipboardList, CheckCircle, AlertTriangle, FastForward, Loader2 } from 'lucide-react'
-import { Modal } from '@/shared/components'
+import { ClipboardList, CheckCircle, AlertTriangle, FastForward, Upload } from 'lucide-react'
+import { Modal, Button } from '@/shared/components'
 import { useBulkImportTranslations } from '../hooks/useTranslations'
 import type { BulkImportItem } from '../types/translation.types'
 
@@ -92,22 +92,23 @@ export const BulkImportModal = ({ isOpen, onClose }: BulkImportModalProps) => {
   ]
 
   const footer = (
-    <div className="flex justify-end gap-3">
-      <button
+    <div className="flex justify-end gap-3 px-6 py-4 border-t border-gray-200 dark:border-gray-700">
+      <Button
+        variant="secondary"
         onClick={onClose}
         disabled={bulkImportMutation.isPending}
-        className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50"
       >
         Cancel
-      </button>
-      <button
+      </Button>
+      <Button
+        variant="success"
         onClick={handleImport}
         disabled={bulkImportMutation.isPending || !importData.trim()}
-        className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50 flex items-center gap-2"
+        loading={bulkImportMutation.isPending}
+        leftIcon={<Upload className="w-4 h-4" />}
       >
-        {bulkImportMutation.isPending && <Loader2 className="animate-spin h-4 w-4" />}
         Import Translations
-      </button>
+      </Button>
     </div>
   )
 

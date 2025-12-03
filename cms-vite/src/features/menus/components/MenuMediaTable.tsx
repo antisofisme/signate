@@ -59,7 +59,17 @@ const getFileTypeLabel = (mimeType: string) => {
   return mimeType.split('/')[1]?.toUpperCase() || 'Image';
 };
 
-export function MenuMediaTable() {
+interface MenuMediaTableProps {
+  showUploadModal?: boolean;
+  onCloseUploadModal?: () => void;
+  showFilters?: boolean;
+}
+
+export function MenuMediaTable({
+  showUploadModal: showUploadModalProp = false,
+  onCloseUploadModal,
+  showFilters: showFiltersProp = false
+}: MenuMediaTableProps) {
   const { t } = useTranslation();
 
   // Permission checks
@@ -72,8 +82,9 @@ export function MenuMediaTable() {
 
   // State
   const [filters, setFilters] = useState<MenuMediaFilters>({});
-  const [showFilters, setShowFilters] = useState(false);
-  const [showUploadModal, setShowUploadModal] = useState(false);
+  // Use prop if provided, otherwise use local state
+  const showFilters = showFiltersProp;
+  const showUploadModal = showUploadModalProp;
   const [selectedMedia, setSelectedMedia] = useState<MenuMedia | null>(null);
   const [mediaToDelete, setMediaToDelete] = useState<MenuMedia | null>(null);
   const [showPreview, setShowPreview] = useState(false);
@@ -440,30 +451,10 @@ export function MenuMediaTable() {
 
   return (
     <div className="space-y-4">
-      {/* Action Bar */}
-      <div className="flex items-center justify-end gap-2">
-        <Button
-          variant="secondary"
-          onClick={() => setShowFilters(!showFilters)}
-          leftIcon={<Filter className="w-4 h-4" />}
-        >
-          {t('menus.media.actions.filters', 'Filters')}
-        </Button>
-        {canCreate && (
-          <Button
-            variant="primary"
-            onClick={() => setShowUploadModal(true)}
-            leftIcon={<Upload className="w-4 h-4" />}
-          >
-            {t('menus.media.actions.uploadImage', 'Upload Image')}
-          </Button>
-        )}
-      </div>
-
-      {/* Filters */}
+      {/* Filters - controlled by parent */}
       {showFilters && (
         <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg space-y-4">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 {t('menus.media.filters.search', 'Search')}
@@ -594,7 +585,7 @@ export function MenuMediaTable() {
       {/* Upload Modal */}
       <MenuMediaUploadModal
         isOpen={showUploadModal}
-        onClose={() => setShowUploadModal(false)}
+        onClose={onCloseUploadModal || (() => {})}
       />
 
       {/* Delete Confirmation */}

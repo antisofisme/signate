@@ -20,7 +20,6 @@ import {
   X,
   Building2,
   BarChart3,
-  Folder,
   Calendar,
   Languages,
   FileCode,
@@ -61,7 +60,6 @@ export default function Sidebar() {
   // Track which groups are open (using group name as key)
   // All groups default to open (auto-expand)
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({
-    devices: true,
     content: true,
     'menu-digital': true,
     // customization: false, // HIDDEN: Belum dikembangkan
@@ -78,22 +76,14 @@ export default function Sidebar() {
   // Single menu items (always visible)
   const singleItems: NavItem[] = [
     { name: t('navigation.dashboard'), href: '/dashboard', icon: LayoutDashboard },
+    { name: t('navigation.devices'), href: '/devices', icon: Monitor },
   ];
 
   // Grouped navigation
   const navigationGroups: NavGroup[] = [
     {
-      key: 'devices',
-      name: t('navigation.groups.devices'),
-      icon: Monitor,
-      items: [
-        { name: t('navigation.devices'), href: '/devices', icon: Monitor },
-        { name: t('navigation.deviceGroups'), href: '/device-groups', icon: Folder },
-      ],
-    },
-    {
       key: 'content',
-      name: t('navigation.groups.content'),
+      name: t('navigation.groups.digitalSignage'),
       icon: FileImage,
       items: [
         { name: t('navigation.contents'), href: '/contents', icon: FileImage },

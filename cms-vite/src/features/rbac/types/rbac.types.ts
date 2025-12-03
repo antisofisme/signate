@@ -20,7 +20,6 @@ export type PermissionAction = 'read' | 'create' | 'edit' | 'delete' | 'manage';
 export type PermissionResource =
   | 'dashboard'
   | 'devices'
-  | 'device_groups'
   | 'contents'
   | 'playlists'
   | 'schedules'
@@ -205,7 +204,6 @@ export const PERMISSION_ACTIONS: PermissionAction[] = [
 export const PERMISSION_RESOURCES: PermissionResource[] = [
   'dashboard',
   'devices',
-  'device_groups',
   'contents',
   'playlists',
   'schedules',

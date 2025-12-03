@@ -16,7 +16,7 @@ import {
   AlertCircle,
   Loader2,
 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import Button from '@/shared/components/common/Button';
 import { Progress } from '@/components/ui/progress';
 import { cn } from '@/lib/utils';
 import type { UploadItem as UploadItemType } from '../types/upload';
@@ -146,8 +146,8 @@ export function UploadItem({ item }: UploadItemProps) {
         {/* Uploading: Cancel button */}
         {item.status === 'uploading' && (
           <Button
-            variant="ghost"
-            size="icon"
+            variant="icon"
+            size="sm"
             className="h-7 w-7"
             onClick={handleCancel}
             title={t('uploads.actions.cancel')}
@@ -161,8 +161,8 @@ export function UploadItem({ item }: UploadItemProps) {
           <div className="flex items-center gap-1">
             <Check className="w-4 h-4 text-green-500" />
             <Button
-              variant="ghost"
-              size="icon"
+              variant="icon"
+              size="sm"
               className="h-7 w-7 text-gray-400 hover:text-gray-600"
               onClick={handleRemove}
               title={t('uploads.actions.remove')}
@@ -178,8 +178,8 @@ export function UploadItem({ item }: UploadItemProps) {
             <AlertCircle className="w-4 h-4 text-red-500" />
             {item.file && (
               <Button
-                variant="ghost"
-                size="icon"
+                variant="icon"
+                size="sm"
                 className="h-7 w-7 text-blue-500 hover:text-blue-600"
                 onClick={handleRetry}
                 title={t('uploads.actions.retry')}
@@ -188,8 +188,8 @@ export function UploadItem({ item }: UploadItemProps) {
               </Button>
             )}
             <Button
-              variant="ghost"
-              size="icon"
+              variant="icon"
+              size="sm"
               className="h-7 w-7 text-gray-400 hover:text-gray-600"
               onClick={handleRemove}
               title={t('uploads.actions.remove')}
@@ -202,8 +202,8 @@ export function UploadItem({ item }: UploadItemProps) {
         {/* Cancelled: Remove button */}
         {item.status === 'cancelled' && (
           <Button
-            variant="ghost"
-            size="icon"
+            variant="icon"
+            size="sm"
             className="h-7 w-7 text-gray-400 hover:text-gray-600"
             onClick={handleRemove}
             title={t('uploads.actions.remove')}

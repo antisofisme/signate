@@ -10,8 +10,7 @@
  */
 
 import { useTranslation } from 'react-i18next';
-import { Loader2 } from 'lucide-react';
-import { Modal } from '@/shared/components';
+import { Modal, Button } from '@/shared/components';
 import ScheduleForm from './ScheduleForm';
 import type { Schedule, CreateScheduleRequest, UpdateScheduleRequest } from '../types/schedule.types';
 
@@ -40,26 +39,24 @@ export function ScheduleFormModal({
 
   // Footer with action buttons
   const footer = (
-    <div className="border-t border-gray-200 dark:border-gray-700 px-6 py-4">
-      <div className="flex justify-end gap-3">
-        <button
-          type="button"
-          onClick={handleClose}
-          disabled={isLoading}
-          className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 transition-colors"
-        >
-          {t('common.cancel')}
-        </button>
-        <button
-          type="submit"
-          form="schedule-form"
-          disabled={isLoading}
-          className="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 disabled:opacity-50 flex items-center gap-2 transition-colors"
-        >
-          {isLoading && <Loader2 className="w-4 h-4 animate-spin" />}
-          {t(mode === 'create' ? 'schedules.createSchedule' : 'schedules.updateSchedule')}
-        </button>
-      </div>
+    <div className="flex justify-end gap-3 px-6 py-4 border-t border-gray-200 dark:border-gray-700">
+      <Button
+        type="button"
+        variant="secondary"
+        onClick={handleClose}
+        disabled={isLoading}
+      >
+        {t('common.cancel')}
+      </Button>
+      <Button
+        type="submit"
+        form="schedule-form"
+        disabled={isLoading}
+        loading={isLoading}
+        className="bg-purple-600 hover:bg-purple-700"
+      >
+        {t(mode === 'create' ? 'schedules.createSchedule' : 'schedules.updateSchedule')}
+      </Button>
     </div>
   );
 

@@ -4,7 +4,8 @@
  */
 
 import { useState, useEffect } from 'react'
-import { Eye, Edit, Rocket, Clock, Lightbulb } from 'lucide-react'
+import { Eye, Edit, Rocket, Lightbulb } from 'lucide-react'
+import { Button } from '@/shared/components'
 import { DEFAULT_PREVIEW_DATA } from '../types/template.types'
 
 interface TemplatePreviewProps {
@@ -65,42 +66,26 @@ export const TemplatePreview = ({
       <div className="flex items-center justify-between">
         <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Template Preview</label>
         <div className="flex gap-2">
-          <button
+          <Button
             type="button"
+            variant="secondary"
+            size="sm"
             onClick={() => setShowDataEditor(!showDataEditor)}
-            className="text-xs px-3 py-1.5 border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-900 dark:text-gray-100 flex items-center gap-1"
+            leftIcon={showDataEditor ? <Eye className="w-3 h-3" /> : <Edit className="w-3 h-3" />}
           >
-            {showDataEditor ? (
-              <>
-                <Eye className="w-3 h-3" />
-                Show Preview
-              </>
-            ) : (
-              <>
-                <Edit className="w-3 h-3" />
-                Edit Data
-              </>
-            )}
-          </button>
+            {showDataEditor ? 'Show Preview' : 'Edit Data'}
+          </Button>
           {onRender && (
-            <button
+            <Button
               type="button"
+              size="sm"
               onClick={handleRenderClick}
               disabled={isRendering}
-              className="text-xs px-3 py-1.5 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 flex items-center gap-1"
+              loading={isRendering}
+              leftIcon={<Rocket className="w-3 h-3" />}
             >
-              {isRendering ? (
-                <>
-                  <Clock className="w-3 h-3 animate-spin" />
-                  Rendering...
-                </>
-              ) : (
-                <>
-                  <Rocket className="w-3 h-3" />
-                  Render
-                </>
-              )}
-            </button>
+              {isRendering ? 'Rendering...' : 'Render'}
+            </Button>
           )}
         </div>
       </div>

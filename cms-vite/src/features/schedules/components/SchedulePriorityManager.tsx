@@ -131,7 +131,7 @@ export const SchedulePriorityManager = ({
         </div>
 
         {/* Priority Levels Guide */}
-        <div className="grid grid-cols-4 gap-2 mt-4">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-4">
           {[
             { label: 'low', range: 'low', color: 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300' },
             { label: 'normal', range: 'normal', color: 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-200' },

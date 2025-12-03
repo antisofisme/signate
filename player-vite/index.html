@@ -8,6 +8,21 @@
   <meta http-equiv="Expires" content="0">
   <title>Digital Signage Player</title>
 
+  <!-- PWA Meta Tags -->
+  <meta name="description" content="Smart TV Digital Signage Player - Offline Capable">
+  <meta name="theme-color" content="#0f172a">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="DSPlayer">
+
+  <!-- PWA Manifest -->
+  <link rel="manifest" href="/manifest.json">
+
+  <!-- PWA Icons -->
+  <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png">
+  <link rel="apple-touch-icon" href="/icons/icon-192.png">
+
   <style>
     * {
       margin: 0;
@@ -308,6 +323,29 @@
     .status-indicator:hover {
       transform: scale(1.05);
       box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    }
+
+    /* Connection Status Animations */
+    @keyframes statusPulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.7; transform: scale(0.95); }
+    }
+
+    @keyframes statusWarningBlink {
+      0%, 10% { opacity: 1; }
+      15%, 25% { opacity: 0.3; }
+      30%, 40% { opacity: 1; }
+      45%, 55% { opacity: 0.3; }
+      60%, 100% { opacity: 1; }
+    }
+
+    /* Animated states for connection icons */
+    .status-indicator.pulse {
+      animation: statusPulse 2s ease-in-out infinite;
+    }
+
+    .status-indicator.warning-blink {
+      animation: statusWarningBlink 2.5s ease-in-out infinite;
     }
 
     /* Shell Info (debug panel) */

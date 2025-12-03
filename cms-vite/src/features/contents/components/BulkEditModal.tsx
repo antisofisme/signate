@@ -223,7 +223,7 @@ export function BulkEditModal({ isOpen, onClose, selectedContent }: BulkEditModa
               <h3 className="text-sm font-semibold text-blue-900 dark:text-blue-300 mb-3">
                 {t('contents.form.applyToAll')}
               </h3>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* Duration */}
                 <FormInput
                   name="duration"

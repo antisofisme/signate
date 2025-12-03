@@ -18,6 +18,7 @@
 
 import { Component, ErrorInfo, ReactNode } from 'react';
 import { AlertTriangle, RefreshCw, Home } from 'lucide-react';
+import Button from './common/Button';
 
 // ============================================================================
 // TYPES
@@ -97,31 +98,30 @@ function DefaultFallback({ error, onReset, showReset = true }: DefaultFallbackPr
         {/* Action Buttons */}
         <div className="flex flex-col sm:flex-row gap-3 justify-center">
           {showReset && onReset && (
-            <button
+            <Button
               onClick={onReset}
-              className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+              leftIcon={<RefreshCw className="w-4 h-4" aria-hidden="true" />}
               aria-label="Try again"
             >
-              <RefreshCw className="w-4 h-4" aria-hidden="true" />
               Try Again
-            </button>
+            </Button>
           )}
-          <button
+          <Button
+            variant="secondary"
             onClick={handleReload}
-            className="inline-flex items-center justify-center gap-2 px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
+            leftIcon={<RefreshCw className="w-4 h-4" aria-hidden="true" />}
             aria-label="Reload page"
           >
-            <RefreshCw className="w-4 h-4" aria-hidden="true" />
             Reload Page
-          </button>
-          <button
+          </Button>
+          <Button
+            variant="secondary"
             onClick={handleGoHome}
-            className="inline-flex items-center justify-center gap-2 px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
+            leftIcon={<Home className="w-4 h-4" aria-hidden="true" />}
             aria-label="Go to home page"
           >
-            <Home className="w-4 h-4" aria-hidden="true" />
             Go Home
-          </button>
+          </Button>
         </div>
       </div>
     </div>

@@ -216,19 +216,19 @@ export function DeviceTable() {
 
   return (
     <>
-      {/* Scope Tabs */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 mb-4">
-        <div className="flex border-b border-gray-200 dark:border-gray-700" role="tablist" aria-label={t('devices.tabs.scopeSelection', 'Device scope selection')}>
+      {/* Scope Tabs - Standardized like ViewTabs (no box) */}
+      <div className="mb-4 border-b border-gray-200 dark:border-gray-700">
+        <nav className="-mb-px flex space-x-4" role="tablist" aria-label={t('devices.tabs.scopeSelection', 'Device scope selection')}>
           <button
             onClick={() => setScope('my_org')}
             role="tab"
             aria-selected={scope === 'my_org'}
             aria-controls="device-table-panel"
             id="tab-my-devices"
-            className={`flex-1 px-6 py-3 text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500 ${
+            className={`flex items-center gap-2 py-2 px-1 border-b-2 text-sm font-medium transition-colors whitespace-nowrap ${
               scope === 'my_org'
-                ? 'text-blue-600 dark:text-blue-400 border-b-2 border-blue-600 dark:border-blue-400'
-                : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
+                ? 'border-blue-500 text-blue-600 dark:text-blue-400'
+                : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:border-gray-300'
             }`}
           >
             {t('devices.tabs.myDevices')}
@@ -239,66 +239,59 @@ export function DeviceTable() {
             aria-selected={scope === 'released'}
             aria-controls="device-table-panel"
             id="tab-released"
-            className={`flex-1 px-6 py-3 text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500 ${
+            className={`flex items-center gap-2 py-2 px-1 border-b-2 text-sm font-medium transition-colors whitespace-nowrap ${
               scope === 'released'
-                ? 'text-blue-600 dark:text-blue-400 border-b-2 border-blue-600 dark:border-blue-400'
-                : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
+                ? 'border-blue-500 text-blue-600 dark:text-blue-400'
+                : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:border-gray-300'
             }`}
           >
             {t('devices.tabs.unassignedPool')}
           </button>
+        </nav>
+      </div>
+
+      {/* Toolbar - Standardized layout without box */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
+        {/* Left: Filter Button */}
+        <div className="flex items-center gap-2">
+          <Button
+            variant={showFilters ? 'primary' : 'outline'}
+            onClick={() => setShowFilters(!showFilters)}
+            leftIcon={<Filter className="w-4 h-4" />}
+            className={showFilters ? '!bg-blue-50 dark:!bg-blue-900 !text-blue-700 dark:!text-blue-200' : ''}
+          >
+            {t('devices.filters.filters')}
+          </Button>
+        </div>
+
+        {/* Right: Action Buttons - Full width on mobile */}
+        <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+          {/* Refresh Button */}
+          <Button
+            variant="outline"
+            onClick={handleRefresh}
+            disabled={isFetching}
+            title={t('common.refresh', 'Refresh')}
+            aria-label={t('common.refresh', 'Refresh device list')}
+            leftIcon={<RefreshCw className={`w-4 h-4 ${isFetching ? 'animate-spin' : ''}`} />}
+          />
+
+          {/* Register Device Button */}
+          {canCreate && (
+            <Button
+              variant="primary"
+              onClick={() => setMonitorRegisterModal(true)}
+              leftIcon={<><Plus className="w-4 h-4" /><Monitor className="w-4 h-4" /></>}
+            >
+              {t('devices.buttons.registerDevice', 'Register Device')}
+            </Button>
+          )}
         </div>
       </div>
 
-      {/* Toolbar */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-              {scope === 'my_org' ? t('devices.tabs.myDevices') : t('devices.tabs.unassignedDevices')}
-            </h2>
-            <span className="text-sm text-gray-500 dark:text-gray-400">
-              {total} {total === 1 ? t('devices.messages.deviceCount') : t('devices.messages.devicesCount')}
-            </span>
-          </div>
-
-          <div className="flex items-center gap-2">
-            {/* Refresh Button */}
-            <Button
-              variant="outline"
-              onClick={handleRefresh}
-              disabled={isFetching}
-              title={t('common.refresh', 'Refresh')}
-              aria-label={t('common.refresh', 'Refresh device list')}
-              leftIcon={<RefreshCw className={`w-4 h-4 ${isFetching ? 'animate-spin' : ''}`} />}
-            />
-
-            {/* Register Device Button */}
-            {canCreate && (
-              <Button
-                variant="primary"
-                onClick={() => setMonitorRegisterModal(true)}
-                leftIcon={<><Plus className="w-4 h-4" /><Monitor className="w-4 h-4" /></>}
-              >
-                {t('devices.buttons.registerDevice', 'Register Device')}
-              </Button>
-            )}
-
-            {/* Filter Button */}
-            <Button
-              variant={showFilters ? 'primary' : 'outline'}
-              onClick={() => setShowFilters(!showFilters)}
-              leftIcon={<Filter className="w-4 h-4" />}
-              className={showFilters ? '!bg-blue-50 dark:!bg-blue-900 !text-blue-700 dark:!text-blue-200' : ''}
-            >
-              {t('devices.filters.filters')}
-            </Button>
-          </div>
-        </div>
-
-        {/* Filters */}
-        {showFilters && (
-          <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+      {/* Filters */}
+      {showFilters && (
+        <div className="mb-4 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {/* Status Filter */}
               <div>
@@ -335,6 +328,24 @@ export function DeviceTable() {
             </div>
           </div>
         )}
+
+      {/* Stats: langsung di atas tabel */}
+      <div className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+        <span className="font-medium">{total}</span> {total === 1 ? t('devices.messages.deviceCount') : t('devices.messages.devicesCount')}
+        {' • '}
+        <span className="font-medium text-green-600 dark:text-green-400">
+          {devices.filter(d => {
+            if (!d.last_seen_at) return false;
+            return new Date().getTime() - new Date(d.last_seen_at).getTime() < 5 * 60 * 1000;
+          }).length}
+        </span> {t('devices.online')}
+        {' • '}
+        <span className="font-medium text-red-600 dark:text-red-400">
+          {devices.filter(d => {
+            if (!d.last_seen_at) return true;
+            return new Date().getTime() - new Date(d.last_seen_at).getTime() >= 5 * 60 * 1000;
+          }).length}
+        </span> {t('devices.offline')}
       </div>
 
       {/* Pending Devices Section */}

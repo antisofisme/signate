@@ -93,7 +93,6 @@
   "navigation": {
     "dashboard": "Dashboard",
     "devices": "Perangkat",
-    "deviceGroups": "Grup Perangkat",
     "contents": "Konten",
     "playlists": "Playlist",
     "schedules": "Jadwal",
@@ -114,6 +113,7 @@
     "groups": {
       "devices": "Perangkat",
       "content": "Konten",
+      "digitalSignage": "Papan Digital",
       "menuDigital": "Menu Digital",
       "customization": "Kustomisasi",
       "integrations": "Integrasi"
@@ -1193,12 +1193,106 @@
     "active": "Aktif",
     "inactive": "Tidak Aktif",
     "notAvailable": "N/A",
+    "refreshAll": "Segarkan semua data dashboard",
     "metrics": {
+      "totalDevices": "Total Perangkat",
       "onlineDevices": "{{online}} online ({{percentage}}%)",
+      "totalContent": "Total Konten",
+      "activePlaylists": "Playlist Aktif",
+      "playbackEventsCount": "{{count}} event pemutaran",
+      "totalMenus": "Menu Digital",
+      "activeMenus": "{{active}} aktif, {{items}} item",
+      "activeSchedules": "Jadwal",
+      "runningNow": "{{running}} berjalan, {{ending}} berakhir",
+      "menuViews": "Tampilan Menu",
+      "contactClicks": "{{clicks}} klik kontak",
       "acrossAllDevices": "Di semua perangkat",
       "playbackCompletion": "Penyelesaian pemutaran konten",
-      "totalPlaybackEvents": "Total event pemutaran",
-      "playbackEventsCount": "{{count}} event pemutaran"
+      "totalPlaybackEvents": "Total event pemutaran"
+    },
+    "deviceHealth": {
+      "title": "Ringkasan Kesehatan Perangkat",
+      "healthy": "Sehat",
+      "warning": "Peringatan",
+      "error": "Error",
+      "offline": "Offline",
+      "topIssues": "Masalah Utama",
+      "noIssues": "Tidak ada masalah terdeteksi",
+      "device": "perangkat",
+      "devices": "perangkat",
+      "more": "+{{count}} lainnya"
+    },
+    "liveMonitor": {
+      "title": "Monitor Perangkat Live",
+      "filters": {
+        "all": "Semua",
+        "online": "Online",
+        "warning": "Peringatan",
+        "error": "Error",
+        "offline": "Offline"
+      },
+      "table": {
+        "device": "Perangkat",
+        "status": "Status",
+        "location": "Lokasi",
+        "currentContent": "Konten Saat Ini",
+        "system": "Sistem",
+        "lastSeen": "Terakhir Terlihat"
+      },
+      "noDevices": "Tidak ada perangkat ditemukan"
+    },
+    "playlists": {
+      "title": "Playlist & Penugasan Aktif",
+      "updated": "Diperbarui",
+      "devices": "Perangkat",
+      "content": "Konten",
+      "duration": "Durasi",
+      "assignedTo": "Ditugaskan ke:",
+      "noPlaylists": "Tidak ada playlist aktif ditemukan"
+    },
+    "activity": {
+      "title": "Aktivitas Terbaru",
+      "noActivity": "Tidak ada aktivitas terbaru"
+    },
+    "alerts": {
+      "title": "Peringatan Sistem",
+      "new": "baru",
+      "acknowledge": "Konfirmasi",
+      "acknowledged": "Peringatan Dikonfirmasi",
+      "device": "Perangkat:",
+      "allOperational": "Semua sistem beroperasi normal"
+    },
+    "systemInfo": {
+      "title": "Penyimpanan & Info Sistem",
+      "storageUsage": "Penggunaan Penyimpanan",
+      "used": "{{percentage}}% terpakai",
+      "free": "{{size}} tersedia",
+      "contentBreakdown": "Rincian Konten",
+      "databaseSize": "Ukuran Database",
+      "systemUptime": "Waktu Aktif Sistem",
+      "noInfo": "Tidak ada informasi sistem tersedia"
+    },
+    "menuAnalytics": {
+      "title": "Analitik Menu per Perangkat",
+      "viewsByDevice": "Tampilan per Jenis Perangkat",
+      "mobile": "Mobile",
+      "tablet": "Tablet",
+      "desktop": "Desktop",
+      "unknown": "Tidak Diketahui",
+      "totalViews": "Total Tampilan",
+      "contactClicks": "Klik Kontak",
+      "topMenus": "Menu Terbaik",
+      "noMenus": "Tidak ada data menu tersedia"
+    },
+    "scheduleOverview": {
+      "title": "Ringkasan Jadwal",
+      "totalSchedules": "Total Jadwal",
+      "active": "Aktif",
+      "runningNow": "Berjalan Sekarang",
+      "endingSoon": "Segera Berakhir",
+      "activeToday": "Aktif Hari Ini",
+      "noSchedules": "Tidak ada jadwal aktif hari ini",
+      "allDay": "Sepanjang Hari"
     }
   },
   "analytics": {
@@ -1306,92 +1400,6 @@
     "active": "Aktif",
     "keyboardHint": "Tekan <kbd>Ctrl/Cmd+K</kbd> untuk membuka",
     "select": "Pilih"
-  },
-  "deviceGroups": {
-    "title": "Grup Perangkat",
-    "description": "Organisir perangkat ke dalam grup untuk manajemen massal",
-    "loadingGroups": "Memuat grup...",
-    "viewMode": {
-      "grid": "Grid",
-      "tree": "Pohon"
-    },
-    "createGroup": "Buat Grup",
-    "noGroups": "Belum ada grup",
-    "noGroupsDescription": "Buat grup perangkat pertama Anda untuk mengorganisir perangkat",
-    "createFirstGroup": "Buat Grup Pertama",
-    "devices": "perangkat",
-    "devicesPlural": "perangkat",
-    "online": "online",
-    "offline": "offline",
-    "manageDevices": "Perangkat",
-    "edit": "Edit",
-    "editGroup": "Edit grup",
-    "deleteGroup": "Hapus grup",
-    "confirmDelete": "Hapus Grup Perangkat?",
-    "confirmDeleteMessage": "Apakah Anda yakin ingin menghapus grup \"{{name}}\"? Tindakan ini tidak dapat dibatalkan.",
-    "toast": {
-      "createSuccess": "Grup berhasil dibuat",
-      "createSuccessDescription": "\"{{name}}\" telah dibuat",
-      "createError": "Gagal membuat grup",
-      "updateSuccess": "Grup berhasil diperbarui",
-      "updateSuccessDescription": "Perubahan pada \"{{name}}\" telah disimpan",
-      "updateError": "Gagal memperbarui grup",
-      "deleteSuccess": "Grup berhasil dihapus",
-      "deleteError": "Gagal menghapus grup",
-      "tryAgain": "Silakan coba lagi"
-    },
-    "modal": {
-      "createTitle": "Buat Grup Perangkat",
-      "editTitle": "Edit Grup Perangkat",
-      "groupName": "Nama Grup",
-      "groupNamePlaceholder": "contoh: Layar Lobi",
-      "description": "Deskripsi",
-      "descriptionPlaceholder": "Deskripsi opsional",
-      "groupType": "Tipe Grup",
-      "types": {
-        "custom": "Kustom",
-        "chain": "Jaringan",
-        "hotel": "Hotel",
-        "floor": "Lantai",
-        "location": "Lokasi"
-      },
-      "parentGroup": "Grup Induk (Opsional)",
-      "noneTopLevel": "Tidak Ada (Level Atas)",
-      "hierarchicalHint": "Buat struktur hierarki dengan membuat grup bersarang",
-      "cancel": "Batal",
-      "createGroup": "Buat Grup",
-      "creating": "Membuat...",
-      "updateGroup": "Perbarui Grup",
-      "updating": "Memperbarui..."
-    },
-    "assignment": {
-      "title": "Kelola Perangkat",
-      "group": "Grup",
-      "searchPlaceholder": "Cari perangkat...",
-      "loadingDevices": "Memuat perangkat...",
-      "noDevices": "Tidak ada perangkat ditemukan",
-      "devicesAssigned": "{{count}} perangkat ditugaskan",
-      "devicesAssignedPlural": "{{count}} perangkat ditugaskan",
-      "done": "Selesai",
-      "manageDevices": "Kelola Perangkat",
-      "assignedDevices": "Perangkat Ditugaskan",
-      "allDevices": "Semua Perangkat",
-      "deviceAdded": "Perangkat ditambahkan ke grup",
-      "deviceRemoved": "Perangkat dihapus dari grup",
-      "addError": "Gagal menambahkan perangkat",
-      "removeError": "Gagal menghapus perangkat",
-      "add": "Tambah ke grup",
-      "remove": "Hapus dari grup"
-    },
-    "viewDevices": {
-      "title": "Perangkat dalam Grup",
-      "button": "Lihat Perangkat",
-      "searchPlaceholder": "Cari perangkat dalam grup...",
-      "loadingDevices": "Memuat perangkat...",
-      "noDevicesInGroup": "Tidak ada perangkat dalam grup ini",
-      "noMatchingDevices": "Tidak ada perangkat yang cocok",
-      "totalDevices": "{{count}} perangkat dalam grup"
-    }
   },
   "tags": {
     "title": "Manajemen Tag",

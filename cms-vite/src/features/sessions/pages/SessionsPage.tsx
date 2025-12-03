@@ -19,10 +19,11 @@ import {
   ConfirmDialog,
   AccessDenied,
   TABLE_STYLES,
+  PageHeader,
+  ViewTabs,
 } from '@/shared/components';
 import { useCanPerformAction } from '@/features/rbac/hooks/usePermissions';
 import { useAuthStore } from '@/lib/stores/authStore';
-import { USER_ROLES } from '@/lib/constants/app';
 import { SessionCard } from '../components/SessionCard';
 import { SessionStats } from '../components/SessionStats';
 import { SecurityWarning } from '../components/SecurityWarning';
@@ -40,6 +41,12 @@ import { parseUserAgent, getBrowserString, getOSString } from '@/shared/utils/us
 
 type ViewTab = 'my-sessions' | 'all-sessions';
 
+// View mode tabs for My Sessions/All Sessions switching
+const VIEW_TABS = [
+  { id: 'my-sessions', label: 'My Sessions', icon: User },
+  { id: 'all-sessions', label: 'All Sessions', icon: Users },
+];
+
 export default function SessionsPage() {
   const { t } = useTranslation();
   const [showRevokeAllModal, setShowRevokeAllModal] = useState(false);
@@ -52,7 +59,7 @@ export default function SessionsPage() {
   // Super Admin always has all permissions, custom roles with sessions:read can also view
   const { hasPermission: canViewAllSessions } = useCanPerformAction('sessions', 'read');
   const showAllSessionsTab = canViewAllSessions;
-  const showOrgColumn = user?.role === USER_ROLES.SUPER_ADMIN;
+  const showOrgColumn = user?.role === 'super_admin';
 
   // Permission checks
   const { hasPermission: canView, isLoading: permissionLoading } = useCanPerformAction('sessions', 'read');
@@ -131,42 +138,24 @@ export default function SessionsPage() {
   }
 
   return (
-    <div className="space-y-6">
-      {/* Tab Navigation (for admins only) */}
+    <>
+      {/* Page Header */}
+      <PageHeader
+        title={t('sessions.title', 'Sessions')}
+        description={t('sessions.subtitle', 'Manage active sessions and devices')}
+      />
+
+      {/* ROW 1: View Mode Tabs (My Sessions/All Sessions) */}
       {showAllSessionsTab && (
-        <div className="border-b border-gray-200 dark:border-gray-700">
-          <nav className="-mb-px flex space-x-8">
-            <button
-              onClick={() => setActiveTab('my-sessions')}
-              className={`py-4 px-1 border-b-2 font-medium text-sm flex items-center gap-2 ${
-                activeTab === 'my-sessions'
-                  ? 'border-blue-500 text-blue-600 dark:text-blue-400'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300'
-              }`}
-            >
-              <User className="w-4 h-4" />
-              {t('sessions.mySessions', 'My Sessions')}
-            </button>
-            <button
-              onClick={() => setActiveTab('all-sessions')}
-              className={`py-4 px-1 border-b-2 font-medium text-sm flex items-center gap-2 ${
-                activeTab === 'all-sessions'
-                  ? 'border-blue-500 text-blue-600 dark:text-blue-400'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300'
-              }`}
-            >
-              <Users className="w-4 h-4" />
-              {t('sessions.allUsersSessions', 'All Users Sessions')}
-              {allSessionsData && (
-                <span className="ml-2 px-2 py-0.5 bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-300 rounded-full text-xs">
-                  {allSessionsData.total}
-                </span>
-              )}
-            </button>
-          </nav>
-        </div>
+        <ViewTabs
+          tabs={VIEW_TABS}
+          activeTab={activeTab}
+          onChange={(id) => setActiveTab(id as ViewTab)}
+        />
       )}
 
+      {/* Content */}
+      <div className="space-y-6">
       {/* My Sessions Tab Content */}
       {activeTab === 'my-sessions' && (
         <>
@@ -385,6 +374,7 @@ export default function SessionsPage() {
           )}
         </div>
       )}
+      </div>
 
       {/* Revoke Session Confirmation Dialog */}
       <ConfirmDialog
@@ -409,6 +399,6 @@ export default function SessionsPage() {
         onClose={() => setShowRevokeAllModal(false)}
         onConfirm={handleRevokeAll}
       />
-    </div>
+    </>
   );
 }

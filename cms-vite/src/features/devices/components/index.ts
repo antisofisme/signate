@@ -10,7 +10,6 @@ export { DeviceLogsViewer } from './DeviceLogsViewer';
 export { LogDetailModal } from './LogDetailModal';
 export { DeviceCommandControl } from './DeviceCommandControl';
 export { DeviceHealthDashboard } from './DeviceHealthDashboard';
-export { DeviceGroups } from './DeviceGroups';
 export { BulkCommandSender } from './BulkCommandSender';
 export { CommandHistory } from './CommandHistory';
 export { CommandTemplates } from './CommandTemplates';

@@ -8,7 +8,7 @@ Handles all database queries for the dashboard service.
 from typing import List, Optional, Dict
 from datetime import datetime, timedelta, timezone
 from sqlalchemy.orm import Session
-from sqlalchemy import func, and_, or_
+from sqlalchemy import func, and_, or_, Integer
 
 from ..domain.dashboard_stats import (
     DashboardStats,
@@ -22,12 +22,19 @@ from ..domain.dashboard_stats import (
     SystemAlert,
     SystemInfo,
     ContentByType,
+    MenuStats,
+    MenuViewsByDevice,
+    TopMenu,
+    ScheduleOverview,
+    ActiveSchedule,
 )
 
 from services.auth.repositories.models import UserModel, AuditLogModel
 from services.device.repositories.models import DeviceModel, DeviceHealthMetricModel
 from services.content.repositories.models import ContentModel
 from services.playlist.repositories.models import PlaylistModel, PlaylistContentModel
+from services.menu.repositories.models import MenuModel, MenuItemModel, MenuViewModel
+from services.schedule.repositories.models import Schedule
 
 
 class DashboardRepository:
@@ -533,4 +540,193 @@ class DashboardRepository:
             content_by_type=content_by_type,
             database_size_bytes=database_size,
             uptime_seconds=0  # Will be set by use case
+        )
+
+    # ========================================================================
+    # Menu Statistics (NEW)
+    # ========================================================================
+
+    def get_menu_stats(self, organization_id: int) -> MenuStats:
+        """Get menu statistics for dashboard"""
+        # Total menus count
+        total_menus = self.db.query(func.count(MenuModel.id)).filter(
+            MenuModel.organization_id == organization_id,
+            MenuModel.deleted_at == None
+        ).scalar() or 0
+
+        # Active menus count
+        active_menus = self.db.query(func.count(MenuModel.id)).filter(
+            MenuModel.organization_id == organization_id,
+            MenuModel.is_active == True,
+            MenuModel.deleted_at == None
+        ).scalar() or 0
+
+        # Total menu items count
+        total_items = self.db.query(func.count(MenuItemModel.id)).filter(
+            MenuItemModel.organization_id == organization_id,
+            MenuItemModel.deleted_at == None
+        ).scalar() or 0
+
+        # Total views (all time, for this organization)
+        total_views = self.db.query(func.count(MenuViewModel.id)).filter(
+            MenuViewModel.organization_id == organization_id
+        ).scalar() or 0
+
+        # Total contact clicks
+        total_contact_clicks = self.db.query(func.count(MenuViewModel.id)).filter(
+            MenuViewModel.organization_id == organization_id,
+            MenuViewModel.contact_clicked == True
+        ).scalar() or 0
+
+        # Views by device type
+        device_type_counts = self.db.query(
+            MenuViewModel.device_type,
+            func.count(MenuViewModel.id)
+        ).filter(
+            MenuViewModel.organization_id == organization_id
+        ).group_by(MenuViewModel.device_type).all()
+
+        views_by_device = MenuViewsByDevice()
+        for device_type, count in device_type_counts:
+            if device_type == 'mobile':
+                views_by_device.mobile = count
+            elif device_type == 'tablet':
+                views_by_device.tablet = count
+            elif device_type == 'desktop':
+                views_by_device.desktop = count
+            else:
+                views_by_device.unknown += count
+
+        # Top 5 menus by views
+        top_menus_query = self.db.query(
+            MenuModel.id,
+            MenuModel.name,
+            MenuModel.menu_type,
+            func.count(MenuViewModel.id).label('view_count'),
+            func.sum(func.cast(MenuViewModel.contact_clicked, Integer)).label('click_count')
+        ).outerjoin(
+            MenuViewModel, MenuModel.id == MenuViewModel.menu_id
+        ).filter(
+            MenuModel.organization_id == organization_id,
+            MenuModel.deleted_at == None
+        ).group_by(
+            MenuModel.id, MenuModel.name, MenuModel.menu_type
+        ).order_by(
+            func.count(MenuViewModel.id).desc()
+        ).limit(5).all()
+
+        top_menus = [
+            TopMenu(
+                menu_id=menu.id,
+                menu_name=menu.name,
+                menu_type=menu.menu_type,
+                views=menu.view_count or 0,
+                contact_clicks=int(menu.click_count or 0)
+            )
+            for menu in top_menus_query
+        ]
+
+        return MenuStats(
+            total_menus=total_menus,
+            active_menus=active_menus,
+            total_items=total_items,
+            total_views=total_views,
+            total_contact_clicks=total_contact_clicks,
+            views_by_device=views_by_device,
+            top_menus=top_menus
+        )
+
+    # ========================================================================
+    # Schedule Overview (NEW)
+    # ========================================================================
+
+    def get_schedule_overview(self, organization_id: int) -> ScheduleOverview:
+        """Get schedule overview for dashboard"""
+        from datetime import date, time as dt_time
+
+        now = datetime.now(timezone.utc)
+        today = now.date()
+        current_time = now.time()
+        seven_days_later = today + timedelta(days=7)
+
+        # Total schedules count
+        total_schedules = self.db.query(func.count(Schedule.id)).filter(
+            Schedule.organization_id == organization_id,
+            Schedule.deleted_at == None
+        ).scalar() or 0
+
+        # Active schedules count
+        active_schedules = self.db.query(func.count(Schedule.id)).filter(
+            Schedule.organization_id == organization_id,
+            Schedule.is_active == True,
+            Schedule.deleted_at == None
+        ).scalar() or 0
+
+        # Schedules running now (current time within schedule time range and date range)
+        running_now_query = self.db.query(Schedule).filter(
+            Schedule.organization_id == organization_id,
+            Schedule.is_active == True,
+            Schedule.deleted_at == None,
+            Schedule.start_date <= today,
+            or_(Schedule.end_date == None, Schedule.end_date >= today)
+        ).all()
+
+        running_now = 0
+        for schedule in running_now_query:
+            # Check if current time is within the time range
+            if schedule.start_time and schedule.end_time:
+                if schedule.start_time <= current_time <= schedule.end_time:
+                    running_now += 1
+            elif schedule.start_time:
+                if current_time >= schedule.start_time:
+                    running_now += 1
+            else:
+                # No time restriction, counts as running
+                running_now += 1
+
+        # Schedules ending soon (within 7 days)
+        ending_soon = self.db.query(func.count(Schedule.id)).filter(
+            Schedule.organization_id == organization_id,
+            Schedule.is_active == True,
+            Schedule.deleted_at == None,
+            Schedule.end_date != None,
+            Schedule.end_date >= today,
+            Schedule.end_date <= seven_days_later
+        ).scalar() or 0
+
+        # Active schedules today
+        active_today_query = self.db.query(Schedule).filter(
+            Schedule.organization_id == organization_id,
+            Schedule.is_active == True,
+            Schedule.deleted_at == None,
+            Schedule.start_date <= today,
+            or_(Schedule.end_date == None, Schedule.end_date >= today)
+        ).order_by(Schedule.priority.desc()).limit(10).all()
+
+        active_today = []
+        for schedule in active_today_query:
+            # Get playlist name
+            playlist_name = None
+            if schedule.playlist_id:
+                playlist = self.db.query(PlaylistModel.name).filter(
+                    PlaylistModel.id == schedule.playlist_id
+                ).first()
+                if playlist:
+                    playlist_name = playlist[0]
+
+            active_today.append(ActiveSchedule(
+                schedule_id=schedule.id,
+                name=schedule.name,
+                playlist_name=playlist_name,
+                priority=schedule.priority,
+                start_time=str(schedule.start_time) if schedule.start_time else None,
+                end_time=str(schedule.end_time) if schedule.end_time else None
+            ))
+
+        return ScheduleOverview(
+            total_schedules=total_schedules,
+            active_schedules=active_schedules,
+            running_now=running_now,
+            ending_soon=ending_soon,
+            active_today=active_today
         )

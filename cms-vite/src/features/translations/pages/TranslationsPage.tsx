@@ -6,14 +6,22 @@
  */
 
 import { Plus, Upload, BarChart } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import TranslationList from '../components/TranslationList';
 import TranslationForm from '../components/TranslationForm';
 import TranslationStats from '../components/TranslationStats';
 import BulkImportModal from '../components/BulkImportModal';
-import { DeleteConfirmModal } from '@/shared/components';
+import {
+  DeleteConfirmModal,
+  Button,
+  PageHeader,
+  PageStats,
+  PageToolbar,
+} from '@/shared/components';
 import { useTranslationState } from '../hooks/useTranslationState';
 
 export const TranslationsPage = () => {
+  const { t } = useTranslation();
   const {
     translations,
     isLoading,
@@ -42,32 +50,47 @@ export const TranslationsPage = () => {
 
   return (
     <>
-      {/* Action Bar */}
-      <div className="mb-6 flex justify-between items-center">
-        <div className="flex gap-3">
-            <button
-              onClick={() => setShowStats(!showStats)}
-              className="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center gap-2"
-            >
-              <BarChart className="w-4 h-4" />
-              {showStats ? 'Hide' : 'Show'} Stats
-            </button>
-            <button
-              onClick={() => setShowBulkImport(true)}
-              className="px-4 py-2 border border-blue-600 text-blue-600 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/20 flex items-center gap-2"
-            >
-              <Upload className="w-4 h-4" />
-              Bulk Import
-            </button>
-            <button
-              onClick={handleCreate}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2"
-            >
-              <Plus className="w-4 h-4" />
-              Create Translation
-            </button>
-        </div>
-      </div>
+      {/* Page Header */}
+      <PageHeader
+        title={t('translations.title', 'Translations')}
+        description={t('translations.subtitle', 'Manage multi-language translations')}
+      />
+
+      {/* Toolbar: Buttons kanan */}
+      <PageToolbar>
+        <PageToolbar.Left>
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => setShowStats(!showStats)}
+            leftIcon={<BarChart className="w-4 h-4" />}
+          >
+            {showStats ? t('translations.hideStats', 'Hide Stats') : t('translations.showStats', 'Show Stats')}
+          </Button>
+        </PageToolbar.Left>
+        <PageToolbar.Right>
+          <Button
+            variant="secondary"
+            onClick={() => setShowBulkImport(true)}
+            leftIcon={<Upload className="w-4 h-4" />}
+          >
+            {t('translations.bulkImport', 'Bulk Import')}
+          </Button>
+          <Button
+            variant="primary"
+            onClick={handleCreate}
+            leftIcon={<Plus className="w-4 h-4" />}
+          >
+            {t('translations.create', 'Create Translation')}
+          </Button>
+        </PageToolbar.Right>
+      </PageToolbar>
+
+      {/* Stats: langsung di atas list */}
+      <PageStats
+        total={translations.length}
+        totalLabel="translations"
+      />
 
       {/* Content */}
       <div className="space-y-6">

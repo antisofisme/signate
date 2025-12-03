@@ -110,7 +110,7 @@ export function MenuMediaPreviewModal({ isOpen, media, onClose }: MenuMediaPrevi
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {/* Image Preview */}
             <div className="md:col-span-2">
-              <div className="bg-gray-100 dark:bg-gray-900 rounded-lg overflow-hidden flex items-center justify-center" style={{ minHeight: '300px' }}>
+              <div className="bg-gray-100 dark:bg-gray-900 rounded-lg overflow-hidden flex items-center justify-center min-h-[300px]">
                 <img
                   src={media.url}
                   alt={media.alt_text || media.original_filename}

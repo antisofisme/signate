@@ -13,7 +13,7 @@ from sqlalchemy.orm import Session
 from shared.database import get_db
 from shared.api_routes import DeviceRoutes
 from shared.errors import handle_errors, NotFoundError, ValidationError
-from shared.responses import success_response
+from shared.responses import success_response, get_client_ip
 from shared.logging import RequestLogger, AuditLogger
 from shared.auth import get_current_device, CurrentDevice
 from shared.middleware import require_permission
@@ -242,8 +242,8 @@ def device_heartbeat(
             # No JWT token - fallback to unique_code validation (legacy devices)
             print(f"[Heartbeat] ⚠️ Device {device_id} using legacy auth (unique_code only)")
 
-        # Extract client IP address from HTTP request
-        client_ip = http_request.client.host if http_request and http_request.client else None
+        # Extract real client IP (handles X-Forwarded-For from Nginx proxy)
+        client_ip = get_client_ip(http_request)
 
         heartbeat_data = DeviceHeartbeat(
             unique_code=request.unique_code,
@@ -336,7 +336,7 @@ def check_activation_status(
             activated=False,
             expired=is_expired,
             device_id=device.id if not is_expired else None,
-            pin=None,  # Don't send PIN for pending devices
+            organization_pin=None,  # Don't send PIN for pending devices
             message=f"Device status: {device.status}" + (" (code expired)" if is_expired else "")
         )
     except Exception as e:
@@ -435,7 +435,7 @@ def verify_device_by_fingerprint(
         # Get organization info for PIN
         from services.organization.repositories.organization_repo import OrganizationRepository
         org_repo = OrganizationRepository(device_repo.db)
-        org = org_repo.get_by_id(device.organization_id) if device.organization_id else None
+        org = org_repo.find_by_id(device.organization_id) if device.organization_id else None
 
         return {
             "device": {
@@ -444,7 +444,7 @@ def verify_device_by_fingerprint(
                 "status": device.status,
                 "device_name": device.device_name,
                 "organization_id": device.organization_id,
-                "organization_pin": org.pin if org else None,
+                "organization_pin": org.organization_pin if org else None,
                 "device_uuid": device.device_uuid
             },
             "token": device_token,

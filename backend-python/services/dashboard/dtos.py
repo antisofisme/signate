@@ -158,3 +158,58 @@ class SystemInfoResponse(BaseModel):
     content_by_type: List[ContentByType]
     database_size_bytes: int
     uptime_seconds: int
+
+
+# ============================================================================
+# Menu Analytics (NEW)
+# ============================================================================
+
+class MenuViewsByDevice(BaseModel):
+    """Menu views breakdown by device type"""
+    mobile: int = 0
+    tablet: int = 0
+    desktop: int = 0
+    unknown: int = 0
+
+
+class TopMenu(BaseModel):
+    """Top performing menu"""
+    menu_id: int
+    menu_name: str
+    menu_type: str
+    views: int
+    contact_clicks: int
+
+
+class MenuStatsResponse(BaseModel):
+    """Menu analytics for dashboard"""
+    total_menus: int
+    active_menus: int
+    total_items: int
+    total_views: int
+    total_contact_clicks: int
+    views_by_device: MenuViewsByDevice
+    top_menus: List[TopMenu]
+
+
+# ============================================================================
+# Schedule Overview (NEW)
+# ============================================================================
+
+class ActiveSchedule(BaseModel):
+    """Currently active schedule"""
+    schedule_id: int
+    name: str
+    playlist_name: Optional[str]
+    priority: int
+    start_time: Optional[str]
+    end_time: Optional[str]
+
+
+class ScheduleOverviewResponse(BaseModel):
+    """Schedule overview for dashboard"""
+    total_schedules: int
+    active_schedules: int
+    running_now: int
+    ending_soon: int  # Schedules ending within 7 days
+    active_today: List[ActiveSchedule]

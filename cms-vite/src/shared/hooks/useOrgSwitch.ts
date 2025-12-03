@@ -63,8 +63,6 @@ const DEFAULT_ORG_SCOPED_QUERY_KEYS = [
   // Core entities
   'devices',
   'device',
-  'device-groups',
-  'device-group',
   'content',
   'contents',
   'playlists',

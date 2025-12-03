@@ -304,7 +304,7 @@ export function DevicePreviewModal({ isOpen, device, onClose }: DevicePreviewMod
 
               {/* Content Breakdown - hide in fullscreen */}
               {data?.breakdown && !isFullscreen && (
-                <div className="mt-4 grid grid-cols-3 gap-3">
+                <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <div className="text-center p-2 bg-gray-800 rounded-lg">
                     <div className="text-xl font-bold text-purple-400">{data.breakdown.direct}</div>
                     <div className="text-xs text-gray-400">Direct (P1)</div>

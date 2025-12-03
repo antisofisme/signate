@@ -103,10 +103,13 @@ export interface ContentInfo {
   id: number;
   name: string;
   type: string;
-  size: number; // bytes
+  size: number; // bytes (expected size)
+  cachedSize: number; // bytes (actual cached size)
   cached: boolean;
   cacheStatus: 'cached' | 'downloading' | 'not_cached' | 'failed';
   thumbnailUrl: string | null;
+  source: 'direct' | 'tag' | 'playlist' | 'unknown'; // Assignment source
+  sourceId?: number; // Tag ID or Playlist ID if applicable
 }
 
 export interface CacheActivity {

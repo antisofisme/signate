@@ -10,9 +10,9 @@ import { useTranslation } from 'react-i18next';
 import { useForm, FormProvider } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Monitor, Loader2 } from 'lucide-react';
+import { Monitor } from 'lucide-react';
 import { toast } from 'sonner';
-import { Modal } from '@/shared/components';
+import { Modal, Button } from '@/shared/components';
 import { FormInput, FormSelect, ActivationCodeInput } from '@/shared/components/form';
 import { useMonitorRegister } from '../../hooks/useDevices';
 
@@ -193,35 +193,25 @@ export function MonitorRegisterModal({
 
   // Footer
   const footer = (
-    <div className="border-t border-gray-200 dark:border-gray-700 px-6 py-4">
-      <div className="flex justify-end gap-3">
-        <button
-          type="button"
-          onClick={handleClose}
-          disabled={registerMutation.isPending}
-          className="px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg disabled:opacity-50 transition-colors"
-        >
-          {t('devices.buttons.cancel')}
-        </button>
-        <button
-          type="submit"
-          form="monitor-register-form"
-          disabled={registerMutation.isPending}
-          className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 flex items-center gap-2 transition-colors"
-        >
-          {registerMutation.isPending ? (
-            <>
-              <Loader2 className="w-4 h-4 animate-spin" />
-              {t('devices.modals.registering')}
-            </>
-          ) : (
-            <>
-              <Monitor className="w-4 h-4" />
-              {t('devices.modals.activateMonitor')}
-            </>
-          )}
-        </button>
-      </div>
+    <div className="flex justify-end gap-3 px-6 py-4 border-t border-gray-200 dark:border-gray-700">
+      <Button
+        type="button"
+        variant="secondary"
+        onClick={handleClose}
+        disabled={registerMutation.isPending}
+      >
+        {t('devices.buttons.cancel')}
+      </Button>
+      <Button
+        type="submit"
+        form="monitor-register-form"
+        disabled={registerMutation.isPending}
+        loading={registerMutation.isPending}
+        leftIcon={<Monitor className="w-4 h-4" />}
+        className="bg-purple-600 hover:bg-purple-700"
+      >
+        {registerMutation.isPending ? t('devices.modals.registering') : t('devices.modals.activateMonitor')}
+      </Button>
     </div>
   );
 

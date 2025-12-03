@@ -118,6 +118,7 @@ export class PortalViewer {
     `.replace(/\s+/g, ' ').trim();
 
     // Build portal HTML
+    // Header is split: logo/title scrolls away, tabs are sticky
     this.container.innerHTML = `
       <div class="portal-viewer" style="${cssVars}">
         <header class="portal-viewer__header">
@@ -129,10 +130,10 @@ export class PortalViewer {
             />
           ` : ''}
           <h1 class="portal-viewer__title">${organization.name}</h1>
-          <nav class="portal-viewer__tabs" role="tablist">
-            ${this.renderTabs(menus)}
-          </nav>
         </header>
+        <nav class="portal-viewer__tabs" role="tablist">
+          ${this.renderTabs(menus)}
+        </nav>
         <main class="portal-viewer__content" id="portal-menu-content">
           <div class="portal-viewer__loading">
             <div class="portal-viewer__spinner"></div>
@@ -162,20 +163,26 @@ export class PortalViewer {
 
   /**
    * Render tab buttons for each menu (styled like category tabs, no emoji)
+   * Uses tab_name if available, otherwise falls back to menu_type label
    */
   private renderTabs(menus: PortalMenu[]): string {
-    return menus.map((menu, index) => `
-      <button
-        type="button"
-        class="portal-viewer__tab ${index === this.currentMenuIndex ? 'portal-viewer__tab--active' : ''}"
-        data-menu-index="${index}"
-        role="tab"
-        aria-selected="${index === this.currentMenuIndex}"
-        aria-controls="portal-menu-content"
-      >
-        ${this.getMenuTypeLabel(menu.menu_type)}
-      </button>
-    `).join('');
+    return menus.map((menu, index) => {
+      // Use custom tab_name if available, otherwise fallback to menu_type label
+      const tabLabel = menu.tab_name || this.getMenuTypeLabel(menu.menu_type);
+
+      return `
+        <button
+          type="button"
+          class="portal-viewer__tab ${index === this.currentMenuIndex ? 'portal-viewer__tab--active' : ''}"
+          data-menu-index="${index}"
+          role="tab"
+          aria-selected="${index === this.currentMenuIndex}"
+          aria-controls="portal-menu-content"
+        >
+          ${tabLabel}
+        </button>
+      `;
+    }).join('');
   }
 
   /**
@@ -260,15 +267,15 @@ export class PortalViewer {
   }
 
   /**
-   * Calculate and set portal header height as CSS variable
-   * This allows the menu category to stick below the portal header
+   * Calculate and set portal tabs height as CSS variable
+   * This allows the menu category to stick below the portal tabs
    */
   private updateHeaderHeight(): void {
-    const header = this.container.querySelector('.portal-viewer__header') as HTMLElement;
-    if (header) {
-      const headerHeight = header.offsetHeight;
-      this.container.style.setProperty('--portal-header-height', `${headerHeight}px`);
-      console.log('[Portal] Header height set:', headerHeight);
+    const tabs = this.container.querySelector('.portal-viewer__tabs') as HTMLElement;
+    if (tabs) {
+      const tabsHeight = tabs.offsetHeight;
+      this.container.style.setProperty('--portal-header-height', `${tabsHeight}px`);
+      console.log('[Portal] Tabs height set:', tabsHeight);
     }
   }
 

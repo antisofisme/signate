@@ -19,7 +19,7 @@ import {
   Settings,
   FileText,
 } from 'lucide-react';
-import { Modal } from '@/shared/components';
+import { Modal, Button } from '@/shared/components';
 import { useDevice, useSendCommand } from '../../hooks/useDevices';
 import type { Device } from '../../types/device';
 import { toast } from 'sonner';
@@ -120,13 +120,13 @@ export function DeviceDetailModal({
       </div>
       <div className="flex items-center gap-2">
         {onEdit && (
-          <button
+          <Button
+            variant="secondary"
             onClick={() => onEdit(device)}
-            className="px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors flex items-center gap-2"
+            leftIcon={<Settings className="w-4 h-4" />}
           >
-            <Settings className="w-4 h-4" />
             Edit
-          </button>
+          </Button>
         )}
       </div>
     </div>

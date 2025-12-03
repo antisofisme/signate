@@ -55,7 +55,6 @@ export interface ScheduledCommand {
   name: string
   description?: string
   device_ids: number[]
-  device_group_ids?: number[]
   command_type: CommandType
   command_data?: Record<string, any>
   parameters?: Record<string, any>
@@ -79,7 +78,6 @@ export interface CreateScheduledCommandRequest {
   name: string
   description?: string
   device_ids: number[]
-  device_group_ids?: number[]
   command_type: CommandType
   command_data?: Record<string, any>
   parameters?: Record<string, any>
@@ -96,7 +94,6 @@ export interface UpdateScheduledCommandRequest {
   name?: string
   description?: string
   device_ids?: number[]
-  device_group_ids?: number[]
   command_data?: Record<string, any>
   parameters?: Record<string, any>
   priority?: number
@@ -111,7 +108,6 @@ export interface UpdateScheduledCommandRequest {
 // Command History Filters
 export interface CommandHistoryFilters {
   device_id?: number
-  device_group_id?: number
   command_type?: CommandType
   status?: string
   date_from?: string

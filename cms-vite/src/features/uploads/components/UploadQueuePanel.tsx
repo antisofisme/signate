@@ -17,7 +17,7 @@ import {
   Check,
   AlertCircle,
 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import Button from '@/shared/components/common/Button';
 import { Progress } from '@/components/ui/progress';
 import { cn } from '@/lib/utils';
 import { UploadList } from './UploadList';
@@ -203,9 +203,9 @@ export function UploadQueuePanel() {
 
             {/* Minimize button */}
             <Button
-              variant="ghost"
-              size="icon"
-              className="h-7 w-7 text-white hover:bg-white/20"
+              variant="icon"
+              size="sm"
+              className="h-7 w-7 text-white hover:bg-white/20 bg-transparent"
               onClick={toggleMinimize}
             >
               <ChevronDown className="w-4 h-4" />

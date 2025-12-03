@@ -67,7 +67,8 @@ export function getMemoryInfo(): { used: number; total: number; limit: number } 
  */
 let lastFrameTime = performance.now();
 let frameCount = 0;
-let currentFPS = 60;
+let currentFPS = 0; // Start at 0, will be calculated after first second
+let fpsInitialized = false;
 
 export function trackFPS(): void {
   const now = performance.now();
@@ -77,9 +78,14 @@ export function trackFPS(): void {
     currentFPS = Math.round(frameCount * 1000 / (now - lastFrameTime));
     frameCount = 0;
     lastFrameTime = now;
+    fpsInitialized = true;
   }
 
   requestAnimationFrame(trackFPS);
+}
+
+export function isFPSInitialized(): boolean {
+  return fpsInitialized;
 }
 
 export function getCurrentFPS(): number {
@@ -127,15 +133,16 @@ export function hasWebGLSupport(): boolean {
 }
 
 /**
- * Check Service Worker support and status
+ * Check Service Worker support and status (async version)
  */
-export function getServiceWorkerStatus(): string {
+export async function getServiceWorkerStatusAsync(): Promise<string> {
   if (!('serviceWorker' in navigator)) {
     return 'Not supported';
   }
 
-  // Check if registered
-  navigator.serviceWorker.getRegistration().then(registration => {
+  try {
+    const registration = await navigator.serviceWorker.getRegistration();
+
     if (!registration) {
       return 'Not registered';
     }
@@ -149,9 +156,31 @@ export function getServiceWorkerStatus(): string {
     }
 
     return 'Registered';
-  });
+  } catch (error) {
+    return 'Error';
+  }
+}
 
-  return 'Checking...';
+/**
+ * Check Service Worker support and status (sync version - cached)
+ */
+let cachedSWStatus: string = 'Checking...';
+
+export function getServiceWorkerStatus(): string {
+  // Return cached value, update async in background
+  if (cachedSWStatus === 'Checking...' && 'serviceWorker' in navigator) {
+    getServiceWorkerStatusAsync().then(status => {
+      cachedSWStatus = status;
+    });
+  }
+  return cachedSWStatus;
+}
+
+// Initialize SW status on load
+if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
+  getServiceWorkerStatusAsync().then(status => {
+    cachedSWStatus = status;
+  });
 }
 
 /**

@@ -183,7 +183,11 @@ def get_playlist_for_device(
                     'url': playback_url,
                     'thumbnail_path': content.thumbnail_url,
                     'mime_type': content.mime_type,
-                    'metadata': None,
+                    'metadata': {
+                        'file_size': content.file_size,
+                        'width': content.width,
+                        'height': content.height,
+                    },
                     'updated_at': content.updated_at.isoformat() if content.updated_at else None,
                 }
             }

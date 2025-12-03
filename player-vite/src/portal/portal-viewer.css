@@ -18,19 +18,16 @@
   background-color: #0f172a;
   background: var(--primary-color);
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
-  /* Prevent black screen on mobile by ensuring proper containment */
-  overflow-x: hidden;
+  /* Note: overflow-x hidden removed - #menu-container handles overflow */
+  /* Removing overflow-x: hidden fixes sticky positioning for header and category bar */
   -webkit-overflow-scrolling: touch;
 }
 
-/* ========== Header Section (Sticky) - Uses secondary color (30%) ========== */
+/* ========== Header Section (Scrolls away) - Uses secondary color (30%) ========== */
 .portal-viewer__header {
   background: var(--secondary-color, #1e293b); /* 30% - Secondary color (same as menu header) */
-  padding: 1rem 1.5rem 0;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-  position: sticky;
-  top: 0;
-  z-index: 100;
+  padding: 1rem 1.5rem 0.75rem;
+  /* Header scrolls away - only tabs are sticky */
 }
 
 .portal-viewer__logo {
@@ -49,16 +46,22 @@
   color: var(--secondary-text-color, #f9fafb); /* Auto-calculated */
 }
 
-/* ========== Tab Navigation (styled like category menu) ========== */
+/* ========== Tab Navigation (Sticky - styled like category menu) ========== */
 .portal-viewer__tabs {
   display: flex;
   gap: 8px;
   overflow-x: auto;
-  padding: 0 16px;
+  padding: 12px 16px;
   justify-content: center;
   flex-wrap: wrap;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
+  /* Tabs are sticky - stays at top when scrolling */
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: var(--secondary-color, #1e293b); /* Same as header */
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
 }
 
 .portal-viewer__tabs::-webkit-scrollbar {
@@ -361,11 +364,16 @@
   .portal-viewer__header {
     background-color: #1e293b;
     background: var(--secondary-color);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
   }
 
   .portal-viewer__title {
     color: var(--secondary-text-color, #f9fafb);
+  }
+
+  .portal-viewer__tabs {
+    background-color: #1e293b;
+    background: var(--secondary-color);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
   }
 
   .portal-viewer__tab {

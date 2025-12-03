@@ -109,6 +109,50 @@ export interface SystemInfo {
   uptime_seconds: number;
 }
 
+// Menu Analytics Types
+export interface MenuViewsByDevice {
+  mobile: number;
+  tablet: number;
+  desktop: number;
+  unknown: number;
+}
+
+export interface TopMenu {
+  menu_id: number;
+  menu_name: string;
+  menu_type: string;
+  views: number;
+  contact_clicks: number;
+}
+
+export interface MenuStats {
+  total_menus: number;
+  active_menus: number;
+  total_items: number;
+  total_views: number;
+  total_contact_clicks: number;
+  views_by_device: MenuViewsByDevice;
+  top_menus: TopMenu[];
+}
+
+// Schedule Overview Types
+export interface ActiveSchedule {
+  schedule_id: number;
+  name: string;
+  playlist_name: string | null;
+  priority: number;
+  start_time: string | null;
+  end_time: string | null;
+}
+
+export interface ScheduleOverview {
+  total_schedules: number;
+  active_schedules: number;
+  running_now: number;
+  ending_soon: number;
+  active_today: ActiveSchedule[];
+}
+
 // API functions
 export const dashboardApi = {
   getStats: async (): Promise<DashboardStats> => {
@@ -157,6 +201,16 @@ export const dashboardApi = {
 
   getSystemInfo: async (): Promise<SystemInfo> => {
     const { data } = await apiClient.get('/api/v1/dashboard/system-info');
+    return data;
+  },
+
+  getMenuStats: async (): Promise<MenuStats> => {
+    const { data } = await apiClient.get('/api/v1/dashboard/menu-stats');
+    return data;
+  },
+
+  getScheduleOverview: async (): Promise<ScheduleOverview> => {
+    const { data } = await apiClient.get('/api/v1/dashboard/schedule-overview');
     return data;
   },
 };
@@ -234,5 +288,21 @@ export const useSystemInfo = () => {
     queryKey: ['dashboard', 'system-info'],
     queryFn: dashboardApi.getSystemInfo,
     staleTime: 300000, // 5 minutes - system info is stable
+  });
+};
+
+export const useMenuStats = () => {
+  return useQuery({
+    queryKey: ['dashboard', 'menu-stats'],
+    queryFn: dashboardApi.getMenuStats,
+    staleTime: 60000, // 1 minute
+  });
+};
+
+export const useScheduleOverview = () => {
+  return useQuery({
+    queryKey: ['dashboard', 'schedule-overview'],
+    queryFn: dashboardApi.getScheduleOverview,
+    staleTime: 60000, // 1 minute
   });
 };

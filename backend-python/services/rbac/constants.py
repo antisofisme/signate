@@ -12,7 +12,6 @@ from typing import Dict, List
 PERMISSION_RESOURCES: List[str] = [
     'dashboard',
     'devices',
-    'device_groups',
     'contents',
     'playlists',
     'schedules',
@@ -47,7 +46,6 @@ PERMISSION_ACTIONS: List[str] = [
 RESOURCE_LABELS: Dict[str, str] = {
     'dashboard': 'Dashboard',
     'devices': 'Devices',
-    'device_groups': 'Device Groups',
     'contents': 'Content',
     'playlists': 'Playlists',
     'schedules': 'Schedules',
@@ -83,7 +81,6 @@ SYSTEM_ROLE_PERMISSIONS: Dict[str, Dict[str, List[str]]] = {
     'SUPER_ADMIN': {
         'dashboard': ['view', 'manage'],
         'devices': ['view', 'create', 'edit', 'delete', 'manage'],
-        'device_groups': ['view', 'create', 'edit', 'delete', 'manage'],
         'contents': ['view', 'create', 'edit', 'delete', 'manage'],
         'playlists': ['view', 'create', 'edit', 'delete', 'manage'],
         'schedules': ['view', 'create', 'edit', 'delete', 'manage'],
@@ -101,7 +98,6 @@ SYSTEM_ROLE_PERMISSIONS: Dict[str, Dict[str, List[str]]] = {
     'ADMIN': {
         'dashboard': ['view'],
         'devices': ['view', 'create', 'edit', 'delete'],
-        'device_groups': ['view', 'create', 'edit', 'delete'],
         'contents': ['view', 'create', 'edit', 'delete'],
         'playlists': ['view', 'create', 'edit', 'delete'],
         'schedules': ['view', 'create', 'edit', 'delete'],

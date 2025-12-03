@@ -111,10 +111,9 @@ export function DeviceLogsModal({ isOpen, device, onClose }: DeviceLogsModalProp
       onClose={onClose}
       maxWidth="5xl"
       customHeader={customHeader}
-      className="h-[90vh]"
     >
-      {/* Logs Content */}
-      <div className="overflow-y-auto max-h-[calc(90vh-180px)]">
+      {/* Logs Content - uses flex-1 from Modal's content area */}
+      <div className="flex-1 min-h-0 overflow-y-auto">
         <DeviceLogsViewer
           deviceId={device.id}
           deviceName={device.device_name}

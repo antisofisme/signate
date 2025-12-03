@@ -13,6 +13,7 @@ export interface Menu {
   name: string;
   description?: string;
   menu_type: MenuType;
+  tab_name?: string;  // Custom tab label for portal
 
   // Display settings
   is_active: boolean;
@@ -119,6 +120,7 @@ export interface MenuImportHistory {
 export interface MenuCreateRequest {
   name: string;
   menu_type: MenuType;
+  tab_name?: string;  // Custom tab label for portal
   description?: string;
   is_active?: boolean;
   show_prices?: boolean;
@@ -140,6 +142,7 @@ export interface MenuCreateRequest {
 export interface MenuUpdateRequest {
   name?: string;
   menu_type?: MenuType;
+  tab_name?: string;  // Custom tab label for portal
   description?: string;
   is_active?: boolean;
   show_prices?: boolean;

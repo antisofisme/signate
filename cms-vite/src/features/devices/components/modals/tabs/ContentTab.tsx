@@ -12,6 +12,7 @@
 
 import { useState } from 'react';
 import { FileText, Tag as TagIcon, List, ChevronDown, ChevronUp } from 'lucide-react';
+import { Button } from '@/shared/components';
 import type { Device } from '../../../types/device';
 import {
   useDeviceContents,
@@ -242,13 +243,13 @@ export function ContentTab({ device }: ContentTabProps) {
 
       {/* Unified Manage Content Button */}
       <div className="mt-6">
-        <button
+        <Button
           onClick={() => setAssignmentModal({ isOpen: true, defaultTab: 'direct' })}
-          className="w-full px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium text-base shadow-sm hover:shadow-md flex items-center justify-center gap-2"
+          className="w-full"
+          leftIcon={<FileText className="w-5 h-5" />}
         >
-          <FileText className="w-5 h-5" />
           Manage Content Assignment
-        </button>
+        </Button>
         <p className="text-xs text-gray-500 dark:text-gray-400 text-center mt-2">
           Manage all content types (Direct, Tags, Playlists) in one modal with tabs
         </p>

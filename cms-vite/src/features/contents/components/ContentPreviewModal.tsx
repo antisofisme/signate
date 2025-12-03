@@ -103,7 +103,7 @@ export function ContentPreviewModal({ content, isOpen, onClose }: ContentPreview
     switch (content.content_type) {
       case 'image':
         return (
-          <div className="bg-gray-100 dark:bg-gray-900 rounded-lg overflow-hidden flex items-center justify-center" style={{ minHeight: '300px' }}>
+          <div className="bg-gray-100 dark:bg-gray-900 rounded-lg overflow-hidden flex items-center justify-center min-h-[300px]">
             <img
               src={content.file_url}
               alt={content.title}
@@ -114,7 +114,7 @@ export function ContentPreviewModal({ content, isOpen, onClose }: ContentPreview
 
       case 'video':
         return (
-          <div className="bg-gray-100 dark:bg-gray-900 rounded-lg overflow-hidden flex items-center justify-center" style={{ minHeight: '300px' }}>
+          <div className="bg-gray-100 dark:bg-gray-900 rounded-lg overflow-hidden flex items-center justify-center min-h-[300px]">
             <video
               ref={videoRef}
               src={content.hls_master_playlist_url || content.file_url}
@@ -128,7 +128,7 @@ export function ContentPreviewModal({ content, isOpen, onClose }: ContentPreview
 
       case 'audio':
         return (
-          <div className="bg-gradient-to-br from-purple-500 to-pink-500 rounded-lg p-8 flex flex-col items-center justify-center" style={{ minHeight: '300px' }}>
+          <div className="bg-gradient-to-br from-purple-500 to-pink-500 rounded-lg p-8 flex flex-col items-center justify-center min-h-[300px]">
             <div className="text-center text-white mb-6">
               <h2 className="text-2xl font-bold mb-2">{content.title}</h2>
               {content.description && (
@@ -148,7 +148,7 @@ export function ContentPreviewModal({ content, isOpen, onClose }: ContentPreview
 
       default:
         return (
-          <div className="bg-gray-100 dark:bg-gray-900 rounded-lg flex items-center justify-center" style={{ minHeight: '300px' }}>
+          <div className="bg-gray-100 dark:bg-gray-900 rounded-lg flex items-center justify-center min-h-[300px]">
             <p className="text-gray-500">{t('contents.messages.previewNotAvailable')}</p>
           </div>
         );

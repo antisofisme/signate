@@ -263,8 +263,8 @@ export function Modal({
           </div>
         )}
 
-        {/* Content */}
-        <div className="flex-1 overflow-y-auto">
+        {/* Content - flex-col allows children to use flex-1 for proper layout */}
+        <div className="flex-1 overflow-y-auto flex flex-col min-h-0">
           {children}
         </div>
 

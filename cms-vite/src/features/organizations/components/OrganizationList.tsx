@@ -38,23 +38,24 @@ export function OrganizationList({
 
   return (
     <div className={TABLE_STYLES.container}>
-      <table className={TABLE_STYLES.table}>
-        <thead className={TABLE_STYLES.thead}>
+      <div className="overflow-x-auto">
+        <table className={`${TABLE_STYLES.table} table-fixed`}>
+          <thead className={TABLE_STYLES.thead}>
           <tr>
-            <th className={TABLE_STYLES.th}>
+            <th className={`${TABLE_STYLES.th} w-[30%]`}>
               {t('organizations.name')}
             </th>
-            <th className={TABLE_STYLES.th}>
+            <th className={`${TABLE_STYLES.th} w-20`}>
               {t('organizations.status')}
             </th>
-            <th className={TABLE_STYLES.th}>
+            <th className={`${TABLE_STYLES.th} w-24`}>
               {t('organizations.users')}
             </th>
-            <th className={TABLE_STYLES.th}>
+            <th className={`${TABLE_STYLES.th} w-24`}>
               {t('organizations.devices')}
             </th>
             {(onEdit || onDelete) && (
-              <th className={TABLE_STYLES.th}>
+              <th className={`${TABLE_STYLES.th} w-32`}>
                 {t('organizations.actions')}
               </th>
             )}
@@ -120,8 +121,9 @@ export function OrganizationList({
               )}
             </tr>
           ))}
-        </tbody>
-      </table>
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }

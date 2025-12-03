@@ -5,14 +5,23 @@
  * Main page for template management - orchestration only
  */
 
-import { Plus, Eye } from 'lucide-react';
+import { Plus } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import TemplateList from '../components/TemplateList';
 import TemplateForm from '../components/TemplateForm';
 import TemplatePreview from '../components/TemplatePreview';
-import { DeleteConfirmModal } from '@/shared/components';
+import {
+  DeleteConfirmModal,
+  Button,
+  Modal,
+  PageHeader,
+  PageStats,
+  PageToolbar,
+} from '@/shared/components';
 import { useTemplateState } from '../hooks/useTemplateState';
 
 export const TemplatesPage = () => {
+  const { t } = useTranslation();
   const {
     templates,
     isLoading,
@@ -34,16 +43,30 @@ export const TemplatesPage = () => {
 
   return (
     <>
-      {/* Action Bar */}
-      <div className="mb-6 flex justify-end">
-        <button
-          onClick={handleCreate}
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2"
-        >
-          <Plus className="w-4 h-4" />
-          Create Template
-        </button>
-      </div>
+      {/* Page Header */}
+      <PageHeader
+        title={t('templates.title', 'Templates')}
+        description={t('templates.subtitle', 'Manage display templates')}
+      />
+
+      {/* Toolbar: Buttons kanan */}
+      <PageToolbar>
+        <PageToolbar.Right>
+          <Button
+            variant="primary"
+            onClick={handleCreate}
+            leftIcon={<Plus className="w-4 h-4" />}
+          >
+            {t('templates.create', 'Create Template')}
+          </Button>
+        </PageToolbar.Right>
+      </PageToolbar>
+
+      {/* Stats: langsung di atas list */}
+      <PageStats
+        total={templates.length}
+        totalLabel="templates"
+      />
 
       {/* Template List */}
       <div className="space-y-6">
@@ -68,29 +91,19 @@ export const TemplatesPage = () => {
 
       {/* Preview Modal */}
       {modalMode === 'preview' && selectedTemplate && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="bg-white dark:bg-gray-800 rounded-lg max-w-4xl w-full max-h-[90vh] overflow-hidden">
-            <div className="p-6 border-b border-gray-200 dark:border-gray-700">
-              <div className="flex items-center justify-between">
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-                  Preview: {selectedTemplate.name}
-                </h3>
-                <button
-                  onClick={closeModal}
-                  className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
-                >
-                  ✕
-                </button>
-              </div>
-            </div>
-            <div className="p-6 overflow-y-auto max-h-[calc(90vh-100px)]">
-              <TemplatePreview
-                content={selectedTemplate.content}
-                variables={selectedTemplate.variables || {}}
-              />
-            </div>
+        <Modal
+          isOpen={true}
+          onClose={closeModal}
+          title={`Preview: ${selectedTemplate.name}`}
+          maxWidth="4xl"
+        >
+          <div className="p-6">
+            <TemplatePreview
+              content={selectedTemplate.content}
+              variables={selectedTemplate.variables || {}}
+            />
           </div>
-        </div>
+        </Modal>
       )}
 
       {/* Delete Confirmation */}

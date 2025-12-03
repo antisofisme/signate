@@ -10,8 +10,8 @@ import { useTranslation } from 'react-i18next';
 import { useForm, FormProvider } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Tv, Loader2 } from 'lucide-react';
-import { Modal } from '@/shared/components';
+import { Tv } from 'lucide-react';
+import { Modal, Button } from '@/shared/components';
 import { FormInput, ActivationCodeInput } from '@/shared/components/form';
 import { useTVRegister } from '../../hooks/useDevices';
 import type { Device } from '../../types/device';
@@ -121,33 +121,24 @@ export function TVRegisterModal({ isOpen, onClose, onSuccess }: TVRegisterModalP
   );
 
   const footerContent = (
-    <div className="flex justify-end gap-3 pt-4 px-6 pb-6">
-      <button
+    <div className="flex justify-end gap-3 px-6 py-4 border-t border-gray-200 dark:border-gray-700">
+      <Button
         type="button"
+        variant="secondary"
         onClick={handleClose}
         disabled={registerMutation.isPending}
-        className="px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg disabled:opacity-50 transition-colors"
       >
         {t('devices.buttons.cancel')}
-      </button>
-      <button
+      </Button>
+      <Button
         type="submit"
         form="tv-register-form"
         disabled={registerMutation.isPending}
-        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2 transition-colors"
+        loading={registerMutation.isPending}
+        leftIcon={<Tv className="w-4 h-4" />}
       >
-        {registerMutation.isPending ? (
-          <>
-            <Loader2 className="w-4 h-4 animate-spin" />
-            {t('devices.modals.registering')}
-          </>
-        ) : (
-          <>
-            <Tv className="w-4 h-4" />
-            {t('devices.modals.register')}
-          </>
-        )}
-      </button>
+        {registerMutation.isPending ? t('devices.modals.registering') : t('devices.modals.register')}
+      </Button>
     </div>
   );
 

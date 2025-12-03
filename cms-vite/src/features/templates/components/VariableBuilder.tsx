@@ -5,6 +5,8 @@
 
 import { useState } from 'react'
 import { toast } from 'sonner'
+import { Plus, Search, Trash2 } from 'lucide-react'
+import { Button } from '@/shared/components'
 import type { VariableType } from '../types/template.types'
 
 interface Variable {
@@ -80,14 +82,17 @@ export const VariableBuilder = ({
       <div className="flex items-center justify-between">
         <label className="text-sm font-medium text-gray-700">Variables</label>
         {onExtract && (
-          <button
+          <Button
             type="button"
+            variant="outline"
+            size="sm"
             onClick={onExtract}
             disabled={disabled}
-            className="text-xs px-3 py-1.5 bg-purple-50 text-purple-700 rounded hover:bg-purple-100 disabled:opacity-50"
+            leftIcon={<Search className="w-3 h-3" />}
+            className="text-purple-700 border-purple-200 bg-purple-50 hover:bg-purple-100"
           >
-            🔍 Extract from Content
-          </button>
+            Extract from Content
+          </Button>
         )}
       </div>
 
@@ -98,13 +103,15 @@ export const VariableBuilder = ({
             <p className="text-sm text-green-800">
               Found {extractedVariables.length} variable(s) in template:
             </p>
-            <button
+            <Button
               type="button"
+              variant="success"
+              size="sm"
               onClick={handleApplyExtracted}
-              className="text-xs px-2 py-1 bg-green-600 text-white rounded hover:bg-green-700"
+              leftIcon={<Plus className="w-3 h-3" />}
             >
               Add All
-            </button>
+            </Button>
           </div>
           <div className="flex flex-wrap gap-2">
             {extractedVariables.map(varName => (
@@ -149,14 +156,16 @@ export const VariableBuilder = ({
                     </select>
                   </td>
                   <td className="px-4 py-3 text-right">
-                    <button
+                    <Button
                       type="button"
+                      variant="danger"
+                      size="sm"
                       onClick={() => handleRemoveVariable(variable.name)}
                       disabled={disabled}
-                      className="text-red-600 hover:text-red-700 disabled:opacity-50"
+                      leftIcon={<Trash2 className="w-3 h-3" />}
                     >
-                      🗑️ Remove
-                    </button>
+                      Remove
+                    </Button>
                   </td>
                 </tr>
               ))}
@@ -199,14 +208,14 @@ export const VariableBuilder = ({
             <option value="boolean">Boolean</option>
             <option value="date">Date</option>
           </select>
-          <button
+          <Button
             type="button"
             onClick={handleAddVariable}
             disabled={disabled || !newVarName.trim()}
-            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 text-sm"
+            leftIcon={<Plus className="w-4 h-4" />}
           >
-            ➕ Add
-          </button>
+            Add
+          </Button>
         </div>
         <p className="text-xs text-gray-500 mt-2">
           Variable names can only contain letters, numbers, and underscores

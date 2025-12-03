@@ -169,3 +169,63 @@ class SystemInfo:
     content_by_type: List[ContentByType]
     database_size_bytes: int
     uptime_seconds: int
+
+
+# ============================================================================
+# Menu Analytics (NEW)
+# ============================================================================
+
+@dataclass
+class MenuViewsByDevice:
+    """Menu views breakdown by device type"""
+    mobile: int = 0
+    tablet: int = 0
+    desktop: int = 0
+    unknown: int = 0
+
+
+@dataclass
+class TopMenu:
+    """Top performing menu"""
+    menu_id: int
+    menu_name: str
+    menu_type: str
+    views: int
+    contact_clicks: int
+
+
+@dataclass
+class MenuStats:
+    """Menu statistics for dashboard"""
+    total_menus: int
+    active_menus: int
+    total_items: int
+    total_views: int
+    total_contact_clicks: int
+    views_by_device: MenuViewsByDevice
+    top_menus: List[TopMenu]
+
+
+# ============================================================================
+# Schedule Overview (NEW)
+# ============================================================================
+
+@dataclass
+class ActiveSchedule:
+    """Currently active schedule"""
+    schedule_id: int
+    name: str
+    playlist_name: Optional[str]
+    priority: int
+    start_time: Optional[str]
+    end_time: Optional[str]
+
+
+@dataclass
+class ScheduleOverview:
+    """Schedule overview for dashboard"""
+    total_schedules: int
+    active_schedules: int
+    running_now: int
+    ending_soon: int  # Schedules ending within 7 days
+    active_today: List[ActiveSchedule]

@@ -15,6 +15,7 @@ class MenuCreateDTO(BaseModel):
     name: str = Field(..., min_length=1, max_length=255)
     description: Optional[str] = None
     menu_type: str = Field(..., pattern="^(restaurant|laundry|spa|room_service|other)$")
+    tab_name: Optional[str] = Field(None, max_length=100)  # Custom tab label for portal
 
     # Display settings
     is_active: bool = True
@@ -48,6 +49,7 @@ class MenuUpdateDTO(BaseModel):
     name: Optional[str] = Field(None, min_length=1, max_length=255)
     description: Optional[str] = None
     menu_type: Optional[str] = Field(None, pattern="^(restaurant|laundry|spa|room_service|other)$")
+    tab_name: Optional[str] = Field(None, max_length=100)  # Custom tab label for portal
 
     # Display settings
     is_active: Optional[bool] = None
@@ -83,6 +85,7 @@ class MenuResponseDTO(BaseModel):
     name: str
     description: Optional[str]
     menu_type: str
+    tab_name: Optional[str] = None  # Custom tab label for portal
 
     # Display settings
     is_active: bool
@@ -317,6 +320,7 @@ class PublicMenuResponseDTO(BaseModel):
     name: str
     description: Optional[str]
     menu_type: str
+    tab_name: Optional[str] = None  # Custom tab label for portal
 
     # Display settings
     show_prices: bool

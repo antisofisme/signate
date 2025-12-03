@@ -6,7 +6,7 @@
  */
 
 import { Building2, Save, Trash2 } from 'lucide-react';
-import { PageHeader, StatsCard } from '@/shared/components';
+import { PageHeader, StatsCard, Button } from '@/shared/components';
 import { PMSProviderSelect } from '../components/PMSProviderSelect';
 import { PMSConnectionForm } from '../components/PMSConnectionForm';
 import { PMSSyncStatus } from '../components/PMSSyncStatus';
@@ -109,23 +109,25 @@ export default function PMSConfigPage() {
 
           <div className="flex justify-end gap-3">
             {config && (
-              <button
+              <Button
+                variant="outline"
                 onClick={handleDelete}
                 disabled={isDeleting}
-                className="px-4 py-2 border border-red-600 text-red-600 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 disabled:opacity-50 flex items-center gap-2"
+                loading={isDeleting}
+                leftIcon={<Trash2 className="w-4 h-4" />}
+                className="border-red-600 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
               >
-                <Trash2 className="w-4 h-4" />
                 Delete Configuration
-              </button>
+              </Button>
             )}
-            <button
+            <Button
               onClick={handleSave}
               disabled={isSaving}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2"
+              loading={isSaving}
+              leftIcon={<Save className="w-4 h-4" />}
             >
-              <Save className="w-4 h-4" />
               {config ? 'Update' : 'Create'} Configuration
-            </button>
+            </Button>
           </div>
         </div>
         )}

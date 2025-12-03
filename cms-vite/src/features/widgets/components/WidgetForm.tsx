@@ -7,8 +7,8 @@ import { useState, useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { Loader2 } from 'lucide-react'
 import WidgetTypeSelector from './WidgetTypeSelector'
+import { Button } from '@/shared/components'
 import LayoutEditor from './LayoutEditor'
 import {
   WIDGET_TYPES,
@@ -362,22 +362,21 @@ export const WidgetForm = ({
 
       {/* Action Buttons */}
       <div className="flex justify-end gap-3 pt-6 border-t">
-        <button
+        <Button
           type="button"
+          variant="secondary"
           onClick={onCancel}
           disabled={isLoading}
-          className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 disabled:opacity-50"
         >
           Cancel
-        </button>
-        <button
+        </Button>
+        <Button
           type="submit"
           disabled={isLoading}
-          className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2"
+          loading={isLoading}
         >
-          {isLoading && <Loader2 className="animate-spin h-4 w-4" />}
           {isEdit ? 'Update Widget' : 'Create Widget'}
-        </button>
+        </Button>
       </div>
     </form>
   )

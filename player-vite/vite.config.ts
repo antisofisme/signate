@@ -1,4 +1,5 @@
 import { defineConfig, Plugin } from 'vite';
+import { VitePWA } from 'vite-plugin-pwa';
 import path from 'path';
 import fs from 'fs';
 
@@ -28,13 +29,64 @@ function versionPlugin(): Plugin {
 // https://vitejs.dev/config/
 export default defineConfig({
   // Plugins
-  plugins: [versionPlugin()],
+  plugins: [
+    versionPlugin(),
+
+    // PWA Plugin for offline support
+    VitePWA({
+      // Use injectManifest strategy for custom SW
+      strategies: 'injectManifest',
+      srcDir: 'src/pwa',
+      filename: 'sw.ts',
+
+      // Registration type
+      registerType: 'prompt',
+
+      // Include scope
+      scope: '/',
+      base: '/',
+
+      // Manifest configuration
+      manifest: false, // We use our own manifest.json in public/
+
+      // Development options
+      devOptions: {
+        enabled: true,
+        type: 'module',
+      },
+
+      // InjectManifest options
+      injectManifest: {
+        // Files to precache
+        globPatterns: [
+          '**/*.{js,css,html,ico,png,svg,woff,woff2}',
+        ],
+
+        // Files to exclude from precaching
+        globIgnores: [
+          // HLS files - handled by IndexedDB caching
+          '**/*.m3u8',
+          '**/*.ts',
+          // Existing HLS service worker
+          'hls-service-worker.js',
+          // Source maps
+          '**/*.map',
+          // Version file - always fetch fresh
+          'version.json',
+        ],
+
+        // Maximum file size to precache (2MB)
+        maximumFileSizeToCacheInBytes: 2 * 1024 * 1024,
+      },
+    }),
+  ],
   // Path aliases (match tsconfig.json)
   resolve: {
     alias: {
       '@shared': path.resolve(__dirname, './src/shared'),
       '@shell': path.resolve(__dirname, './src/shell'),
       '@player': path.resolve(__dirname, './src/player'),
+      '@pwa': path.resolve(__dirname, './src/pwa'),
     },
   },
 

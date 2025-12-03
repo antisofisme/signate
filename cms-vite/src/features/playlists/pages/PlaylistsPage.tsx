@@ -7,6 +7,7 @@
 
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Plus } from 'lucide-react';
 import {
   usePlaylistList,
   useCreatePlaylist,
@@ -16,10 +17,26 @@ import {
 } from '../hooks/usePlaylist';
 import { PlaylistList } from '../components/PlaylistList';
 import { PlaylistForm } from '../components/PlaylistForm';
-import { ConfirmDialog, AccessDenied, ErrorDisplay, PageSkeleton } from '@/shared/components';
+import {
+  ConfirmDialog,
+  AccessDenied,
+  ErrorDisplay,
+  PageSkeleton,
+  Button,
+  PageToolbar,
+  PageStats,
+  FilterButtonGroup,
+} from '@/shared/components';
 import PlaylistManagementModal from '../components/PlaylistManagementModal';
 import { useCanPerformAction } from '@/features/rbac/hooks/usePermissions';
 import type { Playlist, CreatePlaylistRequest, UpdatePlaylistRequest } from '../types/playlist';
+
+// Filter options for status
+const FILTER_OPTIONS = [
+  { id: 'all', label: 'Semua' },
+  { id: 'active', label: 'Aktif' },
+  { id: 'inactive', label: 'Nonaktif' },
+];
 
 export default function PlaylistsPage() {
   const { t } = useTranslation();
@@ -43,8 +60,11 @@ export default function PlaylistsPage() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingPlaylist, setEditingPlaylist] = useState<Playlist | null>(null);
   const [deletingPlaylist, setDeletingPlaylist] = useState<Playlist | null>(null);
-  const [filterActive, setFilterActive] = useState<boolean | undefined>(undefined);
+  const [activeFilter, setActiveFilter] = useState('all');
   const [managementPlaylist, setManagementPlaylist] = useState<Playlist | null>(null);
+
+  // Convert filter to API param
+  const filterActive = activeFilter === 'all' ? undefined : activeFilter === 'active';
 
   // Hooks
   const { data: playlistsData, isLoading, error, refetch } = usePlaylistList({ is_active: filterActive });
@@ -87,53 +107,44 @@ export default function PlaylistsPage() {
     duplicateMutation.mutate({ id: playlist.id });
   };
 
+  // Calculate stats
+  const playlists = playlistsData?.items || [];
+  const activeCount = playlists.filter(p => p.is_active).length;
+  const inactiveCount = playlists.filter(p => !p.is_active).length;
+
   return (
     <>
-      {/* Actions & Filters */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
-        <div className="flex gap-2">
-          <button
-            onClick={() => setFilterActive(undefined)}
-            className={`px-4 py-2 rounded-lg text-sm font-medium ${
-              filterActive === undefined
-                ? 'bg-blue-600 text-white'
-                : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
-            }`}
-          >
-            Semua
-          </button>
-          <button
-            onClick={() => setFilterActive(true)}
-            className={`px-4 py-2 rounded-lg text-sm font-medium ${
-              filterActive === true
-                ? 'bg-green-600 text-white'
-                : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
-            }`}
-          >
-            Aktif
-          </button>
-          <button
-            onClick={() => setFilterActive(false)}
-            className={`px-4 py-2 rounded-lg text-sm font-medium ${
-              filterActive === false
-                ? 'bg-gray-600 text-white'
-                : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
-            }`}
-          >
-            Nonaktif
-          </button>
-        </div>
+      {/* Toolbar: Filter kiri, Buttons kanan */}
+      <PageToolbar>
+        <PageToolbar.Left>
+          <FilterButtonGroup
+            options={FILTER_OPTIONS}
+            activeFilter={activeFilter}
+            onChange={setActiveFilter}
+          />
+        </PageToolbar.Left>
+        <PageToolbar.Right>
+          {canCreate && (
+            <Button
+              variant="primary"
+              onClick={() => setShowCreateModal(true)}
+              leftIcon={<Plus className="w-4 h-4" />}
+            >
+              {t('playlists.createPlaylist')}
+            </Button>
+          )}
+        </PageToolbar.Right>
+      </PageToolbar>
 
-        {canCreate && (
-          <button
-            onClick={() => setShowCreateModal(true)}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2"
-          >
-            <span>+</span>
-            {t('playlists.createPlaylist')}
-          </button>
-        )}
-      </div>
+      {/* Stats: langsung di atas tabel */}
+      <PageStats
+        total={playlistsData?.total || 0}
+        totalLabel="playlists"
+        stats={[
+          { label: 'active', value: activeCount, color: 'text-green-600 dark:text-green-400' },
+          { label: 'inactive', value: inactiveCount, color: 'text-gray-500' },
+        ]}
+      />
 
       {/* Content */}
       <div className="space-y-6">
@@ -149,7 +160,7 @@ export default function PlaylistsPage() {
         {/* Playlists List */}
         {!error && (
           <PlaylistList
-            playlists={playlistsData?.items || []}
+            playlists={playlists}
             isLoading={isLoading}
             onEdit={canUpdate ? setEditingPlaylist : undefined}
             onDelete={canDelete ? setDeletingPlaylist : undefined}
@@ -157,13 +168,6 @@ export default function PlaylistsPage() {
             onManage={setManagementPlaylist}
             onCreateNew={canCreate ? () => setShowCreateModal(true) : undefined}
           />
-        )}
-
-        {/* Total Count */}
-        {!error && playlistsData && playlistsData.total > 0 && (
-          <div className="mt-4 text-sm text-gray-600 dark:text-gray-400">
-            {t('playlists.messages.totalPlaylists', { count: playlistsData.total })}
-          </div>
         )}
       </div>
 

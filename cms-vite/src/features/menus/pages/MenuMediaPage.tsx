@@ -9,9 +9,20 @@
 
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Trash2, Image, LayoutGrid, Table2 } from 'lucide-react';
-import { PageHeader, PageSkeleton, AccessDenied, Tabs, TabPanel, Button } from '@/shared/components';
+import { Trash2, Image, LayoutGrid, Table2, Filter, Upload } from 'lucide-react';
+import {
+  PageHeader,
+  PageSkeleton,
+  AccessDenied,
+  Tabs,
+  TabPanel,
+  ViewTabs,
+  PageToolbar,
+  PageStats,
+  Button,
+} from '@/shared/components';
 import { useCanPerformAction } from '@/features/rbac/hooks/usePermissions';
+import { useMenuMediaList } from '../hooks/useMenuMedia';
 import { MenuMediaTable } from '../components/MenuMediaTable';
 import { MenuMediaDeletedTable } from '../components/MenuMediaDeletedTable';
 import { MenuMediaGalleryView } from '../components/MenuMediaGalleryView';
@@ -23,9 +34,23 @@ type ViewMode = 'table' | 'gallery';
 // localStorage key for persisting view preference
 const VIEW_MODE_STORAGE_KEY = 'menuMedia.viewMode';
 
+// View mode tabs for Table/Gallery switching (standardized layout)
+const VIEW_TABS = [
+  { id: 'table', label: 'Table', icon: Table2 },
+  { id: 'gallery', label: 'Gallery', icon: LayoutGrid },
+];
+
 export default function MenuMediaPage() {
   const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState('active');
+  const [showFilters, setShowFilters] = useState(false);
+  const [showUploadModal, setShowUploadModal] = useState(false);
+
+  // Permission checks
+  const { hasPermission: canCreate } = useCanPerformAction('menus', 'create');
+
+  // Fetch media data for stats
+  const { data: mediaData } = useMenuMediaList({});
 
   // View mode state with localStorage persistence
   const [viewMode, setViewMode] = useState<ViewMode>(() => {
@@ -59,36 +84,20 @@ export default function MenuMediaPage() {
 
   return (
     <>
-      <div className="flex items-center justify-between mb-6">
-        <PageHeader
-          title={t('menus.mediaTitle', 'Menu Media')}
-          description={t('menus.mediaSubtitle', 'Upload and manage images for your digital menu items')}
-        />
+      {/* Page Header */}
+      <PageHeader
+        title={t('menus.mediaTitle', 'Menu Media')}
+        description={t('menus.mediaSubtitle', 'Upload and manage images for your digital menu items')}
+      />
 
-        {/* View Mode Toggle - Available on all tabs */}
-        <div className="flex items-center gap-1 bg-gray-100 dark:bg-gray-800 p-1 rounded-lg">
-          <Button
-            variant={viewMode === 'table' ? 'primary' : 'ghost'}
-            size="sm"
-            onClick={() => setViewMode('table')}
-            leftIcon={<Table2 className="w-4 h-4" />}
-            title={t('menus.media.viewMode.table', 'Table View')}
-          >
-            {t('menus.media.viewMode.table', 'Table')}
-          </Button>
-          <Button
-            variant={viewMode === 'gallery' ? 'primary' : 'ghost'}
-            size="sm"
-            onClick={() => setViewMode('gallery')}
-            leftIcon={<LayoutGrid className="w-4 h-4" />}
-            title={t('menus.media.viewMode.gallery', 'Gallery View')}
-          >
-            {t('menus.media.viewMode.gallery', 'Gallery')}
-          </Button>
-        </div>
-      </div>
+      {/* ROW 1: View Mode Tabs (Table/Gallery) */}
+      <ViewTabs
+        tabs={VIEW_TABS}
+        activeTab={viewMode}
+        onChange={(id) => setViewMode(id as ViewMode)}
+      />
 
-      {/* Tabs */}
+      {/* ROW 2: Content Type Tabs (Active/Deleted) */}
       <Tabs
         tabs={MENU_MEDIA_TABS}
         activeTab={activeTab}
@@ -96,13 +105,50 @@ export default function MenuMediaPage() {
         className="mb-6"
       />
 
+      {/* ROW 3: Toolbar - Filter kiri, Upload kanan */}
+      <PageToolbar>
+        <PageToolbar.Left>
+          <Button
+            variant={showFilters ? 'primary' : 'secondary'}
+            onClick={() => setShowFilters(!showFilters)}
+            leftIcon={<Filter className="w-4 h-4" />}
+          >
+            {t('common.filter', 'Filter')}
+          </Button>
+        </PageToolbar.Left>
+        <PageToolbar.Right>
+          {canCreate && (
+            <Button
+              variant="primary"
+              onClick={() => setShowUploadModal(true)}
+              leftIcon={<Upload className="w-4 h-4" />}
+            >
+              {t('menus.media.upload', 'Upload')}
+            </Button>
+          )}
+        </PageToolbar.Right>
+      </PageToolbar>
+
+      {/* ROW 4: Stats */}
+      <PageStats
+        total={mediaData?.total || 0}
+        totalLabel={t('menus.media.stats.total', 'images')}
+      />
+
       {/* Tab Panels */}
       <TabPanel activeTab={activeTab} tabId="active">
         <div className="space-y-6">
           {viewMode === 'table' ? (
-            <MenuMediaTable />
+            <MenuMediaTable
+              showUploadModal={showUploadModal}
+              onCloseUploadModal={() => setShowUploadModal(false)}
+              showFilters={showFilters}
+            />
           ) : (
-            <MenuMediaGalleryView />
+            <MenuMediaGalleryView
+              showUploadModal={showUploadModal}
+              onCloseUploadModal={() => setShowUploadModal(false)}
+            />
           )}
         </div>
       </TabPanel>

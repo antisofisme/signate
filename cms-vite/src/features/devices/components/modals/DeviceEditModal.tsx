@@ -10,8 +10,8 @@ import { useTranslation } from 'react-i18next';
 import { useForm, FormProvider } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Save, Loader2 } from 'lucide-react';
-import { Modal } from '@/shared/components';
+import { Save } from 'lucide-react';
+import { Modal, Button } from '@/shared/components';
 import { FormInput, FormSelect, FormCheckbox } from '@/shared/components/form';
 import { useUpdateDevice } from '../../hooks/useDevices';
 import type { Device } from '../../types/device';
@@ -113,35 +113,24 @@ export function DeviceEditModal({
 
   // Footer
   const footer = (
-    <div className="border-t border-gray-200 dark:border-gray-700 px-6 py-4">
-      <div className="flex justify-end gap-3">
-        <button
-          type="button"
-          onClick={handleClose}
-          disabled={updateMutation.isPending}
-          className="px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg disabled:opacity-50 transition-colors"
-        >
-          {t('devices.buttons.cancel')}
-        </button>
-        <button
-          type="submit"
-          form="device-edit-form"
-          disabled={updateMutation.isPending}
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2 transition-colors"
-        >
-          {updateMutation.isPending ? (
-            <>
-              <Loader2 className="w-4 h-4 animate-spin" />
-              {t('devices.modals.saving')}
-            </>
-          ) : (
-            <>
-              <Save className="w-4 h-4" />
-              {t('devices.modals.saveChanges')}
-            </>
-          )}
-        </button>
-      </div>
+    <div className="flex justify-end gap-3 px-6 py-4 border-t border-gray-200 dark:border-gray-700">
+      <Button
+        type="button"
+        variant="secondary"
+        onClick={handleClose}
+        disabled={updateMutation.isPending}
+      >
+        {t('devices.buttons.cancel')}
+      </Button>
+      <Button
+        type="submit"
+        form="device-edit-form"
+        disabled={updateMutation.isPending}
+        loading={updateMutation.isPending}
+        leftIcon={<Save className="w-4 h-4" />}
+      >
+        {updateMutation.isPending ? t('devices.modals.saving') : t('devices.modals.saveChanges')}
+      </Button>
     </div>
   );
 

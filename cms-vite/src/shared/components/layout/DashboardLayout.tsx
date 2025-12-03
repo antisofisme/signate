@@ -32,8 +32,8 @@ export default function DashboardLayout() {
         {/* Topbar */}
         <Topbar />
 
-        {/* Page Content */}
-        <main className="p-4 lg:p-6">
+        {/* Page Content - extra top padding on mobile for burger menu button */}
+        <main className="pt-14 px-4 pb-4 lg:p-6">
           <Outlet />
         </main>
       </div>

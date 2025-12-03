@@ -6,8 +6,9 @@
  */
 
 import { useState, useEffect } from 'react'
-import { Save, Trash2, Star, StarOff, Plus, Search, Edit2, X, Copy } from 'lucide-react'
+import { Save, Trash2, Star, StarOff, Plus, Search, Edit2, Copy } from 'lucide-react'
 import { toast } from 'sonner'
+import { Button, Modal } from '@/shared/components'
 import type { CommandType } from '../types/commands'
 import type { CommandTemplate } from '../types/commandTemplates'
 import { COMMAND_TYPE_INFO } from '../types/commandTemplates'
@@ -135,13 +136,12 @@ export function CommandTemplates({ onApplyTemplate }: CommandTemplatesProps) {
             Save and reuse common command configurations
           </p>
         </div>
-        <button
+        <Button
           onClick={() => setShowCreateModal(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors"
+          leftIcon={<Plus className="w-4 h-4" />}
         >
-          <Plus className="w-4 h-4" />
           New Template
-        </button>
+        </Button>
       </div>
 
       {/* Search */}
@@ -163,12 +163,13 @@ export function CommandTemplates({ onApplyTemplate }: CommandTemplatesProps) {
           <p className="text-gray-500 dark:text-gray-400">
             {searchQuery ? 'No templates match your search' : 'No templates saved yet'}
           </p>
-          <button
+          <Button
+            variant="outline"
             onClick={() => setShowCreateModal(true)}
-            className="mt-4 text-blue-600 dark:text-blue-400 hover:underline"
+            className="mt-4"
           >
             Create your first template
-          </button>
+          </Button>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -265,33 +266,37 @@ function TemplateCard({
       </div>
 
       <div className="flex items-center gap-2">
-        <button
+        <Button
+          size="sm"
           onClick={() => onApply(template)}
-          className="flex-1 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded transition-colors"
+          className="flex-1"
         >
           Apply
-        </button>
-        <button
+        </Button>
+        <Button
+          variant="secondary"
+          size="sm"
           onClick={onEdit}
-          className="p-1.5 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
           title="Edit"
         >
           <Edit2 className="w-4 h-4" />
-        </button>
-        <button
+        </Button>
+        <Button
+          variant="secondary"
+          size="sm"
           onClick={() => onDuplicate(template)}
-          className="p-1.5 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
           title="Duplicate"
         >
           <Copy className="w-4 h-4" />
-        </button>
-        <button
+        </Button>
+        <Button
+          variant="danger"
+          size="sm"
           onClick={() => onDelete(template.id)}
-          className="p-1.5 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 rounded transition-colors"
           title="Delete"
         >
           <Trash2 className="w-4 h-4" />
-        </button>
+        </Button>
       </div>
     </div>
   )
@@ -343,135 +348,127 @@ function TemplateModal({
   }
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
-      <div className="bg-white dark:bg-gray-800 rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-        <div className="sticky top-0 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-4 flex items-center justify-between">
-          <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-            {template ? 'Edit Template' : 'Create Template'}
-          </h2>
-          <button onClick={onClose} className="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300">
-            <X className="w-6 h-6" />
-          </button>
+    <Modal
+      isOpen={true}
+      onClose={onClose}
+      title={template ? 'Edit Template' : 'Create Template'}
+      maxWidth="2xl"
+      footer={
+        <div className="flex justify-end gap-3 px-6 py-4 border-t border-gray-200 dark:border-gray-700">
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={onClose}
+          >
+            Cancel
+          </Button>
+          <Button type="submit" form="template-form">
+            {template ? 'Update Template' : 'Create Template'}
+          </Button>
+        </div>
+      }
+    >
+      <form id="template-form" onSubmit={handleSubmit} className="p-6 space-y-4">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            Template Name *
+          </label>
+          <input
+            type="text"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="e.g., Morning Refresh"
+            required
+            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+          />
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            Description
+          </label>
+          <textarea
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            placeholder="What does this template do?"
+            rows={2}
+            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            Command Type *
+          </label>
+          <select
+            value={commandType}
+            onChange={(e) => setCommandType(e.target.value as CommandType)}
+            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+          >
+            {Object.values(COMMAND_TYPE_INFO).map((cmd) => (
+              <option key={cmd.type} value={cmd.type}>
+                {cmd.icon} {cmd.label}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            Parameters (JSON)
+          </label>
+          <textarea
+            value={parameters}
+            onChange={(e) => setParameters(e.target.value)}
+            placeholder="{}"
+            rows={4}
+            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white font-mono text-sm"
+          />
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Template Name *
+              Priority (1-10)
             </label>
             <input
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="e.g., Morning Refresh"
-              required
+              type="number"
+              min="1"
+              max="10"
+              value={priority}
+              onChange={(e) => setPriority(Number(e.target.value))}
               className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
             />
           </div>
-
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Description
-            </label>
-            <textarea
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="What does this template do?"
-              rows={2}
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Command Type *
-            </label>
-            <select
-              value={commandType}
-              onChange={(e) => setCommandType(e.target.value as CommandType)}
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
-            >
-              {Object.values(COMMAND_TYPE_INFO).map((cmd) => (
-                <option key={cmd.type} value={cmd.type}>
-                  {cmd.icon} {cmd.label}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Parameters (JSON)
-            </label>
-            <textarea
-              value={parameters}
-              onChange={(e) => setParameters(e.target.value)}
-              placeholder="{}"
-              rows={4}
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white font-mono text-sm"
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Priority (1-10)
-              </label>
-              <input
-                type="number"
-                min="1"
-                max="10"
-                value={priority}
-                onChange={(e) => setPriority(Number(e.target.value))}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Expires In (minutes)
-              </label>
-              <input
-                type="number"
-                min="5"
-                max="1440"
-                value={expiresIn}
-                onChange={(e) => setExpiresIn(Number(e.target.value))}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
-              />
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Tags (comma-separated)
+              Expires In (minutes)
             </label>
             <input
-              type="text"
-              value={tags}
-              onChange={(e) => setTags(e.target.value)}
-              placeholder="e.g., maintenance, daily, high-priority"
+              type="number"
+              min="5"
+              max="1440"
+              value={expiresIn}
+              onChange={(e) => setExpiresIn(Number(e.target.value))}
               className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
             />
           </div>
+        </div>
 
-          <div className="flex justify-end gap-3 pt-4">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors"
-            >
-              {template ? 'Update Template' : 'Create Template'}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            Tags (comma-separated)
+          </label>
+          <input
+            type="text"
+            value={tags}
+            onChange={(e) => setTags(e.target.value)}
+            placeholder="e.g., maintenance, daily, high-priority"
+            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+          />
+        </div>
+      </form>
+    </Modal>
   )
 }
 

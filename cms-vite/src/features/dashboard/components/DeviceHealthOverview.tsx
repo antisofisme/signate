@@ -6,6 +6,7 @@
  */
 
 import { CheckCircle, AlertTriangle, XCircle, WifiOff } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { DeviceHealthSummary } from '../api/dashboard.api';
 
 interface DeviceHealthOverviewProps {
@@ -14,6 +15,7 @@ interface DeviceHealthOverviewProps {
 }
 
 export default function DeviceHealthOverview({ data, isLoading }: DeviceHealthOverviewProps) {
+  const { t } = useTranslation();
   const total = data ? data.healthy + data.warning + data.error + data.offline : 0;
 
   const getPercentage = (value: number) => {
@@ -23,7 +25,8 @@ export default function DeviceHealthOverview({ data, isLoading }: DeviceHealthOv
 
   const healthStats = [
     {
-      label: 'Healthy',
+      key: 'healthy',
+      label: t('dashboard.deviceHealth.healthy', 'Healthy'),
       value: data?.healthy || 0,
       percentage: getPercentage(data?.healthy || 0),
       icon: CheckCircle,
@@ -31,7 +34,8 @@ export default function DeviceHealthOverview({ data, isLoading }: DeviceHealthOv
       bgColor: 'bg-green-100 dark:bg-green-900/30',
     },
     {
-      label: 'Warning',
+      key: 'warning',
+      label: t('dashboard.deviceHealth.warning', 'Warning'),
       value: data?.warning || 0,
       percentage: getPercentage(data?.warning || 0),
       icon: AlertTriangle,
@@ -39,7 +43,8 @@ export default function DeviceHealthOverview({ data, isLoading }: DeviceHealthOv
       bgColor: 'bg-yellow-100 dark:bg-yellow-900/30',
     },
     {
-      label: 'Error',
+      key: 'error',
+      label: t('dashboard.deviceHealth.error', 'Error'),
       value: data?.error || 0,
       percentage: getPercentage(data?.error || 0),
       icon: XCircle,
@@ -47,7 +52,8 @@ export default function DeviceHealthOverview({ data, isLoading }: DeviceHealthOv
       bgColor: 'bg-red-100 dark:bg-red-900/30',
     },
     {
-      label: 'Offline',
+      key: 'offline',
+      label: t('dashboard.deviceHealth.offline', 'Offline'),
       value: data?.offline || 0,
       percentage: getPercentage(data?.offline || 0),
       icon: WifiOff,
@@ -59,7 +65,7 @@ export default function DeviceHealthOverview({ data, isLoading }: DeviceHealthOv
   return (
     <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
       <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-6">
-        Device Health Overview
+        {t('dashboard.deviceHealth.title', 'Device Health Overview')}
       </h2>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -68,7 +74,7 @@ export default function DeviceHealthOverview({ data, isLoading }: DeviceHealthOv
           {healthStats.map((stat) => {
             const Icon = stat.icon;
             return (
-              <div key={stat.label} className="flex items-center gap-4">
+              <div key={stat.key} className="flex items-center gap-4">
                 <div className={`p-2 rounded-lg ${stat.bgColor}`}>
                   <Icon className={`w-5 h-5 ${stat.color}`} />
                 </div>
@@ -84,11 +90,11 @@ export default function DeviceHealthOverview({ data, isLoading }: DeviceHealthOv
                   <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
                     <div
                       className={`h-2 rounded-full transition-all duration-500 ${
-                        stat.label === 'Healthy'
+                        stat.key === 'healthy'
                           ? 'bg-green-500 dark:bg-green-600'
-                          : stat.label === 'Warning'
+                          : stat.key === 'warning'
                           ? 'bg-yellow-500 dark:bg-yellow-600'
-                          : stat.label === 'Error'
+                          : stat.key === 'error'
                           ? 'bg-red-500 dark:bg-red-600'
                           : 'bg-gray-500 dark:bg-gray-600'
                       }`}
@@ -104,7 +110,7 @@ export default function DeviceHealthOverview({ data, isLoading }: DeviceHealthOv
         {/* Top Issues */}
         <div>
           <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">
-            Top Issues
+            {t('dashboard.deviceHealth.topIssues', 'Top Issues')}
           </h3>
           {isLoading ? (
             <div className="space-y-3">
@@ -124,12 +130,12 @@ export default function DeviceHealthOverview({ data, isLoading }: DeviceHealthOv
                       {issue.type}
                     </span>
                     <span className="text-xs font-semibold text-red-600 dark:text-red-400 bg-red-100 dark:bg-red-900/30 px-2 py-1 rounded">
-                      {issue.count} {issue.count === 1 ? 'device' : 'devices'}
+                      {issue.count} {issue.count === 1 ? t('dashboard.deviceHealth.device', 'device') : t('dashboard.deviceHealth.devices', 'devices')}
                     </span>
                   </div>
                   <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
                     {issue.devices.slice(0, 3).join(', ')}
-                    {issue.devices.length > 3 && ` +${issue.devices.length - 3} more`}
+                    {issue.devices.length > 3 && ` ${t('dashboard.deviceHealth.more', '+{{count}} more', { count: issue.devices.length - 3 })}`}
                   </p>
                 </div>
               ))}
@@ -138,7 +144,7 @@ export default function DeviceHealthOverview({ data, isLoading }: DeviceHealthOv
             <div className="flex flex-col items-center justify-center py-8 text-center">
               <CheckCircle className="w-12 h-12 text-green-500 dark:text-green-400 mb-3" />
               <p className="text-sm text-gray-500 dark:text-gray-400">
-                No issues detected
+                {t('dashboard.deviceHealth.noIssues', 'No issues detected')}
               </p>
             </div>
           )}

@@ -22,6 +22,8 @@ from shared.responses import success_response
 from shared.auth import get_current_user, CurrentUser
 from shared.config import settings
 from shared.cache import cache
+from shared.rbac import require_permission
+from shared.logging import AuditLogger
 
 from .repositories import MenuMediaRepository
 from .dtos import MenuMediaResponseDTO, MenuMediaListDTO, MenuMediaUpdateDTO
@@ -48,6 +50,11 @@ def get_menu_media_repository(db: Session = Depends(get_db)) -> MenuMediaReposit
     return MenuMediaRepository(db)
 
 
+def get_audit_logger() -> AuditLogger:
+    """Get audit logger instance"""
+    return AuditLogger()
+
+
 def build_media_url(file_path: str) -> str:
     """Build full URL for menu media"""
     return f"{settings.PUBLIC_BASE_URL}/menu-media-files/{file_path}"
@@ -60,10 +67,10 @@ def list_menu_media(
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=100),
     is_active: Optional[bool] = None,
-    current_user: CurrentUser = Depends(get_current_user),
+    current_user: CurrentUser = Depends(require_permission("menus", "view")),
     media_repo: MenuMediaRepository = Depends(get_menu_media_repository)
 ):
-    """List all menu media for current organization"""
+    """List all menu media for current organization (requires menus:view permission)"""
     media_list, total = media_repo.find_all(
         organization_id=current_user.organization_id,
         skip=skip,
@@ -91,11 +98,11 @@ def list_menu_media(
 
 @router.get("/duplicates")
 def list_duplicate_menu_media(
-    current_user: CurrentUser = Depends(get_current_user),
+    current_user: CurrentUser = Depends(require_permission("menus", "view")),
     media_repo: MenuMediaRepository = Depends(get_menu_media_repository)
 ):
     """
-    List all duplicate files (same hash) with their usage info.
+    List all duplicate files (same hash) with their usage info (requires menus:view permission).
     Returns groups of duplicates for deduplication management.
     """
     duplicates = media_repo.find_duplicates_with_usage(current_user.organization_id)
@@ -130,10 +137,10 @@ def list_deleted_menu_media(
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=100),
     search: Optional[str] = None,
-    current_user: CurrentUser = Depends(get_current_user),
+    current_user: CurrentUser = Depends(require_permission("menus", "view")),
     media_repo: MenuMediaRepository = Depends(get_menu_media_repository)
 ):
-    """List all deleted menu media (Recycle Bin)"""
+    """List all deleted menu media - Recycle Bin (requires menus:view permission)"""
     media_list, total = media_repo.find_all_deleted(
         organization_id=current_user.organization_id,
         skip=skip,
@@ -162,11 +169,11 @@ def get_media_manifest(
     menu_id: Optional[int] = None,
     variant: str = Query("hd", description="Preferred variant: thumb, small, hd, 4k, original"),
     since: Optional[str] = Query(None, description="ISO timestamp for incremental sync"),
-    current_user: CurrentUser = Depends(get_current_user),
+    current_user: CurrentUser = Depends(require_permission("menus", "view")),
     media_repo: MenuMediaRepository = Depends(get_menu_media_repository)
 ):
     """
-    Get manifest of all menu media for player offline caching.
+    Get manifest of all menu media for player offline caching (requires menus:view permission).
 
     Returns optimized variant URLs with content hashes for cache invalidation.
     Player can use this to:
@@ -278,10 +285,11 @@ async def upload_menu_media(
     file: UploadFile = File(...),
     title: Optional[str] = None,
     alt_text: Optional[str] = None,
-    current_user: CurrentUser = Depends(get_current_user),
-    media_repo: MenuMediaRepository = Depends(get_menu_media_repository)
+    current_user: CurrentUser = Depends(require_permission("menus", "edit")),
+    media_repo: MenuMediaRepository = Depends(get_menu_media_repository),
+    audit_logger: AuditLogger = Depends(get_audit_logger)
 ):
-    """Upload new menu media image with deduplication support"""
+    """Upload new menu media image with deduplication support (requires menus:edit permission)"""
     # Validate file extension
     original_filename = file.filename or "unknown"
     ext = os.path.splitext(original_filename)[1].lower()
@@ -417,16 +425,30 @@ async def upload_menu_media(
     # CRITICAL: Invalidate cache so new media appears immediately
     cache.invalidate_menu_media(media.id, current_user.organization_id)
 
+    # Audit log
+    audit_logger.log_action(
+        user_id=current_user.id,
+        action="menu_media.upload",
+        resource_type="menu_media",
+        resource_id=media.id,
+        details={
+            "filename": original_filename,
+            "file_size": file_size,
+            "is_duplicate": is_duplicate
+        },
+        organization_id=current_user.organization_id
+    )
+
     return success_response(data=response)
 
 
 @router.get("/{media_id}")
 def get_menu_media(
     media_id: int,
-    current_user: CurrentUser = Depends(get_current_user),
+    current_user: CurrentUser = Depends(require_permission("menus", "view")),
     media_repo: MenuMediaRepository = Depends(get_menu_media_repository)
 ):
-    """Get single menu media"""
+    """Get single menu media (requires menus:view permission)"""
     media = media_repo.find_by_id(media_id, current_user.organization_id)
     if not media:
         raise HTTPException(status_code=404, detail="Media not found")
@@ -441,16 +463,27 @@ def get_menu_media(
 def update_menu_media(
     media_id: int,
     payload: MenuMediaUpdateDTO,
-    current_user: CurrentUser = Depends(get_current_user),
-    media_repo: MenuMediaRepository = Depends(get_menu_media_repository)
+    current_user: CurrentUser = Depends(require_permission("menus", "edit")),
+    media_repo: MenuMediaRepository = Depends(get_menu_media_repository),
+    audit_logger: AuditLogger = Depends(get_audit_logger)
 ):
-    """Update menu media metadata"""
+    """Update menu media metadata (requires menus:edit permission)"""
     media = media_repo.find_by_id(media_id, current_user.organization_id)
     if not media:
         raise HTTPException(status_code=404, detail="Media not found")
 
     update_data = payload.model_dump(exclude_unset=True)
     media = media_repo.update(media, **update_data)
+
+    # Audit log
+    audit_logger.log_action(
+        user_id=current_user.id,
+        action="menu_media.update",
+        resource_type="menu_media",
+        resource_id=media.id,
+        details=update_data,
+        organization_id=current_user.organization_id
+    )
 
     response = MenuMediaResponseDTO.model_validate(media)
     response.url = build_media_url(media.file_path)
@@ -461,15 +494,26 @@ def update_menu_media(
 @router.delete("/{media_id}", status_code=204)
 def delete_menu_media(
     media_id: int,
-    current_user: CurrentUser = Depends(get_current_user),
-    media_repo: MenuMediaRepository = Depends(get_menu_media_repository)
+    current_user: CurrentUser = Depends(require_permission("menus", "delete")),
+    media_repo: MenuMediaRepository = Depends(get_menu_media_repository),
+    audit_logger: AuditLogger = Depends(get_audit_logger)
 ):
-    """Soft delete menu media (move to recycle bin)"""
+    """Soft delete menu media - move to recycle bin (requires menus:delete permission)"""
     media = media_repo.find_by_id(media_id, current_user.organization_id)
     if not media:
         raise HTTPException(status_code=404, detail="Media not found")
 
     media_repo.soft_delete(media, deleted_by_id=current_user.id)
+
+    # Audit log
+    audit_logger.log_action(
+        user_id=current_user.id,
+        action="menu_media.delete",
+        resource_type="menu_media",
+        resource_id=media_id,
+        details={"filename": media.filename, "original_filename": media.original_filename},
+        organization_id=current_user.organization_id
+    )
 
     # CRITICAL: Invalidate cache
     cache.invalidate_menu_media(media_id, current_user.organization_id)
@@ -482,10 +526,11 @@ def delete_menu_media(
 @router.post("/{media_id}/restore")
 def restore_menu_media(
     media_id: int,
-    current_user: CurrentUser = Depends(get_current_user),
-    media_repo: MenuMediaRepository = Depends(get_menu_media_repository)
+    current_user: CurrentUser = Depends(require_permission("menus", "edit")),
+    media_repo: MenuMediaRepository = Depends(get_menu_media_repository),
+    audit_logger: AuditLogger = Depends(get_audit_logger)
 ):
-    """Restore menu media from recycle bin"""
+    """Restore menu media from recycle bin (requires menus:edit permission)"""
     # Find deleted media (include_deleted=True)
     media = media_repo.find_by_id(media_id, current_user.organization_id, include_deleted=True)
     if not media:
@@ -495,6 +540,16 @@ def restore_menu_media(
         raise HTTPException(status_code=400, detail="Media is not deleted")
 
     media = media_repo.restore(media)
+
+    # Audit log
+    audit_logger.log_action(
+        user_id=current_user.id,
+        action="menu_media.restore",
+        resource_type="menu_media",
+        resource_id=media_id,
+        details={"filename": media.filename},
+        organization_id=current_user.organization_id
+    )
 
     response = MenuMediaResponseDTO.model_validate(media)
     response.url = build_media_url(media.file_path)
@@ -508,10 +563,11 @@ def restore_menu_media(
 @router.delete("/{media_id}/permanent", status_code=204)
 def permanent_delete_menu_media(
     media_id: int,
-    current_user: CurrentUser = Depends(get_current_user),
-    media_repo: MenuMediaRepository = Depends(get_menu_media_repository)
+    current_user: CurrentUser = Depends(require_permission("menus", "delete")),
+    media_repo: MenuMediaRepository = Depends(get_menu_media_repository),
+    audit_logger: AuditLogger = Depends(get_audit_logger)
 ):
-    """Permanently delete menu media (cannot be recovered)"""
+    """Permanently delete menu media - cannot be recovered (requires menus:delete permission)"""
     # Find deleted media (include_deleted=True)
     media = media_repo.find_by_id(media_id, current_user.organization_id, include_deleted=True)
     if not media:
@@ -520,7 +576,20 @@ def permanent_delete_menu_media(
     if not media.deleted_at:
         raise HTTPException(status_code=400, detail="Media must be soft-deleted first")
 
+    # Store filename for audit log before deletion
+    filename = media.filename
+
     media_repo.hard_delete(media)
+
+    # Audit log
+    audit_logger.log_action(
+        user_id=current_user.id,
+        action="menu_media.permanent_delete",
+        resource_type="menu_media",
+        resource_id=media_id,
+        details={"filename": filename},
+        organization_id=current_user.organization_id
+    )
 
     # CRITICAL: Invalidate cache
     cache.invalidate_menu_media(media_id, current_user.organization_id)
@@ -531,17 +600,30 @@ def permanent_delete_menu_media(
 @router.post("/bulk-permanent-delete", status_code=200)
 def bulk_permanent_delete_menu_media(
     media_ids: List[int],
-    current_user: CurrentUser = Depends(get_current_user),
-    media_repo: MenuMediaRepository = Depends(get_menu_media_repository)
+    current_user: CurrentUser = Depends(require_permission("menus", "delete")),
+    media_repo: MenuMediaRepository = Depends(get_menu_media_repository),
+    audit_logger: AuditLogger = Depends(get_audit_logger)
 ):
-    """Permanently delete multiple menu media items"""
+    """Permanently delete multiple menu media items (requires menus:delete permission)"""
     deleted_count = 0
 
+    deleted_filenames = []
     for media_id in media_ids:
         media = media_repo.find_by_id(media_id, current_user.organization_id, include_deleted=True)
         if media and media.deleted_at:
+            deleted_filenames.append(media.filename)
             media_repo.hard_delete(media)
             deleted_count += 1
+
+    # Audit log
+    audit_logger.log_action(
+        user_id=current_user.id,
+        action="menu_media.bulk_permanent_delete",
+        resource_type="menu_media",
+        resource_id=None,
+        details={"deleted_count": deleted_count, "filenames": deleted_filenames},
+        organization_id=current_user.organization_id
+    )
 
     # CRITICAL: Invalidate cache
     cache.invalidate_menu_media(None, current_user.organization_id)

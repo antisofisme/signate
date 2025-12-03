@@ -30,16 +30,6 @@ export function DeviceHealthModal({ isOpen, device, onClose }: DeviceHealthModal
       title={t('devices.modals.deviceHealth')}
       subtitle={`${device.device_name} (ID: ${device.id})`}
       maxWidth="6xl"
-      footer={
-        <div className="p-4 border-t border-gray-200 dark:border-gray-700 flex justify-end">
-          <button
-            onClick={onClose}
-            className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
-          >
-            {t('common.close')}
-          </button>
-        </div>
-      }
     >
       {/* Content */}
       <div className="p-6 space-y-6">

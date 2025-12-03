@@ -5,12 +5,14 @@
  * Dashboard overview statistics cards
  */
 
-import { Monitor, FileImage, ListVideo, Clock, TrendingUp, Activity } from 'lucide-react';
+import { Monitor, FileImage, ListVideo, UtensilsCrossed, Calendar, Activity } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { DashboardStats } from '../api/dashboard.api';
+import { DashboardStats, MenuStats, ScheduleOverview } from '../api/dashboard.api';
 
 interface OverviewMetricsProps {
   stats: DashboardStats | undefined;
+  menuStats: MenuStats | undefined;
+  scheduleOverview: ScheduleOverview | undefined;
   isLoading: boolean;
 }
 
@@ -58,13 +60,6 @@ const MetricCard = ({ icon: Icon, iconColor, label, value, subtitle, isLoading }
   );
 };
 
-const formatDuration = (seconds: number): string => {
-  if (seconds < 60) return `${seconds}s`;
-  if (seconds < 3600) return `${Math.floor(seconds / 60)}m`;
-  if (seconds < 86400) return `${Math.floor(seconds / 3600)}h`;
-  return `${Math.floor(seconds / 86400)}d`;
-};
-
 const formatBytes = (bytes: number): string => {
   if (bytes === 0) return '0 B';
   const k = 1024;
@@ -73,7 +68,7 @@ const formatBytes = (bytes: number): string => {
   return `${parseFloat((bytes / Math.pow(k, i)).toFixed(2))} ${sizes[i]}`;
 };
 
-export default function OverviewMetrics({ stats, isLoading }: OverviewMetricsProps) {
+export default function OverviewMetrics({ stats, menuStats, scheduleOverview, isLoading }: OverviewMetricsProps) {
   const { t } = useTranslation();
   const onlinePercentage = stats?.total_devices
     ? Math.round((stats.online_devices / stats.total_devices) * 100)
@@ -85,7 +80,7 @@ export default function OverviewMetrics({ stats, isLoading }: OverviewMetricsPro
       <MetricCard
         icon={Monitor}
         iconColor="blue"
-        label="Total Devices"
+        label={t('dashboard.metrics.totalDevices', 'Total Devices')}
         value={stats?.total_devices || 0}
         subtitle={t('dashboard.metrics.onlineDevices', { online: stats?.online_devices || 0, percentage: onlinePercentage })}
         isLoading={isLoading}
@@ -95,7 +90,7 @@ export default function OverviewMetrics({ stats, isLoading }: OverviewMetricsPro
       <MetricCard
         icon={FileImage}
         iconColor="green"
-        label="Total Content"
+        label={t('dashboard.metrics.totalContent', 'Total Content')}
         value={stats?.total_contents || 0}
         subtitle={stats ? formatBytes(stats.total_storage_bytes) : '0 B'}
         isLoading={isLoading}
@@ -105,39 +100,39 @@ export default function OverviewMetrics({ stats, isLoading }: OverviewMetricsPro
       <MetricCard
         icon={ListVideo}
         iconColor="purple"
-        label="Active Playlists"
+        label={t('dashboard.metrics.activePlaylists', 'Active Playlists')}
         value={stats?.active_playlists || 0}
         subtitle={t('dashboard.metrics.playbackEventsCount', { count: stats?.total_playback_events || 0 })}
         isLoading={isLoading}
       />
 
-      {/* Total Watch Time */}
+      {/* Total Menus - NEW */}
       <MetricCard
-        icon={Clock}
+        icon={UtensilsCrossed}
         iconColor="orange"
-        label="Total Watch Time"
-        value={stats ? formatDuration(stats.total_watch_time_seconds) : '0s'}
-        subtitle={t('dashboard.metrics.acrossAllDevices')}
+        label={t('dashboard.metrics.totalMenus', 'Digital Menus')}
+        value={menuStats?.total_menus || 0}
+        subtitle={t('dashboard.metrics.activeMenus', { active: menuStats?.active_menus || 0, items: menuStats?.total_items || 0 })}
         isLoading={isLoading}
       />
 
-      {/* Completion Rate */}
+      {/* Active Schedules - NEW */}
       <MetricCard
-        icon={TrendingUp}
+        icon={Calendar}
         iconColor="indigo"
-        label="Avg Completion Rate"
-        value={stats ? `${Math.round(stats.avg_completion_rate)}%` : '0%'}
-        subtitle={t('dashboard.metrics.playbackCompletion')}
+        label={t('dashboard.metrics.activeSchedules', 'Schedules')}
+        value={scheduleOverview?.active_schedules || 0}
+        subtitle={t('dashboard.metrics.runningNow', { running: scheduleOverview?.running_now || 0, ending: scheduleOverview?.ending_soon || 0 })}
         isLoading={isLoading}
       />
 
-      {/* System Activity */}
+      {/* Menu Views - NEW */}
       <MetricCard
         icon={Activity}
         iconColor="pink"
-        label="System Activity"
-        value={stats?.total_playback_events || 0}
-        subtitle={t('dashboard.metrics.totalPlaybackEvents')}
+        label={t('dashboard.metrics.menuViews', 'Menu Views')}
+        value={menuStats?.total_views || 0}
+        subtitle={t('dashboard.metrics.contactClicks', { clicks: menuStats?.total_contact_clicks || 0 })}
         isLoading={isLoading}
       />
     </div>

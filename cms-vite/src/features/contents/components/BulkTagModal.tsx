@@ -70,28 +70,22 @@ export function BulkTagModal({ isOpen, onClose, selectedContent }: BulkTagModalP
 
   // Footer with action buttons
   const footer = (
-    <div className="border-t border-gray-200 dark:border-gray-700 px-6 py-4">
-      <div className="flex justify-end gap-3">
-        <Button
-          variant="ghost"
-          onClick={handleClose}
-          disabled={assignMutation.isPending}
-        >
-          {t('common.cancel')}
-        </Button>
-        <Button
-          variant="primary"
-          onClick={handleAssign}
-          disabled={!selectedTagId || assignMutation.isPending}
-          loading={assignMutation.isPending}
-          leftIcon={!assignMutation.isPending ? <Plus className="w-4 h-4" /> : undefined}
-        >
-          {assignMutation.isPending
-            ? t('contents.actions.assigningTag')
-            : t('contents.actions.assignTag')
-          }
-        </Button>
-      </div>
+    <div className="flex justify-end gap-3 px-6 py-4 border-t border-gray-200 dark:border-gray-700">
+      <Button
+        variant="secondary"
+        onClick={handleClose}
+        disabled={assignMutation.isPending}
+      >
+        {t('common.cancel')}
+      </Button>
+      <Button
+        onClick={handleAssign}
+        disabled={!selectedTagId || assignMutation.isPending}
+        loading={assignMutation.isPending}
+        leftIcon={<Plus className="w-4 h-4" />}
+      >
+        {t('contents.actions.assignTag')}
+      </Button>
     </div>
   );
 
@@ -117,7 +111,7 @@ export function BulkTagModal({ isOpen, onClose, selectedContent }: BulkTagModalP
               <Loader2 className="w-6 h-6 animate-spin text-blue-600" />
             </div>
           ) : tags && tags.length > 0 ? (
-            <div className="grid grid-cols-2 gap-2 max-h-64 overflow-y-auto border dark:border-gray-700 rounded-lg p-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-64 overflow-y-auto border dark:border-gray-700 rounded-lg p-3">
               {tags.map((tag) => (
                 <button
                   key={tag.id}

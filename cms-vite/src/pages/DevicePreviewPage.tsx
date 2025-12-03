@@ -17,7 +17,9 @@ import {
   Monitor,
   Loader2,
   AlertCircle,
+  ArrowLeft,
 } from 'lucide-react';
+import { Button } from '@/shared/components';
 import { apiClient } from '@/lib/api/client';
 
 interface ContentItem {
@@ -151,12 +153,12 @@ export default function DevicePreviewPage() {
           <p className="text-gray-400 mb-6">
             {(error as any)?.message || 'Unable to fetch device content'}
           </p>
-          <button
+          <Button
             onClick={handleClose}
-            className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            leftIcon={<ArrowLeft className="w-4 h-4" />}
           >
             Go Back
-          </button>
+          </Button>
         </div>
       </div>
     );
@@ -171,12 +173,12 @@ export default function DevicePreviewPage() {
           <p className="text-gray-400 mb-6">
             This device has no content assigned yet. Assign content via direct assignment, tags, or playlists.
           </p>
-          <button
+          <Button
             onClick={handleClose}
-            className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            leftIcon={<ArrowLeft className="w-4 h-4" />}
           >
             Go Back
-          </button>
+          </Button>
         </div>
       </div>
     );
