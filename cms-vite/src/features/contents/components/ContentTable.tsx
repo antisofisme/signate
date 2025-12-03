@@ -23,6 +23,7 @@ import {
   List,
   Tag,
   Monitor,
+  Play,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { usePagination } from '@/shared/hooks';
@@ -50,6 +51,7 @@ import { UploadModal } from './UploadModal';
 import { EditContentModal } from './EditContentModal';
 import { BulkEditModal } from './BulkEditModal';
 import { BulkTagModal } from './BulkTagModal';
+import { ContentTagAssignmentModal } from './ContentTagAssignmentModal';
 import { ContentPreviewModal } from './ContentPreviewModal';
 
 // Get content type icon
@@ -108,6 +110,7 @@ export function ContentTable({ showUploadModal = false, onCloseUploadModal, show
   const [showEditModal, setShowEditModal] = useState(false);
   const [showBulkEditModal, setShowBulkEditModal] = useState(false);
   const [showBulkTagModal, setShowBulkTagModal] = useState(false);
+  const [showPlaybackAssignModal, setShowPlaybackAssignModal] = useState(false);
 
   // Hooks - merge filters with pagination
   const { data: contentData, isLoading, error } = useContentList({
@@ -235,6 +238,11 @@ export function ContentTable({ showUploadModal = false, onCloseUploadModal, show
       return;
     }
     setShowBulkTagModal(true);
+  };
+
+  const handlePlaybackAssign = (content: Content) => {
+    setSelectedContent(content);
+    setShowPlaybackAssignModal(true);
   };
 
   const handleBulkDelete = async () => {
@@ -633,16 +641,28 @@ export function ContentTable({ showUploadModal = false, onCloseUploadModal, show
                                       <Download className="w-4 h-4" />
                                     </button>
                                     {canUpdate && (
-                                      <button
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          handleEdit(fullContent);
-                                        }}
-                                        className={TABLE_STYLES.actionBtnGreen}
-                                        title={t('contents.actions.edit')}
-                                      >
-                                        <Edit className="w-4 h-4" />
-                                      </button>
+                                      <>
+                                        <button
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            handlePlaybackAssign(fullContent);
+                                          }}
+                                          className={TABLE_STYLES.actionBtnPurple}
+                                          title={t('contents.actions.assignPlayback', 'Assign Playback')}
+                                        >
+                                          <Tag className="w-4 h-4" />
+                                        </button>
+                                        <button
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleEdit(fullContent);
+                                          }}
+                                          className={TABLE_STYLES.actionBtnGreen}
+                                          title={t('contents.actions.edit')}
+                                        >
+                                          <Edit className="w-4 h-4" />
+                                        </button>
+                                      </>
                                     )}
                                     {canDelete && (
                                       <button
@@ -743,13 +763,22 @@ export function ContentTable({ showUploadModal = false, onCloseUploadModal, show
                                   <Download className="w-4 h-4" />
                                 </button>
                                 {canUpdate && (
-                                  <button
-                                    onClick={() => handleEdit(content)}
-                                    className={TABLE_STYLES.actionBtnGreen}
-                                    title={t('contents.actions.edit')}
-                                  >
-                                    <Edit className="w-4 h-4" />
-                                  </button>
+                                  <>
+                                    <button
+                                      onClick={() => handlePlaybackAssign(content)}
+                                      className={TABLE_STYLES.actionBtnPurple}
+                                      title={t('contents.actions.assignPlayback', 'Assign Playback')}
+                                    >
+                                      <Tag className="w-4 h-4" />
+                                    </button>
+                                    <button
+                                      onClick={() => handleEdit(content)}
+                                      className={TABLE_STYLES.actionBtnGreen}
+                                      title={t('contents.actions.edit')}
+                                    >
+                                      <Edit className="w-4 h-4" />
+                                    </button>
+                                  </>
                                 )}
                                 {canDelete && (
                                   <button
@@ -839,6 +868,16 @@ export function ContentTable({ showUploadModal = false, onCloseUploadModal, show
         isOpen={showBulkTagModal}
         onClose={() => setShowBulkTagModal(false)}
         selectedContent={getSelectedContent()}
+      />
+
+      {/* Content Tag Assignment Modal */}
+      <ContentTagAssignmentModal
+        isOpen={showPlaybackAssignModal}
+        onClose={() => {
+          setShowPlaybackAssignModal(false);
+          // Don't clear selectedContent here as it might be used for preview
+        }}
+        selectedContent={selectedContent ? [selectedContent] : []}
       />
     </div>
   );

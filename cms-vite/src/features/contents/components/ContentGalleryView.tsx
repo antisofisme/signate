@@ -20,6 +20,7 @@ import {
   Edit,
   Trash2,
   Tag,
+  Play,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button, EmptyState, ErrorDisplay, ConfirmDialog } from '@/shared/components';
@@ -36,6 +37,7 @@ import { ContentDetailSidebar } from './ContentDetailSidebar';
 import { UploadModal } from './UploadModal';
 import { BulkEditModal } from './BulkEditModal';
 import { BulkTagModal } from './BulkTagModal';
+import { ContentTagAssignmentModal } from './ContentTagAssignmentModal';
 
 // Sort options
 type SortOption = 'newest' | 'oldest' | 'name_asc' | 'name_desc' | 'size_desc' | 'size_asc' | 'duration_desc' | 'duration_asc';
@@ -90,6 +92,8 @@ export function ContentGalleryView({ showUploadModal = false, onCloseUploadModal
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [showBulkEditModal, setShowBulkEditModal] = useState(false);
   const [showBulkTagModal, setShowBulkTagModal] = useState(false);
+  const [showPlaybackAssignModal, setShowPlaybackAssignModal] = useState(false);
+  const [playbackContent, setPlaybackContent] = useState<Content | null>(null);
   const [showBulkDeleteConfirm, setShowBulkDeleteConfirm] = useState(false);
 
   // Fetch content with max allowed limit
@@ -258,6 +262,11 @@ export function ContentGalleryView({ showUploadModal = false, onCloseUploadModal
       return;
     }
     setShowBulkTagModal(true);
+  };
+
+  const handlePlaybackAssign = (content: Content) => {
+    setPlaybackContent(content);
+    setShowPlaybackAssignModal(true);
   };
 
   const handleBulkDelete = async () => {
@@ -507,6 +516,7 @@ export function ContentGalleryView({ showUploadModal = false, onCloseUploadModal
                           showCheckbox={selectedIds.size > 0}
                           onSelect={() => handleSelectContent(content)}
                           onCheckboxChange={(checked) => handleCheckboxChange(content.id, checked)}
+                          onPlaybackAssign={handlePlaybackAssign}
                         />
                       );
                       return;
@@ -572,6 +582,7 @@ export function ContentGalleryView({ showUploadModal = false, onCloseUploadModal
                                 showCheckbox={selectedIds.size > 0}
                                 onSelect={() => handleSelectContent(c)}
                                 onCheckboxChange={(checked) => handleCheckboxChange(c.id, checked)}
+                                onPlaybackAssign={handlePlaybackAssign}
                               />
                             ))}
                           </div>
@@ -593,6 +604,7 @@ export function ContentGalleryView({ showUploadModal = false, onCloseUploadModal
                         showCheckbox={selectedIds.size > 0}
                         onSelect={() => handleSelectContent(content)}
                         onCheckboxChange={(checked) => handleCheckboxChange(content.id, checked)}
+                        onPlaybackAssign={handlePlaybackAssign}
                       />
                     );
                   }
@@ -633,6 +645,16 @@ export function ContentGalleryView({ showUploadModal = false, onCloseUploadModal
         isOpen={showBulkTagModal}
         onClose={() => setShowBulkTagModal(false)}
         selectedContent={getSelectedContent()}
+      />
+
+      {/* Content Tag Assignment Modal */}
+      <ContentTagAssignmentModal
+        isOpen={showPlaybackAssignModal}
+        onClose={() => {
+          setShowPlaybackAssignModal(false);
+          setPlaybackContent(null);
+        }}
+        selectedContent={playbackContent ? [playbackContent] : []}
       />
 
       {/* Bulk Delete Confirmation */}
