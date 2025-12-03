@@ -112,7 +112,8 @@ class SharedWebSocketClass {
       SharedLogger.log('[WebSocket] Connecting to:', config.api.wsBaseURL);
 
       // Build WebSocket URL with auth params (backend router mounted at /api)
-      const wsUrl = `${config.api.wsBaseURL}/api/ws/device/${deviceId}?token=${deviceToken}`;
+      // Note: device_id is extracted from JWT token, not from URL path
+      const wsUrl = `${config.api.wsBaseURL}/api/ws/device?token=${deviceToken}`;
 
       this.ws = new WebSocket(wsUrl);
 

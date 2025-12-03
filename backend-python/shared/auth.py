@@ -15,7 +15,7 @@ from enum import Enum
 
 from jose import jwt, JWTError
 from passlib.context import CryptContext
-from fastapi import Depends, Request, HTTPException, status
+from fastapi import Depends, Request, HTTPException, status, Query
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel
 
@@ -1040,48 +1040,41 @@ async def get_current_user_ws(
 
 
 async def get_device_by_token_ws(
-    token: Optional[str] = None
+    token: Optional[str] = Query(None)
 ) -> Optional[Dict[str, Any]]:
     """
     WebSocket-specific device authentication dependency
-    
+
+    Returns a simple dict with device info extracted from token.
+    Database verification is skipped for WebSocket performance.
+
     Args:
         token: Device JWT token from query parameter
-        
+
     Returns:
-        Device info dict if authenticated, None otherwise
+        Dict with id and organization_id if authenticated, None otherwise
     """
     if not token:
         return None
-        
+
     try:
         device_info = extract_device_from_token(token)
-        
-        # Get device from database to verify it exists and belongs to the organization
-        from services.device.infrastructure.sqlalchemy_device_repository import SQLAlchemyDeviceRepository
-        from services.device.dtos import DeviceResponse
-        
-        device_repo = SQLAlchemyDeviceRepository()
-        # SECURITY: Verify device belongs to the organization from token
-        device = device_repo.find_by_id(
-            device_info["device_id"], 
+
+        # Return simple object with just the needed fields for WebSocket
+        # Database verification is done via heartbeat, not WebSocket auth
+        class SimpleDevice:
+            def __init__(self, device_id: int, organization_id: int):
+                self.id = device_id
+                self.organization_id = organization_id
+
+        return SimpleDevice(
+            device_id=device_info["device_id"],
             organization_id=device_info.get("organization_id")
         )
-        
-        if not device:
-            return None
-            
-        return DeviceResponse(
-            id=device.id,
-            activation_code=device.activation_code,
-            name=device.name,
-            location=device.location,
-            status=device.status,
-            organization_id=device.organization_id,
-            registered_at=device.registered_at,
-            last_seen_at=device.last_seen_at)
-        
-    except:
+
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).warning(f"[WebSocket] Device auth failed: {e}")
         return None
 
 

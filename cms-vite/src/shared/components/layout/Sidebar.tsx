@@ -9,7 +9,6 @@ import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import {
   Monitor,
-  FileImage,
   LayoutDashboard,
   LogOut,
   Tag,
@@ -29,7 +28,9 @@ import {
   ChevronRight,
   UtensilsCrossed,
   Image,
-  List,
+  Layers,
+  FolderOpen,
+  ClipboardList,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useUIStore } from '@/lib/stores/uiStore';
@@ -84,9 +85,9 @@ export default function Sidebar() {
     {
       key: 'content',
       name: t('navigation.groups.digitalSignage'),
-      icon: FileImage,
+      icon: Layers,
       items: [
-        { name: t('navigation.contents'), href: '/contents', icon: FileImage },
+        { name: t('navigation.contents'), href: '/contents', icon: FolderOpen },
         { name: t('navigation.tags'), href: '/tags', icon: Tag },
         { name: t('navigation.playlists'), href: '/playlists', icon: ListVideo },
         { name: t('navigation.schedules'), href: '/schedules', icon: Calendar },
@@ -97,7 +98,7 @@ export default function Sidebar() {
       name: t('navigation.groups.menuDigital'),
       icon: UtensilsCrossed,
       items: [
-        { name: t('navigation.menuList'), href: '/menus', icon: List },
+        { name: t('navigation.menuList'), href: '/menus', icon: ClipboardList },
         { name: t('navigation.menuMedia'), href: '/menus/media', icon: Image },
       ],
     },

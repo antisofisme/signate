@@ -384,7 +384,7 @@ export function DeviceLogsViewer({
 
   return (
     <>
-      <div className="flex flex-col h-full min-h-[600px]">
+      <div className="flex flex-col h-full">
 
         {/* Sticky Filter Bar */}
         <div className="sticky top-0 z-[9] bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">

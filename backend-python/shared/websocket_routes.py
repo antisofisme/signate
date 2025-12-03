@@ -11,7 +11,7 @@ import logging
 from shared import websocket_manager as ws_manager_module
 from shared.auth import get_current_user_ws, get_device_by_token_ws
 from services.auth.dtos import UserResponse
-from services.device.dtos import DeviceResponse
+# DeviceResponse import removed - using simple dict from get_device_by_token_ws
 
 logger = logging.getLogger(__name__)
 
@@ -103,7 +103,7 @@ async def admin_websocket(
 async def device_websocket(
     websocket: WebSocket,
     token: Optional[str] = Query(None),
-    device: DeviceResponse = Depends(get_device_by_token_ws)
+    device = Depends(get_device_by_token_ws)
 ):
     """
     Device WebSocket endpoint for real-time commands and updates

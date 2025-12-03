@@ -651,6 +651,49 @@ def list_devices(
         )
 
 
+# NOTE: /me route MUST be defined BEFORE /{device_id} route to ensure proper matching
+@router.get(DeviceRoutes.ME, response_model=DeviceResponse)
+def get_my_device_info(
+    device_repo: DeviceRepository = Depends(get_device_repository),
+    current_device: CurrentDevice = Depends(get_current_device)
+):
+    """
+    Get current device's own information (called by player)
+
+    Requires device JWT token authentication.
+    Device can only access its own data, ensuring security.
+
+    Returns:
+        DeviceResponse with all device fields including ip_address
+    """
+    try:
+        # Fetch device data
+        device = device_repo.find_by_id(current_device.id)
+
+        if not device:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Device with ID {current_device.id} not found"
+            )
+
+        # Verify organization match (security check)
+        if device.organization_id != current_device.organization_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Device organization mismatch"
+            )
+
+        # Convert to response with is_online computed field
+        return device_to_response(device)
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(e)
+        )
+
+
 @router.get(DeviceRoutes.GET, response_model=DeviceResponse)
 def get_device(
     device_id: int,
@@ -703,48 +746,6 @@ def get_device(
         cache.set(cache_key, response.dict(), ttl=60)
 
         return response
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=str(e)
-        )
-
-
-@router.get("/api/v1/devices/me", response_model=DeviceResponse)
-def get_my_device_info(
-    device_repo: DeviceRepository = Depends(get_device_repository),
-    current_device: CurrentDevice = Depends(get_current_device)
-):
-    """
-    Get current device's own information (called by player)
-
-    Requires device JWT token authentication.
-    Device can only access its own data, ensuring security.
-
-    Returns:
-        DeviceResponse with all device fields including ip_address
-    """
-    try:
-        # Fetch device data
-        device = device_repo.find_by_id(current_device.id)
-
-        if not device:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Device with ID {current_device.id} not found"
-            )
-
-        # Verify organization match (security check)
-        if device.organization_id != current_device.organization_id:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Device organization mismatch"
-            )
-
-        # Convert to response with is_online computed field
-        return device_to_response(device)
     except HTTPException:
         raise
     except Exception as e:
