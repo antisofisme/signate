@@ -77,7 +77,10 @@ class SharedWebSocketClass {
   private ws: WebSocket | null = null;
   private state: WSState = WSState.DISCONNECTED;
   private reconnectAttempts = 0;
-  private readonly maxReconnectAttempts = 10;
+  // FIXED: Increased from 10 to prevent permanent offline state
+  // Device will keep trying to reconnect indefinitely with exponential backoff
+  private readonly maxReconnectAttempts = 1000;
+  private readonly maxReconnectDelayMs = 300000; // Max 5 minutes between retries
   private reconnectTimeout: number | null = null;
   private pingInterval: number | null = null;
   private readonly pingIntervalMs = 30000; // 30 seconds
@@ -390,20 +393,26 @@ class SharedWebSocketClass {
 
   /**
    * Schedule reconnection with exponential backoff
+   * FIXED: Uses maxReconnectDelayMs (5 min) for cap instead of 32s
+   * Device will keep trying for much longer before giving up
    */
   private scheduleReconnect(): void {
     if (this.reconnectAttempts >= this.maxReconnectAttempts) {
       SharedLogger.error(`[WebSocket] Max reconnect attempts (${this.maxReconnectAttempts}) reached`);
-      return;
+      // Reset attempts and try again after max delay
+      // This ensures device NEVER permanently stops trying
+      this.reconnectAttempts = 0;
+      SharedLogger.log('[WebSocket] Resetting reconnect counter, will try again...');
     }
 
     this.reconnectAttempts++;
     this.state = WSState.RECONNECTING;
 
-    // Exponential backoff: 1s, 2s, 4s, 8s, 16s, 32s, ...
-    const delay = Math.min(1000 * Math.pow(2, this.reconnectAttempts - 1), 32000);
+    // Exponential backoff: 1s, 2s, 4s, 8s... up to maxReconnectDelayMs (5 min)
+    // This provides better long-term recovery for unstable networks
+    const delay = Math.min(1000 * Math.pow(2, this.reconnectAttempts - 1), this.maxReconnectDelayMs);
 
-    SharedLogger.log(`[WebSocket] Reconnecting in ${delay / 1000}s (attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts})`);
+    SharedLogger.log(`[WebSocket] Reconnecting in ${delay / 1000}s (attempt ${this.reconnectAttempts})`);
 
     this.reconnectTimeout = window.setTimeout(() => {
       this.connect();

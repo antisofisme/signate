@@ -5,7 +5,7 @@
  * Content management table with upload, filter, and preview
  */
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback, memo } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Trash2,
@@ -181,15 +181,11 @@ export function ContentTable({ showUploadModal = false, onCloseUploadModal, show
     }
   };
 
-  const handleFilterChange = (key: keyof ContentFilters, value: any) => {
-    console.log('[ContentTable] Filter change:', key, '=', value);
-    setFilters((prev) => {
-      const newFilters = { ...prev, [key]: value };
-      console.log('[ContentTable] New filters:', newFilters);
-      return newFilters;
-    });
+  // PERFORMANCE: useCallback to prevent unnecessary re-renders
+  const handleFilterChange = useCallback((key: keyof ContentFilters, value: any) => {
+    setFilters((prev) => ({ ...prev, [key]: value }));
     pagination.resetPage();
-  };
+  }, [pagination]);
 
   const handleDelete = async () => {
     if (contentToDelete) {

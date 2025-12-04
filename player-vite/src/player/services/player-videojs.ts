@@ -874,6 +874,24 @@ class PlayerVideoJSClass implements IPlayerVideoJS {
   }
 
   /**
+   * Remove all event listeners from player
+   * IMPORTANT: Must be called before dispose() to prevent memory leaks
+   */
+  private removeEventListeners(): void {
+    if (!this.player) return;
+
+    // Remove all event listeners to prevent memory leaks
+    this.player.off('ended');
+    this.player.off('error');
+    this.player.off('playing');
+    this.player.off('pause');
+    this.player.off('waiting');
+    this.player.off('canplaythrough');
+
+    SharedLogger.log('[PlayerVideoJS] Event listeners removed');
+  }
+
+  /**
    * Destroy player and cleanup
    */
   destroy(): void {
@@ -883,6 +901,8 @@ class PlayerVideoJSClass implements IPlayerVideoJS {
     this.revokeAllBlobURLs();
 
     if (this.player) {
+      // CRITICAL: Remove event listeners BEFORE dispose to prevent memory leaks
+      this.removeEventListeners();
       this.player.dispose(); // Video.js cleanup method
       this.player = null;
     }

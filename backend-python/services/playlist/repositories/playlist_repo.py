@@ -5,7 +5,8 @@ Database access for playlist management with organization isolation
 
 from typing import List, Optional, Dict, Any, Tuple
 from sqlalchemy.orm import Session, joinedload, selectinload
-from sqlalchemy import func, and_, asc, desc
+from sqlalchemy import func, and_, asc, desc, literal
+from sqlalchemy.sql.functions import coalesce
 
 from ..domain.playlist import Playlist, PlaylistContent, PlaylistAssignment
 from ..domain.interfaces import IPlaylistRepository
@@ -729,7 +730,13 @@ class PlaylistRepository(IPlaylistRepository):
         playlist_id: int,
         organization_id: int
     ) -> Dict[str, int]:
-        """Calculate content count, total duration, and device count"""
+        """
+        Calculate content count, total duration, and device count.
+
+        PERFORMANCE FIX: Uses single JOIN query instead of N+1 queries.
+        Previously: 1 + N queries (N = items without explicit duration)
+        Now: 3 optimized queries total
+        """
         # Count content items
         content_count = self.db.query(func.count(PlaylistContentModel.id)).filter(
             PlaylistContentModel.playlist_id == playlist_id
@@ -741,26 +748,24 @@ class PlaylistRepository(IPlaylistRepository):
             PlaylistAssignmentModel.device_id.isnot(None)
         ).scalar() or 0
 
-        # Calculate total duration
-        # Note: Cannot eager load content - relationship doesn't exist in PlaylistContentModel
-        # This will cause N+1 queries for items without duration, but that's acceptable
-        # because most items have explicit durations set
-        content_items = self.db.query(PlaylistContentModel).filter(
+        # Calculate total duration with single JOIN query (FIXES N+1)
+        # Uses COALESCE to prefer PlaylistContentModel.duration, fallback to ContentModel.duration
+        duration_result = self.db.query(
+            func.sum(
+                coalesce(
+                    PlaylistContentModel.duration,  # Prefer explicit duration
+                    ContentModel.duration,          # Fallback to content default
+                    literal(10)                     # Ultimate fallback: 10 seconds
+                )
+            )
+        ).outerjoin(
+            ContentModel,
+            ContentModel.id == PlaylistContentModel.content_id
+        ).filter(
             PlaylistContentModel.playlist_id == playlist_id
-        ).all()
+        ).scalar()
 
-        total_duration = 0
-        for item in content_items:
-            if item.duration:
-                # Use explicit duration (most common case - no extra query)
-                total_duration += item.duration
-            else:
-                # Fallback: fetch content for default duration (rare case - N+1 acceptable)
-                content = self.db.query(ContentModel).filter(
-                    ContentModel.id == item.content_id
-                ).first()
-                if content and content.duration:
-                    total_duration += content.duration
+        total_duration = int(duration_result or 0)
 
         return {
             "content_count": content_count,
