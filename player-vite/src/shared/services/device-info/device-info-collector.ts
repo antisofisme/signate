@@ -15,7 +15,9 @@ import { ServiceRegistry, getPlayerVideoJS, getPlayerMediaCache, getPlayerPlayli
 import '@shared/websocket/shared-websocket';
 import { SharedDeviceState } from '@shared/device';
 import { config } from '@shared/config';
+import { SharedAPIClient } from '@shared/api';
 import { getOrCreateDeviceUUID } from '@shared/utils/device-fingerprint';
+import { playerScheduleManager } from '@player/services/player-schedule-manager';
 import {
   getNetworkInfo,
   getDownloadSpeed
@@ -42,7 +44,8 @@ import type {
   BrowserInfo,
   ScreenInfo,
   BackgroundAudioInfo,
-  MemoryInfo
+  MemoryInfo,
+  ScheduleInfo
 } from './types';
 
 /**
@@ -233,7 +236,6 @@ class DeviceInfoCollectorClass {
    */
   private async collectStorageInfo(): Promise<StorageInfo> {
     const PlayerMediaCache = getPlayerMediaCache();
-    const PlayerPlaylistSync = getPlayerPlaylistSync();
     const PlayerHLSCache = getPlayerHLSCache();
 
     // Get storage quota - try browser API first, then calculate from actual cache
@@ -389,113 +391,129 @@ class DeviceInfoCollectorClass {
       quotaMB: (totalQuota / (1024 * 1024)).toFixed(2)
     });
 
-    // Get assigned content from current playlist with detailed cache info
-    if (PlayerPlaylistSync) {
-      const playlist = PlayerPlaylistSync.getCurrentPlaylist();
-      console.warn('[DeviceInfoCollector] Playlist data:', {
-        hasPlaylist: !!playlist,
-        itemCount: playlist?.items?.length || 0,
-        sampleItem: playlist?.items?.[0] ? {
-          content_id: playlist.items[0].content_id,
-          content: {
-            name: playlist.items[0].content?.name,
-            title: playlist.items[0].content?.title,
-            file_size: playlist.items[0].content?.file_size,
-            metadata: playlist.items[0].content?.metadata,
-          }
-        } : null
-      });
-      if (playlist && playlist.items) {
-        assignedContent = await Promise.all(
-          playlist.items.map(async (item: any) => {
-            const url = item.content.file_path || item.content.url || '';
-            const contentType = item.content.type || '';
-            let cached = false;
-            let cacheStatus: 'cached' | 'downloading' | 'not_cached' | 'failed' = 'not_cached';
-            let cachedSize = 0;
+    // ========================================================================
+    // FETCH ALL ASSIGNED CONTENT (WITHOUT OVERRIDE FILTER)
+    // This ensures Device Info shows ALL content from direct/tag/playlist
+    // regardless of whether override mode is active (override only affects playback)
+    // ========================================================================
+    const deviceId = SharedDeviceState.getDeviceId();
+    if (deviceId) {
+      try {
+        // Make API call WITHOUT schedule_mode=override to get ALL content
+        const url = `${config.api.baseURL}/api/v1/client/playlist?device_id=${deviceId}`;
+        console.warn('[DeviceInfoCollector] Fetching ALL content (no override filter):', url);
 
-            // Check MediaCache for direct files (images, non-HLS videos, audio)
-            if (PlayerMediaCache && url) {
-              cached = await PlayerMediaCache.isCached(url);
-              if (cached) {
-                // Try to get actual cached size
+        const response = await SharedAPIClient.get<any>(url);
+        const playlist = response?.playlist;
+
+        console.warn('[DeviceInfoCollector] Full playlist data:', {
+          hasPlaylist: !!playlist,
+          itemCount: playlist?.items?.length || 0,
+          sampleItem: playlist?.items?.[0] ? {
+            content_id: playlist.items[0].content_id,
+            content: {
+              name: playlist.items[0].content?.name,
+              title: playlist.items[0].content?.title,
+              file_size: playlist.items[0].content?.file_size,
+              metadata: playlist.items[0].content?.metadata,
+            }
+          } : null
+        });
+
+        if (playlist && playlist.items) {
+          assignedContent = await Promise.all(
+            playlist.items.map(async (item: any) => {
+              const url = item.content.file_path || item.content.url || '';
+              const contentType = item.content.type || '';
+              let cached = false;
+              let cacheStatus: 'cached' | 'downloading' | 'not_cached' | 'failed' = 'not_cached';
+              let cachedSize = 0;
+
+              // Check MediaCache for direct files (images, non-HLS videos, audio)
+              if (PlayerMediaCache && url) {
+                cached = await PlayerMediaCache.isCached(url);
+                if (cached) {
+                  // Try to get actual cached size
+                  try {
+                    const cachedMedia = await (PlayerMediaCache as any).getCachedMedia(url);
+                    if (cachedMedia) {
+                      cachedSize = cachedMedia.size || 0;
+                    }
+                  } catch (e) {
+                    // Ignore error, use file_size from content
+                  }
+                }
+              }
+
+              // Also check HLS cache for video content (HLS is cached separately)
+              if (!cached && PlayerHLSCache && contentType === 'video') {
                 try {
-                  const cachedMedia = await (PlayerMediaCache as any).getCachedMedia(url);
-                  if (cachedMedia) {
-                    cachedSize = cachedMedia.size || 0;
+                  cached = await PlayerHLSCache.isHLSCached(item.content_id);
+                  if (cached) {
+                    // Get HLS cache size for this content
+                    const hlsStats = await (PlayerHLSCache as any).getContentCacheStats?.(item.content_id);
+                    if (hlsStats) {
+                      cachedSize = hlsStats.totalSize || 0;
+                    }
                   }
                 } catch (e) {
-                  // Ignore error, use file_size from content
+                  // Ignore error, HLS cache check failed
                 }
               }
-            }
 
-            // Also check HLS cache for video content (HLS is cached separately)
-            if (!cached && PlayerHLSCache && contentType === 'video') {
-              try {
-                cached = await PlayerHLSCache.isHLSCached(item.content_id);
-                if (cached) {
-                  // Get HLS cache size for this content
-                  const hlsStats = await (PlayerHLSCache as any).getContentCacheStats?.(item.content_id);
-                  if (hlsStats) {
-                    cachedSize = hlsStats.totalSize || 0;
-                  }
-                }
-              } catch (e) {
-                // Ignore error, HLS cache check failed
+              cacheStatus = cached ? 'cached' : 'not_cached';
+
+              // Get file_size from metadata (where backend puts it) or directly
+              const fileSize = item.content.metadata?.file_size
+                || item.content.file_size
+                || item.file_size
+                || 0;
+
+              // Parse source field from backend (e.g., "direct", "tag:27", "playlist:28")
+              const rawSource = item.source || 'unknown';
+              let source: 'direct' | 'tag' | 'playlist' | 'unknown' = 'unknown';
+              let sourceId: number | undefined;
+
+              if (rawSource === 'direct') {
+                source = 'direct';
+              } else if (rawSource.startsWith('tag:')) {
+                source = 'tag';
+                sourceId = parseInt(rawSource.split(':')[1], 10);
+              } else if (rawSource.startsWith('playlist:')) {
+                source = 'playlist';
+                sourceId = parseInt(rawSource.split(':')[1], 10);
+              } else if (rawSource.startsWith('legacy-playlist:')) {
+                source = 'playlist';
+                sourceId = parseInt(rawSource.split(':')[1], 10);
               }
-            }
 
-            cacheStatus = cached ? 'cached' : 'not_cached';
+              console.warn('[DeviceInfoCollector] Content item:', {
+                id: item.content_id,
+                name: item.content.name || item.content.title,
+                cached,
+                cachedSize,
+                fileSize,
+                source,
+                sourceId,
+              });
 
-            // Get file_size from metadata (where backend puts it) or directly
-            const fileSize = item.content.metadata?.file_size
-              || item.content.file_size
-              || item.file_size
-              || 0;
-
-            // Parse source field from backend (e.g., "direct", "tag:27", "playlist:28")
-            const rawSource = item.source || 'unknown';
-            let source: 'direct' | 'tag' | 'playlist' | 'unknown' = 'unknown';
-            let sourceId: number | undefined;
-
-            if (rawSource === 'direct') {
-              source = 'direct';
-            } else if (rawSource.startsWith('tag:')) {
-              source = 'tag';
-              sourceId = parseInt(rawSource.split(':')[1], 10);
-            } else if (rawSource.startsWith('playlist:')) {
-              source = 'playlist';
-              sourceId = parseInt(rawSource.split(':')[1], 10);
-            } else if (rawSource.startsWith('legacy-playlist:')) {
-              source = 'playlist';
-              sourceId = parseInt(rawSource.split(':')[1], 10);
-            }
-
-            console.warn('[DeviceInfoCollector] Content item:', {
-              id: item.content_id,
-              name: item.content.name || item.content.title,
-              cached,
-              cachedSize,
-              fileSize,
-              source,
-              sourceId,
-            });
-
-            return {
-              id: item.content_id,
-              name: item.content.name || item.content.title || 'Unknown',
-              type: contentType,
-              size: fileSize,  // Expected size from server (for reference)
-              cachedSize: cachedSize,  // REAL cache size from IndexedDB only (0 if not found)
-              cached,
-              cacheStatus,
-              thumbnailUrl: item.content.thumbnail_url || item.content.thumbnail_path || null,
-              source,
-              sourceId,
-            };
-          })
-        );
+              return {
+                id: item.content_id,
+                name: item.content.name || item.content.title || 'Unknown',
+                type: contentType,
+                size: fileSize,  // Expected size from server (for reference)
+                cachedSize: cachedSize,  // REAL cache size from IndexedDB only (0 if not found)
+                cached,
+                cacheStatus,
+                thumbnailUrl: item.content.thumbnail_url || item.content.thumbnail_path || null,
+                source,
+                sourceId,
+              };
+            })
+          );
+        }
+      } catch (error) {
+        console.error('[DeviceInfoCollector] Failed to fetch all content:', error);
       }
     }
 
@@ -503,6 +521,31 @@ class DeviceInfoCollectorClass {
     const totalAssigned = assignedContent.length;
     const totalCached = assignedContent.filter(c => c.cached).length;
     const cacheHitRate = totalAssigned > 0 ? Math.round((totalCached / totalAssigned) * 100) : 0;
+
+    // ========================================================================
+    // GET ACTIVE SCHEDULE INFO
+    // This shows the user when override mode is active and which playlist
+    // ========================================================================
+    let activeSchedule: ScheduleInfo | null = null;
+    const currentSchedule = playerScheduleManager.getCurrentSchedule();
+    if (currentSchedule) {
+      // Get playlist name from the current playback playlist (if available)
+      const PlayerPlaylistSync = getPlayerPlaylistSync();
+      const playbackPlaylist = PlayerPlaylistSync?.getCurrentPlaylist();
+      const playlistName = playbackPlaylist?.name || null;
+
+      activeSchedule = {
+        id: currentSchedule.id,
+        name: currentSchedule.name,
+        playlistId: currentSchedule.playlist_id,
+        playlistName,
+        mode: currentSchedule.mode || 'rotate',
+        startTime: currentSchedule.start_time,
+        endTime: currentSchedule.end_time,
+      };
+
+      console.warn('[DeviceInfoCollector] Active schedule:', activeSchedule);
+    }
 
     return {
       total: {
@@ -515,6 +558,7 @@ class DeviceInfoCollectorClass {
       cachedCount,
       cacheHitRate,
       recentCacheActivity,
+      activeSchedule,
     };
   }
 

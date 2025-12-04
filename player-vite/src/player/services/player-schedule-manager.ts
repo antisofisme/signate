@@ -7,6 +7,7 @@ import { SharedAPIClient } from '@shared/api';
 import { SharedLogger } from '@shared/logger';
 import { SharedEventBus } from '@shared/events/shared-event-bus';
 import { SharedDeviceState } from '@shared/device';
+import { config } from '@shared/config';
 
 export interface Schedule {
   id: number;
@@ -25,8 +26,8 @@ export interface Schedule {
     month?: number;
   };
   exceptions?: string[]; // ISO date strings
-  priority: number;
   is_active: boolean;
+  mode: 'override' | 'rotate';  // Playback mode: override (only playlist), rotate (merge all)
   created_at: string;
   updated_at: string;
 }
@@ -35,7 +36,6 @@ export interface ActiveSchedule {
   schedule: Schedule | null;
   playlist_id: number | null;
   schedule_name: string | null;
-  priority: number | null;
   is_found: boolean;
 }
 
@@ -79,24 +79,76 @@ export class PlayerScheduleManager {
 
   /**
    * Sync schedules from backend
+   * FIX #2: Added retry logic for failed syncs
+   * @param retryCount - Current retry attempt (0-3)
    */
-  async syncSchedules(): Promise<void> {
+  async syncSchedules(retryCount = 0): Promise<void> {
     try {
-      if (!this.organizationId) return;
+      // FIX #2: Try to get organizationId if not available
+      if (!this.organizationId) {
+        const orgId = SharedDeviceState.getOrganizationId();
+        if (orgId) {
+          this.organizationId = parseInt(orgId, 10);
+          SharedLogger.info(`[PlayerScheduleManager] Got organization ID from device state: ${this.organizationId}`);
+        } else if (retryCount < 3) {
+          SharedLogger.warn(`[PlayerScheduleManager] No organization ID, retry ${retryCount + 1}/3 in 1s...`);
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          return this.syncSchedules(retryCount + 1);
+        } else {
+          SharedLogger.error('[PlayerScheduleManager] ❌ No organization ID after 3 retries');
+          // Still emit event with no schedule to ensure PlaylistSync gets notified
+          this.checkActiveSchedule();
+          return;
+        }
+      }
 
-      const response = await SharedAPIClient.get<{ schedules: Schedule[] }>(
-        `/api/v1/client/schedules?organization_id=${this.organizationId}&is_active=true`
-      );
+      const deviceId = SharedDeviceState.getDeviceId();
+      if (!deviceId) {
+        SharedLogger.warn('[PlayerScheduleManager] No device ID, skipping schedule sync');
+        this.checkActiveSchedule();
+        return;
+      }
+
+      // FIX: Use full URL with base URL (was missing before, causing fetch to fail)
+      const url = `${config.api.baseURL}/api/v1/client/schedules?organization_id=${this.organizationId}&device_id=${deviceId}&is_active=true`;
+
+      SharedLogger.info(`[PlayerScheduleManager] 📡 Fetching schedules: ${url}`);
+
+      const response = await SharedAPIClient.get<{ schedules: Schedule[] }>(url);
 
       if (response) {
         this.schedules = response.schedules || [];
-        SharedLogger.info(`[PlayerScheduleManager] Synced ${this.schedules.length} schedules`);
+        SharedLogger.info(`[PlayerScheduleManager] ✅ Synced ${this.schedules.length} schedules`);
+
+        // Debug: Log schedule details including mode
+        this.schedules.forEach((s) => {
+          SharedLogger.info(`[PlayerScheduleManager] 📅 Schedule: ${s.name} (id=${s.id}, playlist=${s.playlist_id}, mode=${s.mode})`);
+        });
 
         // Check for active schedule immediately after sync
         this.checkActiveSchedule();
+      } else {
+        SharedLogger.warn('[PlayerScheduleManager] ⚠️ Empty response from schedule API');
+        this.checkActiveSchedule();
       }
-    } catch (error) {
-      SharedLogger.error('[PlayerScheduleManager] Failed to sync schedules:', error);
+    } catch (error: any) {
+      SharedLogger.error('[PlayerScheduleManager] ❌ Failed to sync schedules:', {
+        error: error?.message || error,
+        organizationId: this.organizationId,
+        retryCount,
+        stack: error?.stack,
+      });
+
+      // FIX #2: Retry on failure
+      if (retryCount < 3) {
+        SharedLogger.warn(`[PlayerScheduleManager] Retrying schedule sync ${retryCount + 1}/3 in 2s...`);
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        return this.syncSchedules(retryCount + 1);
+      }
+
+      // After all retries failed, still emit event to ensure PlaylistSync is notified
+      SharedLogger.error('[PlayerScheduleManager] ❌ Schedule sync failed after 3 retries');
+      this.checkActiveSchedule();
     }
   }
 
@@ -135,50 +187,74 @@ export class PlayerScheduleManager {
     
     this.lastCheck = now;
     
-    // Find active schedule with highest priority
+    // Find active schedule
+    // NOTE: Priority feature removed - now using playback mode (override/rotate)
+    // If multiple schedules are active, override mode takes precedence, then newest schedule
     let activeSchedule: Schedule | null = null;
-    let highestPriority = -1;
-    
+
+    SharedLogger.info(`[PlayerScheduleManager] 🕐 Current: date=${currentDate}, time=${currentTime}, schedules=${this.schedules.length}`);
+
     for (const schedule of this.schedules) {
+      SharedLogger.debug(`[PlayerScheduleManager] 📋 Checking: "${schedule.name}" (${schedule.start_time}-${schedule.end_time}, mode=${schedule.mode})`);
+
       if (!schedule.is_active) continue;
-      
+
       // Check date range
       if (currentDate < schedule.start_date) continue;
       if (schedule.end_date && currentDate > schedule.end_date) continue;
-      
+
       // Check time range
       if (currentTime < schedule.start_time || currentTime > schedule.end_time) continue;
-      
+
       // Check if date is in exceptions
       if (schedule.exceptions?.includes(currentDate)) continue;
-      
+
       // Check recurrence pattern
       if (!this.isScheduleActiveOnDate(schedule, now)) continue;
-      
-      // Check priority
-      if (schedule.priority > highestPriority) {
+
+      // Schedule is active! Determine if it should be the activeSchedule
+      SharedLogger.info(`[PlayerScheduleManager] ✅ Schedule "${schedule.name}" matches current time (mode=${schedule.mode})`);
+
+      // Selection logic (priority removed, now based on mode):
+      // 1. Override mode takes precedence over rotate
+      // 2. If same mode, prefer newer schedule (higher id)
+      if (!activeSchedule) {
         activeSchedule = schedule;
-        highestPriority = schedule.priority;
+      } else if (schedule.mode === 'override' && activeSchedule.mode !== 'override') {
+        // Override mode wins
+        activeSchedule = schedule;
+      } else if (schedule.mode === activeSchedule.mode && schedule.id > activeSchedule.id) {
+        // Same mode, prefer newer schedule
+        activeSchedule = schedule;
       }
     }
     
-    // If active schedule changed, emit event
-    if (activeSchedule?.id !== this.currentSchedule?.id) {
-      this.currentSchedule = activeSchedule;
-      
-      if (activeSchedule) {
-        SharedLogger.info(`[PlayerScheduleManager] Active schedule: ${activeSchedule.name} (playlist: ${activeSchedule.playlist_id})`);
-        SharedEventBus.emit('schedule:changed', {
-          schedule: activeSchedule,
-          playlist_id: activeSchedule.playlist_id,
-        });
-      } else {
-        SharedLogger.info('[PlayerScheduleManager] No active schedule');
-        SharedEventBus.emit('schedule:changed', {
-          schedule: null,
-          playlist_id: null,
-        });
-      }
+    // Check if schedule changed (for logging purposes)
+    const scheduleChanged = activeSchedule?.id !== this.currentSchedule?.id;
+    const modeChanged = activeSchedule?.mode !== this.currentSchedule?.mode;
+
+    // Debug logging for schedule detection
+    SharedLogger.info(`[PlayerScheduleManager] Check result: activeSchedule=${activeSchedule?.id || 'none'}, currentSchedule=${this.currentSchedule?.id || 'none'}, scheduleChanged=${scheduleChanged}, modeChanged=${modeChanged}`);
+
+    // FIX #1: ALWAYS update currentSchedule and emit event
+    // This ensures PlaylistSync receives schedule info even on first initialization
+    // Previously, event was only emitted on CHANGE, causing race condition on boot
+    this.currentSchedule = activeSchedule;
+
+    if (activeSchedule) {
+      SharedLogger.info(`[PlayerScheduleManager] 🎯 Active schedule: ${activeSchedule.name} (id=${activeSchedule.id}, playlist=${activeSchedule.playlist_id}, mode=${activeSchedule.mode})`);
+      SharedEventBus.emit('schedule:changed', {
+        schedule: activeSchedule,
+        playlist_id: activeSchedule.playlist_id,
+        mode: activeSchedule.mode || 'rotate',  // Include playback mode
+      });
+    } else {
+      SharedLogger.info('[PlayerScheduleManager] No active schedule');
+      SharedEventBus.emit('schedule:changed', {
+        schedule: null,
+        playlist_id: null,
+        mode: 'rotate',  // Default to rotate when no schedule
+      });
     }
   }
 
@@ -234,29 +310,27 @@ export class PlayerScheduleManager {
         schedule: null,
         playlist_id: null,
         schedule_name: null,
-        priority: null,
         is_found: false,
       };
     }
-    
+
     try {
       const now = new Date();
       const response = await SharedAPIClient.get<ActiveSchedule>(
         `/api/v1/schedules/active?organization_id=${this.organizationId}&date=${this.formatDate(now)}&time=${this.formatTime(now)}`
       );
-      
+
       if (response) {
         return response;
       }
     } catch (error) {
       SharedLogger.error('[PlayerScheduleManager] Failed to get active schedule:', error);
     }
-    
+
     return {
       schedule: null,
       playlist_id: null,
       schedule_name: null,
-      priority: null,
       is_found: false,
     };
   }

@@ -97,6 +97,17 @@ export interface StorageInfo {
   cachedCount: number;
   cacheHitRate: number; // 0-100
   recentCacheActivity: CacheActivity[];
+  activeSchedule: ScheduleInfo | null; // Active schedule info (if any)
+}
+
+export interface ScheduleInfo {
+  id: number;
+  name: string;
+  playlistId: number;
+  playlistName: string | null;
+  mode: 'override' | 'rotate';
+  startTime: string;
+  endTime: string;
 }
 
 export interface ContentInfo {

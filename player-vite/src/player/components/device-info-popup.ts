@@ -1445,6 +1445,38 @@ class DeviceInfoPopupClass {
       };
 
       let html = '';
+
+      // ========================================================================
+      // ACTIVE SCHEDULE INFO - Show when override mode is active
+      // ========================================================================
+      if (storage.activeSchedule) {
+        const schedule = storage.activeSchedule;
+        const isOverride = schedule.mode === 'override';
+        const scheduleIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/><path d="M8 14h.01"/><path d="M12 14h.01"/><path d="M16 14h.01"/><path d="M8 18h.01"/><path d="M12 18h.01"/></svg>`;
+
+        const modeColor = isOverride ? '#f59e0b' : '#10b981';
+        const modeText = isOverride ? 'OVERRIDE' : 'ROTATE';
+        const modeDesc = isOverride
+          ? 'Only playing scheduled playlist content'
+          : 'Playing all content (merged)';
+
+        html += `
+          <div style="margin-bottom: 0.75rem; padding: 0.5rem; background: linear-gradient(135deg, rgba(245,158,11,0.15) 0%, rgba(245,158,11,0.05) 100%); border: 1px solid rgba(245,158,11,0.3); border-radius: 8px;">
+            <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.35rem;">
+              <span style="color: ${modeColor};">${scheduleIcon}</span>
+              <span style="color: white; font-weight: 600; font-size: 0.85rem;">Active Schedule</span>
+              <span style="background: ${modeColor}; color: #000; padding: 0.1rem 0.4rem; border-radius: 4px; font-size: 0.65rem; font-weight: 700;">${modeText}</span>
+            </div>
+            <div style="color: rgba(255,255,255,0.9); font-size: 0.8rem; margin-bottom: 0.25rem;">
+              <strong>${schedule.name}</strong>${schedule.playlistName ? ` → ${schedule.playlistName}` : ''}
+            </div>
+            <div style="color: rgba(255,255,255,0.5); font-size: 0.7rem;">
+              ⏰ ${schedule.startTime} - ${schedule.endTime} | ${modeDesc}
+            </div>
+          </div>
+        `;
+      }
+
       html += buildSection('Direct', this.getSectionIcon('direct'), directContent);
       html += buildSection('Tag', this.getSectionIcon('tag'), tagContent);
       html += buildSection('Playlist', this.getSectionIcon('playlist'), playlistContent);

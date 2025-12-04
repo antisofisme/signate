@@ -31,12 +31,14 @@ class PlayerPlaylistSyncClass implements IPlaylistSync {
   private currentPlaylist: Playlist | null = null; // Store current playlist
   private _isRunning = false;
   private scheduledPlaylistId: number | null = null;
+  private activeScheduleId: number | null = null;  // Track active schedule ID
+  private activeScheduleMode: 'override' | 'rotate' = 'rotate';  // Track schedule mode
   private useScheduling = true; // Feature flag for scheduling
 
   /**
    * Start periodic playlist sync
    */
-  start(): void {
+  async start(): Promise<void> {
     if (this._isRunning) {
       SharedLogger.warn('[PlayerPlaylistSync] Already running');
       return;
@@ -52,13 +54,37 @@ class PlayerPlaylistSyncClass implements IPlaylistSync {
     this._isRunning = true;
 
     // Initialize schedule manager if scheduling is enabled
+    // IMPORTANT: Wait for schedule manager to initialize BEFORE first playlist sync
+    // This ensures we know the active schedule mode (override vs rotate)
     if (this.useScheduling) {
-      playerScheduleManager.initialize();
+      SharedLogger.log('[PlayerPlaylistSync] ⏳ Waiting for schedule manager to initialize...');
+      await playerScheduleManager.initialize();
       this.setupScheduleListeners();
+      SharedLogger.log('[PlayerPlaylistSync] ✅ Schedule manager initialized');
+
+      // FIX #4: Force initial schedule state from schedule manager
+      // This ensures PlaylistSync has the correct mode even if event was emitted before listener setup
+      const currentSchedule = playerScheduleManager.getCurrentSchedule();
+      if (currentSchedule) {
+        this.activeScheduleId = currentSchedule.id;
+        this.activeScheduleMode = currentSchedule.mode || 'rotate';
+        this.scheduledPlaylistId = currentSchedule.playlist_id;
+        SharedLogger.log('[PlayerPlaylistSync] 🎯 Force-set initial schedule state:', {
+          schedule_id: this.activeScheduleId,
+          mode: this.activeScheduleMode,
+          playlist_id: this.scheduledPlaylistId,
+        });
+      } else {
+        SharedLogger.log('[PlayerPlaylistSync] No active schedule at start, using rotate mode');
+        this.activeScheduleMode = 'rotate';
+      }
     }
 
-    // Sync immediately
-    void this.syncNow();
+    // FIX #3: AWAIT first sync instead of fire-and-forget
+    // Previously: void this.syncNow() - could run before schedule info available
+    SharedLogger.log('[PlayerPlaylistSync] 🔄 Running first playlist sync...');
+    await this.syncNow();
+    SharedLogger.log('[PlayerPlaylistSync] ✅ First playlist sync complete');
 
     // Then sync periodically
     this.syncInterval = window.setInterval(() => {
@@ -242,10 +268,23 @@ class PlayerPlaylistSyncClass implements IPlaylistSync {
   /**
    * Clean up cache for content that was removed from playlist
    * Only removes content that's no longer in any playlist
+   *
+   * IMPORTANT: Skip cleanup when in override mode!
+   * Override mode only controls what's PLAYED, not what's CACHED.
+   * Content from direct/tag assignments should stay cached even when not playing.
    */
   private async cleanupOrphanedCache(oldPlaylist: Playlist | null, newPlaylist: Playlist | null): Promise<void> {
     if (!oldPlaylist?.items || oldPlaylist.items.length === 0) {
       // No old playlist, nothing to clean up
+      return;
+    }
+
+    // ========================================================================
+    // SKIP CLEANUP IN OVERRIDE MODE
+    // Override only affects playback, cache should continue for all content
+    // ========================================================================
+    if (this.activeScheduleMode === 'override') {
+      SharedLogger.log('[PlayerPlaylistSync] ⏭️ Skipping cache cleanup - override mode active (cache continues for all content)');
       return;
     }
 
@@ -338,21 +377,39 @@ class PlayerPlaylistSyncClass implements IPlaylistSync {
   private setupScheduleListeners(): void {
     // Listen for schedule changes
     SharedEventBus.on('schedule:changed', (event: any) => {
-      const { schedule, playlist_id } = event;
-      
+      const { schedule, playlist_id, mode } = event;
+
       SharedLogger.log('[PlayerPlaylistSync] 📅 Schedule changed:', {
         schedule: schedule?.name,
+        schedule_id: schedule?.id,
         playlist_id,
+        mode: mode || 'rotate',
         previous_playlist_id: this.scheduledPlaylistId,
+        previous_mode: this.activeScheduleMode,
       });
 
-      // If scheduled playlist changed, force sync
-      if (playlist_id !== this.scheduledPlaylistId) {
+      // Track schedule info for override mode
+      const newScheduleId = schedule?.id || null;
+      const newMode = mode || 'rotate';
+
+      // If scheduled playlist OR mode changed, force sync
+      const playlistChanged = playlist_id !== this.scheduledPlaylistId;
+      const modeChanged = newMode !== this.activeScheduleMode;
+
+      if (playlistChanged || modeChanged) {
         this.scheduledPlaylistId = playlist_id;
-        
+        this.activeScheduleId = newScheduleId;
+        this.activeScheduleMode = newMode;
+
+        SharedLogger.log('[PlayerPlaylistSync] 🔄 Schedule info updated:', {
+          schedule_id: this.activeScheduleId,
+          playlist_id: this.scheduledPlaylistId,
+          mode: this.activeScheduleMode,
+        });
+
         // Clear version to force reload
         this.currentPlaylistVersion = null;
-        
+
         // Sync immediately
         void this.syncNow();
       }
@@ -375,17 +432,40 @@ class PlayerPlaylistSyncClass implements IPlaylistSync {
 
   /**
    * Fetch playlist with schedule support
+   * Includes schedule_id and schedule_mode for override mode
    */
   private async fetchPlaylist(deviceId: string): Promise<PlaylistSyncResponse> {
     const targetPlaylistId = await this.getTargetPlaylistId();
-    
+
     // Build API URL
     let url = `${config.api.baseURL}/api/v1/client/playlist?device_id=${deviceId}`;
-    
+
     // If we have a specific playlist from schedule, request it
     if (targetPlaylistId !== null) {
       url += `&playlist_id=${targetPlaylistId}`;
     }
+
+    // Debug: Log current schedule state before fetch
+    SharedLogger.log('[PlayerPlaylistSync] 📋 Schedule state before fetch:', {
+      activeScheduleMode: this.activeScheduleMode,
+      activeScheduleId: this.activeScheduleId,
+      scheduledPlaylistId: this.scheduledPlaylistId,
+    });
+
+    // Include schedule info for override mode
+    // This tells backend to return ONLY the scheduled playlist content
+    if (this.activeScheduleMode === 'override' && this.activeScheduleId) {
+      url += `&schedule_id=${this.activeScheduleId}`;
+      url += `&schedule_mode=override`;
+      SharedLogger.log('[PlayerPlaylistSync] 🎯 Fetching with OVERRIDE mode:', {
+        schedule_id: this.activeScheduleId,
+        playlist_id: targetPlaylistId,
+      });
+    } else {
+      SharedLogger.log('[PlayerPlaylistSync] 📋 Fetching with ROTATE mode (normal merge)');
+    }
+
+    SharedLogger.log('[PlayerPlaylistSync] 🌐 Final URL:', url);
 
     return await SharedAPIClient.get<PlaylistSyncResponse>(url);
   }
