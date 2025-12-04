@@ -3,7 +3,8 @@ SQLAlchemy Models for Content
 Database representation
 """
 
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, Float, BigInteger, ForeignKey, JSON, Text, Index
+from sqlalchemy import Column, Integer, String, Boolean, DateTime, Float, BigInteger, ForeignKey, Text, Index, Numeric
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.sql import func, text
 from sqlalchemy.orm import relationship
 from shared.database import Base
@@ -23,8 +24,8 @@ class ContentModel(Base):
     content_type = Column(String(20), nullable=False)  # 'image', 'video', 'audio'
 
     # File Storage (Custom System)
-    file_path = Column(String(500), nullable=False)
-    file_url = Column(String(500), nullable=False)
+    file_path = Column(String(1000), nullable=False)
+    file_url = Column(String(1000), nullable=False)
     storage_key = Column(String(255), nullable=False, unique=True, index=True)
     file_hash = Column(String(64), nullable=False, index=True)  # SHA256
 
@@ -34,7 +35,7 @@ class ContentModel(Base):
 
     # File Metadata
     file_size = Column(BigInteger, nullable=False)
-    mime_type = Column(String(100), nullable=False)
+    mime_type = Column(String(200), nullable=False)
     original_filename = Column(String(255), nullable=False)
     file_extension = Column(String(20), nullable=False)
 
@@ -43,13 +44,13 @@ class ContentModel(Base):
     width = Column(Integer, nullable=True)
     height = Column(Integer, nullable=True)
     codec = Column(String(50), nullable=True)
-    fps = Column(Float, nullable=True)
+    fps = Column(Numeric(5, 3), nullable=True)  # Exact precision for frame rates like 23.976
     bitrate = Column(Integer, nullable=True)  # kbps
 
-    # Video/Audio Specific
-    media_duration = Column(Float, nullable=True)  # actual media length
-    video_start_time = Column(Float, default=0.0, nullable=False)
-    video_end_time = Column(Float, nullable=True)
+    # Video/Audio Specific - Using Float which maps to DOUBLE PRECISION in PostgreSQL
+    media_duration = Column(Float, nullable=True)  # Actual media length in seconds
+    video_start_time = Column(Float, default=0.0, nullable=False)  # Start trim point
+    video_end_time = Column(Float, nullable=True)  # End trim point
     audio_codec = Column(String(50), nullable=True)
     audio_bitrate = Column(Integer, nullable=True)
     audio_sample_rate = Column(Integer, nullable=True)
@@ -60,13 +61,13 @@ class ContentModel(Base):
     transcoding_job_id = Column(String(200), nullable=True)
     transcoding_progress = Column(Integer, default=0, nullable=False)  # 0-100%
     transcoding_error = Column(Text, nullable=True)
-    hls_master_playlist_path = Column(String(500), nullable=True)
-    hls_master_playlist_url = Column(String(500), nullable=True)
-    hls_variants = Column(JSON, nullable=True)
+    hls_master_playlist_path = Column(String(1000), nullable=True)
+    hls_master_playlist_url = Column(String(1000), nullable=True)
+    hls_variants = Column(JSONB, nullable=True)  # JSONB for better query performance
 
     # Thumbnail
-    thumbnail_path = Column(String(500), nullable=True)
-    thumbnail_url = Column(String(500), nullable=True)
+    thumbnail_path = Column(String(1000), nullable=True)
+    thumbnail_url = Column(String(1000), nullable=True)
     thumbnail_generated_at = Column(DateTime(timezone=True), nullable=True)
 
     # Upload Status
@@ -122,7 +123,7 @@ class ContentAssignmentModel(Base):
 
     # Assignment properties
     priority = Column(Integer, default=1, nullable=False)
-    schedule = Column(JSON, nullable=True)  # Optional schedule configuration (JSONB)
+    schedule = Column(JSONB, nullable=True)  # Optional schedule configuration (JSONB)
     expires_at = Column(DateTime(timezone=True), nullable=True)
     is_muted = Column(Boolean, default=False, nullable=False)  # Per-content mute control
 

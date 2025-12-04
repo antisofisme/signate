@@ -37,7 +37,7 @@ class DeviceModel(Base):
     viewport_width = Column(Integer, nullable=True)
     viewport_height = Column(Integer, nullable=True)
     device_pixel_ratio = Column(Float, nullable=True)
-    user_agent = Column(String(500), nullable=True)
+    user_agent = Column(Text, nullable=True)  # Modern user agents can exceed 500 chars
     connection_type = Column(String(50), nullable=True)
     connection_speed = Column(Float, nullable=True)
 
@@ -271,7 +271,7 @@ class DeviceLogModel(Base):
     # Optional context
     source = Column(String(500), nullable=True)  # File:line where log originated
     stack_trace = Column(Text, nullable=True)  # Error stack trace
-    user_agent = Column(String(500), nullable=True)  # Browser user agent
+    user_agent = Column(Text, nullable=True)  # Modern user agents can exceed 500 chars  # Browser user agent
     url = Column(String(1000), nullable=True)  # Page URL when logged
 
     # Timestamp

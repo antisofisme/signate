@@ -15,6 +15,18 @@ export type ScheduleMode = 'override' | 'rotate'
 // Schedule status
 export type ScheduleStatus = 'active' | 'inactive' | 'expired' | 'paused'
 
+// Target device info (from junction table)
+export interface TargetDeviceInfo {
+  id: number
+  device_name: string
+}
+
+// Target tag info (from junction table)
+export interface TargetTagInfo {
+  id: number
+  name: string
+}
+
 // Base schedule interface
 export interface Schedule {
   id: number
@@ -41,6 +53,13 @@ export interface Schedule {
   updated_by_id?: number
   last_run?: string
   next_run?: string
+
+  // Targeting fields (Migration 078)
+  device_ids?: number[]         // DEPRECATED: Legacy JSONB array
+  tag_ids?: number[]            // DEPRECATED: Legacy JSONB array
+  target_devices?: TargetDeviceInfo[]  // New: From junction table with device info
+  target_tags?: TargetTagInfo[]        // New: From junction table with tag info
+  applies_to_all?: boolean      // Apply to all devices in organization
 }
 
 // Helper to derive status from is_active and dates
@@ -200,6 +219,12 @@ export interface CreateScheduleRequest {
   mode: ScheduleMode
   exception_dates?: string[]
   is_active?: boolean
+  // Targeting fields (use target_devices/target_tags, device_ids/tag_ids are deprecated)
+  target_devices?: number[]     // Device IDs to target
+  target_tags?: number[]        // Tag IDs to target
+  applies_to_all?: boolean      // Apply to all devices
+  device_ids?: number[]         // DEPRECATED: Use target_devices
+  tag_ids?: number[]            // DEPRECATED: Use target_tags
 }
 
 export interface UpdateScheduleRequest {
@@ -216,6 +241,12 @@ export interface UpdateScheduleRequest {
   status?: ScheduleStatus
   exception_dates?: string[]
   is_active?: boolean
+  // Targeting fields (use target_devices/target_tags, device_ids/tag_ids are deprecated)
+  target_devices?: number[]     // Device IDs to target
+  target_tags?: number[]        // Tag IDs to target
+  applies_to_all?: boolean      // Apply to all devices
+  device_ids?: number[]         // DEPRECATED: Use target_devices
+  tag_ids?: number[]            // DEPRECATED: Use target_tags
 }
 
 // Schedule conflict detection

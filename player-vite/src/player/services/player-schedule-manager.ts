@@ -9,6 +9,18 @@ import { SharedEventBus } from '@shared/events/shared-event-bus';
 import { SharedDeviceState } from '@shared/device';
 import { config } from '@shared/config';
 
+// Target device info from junction table
+export interface TargetDeviceInfo {
+  id: number;
+  device_name: string;
+}
+
+// Target tag info from junction table
+export interface TargetTagInfo {
+  id: number;
+  name: string;
+}
+
 export interface Schedule {
   id: number;
   name: string;
@@ -30,6 +42,13 @@ export interface Schedule {
   mode: 'override' | 'rotate';  // Playback mode: override (only playlist), rotate (merge all)
   created_at: string;
   updated_at: string;
+
+  // Targeting fields (Migration 078)
+  device_ids?: number[];              // DEPRECATED: Legacy JSONB array
+  tag_ids?: number[];                 // DEPRECATED: Legacy JSONB array
+  target_devices?: TargetDeviceInfo[];  // New: From junction table
+  target_tags?: TargetTagInfo[];        // New: From junction table
+  applies_to_all?: boolean;           // Apply to all devices in organization
 }
 
 export interface ActiveSchedule {

@@ -3,7 +3,7 @@ Get Schedules Use Case
 Business logic for retrieving schedules
 """
 
-from typing import Optional
+from typing import Optional, List
 from sqlalchemy.orm import Session
 from fastapi import HTTPException, status
 from datetime import date, time, datetime, timezone
@@ -11,9 +11,71 @@ from datetime import date, time, datetime, timezone
 from services.schedule.dtos import (
     ScheduleResponse,
     ScheduleListResponse,
-    ActiveScheduleResponse
+    ActiveScheduleResponse,
+    TargetDeviceInfo,
+    TargetTagInfo
 )
 from services.schedule.repositories.schedule_repo import ScheduleRepository
+from services.schedule.repositories.models import Schedule
+
+
+def _schedule_to_response(schedule: Schedule) -> ScheduleResponse:
+    """
+    Convert Schedule model to ScheduleResponse with targeting data.
+    Maps junction table relationships to target_devices and target_tags.
+    """
+    # Get target devices from junction table
+    target_devices = None
+    if schedule.device_targets:
+        target_devices = [
+            TargetDeviceInfo(
+                id=dt.device.id,
+                device_name=dt.device.device_name
+            )
+            for dt in schedule.device_targets
+            if dt.device is not None
+        ]
+
+    # Get target tags from junction table
+    target_tags = None
+    if schedule.tag_targets:
+        target_tags = [
+            TargetTagInfo(
+                id=tt.tag.id,
+                name=tt.tag.name
+            )
+            for tt in schedule.tag_targets
+            if tt.tag is not None
+        ]
+
+    return ScheduleResponse(
+        id=schedule.id,
+        organization_id=schedule.organization_id,
+        name=schedule.name,
+        description=schedule.description,
+        playlist_id=schedule.playlist_id,
+        # Legacy fields for backward compatibility
+        device_ids=schedule.device_ids,
+        tag_ids=schedule.tag_ids,
+        # New normalized targeting
+        target_devices=target_devices,
+        target_tags=target_tags,
+        applies_to_all=schedule.applies_to_all or False,
+        start_date=schedule.start_date,
+        end_date=schedule.end_date,
+        start_time=schedule.start_time,
+        end_time=schedule.end_time,
+        recurrence_type=schedule.recurrence_type,
+        recurrence_pattern=schedule.recurrence_pattern,
+        exception_dates=schedule.exceptions,
+        color=schedule.color or "#3B82F6",
+        mode=schedule.mode or "rotate",
+        is_active=schedule.is_active,
+        created_at=schedule.created_at,
+        updated_at=schedule.updated_at,
+        created_by_id=schedule.created_by_id,
+        updated_by_id=schedule.updated_by_id
+    )
 
 
 def get_schedule_by_id_use_case(
@@ -31,7 +93,7 @@ def get_schedule_by_id_use_case(
             detail=f"Schedule with id {schedule_id} not found"
         )
 
-    return ScheduleResponse.model_validate(schedule)
+    return _schedule_to_response(schedule)
 
 
 def get_schedules_use_case(
@@ -56,7 +118,7 @@ def get_schedules_use_case(
     )
 
     return ScheduleListResponse(
-        schedules=[ScheduleResponse.model_validate(s) for s in schedules],
+        schedules=[_schedule_to_response(s) for s in schedules],
         total=total
     )
 
@@ -103,7 +165,7 @@ def get_active_schedule_use_case(
         # Check recurrence pattern
         if is_schedule_active_on_date(schedule, check_date):
             return ActiveScheduleResponse(
-                schedule=ScheduleResponse.model_validate(schedule),
+                schedule=_schedule_to_response(schedule),
                 playlist_id=schedule.playlist_id,
                 schedule_name=schedule.name,
                 color=schedule.color,

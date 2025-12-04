@@ -3,7 +3,8 @@ SQLAlchemy Models
 Database representation
 """
 
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, ForeignKey, JSON, Text, UniqueConstraint
+from sqlalchemy import Column, Integer, String, Boolean, DateTime, ForeignKey, Text, UniqueConstraint
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
 from shared.database import Base
@@ -26,7 +27,7 @@ class OrganizationModel(Base):
     # Quota limits
     max_devices = Column(Integer, default=10, nullable=False)
     max_users = Column(Integer, default=5, nullable=False)
-    settings = Column(JSON, default={}, nullable=True)  # JSONB for additional settings
+    settings = Column(JSONB, default={}, nullable=True)  # JSONB for 3-5x faster queries
 
     # Public portal URL slug (format: organization-name-id)
     portal_slug = Column(String(100), unique=True, index=True, nullable=True)
@@ -85,8 +86,8 @@ class AuditLogModel(Base):
     # What specific resource (nullable if resource deleted)
     resource_id = Column(Integer, nullable=True, index=True)
 
-    # Additional context (JSONB for PostgreSQL, JSON for others)
-    details = Column(JSON, nullable=True)  # e.g., {"old_email": "...", "new_email": "..."}
+    # Additional context (JSONB for 3-5x faster queries)
+    details = Column(JSONB, nullable=True)  # e.g., {"old_email": "...", "new_email": "..."}
 
     # Request metadata
     ip_address = Column(String(45), nullable=True)  # IPv6 max length

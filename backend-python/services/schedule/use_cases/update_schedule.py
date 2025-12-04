@@ -140,3 +140,32 @@ def deactivate_schedule_use_case(
     # Return updated schedule
     schedule = repo.get_schedule_by_id(schedule_id, organization_id)
     return ScheduleResponse.model_validate(schedule)
+
+
+def activate_schedule_use_case(
+    schedule_id: int,
+    organization_id: int,
+    db: Session
+) -> ScheduleResponse:
+    """Activate schedule"""
+    repo = ScheduleRepository(db)
+
+    # Check if schedule exists
+    schedule = repo.get_schedule_by_id(schedule_id, organization_id)
+    if not schedule:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Schedule with id {schedule_id} not found"
+        )
+
+    # Activate
+    success = repo.activate_schedule(schedule_id, organization_id)
+    if not success:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to activate schedule"
+        )
+
+    # Return updated schedule
+    schedule = repo.get_schedule_by_id(schedule_id, organization_id)
+    return ScheduleResponse.model_validate(schedule)

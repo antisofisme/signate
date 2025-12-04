@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session, selectinload
 from sqlalchemy import and_, or_, func
 from datetime import date, time, datetime
 
-from services.schedule.repositories.models import Schedule
+from services.schedule.repositories.models import Schedule, ScheduleDeviceTargeting, ScheduleTagTargeting
 from services.schedule.dtos import CreateScheduleRequest, UpdateScheduleRequest
 
 
@@ -24,18 +24,24 @@ class ScheduleRepository:
         request: CreateScheduleRequest,
         created_by_id: int
     ) -> Schedule:
-        """Create new schedule"""
+        """Create new schedule with junction table targeting"""
         # Convert RecurrencePattern to dict if present
         recurrence_pattern_dict = None
         if request.recurrence_pattern:
             recurrence_pattern_dict = request.recurrence_pattern.model_dump(exclude_none=True)
+
+        # Get device/tag IDs from request (support both old and new field names)
+        device_ids = getattr(request, 'target_devices', None) or getattr(request, 'device_ids', None)
+        tag_ids = getattr(request, 'target_tags', None) or getattr(request, 'tag_ids', None)
 
         schedule = Schedule(
             organization_id=organization_id,
             name=request.name,
             description=request.description,
             playlist_id=request.playlist_id,
-            device_ids=request.device_ids,  # Target devices
+            device_ids=device_ids,  # LEGACY: Keep for backward compatibility
+            tag_ids=tag_ids,  # LEGACY: Keep for backward compatibility
+            applies_to_all=getattr(request, 'applies_to_all', False),
             start_date=request.start_date,
             end_date=request.end_date,
             start_time=request.start_time,
@@ -50,6 +56,26 @@ class ScheduleRepository:
         )
 
         self.db.add(schedule)
+        self.db.flush()  # Get schedule.id without committing
+
+        # Create junction table entries for device targeting (new normalized approach)
+        if device_ids:
+            for device_id in device_ids:
+                device_target = ScheduleDeviceTargeting(
+                    schedule_id=schedule.id,
+                    device_id=device_id
+                )
+                self.db.add(device_target)
+
+        # Create junction table entries for tag targeting (new normalized approach)
+        if tag_ids:
+            for tag_id in tag_ids:
+                tag_target = ScheduleTagTargeting(
+                    schedule_id=schedule.id,
+                    tag_id=tag_id
+                )
+                self.db.add(tag_target)
+
         self.db.commit()
         self.db.refresh(schedule)
         return schedule
@@ -61,7 +87,9 @@ class ScheduleRepository:
     ) -> Optional[Schedule]:
         """Get schedule by ID (excludes soft-deleted)"""
         return self.db.query(Schedule).options(
-            selectinload(Schedule.playlist)
+            selectinload(Schedule.playlist),
+            selectinload(Schedule.device_targets),
+            selectinload(Schedule.tag_targets)
         ).filter(
             and_(
                 Schedule.id == schedule_id,
@@ -81,7 +109,9 @@ class ScheduleRepository:
     ) -> Tuple[List[Schedule], int]:
         """Get schedules with filters (excludes soft-deleted)"""
         query = self.db.query(Schedule).options(
-            selectinload(Schedule.playlist)
+            selectinload(Schedule.playlist),
+            selectinload(Schedule.device_targets),
+            selectinload(Schedule.tag_targets)
         ).filter(
             and_(
                 Schedule.organization_id == organization_id,
@@ -109,7 +139,7 @@ class ScheduleRepository:
         request: UpdateScheduleRequest,
         updated_by_id: Optional[int] = None
     ) -> Schedule:
-        """Update schedule"""
+        """Update schedule with junction table targeting"""
         update_data = request.model_dump(exclude_none=True)
 
         # Handle recurrence_pattern separately
@@ -119,6 +149,42 @@ class ScheduleRepository:
         # Map exception_dates from DTO to exceptions column in DB
         if 'exception_dates' in update_data:
             update_data['exceptions'] = update_data.pop('exception_dates')
+
+        # Handle device targeting (support both old and new field names)
+        device_ids = update_data.pop('target_devices', None) or update_data.pop('device_ids', None)
+        tag_ids = update_data.pop('target_tags', None) or update_data.pop('tag_ids', None)
+
+        # Update device targeting if provided
+        if device_ids is not None:
+            # Update legacy JSONB column for backward compatibility
+            schedule.device_ids = device_ids
+
+            # Update junction table: delete existing and recreate
+            self.db.query(ScheduleDeviceTargeting).filter(
+                ScheduleDeviceTargeting.schedule_id == schedule.id
+            ).delete()
+            for device_id in device_ids:
+                device_target = ScheduleDeviceTargeting(
+                    schedule_id=schedule.id,
+                    device_id=device_id
+                )
+                self.db.add(device_target)
+
+        # Update tag targeting if provided
+        if tag_ids is not None:
+            # Update legacy JSONB column for backward compatibility
+            schedule.tag_ids = tag_ids
+
+            # Update junction table: delete existing and recreate
+            self.db.query(ScheduleTagTargeting).filter(
+                ScheduleTagTargeting.schedule_id == schedule.id
+            ).delete()
+            for tag_id in tag_ids:
+                tag_target = ScheduleTagTargeting(
+                    schedule_id=schedule.id,
+                    tag_id=tag_id
+                )
+                self.db.add(tag_target)
 
         for key, value in update_data.items():
             setattr(schedule, key, value)
@@ -272,7 +338,21 @@ class ScheduleRepository:
         schedule.is_active = False
         self.db.commit()
         return True
-    
+
+    def activate_schedule(
+        self,
+        schedule_id: int,
+        organization_id: int
+    ) -> bool:
+        """Activate schedule"""
+        schedule = self.get_schedule_by_id(schedule_id, organization_id)
+        if not schedule:
+            return False
+
+        schedule.is_active = True
+        self.db.commit()
+        return True
+
     def find_active_schedules(
         self,
         organization_id: int,
@@ -315,15 +395,17 @@ class ScheduleRepository:
         Filters by:
         - organization_id (required)
         - is_active (default True)
-        - device targeting: device_ids contains device_id, or applies_to_all is True
+        - device targeting via junction tables OR legacy JSONB columns
 
         Returns schedules ordered by start_date (newest first)
         """
-        from sqlalchemy import cast, String
+        from sqlalchemy import cast, String, exists
         from sqlalchemy.dialects.postgresql import JSONB
 
         query = self.db.query(Schedule).options(
-            selectinload(Schedule.playlist)
+            selectinload(Schedule.playlist),
+            selectinload(Schedule.device_targets),
+            selectinload(Schedule.tag_targets)
         ).filter(
             and_(
                 Schedule.organization_id == organization_id,
@@ -334,14 +416,24 @@ class ScheduleRepository:
 
         # If device_id provided, filter by device targeting
         if device_id is not None:
+            # Check if device is targeted via junction table
+            junction_table_target = exists().where(
+                and_(
+                    ScheduleDeviceTargeting.schedule_id == Schedule.id,
+                    ScheduleDeviceTargeting.device_id == device_id
+                )
+            )
+
             # Schedule targets this device if:
-            # 1. device_ids contains this device_id, OR
-            # 2. applies_to_all is True, OR
-            # 3. device_ids is NULL/empty AND tag_ids is NULL/empty AND applies_to_all is NULL
-            #    (legacy schedules that apply to all)
+            # 1. Junction table has entry for this device, OR
+            # 2. LEGACY: device_ids contains this device_id, OR
+            # 3. applies_to_all is True, OR
+            # 4. No targeting specified = applies to all (legacy behavior)
             query = query.filter(
                 or_(
-                    # Device explicitly in device_ids array
+                    # NEW: Junction table targeting
+                    junction_table_target,
+                    # LEGACY: Device explicitly in device_ids array
                     Schedule.device_ids.contains([device_id]),
                     # Applies to all devices
                     Schedule.applies_to_all == True,
@@ -349,7 +441,8 @@ class ScheduleRepository:
                     and_(
                         or_(Schedule.device_ids == None, Schedule.device_ids == []),
                         or_(Schedule.tag_ids == None, Schedule.tag_ids == []),
-                        or_(Schedule.applies_to_all == None, Schedule.applies_to_all == False)
+                        or_(Schedule.applies_to_all == None, Schedule.applies_to_all == False),
+                        ~junction_table_target  # No junction table entries either
                     )
                 )
             )

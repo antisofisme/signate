@@ -222,6 +222,21 @@ def delete_schedule(
     return result
 
 
+@router.post("/schedules/{schedule_id}/activate", response_model=ScheduleResponse)
+def activate_schedule(
+    schedule_id: int,
+    current_user: dict = Depends(require_permission("schedules", "edit")),
+    db: Session = Depends(get_db)
+):
+    """Activate schedule"""
+    from .use_cases.update_schedule import activate_schedule_use_case
+    return activate_schedule_use_case(
+        schedule_id=schedule_id,
+        organization_id=current_user["organization_id"],
+        db=db
+    )
+
+
 @router.post("/schedules/{schedule_id}/deactivate", response_model=ScheduleResponse)
 def deactivate_schedule(
     schedule_id: int,

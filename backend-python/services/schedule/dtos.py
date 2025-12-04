@@ -40,7 +40,13 @@ class CreateScheduleRequest(BaseModel):
     name: str = Field(..., min_length=1, max_length=255, description="Schedule name")
     description: Optional[str] = Field(None, description="Schedule description")
     playlist_id: int = Field(..., description="Playlist ID to schedule")
-    device_ids: Optional[List[int]] = Field(None, description="Target device IDs for this schedule")
+
+    # Targeting fields (support both old and new names during transition)
+    device_ids: Optional[List[int]] = Field(None, description="DEPRECATED: Use target_devices instead")
+    target_devices: Optional[List[int]] = Field(None, description="Target device IDs for this schedule")
+    tag_ids: Optional[List[int]] = Field(None, description="DEPRECATED: Use target_tags instead")
+    target_tags: Optional[List[int]] = Field(None, description="Target tag IDs for this schedule")
+    applies_to_all: bool = Field(False, description="Apply schedule to all devices in organization")
 
     start_date: date = Field(..., description="Start date (YYYY-MM-DD)")
     end_date: Optional[date] = Field(None, description="End date (optional for ongoing)")
@@ -84,7 +90,13 @@ class UpdateScheduleRequest(BaseModel):
     name: Optional[str] = Field(None, min_length=1, max_length=255)
     description: Optional[str] = None
     playlist_id: Optional[int] = None
-    device_ids: Optional[List[int]] = Field(None, description="Target device IDs for this schedule")
+
+    # Targeting fields (support both old and new names during transition)
+    device_ids: Optional[List[int]] = Field(None, description="DEPRECATED: Use target_devices instead")
+    target_devices: Optional[List[int]] = Field(None, description="Target device IDs for this schedule")
+    tag_ids: Optional[List[int]] = Field(None, description="DEPRECATED: Use target_tags instead")
+    target_tags: Optional[List[int]] = Field(None, description="Target tag IDs for this schedule")
+    applies_to_all: Optional[bool] = Field(None, description="Apply schedule to all devices in organization")
 
     start_date: Optional[date] = None
     end_date: Optional[date] = None
@@ -100,6 +112,24 @@ class UpdateScheduleRequest(BaseModel):
     is_active: Optional[bool] = None
 
 
+class TargetDeviceInfo(BaseModel):
+    """Device info for targeting display"""
+    id: int
+    device_name: str
+
+    class Config:
+        from_attributes = True
+
+
+class TargetTagInfo(BaseModel):
+    """Tag info for targeting display"""
+    id: int
+    name: str
+
+    class Config:
+        from_attributes = True
+
+
 class ScheduleResponse(BaseModel):
     """Schedule response model"""
     id: int
@@ -107,7 +137,13 @@ class ScheduleResponse(BaseModel):
     name: str
     description: Optional[str]
     playlist_id: int
-    device_ids: Optional[List[int]] = Field(None, description="Target device IDs")
+
+    # Targeting fields (both legacy and new format for backward compatibility)
+    device_ids: Optional[List[int]] = Field(None, description="DEPRECATED: Legacy device IDs array")
+    tag_ids: Optional[List[int]] = Field(None, description="DEPRECATED: Legacy tag IDs array")
+    target_devices: Optional[List[TargetDeviceInfo]] = Field(None, description="Target devices with info")
+    target_tags: Optional[List[TargetTagInfo]] = Field(None, description="Target tags with info")
+    applies_to_all: bool = Field(False, description="Apply to all devices")
 
     start_date: date
     end_date: Optional[date]
@@ -123,7 +159,7 @@ class ScheduleResponse(BaseModel):
     is_active: bool
 
     created_at: datetime
-    updated_at: datetime
+    updated_at: Optional[datetime] = None
 
     # Audit trail fields (Migration 046)
     created_by_id: Optional[int] = Field(None, description="User who created this schedule")
