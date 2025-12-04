@@ -30,6 +30,7 @@ export { default as Button } from './common/Button';
 export { default as RefreshButton } from './common/RefreshButton';
 export { OptimizedImage, Thumbnail, Avatar } from './OptimizedImage';
 export type { OptimizedImageProps, ThumbnailProps, AvatarProps } from './OptimizedImage';
+export { ColorPicker } from './ColorPicker';
 
 // Error Handling
 export { ErrorBoundary, PageErrorBoundary, ComponentErrorBoundary } from './ErrorBoundary';

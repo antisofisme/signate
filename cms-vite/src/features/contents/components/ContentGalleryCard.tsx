@@ -11,6 +11,8 @@ import {
   Trash2,
   Download,
   Play,
+  Tag,
+  ListMusic,
   FileImage,
   FileVideo,
   FileAudio,
@@ -19,7 +21,7 @@ import {
   AlertCircle,
   Check,
 } from 'lucide-react';
-import { toast } from 'sonner';
+import { toast } from '@/shared/utils/toast';
 import { useCanPerformAction } from '@/features/rbac/hooks/usePermissions';
 import { useDeleteContent } from '../hooks/useContent';
 import { ConfirmDialog } from '@/shared/components';
@@ -82,6 +84,8 @@ interface ContentGalleryCardProps {
   showCheckbox: boolean; // Force show checkbox (selection mode active)
   onSelect: () => void; // Click card -> open sidebar
   onCheckboxChange: (checked: boolean) => void;
+  onTagAssign?: (content: Content) => void; // Optional: assign tag
+  onPlaylistAssign?: (content: Content) => void; // Optional: assign to playlist
 }
 
 export function ContentGalleryCard({
@@ -90,10 +94,13 @@ export function ContentGalleryCard({
   showCheckbox,
   onSelect,
   onCheckboxChange,
+  onTagAssign,
+  onPlaylistAssign,
 }: ContentGalleryCardProps) {
   const { t } = useTranslation();
 
   // Permission checks
+  const { hasPermission: canEdit } = useCanPerformAction('contents', 'edit');
   const { hasPermission: canDelete } = useCanPerformAction('contents', 'delete');
 
   // State
@@ -123,6 +130,16 @@ export function ContentGalleryCard({
   const handleDeleteClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     setShowDeleteConfirm(true);
+  };
+
+  const handleTagAssign = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onTagAssign?.(content);
+  };
+
+  const handlePlaylistAssign = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onPlaylistAssign?.(content);
   };
 
   const handleDelete = async () => {
@@ -244,6 +261,24 @@ export function ContentGalleryCard({
             >
               <Download className="w-4 h-4 text-gray-600" />
             </button>
+            {canEdit && onTagAssign && (
+              <button
+                onClick={handleTagAssign}
+                className="p-1.5 bg-white/90 dark:bg-gray-800/90 rounded-md hover:bg-purple-50 dark:hover:bg-purple-900/50 transition-colors"
+                title={t('contents.actions.assignTag', 'Assign Tag')}
+              >
+                <Tag className="w-4 h-4 text-purple-600" />
+              </button>
+            )}
+            {canEdit && onPlaylistAssign && (
+              <button
+                onClick={handlePlaylistAssign}
+                className="p-1.5 bg-white/90 dark:bg-gray-800/90 rounded-md hover:bg-blue-50 dark:hover:bg-blue-900/50 transition-colors"
+                title={t('contents.actions.assignPlaylist', 'Assign Playlist')}
+              >
+                <ListMusic className="w-4 h-4 text-blue-600" />
+              </button>
+            )}
             {canDelete && (
               <button
                 onClick={handleDeleteClick}

@@ -63,7 +63,9 @@
       "codeCopied": "Kode aktivasi berhasil disalin",
       "copyFailed": "Gagal menyalin kode",
       "important": "Penting:"
-    }
+    },
+    "note": "Catatan",
+    "noActions": "Tidak ada aksi"
   },
   "auth": {
     "login": "Masuk",
@@ -838,12 +840,12 @@
   "schedules": {
     "createSchedule": "Buat Jadwal",
     "editSchedule": "Edit Jadwal",
+    "updateSchedule": "Perbarui Jadwal",
     "noSchedulesYet": "Belum ada jadwal",
     "createFirstSchedule": "Buat jadwal pertama Anda untuk mulai mengotomatisasi pemutaran konten",
     "searchPlaceholder": "Cari jadwal atau playlist...",
     "filters": {
       "allStatus": "Semua Status",
-      "allPriority": "Semua Prioritas",
       "allTypes": "Semua Tipe"
     },
     "showing": "Menampilkan {{filtered}} dari {{total}} jadwal",
@@ -867,7 +869,8 @@
       "lastRun": "Terakhir dijalankan",
       "nextRun": "Selanjutnya",
       "exceptionDates": "Tanggal pengecualian",
-      "more": "+{{count}} lagi"
+      "more": "+{{count}} lagi",
+      "scheduleColor": "Warna Jadwal"
     },
     "actions": {
       "view": "Lihat",
@@ -930,7 +933,6 @@
       "currentlyPlaying": "Sedang Diputar",
       "activeNow": "Aktif Sekarang",
       "live": "Live",
-      "priority": "Prioritas",
       "nextChangeIn": "Perubahan berikutnya dalam",
       "changesIn": "Berubah dalam",
       "viewSchedule": "Lihat Jadwal",
@@ -947,7 +949,7 @@
       "reviewConflicts": "Silakan tinjau konflik di bawah dan sesuaikan jadwal Anda",
       "timeOverlaps": "Tumpang Tindih Waktu",
       "deviceConflicts": "Konflik Perangkat",
-      "priorityConflicts": "Konflik Prioritas",
+      "modeConflicts": "Konflik Mode",
       "conflictingSchedule": "Jadwal yang berkonflik:",
       "date": "Tanggal:",
       "time": "Waktu:"
@@ -1017,9 +1019,10 @@
         "sun": "Min"
       },
       "legend": {
-        "exception": "Pengecualian"
+        "exception": "Pengecualian",
+        "scheduledDay": "Hari Terjadwal"
       },
-      "priorityLabel": "Prioritas {{value}}",
+      "scheduled": "Terjadwal",
       "exceptionWillNotRun": "Tanggal pengecualian - tidak akan dijalankan",
       "showingNext": "Menampilkan",
       "occurrence": "kejadian berikutnya",
@@ -1487,6 +1490,14 @@
     "pagination": {
       "showing": "Menampilkan {{from}} sampai {{to}} dari {{total}} hasil",
       "page": "Halaman {{current}} dari {{total}}"
+    },
+    "viewDetails": "Lihat detail",
+    "detail": {
+      "title": "Detail Log Audit",
+      "changes": "Perubahan",
+      "additionalInfo": "Informasi Tambahan",
+      "rawJson": "JSON Mentah",
+      "noDetails": "Tidak ada detail tambahan"
     }
   },
   "sessions": {
@@ -1659,6 +1670,7 @@
       "uppercase": "Satu huruf besar",
       "lowercase": "Satu huruf kecil",
       "number": "Satu angka",
+      "noReuse": "Tidak boleh sama dengan 5 kata sandi terakhir",
       "changing": "Mengubah..."
     },
     "form": {
@@ -1694,7 +1706,15 @@
       "admin": "Admin",
       "manager": "Manajer",
       "editor": "Editor",
-      "viewer": "Pemirsa"
+      "viewer": "Pemirsa",
+      "content_manager": "Pengelola Konten",
+      "assignTitle": "Tetapkan Peran",
+      "selectRole": "Pilih Peran",
+      "noRoles": "Tidak ada peran tersedia",
+      "current": "Peran Saat Ini",
+      "currentBadge": "Saat Ini",
+      "assign": "Tetapkan Peran",
+      "assignNote": "Mengubah peran pengguna akan memperbarui izin mereka secara langsung. Pengguna mungkin perlu logout dan login kembali agar perubahan berlaku sepenuhnya."
     },
     "status": {
       "active": "Aktif",
@@ -2053,5 +2073,71 @@
     },
     "addedToQueue": "{{count}} file ditambahkan ke antrian",
     "fileNotAvailable": "File tidak tersedia (halaman telah dimuat ulang)"
+  },
+  "templates": {
+    "title": "Template",
+    "subtitle": "Kelola template tampilan",
+    "create": "Buat Template",
+    "delete": {
+      "title": "Hapus Template",
+      "message": "Apakah Anda yakin ingin menghapus template ini?"
+    }
+  },
+  "widgets": {
+    "title": "Widget",
+    "subtitle": "Kelola widget tampilan",
+    "create": "Buat Widget",
+    "delete": {
+      "title": "Hapus Widget",
+      "message": "Apakah Anda yakin ingin menghapus widget ini?"
+    }
+  },
+  "translationsPage": {
+    "title": "Terjemahan",
+    "subtitle": "Kelola terjemahan multi-bahasa",
+    "create": "Buat Terjemahan",
+    "bulkImport": "Impor Massal",
+    "showStats": "Tampilkan Statistik",
+    "hideStats": "Sembunyikan Statistik",
+    "delete": {
+      "title": "Hapus Terjemahan",
+      "message": "Apakah Anda yakin ingin menghapus terjemahan ini?"
+    }
+  },
+  "weather": {
+    "title": "Layanan Cuaca",
+    "subtitle": "Konfigurasi integrasi API cuaca untuk digital signage",
+    "loading": "Memuat konfigurasi cuaca...",
+    "tabs": {
+      "config": "Konfigurasi",
+      "locations": "Lokasi",
+      "preview": "Pratinjau"
+    }
+  },
+  "pms": {
+    "title": "Integrasi PMS",
+    "subtitle": "Konfigurasi integrasi Property Management System untuk signage hotel",
+    "loading": "Memuat konfigurasi PMS...",
+    "tabs": {
+      "config": "Konfigurasi",
+      "rooms": "Pemetaan Kamar"
+    },
+    "sections": {
+      "provider": "Provider PMS",
+      "connection": "Pengaturan Koneksi",
+      "sync": "Konfigurasi Sinkronisasi",
+      "roomMapping": "Pemetaan Kamar ke Perangkat"
+    },
+    "stats": {
+      "currentGuests": "Tamu Saat Ini",
+      "occupiedRooms": "Kamar Terisi",
+      "vacantRooms": "Kamar Kosong",
+      "mappedDevices": "Perangkat Terpetakan"
+    },
+    "buttons": {
+      "deleteConfig": "Hapus Konfigurasi",
+      "updateConfig": "Perbarui Konfigurasi",
+      "createConfig": "Buat Konfigurasi"
+    }
   }
 }

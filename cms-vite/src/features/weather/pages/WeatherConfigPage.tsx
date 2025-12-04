@@ -5,8 +5,10 @@
  */
 
 import { useState } from 'react';
-import { toast } from 'sonner';
-import { PageHeader } from '@/shared/components';
+import { useTranslation } from 'react-i18next';
+import { toast } from '@/shared/utils/toast';
+import { PageHeader, AccessDenied, PageSkeleton } from '@/shared/components';
+import { useCanPerformAction } from '@/features/rbac/hooks/usePermissions';
 import {
   useWeatherConfig,
   useCreateWeatherConfig,
@@ -27,6 +29,22 @@ import type {
 } from '../types/weather.types';
 
 export default function WeatherConfigPage() {
+  const { t } = useTranslation();
+
+  // Permission checks
+  const { hasPermission: canRead, isLoading: loadingReadPerm } = useCanPerformAction('settings', 'read');
+  const { hasPermission: canUpdate } = useCanPerformAction('settings', 'edit');
+
+  // Show loading state while checking permissions
+  if (loadingReadPerm) {
+    return <PageSkeleton />;
+  }
+
+  // Show access denied if no read permission
+  if (!canRead) {
+    return <AccessDenied />;
+  }
+
   const { data: config, isLoading } = useWeatherConfig();
   const { data: locations } = useWeatherLocations();
   const createConfig = useCreateWeatherConfig();
@@ -97,7 +115,7 @@ export default function WeatherConfigPage() {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-96">
-        <div className="text-gray-500 dark:text-gray-400">Loading weather configuration...</div>
+        <div className="text-gray-500 dark:text-gray-400">{t('weather.loading', 'Loading weather configuration...')}</div>
       </div>
     );
   }
@@ -105,8 +123,8 @@ export default function WeatherConfigPage() {
   return (
     <>
       <PageHeader
-        title="Weather Service"
-        description="Configure weather API integration for digital signage"
+        title={t('weather.title', 'Weather Service')}
+        description={t('weather.subtitle', 'Configure weather API integration for digital signage')}
       />
 
       <div className="space-y-6">
@@ -120,7 +138,7 @@ export default function WeatherConfigPage() {
                 : 'text-gray-600 dark:text-gray-400'
             }`}
           >
-            Configuration
+            {t('weather.tabs.config', 'Configuration')}
           </button>
           <button
             onClick={() => setActiveTab('locations')}
@@ -130,7 +148,7 @@ export default function WeatherConfigPage() {
                 : 'text-gray-600 dark:text-gray-400'
             }`}
           >
-            Locations
+            {t('weather.tabs.locations', 'Locations')}
           </button>
           <button
             onClick={() => setActiveTab('preview')}
@@ -141,7 +159,7 @@ export default function WeatherConfigPage() {
             }`}
             disabled={!locations || locations.length === 0}
           >
-            Preview
+            {t('weather.tabs.preview', 'Preview')}
           </button>
         </div>
 

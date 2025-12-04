@@ -20,7 +20,7 @@ import { Modal, Button, FormInput, FormSwitch } from '@/shared/components';
 import { useCheckContentQuota } from '@/features/organizations/hooks/useOrganizationQuota';
 import { useAuthStore } from '@/lib/stores/authStore';
 import { useUploadQueueStore } from '@/lib/stores/uploadQueueStore';
-import { toast } from 'sonner';
+import { toast } from '@/shared/utils/toast';
 
 interface UploadModalProps {
   isOpen: boolean;

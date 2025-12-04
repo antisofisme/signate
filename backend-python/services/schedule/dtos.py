@@ -51,7 +51,7 @@ class CreateScheduleRequest(BaseModel):
     recurrence_pattern: Optional[RecurrencePattern] = Field(None, description="Recurrence configuration")
     exception_dates: Optional[List[str]] = Field(None, description="Exception dates (YYYY-MM-DD)")
 
-    priority: int = Field(0, ge=0, le=100, description="Priority (0-100, higher wins)")
+    color: str = Field("#3B82F6", pattern=r'^#[0-9A-Fa-f]{6}$', description="Hex color for calendar display")
     mode: ScheduleMode = Field("rotate", description="Playback mode: 'override' (exclusive) or 'rotate' (join rotation)")
     is_active: bool = Field(True, description="Active status")
 
@@ -72,7 +72,7 @@ class CreateScheduleRequest(BaseModel):
                     "days": [1, 2, 3, 4, 5]  # Mon-Fri
                 },
                 "exception_dates": ["2025-01-15", "2025-02-20"],
-                "priority": 10,
+                "color": "#3B82F6",
                 "mode": "rotate",
                 "is_active": True
             }
@@ -95,7 +95,7 @@ class UpdateScheduleRequest(BaseModel):
     recurrence_pattern: Optional[RecurrencePattern] = None
     exception_dates: Optional[List[str]] = None
 
-    priority: Optional[int] = Field(None, ge=0, le=100)
+    color: Optional[str] = Field(None, pattern=r'^#[0-9A-Fa-f]{6}$', description="Hex color for calendar display")
     mode: Optional[ScheduleMode] = Field(None, description="Playback mode: 'override' or 'rotate'")
     is_active: Optional[bool] = None
 
@@ -118,7 +118,7 @@ class ScheduleResponse(BaseModel):
     recurrence_pattern: Optional[Dict[str, Any]]
     exception_dates: Optional[List[str]] = Field(None, validation_alias="exceptions")  # Map from DB column
 
-    priority: int
+    color: str = Field(default="#3B82F6", description="Hex color for calendar display")
     mode: ScheduleMode = Field(default="rotate", description="Playback mode")
     is_active: bool
 
@@ -163,7 +163,7 @@ class ActiveScheduleResponse(BaseModel):
     schedule: Optional[ScheduleResponse]
     playlist_id: Optional[int]
     schedule_name: Optional[str]
-    priority: Optional[int]
+    color: Optional[str] = Field(None, description="Hex color for calendar display")
     is_found: bool
 
     class Config:
@@ -172,7 +172,7 @@ class ActiveScheduleResponse(BaseModel):
                 "schedule": {"id": 1, "name": "Morning Schedule"},
                 "playlist_id": 5,
                 "schedule_name": "Weekday Morning",
-                "priority": 10,
+                "color": "#3B82F6",
                 "is_found": True
             }
         }
@@ -265,7 +265,7 @@ class ConflictSchedule(BaseModel):
     """Conflicting schedule info"""
     id: int
     name: str
-    priority: int
+    color: str = Field(default="#3B82F6", description="Hex color for calendar display")
     start_date: date
     end_date: Optional[date]
     start_time: Optional[time]
@@ -277,3 +277,33 @@ class CheckConflictResponse(BaseModel):
     has_conflicts: bool
     conflicts: List[ConflictSchedule] = Field(default_factory=list)
     message: str
+
+
+# ============================================================================
+# Calendar Occurrences DTOs
+# ============================================================================
+
+class GetOccurrencesRequest(BaseModel):
+    """Request to get schedule occurrences for calendar view"""
+    start_date: date
+    end_date: date
+    device_id: Optional[int] = None
+    playlist_id: Optional[int] = None
+
+
+class ScheduleOccurrence(BaseModel):
+    """Single schedule occurrence for calendar display"""
+    schedule_id: int
+    schedule_name: str
+    playlist_name: str
+    occurrence_date: str
+    start_time: str
+    end_time: str
+    color: str = Field(default="#3B82F6", description="Hex color for calendar display")
+    devices: List[int] = Field(default_factory=list)
+
+
+class GetOccurrencesResponse(BaseModel):
+    """Response with schedule occurrences for calendar view"""
+    occurrences: List[ScheduleOccurrence] = Field(default_factory=list)
+    total: int = 0

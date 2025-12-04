@@ -103,11 +103,8 @@ class ContentAssignmentModel(Base):
     """
     Content Assignment database model
 
-    Supports 2 assignment methods (mutually exclusive):
-    1. Direct to Device: device_id + content_id
-    2. Tag-based: tag_id + content_id
-
-    Note: Either device_id OR tag_id must be set, not both, not neither
+    For DIRECT device-to-content assignments only.
+    Tag-based assignments use content_tags table instead.
     """
     __tablename__ = "content_assignments"
 
@@ -117,9 +114,8 @@ class ContentAssignmentModel(Base):
     # Multi-tenant (REQUIRED for all assignments)
     organization_id = Column(Integer, ForeignKey("organizations.id", ondelete="CASCADE"), nullable=False, index=True)
 
-    # Assignment targets (mutually exclusive - one must be set)
-    device_id = Column(Integer, ForeignKey("devices.id", ondelete="CASCADE"), nullable=True, index=True)
-    tag_id = Column(Integer, ForeignKey("tags.id", ondelete="CASCADE"), nullable=True, index=True)
+    # Direct device assignment
+    device_id = Column(Integer, ForeignKey("devices.id", ondelete="CASCADE"), nullable=False, index=True)
 
     # Content reference
     content_id = Column(Integer, ForeignKey("contents.id", ondelete="CASCADE"), nullable=False, index=True)
@@ -136,21 +132,11 @@ class ContentAssignmentModel(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
-    # Relationships
-    # organization = relationship("OrganizationModel", foreign_keys=[organization_id])
-    # device = relationship("DeviceModel", foreign_keys=[device_id])
-    # tag = relationship("TagModel", foreign_keys=[tag_id])
-    # content = relationship("ContentModel", foreign_keys=[content_id])
-    # assigned_by = relationship("UserModel", foreign_keys=[assigned_by_id])
-
-    # Composite indexes (defined in migration 046)
+    # Composite indexes
     __table_args__ = (
         # Unique constraint: one device can only have one assignment per content per org
         Index('unique_org_device_content', 'organization_id', 'device_id', 'content_id', unique=True, postgresql_where=text('device_id IS NOT NULL')),
-        # Unique constraint: one tag can only have one assignment per content per org
-        Index('unique_org_tag_content', 'organization_id', 'tag_id', 'content_id', unique=True, postgresql_where=text('tag_id IS NOT NULL')),
         # Performance indexes
         Index('idx_content_assignments_org_device', 'organization_id', 'device_id'),
-        Index('idx_content_assignments_org_tag', 'organization_id', 'tag_id'),
         Index('idx_content_assignments_org_content', 'organization_id', 'content_id'),
     )

@@ -13,7 +13,7 @@
 import React, { useState, useMemo } from 'react';
 import { Search, Loader2, AlertTriangle, Calendar, Clock, Trash2 } from 'lucide-react';
 import { formatDistanceToNow, format, addDays, isAfter, isBefore, differenceInDays } from 'date-fns';
-import { toast } from 'sonner';
+import { toast } from '@/shared/utils/toast';
 import { useContentList } from '@/features/contents/hooks/useContent';
 import {
   useDeviceContents,

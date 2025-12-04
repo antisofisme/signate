@@ -9,7 +9,7 @@
  */
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { toast } from 'sonner';
+import { toast } from '@/shared/utils/toast';
 import { handleAPIError } from '@/lib/errors/errorHandler';
 import { deviceAssignmentsApi } from '../api/deviceAssignmentsApi';
 import type {

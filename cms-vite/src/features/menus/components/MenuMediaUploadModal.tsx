@@ -12,7 +12,7 @@ import {
   FileImage,
   Trash2,
 } from 'lucide-react';
-import { toast } from 'sonner';
+import { toast } from '@/shared/utils/toast';
 import { Modal, Button } from '@/shared/components';
 import { useUploadMenuMedia } from '../hooks/useMenuMedia';
 import { useMenuMediaUploadStore } from '@/lib/stores/menuMediaUploadStore';

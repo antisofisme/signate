@@ -296,6 +296,19 @@ class SharedWebSocketClass {
         SharedEventBus.emit(EventNames.PLAYLIST_CHANGED, message.data);
         break;
 
+      // Schedule events - real-time schedule activation/deactivation
+      case 'SCHEDULE_ACTIVATED':
+      case 'schedule:activated':
+        SharedLogger.log('[WebSocket] 📅 Schedule activated - triggering sync');
+        SharedEventBus.emit('ws:SCHEDULE_ACTIVATED', message.data);
+        break;
+
+      case 'SCHEDULE_DEACTIVATED':
+      case 'schedule:deactivated':
+        SharedLogger.log('[WebSocket] 📅 Schedule deactivated - triggering sync');
+        SharedEventBus.emit('ws:SCHEDULE_DEACTIVATED', message.data);
+        break;
+
       case WSMessageType.PLAYER_CONTROL:
         this.handlePlayerControl(message.data);
         break;

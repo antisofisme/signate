@@ -6,8 +6,8 @@
 
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Trash2, Loader2, Star, Image, Video, Music, ArrowRight, GripVertical, FileText } from 'lucide-react';
-import { toast } from 'sonner';
+import { Trash2, Loader2, Star, Image, Video, Music, ArrowRight, GripVertical, FileText, Tag, List, Info } from 'lucide-react';
+import { toast } from '@/shared/utils/toast';
 import { useQueryClient } from '@tanstack/react-query';
 import {
   useDeviceContents,
@@ -158,16 +158,25 @@ export function DirectContentAssignmentTab({ device }: DirectContentAssignmentTa
     })
   );
 
-  const assignedContents = assignedData?.items || [];
+  // Filter content by source type
+  const allItems = assignedData?.items || [];
+  const assignedContents = allItems.filter((item: any) => item.source === 'direct');
+  const tagBasedContents = allItems.filter((item: any) => item.source === 'tag');
+  const playlistBasedContents = allItems.filter((item: any) => item.source === 'playlist');
   const allContents = allContentData?.data || [];
+
+  // Total inherited content (from tags + playlists)
+  const totalInheritedContent = tagBasedContents.length + playlistBasedContents.length;
 
   // Update sorted items when assigned content changes
   // Only sync when assignedData changes (not on every render)
   useEffect(() => {
     if (!assignedData) return;
 
-    // Backend already sorts by priority DESC
-    const newItems = assignedData.items || [];
+    // Filter to only DIRECT assignments and sort by priority DESC
+    const newItems = (assignedData.items || []).filter(
+      (item: any) => item.source === 'direct'
+    );
 
     // Only update if items actually changed (deep comparison)
     const itemsChanged = JSON.stringify(newItems) !== JSON.stringify(sortedItems);
@@ -177,10 +186,28 @@ export function DirectContentAssignmentTab({ device }: DirectContentAssignmentTa
     }
   }, [assignedData]); // Use assignedData, not assignedContents
 
-  // Filter out already assigned content
+  // Only filter out DIRECT assignments - user can still add content that's in tag/playlist
+  const directAssignedContentIds = assignedContents.map((item: any) => item.content_id);
   const availableContents = allContents.filter(
-    (content) => !assignedContents.some((assigned) => assigned.content_id === content.id)
+    (content) => !directAssignedContentIds.includes(content.id)
   );
+
+  // Create a map of content -> inherited sources (tag/playlist) for indicators
+  const contentInheritedSources = new Map<number, { tags: string[], playlists: string[] }>();
+  tagBasedContents.forEach((item: any) => {
+    const existing = contentInheritedSources.get(item.content_id) || { tags: [], playlists: [] };
+    if (item.source_name && !existing.tags.includes(item.source_name)) {
+      existing.tags.push(item.source_name);
+    }
+    contentInheritedSources.set(item.content_id, existing);
+  });
+  playlistBasedContents.forEach((item: any) => {
+    const existing = contentInheritedSources.get(item.content_id) || { tags: [], playlists: [] };
+    if (item.source_name && !existing.playlists.includes(item.source_name)) {
+      existing.playlists.push(item.source_name);
+    }
+    contentInheritedSources.set(item.content_id, existing);
+  });
 
   // Get content type icon
   const getContentIcon = (type: string) => {
@@ -324,6 +351,30 @@ export function DirectContentAssignmentTab({ device }: DirectContentAssignmentTa
         </div>
       </div>
 
+      {/* Inherited Content Info (from Tags + Playlists) */}
+      {totalInheritedContent > 0 && (
+        <div className="mb-4 flex items-center gap-3 bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-lg p-3">
+          <Info className="w-4 h-4 text-gray-500 dark:text-gray-400 flex-shrink-0" />
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
+            <span className="text-gray-600 dark:text-gray-300">
+              <strong>{totalInheritedContent}</strong> {t('devices.modals.inheritedContent', 'inherited content')}:
+            </span>
+            {tagBasedContents.length > 0 && (
+              <span className="flex items-center gap-1 text-amber-600 dark:text-amber-400">
+                <Tag className="w-3.5 h-3.5" />
+                <strong>{tagBasedContents.length}</strong> dari tag
+              </span>
+            )}
+            {playlistBasedContents.length > 0 && (
+              <span className="flex items-center gap-1 text-purple-600 dark:text-purple-400">
+                <List className="w-3.5 h-3.5" />
+                <strong>{playlistBasedContents.length}</strong> dari playlist
+              </span>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Content - 2 Column Grid */}
       {isLoading ? (
         <div className="flex items-center justify-center py-12">
@@ -345,15 +396,22 @@ export function DirectContentAssignmentTab({ device }: DirectContentAssignmentTa
               <div className="space-y-2 max-h-[400px] overflow-y-auto">
                 {availableContents.map((content: Content) => {
                   const Icon = getContentIcon(content.content_type);
+                  const inheritedSources = contentInheritedSources.get(content.id);
+                  const hasInherited = inheritedSources && (inheritedSources.tags.length > 0 || inheritedSources.playlists.length > 0);
+
                   return (
                     <div
                       key={content.id}
-                      className="group relative border border-gray-200 dark:border-gray-700 rounded-lg p-3 hover:border-blue-500 dark:hover:border-blue-400 transition-colors cursor-pointer"
+                      className={`group relative border rounded-lg p-3 hover:border-blue-500 dark:hover:border-blue-400 transition-colors cursor-pointer ${
+                        hasInherited
+                          ? 'border-amber-300 dark:border-amber-700 bg-amber-50/30 dark:bg-amber-900/10'
+                          : 'border-gray-200 dark:border-gray-700'
+                      }`}
                       onClick={() => handleAssign(content.id)}
                     >
                       <div className="flex gap-3">
                         {/* Thumbnail */}
-                        <div className="w-16 h-16 flex-shrink-0 rounded bg-gray-100 dark:bg-gray-700 overflow-hidden">
+                        <div className="w-16 h-16 flex-shrink-0 rounded bg-gray-100 dark:bg-gray-700 overflow-hidden relative">
                           {content.thumbnail_url ? (
                             <img
                               src={content.thumbnail_url}
@@ -363,6 +421,12 @@ export function DirectContentAssignmentTab({ device }: DirectContentAssignmentTa
                           ) : (
                             <div className="w-full h-full flex items-center justify-center">
                               <Icon className="w-6 h-6 text-gray-400" />
+                            </div>
+                          )}
+                          {/* Duplicate indicator badge */}
+                          {hasInherited && (
+                            <div className="absolute -top-1 -right-1 w-5 h-5 bg-amber-500 rounded-full flex items-center justify-center">
+                              <Info className="w-3 h-3 text-white" />
                             </div>
                           )}
                         </div>
@@ -375,6 +439,29 @@ export function DirectContentAssignmentTab({ device }: DirectContentAssignmentTa
                           <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
                             {content.content_type} • {content.duration}s
                           </p>
+                          {/* Show inherited sources */}
+                          {hasInherited && (
+                            <div className="flex flex-wrap gap-1 mt-1">
+                              {inheritedSources.tags.map((tagName: string) => (
+                                <span
+                                  key={`tag-${tagName}`}
+                                  className="inline-flex items-center gap-0.5 px-1.5 py-0.5 text-[10px] font-medium bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 rounded"
+                                >
+                                  <Tag className="w-2.5 h-2.5" />
+                                  {tagName}
+                                </span>
+                              ))}
+                              {inheritedSources.playlists.map((playlistName: string) => (
+                                <span
+                                  key={`playlist-${playlistName}`}
+                                  className="inline-flex items-center gap-0.5 px-1.5 py-0.5 text-[10px] font-medium bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300 rounded"
+                                >
+                                  <List className="w-2.5 h-2.5" />
+                                  {playlistName}
+                                </span>
+                              ))}
+                            </div>
+                          )}
                         </div>
 
                         {/* Assign Button */}
@@ -415,7 +502,7 @@ export function DirectContentAssignmentTab({ device }: DirectContentAssignmentTa
                   items={sortedItems.map((item) => item.id)}
                   strategy={verticalListSortingStrategy}
                 >
-                  <div className="space-y-2 max-h-[400px] overflow-y-auto">
+                  <div className="space-y-2 max-h-[300px] overflow-y-auto">
                     {sortedItems.map((assigned) => {
                       const content = getContentDetails(assigned.content_id);
                       const Icon = getContentIcon(assigned.content_type);
@@ -433,6 +520,106 @@ export function DirectContentAssignmentTab({ device }: DirectContentAssignmentTa
                   </div>
                 </SortableContext>
               </DndContext>
+            )}
+
+            {/* Tag-based Content (Read-only) */}
+            {tagBasedContents.length > 0 && (
+              <div className="mt-4">
+                <h4 className="font-semibold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
+                  <Tag className="w-4 h-4 text-amber-500" />
+                  {t('devices.modals.contentFromTagsTitle', 'Dari Tag')} ({tagBasedContents.length})
+                </h4>
+                <div className="space-y-2 max-h-[150px] overflow-y-auto">
+                  {tagBasedContents.map((assigned: any) => {
+                    const content = getContentDetails(assigned.content_id);
+                    const Icon = getContentIcon(assigned.content_type);
+                    return (
+                      <div
+                        key={`tag-${assigned.id}`}
+                        className="relative border border-amber-200 dark:border-amber-800 rounded-lg p-2 bg-amber-50/50 dark:bg-amber-900/20"
+                      >
+                        <div className="flex gap-2 items-center">
+                          {/* Thumbnail */}
+                          <div className="w-10 h-10 flex-shrink-0 rounded bg-gray-100 dark:bg-gray-700 overflow-hidden">
+                            {content?.thumbnail_url ? (
+                              <img
+                                src={content.thumbnail_url}
+                                alt={content.title}
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center">
+                                <Icon className="w-4 h-4 text-gray-400" />
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Info */}
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                              {assigned.content_name}
+                            </p>
+                            <p className="text-xs text-amber-600 dark:text-amber-400 flex items-center gap-1">
+                              <Tag className="w-3 h-3" />
+                              {assigned.source_name || 'Tag'}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Playlist-based Content (Read-only) */}
+            {playlistBasedContents.length > 0 && (
+              <div className="mt-4">
+                <h4 className="font-semibold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
+                  <List className="w-4 h-4 text-purple-500" />
+                  {t('devices.modals.contentFromPlaylistsTitle', 'Dari Playlist')} ({playlistBasedContents.length})
+                </h4>
+                <div className="space-y-2 max-h-[150px] overflow-y-auto">
+                  {playlistBasedContents.map((assigned: any) => {
+                    const content = getContentDetails(assigned.content_id);
+                    const Icon = getContentIcon(assigned.content_type);
+                    return (
+                      <div
+                        key={`playlist-${assigned.id}`}
+                        className="relative border border-purple-200 dark:border-purple-800 rounded-lg p-2 bg-purple-50/50 dark:bg-purple-900/20"
+                      >
+                        <div className="flex gap-2 items-center">
+                          {/* Thumbnail */}
+                          <div className="w-10 h-10 flex-shrink-0 rounded bg-gray-100 dark:bg-gray-700 overflow-hidden">
+                            {content?.thumbnail_url ? (
+                              <img
+                                src={content.thumbnail_url}
+                                alt={content.title}
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center">
+                                <Icon className="w-4 h-4 text-gray-400" />
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Info */}
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                              {assigned.content_name}
+                            </p>
+                            <p className="text-xs text-purple-600 dark:text-purple-400 flex items-center gap-1">
+                              <List className="w-3 h-3" />
+                              {assigned.source_name || 'Playlist'}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
             )}
           </div>
         </div>

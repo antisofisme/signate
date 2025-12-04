@@ -14,7 +14,7 @@ import {
   Check,
   Search,
 } from 'lucide-react';
-import { toast } from 'sonner';
+import { toast } from '@/shared/utils/toast';
 import { Button } from '@/shared/components';
 import { ConfirmDialog } from '@/shared/components/feedback/ConfirmDialog';
 import { useMenuMedia, useUploadMenuMedia, useDeleteMenuMedia } from '../hooks/useMenuMedia';

@@ -8,7 +8,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { organizationsApi } from '@/features/organizations/api/organizationsApi';
 import { handleAPIError } from '@/lib/errors/errorHandler';
-import { toast } from 'sonner';
+import { toast } from '@/shared/utils/toast';
 import type {
   CreateOrganizationRequest,
   UpdateOrganizationRequest,

@@ -108,10 +108,22 @@ def get_change_password_use_case(
     user_repo = Depends(get_user_repository),
     db: Session = Depends(get_db)
 ) -> ChangePasswordUseCase:
-    """Get change password use case with session repository for revoking sessions (P0-16)"""
+    """
+    Get change password use case with:
+    - Session repository for revoking sessions (P0-16)
+    - Password history repository for preventing password reuse (Security)
+    """
     from services.session.repositories.session_repo import SessionRepository
+    from .repositories.password_history_repo import PasswordHistoryRepository
+
     session_repo = SessionRepository(db)
-    return ChangePasswordUseCase(user_repo, session_repo)
+    password_history_repo = PasswordHistoryRepository(db)
+
+    return ChangePasswordUseCase(
+        user_repo=user_repo,
+        session_repository=session_repo,
+        password_history_repo=password_history_repo
+    )
 
 
 # =============================================================================

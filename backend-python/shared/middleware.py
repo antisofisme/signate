@@ -116,6 +116,14 @@ async def get_current_active_user(
                 }
             )
 
+        # SECURITY: Update session last activity timestamp for idle detection
+        if session:
+            try:
+                session_repo.update_last_activity(session.id)
+            except Exception:
+                # Don't fail the request if activity update fails
+                pass
+
     # =============================================================================
     # MULTI-TENANCY: Calculate effective organization_id
     # =============================================================================

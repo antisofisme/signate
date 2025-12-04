@@ -11,7 +11,7 @@ import {
   Eye,
   RotateCcw,
 } from 'lucide-react';
-import { toast } from 'sonner';
+import { toast } from '@/shared/utils/toast';
 import { usePagination } from '@/shared/hooks';
 import {
   Pagination,

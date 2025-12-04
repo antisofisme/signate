@@ -30,7 +30,7 @@ import {
   ToggleLeft,
   ToggleRight,
 } from 'lucide-react';
-import { toast } from 'sonner';
+import { toast } from '@/shared/utils/toast';
 import { Button, ConfirmDialog } from '@/shared/components';
 import { useCanPerformAction } from '@/features/rbac/hooks/usePermissions';
 import { useUpdateContent, useDeleteContent } from '../hooks/useContent';

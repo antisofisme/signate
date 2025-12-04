@@ -6,7 +6,7 @@
 import { useState } from 'react'
 import { Send, Loader2, CheckCircle, XCircle, Users, AlertTriangle } from 'lucide-react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { toast } from 'sonner'
+import { toast } from '@/shared/utils/toast'
 import { getApiErrorMessage } from '@/shared/utils/types'
 import { deviceCommandApi } from '../api/commands'
 import type { CommandType } from '../types/commands'

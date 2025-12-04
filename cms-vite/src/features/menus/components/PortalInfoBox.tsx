@@ -6,7 +6,7 @@
 import { useState } from 'react';
 import { Link2, Copy, Check, ExternalLink, Info, Download, Loader2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { toast } from 'sonner';
+import { toast } from '@/shared/utils/toast';
 import QRCode from 'qrcode';
 import { useCurrentOrganization } from '@/features/auth/hooks/useAuth';
 import { generatePortalSlug } from '@/features/auth/types/auth';

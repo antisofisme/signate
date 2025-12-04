@@ -15,21 +15,48 @@ export function handleAPIError(error: unknown): AppError {
       return new NetworkError('Tidak dapat terhubung ke server');
     }
 
-    // API error response
-    const data = error.response.data as APIErrorResponse;
+    const statusCode = error.response.status;
+    const data = error.response.data as any;
 
-    if (data && data.error) {
-      const { message, code, details } = data.error;
-      const statusCode = error.response.status;
+    // Extract error info from various response formats
+    let message: string | undefined;
+    let code: string | undefined;
+    let details: Record<string, any> | undefined;
 
+    // Format 1: Standard API response { error: { message, code, details } }
+    if (data?.error) {
+      message = data.error.message;
+      code = data.error.code;
+      details = data.error.details;
+    }
+    // Format 2: FastAPI HTTPException { detail: { message, code, details } }
+    else if (data?.detail && typeof data.detail === 'object') {
+      message = data.detail.message;
+      code = data.detail.code;
+      details = data.detail.details;
+    }
+    // Format 3: Simple string detail { detail: "error message" }
+    else if (data?.detail && typeof data.detail === 'string') {
+      message = data.detail;
+      code = 'API_ERROR';
+    }
+    // Format 4: Direct message { message: "error message" }
+    else if (data?.message) {
+      message = data.message;
+      code = data.code || 'API_ERROR';
+      details = data.details;
+    }
+
+    // If we extracted error info, create appropriate error
+    if (message) {
       // Map to specific error type
       if (statusCode === 401) {
-        return new AuthenticationError(getErrorMessage(code, message));
+        return new AuthenticationError(getErrorMessage(code || 'AUTHENTICATION_ERROR', message));
       }
 
       return new AppError(
-        getErrorMessage(code, message),
-        code,
+        getErrorMessage(code || 'API_ERROR', message),
+        code || 'API_ERROR',
         statusCode,
         details
       );
@@ -39,7 +66,7 @@ export function handleAPIError(error: unknown): AppError {
     return new AppError(
       'Terjadi kesalahan pada server',
       'UNKNOWN_ERROR',
-      error.response.status
+      statusCode
     );
   }
 

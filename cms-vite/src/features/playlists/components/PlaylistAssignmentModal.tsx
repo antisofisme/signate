@@ -21,7 +21,7 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Monitor, Plus, Trash2, Loader2 } from 'lucide-react';
 import { Modal, Button } from '@/shared/components';
-import { toast } from 'sonner';
+import { toast } from '@/shared/utils/toast';
 import {
   usePlaylistAssignments,
   useAssignPlaylistToDevices,

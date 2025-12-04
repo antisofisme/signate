@@ -10,7 +10,7 @@ import { useActivateDevice } from '../hooks/useDevices';
 import { useCheckDeviceQuota } from '@/features/organizations/hooks/useOrganizationQuota';
 import { useAuthStore } from '@/lib/stores/authStore';
 import type { Device } from '../types/device';
-import { toast } from 'sonner';
+import { toast } from '@/shared/utils/toast';
 
 interface PendingDeviceCardProps {
   device: Device;

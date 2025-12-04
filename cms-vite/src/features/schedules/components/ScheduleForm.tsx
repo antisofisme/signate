@@ -11,7 +11,7 @@ import { Loader2 } from 'lucide-react'
 import RecurrenceBuilder from './RecurrenceBuilder'
 import ConflictDetector from './ConflictDetector'
 import {
-  PRIORITY_LEVELS,
+  DEFAULT_SCHEDULE_COLOR,
   SCHEDULE_MODES,
   TIMEZONES,
   type Schedule,
@@ -19,18 +19,9 @@ import {
   type UpdateScheduleRequest,
   type RecurrenceType,
   type RecurrencePattern,
-  type PriorityLevel,
   type ScheduleMode,
 } from '../types/schedule.types'
-
-// Helper to convert numeric priority to PriorityLevel
-const numberToPriority = (priority: PriorityLevel | number): PriorityLevel => {
-  if (typeof priority === 'string') return priority
-  if (priority <= 10) return 'low'
-  if (priority <= 50) return 'normal'
-  if (priority <= 75) return 'high'
-  return 'critical'
-}
+import { ColorPicker } from '@/shared/components'
 
 // Helper to map backend recurrence type to frontend
 const mapRecurrenceType = (type: string): RecurrenceType => {
@@ -54,7 +45,7 @@ const scheduleFormSchema = z.object({
   start_time: z.string().min(1, 'Start time is required'),
   end_time: z.string().min(1, 'End time is required'),
   recurrence_type: z.enum(['once', 'daily', 'weekly', 'monthly', 'custom']),
-  priority: z.enum(['low', 'normal', 'high', 'critical']),
+  color: z.string().regex(/^#[0-9A-Fa-f]{6}$/, 'Invalid hex color'),
   mode: z.enum(['override', 'rotate']),
   timezone: z.string().min(1, 'Timezone is required'),
 })
@@ -111,7 +102,7 @@ export const ScheduleForm = ({
           start_time: schedule.start_time,
           end_time: schedule.end_time,
           recurrence_type: mapRecurrenceType(schedule.recurrence_type as string),
-          priority: numberToPriority(schedule.priority),
+          color: schedule.color || DEFAULT_SCHEDULE_COLOR,
           mode: schedule.mode || 'rotate',
           timezone: schedule.timezone || 'Asia/Jakarta',
         }
@@ -124,7 +115,7 @@ export const ScheduleForm = ({
           start_time: '09:00',
           end_time: '18:00',
           recurrence_type: 'once',
-          priority: 'normal',
+          color: DEFAULT_SCHEDULE_COLOR,
           mode: 'rotate',
           timezone: 'Asia/Jakarta',
         },
@@ -169,17 +160,6 @@ export const ScheduleForm = ({
     return a === b
   }
 
-  // Convert priority string to number for backend
-  const priorityToNumber = (priority: PriorityLevel): number => {
-    const mapping: Record<PriorityLevel, number> = {
-      low: 10,
-      normal: 50,
-      high: 75,
-      critical: 100,
-    }
-    return mapping[priority] ?? 50
-  }
-
   // Format time to HH:MM:SS if only HH:MM
   const formatTime = (time: string): string => {
     if (time && time.length === 5) {
@@ -204,7 +184,7 @@ export const ScheduleForm = ({
       recurrence_type: mappedRecurrenceType,
       recurrence_pattern: mappedRecurrenceType === 'once' ? undefined : recurrencePattern,
       exception_dates: exceptionDates.length > 0 ? exceptionDates : undefined,
-      priority: priorityToNumber(data.priority), // Convert to number for backend
+      color: data.color,
       mode: data.mode,
       is_active: true, // Default to active
     }
@@ -232,12 +212,9 @@ export const ScheduleForm = ({
       if (!isEqual(formData.exception_dates, schedule.exception_dates)) {
         updateData.exception_dates = formData.exception_dates
       }
-      // Compare priority - convert schedule.priority to number for comparison
-      const schedulePriorityNum = typeof schedule.priority === 'number'
-        ? schedule.priority
-        : priorityToNumber(schedule.priority as PriorityLevel)
-      if (formData.priority !== schedulePriorityNum) {
-        updateData.priority = formData.priority as unknown as PriorityLevel
+      // Compare color
+      if (!isEqual(formData.color, schedule.color)) {
+        updateData.color = formData.color
       }
       if (!isEqual(formData.mode, schedule.mode)) updateData.mode = formData.mode
 
@@ -489,43 +466,17 @@ export const ScheduleForm = ({
         </div>
       )}
 
-      {/* Priority */}
+      {/* Schedule Color */}
       <div>
-        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
-          Priority Level *
-        </label>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          {Object.values(PRIORITY_LEVELS).map((priority) => {
-            const selected = watch('priority') === priority.level
-
-            return (
-              <button
-                key={priority.level}
-                type="button"
-                onClick={() => setValue('priority', priority.level)}
-                disabled={isLoading}
-                className={`
-                  p-3 rounded-lg border-2 transition-all
-                  ${
-                    selected
-                      ? `border-${priority.color}-500 bg-${priority.color}-50 dark:bg-${priority.color}-900 shadow-md`
-                      : `border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 hover:border-${priority.color}-300 dark:hover:border-${priority.color}-500`
-                  }
-                  ${isLoading ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
-                `}
-              >
-                <div className="flex flex-col items-center gap-1">
-                  {renderIcon(priority.icon, { className: 'w-8 h-8' })}
-                  <span className="text-xs font-semibold text-gray-900 dark:text-white">
-                    {priority.label}
-                  </span>
-                </div>
-              </button>
-            )
-          })}
-        </div>
+        <ColorPicker
+          label="Schedule Color"
+          value={watch('color')}
+          onChange={(newColor) => setValue('color', newColor)}
+          disabled={isLoading}
+          error={errors.color?.message}
+        />
         <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
-          {PRIORITY_LEVELS[watch('priority')].description}
+          Color will be displayed in calendar view to differentiate schedules
         </p>
       </div>
 

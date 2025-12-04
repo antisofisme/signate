@@ -17,11 +17,31 @@ import {
   PageHeader,
   PageStats,
   PageToolbar,
+  AccessDenied,
+  PageSkeleton,
 } from '@/shared/components';
 import { useTemplateState } from '../hooks/useTemplateState';
+import { useCanPerformAction } from '@/features/rbac/hooks/usePermissions';
 
 export const TemplatesPage = () => {
   const { t } = useTranslation();
+
+  // Permission checks - using 'settings' resource for templates
+  const { hasPermission: canRead, isLoading: loadingReadPerm } = useCanPerformAction('settings', 'read');
+  const { hasPermission: canCreate } = useCanPerformAction('settings', 'create');
+  const { hasPermission: canUpdate } = useCanPerformAction('settings', 'edit');
+  const { hasPermission: canDelete } = useCanPerformAction('settings', 'delete');
+
+  // Show loading state while checking permissions
+  if (loadingReadPerm) {
+    return <PageSkeleton />;
+  }
+
+  // Show access denied if no read permission
+  if (!canRead) {
+    return <AccessDenied />;
+  }
+
   const {
     templates,
     isLoading,
@@ -52,13 +72,15 @@ export const TemplatesPage = () => {
       {/* Toolbar: Buttons kanan */}
       <PageToolbar>
         <PageToolbar.Right>
-          <Button
-            variant="primary"
-            onClick={handleCreate}
-            leftIcon={<Plus className="w-4 h-4" />}
-          >
-            {t('templates.create', 'Create Template')}
-          </Button>
+          {canCreate && (
+            <Button
+              variant="primary"
+              onClick={handleCreate}
+              leftIcon={<Plus className="w-4 h-4" />}
+            >
+              {t('templates.create', 'Create Template')}
+            </Button>
+          )}
         </PageToolbar.Right>
       </PageToolbar>
 
@@ -71,11 +93,11 @@ export const TemplatesPage = () => {
       {/* Template List */}
       <div className="space-y-6">
         <TemplateList
-        templates={templates}
-        isLoading={isLoading}
-        onEdit={handleEdit}
-        onDelete={handleDelete}
-        onPreview={handlePreview}
+          templates={templates}
+          isLoading={isLoading}
+          onEdit={canUpdate ? handleEdit : undefined}
+          onDelete={canDelete ? handleDelete : undefined}
+          onPreview={handlePreview}
         />
       </div>
 
@@ -110,8 +132,8 @@ export const TemplatesPage = () => {
       {showDeleteConfirm && selectedTemplate && (
         <DeleteConfirmModal
           isOpen={showDeleteConfirm}
-          title="Delete Template"
-          message="Are you sure you want to delete this template?"
+          title={t('templates.delete.title', 'Delete Template')}
+          message={t('templates.delete.message', 'Are you sure you want to delete this template?')}
           itemName={selectedTemplate.name}
           onClose={() => {
             setShowDeleteConfirm(false);

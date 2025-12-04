@@ -8,7 +8,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { tagsApi } from '@/features/tags/api/tagsApi';
 import { handleAPIError } from '@/lib/errors/errorHandler';
-import { toast } from 'sonner';
+import { toast } from '@/shared/utils/toast';
 import { useSelectedOrgId, tagKeys, contentKeys } from '@/shared/hooks';
 import type {
   CreateTagRequest,
@@ -293,6 +293,90 @@ export function useUnassignTagFromDevices() {
 
       // Show success toast
       toast.success(`Untagged ${result.unassigned} device(s)`);
+    },
+    onError: (error) => {
+      const appError = handleAPIError(error);
+      toast.error(appError.message);
+    },
+  });
+}
+
+// =============================================================================
+// PLAYBACK CONTENT ASSIGNMENT HOOKS (content_assignments.tag_id)
+// Different from categorization (content_tags table)
+// =============================================================================
+
+/**
+ * Get playback content assigned to a tag
+ * (content from content_assignments table, NOT content_tags)
+ */
+export function useTagPlaybackContents(tagId: number) {
+  return useQuery({
+    queryKey: ['tags', tagId, 'playback-contents'],
+    queryFn: () => tagsApi.getPlaybackContents(tagId),
+    staleTime: 1 * 60 * 1000, // 1 minute
+    enabled: !!tagId && tagId > 0,
+  });
+}
+
+/**
+ * Assign content to tag for PLAYBACK mutation
+ * This inserts into content_assignments table (for playback on devices),
+ * NOT into content_tags table (which is for categorization).
+ */
+export function useAssignPlaybackContentsToTag() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ tagId, contentIds }: { tagId: number; contentIds: number[] }) =>
+      tagsApi.assignPlaybackContents(tagId, contentIds),
+    onSuccess: async (result, variables) => {
+      // Invalidate tag queries
+      queryClient.invalidateQueries({ queryKey: tagKeys.all });
+      queryClient.invalidateQueries({ queryKey: tagKeys.detail(variables.tagId) });
+      queryClient.invalidateQueries({ queryKey: ['tags', variables.tagId, 'playback-contents'] });
+
+      // Invalidate device content queries (devices with this tag will get new content)
+      queryClient.invalidateQueries({ queryKey: ['devices'] });
+      queryClient.invalidateQueries({ queryKey: contentKeys.all });
+
+      // Show success toast
+      if (result.failed > 0) {
+        toast.warning(`${result.assigned} content assigned for playback, ${result.skipped} already assigned, ${result.failed} failed`);
+      } else if (result.skipped > 0) {
+        toast.info(`${result.assigned} content assigned for playback, ${result.skipped} already assigned`);
+      } else {
+        toast.success(`Successfully assigned ${result.assigned} content for playback to tag`);
+      }
+    },
+    onError: (error) => {
+      const appError = handleAPIError(error);
+      toast.error(appError.message);
+    },
+  });
+}
+
+/**
+ * Unassign content from tag for PLAYBACK mutation
+ */
+export function useUnassignPlaybackContentsFromTag() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ tagId, contentIds }: { tagId: number; contentIds: number[] }) =>
+      tagsApi.unassignPlaybackContents(tagId, contentIds),
+    onSuccess: async (result, variables) => {
+      // Invalidate tag queries
+      queryClient.invalidateQueries({ queryKey: tagKeys.all });
+      queryClient.invalidateQueries({ queryKey: tagKeys.detail(variables.tagId) });
+      queryClient.invalidateQueries({ queryKey: ['tags', variables.tagId, 'playback-contents'] });
+
+      // Invalidate device content queries
+      queryClient.invalidateQueries({ queryKey: ['devices'] });
+      queryClient.invalidateQueries({ queryKey: contentKeys.all });
+
+      // Show success toast
+      toast.success(`Removed ${result.unassigned} content from tag playback`);
     },
     onError: (error) => {
       const appError = handleAPIError(error);

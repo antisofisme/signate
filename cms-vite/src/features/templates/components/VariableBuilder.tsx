@@ -4,7 +4,7 @@
  */
 
 import { useState } from 'react'
-import { toast } from 'sonner'
+import { toast } from '@/shared/utils/toast'
 import { Plus, Search, Trash2 } from 'lucide-react'
 import { Button } from '@/shared/components'
 import type { VariableType } from '../types/template.types'

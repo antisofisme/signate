@@ -85,7 +85,7 @@ export class PlayerScheduleManager {
       if (!this.organizationId) return;
 
       const response = await SharedAPIClient.get<{ schedules: Schedule[] }>(
-        `/api/v1/schedules?organization_id=${this.organizationId}&is_active=true`
+        `/api/v1/client/schedules?organization_id=${this.organizationId}&is_active=true`
       );
 
       if (response) {
@@ -270,17 +270,39 @@ export class PlayerScheduleManager {
       this.syncSchedules();
     });
 
-    // Re-sync schedules periodically - track interval
+    // Listen for WebSocket schedule events (real-time updates)
+    SharedEventBus.on('ws:SCHEDULE_ACTIVATED', (event: any) => {
+      SharedLogger.info('[PlayerScheduleManager] WebSocket: Schedule activated', event);
+      // Immediate sync instead of waiting for interval
+      this.syncSchedules();
+    });
+
+    SharedEventBus.on('ws:SCHEDULE_DEACTIVATED', (event: any) => {
+      SharedLogger.info('[PlayerScheduleManager] WebSocket: Schedule deactivated', event);
+      // Clear current schedule and notify
+      this.currentSchedule = null;
+      SharedEventBus.emit('schedule:changed', {
+        schedule: null,
+        playlist_id: null,
+      });
+      // Sync to get the next active schedule (if any)
+      this.syncSchedules();
+    });
+
+    // Re-sync schedules periodically (fallback) - track interval
     this.syncInterval = window.setInterval(() => {
       this.syncSchedules();
     }, 300000); // 5 minutes
   }
 
   /**
-   * Format date as YYYY-MM-DD
+   * Format date as YYYY-MM-DD (local time, consistent with backend)
    */
   private formatDate(date: Date): string {
-    return date.toISOString().split('T')[0];
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
   }
 
   /**

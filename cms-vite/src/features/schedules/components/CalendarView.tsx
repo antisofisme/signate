@@ -6,7 +6,7 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
-import { PRIORITY_LEVELS, type CalendarEvent } from '../types/schedule.types'
+import { DEFAULT_SCHEDULE_COLOR, type CalendarEvent } from '../types/schedule.types'
 
 interface CalendarViewProps {
   events: CalendarEvent[]
@@ -178,8 +178,8 @@ export const CalendarView = ({
               {/* Events */}
               <div className="space-y-1">
                 {dateEvents.slice(0, 3).map((event) => {
-                  const priority = PRIORITY_LEVELS[event.schedule.priority]
-                  
+                  const scheduleColor = event.schedule.color || DEFAULT_SCHEDULE_COLOR
+
                   return (
                     <div
                       key={event.id}
@@ -189,12 +189,13 @@ export const CalendarView = ({
                       }}
                       className={`
                         text-xs p-1 rounded truncate cursor-pointer
-                        ${priority.color === 'red' ? 'bg-red-100 text-red-700 hover:bg-red-200' : ''}
-                        ${priority.color === 'orange' ? 'bg-orange-100 text-orange-700 hover:bg-orange-200' : ''}
-                        ${priority.color === 'blue' ? 'bg-blue-100 text-blue-700 hover:bg-blue-200' : ''}
-                        ${priority.color === 'gray' ? 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600' : ''}
                         ${event.isException ? 'line-through opacity-50' : ''}
                       `}
+                      style={{
+                        backgroundColor: `${scheduleColor}20`,
+                        color: scheduleColor,
+                        borderLeft: `3px solid ${scheduleColor}`
+                      }}
                       title={event.title}
                     >
                       {event.title}
@@ -217,21 +218,11 @@ export const CalendarView = ({
         <div className="flex flex-wrap gap-4 text-xs">
           <div className="flex items-center gap-2">
             <span className="font-medium text-gray-700 dark:text-gray-300">
-              {t('schedules.activeIndicator.priority')}:
+              {t('schedules.calendarLegend.scheduleColors')}:
             </span>
-            {Object.values(PRIORITY_LEVELS).map((priority) => (
-              <div key={priority.level} className="flex items-center gap-1">
-                <div
-                  className={`w-3 h-3 rounded
-                    ${priority.color === 'red' ? 'bg-red-500' : ''}
-                    ${priority.color === 'orange' ? 'bg-orange-500' : ''}
-                    ${priority.color === 'blue' ? 'bg-blue-500' : ''}
-                    ${priority.color === 'gray' ? 'bg-gray-500' : ''}
-                  `}
-                />
-                <span className="text-gray-600 dark:text-gray-300">{priority.label}</span>
-              </div>
-            ))}
+            <span className="text-gray-600 dark:text-gray-300">
+              {t('schedules.calendarLegend.customColorsPerSchedule')}
+            </span>
           </div>
           <div className="flex items-center gap-2">
             <div className="w-3 h-3 bg-gray-300 dark:bg-gray-500 rounded line-through"></div>

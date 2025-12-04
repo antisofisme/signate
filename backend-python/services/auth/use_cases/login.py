@@ -5,14 +5,20 @@ Handles user authentication
 Updated to use centralized error handling and JWT utilities
 Integrated with Session Management (Phase 1 Day 3)
 P0-3: Updated to include permissions in JWT token
+P0-4: Added account lockout mechanism for security
 """
 
 from typing import Dict, Any, Optional
+from datetime import datetime, timezone, timedelta
 from ..domain.interfaces import IUserRepository
 from ..domain.user import Credentials
 from ..repositories.organization_repo import OrganizationRepository
-from shared.errors import AuthenticationError
+from shared.errors import AuthenticationError, ErrorCodes
 from shared.auth import verify_password, create_access_token, create_token_payload
+
+# Account lockout configuration
+MAX_FAILED_ATTEMPTS = 5  # Lock after 5 consecutive failed attempts
+LOCKOUT_DURATION_MINUTES = 30  # Lock for 30 minutes
 
 
 class LoginUseCase:
@@ -64,8 +70,19 @@ class LoginUseCase:
                 message="Username atau password salah"
             )
 
+        # P0-4: Check if account is locked
+        if hasattr(user, 'locked_until') and user.locked_until:
+            if user.locked_until > datetime.now(timezone.utc):
+                minutes_remaining = int((user.locked_until - datetime.now(timezone.utc)).total_seconds() / 60)
+                raise AuthenticationError(
+                    message=f"Akun terkunci. Coba lagi dalam {minutes_remaining} menit.",
+                    code=ErrorCodes.ACCOUNT_LOCKED
+                )
+
         # Verify password using shared auth utility
         if not verify_password(credentials.password, user.password_hash):
+            # P0-4: Increment failed login attempts
+            self._handle_failed_login(user)
             raise AuthenticationError(
                 message="Username atau password salah"
             )
@@ -75,6 +92,9 @@ class LoginUseCase:
             raise AuthenticationError(
                 message="Akun Anda telah dinonaktifkan"
             )
+
+        # P0-4: Reset failed login attempts on successful login
+        self._handle_successful_login(user, ip_address)
 
         # P0-3: Fetch user's role permissions for embedding in JWT
         permissions = {}
@@ -120,3 +140,53 @@ class LoginUseCase:
             "token": token,
             "organizations": organizations
         }
+
+    def _handle_failed_login(self, user) -> None:
+        """
+        Handle failed login attempt - increment counter and lock if necessary
+
+        P0-4: Security feature to prevent brute force attacks
+
+        Args:
+            user: User object from repository
+        """
+        try:
+            # Get current failed attempts count
+            current_attempts = getattr(user, 'failed_login_attempts', 0) or 0
+            new_attempts = current_attempts + 1
+
+            # Check if should lock account
+            locked_until = None
+            if new_attempts >= MAX_FAILED_ATTEMPTS:
+                locked_until = datetime.now(timezone.utc) + timedelta(minutes=LOCKOUT_DURATION_MINUTES)
+
+            # Update user record
+            self.user_repository.update_login_attempts(
+                user_id=user.id,
+                failed_attempts=new_attempts,
+                locked_until=locked_until
+            )
+        except Exception:
+            # Silently fail - don't expose lockout mechanism errors
+            pass
+
+    def _handle_successful_login(self, user, ip_address: Optional[str] = None) -> None:
+        """
+        Handle successful login - reset counters and update last login info
+
+        P0-4: Security feature to track login activity
+
+        Args:
+            user: User object from repository
+            ip_address: IP address of the login request
+        """
+        try:
+            # Reset failed attempts and update last login info
+            self.user_repository.update_login_success(
+                user_id=user.id,
+                ip_address=ip_address,
+                login_time=datetime.now(timezone.utc)
+            )
+        except Exception:
+            # Silently fail - don't block login if tracking fails
+            pass

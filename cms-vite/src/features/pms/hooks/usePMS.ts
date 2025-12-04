@@ -5,7 +5,7 @@
  */
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { toast } from 'sonner'
+import { toast } from '@/shared/utils/toast'
 import * as pmsApi from '../api/pmsApi'
 import type {
   PMSConfig,

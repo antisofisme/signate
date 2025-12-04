@@ -10,6 +10,7 @@
  */
 
 import axios, { AxiosError } from 'axios';
+import { toast } from '@/shared/utils/toast';
 import { getSmartApiUrl } from '../config/network-detector';
 
 // Environment variables with smart detection
@@ -84,23 +85,36 @@ apiClient.interceptors.response.use(
 
     return response;
   },
-  (error: AxiosError) => {
-    // Handle 401 Unauthorized - Auto logout
+  (error: AxiosError<{ message?: string; code?: string; detail?: string }>) => {
+    // Handle 401 Unauthorized - Check for specific error codes
     if (error.response?.status === 401) {
-      console.warn('[API] 401 Unauthorized - Logging out...');
+      const errorCode = error.response?.data?.code;
+      const errorMessage = error.response?.data?.message || error.response?.data?.detail;
+
+      if (errorCode === 'SESSION_REVOKED') {
+        toast.error('Sesi Anda telah berakhir. Silakan login kembali.');
+      } else if (errorCode === 'TOKEN_EXPIRED') {
+        toast.error('Token kadaluarsa. Mengarahkan ke halaman login...');
+      } else {
+        console.warn('[API] 401 Unauthorized - Logging out...', errorMessage);
+      }
+
       localStorage.removeItem('auth-token');
       localStorage.removeItem('selected-org-id');
       window.location.href = '/login';
     }
 
-    // Handle 403 Forbidden - No permission
+    // Handle 403 Forbidden - No permission with user notification
     if (error.response?.status === 403) {
-      console.error('[API] 403 Forbidden - No permission');
+      const errorMessage = error.response?.data?.message || error.response?.data?.detail;
+      console.error('[API] 403 Forbidden - No permission:', errorMessage);
+      toast.error(errorMessage || 'Anda tidak memiliki izin untuk operasi ini');
     }
 
     // Handle network errors
     if (!error.response) {
       console.error('[API] Network error:', error.message);
+      toast.error('Koneksi gagal. Periksa jaringan Anda.');
     }
 
     return Promise.reject(error);

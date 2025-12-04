@@ -7,7 +7,7 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Eye, Trash2, Copy, Check, Download } from 'lucide-react';
-import { toast } from 'sonner';
+import { toast } from '@/shared/utils/toast';
 import { useCanPerformAction } from '@/features/rbac/hooks/usePermissions';
 import { useDeleteMenuMedia } from '../hooks/useMenuMedia';
 import { ConfirmDialog } from '@/shared/components';

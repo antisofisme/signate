@@ -5,7 +5,7 @@
 
 import React from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { toast } from 'sonner'
+import { toast } from '@/shared/utils/toast'
 import { getApiErrorMessage } from '@/shared/utils/types'
 import { useAuthStore } from '@/lib/stores/authStore'
 import * as rbacApi from '../api/rbacApi'
@@ -207,10 +207,13 @@ export function useAssignRoleToUser() {
     mutationFn: ({ userId, roleId }: { userId: number; roleId: number }) =>
       rbacApi.assignRoleToUser(userId, roleId),
     onSuccess: (_, variables) => {
+      // Invalidate user-specific queries
       queryClient.invalidateQueries({ queryKey: permissionKeys.userRoles(variables.userId) })
       queryClient.invalidateQueries({
         queryKey: permissionKeys.userPermissions(variables.userId),
       })
+      // Invalidate users list to refresh the table immediately
+      queryClient.invalidateQueries({ queryKey: ['users'] })
       toast.success('Role assigned to user')
     },
     onError: (error: unknown) => {

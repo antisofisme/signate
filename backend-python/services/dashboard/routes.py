@@ -16,6 +16,7 @@ from services.auth.repositories.models import UserModel
 from .dtos import (
     DashboardStatsResponse,
     DeviceHealthSummaryResponse,
+    DeviceIssue,
     LiveDeviceResponse,
     ContentPerformanceResponse,
     ActivePlaylistAssignmentResponse,
@@ -98,12 +99,22 @@ def get_device_health(
     use_case = GetDeviceHealthUseCase(dashboard_repo)
     health = use_case.execute(current_user.organization_id)
 
+    # Convert dataclass issues to Pydantic DTO
+    issues = [
+        DeviceIssue(
+            type=issue.type,
+            count=issue.count,
+            devices=issue.devices
+        )
+        for issue in health.issues
+    ]
+
     return DeviceHealthSummaryResponse(
         healthy=health.healthy,
         warning=health.warning,
         error=health.error,
         offline=health.offline,
-        issues=health.issues
+        issues=issues
     )
 
 
@@ -199,11 +210,12 @@ def get_active_playlists(
 @router.get("/playback-timeline", response_model=List[PlaybackTimelineResponse])
 def get_playback_timeline(
     days: int = Query(default=7, ge=1, le=30),
+    current_user: UserModel = Depends(get_current_user),
     dashboard_repo: DashboardRepository = Depends(get_dashboard_repo)
 ):
     """Get playback timeline for the last N days"""
     use_case = GetPlaybackTimelineUseCase(dashboard_repo)
-    timeline = use_case.execute(days)
+    timeline = use_case.execute(current_user.organization_id, days)
 
     return [
         PlaybackTimelineResponse(

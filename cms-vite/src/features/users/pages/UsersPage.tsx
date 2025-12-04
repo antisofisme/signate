@@ -14,6 +14,7 @@ import { useCanPerformAction } from '@/features/rbac/hooks/usePermissions';
 import { UserList } from '../components/UserList';
 import { UserForm } from '../components/UserForm';
 import { ChangePasswordDialog } from '../components/ChangePasswordDialog';
+import { RoleAssignmentModal } from '../components/RoleAssignmentModal';
 import {
   Button,
   ConfirmDialog,
@@ -34,6 +35,7 @@ export default function UsersPage() {
   const { hasPermission: canCreate } = useCanPerformAction('users', 'create');
   const { hasPermission: canEdit } = useCanPerformAction('users', 'edit');
   const { hasPermission: canDelete } = useCanPerformAction('users', 'delete');
+  const { hasPermission: canManageRoles } = useCanPerformAction('roles', 'edit');
 
   // Data fetching
   const { data: usersData, isLoading: isLoadingUsers } = useUsers();
@@ -48,6 +50,7 @@ export default function UsersPage() {
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [deletingUser, setDeletingUser] = useState<User | null>(null);
   const [changingPasswordUser, setChangingPasswordUser] = useState<User | null>(null);
+  const [assigningRoleUser, setAssigningRoleUser] = useState<User | null>(null);
 
   const users = usersData?.users || [];
   const organizations = organizationsData?.organizations || [];
@@ -142,6 +145,7 @@ export default function UsersPage() {
         onEdit={canEdit ? setEditingUser : undefined}
         onDelete={canDelete ? setDeletingUser : undefined}
         onChangePassword={canEdit ? setChangingPasswordUser : undefined}
+        onAssignRole={canManageRoles ? setAssigningRoleUser : undefined}
       />
 
       {/* Modals */}
@@ -183,6 +187,12 @@ export default function UsersPage() {
         onClose={() => setChangingPasswordUser(null)}
         onSubmit={handleChangePassword}
         isLoading={changePasswordMutation.isPending}
+      />
+
+      <RoleAssignmentModal
+        isOpen={!!assigningRoleUser}
+        user={assigningRoleUser}
+        onClose={() => setAssigningRoleUser(null)}
       />
     </>
   );

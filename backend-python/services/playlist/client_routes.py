@@ -223,7 +223,8 @@ def get_playlist_for_device(
 
         # ======================================================================
         # PRIORITY 2: Tag-based content (MEDIUM)
-        # Device has tags → Tags have content via content_tags
+        # Device has tags → Tags have content via content_tags table
+        # Single source of truth - same table used by Tag Management Modal
         # ======================================================================
         # Get all tag IDs assigned to this device
         device_tag_ids = db.execute(text("""
@@ -234,34 +235,35 @@ def get_playlist_for_device(
             tag_ids = [t[0] for t in device_tag_ids]
             print(f"[Client Playlist] Device {device_id} has tags: {tag_ids}")
 
-            # Get all content associated with these tags via content_tags
+            tag_content_count = 0
+
+            # Query content_tags table (single source of truth)
             tag_contents = db.query(ContentTag).filter(
                 ContentTag.tag_id.in_(tag_ids)
             ).all()
 
-            if tag_contents:
-                tag_content_count = 0
-                for tc in tag_contents:
-                    if tc.content_id in seen_content_ids:
-                        continue
+            for tc in tag_contents:
+                if tc.content_id in seen_content_ids:
+                    continue
 
-                    content = db.query(ContentModel).filter(
-                        ContentModel.id == tc.content_id,
-                        ContentModel.deleted_at.is_(None)
-                    ).first()
+                content = db.query(ContentModel).filter(
+                    ContentModel.id == tc.content_id,
+                    ContentModel.deleted_at.is_(None)
+                ).first()
 
-                    if content:
-                        seen_content_ids.add(content.id)
-                        all_items.append(build_content_item(
-                            content,
-                            len(all_items),
-                            f'tag:{tc.tag_id}'
-                        ))
-                        tag_content_count += 1
+                if content:
+                    seen_content_ids.add(content.id)
+                    all_items.append(build_content_item(
+                        content,
+                        len(all_items),
+                        f'tag:{tc.tag_id}',
+                        False
+                    ))
+                    tag_content_count += 1
 
-                if tag_content_count > 0:
-                    print(f"[Client Playlist] Found {tag_content_count} tag-based content for device {device_id}")
-                    sources_summary.append(f"{tag_content_count} tag-based")
+            if tag_content_count > 0:
+                print(f"[Client Playlist] Found {tag_content_count} tag-based content for device {device_id}")
+                sources_summary.append(f"{tag_content_count} tag-based")
 
         # ======================================================================
         # PRIORITY 3: Playlist assignments (LOWEST)

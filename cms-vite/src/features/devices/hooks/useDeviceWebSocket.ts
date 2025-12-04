@@ -6,7 +6,7 @@
 import { useEffect } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { useWebSocketEvents } from '@/lib/websocket'
-import { toast } from 'sonner'
+import { toast } from '@/shared/utils/toast'
 import { logger } from '@/shared/utils/logger'
 import type {
   DeviceStatusData,

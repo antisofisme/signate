@@ -22,7 +22,7 @@ import {
 import { Modal, Button } from '@/shared/components';
 import { useDevice, useSendCommand } from '../../hooks/useDevices';
 import type { Device } from '../../types/device';
-import { toast } from 'sonner';
+import { toast } from '@/shared/utils/toast';
 
 interface DeviceDetailModalProps {
   isOpen: boolean;

@@ -5,7 +5,7 @@
 
 import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Play, Clock, Calendar, TrendingUp, ChevronRight } from 'lucide-react'
+import { Play, Clock, Calendar, ChevronRight } from 'lucide-react'
 import { useActiveSchedule, useTimeUntilNextChange } from '../hooks/useAdvancedSchedules'
 import { format } from 'date-fns'
 
@@ -158,10 +158,14 @@ const BannerMode = ({
                   <Clock className="h-3 w-3" />
                   {data.schedule?.start_time || '00:00'} - {data.schedule?.end_time || '23:59'}
                 </span>
-                <span className="flex items-center gap-1">
-                  <TrendingUp className="h-3 w-3" />
-                  {t('schedules.activeIndicator.priority')} {data.priority || 0}
-                </span>
+                {data.color && (
+                  <span className="flex items-center gap-1">
+                    <span
+                      className="w-3 h-3 rounded-full"
+                      style={{ backgroundColor: data.color }}
+                    />
+                  </span>
+                )}
               </div>
             </div>
           </div>
@@ -235,10 +239,15 @@ const WidgetMode = ({
                 {data.schedule?.start_time || '00:00'} - {data.schedule?.end_time || '23:59'}
               </span>
             </div>
-            <div className="flex items-center gap-2">
-              <TrendingUp className="h-3 w-3 flex-shrink-0" />
-              <span>{t('schedules.activeIndicator.priority')} {data.priority || 0}</span>
-            </div>
+            {data.color && (
+              <div className="flex items-center gap-2">
+                <span
+                  className="w-3 h-3 rounded-full flex-shrink-0"
+                  style={{ backgroundColor: data.color }}
+                />
+                <span>{t('schedules.labels.scheduleColor')}</span>
+              </div>
+            )}
             {timeRemaining && (
               <div className="flex items-center gap-2">
                 <Calendar className="h-3 w-3 flex-shrink-0" />

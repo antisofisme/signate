@@ -251,28 +251,27 @@ export const getDuplicateContent = async (): Promise<DuplicateContentResponse> =
 };
 
 /**
- * Content stats response type (matches backend ContentStatsResponse)
+ * Content stats data type (inner data after interceptor unwrap)
+ * Note: API client interceptor unwraps { success, data } → just data
  */
-export interface ContentStatsResponse {
-  success: boolean;
-  data: {
-    total_files: number;
-    total_size_bytes: number;
-    total_size_readable: string;
-    by_type: {
-      [key: string]: {
-        count: number;
-        size_bytes: number;
-        size_readable: string;
-      };
+export interface ContentStatsData {
+  total_files: number;
+  total_size_bytes: number;
+  total_size_readable: string;
+  by_type: {
+    [key: string]: {
+      count: number;
+      size_bytes: number;
+      size_readable: string;
     };
   };
 }
 
 /**
  * Get content statistics
+ * Note: Returns unwrapped data (interceptor handles success/data wrapper)
  */
-export const getContentStats = async (): Promise<ContentStatsResponse> => {
+export const getContentStats = async (): Promise<ContentStatsData> => {
   const response = await apiClient.get(API_ENDPOINTS.CONTENT.STATS);
   return response.data;
 };
@@ -295,4 +294,29 @@ export const getFileTypeFromMime = (mimeType: string): 'image' | 'video' | 'audi
   if (mimeType.startsWith('video/')) return 'video';
   if (mimeType.startsWith('audio/')) return 'audio';
   return 'unknown';
+};
+
+/**
+ * Content playlist info (returned from reverse lookup)
+ */
+export interface ContentPlaylistInfo {
+  id: number;
+  item_id: number;  // For removal: DELETE /playlists/{id}/content/{item_id}
+  name: string;
+  description: string | null;
+  is_active: boolean;
+  content_count: number;
+  order_index: number;
+  duration: number | null;
+  created_at: string | null;
+}
+
+/**
+ * Get playlists containing this content (reverse lookup)
+ * Returns playlists with item_id for removal operations
+ */
+export const getContentPlaylists = async (contentId: number): Promise<ContentPlaylistInfo[]> => {
+  const response = await apiClient.get(API_ENDPOINTS.CONTENT.GET_PLAYLISTS(contentId));
+  // Response structure: { success: true, data: [...], message: "..." }
+  return response.data.data || response.data || [];
 };

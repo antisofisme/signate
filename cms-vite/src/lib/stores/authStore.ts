@@ -92,6 +92,7 @@ export const useAuthStore = create<AuthStore>()(
           organizations,
           selectedOrgId,
           isAuthenticated: true,
+          _hasHydrated: true, // Mark as hydrated after fresh login
         });
 
         // Save token to localStorage for API client

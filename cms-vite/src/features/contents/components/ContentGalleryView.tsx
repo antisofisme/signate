@@ -20,9 +20,10 @@ import {
   Edit,
   Trash2,
   Tag,
+  ListMusic,
   Play,
 } from 'lucide-react';
-import { toast } from 'sonner';
+import { toast } from '@/shared/utils/toast';
 import { Button, EmptyState, ErrorDisplay, ConfirmDialog } from '@/shared/components';
 import { useCanPerformAction } from '@/features/rbac/hooks/usePermissions';
 import {
@@ -38,6 +39,7 @@ import { UploadModal } from './UploadModal';
 import { BulkEditModal } from './BulkEditModal';
 import { BulkTagModal } from './BulkTagModal';
 import { ContentTagAssignmentModal } from './ContentTagAssignmentModal';
+import { ContentPlaylistAssignmentModal } from './ContentPlaylistAssignmentModal';
 
 // Sort options
 type SortOption = 'newest' | 'oldest' | 'name_asc' | 'name_desc' | 'size_desc' | 'size_asc' | 'duration_desc' | 'duration_asc';
@@ -92,8 +94,9 @@ export function ContentGalleryView({ showUploadModal = false, onCloseUploadModal
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [showBulkEditModal, setShowBulkEditModal] = useState(false);
   const [showBulkTagModal, setShowBulkTagModal] = useState(false);
-  const [showPlaybackAssignModal, setShowPlaybackAssignModal] = useState(false);
-  const [playbackContent, setPlaybackContent] = useState<Content | null>(null);
+  const [showTagAssignModal, setShowTagAssignModal] = useState(false);
+  const [showPlaylistAssignModal, setShowPlaylistAssignModal] = useState(false);
+  const [assignmentContent, setAssignmentContent] = useState<Content | null>(null);
   const [showBulkDeleteConfirm, setShowBulkDeleteConfirm] = useState(false);
 
   // Fetch content with max allowed limit
@@ -264,9 +267,14 @@ export function ContentGalleryView({ showUploadModal = false, onCloseUploadModal
     setShowBulkTagModal(true);
   };
 
-  const handlePlaybackAssign = (content: Content) => {
-    setPlaybackContent(content);
-    setShowPlaybackAssignModal(true);
+  const handleTagAssign = (content: Content) => {
+    setAssignmentContent(content);
+    setShowTagAssignModal(true);
+  };
+
+  const handlePlaylistAssign = (content: Content) => {
+    setAssignmentContent(content);
+    setShowPlaylistAssignModal(true);
   };
 
   const handleBulkDelete = async () => {
@@ -516,7 +524,8 @@ export function ContentGalleryView({ showUploadModal = false, onCloseUploadModal
                           showCheckbox={selectedIds.size > 0}
                           onSelect={() => handleSelectContent(content)}
                           onCheckboxChange={(checked) => handleCheckboxChange(content.id, checked)}
-                          onPlaybackAssign={handlePlaybackAssign}
+                          onTagAssign={handleTagAssign}
+                          onPlaylistAssign={handlePlaylistAssign}
                         />
                       );
                       return;
@@ -582,7 +591,8 @@ export function ContentGalleryView({ showUploadModal = false, onCloseUploadModal
                                 showCheckbox={selectedIds.size > 0}
                                 onSelect={() => handleSelectContent(c)}
                                 onCheckboxChange={(checked) => handleCheckboxChange(c.id, checked)}
-                                onPlaybackAssign={handlePlaybackAssign}
+                                onTagAssign={handleTagAssign}
+                                onPlaylistAssign={handlePlaylistAssign}
                               />
                             ))}
                           </div>
@@ -604,7 +614,8 @@ export function ContentGalleryView({ showUploadModal = false, onCloseUploadModal
                         showCheckbox={selectedIds.size > 0}
                         onSelect={() => handleSelectContent(content)}
                         onCheckboxChange={(checked) => handleCheckboxChange(content.id, checked)}
-                        onPlaybackAssign={handlePlaybackAssign}
+                        onTagAssign={handleTagAssign}
+                        onPlaylistAssign={handlePlaylistAssign}
                       />
                     );
                   }
@@ -649,12 +660,22 @@ export function ContentGalleryView({ showUploadModal = false, onCloseUploadModal
 
       {/* Content Tag Assignment Modal */}
       <ContentTagAssignmentModal
-        isOpen={showPlaybackAssignModal}
+        isOpen={showTagAssignModal}
         onClose={() => {
-          setShowPlaybackAssignModal(false);
-          setPlaybackContent(null);
+          setShowTagAssignModal(false);
+          setAssignmentContent(null);
         }}
-        selectedContent={playbackContent ? [playbackContent] : []}
+        selectedContent={assignmentContent ? [assignmentContent] : []}
+      />
+
+      {/* Content Playlist Assignment Modal */}
+      <ContentPlaylistAssignmentModal
+        isOpen={showPlaylistAssignModal}
+        onClose={() => {
+          setShowPlaylistAssignModal(false);
+          setAssignmentContent(null);
+        }}
+        selectedContent={assignmentContent ? [assignmentContent] : []}
       />
 
       {/* Bulk Delete Confirmation */}

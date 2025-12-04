@@ -3,7 +3,7 @@
  */
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { toast } from 'sonner';
+import { toast } from '@/shared/utils/toast';
 import { menuApi } from '../api/menuApi';
 import { getApiErrorMessage } from '@/shared/utils/types';
 import type {

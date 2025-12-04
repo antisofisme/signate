@@ -11,7 +11,7 @@ import { useMenus, useDeleteMenuWithPIN } from '../hooks/useMenus';
 import { EmptyState, TABLE_STYLES } from '@/shared/components';
 import { PinVerificationModal } from './PinVerificationModal';
 import type { Menu, MenuType } from '../types/menu';
-import { toast } from 'sonner';
+import { toast } from '@/shared/utils/toast';
 
 interface MenuListProps {
   onEdit: (menu: Menu) => void;

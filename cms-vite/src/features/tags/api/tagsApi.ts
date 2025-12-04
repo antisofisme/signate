@@ -264,4 +264,93 @@ export const tagsApi = {
     );
     return response.data;
   },
+
+  // =========================================================================
+  // PLAYBACK CONTENT ASSIGNMENT (content_assignments.tag_id)
+  // Different from categorization tags (content_tags table)
+  // =========================================================================
+
+  /**
+   * Get all content assigned to a tag for PLAYBACK
+   * @param tagId - Tag ID
+   * @returns List of content items assigned for playback
+   */
+  getPlaybackContents: async (tagId: number): Promise<{
+    id: number;
+    assignment_id: number;
+    title: string;
+    content_type: string;
+    file_path: string | null;
+    thumbnail_path: string | null;
+    duration_seconds: number | null;
+    assigned_at: string;
+    assigned_by: string | null;
+  }[]> => {
+    const response = await apiClient.get<{
+      success: boolean;
+      data: {
+        id: number;
+        assignment_id: number;
+        title: string;
+        content_type: string;
+        file_path: string | null;
+        thumbnail_path: string | null;
+        duration_seconds: number | null;
+        assigned_at: string;
+        assigned_by: string | null;
+      }[];
+      total: number;
+    }>(API_ENDPOINTS.TAGS.GET_PLAYBACK_CONTENTS(tagId));
+    return response.data.data;
+  },
+
+  /**
+   * Bulk assign content to a tag for PLAYBACK
+   * This inserts into content_assignments table (for playback on devices),
+   * NOT into content_tags table (which is for categorization).
+   * @param tagId - Tag ID
+   * @param contentIds - Array of content IDs
+   */
+  assignPlaybackContents: async (tagId: number, contentIds: number[]): Promise<{
+    success: boolean;
+    assigned: number;
+    skipped: number;
+    failed: number;
+    message: string;
+  }> => {
+    const response = await apiClient.post<{
+      success: boolean;
+      assigned: number;
+      skipped: number;
+      failed: number;
+      message: string;
+    }>(
+      API_ENDPOINTS.TAGS.ASSIGN_PLAYBACK_CONTENTS(tagId),
+      { content_ids: contentIds }
+    );
+    return response.data;
+  },
+
+  /**
+   * Bulk unassign content from a tag for PLAYBACK
+   * @param tagId - Tag ID
+   * @param contentIds - Array of content IDs
+   */
+  unassignPlaybackContents: async (tagId: number, contentIds: number[]): Promise<{
+    success: boolean;
+    unassigned: number;
+    not_found: number;
+    message: string;
+  }> => {
+    const response = await apiClient.delete<{
+      success: boolean;
+      unassigned: number;
+      not_found: number;
+      message: string;
+    }>(
+      API_ENDPOINTS.TAGS.UNASSIGN_PLAYBACK_CONTENTS(tagId),
+      { data: { content_ids: contentIds } }
+    );
+    return response.data;
+  },
 };

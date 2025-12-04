@@ -108,7 +108,7 @@ export const ConflictDetector = ({
   // Group conflicts by type
   const timeOverlaps = data.conflicts.filter(c => c.conflict_type === 'time_overlap')
   const deviceOverlaps = data.conflicts.filter(c => c.conflict_type === 'device_overlap')
-  const priorityConflicts = data.conflicts.filter(c => c.conflict_type === 'priority_conflict')
+  const modeConflicts = data.conflicts.filter(c => c.conflict_type === 'mode_conflict')
 
   return (
     <div className="space-y-4">
@@ -157,14 +157,14 @@ export const ConflictDetector = ({
         </div>
       )}
 
-      {/* Priority Conflicts */}
-      {priorityConflicts.length > 0 && (
+      {/* Mode Conflicts */}
+      {modeConflicts.length > 0 && (
         <div className="space-y-2">
           <h5 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
             <Zap className="w-4 h-4" />
-            {t('schedules.conflictDetector.priorityConflicts')} ({priorityConflicts.length})
+            {t('schedules.conflictDetector.modeConflicts')} ({modeConflicts.length})
           </h5>
-          {priorityConflicts.map((conflict, index) => (
+          {modeConflicts.map((conflict, index) => (
             <ConflictCard key={index} conflict={conflict} t={t} />
           ))}
         </div>

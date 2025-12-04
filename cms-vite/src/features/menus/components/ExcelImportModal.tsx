@@ -11,7 +11,7 @@
 
 import { useState } from 'react';
 import { Upload, Download, CheckCircle, AlertCircle } from 'lucide-react';
-import { toast } from 'sonner';
+import { toast } from '@/shared/utils/toast';
 import { Modal, Button } from '@/shared/components';
 import { useImportMenuItems, useDownloadTemplate } from '../hooks/useMenuImport';
 import type { MenuImportResult } from '../types/menu';

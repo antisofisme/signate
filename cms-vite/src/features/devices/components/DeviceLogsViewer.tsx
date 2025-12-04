@@ -31,7 +31,7 @@ import { useDeviceLogs, useClearLogs, useConnectionLogs } from '../hooks/useDevi
 import { useConsoleLiveStream } from '../hooks';
 import { LogDetailModal } from './LogDetailModal';
 import type { DeviceLog, LogLevel } from '../types/logs';
-import { toast } from 'sonner';
+import { toast } from '@/shared/utils/toast';
 
 export type LogsViewTab = 'console' | 'connection' | 'speedtest';
 

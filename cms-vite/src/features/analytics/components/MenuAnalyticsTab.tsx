@@ -329,16 +329,18 @@ export function MenuAnalyticsTab({ data, isLoading }: MenuAnalyticsTabProps) {
           {isLoading ? (
             <ChartSkeleton />
           ) : data?.popular_hours && data.popular_hours.length > 0 ? (
-            <div className="flex justify-between items-end gap-1 overflow-x-auto pb-2">
-              {data.popular_hours.map((hour) => (
-                <PopularHourItem
-                  key={hour.hour}
-                  hour={hour.hour}
-                  views={hour.views}
-                  percentage={hour.percentage}
-                  maxPercentage={maxHourPercentage}
-                />
-              ))}
+            <div className="overflow-x-auto pb-2">
+              <div className="flex justify-between items-end gap-1 min-w-[480px]">
+                {data.popular_hours.map((hour) => (
+                  <PopularHourItem
+                    key={hour.hour}
+                    hour={hour.hour}
+                    views={hour.views}
+                    percentage={hour.percentage}
+                    maxPercentage={maxHourPercentage}
+                  />
+                ))}
+              </div>
             </div>
           ) : (
             <div className="flex flex-col items-center justify-center py-8 text-center">

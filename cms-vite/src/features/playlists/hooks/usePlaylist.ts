@@ -4,7 +4,7 @@
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import { toast } from 'sonner';
+import { toast } from '@/shared/utils/toast';
 import { getApiErrorMessage } from '@/shared/utils/types';
 import { useSelectedOrgId, playlistKeys as sharedPlaylistKeys } from '@/shared/hooks';
 import { playlistApi } from '../api/playlistApi';
@@ -200,6 +200,8 @@ export const useAddContentToPlaylist = () => {
       queryClient.invalidateQueries({ queryKey: playlistKeys.detail(variables.id) });
       // Also refresh playlist list to update content_count
       queryClient.invalidateQueries({ queryKey: playlistKeys.lists(orgId) });
+      // Invalidate content-playlists reverse lookup queries
+      queryClient.invalidateQueries({ queryKey: ['content', 'playlists'] });
 
       if (result.skipped_missing && result.skipped_missing.length > 0) {
         toast.warning(t('playlists.messages.addContentPartialMissing', { added: result.added, missing: result.skipped_missing.length }));
@@ -231,6 +233,8 @@ export const useRemoveContentFromPlaylist = () => {
       queryClient.invalidateQueries({ queryKey: playlistKeys.detail(variables.playlistId) });
       // Also refresh playlist list to update content_count
       queryClient.invalidateQueries({ queryKey: playlistKeys.lists(orgId) });
+      // Invalidate content-playlists reverse lookup queries
+      queryClient.invalidateQueries({ queryKey: ['content', 'playlists'] });
       toast.success(t('playlists.messages.removeContentSuccess'));
     },
     onError: (error: unknown) => {

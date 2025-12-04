@@ -21,11 +21,12 @@ import {
   ChevronRight,
   Copy,
   List,
+  ListMusic,
   Tag,
   Monitor,
   Play,
 } from 'lucide-react';
-import { toast } from 'sonner';
+import { toast } from '@/shared/utils/toast';
 import { usePagination } from '@/shared/hooks';
 import {
   Pagination,
@@ -52,6 +53,7 @@ import { EditContentModal } from './EditContentModal';
 import { BulkEditModal } from './BulkEditModal';
 import { BulkTagModal } from './BulkTagModal';
 import { ContentTagAssignmentModal } from './ContentTagAssignmentModal';
+import { ContentPlaylistAssignmentModal } from './ContentPlaylistAssignmentModal';
 import { ContentPreviewModal } from './ContentPreviewModal';
 
 // Get content type icon
@@ -110,7 +112,8 @@ export function ContentTable({ showUploadModal = false, onCloseUploadModal, show
   const [showEditModal, setShowEditModal] = useState(false);
   const [showBulkEditModal, setShowBulkEditModal] = useState(false);
   const [showBulkTagModal, setShowBulkTagModal] = useState(false);
-  const [showPlaybackAssignModal, setShowPlaybackAssignModal] = useState(false);
+  const [showTagAssignModal, setShowTagAssignModal] = useState(false);
+  const [showPlaylistAssignModal, setShowPlaylistAssignModal] = useState(false);
 
   // Hooks - merge filters with pagination
   const { data: contentData, isLoading, error } = useContentList({
@@ -240,9 +243,14 @@ export function ContentTable({ showUploadModal = false, onCloseUploadModal, show
     setShowBulkTagModal(true);
   };
 
-  const handlePlaybackAssign = (content: Content) => {
+  const handleTagAssign = (content: Content) => {
     setSelectedContent(content);
-    setShowPlaybackAssignModal(true);
+    setShowTagAssignModal(true);
+  };
+
+  const handlePlaylistAssign = (content: Content) => {
+    setSelectedContent(content);
+    setShowPlaylistAssignModal(true);
   };
 
   const handleBulkDelete = async () => {
@@ -645,12 +653,22 @@ export function ContentTable({ showUploadModal = false, onCloseUploadModal, show
                                         <button
                                           onClick={(e) => {
                                             e.stopPropagation();
-                                            handlePlaybackAssign(fullContent);
+                                            handleTagAssign(fullContent);
                                           }}
                                           className={TABLE_STYLES.actionBtnPurple}
-                                          title={t('contents.actions.assignPlayback', 'Assign Playback')}
+                                          title={t('contents.actions.assignTag', 'Assign Tag')}
                                         >
                                           <Tag className="w-4 h-4" />
+                                        </button>
+                                        <button
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            handlePlaylistAssign(fullContent);
+                                          }}
+                                          className={TABLE_STYLES.actionBtnBlue}
+                                          title={t('contents.actions.assignPlaylist', 'Assign Playlist')}
+                                        >
+                                          <ListMusic className="w-4 h-4" />
                                         </button>
                                         <button
                                           onClick={(e) => {
@@ -765,11 +783,18 @@ export function ContentTable({ showUploadModal = false, onCloseUploadModal, show
                                 {canUpdate && (
                                   <>
                                     <button
-                                      onClick={() => handlePlaybackAssign(content)}
+                                      onClick={() => handleTagAssign(content)}
                                       className={TABLE_STYLES.actionBtnPurple}
-                                      title={t('contents.actions.assignPlayback', 'Assign Playback')}
+                                      title={t('contents.actions.assignTag', 'Assign Tag')}
                                     >
                                       <Tag className="w-4 h-4" />
+                                    </button>
+                                    <button
+                                      onClick={() => handlePlaylistAssign(content)}
+                                      className={TABLE_STYLES.actionBtnBlue}
+                                      title={t('contents.actions.assignPlaylist', 'Assign Playlist')}
+                                    >
+                                      <ListMusic className="w-4 h-4" />
                                     </button>
                                     <button
                                       onClick={() => handleEdit(content)}
@@ -872,9 +897,19 @@ export function ContentTable({ showUploadModal = false, onCloseUploadModal, show
 
       {/* Content Tag Assignment Modal */}
       <ContentTagAssignmentModal
-        isOpen={showPlaybackAssignModal}
+        isOpen={showTagAssignModal}
         onClose={() => {
-          setShowPlaybackAssignModal(false);
+          setShowTagAssignModal(false);
+          // Don't clear selectedContent here as it might be used for preview
+        }}
+        selectedContent={selectedContent ? [selectedContent] : []}
+      />
+
+      {/* Content Playlist Assignment Modal */}
+      <ContentPlaylistAssignmentModal
+        isOpen={showPlaylistAssignModal}
+        onClose={() => {
+          setShowPlaylistAssignModal(false);
           // Don't clear selectedContent here as it might be used for preview
         }}
         selectedContent={selectedContent ? [selectedContent] : []}

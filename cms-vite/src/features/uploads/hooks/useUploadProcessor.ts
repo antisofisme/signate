@@ -9,7 +9,7 @@
 
 import { useEffect, useRef, useCallback } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { toast } from 'sonner';
+import { toast } from '@/shared/utils/toast';
 import { useUploadQueueStore } from '@/lib/stores/uploadQueueStore';
 import { uploadSingleContent, isAbortError, isPermanentError, getErrorMessage } from '../api/uploadApi';
 import { contentKeys } from '@/features/contents/hooks/useContent';

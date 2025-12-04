@@ -39,6 +39,13 @@ from .dtos import (
     UnassignTagFromDevicesRequest,
     BulkDeviceTagAssignmentResponse,
     BulkDeviceTagUnassignmentResponse,
+    # Playback content assignment DTOs
+    AssignPlaybackContentsRequest,
+    UnassignPlaybackContentsRequest,
+    PlaybackContentResponse,
+    PlaybackContentsListResponse,
+    BulkPlaybackAssignmentResponse,
+    BulkPlaybackUnassignmentResponse,
 )
 from .use_cases import (
     CreateTagUseCase,
@@ -969,5 +976,199 @@ def unassign_tag_from_devices(
     if result["unassigned"] > 0:
         org_id = current_user["organization_id"]
         cache.clear_pattern(f"org:{org_id}:devices:list:*")
+
+    return result
+
+
+# =============================================================================
+# PLAYBACK CONTENT ASSIGNMENT ENDPOINTS (content_assignments.tag_id)
+# Different from categorization (content_tags table)
+# =============================================================================
+
+@router.get(
+    TagRoutes.GET_PLAYBACK_CONTENTS,
+    response_model=PlaybackContentsListResponse
+)
+@handle_errors
+def get_tag_playback_contents(
+    tag_id: int,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(require_permission("tags", "read"))
+):
+    """
+    Get all content assigned to a tag for PLAYBACK
+
+    This returns content from content_assignments table (for playback on devices),
+    NOT from content_tags table (which is for categorization).
+    """
+    start_time = time.time()
+
+    # Get tag repo
+    tag_repo = TagRepository(db)
+
+    # Execute query
+    contents = tag_repo.get_playback_contents_by_tag(
+        tag_id=tag_id,
+        organization_id=current_user["organization_id"]
+    )
+
+    # Convert to response
+    content_responses = [PlaybackContentResponse(**c) for c in contents]
+
+    # Calculate duration
+    duration_ms = (time.time() - start_time) * 1000
+
+    # Log request
+    request_logger.log_request(
+        method="GET",
+        path=f"/tags/{tag_id}/playback-contents",
+        status_code=200,
+        duration_ms=duration_ms,
+        user_id=current_user["user_id"]
+    )
+
+    return {
+        "success": True,
+        "data": content_responses,
+        "total": len(content_responses)
+    }
+
+
+@router.post(
+    TagRoutes.ASSIGN_PLAYBACK_CONTENTS,
+    response_model=BulkPlaybackAssignmentResponse,
+    status_code=status.HTTP_200_OK
+)
+@handle_errors
+def assign_playback_contents_to_tag(
+    tag_id: int,
+    request_body: AssignPlaybackContentsRequest,
+    http_request: Request,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(require_permission("tags", "edit")),
+    audit_logger: AuditLogger = Depends(get_audit_logger)
+):
+    """
+    Bulk assign content to a tag for PLAYBACK
+
+    This inserts into content_assignments table with tag_id (for playback on devices),
+    NOT into content_tags table (which is for categorization).
+
+    Devices with this tag will receive these contents for playback.
+    """
+    start_time = time.time()
+
+    # Get tag repo
+    tag_repo = TagRepository(db)
+
+    # Execute assignment
+    result = tag_repo.assign_playback_contents_to_tag(
+        tag_id=tag_id,
+        content_ids=request_body.content_ids,
+        organization_id=current_user["organization_id"],
+        assigned_by_id=current_user["user_id"]
+    )
+
+    # Calculate duration
+    duration_ms = (time.time() - start_time) * 1000
+
+    # Log request
+    request_logger.log_request(
+        method="POST",
+        path=f"/tags/{tag_id}/playback-contents",
+        status_code=200,
+        duration_ms=duration_ms,
+        user_id=current_user["user_id"]
+    )
+
+    # Audit log
+    audit_logger.log_action(
+        user_id=current_user["user_id"],
+        action="tag.assign_playback_contents",
+        resource_type="tag",
+        resource_id=tag_id,
+        details={
+            "content_count": len(request_body.content_ids),
+            "assigned": result["assigned"],
+            "skipped": result["skipped"],
+            "failed": result["failed"]
+        },
+        ip_address=http_request.client.host if http_request.client else None,
+        organization_id=current_user["organization_id"]
+    )
+
+    # Invalidate content assignment cache
+    if result["assigned"] > 0:
+        org_id = current_user["organization_id"]
+        cache.clear_pattern(f"org:{org_id}:contents:*")
+        cache.clear_pattern(f"org:{org_id}:devices:*")
+
+    return result
+
+
+@router.delete(
+    TagRoutes.UNASSIGN_PLAYBACK_CONTENTS,
+    response_model=BulkPlaybackUnassignmentResponse,
+    status_code=status.HTTP_200_OK
+)
+@handle_errors
+def unassign_playback_contents_from_tag(
+    tag_id: int,
+    request_body: UnassignPlaybackContentsRequest,
+    http_request: Request,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(require_permission("tags", "edit")),
+    audit_logger: AuditLogger = Depends(get_audit_logger)
+):
+    """
+    Bulk unassign content from a tag for PLAYBACK
+
+    This removes entries from content_assignments table where tag_id matches.
+    Devices with this tag will no longer receive these contents for playback.
+    """
+    start_time = time.time()
+
+    # Get tag repo
+    tag_repo = TagRepository(db)
+
+    # Execute unassignment
+    result = tag_repo.unassign_playback_contents_from_tag(
+        tag_id=tag_id,
+        content_ids=request_body.content_ids,
+        organization_id=current_user["organization_id"]
+    )
+
+    # Calculate duration
+    duration_ms = (time.time() - start_time) * 1000
+
+    # Log request
+    request_logger.log_request(
+        method="DELETE",
+        path=f"/tags/{tag_id}/playback-contents",
+        status_code=200,
+        duration_ms=duration_ms,
+        user_id=current_user["user_id"]
+    )
+
+    # Audit log
+    audit_logger.log_action(
+        user_id=current_user["user_id"],
+        action="tag.unassign_playback_contents",
+        resource_type="tag",
+        resource_id=tag_id,
+        details={
+            "content_count": len(request_body.content_ids),
+            "unassigned": result["unassigned"],
+            "not_found": result["not_found"]
+        },
+        ip_address=http_request.client.host if http_request.client else None,
+        organization_id=current_user["organization_id"]
+    )
+
+    # Invalidate content assignment cache
+    if result["unassigned"] > 0:
+        org_id = current_user["organization_id"]
+        cache.clear_pattern(f"org:{org_id}:contents:*")
+        cache.clear_pattern(f"org:{org_id}:devices:*")
 
     return result

@@ -7,7 +7,7 @@
 
 import { useState, useEffect } from 'react'
 import { Save, Trash2, Star, StarOff, Plus, Search, Edit2, Copy } from 'lucide-react'
-import { toast } from 'sonner'
+import { toast } from '@/shared/utils/toast'
 import { Button, Modal } from '@/shared/components'
 import type { CommandType } from '../types/commands'
 import type { CommandTemplate } from '../types/commandTemplates'

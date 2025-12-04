@@ -30,7 +30,7 @@ import {
   useUpdateDevice,
 } from '../hooks/useDevices';
 import type { Device, DeviceStatus, DeviceType } from '../types/device';
-import { toast } from 'sonner';
+import { toast } from '@/shared/utils/toast';
 import { PendingDeviceCard } from './PendingDeviceCard';
 import {
   TableSkeleton,

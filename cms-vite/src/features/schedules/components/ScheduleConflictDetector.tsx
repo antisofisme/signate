@@ -208,9 +208,11 @@ const ConflictCard = ({ conflict, onClick }: ConflictCardProps) => {
             <h5 className="text-sm font-medium text-gray-900 dark:text-white truncate">
               {conflict.name}
             </h5>
-            <span className="text-xs px-2 py-0.5 bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-200 rounded">
-              Priority {conflict.priority}
-            </span>
+            <span
+              className="w-4 h-4 rounded-full flex-shrink-0"
+              style={{ backgroundColor: conflict.color }}
+              title={t('schedules.labels.scheduleColor')}
+            />
           </div>
 
           <div className="space-y-1">

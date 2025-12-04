@@ -6,7 +6,7 @@
 import { useState } from 'react';
 import { Monitor, Copy, Check, ExternalLink, Info } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { toast } from 'sonner';
+import { toast } from '@/shared/utils/toast';
 
 // Get player URL from environment
 const PLAYER_URL = import.meta.env.VITE_PLAYER_URL || 'https://player.zhmhotels.online';

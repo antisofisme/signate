@@ -229,13 +229,8 @@ class TagRepository(ITagRepository):
             {"tag_id": tag_id}
         )
 
-        # 3. Remove content_assignments (remove tag-based content assignments)
-        self.db.execute(
-            text("DELETE FROM content_assignments WHERE tag_id = :tag_id"),
-            {"tag_id": tag_id}
-        )
-
-        # 4. Remove playlist_assignments (remove tag-based playlist assignments)
+        # 3. Remove playlist_assignments (remove tag-based playlist assignments)
+        # Note: content_assignments no longer has tag_id column (removed in migration 073)
         self.db.execute(
             text("DELETE FROM playlist_assignments WHERE tag_id = :tag_id"),
             {"tag_id": tag_id}
@@ -608,3 +603,74 @@ class TagRepository(ITagRepository):
             "not_found": not_found,
             "message": f"Unassigned tag from {unassigned} device(s)"
         }
+
+    # ==========================================================================
+    # PLAYBACK CONTENT ASSIGNMENT
+    # NOTE: These functions now use content_tags table (same as categorization)
+    # The content_assignments.tag_id column was removed in migration 073
+    # Frontend should use assign_to_contents/unassign_from_contents instead
+    # ==========================================================================
+
+    def get_playback_contents_by_tag(self, tag_id: int, organization_id: int) -> List[dict]:
+        """Get all content assigned to a tag (from content_tags table)"""
+        from sqlalchemy import text
+
+        # First verify tag exists and belongs to org
+        tag = self.find_by_id(tag_id, organization_id)
+        if not tag:
+            raise ValueError(f"Tag {tag_id} not found or access denied")
+
+        # Query content through content_tags (single source of truth)
+        query = text("""
+            SELECT
+                c.id,
+                ct.id as assignment_id,
+                c.title,
+                c.content_type,
+                c.file_url as file_path,
+                c.thumbnail_url as thumbnail_path,
+                c.duration as duration_seconds,
+                ct.created_at as assigned_at,
+                u.username as assigned_by
+            FROM contents c
+            JOIN content_tags ct ON ct.content_id = c.id
+            LEFT JOIN users u ON u.id = ct.assigned_by_id
+            WHERE ct.tag_id = :tag_id
+              AND c.organization_id = :organization_id
+              AND c.deleted_at IS NULL
+            ORDER BY ct.created_at DESC
+        """)
+
+        results = self.db.execute(query, {
+            "tag_id": tag_id,
+            "organization_id": organization_id
+        }).fetchall()
+
+        return [
+            {
+                "id": row.id,
+                "assignment_id": row.assignment_id,
+                "title": row.title,
+                "content_type": row.content_type,
+                "file_path": row.file_path,
+                "thumbnail_path": row.thumbnail_path,
+                "duration_seconds": row.duration_seconds,
+                "assigned_at": row.assigned_at,
+                "assigned_by": row.assigned_by
+            }
+            for row in results
+        ]
+
+    def assign_playback_contents_to_tag(
+        self, tag_id: int, content_ids: List[int], organization_id: int, assigned_by_id: Optional[int] = None
+    ) -> dict:
+        """Bulk assign content to tag (uses content_tags table - same as categorization)"""
+        # Delegate to assign_to_contents since they now use the same table
+        return self.assign_to_contents(tag_id, content_ids, organization_id, assigned_by_id)
+
+    def unassign_playback_contents_from_tag(
+        self, tag_id: int, content_ids: List[int], organization_id: int
+    ) -> dict:
+        """Bulk unassign content from tag (uses content_tags table - same as categorization)"""
+        # Delegate to unassign_from_contents since they now use the same table
+        return self.unassign_from_contents(tag_id, content_ids, organization_id)

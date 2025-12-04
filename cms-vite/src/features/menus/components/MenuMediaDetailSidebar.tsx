@@ -20,7 +20,7 @@ import {
   Save,
   Pencil,
 } from 'lucide-react';
-import { toast } from 'sonner';
+import { toast } from '@/shared/utils/toast';
 import { Button, ConfirmDialog } from '@/shared/components';
 import { useCanPerformAction } from '@/features/rbac/hooks/usePermissions';
 import { useUpdateMenuMedia, useDeleteMenuMedia } from '../hooks/useMenuMedia';

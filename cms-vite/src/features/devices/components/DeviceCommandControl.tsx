@@ -21,7 +21,7 @@ import {
   AlertCircle,
   Loader2,
 } from 'lucide-react';
-import { toast } from 'sonner';
+import { toast } from '@/shared/utils/toast';
 import { formatDistanceToNow } from 'date-fns';
 import { getApiErrorMessage } from '@/shared/utils/types';
 import { Modal, Button } from '@/shared/components';

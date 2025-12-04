@@ -8,7 +8,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { X, Download, Copy, Check } from 'lucide-react';
-import { toast } from 'sonner';
+import { toast } from '@/shared/utils/toast';
 import { Button, ModalOverlay } from '@/shared/components';
 import type { Content } from '../types/content';
 

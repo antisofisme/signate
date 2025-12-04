@@ -1,6 +1,6 @@
 /**
  * Schedule Preview Calendar Component
- * Visual calendar preview showing next occurrences with priority indicators
+ * Visual calendar preview showing next occurrences with color indicators
  */
 
 import { useMemo, useState } from 'react'
@@ -12,15 +12,18 @@ import type { PreviewOccurrence } from '../types/advanced'
 interface SchedulePreviewCalendarProps {
   occurrences: PreviewOccurrence[]
   playlistName?: string
-  priority?: number
+  color?: string
   exceptionDates?: string[]
   className?: string
 }
 
+// Default schedule color (Tailwind blue-500)
+const DEFAULT_COLOR = '#3B82F6'
+
 export const SchedulePreviewCalendar = ({
   occurrences,
   playlistName,
-  priority = 0,
+  color = DEFAULT_COLOR,
   exceptionDates = [],
   className = '',
 }: SchedulePreviewCalendarProps) => {
@@ -70,14 +73,6 @@ export const SchedulePreviewCalendar = ({
   const getOccurrenceForDate = (date: Date) => {
     const dateKey = format(date, 'yyyy-MM-dd')
     return occurrenceMap.get(dateKey)?.[0]
-  }
-
-  // Get priority color
-  const getPriorityColor = (priorityValue: number) => {
-    if (priorityValue >= 75) return 'bg-red-500'
-    if (priorityValue >= 50) return 'bg-orange-500'
-    if (priorityValue >= 25) return 'bg-blue-500'
-    return 'bg-gray-500'
   }
 
   const selectedOccurrences = selectedDate
@@ -170,11 +165,10 @@ export const SchedulePreviewCalendar = ({
 
                 {/* Occurrence Indicator */}
                 {occurrence && !isExceptionDay && (
-                  <div className={`
-                    absolute bottom-1 left-1/2 transform -translate-x-1/2
-                    w-1 h-1 rounded-full
-                    ${getPriorityColor(occurrence.priority)}
-                  `} />
+                  <div
+                    className="absolute bottom-1 left-1/2 transform -translate-x-1/2 w-1.5 h-1.5 rounded-full"
+                    style={{ backgroundColor: color }}
+                  />
                 )}
 
                 {/* Exception Indicator */}
@@ -192,20 +186,11 @@ export const SchedulePreviewCalendar = ({
         <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
           <div className="flex flex-wrap gap-3 text-xs">
             <div className="flex items-center gap-1.5">
-              <div className="w-2 h-2 rounded-full bg-red-500" />
-              <span className="text-gray-600 dark:text-gray-400">{t('schedules.priorityManager.levels.critical')}</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <div className="w-2 h-2 rounded-full bg-orange-500" />
-              <span className="text-gray-600 dark:text-gray-400">{t('schedules.priorityManager.levels.high')}</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <div className="w-2 h-2 rounded-full bg-blue-500" />
-              <span className="text-gray-600 dark:text-gray-400">{t('schedules.priorityManager.levels.normal')}</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <div className="w-2 h-2 rounded-full bg-gray-500" />
-              <span className="text-gray-600 dark:text-gray-400">{t('schedules.priorityManager.levels.low')}</span>
+              <div
+                className="w-2 h-2 rounded-full"
+                style={{ backgroundColor: color }}
+              />
+              <span className="text-gray-600 dark:text-gray-400">{t('schedules.previewCalendar.legend.scheduledDay')}</span>
             </div>
             <div className="flex items-center gap-1.5">
               <X className="h-3 w-3 text-red-500" />
@@ -240,8 +225,11 @@ export const SchedulePreviewCalendar = ({
                     <span>
                       {occ.startTime} - {occ.endTime}
                     </span>
-                    <span className="px-2 py-0.5 bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-200 rounded">
-                      {t('schedules.previewCalendar.priorityLabel', { value: occ.priority })}
+                    <span
+                      className="px-2 py-0.5 rounded text-white"
+                      style={{ backgroundColor: color }}
+                    >
+                      {t('schedules.previewCalendar.scheduled')}
                     </span>
                   </div>
                   {occ.isException && (

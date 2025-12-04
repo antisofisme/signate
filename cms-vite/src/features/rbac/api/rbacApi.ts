@@ -217,7 +217,7 @@ export const getUserRoles = async (userId: number): Promise<Role[]> => {
  * Assign role to user
  */
 export const assignRoleToUser = async (userId: number, roleId: number): Promise<void> => {
-  await apiClient.post(API_ENDPOINTS.RBAC.USER_PERMISSIONS.ASSIGN_ROLE(userId), {
+  await apiClient.put(API_ENDPOINTS.RBAC.USER_PERMISSIONS.ASSIGN_ROLE(userId), {
     role_id: roleId,
   })
 }

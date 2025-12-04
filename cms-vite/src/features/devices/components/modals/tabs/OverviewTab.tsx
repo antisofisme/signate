@@ -22,7 +22,7 @@ import {
 } from 'lucide-react';
 import type { Device } from '../../../types/device';
 import { useSendCommand } from '../../../hooks/useDevices';
-import { toast } from 'sonner';
+import { toast } from '@/shared/utils/toast';
 import { MiniHealthSnapshot } from '../../MiniHealthSnapshot';
 
 interface OverviewTabProps {

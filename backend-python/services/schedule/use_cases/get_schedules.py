@@ -71,7 +71,7 @@ def get_active_schedule_use_case(
     Get active schedule at specific date/time
 
     Business Rules:
-    - Returns highest priority schedule that is active at the given time
+    - Returns active schedule that matches the given time
     - If no date provided, uses current date
     - If no time provided, uses current time
     - Checks recurrence patterns and exceptions
@@ -85,7 +85,7 @@ def get_active_schedule_use_case(
     if check_time is None:
         check_time = now.time()
 
-    # Get all potentially active schedules (ordered by priority)
+    # Get all potentially active schedules (ordered by start_date)
     schedules = repo.get_active_schedules_at(
         organization_id=organization_id,
         check_date=check_date,
@@ -106,7 +106,7 @@ def get_active_schedule_use_case(
                 schedule=ScheduleResponse.model_validate(schedule),
                 playlist_id=schedule.playlist_id,
                 schedule_name=schedule.name,
-                priority=schedule.priority,
+                color=schedule.color,
                 is_found=True
             )
 
@@ -115,7 +115,7 @@ def get_active_schedule_use_case(
         schedule=None,
         playlist_id=None,
         schedule_name=None,
-        priority=None,
+        color=None,
         is_found=False
     )
 

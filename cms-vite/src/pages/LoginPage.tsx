@@ -50,11 +50,6 @@ export default function LoginPage() {
         </div>
 
         {/* Registration disabled - B2B model (invitation only) */}
-
-        {/* Default Credentials Hint */}
-        <p className="text-center text-sm text-gray-500 dark:text-gray-400 mt-4">
-          Default: admin / admin123
-        </p>
       </div>
     </div>
   );

@@ -137,6 +137,11 @@ class TagRoutes:
     ASSIGN_TO_DEVICES = f"{BASE}/{{tag_id}}/assign-devices"
     UNASSIGN_FROM_DEVICES = f"{BASE}/{{tag_id}}/unassign-devices"
 
+    # Playback Content Assignment (content_assignments.tag_id - different from categorization)
+    ASSIGN_PLAYBACK_CONTENTS = f"{BASE}/{{tag_id}}/playback-contents"
+    UNASSIGN_PLAYBACK_CONTENTS = f"{BASE}/{{tag_id}}/playback-contents"
+    GET_PLAYBACK_CONTENTS = f"{BASE}/{{tag_id}}/playback-contents"
+
 
 # =============================================================================
 # CONTENT SERVICE ROUTES
@@ -168,6 +173,9 @@ class ContentRoutes:
 
     # Duplicate detection
     DUPLICATES = f"{BASE}/duplicates"
+
+    # Content-Playlist relationship (reverse lookup)
+    GET_CONTENT_PLAYLISTS = f"{BASE}/{{content_id}}/playlists"
 
     # Playlists
     PLAYLIST_LIST = PLAYLISTS

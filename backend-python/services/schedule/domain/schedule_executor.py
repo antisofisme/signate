@@ -192,7 +192,7 @@ class ScheduleExecutor:
                     "schedule_id": schedule.id,
                     "schedule_name": schedule.name,
                     "playlist_id": schedule.playlist_id,
-                    "priority": schedule.priority,
+                    "color": schedule.color,
                     "start_time": schedule.start_time.isoformat() if schedule.start_time else None,
                     "end_time": schedule.end_time.isoformat() if schedule.end_time else None
                 }

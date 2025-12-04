@@ -59,11 +59,12 @@ export default function ContentPage() {
   useTranscodingProgress();
 
   // Fetch content stats for PageStats
+  // Note: API client interceptor already unwraps { success, data } → data
   const { data: statsData } = useContentStats();
-  const totalFiles = statsData?.data?.total_files || 0;
-  const imageCount = statsData?.data?.by_type?.image?.count || 0;
-  const videoCount = statsData?.data?.by_type?.video?.count || 0;
-  const audioCount = statsData?.data?.by_type?.audio?.count || 0;
+  const totalFiles = statsData?.total_files || 0;
+  const imageCount = statsData?.by_type?.image?.count || 0;
+  const videoCount = statsData?.by_type?.video?.count || 0;
+  const audioCount = statsData?.by_type?.audio?.count || 0;
 
   // Permission check - user needs view access to contents
   const { hasPermission, isLoading } = useCanPerformAction('contents', 'read');

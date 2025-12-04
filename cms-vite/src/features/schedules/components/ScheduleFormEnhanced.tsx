@@ -11,10 +11,10 @@ import { CheckCircle, XCircle, AlertTriangle, Eye, Loader2 } from 'lucide-react'
 import ScheduleConflictDetector from './ScheduleConflictDetector'
 import SchedulePreviewCalendar from './SchedulePreviewCalendar'
 import RecurrencePatternBuilder from './RecurrencePatternBuilder'
-import SchedulePriorityManager from './SchedulePriorityManager'
 import ExceptionDatesManager from './ExceptionDatesManager'
 import { useCombinedScheduleState, useSchedulePreview } from '../hooks/useAdvancedSchedules'
-import { TIMEZONES } from '../types/schedule.types'
+import { TIMEZONES, DEFAULT_SCHEDULE_COLOR } from '../types/schedule.types'
+import { ColorPicker } from '@/shared/components'
 import type {
   Schedule,
   CreateScheduleRequest,
@@ -34,7 +34,7 @@ const scheduleFormSchema = z.object({
   start_time: z.string().min(1, 'Start time is required'),
   end_time: z.string().min(1, 'End time is required'),
   recurrence_type: z.enum(['once', 'daily', 'weekly', 'monthly', 'custom']),
-  priority: z.number().min(0).max(100),
+  color: z.string().regex(/^#[0-9A-Fa-f]{6}$/, 'Invalid color format'),
   timezone: z.string().min(1, 'Timezone is required'),
 })
 
@@ -70,13 +70,6 @@ export const ScheduleFormEnhanced = ({
 
   const isEdit = !!schedule
 
-  // Convert priority level to numeric (0-100)
-  const getPriorityNumeric = (level: string | number): number => {
-    if (typeof level === 'number') return level
-    const map: Record<string, number> = { low: 25, normal: 50, high: 75, critical: 100 }
-    return map[level] || 50
-  }
-
   // Map backend recurrence type to frontend
   const mapRecurrenceType = (type: string): RecurrenceType => {
     if (type === 'yearly') return 'custom'
@@ -104,7 +97,7 @@ export const ScheduleFormEnhanced = ({
           start_time: schedule.start_time,
           end_time: schedule.end_time,
           recurrence_type: mapRecurrenceType(schedule.recurrence_type as string),
-          priority: getPriorityNumeric(schedule.priority),
+          color: schedule.color || DEFAULT_SCHEDULE_COLOR,
           timezone: schedule.timezone || 'Asia/Jakarta',
         }
       : {
@@ -116,14 +109,14 @@ export const ScheduleFormEnhanced = ({
           start_time: '09:00',
           end_time: '18:00',
           recurrence_type: 'once',
-          priority: 50,
+          color: DEFAULT_SCHEDULE_COLOR,
           timezone: 'Asia/Jakarta',
         },
   })
 
   const formValues = watch()
   const recurrenceType = watch('recurrence_type')
-  const priority = watch('priority')
+  const color = watch('color')
 
   // Fetch playlists
   useEffect(() => {
@@ -164,14 +157,13 @@ export const ScheduleFormEnhanced = ({
   )
 
   // Generate preview occurrences
-  const previewOccurrences = useSchedulePreview(combinedState.occurrences, priority)
+  const previewOccurrences = useSchedulePreview(combinedState.occurrences, color)
 
   // Form submission
   const handleFormSubmit = (data: ScheduleFormData) => {
     const formData = {
       ...data,
-      // Convert numeric priority back to level for API
-      priority: data.priority >= 75 ? 'critical' : data.priority >= 50 ? 'high' : data.priority >= 25 ? 'normal' : 'low',
+      color: data.color,
       recurrence_pattern: recurrenceType === 'once' ? undefined : recurrencePattern,
       exception_dates: exceptionDates.length > 0 ? exceptionDates : undefined,
     } as any
@@ -417,12 +409,19 @@ export const ScheduleFormEnhanced = ({
         />
       )}
 
-      {/* Priority Manager */}
-      <SchedulePriorityManager
-        currentPriority={priority}
-        onPriorityChange={(p) => setValue('priority', p)}
-        relatedSchedules={[]}
-      />
+      {/* Schedule Color */}
+      <div>
+        <ColorPicker
+          label="Schedule Color"
+          value={color}
+          onChange={(newColor) => setValue('color', newColor)}
+          disabled={isLoading}
+          error={errors.color?.message}
+        />
+        <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+          Color will be displayed in calendar view to differentiate schedules
+        </p>
+      </div>
 
       {/* Conflict Detector */}
       <ScheduleConflictDetector
@@ -451,7 +450,7 @@ export const ScheduleFormEnhanced = ({
         <SchedulePreviewCalendar
           occurrences={previewOccurrences}
           playlistName={playlists.find((p) => p.id === formValues.playlist_id)?.name}
-          priority={priority}
+          color={color}
           exceptionDates={exceptionDates}
         />
       )}

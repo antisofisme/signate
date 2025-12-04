@@ -3,7 +3,7 @@
  */
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { toast } from 'sonner';
+import { toast } from '@/shared/utils/toast';
 import { handleAPIError } from '@/lib/errors/errorHandler';
 import { useSelectedOrgId, contentKeys as sharedContentKeys } from '@/shared/hooks';
 import { useAuthStore } from '@/lib/stores/authStore';
@@ -21,6 +21,7 @@ import {
   restoreContent,
   permanentDeleteContent,
   getDuplicateContent,
+  getContentPlaylists,
 } from '../api/contentApi';
 
 // Re-export shared content keys for backward compatibility
@@ -349,16 +350,15 @@ export const useBulkDeleteContent = () => {
  */
 export const useContentStats = () => {
   const orgId = useSelectedOrgId();
-  const hasHydrated = useAuthStore((state) => state._hasHydrated);
 
   return useQuery({
-    queryKey: contentKeys.stats(orgId),
+    queryKey: ['content', 'stats', orgId], // Simple key, orgId for cache invalidation on org switch
     queryFn: () => getContentStats(),
-    staleTime: 0, // Always refetch for fresh data
+    staleTime: 5 * 60 * 1000, // 5 minutes cache
     refetchOnMount: true,
-    refetchOnWindowFocus: true,
-    // Wait for auth store hydration AND orgId before fetching
-    enabled: hasHydrated && !!orgId,
+    refetchOnWindowFocus: false,
+    // No enabled condition - let it run, API handles auth via JWT
+    // This fixes the race condition where orgId is undefined on first render
   });
 };
 
@@ -537,5 +537,24 @@ export const useDuplicateContent = () => {
     queryFn: () => getDuplicateContent(),
     staleTime: 60000, // 1 minute
     enabled: !!orgId,
+  });
+};
+
+// ==============================================================================
+// Content-Playlist Relationship Hooks
+// ==============================================================================
+
+/**
+ * Get playlists containing this content (reverse lookup)
+ * Returns playlists with item_id for removal operations
+ */
+export const useContentPlaylists = (contentId: number | null, enabled = true) => {
+  return useQuery({
+    queryKey: ['content', 'playlists', contentId],
+    queryFn: () => getContentPlaylists(contentId!),
+    enabled: enabled && !!contentId,
+    // Always fetch fresh data when modal opens
+    staleTime: 0,
+    refetchOnMount: 'always',
   });
 };

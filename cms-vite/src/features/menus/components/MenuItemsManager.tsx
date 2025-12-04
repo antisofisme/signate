@@ -25,7 +25,7 @@ import {
   Image as ImageIcon,
   Check,
 } from 'lucide-react';
-import { toast } from 'sonner';
+import { toast } from '@/shared/utils/toast';
 import { Modal, Button } from '@/shared/components';
 import { cn } from '@/lib/utils';
 import { useMenuItems, useDeleteMenuItem } from '../hooks/useMenuItems';

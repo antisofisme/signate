@@ -108,13 +108,13 @@ class TagWithUsageDetailResponse(BaseModel):
 class TagDeleteResponse(BaseModel):
     """Tag deletion response"""
     success: bool = True
-    message: str
+    message: str = ""  # Default empty string to prevent validation error
 
 
 class TagAssignmentResponse(BaseModel):
     """Tag assignment response"""
-    success: bool
-    message: str
+    success: bool = True
+    message: str = ""  # Default empty string to prevent validation error
 
 
 class BulkTagAssignmentResponse(BaseModel):
@@ -123,7 +123,7 @@ class BulkTagAssignmentResponse(BaseModel):
     assigned: int
     skipped: int
     failed: int
-    message: str
+    message: str = ""  # Default empty string to prevent validation error
 
 
 class BulkTagUnassignmentResponse(BaseModel):
@@ -131,7 +131,7 @@ class BulkTagUnassignmentResponse(BaseModel):
     success: bool = True
     unassigned: int
     not_found: int
-    message: str
+    message: str = ""  # Default empty string to prevent validation error
 
 
 class ContentTagsResponse(BaseModel):
@@ -180,7 +180,7 @@ class BulkDeviceTagAssignmentResponse(BaseModel):
     assigned: int
     skipped: int
     failed: int
-    message: str
+    message: str = ""  # Default empty string to prevent validation error
 
 
 class BulkDeviceTagUnassignmentResponse(BaseModel):
@@ -188,4 +188,59 @@ class BulkDeviceTagUnassignmentResponse(BaseModel):
     success: bool = True
     unassigned: int
     not_found: int
-    message: str
+    message: str = ""  # Default empty string to prevent validation error
+
+
+# =============================================================================
+# PLAYBACK CONTENT ASSIGNMENT DTOs (content_assignments.tag_id)
+# Different from categorization tags (content_tags table)
+# =============================================================================
+
+class AssignPlaybackContentsRequest(BaseModel):
+    """Assign content to tag for PLAYBACK (not categorization)"""
+    content_ids: List[int] = Field(..., min_length=1, description="List of content IDs to assign for playback")
+
+
+class UnassignPlaybackContentsRequest(BaseModel):
+    """Unassign content from tag for PLAYBACK"""
+    content_ids: List[int] = Field(..., min_length=1, description="List of content IDs to unassign from playback")
+
+
+class PlaybackContentResponse(BaseModel):
+    """Content assigned to tag for playback"""
+    id: int
+    assignment_id: int
+    title: str
+    content_type: str
+    file_path: Optional[str] = None
+    thumbnail_path: Optional[str] = None
+    duration_seconds: Optional[int] = None
+    assigned_at: datetime
+    assigned_by: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
+
+class PlaybackContentsListResponse(BaseModel):
+    """List of playback content assigned to a tag"""
+    success: bool = True
+    data: List[PlaybackContentResponse]
+    total: int
+
+
+class BulkPlaybackAssignmentResponse(BaseModel):
+    """Bulk playback content assignment response"""
+    success: bool = True
+    assigned: int
+    skipped: int
+    failed: int
+    message: str = ""  # Default empty string to prevent validation error
+
+
+class BulkPlaybackUnassignmentResponse(BaseModel):
+    """Bulk playback content unassignment response"""
+    success: bool = True
+    unassigned: int
+    not_found: int
+    message: str = ""  # Default empty string to prevent validation error

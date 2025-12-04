@@ -6,9 +6,9 @@ Handles all database queries for the dashboard service.
 """
 
 from typing import List, Optional, Dict
-from datetime import datetime, timedelta, timezone
-from sqlalchemy.orm import Session
-from sqlalchemy import func, and_, or_, Integer
+from datetime import datetime, timedelta, timezone, date as date_type
+from sqlalchemy.orm import Session, aliased
+from sqlalchemy import func, and_, or_, Integer, case, cast, Date
 
 from ..domain.dashboard_stats import (
     DashboardStats,
@@ -30,11 +30,13 @@ from ..domain.dashboard_stats import (
 )
 
 from services.auth.repositories.models import UserModel, AuditLogModel
-from services.device.repositories.models import DeviceModel, DeviceHealthMetricModel
-from services.content.repositories.models import ContentModel
-from services.playlist.repositories.models import PlaylistModel, PlaylistContentModel
+from services.device.repositories.models import DeviceModel, DeviceHealthMetricModel, DeviceTagModel
+from services.content.repositories.models import ContentModel, ContentAssignmentModel
+from services.playlist.repositories.models import PlaylistModel, PlaylistContentModel, PlaylistAssignmentModel
+from services.tag.repositories.models import ContentTag
 from services.menu.repositories.models import MenuModel, MenuItemModel, MenuViewModel
 from services.schedule.repositories.models import Schedule
+from services.analytics.repositories.models import ContentPlaybackLog
 
 
 class DashboardRepository:
@@ -47,11 +49,45 @@ class DashboardRepository:
     # Helper Methods
     # ========================================================================
 
+    def _get_org_filter(self, model, organization_id: Optional[int]):
+        """
+        Get organization filter for queries.
+        - If organization_id is None (superadmin), return True (no filter, show all)
+        - If organization_id is set, filter by that organization
+        """
+        if organization_id is None:
+            return True  # No filter for superadmin
+        return model.organization_id == organization_id
+
     def _get_latest_health_metrics(self, device_id: int) -> Optional[DeviceHealthMetricModel]:
         """Get latest health metrics for a device"""
         return self.db.query(DeviceHealthMetricModel).filter(
             DeviceHealthMetricModel.device_id == device_id
         ).order_by(DeviceHealthMetricModel.recorded_at.desc()).first()
+
+    def _get_batch_latest_health_metrics(self, device_ids: List[int]) -> Dict[int, DeviceHealthMetricModel]:
+        """Get latest health metrics for multiple devices in a single query (N+1 fix)"""
+        if not device_ids:
+            return {}
+
+        # Subquery to get max recorded_at per device
+        subq = self.db.query(
+            DeviceHealthMetricModel.device_id,
+            func.max(DeviceHealthMetricModel.recorded_at).label('max_recorded_at')
+        ).filter(
+            DeviceHealthMetricModel.device_id.in_(device_ids)
+        ).group_by(DeviceHealthMetricModel.device_id).subquery()
+
+        # Main query joining with subquery to get full records
+        latest_metrics = self.db.query(DeviceHealthMetricModel).join(
+            subq,
+            and_(
+                DeviceHealthMetricModel.device_id == subq.c.device_id,
+                DeviceHealthMetricModel.recorded_at == subq.c.max_recorded_at
+            )
+        ).all()
+
+        return {m.device_id: m for m in latest_metrics}
 
     def _is_device_online(self, device: DeviceModel, cutoff_time: datetime) -> bool:
         """Check if device is online based on last_seen_at"""
@@ -78,63 +114,124 @@ class DashboardRepository:
 
         return 'online'
 
+    def _get_device_status_from_metrics(
+        self, device: DeviceModel, metrics: Optional[DeviceHealthMetricModel], cutoff_time: datetime
+    ) -> str:
+        """Determine device status from pre-fetched metrics (N+1 fix version)"""
+        if not self._is_device_online(device, cutoff_time):
+            return 'offline'
+
+        if not metrics:
+            return 'online'
+
+        if metrics.overall_status == 'error':
+            return 'error'
+
+        cpu_usage = float(metrics.cpu_usage) if metrics.cpu_usage else 0
+        memory_usage = float(metrics.memory_usage) if metrics.memory_usage else 0
+        storage_usage = float(metrics.disk_usage) if metrics.disk_usage else 0
+
+        if cpu_usage > 80 or memory_usage > 80 or storage_usage > 80:
+            return 'warning'
+
+        return 'online'
+
     # ========================================================================
     # Dashboard Statistics
     # ========================================================================
 
-    def get_dashboard_stats(self, organization_id: int) -> DashboardStats:
-        """Get overall dashboard statistics"""
+    def get_dashboard_stats(self, organization_id: Optional[int]) -> DashboardStats:
+        """Get overall dashboard statistics (N+1 FIXED + real playback data)"""
         now = datetime.now(timezone.utc)
         five_minutes_ago = now - timedelta(minutes=5)
+        thirty_days_ago = now - timedelta(days=30)
+
+        # Build base queries with optional org filter
+        device_base = self.db.query(func.count(DeviceModel.id))
+        if organization_id is not None:
+            device_base = device_base.filter(DeviceModel.organization_id == organization_id)
 
         # Device counts
-        total_devices = self.db.query(func.count(DeviceModel.id)).filter(
-            DeviceModel.organization_id == organization_id
-        ).scalar() or 0
+        total_devices = device_base.scalar() or 0
 
-        online_devices = self.db.query(func.count(DeviceModel.id)).filter(
-            DeviceModel.organization_id == organization_id,
+        online_query = self.db.query(func.count(DeviceModel.id)).filter(
             DeviceModel.last_seen_at >= five_minutes_ago
-        ).scalar() or 0
+        )
+        if organization_id is not None:
+            online_query = online_query.filter(DeviceModel.organization_id == organization_id)
+        online_devices = online_query.scalar() or 0
 
         offline_devices = total_devices - online_devices
 
-        # Warning/Error devices - check health metrics
+        # Warning/Error devices - use batch query instead of N+1
         warning_count = 0
         error_count = 0
 
-        online_device_ids = self.db.query(DeviceModel.id).filter(
-            DeviceModel.organization_id == organization_id,
+        online_ids_query = self.db.query(DeviceModel.id).filter(
             DeviceModel.last_seen_at >= five_minutes_ago
-        ).all()
+        )
+        if organization_id is not None:
+            online_ids_query = online_ids_query.filter(DeviceModel.organization_id == organization_id)
+        online_device_ids = online_ids_query.all()
 
-        for (device_id,) in online_device_ids:
-            metrics = self._get_latest_health_metrics(device_id)
-            if metrics:
-                if metrics.overall_status == 'error':
-                    error_count += 1
-                elif (metrics.cpu_usage and float(metrics.cpu_usage) > 80) or \
-                     (metrics.memory_usage and float(metrics.memory_usage) > 80) or \
-                     (metrics.disk_usage and float(metrics.disk_usage) > 80):
-                    warning_count += 1
+        if online_device_ids:
+            device_ids = [d[0] for d in online_device_ids]
+            health_metrics_map = self._get_batch_latest_health_metrics(device_ids)
+
+            for device_id in device_ids:
+                metrics = health_metrics_map.get(device_id)
+                if metrics:
+                    if metrics.overall_status == 'error':
+                        error_count += 1
+                    elif (metrics.cpu_usage and float(metrics.cpu_usage) > 80) or \
+                         (metrics.memory_usage and float(metrics.memory_usage) > 80) or \
+                         (metrics.disk_usage and float(metrics.disk_usage) > 80):
+                        warning_count += 1
 
         # Content stats
-        total_contents = self.db.query(func.count(ContentModel.id)).filter(
-            ContentModel.organization_id == organization_id,
+        content_query = self.db.query(func.count(ContentModel.id)).filter(
             ContentModel.deleted_at == None
-        ).scalar() or 0
+        )
+        if organization_id is not None:
+            content_query = content_query.filter(ContentModel.organization_id == organization_id)
+        total_contents = content_query.scalar() or 0
 
-        total_storage_bytes = self.db.query(func.coalesce(func.sum(ContentModel.file_size), 0)).filter(
-            ContentModel.organization_id == organization_id,
+        storage_query = self.db.query(func.coalesce(func.sum(ContentModel.file_size), 0)).filter(
             ContentModel.deleted_at == None
-        ).scalar() or 0
+        )
+        if organization_id is not None:
+            storage_query = storage_query.filter(ContentModel.organization_id == organization_id)
+        total_storage_bytes = storage_query.scalar() or 0
 
         # Playlist stats
-        active_playlists = self.db.query(func.count(PlaylistModel.id)).filter(
-            PlaylistModel.organization_id == organization_id,
+        playlist_query = self.db.query(func.count(PlaylistModel.id)).filter(
             PlaylistModel.is_active == True,
             PlaylistModel.deleted_at == None
-        ).scalar() or 0
+        )
+        if organization_id is not None:
+            playlist_query = playlist_query.filter(PlaylistModel.organization_id == organization_id)
+        active_playlists = playlist_query.scalar() or 0
+
+        # Playback stats from content_playback_logs (REAL DATA)
+        playback_query = self.db.query(
+            func.coalesce(func.sum(ContentPlaybackLog.duration_seconds), 0).label('total_watch_time'),
+            func.count(ContentPlaybackLog.id).label('total_events'),
+            func.count(case((ContentPlaybackLog.is_completed == True, 1))).label('completed_count')
+        ).filter(
+            ContentPlaybackLog.started_at >= thirty_days_ago
+        )
+        if organization_id is not None:
+            playback_query = playback_query.filter(ContentPlaybackLog.organization_id == organization_id)
+        playback_stats = playback_query.first()
+
+        total_watch_time = int(playback_stats.total_watch_time or 0) if playback_stats else 0
+        total_playback_events = int(playback_stats.total_events or 0) if playback_stats else 0
+        completed_count = int(playback_stats.completed_count or 0) if playback_stats else 0
+
+        # Calculate average completion rate
+        avg_completion_rate = 0.0
+        if total_playback_events > 0:
+            avg_completion_rate = (completed_count / total_playback_events) * 100
 
         return DashboardStats(
             total_devices=total_devices,
@@ -145,24 +242,25 @@ class DashboardRepository:
             total_contents=total_contents,
             total_storage_bytes=int(total_storage_bytes),
             active_playlists=active_playlists,
-            total_watch_time_seconds=0,
-            avg_completion_rate=0.0,
-            total_playback_events=0
+            total_watch_time_seconds=total_watch_time,
+            avg_completion_rate=round(avg_completion_rate, 1),
+            total_playback_events=total_playback_events
         )
 
     # ========================================================================
     # Device Health
     # ========================================================================
 
-    def get_device_health_summary(self, organization_id: int) -> DeviceHealthSummary:
+    def get_device_health_summary(self, organization_id: Optional[int]) -> DeviceHealthSummary:
         """Get device health summary"""
         now = datetime.now(timezone.utc)
         five_minutes_ago = now - timedelta(minutes=5)
 
-        # Get all devices
-        devices = self.db.query(DeviceModel).filter(
-            DeviceModel.organization_id == organization_id
-        ).all()
+        # Get all devices (no filter for superadmin)
+        query = self.db.query(DeviceModel)
+        if organization_id is not None:
+            query = query.filter(DeviceModel.organization_id == organization_id)
+        devices = query.all()
 
         healthy = 0
         warning = 0
@@ -248,37 +346,157 @@ class DashboardRepository:
     # Live Devices
     # ========================================================================
 
-    def get_live_devices(self, organization_id: int) -> List[LiveDevice]:
-        """Get live device status list"""
+    def get_live_devices(self, organization_id: Optional[int]) -> List[LiveDevice]:
+        """Get live device status list (N+1 FIXED - uses batch queries)"""
         now = datetime.now(timezone.utc)
         five_minutes_ago = now - timedelta(minutes=5)
 
-        devices = self.db.query(DeviceModel).filter(
-            DeviceModel.organization_id == organization_id
-        ).order_by(DeviceModel.device_name).all()
+        # Get all devices
+        query = self.db.query(DeviceModel)
+
+        # Filter by organization (None = superadmin, show all)
+        if organization_id is not None:
+            query = query.filter(DeviceModel.organization_id == organization_id)
+
+        devices = query.order_by(DeviceModel.device_name).all()
+
+        if not devices:
+            return []
+
+        # Get all device IDs
+        device_ids = [d.id for d in devices]
+
+        # Batch fetch health metrics (single query instead of N queries)
+        health_metrics_map = self._get_batch_latest_health_metrics(device_ids)
+
+        # Batch fetch direct content IDs per device (for deduplication tracking)
+        direct_content_ids_map = {}
+        direct_rows = self.db.query(
+            ContentAssignmentModel.device_id,
+            ContentAssignmentModel.content_id
+        ).filter(
+            ContentAssignmentModel.device_id.in_(device_ids),
+            ContentAssignmentModel.device_id != None,
+            or_(
+                ContentAssignmentModel.expires_at == None,
+                ContentAssignmentModel.expires_at > now
+            )
+        ).all()
+        for device_id, content_id in direct_rows:
+            if device_id not in direct_content_ids_map:
+                direct_content_ids_map[device_id] = []
+            direct_content_ids_map[device_id].append(content_id)
+
+        # Batch fetch device tags (for tag-based content assignments)
+        device_tags_map = {}
+        device_tag_rows = self.db.query(
+            DeviceTagModel.device_id,
+            DeviceTagModel.tag_id
+        ).filter(DeviceTagModel.device_id.in_(device_ids)).all()
+
+        all_tag_ids = set()
+        for device_id, tag_id in device_tag_rows:
+            if device_id not in device_tags_map:
+                device_tags_map[device_id] = []
+            device_tags_map[device_id].append(tag_id)
+            all_tag_ids.add(tag_id)
+
+        # Batch fetch tag-based content IDs (from content_tags table - same as client playlist)
+        tag_content_ids_map = {}
+        if all_tag_ids:
+            tag_rows = self.db.query(
+                ContentTag.tag_id,
+                ContentTag.content_id
+            ).filter(
+                ContentTag.tag_id.in_(all_tag_ids)
+            ).all()
+            for tag_id, content_id in tag_rows:
+                if tag_id not in tag_content_ids_map:
+                    tag_content_ids_map[tag_id] = []
+                tag_content_ids_map[tag_id].append(content_id)
+
+        # Batch fetch playlist assignments (from playlist_assignments table)
+        device_playlist_map = {}
+        playlist_assignment_rows = self.db.query(
+            PlaylistAssignmentModel.device_id,
+            PlaylistAssignmentModel.playlist_id
+        ).filter(PlaylistAssignmentModel.device_id.in_(device_ids)).all()
+
+        all_playlist_ids = set()
+        for device_id, playlist_id in playlist_assignment_rows:
+            if device_id not in device_playlist_map:
+                device_playlist_map[device_id] = []
+            device_playlist_map[device_id].append(playlist_id)
+            all_playlist_ids.add(playlist_id)
+
+        # Also include legacy assigned_playlist_id
+        for device in devices:
+            if device.assigned_playlist_id:
+                all_playlist_ids.add(device.assigned_playlist_id)
+
+        # Batch fetch playlist content IDs
+        playlist_content_ids_map = {}
+        if all_playlist_ids:
+            playlist_rows = self.db.query(
+                PlaylistContentModel.playlist_id,
+                PlaylistContentModel.content_id
+            ).filter(
+                PlaylistContentModel.playlist_id.in_(all_playlist_ids)
+            ).all()
+            for playlist_id, content_id in playlist_rows:
+                if playlist_id not in playlist_content_ids_map:
+                    playlist_content_ids_map[playlist_id] = []
+                playlist_content_ids_map[playlist_id].append(content_id)
 
         result = []
         for device in devices:
-            # Get latest health metrics
-            metrics = self._get_latest_health_metrics(device.id)
+            # Get metrics from batch result
+            metrics = health_metrics_map.get(device.id)
             cpu_usage = float(metrics.cpu_usage) if metrics and metrics.cpu_usage else None
             memory_usage = float(metrics.memory_usage) if metrics and metrics.memory_usage else None
             storage_usage = float(metrics.disk_usage) if metrics and metrics.disk_usage else None
 
-            # Determine status
-            status = self._get_device_status(device, five_minutes_ago)
+            # Determine status using batch metrics
+            status = self._get_device_status_from_metrics(device, metrics, five_minutes_ago)
 
             # Get location
             location = device.room_number or device.location_type or None
 
-            # Get current playlist name
-            current_content = None
-            if device.assigned_playlist_id:
-                playlist = self.db.query(PlaylistModel.name).filter(
-                    PlaylistModel.id == device.assigned_playlist_id
-                ).first()
-                if playlist:
-                    current_content = playlist[0]
+            # Collect all content IDs from all sources (for deduplication tracking)
+            all_content_ids = []
+
+            # 1. Direct assignments (content assigned directly to device)
+            direct_ids = direct_content_ids_map.get(device.id, [])
+            all_content_ids.extend(direct_ids)
+
+            # 2. Tag-based assignments (content assigned to tags that device has)
+            device_tag_ids = device_tags_map.get(device.id, [])
+            for tag_id in device_tag_ids:
+                tag_ids = tag_content_ids_map.get(tag_id, [])
+                all_content_ids.extend(tag_ids)
+
+            # 3. Playlist content (from playlist_assignments + legacy assigned_playlist_id)
+            device_playlists = device_playlist_map.get(device.id, [])
+            for playlist_id in device_playlists:
+                playlist_ids = playlist_content_ids_map.get(playlist_id, [])
+                all_content_ids.extend(playlist_ids)
+            # Check legacy assigned_playlist_id (if not already counted)
+            if device.assigned_playlist_id and device.assigned_playlist_id not in device_playlists:
+                playlist_ids = playlist_content_ids_map.get(device.assigned_playlist_id, [])
+                all_content_ids.extend(playlist_ids)
+
+            # Calculate total and unique counts
+            total_content = len(all_content_ids)
+            unique_content = len(set(all_content_ids))
+            duplicate_count = total_content - unique_content
+
+            # Format content count string with duplicate info
+            if total_content == 0:
+                current_content = None
+            elif duplicate_count > 0:
+                current_content = f"{unique_content} content ({duplicate_count} duplicate)"
+            else:
+                current_content = f"{total_content} content"
 
             result.append(LiveDevice(
                 id=device.id,
@@ -298,13 +516,13 @@ class DashboardRepository:
     # Content Performance
     # ========================================================================
 
-    def get_content_performance(self, organization_id: int, limit: int) -> List[ContentPerformance]:
+    def get_content_performance(self, organization_id: Optional[int], limit: int) -> List[ContentPerformance]:
         """Get content performance metrics"""
         # Get contents with basic stats
-        contents = self.db.query(ContentModel).filter(
-            ContentModel.organization_id == organization_id,
-            ContentModel.deleted_at == None
-        ).order_by(ContentModel.created_at.desc()).limit(limit).all()
+        query = self.db.query(ContentModel).filter(ContentModel.deleted_at == None)
+        if organization_id is not None:
+            query = query.filter(ContentModel.organization_id == organization_id)
+        contents = query.order_by(ContentModel.created_at.desc()).limit(limit).all()
 
         result = []
         for content in contents:
@@ -330,13 +548,15 @@ class DashboardRepository:
     # Active Playlists
     # ========================================================================
 
-    def get_active_playlists(self, organization_id: int) -> List[ActivePlaylistAssignment]:
+    def get_active_playlists(self, organization_id: Optional[int]) -> List[ActivePlaylistAssignment]:
         """Get active playlist assignments"""
-        playlists = self.db.query(PlaylistModel).filter(
-            PlaylistModel.organization_id == organization_id,
+        query = self.db.query(PlaylistModel).filter(
             PlaylistModel.is_active == True,
             PlaylistModel.deleted_at == None
-        ).all()
+        )
+        if organization_id is not None:
+            query = query.filter(PlaylistModel.organization_id == organization_id)
+        playlists = query.all()
 
         result = []
         for playlist in playlists:
@@ -378,21 +598,49 @@ class DashboardRepository:
     # Playback Timeline
     # ========================================================================
 
-    def get_playback_timeline(self, days: int) -> List[PlaybackTimeline]:
-        """Get playback timeline for the last N days"""
+    def get_playback_timeline(self, organization_id: Optional[int], days: int) -> List[PlaybackTimeline]:
+        """Get playback timeline for the last N days (REAL DATA from content_playback_logs)"""
         now = datetime.now(timezone.utc)
+        start_date = now - timedelta(days=days)
 
+        # Query aggregated playback data grouped by date
+        query = self.db.query(
+            cast(ContentPlaybackLog.started_at, Date).label('play_date'),
+            func.count(ContentPlaybackLog.id).label('playback_count'),
+            func.count(func.distinct(ContentPlaybackLog.device_id)).label('unique_devices'),
+            func.coalesce(func.sum(ContentPlaybackLog.duration_seconds), 0).label('total_duration')
+        ).filter(
+            ContentPlaybackLog.started_at >= start_date
+        )
+        if organization_id is not None:
+            query = query.filter(ContentPlaybackLog.organization_id == organization_id)
+        playback_data = query.group_by(
+            cast(ContentPlaybackLog.started_at, Date)
+        ).all()
+
+        # Create a map for quick lookup
+        data_map = {
+            str(row.play_date): {
+                'playback_count': row.playback_count,
+                'unique_devices': row.unique_devices,
+                'total_duration': int(row.total_duration or 0)
+            }
+            for row in playback_data
+        }
+
+        # Build result for each day
         result = []
         for i in range(days - 1, -1, -1):
             date = now - timedelta(days=i)
             date_str = date.strftime('%Y-%m-%d')
 
-            # Placeholder - would need playback_logs table for real data
+            day_data = data_map.get(date_str, {})
+
             result.append(PlaybackTimeline(
                 date=date_str,
-                playback_count=0,
-                unique_devices=0,
-                total_duration_seconds=0
+                playback_count=day_data.get('playback_count', 0),
+                unique_devices=day_data.get('unique_devices', 0),
+                total_duration_seconds=day_data.get('total_duration', 0)
             ))
 
         return result
@@ -401,11 +649,12 @@ class DashboardRepository:
     # Recent Activity
     # ========================================================================
 
-    def get_recent_activity(self, organization_id: int, limit: int) -> List[RecentActivity]:
+    def get_recent_activity(self, organization_id: Optional[int], limit: int) -> List[RecentActivity]:
         """Get recent activity from audit logs"""
-        logs = self.db.query(AuditLogModel).filter(
-            AuditLogModel.organization_id == organization_id
-        ).order_by(AuditLogModel.created_at.desc()).limit(limit).all()
+        query = self.db.query(AuditLogModel)
+        if organization_id is not None:
+            query = query.filter(AuditLogModel.organization_id == organization_id)
+        logs = query.order_by(AuditLogModel.created_at.desc()).limit(limit).all()
 
         result = []
         for log in logs:
@@ -429,7 +678,7 @@ class DashboardRepository:
     # System Alerts
     # ========================================================================
 
-    def get_system_alerts(self, organization_id: int, max_alerts: int = 50) -> List[SystemAlert]:
+    def get_system_alerts(self, organization_id: Optional[int], max_alerts: int = 50) -> List[SystemAlert]:
         """Get system alerts"""
         now = datetime.now(timezone.utc)
         five_minutes_ago = now - timedelta(minutes=5)
@@ -437,13 +686,15 @@ class DashboardRepository:
         alerts = []
 
         # Check for offline devices
-        offline_devices = self.db.query(DeviceModel).filter(
-            DeviceModel.organization_id == organization_id,
+        offline_query = self.db.query(DeviceModel).filter(
             or_(
                 DeviceModel.last_seen_at == None,
                 DeviceModel.last_seen_at < five_minutes_ago
             )
-        ).all()
+        )
+        if organization_id is not None:
+            offline_query = offline_query.filter(DeviceModel.organization_id == organization_id)
+        offline_devices = offline_query.all()
 
         for device in offline_devices:
             last_seen_str = device.last_seen_at.isoformat() if device.last_seen_at else 'never'
@@ -459,10 +710,12 @@ class DashboardRepository:
             ))
 
         # Check for devices with high resource usage
-        online_devices = self.db.query(DeviceModel).filter(
-            DeviceModel.organization_id == organization_id,
+        online_query = self.db.query(DeviceModel).filter(
             DeviceModel.last_seen_at >= five_minutes_ago
-        ).all()
+        )
+        if organization_id is not None:
+            online_query = online_query.filter(DeviceModel.organization_id == organization_id)
+        online_devices = online_query.all()
 
         for device in online_devices:
             metrics = self._get_latest_health_metrics(device.id)
@@ -495,20 +748,20 @@ class DashboardRepository:
     # System Info
     # ========================================================================
 
-    def get_system_info(self, organization_id: int, storage_path: str) -> SystemInfo:
+    def get_system_info(self, organization_id: Optional[int], storage_path: str) -> SystemInfo:
         """Get system information"""
         import os
         import time
 
         # Content storage by type
-        content_stats = self.db.query(
+        content_query = self.db.query(
             ContentModel.content_type,
             func.count(ContentModel.id).label('count'),
             func.coalesce(func.sum(ContentModel.file_size), 0).label('size')
-        ).filter(
-            ContentModel.organization_id == organization_id,
-            ContentModel.deleted_at == None
-        ).group_by(ContentModel.content_type).all()
+        ).filter(ContentModel.deleted_at == None)
+        if organization_id is not None:
+            content_query = content_query.filter(ContentModel.organization_id == organization_id)
+        content_stats = content_query.group_by(ContentModel.content_type).all()
 
         content_by_type = [
             ContentByType(type=stat[0], count=stat[1], size_bytes=int(stat[2]))
@@ -546,45 +799,49 @@ class DashboardRepository:
     # Menu Statistics (NEW)
     # ========================================================================
 
-    def get_menu_stats(self, organization_id: int) -> MenuStats:
+    def get_menu_stats(self, organization_id: Optional[int]) -> MenuStats:
         """Get menu statistics for dashboard"""
         # Total menus count
-        total_menus = self.db.query(func.count(MenuModel.id)).filter(
-            MenuModel.organization_id == organization_id,
-            MenuModel.deleted_at == None
-        ).scalar() or 0
+        menus_query = self.db.query(func.count(MenuModel.id)).filter(MenuModel.deleted_at == None)
+        if organization_id is not None:
+            menus_query = menus_query.filter(MenuModel.organization_id == organization_id)
+        total_menus = menus_query.scalar() or 0
 
         # Active menus count
-        active_menus = self.db.query(func.count(MenuModel.id)).filter(
-            MenuModel.organization_id == organization_id,
+        active_query = self.db.query(func.count(MenuModel.id)).filter(
             MenuModel.is_active == True,
             MenuModel.deleted_at == None
-        ).scalar() or 0
+        )
+        if organization_id is not None:
+            active_query = active_query.filter(MenuModel.organization_id == organization_id)
+        active_menus = active_query.scalar() or 0
 
         # Total menu items count
-        total_items = self.db.query(func.count(MenuItemModel.id)).filter(
-            MenuItemModel.organization_id == organization_id,
-            MenuItemModel.deleted_at == None
-        ).scalar() or 0
+        items_query = self.db.query(func.count(MenuItemModel.id)).filter(MenuItemModel.deleted_at == None)
+        if organization_id is not None:
+            items_query = items_query.filter(MenuItemModel.organization_id == organization_id)
+        total_items = items_query.scalar() or 0
 
-        # Total views (all time, for this organization)
-        total_views = self.db.query(func.count(MenuViewModel.id)).filter(
-            MenuViewModel.organization_id == organization_id
-        ).scalar() or 0
+        # Total views (all time)
+        views_query = self.db.query(func.count(MenuViewModel.id))
+        if organization_id is not None:
+            views_query = views_query.filter(MenuViewModel.organization_id == organization_id)
+        total_views = views_query.scalar() or 0
 
         # Total contact clicks
-        total_contact_clicks = self.db.query(func.count(MenuViewModel.id)).filter(
-            MenuViewModel.organization_id == organization_id,
-            MenuViewModel.contact_clicked == True
-        ).scalar() or 0
+        clicks_query = self.db.query(func.count(MenuViewModel.id)).filter(MenuViewModel.contact_clicked == True)
+        if organization_id is not None:
+            clicks_query = clicks_query.filter(MenuViewModel.organization_id == organization_id)
+        total_contact_clicks = clicks_query.scalar() or 0
 
         # Views by device type
-        device_type_counts = self.db.query(
+        device_query = self.db.query(
             MenuViewModel.device_type,
             func.count(MenuViewModel.id)
-        ).filter(
-            MenuViewModel.organization_id == organization_id
-        ).group_by(MenuViewModel.device_type).all()
+        )
+        if organization_id is not None:
+            device_query = device_query.filter(MenuViewModel.organization_id == organization_id)
+        device_type_counts = device_query.group_by(MenuViewModel.device_type).all()
 
         views_by_device = MenuViewsByDevice()
         for device_type, count in device_type_counts:
@@ -598,7 +855,7 @@ class DashboardRepository:
                 views_by_device.unknown += count
 
         # Top 5 menus by views
-        top_menus_query = self.db.query(
+        top_query = self.db.query(
             MenuModel.id,
             MenuModel.name,
             MenuModel.menu_type,
@@ -606,10 +863,10 @@ class DashboardRepository:
             func.sum(func.cast(MenuViewModel.contact_clicked, Integer)).label('click_count')
         ).outerjoin(
             MenuViewModel, MenuModel.id == MenuViewModel.menu_id
-        ).filter(
-            MenuModel.organization_id == organization_id,
-            MenuModel.deleted_at == None
-        ).group_by(
+        ).filter(MenuModel.deleted_at == None)
+        if organization_id is not None:
+            top_query = top_query.filter(MenuModel.organization_id == organization_id)
+        top_menus_query = top_query.group_by(
             MenuModel.id, MenuModel.name, MenuModel.menu_type
         ).order_by(
             func.count(MenuViewModel.id).desc()
@@ -640,7 +897,7 @@ class DashboardRepository:
     # Schedule Overview (NEW)
     # ========================================================================
 
-    def get_schedule_overview(self, organization_id: int) -> ScheduleOverview:
+    def get_schedule_overview(self, organization_id: Optional[int]) -> ScheduleOverview:
         """Get schedule overview for dashboard"""
         from datetime import date, time as dt_time
 
@@ -649,30 +906,34 @@ class DashboardRepository:
         current_time = now.time()
         seven_days_later = today + timedelta(days=7)
 
+        # Helper function to add org filter
+        def add_org_filter(query):
+            if organization_id is not None:
+                return query.filter(Schedule.organization_id == organization_id)
+            return query
+
         # Total schedules count
-        total_schedules = self.db.query(func.count(Schedule.id)).filter(
-            Schedule.organization_id == organization_id,
-            Schedule.deleted_at == None
-        ).scalar() or 0
+        total_query = self.db.query(func.count(Schedule.id)).filter(Schedule.deleted_at == None)
+        total_schedules = add_org_filter(total_query).scalar() or 0
 
         # Active schedules count
-        active_schedules = self.db.query(func.count(Schedule.id)).filter(
-            Schedule.organization_id == organization_id,
+        active_query = self.db.query(func.count(Schedule.id)).filter(
             Schedule.is_active == True,
             Schedule.deleted_at == None
-        ).scalar() or 0
+        )
+        active_schedules = add_org_filter(active_query).scalar() or 0
 
         # Schedules running now (current time within schedule time range and date range)
-        running_now_query = self.db.query(Schedule).filter(
-            Schedule.organization_id == organization_id,
+        running_query = self.db.query(Schedule).filter(
             Schedule.is_active == True,
             Schedule.deleted_at == None,
             Schedule.start_date <= today,
             or_(Schedule.end_date == None, Schedule.end_date >= today)
-        ).all()
+        )
+        running_now_schedules = add_org_filter(running_query).all()
 
         running_now = 0
-        for schedule in running_now_query:
+        for schedule in running_now_schedules:
             # Check if current time is within the time range
             if schedule.start_time and schedule.end_time:
                 if schedule.start_time <= current_time <= schedule.end_time:
@@ -685,23 +946,23 @@ class DashboardRepository:
                 running_now += 1
 
         # Schedules ending soon (within 7 days)
-        ending_soon = self.db.query(func.count(Schedule.id)).filter(
-            Schedule.organization_id == organization_id,
+        ending_query = self.db.query(func.count(Schedule.id)).filter(
             Schedule.is_active == True,
             Schedule.deleted_at == None,
             Schedule.end_date != None,
             Schedule.end_date >= today,
             Schedule.end_date <= seven_days_later
-        ).scalar() or 0
+        )
+        ending_soon = add_org_filter(ending_query).scalar() or 0
 
         # Active schedules today
-        active_today_query = self.db.query(Schedule).filter(
-            Schedule.organization_id == organization_id,
+        today_query = self.db.query(Schedule).filter(
             Schedule.is_active == True,
             Schedule.deleted_at == None,
             Schedule.start_date <= today,
             or_(Schedule.end_date == None, Schedule.end_date >= today)
-        ).order_by(Schedule.priority.desc()).limit(10).all()
+        ).order_by(Schedule.priority.desc()).limit(10)
+        active_today_query = add_org_filter(today_query).all()
 
         active_today = []
         for schedule in active_today_query:

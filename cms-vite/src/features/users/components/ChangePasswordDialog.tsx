@@ -137,6 +137,7 @@ export function ChangePasswordDialog({
               <li>• {t('users.changePassword.uppercase') || 'One uppercase letter'}</li>
               <li>• {t('users.changePassword.lowercase') || 'One lowercase letter'}</li>
               <li>• {t('users.changePassword.number') || 'One number'}</li>
+              <li>• {t('users.changePassword.noReuse') || 'Cannot be the same as the last 5 passwords'}</li>
             </ul>
           </div>
         </form>

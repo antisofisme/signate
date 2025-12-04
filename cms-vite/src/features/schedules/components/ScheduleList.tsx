@@ -10,12 +10,10 @@ import { useTranslation } from 'react-i18next'
 import { Calendar } from 'lucide-react'
 import { TableSkeleton, EmptyState } from '@/shared/components'
 import {
-  PRIORITY_LEVELS,
   RECURRENCE_TYPES,
   getScheduleStatus,
   type Schedule,
   type ScheduleStatus,
-  type PriorityLevel,
   type RecurrenceType,
 } from '../types/schedule.types'
 import { ScheduleCard } from './ScheduleCard'
@@ -50,7 +48,6 @@ export const ScheduleList = ({
   const { t } = useTranslation()
   const [searchQuery, setSearchQuery] = useState('')
   const [filterStatus, setFilterStatus] = useState<ScheduleStatus | 'all'>('all')
-  const [filterPriority, setFilterPriority] = useState<PriorityLevel | 'all'>('all')
   const [filterRecurrence, setFilterRecurrence] = useState<RecurrenceType | 'all'>('all')
 
   // Filter schedules
@@ -62,10 +59,9 @@ export const ScheduleList = ({
     // Derive status from is_active and dates
     const derivedStatus = getScheduleStatus(schedule)
     const matchesStatus = filterStatus === 'all' || derivedStatus === filterStatus
-    const matchesPriority = filterPriority === 'all' || schedule.priority === filterPriority
     const matchesRecurrence = filterRecurrence === 'all' || schedule.recurrence_type === filterRecurrence
 
-    return matchesSearch && matchesStatus && matchesPriority && matchesRecurrence
+    return matchesSearch && matchesStatus && matchesRecurrence
   })
 
   if (isLoading) {
@@ -108,20 +104,6 @@ export const ScheduleList = ({
           <option value="inactive">{t('schedules.status.inactive')}</option>
           <option value="paused">{t('schedules.status.paused')}</option>
           <option value="expired">{t('schedules.status.expired')}</option>
-        </select>
-
-        {/* Priority filter */}
-        <select
-          value={filterPriority}
-          onChange={(e) => setFilterPriority(e.target.value as PriorityLevel | 'all')}
-          className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
-        >
-          <option value="all">{t('schedules.filters.allPriority')}</option>
-          {Object.values(PRIORITY_LEVELS).map((priority) => (
-            <option key={priority.level} value={priority.level}>
-              {priority.label}
-            </option>
-          ))}
         </select>
 
         {/* Recurrence filter */}

@@ -6,7 +6,9 @@
  */
 
 import { Building2, Save, Trash2 } from 'lucide-react';
-import { PageHeader, StatsCard, Button } from '@/shared/components';
+import { useTranslation } from 'react-i18next';
+import { PageHeader, StatsCard, Button, AccessDenied, PageSkeleton } from '@/shared/components';
+import { useCanPerformAction } from '@/features/rbac/hooks/usePermissions';
 import { PMSProviderSelect } from '../components/PMSProviderSelect';
 import { PMSConnectionForm } from '../components/PMSConnectionForm';
 import { PMSSyncStatus } from '../components/PMSSyncStatus';
@@ -15,6 +17,23 @@ import { usePMSConfigState } from '../hooks/usePMSConfigState';
 import { Users, DoorOpen } from 'lucide-react';
 
 export default function PMSConfigPage() {
+  const { t } = useTranslation();
+
+  // Permission checks
+  const { hasPermission: canRead, isLoading: loadingReadPerm } = useCanPerformAction('settings', 'read');
+  const { hasPermission: canUpdate } = useCanPerformAction('settings', 'edit');
+  const { hasPermission: canDelete } = useCanPerformAction('settings', 'delete');
+
+  // Show loading state while checking permissions
+  if (loadingReadPerm) {
+    return <PageSkeleton />;
+  }
+
+  // Show access denied if no read permission
+  if (!canRead) {
+    return <AccessDenied />;
+  }
+
   const {
     config,
     stats,
@@ -37,7 +56,7 @@ export default function PMSConfigPage() {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-96">
-        <div className="text-gray-500">Loading PMS configuration...</div>
+        <div className="text-gray-500">{t('pms.loading', 'Loading PMS configuration...')}</div>
       </div>
     );
   }
@@ -45,22 +64,22 @@ export default function PMSConfigPage() {
   return (
     <>
       <PageHeader
-        title="PMS Integration"
-        description="Configure Property Management System integration for hotel signage"
+        title={t('pms.title', 'PMS Integration')}
+        description={t('pms.subtitle', 'Configure Property Management System integration for hotel signage')}
       />
 
       <div className="space-y-6">
         {/* Stats Cards */}
         {stats && (
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <StatsCard icon={Users} iconColor="blue" value={stats.current_guests} label="Current Guests" />
-            <StatsCard icon={DoorOpen} iconColor="green" value={stats.occupied_rooms} label="Occupied Rooms" />
-            <StatsCard icon={DoorOpen} iconColor="gray" value={stats.vacant_rooms} label="Vacant Rooms" />
+            <StatsCard icon={Users} iconColor="blue" value={stats.current_guests} label={t('pms.stats.currentGuests', 'Current Guests')} />
+            <StatsCard icon={DoorOpen} iconColor="green" value={stats.occupied_rooms} label={t('pms.stats.occupiedRooms', 'Occupied Rooms')} />
+            <StatsCard icon={DoorOpen} iconColor="gray" value={stats.vacant_rooms} label={t('pms.stats.vacantRooms', 'Vacant Rooms')} />
             <StatsCard
               icon={Building2}
               iconColor="purple"
               value={`${stats.mapped_devices}/${stats.total_rooms}`}
-              label="Mapped Devices"
+              label={t('pms.stats.mappedDevices', 'Mapped Devices')}
             />
           </div>
         )}
@@ -75,7 +94,7 @@ export default function PMSConfigPage() {
                 : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
             }`}
           >
-            Configuration
+            {t('pms.tabs.config', 'Configuration')}
           </button>
           <button
             onClick={() => setActiveTab('rooms')}
@@ -85,7 +104,7 @@ export default function PMSConfigPage() {
                 : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
             }`}
           >
-            Room Mapping
+            {t('pms.tabs.rooms', 'Room Mapping')}
           </button>
         </div>
 
@@ -93,22 +112,22 @@ export default function PMSConfigPage() {
         {activeTab === 'config' && (
         <div className="space-y-6">
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-            <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">PMS Provider</h2>
+            <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">{t('pms.sections.provider', 'PMS Provider')}</h2>
             <PMSProviderSelect value={provider} onChange={setProvider} />
           </div>
 
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-            <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">Connection Settings</h2>
+            <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">{t('pms.sections.connection', 'Connection Settings')}</h2>
             <PMSConnectionForm config={connectionConfig} onChange={setConnectionConfig} provider={provider} />
           </div>
 
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-            <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">Sync Configuration</h2>
+            <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">{t('pms.sections.sync', 'Sync Configuration')}</h2>
             <PMSSyncStatus />
           </div>
 
           <div className="flex justify-end gap-3">
-            {config && (
+            {config && canDelete && (
               <Button
                 variant="outline"
                 onClick={handleDelete}
@@ -117,17 +136,19 @@ export default function PMSConfigPage() {
                 leftIcon={<Trash2 className="w-4 h-4" />}
                 className="border-red-600 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
               >
-                Delete Configuration
+                {t('pms.buttons.deleteConfig', 'Delete Configuration')}
               </Button>
             )}
-            <Button
-              onClick={handleSave}
-              disabled={isSaving}
-              loading={isSaving}
-              leftIcon={<Save className="w-4 h-4" />}
-            >
-              {config ? 'Update' : 'Create'} Configuration
-            </Button>
+            {canUpdate && (
+              <Button
+                onClick={handleSave}
+                disabled={isSaving}
+                loading={isSaving}
+                leftIcon={<Save className="w-4 h-4" />}
+              >
+                {config ? t('pms.buttons.updateConfig', 'Update Configuration') : t('pms.buttons.createConfig', 'Create Configuration')}
+              </Button>
+            )}
           </div>
         </div>
         )}
@@ -135,7 +156,7 @@ export default function PMSConfigPage() {
         {/* Room Mapping Tab */}
         {activeTab === 'rooms' && (
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-            <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">Room to Device Mapping</h2>
+            <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">{t('pms.sections.roomMapping', 'Room to Device Mapping')}</h2>
             <RoomMappingTable availableDevices={devices || []} />
           </div>
         )}

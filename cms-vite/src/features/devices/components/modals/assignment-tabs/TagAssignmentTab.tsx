@@ -6,8 +6,9 @@
  */
 
 import { useTranslation } from 'react-i18next';
-import { Tag as TagIcon, Trash2, Loader2, ArrowRight } from 'lucide-react';
+import { Tag as TagIcon, Trash2, Loader2, ArrowRight, FileText } from 'lucide-react';
 import { useDeviceTags, useAssignTag, useUnassignTag } from '../../../hooks/useDevices';
+import { useDeviceContents } from '../../../hooks/useDeviceAssignments';
 import { useTags } from '@/shared/hooks/useSharedTags';
 import type { Device } from '../../../types/device';
 
@@ -24,12 +25,20 @@ export function TagAssignmentTab({ device }: TagAssignmentTabProps) {
   // Fetch all available tags
   const { data: allTagsData, isLoading: loadingAllTags } = useTags();
 
+  // Fetch device contents to count tag-based content
+  const { data: contentsData } = useDeviceContents(device.id, true);
+
   // Mutations
   const assignTag = useAssignTag();
   const unassignTag = useUnassignTag();
 
   const assignedTags = assignedData?.items || [];
   const allTags = allTagsData || [];
+
+  // Count content inherited from tags
+  const tagBasedContents = (contentsData?.items || []).filter(
+    (item: any) => item.source === 'tag'
+  );
 
   // Filter out already assigned tags
   const availableTags = allTags.filter(
@@ -64,6 +73,16 @@ export function TagAssignmentTab({ device }: TagAssignmentTabProps) {
           <strong>{t('devices.modals.priority2Medium')}:</strong> {t('devices.modals.priority2Info')}
         </p>
       </div>
+
+      {/* Tag-based Content Info */}
+      {tagBasedContents.length > 0 && (
+        <div className="mb-4 flex items-center gap-2 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-3">
+          <FileText className="w-4 h-4 text-green-600 dark:text-green-400 flex-shrink-0" />
+          <p className="text-sm text-green-700 dark:text-green-300">
+            <strong>{tagBasedContents.length}</strong> {t('devices.modals.contentFromTags', 'content inherited from tags. Manage tag content in the Tags page.')}
+          </p>
+        </div>
+      )}
 
       {/* Content - 2 Column Grid */}
       {isLoading ? (

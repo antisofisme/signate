@@ -263,9 +263,9 @@ function DeviceStatusBadge({ status }: { status: 'healthy' | 'warning' | 'critic
 function DeviceSummaryRow({ device }: { device: DeviceHealthSummary }) {
   return (
     <div className="p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
         <div className="flex items-center gap-3">
-          <Server className="w-5 h-5 text-gray-400" />
+          <Server className="w-5 h-5 text-gray-400 flex-shrink-0" />
           <div>
             <p className="text-sm font-medium text-gray-900 dark:text-white">
               {device.device_name}
@@ -273,7 +273,7 @@ function DeviceSummaryRow({ device }: { device: DeviceHealthSummary }) {
             <DeviceStatusBadge status={device.status} />
           </div>
         </div>
-        <div className="flex items-center gap-4 text-xs text-gray-500 dark:text-gray-400">
+        <div className="flex flex-wrap items-center gap-3 sm:gap-4 text-xs text-gray-500 dark:text-gray-400 ml-8 sm:ml-0">
           <span title="CPU">
             <Cpu className="w-3 h-3 inline mr-1" />
             {device.latest_cpu_usage?.toFixed(1) || '-'}%
@@ -365,7 +365,7 @@ export function DeviceHealthTab({ data, isLoading }: DeviceHealthTabProps) {
             ))}
           </div>
         ) : data?.device_summaries && data.device_summaries.length > 0 ? (
-          <div className="space-y-3 max-h-96 overflow-y-auto">
+          <div className="space-y-3 max-h-64 sm:max-h-80 lg:max-h-96 overflow-y-auto">
             {data.device_summaries.map((device) => (
               <DeviceSummaryRow key={device.device_id} device={device} />
             ))}

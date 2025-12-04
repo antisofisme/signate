@@ -283,7 +283,13 @@ def get_device_contents(
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_active_user)
 ):
-    """Get all content directly assigned to a device"""
+    """
+    Get all content assigned to a device (direct + tag-based)
+
+    Returns content from:
+    1. Direct device assignments (content_assignments.device_id)
+    2. Tag-based assignments (device has tag -> tag has content via content_assignments.tag_id)
+    """
     # Verify device belongs to user's organization
     device_query = text("SELECT organization_id FROM devices WHERE id = :device_id")
     device = db.execute(device_query, {"device_id": device_id}).fetchone()
@@ -300,21 +306,80 @@ def get_device_contents(
             detail="Access denied: Device belongs to different organization"
         )
 
+    # Query that combines:
+    # 1. Direct device assignments (content_assignments.device_id)
+    # 2. Tag-based via content_tags (single source of truth)
+    # 3. Playlist-based via playlist_assignments -> playlist_contents
     query = text("""
-        SELECT
-            ca.id,
-            ca.device_id,
-            ca.content_id,
+        WITH device_tags AS (
+            SELECT tag_id FROM device_tags WHERE device_id = :device_id
+        ),
+        assigned_playlists AS (
+            SELECT playlist_id FROM playlist_assignments WHERE device_id = :device_id
+        ),
+        all_content AS (
+            -- Direct device assignment
+            SELECT
+                ca.id as assignment_id,
+                ca.device_id,
+                ca.content_id,
+                ca.priority,
+                ca.assigned_at,
+                ca.expires_at,
+                'direct' as source,
+                NULL::text as source_name
+            FROM content_assignments ca
+            WHERE ca.device_id = :device_id
+              AND (ca.expires_at IS NULL OR ca.expires_at > NOW())
+
+            UNION ALL
+
+            -- Tag-based via content_tags (single source of truth)
+            SELECT
+                ct.id as assignment_id,
+                NULL as device_id,
+                ct.content_id,
+                0 as priority,
+                ct.created_at as assigned_at,
+                NULL as expires_at,
+                'tag' as source,
+                t.tag_name as source_name
+            FROM content_tags ct
+            JOIN tags t ON t.id = ct.tag_id
+            WHERE ct.tag_id IN (SELECT tag_id FROM device_tags)
+
+            UNION ALL
+
+            -- Playlist-based via playlist_assignments -> playlist_contents
+            SELECT
+                pc.id as assignment_id,
+                NULL as device_id,
+                pc.content_id,
+                pc.order_index as priority,
+                pc.created_at as assigned_at,
+                NULL as expires_at,
+                'playlist' as source,
+                p.name as source_name
+            FROM playlist_contents pc
+            JOIN playlists p ON p.id = pc.playlist_id
+            WHERE pc.playlist_id IN (SELECT playlist_id FROM assigned_playlists)
+              AND p.deleted_at IS NULL
+        )
+        SELECT DISTINCT ON (ac.content_id)
+            ac.assignment_id as id,
+            ac.device_id,
+            ac.content_id,
             c.title as content_name,
             c.content_type as content_type,
-            ca.priority,
-            ca.assigned_at,
-            ca.expires_at
-        FROM content_assignments ca
-        JOIN contents c ON c.id = ca.content_id
-        WHERE ca.device_id = :device_id
-          AND (ca.expires_at IS NULL OR ca.expires_at > NOW())
-        ORDER BY ca.priority DESC, ca.assigned_at DESC
+            ac.priority,
+            ac.assigned_at,
+            ac.expires_at,
+            ac.source,
+            ac.source_name
+        FROM all_content ac
+        JOIN contents c ON c.id = ac.content_id
+        WHERE c.deleted_at IS NULL
+        ORDER BY ac.content_id, ac.device_id NULLS LAST, ac.priority DESC, ac.assigned_at DESC
     """)
 
     result = db.execute(query, {"device_id": device_id})
@@ -330,7 +395,9 @@ def get_device_contents(
                 "content_type": row.content_type,
                 "priority": row.priority,
                 "assigned_at": row.assigned_at,
-                "expires_at": row.expires_at
+                "expires_at": row.expires_at,
+                "source": row.source,
+                "source_name": row.source_name
             }
             for row in rows
         ],

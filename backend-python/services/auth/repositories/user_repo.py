@@ -4,6 +4,7 @@ Implements IUserRepository using SQLAlchemy
 """
 
 from typing import Optional
+from datetime import datetime
 from sqlalchemy.orm import Session, joinedload
 from ..domain.user import User
 from ..domain.interfaces import IUserRepository
@@ -123,7 +124,7 @@ class UserRepository(IUserRepository):
 
     def _to_entity(self, model: UserModel) -> User:
         """Convert SQLAlchemy model to domain entity"""
-        return User(
+        user = User(
             id=model.id,
             username=model.username,
             email=model.email,
@@ -135,3 +136,88 @@ class UserRepository(IUserRepository):
             created_at=model.created_at,
             updated_at=model.updated_at
         )
+        # P0-4: Add security fields if available
+        if hasattr(model, 'failed_login_attempts'):
+            user.failed_login_attempts = model.failed_login_attempts
+        if hasattr(model, 'locked_until'):
+            user.locked_until = model.locked_until
+        if hasattr(model, 'last_login_ip'):
+            user.last_login_ip = model.last_login_ip
+        if hasattr(model, 'last_login_at'):
+            user.last_login_at = model.last_login_at
+        return user
+
+    # P0-4: Security methods for account lockout
+    def update_login_attempts(
+        self,
+        user_id: int,
+        failed_attempts: int,
+        locked_until: Optional[datetime] = None
+    ) -> bool:
+        """
+        Update failed login attempts and lockout status
+
+        Args:
+            user_id: User ID to update
+            failed_attempts: Number of failed attempts
+            locked_until: Timestamp when lockout expires (None if not locked)
+
+        Returns:
+            True if update succeeded
+        """
+        try:
+            user_model = self.db.query(UserModel).filter(UserModel.id == user_id).first()
+            if not user_model:
+                return False
+
+            # Update security fields if they exist on the model
+            if hasattr(user_model, 'failed_login_attempts'):
+                user_model.failed_login_attempts = failed_attempts
+            if hasattr(user_model, 'locked_until'):
+                user_model.locked_until = locked_until
+
+            self.db.commit()
+            return True
+        except Exception:
+            self.db.rollback()
+            return False
+
+    def update_login_success(
+        self,
+        user_id: int,
+        ip_address: Optional[str] = None,
+        login_time: Optional[datetime] = None
+    ) -> bool:
+        """
+        Update user record on successful login
+
+        Args:
+            user_id: User ID to update
+            ip_address: IP address of the login
+            login_time: Timestamp of the login
+
+        Returns:
+            True if update succeeded
+        """
+        try:
+            user_model = self.db.query(UserModel).filter(UserModel.id == user_id).first()
+            if not user_model:
+                return False
+
+            # Reset security fields
+            if hasattr(user_model, 'failed_login_attempts'):
+                user_model.failed_login_attempts = 0
+            if hasattr(user_model, 'locked_until'):
+                user_model.locked_until = None
+
+            # Update last login info
+            if hasattr(user_model, 'last_login_ip') and ip_address:
+                user_model.last_login_ip = ip_address
+            if hasattr(user_model, 'last_login_at') and login_time:
+                user_model.last_login_at = login_time
+
+            self.db.commit()
+            return True
+        except Exception:
+            self.db.rollback()
+            return False

@@ -8,7 +8,7 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Eye } from 'lucide-react';
 import { Modal, Button } from '@/shared/components';
-import { getScheduleStatus, type Schedule } from '../types/schedule.types';
+import { getScheduleStatus, DEFAULT_SCHEDULE_COLOR, type Schedule } from '../types/schedule.types';
 import { SchedulePreviewCalendar } from './SchedulePreviewCalendar';
 import { useNextOccurrences, useSchedulePreview } from '../hooks/useAdvancedSchedules';
 
@@ -23,25 +23,8 @@ export function ScheduleViewModal({ isOpen, schedule, onClose, onEdit }: Schedul
   const { t } = useTranslation();
   const [showPreview, setShowPreview] = useState(false);
 
-  // Helper to convert numeric priority to number for preview
-  const getPriorityNumber = (priority: string | number): number => {
-    if (typeof priority === 'number') {
-      if (priority <= 10) return 1  // low
-      if (priority <= 50) return 2  // normal
-      if (priority <= 75) return 3  // high
-      return 4 // critical
-    }
-    // String priority
-    const priorityMap: Record<string, number> = {
-      low: 1,
-      normal: 2,
-      high: 3,
-      critical: 4
-    }
-    return priorityMap[priority] || 2
-  }
-
-  const priorityNumber = getPriorityNumber(schedule.priority)
+  // Get schedule color
+  const scheduleColor = schedule.color || DEFAULT_SCHEDULE_COLOR;
 
   // Derive status from is_active and dates
   const status = getScheduleStatus(schedule)
@@ -55,7 +38,7 @@ export function ScheduleViewModal({ isOpen, schedule, onClose, onEdit }: Schedul
   // Transform to preview format
   const previewOccurrences = useSchedulePreview(
     occurrencesData,
-    priorityNumber
+    scheduleColor
   );
 
   // Footer with action buttons
@@ -233,7 +216,7 @@ export function ScheduleViewModal({ isOpen, schedule, onClose, onEdit }: Schedul
               <SchedulePreviewCalendar
                 occurrences={previewOccurrences}
                 playlistName={schedule.playlist_name}
-                priority={priorityNumber}
+                color={scheduleColor}
                 exceptionDates={schedule.exception_dates || []}
               />
             ) : null}

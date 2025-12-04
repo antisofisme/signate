@@ -3,7 +3,7 @@
  */
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { toast } from 'sonner';
+import { toast } from '@/shared/utils/toast';
 import { handleAPIError } from '@/lib/errors/errorHandler';
 import { useSelectedOrgId, deviceKeys as sharedDeviceKeys } from '@/shared/hooks';
 import { deviceApi } from '../api/deviceApi';
@@ -335,6 +335,10 @@ export const useAssignTag = () => {
       queryClient.invalidateQueries({ queryKey: [...deviceKeys.all, 'tags', variables.deviceId] });
       queryClient.invalidateQueries({ queryKey: ['device-assignments', 'tags', variables.deviceId] });
 
+      // Invalidate device contents (tag may have content attached)
+      queryClient.invalidateQueries({ queryKey: [...deviceKeys.all, 'contents', variables.deviceId] });
+      queryClient.invalidateQueries({ queryKey: ['device-assignments', 'contents', variables.deviceId] });
+
       // Invalidate tag queries (usage count changes)
       queryClient.invalidateQueries({ queryKey: ['tags'] });
       queryClient.invalidateQueries({ queryKey: ['tags', variables.tagId] });
@@ -360,6 +364,10 @@ export const useUnassignTag = () => {
       // Invalidate device tags (both patterns for consistency)
       queryClient.invalidateQueries({ queryKey: [...deviceKeys.all, 'tags', variables.deviceId] });
       queryClient.invalidateQueries({ queryKey: ['device-assignments', 'tags', variables.deviceId] });
+
+      // Invalidate device contents (tag may have content attached)
+      queryClient.invalidateQueries({ queryKey: [...deviceKeys.all, 'contents', variables.deviceId] });
+      queryClient.invalidateQueries({ queryKey: ['device-assignments', 'contents', variables.deviceId] });
 
       // Invalidate tag queries (usage count changes)
       queryClient.invalidateQueries({ queryKey: ['tags'] });

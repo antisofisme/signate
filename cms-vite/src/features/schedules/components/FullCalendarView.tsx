@@ -12,22 +12,19 @@ import interactionPlugin from '@fullcalendar/interaction'
 import listPlugin from '@fullcalendar/list'
 import { EventInput, EventClickArg, DateSelectArg, EventDropArg } from '@fullcalendar/core'
 import type { EventResizeDoneArg } from '@fullcalendar/interaction'
-import type { Schedule, ScheduleOccurrence, PriorityLevel, PriorityInfo } from '../types/schedule.types'
-import { PRIORITY_LEVELS } from '../types/schedule.types'
-import { renderIcon } from '@/shared/utils/iconHelper'
+import type { Schedule, ScheduleOccurrence } from '../types/schedule.types'
+import { DEFAULT_SCHEDULE_COLOR } from '../types/schedule.types'
 
-// Helper to convert numeric priority to PriorityLevel key
-const getPriorityInfo = (priority: PriorityLevel | number): PriorityInfo => {
-  if (typeof priority === 'string' && PRIORITY_LEVELS[priority]) {
-    return PRIORITY_LEVELS[priority]
-  }
-  if (typeof priority === 'number') {
-    if (priority <= 10) return PRIORITY_LEVELS.low
-    if (priority <= 50) return PRIORITY_LEVELS.normal
-    if (priority <= 75) return PRIORITY_LEVELS.high
-    return PRIORITY_LEVELS.critical
-  }
-  return PRIORITY_LEVELS.normal
+// Helper to darken a hex color for borders
+const darkenColor = (hex: string, percent: number = 20): string => {
+  // Remove # if present
+  const cleanHex = hex.replace('#', '')
+  const num = parseInt(cleanHex, 16)
+  const amt = Math.round(2.55 * percent)
+  const R = Math.max(0, (num >> 16) - amt)
+  const G = Math.max(0, ((num >> 8) & 0x00FF) - amt)
+  const B = Math.max(0, (num & 0x0000FF) - amt)
+  return `#${(0x1000000 + R * 0x10000 + G * 0x100 + B).toString(16).slice(1)}`
 }
 
 interface FullCalendarViewProps {
@@ -60,8 +57,7 @@ export function FullCalendarView({
   const events: EventInput[] = useMemo(() => {
     return occurrences.map((occurrence) => {
       const schedule = schedules.find((s) => s.id === occurrence.schedule_id)
-      const priorityInfo = getPriorityInfo(schedule?.priority || 'normal')
-      const priorityLevel = priorityInfo.level // Get string key from info
+      const scheduleColor = schedule?.color || occurrence.color || DEFAULT_SCHEDULE_COLOR
 
       // Combine date with time for full DateTime
       const startDateTime = new Date(`${occurrence.occurrence_date}T${occurrence.start_time}`)
@@ -72,17 +68,15 @@ export function FullCalendarView({
         title: occurrence.schedule_name,
         start: startDateTime,
         end: endDateTime,
-        backgroundColor: getPriorityColor(priorityLevel),
-        borderColor: getPriorityColor(priorityLevel, true),
+        backgroundColor: scheduleColor,
+        borderColor: darkenColor(scheduleColor),
         textColor: '#FFFFFF',
         editable: editable,
         extendedProps: {
           scheduleId: occurrence.schedule_id,
           schedule,
           occurrence,
-          priority: priorityLevel,
-          priorityLabel: priorityInfo.label,
-          priorityIcon: priorityInfo.icon,
+          color: scheduleColor,
           playlistName: occurrence.playlist_name,
           deviceCount: occurrence.devices.length,
         },
@@ -257,7 +251,7 @@ export function FullCalendarView({
         eventDrop={handleEventDrop}
         eventResize={handleEventResize}
         eventContent={(eventInfo) => {
-          const { priorityIcon, priorityLabel, playlistName, deviceCount } = eventInfo.event.extendedProps
+          const { playlistName, deviceCount } = eventInfo.event.extendedProps
           const isTimeGrid = eventInfo.view.type.includes('timeGrid')
           const isDayGrid = eventInfo.view.type.includes('dayGrid')
 
@@ -267,8 +261,7 @@ export function FullCalendarView({
                 {eventInfo.timeText}
               </div>
               <div className="fc-event-title-container">
-                <div className="fc-event-title fc-sticky text-sm font-medium flex items-center gap-1">
-                  {renderIcon(priorityIcon, { className: 'w-4 h-4' })}
+                <div className="fc-event-title fc-sticky text-sm font-medium">
                   <span className="truncate">{eventInfo.event.title}</span>
                 </div>
                 {isTimeGrid && (
@@ -316,39 +309,21 @@ export function FullCalendarView({
       {/* Calendar Legend */}
       <div className="mt-4 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700">
         <div className="flex flex-wrap items-center gap-4 text-xs">
-          <span className="font-semibold text-gray-700 dark:text-gray-300">{t('schedules.fullCalendar.priorityLevels')}</span>
-          {Object.values(PRIORITY_LEVELS).map((priority) => (
-            <div key={priority.level} className="flex items-center gap-2">
-              <div
-                className="w-4 h-4 rounded"
-                style={{ backgroundColor: getPriorityColor(priority.level) }}
-              />
-              <span className="text-gray-600 dark:text-gray-400 flex items-center gap-1">
-                {renderIcon(priority.icon, { className: 'w-4 h-4' })}
-                <span>{priority.label}</span>
-              </span>
-            </div>
-          ))}
+          <span className="font-semibold text-gray-700 dark:text-gray-300">
+            {t('schedules.calendarLegend.scheduleColors')}:
+          </span>
+          <span className="text-gray-600 dark:text-gray-400">
+            {t('schedules.calendarLegend.customColorsPerSchedule')}
+          </span>
         </div>
         {editable && (
           <div className="mt-2 text-xs text-gray-500 dark:text-gray-400">
-            💡 <strong>{t('schedules.fullCalendar.tip')}</strong> {t('schedules.fullCalendar.tipMessage')}
+            {t('schedules.fullCalendar.tip')}: {t('schedules.fullCalendar.tipMessage')}
           </div>
         )}
       </div>
     </div>
   )
-}
-
-// Helper function to get priority color
-function getPriorityColor(priority: string, border: boolean = false): string {
-  const colors = {
-    low: border ? '#6B7280' : '#9CA3AF',
-    normal: border ? '#2563EB' : '#3B82F6',
-    high: border ? '#EA580C' : '#F97316',
-    critical: border ? '#DC2626' : '#EF4444',
-  }
-  return colors[priority as keyof typeof colors] || colors.normal
 }
 
 export default FullCalendarView

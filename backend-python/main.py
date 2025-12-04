@@ -55,6 +55,7 @@ from services.widget.routes import router as widget_router
 from services.template.routes import router as template_router
 from services.translation.routes import router as translation_router
 from services.schedule.routes import router as schedule_router
+from services.schedule.client_routes import router as schedule_client_router
 from services.weather.routes import router as weather_router
 from services.menu.routes import router as menu_router
 from services.menu.public_routes import router as public_menu_router
@@ -306,6 +307,7 @@ app.include_router(widget_router, prefix=API_V1, tags=["Widget System"])
 app.include_router(template_router, prefix=API_V1, tags=["Template System"])
 app.include_router(translation_router, prefix=API_V1, tags=["Translation System"])
 app.include_router(schedule_router, prefix=API_V1, tags=["Schedule System"])
+app.include_router(schedule_client_router, tags=["Schedule Client"])  # Public endpoint for player
 app.include_router(weather_router, prefix=API_V1, tags=["Weather Service"])
 app.include_router(menu_router, tags=["Digital Menu"])  # Routes already include /api/v1
 app.include_router(public_menu_router, tags=["Public Menu Viewer"])  # Routes already include /api/v1/public

@@ -19,7 +19,7 @@ import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Plus, Trash2, GripVertical, Clock } from 'lucide-react';
 import { Modal, Button } from '@/shared/components';
-import { toast } from 'sonner';
+import { toast } from '@/shared/utils/toast';
 import {
   usePlaylistContent,
   useAddContentToPlaylist,

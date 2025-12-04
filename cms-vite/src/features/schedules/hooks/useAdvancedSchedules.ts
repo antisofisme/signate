@@ -153,11 +153,8 @@ export const useConflictState = (
     // Determine severity based on conflicts
     let severity: 'critical' | 'warning' | 'info' | null = null
     if (conflictData.has_conflicts) {
-      // Critical if any conflict has same priority
-      const hasSamePriority = conflictData.conflicts.some(
-        (c) => c.priority !== undefined
-      )
-      severity = hasSamePriority ? 'critical' : 'warning'
+      // Critical if any conflicts exist
+      severity = conflictData.conflicts.length > 0 ? 'critical' : 'warning'
     }
 
     return {
@@ -213,7 +210,7 @@ export const useValidationState = (
 
 export const useSchedulePreview = (
   occurrences?: CalculateNextOccurrenceResponse,
-  priority: number = 0
+  color: string = '#3B82F6'
 ): PreviewOccurrence[] => {
   return useMemo(() => {
     if (!occurrences?.occurrences) {
@@ -227,9 +224,9 @@ export const useSchedulePreview = (
       endTime: occ.end_time || '23:59',
       isException: occ.is_exception,
       isActive: false, // To be determined by active schedule check
-      priority,
+      color,
     }))
-  }, [occurrences, priority])
+  }, [occurrences, color])
 }
 
 // ========================================

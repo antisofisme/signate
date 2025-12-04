@@ -16,11 +16,12 @@ class GetPlaybackTimelineUseCase:
     def __init__(self, dashboard_repo: DashboardRepository):
         self.dashboard_repo = dashboard_repo
 
-    def execute(self, days: int = 7) -> List[PlaybackTimeline]:
+    def execute(self, organization_id: int, days: int = 7) -> List[PlaybackTimeline]:
         """
         Get playback timeline for the last N days
 
         Args:
+            organization_id: Organization ID to filter playback data
             days: Number of days to get timeline for (1-30)
 
         Returns:
@@ -32,4 +33,4 @@ class GetPlaybackTimelineUseCase:
         elif days > 30:
             days = 30
 
-        return self.dashboard_repo.get_playback_timeline(days)
+        return self.dashboard_repo.get_playback_timeline(organization_id, days)

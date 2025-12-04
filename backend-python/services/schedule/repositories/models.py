@@ -23,7 +23,7 @@ class Schedule(Base):
     - Monthly: Specific days of month
     - Yearly: Specific date each year
 
-    Priority-based scheduling: Higher priority wins when schedules overlap
+    Color-coded for calendar display
     """
     __tablename__ = "schedules"
 
@@ -47,8 +47,8 @@ class Schedule(Base):
     recurrence_pattern = Column(JSONB, nullable=True)    # {"days": [1,3,5], "interval": 2}
     exceptions = Column(JSONB, nullable=True)            # ["2025-01-15", "2025-02-20"]
 
-    # Priority & Status
-    priority = Column(Integer, default=0, index=True)    # Higher = more important
+    # Color & Status
+    color = Column(String(7), default='#3B82F6', nullable=False)  # Hex color for calendar display
     mode = Column(String(20), default='rotate', index=True)  # 'override' or 'rotate'
     is_active = Column(Boolean, default=True, index=True)
     

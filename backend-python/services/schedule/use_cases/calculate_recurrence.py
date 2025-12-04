@@ -124,7 +124,7 @@ def check_conflicts_use_case(
         ConflictSchedule(
             id=s.id,
             name=s.name,
-            priority=s.priority,
+            color=s.color,
             start_date=s.start_date,
             end_date=s.end_date,
             start_time=s.start_time,
@@ -135,7 +135,7 @@ def check_conflicts_use_case(
 
     message = "No conflicts found"
     if has_conflicts:
-        message = f"Found {len(conflicts)} conflicting schedule(s). Higher priority schedules will take precedence."
+        message = f"Found {len(conflicts)} conflicting schedule(s). Schedules with 'override' mode will take precedence."
 
     return CheckConflictResponse(
         has_conflicts=has_conflicts,

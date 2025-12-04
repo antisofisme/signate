@@ -47,6 +47,21 @@ export default function LiveDeviceMonitor({ devices, isLoading }: LiveDeviceMoni
     return 'bg-red-500 dark:bg-red-600';
   };
 
+  // Format location type to human-readable label
+  const formatLocation = (location: string | null | undefined) => {
+    if (!location) return '-';
+    const locationLabels: Record<string, string> = {
+      guest_room: t('devices.location.guestRoom', 'Guest Room'),
+      lobby: t('devices.location.lobby', 'Lobby'),
+      conference_room: t('devices.location.conferenceRoom', 'Conference Room'),
+      restaurant: t('devices.location.restaurant', 'Restaurant'),
+      other: t('devices.location.other', 'Other'),
+    };
+    // If it's a known location type, return the label
+    // Otherwise, it might be a room number, so return as-is
+    return locationLabels[location] || location;
+  };
+
   const filterLabels: Record<string, string> = {
     all: t('dashboard.liveMonitor.filters.all', 'All'),
     online: t('dashboard.liveMonitor.filters.online', 'Online'),
@@ -57,19 +72,19 @@ export default function LiveDeviceMonitor({ devices, isLoading }: LiveDeviceMoni
 
   return (
     <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
         <h2 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
           <Activity className="w-5 h-5" />
           {t('dashboard.liveMonitor.title', 'Live Device Monitor')}
         </h2>
 
-        {/* Filter Buttons */}
-        <div className="flex gap-2">
+        {/* Filter Buttons - wrap on small screens */}
+        <div className="flex flex-wrap gap-2">
           {['all', 'online', 'warning', 'error', 'offline'].map((status) => (
             <button
               key={status}
               onClick={() => setFilter(status as any)}
-              className={`px-3 py-1 text-xs font-medium rounded-lg transition-colors ${
+              className={`px-3 py-1 text-xs font-medium rounded-lg transition-colors whitespace-nowrap ${
                 filter === status
                   ? 'bg-blue-600 text-white'
                   : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
@@ -141,7 +156,7 @@ export default function LiveDeviceMonitor({ devices, isLoading }: LiveDeviceMoni
                   <td className="py-3 px-4">
                     <div className="flex items-center gap-1 text-sm text-gray-600 dark:text-gray-400">
                       <MapPin className="w-3 h-3" />
-                      {device.location}
+                      {formatLocation(device.location)}
                     </div>
                   </td>
                   <td className="py-3 px-4">
@@ -190,7 +205,9 @@ export default function LiveDeviceMonitor({ devices, isLoading }: LiveDeviceMoni
                   </td>
                   <td className="py-3 px-4">
                     <span className="text-xs text-gray-500 dark:text-gray-400">
-                      {formatDistanceToNow(new Date(device.last_seen_at), { addSuffix: true })}
+                      {device.last_seen_at
+                        ? formatDistanceToNow(new Date(device.last_seen_at), { addSuffix: true })
+                        : t('dashboard.liveMonitor.never', 'Never')}
                     </span>
                   </td>
                 </tr>
@@ -236,7 +253,7 @@ export default function LiveDeviceMonitor({ devices, isLoading }: LiveDeviceMoni
               <div className="space-y-2 text-xs text-gray-600 dark:text-gray-400">
                 <div className="flex items-center gap-1">
                   <MapPin className="w-3 h-3" />
-                  {device.location}
+                  {formatLocation(device.location)}
                 </div>
                 {device.current_content && (
                   <div className="flex items-center gap-1">
@@ -245,7 +262,9 @@ export default function LiveDeviceMonitor({ devices, isLoading }: LiveDeviceMoni
                   </div>
                 )}
                 <div className="text-xs text-gray-500 dark:text-gray-400">
-                  {formatDistanceToNow(new Date(device.last_seen_at), { addSuffix: true })}
+                  {device.last_seen_at
+                    ? formatDistanceToNow(new Date(device.last_seen_at), { addSuffix: true })
+                    : t('dashboard.liveMonitor.never', 'Never')}
                 </div>
               </div>
             </div>

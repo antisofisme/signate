@@ -15,11 +15,31 @@ import {
   PageHeader,
   PageStats,
   PageToolbar,
+  AccessDenied,
+  PageSkeleton,
 } from '@/shared/components';
 import { useWidgetState } from '../hooks/useWidgetState';
+import { useCanPerformAction } from '@/features/rbac/hooks/usePermissions';
 
 export const WidgetsPage = () => {
   const { t } = useTranslation();
+
+  // Permission checks - using 'settings' resource for widgets
+  const { hasPermission: canRead, isLoading: loadingReadPerm } = useCanPerformAction('settings', 'read');
+  const { hasPermission: canCreate } = useCanPerformAction('settings', 'create');
+  const { hasPermission: canUpdate } = useCanPerformAction('settings', 'edit');
+  const { hasPermission: canDelete } = useCanPerformAction('settings', 'delete');
+
+  // Show loading state while checking permissions
+  if (loadingReadPerm) {
+    return <PageSkeleton />;
+  }
+
+  // Show access denied if no read permission
+  if (!canRead) {
+    return <AccessDenied />;
+  }
+
   const {
     widgets,
     isLoading,
@@ -50,13 +70,15 @@ export const WidgetsPage = () => {
       {/* Toolbar: Buttons kanan */}
       <PageToolbar>
         <PageToolbar.Right>
-          <Button
-            variant="primary"
-            onClick={handleCreate}
-            leftIcon={<Plus className="w-4 h-4" />}
-          >
-            {t('widgets.create', 'Create Widget')}
-          </Button>
+          {canCreate && (
+            <Button
+              variant="primary"
+              onClick={handleCreate}
+              leftIcon={<Plus className="w-4 h-4" />}
+            >
+              {t('widgets.create', 'Create Widget')}
+            </Button>
+          )}
         </PageToolbar.Right>
       </PageToolbar>
 
@@ -69,11 +91,11 @@ export const WidgetsPage = () => {
       {/* Widget List */}
       <div className="space-y-6">
         <WidgetList
-        widgets={widgets}
-        isLoading={isLoading}
-        onEdit={handleEdit}
-        onDelete={handleDelete}
-        onAssign={handleAssign}
+          widgets={widgets}
+          isLoading={isLoading}
+          onEdit={canUpdate ? handleEdit : undefined}
+          onDelete={canDelete ? handleDelete : undefined}
+          onAssign={handleAssign}
         />
       </div>
 
@@ -91,8 +113,8 @@ export const WidgetsPage = () => {
       {showDeleteConfirm && selectedWidget && (
         <DeleteConfirmModal
           isOpen={showDeleteConfirm}
-          title="Delete Widget"
-          message="Are you sure you want to delete this widget?"
+          title={t('widgets.delete.title', 'Delete Widget')}
+          message={t('widgets.delete.message', 'Are you sure you want to delete this widget?')}
           itemName={selectedWidget.name}
           onClose={() => {
             setShowDeleteConfirm(false);

@@ -6,7 +6,7 @@
  */
 
 import { useQueryClient } from '@tanstack/react-query';
-import { toast } from 'sonner';
+import { toast } from '@/shared/utils/toast';
 import { useWebSocketEvents } from '@/lib/websocket';
 import { contentKeys } from './useContent';
 import { useSelectedOrgId } from '@/shared/hooks';

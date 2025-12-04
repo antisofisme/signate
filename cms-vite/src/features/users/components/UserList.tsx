@@ -6,7 +6,7 @@
  */
 
 import { useTranslation } from 'react-i18next';
-import { Shield, Edit, Trash2, Key, Building } from 'lucide-react';
+import { Shield, Edit, Trash2, Key, Building, UserCog } from 'lucide-react';
 import { TABLE_STYLES } from '@/shared/components';
 import type { User } from '../types/user';
 
@@ -15,6 +15,7 @@ interface UserListProps {
   onEdit?: (user: User) => void;
   onDelete?: (user: User) => void;
   onChangePassword?: (user: User) => void;
+  onAssignRole?: (user: User) => void;
 }
 
 export function UserList({
@@ -22,6 +23,7 @@ export function UserList({
   onEdit,
   onDelete,
   onChangePassword,
+  onAssignRole,
 }: UserListProps) {
   const { t } = useTranslation();
 
@@ -98,6 +100,15 @@ export function UserList({
               </td>
               <td className={TABLE_STYLES.td}>
                 <div className="flex items-center gap-2">
+                  {onAssignRole && (
+                    <button
+                      onClick={() => onAssignRole(user)}
+                      className={TABLE_STYLES.actionBtnPurple || 'p-2 rounded-lg text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-900/20 transition-colors'}
+                      title={t('users.actions.assignRole') || 'Assign Role'}
+                    >
+                      <UserCog className="w-4 h-4" />
+                    </button>
+                  )}
                   {onChangePassword && (
                     <button
                       onClick={() => onChangePassword(user)}
@@ -125,7 +136,7 @@ export function UserList({
                       <Trash2 className="w-4 h-4" />
                     </button>
                   )}
-                  {!onEdit && !onChangePassword && !onDelete && (
+                  {!onEdit && !onChangePassword && !onDelete && !onAssignRole && (
                     <span className="text-gray-400 dark:text-gray-600 text-xs">
                       {t('common.noActions') || 'No actions'}
                     </span>

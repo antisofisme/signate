@@ -22,7 +22,7 @@ export interface CheckConflictRequest {
 export interface ConflictSchedule {
   id: number
   name: string
-  priority: number
+  color: string
   start_date: string
   end_date?: string | null
   start_time?: string | null
@@ -89,7 +89,7 @@ export interface ActiveScheduleResponse {
   schedule?: any | null
   playlist_id?: number | null
   schedule_name?: string | null
-  priority?: number | null
+  color?: string | null
   is_found: boolean
 }
 
@@ -127,27 +127,9 @@ export interface PreviewOccurrence {
   endTime: string
   isException: boolean
   isActive: boolean
-  priority: number
+  color: string
 }
 
-// ========================================
-// Priority Management Types
-// ========================================
-
-export interface PriorityAdjustment {
-  schedule_id: number
-  schedule_name: string
-  current_priority: number
-  suggested_priority: number
-  reason: string
-}
-
-export interface PriorityConflictResolution {
-  action: 'adjust_priority' | 'change_time' | 'split_schedule'
-  affected_schedules: number[]
-  changes: PriorityAdjustment[]
-  preview: string
-}
 
 // ========================================
 // Recurrence Pattern Presets

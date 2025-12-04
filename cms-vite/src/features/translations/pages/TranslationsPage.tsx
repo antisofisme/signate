@@ -17,11 +17,31 @@ import {
   PageHeader,
   PageStats,
   PageToolbar,
+  AccessDenied,
+  PageSkeleton,
 } from '@/shared/components';
 import { useTranslationState } from '../hooks/useTranslationState';
+import { useCanPerformAction } from '@/features/rbac/hooks/usePermissions';
 
 export const TranslationsPage = () => {
   const { t } = useTranslation();
+
+  // Permission checks - using 'settings' resource for translations
+  const { hasPermission: canRead, isLoading: loadingReadPerm } = useCanPerformAction('settings', 'read');
+  const { hasPermission: canCreate } = useCanPerformAction('settings', 'create');
+  const { hasPermission: canUpdate } = useCanPerformAction('settings', 'edit');
+  const { hasPermission: canDelete } = useCanPerformAction('settings', 'delete');
+
+  // Show loading state while checking permissions
+  if (loadingReadPerm) {
+    return <PageSkeleton />;
+  }
+
+  // Show access denied if no read permission
+  if (!canRead) {
+    return <AccessDenied />;
+  }
+
   const {
     translations,
     isLoading,
@@ -52,8 +72,8 @@ export const TranslationsPage = () => {
     <>
       {/* Page Header */}
       <PageHeader
-        title={t('translations.title', 'Translations')}
-        description={t('translations.subtitle', 'Manage multi-language translations')}
+        title={t('translationsPage.title', 'Translations')}
+        description={t('translationsPage.subtitle', 'Manage multi-language translations')}
       />
 
       {/* Toolbar: Buttons kanan */}
@@ -65,24 +85,28 @@ export const TranslationsPage = () => {
             onClick={() => setShowStats(!showStats)}
             leftIcon={<BarChart className="w-4 h-4" />}
           >
-            {showStats ? t('translations.hideStats', 'Hide Stats') : t('translations.showStats', 'Show Stats')}
+            {showStats ? t('translationsPage.hideStats', 'Hide Stats') : t('translationsPage.showStats', 'Show Stats')}
           </Button>
         </PageToolbar.Left>
         <PageToolbar.Right>
-          <Button
-            variant="secondary"
-            onClick={() => setShowBulkImport(true)}
-            leftIcon={<Upload className="w-4 h-4" />}
-          >
-            {t('translations.bulkImport', 'Bulk Import')}
-          </Button>
-          <Button
-            variant="primary"
-            onClick={handleCreate}
-            leftIcon={<Plus className="w-4 h-4" />}
-          >
-            {t('translations.create', 'Create Translation')}
-          </Button>
+          {canCreate && (
+            <Button
+              variant="secondary"
+              onClick={() => setShowBulkImport(true)}
+              leftIcon={<Upload className="w-4 h-4" />}
+            >
+              {t('translationsPage.bulkImport', 'Bulk Import')}
+            </Button>
+          )}
+          {canCreate && (
+            <Button
+              variant="primary"
+              onClick={handleCreate}
+              leftIcon={<Plus className="w-4 h-4" />}
+            >
+              {t('translationsPage.create', 'Create Translation')}
+            </Button>
+          )}
         </PageToolbar.Right>
       </PageToolbar>
 
@@ -99,14 +123,14 @@ export const TranslationsPage = () => {
 
         {/* Translation List */}
         <TranslationList
-        translations={translations}
-        isLoading={isLoading}
-        onEdit={handleEdit}
-        onDelete={handleDelete}
-        onApprove={handleApprove}
-        onReject={handleReject}
-        isApproving={isApproving}
-        isRejecting={isRejecting}
+          translations={translations}
+          isLoading={isLoading}
+          onEdit={canUpdate ? handleEdit : undefined}
+          onDelete={canDelete ? handleDelete : undefined}
+          onApprove={canUpdate ? handleApprove : undefined}
+          onReject={canUpdate ? handleReject : undefined}
+          isApproving={isApproving}
+          isRejecting={isRejecting}
         />
       </div>
 
@@ -124,8 +148,8 @@ export const TranslationsPage = () => {
       {showDeleteConfirm && selectedTranslation && (
         <DeleteConfirmModal
           isOpen={showDeleteConfirm}
-          title="Delete Translation"
-          message="Are you sure you want to delete this translation?"
+          title={t('translationsPage.delete.title', 'Delete Translation')}
+          message={t('translationsPage.delete.message', 'Are you sure you want to delete this translation?')}
           itemName={selectedTranslation.field_name}
           onClose={() => {
             setShowDeleteConfirm(false);

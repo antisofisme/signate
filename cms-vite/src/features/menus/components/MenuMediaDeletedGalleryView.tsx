@@ -14,7 +14,7 @@ import {
   RotateCcw,
   Eye,
 } from 'lucide-react';
-import { toast } from 'sonner';
+import { toast } from '@/shared/utils/toast';
 import { Button, EmptyState, ErrorDisplay, ConfirmDialog } from '@/shared/components';
 import { useCanPerformAction } from '@/features/rbac/hooks/usePermissions';
 import {

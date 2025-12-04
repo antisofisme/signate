@@ -16,6 +16,7 @@ import { Z_INDEX } from '@/shared/constants/zIndex';
 
 const BASE_OFFSET = 16; // default offset from edge (bottom-4 = 16px)
 const RIGHT_OFFSET = 16; // right offset to align with upload queue (right-4 = 16px)
+const PANEL_GAP = 12; // extra gap above upload queue panel to prevent overlap
 
 export function ToastProvider() {
   const theme = useUIStore((state) => state.theme);
@@ -28,15 +29,15 @@ export function ToastProvider() {
   const panelHeight = Math.max(contentPanelHeight, menuMediaPanelHeight);
 
   // Calculate bottom offset based on upload queue panel height
-  // panelHeight is 0 when no upload queue is visible
-  const bottomOffset = panelHeight > 0 ? panelHeight : BASE_OFFSET;
+  // Add extra gap when panel is visible to prevent overlap with header
+  const bottomOffset = panelHeight > 0 ? panelHeight + PANEL_GAP : BASE_OFFSET;
 
   return (
     <Toaster
       position="bottom-right"
       theme={theme}
       richColors
-      expand={false}
+      expand={true}
       visibleToasts={4}
       gap={8}
       toastOptions={{

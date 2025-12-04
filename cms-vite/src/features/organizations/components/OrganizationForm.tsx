@@ -11,7 +11,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useTranslation } from 'react-i18next';
 import { Copy, Check, RefreshCw, Shield, Eye, EyeOff } from 'lucide-react';
-import { toast } from 'sonner';
+import { toast } from '@/shared/utils/toast';
 import { Modal, Button, FormInput, FormTextarea, ConfirmDialog } from '@/shared/components';
 import { useRegeneratePin } from '../hooks/useOrganizations';
 import type {

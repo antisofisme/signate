@@ -23,7 +23,9 @@ from services.schedule.dtos import (
     CalculateNextOccurrenceRequest,
     CalculateNextOccurrenceResponse,
     CheckConflictRequest,
-    CheckConflictResponse
+    CheckConflictResponse,
+    GetOccurrencesRequest,
+    GetOccurrencesResponse
 )
 from services.schedule.use_cases.create_schedule import create_schedule_use_case
 from services.schedule.use_cases.get_schedules import (
@@ -76,9 +78,9 @@ def create_schedule(
     - **monthly**: Specific days of month (1-31)
     - **yearly**: Specific date each year (month + day_of_month)
 
-    Priority:
-    - Higher priority (0-100) wins when schedules overlap
-    - Default: 0
+    Color:
+    - Hex color for calendar display (e.g. #3B82F6)
+    - Default: #3B82F6 (blue)
     """
     schedule = create_schedule_use_case(
         organization_id=current_user["organization_id"],
@@ -97,7 +99,7 @@ def create_schedule(
             "playlist_id": schedule.playlist_id,
             "recurrence_type": schedule.recurrence_type,
             "start_date": str(schedule.start_date),
-            "priority": schedule.priority,
+            "color": schedule.color,
             "is_active": schedule.is_active
         },
         ip_address=http_request.client.host if http_request.client else None,
@@ -125,7 +127,7 @@ def get_schedules(
     - recurrence_type (once, daily, weekly, monthly, yearly)
     - Pagination with skip/limit
 
-    Results ordered by priority (highest first), then start_date (newest first)
+    Results ordered by start_date (newest first)
     """
     return get_schedules_use_case(
         organization_id=current_user["organization_id"],
@@ -179,7 +181,7 @@ def update_schedule(
         details={
             "playlist_id": schedule.playlist_id if hasattr(schedule, 'playlist_id') else None,
             "is_active": schedule.is_active if hasattr(schedule, 'is_active') else None,
-            "priority": schedule.priority if hasattr(schedule, 'priority') else None
+            "color": schedule.color if hasattr(schedule, 'color') else None
         },
         ip_address=http_request.client.host if http_request.client else None,
         organization_id=current_user["organization_id"]
@@ -246,7 +248,7 @@ def get_active_schedule_now(
     """
     Get currently active schedule
 
-    Returns highest priority schedule that is active right now.
+    Returns active schedule that matches current time.
     Uses current date/time to determine active schedule.
     """
     return get_active_schedule_use_case(
@@ -266,7 +268,7 @@ def get_active_schedule_at(
     """
     Get active schedule at specific date/time
 
-    Returns highest priority schedule that would be active at the given date/time.
+    Returns schedule that would be active at the given date/time.
     Useful for previewing schedule behavior.
     """
     return get_active_schedule_use_case(
@@ -321,7 +323,7 @@ def check_schedule_conflicts(
     Finds schedules that overlap with given parameters.
     Useful for preventing conflicts before creating/updating schedules.
 
-    Note: Higher priority schedules will take precedence in actual playback.
+    Note: Schedules with 'override' mode will take precedence in actual playback.
     """
     return check_conflicts_use_case(
         organization_id=current_user["organization_id"],
@@ -332,6 +334,109 @@ def check_schedule_conflicts(
         end_time=request.end_time,
         exclude_schedule_id=request.exclude_schedule_id,
         db=db
+    )
+
+
+# ============================================================================
+# Calendar Occurrences Endpoint
+# ============================================================================
+
+@router.post("/schedules/occurrences", response_model=GetOccurrencesResponse)
+def get_schedule_occurrences(
+    request: GetOccurrencesRequest,
+    current_user: dict = Depends(require_permission("schedules", "read")),
+    db: Session = Depends(get_db)
+):
+    """
+    Get schedule occurrences for calendar view
+
+    Returns all schedule occurrences within the given date range.
+    Used to populate the calendar view with schedule events.
+    """
+    from services.schedule.dtos import ScheduleOccurrence
+    from services.schedule.repositories.schedule_repo import ScheduleRepository
+    from datetime import datetime, timedelta
+
+    repo = ScheduleRepository(db)
+    organization_id = current_user["organization_id"]
+
+    # Get all schedules for this organization
+    schedules, _ = repo.get_schedules(organization_id=organization_id)
+
+    occurrences = []
+    start_date = request.start_date
+    end_date = request.end_date
+
+    for schedule in schedules:
+        if not schedule.is_active:
+            continue
+
+        # Skip if schedule hasn't started yet or has ended
+        if schedule.start_date > end_date:
+            continue
+        if schedule.end_date and schedule.end_date < start_date:
+            continue
+
+        # Filter by playlist if specified
+        if request.playlist_id and schedule.playlist_id != request.playlist_id:
+            continue
+
+        # Get devices assigned to this schedule's playlist
+        device_ids = []
+        if schedule.playlist:
+            device_ids = [d.id for d in schedule.playlist.devices] if hasattr(schedule.playlist, 'devices') else []
+
+        # Filter by device if specified
+        if request.device_id and request.device_id not in device_ids:
+            continue
+
+        # Calculate occurrences based on recurrence type
+        current_date = max(schedule.start_date, start_date)
+        schedule_end = min(schedule.end_date, end_date) if schedule.end_date else end_date
+
+        exception_dates = schedule.exceptions or []
+
+        while current_date <= schedule_end:
+            should_occur = False
+
+            if schedule.recurrence_type == 'once':
+                should_occur = current_date == schedule.start_date
+            elif schedule.recurrence_type == 'daily':
+                interval = (schedule.recurrence_pattern or {}).get('interval', 1)
+                days_since_start = (current_date - schedule.start_date).days
+                should_occur = days_since_start % interval == 0
+            elif schedule.recurrence_type == 'weekly':
+                days_of_week = (schedule.recurrence_pattern or {}).get('days_of_week', [])
+                day_name = current_date.strftime('%A').lower()
+                should_occur = day_name in days_of_week
+            elif schedule.recurrence_type == 'monthly':
+                pattern = schedule.recurrence_pattern or {}
+                day_of_month = pattern.get('day_of_month')
+                if day_of_month:
+                    should_occur = current_date.day == day_of_month
+                elif pattern.get('last_day_of_month'):
+                    next_month = (current_date.replace(day=28) + timedelta(days=4)).replace(day=1)
+                    last_day = (next_month - timedelta(days=1)).day
+                    should_occur = current_date.day == last_day
+
+            # Check if this date is an exception
+            if should_occur and str(current_date) not in exception_dates:
+                occurrences.append(ScheduleOccurrence(
+                    schedule_id=schedule.id,
+                    schedule_name=schedule.name,
+                    playlist_name=schedule.playlist.name if schedule.playlist else "Unknown",
+                    occurrence_date=str(current_date),
+                    start_time=str(schedule.start_time) if schedule.start_time else "00:00:00",
+                    end_time=str(schedule.end_time) if schedule.end_time else "23:59:59",
+                    color=schedule.color or "#3B82F6",
+                    devices=device_ids
+                ))
+
+            current_date += timedelta(days=1)
+
+    return GetOccurrencesResponse(
+        occurrences=occurrences,
+        total=len(occurrences)
     )
 
 

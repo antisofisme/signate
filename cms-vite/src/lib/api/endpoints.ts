@@ -104,6 +104,9 @@ export const API_ENDPOINTS = {
 
     // Duplicate detection
     DUPLICATES: '/api/v1/contents/duplicates',
+
+    // Content-Playlist relationship (reverse lookup)
+    GET_PLAYLISTS: (contentId: number) => `/api/v1/contents/${contentId}/playlists`,
   },
 
   // ========================================
@@ -125,6 +128,10 @@ export const API_ENDPOINTS = {
     GET_DEVICES: (tagId: number) => `/api/v1/tags/${tagId}/devices`,
     ASSIGN_TO_DEVICES: (tagId: number) => `/api/v1/tags/${tagId}/assign-devices`,
     UNASSIGN_FROM_DEVICES: (tagId: number) => `/api/v1/tags/${tagId}/unassign-devices`,
+    // Playback content assignment (content_assignments.tag_id - different from categorization)
+    GET_PLAYBACK_CONTENTS: (tagId: number) => `/api/v1/tags/${tagId}/playback-contents`,
+    ASSIGN_PLAYBACK_CONTENTS: (tagId: number) => `/api/v1/tags/${tagId}/playback-contents`,
+    UNASSIGN_PLAYBACK_CONTENTS: (tagId: number) => `/api/v1/tags/${tagId}/playback-contents`,
   },
 
   // ========================================
@@ -312,7 +319,8 @@ export const API_ENDPOINTS = {
       GET: (userId: number) => `/api/v1/users/${userId}/permissions`,
       CHECK: (userId: number) => `/api/v1/users/${userId}/check-permission`,
       GET_ROLES: (userId: number) => `/api/v1/users/${userId}/roles`,
-      ASSIGN_ROLE: (userId: number) => `/api/v1/users/${userId}/roles`,
+      GET_ROLE: (userId: number) => `/api/v1/users/${userId}/role`,
+      ASSIGN_ROLE: (userId: number) => `/api/v1/users/${userId}/role`,
       REMOVE_ROLE: (userId: number, roleId: number) => `/api/v1/users/${userId}/roles/${roleId}`,
     },
   },

@@ -6,7 +6,7 @@
  */
 
 import { useTranslation } from 'react-i18next';
-import { List, Trash2, Loader2, ArrowRight } from 'lucide-react';
+import { List, Trash2, Loader2, ArrowRight, FileText } from 'lucide-react';
 import {
   useDevicePlaylists,
   useAssignPlaylist,
@@ -34,6 +34,13 @@ export function PlaylistAssignmentTab({ device }: PlaylistAssignmentTabProps) {
 
   const assignedPlaylists = assignedData?.items || [];
   const allPlaylists = allPlaylistsData?.items || [];
+
+  // Calculate total content from assigned playlists
+  const totalPlaylistContent = assignedPlaylists.reduce((total, assigned) => {
+    // Find playlist details to get content_count
+    const playlist = allPlaylists.find(p => p.id === assigned.playlist_id);
+    return total + (playlist?.content_count || assigned.content_count || 0);
+  }, 0);
 
   // Filter out already assigned playlists
   const availablePlaylists = allPlaylists.filter(
@@ -68,6 +75,16 @@ export function PlaylistAssignmentTab({ device }: PlaylistAssignmentTabProps) {
           <strong>{t('devices.modals.priority3Lowest')}:</strong> {t('devices.modals.priority3Info')}
         </p>
       </div>
+
+      {/* Playlist Content Info */}
+      {totalPlaylistContent > 0 && (
+        <div className="mb-4 flex items-center gap-2 bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-lg p-3">
+          <FileText className="w-4 h-4 text-purple-600 dark:text-purple-400 flex-shrink-0" />
+          <p className="text-sm text-purple-700 dark:text-purple-300">
+            <strong>{totalPlaylistContent}</strong> {t('devices.modals.contentFromPlaylists', 'content from assigned playlists. Manage playlist content in the Playlists page.')}
+          </p>
+        </div>
+      )}
 
       {/* Content - 2 Column Grid */}
       {isLoading ? (

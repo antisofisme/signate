@@ -21,12 +21,10 @@ import {
 } from 'lucide-react'
 import { ScheduleTimeline } from './ScheduleTimeline'
 import {
-  PRIORITY_LEVELS,
+  DEFAULT_SCHEDULE_COLOR,
   getScheduleStatus,
   type Schedule,
   type ScheduleStatus,
-  type PriorityLevel,
-  type PriorityInfo,
   type DayOfWeek,
 } from '../types/schedule.types'
 import { formatDateTime } from '@/shared/utils/formatters'
@@ -42,40 +40,6 @@ interface ScheduleCardProps {
   onTimelineClick?: (schedule: Schedule) => void
   canUpdate?: boolean
   canDelete?: boolean
-}
-
-// Helper to convert numeric priority to PriorityLevel key
-const getPriorityInfo = (priority: PriorityLevel | number): PriorityInfo => {
-  if (typeof priority === 'string' && PRIORITY_LEVELS[priority]) {
-    return PRIORITY_LEVELS[priority]
-  }
-  if (typeof priority === 'number') {
-    if (priority <= 10) return PRIORITY_LEVELS.low
-    if (priority <= 50) return PRIORITY_LEVELS.normal
-    if (priority <= 75) return PRIORITY_LEVELS.high
-    return PRIORITY_LEVELS.critical
-  }
-  return PRIORITY_LEVELS.normal
-}
-
-// Get priority value as number (0-100)
-const getPriorityValue = (priority: PriorityLevel | number): number => {
-  if (typeof priority === 'number') return Math.min(100, Math.max(0, priority))
-  switch (priority) {
-    case 'low': return 10
-    case 'normal': return 50
-    case 'high': return 75
-    case 'critical': return 100
-    default: return 50
-  }
-}
-
-// Get priority bar color class
-const getPriorityBarColor = (value: number): string => {
-  if (value >= 75) return 'bg-red-500'
-  if (value >= 50) return 'bg-orange-500'
-  if (value >= 25) return 'bg-blue-500'
-  return 'bg-gray-400'
 }
 
 // Status icon component
@@ -126,8 +90,7 @@ export const ScheduleCard = ({
 
   // Derive status from is_active and dates
   const status = getScheduleStatus(schedule)
-  const priority = getPriorityInfo(schedule.priority)
-  const priorityValue = getPriorityValue(schedule.priority)
+  const scheduleColor = schedule.color || DEFAULT_SCHEDULE_COLOR
 
   // Extract recurrence days for weekly schedules
   const recurrenceDays = schedule.recurrence_pattern?.days_of_week as DayOfWeek[] | undefined
@@ -178,23 +141,17 @@ export const ScheduleCard = ({
           </div>
         </div>
 
-        {/* Right: Status badge + Priority */}
+        {/* Right: Status badge + Color */}
         <div className="flex items-start gap-3 flex-shrink-0 ml-4">
           {/* Status badge */}
           <StatusBadge status={status} t={t} />
 
-          {/* Priority indicator */}
-          <div className="text-right">
-            <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">
-              Priority {priorityValue}
-            </div>
-            <div className="w-20 h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
-              <div
-                className={`h-full rounded-full transition-all ${getPriorityBarColor(priorityValue)}`}
-                style={{ width: `${priorityValue}%` }}
-              />
-            </div>
-          </div>
+          {/* Color indicator */}
+          <div
+            className="w-5 h-5 rounded-full border-2 border-white dark:border-gray-800 shadow-sm"
+            style={{ backgroundColor: scheduleColor }}
+            title={t('schedules.labels.scheduleColor')}
+          />
         </div>
       </div>
 

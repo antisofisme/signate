@@ -1,13 +1,16 @@
 /**
  * Audit Log Table Component
- * Table display of audit logs with pagination
+ * Table display of audit logs with pagination and detail modal
  */
 
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ChevronLeft, ChevronRight, FileText } from 'lucide-react';
+import { ChevronLeft, ChevronRight, FileText, Eye } from 'lucide-react';
 import { format } from 'date-fns';
 import { TABLE_STYLES } from '@/shared/components';
 import type { AuditLog } from '../types/auditLog';
+import { AuditDetailModal } from './AuditDetailModal';
+import { generateActionSummary } from '../utils/auditFormatter';
 
 interface AuditLogTableProps {
   logs: AuditLog[];
@@ -29,6 +32,18 @@ export function AuditLogTable({
   onPageChange,
 }: AuditLogTableProps) {
   const { t } = useTranslation();
+  const [selectedLog, setSelectedLog] = useState<AuditLog | null>(null);
+  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
+
+  const handleViewDetail = (log: AuditLog) => {
+    setSelectedLog(log);
+    setIsDetailModalOpen(true);
+  };
+
+  const handleCloseDetail = () => {
+    setIsDetailModalOpen(false);
+    setSelectedLog(null);
+  };
 
   const getActionBadgeColor = (action: string) => {
     if (action.includes('create')) return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200';
@@ -136,8 +151,17 @@ export function AuditLogTable({
                   )}
                 </td>
                 <td className="px-6 py-4">
-                  <div className="text-sm text-gray-600 dark:text-gray-300 max-w-xs truncate">
-                    {log.details ? JSON.stringify(log.details) : '-'}
+                  <div className="text-sm text-gray-600 dark:text-gray-300 max-w-xs">
+                    <p className="truncate">{generateActionSummary(log)}</p>
+                    {log.details && (
+                      <button
+                        onClick={() => handleViewDetail(log)}
+                        className="mt-1 text-xs text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1"
+                      >
+                        <Eye className="w-3 h-3" />
+                        {t('audit.viewDetails', 'View details')}
+                      </button>
+                    )}
                   </div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-300">
@@ -148,6 +172,13 @@ export function AuditLogTable({
           </tbody>
         </table>
       </div>
+
+      {/* Detail Modal */}
+      <AuditDetailModal
+        log={selectedLog}
+        isOpen={isDetailModalOpen}
+        onClose={handleCloseDetail}
+      />
 
       {/* Pagination */}
       {totalPages > 1 && (

@@ -6,7 +6,7 @@
  */
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { toast } from 'sonner';
+import { toast } from '@/shared/utils/toast';
 import { getApiErrorMessage } from '@/shared/utils/types';
 import { organizationsApi } from '../api/organizationsApi';
 import type { UpdateQuotaRequest } from '../types/organization';

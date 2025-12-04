@@ -5,7 +5,7 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import { toast } from 'sonner'
+import { toast } from '@/shared/utils/toast'
 import { getApiErrorMessage } from '@/shared/utils/types'
 import { useSelectedOrgId, scheduleKeys } from '@/shared/hooks'
 import {

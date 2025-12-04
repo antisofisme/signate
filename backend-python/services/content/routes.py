@@ -29,6 +29,7 @@ from .dtos import ContentResponse, PaginatedContentResponse, ContentUpdateReques
 from .domain.interfaces import IContentRepository
 from .infrastructure.storage.interfaces import IStorageService
 from .infrastructure.storage.metadata_extractor import MetadataExtractor
+from .repositories.models import ContentModel
 
 router = APIRouter(tags=["content"])
 
@@ -939,3 +940,81 @@ async def permanent_delete_content(
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Permanent delete failed: {str(e)}")
+
+
+# ==============================================================================
+# Content-Playlist Relationship (Reverse Lookup)
+# ==============================================================================
+
+@router.get(ContentRoutes.GET_CONTENT_PLAYLISTS, response_model=dict)
+async def get_content_playlists(
+    content_id: int,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(require_permission("contents", "read"))
+):
+    """
+    Get all playlists that contain this content (reverse lookup)
+
+    Requires 'contents:read' permission.
+    Returns playlists with item_id for removal operations.
+    """
+    from services.playlist.repositories.models import PlaylistModel, PlaylistContentModel
+
+    try:
+        org_id = current_user["organization_id"]
+
+        # Verify content exists and belongs to organization
+        content = db.query(ContentModel).filter(
+            ContentModel.id == content_id,
+            ContentModel.organization_id == org_id,
+            ContentModel.deleted_at == None
+        ).first()
+
+        if not content:
+            raise HTTPException(status_code=404, detail="Content not found")
+
+        # Get all playlists containing this content
+        # Join playlist_contents with playlists to get playlist info + item_id
+        results = db.query(
+            PlaylistModel,
+            PlaylistContentModel.id.label('item_id'),
+            PlaylistContentModel.order_index,
+            PlaylistContentModel.duration.label('playlist_duration')
+        ).join(
+            PlaylistContentModel,
+            PlaylistContentModel.playlist_id == PlaylistModel.id
+        ).filter(
+            PlaylistContentModel.content_id == content_id,
+            PlaylistModel.organization_id == org_id,
+            PlaylistModel.deleted_at == None
+        ).order_by(PlaylistModel.name).all()
+
+        # Format response
+        playlists = []
+        for playlist, item_id, order_index, playlist_duration in results:
+            # Count total content in playlist
+            content_count = db.query(PlaylistContentModel).filter(
+                PlaylistContentModel.playlist_id == playlist.id
+            ).count()
+
+            playlists.append({
+                "id": playlist.id,
+                "item_id": item_id,  # For removal: DELETE /playlists/{id}/content/{item_id}
+                "name": playlist.name,
+                "description": playlist.description,
+                "is_active": playlist.is_active,
+                "content_count": content_count,
+                "order_index": order_index,
+                "duration": playlist_duration,
+                "created_at": playlist.created_at.isoformat() if playlist.created_at else None
+            })
+
+        return success_response(
+            data=playlists,
+            message=f"Found {len(playlists)} playlist(s) containing this content"
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Get content playlists failed: {str(e)}")

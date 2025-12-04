@@ -9,9 +9,6 @@ export type RecurrenceType = 'once' | 'daily' | 'weekly' | 'monthly' | 'custom'
 // Days of week
 export type DayOfWeek = 'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'saturday' | 'sunday'
 
-// Priority levels
-export type PriorityLevel = 'low' | 'normal' | 'high' | 'critical'
-
 // Schedule mode - how the schedule behaves when active
 export type ScheduleMode = 'override' | 'rotate'
 
@@ -31,7 +28,7 @@ export interface Schedule {
   end_time: string
   recurrence_type: RecurrenceType | string
   recurrence_pattern?: RecurrencePattern
-  priority: PriorityLevel | number
+  color: string  // Hex color for calendar display (e.g. #3B82F6)
   mode: ScheduleMode
   is_active: boolean // From backend
   status?: ScheduleStatus // Derived from is_active for UI display
@@ -77,50 +74,8 @@ export interface RecurrencePattern {
   cron_expression?: string
 }
 
-// Priority level information
-export interface PriorityInfo {
-  level: PriorityLevel
-  label: string
-  color: string
-  icon: string
-  description: string
-  weight: number
-}
-
-export const PRIORITY_LEVELS: Record<PriorityLevel, PriorityInfo> = {
-  low: {
-    level: 'low',
-    label: 'Low Priority',
-    color: 'gray',
-    icon: 'ChevronDown',
-    description: 'Lowest priority, runs if no other schedules',
-    weight: 1,
-  },
-  normal: {
-    level: 'normal',
-    label: 'Normal Priority',
-    color: 'blue',
-    icon: 'ChevronRight',
-    description: 'Standard priority for regular content',
-    weight: 2,
-  },
-  high: {
-    level: 'high',
-    label: 'High Priority',
-    color: 'orange',
-    icon: 'ChevronUp',
-    description: 'High priority, runs before normal schedules',
-    weight: 3,
-  },
-  critical: {
-    level: 'critical',
-    label: 'Critical Priority',
-    color: 'red',
-    icon: 'AlertCircle',
-    description: 'Highest priority, always runs',
-    weight: 4,
-  },
-}
+// Default schedule color
+export const DEFAULT_SCHEDULE_COLOR = '#3B82F6'  // Tailwind blue-500
 
 // Schedule mode information
 export interface ScheduleModeInfo {
@@ -220,7 +175,6 @@ export interface ScheduleFilters {
   playlist_id?: number
   device_id?: number
   status?: ScheduleStatus
-  priority?: PriorityLevel
   recurrence_type?: RecurrenceType
   search?: string
   start_date?: string
@@ -242,7 +196,7 @@ export interface CreateScheduleRequest {
   end_time: string
   recurrence_type: RecurrenceType | string
   recurrence_pattern?: RecurrencePattern
-  priority: PriorityLevel | number
+  color?: string  // Hex color for calendar display
   mode: ScheduleMode
   exception_dates?: string[]
   is_active?: boolean
@@ -257,7 +211,7 @@ export interface UpdateScheduleRequest {
   end_time?: string
   recurrence_type?: RecurrenceType | string
   recurrence_pattern?: RecurrencePattern
-  priority?: PriorityLevel | number
+  color?: string  // Hex color for calendar display
   mode?: ScheduleMode
   status?: ScheduleStatus
   exception_dates?: string[]
@@ -268,7 +222,7 @@ export interface UpdateScheduleRequest {
 export interface ScheduleConflict {
   schedule_id: number
   schedule_name: string
-  conflict_type: 'time_overlap' | 'device_overlap' | 'priority_conflict'
+  conflict_type: 'time_overlap' | 'device_overlap' | 'mode_conflict'
   severity: 'warning' | 'error'
   message: string
   conflicting_schedule_id?: number
@@ -311,7 +265,7 @@ export interface ScheduleOccurrence {
   occurrence_date: string
   start_time: string
   end_time: string
-  priority: PriorityLevel
+  color: string
   devices: number[]
 }
 

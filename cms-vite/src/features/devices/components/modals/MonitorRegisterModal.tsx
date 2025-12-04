@@ -11,7 +11,7 @@ import { useForm, FormProvider } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Monitor } from 'lucide-react';
-import { toast } from 'sonner';
+import { toast } from '@/shared/utils/toast';
 import { Modal, Button } from '@/shared/components';
 import { FormInput, FormSelect, ActivationCodeInput } from '@/shared/components/form';
 import { useMonitorRegister } from '../../hooks/useDevices';
