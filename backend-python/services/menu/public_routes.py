@@ -16,7 +16,9 @@ from .repositories import MenuRepository, MenuItemRepository, MenuViewRepository
 from .use_cases import GetPublicMenuUseCase
 from .dtos import PublicMenuItemListDTO
 from services.auth.repositories.models import OrganizationModel
-from loguru import logger
+import logging
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/v1/public/menu", tags=["public-menu"])
 

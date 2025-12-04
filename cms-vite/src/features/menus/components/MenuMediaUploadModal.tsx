@@ -1,8 +1,10 @@
 /**
  * Menu Media Upload Modal Component
- * Uses global queue store for persistent upload tracking
  *
- * Refactored to match Content UploadModal structure
+ * Uses UNIFIED uploadQueueStore for consistent upload tracking
+ * across all upload types (content, menu_media)
+ *
+ * Processing is handled automatically by useUploadProcessor
  */
 
 import { useState, useRef, ChangeEvent } from 'react';
@@ -14,8 +16,7 @@ import {
 } from 'lucide-react';
 import { toast } from '@/shared/utils/toast';
 import { Modal, Button } from '@/shared/components';
-import { useUploadMenuMedia } from '../hooks/useMenuMedia';
-import { useMenuMediaUploadStore } from '@/lib/stores/menuMediaUploadStore';
+import { useUploadQueueStore } from '@/lib/stores/uploadQueueStore';
 
 interface MenuMediaUploadModalProps {
   isOpen: boolean;
@@ -33,12 +34,8 @@ export function MenuMediaUploadModal({ isOpen, onClose }: MenuMediaUploadModalPr
   const [localFiles, setLocalFiles] = useState<File[]>([]);
   const [validationErrors, setValidationErrors] = useState<Map<string, string>>(new Map());
 
-  const uploadMutation = useUploadMenuMedia();
-
-  // Global queue store
-  const addToQueue = useMenuMediaUploadStore((state) => state.addToQueue);
-  const updateStatus = useMenuMediaUploadStore((state) => state.updateStatus);
-  const setProcessing = useMenuMediaUploadStore((state) => state.setProcessing);
+  // Unified queue store - processing handled by useUploadProcessor
+  const addToQueue = useUploadQueueStore((state) => state.addToQueue);
 
   // File validation
   const validateFile = (file: File): string | null => {
@@ -87,46 +84,26 @@ export function MenuMediaUploadModal({ isOpen, onClose }: MenuMediaUploadModalPr
     setValidationErrors(new Map());
   };
 
-  // Process upload - Add to queue and start uploading
-  const handleUpload = async (e: React.FormEvent) => {
+  // Process upload - Just add to unified queue
+  // Processing is handled automatically by useUploadProcessor
+  const handleUpload = (e: React.FormEvent) => {
     e.preventDefault();
     if (localFiles.length === 0) return;
 
-    // Add to global queue
-    addToQueue(localFiles);
-    setProcessing(true);
+    // Add files to unified upload queue with menu_media type
+    addToQueue(localFiles, { uploadType: 'menu_media' });
 
-    // Get the items we just added (by matching file names)
-    const queueItems = useMenuMediaUploadStore.getState().items;
-    const newItems = queueItems.filter((item) =>
-      localFiles.some((f) => f.name === item.file.name && item.status === 'pending')
+    // Show toast notification
+    toast.success(
+      t('menuMedia.upload.addedToQueue', {
+        count: localFiles.length,
+        defaultValue: `${localFiles.length} file(s) added to queue`,
+      })
     );
 
     // Clear local files and close modal
     clearLocalFiles();
     onClose();
-
-    // Show toast notification
-    toast.success(
-      t('menuMedia.upload.addedToQueue', {
-        count: newItems.length,
-        defaultValue: `${newItems.length} file(s) added to queue`,
-      })
-    );
-
-    // Process uploads
-    for (const item of newItems) {
-      updateStatus(item.id, 'uploading');
-
-      try {
-        await uploadMutation.mutateAsync({ file: item.file });
-        updateStatus(item.id, 'success');
-      } catch (error: any) {
-        updateStatus(item.id, 'error', error.message || 'Upload failed');
-      }
-    }
-
-    setProcessing(false);
   };
 
   // Handle file input change

@@ -229,6 +229,8 @@ export interface MenuListParams {
   limit?: number;
   menu_type?: MenuType;
   is_active?: boolean;
+  sort_by?: string;
+  sort_dir?: 'asc' | 'desc';
 }
 
 export interface MenuItemListParams {
@@ -314,6 +316,9 @@ export interface MenuMediaFilters {
   search?: string;
   mime_type?: string;
   is_active?: boolean;
+  // Sorting
+  sort_by?: string;
+  sort_dir?: 'asc' | 'desc' | null;
 }
 
 // Menu Category types (per-menu categories)

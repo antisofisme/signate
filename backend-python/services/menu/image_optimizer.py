@@ -17,7 +17,9 @@ from datetime import datetime
 from PIL import Image, ExifTags
 from PIL.ExifTags import TAGS
 import io
-from loguru import logger
+import logging
+
+logger = logging.getLogger(__name__)
 
 # Register HEIC/HEIF opener
 try:

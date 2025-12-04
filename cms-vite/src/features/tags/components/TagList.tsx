@@ -5,7 +5,8 @@
 
 import { Pencil, Trash2, Tag as TagIcon, FileSymlink, Monitor, File } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { TableSkeleton, EmptyState, TABLE_STYLES } from '@/shared/components';
+import { TableSkeleton, EmptyState, TABLE_STYLES, SortableTableHeader } from '@/shared/components';
+import type { SortConfig } from '@/shared/components';
 import { TagBadge } from './TagBadge';
 import type { Tag } from '../types/tag';
 
@@ -16,6 +17,9 @@ interface TagListProps {
   onEdit?: (tag: Tag) => void;
   onDelete?: (tag: Tag) => void;
   onManageContent?: (tag: Tag) => void;
+  // Sorting props (optional - controlled by parent)
+  sortConfig?: SortConfig | null;
+  onSortChange?: (config: SortConfig | null) => void;
 }
 
 export function TagList({
@@ -25,6 +29,8 @@ export function TagList({
   onEdit,
   onDelete,
   onManageContent,
+  sortConfig,
+  onSortChange,
 }: TagListProps) {
   const { t } = useTranslation();
 
@@ -49,19 +55,59 @@ export function TagList({
         <thead className={TABLE_STYLES.thead}>
           <tr>
             <th className={`${TABLE_STYLES.th} w-[20%]`}>
-              {t('tags.tag')}
+              {sortConfig && onSortChange ? (
+                <SortableTableHeader
+                  columnKey="tag_name"
+                  sortConfig={sortConfig}
+                  onSortChange={onSortChange}
+                >
+                  {t('tags.tag')}
+                </SortableTableHeader>
+              ) : (
+                t('tags.tag')
+              )}
             </th>
             <th className={`${TABLE_STYLES.th} w-[25%]`}>
               {t('tags.description')}
             </th>
             <th className={`${TABLE_STYLES.th} w-24 text-center`}>
-              {t('tags.contentCount', 'Contents')}
+              {sortConfig && onSortChange ? (
+                <SortableTableHeader
+                  columnKey="content_count"
+                  sortConfig={sortConfig}
+                  onSortChange={onSortChange}
+                >
+                  {t('tags.contentCount', 'Contents')}
+                </SortableTableHeader>
+              ) : (
+                t('tags.contentCount', 'Contents')
+              )}
             </th>
             <th className={`${TABLE_STYLES.th} w-24 text-center`}>
-              {t('tags.deviceCount', 'Devices')}
+              {sortConfig && onSortChange ? (
+                <SortableTableHeader
+                  columnKey="device_count"
+                  sortConfig={sortConfig}
+                  onSortChange={onSortChange}
+                >
+                  {t('tags.deviceCount', 'Devices')}
+                </SortableTableHeader>
+              ) : (
+                t('tags.deviceCount', 'Devices')
+              )}
             </th>
             <th className={`${TABLE_STYLES.th} w-28`}>
-              {t('tags.created')}
+              {sortConfig && onSortChange ? (
+                <SortableTableHeader
+                  columnKey="created_at"
+                  sortConfig={sortConfig}
+                  onSortChange={onSortChange}
+                >
+                  {t('tags.created')}
+                </SortableTableHeader>
+              ) : (
+                t('tags.created')
+              )}
             </th>
             <th className={`${TABLE_STYLES.th} w-32`}>
               {t('tags.actions')}

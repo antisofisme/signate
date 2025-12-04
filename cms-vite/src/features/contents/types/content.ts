@@ -58,6 +58,9 @@ export interface ContentFilters {
   content_type?: ContentType;
   is_active?: boolean;
   tag_ids?: number[];
+  // Sorting
+  sort_by?: string;
+  sort_dir?: 'asc' | 'desc' | null;
 }
 
 export interface ContentListResponse {

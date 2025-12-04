@@ -27,6 +27,9 @@ export const tagsApi = {
     if (filters?.sort_by) {
       params.append('sort_by', filters.sort_by);
     }
+    if (filters?.sort_dir) {
+      params.append('sort_dir', filters.sort_dir);
+    }
 
     const queryString = params.toString();
     const url = `${API_ENDPOINTS.TAGS.LIST}${queryString ? `?${queryString}` : ''}`;

@@ -173,8 +173,8 @@ export function UploadModal({ isOpen, onClose }: UploadModalProps) {
       return;
     }
 
-    // Add files to upload queue
-    addToQueue(files, { duration: data.duration, isActive: data.is_active });
+    // Add files to upload queue (content type)
+    addToQueue(files, { uploadType: 'content', duration: data.duration, isActive: data.is_active });
 
     // Show toast notification
     toast.success(

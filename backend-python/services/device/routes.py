@@ -33,7 +33,9 @@ from .dtos import (
     DeviceListResponse,
     HeartbeatResponse,
     ActivationStatusResponse,
-    DeviceActivationResponse
+    DeviceActivationResponse,
+    DeviceHealthMetricsCreate,
+    DeviceHealthResponse
 )
 from .use_cases.request_activation_code import RequestActivationCodeUseCase
 from .use_cases.activate_device import ActivateDeviceUseCase
@@ -269,6 +271,160 @@ def device_heartbeat(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=str(e)
+        )
+
+
+# =============================================================================
+# DEVICE HEALTH METRICS ENDPOINT
+# =============================================================================
+
+@router.post("/devices/{device_id}/health", response_model=DeviceHealthResponse)
+def record_device_health(
+    device_id: int,
+    request_body: DeviceHealthMetricsCreate,
+    device_repo: DeviceRepository = Depends(get_device_repository),
+    current_device: CurrentDevice = Depends(get_current_device),
+    db: Session = Depends(get_db)
+):
+    """
+    Record device health metrics (called by player every 5 minutes)
+
+    🔒 SECURITY: Requires device JWT token authentication
+    Device can only submit health metrics for itself
+
+    Creates a new health metric record in device_health_metrics table
+    """
+    from datetime import datetime, timezone
+    from .repositories.models import DeviceHealthMetricModel
+
+    try:
+        # 🔒 SECURITY: Verify device_id matches JWT token
+        if current_device.id != device_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Device ID mismatch: JWT contains {current_device.id}, request has {device_id}"
+            )
+
+        # Use connection_quality from request or calculate based on latency
+        connection_quality = request_body.connection_quality or "unknown"
+        if connection_quality == "unknown" and request_body.network_latency_ms is not None:
+            latency = request_body.network_latency_ms
+            if latency < 50:
+                connection_quality = "excellent"
+            elif latency < 100:
+                connection_quality = "good"
+            elif latency < 200:
+                connection_quality = "fair"
+            elif latency < 500:
+                connection_quality = "poor"
+            else:
+                connection_quality = "very_poor"
+
+        # Determine overall health status
+        overall_status = "healthy"
+        is_alert_triggered = False
+        alert_message = None
+
+        # Check for warning/critical thresholds
+        cpu = request_body.cpu_usage or 0
+        memory = request_body.memory_usage or 0
+        disk = request_body.disk_usage or 0
+        max_usage = max(cpu, memory, disk)
+
+        if max_usage >= 90:
+            overall_status = "critical"
+            is_alert_triggered = True
+            if cpu >= 90:
+                alert_message = f"Critical CPU usage: {cpu}%"
+            elif memory >= 90:
+                alert_message = f"Critical memory usage: {memory}%"
+            else:
+                alert_message = f"Critical disk usage: {disk}%"
+        elif max_usage >= 70:
+            overall_status = "warning"
+
+        # Extract metadata from request
+        metadata = request_body.metadata or {}
+
+        # Create health metric record
+        health_metric = DeviceHealthMetricModel(
+            device_id=device_id,
+            organization_id=current_device.organization_id,
+            # System metrics
+            cpu_usage=request_body.cpu_usage,
+            memory_usage=request_body.memory_usage,
+            memory_total_mb=request_body.memory_total_mb,
+            memory_used_mb=request_body.memory_used_mb,
+            disk_usage=request_body.disk_usage,
+            disk_total_gb=request_body.disk_total_gb,
+            disk_used_gb=request_body.disk_used_gb,
+            # Network metrics
+            network_latency_ms=request_body.network_latency_ms,
+            network_download_mbps=request_body.network_download_mbps,
+            network_upload_mbps=request_body.network_upload_mbps,
+            connection_quality=connection_quality,
+            # Display metrics
+            display_resolution=request_body.display_resolution,
+            display_refresh_rate=request_body.display_refresh_rate,
+            gpu_usage=request_body.gpu_usage,
+            # Player metrics
+            player_version=request_body.player_version,
+            player_uptime_hours=request_body.player_uptime_hours,
+            content_errors_count=request_body.content_errors_count,
+            last_error_message=request_body.last_error_message,
+            last_error_at=datetime.fromisoformat(request_body.last_error_at.replace('Z', '+00:00')) if request_body.last_error_at else None,
+            # Health status
+            overall_status=overall_status,
+            is_alert_triggered=is_alert_triggered,
+            alert_message=alert_message,
+            # Metadata
+            metadata=metadata,
+            recorded_at=datetime.now(timezone.utc)
+        )
+
+        db.add(health_metric)
+        db.commit()
+        db.refresh(health_metric)
+
+        print(f"[HealthMetrics] ✅ Recorded health for device {device_id}: {overall_status}")
+
+        return DeviceHealthResponse(
+            id=health_metric.id,
+            device_id=health_metric.device_id,
+            organization_id=health_metric.organization_id,
+            cpu_usage=float(health_metric.cpu_usage) if health_metric.cpu_usage else None,
+            memory_usage=float(health_metric.memory_usage) if health_metric.memory_usage else None,
+            memory_total_mb=health_metric.memory_total_mb,
+            memory_used_mb=health_metric.memory_used_mb,
+            disk_usage=float(health_metric.disk_usage) if health_metric.disk_usage else None,
+            disk_total_gb=health_metric.disk_total_gb,
+            disk_used_gb=health_metric.disk_used_gb,
+            network_latency_ms=health_metric.network_latency_ms,
+            network_download_mbps=float(health_metric.network_download_mbps) if health_metric.network_download_mbps else None,
+            network_upload_mbps=float(health_metric.network_upload_mbps) if health_metric.network_upload_mbps else None,
+            connection_quality=health_metric.connection_quality,
+            display_resolution=health_metric.display_resolution,
+            display_refresh_rate=health_metric.display_refresh_rate,
+            gpu_usage=float(health_metric.gpu_usage) if health_metric.gpu_usage else None,
+            player_version=health_metric.player_version,
+            player_uptime_hours=health_metric.player_uptime_hours,
+            content_errors_count=health_metric.content_errors_count,
+            last_error_message=health_metric.last_error_message,
+            last_error_at=health_metric.last_error_at,
+            overall_status=health_metric.overall_status,
+            is_alert_triggered=health_metric.is_alert_triggered,
+            alert_message=health_metric.alert_message,
+            metadata=health_metric.metadata or {},
+            recorded_at=health_metric.recorded_at
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        print(f"[HealthMetrics] ❌ Failed to record health for device {device_id}: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to record health metrics: {str(e)}"
         )
 
 
@@ -549,6 +705,8 @@ def list_devices(
     scope: str = Query("my_org", description="Scope: my_org (default), released, pending, or all"),
     status_filter: Optional[str] = Query(None, description="Filter by status: active, pending, inactive, released"),
     online_only: bool = Query(False, description="Show only online devices"),
+    sort_by: Optional[str] = Query(None, description="Sort by column: device_name, status, device_type, ip_address, last_seen_at"),
+    sort_dir: Optional[str] = Query(None, description="Sort direction: asc or desc"),
     use_case: ListDevicesUseCase = Depends(get_list_devices_use_case),
     current_user: dict = Depends(require_permission("devices", "read"))
 ):
@@ -561,6 +719,10 @@ def list_devices(
     - pending: Pending devices waiting to be claimed (org_id = NULL)
     - unassigned: Alias for pending (backward compatibility)
     - all: All devices (super admin only)
+
+    Sorting:
+    - sort_by: device_name, status, device_type, ip_address, last_seen_at
+    - sort_dir: asc or desc
 
     Requires: devices.read permission
     """
@@ -580,13 +742,15 @@ def list_devices(
             detail="Only super admins can view all devices"
         )
 
-    # Generate cache key with scope
+    # Generate cache key with scope and sorting
     cache_key = list_cache_key(
         entity="devices",
         org_id=current_user["organization_id"] if scope == "my_org" else "global",
         status_filter=status_filter,
         online_only=online_only,
-        scope=scope
+        scope=scope,
+        sort_by=sort_by,
+        sort_dir=sort_dir
     )
 
     # Try cache first
@@ -618,7 +782,9 @@ def list_devices(
             organization_id=organization_id,
             status_filter=status_filter,
             online_only=online_only,
-            scope=scope
+            scope=scope,
+            sort_by=sort_by,
+            sort_dir=sort_dir
         )
 
         # Convert to response models with is_online computed field

@@ -105,6 +105,8 @@ def build_device_settings(device, db: Session) -> DeviceSettings:
 @router.get("/playlist", response_model=PlaylistSyncResponse)
 def get_playlist_for_device(
     device_id: int = Query(..., description="Device ID"),
+    schedule_id: Optional[int] = Query(None, description="Active schedule ID (for override mode)"),
+    schedule_mode: Optional[str] = Query(None, description="Schedule playback mode: 'override' or 'rotate'"),
     db: Session = Depends(get_db)
 ):
     """
@@ -119,8 +121,16 @@ def get_playlist_for_device(
     Used by player to sync content.
     Returns None if no content is assigned.
 
+    **OVERRIDE MODE:**
+    If schedule_mode='override' and schedule_id is provided:
+    - Returns ONLY the content from the schedule's playlist
+    - Direct and tag assignments are IGNORED
+    - This allows scheduled playlists to completely override other content
+
     Query Parameters:
     - device_id: The device ID
+    - schedule_id: (optional) Active schedule ID when using override mode
+    - schedule_mode: (optional) 'override' to only show scheduled playlist, 'rotate' for normal merge
 
     Returns:
     - playlist: Content object with items, or None if not assigned
@@ -152,7 +162,104 @@ def get_playlist_for_device(
         from services.content.repositories.models import ContentAssignmentModel
         from services.playlist.repositories.models import PlaylistModel, PlaylistContentModel, PlaylistAssignmentModel
         from services.tag.repositories.models import ContentTag
+        from services.schedule.repositories.models import Schedule as ScheduleModel
         from sqlalchemy import text
+
+        # ======================================================================
+        # OVERRIDE MODE: Return ONLY scheduled playlist content
+        # When schedule_mode='override', ignore direct & tag assignments
+        # ======================================================================
+        if schedule_mode == 'override' and schedule_id:
+            print(f"[Client Playlist] 🎯 OVERRIDE MODE: Schedule {schedule_id} active")
+
+            # Get the schedule
+            schedule = db.query(ScheduleModel).filter(
+                ScheduleModel.id == schedule_id,
+                ScheduleModel.is_active == True
+            ).first()
+
+            if not schedule or not schedule.playlist_id:
+                print(f"[Client Playlist] ⚠️ Override schedule {schedule_id} not found or has no playlist")
+                # Fall through to normal behavior if schedule not found
+            else:
+                # Get the playlist
+                playlist = db.query(PlaylistModel).filter(
+                    PlaylistModel.id == schedule.playlist_id,
+                    PlaylistModel.deleted_at.is_(None),
+                    PlaylistModel.is_active == True
+                ).first()
+
+                if not playlist:
+                    print(f"[Client Playlist] ⚠️ Playlist {schedule.playlist_id} not found for override schedule")
+                else:
+                    # Get playlist contents
+                    playlist_contents = db.query(PlaylistContentModel).filter(
+                        PlaylistContentModel.playlist_id == playlist.id
+                    ).order_by(PlaylistContentModel.order_index).all()
+
+                    override_items = []
+                    for idx, pc in enumerate(playlist_contents):
+                        content = db.query(ContentModel).filter(
+                            ContentModel.id == pc.content_id,
+                            ContentModel.deleted_at.is_(None)
+                        ).first()
+
+                        if content:
+                            # Build content item (inline helper for override mode)
+                            playback_url = content.file_url
+                            if content.content_type == 'video' and content.hls_master_playlist_url:
+                                playback_url = content.hls_master_playlist_url
+                                print(f"[Client Playlist] Content {content.id} (override): Using HLS URL")
+
+                            override_items.append({
+                                'id': content.id * 1000 + idx,
+                                'content_id': content.id,
+                                'duration': pc.duration or content.duration,
+                                'order': idx,
+                                'is_muted': getattr(pc, 'is_muted', False),
+                                'source': f'schedule-override:{schedule_id}',
+                                'content': {
+                                    'id': content.id,
+                                    'name': content.title,
+                                    'type': content.content_type,
+                                    'file_path': playback_url,
+                                    'url': playback_url,
+                                    'thumbnail_path': content.thumbnail_url,
+                                    'mime_type': content.mime_type,
+                                    'metadata': {
+                                        'file_size': content.file_size,
+                                        'width': content.width,
+                                        'height': content.height,
+                                    },
+                                    'updated_at': content.updated_at.isoformat() if content.updated_at else None,
+                                }
+                            })
+
+                    if override_items:
+                        # Build device settings
+                        device_settings = build_device_settings(device, db)
+
+                        playlist_data = {
+                            'id': playlist.id,
+                            'name': f'[Override] {playlist.name}',
+                            'description': f'Override mode: Schedule "{schedule.name}" - Only playlist content',
+                            'is_active': True,
+                            'created_at': playlist.created_at.isoformat() if playlist.created_at else None,
+                            'updated_at': playlist.updated_at.isoformat() if playlist.updated_at else None,
+                            'items': override_items
+                        }
+
+                        print(f"[Client Playlist] ✅ OVERRIDE: Returning {len(override_items)} items from playlist '{playlist.name}' (schedule: {schedule.name})")
+
+                        return PlaylistSyncResponse(
+                            playlist=playlist_data,
+                            device_settings=device_settings,
+                            has_changes=True,
+                            message=f"Override mode: {len(override_items)} items from scheduled playlist '{playlist.name}'"
+                        )
+                    else:
+                        print(f"[Client Playlist] ⚠️ Override playlist '{playlist.name}' has no content")
+                        # Fall through to show no content
 
         # Track all content items (deduplicated by content_id)
         all_items = []

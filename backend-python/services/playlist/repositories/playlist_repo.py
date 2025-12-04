@@ -5,7 +5,7 @@ Database access for playlist management with organization isolation
 
 from typing import List, Optional, Dict, Any, Tuple
 from sqlalchemy.orm import Session, joinedload, selectinload
-from sqlalchemy import func, and_
+from sqlalchemy import func, and_, asc, desc
 
 from ..domain.playlist import Playlist, PlaylistContent, PlaylistAssignment
 from ..domain.interfaces import IPlaylistRepository
@@ -152,6 +152,15 @@ class PlaylistRepository(IPlaylistRepository):
 
         return self._model_to_entity(db_playlist, include_stats=True)
 
+    # Sortable columns mapping
+    SORTABLE_COLUMNS = {
+        'name': PlaylistModel.name,
+        'is_active': PlaylistModel.is_active,
+        'priority': PlaylistModel.priority,
+        'created_at': PlaylistModel.created_at,
+        'updated_at': PlaylistModel.updated_at,
+    }
+
     def find_all(
         self,
         organization_id: int,
@@ -159,8 +168,10 @@ class PlaylistRepository(IPlaylistRepository):
         limit: int = 100,
         is_active: Optional[bool] = None,
         include_deleted: bool = False,
+        sort_by: Optional[str] = None,
+        sort_dir: Optional[str] = None,
     ) -> Tuple[List[Playlist], int]:
-        """Find all playlists with organization filter"""
+        """Find all playlists with organization filter and sorting"""
         query = self.db.query(PlaylistModel).filter(
             PlaylistModel.organization_id == organization_id
         )
@@ -176,10 +187,56 @@ class PlaylistRepository(IPlaylistRepository):
         # Get total count
         total = query.count()
 
-        # Pagination and ordering
-        playlists_models = query.order_by(
-            PlaylistModel.created_at.desc()
-        ).offset(skip).limit(limit).all()
+        # Apply sorting
+        if sort_by and sort_by in self.SORTABLE_COLUMNS:
+            column = self.SORTABLE_COLUMNS[sort_by]
+            if sort_dir == 'desc':
+                query = query.order_by(desc(column))
+            else:
+                query = query.order_by(asc(column))
+        elif sort_by == 'content_count':
+            # Subquery for content_count sorting
+            content_count_subquery = (
+                self.db.query(
+                    PlaylistContentModel.playlist_id,
+                    func.count(PlaylistContentModel.id).label('content_count')
+                )
+                .group_by(PlaylistContentModel.playlist_id)
+                .subquery()
+            )
+            query = query.outerjoin(
+                content_count_subquery,
+                PlaylistModel.id == content_count_subquery.c.playlist_id
+            )
+            if sort_dir == 'desc':
+                query = query.order_by(func.coalesce(content_count_subquery.c.content_count, 0).desc())
+            else:
+                query = query.order_by(func.coalesce(content_count_subquery.c.content_count, 0).asc())
+        elif sort_by == 'device_count':
+            # Subquery for device_count sorting (only device assignments)
+            device_count_subquery = (
+                self.db.query(
+                    PlaylistAssignmentModel.playlist_id,
+                    func.count(PlaylistAssignmentModel.id).label('device_count')
+                )
+                .filter(PlaylistAssignmentModel.device_id.isnot(None))
+                .group_by(PlaylistAssignmentModel.playlist_id)
+                .subquery()
+            )
+            query = query.outerjoin(
+                device_count_subquery,
+                PlaylistModel.id == device_count_subquery.c.playlist_id
+            )
+            if sort_dir == 'desc':
+                query = query.order_by(func.coalesce(device_count_subquery.c.device_count, 0).desc())
+            else:
+                query = query.order_by(func.coalesce(device_count_subquery.c.device_count, 0).asc())
+        else:
+            # Default ordering
+            query = query.order_by(PlaylistModel.created_at.desc())
+
+        # Pagination
+        playlists_models = query.offset(skip).limit(limit).all()
 
         # Convert to entities with stats
         playlists = [self._model_to_entity(p, include_stats=True) for p in playlists_models]

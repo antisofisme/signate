@@ -328,16 +328,17 @@ class DeviceHealthMetricsCreate(BaseModel):
     # System metrics
     cpu_usage: Optional[float] = Field(None, ge=0, le=100)
     memory_usage: Optional[float] = Field(None, ge=0, le=100)
-    memory_total_mb: Optional[int] = Field(None, gt=0)
-    memory_used_mb: Optional[int] = Field(None, ge=0)
+    memory_total_mb: Optional[float] = Field(None, ge=0)  # Allow float from player
+    memory_used_mb: Optional[float] = Field(None, ge=0)   # Allow float from player
     disk_usage: Optional[float] = Field(None, ge=0, le=100)
-    disk_total_gb: Optional[int] = Field(None, gt=0)
-    disk_used_gb: Optional[int] = Field(None, ge=0)
+    disk_total_gb: Optional[float] = Field(None, ge=0)    # Allow float from player
+    disk_used_gb: Optional[float] = Field(None, ge=0)     # Allow float from player
 
     # Network metrics
     network_latency_ms: Optional[int] = Field(None, ge=0)
     network_download_mbps: Optional[float] = Field(None, ge=0)
     network_upload_mbps: Optional[float] = Field(None, ge=0)
+    connection_quality: Optional[str] = Field(None, max_length=20)  # From player
 
     # Display metrics
     display_resolution: Optional[str] = Field(None, max_length=20)
@@ -349,9 +350,12 @@ class DeviceHealthMetricsCreate(BaseModel):
     player_uptime_hours: Optional[int] = Field(None, ge=0)
     content_errors_count: int = Field(default=0, ge=0)
     last_error_message: Optional[str] = Field(None, max_length=500)
+    last_error_at: Optional[str] = Field(None, max_length=50)  # ISO timestamp from player
 
     # Additional metadata
     metadata: Optional[dict] = Field(default={})
+
+    model_config = {"extra": "ignore"}  # Ignore any extra fields player might send
 
 
 class DeviceHealthResponse(BaseModel):

@@ -286,6 +286,11 @@ class DeviceInfoPopupClass {
                 <span class="cache-label">Audio</span>
                 <span class="cache-value" id="storage-audio">0 MB</span>
               </div>
+              <div class="cache-item-row">
+                <span class="cache-icon">${this.getCacheIcon('video')}</span>
+                <span class="cache-label">HLS Segments</span>
+                <span class="cache-value" id="storage-hls">0 MB</span>
+              </div>
             </div>
           </div>
 
@@ -1385,11 +1390,11 @@ class DeviceInfoPopupClass {
       console.warn('[DeviceInfoPopup] Storage bar width set to:', `${displayPercent}%`);
     }
 
-    // Breakdown - combine videos + hls into single "video" category
-    const videoTotal = storage.breakdown.videos + storage.breakdown.hls;
-    this.setText('storage-video', `${(videoTotal / 1048576).toFixed(1)} MB`);
+    // Breakdown - show video and HLS separately for better visibility
+    this.setText('storage-video', `${(storage.breakdown.videos / 1048576).toFixed(1)} MB`);
     this.setText('storage-images', `${(storage.breakdown.images / 1048576).toFixed(1)} MB`);
     this.setText('storage-audio', `${(storage.breakdown.audio / 1048576).toFixed(1)} MB`);
+    this.setText('storage-hls', `${(storage.breakdown.hls / 1048576).toFixed(1)} MB`);
 
     // Summary - count only assigned content that is cached
     const cachedAssignedCount = storage.assignedContent.filter(c => c.cached).length;

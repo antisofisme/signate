@@ -15,15 +15,19 @@ class ListUsersUseCase:
         self,
         organization_id: Optional[int] = None,
         role: Optional[str] = None,
-        active_only: bool = False
+        active_only: bool = False,
+        sort_by: Optional[str] = None,
+        sort_dir: Optional[str] = None
     ) -> Dict[str, Any]:
         """
-        List users with filters
+        List users with filters and sorting
 
         Args:
             organization_id: Filter by organization
             role: Filter by role
             active_only: Only active users
+            sort_by: Column to sort by
+            sort_dir: Sort direction (asc or desc)
 
         Returns:
             Dictionary with users list and stats
@@ -32,7 +36,9 @@ class ListUsersUseCase:
         users = self.user_repo.get_all(
             organization_id=organization_id,
             role=role,
-            active_only=active_only
+            active_only=active_only,
+            sort_by=sort_by,
+            sort_dir=sort_dir
         )
 
         # Calculate stats

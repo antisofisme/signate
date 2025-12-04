@@ -12,7 +12,7 @@ import {
   RotateCcw,
 } from 'lucide-react';
 import { toast } from '@/shared/utils/toast';
-import { usePagination } from '@/shared/hooks';
+import { usePagination, useTableSort } from '@/shared/hooks';
 import {
   Pagination,
   TableSkeleton,
@@ -21,6 +21,7 @@ import {
   ConfirmDialog,
   Button,
   TABLE_STYLES,
+  SortableTableHeader,
 } from '@/shared/components';
 import { useCanPerformAction } from '@/features/rbac/hooks/usePermissions';
 import {
@@ -60,6 +61,11 @@ export function MenuMediaDeletedTable() {
   // Pagination
   const pagination = usePagination({ pageSize: 20 });
 
+  // Sorting - URL state persistence
+  const { sortConfig, onSortChange, sortParams } = useTableSort({
+    defaultSort: { key: 'deleted_at', direction: 'desc' },
+  });
+
   // State
   const [filters, setFilters] = useState<MenuMediaFilters>({});
   const [selectedMedia, setSelectedMedia] = useState<MenuMedia | null>(null);
@@ -72,6 +78,7 @@ export function MenuMediaDeletedTable() {
   // Queries
   const { data: mediaData, isLoading, error } = useDeletedMenuMediaList({
     ...filters,
+    ...sortParams,
     skip: pagination.skip,
     limit: pagination.limit,
   });
@@ -203,16 +210,24 @@ export function MenuMediaDeletedTable() {
                     />
                   </th>
                   <th className={`${TABLE_STYLES.th} w-[35%]`}>
-                    {t('menus.media.table.image')}
+                    <SortableTableHeader columnKey="original_filename" sortConfig={sortConfig} onSortChange={onSortChange}>
+                      {t('menus.media.table.image')}
+                    </SortableTableHeader>
                   </th>
                   <th className={`${TABLE_STYLES.th} w-24`}>
-                    {t('menus.media.table.size')}
+                    <SortableTableHeader columnKey="file_size" sortConfig={sortConfig} onSortChange={onSortChange}>
+                      {t('menus.media.table.size')}
+                    </SortableTableHeader>
                   </th>
                   <th className={`${TABLE_STYLES.th} w-28`}>
-                    {t('menus.media.table.dimensions')}
+                    <SortableTableHeader columnKey="width" sortConfig={sortConfig} onSortChange={onSortChange}>
+                      {t('menus.media.table.dimensions')}
+                    </SortableTableHeader>
                   </th>
                   <th className={`${TABLE_STYLES.th} w-36`}>
-                    {t('menus.media.table.deletedAt')}
+                    <SortableTableHeader columnKey="deleted_at" sortConfig={sortConfig} onSortChange={onSortChange}>
+                      {t('menus.media.table.deletedAt')}
+                    </SortableTableHeader>
                   </th>
                   <th className={`${TABLE_STYLES.th} w-28`}>
                     {t('menus.media.table.actions')}

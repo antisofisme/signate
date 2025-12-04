@@ -36,6 +36,13 @@ export const usersApi = {
     if (filters?.active_only) {
       params.append('active_only', 'true');
     }
+    // Sorting
+    if (filters?.sort_by) {
+      params.append('sort_by', filters.sort_by);
+    }
+    if (filters?.sort_dir) {
+      params.append('sort_dir', filters.sort_dir);
+    }
 
     const { data } = await apiClient.get<UserListData>(
       `${API_ENDPOINTS.USERS.LIST}?${params.toString()}`

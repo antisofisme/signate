@@ -6,7 +6,7 @@ Database access for content
 from typing import List, Optional, Tuple, Dict, Any
 from datetime import datetime, timedelta, timezone
 from sqlalchemy.orm import Session
-from sqlalchemy import func
+from sqlalchemy import func, asc, desc
 
 from ..domain.content import Content
 from ..domain.interfaces import IContentRepository
@@ -112,6 +112,17 @@ class ContentRepository(IContentRepository):
         db_contents = query.all()
         return [self._to_entity(c) for c in db_contents]
 
+    # Valid sortable columns for content
+    SORTABLE_COLUMNS = {
+        'original_filename': ContentModel.original_filename,
+        'content_type': ContentModel.content_type,
+        'file_size': ContentModel.file_size,
+        'duration': ContentModel.duration,
+        'is_active': ContentModel.is_active,
+        'created_at': ContentModel.created_at,
+        'updated_at': ContentModel.updated_at,
+    }
+
     def find_all(
         self,
         organization_id: int,
@@ -119,9 +130,11 @@ class ContentRepository(IContentRepository):
         limit: int = 20,
         content_type: Optional[str] = None,
         is_active: Optional[bool] = None,
-        tag_ids: Optional[List[int]] = None
+        tag_ids: Optional[List[int]] = None,
+        sort_by: Optional[str] = None,
+        sort_dir: Optional[str] = None
     ) -> Tuple[List[Content], int]:
-        """List content with filters including tag-based filtering"""
+        """List content with filters including tag-based filtering and sorting"""
         from services.tag.repositories.models import ContentTag
 
         query = self.db.query(ContentModel).filter(
@@ -147,8 +160,19 @@ class ContentRepository(IContentRepository):
         # Get total count
         total = query.count()
 
+        # Apply sorting
+        if sort_by and sort_by in self.SORTABLE_COLUMNS:
+            column = self.SORTABLE_COLUMNS[sort_by]
+            if sort_dir == 'desc':
+                query = query.order_by(desc(column))
+            else:
+                query = query.order_by(asc(column))
+        else:
+            # Default sort by created_at desc
+            query = query.order_by(desc(ContentModel.created_at))
+
         # Get paginated results
-        db_contents = query.order_by(ContentModel.created_at.desc()).offset(skip).limit(limit).all()
+        db_contents = query.offset(skip).limit(limit).all()
 
         contents = [self._to_entity(c) for c in db_contents]
         return contents, total
@@ -266,7 +290,9 @@ class ContentRepository(IContentRepository):
         organization_id: int,
         skip: int = 0,
         limit: int = 20,
-        content_type: Optional[str] = None
+        content_type: Optional[str] = None,
+        sort_by: Optional[str] = None,
+        sort_dir: Optional[str] = None
     ) -> Tuple[List[Content], int]:
         """List soft-deleted content for an organization (recycle bin)"""
         query = self.db.query(ContentModel).filter(
@@ -281,8 +307,24 @@ class ContentRepository(IContentRepository):
         # Get total count
         total = query.count()
 
-        # Get paginated results (most recently deleted first)
-        db_contents = query.order_by(ContentModel.deleted_at.desc()).offset(skip).limit(limit).all()
+        # Apply sorting
+        if sort_by and sort_by in self.SORTABLE_COLUMNS:
+            column = self.SORTABLE_COLUMNS[sort_by]
+            if sort_dir == 'desc':
+                query = query.order_by(desc(column))
+            else:
+                query = query.order_by(asc(column))
+        elif sort_by == 'deleted_at':
+            if sort_dir == 'asc':
+                query = query.order_by(asc(ContentModel.deleted_at))
+            else:
+                query = query.order_by(desc(ContentModel.deleted_at))
+        else:
+            # Default: most recently deleted first
+            query = query.order_by(ContentModel.deleted_at.desc())
+
+        # Get paginated results
+        db_contents = query.offset(skip).limit(limit).all()
 
         contents = [self._to_entity(c) for c in db_contents]
         return contents, total

@@ -3,7 +3,7 @@ Content API Routes
 FastAPI endpoints with dependency injection
 """
 
-from fastapi import APIRouter, Depends, UploadFile, File, Form, Request, HTTPException
+from fastapi import APIRouter, Depends, UploadFile, File, Form, Request, HTTPException, Query
 from typing import Optional, List
 from sqlalchemy.orm import Session
 
@@ -250,6 +250,8 @@ async def list_content(
     content_type: Optional[str] = None,
     is_active: Optional[bool] = None,
     tag_ids: Optional[str] = None,  # Comma-separated tag IDs
+    sort_by: Optional[str] = None,
+    sort_dir: Optional[str] = None,
     list_use_case: ListContentUseCase = Depends(get_list_content_use_case),
     current_user: dict = Depends(require_permission("contents", "read"))
 ):
@@ -263,6 +265,8 @@ async def list_content(
     - content_type: Filter by type (image/video/audio)
     - is_active: Filter by active status (true/false)
     - tag_ids: Comma-separated list of tag IDs to filter by (content must have ALL specified tags)
+    - sort_by: Column to sort by (original_filename, content_type, file_size, duration, is_active, created_at)
+    - sort_dir: Sort direction (asc or desc)
     """
     # Parse tag_ids from comma-separated string
     tag_id_list: Optional[list] = None
@@ -272,7 +276,7 @@ async def list_content(
         except ValueError:
             raise HTTPException(status_code=400, detail="Invalid tag_ids format. Use comma-separated integers.")
 
-    # Generate cache key (include tag_ids for unique cache)
+    # Generate cache key (include tag_ids and sorting for unique cache)
     cache_key = list_cache_key(
         entity="contents",
         org_id=current_user["organization_id"],
@@ -280,7 +284,9 @@ async def list_content(
         limit=limit,
         content_type=content_type,
         is_active=is_active,
-        tag_ids=tag_ids  # Include in cache key
+        tag_ids=tag_ids,
+        sort_by=sort_by,
+        sort_dir=sort_dir
     )
 
     # Try cache first
@@ -298,7 +304,9 @@ async def list_content(
             limit=limit,
             content_type=content_type,
             is_active=is_active,
-            tag_ids=tag_id_list
+            tag_ids=tag_id_list,
+            sort_by=sort_by,
+            sort_dir=sort_dir
         )
 
         # Convert skip/limit to page/page_size for paginated_response
@@ -413,6 +421,8 @@ async def list_deleted_content(
     skip: int = 0,
     limit: int = 20,
     content_type: Optional[str] = None,
+    sort_by: Optional[str] = Query(None, description="Sort by: original_filename, content_type, file_size, deleted_at"),
+    sort_dir: Optional[str] = Query(None, description="Sort direction: asc or desc"),
     content_repo: IContentRepository = Depends(get_content_repository),
     current_user: dict = Depends(require_permission("contents", "read"))
 ):
@@ -424,13 +434,17 @@ async def list_deleted_content(
     - skip: Offset for pagination (default 0)
     - limit: Number of records (default 20)
     - content_type: Filter by type (image/video/audio)
+    - sort_by: Column to sort by
+    - sort_dir: Sort direction (asc/desc)
     """
     try:
         contents, total = content_repo.find_all_deleted(
             organization_id=current_user["organization_id"],
             skip=skip,
             limit=limit,
-            content_type=content_type
+            content_type=content_type,
+            sort_by=sort_by,
+            sort_dir=sort_dir
         )
 
         # Convert skip/limit to page/page_size

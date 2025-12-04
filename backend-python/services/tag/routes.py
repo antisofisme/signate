@@ -5,7 +5,7 @@ HTTP endpoints for tag management
 
 from fastapi import APIRouter, Depends, Query, status, Request
 from sqlalchemy.orm import Session
-from typing import List
+from typing import List, Optional
 from shared.database import get_db
 from shared.api_routes import TagRoutes
 from shared.errors import handle_errors
@@ -235,7 +235,8 @@ def create_tag(
 )
 @handle_errors
 def list_tags(
-    sort_by: str = Query(default="newest", description="Sort order: newest, oldest, name_asc, name_desc"),
+    sort_by: str = Query(default="newest", description="Sort by: tag_name, created_at, content_count, device_count (or legacy: newest, oldest, name_asc, name_desc)"),
+    sort_dir: Optional[str] = Query(default=None, description="Sort direction: asc or desc (only for standard sort_by values)"),
     use_case: ListTagsUseCase = Depends(get_list_tags_use_case),
     current_user: dict = Depends(require_permission("tags", "read"))
 ):
@@ -243,13 +244,16 @@ def list_tags(
     List all tags for current organization
 
     Requires 'tags:read' permission. Supports sorting by creation date or name.
+    Supports both legacy format (newest, oldest, name_asc, name_desc) and
+    standard format (sort_by + sort_dir).
     """
     start_time = time.time()
 
     # Execute use case
     tags = use_case.execute(
         organization_id=current_user["organization_id"],
-        sort_by=sort_by
+        sort_by=sort_by,
+        sort_dir=sort_dir
     )
 
     # Convert to response

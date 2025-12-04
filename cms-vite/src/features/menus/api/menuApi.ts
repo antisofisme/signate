@@ -225,6 +225,9 @@ export const menuApi = {
     if (filters?.limit !== undefined) params.append('limit', filters.limit.toString());
     if (filters?.search) params.append('search', filters.search);
     if (filters?.is_active !== undefined) params.append('is_active', filters.is_active.toString());
+    // Sorting
+    if (filters?.sort_by) params.append('sort_by', filters.sort_by);
+    if (filters?.sort_dir) params.append('sort_dir', filters.sort_dir);
     // Cache-busting
     params.append('_t', Date.now().toString());
 

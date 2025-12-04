@@ -10,6 +10,7 @@ import { useTranslation } from 'react-i18next';
 import { Plus, Users } from 'lucide-react';
 import { useUsers, useCreateUser, useUpdateUser, useDeleteUser, useChangePassword } from '../hooks/useUsers';
 import { useOrganizations } from '@/shared/hooks/useSharedOrganizations';
+import { useTableSort } from '@/shared/hooks';
 import { useCanPerformAction } from '@/features/rbac/hooks/usePermissions';
 import { UserList } from '../components/UserList';
 import { UserForm } from '../components/UserForm';
@@ -37,8 +38,13 @@ export default function UsersPage() {
   const { hasPermission: canDelete } = useCanPerformAction('users', 'delete');
   const { hasPermission: canManageRoles } = useCanPerformAction('roles', 'edit');
 
-  // Data fetching
-  const { data: usersData, isLoading: isLoadingUsers } = useUsers();
+  // Sorting - URL state persistence
+  const { sortConfig, onSortChange, sortParams } = useTableSort({
+    defaultSort: { key: 'username', direction: 'asc' },
+  });
+
+  // Data fetching with sorting
+  const { data: usersData, isLoading: isLoadingUsers } = useUsers(sortParams);
   const { data: organizationsData } = useOrganizations();
   const createMutation = useCreateUser();
   const updateMutation = useUpdateUser();
@@ -146,6 +152,8 @@ export default function UsersPage() {
         onDelete={canDelete ? setDeletingUser : undefined}
         onChangePassword={canEdit ? setChangingPasswordUser : undefined}
         onAssignRole={canManageRoles ? setAssigningRoleUser : undefined}
+        sortConfig={sortConfig}
+        onSortChange={onSortChange}
       />
 
       {/* Modals */}

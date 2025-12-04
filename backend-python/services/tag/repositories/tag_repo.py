@@ -88,8 +88,25 @@ class TagRepository(ITagRepository):
         )
         return self._model_to_entity(model) if model else None
 
-    def find_all(self, organization_id: int, sort_by: str = "newest") -> List[Tag]:
-        """Find all tags for organization with sorting and counts (excludes soft deleted)"""
+    # Sortable columns mapping for standard sort_by/sort_dir
+    SORTABLE_COLUMNS = {
+        'tag_name': TagModel.tag_name,
+        'created_at': TagModel.created_at,
+        'content_count': None,  # Handled separately (subquery column)
+        'device_count': None,   # Handled separately (subquery column)
+    }
+
+    def find_all(
+        self,
+        organization_id: int,
+        sort_by: str = "newest",
+        sort_dir: str = None
+    ) -> List[Tag]:
+        """Find all tags for organization with sorting and counts (excludes soft deleted)
+
+        Supports both legacy format (newest, oldest, name_asc, name_desc)
+        and standard format (sort_by + sort_dir)
+        """
         # Subquery for device count
         device_count_subq = (
             self.db.query(
@@ -125,15 +142,32 @@ class TagRepository(ITagRepository):
             )
         )
 
-        # Apply sorting
-        if sort_by == "oldest":
-            query = query.order_by(TagModel.created_at.asc())
-        elif sort_by == "name_asc":
-            query = query.order_by(TagModel.tag_name.asc())
-        elif sort_by == "name_desc":
-            query = query.order_by(TagModel.tag_name.desc())
-        else:  # newest (default)
-            query = query.order_by(TagModel.created_at.desc())
+        # Apply sorting - support both legacy and standard format
+        if sort_dir is not None:
+            # Standard format: sort_by + sort_dir
+            if sort_by == 'content_count':
+                column = content_count_subq.c.content_count
+            elif sort_by == 'device_count':
+                column = device_count_subq.c.device_count
+            elif sort_by in self.SORTABLE_COLUMNS and self.SORTABLE_COLUMNS[sort_by] is not None:
+                column = self.SORTABLE_COLUMNS[sort_by]
+            else:
+                column = TagModel.created_at  # Default
+
+            if sort_dir == 'desc':
+                query = query.order_by(column.desc())
+            else:
+                query = query.order_by(column.asc())
+        else:
+            # Legacy format: newest, oldest, name_asc, name_desc
+            if sort_by == "oldest":
+                query = query.order_by(TagModel.created_at.asc())
+            elif sort_by == "name_asc":
+                query = query.order_by(TagModel.tag_name.asc())
+            elif sort_by == "name_desc":
+                query = query.order_by(TagModel.tag_name.desc())
+            else:  # newest (default)
+                query = query.order_by(TagModel.created_at.desc())
 
         results = query.all()
 

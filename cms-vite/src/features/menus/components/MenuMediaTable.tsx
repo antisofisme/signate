@@ -21,7 +21,7 @@ import {
   UtensilsCrossed,
 } from 'lucide-react';
 import { toast } from '@/shared/utils/toast';
-import { usePagination } from '@/shared/hooks';
+import { usePagination, useTableSort } from '@/shared/hooks';
 import {
   Pagination,
   TableSkeleton,
@@ -30,6 +30,7 @@ import {
   ConfirmDialog,
   Button,
   TABLE_STYLES,
+  SortableTableHeader,
 } from '@/shared/components';
 import { useCanPerformAction } from '@/features/rbac/hooks/usePermissions';
 import {
@@ -41,7 +42,7 @@ import type { MenuMedia, MenuMediaFilters, MenuMediaDuplicateGroup, MenuMediaDup
 import { MenuMediaUploadModal } from './MenuMediaUploadModal';
 import { MenuMediaEditModal } from './MenuMediaEditModal';
 import { MenuMediaPreviewModal } from './MenuMediaPreviewModal';
-import { MenuMediaUploadQueuePanel } from './MenuMediaUploadQueuePanel';
+// MenuMediaUploadQueuePanel removed - using unified UploadQueuePanel
 
 // Format file size
 const formatFileSize = (bytes: number) => {
@@ -80,6 +81,11 @@ export function MenuMediaTable({
   // Pagination
   const pagination = usePagination({ pageSize: 20 });
 
+  // Sorting - URL state persistence
+  const { sortConfig, onSortChange, sortParams } = useTableSort({
+    defaultSort: { key: 'created_at', direction: 'desc' },
+  });
+
   // State
   const [filters, setFilters] = useState<MenuMediaFilters>({});
   // Use prop if provided, otherwise use local state
@@ -93,9 +99,10 @@ export function MenuMediaTable({
   const [copiedId, setCopiedId] = useState<number | null>(null);
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
 
-  // Queries
+  // Queries - merge filters with pagination and sorting
   const { data: mediaData, isLoading, error } = useMenuMediaList({
     ...filters,
+    ...sortParams,
     skip: pagination.skip,
     limit: pagination.limit,
   });
@@ -548,16 +555,40 @@ export function MenuMediaTable({
                     />
                   </th>
                   <th className={`${TABLE_STYLES.th} w-[40%]`}>
-                    {t('menus.media.table.image', 'Image')}
+                    <SortableTableHeader
+                      columnKey="original_filename"
+                      sortConfig={sortConfig}
+                      onSortChange={onSortChange}
+                    >
+                      {t('menus.media.table.image', 'Image')}
+                    </SortableTableHeader>
                   </th>
                   <th className={`${TABLE_STYLES.th} w-24`}>
-                    {t('menus.media.table.type', 'Type')} / Usage
+                    <SortableTableHeader
+                      columnKey="mime_type"
+                      sortConfig={sortConfig}
+                      onSortChange={onSortChange}
+                    >
+                      {t('menus.media.table.type', 'Type')}
+                    </SortableTableHeader>
                   </th>
                   <th className={`${TABLE_STYLES.th} w-24`}>
-                    {t('menus.media.table.size', 'Size')}
+                    <SortableTableHeader
+                      columnKey="file_size"
+                      sortConfig={sortConfig}
+                      onSortChange={onSortChange}
+                    >
+                      {t('menus.media.table.size', 'Size')}
+                    </SortableTableHeader>
                   </th>
                   <th className={`${TABLE_STYLES.th} w-28`}>
-                    {t('menus.media.table.dimensions', 'Dimensions')}
+                    <SortableTableHeader
+                      columnKey="width"
+                      sortConfig={sortConfig}
+                      onSortChange={onSortChange}
+                    >
+                      {t('menus.media.table.dimensions', 'Dimensions')}
+                    </SortableTableHeader>
                   </th>
                   <th className={`${TABLE_STYLES.th} w-32`}>
                     {t('menus.media.table.actions', 'Actions')}
@@ -622,8 +653,7 @@ export function MenuMediaTable({
         media={selectedMedia}
       />
 
-      {/* Upload Queue Panel - Floating indicator */}
-      <MenuMediaUploadQueuePanel />
+      {/* Upload Queue Panel - Now using unified UploadQueuePanel in main.tsx */}
     </div>
   );
 }

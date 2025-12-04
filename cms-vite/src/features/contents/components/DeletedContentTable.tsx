@@ -16,7 +16,7 @@ import {
   FileAudio,
   Eye,
 } from 'lucide-react';
-import { usePagination } from '@/shared/hooks';
+import { usePagination, useTableSort } from '@/shared/hooks';
 import {
   Pagination,
   TableSkeleton,
@@ -25,6 +25,7 @@ import {
   ConfirmDialog,
   Button,
   TABLE_STYLES,
+  SortableTableHeader,
 } from '@/shared/components';
 import { useCanPerformAction } from '@/features/rbac/hooks/usePermissions';
 import {
@@ -59,6 +60,11 @@ export function DeletedContentTable() {
   // Standardized pagination hook
   const pagination = usePagination({ pageSize: 20 });
 
+  // Sorting - URL state persistence
+  const { sortConfig, onSortChange, sortParams } = useTableSort({
+    defaultSort: { key: 'deleted_at', direction: 'desc' },
+  });
+
   const [filters, setFilters] = useState<ContentFilters>({});
   const [selectedContent, setSelectedContent] = useState<Content | null>(null);
   const [showPreview, setShowPreview] = useState(false);
@@ -72,6 +78,7 @@ export function DeletedContentTable() {
   // Hooks
   const { data: contentData, isLoading, error } = useDeletedContentList({
     ...filters,
+    ...sortParams,
     skip: pagination.skip,
     limit: pagination.limit,
   });
@@ -215,16 +222,24 @@ export function DeletedContentTable() {
                     />
                   </th>
                   <th className={`${TABLE_STYLES.th} w-[30%]`}>
-                    {t('contents.table.content')}
+                    <SortableTableHeader columnKey="original_filename" sortConfig={sortConfig} onSortChange={onSortChange}>
+                      {t('contents.table.content')}
+                    </SortableTableHeader>
                   </th>
                   <th className={`${TABLE_STYLES.th} w-20`}>
-                    {t('contents.table.type')}
+                    <SortableTableHeader columnKey="content_type" sortConfig={sortConfig} onSortChange={onSortChange}>
+                      {t('contents.table.type')}
+                    </SortableTableHeader>
                   </th>
                   <th className={`${TABLE_STYLES.th} w-24`}>
-                    {t('contents.table.size')}
+                    <SortableTableHeader columnKey="file_size" sortConfig={sortConfig} onSortChange={onSortChange}>
+                      {t('contents.table.size')}
+                    </SortableTableHeader>
                   </th>
                   <th className={`${TABLE_STYLES.th} w-32`}>
-                    {t('contents.deleted.deletedAt')}
+                    <SortableTableHeader columnKey="deleted_at" sortConfig={sortConfig} onSortChange={onSortChange}>
+                      {t('contents.deleted.deletedAt')}
+                    </SortableTableHeader>
                   </th>
                   <th className={`${TABLE_STYLES.th} w-32`}>
                     {t('contents.table.actions')}

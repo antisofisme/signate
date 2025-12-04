@@ -3,7 +3,7 @@ Playlist API Routes
 FastAPI endpoints with DI, auth, and audit logging
 """
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
 from typing import Optional
 
@@ -213,16 +213,20 @@ def list_playlists(
     skip: int = 0,
     limit: int = 100,
     is_active: Optional[bool] = None,
+    sort_by: Optional[str] = Query(None, description="Sort by: name, is_active, priority, total_duration, created_at"),
+    sort_dir: Optional[str] = Query(None, description="Sort direction: asc or desc"),
     use_case: ListPlaylistsUseCase = Depends(get_list_playlists_use_case),
     current_user: dict = Depends(require_permission("playlists", "read")),
 ):
-    """List all playlists for organization"""
+    """List all playlists for organization with sorting"""
     try:
         playlists, total = use_case.execute(
             organization_id=current_user["organization_id"],
             skip=skip,
             limit=limit,
             is_active=is_active,
+            sort_by=sort_by,
+            sort_dir=sort_dir,
         )
 
         return success_response(

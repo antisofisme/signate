@@ -7,51 +7,58 @@ import { useState, useMemo } from 'react';
 import { Edit, Trash2, List, Copy, Download, ExternalLink, UtensilsCrossed, Loader2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import QRCode from 'qrcode';
-import { useMenus, useDeleteMenuWithPIN } from '../hooks/useMenus';
-import { EmptyState, TABLE_STYLES } from '@/shared/components';
+import { useDeleteMenuWithPIN } from '../hooks/useMenus';
+import { EmptyState, TABLE_STYLES, SortableTableHeader, TableSkeleton } from '@/shared/components';
+import type { SortConfig } from '@/shared/components';
 import { PinVerificationModal } from './PinVerificationModal';
-import type { Menu, MenuType } from '../types/menu';
+import type { Menu } from '../types/menu';
 import { toast } from '@/shared/utils/toast';
 
 interface MenuListProps {
+  menus: Menu[];
+  isLoading: boolean;
+  total: number;
+  currentPage: number;
+  pageSize: number;
+  onPageChange: (page: number) => void;
   onEdit: (menu: Menu) => void;
   onManageItems: (menu: Menu) => void;
+  onDelete?: (menu: Menu) => void;
   searchQuery?: string;
-  menuTypeFilter?: MenuType | '';
-  isActiveFilter?: boolean | '';
+  // Sorting props
+  sortConfig?: SortConfig | null;
+  onSortChange?: (config: SortConfig | null) => void;
 }
 
 export const MenuList = ({
+  menus,
+  isLoading,
+  total,
+  currentPage,
+  pageSize,
+  onPageChange,
   onEdit,
   onManageItems,
+  onDelete,
   searchQuery = '',
-  menuTypeFilter = '',
-  isActiveFilter = '',
+  sortConfig,
+  onSortChange,
 }: MenuListProps) => {
   const { t } = useTranslation();
-  const [currentPage, setCurrentPage] = useState(0);
   const [menuToDelete, setMenuToDelete] = useState<Menu | null>(null);
   const [showPinModal, setShowPinModal] = useState(false);
   const [downloadingQRMenuId, setDownloadingQRMenuId] = useState<number | null>(null);
-  const pageSize = 20;
-
-  // Fetch menus
-  const { data, isLoading, error } = useMenus({
-    skip: currentPage * pageSize,
-    limit: pageSize,
-    menu_type: menuTypeFilter || undefined,
-    is_active: isActiveFilter === '' ? undefined : isActiveFilter,
-  });
 
   const deleteWithPINMutation = useDeleteMenuWithPIN();
 
-  // Client-side search filter and alphabetical sorting
+  // Client-side search filter only (sorting is now server-side)
   const filteredMenus = useMemo(() => {
-    if (!data?.items) return [];
-    return [...data.items]
-      .filter((menu) => menu.name.toLowerCase().includes(searchQuery.toLowerCase()))
-      .sort((a, b) => a.name.localeCompare(b.name, 'id', { sensitivity: 'base' }));
-  }, [data?.items, searchQuery]);
+    if (!menus) return [];
+    if (!searchQuery) return menus;
+    return menus.filter((menu) =>
+      menu.name.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+  }, [menus, searchQuery]);
 
   const handleDelete = (menu: Menu) => {
     setMenuToDelete(menu);
@@ -117,19 +124,7 @@ export const MenuList = ({
   };
 
   if (isLoading) {
-    return (
-      <div className="flex items-center justify-center py-12">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4 text-red-800 dark:text-red-300">
-        Failed to load menus. Please try again.
-      </div>
-    );
+    return <TableSkeleton columns={6} rows={5} />;
   }
 
   if (!filteredMenus.length) {
@@ -151,22 +146,62 @@ export const MenuList = ({
             <thead className={TABLE_STYLES.thead}>
             <tr>
               <th className={`${TABLE_STYLES.th} w-[25%]`}>
-                Menu Name
+                {sortConfig && onSortChange ? (
+                  <SortableTableHeader
+                    columnKey="name"
+                    sortConfig={sortConfig}
+                    onSortChange={onSortChange}
+                  >
+                    {t('menus.menuName', 'Menu Name')}
+                  </SortableTableHeader>
+                ) : (
+                  t('menus.menuName', 'Menu Name')
+                )}
               </th>
               <th className={`${TABLE_STYLES.th} w-20`}>
-                Status
+                {sortConfig && onSortChange ? (
+                  <SortableTableHeader
+                    columnKey="is_active"
+                    sortConfig={sortConfig}
+                    onSortChange={onSortChange}
+                  >
+                    {t('menus.status', 'Status')}
+                  </SortableTableHeader>
+                ) : (
+                  t('menus.status', 'Status')
+                )}
               </th>
               <th className={`${TABLE_STYLES.th} w-24`}>
-                Type
+                {sortConfig && onSortChange ? (
+                  <SortableTableHeader
+                    columnKey="menu_type"
+                    sortConfig={sortConfig}
+                    onSortChange={onSortChange}
+                  >
+                    {t('menus.type', 'Type')}
+                  </SortableTableHeader>
+                ) : (
+                  t('menus.type', 'Type')
+                )}
               </th>
               <th className={`${TABLE_STYLES.th} w-20`}>
-                Items
+                {sortConfig && onSortChange ? (
+                  <SortableTableHeader
+                    columnKey="items_count"
+                    sortConfig={sortConfig}
+                    onSortChange={onSortChange}
+                  >
+                    {t('menus.itemsColumn', 'Items')}
+                  </SortableTableHeader>
+                ) : (
+                  t('menus.itemsColumn', 'Items')
+                )}
               </th>
               <th className={`${TABLE_STYLES.th} w-28`}>
-                Public Access
+                {t('menus.publicAccess', 'Public Access')}
               </th>
               <th className={`${TABLE_STYLES.th} w-32`}>
-                Actions
+                {t('menus.actions', 'Actions')}
               </th>
             </tr>
           </thead>
@@ -268,26 +303,26 @@ export const MenuList = ({
       </div>
 
       {/* Pagination */}
-      {data && data.total > pageSize && (
+      {total > pageSize && (
         <div className="flex items-center justify-between px-4 py-3 bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700">
           <div className="text-sm text-gray-700 dark:text-gray-300">
-            Showing {currentPage * pageSize + 1} to{' '}
-            {Math.min((currentPage + 1) * pageSize, data.total)} of {data.total} results
+            {t('common.pagination.showing', 'Showing')} {currentPage * pageSize + 1} {t('common.pagination.to', 'to')}{' '}
+            {Math.min((currentPage + 1) * pageSize, total)} {t('common.pagination.of', 'of')} {total} {t('common.pagination.results', 'results')}
           </div>
           <div className="flex space-x-2">
             <button
-              onClick={() => setCurrentPage((p) => Math.max(0, p - 1))}
+              onClick={() => onPageChange(Math.max(0, currentPage - 1))}
               disabled={currentPage === 0}
               className="px-3 py-1 border border-gray-300 dark:border-gray-600 rounded-md text-gray-700 dark:text-gray-300 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
             >
-              Previous
+              {t('common.previous', 'Previous')}
             </button>
             <button
-              onClick={() => setCurrentPage((p) => p + 1)}
-              disabled={(currentPage + 1) * pageSize >= data.total}
+              onClick={() => onPageChange(currentPage + 1)}
+              disabled={(currentPage + 1) * pageSize >= total}
               className="px-3 py-1 border border-gray-300 dark:border-gray-600 rounded-md text-gray-700 dark:text-gray-300 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
             >
-              Next
+              {t('common.next', 'Next')}
             </button>
           </div>
         </div>

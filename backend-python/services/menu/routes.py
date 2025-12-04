@@ -168,6 +168,8 @@ def list_menus(
     limit: int = Query(50, ge=1, le=100),
     menu_type: Optional[str] = None,
     is_active: Optional[bool] = None,
+    sort_by: Optional[str] = Query(None, description="Sort by: name, menu_type, is_active, created_at, updated_at"),
+    sort_dir: Optional[str] = Query(None, description="Sort direction: asc or desc"),
     current_user: CurrentUser = Depends(require_permission("menus", "view")),
     menu_repo: MenuRepository = Depends(get_menu_repository),
     qr_generator: QRCodeGenerator = Depends(get_qr_generator)
@@ -178,7 +180,9 @@ def list_menus(
         skip=skip,
         limit=limit,
         menu_type=menu_type,
-        is_active=is_active
+        is_active=is_active,
+        sort_by=sort_by,
+        sort_dir=sort_dir
     )
 
     # Build responses with computed URLs

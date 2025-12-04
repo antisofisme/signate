@@ -2,6 +2,7 @@
  * UploadItem Component
  *
  * Displays a single upload item with progress and controls
+ * Supports multiple upload types: content, menu_media
  */
 
 import { useTranslation } from 'react-i18next';
@@ -9,6 +10,7 @@ import {
   FileImage,
   FileVideo,
   FileAudio,
+  Image,
   X,
   RotateCcw,
   Trash2,
@@ -19,7 +21,7 @@ import {
 import Button from '@/shared/components/common/Button';
 import { Progress } from '@/components/ui/progress';
 import { cn } from '@/lib/utils';
-import type { UploadItem as UploadItemType } from '../types/upload';
+import type { UploadItem as UploadItemType, UploadType } from '../types/upload';
 import { formatFileSize } from '../types/upload';
 import { useUploadQueueStore } from '@/lib/stores/uploadQueueStore';
 
@@ -28,9 +30,14 @@ interface UploadItemProps {
 }
 
 /**
- * Get icon for file type
+ * Get icon for file type based on uploadType and fileType
  */
-function getFileIcon(fileType: string) {
+function getFileIcon(uploadType: UploadType, fileType?: string) {
+  // Menu media is always an image
+  if (uploadType === 'menu_media') {
+    return Image;
+  }
+  // Content uploads use file type
   switch (fileType) {
     case 'image':
       return FileImage;
@@ -40,6 +47,27 @@ function getFileIcon(fileType: string) {
       return FileAudio;
     default:
       return FileImage;
+  }
+}
+
+/**
+ * Get upload type badge config
+ */
+function getUploadTypeBadge(uploadType: UploadType) {
+  switch (uploadType) {
+    case 'menu_media':
+      return {
+        label: 'Menu',
+        bgColor: 'bg-purple-100 dark:bg-purple-900/30',
+        textColor: 'text-purple-700 dark:text-purple-300',
+      };
+    case 'content':
+    default:
+      return {
+        label: 'Content',
+        bgColor: 'bg-blue-100 dark:bg-blue-900/30',
+        textColor: 'text-blue-700 dark:text-blue-300',
+      };
   }
 }
 
@@ -65,8 +93,9 @@ export function UploadItem({ item }: UploadItemProps) {
   const { t } = useTranslation();
   const { cancelUpload, retryUpload, removeFromQueue } = useUploadQueueStore();
 
-  const FileIcon = getFileIcon(item.fileType);
+  const FileIcon = getFileIcon(item.uploadType, item.fileType);
   const statusColor = getStatusColor(item.status);
+  const typeBadge = getUploadTypeBadge(item.uploadType);
 
   const handleCancel = () => {
     cancelUpload(item.id);
@@ -89,13 +118,25 @@ export function UploadItem({ item }: UploadItemProps) {
 
       {/* File Info */}
       <div className="flex-1 min-w-0">
-        {/* Filename */}
-        <p
-          className="text-sm font-medium text-gray-900 dark:text-white truncate"
-          title={item.fileName}
-        >
-          {item.fileName}
-        </p>
+        {/* Filename with type badge */}
+        <div className="flex items-center gap-2">
+          <p
+            className="text-sm font-medium text-gray-900 dark:text-white truncate"
+            title={item.fileName}
+          >
+            {item.fileName}
+          </p>
+          {/* Upload type badge */}
+          <span
+            className={cn(
+              'flex-shrink-0 px-1.5 py-0.5 text-[10px] font-medium rounded',
+              typeBadge.bgColor,
+              typeBadge.textColor
+            )}
+          >
+            {typeBadge.label}
+          </span>
+        </div>
 
         {/* File size and status */}
         <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">

@@ -137,11 +137,13 @@ def list_users(
     organization_id: Optional[int] = Query(None, description="Filter by organization"),
     role: Optional[str] = Query(None, description="Filter by role"),
     active_only: bool = Query(False, description="Only show active users"),
+    sort_by: Optional[str] = Query(None, description="Sort by: username, email, is_active, role, organization_name, created_at"),
+    sort_dir: Optional[str] = Query(None, description="Sort direction: asc or desc"),
     use_case: ListUsersUseCase = Depends(get_list_users_use_case),
     current_user: dict = Depends(get_current_active_user)
 ):
     """
-    List all users with filters
+    List all users with filters and sorting
 
     Permission:
     - SUPER_ADMIN: Can see all organizations (or filter by org_id param)
@@ -159,7 +161,9 @@ def list_users(
     result = use_case.execute(
         organization_id=organization_id,
         role=role,
-        active_only=active_only
+        active_only=active_only,
+        sort_by=sort_by,
+        sort_dir=sort_dir
     )
 
     # Convert to response with organization names

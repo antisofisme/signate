@@ -30,6 +30,9 @@ export const getContentList = async (
     params.append('is_active', filters.is_active.toString());
   if (filters?.tag_ids && filters.tag_ids.length > 0)
     params.append('tag_ids', filters.tag_ids.join(','));
+  // Sorting
+  if (filters?.sort_by) params.append('sort_by', filters.sort_by);
+  if (filters?.sort_dir) params.append('sort_dir', filters.sort_dir);
 
   // Cache-busting: add timestamp to prevent browser/CDN caching
   params.append('_t', Date.now().toString());

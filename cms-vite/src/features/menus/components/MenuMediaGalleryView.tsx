@@ -22,7 +22,7 @@ import type { MenuMedia, MenuMediaFilters, MenuMediaDuplicateGroup } from '../ty
 import { MenuMediaGalleryCard } from './MenuMediaGalleryCard';
 import { MenuMediaDetailSidebar } from './MenuMediaDetailSidebar';
 import { MenuMediaUploadModal } from './MenuMediaUploadModal';
-import { MenuMediaUploadQueuePanel } from './MenuMediaUploadQueuePanel';
+// MenuMediaUploadQueuePanel removed - using unified UploadQueuePanel
 
 // Sort options
 type SortOption = 'newest' | 'oldest' | 'name_asc' | 'name_desc' | 'size_desc' | 'size_asc';
@@ -376,8 +376,7 @@ export function MenuMediaGalleryView({
         onClose={onCloseUploadModal || (() => {})}
       />
 
-      {/* Upload Queue Panel */}
-      <MenuMediaUploadQueuePanel />
+      {/* Upload Queue Panel - Now using unified UploadQueuePanel in main.tsx */}
 
       {/* CSS for Masonry and Sidebar Animation */}
       <style>{`

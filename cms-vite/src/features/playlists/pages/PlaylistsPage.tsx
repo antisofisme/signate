@@ -15,6 +15,7 @@ import {
   useDeletePlaylist,
   useDuplicatePlaylist,
 } from '../hooks/usePlaylist';
+import { useTableSort } from '@/shared/hooks';
 import { PlaylistList } from '../components/PlaylistList';
 import { PlaylistForm } from '../components/PlaylistForm';
 import {
@@ -63,11 +64,19 @@ export default function PlaylistsPage() {
   const [activeFilter, setActiveFilter] = useState('all');
   const [managementPlaylist, setManagementPlaylist] = useState<Playlist | null>(null);
 
+  // Sorting - URL state persistence
+  const { sortConfig, onSortChange, sortParams } = useTableSort({
+    defaultSort: { key: 'name', direction: 'asc' },
+  });
+
   // Convert filter to API param
   const filterActive = activeFilter === 'all' ? undefined : activeFilter === 'active';
 
-  // Hooks
-  const { data: playlistsData, isLoading, error, refetch } = usePlaylistList({ is_active: filterActive });
+  // Hooks with sorting
+  const { data: playlistsData, isLoading, error, refetch } = usePlaylistList({
+    is_active: filterActive,
+    ...sortParams,
+  });
   const createMutation = useCreatePlaylist();
   const updateMutation = useUpdatePlaylist();
   const deleteMutation = useDeletePlaylist();
@@ -167,6 +176,8 @@ export default function PlaylistsPage() {
             onDuplicate={canCreate ? handleDuplicate : undefined}
             onManage={setManagementPlaylist}
             onCreateNew={canCreate ? () => setShowCreateModal(true) : undefined}
+            sortConfig={sortConfig}
+            onSortChange={onSortChange}
           />
         )}
       </div>

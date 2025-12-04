@@ -25,6 +25,7 @@ import {
   PageStats,
   PageToolbar,
 } from '@/shared/components';
+import { useTableSort } from '@/shared/hooks';
 import { useCanPerformAction } from '@/features/rbac/hooks/usePermissions';
 import type {
   Organization,
@@ -34,7 +35,14 @@ import type {
 
 export default function OrganizationsPage() {
   const { t } = useTranslation();
-  const { data: organizationsData, isLoading } = useOrganizations();
+
+  // Sorting - URL state persistence
+  const { sortConfig, onSortChange, sortParams } = useTableSort({
+    defaultSort: { key: 'name', direction: 'asc' },
+  });
+
+  // Data fetching with sorting
+  const { data: organizationsData, isLoading } = useOrganizations(sortParams);
   const createMutation = useCreateOrganization();
   const updateMutation = useUpdateOrganization();
   const deleteMutation = useDeleteOrganization();
@@ -85,22 +93,6 @@ export default function OrganizationsPage() {
     return <AccessDenied />;
   }
 
-  // Loading state
-  if (isLoading) {
-    return (
-      <div className="space-y-6">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {[...Array(3)].map((_, i) => (
-            <div key={i} className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 animate-pulse">
-              <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/2 mb-2"></div>
-              <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded w-1/3"></div>
-            </div>
-          ))}
-        </div>
-        <TableSkeleton rows={5} columns={5} />
-      </div>
-    );
-  }
 
   return (
     <>
@@ -143,8 +135,11 @@ export default function OrganizationsPage() {
       {/* Organizations Table */}
       <OrganizationList
         organizations={organizations}
+        isLoading={isLoading}
         onEdit={canEdit ? setEditingOrg : undefined}
         onDelete={canDelete ? setDeletingOrg : undefined}
+        sortConfig={sortConfig}
+        onSortChange={onSortChange}
       />
 
       {/* Modals */}

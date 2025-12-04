@@ -9,6 +9,7 @@ import { useState } from 'react';
 import { Plus, Search } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useTags, useCreateTag, useUpdateTag, useDeleteTag } from '../hooks/useTags';
+import { useTableSort } from '@/shared/hooks';
 import { TagList } from '../components/TagList';
 import { TagForm } from '../components/TagForm';
 import TagManagementModal from '../components/TagManagementModal';
@@ -21,16 +22,20 @@ import {
   PageStats,
 } from '@/shared/components';
 import { useCanPerformAction } from '@/features/rbac/hooks/usePermissions';
-import type { Tag, TagSortBy, CreateTagRequest, UpdateTagRequest } from '../types/tag';
+import type { Tag, CreateTagRequest, UpdateTagRequest } from '../types/tag';
 
 export default function TagsPage() {
   const { t } = useTranslation();
-  const [sortBy, setSortBy] = useState<TagSortBy>('newest');
   const [searchQuery, setSearchQuery] = useState('');
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [editingTag, setEditingTag] = useState<Tag | null>(null);
   const [deletingTag, setDeletingTag] = useState<Tag | null>(null);
   const [contentManagementTag, setContentManagementTag] = useState<Tag | null>(null);
+
+  // Sorting - URL state persistence
+  const { sortConfig, onSortChange, sortParams } = useTableSort({
+    defaultSort: { key: 'created_at', direction: 'desc' },
+  });
 
   // Permission checks
   const { hasPermission: canRead, isLoading: isLoadingReadPermission } = useCanPerformAction('tags', 'read');
@@ -38,8 +43,8 @@ export default function TagsPage() {
   const { hasPermission: canUpdate } = useCanPerformAction('tags', 'edit');
   const { hasPermission: canDelete } = useCanPerformAction('tags', 'delete');
 
-  // React Query hooks
-  const { data: tags = [], isLoading } = useTags({ sort_by: sortBy });
+  // React Query hooks with sorting
+  const { data: tags = [], isLoading } = useTags(sortParams);
   const createTagMutation = useCreateTag();
   const updateTagMutation = useUpdateTag();
   const deleteTagMutation = useDeleteTag();
@@ -94,7 +99,7 @@ export default function TagsPage() {
 
   return (
     <>
-      {/* Toolbar: Search/Sort kiri, Buttons kanan */}
+      {/* Toolbar: Search kiri, Buttons kanan */}
       <PageToolbar>
         <PageToolbar.Left>
           {/* Search */}
@@ -108,18 +113,6 @@ export default function TagsPage() {
               onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
-
-          {/* Sort */}
-          <select
-            value={sortBy}
-            onChange={(e) => setSortBy(e.target.value as TagSortBy)}
-            className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-          >
-            <option value="newest">{t('tags.sortNewest')}</option>
-            <option value="oldest">{t('tags.sortOldest')}</option>
-            <option value="name_asc">{t('tags.sortNameAsc')}</option>
-            <option value="name_desc">{t('tags.sortNameDesc')}</option>
-          </select>
         </PageToolbar.Left>
         <PageToolbar.Right>
           {canCreate && (
@@ -149,6 +142,8 @@ export default function TagsPage() {
           onEdit={canUpdate ? setEditingTag : undefined}
           onDelete={canDelete ? setDeletingTag : undefined}
           onManageContent={setContentManagementTag}
+          sortConfig={sortConfig}
+          onSortChange={onSortChange}
         />
       </div>
 

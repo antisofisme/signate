@@ -84,7 +84,7 @@ export const deviceApi = {
 
   /**
    * Get all devices with optional filters
-   * @param filters - Filter options (scope, status, device_type, skip, limit)
+   * @param filters - Filter options (scope, status, device_type, skip, limit, sort_by, sort_dir)
    * @returns List of devices
    */
   list: async (filters?: {
@@ -93,6 +93,8 @@ export const deviceApi = {
     device_type?: string;
     skip?: number;
     limit?: number;
+    sort_by?: string;
+    sort_dir?: 'asc' | 'desc' | null;
   }): Promise<{ total: number; items: Device[] }> => {
     try {
       const params = new URLSearchParams();
@@ -111,6 +113,13 @@ export const deviceApi = {
       }
       if (filters?.limit !== undefined) {
         params.append('limit', String(filters.limit));
+      }
+      // Sorting params
+      if (filters?.sort_by) {
+        params.append('sort_by', filters.sort_by);
+      }
+      if (filters?.sort_dir) {
+        params.append('sort_dir', filters.sort_dir);
       }
 
       const queryString = params.toString();

@@ -61,7 +61,7 @@ function UsersPageContent() {
 
   // Queries
   const { data, isLoading } = useUsers(filters);
-  const { data: orgsData } = useOrganizations(true); // Active only
+  const { data: orgsData } = useOrganizations({ active_only: true }); // Active only
 
   // Mutations
   const createMutation = useCreateUser();

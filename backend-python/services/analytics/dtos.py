@@ -31,10 +31,12 @@ class PlaybackLogRequest(BaseModel):
     content_id: int = Field(..., description="Content ID being played")
     device_id: int = Field(..., description="Device ID playing content")
     playlist_id: Optional[int] = Field(None, description="Playlist ID (if part of playlist)")
-    organization_id: int = Field(..., description="Organization ID")
+    organization_id: Optional[int] = Field(None, description="Organization ID (optional - taken from device JWT if not provided)")
     expected_duration: Optional[int] = Field(None, description="Expected duration in seconds")
     device_info: Optional[Dict[str, Any]] = Field(None, description="Device information")
     playback_quality: Optional[str] = Field(None, description="Playback quality (SD, HD, FHD)")
+
+    model_config = {"extra": "ignore"}  # Ignore any extra fields from player
 
 
 class PlaybackEndRequest(BaseModel):
@@ -43,6 +45,8 @@ class PlaybackEndRequest(BaseModel):
     completed: bool = Field(False, description="Whether playback completed successfully")
     error_count: Optional[int] = Field(0, description="Number of errors during playback")
     error_details: Optional[Dict[str, Any]] = Field(None, description="Error details")
+
+    model_config = {"extra": "ignore"}  # Ignore any extra fields from player
 
 
 # ============================================================================

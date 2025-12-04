@@ -5,7 +5,8 @@
 
 import { Pencil, Trash2, Clock, FileText, List, FileSymlink, Plus, Copy, Monitor } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { TableSkeleton, EmptyState, Button, TABLE_STYLES } from '@/shared/components';
+import { TableSkeleton, EmptyState, Button, TABLE_STYLES, SortableTableHeader } from '@/shared/components';
+import type { SortConfig } from '@/shared/components';
 import type { Playlist } from '../types/playlist';
 
 interface PlaylistListProps {
@@ -16,6 +17,9 @@ interface PlaylistListProps {
   onDuplicate?: (playlist: Playlist) => void;
   onManage: (playlist: Playlist) => void;
   onCreateNew?: () => void;
+  // Sorting props (optional - controlled by parent)
+  sortConfig?: SortConfig | null;
+  onSortChange?: (config: SortConfig | null) => void;
 }
 
 export function PlaylistList({
@@ -26,6 +30,8 @@ export function PlaylistList({
   onDuplicate,
   onManage,
   onCreateNew,
+  sortConfig,
+  onSortChange,
 }: PlaylistListProps) {
   const { t } = useTranslation();
 
@@ -64,22 +70,46 @@ export function PlaylistList({
           <thead className={TABLE_STYLES.thead}>
           <tr>
             <th className={`${TABLE_STYLES.th} w-[25%]`}>
-              {t('playlists.name')}
+              {sortConfig && onSortChange ? (
+                <SortableTableHeader columnKey="name" sortConfig={sortConfig} onSortChange={onSortChange}>
+                  {t('playlists.name')}
+                </SortableTableHeader>
+              ) : t('playlists.name')}
             </th>
             <th className={`${TABLE_STYLES.th} w-20`}>
-              Status
+              {sortConfig && onSortChange ? (
+                <SortableTableHeader columnKey="is_active" sortConfig={sortConfig} onSortChange={onSortChange}>
+                  Status
+                </SortableTableHeader>
+              ) : 'Status'}
             </th>
             <th className={`${TABLE_STYLES.th} w-20`}>
-              Priority
+              {sortConfig && onSortChange ? (
+                <SortableTableHeader columnKey="priority" sortConfig={sortConfig} onSortChange={onSortChange}>
+                  Priority
+                </SortableTableHeader>
+              ) : 'Priority'}
             </th>
             <th className={`${TABLE_STYLES.th} w-24`}>
-              {t('playlists.content', 'Konten')}
+              {sortConfig && onSortChange ? (
+                <SortableTableHeader columnKey="content_count" sortConfig={sortConfig} onSortChange={onSortChange}>
+                  {t('playlists.content', 'Konten')}
+                </SortableTableHeader>
+              ) : t('playlists.content', 'Konten')}
             </th>
             <th className={`${TABLE_STYLES.th} w-24`}>
-              {t('playlists.devices', 'Device')}
+              {sortConfig && onSortChange ? (
+                <SortableTableHeader columnKey="device_count" sortConfig={sortConfig} onSortChange={onSortChange}>
+                  {t('playlists.devices', 'Device')}
+                </SortableTableHeader>
+              ) : t('playlists.devices', 'Device')}
             </th>
             <th className={`${TABLE_STYLES.th} w-24`}>
-              {t('playlists.duration')}
+              {sortConfig && onSortChange ? (
+                <SortableTableHeader columnKey="total_duration" sortConfig={sortConfig} onSortChange={onSortChange}>
+                  {t('playlists.duration')}
+                </SortableTableHeader>
+              ) : t('playlists.duration')}
             </th>
             <th className={`${TABLE_STYLES.th} w-32`}>
               {t('common.actions')}

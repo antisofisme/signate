@@ -116,6 +116,8 @@ def get_delete_org_use_case(
 def list_organizations(
     http_request: Request,
     active_only: bool = Query(False, description="Show all organizations (set true for active only)"),
+    sort_by: Optional[str] = Query(None, description="Sort by: name, is_active, created_at"),
+    sort_dir: Optional[str] = Query(None, description="Sort direction: asc or desc"),
     use_case: ListOrganizationsUseCase = Depends(get_list_orgs_use_case),
     current_user: dict = Depends(get_current_active_user)
 ):
@@ -129,8 +131,12 @@ def list_organizations(
     """
     start_time = time.time()
 
-    # Execute use case
-    result = use_case.execute(active_only=active_only)
+    # Execute use case with sorting
+    result = use_case.execute(
+        active_only=active_only,
+        sort_by=sort_by,
+        sort_dir=sort_dir
+    )
 
     # Multi-tenancy: Non-SUPER_ADMIN users can only see their own organization
     user_role = current_user["role"].lower() if current_user.get("role") else ""

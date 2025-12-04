@@ -24,7 +24,13 @@ export const playlistKeys = sharedPlaylistKeys;
  *
  * Query key includes orgId for proper cache isolation between organizations.
  */
-export const usePlaylistList = (filters?: { is_active?: boolean; skip?: number; limit?: number }) => {
+export const usePlaylistList = (filters?: {
+  is_active?: boolean;
+  skip?: number;
+  limit?: number;
+  sort_by?: string;
+  sort_dir?: 'asc' | 'desc' | null;
+}) => {
   const orgId = useSelectedOrgId();
 
   return useQuery({

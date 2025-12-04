@@ -59,14 +59,37 @@ class OrganizationRepository(IOrganizationRepository):
         ).first()
         return self._to_entity(org_model) if org_model else None
 
-    def get_all(self, active_only: bool = False) -> List[Organization]:
-        """Get all organizations"""
+    # Sortable columns mapping
+    SORTABLE_COLUMNS = {
+        'name': OrganizationModel.name,
+        'is_active': OrganizationModel.is_active,
+        'created_at': OrganizationModel.created_at,
+    }
+
+    def get_all(
+        self,
+        active_only: bool = False,
+        sort_by: Optional[str] = None,
+        sort_dir: Optional[str] = None
+    ) -> List[Organization]:
+        """Get all organizations with optional sorting"""
         query = self.db.query(OrganizationModel)
 
         if active_only:
             query = query.filter(OrganizationModel.is_active == True)
 
-        org_models = query.order_by(OrganizationModel.created_at.desc()).all()
+        # Apply sorting
+        if sort_by and sort_by in self.SORTABLE_COLUMNS:
+            column = self.SORTABLE_COLUMNS[sort_by]
+            if sort_dir == 'desc':
+                query = query.order_by(column.desc())
+            else:
+                query = query.order_by(column.asc())
+        else:
+            # Default sorting
+            query = query.order_by(OrganizationModel.created_at.desc())
+
+        org_models = query.all()
         return [self._to_entity(org) for org in org_models]
 
     def create(self, organization: Organization) -> Organization:

@@ -2,6 +2,12 @@
  * DataTable Component
  * Reusable table with standardized styles across the CMS
  *
+ * Features:
+ * - Standardized styling
+ * - Loading & empty states
+ * - Column sorting (server-side ready)
+ * - Compact mode
+ *
  * Usage:
  * - For simple tables: Use DataTable component directly
  * - For complex tables: Import TABLE_STYLES constants for consistent styling
@@ -10,7 +16,7 @@
 import { cn } from '@/lib/utils';
 import { TableSkeleton } from './feedback/TableSkeleton';
 import { EmptyState } from './feedback/EmptyState';
-import { Package, LucideIcon } from 'lucide-react';
+import { Package, LucideIcon, ArrowUp, ArrowDown, ArrowUpDown } from 'lucide-react';
 
 // ============================================
 // STANDARD TABLE STYLES - Export for complex tables
@@ -81,6 +87,15 @@ export const TABLE_STYLES = {
 // COMPONENT TYPES
 // ============================================
 
+/** Sort direction type */
+export type SortDirection = 'asc' | 'desc' | null;
+
+/** Sort configuration */
+export interface SortConfig {
+  key: string;
+  direction: SortDirection;
+}
+
 export interface Column<T> {
   /** Unique key for the column */
   key: string;
@@ -92,6 +107,10 @@ export interface Column<T> {
   className?: string;
   /** Additional classes for header cell */
   headerClassName?: string;
+  /** Whether this column is sortable (default: false) */
+  sortable?: boolean;
+  /** Custom sort key if different from column key (for nested/computed fields) */
+  sortKey?: string;
 }
 
 export interface DataTableProps<T> {
@@ -121,6 +140,10 @@ export interface DataTableProps<T> {
   skeletonRows?: number;
   /** Use compact row height (py-2 instead of py-4) */
   compact?: boolean;
+  /** Current sort configuration (for controlled sorting) */
+  sortConfig?: SortConfig | null;
+  /** Callback when sort changes (enables sorting feature) */
+  onSortChange?: (config: SortConfig | null) => void;
 }
 
 // ============================================
@@ -141,10 +164,49 @@ export function DataTable<T>({
   className,
   skeletonRows = 5,
   compact = false,
+  sortConfig,
+  onSortChange,
 }: DataTableProps<T>) {
   // Select styles based on compact mode
   const thStyle = compact ? TABLE_STYLES.thCompact : TABLE_STYLES.th;
   const tdStyle = compact ? TABLE_STYLES.tdCompact : TABLE_STYLES.td;
+
+  // Handle column header click for sorting
+  const handleSort = (column: Column<T>) => {
+    if (!column.sortable || !onSortChange) return;
+
+    const sortKey = column.sortKey || column.key;
+
+    // Cycle: null -> asc -> desc -> null
+    if (!sortConfig || sortConfig.key !== sortKey) {
+      // New column or no current sort -> ascending
+      onSortChange({ key: sortKey, direction: 'asc' });
+    } else if (sortConfig.direction === 'asc') {
+      // Currently ascending -> descending
+      onSortChange({ key: sortKey, direction: 'desc' });
+    } else {
+      // Currently descending -> clear sort
+      onSortChange(null);
+    }
+  };
+
+  // Get sort icon for column
+  const getSortIcon = (column: Column<T>) => {
+    if (!column.sortable) return null;
+
+    const sortKey = column.sortKey || column.key;
+    const isActive = sortConfig?.key === sortKey;
+
+    if (!isActive) {
+      return <ArrowUpDown className="w-3.5 h-3.5 ml-1 opacity-40" />;
+    }
+
+    if (sortConfig?.direction === 'asc') {
+      return <ArrowUp className="w-3.5 h-3.5 ml-1 text-blue-500" />;
+    }
+
+    return <ArrowDown className="w-3.5 h-3.5 ml-1 text-blue-500" />;
+  };
   // Loading state
   if (isLoading) {
     return (
@@ -175,14 +237,29 @@ export function DataTable<T>({
         <table className={TABLE_STYLES.table}>
           <thead className={TABLE_STYLES.thead}>
             <tr>
-              {columns.map((column) => (
-                <th
-                  key={column.key}
-                  className={cn(thStyle, column.headerClassName)}
-                >
-                  {column.header}
-                </th>
-              ))}
+              {columns.map((column) => {
+                const isSortable = column.sortable && onSortChange;
+                const sortKey = column.sortKey || column.key;
+                const isActive = sortConfig?.key === sortKey;
+
+                return (
+                  <th
+                    key={column.key}
+                    className={cn(
+                      thStyle,
+                      column.headerClassName,
+                      isSortable && 'cursor-pointer select-none hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors',
+                      isActive && 'text-blue-600 dark:text-blue-400'
+                    )}
+                    onClick={() => isSortable && handleSort(column)}
+                  >
+                    <div className="flex items-center">
+                      {column.header}
+                      {getSortIcon(column)}
+                    </div>
+                  </th>
+                );
+              })}
             </tr>
           </thead>
           <tbody className={TABLE_STYLES.tbody}>

@@ -21,21 +21,36 @@ import type {
   UpdatePinRequest,
 } from '../types/organization';
 
+interface OrganizationListFilters {
+  active_only?: boolean;
+  sort_by?: string;
+  sort_dir?: 'asc' | 'desc';
+}
+
 export const organizationsApi = {
   /**
    * Get all organizations
-   * @param activeOnly - Filter for active organizations only
+   * @param filters - Optional filters (activeOnly, sort_by, sort_dir)
    * @returns List of organizations with stats
    */
-  list: async (activeOnly = false): Promise<OrganizationListData> => {
+  list: async (filters: OrganizationListFilters = {}): Promise<OrganizationListData> => {
     const params = new URLSearchParams();
-    if (activeOnly) {
+    if (filters.active_only) {
       params.append('active_only', 'true');
     }
+    if (filters.sort_by) {
+      params.append('sort_by', filters.sort_by);
+    }
+    if (filters.sort_dir) {
+      params.append('sort_dir', filters.sort_dir);
+    }
 
-    const { data } = await apiClient.get<OrganizationListData>(
-      `${API_ENDPOINTS.ORGANIZATIONS.LIST}?${params.toString()}`
-    );
+    const queryString = params.toString();
+    const url = queryString
+      ? `${API_ENDPOINTS.ORGANIZATIONS.LIST}?${queryString}`
+      : API_ENDPOINTS.ORGANIZATIONS.LIST;
+
+    const { data } = await apiClient.get<OrganizationListData>(url);
     return data;
   },
 

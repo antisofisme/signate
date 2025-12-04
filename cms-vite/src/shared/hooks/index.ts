@@ -39,3 +39,6 @@ export {
   useOrgSwitchCallback,
 } from './useOrgSwitch';
 export type { OrgSwitchConfig } from './useOrgSwitch';
+
+// Table utilities
+export { useTableSort } from './useTableSort';

@@ -5,23 +5,36 @@
  * Table display of organizations with actions
  */
 
-import { Building, Shield, Edit, Trash2, Users, Monitor, Plus } from 'lucide-react';
+import { Building, Edit, Trash2, Users, Monitor } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { EmptyState, Button, TABLE_STYLES } from '@/shared/components';
+import { EmptyState, TABLE_STYLES, SortableTableHeader, TableSkeleton } from '@/shared/components';
+import type { SortConfig } from '@/shared/components';
 import type { Organization } from '../types/organization';
 
 interface OrganizationListProps {
   organizations: Organization[];
+  isLoading?: boolean;
   onEdit?: (org: Organization) => void;
   onDelete?: (org: Organization) => void;
+  // Sorting props
+  sortConfig?: SortConfig | null;
+  onSortChange?: (config: SortConfig | null) => void;
 }
 
 export function OrganizationList({
   organizations,
+  isLoading,
   onEdit,
   onDelete,
+  sortConfig,
+  onSortChange,
 }: OrganizationListProps) {
   const { t } = useTranslation();
+
+  // Loading state
+  if (isLoading) {
+    return <TableSkeleton columns={5} rows={5} />;
+  }
 
   // Show empty state if no organizations
   if (!organizations || organizations.length === 0) {
@@ -43,10 +56,30 @@ export function OrganizationList({
           <thead className={TABLE_STYLES.thead}>
           <tr>
             <th className={`${TABLE_STYLES.th} w-[30%]`}>
-              {t('organizations.name')}
+              {sortConfig && onSortChange ? (
+                <SortableTableHeader
+                  columnKey="name"
+                  sortConfig={sortConfig}
+                  onSortChange={onSortChange}
+                >
+                  {t('organizations.name')}
+                </SortableTableHeader>
+              ) : (
+                t('organizations.name')
+              )}
             </th>
             <th className={`${TABLE_STYLES.th} w-20`}>
-              {t('organizations.status')}
+              {sortConfig && onSortChange ? (
+                <SortableTableHeader
+                  columnKey="is_active"
+                  sortConfig={sortConfig}
+                  onSortChange={onSortChange}
+                >
+                  {t('organizations.status')}
+                </SortableTableHeader>
+              ) : (
+                t('organizations.status')
+              )}
             </th>
             <th className={`${TABLE_STYLES.th} w-24`}>
               {t('organizations.users')}

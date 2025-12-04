@@ -20,7 +20,9 @@ from shared.rbac import require_permission
 from shared.cache import cache as redis_cache
 from shared.logging import AuditLogger
 
-from loguru import logger
+import logging
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/v1/gdpr", tags=["gdpr"])
 

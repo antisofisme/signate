@@ -46,7 +46,7 @@ export default function AuditPage() {
     per_page: pagination.pageSize,
   });
   const { data: usersData } = useUsers({});
-  const { data: orgsData } = useOrganizations(true);
+  const { data: orgsData } = useOrganizations({ active_only: true });
 
   // Handle page change - convert 1-indexed from table to 0-indexed for hook
   const handlePageChange = (newPage: number) => {

@@ -76,11 +76,14 @@ class PlayerPlaybackLoggerClass {
 
   /**
    * Setup listener for online event to process queue
+   * Listens for device:status event emitted by WebSocket when device comes online
    */
   private setupOnlineListener(): void {
-    this.onlineCleanup = SharedEventBus.on('device:online', () => {
-      SharedLogger.log('[PlaybackLogger] Device came online - processing offline queue');
-      void this.processOfflineQueue();
+    this.onlineCleanup = SharedEventBus.on('device:status', (data: { type: string }) => {
+      if (data.type === 'device:online') {
+        SharedLogger.log('[PlaybackLogger] Device came online - processing offline queue');
+        void this.processOfflineQueue();
+      }
     });
   }
 
@@ -89,14 +92,52 @@ class PlayerPlaybackLoggerClass {
    */
   private loadOfflineQueue(): void {
     try {
-      const stored = SharedDeviceState.getPreference<string>(OFFLINE_QUEUE_KEY, '[]');
-      this.offlineQueue = JSON.parse(stored);
+      const stored = SharedDeviceState.getPreference<string | QueuedAnalyticsEntry[]>(OFFLINE_QUEUE_KEY, '[]');
+
+      // Handle case where getPreference already returns parsed array
+      if (Array.isArray(stored)) {
+        this.offlineQueue = stored;
+        if (this.offlineQueue.length > 0) {
+          SharedLogger.log(`[PlaybackLogger] Loaded ${this.offlineQueue.length} queued analytics entries`);
+        }
+        return;
+      }
+
+      // Handle string case - validate it's valid JSON
+      if (typeof stored !== 'string') {
+        SharedLogger.warn('[PlaybackLogger] Invalid queue data type, resetting queue');
+        this.offlineQueue = [];
+        this.saveOfflineQueue();
+        return;
+      }
+
+      // Validate stored string is not corrupted
+      if (!stored || stored === '[object Object]' || !stored.startsWith('[')) {
+        SharedLogger.warn('[PlaybackLogger] Invalid queue data detected, resetting queue');
+        this.offlineQueue = [];
+        this.saveOfflineQueue();
+        return;
+      }
+
+      const parsed = JSON.parse(stored);
+
+      // Validate parsed result is actually an array
+      if (!Array.isArray(parsed)) {
+        SharedLogger.warn('[PlaybackLogger] Queue data is not an array, resetting');
+        this.offlineQueue = [];
+        this.saveOfflineQueue();
+        return;
+      }
+
+      this.offlineQueue = parsed;
       if (this.offlineQueue.length > 0) {
         SharedLogger.log(`[PlaybackLogger] Loaded ${this.offlineQueue.length} queued analytics entries`);
       }
     } catch (error) {
-      SharedLogger.error('[PlaybackLogger] Failed to load offline queue:', error);
+      SharedLogger.error('[PlaybackLogger] Failed to load offline queue:', error instanceof Error ? error.message : String(error));
       this.offlineQueue = [];
+      // Clear corrupted data from storage
+      this.saveOfflineQueue();
     }
   }
 
@@ -153,7 +194,7 @@ class PlayerPlaybackLoggerClass {
         if (entry.type === 'start') {
           await SharedAPIClient.post(
             `${config.api.baseURL}/api/v1/analytics/playback/start`,
-            { body: JSON.stringify(entry.payload) }
+            entry.payload
           );
         } else {
           // For end entries, we need the log_id which might not exist if start failed
@@ -161,7 +202,7 @@ class PlayerPlaybackLoggerClass {
           if (entry.payload.log_id) {
             await SharedAPIClient.put(
               `${config.api.baseURL}/api/v1/analytics/playback/${entry.payload.log_id}/end`,
-              { body: JSON.stringify(entry.payload) }
+              entry.payload
             );
           }
         }
@@ -234,9 +275,7 @@ class PlayerPlaybackLoggerClass {
       // Send to backend
       const response = await SharedAPIClient.post<PlaybackStartResponse>(
         `${config.api.baseURL}/api/v1/analytics/playback/start`,
-        {
-          body: JSON.stringify(payload),
-        }
+        payload
       );
 
       // Store current log
@@ -302,9 +341,7 @@ class PlayerPlaybackLoggerClass {
       // Send to backend
       await SharedAPIClient.put(
         `${config.api.baseURL}/api/v1/analytics/playback/${this.currentLog.logId}/end`,
-        {
-          body: JSON.stringify(payload),
-        }
+        payload
       );
 
       SharedLogger.log('[PlaybackLogger] Playback end logged successfully');

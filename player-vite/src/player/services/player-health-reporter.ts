@@ -133,7 +133,7 @@ class PlayerHealthReporterClass {
       const metrics = await this.collectMetrics();
 
       // Send to backend
-      await SharedAPIClient.post(`/devices/${deviceId}/health`, metrics);
+      await SharedAPIClient.post(`${config.api.baseURL}/api/v1/devices/${deviceId}/health`, metrics);
 
       SharedLogger.log('[HealthReporter] ✅ Health metrics reported successfully');
     } catch (error) {

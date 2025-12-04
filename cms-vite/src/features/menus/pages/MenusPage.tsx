@@ -17,6 +17,7 @@ import {
   PageStats,
 } from '@/shared/components';
 import { useCanPerformAction } from '@/features/rbac/hooks/usePermissions';
+import { useTableSort, usePagination } from '@/shared/hooks';
 import { useMenus } from '../hooks/useMenus';
 import { MenuList } from '../components/MenuList';
 import { MenuForm } from '../components/MenuForm';
@@ -31,19 +32,36 @@ export default function MenusPage() {
   const { hasPermission: canView, isLoading: isCheckingPermission } = useCanPerformAction('menus', 'read');
   const { hasPermission: canCreate } = useCanPerformAction('menus', 'create');
 
-  // Data fetching
-  const { data: menusData } = useMenus();
-  const menus = menusData?.items || [];
-  const activeMenus = menus.filter(m => m.is_active).length;
+  // Sorting - URL state persistence
+  const { sortConfig, onSortChange, sortParams } = useTableSort({
+    defaultSort: { key: 'name', direction: 'asc' },
+  });
 
-  // State
-  const [showCreateForm, setShowCreateForm] = useState(false);
-  const [editingMenu, setEditingMenu] = useState<Menu | null>(null);
-  const [managingItemsMenu, setManagingItemsMenu] = useState<Menu | null>(null);
+  // Pagination
+  const pagination = usePagination({ pageSize: 20 });
+
+  // Filters state
   const [showFilters, setShowFilters] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [menuTypeFilter, setMenuTypeFilter] = useState<MenuType | ''>('');
   const [isActiveFilter, setIsActiveFilter] = useState<boolean | ''>('');
+
+  // Data fetching with sorting and pagination
+  const { data: menusData, isLoading } = useMenus({
+    skip: pagination.currentPage * pagination.pageSize,
+    limit: pagination.pageSize,
+    menu_type: menuTypeFilter || undefined,
+    is_active: isActiveFilter === '' ? undefined : isActiveFilter,
+    ...sortParams,
+  });
+  const menus = menusData?.items || [];
+  const total = menusData?.total || 0;
+  const activeMenus = menus.filter(m => m.is_active).length;
+
+  // Modal state
+  const [showCreateForm, setShowCreateForm] = useState(false);
+  const [editingMenu, setEditingMenu] = useState<Menu | null>(null);
+  const [managingItemsMenu, setManagingItemsMenu] = useState<Menu | null>(null);
 
   // Handlers
   const handleEdit = (menu: Menu) => {
@@ -169,11 +187,17 @@ export default function MenusPage() {
 
         {/* Menu List */}
         <MenuList
+          menus={menus}
+          isLoading={isLoading}
+          total={total}
+          currentPage={pagination.currentPage}
+          pageSize={pagination.pageSize}
+          onPageChange={pagination.goToPage}
           onEdit={handleEdit}
           onManageItems={handleManageItems}
           searchQuery={searchQuery}
-          menuTypeFilter={menuTypeFilter}
-          isActiveFilter={isActiveFilter}
+          sortConfig={sortConfig}
+          onSortChange={onSortChange}
         />
 
         {/* Modals */}

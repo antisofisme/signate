@@ -60,7 +60,11 @@ export {
 
 // Data Display
 export { DataTable, TABLE_STYLES } from './DataTable';
-export type { Column, DataTableProps } from './DataTable';
+export type { Column, DataTableProps, SortConfig, SortDirection } from './DataTable';
+
+// Sortable Table Header (for tables using TABLE_STYLES with server-side sorting)
+export { SortableTableHeader } from './SortableTableHeader';
+export type { SortableTableHeaderProps } from './SortableTableHeader';
 
 // Status Badge (for processing/upload status indicators)
 export { default as StatusBadge, StatusBadgeSolid } from './StatusBadge';

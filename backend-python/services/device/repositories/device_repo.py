@@ -3,12 +3,25 @@ Device Repository Implementation
 Implements IDeviceRepository using SQLAlchemy
 """
 
-from typing import Optional, List
+from typing import Optional, List, Tuple
 from datetime import datetime, timedelta, timezone
 from sqlalchemy.orm import Session, selectinload
+from sqlalchemy import asc, desc
 from ..domain.device import Device
 from ..domain.interfaces import IDeviceRepository
 from .models import DeviceModel
+
+
+# Valid sortable columns mapping
+SORTABLE_COLUMNS = {
+    'device_name': DeviceModel.device_name,
+    'status': DeviceModel.status,
+    'device_type': DeviceModel.device_type,
+    'ip_address': DeviceModel.ip_address,
+    'last_seen_at': DeviceModel.last_seen_at,
+    'created_at': DeviceModel.created_at,
+    'updated_at': DeviceModel.updated_at,
+}
 
 
 class DeviceRepository(IDeviceRepository):
@@ -16,6 +29,30 @@ class DeviceRepository(IDeviceRepository):
 
     def __init__(self, db: Session):
         self.db = db
+
+    def _apply_sorting(self, query, sort_by: Optional[str] = None, sort_dir: Optional[str] = None):
+        """
+        Apply sorting to a query.
+
+        Args:
+            query: SQLAlchemy query object
+            sort_by: Column name to sort by (must be in SORTABLE_COLUMNS)
+            sort_dir: Sort direction ('asc' or 'desc')
+
+        Returns:
+            Query with sorting applied
+        """
+        if sort_by and sort_by in SORTABLE_COLUMNS:
+            column = SORTABLE_COLUMNS[sort_by]
+            if sort_dir == 'desc':
+                query = query.order_by(desc(column))
+            else:
+                query = query.order_by(asc(column))
+        else:
+            # Default sort by created_at desc
+            query = query.order_by(desc(DeviceModel.created_at))
+
+        return query
 
     def find_by_id(self, device_id: int, organization_id: Optional[int] = None) -> Optional[Device]:
         """
@@ -276,17 +313,24 @@ class DeviceRepository(IDeviceRepository):
 
         return [self._to_entity(model) for model in device_models]
 
-    def list_active_by_organization(self, organization_id: int) -> List[Device]:
+    def list_active_by_organization(
+        self,
+        organization_id: int,
+        sort_by: Optional[str] = None,
+        sort_dir: Optional[str] = None
+    ) -> List[Device]:
         """
         List active devices for Device List (main tab)
 
         Args:
             organization_id: Organization ID
+            sort_by: Column to sort by (device_name, status, device_type, ip_address, last_seen_at)
+            sort_dir: Sort direction ('asc' or 'desc')
 
         Returns:
             List of Device entities with status in ('active', 'inactive')
         """
-        device_models = self.db.query(DeviceModel).options(
+        query = self.db.query(DeviceModel).options(
             selectinload(DeviceModel.assigned_playlist),
             selectinload(DeviceModel.tags),
             selectinload(DeviceModel.commands),
@@ -294,7 +338,12 @@ class DeviceRepository(IDeviceRepository):
         ).filter(
             DeviceModel.organization_id == organization_id,
             DeviceModel.status.in_(['active', 'inactive'])
-        ).order_by(DeviceModel.created_at.desc()).all()
+        )
+
+        # Apply sorting
+        query = self._apply_sorting(query, sort_by, sort_dir)
+
+        device_models = query.all()
 
         return [self._to_entity(model) for model in device_models]
 

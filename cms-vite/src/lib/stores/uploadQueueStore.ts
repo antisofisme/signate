@@ -50,6 +50,7 @@ interface UploadQueueStore extends UploadQueueState {
   updateProgress: (id: string, progress: number, uploadedBytes: number) => void;
   setStatus: (id: string, status: UploadStatus, error?: string) => void;
   setContentId: (id: string, contentId: number) => void;
+  setMenuMediaId: (id: string, menuMediaId: number) => void;
   setAbortController: (id: string, controller: AbortController) => void;
   incrementRetryCount: (id: string) => void;
 
@@ -87,22 +88,31 @@ export const useUploadQueueStore = create<UploadQueueStore>()(
 
       // Add files to queue
       addToQueue: (files, options) => {
-        console.log('[UploadQueueStore] addToQueue called with', files.length, 'files');
+        console.log('[UploadQueueStore] addToQueue called with', files.length, 'files, type:', options.uploadType);
 
         const newItems: UploadItem[] = files.map((file) => ({
           id: generateId(),
+          uploadType: options.uploadType,
           file,
           fileName: file.name,
           fileSize: file.size,
-          fileType: getContentTypeFromMime(file.type),
           mimeType: file.type,
-          duration: options.duration,
-          isActive: options.isActive,
           status: 'pending' as UploadStatus,
           progress: 0,
           uploadedBytes: 0,
           createdAt: Date.now(),
           retryCount: 0,
+          // Content-specific fields (only for content uploads)
+          ...(options.uploadType === 'content' && {
+            fileType: getContentTypeFromMime(file.type),
+            duration: options.duration ?? 10,
+            isActive: options.isActive ?? true,
+          }),
+          // Menu media-specific fields (only for menu_media uploads)
+          ...(options.uploadType === 'menu_media' && {
+            title: options.title,
+            altText: options.altText,
+          }),
         }));
 
         console.log('[UploadQueueStore] Created newItems:', newItems.length);
@@ -245,6 +255,15 @@ export const useUploadQueueStore = create<UploadQueueStore>()(
         }));
       },
 
+      // Set menu media ID after successful upload
+      setMenuMediaId: (id, menuMediaId) => {
+        set((state) => ({
+          items: state.items.map((i) =>
+            i.id === id ? { ...i, menuMediaId } : i
+          ),
+        }));
+      },
+
       // Set abort controller
       setAbortController: (id, controller) => {
         set((state) => ({
@@ -342,16 +361,23 @@ export const useUploadQueueStore = create<UploadQueueStore>()(
       }),
       onRehydrateStorage: () => (state) => {
         // Mark items that were uploading/pending as failed on reload
+        // Also ensure backward compatibility by adding uploadType to old items
         if (state) {
           state.items = state.items.map((item) => {
-            if (item.status === 'uploading' || item.status === 'pending') {
+            // Add uploadType for backward compatibility with old persisted items
+            const updatedItem = {
+              ...item,
+              uploadType: item.uploadType || 'content', // Default to 'content' for old items
+            };
+
+            if (updatedItem.status === 'uploading' || updatedItem.status === 'pending') {
               return {
-                ...item,
+                ...updatedItem,
                 status: 'failed' as UploadStatus,
                 error: 'Upload interrupted by page reload',
               };
             }
-            return item;
+            return updatedItem;
           });
           state.setHasHydrated(true);
         }

@@ -7,7 +7,8 @@
 
 import { useTranslation } from 'react-i18next';
 import { Shield, Edit, Trash2, Key, Building, UserCog } from 'lucide-react';
-import { TABLE_STYLES } from '@/shared/components';
+import { TABLE_STYLES, SortableTableHeader } from '@/shared/components';
+import type { SortConfig } from '@/shared/components';
 import type { User } from '../types/user';
 
 interface UserListProps {
@@ -16,6 +17,9 @@ interface UserListProps {
   onDelete?: (user: User) => void;
   onChangePassword?: (user: User) => void;
   onAssignRole?: (user: User) => void;
+  // Sorting props (optional - controlled by parent)
+  sortConfig?: SortConfig | null;
+  onSortChange?: (config: SortConfig | null) => void;
 }
 
 export function UserList({
@@ -24,6 +28,8 @@ export function UserList({
   onDelete,
   onChangePassword,
   onAssignRole,
+  sortConfig,
+  onSortChange,
 }: UserListProps) {
   const { t } = useTranslation();
 
@@ -47,16 +53,56 @@ export function UserList({
           <thead className={TABLE_STYLES.thead}>
           <tr>
             <th className={`${TABLE_STYLES.th} w-[25%]`}>
-              {t('users.table.user')}
+              {sortConfig && onSortChange ? (
+                <SortableTableHeader
+                  columnKey="username"
+                  sortConfig={sortConfig}
+                  onSortChange={onSortChange}
+                >
+                  {t('users.table.user')}
+                </SortableTableHeader>
+              ) : (
+                t('users.table.user')
+              )}
             </th>
             <th className={`${TABLE_STYLES.th} w-20`}>
-              {t('users.table.status')}
+              {sortConfig && onSortChange ? (
+                <SortableTableHeader
+                  columnKey="is_active"
+                  sortConfig={sortConfig}
+                  onSortChange={onSortChange}
+                >
+                  {t('users.table.status')}
+                </SortableTableHeader>
+              ) : (
+                t('users.table.status')
+              )}
             </th>
             <th className={`${TABLE_STYLES.th} w-24`}>
-              {t('users.table.role')}
+              {sortConfig && onSortChange ? (
+                <SortableTableHeader
+                  columnKey="role"
+                  sortConfig={sortConfig}
+                  onSortChange={onSortChange}
+                >
+                  {t('users.table.role')}
+                </SortableTableHeader>
+              ) : (
+                t('users.table.role')
+              )}
             </th>
             <th className={`${TABLE_STYLES.th} w-[20%]`}>
-              {t('users.table.organization')}
+              {sortConfig && onSortChange ? (
+                <SortableTableHeader
+                  columnKey="organization_name"
+                  sortConfig={sortConfig}
+                  onSortChange={onSortChange}
+                >
+                  {t('users.table.organization')}
+                </SortableTableHeader>
+              ) : (
+                t('users.table.organization')
+              )}
             </th>
             <th className={`${TABLE_STYLES.th} w-32`}>
               {t('users.table.actions')}

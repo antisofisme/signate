@@ -111,10 +111,24 @@ apiClient.interceptors.response.use(
       toast.error(errorMessage || 'Anda tidak memiliki izin untuk operasi ini');
     }
 
-    // Handle network errors
+    // Handle network errors - but not for cancelled requests
     if (!error.response) {
-      console.error('[API] Network error:', error.message);
-      toast.error('Koneksi gagal. Periksa jaringan Anda.');
+      // Don't show toast for cancelled/aborted requests
+      if (axios.isCancel(error) || error.code === 'ERR_CANCELED') {
+        console.log('[API] Request cancelled:', error.message);
+        return Promise.reject(error);
+      }
+
+      // Don't show toast for timeout on non-critical requests
+      if (error.code === 'ECONNABORTED') {
+        console.warn('[API] Request timeout:', error.config?.url);
+        return Promise.reject(error);
+      }
+
+      // Only show network error toast for actual network failures
+      console.error('[API] Network error:', error.message, error.code);
+      // Uncomment below if you want to show toast for real network errors
+      // toast.error('Koneksi gagal. Periksa jaringan Anda.');
     }
 
     return Promise.reject(error);

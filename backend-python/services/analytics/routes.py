@@ -12,7 +12,7 @@ from typing import Optional
 from datetime import datetime, timezone, timedelta
 
 from shared.database import get_db
-from shared.auth import get_current_user, CurrentUser
+from shared.auth import get_current_user, CurrentUser, get_current_device, CurrentDevice
 from shared.errors import handle_errors
 from shared.responses import success_response
 from shared.logging import RequestLogger
@@ -291,7 +291,7 @@ def get_playback_timeline(
 @handle_errors
 def start_playback_log(
     request_body: PlaybackLogRequest,
-    current_user: CurrentUser = Depends(get_current_user),
+    current_device: CurrentDevice = Depends(get_current_device),
     analytics_repo: AnalyticsRepository = Depends(get_analytics_repository)
 ):
     """
@@ -299,13 +299,18 @@ def start_playback_log(
 
     Creates a new playback log entry
     Used by player devices to track content playback
+    Requires device authentication (device JWT token)
     """
     start_time = time.time()
 
     # Create playback log
     playback_data = request_body.dict()
     playback_data["started_at"] = datetime.now(timezone.utc)
-    playback_data["organization_id"] = current_user.organization_id
+    playback_data["organization_id"] = current_device.organization_id
+
+    # Convert playlist_id: 0 to None (player sends 0 when no playlist)
+    if playback_data.get("playlist_id") == 0:
+        playback_data["playlist_id"] = None
 
     log = analytics_repo.log_playback(playback_data)
 
@@ -316,7 +321,7 @@ def start_playback_log(
         path="/api/v1/analytics/playback/start",
         status_code=200,
         duration_ms=duration_ms,
-        user_id=current_user.id
+        user_id=None  # Device request, no user_id
     )
 
     return success_response(
@@ -330,7 +335,7 @@ def start_playback_log(
 def end_playback_log(
     log_id: int,
     request_body: PlaybackEndRequest,
-    current_user: CurrentUser = Depends(get_current_user),
+    current_device: CurrentDevice = Depends(get_current_device),
     analytics_repo: AnalyticsRepository = Depends(get_analytics_repository)
 ):
     """
@@ -338,6 +343,7 @@ def end_playback_log(
 
     Updates playback log with end time and completion status
     Used by player devices to complete playback tracking
+    Requires device authentication (device JWT token)
     """
     start_time = time.time()
 
@@ -360,7 +366,7 @@ def end_playback_log(
         path=f"/api/v1/analytics/playback/{log_id}/end",
         status_code=200,
         duration_ms=duration_ms,
-        user_id=current_user.id
+        user_id=None  # Device request, no user_id
     )
 
     return success_response(

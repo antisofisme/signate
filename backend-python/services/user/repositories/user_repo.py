@@ -5,7 +5,7 @@ Implements IUserRepository using SQLAlchemy
 
 from typing import List, Optional
 from sqlalchemy.orm import Session, joinedload
-from sqlalchemy import func
+from sqlalchemy import func, asc, desc
 from sqlalchemy.exc import IntegrityError
 from ..domain.user import User
 from ..domain.interfaces import IUserRepository
@@ -93,13 +93,24 @@ class UserRepository(IUserRepository):
         user_model = query.first()
         return self._to_entity(user_model) if user_model else None
 
+    # Valid sortable columns for users
+    SORTABLE_COLUMNS = {
+        'username': UserModel.username,
+        'email': UserModel.email,
+        'is_active': UserModel.is_active,
+        'created_at': UserModel.created_at,
+        'updated_at': UserModel.updated_at,
+    }
+
     def get_all(
         self,
         organization_id: Optional[int] = None,
         role: Optional[str] = None,
-        active_only: bool = False
+        active_only: bool = False,
+        sort_by: Optional[str] = None,
+        sort_dir: Optional[str] = None
     ) -> List[User]:
-        """Get all users with filters"""
+        """Get all users with filters and sorting"""
         query = self.db.query(UserModel).options(joinedload(UserModel.role))
 
         if organization_id:
@@ -112,7 +123,18 @@ class UserRepository(IUserRepository):
         if active_only:
             query = query.filter(UserModel.is_active == True)
 
-        user_models = query.order_by(UserModel.created_at.desc()).all()
+        # Apply sorting
+        if sort_by and sort_by in self.SORTABLE_COLUMNS:
+            column = self.SORTABLE_COLUMNS[sort_by]
+            if sort_dir == 'desc':
+                query = query.order_by(desc(column))
+            else:
+                query = query.order_by(asc(column))
+        else:
+            # Default sort by created_at desc
+            query = query.order_by(desc(UserModel.created_at))
+
+        user_models = query.all()
         return [self._to_entity(user) for user in user_models]
 
     def create(self, user: User) -> User:

@@ -29,7 +29,9 @@ class ListDevicesUseCase:
         organization_id: Optional[Union[int, str]] = None,
         status_filter: Optional[str] = None,
         online_only: bool = False,
-        scope: str = "my_org"
+        scope: str = "my_org",
+        sort_by: Optional[str] = None,
+        sort_dir: Optional[str] = None
     ) -> List[Device]:
         """
         List devices with scope support
@@ -43,6 +45,8 @@ class ListDevicesUseCase:
                 - 'released': Released devices in Unsigned Pool (status = 'released', same org)
                 - 'pending': Devices waiting to be claimed (status = 'pending', org_id = NULL)
                 - 'all': All devices (super admin only)
+            sort_by: Column to sort by (device_name, status, device_type, ip_address, last_seen_at)
+            sort_dir: Sort direction ('asc' or 'desc')
 
         Returns:
             List of Device entities
@@ -69,7 +73,11 @@ class ListDevicesUseCase:
                 devices = self.device_repo.find_online_devices(organization_id)
             else:
                 # Use list_active_by_organization which filters for active/inactive only
-                devices = self.device_repo.list_active_by_organization(organization_id)
+                devices = self.device_repo.list_active_by_organization(
+                    organization_id,
+                    sort_by=sort_by,
+                    sort_dir=sort_dir
+                )
 
         # Filter by status if specified (additional filter on top of scope filter)
         if status_filter:

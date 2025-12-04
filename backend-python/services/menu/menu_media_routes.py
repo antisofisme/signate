@@ -29,7 +29,9 @@ from .repositories import MenuMediaRepository
 from .dtos import MenuMediaResponseDTO, MenuMediaListDTO, MenuMediaUpdateDTO
 from .image_optimizer import get_image_optimizer
 
-from loguru import logger
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 def calculate_file_hash(content: bytes) -> str:
@@ -67,6 +69,8 @@ def list_menu_media(
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=100),
     is_active: Optional[bool] = None,
+    sort_by: Optional[str] = Query(None, description="Sort by: original_filename, mime_type, file_size, created_at"),
+    sort_dir: Optional[str] = Query(None, description="Sort direction: asc or desc"),
     current_user: CurrentUser = Depends(require_permission("menus", "view")),
     media_repo: MenuMediaRepository = Depends(get_menu_media_repository)
 ):
@@ -75,7 +79,9 @@ def list_menu_media(
         organization_id=current_user.organization_id,
         skip=skip,
         limit=limit,
-        is_active=is_active
+        is_active=is_active,
+        sort_by=sort_by,
+        sort_dir=sort_dir
     )
 
     # Build response with URLs
@@ -137,6 +143,8 @@ def list_deleted_menu_media(
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=100),
     search: Optional[str] = None,
+    sort_by: Optional[str] = Query(None, description="Sort by: original_filename, file_size, width, deleted_at"),
+    sort_dir: Optional[str] = Query(None, description="Sort direction: asc or desc"),
     current_user: CurrentUser = Depends(require_permission("menus", "view")),
     media_repo: MenuMediaRepository = Depends(get_menu_media_repository)
 ):
@@ -145,7 +153,9 @@ def list_deleted_menu_media(
         organization_id=current_user.organization_id,
         skip=skip,
         limit=limit,
-        search=search
+        search=search,
+        sort_by=sort_by,
+        sort_dir=sort_dir
     )
 
     # Build response with URLs

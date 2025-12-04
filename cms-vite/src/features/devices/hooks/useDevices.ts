@@ -25,12 +25,17 @@ export const deviceKeys = sharedDeviceKeys;
  * Data is considered fresh for 30 seconds (staleTime).
  *
  * Query key includes orgId for proper cache isolation between organizations.
+ *
+ * Supports sorting via sort_by and sort_dir params.
  */
 export const useDeviceList = (filters?: {
+  scope?: string;
   status?: string;
   device_type?: string;
   skip?: number;
   limit?: number;
+  sort_by?: string;
+  sort_dir?: 'asc' | 'desc' | null;
 }) => {
   const orgId = useSelectedOrgId();
 

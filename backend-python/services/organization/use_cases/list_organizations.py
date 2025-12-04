@@ -3,7 +3,7 @@ List Organizations Use Case
 Get all organizations with stats
 """
 
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 from ..domain.interfaces import IOrganizationRepository
 
 
@@ -13,18 +13,29 @@ class ListOrganizationsUseCase:
     def __init__(self, org_repo: IOrganizationRepository):
         self.org_repo = org_repo
 
-    def execute(self, active_only: bool = False) -> Dict[str, Any]:
+    def execute(
+        self,
+        active_only: bool = False,
+        sort_by: Optional[str] = None,
+        sort_dir: Optional[str] = None
+    ) -> Dict[str, Any]:
         """
         List all organizations
 
         Args:
             active_only: Only return active organizations (default: False - show all)
+            sort_by: Sort by column (name, is_active, created_at)
+            sort_dir: Sort direction (asc, desc)
 
         Returns:
             Dictionary with organizations list and stats
         """
 
-        organizations = self.org_repo.get_all(active_only=active_only)
+        organizations = self.org_repo.get_all(
+            active_only=active_only,
+            sort_by=sort_by,
+            sort_dir=sort_dir
+        )
 
         # Calculate stats
         total = len(organizations)

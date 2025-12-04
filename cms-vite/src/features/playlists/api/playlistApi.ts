@@ -82,13 +82,15 @@ export const playlistApi = {
 
   /**
    * Get all playlists with optional filters
-   * @param filters - Filter options (is_active, skip, limit)
+   * @param filters - Filter options (is_active, skip, limit, sort_by, sort_dir)
    * @returns List of playlists
    */
   list: async (filters?: {
     is_active?: boolean;
     skip?: number;
     limit?: number;
+    sort_by?: string;
+    sort_dir?: 'asc' | 'desc' | null;
   }): Promise<{ total: number; items: Playlist[] }> => {
     try {
       const params = new URLSearchParams();
@@ -101,6 +103,13 @@ export const playlistApi = {
       }
       if (filters?.limit !== undefined) {
         params.append('limit', String(filters.limit));
+      }
+      // Sorting
+      if (filters?.sort_by) {
+        params.append('sort_by', filters.sort_by);
+      }
+      if (filters?.sort_dir) {
+        params.append('sort_dir', filters.sort_dir);
       }
 
       const queryString = params.toString();

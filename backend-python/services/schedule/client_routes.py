@@ -35,6 +35,7 @@ class PlayerScheduleResponse(BaseModel):
 
     color: str
     is_active: bool
+    mode: str = Field(default="rotate", description="Playback mode: 'override' or 'rotate'")
 
     created_at: datetime
     updated_at: datetime
@@ -101,6 +102,7 @@ def get_player_schedules(
             exceptions=s.exceptions,
             color=s.color,
             is_active=s.is_active,
+            mode=getattr(s, 'mode', 'rotate') or 'rotate',  # Include playback mode
             created_at=s.created_at,
             updated_at=s.updated_at
         )

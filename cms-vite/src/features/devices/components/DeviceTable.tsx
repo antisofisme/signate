@@ -39,7 +39,9 @@ import {
   ConfirmDialog,
   Button,
   TABLE_STYLES,
+  SortableTableHeader,
 } from '@/shared/components';
+import { useTableSort } from '@/shared/hooks';
 import { useCanPerformAction } from '@/features/rbac/hooks/usePermissions';
 
 // Lazy load modal components for better initial page load
@@ -97,6 +99,11 @@ export function DeviceTable() {
   const [typeFilter, setTypeFilter] = useState<DeviceType | 'all'>('all');
   const [showFilters, setShowFilters] = useState(false);
 
+  // Sorting - Uses URL state for persistence
+  const { sortConfig, onSortChange, sortParams } = useTableSort({
+    defaultSort: { key: 'device_name', direction: 'asc' }, // Default sort by name
+  });
+
   // Modals
   const [deleteModal, setDeleteModal] = useState<{
     isOpen: boolean;
@@ -136,11 +143,12 @@ export function DeviceTable() {
   }>({ isOpen: false, device: null });
 
 
-  // Build filters for API
+  // Build filters for API (includes sorting)
   const apiFilters = {
     scope,
     ...(statusFilter !== 'all' && { status: statusFilter }),
     ...(typeFilter !== 'all' && { device_type: typeFilter }),
+    ...sortParams, // Adds sort_by and sort_dir from URL state
   };
 
   // Fetch devices with refetch function for manual refresh
@@ -407,19 +415,49 @@ export function DeviceTable() {
               <thead className={TABLE_STYLES.thead}>
                 <tr>
                   <th className={TABLE_STYLES.th}>
-                    {t('devices.table.device')}
+                    <SortableTableHeader
+                      columnKey="device_name"
+                      sortConfig={sortConfig}
+                      onSortChange={onSortChange}
+                    >
+                      {t('devices.table.device')}
+                    </SortableTableHeader>
                   </th>
                   <th className={TABLE_STYLES.th}>
-                    {t('devices.statusLabel')}
+                    <SortableTableHeader
+                      columnKey="status"
+                      sortConfig={sortConfig}
+                      onSortChange={onSortChange}
+                    >
+                      {t('devices.statusLabel')}
+                    </SortableTableHeader>
                   </th>
                   <th className={TABLE_STYLES.th}>
-                    {t('devices.type')}
+                    <SortableTableHeader
+                      columnKey="device_type"
+                      sortConfig={sortConfig}
+                      onSortChange={onSortChange}
+                    >
+                      {t('devices.type')}
+                    </SortableTableHeader>
                   </th>
                   <th className={TABLE_STYLES.th}>
-                    {t('devices.table.ipAddress')}
+                    <SortableTableHeader
+                      columnKey="ip_address"
+                      sortConfig={sortConfig}
+                      onSortChange={onSortChange}
+                    >
+                      {t('devices.table.ipAddress')}
+                    </SortableTableHeader>
                   </th>
                   <th className={TABLE_STYLES.th}>
-                    {t('devices.lastSeen')}
+                    <SortableTableHeader
+                      columnKey="last_seen_at"
+                      sortConfig={sortConfig}
+                      onSortChange={onSortChange}
+                    >
+                      {t('devices.lastSeen')}
+                    </SortableTableHeader>
                   </th>
                   <th className={TABLE_STYLES.th}>
                     {t('devices.table.actions')}

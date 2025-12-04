@@ -313,6 +313,21 @@ class SharedWebSocketClass {
         this.handlePlayerControl(message.data);
         break;
 
+      // Device status messages (info only, emitted for other services to react)
+      case 'device:online':
+      case 'device:offline':
+        SharedLogger.log(`[WebSocket] 📡 Device status: ${msgType}`);
+        SharedEventBus.emit('device:status', { type: msgType, data: message.data });
+        break;
+
+      // System notifications (ping, keepalive, etc.) - acknowledge silently
+      case 'system:notification':
+        // Handle ping/pong from backend keepalive
+        if (message.data?.type === 'ping') {
+          SharedLogger.log('[WebSocket] 🏓 System ping received');
+        }
+        break;
+
       default:
         SharedLogger.log(`[WebSocket] Unhandled message type: ${msgType}`);
     }

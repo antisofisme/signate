@@ -62,6 +62,18 @@ class MenuRepository:
 
         return query.first()
 
+    # Sortable columns mapping (items_count handled separately with subquery)
+    SORTABLE_COLUMNS = {
+        'name': MenuModel.name,
+        'menu_type': MenuModel.menu_type,
+        'is_active': MenuModel.is_active,
+        'created_at': MenuModel.created_at,
+        'updated_at': MenuModel.updated_at,
+    }
+
+    # Columns that need subquery for sorting
+    SUBQUERY_SORT_COLUMNS = {'items_count'}
+
     def find_all(
         self,
         organization_id: int,
@@ -69,9 +81,11 @@ class MenuRepository:
         limit: int = 50,
         menu_type: Optional[str] = None,
         is_active: Optional[bool] = None,
-        include_deleted: bool = False
+        include_deleted: bool = False,
+        sort_by: Optional[str] = None,
+        sort_dir: Optional[str] = None
     ) -> Tuple[List[MenuModel], int]:
-        """Find all menus for organization with filters"""
+        """Find all menus for organization with filters and sorting"""
         query = self.db.query(MenuModel).filter(
             MenuModel.organization_id == organization_id
         )
@@ -88,8 +102,38 @@ class MenuRepository:
         # Count total
         total = query.count()
 
-        # Apply pagination and order
-        menus = query.order_by(MenuModel.created_at.desc()).offset(skip).limit(limit).all()
+        # Apply sorting
+        if sort_by and sort_by in self.SORTABLE_COLUMNS:
+            column = self.SORTABLE_COLUMNS[sort_by]
+            if sort_dir == 'desc':
+                query = query.order_by(column.desc())
+            else:
+                query = query.order_by(column.asc())
+        elif sort_by == 'items_count':
+            # Subquery for items_count sorting
+            items_count_subquery = (
+                self.db.query(
+                    MenuItemModel.menu_id,
+                    func.count(MenuItemModel.id).label('item_count')
+                )
+                .filter(MenuItemModel.deleted_at.is_(None))
+                .group_by(MenuItemModel.menu_id)
+                .subquery()
+            )
+            query = query.outerjoin(
+                items_count_subquery,
+                MenuModel.id == items_count_subquery.c.menu_id
+            )
+            if sort_dir == 'desc':
+                query = query.order_by(func.coalesce(items_count_subquery.c.item_count, 0).desc())
+            else:
+                query = query.order_by(func.coalesce(items_count_subquery.c.item_count, 0).asc())
+        else:
+            # Default sorting
+            query = query.order_by(MenuModel.created_at.desc())
+
+        # Apply pagination
+        menus = query.offset(skip).limit(limit).all()
 
         return menus, total
 

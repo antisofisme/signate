@@ -16,12 +16,21 @@ import type {
 } from '../types/organization';
 
 /**
+ * Organization list filters
+ */
+interface OrganizationFilters {
+  active_only?: boolean;
+  sort_by?: string;
+  sort_dir?: 'asc' | 'desc';
+}
+
+/**
  * Get all organizations
  */
-export function useOrganizations(activeOnly = false) {
+export function useOrganizations(filters: OrganizationFilters = {}) {
   return useQuery({
-    queryKey: ['organizations', { activeOnly }],
-    queryFn: () => organizationsApi.list(activeOnly),
+    queryKey: ['organizations', filters],
+    queryFn: () => organizationsApi.list(filters),
     staleTime: 1 * 60 * 1000, // 1 minute
   });
 }

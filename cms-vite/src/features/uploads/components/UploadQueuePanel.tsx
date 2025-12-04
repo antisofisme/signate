@@ -250,8 +250,8 @@ export function UploadQueuePanel() {
                 size="sm"
                 className="h-7 text-xs text-blue-600 hover:text-blue-700"
                 onClick={retryAllFailed}
+                leftIcon={<RotateCcw className="w-3 h-3" />}
               >
-                <RotateCcw className="w-3 h-3 mr-1" />
                 {t('uploads.actions.retryAll', 'Retry all')}
               </Button>
             )}
@@ -263,8 +263,8 @@ export function UploadQueuePanel() {
                 size="sm"
                 className="h-7 text-xs text-gray-600 hover:text-gray-700"
                 onClick={clearCompleted}
+                leftIcon={<Trash2 className="w-3 h-3" />}
               >
-                <Trash2 className="w-3 h-3 mr-1" />
                 {t('uploads.actions.clearCompleted', 'Clear completed')}
               </Button>
             )}
@@ -276,8 +276,8 @@ export function UploadQueuePanel() {
             size="sm"
             className="h-7 text-xs text-red-600 hover:text-red-700"
             onClick={clearAll}
+            leftIcon={<X className="w-3 h-3" />}
           >
-            <X className="w-3 h-3 mr-1" />
             {t('uploads.actions.clearAll', 'Clear all')}
           </Button>
         </div>

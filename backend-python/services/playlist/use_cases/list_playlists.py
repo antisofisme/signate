@@ -20,9 +20,11 @@ class ListPlaylistsUseCase:
         limit: int = 100,
         is_active: Optional[bool] = None,
         include_deleted: bool = False,
+        sort_by: Optional[str] = None,
+        sort_dir: Optional[str] = None,
     ) -> Tuple[List[Playlist], int]:
         """
-        Get all playlists for organization
+        Get all playlists for organization with sorting
 
         Returns:
             Tuple of (playlists, total_count)
@@ -33,4 +35,6 @@ class ListPlaylistsUseCase:
             limit=limit,
             is_active=is_active,
             include_deleted=include_deleted,
+            sort_by=sort_by,
+            sort_dir=sort_dir,
         )

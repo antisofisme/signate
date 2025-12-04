@@ -2,6 +2,7 @@
  * Upload Queue Types
  *
  * Defines types for the upload queue manager feature.
+ * Supports multiple upload types: content, menu_media
  */
 
 /**
@@ -20,11 +21,21 @@ export type UploadStatus =
 export type UploadContentType = 'image' | 'video' | 'audio';
 
 /**
+ * Upload type discriminator
+ * - 'content': Regular content uploads (images, videos, audio)
+ * - 'menu_media': Menu media images
+ */
+export type UploadType = 'content' | 'menu_media';
+
+/**
  * Single upload item in the queue
  */
 export interface UploadItem {
   /** Unique identifier (UUID) */
   id: string;
+
+  /** Upload type discriminator */
+  uploadType: UploadType;
 
   /** File object (NOT persisted to localStorage) */
   file?: File;
@@ -35,18 +46,8 @@ export interface UploadItem {
   /** File size in bytes */
   fileSize: number;
 
-  /** Content type */
-  fileType: UploadContentType;
-
   /** MIME type */
   mimeType: string;
-
-  // Upload settings
-  /** Display duration in seconds */
-  duration: number;
-
-  /** Whether content is active on upload */
-  isActive: boolean;
 
   // Progress tracking
   /** Current status */
@@ -75,13 +76,36 @@ export interface UploadItem {
   /** Number of retry attempts */
   retryCount: number;
 
-  // Result after success
-  /** Content ID from backend */
-  contentId?: number;
-
   // Cancellation (NOT persisted)
   /** AbortController for cancellation */
   abortController?: AbortController;
+
+  // ========================================
+  // Content-specific fields (for uploadType: 'content')
+  // ========================================
+  /** Content type (image/video/audio) */
+  fileType?: UploadContentType;
+
+  /** Display duration in seconds */
+  duration?: number;
+
+  /** Whether content is active on upload */
+  isActive?: boolean;
+
+  /** Content ID from backend after successful upload */
+  contentId?: number;
+
+  // ========================================
+  // Menu Media-specific fields (for uploadType: 'menu_media')
+  // ========================================
+  /** Menu media title (optional) */
+  title?: string;
+
+  /** Menu media alt text (optional) */
+  altText?: string;
+
+  /** Menu Media ID from backend after successful upload */
+  menuMediaId?: number;
 }
 
 /**
@@ -154,11 +178,26 @@ export interface UploadQueueState {
  * Options for adding files to queue
  */
 export interface AddToQueueOptions {
+  /** Upload type (required) */
+  uploadType: UploadType;
+
+  // ========================================
+  // Content-specific options (for uploadType: 'content')
+  // ========================================
   /** Display duration in seconds */
-  duration: number;
+  duration?: number;
 
   /** Whether content is active */
-  isActive: boolean;
+  isActive?: boolean;
+
+  // ========================================
+  // Menu Media-specific options (for uploadType: 'menu_media')
+  // ========================================
+  /** Menu media title (optional) */
+  title?: string;
+
+  /** Menu media alt text (optional) */
+  altText?: string;
 }
 
 /**

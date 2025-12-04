@@ -52,6 +52,9 @@ export interface UserListFilters {
   organization_id?: number;
   role?: UserRole;
   active_only?: boolean;
+  // Sorting
+  sort_by?: string;
+  sort_dir?: 'asc' | 'desc' | null;
 }
 
 export type UserResponse = SuccessResponse<User>;

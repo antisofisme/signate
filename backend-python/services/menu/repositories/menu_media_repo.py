@@ -2,6 +2,7 @@
 
 from typing import List, Optional, Tuple
 from sqlalchemy.orm import Session
+from sqlalchemy import asc, desc
 from datetime import datetime
 
 from .models import MenuMediaModel
@@ -62,15 +63,29 @@ class MenuMediaRepository:
 
         return query.first()
 
+    # Valid sortable columns for menu media
+    SORTABLE_COLUMNS = {
+        'original_filename': MenuMediaModel.original_filename,
+        'mime_type': MenuMediaModel.mime_type,
+        'file_size': MenuMediaModel.file_size,
+        'width': MenuMediaModel.width,
+        'height': MenuMediaModel.height,
+        'created_at': MenuMediaModel.created_at,
+        'updated_at': MenuMediaModel.updated_at,
+        'deleted_at': MenuMediaModel.deleted_at,
+    }
+
     def find_all(
         self,
         organization_id: int,
         skip: int = 0,
         limit: int = 50,
         is_active: Optional[bool] = None,
-        include_deleted: bool = False
+        include_deleted: bool = False,
+        sort_by: Optional[str] = None,
+        sort_dir: Optional[str] = None
     ) -> Tuple[List[MenuMediaModel], int]:
-        """Find all menu media for organization"""
+        """Find all menu media for organization with sorting"""
         query = self.db.query(MenuMediaModel).filter(
             MenuMediaModel.organization_id == organization_id
         )
@@ -84,8 +99,19 @@ class MenuMediaRepository:
         # Count total
         total = query.count()
 
-        # Apply pagination and order
-        media_list = query.order_by(MenuMediaModel.created_at.desc()).offset(skip).limit(limit).all()
+        # Apply sorting
+        if sort_by and sort_by in self.SORTABLE_COLUMNS:
+            column = self.SORTABLE_COLUMNS[sort_by]
+            if sort_dir == 'desc':
+                query = query.order_by(desc(column))
+            else:
+                query = query.order_by(asc(column))
+        else:
+            # Default sort by created_at desc
+            query = query.order_by(desc(MenuMediaModel.created_at))
+
+        # Apply pagination
+        media_list = query.offset(skip).limit(limit).all()
 
         return media_list, total
 
@@ -119,7 +145,9 @@ class MenuMediaRepository:
         organization_id: int,
         skip: int = 0,
         limit: int = 50,
-        search: Optional[str] = None
+        search: Optional[str] = None,
+        sort_by: Optional[str] = None,
+        sort_dir: Optional[str] = None
     ) -> Tuple[List[MenuMediaModel], int]:
         """Find all soft-deleted menu media for organization (Recycle Bin)"""
         query = self.db.query(MenuMediaModel).filter(
@@ -138,8 +166,19 @@ class MenuMediaRepository:
         # Count total
         total = query.count()
 
-        # Apply pagination and order by deleted date (newest first)
-        media_list = query.order_by(MenuMediaModel.deleted_at.desc()).offset(skip).limit(limit).all()
+        # Apply sorting
+        if sort_by and sort_by in self.SORTABLE_COLUMNS:
+            column = self.SORTABLE_COLUMNS[sort_by]
+            if sort_dir == 'desc':
+                query = query.order_by(desc(column))
+            else:
+                query = query.order_by(asc(column))
+        else:
+            # Default: order by deleted date (newest first)
+            query = query.order_by(MenuMediaModel.deleted_at.desc())
+
+        # Apply pagination
+        media_list = query.offset(skip).limit(limit).all()
 
         return media_list, total
 

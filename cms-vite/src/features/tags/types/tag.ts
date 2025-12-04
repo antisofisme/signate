@@ -38,7 +38,7 @@ export interface UpdateTagRequest {
   color?: string;
 }
 
-export type TagSortBy = 'newest' | 'oldest' | 'name_asc' | 'name_desc';
+export type TagSortBy = 'newest' | 'oldest' | 'name_asc' | 'name_desc' | 'tag_name' | 'created_at' | 'content_count' | 'device_count';
 
 export interface TagListData {
   data: Tag[];
@@ -46,7 +46,8 @@ export interface TagListData {
 }
 
 export interface TagListFilters {
-  sort_by?: TagSortBy;
+  sort_by?: string;
+  sort_dir?: 'asc' | 'desc';
 }
 
 export type TagResponse = SuccessResponse<Tag>;

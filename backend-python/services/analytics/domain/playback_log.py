@@ -80,6 +80,7 @@ class PlaybackLog:
         """Convert to dictionary"""
         return {
             "id": self.id,
+            "log_id": self.id,  # Alias for player compatibility
             "content_id": self.content_id,
             "device_id": self.device_id,
             "playlist_id": self.playlist_id,
