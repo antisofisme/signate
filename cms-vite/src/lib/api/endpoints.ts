@@ -109,6 +109,7 @@ export const API_ENDPOINTS = {
 
     // Duplicate detection
     DUPLICATES: '/api/v1/contents/duplicates',
+    DELETED_DUPLICATES: '/api/v1/contents/deleted/duplicates',
 
     // Content-Playlist relationship (reverse lookup)
     GET_PLAYLISTS: (contentId: number) => `/api/v1/contents/${contentId}/playlists`,

@@ -180,12 +180,28 @@ class ContentRepository(IContentRepository):
         return contents, total
 
     def find_by_hash(self, file_hash: str, organization_id: int) -> Optional[Content]:
-        """Find content by file hash (deduplication)"""
+        """
+        Find content by file hash (deduplication).
+
+        Searches BOTH active and deleted content to prevent duplicate storage.
+        Even if a file is in recycle bin, we can still reuse its physical file.
+        Prefers active content over deleted if both exist.
+        """
+        # First try to find active content with this hash
         db_content = self.db.query(ContentModel).filter(
             ContentModel.file_hash == file_hash,
             ContentModel.organization_id == organization_id,
             ContentModel.deleted_at.is_(None)
         ).first()
+
+        # If no active content, check deleted content (recycle bin)
+        # The physical file is still there until permanent delete
+        if not db_content:
+            db_content = self.db.query(ContentModel).filter(
+                ContentModel.file_hash == file_hash,
+                ContentModel.organization_id == organization_id,
+                ContentModel.deleted_at.isnot(None)
+            ).first()
 
         return self._to_entity(db_content) if db_content else None
 
@@ -535,6 +551,61 @@ class ContentRepository(IContentRepository):
                 "thumbnail_url": row.thumbnail_url,
                 "duplicate_count": len(contents),
                 "contents": contents_with_usage
+            })
+
+        return result
+
+    def find_deleted_duplicates(self, organization_id: int) -> List[Dict[str, Any]]:
+        """
+        Find duplicate files (same hash) among deleted content.
+        Returns groups of duplicates in recycle bin.
+        """
+        from sqlalchemy import text
+
+        # Step 1: Find hashes that have duplicates (count > 1) among deleted content
+        duplicate_hashes = self.db.execute(text("""
+            SELECT file_hash, COUNT(*) as cnt, MIN(file_size) as file_size,
+                   MIN(content_type) as content_type, MIN(thumbnail_url) as thumbnail_url
+            FROM contents
+            WHERE organization_id = :org_id AND deleted_at IS NOT NULL AND file_hash IS NOT NULL
+            GROUP BY file_hash
+            HAVING COUNT(*) > 1
+            ORDER BY COUNT(*) DESC
+        """), {"org_id": organization_id}).fetchall()
+
+        if not duplicate_hashes:
+            return []
+
+        result = []
+
+        for row in duplicate_hashes:
+            file_hash = row.file_hash
+
+            # Get all deleted contents with this hash
+            contents = self.db.query(ContentModel).filter(
+                ContentModel.organization_id == organization_id,
+                ContentModel.file_hash == file_hash,
+                ContentModel.deleted_at.isnot(None)
+            ).order_by(ContentModel.deleted_at.desc()).all()
+
+            contents_list = []
+            for content in contents:
+                contents_list.append({
+                    "id": content.id,
+                    "title": content.title,
+                    "original_filename": content.original_filename,
+                    "deleted_at": content.deleted_at.isoformat() if content.deleted_at else None,
+                    "deleted_by_name": None,  # Could join with users table if needed
+                    "is_active": content.is_active,
+                })
+
+            result.append({
+                "file_hash": file_hash[:16] + "...",  # Truncate for display
+                "file_size": row.file_size,
+                "content_type": row.content_type,
+                "thumbnail_url": row.thumbnail_url,
+                "duplicate_count": len(contents),
+                "contents": contents_list
             })
 
         return result

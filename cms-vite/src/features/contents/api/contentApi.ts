@@ -254,6 +254,16 @@ export const getDuplicateContent = async (): Promise<DuplicateContentResponse> =
 };
 
 /**
+ * Get duplicate content groups in recycle bin (deleted files with same hash)
+ */
+export const getDeletedDuplicateContent = async (): Promise<DuplicateContentResponse> => {
+  const response = await apiClient.get<DuplicateContentResponse>(
+    API_ENDPOINTS.CONTENT.DELETED_DUPLICATES
+  );
+  return response.data;
+};
+
+/**
  * Content stats data type (inner data after interceptor unwrap)
  * Note: API client interceptor unwraps { success, data } → just data
  */

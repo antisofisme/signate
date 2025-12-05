@@ -238,12 +238,30 @@ class MenuMediaRepository:
         file_hash: str,
         organization_id: int
     ) -> Optional[MenuMediaModel]:
-        """Find menu media by file hash (for deduplication)"""
-        return self.db.query(MenuMediaModel).filter(
+        """
+        Find menu media by file hash (for deduplication).
+
+        Searches BOTH active and deleted media to prevent duplicate storage.
+        Even if a file is in recycle bin, we can still reuse its physical file.
+        Prefers active media over deleted if both exist.
+        """
+        # First try to find active media with this hash
+        result = self.db.query(MenuMediaModel).filter(
             MenuMediaModel.file_hash == file_hash,
             MenuMediaModel.organization_id == organization_id,
             MenuMediaModel.deleted_at.is_(None)
         ).first()
+
+        # If no active media, check deleted media (recycle bin)
+        # The physical file is still there until permanent delete
+        if not result:
+            result = self.db.query(MenuMediaModel).filter(
+                MenuMediaModel.file_hash == file_hash,
+                MenuMediaModel.organization_id == organization_id,
+                MenuMediaModel.deleted_at.isnot(None)
+            ).first()
+
+        return result
 
     def find_duplicates_with_usage(self, organization_id: int) -> list:
         """
@@ -328,3 +346,56 @@ class MenuMediaRepository:
             ],
             "used_count": len(menu_items)
         }
+
+    def find_deleted_duplicates(self, organization_id: int) -> list:
+        """
+        Find duplicate files (same hash) among deleted menu media.
+        Returns groups of duplicates in recycle bin.
+        """
+        from sqlalchemy import text
+
+        # Find hashes that have duplicates (count > 1) among deleted media
+        duplicate_hashes = self.db.execute(text("""
+            SELECT file_hash, COUNT(*) as cnt, MIN(file_size) as file_size,
+                   MIN(mime_type) as mime_type
+            FROM menu_media
+            WHERE organization_id = :org_id AND deleted_at IS NOT NULL AND file_hash IS NOT NULL
+            GROUP BY file_hash
+            HAVING COUNT(*) > 1
+            ORDER BY COUNT(*) DESC
+        """), {"org_id": organization_id}).fetchall()
+
+        if not duplicate_hashes:
+            return []
+
+        result = []
+
+        for row in duplicate_hashes:
+            file_hash = row.file_hash
+
+            # Get all deleted media with this hash
+            media_list = self.db.query(MenuMediaModel).filter(
+                MenuMediaModel.organization_id == organization_id,
+                MenuMediaModel.file_hash == file_hash,
+                MenuMediaModel.deleted_at.isnot(None)
+            ).order_by(MenuMediaModel.deleted_at.desc()).all()
+
+            media_items = []
+            for media in media_list:
+                media_items.append({
+                    "id": media.id,
+                    "title": media.title or media.original_filename,
+                    "original_filename": media.original_filename,
+                    "deleted_at": media.deleted_at.isoformat() if media.deleted_at else None,
+                    "is_active": media.is_active,
+                })
+
+            result.append({
+                "file_hash": file_hash[:16] + "..." if file_hash else None,
+                "file_size": row.file_size,
+                "mime_type": row.mime_type,
+                "duplicate_count": len(media_list),
+                "media": media_items
+            })
+
+        return result

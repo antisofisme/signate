@@ -314,6 +314,14 @@ export const menuApi = {
     return unwrapResponse<MenuMediaDuplicatesResponse>(response);
   },
 
+  /**
+   * Get duplicate menu media in recycle bin (deleted files with same hash)
+   */
+  getDeletedDuplicateMedia: async (): Promise<MenuMediaDuplicatesResponse> => {
+    const response = await apiClient.get('/api/v1/menu-media/deleted/duplicates');
+    return unwrapResponse<MenuMediaDuplicatesResponse>(response);
+  },
+
   // ========== PIN Verification ==========
 
   /**

@@ -538,6 +538,310 @@ def transcode_to_hls(self, content_id: int):
         db.close()
 
 
+@app.task(
+    bind=True,
+    name='tasks.content_tasks.transcode_audio',
+    max_retries=3,
+    default_retry_delay=60,
+    autoretry_for=(Exception,),
+    retry_backoff=True,
+    retry_backoff_max=600,
+    retry_jitter=True
+)
+def transcode_audio(self, content_id: int):
+    """
+    Transcode audio to AAC format for optimal browser compatibility.
+
+    Converts any audio format to AAC (M4A container) with:
+    - 192kbps bitrate (good quality, reasonable size)
+    - 48kHz sample rate (standard for web)
+    - Stereo output
+
+    Args:
+        content_id: Content ID from database
+
+    Returns:
+        Dictionary with transcoding results
+    """
+    db = SessionLocal()
+    content = None
+
+    try:
+        # Get content from database
+        content = db.query(ContentModel).filter(ContentModel.id == content_id).first()
+
+        if not content:
+            raise ValueError(f"Content {content_id} not found")
+
+        if content.content_type != 'audio':
+            raise ValueError(f"Content {content_id} is not audio (type: {content.content_type})")
+
+        # Get source file path (file_path contains full absolute path)
+        source_path = Path(content.file_path)
+        if not source_path.exists():
+            raise FileNotFoundError(f"Source file not found: {source_path}")
+
+        # Update status to processing
+        content.transcoding_status = 'processing'
+        content.transcoding_progress = 10
+        db.commit()
+
+        print(f"[AudioTranscode] Starting transcoding for content {content_id}")
+        print(f"[AudioTranscode] Source: {source_path}")
+
+        # Send WebSocket notification - started
+        send_websocket_notification(
+            org_id=content.organization_id,
+            event_type='content.transcoding_progress',
+            data={
+                'content_id': content_id,
+                'title': content.title,
+                'type': 'audio',
+                'status': 'processing',
+                'progress': 10,
+                'message': 'Starting audio transcoding...'
+            }
+        )
+
+        # Check if already in optimal format - skip transcoding
+        # These formats are universally supported in modern browsers, no need to transcode:
+        # - MP3: Universal support
+        # - AAC/M4A: Universal support
+        # - OGG/OGA: Chrome, Firefox, Edge, modern Safari
+        OPTIMAL_FORMATS = ['.mp3', '.m4a', '.aac', '.ogg', '.oga']
+        ext = source_path.suffix.lower()
+        if ext in OPTIMAL_FORMATS:
+            print(f"[AudioTranscode] Source is already in optimal format ({ext}), marking as completed")
+            content.transcoding_status = 'completed'
+            content.transcoding_progress = 100
+            db.commit()
+
+            send_websocket_notification(
+                org_id=content.organization_id,
+                event_type='content.transcoded',
+                data={
+                    'content_id': content_id,
+                    'title': content.title,
+                    'type': 'audio',
+                    'status': 'completed',
+                    'progress': 100,
+                    'message': 'Audio already in optimal format'
+                }
+            )
+
+            return {
+                'content_id': content_id,
+                'status': 'completed',
+                'message': 'Already AAC format, no transcoding needed'
+            }
+
+        # Output path: same directory, .m4a extension
+        output_path = source_path.with_suffix('.m4a')
+
+        # Probe source to get duration
+        try:
+            probe = ffmpeg.probe(str(source_path))
+            duration = float(probe['format'].get('duration', 0))
+            print(f"[AudioTranscode] Duration: {duration}s")
+        except Exception as e:
+            print(f"[AudioTranscode] Warning: Could not probe duration: {e}")
+            duration = 0
+
+        content.transcoding_progress = 20
+        db.commit()
+
+        # Transcode to AAC
+        print(f"[AudioTranscode] Transcoding to AAC: {output_path}")
+
+        try:
+            (
+                ffmpeg
+                .input(str(source_path))
+                .output(
+                    str(output_path),
+                    acodec='aac',
+                    audio_bitrate='192k',
+                    ar='48000',
+                    ac=2,
+                    movflags='+faststart'  # Optimize for streaming
+                )
+                .overwrite_output()
+                .run(capture_stdout=True, capture_stderr=True)
+            )
+        except ffmpeg.Error as e:
+            error_message = e.stderr.decode() if e.stderr else str(e)
+            print(f"[AudioTranscode] FFmpeg error: {error_message}")
+            raise
+
+        print(f"[AudioTranscode] Transcoding completed: {output_path}")
+
+        # Verify output exists
+        if not output_path.exists():
+            raise FileNotFoundError(f"Output file not created: {output_path}")
+
+        # Get output file size
+        output_size = output_path.stat().st_size
+        print(f"[AudioTranscode] Output size: {output_size / 1024:.1f} KB")
+
+        # Update storage_key and file_path to point to new file
+        old_storage_key = content.storage_key
+        new_storage_key = old_storage_key.rsplit('.', 1)[0] + '.m4a'
+        new_file_path = str(source_path.with_suffix('.m4a'))
+
+        # Update database
+        content.storage_key = new_storage_key
+        content.file_path = new_file_path
+        content.transcoding_status = 'completed'
+        content.transcoding_progress = 100
+        content.audio_codec = 'aac'
+        content.audio_bitrate = 192000
+        content.audio_sample_rate = 48000
+        content.audio_channels = 2
+        db.commit()
+
+        print(f"[AudioTranscode] Database updated, new storage_key: {new_storage_key}")
+
+        # Optionally delete original file (keep for safety)
+        # source_path.unlink()
+
+        # Send WebSocket notification - completed
+        send_websocket_notification(
+            org_id=content.organization_id,
+            event_type='content.transcoded',
+            data={
+                'content_id': content_id,
+                'title': content.title,
+                'type': 'audio',
+                'status': 'completed',
+                'progress': 100,
+                'duration': duration,
+                'output_size': output_size,
+                'message': 'Audio transcoding completed'
+            }
+        )
+
+        return {
+            'content_id': content_id,
+            'status': 'completed',
+            'output_path': str(output_path),
+            'output_size': output_size,
+            'duration': duration
+        }
+
+    except ValueError as e:
+        retry_count = self.request.retries
+        error_msg = f"[Retry {retry_count}/3] Validation error: {str(e)}"
+        print(error_msg)
+
+        if content:
+            is_final_failure = retry_count >= 2
+            content.transcoding_status = 'failed' if is_final_failure else 'pending'
+            content.transcoding_error = f"{error_msg}"[:500]
+            content.transcoding_progress = 0
+            db.commit()
+
+            if is_final_failure:
+                send_websocket_notification(
+                    org_id=content.organization_id,
+                    event_type='content.transcoding_failed',
+                    data={
+                        'content_id': content_id,
+                        'title': content.title,
+                        'type': 'audio',
+                        'status': 'failed',
+                        'error': str(e)[:200],
+                        'message': f'Audio transcoding failed: {str(e)[:100]}'
+                    }
+                )
+        raise
+
+    except FileNotFoundError as e:
+        retry_count = self.request.retries
+        error_msg = f"[Retry {retry_count}/3] File not found: {str(e)}"
+        print(error_msg)
+
+        if content:
+            is_final_failure = retry_count >= 2
+            content.transcoding_status = 'failed' if is_final_failure else 'pending'
+            content.transcoding_error = f"{error_msg}"[:500]
+            content.transcoding_progress = 0
+            db.commit()
+
+            if is_final_failure:
+                send_websocket_notification(
+                    org_id=content.organization_id,
+                    event_type='content.transcoding_failed',
+                    data={
+                        'content_id': content_id,
+                        'title': content.title,
+                        'type': 'audio',
+                        'status': 'failed',
+                        'error': 'Source file not found',
+                        'message': 'Audio transcoding failed: Source file not found'
+                    }
+                )
+        raise
+
+    except ffmpeg.Error as e:
+        retry_count = self.request.retries
+        error_message = e.stderr.decode() if e.stderr else str(e)
+        error_msg = f"[Retry {retry_count}/3] FFmpeg error: {error_message}"
+        print(error_msg)
+
+        if content:
+            is_final_failure = retry_count >= 2
+            content.transcoding_status = 'failed' if is_final_failure else 'pending'
+            content.transcoding_error = f"FFmpeg error: {error_message}"[:500]
+            content.transcoding_progress = 0
+            db.commit()
+
+            if is_final_failure:
+                send_websocket_notification(
+                    org_id=content.organization_id,
+                    event_type='content.transcoding_failed',
+                    data={
+                        'content_id': content_id,
+                        'title': content.title,
+                        'type': 'audio',
+                        'status': 'failed',
+                        'error': error_message[:200],
+                        'message': 'Audio transcoding failed: FFmpeg error'
+                    }
+                )
+        raise
+
+    except Exception as e:
+        retry_count = self.request.retries
+        error_msg = f"[Retry {retry_count}/3] Unexpected error: {str(e)}"
+        print(error_msg)
+        print(f"[AudioTranscode] Error type: {type(e).__name__}")
+
+        if content:
+            is_final_failure = retry_count >= 2
+            content.transcoding_status = 'failed' if is_final_failure else 'pending'
+            content.transcoding_error = f"{error_msg}"[:500]
+            content.transcoding_progress = 0
+            db.commit()
+
+            if is_final_failure:
+                send_websocket_notification(
+                    org_id=content.organization_id,
+                    event_type='content.transcoding_failed',
+                    data={
+                        'content_id': content_id,
+                        'title': content.title,
+                        'type': 'audio',
+                        'status': 'failed',
+                        'error': str(e)[:200],
+                        'message': f'Audio transcoding failed: {type(e).__name__}'
+                    }
+                )
+        raise
+
+    finally:
+        db.close()
+
+
 @app.task(bind=True, name='tasks.content_tasks.generate_thumbnail')
 def generate_thumbnail(self, content_id: int):
     """

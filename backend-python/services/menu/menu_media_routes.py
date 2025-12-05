@@ -182,6 +182,24 @@ def list_deleted_menu_media(
     })
 
 
+@router.get("/deleted/duplicates")
+def list_deleted_duplicate_menu_media(
+    current_user: CurrentUser = Depends(require_permission("menus", "view")),
+    media_repo: MenuMediaRepository = Depends(get_menu_media_repository)
+):
+    """
+    List all duplicate files (same hash) in recycle bin.
+    Returns groups of duplicates for recovery management.
+    """
+    duplicates = media_repo.find_deleted_duplicates(current_user.organization_id)
+
+    return success_response(data={
+        "duplicates": duplicates,
+        "total_groups": len(duplicates),
+        "total_duplicates": sum(group["duplicate_count"] for group in duplicates)
+    })
+
+
 @router.get("/manifest")
 def get_media_manifest(
     menu_id: Optional[int] = None,
@@ -586,6 +604,8 @@ def permanent_delete_menu_media(
     audit_logger: AuditLogger = Depends(get_audit_logger)
 ):
     """Permanently delete menu media - cannot be recovered (requires menus:delete permission)"""
+    from .repositories.models import MenuMediaModel
+
     # Find deleted media (include_deleted=True)
     media = media_repo.find_by_id(media_id, current_user.organization_id, include_deleted=True)
     if not media:
@@ -593,6 +613,31 @@ def permanent_delete_menu_media(
 
     if not media.deleted_at:
         raise HTTPException(status_code=400, detail="Media must be soft-deleted first")
+
+    # BLOCK permanent delete ONLY if:
+    # 1. There's an ACTIVE duplicate AND
+    # 2. This is the ONLY one in recycle bin (no other deleted duplicates)
+    #
+    # If there are multiple in recycle bin, allow deleting some (keep at least 1 for active)
+    if media.file_hash:
+        active_duplicate_count = media_repo.db.query(MenuMediaModel).filter(
+            MenuMediaModel.file_hash == media.file_hash,
+            MenuMediaModel.id != media_id,
+            MenuMediaModel.deleted_at.is_(None)  # ACTIVE media only
+        ).count()
+
+        other_deleted_count = media_repo.db.query(MenuMediaModel).filter(
+            MenuMediaModel.file_hash == media.file_hash,
+            MenuMediaModel.id != media_id,
+            MenuMediaModel.deleted_at.isnot(None)  # OTHER deleted media
+        ).count()
+
+        # Block only if: has active duplicate AND this is the last one in recycle
+        if active_duplicate_count > 0 and other_deleted_count == 0:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Cannot permanently delete: This is the only copy in recycle bin, but {active_duplicate_count} duplicate(s) are still active. Delete the active duplicate(s) first."
+            )
 
     # Store filename for audit log before deletion
     filename = media.filename
@@ -623,12 +668,37 @@ def bulk_permanent_delete_menu_media(
     audit_logger: AuditLogger = Depends(get_audit_logger)
 ):
     """Permanently delete multiple menu media items (requires menus:delete permission)"""
+    from .repositories.models import MenuMediaModel
+
     deleted_count = 0
+    skipped_count = 0
+    skipped_filenames = []
 
     deleted_filenames = []
     for media_id in media_ids:
         media = media_repo.find_by_id(media_id, current_user.organization_id, include_deleted=True)
         if media and media.deleted_at:
+            # Check for active duplicates before deleting
+            # Skip ONLY if: has active duplicate AND this is the last one in recycle
+            if media.file_hash:
+                active_duplicate_count = media_repo.db.query(MenuMediaModel).filter(
+                    MenuMediaModel.file_hash == media.file_hash,
+                    MenuMediaModel.id != media_id,
+                    MenuMediaModel.deleted_at.is_(None)  # ACTIVE media only
+                ).count()
+
+                other_deleted_count = media_repo.db.query(MenuMediaModel).filter(
+                    MenuMediaModel.file_hash == media.file_hash,
+                    MenuMediaModel.id != media_id,
+                    MenuMediaModel.deleted_at.isnot(None)  # OTHER deleted media
+                ).count()
+
+                # Skip only if: has active duplicate AND this is the last one in recycle
+                if active_duplicate_count > 0 and other_deleted_count == 0:
+                    skipped_count += 1
+                    skipped_filenames.append(media.filename)
+                    continue
+
             deleted_filenames.append(media.filename)
             media_repo.hard_delete(media)
             deleted_count += 1
@@ -639,16 +709,31 @@ def bulk_permanent_delete_menu_media(
         action="menu_media.bulk_permanent_delete",
         resource_type="menu_media",
         resource_id=None,
-        details={"deleted_count": deleted_count, "filenames": deleted_filenames},
+        details={
+            "deleted_count": deleted_count,
+            "skipped_count": skipped_count,
+            "filenames": deleted_filenames,
+            "skipped_filenames": skipped_filenames
+        },
         organization_id=current_user.organization_id
     )
 
     # CRITICAL: Invalidate cache
     cache.invalidate_menu_media(None, current_user.organization_id)
 
+    # Build message
+    if skipped_count > 0:
+        message = f"Permanently deleted {deleted_count} media items. Skipped {skipped_count} items (have active duplicates)."
+    else:
+        message = f"Permanently deleted {deleted_count} media items"
+
     return success_response(
-        data={"deleted_count": deleted_count},
-        message=f"Permanently deleted {deleted_count} media items"
+        data={
+            "deleted_count": deleted_count,
+            "skipped_count": skipped_count,
+            "skipped_filenames": skipped_filenames
+        },
+        message=message
     )
 
 

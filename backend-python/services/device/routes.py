@@ -1407,6 +1407,9 @@ def delete_device(
             resource_id=device_id
         )
 
+    # CRITICAL: Invalidate device cache immediately so list updates
+    cache.invalidate_device(device_id, current_user["organization_id"])
+
     # Calculate duration
     duration_ms = (time.time() - start_time) * 1000
 

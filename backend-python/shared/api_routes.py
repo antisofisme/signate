@@ -173,6 +173,7 @@ class ContentRoutes:
 
     # Duplicate detection
     DUPLICATES = f"{BASE}/duplicates"
+    DELETED_DUPLICATES = f"{BASE}/deleted/duplicates"
 
     # Content-Playlist relationship (reverse lookup)
     GET_CONTENT_PLAYLISTS = f"{BASE}/{{content_id}}/playlists"

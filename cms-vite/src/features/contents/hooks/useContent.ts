@@ -21,6 +21,7 @@ import {
   restoreContent,
   permanentDeleteContent,
   getDuplicateContent,
+  getDeletedDuplicateContent,
   getContentPlaylists,
 } from '../api/contentApi';
 
@@ -386,6 +387,7 @@ export const useDeletedContentList = (filters?: ContentFilters) => {
 
 /**
  * Restore deleted content from Recycle Bin
+ * Uses optimistic update for instant UI feedback
  */
 export const useRestoreContent = () => {
   const queryClient = useQueryClient();
@@ -393,14 +395,89 @@ export const useRestoreContent = () => {
 
   return useMutation({
     mutationFn: (id: number) => restoreContent(id),
-    onSuccess: () => {
-      // Invalidate both active and deleted lists
-      queryClient.invalidateQueries({ queryKey: contentKeys.lists(orgId) });
-      queryClient.invalidateQueries({ queryKey: contentKeys.deletedLists(orgId) });
-      queryClient.invalidateQueries({ queryKey: contentKeys.stats(orgId), refetchType: 'active' });
-      toast.success('Content restored successfully');
+    // Optimistic update: Remove from recycle bin UI immediately
+    onMutate: async (restoredId: number) => {
+      // Cancel any outgoing refetches to prevent race conditions
+      await queryClient.cancelQueries({ queryKey: ['content'] });
+
+      // Snapshot previous values for rollback
+      const previousDeletedLists = queryClient.getQueriesData({
+        queryKey: ['content', 'deleted'],
+        exact: false,
+      });
+
+      // Optimistically remove from deleted/recycle bin list
+      queryClient.setQueriesData(
+        {
+          queryKey: ['content', 'deleted'],
+          exact: false,
+        },
+        (old: any) => {
+          if (!old?.data) return old;
+
+          // Format 1: data is array directly
+          if (Array.isArray(old.data)) {
+            return {
+              ...old,
+              data: old.data.filter((item: any) => item.id !== restoredId),
+            };
+          }
+
+          // Format 2: data has items array (paginated)
+          if (old.data.items) {
+            return {
+              ...old,
+              data: {
+                ...old.data,
+                items: old.data.items.filter((item: any) => item.id !== restoredId),
+                total: Math.max(0, (old.data.total || 0) - 1),
+              },
+            };
+          }
+
+          return old;
+        }
+      );
+
+      return { previousDeletedLists };
     },
-    onError: (error: unknown) => {
+    onSuccess: () => {
+      toast.success('Content restored successfully');
+
+      // Invalidate active content lists so restored item appears immediately
+      // Use exact: false to match ALL list queries regardless of filters
+      queryClient.invalidateQueries({
+        queryKey: ['content', 'list'],
+        exact: false,
+        refetchType: 'active',
+      });
+
+      // Invalidate deleted lists (already optimistically updated)
+      queryClient.invalidateQueries({
+        queryKey: ['content', 'deleted'],
+        exact: false,
+        refetchType: 'active',
+      });
+
+      // Invalidate stats
+      queryClient.invalidateQueries({
+        queryKey: contentKeys.stats(orgId),
+        refetchType: 'active',
+      });
+
+      // Invalidate duplicates if any
+      queryClient.invalidateQueries({
+        queryKey: contentKeys.duplicates(orgId),
+        refetchType: 'active',
+      });
+    },
+    onError: (error: unknown, _restoredId, context) => {
+      // Rollback on error
+      if (context?.previousDeletedLists) {
+        context.previousDeletedLists.forEach(([queryKey, data]) => {
+          queryClient.setQueryData(queryKey, data);
+        });
+      }
       toast.error(handleAPIError(error).message);
     },
   });
@@ -535,6 +612,20 @@ export const useDuplicateContent = () => {
   return useQuery({
     queryKey: contentKeys.duplicates(orgId),
     queryFn: () => getDuplicateContent(),
+    staleTime: 60000, // 1 minute
+    enabled: !!orgId,
+  });
+};
+
+/**
+ * Get duplicate content groups in recycle bin (deleted files with same hash)
+ */
+export const useDeletedDuplicateContent = () => {
+  const orgId = useSelectedOrgId();
+
+  return useQuery({
+    queryKey: ['contents', 'deleted', 'duplicates', orgId],
+    queryFn: () => getDeletedDuplicateContent(),
     staleTime: 60000, // 1 minute
     enabled: !!orgId,
   });

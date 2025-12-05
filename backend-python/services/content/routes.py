@@ -494,6 +494,34 @@ async def get_duplicate_content(
         raise HTTPException(status_code=500, detail=f"Get duplicates failed: {str(e)}")
 
 
+@router.get(ContentRoutes.DELETED_DUPLICATES, response_model=dict)
+async def get_deleted_duplicate_content(
+    content_repo: IContentRepository = Depends(get_content_repository),
+    current_user: dict = Depends(require_permission("contents", "read"))
+):
+    """
+    Get duplicate content groups in recycle bin
+
+    Requires 'contents:read' permission.
+    Returns groups of deleted content that share the same file (identical hash).
+    """
+    try:
+        duplicates = content_repo.find_deleted_duplicates(
+            organization_id=current_user["organization_id"]
+        )
+
+        # Calculate totals
+        total_groups = len(duplicates)
+        total_duplicates = sum(group["duplicate_count"] for group in duplicates)
+
+        return success_response(
+            data=duplicates,
+            message=f"Found {total_groups} duplicate groups with {total_duplicates} total deleted files"
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Get deleted duplicates failed: {str(e)}")
+
+
 @router.get(ContentRoutes.GET, response_model=dict)
 async def get_content(
     content_id: int,
@@ -908,17 +936,43 @@ async def permanent_delete_content(
         content_title = db_content.title
         content_type = db_content.content_type
         storage_key = db_content.storage_key
+        file_hash = db_content.file_hash
         file_size = db_content.file_size
 
-        # Check if other content records use the same storage
-        # (for deduplicated files, don't delete storage if still in use)
-        same_storage_count = db.query(ContentModel).filter(
-            ContentModel.storage_key == storage_key,
-            ContentModel.id != content_id
-        ).count()
+        # BLOCK permanent delete ONLY if:
+        # 1. There's an ACTIVE duplicate AND
+        # 2. This is the ONLY one in recycle bin (no other deleted duplicates)
+        #
+        # If there are multiple in recycle bin, allow deleting some (keep at least 1 for active)
+        if file_hash:
+            active_duplicate_count = db.query(ContentModel).filter(
+                ContentModel.file_hash == file_hash,
+                ContentModel.id != content_id,
+                ContentModel.deleted_at.is_(None)  # ACTIVE content only
+            ).count()
 
-        # Delete file from storage only if no other records use it
-        if same_storage_count == 0 and storage_key:
+            other_deleted_count = db.query(ContentModel).filter(
+                ContentModel.file_hash == file_hash,
+                ContentModel.id != content_id,
+                ContentModel.deleted_at.isnot(None)  # OTHER deleted content
+            ).count()
+
+            # Block only if: has active duplicate AND this is the last one in recycle
+            if active_duplicate_count > 0 and other_deleted_count == 0:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Cannot permanently delete: This is the only copy in recycle bin, but {active_duplicate_count} duplicate(s) are still active. Delete the active duplicate(s) first."
+                )
+
+        # Check if other content records use the same physical file (active OR deleted)
+        # This determines whether to delete the physical file
+        same_file_count = db.query(ContentModel).filter(
+            ContentModel.file_hash == file_hash,
+            ContentModel.id != content_id
+        ).count() if file_hash else 0
+
+        # Delete file from storage only if no other records use the same physical file
+        if same_file_count == 0 and storage_key:
             try:
                 await storage_service.delete_file(storage_key)
             except Exception as e:
@@ -942,7 +996,7 @@ async def permanent_delete_content(
                 "title": content_title,
                 "content_type": content_type,
                 "file_size": file_size,
-                "storage_deleted": same_storage_count == 0
+                "storage_deleted": same_file_count == 0
             },
             ip_address=request.client.host if request.client else None,
             organization_id=current_user["organization_id"]

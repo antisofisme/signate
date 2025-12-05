@@ -180,6 +180,21 @@ export const useDuplicateMenuMedia = () => {
   });
 };
 
+/**
+ * Hook to get duplicate menu media in recycle bin (deleted files with same hash)
+ */
+export const useDeletedDuplicateMenuMedia = () => {
+  const orgId = useSelectedOrgId();
+  const hasHydrated = useAuthStore((state) => state._hasHydrated);
+
+  return useQuery({
+    queryKey: ['menu-media', 'deleted', 'duplicates', orgId],
+    queryFn: () => menuApi.getDeletedDuplicateMedia(),
+    staleTime: 30000, // 30 seconds
+    enabled: hasHydrated && !!orgId,
+  });
+};
+
 // Legacy hook for backward compatibility
 export const useMenuMedia = useMenuMediaList;
 

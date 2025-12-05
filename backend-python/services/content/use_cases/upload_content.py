@@ -366,6 +366,9 @@ class UploadContentUseCase:
                 transcode_to_hls.delay(saved_content.id)
                 # Video thumbnails still async (require ffmpeg, takes longer)
                 generate_thumbnail.delay(saved_content.id)
+            elif content_type == 'audio':
+                from tasks.content_tasks import transcode_audio
+                transcode_audio.delay(saved_content.id)
             # Note: Image thumbnails are now generated synchronously in step 6b
             
         # 9. Send WebSocket notification (if manager is initialized)

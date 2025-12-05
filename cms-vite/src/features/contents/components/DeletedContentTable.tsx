@@ -3,10 +3,10 @@
  *
  * LAYER 1: PRESENTATION
  * Displays soft-deleted content (Recycle Bin) with restore/permanent delete options
- * Includes bulk selection and bulk permanent delete functionality
+ * Includes bulk selection, bulk permanent delete, and duplicate grouping
  */
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Trash2,
@@ -15,6 +15,9 @@ import {
   FileVideo,
   FileAudio,
   Eye,
+  ChevronDown,
+  ChevronRight,
+  Copy,
 } from 'lucide-react';
 import { usePagination, useTableSort, useTableSelection } from '@/shared/hooks';
 import {
@@ -34,8 +37,9 @@ import {
   useRestoreContent,
   usePermanentDeleteContent,
   useBulkPermanentDeleteContent,
+  useDeletedDuplicateContent,
 } from '../hooks/useContent';
-import type { Content, ContentType, ContentFilters } from '../types/content';
+import type { Content, ContentType, ContentFilters, DuplicateGroup } from '../types/content';
 import { formatFileSize } from '../api/contentApi';
 import { ContentPreviewModal } from './ContentPreviewModal';
 
@@ -73,6 +77,9 @@ export function DeletedContentTable() {
   const [contentToDelete, setContentToDelete] = useState<Content | null>(null);
   const [showBulkDeleteConfirm, setShowBulkDeleteConfirm] = useState(false);
 
+  // State for expand/collapse groups
+  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
+
   // Selection hook (replaces manual selection state)
   const {
     selectedIds,
@@ -89,9 +96,41 @@ export function DeletedContentTable() {
     skip: pagination.skip,
     limit: pagination.limit,
   });
+  const { data: duplicateData } = useDeletedDuplicateContent();
   const restoreMutation = useRestoreContent();
   const permanentDeleteMutation = usePermanentDeleteContent();
   const bulkPermanentDeleteMutation = useBulkPermanentDeleteContent();
+
+  // Build duplicate lookup map
+  const duplicateMap = useMemo(() => {
+    const map = new Map<number, { hash: string; group: DuplicateGroup }>();
+    const groups: DuplicateGroup[] = Array.isArray(duplicateData)
+      ? duplicateData
+      : (duplicateData?.data || []);
+
+    groups.forEach((group: DuplicateGroup) => {
+      group.contents.forEach((item) => {
+        map.set(item.id, {
+          hash: group.file_hash,
+          group,
+        });
+      });
+    });
+    return map;
+  }, [duplicateData]);
+
+  // Toggle group expansion
+  const toggleGroupExpand = (hash: string) => {
+    setExpandedGroups((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(hash)) {
+        newSet.delete(hash);
+      } else {
+        newSet.add(hash);
+      }
+      return newSet;
+    });
+  };
 
   // Handlers
   const handlePreview = (content: Content) => {
@@ -121,9 +160,230 @@ export function DeletedContentTable() {
     }
   };
 
+  // Render a single content row
+  const renderContentRow = (content: Content, isChild: boolean = false) => (
+    <tr
+      key={isChild ? `dup-${content.id}` : content.id}
+      className={`${TABLE_STYLES.tr} ${
+        isSelected(content.id) ? 'bg-red-50 dark:bg-red-900/10' : ''
+      } ${isChild ? 'bg-gray-50/50 dark:bg-gray-800/50' : ''}`}
+    >
+      {/* Checkbox */}
+      <td className={`${TABLE_STYLES.td} text-center`}>
+        <div className="flex items-center justify-center">
+          {isChild && (
+            <div className="w-4 border-l-2 border-b-2 border-orange-300 dark:border-orange-700 h-4 mr-1" />
+          )}
+          <input
+            type="checkbox"
+            checked={isSelected(content.id)}
+            onChange={() => toggleSelection(content.id)}
+            className="w-4 h-4 text-red-600 bg-gray-100 border-gray-300 rounded focus:ring-red-500 dark:focus:ring-red-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
+          />
+        </div>
+      </td>
+      <td className="px-3 py-4 overflow-hidden">
+        <div className={`flex items-center min-w-0 ${isChild ? 'pl-4' : ''}`}>
+          {content.thumbnail_url ? (
+            <img
+              src={content.thumbnail_url}
+              alt={content.title}
+              className="w-10 h-10 rounded object-cover mr-2 flex-shrink-0 opacity-60"
+            />
+          ) : (
+            <div className="w-10 h-10 bg-gray-200 dark:bg-gray-700 rounded flex items-center justify-center mr-2 flex-shrink-0 opacity-60">
+              {getContentTypeIcon(content.content_type)}
+            </div>
+          )}
+          <div className="min-w-0 flex-1 overflow-hidden">
+            <p className="text-sm font-medium text-gray-500 dark:text-gray-400 truncate line-through" title={content.title}>
+              {content.title}
+            </p>
+            {content.description && (
+              <p className="text-xs text-gray-400 dark:text-gray-500 truncate" title={content.description}>
+                {content.description}
+              </p>
+            )}
+          </div>
+        </div>
+      </td>
+      <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+        {formatFileSize(content.file_size)}
+      </td>
+      <td className="px-4 py-3 whitespace-nowrap">
+        <div className="flex flex-col">
+          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300 capitalize">
+            {content.content_type}
+          </span>
+          {content.resolution && (
+            <span className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
+              {content.resolution}
+            </span>
+          )}
+        </div>
+      </td>
+      <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+        {content.duration ? `${content.duration}s` : '-'}
+      </td>
+      <td className="px-4 py-3 whitespace-nowrap">
+        <div className="flex flex-col">
+          <span className="text-sm text-gray-500 dark:text-gray-400">
+            {content.deleted_at
+              ? new Date(content.deleted_at).toLocaleDateString()
+              : '-'}
+          </span>
+          {content.deleted_by_name && (
+            <span className="text-xs text-gray-400 dark:text-gray-500 truncate" title={content.deleted_by_name}>
+              {content.deleted_by_name}
+            </span>
+          )}
+        </div>
+      </td>
+      <td className={TABLE_STYLES.td}>
+        <div className="flex items-center gap-1">
+          <button
+            onClick={() => handlePreview(content)}
+            className={ACTION_BUTTON.VIEW}
+            title={t('contents.actions.preview')}
+          >
+            <Eye className="w-4 h-4" />
+          </button>
+          {canUpdate && (
+            <button
+              onClick={() => setContentToRestore(content)}
+              className={ACTION_BUTTON.RESTORE}
+              title={t('contents.deleted.restore')}
+            >
+              <RotateCcw className="w-4 h-4" />
+            </button>
+          )}
+          {canDelete && (
+            <button
+              onClick={() => setContentToDelete(content)}
+              className={ACTION_BUTTON.DELETE}
+              title={t('contents.deleted.deletePermanently')}
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
+          )}
+        </div>
+      </td>
+    </tr>
+  );
+
+  // Render table rows with duplicate grouping
+  const renderTableRows = () => {
+    if (!contentData?.data) return null;
+
+    const renderedGroups = new Set<string>();
+    const rows: React.ReactNode[] = [];
+
+    contentData.data.forEach((content) => {
+      const dupInfo = duplicateMap.get(content.id);
+
+      // If this content is part of a duplicate group
+      if (dupInfo && !renderedGroups.has(dupInfo.hash)) {
+        renderedGroups.add(dupInfo.hash);
+        const group = dupInfo.group;
+        const isExpanded = expandedGroups.has(dupInfo.hash);
+
+        // Render group header row
+        rows.push(
+          <tr
+            key={`group-${dupInfo.hash}`}
+            className="bg-orange-50 dark:bg-orange-900/20 hover:bg-orange-100 dark:hover:bg-orange-900/30 cursor-pointer"
+            onClick={() => toggleGroupExpand(dupInfo.hash)}
+          >
+            <td className="px-2 py-3 text-center whitespace-nowrap">
+              {isExpanded ? (
+                <ChevronDown className="w-4 h-4 text-orange-600" />
+              ) : (
+                <ChevronRight className="w-4 h-4 text-orange-600" />
+              )}
+            </td>
+            <td className="px-3 py-3 overflow-hidden">
+              <div className="flex items-center gap-3 min-w-0">
+                {group.thumbnail_url ? (
+                  <img
+                    src={group.thumbnail_url}
+                    alt="Duplicate group"
+                    className="w-10 h-10 rounded object-cover flex-shrink-0 opacity-60"
+                  />
+                ) : (
+                  <div className="w-10 h-10 bg-orange-200 dark:bg-orange-800 rounded flex items-center justify-center flex-shrink-0">
+                    {getContentTypeIcon(group.content_type)}
+                  </div>
+                )}
+                <div className="min-w-0 overflow-hidden">
+                  <div className="flex items-center gap-2">
+                    <Copy className="w-4 h-4 text-orange-600 flex-shrink-0" />
+                    <span className="font-medium text-orange-800 dark:text-orange-200 truncate">
+                      {t('contents.duplicates.count', { count: group.duplicate_count })}
+                    </span>
+                  </div>
+                  <span className="text-xs text-orange-600 dark:text-orange-400 font-mono truncate block">
+                    {group.file_hash.slice(0, 12)}...
+                  </span>
+                </div>
+              </div>
+            </td>
+            <td className="px-4 py-3 whitespace-nowrap text-sm text-orange-700 dark:text-orange-300">
+              {formatFileSize(group.file_size)}
+            </td>
+            <td className="px-4 py-3 whitespace-nowrap">
+              <span className="px-2 py-0.5 text-xs font-medium rounded bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200 capitalize">
+                {group.content_type}
+              </span>
+            </td>
+            <td className="px-4 py-3 whitespace-nowrap text-sm text-orange-700 dark:text-orange-300">
+              -
+            </td>
+            <td className="px-4 py-3 whitespace-nowrap text-sm text-orange-700 dark:text-orange-300">
+              -
+            </td>
+            <td className="px-4 py-3 whitespace-nowrap text-sm text-orange-600 dark:text-orange-400">
+              {isExpanded ? t('contents.duplicates.clickToCollapse') : t('contents.duplicates.clickToExpand')}
+            </td>
+          </tr>
+        );
+
+        // If expanded, render all children from the group
+        if (isExpanded) {
+          group.contents.forEach((dupItem) => {
+            // Find the full content data
+            const fullContent = contentData.data.find((c) => c.id === dupItem.id);
+            if (!fullContent) return;
+            rows.push(renderContentRow(fullContent, true));
+          });
+        }
+      }
+      // Skip content that's already rendered as part of a group
+      else if (dupInfo) {
+        return;
+      }
+      // Regular content (not a duplicate)
+      else {
+        rows.push(renderContentRow(content));
+      }
+    });
+
+    return rows;
+  };
+
   // Computed pagination values
   const total = contentData?.pagination?.total || 0;
   const totalPages = pagination.getTotalPages(total);
+
+  // Calculate duplicate stats
+  const duplicateStats = useMemo(() => {
+    const groups: DuplicateGroup[] = Array.isArray(duplicateData)
+      ? duplicateData
+      : (duplicateData?.data || []);
+    return {
+      totalGroups: groups.length,
+      totalDuplicates: groups.reduce<number>((sum, g) => sum + g.duplicate_count, 0),
+    };
+  }, [duplicateData]);
 
   return (
     <div className="space-y-4">
@@ -162,6 +422,11 @@ export function DeletedContentTable() {
           {contentData.data.length > 0
             ? t('contents.deleted.showingItems', { count: contentData.data.length, total: contentData.pagination.total })
             : t('contents.deleted.noItems')}
+          {duplicateStats.totalGroups > 0 && (
+            <span className="ml-2 text-orange-600 dark:text-orange-400">
+              ({duplicateStats.totalGroups} {t('contents.duplicates.groups', 'duplicate group')}{duplicateStats.totalGroups > 1 ? 's' : ''})
+            </span>
+          )}
         </div>
       )}
 
@@ -211,13 +476,18 @@ export function DeletedContentTable() {
                     </SortableTableHeader>
                   </th>
                   <th className="w-20 px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider whitespace-nowrap">
+                    <SortableTableHeader columnKey="file_size" sortConfig={sortConfig} onSortChange={onSortChange}>
+                      {t('contents.table.size')}
+                    </SortableTableHeader>
+                  </th>
+                  <th className="w-24 px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider whitespace-nowrap">
                     <SortableTableHeader columnKey="content_type" sortConfig={sortConfig} onSortChange={onSortChange}>
                       {t('contents.table.type')}
                     </SortableTableHeader>
                   </th>
-                  <th className="w-20 px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider whitespace-nowrap">
-                    <SortableTableHeader columnKey="file_size" sortConfig={sortConfig} onSortChange={onSortChange}>
-                      {t('contents.table.size')}
+                  <th className="w-16 px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider whitespace-nowrap">
+                    <SortableTableHeader columnKey="duration" sortConfig={sortConfig} onSortChange={onSortChange}>
+                      {t('contents.table.duration')}
                     </SortableTableHeader>
                   </th>
                   <th className="w-28 px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider whitespace-nowrap">
@@ -231,101 +501,7 @@ export function DeletedContentTable() {
                 </tr>
               </thead>
               <tbody className={TABLE_STYLES.tbody}>
-                {contentData.data.map((content) => (
-                  <tr
-                    key={content.id}
-                    className={`${TABLE_STYLES.tr} ${
-                      isSelected(content.id) ? 'bg-red-50 dark:bg-red-900/10' : ''
-                    }`}
-                  >
-                    {/* Checkbox */}
-                    <td className={`${TABLE_STYLES.td} text-center`}>
-                      <input
-                        type="checkbox"
-                        checked={isSelected(content.id)}
-                        onChange={() => toggleSelection(content.id)}
-                        className="w-4 h-4 text-red-600 bg-gray-100 border-gray-300 rounded focus:ring-red-500 dark:focus:ring-red-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
-                      />
-                    </td>
-                    <td className="px-3 py-4 overflow-hidden">
-                      <div className="flex items-center min-w-0">
-                        {content.thumbnail_url ? (
-                          <img
-                            src={content.thumbnail_url}
-                            alt={content.title}
-                            className="w-10 h-10 rounded object-cover mr-2 flex-shrink-0 opacity-60"
-                          />
-                        ) : (
-                          <div className="w-10 h-10 bg-gray-200 dark:bg-gray-700 rounded flex items-center justify-center mr-2 flex-shrink-0 opacity-60">
-                            {getContentTypeIcon(content.content_type)}
-                          </div>
-                        )}
-                        <div className="min-w-0 flex-1 overflow-hidden">
-                          <p className="text-sm font-medium text-gray-500 dark:text-gray-400 truncate line-through" title={content.title}>
-                            {content.title}
-                          </p>
-                          {content.description && (
-                            <p className="text-xs text-gray-400 dark:text-gray-500 truncate" title={content.description}>
-                              {content.description}
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 whitespace-nowrap">
-                      <div className="flex items-center gap-1 text-gray-500 dark:text-gray-400 capitalize">
-                        {getContentTypeIcon(content.content_type)}
-                        <span className="hidden sm:inline">{content.content_type}</span>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 whitespace-nowrap text-gray-500 dark:text-gray-400">
-                      {formatFileSize(content.file_size)}
-                    </td>
-                    <td className="px-4 py-3 whitespace-nowrap">
-                      <div className="flex flex-col">
-                        <span className="text-sm text-gray-500 dark:text-gray-400">
-                          {content.deleted_at
-                            ? new Date(content.deleted_at).toLocaleDateString()
-                            : '-'}
-                        </span>
-                        {content.deleted_by_name && (
-                          <span className="text-xs text-gray-400 dark:text-gray-500 truncate" title={content.deleted_by_name}>
-                            {content.deleted_by_name}
-                          </span>
-                        )}
-                      </div>
-                    </td>
-                    <td className={TABLE_STYLES.td}>
-                      <div className="flex items-center gap-1">
-                        <button
-                          onClick={() => handlePreview(content)}
-                          className={ACTION_BUTTON.VIEW}
-                          title={t('contents.actions.preview')}
-                        >
-                          <Eye className="w-4 h-4" />
-                        </button>
-                        {canUpdate && (
-                          <button
-                            onClick={() => setContentToRestore(content)}
-                            className={ACTION_BUTTON.RESTORE}
-                            title={t('contents.deleted.restore')}
-                          >
-                            <RotateCcw className="w-4 h-4" />
-                          </button>
-                        )}
-                        {canDelete && (
-                          <button
-                            onClick={() => setContentToDelete(content)}
-                            className={ACTION_BUTTON.DELETE}
-                            title={t('contents.deleted.deletePermanently')}
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                {renderTableRows()}
               </tbody>
             </table>
           </div>
