@@ -15,12 +15,24 @@ import { config } from '@shared/config';
 import { SharedLogger } from '@shared/logger';
 import { SharedAPIClient } from '@shared/api';
 import { SharedDeviceState } from '@shared/device';
+import { PlayerBehavioralMetrics } from './player-behavioral-metrics';
+import { PlayerPerformanceMetrics } from './player-performance-metrics';
 
 /**
  * Health Metrics Interface
+ *
+ * OPTIMIZED (Phase 2):
+ * - Static fields (player_version, user_agent, platform) now sent via /capabilities
+ * - Only dynamic metrics sent in health report to reduce payload size
+ *
+ * ENHANCED (Phase 3):
+ * - Added behavioral metrics (stalls, buffers, quality switches, etc.)
+ *
+ * ENHANCED (Phase 4):
+ * - Added performance metrics (FPS, long tasks, CPU pressure, TTFB)
  */
 export interface HealthMetrics {
-  // System metrics
+  // System metrics (dynamic)
   cpu_usage: number | null;
   memory_usage: number | null;
   memory_total_mb: number | null;
@@ -29,28 +41,41 @@ export interface HealthMetrics {
   disk_total_gb: number | null;
   disk_used_gb: number | null;
 
-  // Network metrics
+  // Network metrics (dynamic)
   network_latency_ms: number | null;
   network_download_mbps: number | null;
   network_upload_mbps: number | null;
+  dns_resolution_ms: number | null;  // Phase 5: DNS lookup time
   connection_quality: string;
 
-  // Display metrics
+  // Display metrics (semi-static - can change on monitor switch)
   display_resolution: string;
   display_refresh_rate: number;
-  gpu_usage: number | null;
 
-  // Player metrics
-  player_version: string;
+  // Player metrics (dynamic)
   player_uptime_hours: number;
   content_errors_count: number;
   last_error_message: string | null;
   last_error_at: string | null;
 
-  // Metadata
+  // Behavioral metrics (Phase 3)
+  playback_stalls_count: number;
+  buffer_underruns_count: number;
+  time_to_first_playback_ms: number | null;
+  content_play_count: number;
+  quality_switches_count: number;
+  content_load_failures_count: number;
+  error_rate_percent: number;
+
+  // Performance metrics (Phase 4)
+  fps_current: number;
+  long_tasks_count: number;
+  cpu_pressure: string | null;
+  ttfb_ms: number | null;
+  page_load_time_ms: number | null;
+
+  // Metadata (minimal - static fields now in /capabilities)
   metadata: {
-    user_agent: string;
-    platform: string;
     online: boolean;
     timestamp: string;
   };
@@ -88,6 +113,9 @@ class PlayerHealthReporterClass {
     this.running = true;
     this.startTime = Date.now();
 
+    // Initialize performance metrics tracking (Phase 4)
+    PlayerPerformanceMetrics.initialize();
+
     // Report immediately
     void this.reportHealth();
 
@@ -111,6 +139,9 @@ class PlayerHealthReporterClass {
       clearInterval(this.reportInterval);
       this.reportInterval = null;
     }
+
+    // Cleanup performance metrics (Phase 4)
+    PlayerPerformanceMetrics.destroy();
 
     this.running = false;
     SharedLogger.log('[HealthReporter] ⏹️ Health monitoring stopped');
@@ -148,10 +179,28 @@ class PlayerHealthReporterClass {
 
   /**
    * Collect all health metrics
+   *
+   * OPTIMIZED (Phase 2):
+   * - Removed player_version (now in /capabilities)
+   * - Removed user_agent and platform from metadata (now in /capabilities)
+   * - Payload reduced from ~19 fields to ~17 fields
+   *
+   * ENHANCED (Phase 3):
+   * - Added behavioral metrics from PlayerBehavioralMetrics service
+   *
+   * ENHANCED (Phase 4):
+   * - Added performance metrics from PlayerPerformanceMetrics service
    */
   async collectMetrics(): Promise<HealthMetrics> {
+    // Get behavioral metrics (Phase 3)
+    const behavioralMetrics = PlayerBehavioralMetrics.getMetrics();
+
+    // Get performance metrics (Phase 4)
+    const performanceMetrics = PlayerPerformanceMetrics.getMetrics();
+
     const metrics: HealthMetrics = {
-      // System metrics
+      // System metrics (dynamic)
+      // NOTE: cpu_usage now supplemented by cpu_pressure from Compute Pressure API
       cpu_usage: await this.getCPUUsage(),
       memory_usage: await this.getMemoryUsage(),
       memory_total_mb: await this.getMemoryTotal(),
@@ -160,28 +209,43 @@ class PlayerHealthReporterClass {
       disk_total_gb: await this.getDiskTotal(),
       disk_used_gb: await this.getDiskUsed(),
 
-      // Network metrics
+      // Network metrics (dynamic)
       network_latency_ms: await this.measureLatency(),
       network_download_mbps: await this.getDownloadSpeed(),
       network_upload_mbps: await this.getUploadSpeed(),
+      dns_resolution_ms: this.getDnsResolutionTime(),  // Phase 5
       connection_quality: await this.getConnectionQuality(),
 
-      // Display metrics
+      // Display metrics (semi-static - can change on monitor switch)
       display_resolution: this.getDisplayResolution(),
-      display_refresh_rate: this.getRefreshRate(),
-      gpu_usage: await this.getGPUUsage(),
+      display_refresh_rate: await this.getRefreshRate(),
 
-      // Player metrics
-      player_version: this.getPlayerVersion(),
+      // Player metrics (dynamic)
+      // NOTE: player_version removed - now sent once via /capabilities
       player_uptime_hours: this.getUptimeHours(),
       content_errors_count: this.errorCount,
       last_error_message: this.lastError?.message ?? null,
       last_error_at: this.lastError?.timestamp ?? null,
 
-      // Metadata
+      // Behavioral metrics (Phase 3)
+      playback_stalls_count: behavioralMetrics.playback_stalls_count,
+      buffer_underruns_count: behavioralMetrics.buffer_underruns_count,
+      time_to_first_playback_ms: behavioralMetrics.time_to_first_playback_ms,
+      content_play_count: behavioralMetrics.content_play_count,
+      quality_switches_count: behavioralMetrics.quality_switches_count,
+      content_load_failures_count: behavioralMetrics.content_load_failures_count,
+      error_rate_percent: behavioralMetrics.error_rate_percent,
+
+      // Performance metrics (Phase 4)
+      fps_current: performanceMetrics.fps_current,
+      long_tasks_count: performanceMetrics.long_tasks_count,
+      cpu_pressure: performanceMetrics.cpu_pressure,
+      ttfb_ms: performanceMetrics.ttfb_ms,
+      page_load_time_ms: performanceMetrics.page_load_time_ms,
+
+      // Metadata (minimal - static fields now in /capabilities)
+      // NOTE: user_agent and platform removed - now sent once via /capabilities
       metadata: {
-        user_agent: navigator.userAgent,
-        platform: this.detectPlatform(),
         online: navigator.onLine,
         timestamp: new Date().toISOString(),
       },
@@ -344,18 +408,108 @@ class PlayerHealthReporterClass {
   }
 
   /**
-   * Get upload speed estimate
+   * Get upload speed via real upload test
+   *
+   * Phase 5: Upgraded from fake estimate (20% of download) to real upload test
+   * Sends 100KB payload to /api/v1/speed-test/upload and measures actual speed
    */
   async getUploadSpeed(): Promise<number | null> {
     try {
-      // Browser API doesn't provide upload speed
-      // Estimate as 20% of download speed
+      // Generate 100KB test payload
+      const TEST_SIZE_BYTES = 100 * 1024; // 100KB
+      const testPayload = new ArrayBuffer(TEST_SIZE_BYTES);
+
+      const startTime = performance.now();
+
+      // POST to speed test endpoint
+      const response = await fetch(`${config.api.baseURL}/api/v1/speed-test/upload`, {
+        method: 'POST',
+        body: testPayload,
+        headers: {
+          'Content-Type': 'application/octet-stream',
+        },
+      });
+
+      if (!response.ok) {
+        SharedLogger.warn('[HealthReporter] Upload speed test failed:', response.status);
+        return this.getFallbackUploadSpeed();
+      }
+
+      const result = await response.json();
+
+      // Server returns speed_mbps in response
+      if (result.speed_mbps !== undefined) {
+        SharedLogger.log(`[HealthReporter] 📤 Real upload speed: ${result.speed_mbps} Mbps`);
+        return Math.round(result.speed_mbps * 100) / 100;
+      }
+
+      // Fallback: calculate client-side if server doesn't return speed
+      const durationSeconds = (performance.now() - startTime) / 1000;
+      const speedMbps = (TEST_SIZE_BYTES * 8) / (durationSeconds * 1_000_000);
+      return Math.round(speedMbps * 100) / 100;
+    } catch (error) {
+      SharedLogger.warn('[HealthReporter] Upload speed test error, using fallback:', error);
+      return this.getFallbackUploadSpeed();
+    }
+  }
+
+  /**
+   * Fallback upload speed estimate (20% of download)
+   * Used when real upload test fails
+   */
+  private getFallbackUploadSpeed(): number | null {
+    try {
       const downlink = (navigator as any).connection?.downlink;
       if (downlink) {
         return Math.round(downlink * 0.2 * 100) / 100;
       }
       return null;
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * Get DNS resolution time using Resource Timing API
+   *
+   * Phase 5: Added DNS resolution measurement
+   * Uses Navigation Timing API to get DNS lookup time from initial page load
+   */
+  getDnsResolutionTime(): number | null {
+    try {
+      // Get navigation timing for the initial page load
+      const entries = performance.getEntriesByType('navigation') as PerformanceNavigationTiming[];
+
+      if (entries.length > 0) {
+        const navTiming = entries[0];
+        const dnsTime = navTiming.domainLookupEnd - navTiming.domainLookupStart;
+
+        // DNS lookup time can be 0 if cached or same-origin
+        if (dnsTime >= 0) {
+          return Math.round(dnsTime);
+        }
+      }
+
+      // Alternative: Check recent resource entries for DNS timing
+      const resourceEntries = performance.getEntriesByType('resource') as PerformanceResourceTiming[];
+
+      // Find the most recent API call to get fresh DNS timing
+      const apiEntries = resourceEntries.filter((entry) =>
+        entry.name.includes(config.api.baseURL) && entry.domainLookupEnd > 0
+      );
+
+      if (apiEntries.length > 0) {
+        const latestEntry = apiEntries[apiEntries.length - 1];
+        const dnsTime = latestEntry.domainLookupEnd - latestEntry.domainLookupStart;
+
+        if (dnsTime >= 0) {
+          return Math.round(dnsTime);
+        }
+      }
+
+      return null;
     } catch (error) {
+      SharedLogger.warn('[HealthReporter] Failed to get DNS resolution time:', error);
       return null;
     }
   }
@@ -386,20 +540,30 @@ class PlayerHealthReporterClass {
   }
 
   /**
-   * Get display refresh rate (estimated)
+   * Get display refresh rate via requestAnimationFrame detection
+   * Measures actual frame rate over 1 second and maps to common refresh rates
    */
-  getRefreshRate(): number {
-    // Most displays are 60Hz, some are 120Hz
-    // Browser doesn't provide this info accurately
-    return 60;
-  }
+  async getRefreshRate(): Promise<number> {
+    return new Promise((resolve) => {
+      let frameCount = 0;
+      const startTime = performance.now();
 
-  /**
-   * Get GPU usage (not available in browser)
-   */
-  async getGPUUsage(): Promise<number | null> {
-    // Browser doesn't provide GPU usage
-    return null;
+      const countFrames = (timestamp: number): void => {
+        frameCount++;
+        if (timestamp - startTime < 1000) {
+          requestAnimationFrame(countFrames);
+        } else {
+          // Map to common refresh rates
+          const commonRates = [30, 48, 50, 60, 75, 90, 100, 120, 144, 165, 240];
+          const closestRate = commonRates.reduce((prev, curr) =>
+            Math.abs(curr - frameCount) < Math.abs(prev - frameCount) ? curr : prev
+          );
+          resolve(closestRate);
+        }
+      };
+
+      requestAnimationFrame(countFrames);
+    });
   }
 
   /**

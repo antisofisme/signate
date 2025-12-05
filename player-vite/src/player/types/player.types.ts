@@ -250,7 +250,6 @@ export interface HealthMetrics {
   // Display metrics
   display_resolution: string;
   display_refresh_rate: number;
-  gpu_usage: number | null;
 
   // Player metrics
   player_version: string;

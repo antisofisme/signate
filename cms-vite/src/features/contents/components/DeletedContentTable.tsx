@@ -16,7 +16,7 @@ import {
   FileAudio,
   Eye,
 } from 'lucide-react';
-import { usePagination, useTableSort } from '@/shared/hooks';
+import { usePagination, useTableSort, useTableSelection } from '@/shared/hooks';
 import {
   Pagination,
   TableSkeleton,
@@ -25,6 +25,7 @@ import {
   ConfirmDialog,
   Button,
   TABLE_STYLES,
+  ACTION_BUTTON,
   SortableTableHeader,
 } from '@/shared/components';
 import { useCanPerformAction } from '@/features/rbac/hooks/usePermissions';
@@ -70,10 +71,16 @@ export function DeletedContentTable() {
   const [showPreview, setShowPreview] = useState(false);
   const [contentToRestore, setContentToRestore] = useState<Content | null>(null);
   const [contentToDelete, setContentToDelete] = useState<Content | null>(null);
-
-  // Selection state for bulk operations
-  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [showBulkDeleteConfirm, setShowBulkDeleteConfirm] = useState(false);
+
+  // Selection hook (replaces manual selection state)
+  const {
+    selectedIds,
+    isSelected,
+    toggleSelection,
+    toggleSelectAll,
+    clearSelection,
+  } = useTableSelection<number>();
 
   // Hooks
   const { data: contentData, isLoading, error } = useDeletedContentList({
@@ -85,29 +92,6 @@ export function DeletedContentTable() {
   const restoreMutation = useRestoreContent();
   const permanentDeleteMutation = usePermanentDeleteContent();
   const bulkPermanentDeleteMutation = useBulkPermanentDeleteContent();
-
-  // Selection handlers
-  const toggleSelect = (id: number) => {
-    const newSelected = new Set(selectedIds);
-    if (newSelected.has(id)) {
-      newSelected.delete(id);
-    } else {
-      newSelected.add(id);
-    }
-    setSelectedIds(newSelected);
-  };
-
-  const toggleSelectAll = () => {
-    if (selectedIds.size === contentData?.data.length) {
-      setSelectedIds(new Set());
-    } else {
-      setSelectedIds(new Set(contentData?.data.map((c) => c.id) || []));
-    }
-  };
-
-  const clearSelection = () => {
-    setSelectedIds(new Set());
-  };
 
   // Handlers
   const handlePreview = (content: Content) => {
@@ -132,7 +116,7 @@ export function DeletedContentTable() {
   const handleBulkPermanentDelete = async () => {
     if (selectedIds.size > 0) {
       await bulkPermanentDeleteMutation.mutateAsync(Array.from(selectedIds));
-      setSelectedIds(new Set());
+      clearSelection();
       setShowBulkDeleteConfirm(false);
     }
   };
@@ -201,7 +185,7 @@ export function DeletedContentTable() {
       {/* Loading State */}
       {isLoading && (
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
-          <TableSkeleton columns={7} rows={10} />
+          <TableSkeleton columns={8} rows={10} />
         </div>
       )}
 
@@ -213,35 +197,35 @@ export function DeletedContentTable() {
               <thead className={TABLE_STYLES.thead}>
                 <tr>
                   {/* Checkbox column */}
-                  <th className={`${TABLE_STYLES.th} text-center w-12`}>
+                  <th className="w-10 px-2 py-3 text-center whitespace-nowrap">
                     <input
                       type="checkbox"
                       checked={selectedIds.size > 0 && selectedIds.size === contentData?.data.length}
-                      onChange={toggleSelectAll}
+                      onChange={() => toggleSelectAll(contentData?.data || [])}
                       className="w-4 h-4 text-red-600 bg-gray-100 border-gray-300 rounded focus:ring-red-500 dark:focus:ring-red-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
                     />
                   </th>
-                  <th className={`${TABLE_STYLES.th} w-[30%]`}>
+                  <th className="w-72 px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                     <SortableTableHeader columnKey="original_filename" sortConfig={sortConfig} onSortChange={onSortChange}>
                       {t('contents.table.content')}
                     </SortableTableHeader>
                   </th>
-                  <th className={`${TABLE_STYLES.th} w-20`}>
+                  <th className="w-20 px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider whitespace-nowrap">
                     <SortableTableHeader columnKey="content_type" sortConfig={sortConfig} onSortChange={onSortChange}>
                       {t('contents.table.type')}
                     </SortableTableHeader>
                   </th>
-                  <th className={`${TABLE_STYLES.th} w-24`}>
+                  <th className="w-20 px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider whitespace-nowrap">
                     <SortableTableHeader columnKey="file_size" sortConfig={sortConfig} onSortChange={onSortChange}>
                       {t('contents.table.size')}
                     </SortableTableHeader>
                   </th>
-                  <th className={`${TABLE_STYLES.th} w-32`}>
+                  <th className="w-28 px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider whitespace-nowrap">
                     <SortableTableHeader columnKey="deleted_at" sortConfig={sortConfig} onSortChange={onSortChange}>
                       {t('contents.deleted.deletedAt')}
                     </SortableTableHeader>
                   </th>
-                  <th className={`${TABLE_STYLES.th} w-32`}>
+                  <th className="w-24 px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider whitespace-nowrap">
                     {t('contents.table.actions')}
                   </th>
                 </tr>
@@ -251,32 +235,32 @@ export function DeletedContentTable() {
                   <tr
                     key={content.id}
                     className={`${TABLE_STYLES.tr} ${
-                      selectedIds.has(content.id) ? 'bg-red-50 dark:bg-red-900/10' : ''
+                      isSelected(content.id) ? 'bg-red-50 dark:bg-red-900/10' : ''
                     }`}
                   >
                     {/* Checkbox */}
                     <td className={`${TABLE_STYLES.td} text-center`}>
                       <input
                         type="checkbox"
-                        checked={selectedIds.has(content.id)}
-                        onChange={() => toggleSelect(content.id)}
+                        checked={isSelected(content.id)}
+                        onChange={() => toggleSelection(content.id)}
                         className="w-4 h-4 text-red-600 bg-gray-100 border-gray-300 rounded focus:ring-red-500 dark:focus:ring-red-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
                       />
                     </td>
-                    <td className={TABLE_STYLES.td}>
+                    <td className="px-3 py-4 overflow-hidden">
                       <div className="flex items-center min-w-0">
                         {content.thumbnail_url ? (
                           <img
                             src={content.thumbnail_url}
                             alt={content.title}
-                            className="w-10 h-10 rounded object-cover mr-3 flex-shrink-0 opacity-60"
+                            className="w-10 h-10 rounded object-cover mr-2 flex-shrink-0 opacity-60"
                           />
                         ) : (
-                          <div className="w-10 h-10 bg-gray-200 dark:bg-gray-700 rounded flex items-center justify-center mr-3 flex-shrink-0 opacity-60">
+                          <div className="w-10 h-10 bg-gray-200 dark:bg-gray-700 rounded flex items-center justify-center mr-2 flex-shrink-0 opacity-60">
                             {getContentTypeIcon(content.content_type)}
                           </div>
                         )}
-                        <div className="min-w-0 flex-1">
+                        <div className="min-w-0 flex-1 overflow-hidden">
                           <p className="text-sm font-medium text-gray-500 dark:text-gray-400 truncate line-through" title={content.title}>
                             {content.title}
                           </p>
@@ -288,25 +272,34 @@ export function DeletedContentTable() {
                         </div>
                       </div>
                     </td>
-                    <td className={TABLE_STYLES.td}>
+                    <td className="px-4 py-3 whitespace-nowrap">
                       <div className="flex items-center gap-1 text-gray-500 dark:text-gray-400 capitalize">
                         {getContentTypeIcon(content.content_type)}
                         <span className="hidden sm:inline">{content.content_type}</span>
                       </div>
                     </td>
-                    <td className={`${TABLE_STYLES.td} text-gray-500 dark:text-gray-400`}>
+                    <td className="px-4 py-3 whitespace-nowrap text-gray-500 dark:text-gray-400">
                       {formatFileSize(content.file_size)}
                     </td>
-                    <td className={`${TABLE_STYLES.td} text-gray-500 dark:text-gray-400`}>
-                      {content.deleted_at
-                        ? new Date(content.deleted_at).toLocaleDateString()
-                        : '-'}
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      <div className="flex flex-col">
+                        <span className="text-sm text-gray-500 dark:text-gray-400">
+                          {content.deleted_at
+                            ? new Date(content.deleted_at).toLocaleDateString()
+                            : '-'}
+                        </span>
+                        {content.deleted_by_name && (
+                          <span className="text-xs text-gray-400 dark:text-gray-500 truncate" title={content.deleted_by_name}>
+                            {content.deleted_by_name}
+                          </span>
+                        )}
+                      </div>
                     </td>
                     <td className={TABLE_STYLES.td}>
                       <div className="flex items-center gap-1">
                         <button
                           onClick={() => handlePreview(content)}
-                          className={TABLE_STYLES.actionBtnBlue}
+                          className={ACTION_BUTTON.VIEW}
                           title={t('contents.actions.preview')}
                         >
                           <Eye className="w-4 h-4" />
@@ -314,7 +307,7 @@ export function DeletedContentTable() {
                         {canUpdate && (
                           <button
                             onClick={() => setContentToRestore(content)}
-                            className={TABLE_STYLES.actionBtnGreen}
+                            className={ACTION_BUTTON.RESTORE}
                             title={t('contents.deleted.restore')}
                           >
                             <RotateCcw className="w-4 h-4" />
@@ -323,7 +316,7 @@ export function DeletedContentTable() {
                         {canDelete && (
                           <button
                             onClick={() => setContentToDelete(content)}
-                            className={TABLE_STYLES.actionBtnRed}
+                            className={ACTION_BUTTON.DELETE}
                             title={t('contents.deleted.deletePermanently')}
                           >
                             <Trash2 className="w-4 h-4" />

@@ -37,6 +37,8 @@ export interface AuditLogFilters {
   end_date?: string;
   page?: number;
   per_page?: number;
+  sort_by?: string;
+  sort_dir?: 'asc' | 'desc';
 }
 
 export const RESOURCE_TYPES = [

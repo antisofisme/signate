@@ -84,11 +84,14 @@ def list_menu_media(
         sort_dir=sort_dir
     )
 
-    # Build response with URLs
+    # Build response with URLs and user names
     items = []
     for media in media_list:
         response = MenuMediaResponseDTO.model_validate(media)
         response.url = build_media_url(media.file_path)
+        # Extract user name from relationship
+        if hasattr(media, 'uploader') and media.uploader is not None:
+            response.uploaded_by_name = media.uploader.full_name or media.uploader.username
         items.append(response)
 
     return success_response(data={
@@ -158,11 +161,16 @@ def list_deleted_menu_media(
         sort_dir=sort_dir
     )
 
-    # Build response with URLs
+    # Build response with URLs and user names
     items = []
     for media in media_list:
         response = MenuMediaResponseDTO.model_validate(media)
         response.url = build_media_url(media.file_path)
+        # Extract user names from relationships
+        if hasattr(media, 'uploader') and media.uploader is not None:
+            response.uploaded_by_name = media.uploader.full_name or media.uploader.username
+        if hasattr(media, 'deleter') and media.deleter is not None:
+            response.deleted_by_name = media.deleter.full_name or media.deleter.username
         items.append(response)
 
     return success_response(data={

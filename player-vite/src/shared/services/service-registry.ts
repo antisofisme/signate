@@ -89,6 +89,7 @@ export const getPlayerHeartbeat = () => ServiceRegistry.get<any>('PlayerHeartbea
 export const getPlayerPlaylistSync = () => ServiceRegistry.get<any>('PlayerPlaylistSync');
 export const getPlayerCommandExecutor = () => ServiceRegistry.get<any>('PlayerCommandExecutor');
 export const getPlayerHealthReporter = () => ServiceRegistry.get<any>('PlayerHealthReporter');
+export const getPlayerCapabilitiesReporter = () => ServiceRegistry.get<any>('PlayerCapabilitiesReporter');
 export const getPlayerHLSCache = () => ServiceRegistry.get<any>('PlayerHLSCache');
 export const getPlayerBackgroundAudio = () => ServiceRegistry.get<any>('PlayerBackgroundAudio');
 export const getShellBootstrap = () => ServiceRegistry.get<any>('ShellBootstrap');
@@ -97,3 +98,5 @@ export const getShellActivationPoll = () => ServiceRegistry.get<any>('ShellActiv
 export const getShellActivationScreen = () => ServiceRegistry.get<any>('ShellActivationScreen');
 export const getSharedWebSocket = () => ServiceRegistry.get<any>('SharedWebSocket');
 export const getDeviceInfoPopup = () => ServiceRegistry.get<any>('DeviceInfoPopup');
+export const getPlayerBehavioralMetrics = () => ServiceRegistry.get<any>('PlayerBehavioralMetrics');
+export const getPlayerPerformanceMetrics = () => ServiceRegistry.get<any>('PlayerPerformanceMetrics');

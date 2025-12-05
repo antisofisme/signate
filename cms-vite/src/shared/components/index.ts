@@ -59,7 +59,7 @@ export {
 } from './feedback';
 
 // Data Display
-export { DataTable, TABLE_STYLES } from './DataTable';
+export { DataTable, TABLE_STYLES, ACTION_BUTTON } from './DataTable';
 export type { Column, DataTableProps, SortConfig, SortDirection } from './DataTable';
 
 // Sortable Table Header (for tables using TABLE_STYLES with server-side sorting)
@@ -72,3 +72,7 @@ export type { StatusBadgeProps, BadgeStatus, BadgeSize } from './StatusBadge';
 
 // Toast Provider (Sonner with theme sync & dynamic positioning)
 export { ToastProvider } from './ToastProvider';
+
+// Date Display Components (relative time with tooltips)
+export { DateCell, OnlineStatusCell } from './DateCell';
+export type { default as DateCellDefault } from './DateCell';

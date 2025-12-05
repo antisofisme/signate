@@ -32,7 +32,7 @@ export default function UsersPage() {
   const { t } = useTranslation();
 
   // Permission checks
-  const { hasPermission: canView, isLoading: isCheckingView } = useCanPerformAction('users', 'read');
+  const { hasPermission: canView, isLoading: isCheckingPermission } = useCanPerformAction('users', 'read');
   const { hasPermission: canCreate } = useCanPerformAction('users', 'create');
   const { hasPermission: canEdit } = useCanPerformAction('users', 'edit');
   const { hasPermission: canDelete } = useCanPerformAction('users', 'delete');
@@ -87,7 +87,7 @@ export default function UsersPage() {
   };
 
   // Permission loading state
-  if (isCheckingView) {
+  if (isCheckingPermission) {
     return <PageSkeleton />;
   }
 

@@ -66,8 +66,10 @@ class PlaylistResponse(BaseModel):
     is_active: bool
     priority: int
     schedule: Optional[Dict[str, Any]]
+    is_default: bool = False
     organization_id: int
     created_by: Optional[int]
+    created_by_name: Optional[str] = None
     created_at: datetime
     updated_at: Optional[datetime]
     deleted_at: Optional[datetime]
@@ -75,6 +77,7 @@ class PlaylistResponse(BaseModel):
     # Computed fields
     content_count: int = 0
     total_duration: int = 0  # in seconds
+    device_count: int = 0
 
     class Config:
         from_attributes = True

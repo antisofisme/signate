@@ -16,8 +16,8 @@ import { config } from '@shared/config';
 import { ConnectionLogStorage, type ConnectionLogEntry } from '@shared/storage/connection-log-storage';
 
 interface LogEntryInput {
-  eventType: 'network' | 'server' | 'speed_test';
-  status: 'online' | 'offline' | 'connected' | 'disconnected' | 'tested';
+  eventType: 'network' | 'server' | 'speed_test' | 'playback';
+  status: 'online' | 'offline' | 'connected' | 'disconnected' | 'tested' | 'stall' | 'buffer' | 'quality_switch' | 'load_fail' | 'play' | 'pause' | 'error' | 'started' | 'completed';
   latencyMs?: number;
   errorMessage?: string;
   downloadSpeedMbps?: number;
@@ -110,7 +110,7 @@ class ConnectionLoggerClass {
   /**
    * Get recent logs
    */
-  async getLogs(limit = 100, filter?: 'network' | 'server' | 'speed_test'): Promise<ConnectionLogEntry[]> {
+  async getLogs(limit = 100, filter?: 'network' | 'server' | 'speed_test' | 'playback'): Promise<ConnectionLogEntry[]> {
     try {
       return await ConnectionLogStorage.getLogs(limit, filter);
     } catch (error) {

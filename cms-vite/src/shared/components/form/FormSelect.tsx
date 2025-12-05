@@ -75,6 +75,7 @@ export function FormSelect({
               className
             )}
             aria-invalid={!!error}
+            aria-required={required}
             aria-describedby={error ? `${name}-error` : description ? `${name}-desc` : undefined}
           >
             {placeholder && (

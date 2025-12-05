@@ -176,6 +176,12 @@ export interface PerformanceInfo {
   memory: MemoryInfo | null;
   fps: number;
   loadTime: number; // milliseconds
+
+  // Advanced Performance (Phase 4)
+  cpuPressure: string | null; // "nominal" | "fair" | "serious" | "critical" | null
+  longTasksCount: number;
+  ttfbMs: number | null;
+  pageLoadTimeMs: number | null;
 }
 
 export interface MemoryInfo {
@@ -183,6 +189,26 @@ export interface MemoryInfo {
   total: number; // MB
   limit: number; // MB
   percentage: number;
+}
+
+// ============================================================================
+// PLAYBACK STATS INFO (Phase 3: Behavioral Metrics)
+// ============================================================================
+
+export interface PlaybackStatsInfo {
+  // Playback events
+  playbackStallsCount: number;
+  bufferUnderrunsCount: number;
+  timeToFirstPlaybackMs: number | null;
+
+  // Content metrics
+  contentPlayCount: number;
+  qualitySwitchesCount: number;
+  contentLoadFailuresCount: number;
+
+  // Calculated metrics
+  errorRatePercent: number;
+  totalOperations: number;
 }
 
 // ============================================================================
@@ -197,5 +223,6 @@ export interface CompleteDeviceInfo {
   backend: BackendInfo;
   audio: AudioInfo;
   performance: PerformanceInfo;
+  playbackStats: PlaybackStatsInfo; // Phase 3: Behavioral Metrics
   timestamp: Date;
 }

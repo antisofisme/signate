@@ -16,6 +16,7 @@ import 'video.js/dist/video-js.css'; // Import Video.js CSS
 import type Player from 'video.js/dist/types/player';
 import { SharedLogger } from '@shared/logger';
 import { PlayerPlaybackLogger } from './player-playback-logger';
+import { PlayerBehavioralMetrics } from './player-behavioral-metrics';
 import { playerWidgetRenderer } from './player-widget-renderer';
 import { ServiceRegistry, getPlayerMediaCache, getPlayerHLSCache } from '@shared/services/service-registry';
 import { transformContentUrl } from '@shared/config/network-detector';
@@ -127,6 +128,10 @@ class PlayerVideoJSClass implements IPlayerVideoJS {
       // Setup event listeners
       this.setupEventListeners();
 
+      // Initialize behavioral metrics tracking (Phase 3)
+      PlayerBehavioralMetrics.initialize();
+      PlayerBehavioralMetrics.attachToVideoElement(videoElement);
+
       SharedLogger.log('[PlayerVideoJS] ✅ Initialized successfully');
     } catch (error) {
       SharedLogger.error('[PlayerVideoJS] ❌ Initialization failed:', error);
@@ -197,12 +202,18 @@ class PlayerVideoJSClass implements IPlayerVideoJS {
     this.state.currentItemIndex = index;
     this.state.currentItem = item;
 
+    // Track content load start (Phase 3: Behavioral Metrics)
+    PlayerBehavioralMetrics.markContentLoadStart();
+
     SharedLogger.log('[PlayerVideoJS] Playing item:', {
       index,
       name: item.content.name,
       type: item.content.type,
       duration: item.duration,
     });
+
+    // Track content play (Phase 3: Behavioral Metrics)
+    PlayerBehavioralMetrics.recordContentPlay(item.content_id, item.content.name);
 
     // Clear previous timer
     this.clearItemTimer();
@@ -356,6 +367,11 @@ class PlayerVideoJSClass implements IPlayerVideoJS {
 
       SharedLogger.log(`[PlayerVideoJS] ${isFromCache ? '💾 OFFLINE' : '🌐 STREAMING'} ${isHLS ? 'HLS' : 'DIRECT'}:`, videoUrl);
     } catch (error) {
+      // Track content load failure (Phase 3: Behavioral Metrics)
+      PlayerBehavioralMetrics.recordContentLoadFailure(
+        item.content_id,
+        error instanceof Error ? error.message : String(error)
+      );
       SharedLogger.error('[PlayerVideoJS] Failed to play video:', error);
       await this.next();
     }
@@ -461,6 +477,8 @@ class PlayerVideoJSClass implements IPlayerVideoJS {
 
     // Set timer for duration
     this.itemTimer = window.setTimeout(() => {
+      // Log content complete with duration (Phase 3: Behavioral Metrics)
+      PlayerBehavioralMetrics.recordContentComplete(true);
       // Log playback end (completed)
       void PlayerPlaybackLogger.logPlaybackEnd(true);
       void this.next();
@@ -538,6 +556,8 @@ class PlayerVideoJSClass implements IPlayerVideoJS {
 
       // Set timer for duration (in case audio doesn't have metadata)
       this.itemTimer = window.setTimeout(() => {
+        // Log content complete with duration (Phase 3: Behavioral Metrics)
+        PlayerBehavioralMetrics.recordContentComplete(true);
         void PlayerPlaybackLogger.logPlaybackEnd(true);
         void this.next();
       }, item.duration * 1000);
@@ -574,6 +594,8 @@ class PlayerVideoJSClass implements IPlayerVideoJS {
 
     // Set timer for duration
     this.itemTimer = window.setTimeout(() => {
+      // Log content complete with duration (Phase 3: Behavioral Metrics)
+      PlayerBehavioralMetrics.recordContentComplete(true);
       // Log playback end (completed)
       void PlayerPlaybackLogger.logPlaybackEnd(true);
       void this.next();
@@ -660,6 +682,8 @@ class PlayerVideoJSClass implements IPlayerVideoJS {
       // Clear widgets
       playerWidgetRenderer.clearWidgets();
 
+      // Log content complete with duration (Phase 3: Behavioral Metrics)
+      PlayerBehavioralMetrics.recordContentComplete(true);
       // Log playback end (completed)
       void PlayerPlaybackLogger.logPlaybackEnd(true);
       void this.next();
@@ -701,6 +725,9 @@ class PlayerVideoJSClass implements IPlayerVideoJS {
     this.pause();
     this.clearItemTimer();
     this.cleanupTemporaryElements();
+
+    // Revoke all blob URLs to prevent memory leaks on reload
+    this.revokeAllBlobURLs();
 
     if (this.player) {
       this.player.pause();
@@ -769,6 +796,8 @@ class PlayerVideoJSClass implements IPlayerVideoJS {
     // Video ended - play next
     this.player.on('ended', () => {
       SharedLogger.log('[PlayerVideoJS] Video ended - advancing to next');
+      // Log content complete with duration (Phase 3: Behavioral Metrics)
+      PlayerBehavioralMetrics.recordContentComplete(true);
       // Log playback end for analytics (completed)
       void PlayerPlaybackLogger.logPlaybackEnd(true);
       void this.next();
@@ -843,6 +872,30 @@ class PlayerVideoJSClass implements IPlayerVideoJS {
     this.player.on('canplaythrough', () => {
       SharedLogger.log('[PlayerVideoJS] Ready to play');
     });
+
+    // Track HLS quality switches (Phase 3: Behavioral Metrics)
+    // Video.js VHS fires 'qualitychange' event when resolution changes
+    this.player.on('qualitychange', (_event: any, data: any) => {
+      SharedLogger.log('[PlayerVideoJS] HLS quality changed:', data);
+      if (data && data.previousQuality && data.currentQuality) {
+        PlayerBehavioralMetrics.recordQualitySwitch(
+          data.previousQuality,
+          data.currentQuality
+        );
+      }
+    });
+
+    // Alternative: Monitor tech-specific events for VHS
+    try {
+      const vhs = (this.player as any).tech?.()?.vhs;
+      if (vhs) {
+        vhs.on('mediaupdatetimeout', () => {
+          SharedLogger.warn('[PlayerVideoJS] HLS media update timeout');
+        });
+      }
+    } catch (error) {
+      // VHS not available, skip HLS-specific tracking
+    }
   }
 
   /**
@@ -887,6 +940,7 @@ class PlayerVideoJSClass implements IPlayerVideoJS {
     this.player.off('pause');
     this.player.off('waiting');
     this.player.off('canplaythrough');
+    this.player.off('qualitychange');
 
     SharedLogger.log('[PlayerVideoJS] Event listeners removed');
   }
@@ -900,6 +954,11 @@ class PlayerVideoJSClass implements IPlayerVideoJS {
     // Revoke all blob URLs before destroying
     this.revokeAllBlobURLs();
 
+    // Detach behavioral metrics from video element (Phase 3)
+    if (this.videoElement) {
+      PlayerBehavioralMetrics.detachFromVideoElement(this.videoElement);
+    }
+
     if (this.player) {
       // CRITICAL: Remove event listeners BEFORE dispose to prevent memory leaks
       this.removeEventListeners();
@@ -909,6 +968,9 @@ class PlayerVideoJSClass implements IPlayerVideoJS {
 
     // Destroy widget renderer
     playerWidgetRenderer.destroy();
+
+    // Destroy behavioral metrics
+    PlayerBehavioralMetrics.destroy();
 
     this.state = {
       currentItemIndex: 0,

@@ -5,7 +5,9 @@
  * @features
  * - Periodic heartbeat every 30 seconds
  * - Reports current playback state
- * - Collects system information
+ * - Optimized payload (static data sent via /capabilities)
+ * - Viewport change detection (only sends when changed)
+ * - Connection drops tracking
  * - Handles heartbeat failures gracefully
  * - Type-safe with TypeScript
  */
@@ -29,6 +31,16 @@ class PlayerHeartbeatClass implements IHeartbeat {
   private consecutiveFailures = 0;
   private readonly maxConsecutiveFailures = 5;
 
+  // Viewport change detection
+  private lastViewportWidth: number | null = null;
+  private lastViewportHeight: number | null = null;
+
+  // Connection drops tracking
+  private connectionDropsCount = 0;
+  private isOnline = true;
+  private onlineListener: (() => void) | null = null;
+  private offlineListener: (() => void) | null = null;
+
   /**
    * Start periodic heartbeat
    */
@@ -48,6 +60,14 @@ class PlayerHeartbeatClass implements IHeartbeat {
     this.running = true;
     this.consecutiveFailures = 0;
 
+    // Initialize viewport tracking
+    this.lastViewportWidth = window.innerWidth;
+    this.lastViewportHeight = window.innerHeight;
+
+    // Initialize connection drops tracking
+    this.isOnline = navigator.onLine;
+    this.setupConnectionTracking();
+
     // Send immediately
     void this.sendHeartbeat();
 
@@ -55,6 +75,46 @@ class PlayerHeartbeatClass implements IHeartbeat {
     this.heartbeatInterval = window.setInterval(() => {
       void this.sendHeartbeat();
     }, config.device.heartbeatInterval);
+  }
+
+  /**
+   * Setup connection online/offline tracking
+   */
+  private setupConnectionTracking(): void {
+    // Remove existing listeners if any
+    this.removeConnectionTracking();
+
+    this.offlineListener = () => {
+      if (this.isOnline) {
+        this.connectionDropsCount++;
+        this.isOnline = false;
+        SharedLogger.warn(`[PlayerHeartbeat] 📴 Connection dropped (total: ${this.connectionDropsCount})`);
+      }
+    };
+
+    this.onlineListener = () => {
+      if (!this.isOnline) {
+        this.isOnline = true;
+        SharedLogger.log('[PlayerHeartbeat] 📶 Connection restored');
+      }
+    };
+
+    window.addEventListener('offline', this.offlineListener);
+    window.addEventListener('online', this.onlineListener);
+  }
+
+  /**
+   * Remove connection tracking listeners
+   */
+  private removeConnectionTracking(): void {
+    if (this.offlineListener) {
+      window.removeEventListener('offline', this.offlineListener);
+      this.offlineListener = null;
+    }
+    if (this.onlineListener) {
+      window.removeEventListener('online', this.onlineListener);
+      this.onlineListener = null;
+    }
   }
 
   /**
@@ -70,6 +130,9 @@ class PlayerHeartbeatClass implements IHeartbeat {
       this.heartbeatInterval = null;
     }
 
+    // Remove connection tracking listeners
+    this.removeConnectionTracking();
+
     this.running = false;
     this.consecutiveFailures = 0;
     SharedLogger.log('[PlayerHeartbeat] ⏹️ Heartbeat stopped');
@@ -77,6 +140,11 @@ class PlayerHeartbeatClass implements IHeartbeat {
 
   /**
    * Send heartbeat to backend
+   *
+   * OPTIMIZED PAYLOAD (Phase 2):
+   * - Static fields (screen, user_agent, pixel_ratio) now sent via /capabilities endpoint
+   * - Viewport only included when changed from last heartbeat
+   * - Added connection_drops_count tracking
    */
   async sendHeartbeat(): Promise<void> {
     const deviceId = SharedDeviceState.getDeviceId();
@@ -96,22 +164,48 @@ class PlayerHeartbeatClass implements IHeartbeat {
         return;
       }
 
-      // Prepare heartbeat payload
-      const payload = {
+      // Check if viewport changed
+      const currentViewportWidth = window.innerWidth;
+      const currentViewportHeight = window.innerHeight;
+      const viewportChanged =
+        this.lastViewportWidth !== currentViewportWidth ||
+        this.lastViewportHeight !== currentViewportHeight;
+
+      // Prepare OPTIMIZED heartbeat payload
+      // Static fields (screen_width, screen_height, device_pixel_ratio, user_agent)
+      // are now sent ONCE via /capabilities endpoint on startup
+      const payload: Record<string, any> = {
+        // Required identification
         unique_code: uniqueCode,
         device_uuid: '', // WebOS device UUID if available
-        screen_width: window.screen.width,
-        screen_height: window.screen.height,
-        viewport_width: window.innerWidth,
-        viewport_height: window.innerHeight,
-        device_pixel_ratio: window.devicePixelRatio,
-        user_agent: navigator.userAgent,
+
+        // Dynamic connection data (changes frequently)
         connection_type: (navigator as any).connection?.effectiveType || null,
         connection_speed: (navigator as any).connection?.downlink || null,
+
+        // Connection reliability tracking
+        connection_drops_count: this.connectionDropsCount,
       };
 
+      // Only include viewport if changed (semi-static data)
+      if (viewportChanged) {
+        payload.viewport_width = currentViewportWidth;
+        payload.viewport_height = currentViewportHeight;
+
+        // Update last known viewport
+        this.lastViewportWidth = currentViewportWidth;
+        this.lastViewportHeight = currentViewportHeight;
+
+        SharedLogger.log('[PlayerHeartbeat] 📐 Viewport changed, including in payload', {
+          width: currentViewportWidth,
+          height: currentViewportHeight,
+        });
+      }
+
       SharedLogger.log('[PlayerHeartbeat] 💓 Sending heartbeat...', {
-        deviceId: deviceId,
+        deviceId,
+        connectionDrops: this.connectionDropsCount,
+        viewportChanged,
       });
 
       // Send heartbeat using correct endpoint
@@ -227,7 +321,24 @@ class PlayerHeartbeatClass implements IHeartbeat {
       running: this.running,
       consecutiveFailures: this.consecutiveFailures,
       maxFailures: this.maxConsecutiveFailures,
+      connectionDropsCount: this.connectionDropsCount,
+      isOnline: this.isOnline,
     };
+  }
+
+  /**
+   * Get connection drops count
+   */
+  getConnectionDropsCount(): number {
+    return this.connectionDropsCount;
+  }
+
+  /**
+   * Reset connection drops count (e.g., on device restart)
+   */
+  resetConnectionDropsCount(): void {
+    this.connectionDropsCount = 0;
+    SharedLogger.log('[PlayerHeartbeat] Connection drops count reset');
   }
 
   /**

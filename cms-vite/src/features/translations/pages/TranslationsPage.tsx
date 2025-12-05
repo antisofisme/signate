@@ -27,18 +27,18 @@ export const TranslationsPage = () => {
   const { t } = useTranslation();
 
   // Permission checks - using 'settings' resource for translations
-  const { hasPermission: canRead, isLoading: loadingReadPerm } = useCanPerformAction('settings', 'read');
+  const { hasPermission: canView, isLoading: isCheckingPermission } = useCanPerformAction('settings', 'read');
   const { hasPermission: canCreate } = useCanPerformAction('settings', 'create');
   const { hasPermission: canUpdate } = useCanPerformAction('settings', 'edit');
   const { hasPermission: canDelete } = useCanPerformAction('settings', 'delete');
 
   // Show loading state while checking permissions
-  if (loadingReadPerm) {
+  if (isCheckingPermission) {
     return <PageSkeleton />;
   }
 
   // Show access denied if no read permission
-  if (!canRead) {
+  if (!canView) {
     return <AccessDenied />;
   }
 

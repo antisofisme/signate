@@ -91,11 +91,19 @@ class PlayerCommandExecutorClass {
   private handlers: Map<CommandType, CommandHandler> = new Map();
   private history: CommandResult[] = [];
   private readonly maxHistorySize = 100;
+  private _initialized = false;
 
   /**
    * Initialize command executor
+   * Guard prevents duplicate EventBus listeners on player reload
    */
   init(): void {
+    if (this._initialized) {
+      SharedLogger.log('[CommandExecutor] Already initialized, skipping');
+      return;
+    }
+    this._initialized = true;
+
     SharedLogger.log('[CommandExecutor] Initializing...');
 
     // Register default handlers

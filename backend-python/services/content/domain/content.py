@@ -83,6 +83,10 @@ class Content:
     updated_by_id: Optional[int] = None
     deleted_by_id: Optional[int] = None
 
+    # User names (from JOINs)
+    uploaded_by_name: Optional[str] = None
+    deleted_by_name: Optional[str] = None
+
     # Valid types
     VALID_TYPES = ['image', 'video', 'audio']
 

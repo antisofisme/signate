@@ -6,8 +6,8 @@
  */
 
 import { useTranslation } from 'react-i18next';
-import { Shield, Edit, Trash2, Key, Building, UserCog } from 'lucide-react';
-import { TABLE_STYLES, SortableTableHeader } from '@/shared/components';
+import { Shield, Pencil, Trash2, Key, Building, UserCog } from 'lucide-react';
+import { TABLE_STYLES, ACTION_BUTTON, SortableTableHeader, DateCell } from '@/shared/components';
 import type { SortConfig } from '@/shared/components';
 import type { User } from '../types/user';
 
@@ -52,7 +52,7 @@ export function UserList({
         <table className={`${TABLE_STYLES.table} table-fixed`}>
           <thead className={TABLE_STYLES.thead}>
           <tr>
-            <th className={`${TABLE_STYLES.th} w-[25%]`}>
+            <th className="w-72 px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
               {sortConfig && onSortChange ? (
                 <SortableTableHeader
                   columnKey="username"
@@ -65,7 +65,7 @@ export function UserList({
                 t('users.table.user')
               )}
             </th>
-            <th className={`${TABLE_STYLES.th} w-20`}>
+            <th className="w-20 px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider whitespace-nowrap">
               {sortConfig && onSortChange ? (
                 <SortableTableHeader
                   columnKey="is_active"
@@ -78,7 +78,7 @@ export function UserList({
                 t('users.table.status')
               )}
             </th>
-            <th className={`${TABLE_STYLES.th} w-24`}>
+            <th className="w-28 px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider whitespace-nowrap">
               {sortConfig && onSortChange ? (
                 <SortableTableHeader
                   columnKey="role"
@@ -91,7 +91,7 @@ export function UserList({
                 t('users.table.role')
               )}
             </th>
-            <th className={`${TABLE_STYLES.th} w-[20%]`}>
+            <th className="w-32 px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider whitespace-nowrap">
               {sortConfig && onSortChange ? (
                 <SortableTableHeader
                   columnKey="organization_name"
@@ -104,7 +104,20 @@ export function UserList({
                 t('users.table.organization')
               )}
             </th>
-            <th className={`${TABLE_STYLES.th} w-32`}>
+            <th className="w-24 px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider whitespace-nowrap">
+              {sortConfig && onSortChange ? (
+                <SortableTableHeader
+                  columnKey="created_at"
+                  sortConfig={sortConfig}
+                  onSortChange={onSortChange}
+                >
+                  {t('users.table.joined', 'Joined')}
+                </SortableTableHeader>
+              ) : (
+                t('users.table.joined', 'Joined')
+              )}
+            </th>
+            <th className="w-36 px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider whitespace-nowrap">
               {t('users.table.actions')}
             </th>
           </tr>
@@ -112,17 +125,22 @@ export function UserList({
         <tbody className={TABLE_STYLES.tbody}>
           {users?.map((user) => (
             <tr key={user.id} className={TABLE_STYLES.tr}>
-              <td className="px-6 py-4 whitespace-nowrap">
-                <div>
-                  <div className="text-sm font-medium text-gray-900 dark:text-white">
+              <td className="px-3 py-4 overflow-hidden">
+                <div className="min-w-0">
+                  <div className="text-sm font-medium text-gray-900 dark:text-white truncate" title={user.full_name || user.username}>
                     {user.full_name || user.username}
+                    {user.full_name && (
+                      <span className="ml-1 text-gray-500 dark:text-gray-400 font-normal">
+                        ({user.username})
+                      </span>
+                    )}
                   </div>
-                  <div className="text-sm text-gray-500 dark:text-gray-400">
+                  <div className="text-xs text-gray-500 dark:text-gray-400 truncate" title={user.email}>
                     {user.email}
                   </div>
                 </div>
               </td>
-              <td className="px-6 py-4 whitespace-nowrap">
+              <td className="px-4 py-4 whitespace-nowrap">
                 <span
                   className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
                     user.is_active
@@ -133,23 +151,26 @@ export function UserList({
                   {user.is_active ? t('users.status.active') : t('users.status.inactive')}
                 </span>
               </td>
-              <td className="px-6 py-4 whitespace-nowrap">
+              <td className="px-4 py-4 whitespace-nowrap">
                 <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getRoleBadgeColor(user.role)}`}>
                   {t(`users.roles.${user.role}`)}
                 </span>
               </td>
-              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-400">
+              <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-400">
                 <div className="flex items-center">
                   <Building className="w-4 h-4 mr-1" />
                   {user.organization_name || t('users.table.noOrganization')}
                 </div>
+              </td>
+              <td className="px-4 py-4 whitespace-nowrap">
+                <DateCell date={user.created_at} />
               </td>
               <td className={TABLE_STYLES.td}>
                 <div className="flex items-center gap-2">
                   {onAssignRole && (
                     <button
                       onClick={() => onAssignRole(user)}
-                      className={TABLE_STYLES.actionBtnPurple || 'p-2 rounded-lg text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-900/20 transition-colors'}
+                      className={ACTION_BUTTON.ASSIGN}
                       title={t('users.actions.assignRole') || 'Assign Role'}
                     >
                       <UserCog className="w-4 h-4" />
@@ -158,7 +179,7 @@ export function UserList({
                   {onChangePassword && (
                     <button
                       onClick={() => onChangePassword(user)}
-                      className={TABLE_STYLES.actionBtnGreen}
+                      className={ACTION_BUTTON.SETTINGS}
                       title={t('users.actions.changePassword')}
                     >
                       <Key className="w-4 h-4" />
@@ -167,16 +188,16 @@ export function UserList({
                   {onEdit && (
                     <button
                       onClick={() => onEdit(user)}
-                      className={TABLE_STYLES.actionBtnBlue}
+                      className={ACTION_BUTTON.EDIT}
                       title={t('users.actions.editUser')}
                     >
-                      <Edit className="w-4 h-4" />
+                      <Pencil className="w-4 h-4" />
                     </button>
                   )}
                   {onDelete && (
                     <button
                       onClick={() => onDelete(user)}
-                      className={TABLE_STYLES.actionBtnRed}
+                      className={ACTION_BUTTON.DELETE}
                       title={t('users.actions.deleteUser')}
                     >
                       <Trash2 className="w-4 h-4" />

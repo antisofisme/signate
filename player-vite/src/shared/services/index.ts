@@ -13,6 +13,7 @@ export {
   getPlayerPlaylistSync,
   getPlayerCommandExecutor,
   getPlayerHealthReporter,
+  getPlayerCapabilitiesReporter,
   getPlayerHLSCache,
   getPlayerBackgroundAudio,
   getShellBootstrap,

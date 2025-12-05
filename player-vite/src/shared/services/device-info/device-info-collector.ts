@@ -10,7 +10,7 @@
  * - Fully testable and reusable
  */
 
-import { ServiceRegistry, getPlayerVideoJS, getPlayerMediaCache, getPlayerPlaylistSync, getPlayerBackgroundAudio, getSharedWebSocket, getPlayerHLSCache } from '@shared/services/service-registry';
+import { ServiceRegistry, getPlayerVideoJS, getPlayerMediaCache, getPlayerPlaylistSync, getPlayerBackgroundAudio, getSharedWebSocket, getPlayerHLSCache, getPlayerBehavioralMetrics, getPlayerPerformanceMetrics } from '@shared/services/service-registry';
 // Side-effect import to ensure WebSocket is registered before we try to access it
 import '@shared/websocket/shared-websocket';
 import { SharedDeviceState } from '@shared/device';
@@ -37,6 +37,7 @@ import type {
   BackendInfo,
   AudioInfo,
   PerformanceInfo,
+  PlaybackStatsInfo,
   PlaylistInfo,
   CurrentPlayingInfo,
   ContentInfo,
@@ -58,7 +59,7 @@ class DeviceInfoCollectorClass {
    * Returns all information from all tabs
    */
   async collectAll(): Promise<CompleteDeviceInfo> {
-    const [device, network, system, storage, backend, audio, performance] = await Promise.all([
+    const [device, network, system, storage, backend, audio, performance, playbackStats] = await Promise.all([
       this.collectDeviceInfo(),
       this.collectNetworkInfo(),
       this.collectSystemInfo(),
@@ -66,6 +67,7 @@ class DeviceInfoCollectorClass {
       this.collectBackendInfo(),
       this.collectAudioInfo(),
       this.collectPerformanceInfo(),
+      this.collectPlaybackStats(),
     ]);
 
     return {
@@ -76,6 +78,7 @@ class DeviceInfoCollectorClass {
       backend,
       audio,
       performance,
+      playbackStats,
       timestamp: new Date(),
     };
   }
@@ -715,6 +718,7 @@ class DeviceInfoCollectorClass {
 
   /**
    * Collect Performance tab information
+   * ENHANCED (Phase 4): Added cpuPressure, longTasksCount, ttfbMs, pageLoadTimeMs
    */
   private async collectPerformanceInfo(): Promise<PerformanceInfo> {
     const perfInfo = getPerformanceInfo();
@@ -731,11 +735,63 @@ class DeviceInfoCollectorClass {
       };
     }
 
+    // Get advanced performance metrics from PlayerPerformanceMetrics service
+    const PlayerPerformanceMetrics = getPlayerPerformanceMetrics();
+    let cpuPressure: string | null = null;
+    let longTasksCount = 0;
+    let ttfbMs: number | null = null;
+    let pageLoadTimeMs: number | null = null;
+
+    if (PlayerPerformanceMetrics) {
+      const advMetrics = PlayerPerformanceMetrics.getMetrics();
+      cpuPressure = advMetrics.cpu_pressure;
+      longTasksCount = advMetrics.long_tasks_count;
+      ttfbMs = advMetrics.ttfb_ms;
+      pageLoadTimeMs = advMetrics.page_load_time_ms;
+    }
+
     return {
       uptime: perfInfo.uptime,
       memory,
       fps: perfInfo.fps,
       loadTime: perfInfo.loadTime,
+      cpuPressure,
+      longTasksCount,
+      ttfbMs,
+      pageLoadTimeMs,
+    };
+  }
+
+  /**
+   * Collect Playback Stats (Phase 3: Behavioral Metrics)
+   */
+  private async collectPlaybackStats(): Promise<PlaybackStatsInfo> {
+    const PlayerBehavioralMetrics = getPlayerBehavioralMetrics();
+
+    if (PlayerBehavioralMetrics) {
+      const metrics = PlayerBehavioralMetrics.getMetrics();
+      return {
+        playbackStallsCount: metrics.playback_stalls_count,
+        bufferUnderrunsCount: metrics.buffer_underruns_count,
+        timeToFirstPlaybackMs: metrics.time_to_first_playback_ms,
+        contentPlayCount: metrics.content_play_count,
+        qualitySwitchesCount: metrics.quality_switches_count,
+        contentLoadFailuresCount: metrics.content_load_failures_count,
+        errorRatePercent: metrics.error_rate_percent,
+        totalOperations: metrics.total_operations,
+      };
+    }
+
+    // Default values if service not available
+    return {
+      playbackStallsCount: 0,
+      bufferUnderrunsCount: 0,
+      timeToFirstPlaybackMs: null,
+      contentPlayCount: 0,
+      qualitySwitchesCount: 0,
+      contentLoadFailuresCount: 0,
+      errorRatePercent: 0,
+      totalOperations: 0,
     };
   }
 

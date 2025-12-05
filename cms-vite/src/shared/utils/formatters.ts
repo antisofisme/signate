@@ -75,6 +75,81 @@ export const formatRelativeTime = (datetimeString: string): string => {
 }
 
 /**
+ * Format ISO datetime string to compact relative time (for table columns)
+ * @param datetimeString ISO datetime string
+ * @returns Compact relative time (e.g., "2h", "3d", "1w", "just now")
+ */
+export const formatRelativeTimeCompact = (datetimeString: string | undefined | null): string => {
+  if (!datetimeString) return '-'
+  try {
+    const date = new Date(datetimeString)
+    const now = new Date()
+    const seconds = Math.floor((now.getTime() - date.getTime()) / 1000)
+
+    if (seconds < 0) return 'just now' // Future date
+    if (seconds < 60) return 'just now'
+    if (seconds < 3600) {
+      const mins = Math.floor(seconds / 60)
+      return `${mins}m ago`
+    }
+    if (seconds < 86400) {
+      const hours = Math.floor(seconds / 3600)
+      return `${hours}h ago`
+    }
+    if (seconds < 604800) {
+      const days = Math.floor(seconds / 86400)
+      return `${days}d ago`
+    }
+    if (seconds < 2592000) { // 30 days
+      const weeks = Math.floor(seconds / 604800)
+      return `${weeks}w ago`
+    }
+    if (seconds < 31536000) { // 365 days
+      const months = Math.floor(seconds / 2592000)
+      return `${months}mo ago`
+    }
+    const years = Math.floor(seconds / 31536000)
+    return `${years}y ago`
+  } catch {
+    return '-'
+  }
+}
+
+/**
+ * Format ISO datetime string to absolute date for tooltips
+ * @param datetimeString ISO datetime string
+ * @returns Formatted date (e.g., "Dec 5, 2024 14:30")
+ */
+export const formatAbsoluteDate = (datetimeString: string | undefined | null): string => {
+  if (!datetimeString) return '-'
+  try {
+    const date = new Date(datetimeString)
+    return date.toLocaleString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false
+    })
+  } catch {
+    return '-'
+  }
+}
+
+/**
+ * Get date display props for components (relative time with tooltip)
+ * @param datetimeString ISO datetime string
+ * @returns Object with text (relative) and tooltip (absolute)
+ */
+export const getDateDisplayProps = (datetimeString: string | undefined | null): { text: string; tooltip: string } => {
+  return {
+    text: formatRelativeTimeCompact(datetimeString),
+    tooltip: formatAbsoluteDate(datetimeString)
+  }
+}
+
+/**
  * Format bytes to human readable size
  * @param bytes Number of bytes
  * @returns Formatted size (e.g., "1.5 MB")

@@ -1,7 +1,7 @@
 """Menu Media Repository Implementation"""
 
 from typing import List, Optional, Tuple
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 from sqlalchemy import asc, desc
 from datetime import datetime
 
@@ -86,7 +86,9 @@ class MenuMediaRepository:
         sort_dir: Optional[str] = None
     ) -> Tuple[List[MenuMediaModel], int]:
         """Find all menu media for organization with sorting"""
-        query = self.db.query(MenuMediaModel).filter(
+        query = self.db.query(MenuMediaModel).options(
+            selectinload(MenuMediaModel.uploader)  # Load uploader for uploaded_by_name
+        ).filter(
             MenuMediaModel.organization_id == organization_id
         )
 
@@ -150,7 +152,10 @@ class MenuMediaRepository:
         sort_dir: Optional[str] = None
     ) -> Tuple[List[MenuMediaModel], int]:
         """Find all soft-deleted menu media for organization (Recycle Bin)"""
-        query = self.db.query(MenuMediaModel).filter(
+        query = self.db.query(MenuMediaModel).options(
+            selectinload(MenuMediaModel.uploader),  # Load uploader for uploaded_by_name
+            selectinload(MenuMediaModel.deleter)    # Load deleter for deleted_by_name
+        ).filter(
             MenuMediaModel.organization_id == organization_id,
             MenuMediaModel.deleted_at.isnot(None)
         )

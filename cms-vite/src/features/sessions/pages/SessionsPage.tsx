@@ -12,7 +12,7 @@
 
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { LogOut, Shield, Users, User, Monitor, Globe, Clock, Building2, Smartphone } from 'lucide-react';
+import { LogOut, Shield, Users, User, Monitor, Globe, Clock, Building2, Smartphone, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
 import {
   PageSkeleton,
   EmptyState,
@@ -62,7 +62,7 @@ export default function SessionsPage() {
   const showOrgColumn = user?.role === 'super_admin';
 
   // Permission checks
-  const { hasPermission: canView, isLoading: permissionLoading } = useCanPerformAction('sessions', 'read');
+  const { hasPermission: canView, isLoading: isCheckingPermission } = useCanPerformAction('sessions', 'read');
   const { hasPermission: canDeleteOthers } = useCanPerformAction('sessions', 'delete');
 
   // Users can always revoke their own sessions (My Sessions tab)
@@ -128,7 +128,7 @@ export default function SessionsPage() {
   };
 
   // Loading state
-  if (permissionLoading || sessionsLoading) {
+  if (isCheckingPermission || sessionsLoading) {
     return <PageSkeleton showFilters={false} showTable={false} tableRows={3} />;
   }
 
@@ -279,6 +279,9 @@ export default function SessionsPage() {
                       <th className={TABLE_STYLES.th}>
                         {t('sessions.expiresAt', 'Expires')}
                       </th>
+                      <th className={TABLE_STYLES.th}>
+                        {t('sessions.status', 'Status')}
+                      </th>
                     </tr>
                   </thead>
                   <tbody className={TABLE_STYLES.tbody}>
@@ -348,6 +351,24 @@ export default function SessionsPage() {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                           {new Date(session.expires_at).toLocaleString()}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          {session.status === 'active' ? (
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">
+                              <CheckCircle className="w-3.5 h-3.5" />
+                              {t('sessions.statusActive', 'Active')}
+                            </span>
+                          ) : session.status === 'revoked' ? (
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400">
+                              <XCircle className="w-3.5 h-3.5" />
+                              {t('sessions.statusRevoked', 'Revoked')}
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400">
+                              <AlertCircle className="w-3.5 h-3.5" />
+                              {t('sessions.statusExpired', 'Expired')}
+                            </span>
+                          )}
                         </td>
                       </tr>
                     ))}

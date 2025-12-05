@@ -5,7 +5,7 @@
  * Content management table with upload, filter, and preview
  */
 
-import { useState, useMemo, useCallback, memo } from 'react';
+import { useState, useCallback, useMemo, memo } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Trash2,
@@ -15,7 +15,7 @@ import {
   FileAudio,
   Eye,
   Download,
-  Edit,
+  Pencil,
   Filter,
   ChevronDown,
   ChevronRight,
@@ -25,9 +25,14 @@ import {
   Tag,
   Monitor,
   Play,
+  Clock,
+  CheckCircle,
+  XCircle,
+  AlertCircle,
+  User,
 } from 'lucide-react';
 import { toast } from '@/shared/utils/toast';
-import { usePagination, useTableSort } from '@/shared/hooks';
+import { usePagination, useTableSort, useTableSelection } from '@/shared/hooks';
 import {
   Pagination,
   TableSkeleton,
@@ -36,7 +41,9 @@ import {
   ConfirmDialog,
   Button,
   TABLE_STYLES,
+  ACTION_BUTTON,
   SortableTableHeader,
+  DateCell,
 } from '@/shared/components';
 import { getApiErrorMessage } from '@/shared/utils/types';
 import { useCanPerformAction } from '@/features/rbac/hooks/usePermissions';
@@ -47,7 +54,7 @@ import {
   useDuplicateContent,
 } from '../hooks/useContent';
 import { useTags } from '@/features/tags/hooks/useTags';
-import type { Content, ContentType, ContentFilters, DuplicateGroup, ContentUsage } from '../types/content';
+import type { Content, ContentType, ContentFilters, DuplicateGroup, ContentUsage, TranscodingStatus } from '../types/content';
 import { formatFileSize, downloadContent } from '../api/contentApi';
 import { UploadModal } from './UploadModal';
 import { EditContentModal } from './EditContentModal';
@@ -87,6 +94,57 @@ function getFileTypeLabel(mimeType: string): string {
   return mimeType.split('/')[1]?.toUpperCase() || 'File';
 }
 
+// Transcoding status badge component for video/audio content
+function TranscodingBadge({
+  contentType,
+  status,
+  progress,
+}: {
+  contentType: ContentType;
+  status: TranscodingStatus;
+  progress: number;
+}) {
+  const { t } = useTranslation();
+
+  // Only show for video and audio content
+  if (contentType === 'image') {
+    return <span className="text-gray-400 dark:text-gray-500">-</span>;
+  }
+
+  switch (status) {
+    case 'pending':
+      return (
+        <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded-full bg-yellow-100 text-yellow-800 dark:bg-yellow-900/50 dark:text-yellow-300">
+          <Clock className="w-3 h-3" />
+          {t('contents.transcoding.pending', 'Pending')}
+        </span>
+      );
+    case 'processing':
+      return (
+        <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300">
+          <Loader2 className="w-3 h-3 animate-spin" />
+          {progress > 0 ? `${progress}%` : t('contents.transcoding.processing', 'Processing')}
+        </span>
+      );
+    case 'completed':
+      return (
+        <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded-full bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300">
+          <CheckCircle className="w-3 h-3" />
+          {t('contents.transcoding.ready', 'Ready')}
+        </span>
+      );
+    case 'failed':
+      return (
+        <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded-full bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-300">
+          <XCircle className="w-3 h-3" />
+          {t('contents.transcoding.failed', 'Failed')}
+        </span>
+      );
+    default:
+      return <span className="text-gray-400 dark:text-gray-500">-</span>;
+  }
+}
+
 interface ContentTableProps {
   showUploadModal?: boolean;
   onCloseUploadModal?: () => void;
@@ -113,8 +171,15 @@ export function ContentTable({ showUploadModal = false, onCloseUploadModal, show
   const [contentToDelete, setContentToDelete] = useState<Content | null>(null);
   const [showPreview, setShowPreview] = useState(false);
 
-  // Selection state
-  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  // Selection state - using shared hook
+  const {
+    selectedIds,
+    isSelected,
+    toggleSelection,
+    toggleSelectAll,
+    clearSelection,
+    getSelectedItems,
+  } = useTableSelection<number>();
   const [showEditModal, setShowEditModal] = useState(false);
   const [showBulkEditModal, setShowBulkEditModal] = useState(false);
   const [showBulkTagModal, setShowBulkTagModal] = useState(false);
@@ -133,13 +198,17 @@ export function ContentTable({ showUploadModal = false, onCloseUploadModal, show
   const deleteMutation = useDeleteContent();
   const bulkDeleteMutation = useBulkDeleteContent();
 
-  // State for expanded duplicate groups
+  // State for expand/collapse groups
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
 
   // Build duplicate lookup map
+  // Note: After API interceptor unwrap, duplicateData is the array directly (not {data: [...]})
   const duplicateMap = useMemo(() => {
     const map = new Map<number, { hash: string; usage: ContentUsage; group: DuplicateGroup }>();
-    const groups = Array.isArray(duplicateData) ? duplicateData : (duplicateData as any)?.data || [];
+    // Handle both wrapped and unwrapped response formats
+    const groups: DuplicateGroup[] = Array.isArray(duplicateData)
+      ? duplicateData
+      : (duplicateData?.data || []);
 
     groups.forEach((group: DuplicateGroup) => {
       group.contents.forEach((item) => {
@@ -168,7 +237,11 @@ export function ContentTable({ showUploadModal = false, onCloseUploadModal, show
 
   // Check if content has usage
   const hasUsage = (usage: ContentUsage): boolean => {
-    return usage.playlists.length > 0 || usage.tags.length > 0 || usage.devices.length > 0;
+    return (
+      (usage.playlists?.length ?? 0) > 0 ||
+      (usage.tags?.length ?? 0) > 0 ||
+      (usage.devices?.length ?? 0) > 0
+    );
   };
 
   // Handlers
@@ -202,27 +275,6 @@ export function ContentTable({ showUploadModal = false, onCloseUploadModal, show
   const clearFilters = () => {
     setFilters({});
     pagination.resetPage();
-  };
-
-  // Selection handlers
-  const toggleSelection = (id: number) => {
-    setSelectedIds((prev) => {
-      const newSet = new Set(prev);
-      if (newSet.has(id)) {
-        newSet.delete(id);
-      } else {
-        newSet.add(id);
-      }
-      return newSet;
-    });
-  };
-
-  const toggleSelectAll = () => {
-    if (selectedIds.size === contentData?.data.length) {
-      setSelectedIds(new Set());
-    } else {
-      setSelectedIds(new Set(contentData?.data.map((c) => c.id) || []));
-    }
   };
 
   const handleEdit = (content: Content) => {
@@ -263,12 +315,12 @@ export function ContentTable({ showUploadModal = false, onCloseUploadModal, show
     }
     if (confirm(t('contents.dialogs.bulkDeleteMessage', { count: selectedIds.size }))) {
       await bulkDeleteMutation.mutateAsync(Array.from(selectedIds));
-      setSelectedIds(new Set());
+      clearSelection();
     }
   };
 
   const getSelectedContent = (): Content[] => {
-    return contentData?.data.filter((c) => selectedIds.has(c.id)) || [];
+    return getSelectedItems(contentData?.data || []);
   };
 
   // Computed pagination values
@@ -371,7 +423,7 @@ export function ContentTable({ showUploadModal = false, onCloseUploadModal, show
                 <Button
                   variant="primary"
                   onClick={handleBulkEdit}
-                  leftIcon={<Edit className="w-4 h-4" />}
+                  leftIcon={<Pencil className="w-4 h-4" />}
                 >
                   {t('contents.actions.bulkEdit')}
                 </Button>
@@ -418,7 +470,7 @@ export function ContentTable({ showUploadModal = false, onCloseUploadModal, show
       {/* Loading State */}
       {isLoading && (
         <div className={TABLE_STYLES.container}>
-          <TableSkeleton columns={7} rows={10} />
+          <TableSkeleton columns={10} rows={10} />
         </div>
       )}
 
@@ -430,15 +482,15 @@ export function ContentTable({ showUploadModal = false, onCloseUploadModal, show
               <table className={`${TABLE_STYLES.table} table-fixed`}>
                 <thead className={TABLE_STYLES.thead}>
                   <tr>
-                    <th className="px-4 py-3 text-center w-12">
+                    <th className="w-10 px-2 py-3 text-center">
                       <input
                         type="checkbox"
                         checked={selectedIds.size > 0 && selectedIds.size === contentData?.data.length}
-                        onChange={toggleSelectAll}
+                        onChange={() => toggleSelectAll(contentData?.data || [])}
                         className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
                       />
                     </th>
-                    <th className={`${TABLE_STYLES.th} w-[35%]`}>
+                    <th className="w-72 px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                       <SortableTableHeader
                         columnKey="original_filename"
                         sortConfig={sortConfig}
@@ -447,7 +499,7 @@ export function ContentTable({ showUploadModal = false, onCloseUploadModal, show
                         {t('contents.table.content')}
                       </SortableTableHeader>
                     </th>
-                    <th className={`${TABLE_STYLES.th} w-20`}>
+                    <th className="w-20 px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                       <SortableTableHeader
                         columnKey="is_active"
                         sortConfig={sortConfig}
@@ -456,16 +508,7 @@ export function ContentTable({ showUploadModal = false, onCloseUploadModal, show
                         {t('contents.table.status')}
                       </SortableTableHeader>
                     </th>
-                    <th className={`${TABLE_STYLES.th} w-20`}>
-                      <SortableTableHeader
-                        columnKey="content_type"
-                        sortConfig={sortConfig}
-                        onSortChange={onSortChange}
-                      >
-                        {t('contents.table.type')}
-                      </SortableTableHeader>
-                    </th>
-                    <th className={`${TABLE_STYLES.th} w-24`}>
+                    <th className="w-20 px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                       <SortableTableHeader
                         columnKey="file_size"
                         sortConfig={sortConfig}
@@ -474,7 +517,16 @@ export function ContentTable({ showUploadModal = false, onCloseUploadModal, show
                         {t('contents.table.size')}
                       </SortableTableHeader>
                     </th>
-                    <th className={`${TABLE_STYLES.th} w-20`}>
+                    <th className="w-24 px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                      <SortableTableHeader
+                        columnKey="content_type"
+                        sortConfig={sortConfig}
+                        onSortChange={onSortChange}
+                      >
+                        {t('contents.table.type')}
+                      </SortableTableHeader>
+                    </th>
+                    <th className="w-16 px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                       <SortableTableHeader
                         columnKey="duration"
                         sortConfig={sortConfig}
@@ -483,7 +535,25 @@ export function ContentTable({ showUploadModal = false, onCloseUploadModal, show
                         {t('contents.table.duration')}
                       </SortableTableHeader>
                     </th>
-                    <th className={`${TABLE_STYLES.th} w-32`}>
+                    <th className="w-24 px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                      <SortableTableHeader
+                        columnKey="transcoding_status"
+                        sortConfig={sortConfig}
+                        onSortChange={onSortChange}
+                      >
+                        {t('contents.table.transcoding', 'Transcoding')}
+                      </SortableTableHeader>
+                    </th>
+                    <th className="w-28 px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                      <SortableTableHeader
+                        columnKey="created_at"
+                        sortConfig={sortConfig}
+                        onSortChange={onSortChange}
+                      >
+                        {t('contents.table.uploaded', 'Uploaded')}
+                      </SortableTableHeader>
+                    </th>
+                    <th className="w-44 px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                       {t('contents.table.actions')}
                     </th>
                   </tr>
@@ -509,15 +579,15 @@ export function ContentTable({ showUploadModal = false, onCloseUploadModal, show
                             className="bg-orange-50 dark:bg-orange-900/20 hover:bg-orange-100 dark:hover:bg-orange-900/30 cursor-pointer"
                             onClick={() => toggleGroupExpand(dupInfo.hash)}
                           >
-                            <td className="px-4 py-3 text-center">
+                            <td className="px-2 py-3 text-center whitespace-nowrap">
                               {isExpanded ? (
                                 <ChevronDown className="w-4 h-4 text-orange-600" />
                               ) : (
                                 <ChevronRight className="w-4 h-4 text-orange-600" />
                               )}
                             </td>
-                            <td className="px-4 py-3" colSpan={2}>
-                              <div className="flex items-center gap-3">
+                            <td className="px-3 py-3 overflow-hidden">
+                              <div className="flex items-center gap-3 min-w-0">
                                 {group.thumbnail_url ? (
                                   <img
                                     src={group.thumbnail_url}
@@ -529,31 +599,42 @@ export function ContentTable({ showUploadModal = false, onCloseUploadModal, show
                                     {getContentTypeIcon(group.content_type)}
                                   </div>
                                 )}
-                                <div>
+                                <div className="min-w-0 overflow-hidden">
                                   <div className="flex items-center gap-2">
-                                    <Copy className="w-4 h-4 text-orange-600" />
-                                    <span className="font-medium text-orange-800 dark:text-orange-200">
+                                    <Copy className="w-4 h-4 text-orange-600 flex-shrink-0" />
+                                    <span className="font-medium text-orange-800 dark:text-orange-200 truncate">
                                       {t('contents.duplicates.count', { count: group.duplicate_count })}
                                     </span>
                                   </div>
-                                  <span className="text-xs text-orange-600 dark:text-orange-400 font-mono">
-                                    {t('contents.duplicates.hash')}: {group.file_hash.slice(0, 16)}...
+                                  <span className="text-xs text-orange-600 dark:text-orange-400 font-mono truncate block">
+                                    {group.file_hash.slice(0, 12)}...
                                   </span>
                                 </div>
                               </div>
-                            </td>
-                            <td className="px-4 py-3 whitespace-nowrap text-sm text-orange-700 dark:text-orange-300">
-                              {formatFileSize(group.file_size)}
-                            </td>
-                            <td className="px-4 py-3 whitespace-nowrap text-sm text-orange-700 dark:text-orange-300">
-                              -
                             </td>
                             <td className="px-4 py-3 whitespace-nowrap">
                               <span className="px-2 py-1 text-xs font-medium rounded-full bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200">
                                 {t('contents.duplicates.sameFile')}
                               </span>
                             </td>
-                            <td className="px-4 py-3 text-sm text-orange-600 dark:text-orange-400">
+                            <td className="px-4 py-3 whitespace-nowrap text-sm text-orange-700 dark:text-orange-300">
+                              {formatFileSize(group.file_size)}
+                            </td>
+                            <td className="px-4 py-3 whitespace-nowrap">
+                              <span className="px-2 py-0.5 text-xs font-medium rounded bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200 capitalize">
+                                {group.content_type}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 whitespace-nowrap text-sm text-orange-700 dark:text-orange-300">
+                              -
+                            </td>
+                            <td className="px-4 py-3 whitespace-nowrap text-sm text-orange-700 dark:text-orange-300">
+                              -
+                            </td>
+                            <td className="px-4 py-3 whitespace-nowrap text-sm text-orange-700 dark:text-orange-300">
+                              -
+                            </td>
+                            <td className="px-4 py-3 whitespace-nowrap text-sm text-orange-600 dark:text-orange-400">
                               {isExpanded ? t('contents.duplicates.clickToCollapse') : t('contents.duplicates.clickToExpand')}
                             </td>
                           </tr>
@@ -579,7 +660,7 @@ export function ContentTable({ showUploadModal = false, onCloseUploadModal, show
                                     <div className="w-4 border-l-2 border-b-2 border-orange-300 dark:border-orange-700 h-4 mr-1" />
                                     <input
                                       type="checkbox"
-                                      checked={selectedIds.has(fullContent.id)}
+                                      checked={isSelected(fullContent.id)}
                                       onChange={(e) => {
                                         e.stopPropagation();
                                         toggleSelection(fullContent.id);
@@ -588,20 +669,20 @@ export function ContentTable({ showUploadModal = false, onCloseUploadModal, show
                                     />
                                   </div>
                                 </td>
-                                <td className="px-4 py-3">
+                                <td className="px-3 py-3 overflow-hidden">
                                   <div className="flex items-center min-w-0 pl-4">
                                     {fullContent.thumbnail_url ? (
                                       <img
                                         src={fullContent.thumbnail_url}
                                         alt={fullContent.title}
-                                        className="w-8 h-8 rounded object-cover mr-3 flex-shrink-0"
+                                        className="w-8 h-8 rounded object-cover mr-2 flex-shrink-0"
                                       />
                                     ) : (
-                                      <div className="w-8 h-8 bg-gray-200 dark:bg-gray-700 rounded flex items-center justify-center mr-3 flex-shrink-0">
+                                      <div className="w-8 h-8 bg-gray-200 dark:bg-gray-700 rounded flex items-center justify-center mr-2 flex-shrink-0">
                                         {getContentTypeIcon(fullContent.content_type)}
                                       </div>
                                     )}
-                                    <div className="min-w-0 flex-1">
+                                    <div className="min-w-0 flex-1 overflow-hidden">
                                       <p className="text-sm font-medium text-gray-900 dark:text-white truncate" title={fullContent.title}>
                                         {fullContent.title}
                                       </p>
@@ -627,37 +708,56 @@ export function ContentTable({ showUploadModal = false, onCloseUploadModal, show
                                     )}
                                   </div>
                                 </td>
+                                <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+                                  {formatFileSize(fullContent.file_size)}
+                                </td>
                                 <td className="px-4 py-3 whitespace-nowrap">
-                                  {/* Usage indicators */}
-                                  <div className="flex flex-col gap-0.5">
-                                    {itemUsage.playlists.length > 0 && (
-                                      <div className="flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400">
-                                        <List className="w-3 h-3" />
-                                        <span>{t('contents.usage.playlists', { count: itemUsage.playlists.length })}</span>
-                                      </div>
+                                  <div className="flex flex-col">
+                                    <span className="px-2 py-0.5 text-xs font-medium rounded bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300 w-fit">
+                                      {getFileTypeLabel(fullContent.mime_type)}
+                                    </span>
+                                    {fullContent.resolution && (
+                                      <span className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                                        {fullContent.resolution}
+                                      </span>
                                     )}
-                                    {itemUsage.tags.length > 0 && (
-                                      <div className="flex items-center gap-1 text-xs text-purple-600 dark:text-purple-400">
-                                        <Tag className="w-3 h-3" />
-                                        <span>{t('contents.usage.tags', { count: itemUsage.tags.length })}</span>
+                                    {/* Usage indicators in small text */}
+                                    {itemHasUsage && (
+                                      <div className="flex items-center gap-2 mt-0.5">
+                                        {itemUsage.playlists.length > 0 && (
+                                          <span className="text-xs text-blue-600 dark:text-blue-400" title={itemUsage.playlists.map(p => p.name).join(', ')}>
+                                            <List className="w-3 h-3 inline mr-0.5" />{itemUsage.playlists.length}
+                                          </span>
+                                        )}
+                                        {itemUsage.tags.length > 0 && (
+                                          <span className="text-xs text-purple-600 dark:text-purple-400" title={itemUsage.tags.map(t => t.name).join(', ')}>
+                                            <Tag className="w-3 h-3 inline mr-0.5" />{itemUsage.tags.length}
+                                          </span>
+                                        )}
+                                        {itemUsage.devices.length > 0 && (
+                                          <span className="text-xs text-green-600 dark:text-green-400" title={itemUsage.devices.map(d => d.name).join(', ')}>
+                                            <Monitor className="w-3 h-3 inline mr-0.5" />{itemUsage.devices.length}
+                                          </span>
+                                        )}
                                       </div>
-                                    )}
-                                    {itemUsage.devices.length > 0 && (
-                                      <div className="flex items-center gap-1 text-xs text-green-600 dark:text-green-400">
-                                        <Monitor className="w-3 h-3" />
-                                        <span>{t('contents.usage.devices', { count: itemUsage.devices.length })}</span>
-                                      </div>
-                                    )}
-                                    {!itemHasUsage && (
-                                      <span className="text-xs text-gray-400">{t('contents.usage.notUsed')}</span>
                                     )}
                                   </div>
                                 </td>
                                 <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-                                  {formatFileSize(fullContent.file_size)}
-                                </td>
-                                <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-white">
                                   {fullContent.duration}s
+                                </td>
+                                <td className="px-4 py-3 whitespace-nowrap">
+                                  <TranscodingBadge contentType={fullContent.content_type} status={fullContent.transcoding_status} progress={fullContent.transcoding_progress} />
+                                </td>
+                                <td className="px-4 py-3 whitespace-nowrap">
+                                  <div className="flex flex-col">
+                                    <DateCell date={fullContent.created_at} />
+                                    {fullContent.uploaded_by_name && (
+                                      <span className="text-xs text-gray-500 dark:text-gray-400 truncate" title={fullContent.uploaded_by_name}>
+                                        {fullContent.uploaded_by_name}
+                                      </span>
+                                    )}
+                                  </div>
                                 </td>
                                 <td className="px-4 py-3 whitespace-nowrap text-sm">
                                   <div className="flex items-center gap-1">
@@ -666,7 +766,7 @@ export function ContentTable({ showUploadModal = false, onCloseUploadModal, show
                                         e.stopPropagation();
                                         handlePreview(fullContent);
                                       }}
-                                      className={TABLE_STYLES.actionBtnBlue}
+                                      className={ACTION_BUTTON.VIEW}
                                       title={t('contents.actions.preview')}
                                     >
                                       <Eye className="w-4 h-4" />
@@ -676,7 +776,7 @@ export function ContentTable({ showUploadModal = false, onCloseUploadModal, show
                                         e.stopPropagation();
                                         handleDownload(fullContent);
                                       }}
-                                      className={TABLE_STYLES.actionBtnGray}
+                                      className={ACTION_BUTTON.DOWNLOAD}
                                       title={t('contents.actions.download')}
                                     >
                                       <Download className="w-4 h-4" />
@@ -688,7 +788,7 @@ export function ContentTable({ showUploadModal = false, onCloseUploadModal, show
                                             e.stopPropagation();
                                             handleTagAssign(fullContent);
                                           }}
-                                          className={TABLE_STYLES.actionBtnPurple}
+                                          className={ACTION_BUTTON.ASSIGN}
                                           title={t('contents.actions.assignTag', 'Assign Tag')}
                                         >
                                           <Tag className="w-4 h-4" />
@@ -698,7 +798,7 @@ export function ContentTable({ showUploadModal = false, onCloseUploadModal, show
                                             e.stopPropagation();
                                             handlePlaylistAssign(fullContent);
                                           }}
-                                          className={TABLE_STYLES.actionBtnBlue}
+                                          className={ACTION_BUTTON.ASSIGN}
                                           title={t('contents.actions.assignPlaylist', 'Assign Playlist')}
                                         >
                                           <ListMusic className="w-4 h-4" />
@@ -708,10 +808,10 @@ export function ContentTable({ showUploadModal = false, onCloseUploadModal, show
                                             e.stopPropagation();
                                             handleEdit(fullContent);
                                           }}
-                                          className={TABLE_STYLES.actionBtnGreen}
+                                          className={ACTION_BUTTON.EDIT}
                                           title={t('contents.actions.edit')}
                                         >
-                                          <Edit className="w-4 h-4" />
+                                          <Pencil className="w-4 h-4" />
                                         </button>
                                       </>
                                     )}
@@ -721,7 +821,7 @@ export function ContentTable({ showUploadModal = false, onCloseUploadModal, show
                                           e.stopPropagation();
                                           setContentToDelete(fullContent);
                                         }}
-                                        className={TABLE_STYLES.actionBtnRed}
+                                        className={ACTION_BUTTON.DELETE}
                                         title={t('contents.actions.delete')}
                                       >
                                         <Trash2 className="w-4 h-4" />
@@ -745,25 +845,25 @@ export function ContentTable({ showUploadModal = false, onCloseUploadModal, show
                             <td className="px-4 py-3 text-center">
                               <input
                                 type="checkbox"
-                                checked={selectedIds.has(content.id)}
+                                checked={isSelected(content.id)}
                                 onChange={() => toggleSelection(content.id)}
                                 className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
                               />
                             </td>
-                            <td className="px-4 py-3">
+                            <td className="px-3 py-3 overflow-hidden">
                               <div className="flex items-center min-w-0">
                                 {content.thumbnail_url ? (
                                   <img
                                     src={content.thumbnail_url}
                                     alt={content.title}
-                                    className="w-10 h-10 rounded object-cover mr-3 flex-shrink-0"
+                                    className="w-10 h-10 rounded object-cover mr-2 flex-shrink-0"
                                   />
                                 ) : (
-                                  <div className="w-10 h-10 bg-gray-200 dark:bg-gray-700 rounded flex items-center justify-center mr-3 flex-shrink-0">
+                                  <div className="w-10 h-10 bg-gray-200 dark:bg-gray-700 rounded flex items-center justify-center mr-2 flex-shrink-0">
                                     {getContentTypeIcon(content.content_type)}
                                   </div>
                                 )}
-                                <div className="min-w-0 flex-1">
+                                <div className="min-w-0 flex-1 overflow-hidden">
                                   <p className="text-sm font-medium text-gray-900 dark:text-white truncate" title={content.title}>
                                     {content.title}
                                   </p>
@@ -786,29 +886,49 @@ export function ContentTable({ showUploadModal = false, onCloseUploadModal, show
                                 {content.is_active ? t('contents.status.active') : t('contents.status.inactive')}
                               </span>
                             </td>
-                            <td className="px-4 py-3 whitespace-nowrap">
-                              <span className="px-2 py-1 text-xs font-medium rounded bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300">
-                                {getFileTypeLabel(content.mime_type)}
-                              </span>
-                            </td>
                             <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-white">
                               {formatFileSize(content.file_size)}
                             </td>
+                            <td className="px-4 py-3 whitespace-nowrap">
+                              <div className="flex flex-col">
+                                <span className="px-2 py-0.5 text-xs font-medium rounded bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300 w-fit">
+                                  {getFileTypeLabel(content.mime_type)}
+                                </span>
+                                {content.resolution && (
+                                  <span className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                                    {content.resolution}
+                                  </span>
+                                )}
+                              </div>
+                            </td>
                             <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-white">
                               {content.duration}s
+                            </td>
+                            <td className="px-4 py-3 whitespace-nowrap">
+                              <TranscodingBadge contentType={content.content_type} status={content.transcoding_status} progress={content.transcoding_progress} />
+                            </td>
+                            <td className="px-4 py-3 whitespace-nowrap">
+                              <div className="flex flex-col">
+                                <DateCell date={content.created_at} />
+                                {content.uploaded_by_name && (
+                                  <span className="text-xs text-gray-500 dark:text-gray-400 truncate" title={content.uploaded_by_name}>
+                                    {content.uploaded_by_name}
+                                  </span>
+                                )}
+                              </div>
                             </td>
                             <td className="px-4 py-3 whitespace-nowrap text-sm">
                               <div className="flex items-center gap-1">
                                 <button
                                   onClick={() => handlePreview(content)}
-                                  className={TABLE_STYLES.actionBtnBlue}
+                                  className={ACTION_BUTTON.VIEW}
                                   title={t('contents.actions.preview')}
                                 >
                                   <Eye className="w-4 h-4" />
                                 </button>
                                 <button
                                   onClick={() => handleDownload(content)}
-                                  className={TABLE_STYLES.actionBtnGray}
+                                  className={ACTION_BUTTON.DOWNLOAD}
                                   title={t('contents.actions.download')}
                                 >
                                   <Download className="w-4 h-4" />
@@ -817,31 +937,31 @@ export function ContentTable({ showUploadModal = false, onCloseUploadModal, show
                                   <>
                                     <button
                                       onClick={() => handleTagAssign(content)}
-                                      className={TABLE_STYLES.actionBtnPurple}
+                                      className={ACTION_BUTTON.ASSIGN}
                                       title={t('contents.actions.assignTag', 'Assign Tag')}
                                     >
                                       <Tag className="w-4 h-4" />
                                     </button>
                                     <button
                                       onClick={() => handlePlaylistAssign(content)}
-                                      className={TABLE_STYLES.actionBtnBlue}
+                                      className={ACTION_BUTTON.ASSIGN}
                                       title={t('contents.actions.assignPlaylist', 'Assign Playlist')}
                                     >
                                       <ListMusic className="w-4 h-4" />
                                     </button>
                                     <button
                                       onClick={() => handleEdit(content)}
-                                      className={TABLE_STYLES.actionBtnGreen}
+                                      className={ACTION_BUTTON.EDIT}
                                       title={t('contents.actions.edit')}
                                     >
-                                      <Edit className="w-4 h-4" />
+                                      <Pencil className="w-4 h-4" />
                                     </button>
                                   </>
                                 )}
                                 {canDelete && (
                                   <button
                                     onClick={() => setContentToDelete(content)}
-                                    className={TABLE_STYLES.actionBtnRed}
+                                    className={ACTION_BUTTON.DELETE}
                                     title={t('contents.actions.delete')}
                                   >
                                     <Trash2 className="w-4 h-4" />

@@ -35,7 +35,11 @@ from .dtos import (
     ActivationStatusResponse,
     DeviceActivationResponse,
     DeviceHealthMetricsCreate,
-    DeviceHealthResponse
+    DeviceHealthResponse,
+    DeviceHealthWithAlertsResponse,
+    HealthHistoryResponse,
+    DeviceCapabilitiesCreate,
+    DeviceCapabilitiesResponse
 )
 from .use_cases.request_activation_code import RequestActivationCodeUseCase
 from .use_cases.activate_device import ActivateDeviceUseCase
@@ -139,6 +143,16 @@ def device_to_response(device) -> DeviceResponse:
         device_uuid=device.device_uuid,
         ip_address=device.ip_address,
         platform=device.platform,
+        # GeoIP data (Phase 6)
+        geo_city=device.geo_city,
+        geo_country=device.geo_country,
+        geo_country_code=device.geo_country_code,
+        geo_region=device.geo_region,
+        geo_isp=device.geo_isp,
+        geo_timezone=device.geo_timezone,
+        geo_latitude=device.geo_latitude,
+        geo_longitude=device.geo_longitude,
+        # Screen & viewport
         screen_width=device.screen_width,
         screen_height=device.screen_height,
         viewport_width=device.viewport_width,
@@ -147,6 +161,7 @@ def device_to_response(device) -> DeviceResponse:
         user_agent=device.user_agent,
         connection_type=device.connection_type,
         connection_speed=device.connection_speed,
+        connection_drops_count=device.connection_drops_count,
         model_name=device.model_name,
         firmware_version=device.firmware_version,
         status=device.status,
@@ -158,6 +173,7 @@ def device_to_response(device) -> DeviceResponse:
         room_number=device.room_number,
         is_personalization_supported=device.is_personalization_supported,
         privacy_mode=device.privacy_mode,
+        playlist_name=device.playlist_name,  # Name of assigned playlist
         created_at=device.created_at,
         updated_at=device.updated_at,
         released_at=device.released_at
@@ -202,7 +218,7 @@ def request_activation_code(
 
 
 @router.post(DeviceRoutes.HEARTBEAT, response_model=HeartbeatResponse)
-def device_heartbeat(
+async def device_heartbeat(
     device_id: int,
     request: HeartbeatRequest,
     use_case: DeviceHeartbeatUseCase = Depends(get_heartbeat_use_case),
@@ -216,6 +232,7 @@ def device_heartbeat(
     - If not present → fallback to unique_code validation (backward compatible)
 
     Updates last_seen_at timestamp and device metadata
+    Also performs GeoIP lookup if IP changed (Phase 6)
     """
     try:
         # 🔒 SECURITY: Optional JWT validation (backward compatible)
@@ -250,18 +267,24 @@ def device_heartbeat(
         heartbeat_data = DeviceHeartbeat(
             unique_code=request.unique_code,
             device_uuid=request.device_uuid,
+            # Static fields (deprecated - now sent via /capabilities)
             screen_width=request.screen_width,
             screen_height=request.screen_height,
-            viewport_width=request.viewport_width,
-            viewport_height=request.viewport_height,
             device_pixel_ratio=request.device_pixel_ratio,
             user_agent=request.user_agent,
+            # Semi-static fields (only sent when changed)
+            viewport_width=request.viewport_width,
+            viewport_height=request.viewport_height,
+            # Dynamic fields
             connection_type=request.connection_type,
             connection_speed=request.connection_speed,
+            # Connection reliability (NEW)
+            connection_drops_count=request.connection_drops_count,
             ip_address=client_ip
         )
 
-        success = use_case.execute(heartbeat_data)
+        # Use case is now async for GeoIP lookup
+        success = await use_case.execute(heartbeat_data)
 
         if success:
             return HeartbeatResponse(success=True, message="Heartbeat received")
@@ -425,6 +448,136 @@ def record_device_health(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to record health metrics: {str(e)}"
+        )
+
+
+# =============================================================================
+# DEVICE CAPABILITIES ENDPOINT
+# =============================================================================
+
+@router.post("/devices/{device_id}/capabilities", response_model=DeviceCapabilitiesResponse)
+def record_device_capabilities(
+    device_id: int,
+    request_body: DeviceCapabilitiesCreate,
+    device_repo: DeviceRepository = Depends(get_device_repository),
+    current_device: CurrentDevice = Depends(get_current_device),
+    db: Session = Depends(get_db)
+):
+    """
+    Record device capabilities (called by player ONCE on startup)
+
+    Static device info that rarely changes: screen, hardware, codecs, WebGL.
+    Uses upsert (insert or update) to handle both new and existing records.
+
+    This data is sent once on startup instead of repeatedly in heartbeats,
+    reducing payload size and unnecessary data transmission.
+    """
+    from datetime import datetime, timezone
+    from .repositories.models import DeviceCapabilitiesModel
+
+    try:
+        # Verify device_id matches JWT token
+        if current_device.id != device_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Device ID mismatch: JWT contains {current_device.id}, request has {device_id}"
+            )
+
+        # Check if capabilities record already exists for this device
+        existing = db.query(DeviceCapabilitiesModel).filter(
+            DeviceCapabilitiesModel.device_id == device_id
+        ).first()
+
+        if existing:
+            # Update existing record
+            existing.screen_width = request_body.screen_width
+            existing.screen_height = request_body.screen_height
+            existing.device_pixel_ratio = request_body.device_pixel_ratio
+            existing.display_refresh_rate = request_body.display_refresh_rate
+            existing.hardware_concurrency = request_body.hardware_concurrency
+            existing.device_memory_gb = request_body.device_memory_gb
+            existing.codec_h264 = request_body.codec_h264
+            existing.codec_h265 = request_body.codec_h265
+            existing.codec_vp9 = request_body.codec_vp9
+            existing.codec_av1 = request_body.codec_av1
+            existing.codec_aac = request_body.codec_aac
+            existing.codec_opus = request_body.codec_opus
+            existing.webgl_version = request_body.webgl_version
+            existing.webgl_renderer = request_body.webgl_renderer
+            existing.webgl_vendor = request_body.webgl_vendor
+            existing.user_agent = request_body.user_agent
+            existing.platform = request_body.platform
+            existing.player_version = request_body.player_version
+            existing.updated_at = datetime.now(timezone.utc)
+
+            db.commit()
+            db.refresh(existing)
+            capabilities = existing
+            print(f"[Capabilities] Updated capabilities for device {device_id}")
+        else:
+            # Create new record
+            capabilities = DeviceCapabilitiesModel(
+                device_id=device_id,
+                organization_id=current_device.organization_id,
+                screen_width=request_body.screen_width,
+                screen_height=request_body.screen_height,
+                device_pixel_ratio=request_body.device_pixel_ratio,
+                display_refresh_rate=request_body.display_refresh_rate,
+                hardware_concurrency=request_body.hardware_concurrency,
+                device_memory_gb=request_body.device_memory_gb,
+                codec_h264=request_body.codec_h264,
+                codec_h265=request_body.codec_h265,
+                codec_vp9=request_body.codec_vp9,
+                codec_av1=request_body.codec_av1,
+                codec_aac=request_body.codec_aac,
+                codec_opus=request_body.codec_opus,
+                webgl_version=request_body.webgl_version,
+                webgl_renderer=request_body.webgl_renderer,
+                webgl_vendor=request_body.webgl_vendor,
+                user_agent=request_body.user_agent,
+                platform=request_body.platform,
+                player_version=request_body.player_version,
+                recorded_at=datetime.now(timezone.utc)
+            )
+
+            db.add(capabilities)
+            db.commit()
+            db.refresh(capabilities)
+            print(f"[Capabilities] Recorded new capabilities for device {device_id}")
+
+        return DeviceCapabilitiesResponse(
+            id=capabilities.id,
+            device_id=capabilities.device_id,
+            organization_id=capabilities.organization_id,
+            screen_width=capabilities.screen_width,
+            screen_height=capabilities.screen_height,
+            device_pixel_ratio=capabilities.device_pixel_ratio,
+            display_refresh_rate=capabilities.display_refresh_rate,
+            hardware_concurrency=capabilities.hardware_concurrency,
+            device_memory_gb=capabilities.device_memory_gb,
+            codec_h264=capabilities.codec_h264,
+            codec_h265=capabilities.codec_h265,
+            codec_vp9=capabilities.codec_vp9,
+            codec_av1=capabilities.codec_av1,
+            codec_aac=capabilities.codec_aac,
+            codec_opus=capabilities.codec_opus,
+            webgl_version=capabilities.webgl_version,
+            webgl_renderer=capabilities.webgl_renderer,
+            webgl_vendor=capabilities.webgl_vendor,
+            user_agent=capabilities.user_agent,
+            platform=capabilities.platform,
+            player_version=capabilities.player_version,
+            recorded_at=capabilities.recorded_at,
+            updated_at=capabilities.updated_at
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        print(f"[Capabilities] Failed to record capabilities for device {device_id}: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to record capabilities: {str(e)}"
         )
 
 
@@ -611,6 +764,241 @@ def verify_device_by_fingerprint(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=str(e)
         )
+
+
+# =============================================================================
+# GET ENDPOINTS FOR CAPABILITIES & HEALTH (CMS USE)
+# =============================================================================
+
+@router.get("/devices/{device_id}/capabilities", response_model=DeviceCapabilitiesResponse)
+def get_device_capabilities(
+    device_id: int,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(require_permission("devices", "read"))
+):
+    """
+    Get device capabilities (static device info)
+    Returns codec support, hardware info, display info, etc.
+    """
+    from .repositories.models import DeviceCapabilitiesModel, DeviceModel
+
+    # Verify device belongs to user's organization
+    device = db.query(DeviceModel).filter(
+        DeviceModel.id == device_id,
+        DeviceModel.organization_id == current_user["organization_id"]
+    ).first()
+
+    if not device:
+        raise NotFoundError(f"Device {device_id} not found")
+
+    # Get capabilities
+    capabilities = db.query(DeviceCapabilitiesModel).filter(
+        DeviceCapabilitiesModel.device_id == device_id
+    ).first()
+
+    if not capabilities:
+        raise NotFoundError(f"No capabilities recorded for device {device_id}")
+
+    return DeviceCapabilitiesResponse(
+        id=capabilities.id,
+        device_id=capabilities.device_id,
+        organization_id=capabilities.organization_id,
+        screen_width=capabilities.screen_width,
+        screen_height=capabilities.screen_height,
+        device_pixel_ratio=capabilities.device_pixel_ratio,
+        display_refresh_rate=capabilities.display_refresh_rate,
+        hardware_concurrency=capabilities.hardware_concurrency,
+        device_memory_gb=capabilities.device_memory_gb,
+        codec_h264=capabilities.codec_h264,
+        codec_h265=capabilities.codec_h265,
+        codec_vp9=capabilities.codec_vp9,
+        codec_av1=capabilities.codec_av1,
+        codec_aac=capabilities.codec_aac,
+        codec_opus=capabilities.codec_opus,
+        webgl_version=capabilities.webgl_version,
+        webgl_renderer=capabilities.webgl_renderer,
+        webgl_vendor=capabilities.webgl_vendor,
+        user_agent=capabilities.user_agent,
+        platform=capabilities.platform,
+        player_version=capabilities.player_version,
+        recorded_at=capabilities.recorded_at,
+        updated_at=capabilities.updated_at
+    )
+
+
+@router.get("/devices/{device_id}/health", response_model=DeviceHealthWithAlertsResponse)
+def get_device_health(
+    device_id: int,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(require_permission("devices", "read"))
+):
+    """
+    Get latest device health metrics with alerts
+    Returns behavioral metrics, performance metrics, and any triggered alerts
+    """
+    from .repositories.models import DeviceHealthMetricModel, DeviceModel
+
+    # Verify device belongs to user's organization
+    device = db.query(DeviceModel).filter(
+        DeviceModel.id == device_id,
+        DeviceModel.organization_id == current_user["organization_id"]
+    ).first()
+
+    if not device:
+        raise NotFoundError(f"Device {device_id} not found")
+
+    # Get latest health metric
+    health = db.query(DeviceHealthMetricModel).filter(
+        DeviceHealthMetricModel.device_id == device_id
+    ).order_by(DeviceHealthMetricModel.recorded_at.desc()).first()
+
+    # Build response
+    health_response = None
+    alerts = []
+
+    if health:
+        health_response = DeviceHealthResponse(
+            id=health.id,
+            device_id=health.device_id,
+            organization_id=health.organization_id,
+            cpu_usage=float(health.cpu_usage) if health.cpu_usage else None,
+            memory_usage=float(health.memory_usage) if health.memory_usage else None,
+            memory_total_mb=health.memory_total_mb,
+            memory_used_mb=health.memory_used_mb,
+            disk_usage=float(health.disk_usage) if health.disk_usage else None,
+            disk_total_gb=health.disk_total_gb,
+            disk_used_gb=health.disk_used_gb,
+            network_latency_ms=health.network_latency_ms,
+            network_download_mbps=float(health.network_download_mbps) if health.network_download_mbps else None,
+            network_upload_mbps=float(health.network_upload_mbps) if health.network_upload_mbps else None,
+            dns_resolution_ms=health.dns_resolution_ms,
+            connection_quality=health.connection_quality,
+            display_resolution=health.display_resolution,
+            display_refresh_rate=health.display_refresh_rate,
+            player_version=health.player_version,
+            player_uptime_hours=health.player_uptime_hours,
+            content_errors_count=health.content_errors_count or 0,
+            last_error_message=health.last_error_message,
+            last_error_at=health.last_error_at,
+            # Behavioral metrics (Phase 3)
+            playback_stalls_count=health.playback_stalls_count,
+            buffer_underruns_count=health.buffer_underruns_count,
+            time_to_first_playback_ms=health.time_to_first_playback_ms,
+            content_play_count=health.content_play_count,
+            quality_switches_count=health.quality_switches_count,
+            content_load_failures_count=health.content_load_failures_count,
+            error_rate_percent=float(health.error_rate_percent) if health.error_rate_percent else None,
+            # Performance metrics (Phase 4)
+            fps_current=health.fps_current,
+            long_tasks_count=health.long_tasks_count,
+            cpu_pressure=health.cpu_pressure,
+            ttfb_ms=health.ttfb_ms,
+            page_load_time_ms=health.page_load_time_ms,
+            # Health status
+            overall_status=health.overall_status or "unknown",
+            is_alert_triggered=health.is_alert_triggered or False,
+            alert_message=health.alert_message,
+            metadata=health.metadata or {},
+            recorded_at=health.recorded_at
+        )
+
+        # Build alerts if any
+        if health.is_alert_triggered and health.alert_message:
+            from .dtos import HealthAlertResponse
+            alerts.append(HealthAlertResponse(
+                alert_type="health",
+                alert_level="warning" if health.overall_status == "warning" else "critical",
+                alert_message=health.alert_message,
+                metric_value=0.0,
+                threshold_value=0.0,
+                recorded_at=health.recorded_at
+            ))
+
+    from .dtos import DeviceHealthWithAlertsResponse
+    return DeviceHealthWithAlertsResponse(
+        health=health_response,
+        alerts=alerts
+    )
+
+
+@router.get("/devices/{device_id}/health/history", response_model=HealthHistoryResponse)
+def get_device_health_history(
+    device_id: int,
+    limit: int = Query(24, ge=1, le=168, description="Number of records (1-168, default 24 = 2 hours)"),
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(require_permission("devices", "read"))
+):
+    """
+    Get device health history for charts/trending
+    Returns last N health records (default 24 = 2 hours @ 5min intervals)
+    """
+    from .repositories.models import DeviceHealthMetricModel, DeviceModel
+    from .dtos import HealthHistoryResponse
+
+    # Verify device belongs to user's organization
+    device = db.query(DeviceModel).filter(
+        DeviceModel.id == device_id,
+        DeviceModel.organization_id == current_user["organization_id"]
+    ).first()
+
+    if not device:
+        raise NotFoundError(f"Device {device_id} not found")
+
+    # Get health history
+    history = db.query(DeviceHealthMetricModel).filter(
+        DeviceHealthMetricModel.device_id == device_id
+    ).order_by(DeviceHealthMetricModel.recorded_at.desc()).limit(limit).all()
+
+    # Convert to response
+    history_responses = [
+        DeviceHealthResponse(
+            id=h.id,
+            device_id=h.device_id,
+            organization_id=h.organization_id,
+            cpu_usage=float(h.cpu_usage) if h.cpu_usage else None,
+            memory_usage=float(h.memory_usage) if h.memory_usage else None,
+            memory_total_mb=h.memory_total_mb,
+            memory_used_mb=h.memory_used_mb,
+            disk_usage=float(h.disk_usage) if h.disk_usage else None,
+            disk_total_gb=h.disk_total_gb,
+            disk_used_gb=h.disk_used_gb,
+            network_latency_ms=h.network_latency_ms,
+            network_download_mbps=float(h.network_download_mbps) if h.network_download_mbps else None,
+            network_upload_mbps=float(h.network_upload_mbps) if h.network_upload_mbps else None,
+            dns_resolution_ms=h.dns_resolution_ms,
+            connection_quality=h.connection_quality,
+            display_resolution=h.display_resolution,
+            display_refresh_rate=h.display_refresh_rate,
+            player_version=h.player_version,
+            player_uptime_hours=h.player_uptime_hours,
+            content_errors_count=h.content_errors_count or 0,
+            last_error_message=h.last_error_message,
+            last_error_at=h.last_error_at,
+            playback_stalls_count=h.playback_stalls_count,
+            buffer_underruns_count=h.buffer_underruns_count,
+            time_to_first_playback_ms=h.time_to_first_playback_ms,
+            content_play_count=h.content_play_count,
+            quality_switches_count=h.quality_switches_count,
+            content_load_failures_count=h.content_load_failures_count,
+            error_rate_percent=float(h.error_rate_percent) if h.error_rate_percent else None,
+            fps_current=h.fps_current,
+            long_tasks_count=h.long_tasks_count,
+            cpu_pressure=h.cpu_pressure,
+            ttfb_ms=h.ttfb_ms,
+            page_load_time_ms=h.page_load_time_ms,
+            overall_status=h.overall_status or "unknown",
+            is_alert_triggered=h.is_alert_triggered or False,
+            alert_message=h.alert_message,
+            metadata=h.metadata or {},
+            recorded_at=h.recorded_at
+        )
+        for h in history
+    ]
+
+    return HealthHistoryResponse(
+        history=history_responses,
+        count=len(history_responses)
+    )
 
 
 # =============================================================================

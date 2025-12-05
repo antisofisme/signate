@@ -10,7 +10,7 @@ import { NetworkSpeedTest } from '@shared/services/network-speed-test';
 import type { ConnectionLogEntry } from '@shared/storage/connection-log-storage';
 
 class ConnectionLogPopupClass {
-  private activeTab: 'all' | 'network' | 'server' | 'speed_test' = 'all';
+  private activeTab: 'all' | 'network' | 'server' | 'speed_test' | 'playback' = 'all';
   private logs: ConnectionLogEntry[] = [];
 
   /**
@@ -64,8 +64,8 @@ class ConnectionLogPopupClass {
     SharedModal.showCustom({
       title: 'Connection Activity Log',
       content,
-      width: '95%',
-      maxWidth: '1200px',
+      width: '90%',
+      maxWidth: '900px',
       showCloseButton: true,
       className: 'connection-log-modal'
     });
@@ -87,6 +87,7 @@ class ConnectionLogPopupClass {
     const networkCount = this.logs.filter(l => l.eventType === 'network').length;
     const serverCount = this.logs.filter(l => l.eventType === 'server').length;
     const speedTestCount = this.logs.filter(l => l.eventType === 'speed_test').length;
+    const playbackCount = this.logs.filter(l => l.eventType === 'playback').length;
 
     return `
       <div class="log-viewer">
@@ -105,6 +106,9 @@ class ConnectionLogPopupClass {
             </button>
             <button class="tab-btn ${this.activeTab === 'speed_test' ? 'active' : ''}" data-tab="speed_test">
               Speed Test (${speedTestCount})
+            </button>
+            <button class="tab-btn ${this.activeTab === 'playback' ? 'active' : ''}" data-tab="playback">
+              Playback (${playbackCount})
             </button>
           </div>
 
@@ -144,6 +148,7 @@ class ConnectionLogPopupClass {
 
   /**
    * Build CSS styles
+   * Updated to match device-info-popup styling
    */
   private buildStyles(): string {
     return `
@@ -161,36 +166,36 @@ class ConnectionLogPopupClass {
           display: flex;
           justify-content: space-between;
           align-items: center;
-          padding: 1.5rem 1.5rem 0 1.5rem;
+          padding: 1rem 1rem 0 1rem;
           border-bottom: 2px solid rgba(255, 255, 255, 0.1);
           flex-shrink: 0;
         }
 
-        /* Tab Navigation */
+        /* Tab Navigation - Matching device-info-popup */
         .tab-nav {
           display: flex;
-          gap: 0.5rem;
+          gap: 0.35rem;
           overflow-x: auto;
           overflow-y: hidden;
           -webkit-overflow-scrolling: touch;
           scrollbar-width: thin;
         }
         .tab-btn {
-          padding: 0.75rem 1.25rem;
+          padding: 0.5rem 0.75rem;
           background: rgba(255, 255, 255, 0.05);
           border: none;
-          border-bottom: 3px solid transparent;
+          border-bottom: 2px solid transparent;
           color: rgba(255, 255, 255, 0.7);
           cursor: pointer;
-          font-size: 0.9rem;
+          font-size: 0.75rem;
           font-weight: 500;
           transition: all 0.2s ease;
           display: flex;
           align-items: center;
-          gap: 0.5rem;
+          gap: 0.35rem;
           white-space: nowrap;
           flex-shrink: 0;
-          border-radius: 8px 8px 0 0;
+          border-radius: 6px 6px 0 0;
         }
         .tab-btn:hover {
           background: rgba(255, 255, 255, 0.1);
@@ -205,14 +210,14 @@ class ConnectionLogPopupClass {
         /* Action Buttons */
         .log-actions {
           display: flex;
-          gap: 0.5rem;
+          gap: 0.35rem;
           flex-shrink: 0;
         }
         .action-btn {
-          padding: 0.5rem;
+          padding: 0.35rem;
           background: rgba(255, 255, 255, 0.05);
           border: 1px solid rgba(255, 255, 255, 0.1);
-          border-radius: 8px;
+          border-radius: 6px;
           color: rgba(255, 255, 255, 0.7);
           cursor: pointer;
           display: flex;
@@ -229,17 +234,21 @@ class ConnectionLogPopupClass {
           opacity: 0.5;
           cursor: not-allowed;
         }
+        .action-btn svg {
+          width: 12px;
+          height: 12px;
+        }
 
         /* Table Container - Scrollable area */
         .table-container {
           flex: 1;
           overflow-y: auto;
           overflow-x: auto;
-          padding: 0 1.5rem 1.5rem 1.5rem;
+          padding: 0.75rem 1rem 1rem 1rem;
           -webkit-overflow-scrolling: touch;
         }
 
-        /* Table */
+        /* Table - Compact like device-info-popup */
         .log-table {
           width: 100%;
           border-collapse: collapse;
@@ -257,42 +266,44 @@ class ConnectionLogPopupClass {
           box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
         }
         .log-table th {
-          padding: 0.5rem 1rem;
+          padding: 0.35rem 0.5rem;
           text-align: left;
           font-weight: 600;
-          font-size: 0.85rem;
-          color: rgba(255, 255, 255, 0.9);
-          border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+          font-size: 0.7rem;
+          color: rgba(255, 255, 255, 0.7);
+          border-bottom: 1px solid rgba(255, 255, 255, 0.1);
           white-space: nowrap;
+          text-transform: uppercase;
+          letter-spacing: 0.3px;
         }
         .log-table tbody tr {
-          border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+          border-bottom: 1px solid rgba(255, 255, 255, 0.04);
           transition: all 0.2s ease;
         }
         .log-table tbody tr:hover {
-          background: rgba(255, 255, 255, 0.05);
+          background: rgba(255, 255, 255, 0.03);
         }
         .log-table td {
-          padding: 0.5rem 1rem;
-          font-size: 0.875rem;
+          padding: 0.3rem 0.5rem;
+          font-size: 0.75rem;
           color: rgba(255, 255, 255, 0.85);
           white-space: nowrap;
         }
         .log-table td.timestamp {
-          color: rgba(255, 255, 255, 0.6);
+          color: rgba(255, 255, 255, 0.5);
           font-family: 'Consolas', 'Monaco', monospace;
-          font-size: 0.8rem;
+          font-size: 0.65rem;
         }
 
-        /* Status Badge */
+        /* Status Badge - Compact */
         .status-badge {
           display: inline-block;
-          padding: 0.25rem 0.75rem;
-          border-radius: 12px;
-          font-size: 0.75rem;
+          padding: 0.15rem 0.4rem;
+          border-radius: 8px;
+          font-size: 0.6rem;
           font-weight: 600;
           text-transform: uppercase;
-          letter-spacing: 0.5px;
+          letter-spacing: 0.3px;
         }
         .status-online {
           background: rgba(16, 185, 129, 0.15);
@@ -320,89 +331,131 @@ class ConnectionLogPopupClass {
           border: 1px solid rgba(139, 92, 246, 0.3);
         }
 
-        /* Empty State */
+        /* Playback Event Badges */
+        .status-stall {
+          background: rgba(239, 68, 68, 0.15);
+          color: #ef4444;
+          border: 1px solid rgba(239, 68, 68, 0.3);
+        }
+        .status-buffer {
+          background: rgba(245, 158, 11, 0.15);
+          color: #f59e0b;
+          border: 1px solid rgba(245, 158, 11, 0.3);
+        }
+        .status-quality {
+          background: rgba(139, 92, 246, 0.15);
+          color: #8b5cf6;
+          border: 1px solid rgba(139, 92, 246, 0.3);
+        }
+        .status-loadfail {
+          background: rgba(239, 68, 68, 0.15);
+          color: #ef4444;
+          border: 1px solid rgba(239, 68, 68, 0.3);
+        }
+        .status-play {
+          background: rgba(16, 185, 129, 0.15);
+          color: #10b981;
+          border: 1px solid rgba(16, 185, 129, 0.3);
+        }
+        .status-pause {
+          background: rgba(107, 114, 128, 0.15);
+          color: #6b7280;
+          border: 1px solid rgba(107, 114, 128, 0.3);
+        }
+        .status-error {
+          background: rgba(239, 68, 68, 0.15);
+          color: #ef4444;
+          border: 1px solid rgba(239, 68, 68, 0.3);
+        }
+        .status-default {
+          background: rgba(107, 114, 128, 0.15);
+          color: #6b7280;
+          border: 1px solid rgba(107, 114, 128, 0.3);
+        }
+
+        /* Empty State - Compact */
         .empty-state {
           display: flex;
           flex-direction: column;
           align-items: center;
           justify-content: center;
-          padding: 4rem 2rem;
-          color: rgba(255, 255, 255, 0.5);
+          padding: 2rem 1rem;
+          color: rgba(255, 255, 255, 0.4);
         }
         .empty-state-text {
-          font-size: 1rem;
-          margin-top: 1rem;
+          font-size: 0.8rem;
+          margin-top: 0.5rem;
         }
 
         /* Latency Color Coding */
         .latency-good {
           color: #10b981;
-          font-weight: 600;
+          font-weight: 500;
         }
         .latency-ok {
           color: #f59e0b;
-          font-weight: 600;
+          font-weight: 500;
         }
         .latency-slow {
           color: #ef4444;
-          font-weight: 600;
+          font-weight: 500;
         }
 
         /* Speed Color Coding */
         .speed-good {
           color: #3b82f6;
-          font-weight: 600;
+          font-weight: 500;
         }
 
         /* Quality Score Color Coding */
         .quality-excellent {
           color: #10b981;
-          font-weight: 700;
+          font-weight: 600;
         }
         .quality-good {
           color: #3b82f6;
-          font-weight: 600;
+          font-weight: 500;
         }
         .quality-fair {
           color: #f59e0b;
-          font-weight: 600;
+          font-weight: 500;
         }
         .quality-poor {
           color: #ef4444;
-          font-weight: 600;
+          font-weight: 500;
         }
 
-        /* Custom Scrollbar */
+        /* Custom Scrollbar - Compact */
         .table-container::-webkit-scrollbar {
-          width: 8px;
-          height: 8px;
+          width: 6px;
+          height: 6px;
         }
         .table-container::-webkit-scrollbar-track {
-          background: rgba(255, 255, 255, 0.05);
-          border-radius: 4px;
+          background: rgba(255, 255, 255, 0.03);
+          border-radius: 3px;
         }
         .table-container::-webkit-scrollbar-thumb {
-          background: rgba(255, 255, 255, 0.2);
-          border-radius: 4px;
+          background: rgba(255, 255, 255, 0.15);
+          border-radius: 3px;
         }
         .table-container::-webkit-scrollbar-thumb:hover {
-          background: rgba(255, 255, 255, 0.3);
+          background: rgba(255, 255, 255, 0.25);
         }
 
         /* Tab scrollbar (horizontal) */
         .tab-nav::-webkit-scrollbar {
-          height: 6px;
+          height: 4px;
         }
         .tab-nav::-webkit-scrollbar-track {
-          background: rgba(255, 255, 255, 0.05);
-          border-radius: 3px;
+          background: rgba(255, 255, 255, 0.03);
+          border-radius: 2px;
         }
         .tab-nav::-webkit-scrollbar-thumb {
-          background: rgba(255, 255, 255, 0.2);
-          border-radius: 3px;
+          background: rgba(255, 255, 255, 0.15);
+          border-radius: 2px;
         }
         .tab-nav::-webkit-scrollbar-thumb:hover {
-          background: rgba(255, 255, 255, 0.3);
+          background: rgba(255, 255, 255, 0.25);
         }
       </style>
     `;
@@ -517,6 +570,9 @@ class ConnectionLogPopupClass {
         break;
       case 'speed_test':
         container.innerHTML = this.renderSpeedTestTable(sortedLogs);
+        break;
+      case 'playback':
+        container.innerHTML = this.renderPlaybackTable(sortedLogs);
         break;
     }
   }
@@ -758,6 +814,81 @@ class ConnectionLogPopupClass {
   }
 
   /**
+   * Render playback events table (Phase 3: Behavioral Metrics)
+   */
+  private renderPlaybackTable(logs: ConnectionLogEntry[]): string {
+    const rows = logs.map(log => {
+      const datetime = this.formatDateTime(log.timestamp);
+
+      // Extract playback event information from metadata
+      const eventType = log.metadata?.playbackEventType || log.status || 'unknown';
+      const contentName = log.metadata?.contentName || log.metadata?.content || '-';
+      const contentId = log.metadata?.contentId || '-';
+      const duration = log.metadata?.durationMs
+        ? `${(log.metadata.durationMs / 1000).toFixed(1)}s`
+        : '-';
+      const details = log.metadata?.details || log.errorMessage || '-';
+
+      // Format event badge with color coding
+      const eventBadge = this.formatPlaybackEventBadge(eventType);
+
+      return `
+        <tr>
+          <td class="timestamp">${datetime}</td>
+          <td>${eventBadge}</td>
+          <td>${contentName}</td>
+          <td>${contentId}</td>
+          <td>${duration}</td>
+          <td>${details}</td>
+        </tr>
+      `;
+    }).join('');
+
+    return `
+      <table class="log-table">
+        <thead>
+          <tr>
+            <th>Timestamp</th>
+            <th>Event</th>
+            <th>Content</th>
+            <th>Content ID</th>
+            <th>Duration</th>
+            <th>Details</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rows}
+        </tbody>
+      </table>
+    `;
+  }
+
+  /**
+   * Format playback event badge with color coding
+   */
+  private formatPlaybackEventBadge(eventType: string): string {
+    const badgeMap: Record<string, { text: string; class: string }> = {
+      stall: { text: 'STALL', class: 'status-stall' },
+      buffer: { text: 'BUFFER', class: 'status-buffer' },
+      buffer_underrun: { text: 'BUFFER', class: 'status-buffer' },
+      quality_switch: { text: 'QUALITY', class: 'status-quality' },
+      load_fail: { text: 'LOAD FAIL', class: 'status-loadfail' },
+      load_failure: { text: 'LOAD FAIL', class: 'status-loadfail' },
+      play: { text: 'PLAY', class: 'status-play' },
+      pause: { text: 'PAUSE', class: 'status-pause' },
+      error: { text: 'ERROR', class: 'status-error' },
+      started: { text: 'STARTED', class: 'status-play' },
+      completed: { text: 'COMPLETED', class: 'status-connected' },
+      waiting: { text: 'WAITING', class: 'status-buffer' },
+      seeking: { text: 'SEEKING', class: 'status-quality' },
+      ended: { text: 'ENDED', class: 'status-connected' }
+    };
+
+    const badge = badgeMap[eventType.toLowerCase()] || { text: eventType.toUpperCase(), class: 'status-default' };
+    return `<span class="status-badge ${badge.class}">${badge.text}</span>`;
+  }
+
+  /**
    * Format status badge
    */
   private formatStatusBadge(status: string): string {
@@ -780,7 +911,8 @@ class ConnectionLogPopupClass {
     const typeMap: Record<string, string> = {
       network: 'Network',
       server: 'Server',
-      speed_test: 'Speed Test'
+      speed_test: 'Speed Test',
+      playback: 'Playback'
     };
     return typeMap[type] || type;
   }

@@ -18,12 +18,13 @@ import { ShellRegistration } from './shell-registration';
 import { ShellActivationPoll } from './shell-activation-poll';
 import type { ShellBootstrap as IShellBootstrap, VerifyDeviceResponse } from '@shell/types/shell.types';
 import { ServiceRegistry, getPlayerHLSCache } from '@shared/services/service-registry';
-import { getPlayerMediaCache, getPlayerHeartbeat, getPlayerPlaylistSync, getPlayerCommandExecutor, getPlayerHealthReporter, getSharedWebSocket, getDeviceInfoPopup, getPlayerVideoJS, getPlayerBackgroundAudio } from '@shared/services';
+import { getPlayerMediaCache, getPlayerHeartbeat, getPlayerPlaylistSync, getPlayerCommandExecutor, getPlayerHealthReporter, getPlayerCapabilitiesReporter, getSharedWebSocket, getDeviceInfoPopup, getPlayerVideoJS, getPlayerBackgroundAudio } from '@shared/services';
 import { registerPWA, getPWAState } from '@pwa/pwa-registration';
 // Side-effect imports to ensure services are registered before use
 import '@player/services/player-videojs';
 import '@player/services/player-background-audio';
 import '@player/services/player-health-reporter';
+import '@player/services/player-capabilities-reporter'; // Report device capabilities on startup
 import '@player/services/player-command-executor'; // Loads SharedWebSocket as dependency
 import '@shared/websocket/shared-websocket'; // Ensure WebSocket is registered before any getSharedWebSocket() calls
 
@@ -260,6 +261,12 @@ class ShellBootstrapClass implements IShellBootstrap {
       // Note: PlayerCommandExecutor doesn't have a destroy() method
       SharedLogger.log('[ShellBootstrap] ✅ CommandExecutor stopped (no destroy needed)');
 
+      // Stop PlayerVideoJS (revokes blob URLs to prevent memory leaks)
+      if (getPlayerVideoJS()?.stop) {
+        getPlayerVideoJS()?.stop();
+        SharedLogger.log('[ShellBootstrap] ✅ PlayerVideoJS stopped');
+      }
+
       // Clear video element
       const videoElement = document.getElementById('player-video') as HTMLVideoElement;
       if (videoElement) {
@@ -388,7 +395,17 @@ class ShellBootstrapClass implements IShellBootstrap {
         'PlayerHealthReporter'
       );
 
-      // 11. Initialize Device Info Popup
+      // 11. Report Device Capabilities (sent ONCE on startup)
+      await serviceActionAsync(
+        getPlayerCapabilitiesReporter,
+        async (service) => {
+          await service.report();
+          SharedLogger.log('[ShellBootstrap] ✅ CapabilitiesReporter reported');
+        },
+        'PlayerCapabilitiesReporter'
+      );
+
+      // 12. Initialize Device Info Popup
       serviceAction(
         getDeviceInfoPopup,
         (service) => {

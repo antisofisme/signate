@@ -36,12 +36,14 @@ export interface Content {
   // Multi-tenant
   organization_id: number;
   uploaded_by?: number;
+  uploaded_by_name?: string;
 
   // Timestamps
   created_at: string;
   updated_at?: string;
   deleted_at?: string;
   deleted_by_id?: number;
+  deleted_by_name?: string;
 }
 
 export interface ContentUploadData {

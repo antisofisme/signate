@@ -43,18 +43,18 @@ export default function PlaylistsPage() {
   const { t } = useTranslation();
 
   // Permission checks
-  const { hasPermission: canRead, isLoading: loadingReadPerm } = useCanPerformAction('playlists', 'read');
+  const { hasPermission: canView, isLoading: isCheckingPermission } = useCanPerformAction('playlists', 'read');
   const { hasPermission: canCreate } = useCanPerformAction('playlists', 'create');
   const { hasPermission: canUpdate } = useCanPerformAction('playlists', 'edit');
   const { hasPermission: canDelete } = useCanPerformAction('playlists', 'delete');
 
   // Show loading state while checking permissions
-  if (loadingReadPerm) {
+  if (isCheckingPermission) {
     return <PageSkeleton />;
   }
 
   // Show access denied if no read permission
-  if (!canRead) {
+  if (!canView) {
     return <AccessDenied />;
   }
   // State

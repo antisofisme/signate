@@ -43,6 +43,7 @@ def get_session_repository(db: Session = Depends(get_db)) -> SessionRepository:
 @router.get(SessionRoutes.LIST, response_model=SessionListResponse)
 @handle_errors
 def list_sessions(
+    request: Request,
     include_revoked: bool = Query(False, description="Include revoked sessions"),
     include_expired: bool = Query(False, description="Include expired sessions"),
     current_user: CurrentUser = Depends(get_current_user),
@@ -60,8 +61,23 @@ def list_sessions(
         include_expired=include_expired
     )
 
+    # Get current token hash to mark current session
+    current_token_hash = None
+    auth_header = request.headers.get("Authorization", "")
+    if auth_header.startswith("Bearer "):
+        current_token = auth_header[7:]  # Remove "Bearer " prefix
+        current_token_hash = session_repo.hash_token(current_token)
+
+    # Mark current session
+    sessions = []
+    for s in result["sessions"]:
+        session_data = SessionResponse.model_validate(s)
+        if current_token_hash and s.session_token == current_token_hash:
+            session_data.is_current = True
+        sessions.append(session_data)
+
     return SessionListResponse(
-        sessions=[SessionResponse.model_validate(s) for s in result["sessions"]],
+        sessions=sessions,
         total=result["total"],
         active=result["active"],
         expired=result["expired"],
@@ -72,14 +88,30 @@ def list_sessions(
 @router.get(SessionRoutes.ACTIVE, response_model=List[SessionResponse])
 @handle_errors
 def get_active_sessions(
+    request: Request,
     current_user: CurrentUser = Depends(get_current_user),
     session_repo: SessionRepository = Depends(get_session_repository)
 ):
     """Get only active sessions for current user"""
     use_case = GetSessionsUseCase(session_repo)
-    sessions = use_case.get_active_sessions(current_user.id)
+    sessions_data = use_case.get_active_sessions(current_user.id)
 
-    return [SessionResponse.model_validate(s) for s in sessions]
+    # Get current token hash to mark current session
+    current_token_hash = None
+    auth_header = request.headers.get("Authorization", "")
+    if auth_header.startswith("Bearer "):
+        current_token = auth_header[7:]
+        current_token_hash = session_repo.hash_token(current_token)
+
+    # Mark current session
+    sessions = []
+    for s in sessions_data:
+        session_response = SessionResponse.model_validate(s)
+        if current_token_hash and s.session_token == current_token_hash:
+            session_response.is_current = True
+        sessions.append(session_response)
+
+    return sessions
 
 
 @router.get(SessionRoutes.STATS, response_model=SessionStatsResponse)
@@ -257,6 +289,7 @@ def cleanup_old_sessions(
 @router.get(SessionRoutes.ALL_ACTIVE)
 @handle_errors
 async def get_all_active_sessions(
+    request: Request,
     skip: int = Query(0, ge=0, description="Number of records to skip"),
     limit: int = Query(50, ge=1, le=100, description="Maximum records to return"),
     current_user: dict = Depends(require_permission("sessions", "read")),
@@ -287,6 +320,21 @@ async def get_all_active_sessions(
             skip=skip,
             limit=limit
         )
+
+    # Get current token hash to mark current session
+    current_token_hash = None
+    auth_header = request.headers.get("Authorization", "")
+    if auth_header.startswith("Bearer "):
+        current_token = auth_header[7:]
+        current_token_hash = session_repo.hash_token(current_token)
+
+    # Mark current session (sessions are dicts from get_all_active_sessions)
+    # Note: We don't have session_token in the dict response, so we mark by user_id match
+    current_user_id = current_user.get("id")
+    for s in sessions:
+        # Mark as current if this is the current user's session and IP matches
+        s["is_current"] = (s.get("user_id") == current_user_id and
+                          s.get("ip_address") == request.client.host if request.client else False)
 
     return success_response(
         data=AllSessionsListResponse(

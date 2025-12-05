@@ -35,17 +35,35 @@ class ActivateDeviceRequest(BaseModel):
 
 
 class HeartbeatRequest(BaseModel):
-    """Heartbeat from player - sent every 30 seconds"""
+    """
+    Heartbeat from player - sent every 30 seconds
+
+    OPTIMIZED (Phase 2):
+    - Static fields (screen_width, screen_height, device_pixel_ratio, user_agent)
+      are now sent ONCE via /capabilities endpoint on startup
+    - Viewport only included when changed
+    - Added connection_drops_count for reliability tracking
+    """
     unique_code: str = Field(..., min_length=6, max_length=6)
     device_uuid: Optional[str] = None
+
+    # Static fields - DEPRECATED, now sent via /capabilities
+    # Kept for backward compatibility with older players
     screen_width: Optional[int] = Field(None, gt=0)
     screen_height: Optional[int] = Field(None, gt=0)
-    viewport_width: Optional[int] = Field(None, gt=0)
-    viewport_height: Optional[int] = Field(None, gt=0)
     device_pixel_ratio: Optional[float] = Field(None, gt=0)
     user_agent: Optional[str] = Field(None, max_length=500)
+
+    # Semi-static fields - only sent when changed
+    viewport_width: Optional[int] = Field(None, gt=0)
+    viewport_height: Optional[int] = Field(None, gt=0)
+
+    # Dynamic fields - always sent
     connection_type: Optional[str] = Field(None, max_length=50)
     connection_speed: Optional[float] = Field(None, ge=0)
+
+    # Connection reliability tracking (NEW)
+    connection_drops_count: Optional[int] = Field(None, ge=0, description="Number of network disconnections since startup")
 
 
 class UpdateDeviceRequest(BaseModel):
@@ -178,6 +196,16 @@ class DeviceResponse(BaseModel):
     ip_address: Optional[str]
     platform: Optional[str]
 
+    # GeoIP data (Phase 6)
+    geo_city: Optional[str] = None
+    geo_country: Optional[str] = None
+    geo_country_code: Optional[str] = None
+    geo_region: Optional[str] = None
+    geo_isp: Optional[str] = None
+    geo_timezone: Optional[str] = None
+    geo_latitude: Optional[float] = None
+    geo_longitude: Optional[float] = None
+
     # Device metadata
     screen_width: Optional[int]
     screen_height: Optional[int]
@@ -187,6 +215,7 @@ class DeviceResponse(BaseModel):
     user_agent: Optional[str]
     connection_type: Optional[str]
     connection_speed: Optional[float]
+    connection_drops_count: Optional[int]  # Network disconnections since startup
 
     # WebOS specific
     model_name: Optional[str]
@@ -206,6 +235,9 @@ class DeviceResponse(BaseModel):
     location_type: str
     is_personalization_supported: bool
     privacy_mode: str
+
+    # Assigned playlist info
+    playlist_name: Optional[str] = None  # Name of assigned playlist (from JOIN)
 
     # Metadata
     created_at: datetime
@@ -324,7 +356,15 @@ class CommandFailureRequest(BaseModel):
 # =============================================================================
 
 class DeviceHealthMetricsCreate(BaseModel):
-    """Record health metrics - called by player"""
+    """
+    Record health metrics - called by player every 5 minutes
+
+    OPTIMIZED (Phase 2):
+    - player_version kept for backward compatibility (now also in /capabilities)
+
+    ENHANCED (Phase 3):
+    - Added behavioral metrics (stalls, buffers, quality switches, etc.)
+    """
     # System metrics
     cpu_usage: Optional[float] = Field(None, ge=0, le=100)
     memory_usage: Optional[float] = Field(None, ge=0, le=100)
@@ -338,12 +378,12 @@ class DeviceHealthMetricsCreate(BaseModel):
     network_latency_ms: Optional[int] = Field(None, ge=0)
     network_download_mbps: Optional[float] = Field(None, ge=0)
     network_upload_mbps: Optional[float] = Field(None, ge=0)
+    dns_resolution_ms: Optional[int] = Field(None, ge=0, description="DNS lookup time in milliseconds")  # Phase 5
     connection_quality: Optional[str] = Field(None, max_length=20)  # From player
 
     # Display metrics
     display_resolution: Optional[str] = Field(None, max_length=20)
     display_refresh_rate: Optional[int] = Field(None, gt=0)
-    gpu_usage: Optional[float] = Field(None, ge=0, le=100)
 
     # Player metrics
     player_version: Optional[str] = Field(None, max_length=50)
@@ -352,6 +392,22 @@ class DeviceHealthMetricsCreate(BaseModel):
     last_error_message: Optional[str] = Field(None, max_length=500)
     last_error_at: Optional[str] = Field(None, max_length=50)  # ISO timestamp from player
 
+    # Behavioral metrics (Phase 3)
+    playback_stalls_count: Optional[int] = Field(None, ge=0, description="Video stall events since startup")
+    buffer_underruns_count: Optional[int] = Field(None, ge=0, description="Buffer underrun events since startup")
+    time_to_first_playback_ms: Optional[int] = Field(None, ge=0, description="Time from load to first frame (ms)")
+    content_play_count: Optional[int] = Field(None, ge=0, description="Total content plays this session")
+    quality_switches_count: Optional[int] = Field(None, ge=0, description="HLS quality switches this session")
+    content_load_failures_count: Optional[int] = Field(None, ge=0, description="Content load failures this session")
+    error_rate_percent: Optional[float] = Field(None, ge=0, le=100, description="Error rate percentage")
+
+    # Performance metrics (Phase 4)
+    fps_current: Optional[int] = Field(None, ge=0, description="Current frames per second")
+    long_tasks_count: Optional[int] = Field(None, ge=0, description="Long tasks (>50ms) since startup")
+    cpu_pressure: Optional[str] = Field(None, max_length=20, description="CPU pressure state: nominal/fair/serious/critical")
+    ttfb_ms: Optional[int] = Field(None, ge=0, description="Time to First Byte (ms)")
+    page_load_time_ms: Optional[int] = Field(None, ge=0, description="Total page load time (ms)")
+
     # Additional metadata
     metadata: Optional[dict] = Field(default={})
 
@@ -359,7 +415,7 @@ class DeviceHealthMetricsCreate(BaseModel):
 
 
 class DeviceHealthResponse(BaseModel):
-    """Device health response"""
+    """Device health response with behavioral and performance metrics (Phase 3 & 4)"""
     id: int
     device_id: int
     organization_id: int
@@ -377,12 +433,12 @@ class DeviceHealthResponse(BaseModel):
     network_latency_ms: Optional[int]
     network_download_mbps: Optional[float]
     network_upload_mbps: Optional[float]
+    dns_resolution_ms: Optional[int]  # Phase 5
     connection_quality: Optional[str]
 
     # Display metrics
     display_resolution: Optional[str]
     display_refresh_rate: Optional[int]
-    gpu_usage: Optional[float]
 
     # Player metrics
     player_version: Optional[str]
@@ -390,6 +446,22 @@ class DeviceHealthResponse(BaseModel):
     content_errors_count: int
     last_error_message: Optional[str]
     last_error_at: Optional[datetime]
+
+    # Behavioral metrics (Phase 3)
+    playback_stalls_count: Optional[int] = None
+    buffer_underruns_count: Optional[int] = None
+    time_to_first_playback_ms: Optional[int] = None
+    content_play_count: Optional[int] = None
+    quality_switches_count: Optional[int] = None
+    content_load_failures_count: Optional[int] = None
+    error_rate_percent: Optional[float] = None
+
+    # Performance metrics (Phase 4)
+    fps_current: Optional[int] = None
+    long_tasks_count: Optional[int] = None
+    cpu_pressure: Optional[str] = None
+    ttfb_ms: Optional[int] = None
+    page_load_time_ms: Optional[int] = None
 
     # Health status
     overall_status: str
@@ -440,6 +512,92 @@ class OrganizationHealthSummaryResponse(BaseModel):
     avg_memory_usage: Optional[float]
     avg_disk_usage: Optional[float]
     devices_with_errors: int
+
+    class Config:
+        from_attributes = True
+
+
+# =============================================================================
+# DEVICE CAPABILITIES DTOs
+# =============================================================================
+
+class DeviceCapabilitiesCreate(BaseModel):
+    """
+    Device capabilities - sent ONCE on startup
+    Static device info that rarely changes (screen, hardware, codecs)
+    """
+    # Screen & Display
+    screen_width: int = Field(..., gt=0)
+    screen_height: int = Field(..., gt=0)
+    device_pixel_ratio: float = Field(..., gt=0)
+    display_refresh_rate: int = Field(..., gt=0)
+
+    # Hardware
+    hardware_concurrency: int = Field(..., ge=1)  # CPU cores
+    device_memory_gb: Optional[float] = Field(None, ge=0)  # Device RAM in GB (Chrome/Edge only)
+
+    # Video Codec Support
+    codec_h264: bool = Field(...)  # H.264/AVC
+    codec_h265: bool = Field(...)  # H.265/HEVC
+    codec_vp9: bool = Field(...)   # VP9
+    codec_av1: bool = Field(...)   # AV1
+
+    # Audio Codec Support
+    codec_aac: bool = Field(...)   # AAC
+    codec_opus: bool = Field(...)  # Opus
+
+    # Graphics
+    webgl_version: str = Field(..., max_length=10)  # "none", "1.0", "2.0"
+    webgl_renderer: Optional[str] = Field(None, max_length=200)
+    webgl_vendor: Optional[str] = Field(None, max_length=200)
+
+    # Software
+    user_agent: str = Field(..., max_length=500)
+    platform: str = Field(..., max_length=50)
+    player_version: str = Field(..., max_length=50)
+
+    model_config = {"extra": "ignore"}
+
+
+class DeviceCapabilitiesResponse(BaseModel):
+    """Device capabilities response"""
+    id: int
+    device_id: int
+    organization_id: int
+
+    # Screen & Display
+    screen_width: int
+    screen_height: int
+    device_pixel_ratio: float
+    display_refresh_rate: int
+
+    # Hardware
+    hardware_concurrency: int
+    device_memory_gb: Optional[float]
+
+    # Video Codec Support
+    codec_h264: bool
+    codec_h265: bool
+    codec_vp9: bool
+    codec_av1: bool
+
+    # Audio Codec Support
+    codec_aac: bool
+    codec_opus: bool
+
+    # Graphics
+    webgl_version: str
+    webgl_renderer: Optional[str]
+    webgl_vendor: Optional[str]
+
+    # Software
+    user_agent: str
+    platform: str
+    player_version: str
+
+    # Timestamps
+    recorded_at: datetime
+    updated_at: Optional[datetime]
 
     class Config:
         from_attributes = True

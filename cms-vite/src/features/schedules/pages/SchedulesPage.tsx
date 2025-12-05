@@ -58,13 +58,13 @@ export const SchedulesPage = () => {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
 
   // Check permissions
-  const { hasPermission: canView, isLoading: loadingViewPerm } = useCanPerformAction('schedules', 'read');
+  const { hasPermission: canView, isLoading: isCheckingPermission } = useCanPerformAction('schedules', 'read');
   const { hasPermission: canCreate } = useCanPerformAction('schedules', 'create');
   const { hasPermission: canEdit } = useCanPerformAction('schedules', 'edit');
   const { hasPermission: canDelete } = useCanPerformAction('schedules', 'delete');
 
   // Show loading state while checking permissions
-  if (loadingViewPerm) {
+  if (isCheckingPermission) {
     return <PageSkeleton />;
   }
 

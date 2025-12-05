@@ -530,3 +530,50 @@ export const useUnassignPlaylist = () => {
     },
   });
 };
+
+// ========================================
+// Device Capabilities & Health (Phase 6)
+// ========================================
+
+/**
+ * Get device capabilities (static device info)
+ * Returns codec support, hardware info, display info
+ */
+export const useDeviceCapabilities = (deviceId: number, enabled = true) => {
+  return useQuery({
+    queryKey: [...deviceKeys.all, 'capabilities', deviceId],
+    queryFn: () => deviceApi.getCapabilities(deviceId),
+    enabled: enabled && deviceId > 0,
+    staleTime: 300000, // 5 minutes - capabilities rarely change
+  });
+};
+
+/**
+ * Get device health metrics with alerts
+ * Returns latest health data and any triggered alerts
+ */
+export const useDeviceHealth = (deviceId: number, enabled = true) => {
+  return useQuery({
+    queryKey: [...deviceKeys.all, 'health', deviceId],
+    queryFn: () => deviceApi.getHealth(deviceId),
+    enabled: enabled && deviceId > 0,
+    staleTime: 60000, // 1 minute - health data updates frequently
+  });
+};
+
+/**
+ * Get device health history for charts/trending
+ * @param limit Number of records (default 24 = 2 hours @ 5min intervals)
+ */
+export const useDeviceHealthHistory = (
+  deviceId: number,
+  limit = 24,
+  enabled = true
+) => {
+  return useQuery({
+    queryKey: [...deviceKeys.all, 'health-history', deviceId, limit],
+    queryFn: () => deviceApi.getHealthHistory(deviceId, limit),
+    enabled: enabled && deviceId > 0,
+    staleTime: 60000, // 1 minute
+  });
+};

@@ -5,7 +5,7 @@ Database access for content
 
 from typing import List, Optional, Tuple, Dict, Any
 from datetime import datetime, timedelta, timezone
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 from sqlalchemy import func, asc, desc
 
 from ..domain.content import Content
@@ -137,7 +137,9 @@ class ContentRepository(IContentRepository):
         """List content with filters including tag-based filtering and sorting"""
         from services.tag.repositories.models import ContentTag
 
-        query = self.db.query(ContentModel).filter(
+        query = self.db.query(ContentModel).options(
+            selectinload(ContentModel.uploader)  # Load uploader for uploaded_by_name
+        ).filter(
             ContentModel.organization_id == organization_id,
             ContentModel.deleted_at.is_(None)
         )
@@ -295,7 +297,10 @@ class ContentRepository(IContentRepository):
         sort_dir: Optional[str] = None
     ) -> Tuple[List[Content], int]:
         """List soft-deleted content for an organization (recycle bin)"""
-        query = self.db.query(ContentModel).filter(
+        query = self.db.query(ContentModel).options(
+            selectinload(ContentModel.uploader),  # Load uploader for uploaded_by_name
+            selectinload(ContentModel.deleter)    # Load deleter for deleted_by_name
+        ).filter(
             ContentModel.organization_id == organization_id,
             ContentModel.deleted_at.isnot(None)  # Only deleted content
         )
@@ -610,6 +615,15 @@ class ContentRepository(IContentRepository):
                 # Construct HLS URL
                 hls_master_playlist_url = f"{settings.PUBLIC_BASE_URL}/content/hls/{year}/{month}/{org_dir}/{content_uuid}/master.m3u8"
 
+        # Extract user names from relationships (if loaded)
+        uploaded_by_name = None
+        if hasattr(db_content, 'uploader') and db_content.uploader is not None:
+            uploaded_by_name = db_content.uploader.full_name or db_content.uploader.username
+
+        deleted_by_name = None
+        if hasattr(db_content, 'deleter') and db_content.deleter is not None:
+            deleted_by_name = db_content.deleter.full_name or db_content.deleter.username
+
         return Content(
             id=db_content.id,
             title=db_content.title,
@@ -656,7 +670,10 @@ class ContentRepository(IContentRepository):
             deleted_by_id=getattr(db_content, 'deleted_by_id', None),
             created_at=db_content.created_at,
             updated_at=db_content.updated_at,
-            deleted_at=db_content.deleted_at
+            deleted_at=db_content.deleted_at,
+            # User names (from JOINs)
+            uploaded_by_name=uploaded_by_name,
+            deleted_by_name=deleted_by_name,
         )
 
     @staticmethod

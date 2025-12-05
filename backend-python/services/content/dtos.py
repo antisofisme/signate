@@ -65,6 +65,11 @@ class ContentResponse(BaseModel):
     # Multi-tenant
     organization_id: int
     uploaded_by: Optional[int]
+    uploaded_by_name: Optional[str] = None
+
+    # Audit trail for deleted content
+    deleted_by_name: Optional[str] = None
+    deleted_at: Optional[datetime] = None
 
     # Timestamps
     created_at: datetime
@@ -95,6 +100,9 @@ class ContentResponse(BaseModel):
             upload_status=content.upload_status,
             organization_id=content.organization_id,
             uploaded_by=content.uploaded_by_id,
+            uploaded_by_name=getattr(content, 'uploaded_by_name', None),
+            deleted_by_name=getattr(content, 'deleted_by_name', None),
+            deleted_at=content.deleted_at,
             created_at=content.created_at,
             updated_at=content.updated_at
         )

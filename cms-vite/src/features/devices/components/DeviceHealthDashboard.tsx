@@ -18,6 +18,12 @@ import {
   XCircle,
   TrendingUp,
   RefreshCw,
+  Play,
+  Pause,
+  Gauge,
+  Timer,
+  Zap,
+  BarChart3,
 } from 'lucide-react';
 import {
   LineChart,
@@ -313,6 +319,115 @@ export function DeviceHealthDashboard({
           status="healthy"
         />
       </div>
+
+      {/* Behavioral Metrics (Phase 3) */}
+      {(health.playback_stalls_count !== undefined ||
+        health.buffer_underruns_count !== undefined ||
+        health.content_play_count !== undefined) && (
+        <div className="mt-6">
+          <h4 className="font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+            <Play className="w-4 h-4" />
+            Playback Metrics
+          </h4>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <MetricCard
+              icon={<Play className="w-5 h-5" />}
+              title="Content Plays"
+              value={health.content_play_count?.toString() || '0'}
+              status="healthy"
+            />
+            <MetricCard
+              icon={<Pause className="w-5 h-5" />}
+              title="Playback Stalls"
+              value={health.playback_stalls_count?.toString() || '0'}
+              status={health.playback_stalls_count && health.playback_stalls_count > 5 ? 'warning' : 'healthy'}
+            />
+            <MetricCard
+              icon={<AlertTriangle className="w-5 h-5" />}
+              title="Buffer Underruns"
+              value={health.buffer_underruns_count?.toString() || '0'}
+              status={health.buffer_underruns_count && health.buffer_underruns_count > 3 ? 'warning' : 'healthy'}
+            />
+            <MetricCard
+              icon={<Timer className="w-5 h-5" />}
+              title="Time to First Play"
+              value={health.time_to_first_playback_ms ? `${health.time_to_first_playback_ms}ms` : 'N/A'}
+              status={health.time_to_first_playback_ms && health.time_to_first_playback_ms > 3000 ? 'warning' : 'healthy'}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Performance Metrics (Phase 4) */}
+      {(health.fps_current !== undefined ||
+        health.long_tasks_count !== undefined ||
+        health.cpu_pressure !== undefined) && (
+        <div className="mt-6">
+          <h4 className="font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+            <Gauge className="w-4 h-4" />
+            Performance Metrics
+          </h4>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <MetricCard
+              icon={<Gauge className="w-5 h-5" />}
+              title="Current FPS"
+              value={health.fps_current?.toString() || 'N/A'}
+              status={health.fps_current && health.fps_current < 30 ? 'warning' : 'healthy'}
+            />
+            <MetricCard
+              icon={<Zap className="w-5 h-5" />}
+              title="CPU Pressure"
+              value={health.cpu_pressure || 'nominal'}
+              status={health.cpu_pressure === 'critical' ? 'critical' :
+                      health.cpu_pressure === 'serious' ? 'warning' : 'healthy'}
+            />
+            <MetricCard
+              icon={<Activity className="w-5 h-5" />}
+              title="Long Tasks"
+              value={health.long_tasks_count?.toString() || '0'}
+              status={health.long_tasks_count && health.long_tasks_count > 10 ? 'warning' : 'healthy'}
+            />
+            <MetricCard
+              icon={<Timer className="w-5 h-5" />}
+              title="TTFB"
+              value={health.ttfb_ms ? `${health.ttfb_ms}ms` : 'N/A'}
+              status={health.ttfb_ms && health.ttfb_ms > 500 ? 'warning' : 'healthy'}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Error Rate Summary */}
+      {(health.error_rate_percent !== undefined ||
+        health.content_load_failures_count !== undefined) && (
+        <div className="mt-6">
+          <h4 className="font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+            <BarChart3 className="w-4 h-4" />
+            Error Statistics
+          </h4>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <MetricCard
+              icon={<BarChart3 className="w-5 h-5" />}
+              title="Error Rate"
+              value={health.error_rate_percent !== undefined ? `${health.error_rate_percent.toFixed(1)}%` : 'N/A'}
+              status={health.error_rate_percent && health.error_rate_percent > 5 ? 'warning' : 'healthy'}
+            />
+            <MetricCard
+              icon={<XCircle className="w-5 h-5" />}
+              title="Load Failures"
+              value={health.content_load_failures_count?.toString() || '0'}
+              status={health.content_load_failures_count && health.content_load_failures_count > 5 ? 'warning' : 'healthy'}
+            />
+            <MetricCard
+              icon={<Activity className="w-5 h-5" />}
+              title="Quality Switches"
+              value={health.quality_switches_count?.toString() || '0'}
+              subtitle="HLS adaptive"
+              status="healthy"
+            />
+          </div>
+        </div>
+      )}
 
       {/* Content Errors */}
       {health.content_errors_count > 0 && (

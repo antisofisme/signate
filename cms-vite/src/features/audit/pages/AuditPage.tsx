@@ -15,7 +15,7 @@ import { AuditLogFilters } from '../components/AuditLogFilters';
 import { AuditLogTable } from '../components/AuditLogTable';
 import { AuditLogStats } from '../components/AuditLogStats';
 import type { AuditLogFilters as Filters } from '../types/auditLog';
-import { usePagination } from '@/shared/hooks';
+import { usePagination, useTableSort } from '@/shared/hooks';
 import { useCanPerformAction } from '@/features/rbac/hooks/usePermissions';
 import {
   Button,
@@ -36,7 +36,12 @@ export default function AuditPage() {
   // Standardized pagination hook
   const pagination = usePagination({ pageSize: 20 });
 
-  const [filters, setFilters] = useState<Omit<Filters, 'page' | 'per_page'>>({});
+  // Sorting - default by created_at descending (newest first)
+  const { sortConfig, onSortChange, sortParams } = useTableSort({
+    defaultSort: { key: 'created_at', direction: 'desc' },
+  });
+
+  const [filters, setFilters] = useState<Omit<Filters, 'page' | 'per_page' | 'sort_by' | 'sort_dir'>>({});
   const [showFilters, setShowFilters] = useState(true);
 
   // Queries - convert 0-indexed to 1-indexed for API
@@ -44,6 +49,8 @@ export default function AuditPage() {
     ...filters,
     page: pagination.currentPage + 1,
     per_page: pagination.pageSize,
+    sort_by: sortParams.sort_by,
+    sort_dir: sortParams.sort_dir as 'asc' | 'desc' | undefined,
   });
   const { data: usersData } = useUsers({});
   const { data: orgsData } = useOrganizations({ active_only: true });
@@ -133,6 +140,8 @@ export default function AuditPage() {
           perPage={data?.per_page || 20}
           total={data?.total || 0}
           onPageChange={handlePageChange}
+          sortConfig={sortConfig}
+          onSortChange={onSortChange}
         />
       )}
     </>

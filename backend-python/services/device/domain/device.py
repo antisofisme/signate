@@ -24,6 +24,18 @@ class Device:
     device_uuid: Optional[str]  # For WebOS
     ip_address: Optional[str]
     platform: Optional[str]  # 'webOS', 'browser', etc.
+
+    # GeoIP data (Phase 6)
+    geo_city: Optional[str]
+    geo_country: Optional[str]
+    geo_country_code: Optional[str]
+    geo_region: Optional[str]
+    geo_isp: Optional[str]
+    geo_timezone: Optional[str]
+    geo_latitude: Optional[float]
+    geo_longitude: Optional[float]
+    geo_updated_at: Optional[datetime]
+
     screen_width: Optional[int]
     screen_height: Optional[int]
     viewport_width: Optional[int]
@@ -32,11 +44,13 @@ class Device:
     user_agent: Optional[str]
     connection_type: Optional[str]
     connection_speed: Optional[float]
+    connection_drops_count: Optional[int]  # Number of network disconnections since startup
     model_name: Optional[str]
     firmware_version: Optional[str]
     last_seen_at: Optional[datetime]
     room_number: Optional[str]
     assigned_playlist_id: Optional[int]
+    playlist_name: Optional[str]  # Name of assigned playlist (from JOIN)
     created_at: Optional[datetime]
     updated_at: Optional[datetime]
     released_at: Optional[datetime]
@@ -98,15 +112,31 @@ class ActivationCode:
 
 @dataclass
 class DeviceHeartbeat:
-    """Heartbeat data from device"""
+    """
+    Heartbeat data from device
+
+    OPTIMIZED (Phase 2):
+    - Static fields now sent via /capabilities endpoint
+    - Viewport only sent when changed
+    - Added connection_drops_count for reliability tracking
+    """
     unique_code: str
     device_uuid: Optional[str]
+
+    # Static fields - DEPRECATED (now in /capabilities)
     screen_width: Optional[int]
     screen_height: Optional[int]
-    viewport_width: Optional[int]
-    viewport_height: Optional[int]
     device_pixel_ratio: Optional[float]
     user_agent: Optional[str]
+
+    # Semi-static fields
+    viewport_width: Optional[int]
+    viewport_height: Optional[int]
+
+    # Dynamic fields
     connection_type: Optional[str]
     connection_speed: Optional[float]
+
+    # Connection reliability
+    connection_drops_count: Optional[int] = None
     ip_address: Optional[str] = None  # Client IP from HTTP request

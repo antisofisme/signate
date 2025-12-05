@@ -15,8 +15,8 @@ import { SharedLogger } from '@shared/logger';
 export interface ConnectionLogEntry {
   id: string;                    // UUID
   timestamp: number;             // Unix timestamp (ms)
-  eventType: 'network' | 'server' | 'speed_test';
-  status: 'online' | 'offline' | 'connected' | 'disconnected' | 'tested';
+  eventType: 'network' | 'server' | 'speed_test' | 'playback';
+  status: 'online' | 'offline' | 'connected' | 'disconnected' | 'tested' | 'stall' | 'buffer' | 'quality_switch' | 'load_fail' | 'play' | 'pause' | 'error' | 'started' | 'completed';
 
   // Optional fields
   latencyMs?: number;            // Ping latency
@@ -112,7 +112,7 @@ class ConnectionLogStorageClass {
   /**
    * Get recent logs (sorted by timestamp DESC)
    */
-  async getLogs(limit = 100, eventTypeFilter?: 'network' | 'server' | 'speed_test'): Promise<ConnectionLogEntry[]> {
+  async getLogs(limit = 100, eventTypeFilter?: 'network' | 'server' | 'speed_test' | 'playback'): Promise<ConnectionLogEntry[]> {
     if (!this.db) {
       await this.init();
     }

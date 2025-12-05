@@ -17,7 +17,8 @@ import { SharedModal } from '@shared/ui';
 import { DeviceInfoCollector } from '@shared/services/device-info';
 import { formatUptime } from '@shared/utils/performance-info';
 import { SharedEventBus, EventNames } from '@shared/events/shared-event-bus';
-import { getSharedWebSocket } from '@shared/services/service-registry';
+import { getSharedWebSocket, getPlayerCapabilitiesReporter } from '@shared/services/service-registry';
+import { detectVideoCodecs, detectAudioCodecs } from '@shared/utils/device-capabilities';
 import type { CompleteDeviceInfo } from '@shared/services/device-info';
 
 /**
@@ -30,7 +31,7 @@ class DeviceInfoPopupClass {
   private collapsedSections: Set<string> = new Set();
   private wsEventUnsubscribe: (() => void) | null = null;
   private isPopupOpen = false;
-  private activeTab: 'status' | 'storage' | 'debug' = 'status';
+  private activeTab: 'status' | 'debug' = 'status';
   private liveUpdateInterval: ReturnType<typeof setInterval> | null = null;
   private networkListener: (() => void) | null = null;
 
@@ -117,7 +118,7 @@ class DeviceInfoPopupClass {
   private buildContent(): string {
     return `
       <div style="display: flex; flex-direction: column; height: 600px; max-height: 80vh;">
-        <!-- Tabs - Fixed at top -->
+        <!-- Tabs - Fixed at top (2 tabs: Status & Debug) -->
         <div class="tab-header">
           <div class="tab-nav">
             <button id="tab-status" class="tab-btn active" onclick="window.DeviceInfoPopup.switchTab('status')">
@@ -125,14 +126,6 @@ class DeviceInfoPopupClass {
                 <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
               </svg>
               Status
-            </button>
-            <button id="tab-storage" class="tab-btn" onclick="window.DeviceInfoPopup.switchTab('storage')">
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
-                <polyline points="3.27 6.96 12 12.01 20.73 6.96"/>
-                <line x1="12" y1="22.08" x2="12" y2="12"/>
-              </svg>
-              Storage
             </button>
             <button id="tab-debug" class="tab-btn" onclick="window.DeviceInfoPopup.switchTab('debug')">
               <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -143,10 +136,9 @@ class DeviceInfoPopupClass {
           </div>
         </div>
 
-        <!-- Tab Contents - Scrollable area -->
-        <div style="flex: 1; overflow-y: auto; overflow-x: hidden; padding: 1.5rem; -webkit-overflow-scrolling: touch;">
+        <!-- Tab Contents -->
+        <div class="tab-contents-wrapper">
           ${this.buildStatusTab()}
-          ${this.buildStorageTab()}
           ${this.buildDebugTab()}
         </div>
 
@@ -157,292 +149,358 @@ class DeviceInfoPopupClass {
   }
 
   /**
-   * Build Status tab content - combines Device + Network + Backend essential info
+   * Build Status tab content - Storage bar + Now Playing on top, then 3 columns below
+   * This tab does NOT scroll - only Content List scrolls
    */
   private buildStatusTab(): string {
     return `
-      <div id="content-status" class="tab-content active">
-        <!-- Device Section -->
-        <div class="info-section-header">
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
-            <line x1="8" y1="21" x2="16" y2="21"/>
-            <line x1="12" y1="17" x2="12" y2="21"/>
-          </svg>
-          DEVICE
-        </div>
-        <div class="info-grid-styled">
-          <div class="info-row-styled">
-            <span class="info-label">Device ID</span>
-            <span class="info-value" id="status-device-id">Loading...</span>
-          </div>
-          <div class="info-row-styled">
-            <span class="info-label">Device Name</span>
-            <span class="info-value" id="status-device-name">Loading...</span>
-          </div>
-          <div class="info-row-styled">
-            <span class="info-label">Status</span>
-            <span class="info-value" id="status-device-status">Loading...</span>
-          </div>
-        </div>
-
-        <!-- Playlist Section -->
-        <div class="info-section-header" style="margin-top: 1.5rem;">
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <polygon points="5 3 19 12 5 21 5 3"/>
-          </svg>
-          PLAYBACK
-        </div>
-        <div class="info-grid-styled">
-          <div class="info-row-styled">
-            <span class="info-label">Now Playing</span>
-            <span class="info-value" id="status-playing">Loading...</span>
-          </div>
-          <div class="info-row-styled">
-            <span class="info-label">Content</span>
-            <span class="info-value" id="status-content">Loading...</span>
-          </div>
-        </div>
-
-        <!-- Connection Section -->
-        <div class="info-section-header" style="margin-top: 1.5rem;">
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <circle cx="12" cy="12" r="10"/>
-            <line x1="2" y1="12" x2="22" y2="12"/>
-            <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
-          </svg>
-          CONNECTION
-        </div>
-        <div class="info-grid-styled">
-          <div class="info-row-styled">
-            <span class="info-label" style="display: flex; align-items: center; gap: 0.5rem;">
-              <span id="wifi-icon" class="icon-wrapper icon-pulse">${this.getWifiIcon(true)}</span>
-              Network
+      <div id="content-status" class="tab-content active status-tab-fixed">
+        <!-- Storage Bar (Full Width) -->
+        <div class="storage-usage-compact">
+          <div class="storage-header-row">
+            <span class="storage-label">
+              <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+              </svg>
+              Storage
             </span>
-            <span class="info-value" id="status-network">Loading...</span>
-          </div>
-          <div class="info-row-styled">
-            <span class="info-label" style="display: flex; align-items: center; gap: 0.5rem;">
-              <span id="db-icon" class="icon-wrapper icon-pulse">${this.getDatabaseIcon(true)}</span>
-              Backend
+            <span class="storage-values">
+              <span id="storage-used-text">...</span>
+              <span style="color: rgba(255,255,255,0.4);">/</span>
+              <span id="storage-quota-text" style="color: rgba(255,255,255,0.6);">...</span>
+              <span id="storage-percent-badge" class="storage-badge-compact">0%</span>
             </span>
-            <span class="info-value" id="status-connection">Loading...</span>
           </div>
-        </div>
-      </div>
-    `;
-  }
-
-  /**
-   * Build Storage tab content
-   */
-  private buildStorageTab(): string {
-    return `
-      <div id="content-storage" class="tab-content">
-        <!-- Storage Usage -->
-        <div class="info-section-header">
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <rect x="2" y="2" width="20" height="8" rx="2" ry="2"/>
-            <rect x="2" y="14" width="20" height="8" rx="2" ry="2"/>
-            <line x1="6" y1="6" x2="6.01" y2="6"/>
-            <line x1="6" y1="18" x2="6.01" y2="18"/>
-          </svg>
-          STORAGE USAGE
-        </div>
-        <div class="storage-overview">
-          <div class="storage-main">
-            <span id="storage-used-text">Loading...</span>
-            <span id="storage-quota-text" style="color: rgba(255,255,255,0.6);">/ Loading...</span>
-            <span id="storage-percent-badge" class="storage-badge">0%</span>
-          </div>
-          <div class="storage-bar-container">
+          <div class="storage-bar-container-compact">
             <div id="storage-bar" class="storage-bar"></div>
           </div>
         </div>
 
-        <!-- Two Column Layout: Cache Breakdown (left) + Content Status (right) -->
-        <div class="storage-two-column">
-          <!-- Left: Cache Breakdown -->
-          <div class="storage-column">
-            <div class="info-section-header">
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
-              </svg>
-              CACHE BREAKDOWN
-            </div>
-            <div class="cache-breakdown-vertical">
-              <div class="cache-item-row">
-                <span class="cache-icon">${this.getCacheIcon('video')}</span>
-                <span class="cache-label">Video</span>
-                <span class="cache-value" id="storage-video">0 MB</span>
-              </div>
-              <div class="cache-item-row">
-                <span class="cache-icon">${this.getCacheIcon('image')}</span>
-                <span class="cache-label">Images</span>
-                <span class="cache-value" id="storage-images">0 MB</span>
-              </div>
-              <div class="cache-item-row">
-                <span class="cache-icon">${this.getCacheIcon('audio')}</span>
-                <span class="cache-label">Audio</span>
-                <span class="cache-value" id="storage-audio">0 MB</span>
-              </div>
-              <div class="cache-item-row">
-                <span class="cache-icon">${this.getCacheIcon('video')}</span>
-                <span class="cache-label">HLS Segments</span>
-                <span class="cache-value" id="storage-hls">0 MB</span>
-              </div>
-            </div>
-          </div>
-
-          <!-- Right: Content Status -->
-          <div class="storage-column">
-            <div class="info-section-header">
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <polyline points="9 11 12 14 22 4"/>
-                <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
-              </svg>
-              CONTENT STATUS
-            </div>
-            <div class="content-status-vertical">
-              <div class="content-stat-row">
-                <span class="content-stat-label">Assigned</span>
-                <span class="content-stat-value" id="storage-assigned">0</span>
-              </div>
-              <div class="content-stat-row">
-                <span class="content-stat-label">Cached</span>
-                <span class="content-stat-value" id="storage-cached-count">0</span>
-              </div>
-              <div class="content-stat-row">
-                <span class="content-stat-label">Hit Rate</span>
-                <span class="content-stat-value status-online" id="storage-hit-rate">0%</span>
-              </div>
-            </div>
-          </div>
+        <!-- Now Playing (Full Width) -->
+        <div class="now-playing-bar">
+          <span class="now-playing-label">
+            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polygon points="5 3 19 12 5 21 5 3"/>
+            </svg>
+            Now Playing
+          </span>
+          <span class="now-playing-value" id="status-playing">Loading...</span>
         </div>
 
-        <!-- Content List (Collapsible) -->
-        <div class="collapsible-section">
-          <div class="collapsible-header" onclick="window.DeviceInfoPopup.toggleSection('content-list')">
-            <span class="collapsible-icon expanded" id="icon-content-list">▶</span>
-            <span>Content List</span>
-          </div>
-          <div id="section-content-list" class="collapsible-content">
-            <div id="storage-content-list" class="content-list">
-              <p style="color: rgba(255,255,255,0.6); text-align: center; padding: 1rem;">Loading...</p>
-            </div>
-          </div>
-        </div>
-      </div>
-    `;
-  }
-
-  /**
-   * Build Debug tab content - 2-column layout: Network+Performance (left), System Info (right)
-   */
-  private buildDebugTab(): string {
-    return `
-      <div id="content-debug" class="tab-content">
-        <!-- Two Column Layout: Left (Network + Performance) | Right (System Info) -->
-        <div class="debug-two-column">
-          <!-- Left Column: Network Details + Performance -->
-          <div class="debug-column">
-            <!-- Network Details Section -->
+        <!-- Three Column Layout -->
+        <div class="status-combined-layout">
+          <!-- Column 1: Device + Connection -->
+          <div class="status-column-left">
+            <!-- Device Section -->
             <div class="collapsible-section">
-              <div class="collapsible-header" onclick="window.DeviceInfoPopup.toggleSection('debug-network')">
-                <span class="collapsible-icon expanded" id="icon-debug-network">▶</span>
-                <span>Network Details</span>
+              <div class="collapsible-header" onclick="window.DeviceInfoPopup.toggleSection('status-device')">
+                <span class="collapsible-icon expanded" id="icon-status-device">▶</span>
+                <span>Device</span>
               </div>
-              <div id="section-debug-network" class="collapsible-content">
-                <div class="debug-info-grid">
+              <div id="section-status-device" class="collapsible-content">
+                <div class="debug-info-grid compact">
                   <div class="debug-info-row">
-                    <span class="debug-info-label">Client IP</span>
-                    <span class="debug-info-value code" id="debug-client-ip">Loading...</span>
+                    <span class="debug-info-label">ID</span>
+                    <span class="debug-info-value code" id="status-device-id">Loading...</span>
                   </div>
                   <div class="debug-info-row">
-                    <span class="debug-info-label">Public IP</span>
-                    <span class="debug-info-value code" id="debug-public-ip">Loading...</span>
+                    <span class="debug-info-label">Name</span>
+                    <span class="debug-info-value" id="status-device-name">Loading...</span>
                   </div>
                   <div class="debug-info-row">
-                    <span class="debug-info-label">Connection</span>
-                    <span class="debug-info-value" id="debug-connection-type">Loading...</span>
-                  </div>
-                  <div class="debug-info-row">
-                    <span class="debug-info-label">Speed</span>
-                    <span class="debug-info-value" id="debug-speed">Loading...</span>
+                    <span class="debug-info-label">Status</span>
+                    <span class="debug-info-value" id="status-device-status">Loading...</span>
                   </div>
                 </div>
               </div>
             </div>
 
-            <!-- Performance Section -->
+            <!-- Connection Section -->
+            <div class="collapsible-section">
+              <div class="collapsible-header" onclick="window.DeviceInfoPopup.toggleSection('status-connection')">
+                <span class="collapsible-icon expanded" id="icon-status-connection">▶</span>
+                <span>Connection</span>
+              </div>
+              <div id="section-status-connection" class="collapsible-content">
+                <div class="debug-info-grid compact">
+                  <div class="debug-info-row">
+                    <span class="debug-info-label" style="display: flex; align-items: center; gap: 0.3rem;">
+                      <span id="wifi-icon" class="icon-wrapper icon-pulse">${this.getWifiIcon(true)}</span>
+                      Network
+                    </span>
+                    <span class="debug-info-value" id="status-network">Loading...</span>
+                  </div>
+                  <div class="debug-info-row">
+                    <span class="debug-info-label" style="display: flex; align-items: center; gap: 0.3rem;">
+                      <span id="db-icon" class="icon-wrapper icon-pulse">${this.getDatabaseIcon(true)}</span>
+                      Backend
+                    </span>
+                    <span class="debug-info-value" id="status-connection">Loading...</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Column 2: Content Status + Cache Breakdown -->
+          <div class="status-column-middle">
+            <!-- Content Status Section -->
+            <div class="collapsible-section">
+              <div class="collapsible-header" onclick="window.DeviceInfoPopup.toggleSection('storage-status')">
+                <span class="collapsible-icon expanded" id="icon-storage-status">▶</span>
+                <span>Content Status</span>
+              </div>
+              <div id="section-storage-status" class="collapsible-content">
+                <div class="debug-info-grid compact">
+                  <div class="debug-info-row">
+                    <span class="debug-info-label">Assigned</span>
+                    <span class="debug-info-value" id="storage-assigned">0</span>
+                  </div>
+                  <div class="debug-info-row">
+                    <span class="debug-info-label">Cached</span>
+                    <span class="debug-info-value" id="storage-cached-count">0</span>
+                  </div>
+                  <div class="debug-info-row">
+                    <span class="debug-info-label">Hit Rate</span>
+                    <span class="debug-info-value status-online" id="storage-hit-rate">0%</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Cache Breakdown Section -->
+            <div class="collapsible-section">
+              <div class="collapsible-header" onclick="window.DeviceInfoPopup.toggleSection('storage-cache')">
+                <span class="collapsible-icon expanded" id="icon-storage-cache">▶</span>
+                <span>Cache Breakdown</span>
+              </div>
+              <div id="section-storage-cache" class="collapsible-content">
+                <div class="debug-info-grid compact">
+                  <div class="debug-info-row">
+                    <span class="debug-info-label">${this.getCacheIcon('video')} Video</span>
+                    <span class="debug-info-value" id="storage-video">0 MB</span>
+                  </div>
+                  <div class="debug-info-row">
+                    <span class="debug-info-label">${this.getCacheIcon('image')} Images</span>
+                    <span class="debug-info-value" id="storage-images">0 MB</span>
+                  </div>
+                  <div class="debug-info-row">
+                    <span class="debug-info-label">${this.getCacheIcon('audio')} Audio</span>
+                    <span class="debug-info-value" id="storage-audio">0 MB</span>
+                  </div>
+                  <div class="debug-info-row">
+                    <span class="debug-info-label">${this.getCacheIcon('video')} HLS</span>
+                    <span class="debug-info-value" id="storage-hls">0 MB</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Column 3: Content List -->
+          <div class="status-column-right">
+            <div class="collapsible-section">
+              <div class="collapsible-header" onclick="window.DeviceInfoPopup.toggleSection('content-list')">
+                <span class="collapsible-icon expanded" id="icon-content-list">▶</span>
+                <span>Content List</span>
+              </div>
+              <div id="section-content-list" class="collapsible-content">
+                <div id="storage-content-list" class="content-list-compact">
+                  <p style="color: rgba(255,255,255,0.5); text-align: center; padding: 0.5rem; font-size: 0.7rem;">Loading...</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  /**
+   * Build Debug tab content - 3-column optimized layout
+   * Column 1 (LIVE): Network + Playback - real-time monitoring
+   * Column 2 (HEALTH): Performance - system health metrics
+   * Column 3 (DEVICE): System + Capabilities - static device info
+   */
+  private buildDebugTab(): string {
+    return `
+      <div id="content-debug" class="tab-content">
+        <!-- Three Column Layout: LIVE | HEALTH | DEVICE -->
+        <div class="debug-three-column">
+          <!-- Column 1: LIVE (Network + Playback) -->
+          <div class="debug-column">
+            <!-- Network Section - connection status first -->
+            <div class="collapsible-section">
+              <div class="collapsible-header" onclick="window.DeviceInfoPopup.toggleSection('debug-network')">
+                <span class="collapsible-icon expanded" id="icon-debug-network">▶</span>
+                <span>Network</span>
+              </div>
+              <div id="section-debug-network" class="collapsible-content">
+                <div class="debug-info-grid compact">
+                  <div class="debug-info-row">
+                    <span class="debug-info-label">Connection</span>
+                    <span class="debug-info-value" id="debug-connection-type">...</span>
+                  </div>
+                  <div class="debug-info-row">
+                    <span class="debug-info-label">Speed</span>
+                    <span class="debug-info-value" id="debug-speed">...</span>
+                  </div>
+                  <div class="debug-info-row">
+                    <span class="debug-info-label">Client IP</span>
+                    <span class="debug-info-value code" id="debug-client-ip">...</span>
+                  </div>
+                  <div class="debug-info-row">
+                    <span class="debug-info-label">Public IP</span>
+                    <span class="debug-info-value code" id="debug-public-ip">...</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Playback Section - errors first for quick diagnosis -->
+            <div class="collapsible-section">
+              <div class="collapsible-header" onclick="window.DeviceInfoPopup.toggleSection('debug-playback')">
+                <span class="collapsible-icon expanded" id="icon-debug-playback">▶</span>
+                <span>Playback</span>
+              </div>
+              <div id="section-debug-playback" class="collapsible-content">
+                <div class="debug-info-grid compact">
+                  <div class="debug-info-row highlight-error">
+                    <span class="debug-info-label">Error %</span>
+                    <span class="debug-info-value" id="debug-error-rate">...</span>
+                  </div>
+                  <div class="debug-info-row">
+                    <span class="debug-info-label">Stalls</span>
+                    <span class="debug-info-value" id="debug-stalls">...</span>
+                  </div>
+                  <div class="debug-info-row">
+                    <span class="debug-info-label">Buffers</span>
+                    <span class="debug-info-value" id="debug-buffers">...</span>
+                  </div>
+                  <div class="debug-info-row">
+                    <span class="debug-info-label">Failures</span>
+                    <span class="debug-info-value" id="debug-load-failures">...</span>
+                  </div>
+                  <div class="debug-info-row">
+                    <span class="debug-info-label">Plays</span>
+                    <span class="debug-info-value" id="debug-content-plays">...</span>
+                  </div>
+                  <div class="debug-info-row">
+                    <span class="debug-info-label">Quality SW</span>
+                    <span class="debug-info-value" id="debug-quality-switches">...</span>
+                  </div>
+                  <div class="debug-info-row">
+                    <span class="debug-info-label">First Play</span>
+                    <span class="debug-info-value" id="debug-ttfp">...</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Column 2: HEALTH (Performance only) -->
+          <div class="debug-column">
             <div class="collapsible-section">
               <div class="collapsible-header" onclick="window.DeviceInfoPopup.toggleSection('debug-performance')">
                 <span class="collapsible-icon expanded" id="icon-debug-performance">▶</span>
                 <span>Performance</span>
               </div>
               <div id="section-debug-performance" class="collapsible-content">
-                <div class="debug-info-grid">
-                  <div class="debug-info-row">
-                    <span class="debug-info-label">Uptime</span>
-                    <span class="debug-info-value" id="debug-uptime">Loading...</span>
-                  </div>
+                <div class="debug-info-grid compact">
                   <div class="debug-info-row">
                     <span class="debug-info-label">Memory</span>
-                    <span class="debug-info-value" id="debug-perf-memory">Loading...</span>
+                    <span class="debug-info-value" id="debug-perf-memory">...</span>
                   </div>
                   <div class="debug-info-row">
                     <span class="debug-info-label">FPS</span>
-                    <span class="debug-info-value" id="debug-fps">Loading...</span>
+                    <span class="debug-info-value" id="debug-fps">...</span>
                   </div>
                   <div class="debug-info-row">
-                    <span class="debug-info-label">Page Load</span>
-                    <span class="debug-info-value" id="debug-load-time">Loading...</span>
+                    <span class="debug-info-label">CPU</span>
+                    <span class="debug-info-value" id="debug-cpu-pressure">...</span>
+                  </div>
+                  <div class="debug-info-row">
+                    <span class="debug-info-label">Long Tasks</span>
+                    <span class="debug-info-value" id="debug-long-tasks">...</span>
+                  </div>
+                  <div class="debug-info-row">
+                    <span class="debug-info-label">TTFB</span>
+                    <span class="debug-info-value" id="debug-ttfb">...</span>
+                  </div>
+                  <div class="debug-info-row">
+                    <span class="debug-info-label">Load Time</span>
+                    <span class="debug-info-value" id="debug-load-time">...</span>
+                  </div>
+                  <div class="debug-info-row">
+                    <span class="debug-info-label">Uptime</span>
+                    <span class="debug-info-value" id="debug-uptime">...</span>
                   </div>
                 </div>
               </div>
             </div>
           </div>
 
-          <!-- Right Column: System Info -->
+          <!-- Column 3: DEVICE (System + Capabilities) -->
           <div class="debug-column">
+            <!-- System Info -->
             <div class="collapsible-section">
               <div class="collapsible-header" onclick="window.DeviceInfoPopup.toggleSection('debug-system')">
                 <span class="collapsible-icon expanded" id="icon-debug-system">▶</span>
-                <span>System Info</span>
+                <span>System</span>
               </div>
               <div id="section-debug-system" class="collapsible-content">
-                <div class="debug-info-grid">
+                <div class="debug-info-grid compact">
                   <div class="debug-info-row">
                     <span class="debug-info-label">Platform</span>
-                    <span class="debug-info-value" id="debug-platform">Loading...</span>
+                    <span class="debug-info-value" id="debug-platform">...</span>
                   </div>
                   <div class="debug-info-row">
                     <span class="debug-info-label">Browser</span>
-                    <span class="debug-info-value" id="debug-browser">Loading...</span>
+                    <span class="debug-info-value" id="debug-browser">...</span>
                   </div>
                   <div class="debug-info-row">
                     <span class="debug-info-label">Resolution</span>
-                    <span class="debug-info-value" id="debug-resolution">Loading...</span>
-                  </div>
-                  <div class="debug-info-row">
-                    <span class="debug-info-label">CPU Cores</span>
-                    <span class="debug-info-value" id="debug-cores">Loading...</span>
-                  </div>
-                  <div class="debug-info-row">
-                    <span class="debug-info-label">Memory</span>
-                    <span class="debug-info-value" id="debug-memory">Loading...</span>
-                  </div>
-                  <div class="debug-info-row">
-                    <span class="debug-info-label">WebGL</span>
-                    <span class="debug-info-value" id="debug-webgl">Loading...</span>
-                  </div>
-                  <div class="debug-info-row">
-                    <span class="debug-info-label">Service Worker</span>
-                    <span class="debug-info-value" id="debug-sw">Loading...</span>
+                    <span class="debug-info-value" id="debug-resolution">...</span>
                   </div>
                   <div class="debug-info-row">
                     <span class="debug-info-label">Rotation</span>
-                    <span class="debug-info-value" id="debug-rotation">Loading...</span>
+                    <span class="debug-info-value" id="debug-rotation">...</span>
+                  </div>
+                  <div class="debug-info-row">
+                    <span class="debug-info-label">SW Status</span>
+                    <span class="debug-info-value" id="debug-sw">...</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Device Capabilities -->
+            <div class="collapsible-section">
+              <div class="collapsible-header" onclick="window.DeviceInfoPopup.toggleSection('debug-capabilities')">
+                <span class="collapsible-icon expanded" id="icon-debug-capabilities">▶</span>
+                <span>Capabilities</span>
+              </div>
+              <div id="section-debug-capabilities" class="collapsible-content">
+                <div class="debug-info-grid compact">
+                  <div class="debug-info-row">
+                    <span class="debug-info-label">Video</span>
+                    <span class="debug-info-value codec-badges" id="debug-video-codecs">...</span>
+                  </div>
+                  <div class="debug-info-row">
+                    <span class="debug-info-label">Audio</span>
+                    <span class="debug-info-value codec-badges" id="debug-audio-codecs">...</span>
+                  </div>
+                  <div class="debug-info-row">
+                    <span class="debug-info-label">Hardware</span>
+                    <span class="debug-info-value" id="debug-hardware">...</span>
+                  </div>
+                  <div class="debug-info-row">
+                    <span class="debug-info-label">Display</span>
+                    <span class="debug-info-value" id="debug-display">...</span>
+                  </div>
+                  <div class="debug-info-row">
+                    <span class="debug-info-label">WebGL</span>
+                    <span class="debug-info-value" id="debug-webgl-details">...</span>
                   </div>
                 </div>
               </div>
@@ -459,20 +517,20 @@ class DeviceInfoPopupClass {
   private buildStyles(): string {
     return `
       <style>
-        /* Tab Header - Fixed at top */
+        /* Tab Header - Fixed at top (matching connection-log-popup) */
         .tab-header {
           display: flex;
           justify-content: space-between;
           align-items: center;
-          padding: 1.5rem 1.5rem 0 1.5rem;
+          padding: 1rem 1rem 0 1rem;
           border-bottom: 2px solid rgba(255, 255, 255, 0.1);
           flex-shrink: 0;
         }
 
-        /* Tab Navigation */
+        /* Tab Navigation - Matching connection-log-popup */
         .tab-nav {
           display: flex;
-          gap: 0.5rem;
+          gap: 0.35rem;
           overflow-x: auto;
           overflow-y: hidden;
           -webkit-overflow-scrolling: touch;
@@ -480,22 +538,22 @@ class DeviceInfoPopupClass {
           flex: 1;
         }
         .tab-btn {
-          padding: 0.75rem 1.25rem;
+          padding: 0.5rem 0.75rem;
           background: rgba(255, 255, 255, 0.05);
           border: none;
-          border-bottom: 3px solid transparent;
+          border-bottom: 2px solid transparent;
           color: rgba(255, 255, 255, 0.7);
           cursor: pointer;
-          font-size: 0.9rem;
+          font-size: 0.75rem;
           font-weight: 500;
           transition: all 0.2s ease;
           display: flex;
           align-items: center;
-          gap: 0.5rem;
+          gap: 0.35rem;
           white-space: nowrap;
           flex: 1;
           justify-content: center;
-          border-radius: 8px 8px 0 0;
+          border-radius: 6px 6px 0 0;
         }
         .tab-btn:hover {
           background: rgba(255, 255, 255, 0.1);
@@ -506,27 +564,75 @@ class DeviceInfoPopupClass {
           border-bottom-color: #3b82f6;
           color: white;
         }
+        .tab-btn svg {
+          width: 14px;
+          height: 14px;
+        }
 
         /* Tab scrollbar (horizontal) */
         .tab-nav::-webkit-scrollbar {
-          height: 6px;
+          height: 4px;
         }
         .tab-nav::-webkit-scrollbar-track {
-          background: rgba(255, 255, 255, 0.05);
-          border-radius: 3px;
+          background: rgba(255, 255, 255, 0.03);
+          border-radius: 2px;
         }
         .tab-nav::-webkit-scrollbar-thumb {
-          background: rgba(255, 255, 255, 0.2);
-          border-radius: 3px;
+          background: rgba(255, 255, 255, 0.15);
+          border-radius: 2px;
         }
         .tab-nav::-webkit-scrollbar-thumb:hover {
-          background: rgba(255, 255, 255, 0.3);
+          background: rgba(255, 255, 255, 0.25);
+        }
+        .tab-contents-wrapper {
+          flex: 1;
+          overflow: hidden;
+          padding: 1rem;
+          display: flex;
+          flex-direction: column;
         }
         .tab-content {
           display: none;
+          flex: 1;
+          min-height: 0;
         }
         .tab-content.active {
-          display: block;
+          display: flex;
+          flex-direction: column;
+        }
+        /* Status tab - no scroll, fixed height */
+        .status-tab-fixed {
+          overflow: hidden;
+        }
+        .status-tab-fixed .status-combined-layout {
+          flex: 1;
+          min-height: 0;
+        }
+        .status-tab-fixed .status-column-right {
+          display: flex;
+          flex-direction: column;
+          min-height: 0;
+        }
+        .status-tab-fixed .status-column-right .collapsible-section {
+          flex: 1;
+          display: flex;
+          flex-direction: column;
+          min-height: 0;
+        }
+        .status-tab-fixed .status-column-right .collapsible-content {
+          flex: 1;
+          min-height: 0;
+          overflow: hidden;
+        }
+        .status-tab-fixed .content-list-compact {
+          max-height: none;
+          height: 100%;
+          overflow-y: auto;
+        }
+        /* Debug tab - scrollable */
+        #content-debug {
+          overflow-y: auto;
+          -webkit-overflow-scrolling: touch;
         }
         .info-section-header {
           display: flex;
@@ -597,29 +703,79 @@ class DeviceInfoPopupClass {
           text-align: right;
         }
 
-        /* Storage Overview */
-        .storage-overview {
-          margin-bottom: 0.75rem;
+        /* Storage Usage - Compact Header */
+        .storage-usage-compact {
+          margin-bottom: 0.5rem;
+          padding-bottom: 0.5rem;
+          border-bottom: 1px solid rgba(255, 255, 255, 0.06);
         }
-        .storage-main {
+        .storage-header-row {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 0.4rem;
+        }
+        .storage-label {
+          display: flex;
+          align-items: center;
+          gap: 0.3rem;
+          font-size: 0.75rem;
+          font-weight: 600;
+          color: rgba(255, 255, 255, 0.7);
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+        }
+
+        /* Now Playing Bar */
+        .now-playing-bar {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          padding: 0.5rem 0.75rem;
+          margin-bottom: 0.75rem;
+          background: rgba(255, 255, 255, 0.03);
+          border-radius: 6px;
+          border-left: 3px solid #10b981;
+        }
+        .now-playing-label {
+          display: flex;
+          align-items: center;
+          gap: 0.4rem;
+          font-size: 0.75rem;
+          font-weight: 600;
+          color: rgba(255, 255, 255, 0.7);
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+        }
+        .now-playing-value {
+          font-size: 0.8rem;
+          font-weight: 500;
+          color: white;
+          max-width: 60%;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+        .storage-values {
           display: flex;
           align-items: baseline;
-          gap: 0.35rem;
-          margin-bottom: 0.5rem;
-          font-size: 1.25rem;
-          font-weight: 600;
+          gap: 0.25rem;
+          font-size: 0.8rem;
           color: white;
         }
-        .storage-badge {
+        .storage-badge-compact {
           color: #60a5fa;
-          font-size: 0.8rem;
+          font-size: 0.7rem;
           font-weight: 600;
-          margin-left: auto;
-        }
-        .storage-bar-container {
-          height: 6px;
-          background: rgba(255, 255, 255, 0.1);
+          background: rgba(96, 165, 250, 0.15);
+          padding: 0.1rem 0.35rem;
           border-radius: 3px;
+          margin-left: 0.25rem;
+        }
+        .storage-bar-container-compact {
+          height: 4px;
+          background: rgba(255, 255, 255, 0.1);
+          border-radius: 2px;
           overflow: hidden;
         }
         .storage-bar {
@@ -627,37 +783,71 @@ class DeviceInfoPopupClass {
           background: linear-gradient(90deg, #3b82f6, #10b981);
           width: 0%;
           transition: width 0.5s ease;
-          border-radius: 3px;
+          border-radius: 2px;
         }
 
-        /* Two Column Layout for Storage Tab */
-        .storage-two-column {
-          display: grid;
-          grid-template-columns: 1fr 1fr;
-          gap: 1.5rem;
-          margin-top: 1rem;
-          padding-bottom: 1rem;
-          border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+        /* Content List Compact */
+        .content-list-compact {
+          max-height: 350px;
+          overflow-y: auto;
         }
-        .storage-column {
+        .content-list-compact::-webkit-scrollbar {
+          width: 4px;
+        }
+        .content-list-compact::-webkit-scrollbar-track {
+          background: rgba(255, 255, 255, 0.05);
+          border-radius: 2px;
+        }
+        .content-list-compact::-webkit-scrollbar-thumb {
+          background: rgba(255, 255, 255, 0.15);
+          border-radius: 2px;
+        }
+
+        /* Combined Status Tab Layout - 3 equal columns */
+        .status-combined-layout {
+          display: grid;
+          grid-template-columns: 1fr 1fr 1fr;
+          gap: 0.75rem;
+          width: 100%;
+          min-width: 0;
+        }
+        .status-column-left,
+        .status-column-middle,
+        .status-column-right {
           display: flex;
           flex-direction: column;
+          gap: 0.4rem;
+          min-width: 0;
+          overflow: hidden;
         }
-        .storage-column .info-section-header {
+        .status-column-left .collapsible-section,
+        .status-column-middle .collapsible-section,
+        .status-column-right .collapsible-section {
           margin-top: 0;
-          margin-bottom: 0.5rem;
+          border-top: none;
+        }
+        .status-column-left .collapsible-header,
+        .status-column-middle .collapsible-header,
+        .status-column-right .collapsible-header {
+          padding: 0.4rem 0.5rem;
+          font-size: 0.75rem;
+        }
+        .status-column-left .collapsible-content,
+        .status-column-middle .collapsible-content,
+        .status-column-right .collapsible-content {
+          padding: 0.4rem;
         }
 
-        /* Two Column Layout for Debug Tab */
-        .debug-two-column {
+        /* Three Column Layout for Debug Tab - Same gap as Status tab */
+        .debug-three-column {
           display: grid;
-          grid-template-columns: 1fr 1fr;
-          gap: 1.5rem;
+          grid-template-columns: 1fr 1fr 1fr;
+          gap: 0.75rem;
         }
         .debug-column {
           display: flex;
           flex-direction: column;
-          gap: 0.5rem;
+          gap: 0.4rem;
         }
         .debug-column .collapsible-section {
           margin-top: 0;
@@ -666,123 +856,61 @@ class DeviceInfoPopupClass {
         .debug-column .collapsible-section:first-child {
           margin-top: 0;
         }
+        .debug-column .collapsible-header {
+          padding: 0.4rem 0.5rem;
+          font-size: 0.75rem;
+        }
+        .debug-column .collapsible-content {
+          padding: 0.4rem;
+        }
 
-        /* Debug Info Grid - styled rows */
+        /* Debug Info Grid - compact styled rows */
         .debug-info-grid {
           display: flex;
           flex-direction: column;
-          gap: 0.4rem;
+          gap: 0.3rem;
+          min-width: 0;
+          width: 100%;
+        }
+        .debug-info-grid.compact {
+          gap: 0.2rem;
         }
         .debug-info-row {
           display: flex;
           justify-content: space-between;
           align-items: center;
-          padding: 0.4rem 0.6rem;
+          padding: 0.25rem 0.4rem;
           background: rgba(255, 255, 255, 0.03);
-          border-radius: 6px;
+          border-radius: 4px;
+          min-width: 0;
         }
         .debug-info-label {
           color: rgba(255, 255, 255, 0.6);
-          font-size: 0.8rem;
+          font-size: 0.7rem;
+          flex-shrink: 0;
         }
         .debug-info-value {
           color: white;
-          font-size: 0.8rem;
+          font-size: 0.7rem;
           font-weight: 500;
           text-align: right;
+          min-width: 0;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
         }
         .debug-info-value.code {
           font-family: monospace;
-          font-size: 0.75rem;
+          font-size: 0.65rem;
           color: rgba(255, 255, 255, 0.85);
         }
-
-        /* Cache Breakdown - Vertical Layout */
-        .cache-breakdown-vertical {
-          display: flex;
-          flex-direction: column;
-          gap: 0.5rem;
+        .debug-info-value.codec-badges {
+          font-size: 0.6rem;
         }
-        .cache-item-row {
-          display: flex;
-          align-items: center;
-          gap: 0.5rem;
-          padding: 0.4rem 0.5rem;
-          background: rgba(255, 255, 255, 0.03);
-          border-radius: 6px;
-        }
-        .cache-item-row .cache-icon {
-          display: inline-flex;
-          align-items: center;
-          justify-content: center;
-          flex-shrink: 0;
-          width: 20px;
-          height: 20px;
-        }
-        .cache-item-row .cache-icon svg {
-          width: 16px;
-          height: 16px;
-        }
-        .cache-item-row .cache-label {
-          color: rgba(255, 255, 255, 0.6);
-          font-size: 0.8rem;
-          flex: 1;
-        }
-        .cache-item-row .cache-value {
-          color: white;
-          font-weight: 600;
-          font-size: 0.85rem;
-        }
-
-        /* Content Status - Vertical Layout */
-        .content-status-vertical {
-          display: flex;
-          flex-direction: column;
-          gap: 0.5rem;
-        }
-        .content-stat-row {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          padding: 0.4rem 0.5rem;
-          background: rgba(255, 255, 255, 0.03);
-          border-radius: 6px;
-        }
-        .content-stat-row .content-stat-label {
-          color: rgba(255, 255, 255, 0.6);
-          font-size: 0.8rem;
-        }
-        .content-stat-row .content-stat-value {
-          font-size: 0.95rem;
-          font-weight: 700;
-          color: white;
-        }
-
-        /* Legacy Cache Breakdown (keep for compatibility) */
-        .cache-breakdown {
-          display: grid;
-          grid-template-columns: repeat(4, 1fr);
-          gap: 0.5rem;
-          text-align: center;
-        }
-        .cache-item {
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          padding: 0.5rem 0;
-        }
-        .cache-icon {
-          font-size: 1rem;
-          margin-bottom: 0.2rem;
-        }
-        .cache-label {
-          color: rgba(255, 255, 255, 0.5);
-          font-size: 0.7rem;
-        }
-        .cache-value {
-          color: white;
-          font-weight: 600;
-          font-size: 0.8rem;
+        /* Highlight row for critical info like errors */
+        .debug-info-row.highlight-error {
+          background: rgba(239, 68, 68, 0.1);
+          border-left: 2px solid #ef4444;
         }
 
         /* Legacy Content Status Summary (keep for compatibility) */
@@ -813,6 +941,8 @@ class DeviceInfoPopupClass {
         .collapsible-section {
           margin-top: 0.5rem;
           border-top: 1px solid rgba(255, 255, 255, 0.06);
+          min-width: 0;
+          overflow: hidden;
         }
         .collapsible-section:first-child {
           border-top: none;
@@ -836,6 +966,7 @@ class DeviceInfoPopupClass {
           font-size: 0.65rem;
           transition: transform 0.2s ease;
           color: rgba(255, 255, 255, 0.4);
+          flex-shrink: 0;
         }
         .collapsible-icon.expanded {
           transform: rotate(90deg);
@@ -845,6 +976,7 @@ class DeviceInfoPopupClass {
           transition: max-height 0.3s ease, padding 0.3s ease;
           max-height: 1000px;
           overflow: hidden;
+          min-width: 0;
         }
         .collapsible-content.collapsed {
           max-height: 0;
@@ -869,11 +1001,14 @@ class DeviceInfoPopupClass {
         }
 
         /* Status Colors */
-        .status-online {
+        .status-online, .status-good {
           color: #10b981 !important;
         }
-        .status-offline {
+        .status-offline, .status-error {
           color: #ef4444 !important;
+        }
+        .status-warning {
+          color: #f59e0b !important;
         }
         .status-active {
           color: #10b981 !important;
@@ -930,6 +1065,33 @@ class DeviceInfoPopupClass {
           background: rgba(255, 255, 255, 0.15);
           border-radius: 2px;
         }
+
+        /* Codec badge styles - compact for 3-column layout */
+        .codec-badge {
+          display: inline-flex;
+          align-items: center;
+          gap: 0.15rem;
+          padding: 0.1rem 0.25rem;
+          border-radius: 3px;
+          font-size: 0.55rem;
+          font-weight: 600;
+        }
+        .codec-badge.supported {
+          background: rgba(16, 185, 129, 0.15);
+          color: #10b981;
+          border: 1px solid rgba(16, 185, 129, 0.3);
+        }
+        .codec-badge.not-supported {
+          background: rgba(239, 68, 68, 0.1);
+          color: rgba(239, 68, 68, 0.6);
+          border: 1px solid rgba(239, 68, 68, 0.2);
+        }
+        .codec-badges {
+          display: flex;
+          gap: 0.2rem;
+          flex-wrap: wrap;
+          justify-content: flex-end;
+        }
       </style>
     `;
   }
@@ -973,7 +1135,7 @@ class DeviceInfoPopupClass {
     });
 
     // Track active tab for live updates
-    this.activeTab = tabName as 'status' | 'storage' | 'debug';
+    this.activeTab = tabName as 'status' | 'debug';
   }
 
   /**
@@ -1034,9 +1196,7 @@ class DeviceInfoPopupClass {
       switch (this.activeTab) {
         case 'status':
           await this.updateStatusTabLive();
-          break;
-        case 'storage':
-          await this.updateStorageTabLive();
+          await this.updateStorageTabLive(); // Storage is now part of Status tab
           break;
         case 'debug':
           await this.updateDebugTabLive();
@@ -1156,25 +1316,51 @@ class DeviceInfoPopupClass {
       const usedMB = (storage.total.used / 1048576).toFixed(1);
       this.setText('storage-used-text', `${usedMB} MB`);
 
-      const percentDisplay = storage.total.percentage < 1 && storage.total.percentage > 0
-        ? `${storage.total.percentage.toFixed(1)}%`
-        : `${Math.round(storage.total.percentage)}%`;
-      this.setText('storage-percent-badge', percentDisplay);
+      const storagePercent = storage.total.percentage;
+      const percentDisplay = storagePercent < 1 && storagePercent > 0
+        ? `${storagePercent.toFixed(1)}%`
+        : `${Math.round(storagePercent)}%`;
+
+      // Color storage percentage based on usage
+      const storageBadge = document.getElementById('storage-percent-badge');
+      if (storageBadge) {
+        storageBadge.textContent = percentDisplay;
+        storageBadge.className = 'storage-badge-compact';
+        if (storagePercent >= 80) {
+          storageBadge.classList.add('status-error');
+        } else if (storagePercent >= 50) {
+          storageBadge.classList.add('status-warning');
+        }
+      }
 
       // Update progress bar width
-      const progressBar = document.getElementById('storage-progress-bar');
+      const progressBar = document.getElementById('storage-bar');
       if (progressBar) {
-        (progressBar as HTMLElement).style.width = `${Math.min(storage.total.percentage, 100)}%`;
+        (progressBar as HTMLElement).style.width = `${Math.min(storagePercent, 100)}%`;
       }
 
       // Update cache breakdown
-      this.setText('storage-videos', `${(storage.breakdown.videos / 1048576).toFixed(1)} MB`);
+      this.setText('storage-video', `${(storage.breakdown.videos / 1048576).toFixed(1)} MB`);
       this.setText('storage-images', `${(storage.breakdown.images / 1048576).toFixed(1)} MB`);
       this.setText('storage-audio', `${(storage.breakdown.audio / 1048576).toFixed(1)} MB`);
 
-      // Update cached count and hit rate
-      this.setText('storage-cached-count', `${storage.cachedCount} Cached`);
-      this.setText('storage-hit-rate', `${storage.cacheHitRate}% Hit Rate`);
+      // Update cached count
+      this.setText('storage-cached-count', String(storage.cachedCount));
+
+      // Update hit rate with color
+      const hitRate = storage.cacheHitRate;
+      const hitRateEl = document.getElementById('storage-hit-rate');
+      if (hitRateEl) {
+        hitRateEl.textContent = `${hitRate}%`;
+        hitRateEl.className = 'debug-info-value';
+        if (hitRate >= 80) {
+          hitRateEl.classList.add('status-good');
+        } else if (hitRate >= 50) {
+          hitRateEl.classList.add('status-warning');
+        } else {
+          hitRateEl.classList.add('status-error');
+        }
+      }
     } catch (error) {
       // Silently ignore errors during polling
     }
@@ -1188,16 +1374,34 @@ class DeviceInfoPopupClass {
       const freshInfo = await DeviceInfoCollector.collectAll();
       if (!freshInfo) return;
 
-      const { performance, system } = freshInfo;
+      const { performance, system, playbackStats } = freshInfo;
 
-      // Update Performance section
+      // Update Performance section - Basic
       this.setText('debug-uptime', formatUptime(performance.uptime));
-      this.setText('debug-fps', `${performance.fps} FPS`);
       this.setText('debug-load-time', `${performance.loadTime} ms`);
 
+      // FPS with color
+      this.setHtml('debug-fps', this.formatFps(performance.fps));
+
       if (performance.memory) {
-        this.setText('debug-memory', `${performance.memory.used.toFixed(0)} MB / ${performance.memory.total.toFixed(0)} MB (${performance.memory.percentage.toFixed(0)}%)`);
+        this.setText('debug-perf-memory', `${performance.memory.used.toFixed(0)} MB / ${performance.memory.limit.toFixed(0)} MB`);
       }
+
+      // Update Performance section - Advanced (Phase 4)
+      this.setHtml('debug-cpu-pressure', this.formatCpuPressure(performance.cpuPressure));
+      this.setHtml('debug-long-tasks', this.formatLongTasks(performance.longTasksCount));
+      this.setText('debug-ttfb', performance.ttfbMs !== null ? `${performance.ttfbMs}ms` : 'N/A');
+
+      // Update Playback Stats section (Phase 3: Behavioral Metrics)
+      this.setText('debug-ttfp', playbackStats.timeToFirstPlaybackMs !== null
+        ? `${playbackStats.timeToFirstPlaybackMs.toFixed(0)}ms`
+        : 'N/A');
+      this.setText('debug-content-plays', `${playbackStats.contentPlayCount}`);
+      this.setHtml('debug-stalls', this.formatCount(playbackStats.playbackStallsCount));
+      this.setHtml('debug-buffers', this.formatCount(playbackStats.bufferUnderrunsCount));
+      this.setText('debug-quality-switches', `${playbackStats.qualitySwitchesCount}`);
+      this.setHtml('debug-load-failures', this.formatCount(playbackStats.contentLoadFailuresCount));
+      this.setHtml('debug-error-rate', this.formatErrorRate(playbackStats.errorRatePercent));
 
       // Update online status in Network section
       const onlineEl = document.getElementById('debug-online');
@@ -1498,7 +1702,7 @@ class DeviceInfoPopupClass {
   private populateDebugTab(): void {
     if (!this.deviceInfo) return;
 
-    const { device, network, system, performance } = this.deviceInfo;
+    const { device, network, system, performance, playbackStats } = this.deviceInfo;
 
     // Network Details
     this.setText('debug-client-ip', network.clientIP || 'Not detected');
@@ -1506,17 +1710,14 @@ class DeviceInfoPopupClass {
     this.setText('debug-connection-type', network.connectionType);
     this.setText('debug-speed', network.downlinkSpeed || 'N/A');
 
-    // System Info
+    // System Info (simplified - cores/memory/webgl moved to Capabilities)
     this.setText('debug-platform', system.platform);
     this.setText('debug-browser', `${system.browser.name} ${system.browser.version}`);
     this.setText('debug-resolution', `${system.screen.width}x${system.screen.height}`);
-    this.setText('debug-cores', system.cpuCores.toString());
-    this.setText('debug-memory', system.deviceMemory ? `${system.deviceMemory} GB` : 'N/A');
-    this.setText('debug-webgl', system.webglSupport ? 'Supported' : 'Not Supported');
-    this.setText('debug-sw', system.serviceWorkerStatus);
     this.setText('debug-rotation', `${device.rotation}°`);
+    this.setText('debug-sw', system.serviceWorkerStatus);
 
-    // Performance
+    // Performance - Basic
     this.setText('debug-uptime', formatUptime(performance.uptime));
     this.setText('debug-fps', `${performance.fps} FPS`);
     this.setText('debug-load-time', `${performance.loadTime}ms`);
@@ -1526,6 +1727,190 @@ class DeviceInfoPopupClass {
     } else {
       this.setText('debug-perf-memory', 'N/A');
     }
+
+    // Performance - Advanced (Phase 4)
+    this.setHtml('debug-cpu-pressure', this.formatCpuPressure(performance.cpuPressure));
+    this.setText('debug-long-tasks', `${performance.longTasksCount}`);
+    this.setText('debug-ttfb', performance.ttfbMs !== null ? `${performance.ttfbMs}ms` : 'N/A');
+
+    // Playback Stats (Phase 3: Behavioral Metrics)
+    this.setText('debug-ttfp', playbackStats.timeToFirstPlaybackMs !== null
+      ? `${playbackStats.timeToFirstPlaybackMs.toFixed(0)}ms`
+      : 'N/A');
+    this.setText('debug-content-plays', `${playbackStats.contentPlayCount}`);
+    this.setText('debug-stalls', `${playbackStats.playbackStallsCount}`);
+    this.setText('debug-buffers', `${playbackStats.bufferUnderrunsCount}`);
+    this.setText('debug-quality-switches', `${playbackStats.qualitySwitchesCount}`);
+    this.setText('debug-load-failures', `${playbackStats.contentLoadFailuresCount}`);
+    this.setHtml('debug-error-rate', this.formatErrorRate(playbackStats.errorRatePercent));
+
+    // Device Capabilities
+    this.populateDeviceCapabilities();
+  }
+
+  /**
+   * Format CPU pressure with color coding
+   */
+  private formatCpuPressure(pressure: string | null): string {
+    if (!pressure) return 'N/A';
+
+    const colors: Record<string, string> = {
+      'nominal': '#10b981', // green
+      'fair': '#f59e0b',    // amber
+      'serious': '#f97316', // orange
+      'critical': '#ef4444', // red
+    };
+
+    const color = colors[pressure] || 'white';
+    return `<span style="color: ${color}; font-weight: 600;">${pressure.toUpperCase()}</span>`;
+  }
+
+  /**
+   * Format error rate with color coding
+   */
+  private formatErrorRate(rate: number): string {
+    let color = '#10b981'; // green - 0%
+    if (rate > 0) color = '#f59e0b'; // amber - any error
+    if (rate > 5) color = '#ef4444'; // red - significant errors
+
+    return `<span style="color: ${color}; font-weight: 600;">${rate.toFixed(1)}%</span>`;
+  }
+
+  /**
+   * Format FPS with color coding
+   */
+  private formatFps(fps: number): string {
+    let color = '#10b981'; // green - good (>= 30)
+    if (fps < 30) color = '#f59e0b'; // amber - warning (15-29)
+    if (fps < 15) color = '#ef4444'; // red - bad (< 15)
+
+    return `<span style="color: ${color}; font-weight: 600;">${fps} FPS</span>`;
+  }
+
+  /**
+   * Format Long Tasks count with color coding
+   */
+  private formatLongTasks(count: number): string {
+    let color = '#10b981'; // green - good (0-5)
+    if (count > 5) color = '#f59e0b'; // amber - warning (6-20)
+    if (count > 20) color = '#ef4444'; // red - bad (> 20)
+
+    return `<span style="color: ${color}; font-weight: 600;">${count}</span>`;
+  }
+
+  /**
+   * Format count with color coding (0 = green, >0 = warning/error)
+   */
+  private formatCount(count: number): string {
+    let color = '#10b981'; // green - 0
+    if (count > 0) color = '#f59e0b'; // amber - some issues
+    if (count > 5) color = '#ef4444'; // red - many issues
+
+    return `<span style="color: ${color}; font-weight: 600;">${count}</span>`;
+  }
+
+  /**
+   * Populate Device Capabilities section
+   */
+  private populateDeviceCapabilities(): void {
+    const capabilitiesReporter = getPlayerCapabilitiesReporter();
+    const capabilities = capabilitiesReporter?.getCapabilities?.();
+
+    // Video Codecs - formatted with badges
+    const videoCodecsEl = document.getElementById('debug-video-codecs');
+    if (videoCodecsEl) {
+      if (capabilities) {
+        videoCodecsEl.innerHTML = this.formatCodecBadges({
+          'H.264': capabilities.codecH264,
+          'H.265': capabilities.codecH265,
+          'VP9': capabilities.codecVP9,
+          'AV1': capabilities.codecAV1,
+        });
+      } else {
+        // Fallback: detect codecs directly
+        const detectedVideoCodecs = detectVideoCodecs();
+        videoCodecsEl.innerHTML = this.formatCodecBadges({
+          'H.264': detectedVideoCodecs.h264,
+          'H.265': detectedVideoCodecs.h265,
+          'VP9': detectedVideoCodecs.vp9,
+          'AV1': detectedVideoCodecs.av1,
+        });
+      }
+    }
+
+    // Audio Codecs - formatted with badges
+    const audioCodecsEl = document.getElementById('debug-audio-codecs');
+    if (audioCodecsEl) {
+      if (capabilities) {
+        audioCodecsEl.innerHTML = this.formatCodecBadges({
+          'AAC': capabilities.codecAAC,
+          'Opus': capabilities.codecOpus,
+        });
+      } else {
+        // Fallback: detect codecs directly
+        const detectedAudioCodecs = detectAudioCodecs();
+        audioCodecsEl.innerHTML = this.formatCodecBadges({
+          'AAC': detectedAudioCodecs.aac,
+          'Opus': detectedAudioCodecs.opus,
+        });
+      }
+    }
+
+    // Hardware
+    const hardwareEl = document.getElementById('debug-hardware');
+    if (hardwareEl) {
+      const cores = capabilities?.hardwareConcurrency || navigator.hardwareConcurrency || 'N/A';
+      const memory = capabilities?.deviceMemoryGB || (navigator as any).deviceMemory || null;
+      const memoryStr = memory ? `${memory} GB` : 'N/A';
+      hardwareEl.textContent = `${cores} cores • ${memoryStr} RAM`;
+    }
+
+    // Display
+    const displayEl = document.getElementById('debug-display');
+    if (displayEl) {
+      const width = capabilities?.screenWidth || window.screen.width;
+      const height = capabilities?.screenHeight || window.screen.height;
+      const refreshRate = capabilities?.displayRefreshRate || 60;
+      displayEl.textContent = `${width}x${height} @ ${refreshRate}Hz`;
+    }
+
+    // WebGL Details
+    const webglEl = document.getElementById('debug-webgl-details');
+    if (webglEl) {
+      if (capabilities?.webglVersion) {
+        const version = capabilities.webglVersion;
+        const renderer = capabilities.webglRenderer || 'Unknown';
+        // Truncate long renderer strings
+        const shortRenderer = renderer.length > 30 ? renderer.substring(0, 27) + '...' : renderer;
+        webglEl.innerHTML = `<span style="color: #10b981;">${version}</span> <span style="color: rgba(255,255,255,0.5); font-size: 0.7rem;">(${shortRenderer})</span>`;
+      } else {
+        // Fallback: detect WebGL
+        const canvas = document.createElement('canvas');
+        const gl = canvas.getContext('webgl2') || canvas.getContext('webgl');
+        if (gl) {
+          const debugInfo = gl.getExtension('WEBGL_debug_renderer_info');
+          const renderer = debugInfo ? gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL) : 'Unknown';
+          const version = canvas.getContext('webgl2') ? '2.0' : '1.0';
+          const shortRenderer = renderer.length > 30 ? renderer.substring(0, 27) + '...' : renderer;
+          webglEl.innerHTML = `<span style="color: #10b981;">${version}</span> <span style="color: rgba(255,255,255,0.5); font-size: 0.7rem;">(${shortRenderer})</span>`;
+        } else {
+          webglEl.innerHTML = '<span style="color: #ef4444;">Not Supported</span>';
+        }
+      }
+    }
+  }
+
+  /**
+   * Format codec support as HTML badges
+   */
+  private formatCodecBadges(codecs: Record<string, boolean>): string {
+    return Object.entries(codecs)
+      .map(([name, supported]) => {
+        const className = supported ? 'supported' : 'not-supported';
+        const icon = supported ? '✓' : '✗';
+        return `<span class="codec-badge ${className}">${name} ${icon}</span>`;
+      })
+      .join('');
   }
 
   /**
@@ -1535,6 +1920,16 @@ class DeviceInfoPopupClass {
     const el = document.getElementById(id);
     if (el) {
       el.textContent = value;
+    }
+  }
+
+  /**
+   * Helper: Set HTML content (for formatted/colored values)
+   */
+  private setHtml(id: string, html: string): void {
+    const el = document.getElementById(id);
+    if (el) {
+      el.innerHTML = html;
     }
   }
 
@@ -1579,13 +1974,14 @@ class DeviceInfoPopupClass {
    * Helper: Get cache type icon (SVG)
    */
   private getCacheIcon(type: 'video' | 'image' | 'audio'): string {
-    const size = 16;
-    const stroke = 'rgba(255, 255, 255, 0.7)';
+    const size = 12;
+    const stroke = 'rgba(255, 255, 255, 0.6)';
+    const style = 'vertical-align: middle; margin-right: 2px;';
 
     const icons: Record<string, string> = {
-      video: `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="${stroke}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m16 13 5.223 3.482a.5.5 0 0 0 .777-.416V7.87a.5.5 0 0 0-.752-.432L16 10.5"/><rect x="2" y="6" width="14" height="12" rx="2"/></svg>`,
-      image: `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="${stroke}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>`,
-      audio: `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="${stroke}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>`,
+      video: `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="${stroke}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="${style}"><path d="m16 13 5.223 3.482a.5.5 0 0 0 .777-.416V7.87a.5.5 0 0 0-.752-.432L16 10.5"/><rect x="2" y="6" width="14" height="12" rx="2"/></svg>`,
+      image: `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="${stroke}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="${style}"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>`,
+      audio: `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="${stroke}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="${style}"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>`,
     };
 
     return icons[type] || '';

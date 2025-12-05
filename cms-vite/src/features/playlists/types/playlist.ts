@@ -9,8 +9,10 @@ export interface Playlist {
   is_active: boolean;
   priority: number;
   schedule?: Record<string, any> | null;
+  is_default?: boolean;
   organization_id: number;
   created_by?: number | null;
+  created_by_name?: string | null;
   created_at: string;
   updated_at?: string | null;
   deleted_at?: string | null;

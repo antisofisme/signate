@@ -18,9 +18,19 @@ import {
   Calendar,
   Settings,
   FileText,
+  Globe,
+  Building,
+  Clock,
+  Network,
+  Cpu,
+  HardDrive,
+  Play,
+  AlertTriangle,
+  CheckCircle,
+  XCircle,
 } from 'lucide-react';
 import { Modal, Button } from '@/shared/components';
-import { useDevice, useSendCommand } from '../../hooks/useDevices';
+import { useDevice, useSendCommand, useDeviceCapabilities, useDeviceHealth } from '../../hooks/useDevices';
 import type { Device } from '../../types/device';
 import { toast } from '@/shared/utils/toast';
 
@@ -45,8 +55,20 @@ export function DeviceDetailModal({
     isOpen && !!initialDevice
   );
 
+  // Fetch capabilities and health data
+  const { data: capabilities } = useDeviceCapabilities(
+    initialDevice?.id || 0,
+    isOpen && !!initialDevice
+  );
+
+  const { data: healthData } = useDeviceHealth(
+    initialDevice?.id || 0,
+    isOpen && !!initialDevice
+  );
+
   const device = freshDevice || initialDevice;
   const sendCommand = useSendCommand();
+  const health = healthData?.health;
 
   if (!device) return null;
 
@@ -289,6 +311,315 @@ export function DeviceDetailModal({
             </div>
           </div>
         </div>
+
+        {/* Location & Network (GeoIP) */}
+        {(device.geo_city || device.geo_country || device.geo_isp) && (
+          <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+            <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4 flex items-center gap-2">
+              <Globe className="w-4 h-4" />
+              Location & Network
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-3 text-sm">
+              {/* Left Column - Location */}
+              <div className="space-y-3">
+                {device.geo_city && (
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-500 dark:text-gray-400 flex items-center gap-1">
+                      <MapPin className="w-3 h-3" />
+                      City:
+                    </span>
+                    <span className="font-medium text-gray-900 dark:text-white">
+                      {device.geo_city}
+                    </span>
+                  </div>
+                )}
+                {device.geo_region && (
+                  <div className="flex justify-between">
+                    <span className="text-gray-500 dark:text-gray-400">Region:</span>
+                    <span className="font-medium text-gray-900 dark:text-white">
+                      {device.geo_region}
+                    </span>
+                  </div>
+                )}
+                {device.geo_country && (
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-500 dark:text-gray-400 flex items-center gap-1">
+                      <Globe className="w-3 h-3" />
+                      Country:
+                    </span>
+                    <span className="font-medium text-gray-900 dark:text-white">
+                      {device.geo_country}
+                      {device.geo_country_code && ` (${device.geo_country_code})`}
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              {/* Right Column - Network */}
+              <div className="space-y-3">
+                {device.geo_isp && (
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-500 dark:text-gray-400 flex items-center gap-1">
+                      <Building className="w-3 h-3" />
+                      ISP:
+                    </span>
+                    <span className="font-medium text-gray-900 dark:text-white text-right text-xs">
+                      {device.geo_isp}
+                    </span>
+                  </div>
+                )}
+                {device.geo_timezone && (
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-500 dark:text-gray-400 flex items-center gap-1">
+                      <Clock className="w-3 h-3" />
+                      Timezone:
+                    </span>
+                    <span className="font-medium text-gray-900 dark:text-white text-xs">
+                      {device.geo_timezone}
+                    </span>
+                  </div>
+                )}
+                {device.connection_type && (
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-500 dark:text-gray-400 flex items-center gap-1">
+                      <Network className="w-3 h-3" />
+                      Connection:
+                    </span>
+                    <span className="font-medium text-gray-900 dark:text-white">
+                      {device.connection_type}
+                      {device.connection_speed && ` (${device.connection_speed.toFixed(1)} Mbps)`}
+                    </span>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Map coordinates (if available) */}
+            {device.geo_latitude && device.geo_longitude && (
+              <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
+                <span className="text-xs text-gray-500 dark:text-gray-400">
+                  Coordinates: {device.geo_latitude.toFixed(4)}, {device.geo_longitude.toFixed(4)}
+                </span>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Device Capabilities (Phase 6) */}
+        {capabilities && (
+          <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+            <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4 flex items-center gap-2">
+              <Cpu className="w-4 h-4" />
+              Device Capabilities
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-3 text-sm">
+              {/* Left Column - Codecs */}
+              <div className="space-y-3">
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-500 dark:text-gray-400">Video Codecs:</span>
+                  <div className="flex gap-1">
+                    <span className={`px-1.5 py-0.5 rounded text-xs ${capabilities.codec_h264 ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' : 'bg-gray-100 text-gray-500 dark:bg-gray-800'}`}>
+                      H.264 {capabilities.codec_h264 ? '✓' : '✗'}
+                    </span>
+                    <span className={`px-1.5 py-0.5 rounded text-xs ${capabilities.codec_h265 ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' : 'bg-gray-100 text-gray-500 dark:bg-gray-800'}`}>
+                      H.265 {capabilities.codec_h265 ? '✓' : '✗'}
+                    </span>
+                    <span className={`px-1.5 py-0.5 rounded text-xs ${capabilities.codec_vp9 ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' : 'bg-gray-100 text-gray-500 dark:bg-gray-800'}`}>
+                      VP9 {capabilities.codec_vp9 ? '✓' : '✗'}
+                    </span>
+                    <span className={`px-1.5 py-0.5 rounded text-xs ${capabilities.codec_av1 ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' : 'bg-gray-100 text-gray-500 dark:bg-gray-800'}`}>
+                      AV1 {capabilities.codec_av1 ? '✓' : '✗'}
+                    </span>
+                  </div>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-500 dark:text-gray-400">Audio Codecs:</span>
+                  <div className="flex gap-1">
+                    <span className={`px-1.5 py-0.5 rounded text-xs ${capabilities.codec_aac ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' : 'bg-gray-100 text-gray-500 dark:bg-gray-800'}`}>
+                      AAC {capabilities.codec_aac ? '✓' : '✗'}
+                    </span>
+                    <span className={`px-1.5 py-0.5 rounded text-xs ${capabilities.codec_opus ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' : 'bg-gray-100 text-gray-500 dark:bg-gray-800'}`}>
+                      Opus {capabilities.codec_opus ? '✓' : '✗'}
+                    </span>
+                  </div>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-500 dark:text-gray-400">WebGL:</span>
+                  <span className="font-medium text-gray-900 dark:text-white">
+                    {capabilities.webgl_version || 'N/A'}
+                  </span>
+                </div>
+              </div>
+
+              {/* Right Column - Hardware */}
+              <div className="space-y-3">
+                <div className="flex justify-between">
+                  <span className="text-gray-500 dark:text-gray-400">CPU Cores:</span>
+                  <span className="font-medium text-gray-900 dark:text-white">
+                    {capabilities.hardware_concurrency} cores
+                  </span>
+                </div>
+                {capabilities.device_memory_gb && (
+                  <div className="flex justify-between">
+                    <span className="text-gray-500 dark:text-gray-400">Device RAM:</span>
+                    <span className="font-medium text-gray-900 dark:text-white">
+                      {capabilities.device_memory_gb} GB
+                    </span>
+                  </div>
+                )}
+                <div className="flex justify-between">
+                  <span className="text-gray-500 dark:text-gray-400">Display:</span>
+                  <span className="font-medium text-gray-900 dark:text-white">
+                    {capabilities.screen_width}x{capabilities.screen_height} @ {capabilities.display_refresh_rate}Hz
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-500 dark:text-gray-400">Player:</span>
+                  <span className="font-medium text-gray-900 dark:text-white text-xs">
+                    v{capabilities.player_version}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Device Health Metrics (Phase 6) */}
+        {health && (
+          <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+            <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4 flex items-center gap-2">
+              <Activity className="w-4 h-4" />
+              Health Metrics
+              <span className={`ml-2 px-2 py-0.5 rounded-full text-xs font-medium ${
+                health.overall_status === 'healthy'
+                  ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+                  : health.overall_status === 'warning'
+                  ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
+                  : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
+              }`}>
+                {health.overall_status}
+              </span>
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+              {/* System Metrics */}
+              <div className="space-y-2">
+                <div className="font-medium text-gray-700 dark:text-gray-300 text-xs uppercase tracking-wide">System</div>
+                {health.memory_usage !== null && health.memory_usage !== undefined && (
+                  <div className="flex justify-between">
+                    <span className="text-gray-500 dark:text-gray-400">Memory:</span>
+                    <span className="font-medium text-gray-900 dark:text-white">
+                      {health.memory_usage.toFixed(1)}%
+                    </span>
+                  </div>
+                )}
+                {health.disk_usage !== null && health.disk_usage !== undefined && (
+                  <div className="flex justify-between">
+                    <span className="text-gray-500 dark:text-gray-400">Disk:</span>
+                    <span className="font-medium text-gray-900 dark:text-white">
+                      {health.disk_usage.toFixed(1)}%
+                    </span>
+                  </div>
+                )}
+                {health.fps_current && (
+                  <div className="flex justify-between">
+                    <span className="text-gray-500 dark:text-gray-400">FPS:</span>
+                    <span className="font-medium text-gray-900 dark:text-white">
+                      {health.fps_current}
+                    </span>
+                  </div>
+                )}
+                {health.cpu_pressure && (
+                  <div className="flex justify-between">
+                    <span className="text-gray-500 dark:text-gray-400">CPU Pressure:</span>
+                    <span className={`font-medium ${
+                      health.cpu_pressure === 'nominal' ? 'text-green-600 dark:text-green-400' :
+                      health.cpu_pressure === 'fair' ? 'text-yellow-600 dark:text-yellow-400' :
+                      'text-red-600 dark:text-red-400'
+                    }`}>
+                      {health.cpu_pressure}
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              {/* Network Metrics */}
+              <div className="space-y-2">
+                <div className="font-medium text-gray-700 dark:text-gray-300 text-xs uppercase tracking-wide">Network</div>
+                {health.network_latency_ms && (
+                  <div className="flex justify-between">
+                    <span className="text-gray-500 dark:text-gray-400">Latency:</span>
+                    <span className="font-medium text-gray-900 dark:text-white">
+                      {health.network_latency_ms} ms
+                    </span>
+                  </div>
+                )}
+                {health.network_download_mbps && (
+                  <div className="flex justify-between">
+                    <span className="text-gray-500 dark:text-gray-400">Download:</span>
+                    <span className="font-medium text-gray-900 dark:text-white">
+                      {health.network_download_mbps.toFixed(1)} Mbps
+                    </span>
+                  </div>
+                )}
+                {health.connection_quality && (
+                  <div className="flex justify-between">
+                    <span className="text-gray-500 dark:text-gray-400">Quality:</span>
+                    <span className={`font-medium ${
+                      health.connection_quality === 'excellent' ? 'text-green-600 dark:text-green-400' :
+                      health.connection_quality === 'good' ? 'text-green-500 dark:text-green-300' :
+                      health.connection_quality === 'fair' ? 'text-yellow-600 dark:text-yellow-400' :
+                      'text-red-600 dark:text-red-400'
+                    }`}>
+                      {health.connection_quality}
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              {/* Playback Metrics */}
+              <div className="space-y-2">
+                <div className="font-medium text-gray-700 dark:text-gray-300 text-xs uppercase tracking-wide">Playback</div>
+                {health.content_play_count !== null && health.content_play_count !== undefined && (
+                  <div className="flex justify-between">
+                    <span className="text-gray-500 dark:text-gray-400">Plays:</span>
+                    <span className="font-medium text-gray-900 dark:text-white">
+                      {health.content_play_count}
+                    </span>
+                  </div>
+                )}
+                {health.playback_stalls_count !== null && health.playback_stalls_count !== undefined && (
+                  <div className="flex justify-between">
+                    <span className="text-gray-500 dark:text-gray-400">Stalls:</span>
+                    <span className={`font-medium ${health.playback_stalls_count > 5 ? 'text-red-600 dark:text-red-400' : 'text-gray-900 dark:text-white'}`}>
+                      {health.playback_stalls_count}
+                    </span>
+                  </div>
+                )}
+                {health.error_rate_percent !== null && health.error_rate_percent !== undefined && (
+                  <div className="flex justify-between">
+                    <span className="text-gray-500 dark:text-gray-400">Error Rate:</span>
+                    <span className={`font-medium ${health.error_rate_percent > 5 ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'}`}>
+                      {health.error_rate_percent.toFixed(1)}%
+                    </span>
+                  </div>
+                )}
+                {health.content_errors_count > 0 && (
+                  <div className="flex justify-between">
+                    <span className="text-gray-500 dark:text-gray-400">Errors:</span>
+                    <span className="font-medium text-red-600 dark:text-red-400">
+                      {health.content_errors_count}
+                    </span>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Last recorded time */}
+            <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700 text-xs text-gray-500 dark:text-gray-400">
+              Last updated: {new Date(health.recorded_at).toLocaleString()}
+            </div>
+          </div>
+        )}
 
         {/* Timestamps */}
         <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">

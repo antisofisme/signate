@@ -22,6 +22,8 @@ export const auditApi = {
     if (filters?.resource_type) params.append('resource_type', filters.resource_type);
     if (filters?.start_date) params.append('start_date', filters.start_date);
     if (filters?.end_date) params.append('end_date', filters.end_date);
+    if (filters?.sort_by) params.append('sort_by', filters.sort_by);
+    if (filters?.sort_dir) params.append('sort_dir', filters.sort_dir);
 
     // Convert page/per_page to limit/offset for backend
     const page = filters?.page || 1;

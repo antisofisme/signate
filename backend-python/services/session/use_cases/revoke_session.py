@@ -4,8 +4,12 @@ Revoke user sessions (logout)
 """
 
 from typing import Dict, Any
+import logging
 from ..repositories.session_repo import SessionRepository
 from shared.errors import NotFoundError
+from shared.cache import cache
+
+logger = logging.getLogger(__name__)
 
 
 class RevokeSessionUseCase:
@@ -26,6 +30,11 @@ class RevokeSessionUseCase:
 
         Raises:
             NotFoundError: If session not found
+
+        Note:
+            Cache invalidation is not possible here since we don't have the original token.
+            The revoked session may still be valid in cache for up to 30 seconds.
+            For immediate invalidation, use revoke_by_token or logout endpoint.
         """
         success = self.session_repository.revoke_session(session_id)
 
@@ -34,6 +43,7 @@ class RevokeSessionUseCase:
                 message=f"Session with ID {session_id} not found"
             )
 
+        logger.info(f"Session {session_id} revoked (cache not invalidated - no token)")
         return {
             "success": True,
             "sessions_revoked": 1,
@@ -60,6 +70,10 @@ class RevokeSessionUseCase:
                 message="Session not found"
             )
 
+        # Invalidate cache immediately
+        cache.invalidate_session(token)
+        logger.info("Session revoked and cache invalidated")
+
         return {
             "success": True,
             "sessions_revoked": 1,
@@ -77,6 +91,12 @@ class RevokeSessionUseCase:
             Dict with number of sessions revoked
         """
         count = self.session_repository.revoke_all_user_sessions(user_id)
+
+        # Invalidate all session caches for this user
+        # Note: This uses pattern matching and may be heavy for large deployments
+        if count > 0:
+            cache.invalidate_user_sessions(user_id)
+            logger.info(f"Revoked {count} sessions for user {user_id}, cache invalidated")
 
         return {
             "success": True,

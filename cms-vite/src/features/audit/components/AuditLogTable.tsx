@@ -7,7 +7,8 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ChevronLeft, ChevronRight, FileText, Eye } from 'lucide-react';
 import { format } from 'date-fns';
-import { TABLE_STYLES } from '@/shared/components';
+import { TABLE_STYLES, SortableTableHeader } from '@/shared/components';
+import type { SortConfig } from '@/shared/components';
 import type { AuditLog } from '../types/auditLog';
 import { AuditDetailModal } from './AuditDetailModal';
 import { generateActionSummary } from '../utils/auditFormatter';
@@ -20,6 +21,8 @@ interface AuditLogTableProps {
   perPage: number;
   total: number;
   onPageChange: (page: number) => void;
+  sortConfig?: SortConfig | null;
+  onSortChange?: (config: SortConfig | null) => void;
 }
 
 export function AuditLogTable({
@@ -30,6 +33,8 @@ export function AuditLogTable({
   perPage,
   total,
   onPageChange,
+  sortConfig,
+  onSortChange,
 }: AuditLogTableProps) {
   const { t } = useTranslation();
   const [selectedLog, setSelectedLog] = useState<AuditLog | null>(null);
@@ -95,16 +100,40 @@ export function AuditLogTable({
           <thead className={TABLE_STYLES.thead}>
             <tr>
               <th className={TABLE_STYLES.th}>
-                {t('audit.table.timestamp')}
+                <SortableTableHeader
+                  columnKey="created_at"
+                  sortConfig={sortConfig}
+                  onSortChange={onSortChange}
+                >
+                  {t('audit.table.timestamp')}
+                </SortableTableHeader>
               </th>
               <th className={TABLE_STYLES.th}>
-                {t('audit.table.user')}
+                <SortableTableHeader
+                  columnKey="username"
+                  sortConfig={sortConfig}
+                  onSortChange={onSortChange}
+                >
+                  {t('audit.table.user')}
+                </SortableTableHeader>
               </th>
               <th className={TABLE_STYLES.th}>
-                {t('audit.table.action')}
+                <SortableTableHeader
+                  columnKey="action"
+                  sortConfig={sortConfig}
+                  onSortChange={onSortChange}
+                >
+                  {t('audit.table.action')}
+                </SortableTableHeader>
               </th>
               <th className={TABLE_STYLES.th}>
-                {t('audit.table.resource')}
+                <SortableTableHeader
+                  columnKey="resource_type"
+                  sortConfig={sortConfig}
+                  onSortChange={onSortChange}
+                >
+                  {t('audit.table.resource')}
+                </SortableTableHeader>
               </th>
               <th className={TABLE_STYLES.th}>
                 {t('audit.table.details')}

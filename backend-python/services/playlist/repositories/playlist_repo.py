@@ -83,6 +83,11 @@ class PlaylistRepository(IPlaylistRepository):
 
     def _model_to_entity(self, model: PlaylistModel, include_stats: bool = False) -> Playlist:
         """Convert SQLAlchemy model to domain entity"""
+        # Extract creator name if relationship is loaded
+        created_by_name = None
+        if hasattr(model, 'creator') and model.creator is not None:
+            created_by_name = model.creator.full_name or model.creator.username
+
         playlist = Playlist(
             id=model.id,
             name=model.name,
@@ -99,6 +104,7 @@ class PlaylistRepository(IPlaylistRepository):
             created_at=model.created_at,
             updated_at=model.updated_at,
             deleted_at=model.deleted_at,
+            created_by_name=created_by_name,
         )
 
         # Include computed stats if requested
@@ -173,7 +179,9 @@ class PlaylistRepository(IPlaylistRepository):
         sort_dir: Optional[str] = None,
     ) -> Tuple[List[Playlist], int]:
         """Find all playlists with organization filter and sorting"""
-        query = self.db.query(PlaylistModel).filter(
+        query = self.db.query(PlaylistModel).options(
+            selectinload(PlaylistModel.creator)  # Load creator for created_by_name
+        ).filter(
             PlaylistModel.organization_id == organization_id
         )
 

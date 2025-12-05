@@ -258,12 +258,23 @@ export interface MenuMedia {
   alt_text?: string;
   is_active: boolean;
   uploaded_by_id?: number;
+  uploaded_by_name?: string;  // User name from JOIN
   deleted_by_id?: number;
+  deleted_by_name?: string;   // User name from JOIN
   created_at: string;
   updated_at?: string;
   deleted_at?: string;
   url?: string;
   is_duplicate?: boolean;  // Flag when uploaded file is duplicate
+
+  // Image optimization fields
+  variants?: Record<string, any>;  // WebP variants: {thumb, small, hd, 4k, original, fallback}
+  content_hash?: string;  // For cache invalidation
+  processing_status?: 'pending' | 'processing' | 'completed' | 'failed';
+  optimized_at?: string;
+  original_width?: number;
+  original_height?: number;
+  is_animated?: boolean;  // True for animated GIFs
 }
 
 // Menu Media Duplicate types

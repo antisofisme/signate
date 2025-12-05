@@ -523,7 +523,9 @@ class MenuMediaResponseDTO(BaseModel):
     alt_text: Optional[str]
     is_active: bool
     uploaded_by_id: Optional[int]
+    uploaded_by_name: Optional[str] = None  # User name from JOIN
     deleted_by_id: Optional[int]
+    deleted_by_name: Optional[str] = None  # User name from JOIN
     created_at: datetime
     updated_at: Optional[datetime]
     deleted_at: Optional[datetime]

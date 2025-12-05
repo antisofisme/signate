@@ -222,6 +222,17 @@ class ClientRoutes:
 
 
 # =============================================================================
+# SPEED TEST SERVICE ROUTES
+# =============================================================================
+class SpeedTestRoutes:
+    """Network speed test endpoints for player devices"""
+    BASE = f"{API_V1}/speed-test"
+
+    # Upload speed test endpoint
+    UPLOAD = f"{BASE}/upload"
+
+
+# =============================================================================
 # HEALTH & MONITORING
 # =============================================================================
 class HealthRoutes:

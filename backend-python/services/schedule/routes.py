@@ -3,7 +3,7 @@ Schedule Routes
 REST API endpoints for schedule management with RBAC integration
 """
 
-from typing import Optional
+from typing import Optional, List
 from fastapi import APIRouter, Depends, HTTPException, status, Query, Request
 from sqlalchemy.orm import Session
 from datetime import date, time
@@ -12,6 +12,7 @@ from shared.database import get_db
 from shared.middleware import require_permission
 from shared.pagination import PaginationParams
 from shared.logging import AuditLogger
+from shared.websocket_manager import websocket_manager, WebSocketEventType
 from .domain.schedule_executor import get_schedule_executor
 from services.schedule.dtos import (
     CreateScheduleRequest,
@@ -223,32 +224,62 @@ def delete_schedule(
 
 
 @router.post("/schedules/{schedule_id}/activate", response_model=ScheduleResponse)
-def activate_schedule(
+async def activate_schedule(
     schedule_id: int,
     current_user: dict = Depends(require_permission("schedules", "edit")),
     db: Session = Depends(get_db)
 ):
     """Activate schedule"""
     from .use_cases.update_schedule import activate_schedule_use_case
-    return activate_schedule_use_case(
+    result = activate_schedule_use_case(
         schedule_id=schedule_id,
         organization_id=current_user["organization_id"],
         db=db
     )
 
+    # Phase 5: Broadcast WebSocket notification to all devices in organization
+    # This enables real-time schedule push instead of polling
+    if websocket_manager:
+        await websocket_manager.broadcast_to_organization(
+            organization_id=current_user["organization_id"],
+            event_type=WebSocketEventType.SCHEDULE_ACTIVATED,
+            data={
+                "schedule_id": schedule_id,
+                "activated_by": current_user["user_id"],
+                "message": "Schedule activated - please sync schedule"
+            }
+        )
+
+    return result
+
 
 @router.post("/schedules/{schedule_id}/deactivate", response_model=ScheduleResponse)
-def deactivate_schedule(
+async def deactivate_schedule(
     schedule_id: int,
     current_user: dict = Depends(require_permission("schedules", "edit")),
     db: Session = Depends(get_db)
 ):
     """Deactivate schedule (soft delete)"""
-    return deactivate_schedule_use_case(
+    result = deactivate_schedule_use_case(
         schedule_id=schedule_id,
         organization_id=current_user["organization_id"],
         db=db
     )
+
+    # Phase 5: Broadcast WebSocket notification to all devices in organization
+    # This enables real-time schedule push instead of polling
+    if websocket_manager:
+        await websocket_manager.broadcast_to_organization(
+            organization_id=current_user["organization_id"],
+            event_type=WebSocketEventType.SCHEDULE_DEACTIVATED,
+            data={
+                "schedule_id": schedule_id,
+                "deactivated_by": current_user["user_id"],
+                "message": "Schedule deactivated - please sync schedule"
+            }
+        )
+
+    return result
 
 
 # ============================================================================

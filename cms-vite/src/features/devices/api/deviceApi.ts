@@ -12,10 +12,12 @@ import type {
   Device,
   DeviceLog,
   DeviceCommand,
+  DeviceCapabilities,
   MonitorRegisterRequest,
   TVRegisterRequest,
   ActivateDeviceRequest,
 } from '../types/device';
+import type { DeviceHealthWithAlerts, HealthHistoryResponse } from '../types/health';
 
 interface ListResponse {
   success: boolean;
@@ -525,6 +527,67 @@ export const deviceApi = {
     }));
 
     return { total: data.total || items.length, items };
+  },
+
+  // ========================================
+  // Device Capabilities & Health (Phase 6)
+  // ========================================
+
+  /**
+   * Get device capabilities (static device info)
+   * @param id - Device ID
+   * @returns Device capabilities (codecs, hardware, display info)
+   */
+  getCapabilities: async (id: number): Promise<DeviceCapabilities | null> => {
+    try {
+      const response = await apiClient.get(API_ENDPOINTS.DEVICES.CAPABILITIES(id));
+      return unwrapResponse<DeviceCapabilities>(response);
+    } catch (error: any) {
+      // Return null if not found (device hasn't reported capabilities yet)
+      if (error.response?.status === 404) {
+        logger.debug('[DeviceAPI] No capabilities found for device:', id);
+        return null;
+      }
+      throw error;
+    }
+  },
+
+  /**
+   * Get device health metrics with alerts
+   * @param id - Device ID
+   * @returns Latest health metrics and any triggered alerts
+   */
+  getHealth: async (id: number): Promise<DeviceHealthWithAlerts | null> => {
+    try {
+      const response = await apiClient.get(API_ENDPOINTS.DEVICES.HEALTH(id));
+      return unwrapResponse<DeviceHealthWithAlerts>(response);
+    } catch (error: any) {
+      if (error.response?.status === 404) {
+        logger.debug('[DeviceAPI] No health data found for device:', id);
+        return null;
+      }
+      throw error;
+    }
+  },
+
+  /**
+   * Get device health history for charts
+   * @param id - Device ID
+   * @param limit - Number of records (default 24 = 2 hours)
+   * @returns Health history for trending/charts
+   */
+  getHealthHistory: async (id: number, limit: number = 24): Promise<HealthHistoryResponse> => {
+    try {
+      const response = await apiClient.get(
+        `${API_ENDPOINTS.DEVICES.HEALTH_HISTORY(id)}?limit=${limit}`
+      );
+      return unwrapResponse<HealthHistoryResponse>(response);
+    } catch (error: any) {
+      if (error.response?.status === 404) {
+        return { history: [], count: 0 };
+      }
+      throw error;
+    }
   },
 };
 

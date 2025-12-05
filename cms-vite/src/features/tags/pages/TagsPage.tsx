@@ -38,7 +38,7 @@ export default function TagsPage() {
   });
 
   // Permission checks
-  const { hasPermission: canRead, isLoading: isLoadingReadPermission } = useCanPerformAction('tags', 'read');
+  const { hasPermission: canView, isLoading: isCheckingPermission } = useCanPerformAction('tags', 'read');
   const { hasPermission: canCreate } = useCanPerformAction('tags', 'create');
   const { hasPermission: canUpdate } = useCanPerformAction('tags', 'edit');
   const { hasPermission: canDelete } = useCanPerformAction('tags', 'delete');
@@ -50,12 +50,12 @@ export default function TagsPage() {
   const deleteTagMutation = useDeleteTag();
 
   // Show loading while checking permissions
-  if (isLoadingReadPermission) {
+  if (isCheckingPermission) {
     return <PageSkeleton />;
   }
 
   // Check read permission
-  if (!canRead) {
+  if (!canView) {
     return <AccessDenied />;
   }
 

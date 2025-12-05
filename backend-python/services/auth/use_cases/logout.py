@@ -7,6 +7,11 @@ Phase 1 Day 3 - Session Management Integration
 
 from typing import Dict, Any
 import hashlib
+import logging
+
+from shared.cache import cache
+
+logger = logging.getLogger(__name__)
 
 
 class LogoutUseCase:
@@ -40,6 +45,12 @@ class LogoutUseCase:
         """
         # Revoke session by token (repository will hash it automatically)
         revoked = self.session_repository.revoke_session_by_token(token)
+
+        # CRITICAL: Invalidate Redis cache immediately
+        # This ensures the session is immediately unusable, not delayed by cache TTL
+        if revoked:
+            cache.invalidate_session(token)
+            logger.info("Session revoked and cache invalidated")
 
         return {
             "revoked": revoked,

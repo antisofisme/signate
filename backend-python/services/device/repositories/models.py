@@ -31,6 +31,17 @@ class DeviceModel(Base):
     ip_address = Column(String(45), nullable=True)  # IPv6 support
     platform = Column(String(50), nullable=True)  # 'webOS', 'browser', etc.
 
+    # GeoIP data (Phase 6: Server-Side Features)
+    geo_city = Column(String(100), nullable=True)
+    geo_country = Column(String(100), nullable=True)
+    geo_country_code = Column(String(10), nullable=True)
+    geo_region = Column(String(100), nullable=True)
+    geo_isp = Column(String(200), nullable=True)
+    geo_timezone = Column(String(50), nullable=True)
+    geo_latitude = Column(Float, nullable=True)
+    geo_longitude = Column(Float, nullable=True)
+    geo_updated_at = Column(DateTime(timezone=True), nullable=True)
+
     # Device metadata
     screen_width = Column(Integer, nullable=True)
     screen_height = Column(Integer, nullable=True)
@@ -40,6 +51,7 @@ class DeviceModel(Base):
     user_agent = Column(Text, nullable=True)  # Modern user agents can exceed 500 chars
     connection_type = Column(String(50), nullable=True)
     connection_speed = Column(Float, nullable=True)
+    connection_drops_count = Column(Integer, default=0, nullable=True)  # Number of network disconnections since startup
 
     # WebOS specific
     model_name = Column(String(100), nullable=True)
@@ -181,6 +193,7 @@ class DeviceHealthMetricModel(Base):
     network_latency_ms = Column(Integer, nullable=True)
     network_download_mbps = Column(__import__('sqlalchemy').Numeric(10, 2), nullable=True)
     network_upload_mbps = Column(__import__('sqlalchemy').Numeric(10, 2), nullable=True)
+    dns_resolution_ms = Column(Integer, nullable=True)  # Phase 5: DNS lookup time
     connection_quality = Column(String(20), nullable=True)
 
     # Display metrics
@@ -194,6 +207,22 @@ class DeviceHealthMetricModel(Base):
     content_errors_count = Column(Integer, default=0, nullable=False)
     last_error_message = Column(String, nullable=True)
     last_error_at = Column(DateTime(timezone=True), nullable=True)
+
+    # Behavioral metrics (Phase 3)
+    playback_stalls_count = Column(Integer, default=0, nullable=True)  # Video stall events
+    buffer_underruns_count = Column(Integer, default=0, nullable=True)  # Buffer underrun events
+    time_to_first_playback_ms = Column(Integer, nullable=True)  # Time from load to first frame
+    content_play_count = Column(Integer, default=0, nullable=True)  # Total content plays this session
+    quality_switches_count = Column(Integer, default=0, nullable=True)  # HLS quality switches
+    content_load_failures_count = Column(Integer, default=0, nullable=True)  # Content load failures
+    error_rate_percent = Column(__import__('sqlalchemy').Numeric(5, 2), nullable=True)  # Error rate percentage
+
+    # Performance metrics (Phase 4)
+    fps_current = Column(Integer, nullable=True)  # Current frames per second
+    long_tasks_count = Column(Integer, default=0, nullable=True)  # Long tasks (>50ms) since startup
+    cpu_pressure = Column(String(20), nullable=True)  # CPU pressure state: nominal/fair/serious/critical
+    ttfb_ms = Column(Integer, nullable=True)  # Time to First Byte (ms)
+    page_load_time_ms = Column(Integer, nullable=True)  # Total page load time (ms)
 
     # Health status
     overall_status = Column(String(20), default='healthy', nullable=False, index=True)
@@ -282,6 +311,56 @@ class DeviceLogModel(Base):
         Index('ix_device_logs_device_level_timestamp', 'device_id', 'log_level', 'recorded_at'),
         Index('ix_device_logs_organization', 'organization_id'),
     )
+
+    # Relationships
+    device = relationship("DeviceModel", foreign_keys=[device_id])
+    organization = relationship("OrganizationModel", foreign_keys=[organization_id])
+
+
+class DeviceCapabilitiesModel(Base):
+    """Device Capabilities database model - stores static device info sent once on startup"""
+    __tablename__ = "device_capabilities"
+
+    # Primary key
+    id = Column(Integer, primary_key=True, index=True)
+
+    # Foreign keys
+    device_id = Column(Integer, ForeignKey("devices.id", ondelete="CASCADE"), nullable=False, unique=True, index=True)
+    organization_id = Column(Integer, ForeignKey("organizations.id", ondelete="CASCADE"), nullable=False, index=True)
+
+    # Screen & Display
+    screen_width = Column(Integer, nullable=False)
+    screen_height = Column(Integer, nullable=False)
+    device_pixel_ratio = Column(Float, nullable=False)
+    display_refresh_rate = Column(Integer, nullable=False)
+
+    # Hardware
+    hardware_concurrency = Column(Integer, nullable=False)  # CPU cores
+    device_memory_gb = Column(Float, nullable=True)  # Device RAM in GB (Chrome/Edge only)
+
+    # Video Codec Support
+    codec_h264 = Column(Boolean, default=False, nullable=False)
+    codec_h265 = Column(Boolean, default=False, nullable=False)
+    codec_vp9 = Column(Boolean, default=False, nullable=False)
+    codec_av1 = Column(Boolean, default=False, nullable=False)
+
+    # Audio Codec Support
+    codec_aac = Column(Boolean, default=False, nullable=False)
+    codec_opus = Column(Boolean, default=False, nullable=False)
+
+    # Graphics
+    webgl_version = Column(String(10), nullable=False)  # "none", "1.0", "2.0"
+    webgl_renderer = Column(String(200), nullable=True)
+    webgl_vendor = Column(String(200), nullable=True)
+
+    # Software
+    user_agent = Column(Text, nullable=False)
+    platform = Column(String(50), nullable=False)
+    player_version = Column(String(50), nullable=False)
+
+    # Timestamps
+    recorded_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
     # Relationships
     device = relationship("DeviceModel", foreign_keys=[device_id])

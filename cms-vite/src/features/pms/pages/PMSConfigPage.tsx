@@ -20,17 +20,17 @@ export default function PMSConfigPage() {
   const { t } = useTranslation();
 
   // Permission checks
-  const { hasPermission: canRead, isLoading: loadingReadPerm } = useCanPerformAction('settings', 'read');
+  const { hasPermission: canView, isLoading: isCheckingPermission } = useCanPerformAction('settings', 'read');
   const { hasPermission: canUpdate } = useCanPerformAction('settings', 'edit');
   const { hasPermission: canDelete } = useCanPerformAction('settings', 'delete');
 
   // Show loading state while checking permissions
-  if (loadingReadPerm) {
+  if (isCheckingPermission) {
     return <PageSkeleton />;
   }
 
   // Show access denied if no read permission
-  if (!canRead) {
+  if (!canView) {
     return <AccessDenied />;
   }
 

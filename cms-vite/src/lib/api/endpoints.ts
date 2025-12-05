@@ -66,6 +66,11 @@ export const API_ENDPOINTS = {
     SPEED_TEST: (id: number) => `/api/v1/devices/${id}/speed-test`,
     SPEED_TESTS: (id: number) => `/api/v1/devices/${id}/speed-tests`,
 
+    // Device Capabilities & Health (Phase 6)
+    CAPABILITIES: (id: number) => `/api/v1/devices/${id}/capabilities`,
+    HEALTH: (id: number) => `/api/v1/devices/${id}/health`,
+    HEALTH_HISTORY: (id: number) => `/api/v1/devices/${id}/health/history`,
+
     // Device Assignments (tags, contents, playlists)
     ASSIGNMENTS: {
       // Tags

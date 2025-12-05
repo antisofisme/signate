@@ -159,6 +159,8 @@ export interface SessionSecurity {
 
 export type SessionType = 'web' | 'api' | 'mobile' | 'device'
 
+export type SessionStatus = 'active' | 'revoked' | 'expired'
+
 export interface AllSession {
   id: number
   user_id: number
@@ -170,6 +172,9 @@ export interface AllSession {
   created_at: string
   last_activity_at: string
   expires_at: string
+  revoked_at?: string | null  // When session was revoked
+  status: SessionStatus  // active, revoked, or expired
+  is_current?: boolean  // If this is the current session
   // User info
   username: string
   email: string

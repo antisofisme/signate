@@ -179,6 +179,7 @@ class DeviceRepository(IDeviceRepository):
             user_agent=device.user_agent,
             connection_type=device.connection_type,
             connection_speed=device.connection_speed,
+            connection_drops_count=device.connection_drops_count,
             model_name=device.model_name,
             firmware_version=device.firmware_version,
             status=device.status,
@@ -211,6 +212,17 @@ class DeviceRepository(IDeviceRepository):
         device_model.device_uuid = device.device_uuid
         device_model.ip_address = device.ip_address
         device_model.platform = device.platform
+        # GeoIP data (Phase 6)
+        device_model.geo_city = device.geo_city
+        device_model.geo_country = device.geo_country
+        device_model.geo_country_code = device.geo_country_code
+        device_model.geo_region = device.geo_region
+        device_model.geo_isp = device.geo_isp
+        device_model.geo_timezone = device.geo_timezone
+        device_model.geo_latitude = device.geo_latitude
+        device_model.geo_longitude = device.geo_longitude
+        device_model.geo_updated_at = device.geo_updated_at
+        # Screen & viewport
         device_model.screen_width = device.screen_width
         device_model.screen_height = device.screen_height
         device_model.viewport_width = device.viewport_width
@@ -219,6 +231,7 @@ class DeviceRepository(IDeviceRepository):
         device_model.user_agent = device.user_agent
         device_model.connection_type = device.connection_type
         device_model.connection_speed = device.connection_speed
+        device_model.connection_drops_count = device.connection_drops_count
         device_model.model_name = device.model_name
         device_model.firmware_version = device.firmware_version
         device_model.status = device.status
@@ -349,6 +362,11 @@ class DeviceRepository(IDeviceRepository):
 
     def _to_entity(self, model: DeviceModel) -> Device:
         """Convert SQLAlchemy model to domain entity"""
+        # Get playlist name from relationship (if loaded and exists)
+        playlist_name = None
+        if model.assigned_playlist is not None:
+            playlist_name = model.assigned_playlist.name
+
         return Device(
             id=model.id,
             device_type=model.device_type,
@@ -359,6 +377,17 @@ class DeviceRepository(IDeviceRepository):
             device_uuid=model.device_uuid,
             ip_address=model.ip_address,
             platform=model.platform,
+            # GeoIP data (Phase 6)
+            geo_city=model.geo_city,
+            geo_country=model.geo_country,
+            geo_country_code=model.geo_country_code,
+            geo_region=model.geo_region,
+            geo_isp=model.geo_isp,
+            geo_timezone=model.geo_timezone,
+            geo_latitude=model.geo_latitude,
+            geo_longitude=model.geo_longitude,
+            geo_updated_at=model.geo_updated_at,
+            # Screen & viewport
             screen_width=model.screen_width,
             screen_height=model.screen_height,
             viewport_width=model.viewport_width,
@@ -367,6 +396,7 @@ class DeviceRepository(IDeviceRepository):
             user_agent=model.user_agent,
             connection_type=model.connection_type,
             connection_speed=model.connection_speed,
+            connection_drops_count=model.connection_drops_count,
             model_name=model.model_name,
             firmware_version=model.firmware_version,
             status=model.status,
@@ -378,6 +408,7 @@ class DeviceRepository(IDeviceRepository):
             is_personalization_supported=model.is_personalization_supported,
             privacy_mode=model.privacy_mode,
             assigned_playlist_id=model.assigned_playlist_id,
+            playlist_name=playlist_name,
             created_at=model.created_at,
             updated_at=model.updated_at,
             released_at=model.released_at,

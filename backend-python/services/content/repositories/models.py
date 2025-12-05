@@ -84,12 +84,10 @@ class ContentModel(Base):
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
     deleted_at = Column(DateTime(timezone=True), nullable=True)
 
-    # Relationships - Commented out to avoid circular import issues
-    # These can be added back if needed with proper lazy loading configuration
-    # organization = relationship("OrganizationModel", foreign_keys=[organization_id])
-    # uploader = relationship("UserModel", foreign_keys=[uploaded_by_id])
-    # updater = relationship("UserModel", foreign_keys=[updated_by_id])
-    # deleter = relationship("UserModel", foreign_keys=[deleted_by_id])
+    # Relationships - Lazy loading to avoid N+1 queries
+    # Use selectinload when querying to include user names
+    uploader = relationship("UserModel", foreign_keys=[uploaded_by_id], lazy="noload")
+    deleter = relationship("UserModel", foreign_keys=[deleted_by_id], lazy="noload")
 
     # Composite indexes
     __table_args__ = (

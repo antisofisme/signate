@@ -440,22 +440,26 @@ class SessionRepository:
         self,
         organization_id: Optional[int] = None,
         skip: int = 0,
-        limit: int = 50
+        limit: int = 50,
+        include_revoked: bool = True,
+        include_expired: bool = False
     ) -> Tuple[List[dict], int]:
         """
-        Get all active sessions with user and organization info
+        Get all sessions with user and organization info
 
         Args:
             organization_id: Filter by organization (None = all orgs for super admin)
             skip: Pagination offset
             limit: Pagination limit
+            include_revoked: Include revoked sessions (default True for admin view)
+            include_expired: Include expired sessions
 
         Returns:
             Tuple of (list of session dicts with user/org info, total count)
         """
         now = datetime.now(timezone.utc)
 
-        # Base query for active sessions
+        # Base query for sessions
         query = self.db.query(
             UserSession,
             UserModel.username,
@@ -469,12 +473,14 @@ class SessionRepository:
             Role, UserModel.role_id == Role.id
         ).outerjoin(
             OrganizationModel, UserSession.organization_id == OrganizationModel.id
-        ).filter(
-            and_(
-                UserSession.revoked_at.is_(None),
-                UserSession.expires_at > now
-            )
         )
+
+        # Apply filters based on parameters
+        if not include_revoked:
+            query = query.filter(UserSession.revoked_at.is_(None))
+
+        if not include_expired:
+            query = query.filter(UserSession.expires_at > now)
 
         # Filter by organization if specified
         if organization_id is not None:
@@ -491,6 +497,10 @@ class SessionRepository:
         # Convert to dict with user/org info
         sessions = []
         for session, username, email, full_name, role_name, org_name in results:
+            # Determine status
+            is_active = session.revoked_at is None and session.expires_at > now
+            status = "active" if is_active else ("revoked" if session.revoked_at else "expired")
+
             session_dict = {
                 "id": session.id,
                 "user_id": session.user_id,
@@ -502,6 +512,8 @@ class SessionRepository:
                 "created_at": session.created_at,
                 "last_activity_at": session.last_activity_at,
                 "expires_at": session.expires_at,
+                "revoked_at": session.revoked_at,
+                "status": status,
                 # User info
                 "username": username,
                 "email": email,

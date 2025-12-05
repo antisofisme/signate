@@ -25,12 +25,12 @@ export interface DeviceHealthMetrics {
   network_latency_ms?: number;
   network_download_mbps?: number;
   network_upload_mbps?: number;
+  dns_resolution_ms?: number;  // Phase 5
   connection_quality?: ConnectionQuality;
 
   // Display metrics
   display_resolution?: string;
   display_refresh_rate?: number;
-  gpu_usage?: number;
 
   // Player metrics
   player_version?: string;
@@ -39,9 +39,25 @@ export interface DeviceHealthMetrics {
   last_error_message?: string;
   last_error_at?: string;
 
+  // Behavioral metrics (Phase 3)
+  playback_stalls_count?: number;
+  buffer_underruns_count?: number;
+  time_to_first_playback_ms?: number;
+  content_play_count?: number;
+  quality_switches_count?: number;
+  content_load_failures_count?: number;
+  error_rate_percent?: number;
+
+  // Performance metrics (Phase 4)
+  fps_current?: number;
+  long_tasks_count?: number;
+  cpu_pressure?: string;  // nominal/fair/serious/critical
+  ttfb_ms?: number;
+  page_load_time_ms?: number;
+
   // Health status
   overall_status: HealthStatus;
-  alert_triggered: boolean;
+  is_alert_triggered: boolean;
   alert_message?: string;
 
   // Metadata
@@ -94,17 +110,35 @@ export interface RecordHealthMetricsRequest {
   network_latency_ms?: number;
   network_download_mbps?: number;
   network_upload_mbps?: number;
+  dns_resolution_ms?: number;
+  connection_quality?: string;
 
   // Display metrics
   display_resolution?: string;
   display_refresh_rate?: number;
-  gpu_usage?: number;
 
   // Player metrics
   player_version?: string;
   player_uptime_hours?: number;
   content_errors_count?: number;
   last_error_message?: string;
+  last_error_at?: string;
+
+  // Behavioral metrics (Phase 3)
+  playback_stalls_count?: number;
+  buffer_underruns_count?: number;
+  time_to_first_playback_ms?: number;
+  content_play_count?: number;
+  quality_switches_count?: number;
+  content_load_failures_count?: number;
+  error_rate_percent?: number;
+
+  // Performance metrics (Phase 4)
+  fps_current?: number;
+  long_tasks_count?: number;
+  cpu_pressure?: string;
+  ttfb_ms?: number;
+  page_load_time_ms?: number;
 
   // Additional metadata
   metadata?: Record<string, any>;

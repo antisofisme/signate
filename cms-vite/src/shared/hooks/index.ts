@@ -42,3 +42,13 @@ export type { OrgSwitchConfig } from './useOrgSwitch';
 
 // Table utilities
 export { useTableSort } from './useTableSort';
+export { useTableSelection } from './useTableSelection';
+export type { UseTableSelectionOptions, UseTableSelectionReturn } from './useTableSelection';
+export { useDuplicateGrouping } from './useDuplicateGrouping';
+export type {
+  BaseUsage,
+  DuplicateGroup,
+  DuplicateInfo,
+  UseDuplicateGroupingOptions,
+  UseDuplicateGroupingReturn,
+} from './useDuplicateGrouping';

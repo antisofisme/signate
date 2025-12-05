@@ -5,7 +5,7 @@
 
 import { Pencil, Trash2, Tag as TagIcon, FileSymlink, Monitor, File } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { TableSkeleton, EmptyState, TABLE_STYLES, SortableTableHeader } from '@/shared/components';
+import { TableSkeleton, EmptyState, TABLE_STYLES, ACTION_BUTTON, SortableTableHeader } from '@/shared/components';
 import type { SortConfig } from '@/shared/components';
 import { TagBadge } from './TagBadge';
 import type { Tag } from '../types/tag';
@@ -147,7 +147,7 @@ export function TagList({
                   {onManageContent && (
                     <button
                       onClick={() => onManageContent(tag)}
-                      className={TABLE_STYLES.actionBtnGreen}
+                      className={ACTION_BUTTON.ASSIGN}
                       title={t('tags.manageContent', 'Manage Content')}
                     >
                       <FileSymlink className="h-4 w-4" />
@@ -156,7 +156,7 @@ export function TagList({
                   {onEdit && (
                     <button
                       onClick={() => onEdit(tag)}
-                      className={TABLE_STYLES.actionBtnBlue}
+                      className={ACTION_BUTTON.EDIT}
                       title={t('tags.edit')}
                     >
                       <Pencil className="h-4 w-4" />
@@ -165,7 +165,7 @@ export function TagList({
                   {onDelete && (
                     <button
                       onClick={() => onDelete(tag)}
-                      className={TABLE_STYLES.actionBtnRed}
+                      className={ACTION_BUTTON.DELETE}
                       title={t('tags.delete')}
                     >
                       <Trash2 className="h-4 w-4" />

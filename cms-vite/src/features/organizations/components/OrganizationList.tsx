@@ -5,9 +5,9 @@
  * Table display of organizations with actions
  */
 
-import { Building, Edit, Trash2, Users, Monitor } from 'lucide-react';
+import { Building, Pencil, Trash2, Users, Monitor } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { EmptyState, TABLE_STYLES, SortableTableHeader, TableSkeleton } from '@/shared/components';
+import { EmptyState, TABLE_STYLES, ACTION_BUTTON, SortableTableHeader, TableSkeleton } from '@/shared/components';
 import type { SortConfig } from '@/shared/components';
 import type { Organization } from '../types/organization';
 
@@ -134,16 +134,16 @@ export function OrganizationList({
                     {onEdit && (
                       <button
                         onClick={() => onEdit(org)}
-                        className={TABLE_STYLES.actionBtnBlue}
+                        className={ACTION_BUTTON.EDIT}
                         title={t('organizations.editOrganization', 'Edit organization')}
                       >
-                        <Edit className="w-4 h-4" />
+                        <Pencil className="w-4 h-4" />
                       </button>
                     )}
                     {onDelete && (
                       <button
                         onClick={() => onDelete(org)}
-                        className={TABLE_STYLES.actionBtnRed}
+                        className={ACTION_BUTTON.DELETE}
                         title={t('organizations.deleteOrganization', 'Delete organization')}
                       >
                         <Trash2 className="w-4 h-4" />

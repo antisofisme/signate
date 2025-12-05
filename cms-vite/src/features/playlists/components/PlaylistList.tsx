@@ -3,9 +3,9 @@
  * Table display of playlists with actions
  */
 
-import { Pencil, Trash2, Clock, FileText, List, FileSymlink, Plus, Copy, Monitor } from 'lucide-react';
+import { Pencil, Trash2, Clock, FileText, List, FileSymlink, Plus, Copy, Monitor, Calendar, Star } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { TableSkeleton, EmptyState, Button, TABLE_STYLES, SortableTableHeader } from '@/shared/components';
+import { TableSkeleton, EmptyState, Button, TABLE_STYLES, ACTION_BUTTON, SortableTableHeader, DateCell } from '@/shared/components';
 import type { SortConfig } from '@/shared/components';
 import type { Playlist } from '../types/playlist';
 
@@ -50,7 +50,7 @@ export function PlaylistList({
   };
 
   if (isLoading) {
-    return <TableSkeleton rows={5} columns={7} />;
+    return <TableSkeleton rows={5} columns={9} />;
   }
 
   if (playlists.length === 0) {
@@ -69,49 +69,56 @@ export function PlaylistList({
         <table className={`${TABLE_STYLES.table} table-fixed`}>
           <thead className={TABLE_STYLES.thead}>
           <tr>
-            <th className={`${TABLE_STYLES.th} w-[25%]`}>
+            <th className="w-72 px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
               {sortConfig && onSortChange ? (
                 <SortableTableHeader columnKey="name" sortConfig={sortConfig} onSortChange={onSortChange}>
                   {t('playlists.name')}
                 </SortableTableHeader>
               ) : t('playlists.name')}
             </th>
-            <th className={`${TABLE_STYLES.th} w-20`}>
+            <th className="w-20 px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider whitespace-nowrap">
               {sortConfig && onSortChange ? (
                 <SortableTableHeader columnKey="is_active" sortConfig={sortConfig} onSortChange={onSortChange}>
                   Status
                 </SortableTableHeader>
               ) : 'Status'}
             </th>
-            <th className={`${TABLE_STYLES.th} w-20`}>
+            <th className="w-16 px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider whitespace-nowrap">
               {sortConfig && onSortChange ? (
                 <SortableTableHeader columnKey="priority" sortConfig={sortConfig} onSortChange={onSortChange}>
                   Priority
                 </SortableTableHeader>
               ) : 'Priority'}
             </th>
-            <th className={`${TABLE_STYLES.th} w-24`}>
+            <th className="w-16 px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider whitespace-nowrap">
               {sortConfig && onSortChange ? (
                 <SortableTableHeader columnKey="content_count" sortConfig={sortConfig} onSortChange={onSortChange}>
                   {t('playlists.content', 'Konten')}
                 </SortableTableHeader>
               ) : t('playlists.content', 'Konten')}
             </th>
-            <th className={`${TABLE_STYLES.th} w-24`}>
+            <th className="w-16 px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider whitespace-nowrap">
               {sortConfig && onSortChange ? (
                 <SortableTableHeader columnKey="device_count" sortConfig={sortConfig} onSortChange={onSortChange}>
                   {t('playlists.devices', 'Device')}
                 </SortableTableHeader>
               ) : t('playlists.devices', 'Device')}
             </th>
-            <th className={`${TABLE_STYLES.th} w-24`}>
+            <th className="w-20 px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider whitespace-nowrap">
               {sortConfig && onSortChange ? (
                 <SortableTableHeader columnKey="total_duration" sortConfig={sortConfig} onSortChange={onSortChange}>
                   {t('playlists.duration')}
                 </SortableTableHeader>
               ) : t('playlists.duration')}
             </th>
-            <th className={`${TABLE_STYLES.th} w-32`}>
+            <th className="w-28 px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider whitespace-nowrap">
+              {sortConfig && onSortChange ? (
+                <SortableTableHeader columnKey="created_at" sortConfig={sortConfig} onSortChange={onSortChange}>
+                  {t('playlists.created', 'Created')}
+                </SortableTableHeader>
+              ) : t('playlists.created', 'Created')}
+            </th>
+            <th className="w-36 px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider whitespace-nowrap">
               {t('common.actions')}
             </th>
           </tr>
@@ -119,19 +126,39 @@ export function PlaylistList({
         <tbody className={TABLE_STYLES.tbody}>
           {playlists.map((playlist) => (
             <tr key={playlist.id} className={TABLE_STYLES.tr}>
-              <td className="px-6 py-4">
-                <div>
-                  <div className="font-medium text-gray-900 dark:text-white">
-                    {playlist.name}
+              <td className="px-3 py-4 overflow-hidden">
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium text-gray-900 dark:text-white truncate" title={playlist.name}>
+                      {playlist.name}
+                    </span>
+                    {/* Default indicator */}
+                    {playlist.is_default && (
+                      <span
+                        title={t('playlists.defaultPlaylist', 'Default Playlist')}
+                        className="inline-flex items-center text-yellow-500 dark:text-yellow-400 flex-shrink-0"
+                      >
+                        <Star className="w-3.5 h-3.5 fill-current" />
+                      </span>
+                    )}
+                    {/* Schedule indicator - show if playlist has a schedule */}
+                    {playlist.schedule && Object.keys(playlist.schedule).length > 0 && (
+                      <span
+                        title={t('playlists.hasSchedule', 'Has Schedule')}
+                        className="inline-flex items-center text-blue-600 dark:text-blue-400 flex-shrink-0"
+                      >
+                        <Calendar className="w-3.5 h-3.5" />
+                      </span>
+                    )}
                   </div>
                   {playlist.description && (
-                    <div className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                    <div className="text-xs text-gray-500 dark:text-gray-400 mt-1 truncate" title={playlist.description}>
                       {playlist.description}
                     </div>
                   )}
                 </div>
               </td>
-              <td className="px-6 py-4">
+              <td className="px-4 py-4 whitespace-nowrap">
                 <span
                   className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
                     playlist.is_active
@@ -142,27 +169,37 @@ export function PlaylistList({
                   {playlist.is_active ? 'Aktif' : 'Nonaktif'}
                 </span>
               </td>
-              <td className="px-6 py-4">
+              <td className="px-4 py-4 whitespace-nowrap">
                 <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
                   {playlist.priority}
                 </span>
               </td>
-              <td className="px-6 py-4">
+              <td className="px-4 py-4 whitespace-nowrap">
                 <div className="flex items-center text-sm text-gray-900 dark:text-white">
-                  <FileText className="w-4 h-4 mr-2 text-gray-400" />
-                  {playlist.content_count} {t('playlists.contentSuffix', 'konten')}
+                  <FileText className="w-4 h-4 mr-1 text-gray-400" />
+                  {playlist.content_count}
                 </div>
               </td>
-              <td className="px-6 py-4">
+              <td className="px-4 py-4 whitespace-nowrap">
                 <div className="flex items-center text-sm text-gray-900 dark:text-white">
-                  <Monitor className="w-4 h-4 mr-2 text-gray-400" />
-                  {playlist.device_count || 0} {t('playlists.deviceSuffix', 'device')}
+                  <Monitor className="w-4 h-4 mr-1 text-gray-400" />
+                  {playlist.device_count || 0}
                 </div>
               </td>
-              <td className="px-6 py-4">
+              <td className="px-4 py-4 whitespace-nowrap">
                 <div className="flex items-center text-sm text-gray-900 dark:text-white">
-                  <Clock className="w-4 h-4 mr-2 text-gray-400" />
+                  <Clock className="w-4 h-4 mr-1 text-gray-400" />
                   {formatDuration(playlist.total_duration)}
+                </div>
+              </td>
+              <td className="px-4 py-4 whitespace-nowrap">
+                <div className="flex flex-col">
+                  <DateCell date={playlist.created_at} />
+                  {playlist.created_by_name && (
+                    <span className="text-xs text-gray-500 dark:text-gray-400 truncate" title={playlist.created_by_name}>
+                      {playlist.created_by_name}
+                    </span>
+                  )}
                 </div>
               </td>
               <td className={TABLE_STYLES.td}>
@@ -178,7 +215,7 @@ export function PlaylistList({
                   )}
                   <button
                     onClick={() => onManage(playlist)}
-                    className={TABLE_STYLES.actionBtnPurple}
+                    className={ACTION_BUTTON.ASSIGN}
                     title={t('playlists.manage', 'Manage')}
                   >
                     <FileSymlink className="w-4 h-4" />
@@ -186,7 +223,7 @@ export function PlaylistList({
                   {onEdit && (
                     <button
                       onClick={() => onEdit(playlist)}
-                      className={TABLE_STYLES.actionBtnBlue}
+                      className={ACTION_BUTTON.EDIT}
                       title={t('common.edit')}
                     >
                       <Pencil className="w-4 h-4" />
@@ -195,7 +232,7 @@ export function PlaylistList({
                   {onDelete && (
                     <button
                       onClick={() => onDelete(playlist)}
-                      className={TABLE_STYLES.actionBtnRed}
+                      className={ACTION_BUTTON.DELETE}
                       title={t('common.delete')}
                     >
                       <Trash2 className="w-4 h-4" />

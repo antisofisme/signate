@@ -27,6 +27,8 @@ class Playlist:
         created_at: Optional[datetime] = None,
         updated_at: Optional[datetime] = None,
         deleted_at: Optional[datetime] = None,
+        # User names (from JOINs)
+        created_by_name: Optional[str] = None,
         # Computed fields
         content_count: int = 0,
         total_duration: int = 0,
@@ -48,6 +50,8 @@ class Playlist:
         self.created_at = created_at
         self.updated_at = updated_at
         self.deleted_at = deleted_at
+        # User names (from JOINs)
+        self.created_by_name = created_by_name
 
         # Computed fields (not stored in DB)
         self.content_count = content_count
@@ -128,8 +132,10 @@ class Playlist:
             "is_active": self.is_active,
             "priority": self.priority,
             "schedule": self.schedule,
+            "is_default": self.is_default,
             "organization_id": self.organization_id,
             "created_by": self.created_by_id,
+            "created_by_name": getattr(self, 'created_by_name', None),
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,
             "deleted_at": self.deleted_at.isoformat() if self.deleted_at else None,

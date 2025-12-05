@@ -110,6 +110,9 @@ class PlayerPlaylistSyncClass implements IPlaylistSync {
       playerScheduleManager.stop();
     }
 
+    // Clean up EventBus listeners to prevent duplicate handlers on restart
+    SharedEventBus.removeNamespace('playlist-sync');
+
     this._isRunning = false;
     SharedLogger.log('[PlayerPlaylistSync] ⏹️ Playlist sync stopped');
   }
@@ -373,9 +376,10 @@ class PlayerPlaylistSyncClass implements IPlaylistSync {
 
   /**
    * Setup schedule event listeners
+   * Uses namespace 'playlist-sync' for cleanup in stop()
    */
   private setupScheduleListeners(): void {
-    // Listen for schedule changes
+    // Listen for schedule changes (with namespace for cleanup)
     SharedEventBus.on('schedule:changed', (event: any) => {
       const { schedule, playlist_id, mode } = event;
 
@@ -413,7 +417,7 @@ class PlayerPlaylistSyncClass implements IPlaylistSync {
         // Sync immediately
         void this.syncNow();
       }
-    });
+    }, 'playlist-sync');
   }
 
   /**

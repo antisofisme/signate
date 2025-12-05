@@ -3,12 +3,14 @@ Playlist API Routes
 FastAPI endpoints with DI, auth, and audit logging
 """
 
+import asyncio
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
 from typing import Optional
 
 from fastapi import Request
 from shared.database import get_db
+from shared.websocket_manager import websocket_manager, WebSocketEventType
 from shared.responses import success_response
 from shared.logging import AuditLogger
 from shared.middleware import require_permission
@@ -568,7 +570,7 @@ def get_playlist_assignments(
 
 
 @router.post("/{playlist_id}/assign/devices", status_code=status.HTTP_201_CREATED)
-def assign_to_devices(
+async def assign_to_devices(
     playlist_id: int,
     request_body: AssignDevicesRequest,
     http_request: Request,
@@ -598,6 +600,19 @@ def assign_to_devices(
             organization_id=current_user["organization_id"],
         )
 
+        # Phase 5: Broadcast WebSocket notification to assigned devices
+        # This enables real-time playlist push instead of polling
+        if websocket_manager and result["assigned"] > 0:
+            await websocket_manager.broadcast_to_devices(
+                device_ids=request_body.device_ids,
+                event_type=WebSocketEventType.PLAYLIST_ASSIGNED,
+                data={
+                    "playlist_id": playlist_id,
+                    "assigned_by": current_user["user_id"],
+                    "message": "Playlist assigned - please reload content"
+                }
+            )
+
         message = f"Assigned to {result['assigned']} device(s)"
         if result["skipped_duplicate"]:
             message += f", skipped {len(result['skipped_duplicate'])} duplicates"
@@ -611,7 +626,7 @@ def assign_to_devices(
 
 
 @router.delete("/{playlist_id}/assign/devices")
-def unassign_from_devices(
+async def unassign_from_devices(
     playlist_id: int,
     request_body: AssignDevicesRequest,
     http_request: Request,
@@ -637,6 +652,19 @@ def unassign_from_devices(
             ip_address=http_request.client.host if http_request.client else None,
             organization_id=current_user["organization_id"],
         )
+
+        # Phase 5: Broadcast WebSocket notification to unassigned devices
+        # This enables real-time playlist push instead of polling
+        if websocket_manager and removed > 0:
+            await websocket_manager.broadcast_to_devices(
+                device_ids=request_body.device_ids,
+                event_type=WebSocketEventType.PLAYLIST_UNASSIGNED,
+                data={
+                    "playlist_id": playlist_id,
+                    "unassigned_by": current_user["user_id"],
+                    "message": "Playlist unassigned - please reload content"
+                }
+            )
 
         return success_response(
             data={

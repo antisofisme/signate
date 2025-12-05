@@ -12,7 +12,7 @@ import * as z from 'zod';
 import { useTranslation } from 'react-i18next';
 import { Copy, Check, RefreshCw, Shield, Eye, EyeOff } from 'lucide-react';
 import { toast } from '@/shared/utils/toast';
-import { Modal, Button, FormInput, FormTextarea, ConfirmDialog } from '@/shared/components';
+import { Modal, Button, FormInput, FormTextarea, FormSwitch, ConfirmDialog } from '@/shared/components';
 import { useRegeneratePin } from '../hooks/useOrganizations';
 import type {
   Organization,
@@ -280,19 +280,12 @@ export function OrganizationForm({
 
           {/* Active Status - only for Edit */}
           {organization && (
-            <div className="flex items-center gap-2 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
-              <input
-                type="checkbox"
-                id="isActive"
-                {...methods.register('is_active')}
-                className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+            <div className="p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+              <FormSwitch
+                name="is_active"
+                label={t('organizations.organizationIsActive')}
+                description={t('organizations.organizationIsActiveDescription', 'Toggle to activate or deactivate this organization')}
               />
-              <label
-                htmlFor="isActive"
-                className="text-sm font-medium text-gray-700 dark:text-gray-300 cursor-pointer"
-              >
-                {t('organizations.organizationIsActive')}
-              </label>
             </div>
           )}
         </form>

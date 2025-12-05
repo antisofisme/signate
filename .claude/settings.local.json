@@ -21,7 +21,8 @@
       "Bash(sshpass:*)",
       "Bash(rsync:*)",
       "Bash(xargs:*)",
-      "Bash(where:*)"
+      "Bash(where:*)",
+      "Bash(tree:*)"
     ],
     "deny": [],
     "ask": []

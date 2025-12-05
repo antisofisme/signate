@@ -84,6 +84,46 @@ export const TABLE_STYLES = {
 } as const;
 
 // ============================================
+// SEMANTIC BUTTON STYLES - Use these for consistent meaning
+// ============================================
+/**
+ * Semantic action button mapping for consistent UI across all tables.
+ *
+ * Usage:
+ * - VIEW: Preview, view details, eye icon actions
+ * - EDIT: Edit, modify, update actions
+ * - DELETE: Delete, remove, trash actions
+ * - DOWNLOAD: Download, export actions
+ * - ASSIGN: Assign to playlist, add to tag, link actions
+ * - LOGS: View logs, history, terminal actions
+ * - SETTINGS: Configure, settings actions
+ * - RESTORE: Restore from trash, undo delete
+ *
+ * @example
+ * <button className={ACTION_BUTTON.VIEW}>
+ *   <Eye className="w-4 h-4" />
+ * </button>
+ */
+export const ACTION_BUTTON = {
+  /** Blue - Preview, View Details (Eye icon) */
+  VIEW: TABLE_STYLES.actionBtnBlue,
+  /** Green - Edit, Modify, Update (Edit icon) */
+  EDIT: TABLE_STYLES.actionBtnGreen,
+  /** Red - Delete, Remove, Trash (Trash icon) */
+  DELETE: TABLE_STYLES.actionBtnRed,
+  /** Gray - Download, Export, Copy (Download icon) */
+  DOWNLOAD: TABLE_STYLES.actionBtnGray,
+  /** Indigo - Assign to playlist/tag, Link (List, Tag icons) */
+  ASSIGN: TABLE_STYLES.actionBtnIndigo,
+  /** Purple - View logs, Terminal, History (Terminal icon) */
+  LOGS: TABLE_STYLES.actionBtnPurple,
+  /** Orange - Settings, Configure (Settings icon) */
+  SETTINGS: TABLE_STYLES.actionBtnOrange,
+  /** Green - Restore from trash (RotateCcw icon) */
+  RESTORE: TABLE_STYLES.actionBtnGreen,
+} as const;
+
+// ============================================
 // COMPONENT TYPES
 // ============================================
 

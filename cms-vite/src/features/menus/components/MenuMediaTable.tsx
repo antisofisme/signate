@@ -13,15 +13,19 @@ import {
   Eye,
   Copy,
   Check,
-  Edit,
+  Pencil,
   Download,
   Filter,
   ChevronDown,
   ChevronRight,
   UtensilsCrossed,
+  Loader2,
+  CheckCircle,
+  XCircle,
+  Clock,
 } from 'lucide-react';
 import { toast } from '@/shared/utils/toast';
-import { usePagination, useTableSort } from '@/shared/hooks';
+import { usePagination, useTableSort, useTableSelection } from '@/shared/hooks';
 import {
   Pagination,
   TableSkeleton,
@@ -30,7 +34,9 @@ import {
   ConfirmDialog,
   Button,
   TABLE_STYLES,
+  ACTION_BUTTON,
   SortableTableHeader,
+  DateCell,
 } from '@/shared/components';
 import { useCanPerformAction } from '@/features/rbac/hooks/usePermissions';
 import {
@@ -59,6 +65,34 @@ const getFileTypeLabel = (mimeType: string) => {
   if (mimeType.includes('webp')) return 'WebP';
   return mimeType.split('/')[1]?.toUpperCase() || 'Image';
 };
+
+// Processing status badge component
+function ProcessingBadge({ status }: { status?: string }) {
+  if (!status || status === 'completed') return null;
+
+  switch (status) {
+    case 'pending':
+      return (
+        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 text-xs font-medium rounded bg-yellow-100 text-yellow-800 dark:bg-yellow-900/50 dark:text-yellow-300">
+          <Clock className="w-3 h-3" />
+        </span>
+      );
+    case 'processing':
+      return (
+        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 text-xs font-medium rounded bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300">
+          <Loader2 className="w-3 h-3 animate-spin" />
+        </span>
+      );
+    case 'failed':
+      return (
+        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 text-xs font-medium rounded bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-300">
+          <XCircle className="w-3 h-3" />
+        </span>
+      );
+    default:
+      return null;
+  }
+}
 
 interface MenuMediaTableProps {
   showUploadModal?: boolean;
@@ -95,9 +129,7 @@ export function MenuMediaTable({
   const [mediaToDelete, setMediaToDelete] = useState<MenuMedia | null>(null);
   const [showPreview, setShowPreview] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
-  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [copiedId, setCopiedId] = useState<number | null>(null);
-  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
 
   // Queries - merge filters with pagination and sorting
   const { data: mediaData, isLoading, error } = useMenuMediaList({
@@ -109,7 +141,20 @@ export function MenuMediaTable({
   const { data: duplicateData } = useDuplicateMenuMedia();
   const deleteMutation = useDeleteMenuMedia();
 
-  // Build duplicate lookup map
+  // Selection hook (replaces manual selection state)
+  const {
+    selectedIds,
+    isSelected,
+    toggleSelection,
+    toggleSelectAll,
+    clearSelection,
+    getSelectedItems,
+  } = useTableSelection<number>();
+
+  // State for expand/collapse groups
+  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
+
+  // Build duplicate lookup map (MenuMedia uses different structure than Content)
   const duplicateMap = useMemo(() => {
     const map = new Map<number, { hash: string; usage: MenuMediaDuplicateUsage; group: MenuMediaDuplicateGroup }>();
     const groups = duplicateData?.duplicates || [];
@@ -139,7 +184,7 @@ export function MenuMediaTable({
     });
   };
 
-  // Check if media has usage
+  // Check if media has usage (MenuMedia uses used_count)
   const hasUsage = (usage: MenuMediaDuplicateUsage): boolean => {
     return usage.used_count > 0;
   };
@@ -192,27 +237,7 @@ export function MenuMediaTable({
     pagination.resetPage();
   };
 
-  // Selection handlers
-  const toggleSelection = (id: number) => {
-    setSelectedIds((prev) => {
-      const newSet = new Set(prev);
-      if (newSet.has(id)) {
-        newSet.delete(id);
-      } else {
-        newSet.add(id);
-      }
-      return newSet;
-    });
-  };
-
-  const toggleSelectAll = () => {
-    if (selectedIds.size === mediaData?.items.length) {
-      setSelectedIds(new Set());
-    } else {
-      setSelectedIds(new Set(mediaData?.items.map((m) => m.id) || []));
-    }
-  };
-
+  // Bulk delete handler (uses clearSelection from hook)
   const handleBulkDelete = async () => {
     if (selectedIds.size === 0) {
       toast.error(t('menus.media.messages.selectAtLeastOne', 'Please select at least one image'));
@@ -222,7 +247,7 @@ export function MenuMediaTable({
       for (const id of selectedIds) {
         await deleteMutation.mutateAsync(id);
       }
-      setSelectedIds(new Set());
+      clearSelection();
     }
   };
 
@@ -246,7 +271,7 @@ export function MenuMediaTable({
             )}
             <input
               type="checkbox"
-              checked={selectedIds.has(media.id)}
+              checked={isSelected(media.id)}
               onChange={(e) => {
                 e.stopPropagation();
                 toggleSelection(media.id);
@@ -255,14 +280,14 @@ export function MenuMediaTable({
             />
           </div>
         </td>
-        <td className={TABLE_STYLES.td}>
+        <td className="px-3 py-4 overflow-hidden">
           <div className={`flex items-center min-w-0 ${isChild ? 'pl-4' : ''}`}>
             <img
               src={media.url}
               alt={media.alt_text || media.original_filename}
-              className="w-10 h-10 rounded object-cover mr-3 flex-shrink-0"
+              className="w-10 h-10 rounded object-cover mr-2 flex-shrink-0"
             />
-            <div className="min-w-0 flex-1">
+            <div className="min-w-0 flex-1 overflow-hidden">
               <p className="text-sm font-medium text-gray-900 dark:text-white truncate" title={media.title || media.original_filename}>
                 {media.title || media.original_filename}
               </p>
@@ -271,6 +296,9 @@ export function MenuMediaTable({
               </p>
             </div>
           </div>
+        </td>
+        <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600 dark:text-gray-400">
+          {formatFileSize(media.file_size)}
         </td>
         <td className={TABLE_STYLES.td}>
           {/* Usage indicators for duplicates */}
@@ -287,23 +315,38 @@ export function MenuMediaTable({
               )}
             </div>
           ) : (
-            <span className="px-2 py-1 text-xs font-medium rounded bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300">
-              {getFileTypeLabel(media.mime_type)}
-            </span>
+            <div className="flex flex-col">
+              <div className="flex items-center gap-1">
+                <span className="px-2 py-0.5 text-xs font-medium rounded bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300">
+                  {getFileTypeLabel(media.mime_type)}
+                </span>
+                {/* Animated GIF indicator */}
+                {media.is_animated && (
+                  <span className="px-1.5 py-0.5 text-xs font-medium rounded bg-purple-100 text-purple-800 dark:bg-purple-900/50 dark:text-purple-300" title="Animated">
+                    GIF
+                  </span>
+                )}
+                {/* Processing status indicator */}
+                <ProcessingBadge status={media.processing_status} />
+              </div>
+              {media.width && media.height && (
+                <span className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                  {media.width}x{media.height}
+                </span>
+              )}
+            </div>
+          )}
+          {isChild && !itemHasUsage && (
+            <span className="w-2 h-2 rounded-full bg-green-400 ml-1" title="Safe to delete" />
           )}
         </td>
         <td className={TABLE_STYLES.td}>
-          {formatFileSize(media.file_size)}
-        </td>
-        <td className={TABLE_STYLES.td}>
-          <div className="flex items-center gap-2">
-            {media.width && media.height ? (
-              <span>{media.width}x{media.height}</span>
-            ) : (
-              <span className="text-gray-400">-</span>
-            )}
-            {isChild && !itemHasUsage && (
-              <span className="w-2 h-2 rounded-full bg-green-400" title="Safe to delete" />
+          <div className="flex flex-col">
+            <DateCell date={media.created_at} />
+            {media.uploaded_by_name && (
+              <span className="text-xs text-gray-500 dark:text-gray-400 truncate" title={media.uploaded_by_name}>
+                {media.uploaded_by_name}
+              </span>
             )}
           </div>
         </td>
@@ -314,7 +357,7 @@ export function MenuMediaTable({
                 e.stopPropagation();
                 handlePreview(media);
               }}
-              className={TABLE_STYLES.actionBtnBlue}
+              className={ACTION_BUTTON.VIEW}
               title={t('menus.media.actions.preview', 'Preview')}
             >
               <Eye className="w-4 h-4" />
@@ -324,7 +367,7 @@ export function MenuMediaTable({
                 e.stopPropagation();
                 handleDownload(media);
               }}
-              className={TABLE_STYLES.actionBtnGray}
+              className={ACTION_BUTTON.DOWNLOAD}
               title={t('menus.media.actions.download', 'Download')}
             >
               <Download className="w-4 h-4" />
@@ -335,10 +378,10 @@ export function MenuMediaTable({
                   e.stopPropagation();
                   handleEdit(media);
                 }}
-                className={TABLE_STYLES.actionBtnGreen}
+                className={ACTION_BUTTON.EDIT}
                 title={t('menus.media.actions.edit', 'Edit')}
               >
-                <Edit className="w-4 h-4" />
+                <Pencil className="w-4 h-4" />
               </button>
             )}
             {canDelete && (
@@ -347,7 +390,7 @@ export function MenuMediaTable({
                   e.stopPropagation();
                   setMediaToDelete(media);
                 }}
-                className={TABLE_STYLES.actionBtnRed}
+                className={ACTION_BUTTON.DELETE}
                 title={t('menus.media.actions.delete', 'Delete')}
               >
                 <Trash2 className="w-4 h-4" />
@@ -385,15 +428,15 @@ export function MenuMediaTable({
             className={`${TABLE_STYLES.tr} bg-orange-50 dark:bg-orange-900/20 cursor-pointer`}
             onClick={() => toggleGroupExpand(dupInfo.hash)}
           >
-            <td className={`${TABLE_STYLES.td} text-center`}>
+            <td className="px-2 py-3 text-center whitespace-nowrap">
               {isExpanded ? (
                 <ChevronDown className="w-4 h-4 text-orange-600" />
               ) : (
                 <ChevronRight className="w-4 h-4 text-orange-600" />
               )}
             </td>
-            <td className={TABLE_STYLES.td} colSpan={2}>
-              <div className="flex items-center gap-3">
+            <td className="px-3 py-3 overflow-hidden">
+              <div className="flex items-center gap-3 min-w-0">
                 {firstMedia?.url ? (
                   <img
                     src={firstMedia.url}
@@ -405,29 +448,32 @@ export function MenuMediaTable({
                     <FileImage className="w-4 h-4" />
                   </div>
                 )}
-                <div>
+                <div className="min-w-0 overflow-hidden">
                   <div className="flex items-center gap-2">
-                    <Copy className="w-4 h-4 text-orange-600" />
-                    <span className="font-medium text-orange-800 dark:text-orange-200">
-                      {group.duplicate_count} Duplicate Files
+                    <Copy className="w-4 h-4 text-orange-600 flex-shrink-0" />
+                    <span className="font-medium text-orange-800 dark:text-orange-200 truncate">
+                      {group.duplicate_count} Duplicates
                     </span>
                   </div>
-                  <span className="text-xs text-orange-600 dark:text-orange-400 font-mono">
-                    Hash: {group.file_hash.slice(0, 16)}...
+                  <span className="text-xs text-orange-600 dark:text-orange-400 font-mono truncate block">
+                    {group.file_hash.slice(0, 12)}...
                   </span>
                 </div>
               </div>
             </td>
-            <td className={`${TABLE_STYLES.td} text-orange-700 dark:text-orange-300`}>
+            <td className="px-4 py-3 whitespace-nowrap text-sm text-orange-700 dark:text-orange-300">
               {formatFileSize(group.file_size)}
             </td>
-            <td className={TABLE_STYLES.td}>
-              <span className="px-2 py-1 text-xs font-medium rounded-full bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200">
+            <td className="px-4 py-3 whitespace-nowrap">
+              <span className="px-2 py-0.5 text-xs font-medium rounded bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200">
                 Same File
               </span>
             </td>
-            <td className={`${TABLE_STYLES.td} text-orange-600 dark:text-orange-400`}>
-              Click to {isExpanded ? 'collapse' : 'expand'}
+            <td className="px-4 py-3 whitespace-nowrap text-sm text-orange-700 dark:text-orange-300">
+              -
+            </td>
+            <td className="px-4 py-3 whitespace-nowrap text-sm text-orange-600 dark:text-orange-400">
+              {isExpanded ? 'Collapse' : 'Expand'}
             </td>
           </tr>
         );
@@ -535,7 +581,7 @@ export function MenuMediaTable({
       {/* Loading State */}
       {isLoading && (
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
-          <TableSkeleton columns={6} rows={10} />
+          <TableSkeleton columns={8} rows={10} />
         </div>
       )}
 
@@ -546,15 +592,15 @@ export function MenuMediaTable({
             <table className={`${TABLE_STYLES.table} table-fixed`}>
               <thead className={TABLE_STYLES.thead}>
                 <tr>
-                  <th className={`${TABLE_STYLES.th} text-center w-12`}>
+                  <th className="w-10 px-2 py-3 text-center">
                     <input
                       type="checkbox"
                       checked={selectedIds.size > 0 && selectedIds.size === mediaData.items.length}
-                      onChange={toggleSelectAll}
+                      onChange={() => toggleSelectAll(mediaData?.items || [])}
                       className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
                     />
                   </th>
-                  <th className={`${TABLE_STYLES.th} w-[40%]`}>
+                  <th className="w-72 px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                     <SortableTableHeader
                       columnKey="original_filename"
                       sortConfig={sortConfig}
@@ -563,16 +609,7 @@ export function MenuMediaTable({
                       {t('menus.media.table.image', 'Image')}
                     </SortableTableHeader>
                   </th>
-                  <th className={`${TABLE_STYLES.th} w-24`}>
-                    <SortableTableHeader
-                      columnKey="mime_type"
-                      sortConfig={sortConfig}
-                      onSortChange={onSortChange}
-                    >
-                      {t('menus.media.table.type', 'Type')}
-                    </SortableTableHeader>
-                  </th>
-                  <th className={`${TABLE_STYLES.th} w-24`}>
+                  <th className="w-20 px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                     <SortableTableHeader
                       columnKey="file_size"
                       sortConfig={sortConfig}
@@ -581,16 +618,25 @@ export function MenuMediaTable({
                       {t('menus.media.table.size', 'Size')}
                     </SortableTableHeader>
                   </th>
-                  <th className={`${TABLE_STYLES.th} w-28`}>
+                  <th className="w-28 px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                     <SortableTableHeader
-                      columnKey="width"
+                      columnKey="mime_type"
                       sortConfig={sortConfig}
                       onSortChange={onSortChange}
                     >
-                      {t('menus.media.table.dimensions', 'Dimensions')}
+                      {t('menus.media.table.type', 'Type')}
                     </SortableTableHeader>
                   </th>
-                  <th className={`${TABLE_STYLES.th} w-32`}>
+                  <th className="w-28 px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                    <SortableTableHeader
+                      columnKey="created_at"
+                      sortConfig={sortConfig}
+                      onSortChange={onSortChange}
+                    >
+                      {t('menus.media.table.uploaded', 'Uploaded')}
+                    </SortableTableHeader>
+                  </th>
+                  <th className="w-32 px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                     {t('menus.media.table.actions', 'Actions')}
                   </th>
                 </tr>

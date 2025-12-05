@@ -4,15 +4,31 @@
  */
 
 import { useState, useMemo } from 'react';
-import { Edit, Trash2, List, Copy, Download, ExternalLink, UtensilsCrossed, Loader2 } from 'lucide-react';
+import { Pencil, Trash2, List, Copy, Download, ExternalLink, UtensilsCrossed, Loader2, LayoutGrid, LayoutList, GalleryHorizontal, Minimize2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import QRCode from 'qrcode';
 import { useDeleteMenuWithPIN } from '../hooks/useMenus';
-import { EmptyState, TABLE_STYLES, SortableTableHeader, TableSkeleton } from '@/shared/components';
+import { EmptyState, TABLE_STYLES, ACTION_BUTTON, SortableTableHeader, TableSkeleton, DateCell } from '@/shared/components';
 import type { SortConfig } from '@/shared/components';
 import { PinVerificationModal } from './PinVerificationModal';
-import type { Menu } from '../types/menu';
+import type { Menu, DisplayMode } from '../types/menu';
 import { toast } from '@/shared/utils/toast';
+
+// Display mode icon helper
+function getDisplayModeIcon(mode: DisplayMode) {
+  const config: Record<DisplayMode, { icon: typeof LayoutGrid; label: string }> = {
+    grid: { icon: LayoutGrid, label: 'Grid' },
+    list: { icon: LayoutList, label: 'List' },
+    carousel: { icon: GalleryHorizontal, label: 'Carousel' },
+    minimalist: { icon: Minimize2, label: 'Minimalist' },
+  };
+  const { icon: Icon, label } = config[mode] || config.grid;
+  return (
+    <span title={label} className="inline-flex items-center text-gray-600 dark:text-gray-400">
+      <Icon className="w-4 h-4" />
+    </span>
+  );
+}
 
 interface MenuListProps {
   menus: Menu[];
@@ -124,7 +140,7 @@ export const MenuList = ({
   };
 
   if (isLoading) {
-    return <TableSkeleton columns={6} rows={5} />;
+    return <TableSkeleton columns={8} rows={5} />;
   }
 
   if (!filteredMenus.length) {
@@ -197,6 +213,32 @@ export const MenuList = ({
                   t('menus.itemsColumn', 'Items')
                 )}
               </th>
+              <th className={`${TABLE_STYLES.th} w-16`}>
+                {sortConfig && onSortChange ? (
+                  <SortableTableHeader
+                    columnKey="display_mode"
+                    sortConfig={sortConfig}
+                    onSortChange={onSortChange}
+                  >
+                    {t('menus.displayMode', 'Display')}
+                  </SortableTableHeader>
+                ) : (
+                  t('menus.displayMode', 'Display')
+                )}
+              </th>
+              <th className={`${TABLE_STYLES.th} w-24`}>
+                {sortConfig && onSortChange ? (
+                  <SortableTableHeader
+                    columnKey="updated_at"
+                    sortConfig={sortConfig}
+                    onSortChange={onSortChange}
+                  >
+                    {t('menus.modified', 'Modified')}
+                  </SortableTableHeader>
+                ) : (
+                  t('menus.modified', 'Modified')
+                )}
+              </th>
               <th className={`${TABLE_STYLES.th} w-28`}>
                 {t('menus.publicAccess', 'Public Access')}
               </th>
@@ -237,6 +279,12 @@ export const MenuList = ({
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                   {menu.items_count} items
                 </td>
+                <td className="px-6 py-4 whitespace-nowrap text-center">
+                  {getDisplayModeIcon(menu.display_mode)}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <DateCell date={menu.updated_at || menu.created_at} />
+                </td>
                 <td className="px-6 py-4">
                   <div className="flex items-center space-x-2">
                     <button
@@ -273,21 +321,21 @@ export const MenuList = ({
                   <div className="flex items-center gap-2">
                     <button
                       onClick={() => onManageItems(menu)}
-                      className={TABLE_STYLES.actionBtnGreen}
+                      className={ACTION_BUTTON.ASSIGN}
                       title="Manage Items"
                     >
                       <List className="w-4 h-4" />
                     </button>
                     <button
                       onClick={() => onEdit(menu)}
-                      className={TABLE_STYLES.actionBtnBlue}
+                      className={ACTION_BUTTON.EDIT}
                       title="Edit Menu"
                     >
-                      <Edit className="w-4 h-4" />
+                      <Pencil className="w-4 h-4" />
                     </button>
                     <button
                       onClick={() => handleDelete(menu)}
-                      className={TABLE_STYLES.actionBtnRed}
+                      className={ACTION_BUTTON.DELETE}
                       title="Delete Menu"
                       disabled={deleteWithPINMutation.isPending}
                     >

@@ -15,7 +15,7 @@ import {
   Tv,
   Trash2,
   Loader2,
-  Edit,
+  Pencil,
   Filter,
   Circle,
   Plus,
@@ -23,13 +23,14 @@ import {
   Terminal,
   FileSymlink,
   RefreshCw,
+  ListMusic,
 } from 'lucide-react';
 import {
   useDeviceList,
   useDeleteDevice,
   useUpdateDevice,
 } from '../hooks/useDevices';
-import type { Device, DeviceStatus, DeviceType } from '../types/device';
+import type { Device, DeviceStatus, DeviceType, LocationType } from '../types/device';
 import { toast } from '@/shared/utils/toast';
 import { PendingDeviceCard } from './PendingDeviceCard';
 import {
@@ -39,9 +40,12 @@ import {
   ConfirmDialog,
   Button,
   TABLE_STYLES,
+  ACTION_BUTTON,
   SortableTableHeader,
+  Pagination,
+  OnlineStatusCell,
 } from '@/shared/components';
-import { useTableSort } from '@/shared/hooks';
+import { useTableSort, usePagination } from '@/shared/hooks';
 import { useCanPerformAction } from '@/features/rbac/hooks/usePermissions';
 
 // Lazy load modal components for better initial page load
@@ -104,6 +108,9 @@ export function DeviceTable() {
     defaultSort: { key: 'device_name', direction: 'asc' }, // Default sort by name
   });
 
+  // Pagination
+  const pagination = usePagination({ pageSize: 20 });
+
   // Modals
   const [deleteModal, setDeleteModal] = useState<{
     isOpen: boolean;
@@ -143,18 +150,21 @@ export function DeviceTable() {
   }>({ isOpen: false, device: null });
 
 
-  // Build filters for API (includes sorting)
+  // Build filters for API (includes sorting and pagination)
   const apiFilters = {
     scope,
     ...(statusFilter !== 'all' && { status: statusFilter }),
     ...(typeFilter !== 'all' && { device_type: typeFilter }),
     ...sortParams, // Adds sort_by and sort_dir from URL state
+    skip: pagination.skip,
+    limit: pagination.limit,
   };
 
   // Fetch devices with refetch function for manual refresh
   const { data, isLoading, error, refetch, isFetching } = useDeviceList(apiFilters);
   const devices = data?.items || [];
   const total = data?.total || 0;
+  const totalPages = pagination.getTotalPages(total);
 
   // Manual refresh handler
   const handleRefresh = useCallback(() => {
@@ -222,13 +232,31 @@ export function DeviceTable() {
     );
   };
 
+  // Location type badge
+  const getLocationBadge = (locationType: LocationType) => {
+    const locationConfig: Record<LocationType, { label: string; color: string }> = {
+      guest_room: { label: t('devices.locations.guestRoom', 'Guest Room'), color: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200' },
+      lobby: { label: t('devices.locations.lobby', 'Lobby'), color: 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200' },
+      restaurant: { label: t('devices.locations.restaurant', 'Restaurant'), color: 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200' },
+      conference_room: { label: t('devices.locations.conference', 'Conference'), color: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' },
+      other: { label: t('devices.locations.other', 'Other'), color: 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300' },
+    };
+
+    const config = locationConfig[locationType] || locationConfig.other;
+    return (
+      <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${config.color}`}>
+        {config.label}
+      </span>
+    );
+  };
+
   return (
     <>
       {/* Scope Tabs - Standardized like ViewTabs (no box) */}
       <div className="mb-4 border-b border-gray-200 dark:border-gray-700">
         <nav className="-mb-px flex space-x-4" role="tablist" aria-label={t('devices.tabs.scopeSelection', 'Device scope selection')}>
           <button
-            onClick={() => setScope('my_org')}
+            onClick={() => { setScope('my_org'); pagination.resetPage(); }}
             role="tab"
             aria-selected={scope === 'my_org'}
             aria-controls="device-table-panel"
@@ -242,7 +270,7 @@ export function DeviceTable() {
             {t('devices.tabs.myDevices')}
           </button>
           <button
-            onClick={() => setScope('released')}
+            onClick={() => { setScope('released'); pagination.resetPage(); }}
             role="tab"
             aria-selected={scope === 'released'}
             aria-controls="device-table-panel"
@@ -308,7 +336,7 @@ export function DeviceTable() {
                 </label>
                 <select
                   value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value as any)}
+                  onChange={(e) => { setStatusFilter(e.target.value as any); pagination.resetPage(); }}
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                 >
                   <option value="all">{t('devices.allStatuses')}</option>
@@ -325,7 +353,7 @@ export function DeviceTable() {
                 </label>
                 <select
                   value={typeFilter}
-                  onChange={(e) => setTypeFilter(e.target.value as any)}
+                  onChange={(e) => { setTypeFilter(e.target.value as any); pagination.resetPage(); }}
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                 >
                   <option value="all">{t('devices.filters.allTypes')}</option>
@@ -403,7 +431,7 @@ export function DeviceTable() {
       {/* Loading State */}
       {isLoading && (
         <div className={TABLE_STYLES.container}>
-          <TableSkeleton columns={6} rows={5} />
+          <TableSkeleton columns={9} rows={5} />
         </div>
       )}
 
@@ -411,10 +439,10 @@ export function DeviceTable() {
       {!isLoading && !error && devices.length > 0 && (
         <div className={TABLE_STYLES.container}>
           <div className="overflow-x-auto">
-            <table className={TABLE_STYLES.table}>
+            <table className={`${TABLE_STYLES.table} table-fixed`}>
               <thead className={TABLE_STYLES.thead}>
                 <tr>
-                  <th className={TABLE_STYLES.th}>
+                  <th className="w-72 px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                     <SortableTableHeader
                       columnKey="device_name"
                       sortConfig={sortConfig}
@@ -423,7 +451,28 @@ export function DeviceTable() {
                       {t('devices.table.device')}
                     </SortableTableHeader>
                   </th>
-                  <th className={TABLE_STYLES.th}>
+                  <th className="w-16 px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                    <SortableTableHeader
+                      columnKey="room_number"
+                      sortConfig={sortConfig}
+                      onSortChange={onSortChange}
+                    >
+                      {t('devices.table.roomNumber', 'Room #')}
+                    </SortableTableHeader>
+                  </th>
+                  <th className="w-24 px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                    <SortableTableHeader
+                      columnKey="location_type"
+                      sortConfig={sortConfig}
+                      onSortChange={onSortChange}
+                    >
+                      {t('devices.table.location', 'Location')}
+                    </SortableTableHeader>
+                  </th>
+                  <th className="w-28 px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                    {t('devices.table.playlist', 'Playlist')}
+                  </th>
+                  <th className="w-20 px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                     <SortableTableHeader
                       columnKey="status"
                       sortConfig={sortConfig}
@@ -432,7 +481,7 @@ export function DeviceTable() {
                       {t('devices.statusLabel')}
                     </SortableTableHeader>
                   </th>
-                  <th className={TABLE_STYLES.th}>
+                  <th className="w-20 px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                     <SortableTableHeader
                       columnKey="device_type"
                       sortConfig={sortConfig}
@@ -441,7 +490,7 @@ export function DeviceTable() {
                       {t('devices.type')}
                     </SortableTableHeader>
                   </th>
-                  <th className={TABLE_STYLES.th}>
+                  <th className="w-28 px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                     <SortableTableHeader
                       columnKey="ip_address"
                       sortConfig={sortConfig}
@@ -450,7 +499,7 @@ export function DeviceTable() {
                       {t('devices.table.ipAddress')}
                     </SortableTableHeader>
                   </th>
-                  <th className={TABLE_STYLES.th}>
+                  <th className="w-24 px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                     <SortableTableHeader
                       columnKey="last_seen_at"
                       sortConfig={sortConfig}
@@ -459,7 +508,7 @@ export function DeviceTable() {
                       {t('devices.lastSeen')}
                     </SortableTableHeader>
                   </th>
-                  <th className={TABLE_STYLES.th}>
+                  <th className="w-36 px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                     {t('devices.table.actions')}
                   </th>
                 </tr>
@@ -470,14 +519,37 @@ export function DeviceTable() {
                     key={device.id}
                     className={TABLE_STYLES.tr}
                   >
-                    <td className={TABLE_STYLES.tdNoWrap}>
-                      <div className="font-medium">
-                        {device.device_name}
-                      </div>
-                      {device.model_name && (
-                        <div className={TABLE_STYLES.muted}>
-                          {device.model_name}
+                    <td className="px-3 py-4 overflow-hidden">
+                      <div className="min-w-0 overflow-hidden">
+                        <div className="font-medium text-gray-900 dark:text-white truncate" title={device.device_name}>
+                          {device.device_name}
                         </div>
+                        {device.model_name && (
+                          <div className="text-xs text-gray-500 dark:text-gray-400 truncate" title={device.model_name}>
+                            {device.model_name}
+                          </div>
+                        )}
+                      </div>
+                    </td>
+                    {/* Room Number */}
+                    <td className={`${TABLE_STYLES.tdNoWrap} font-mono text-sm`}>
+                      {device.room_number || '-'}
+                    </td>
+                    {/* Location Type */}
+                    <td className={TABLE_STYLES.tdNoWrap}>
+                      {getLocationBadge(device.location_type)}
+                    </td>
+                    {/* Playlist Name */}
+                    <td className={TABLE_STYLES.tdNoWrap}>
+                      {device.playlist_name ? (
+                        <div className="flex items-center gap-1.5 text-sm">
+                          <ListMusic className="w-3.5 h-3.5 text-blue-500" />
+                          <span className="text-gray-900 dark:text-white truncate max-w-[120px]" title={device.playlist_name}>
+                            {device.playlist_name}
+                          </span>
+                        </div>
+                      ) : (
+                        <span className="text-gray-400 dark:text-gray-500 text-sm">-</span>
                       )}
                     </td>
                     <td className={TABLE_STYLES.tdNoWrap}>
@@ -492,17 +564,19 @@ export function DeviceTable() {
                     <td className={`${TABLE_STYLES.tdNoWrap} ${TABLE_STYLES.muted}`}>
                       {device.ip_address || '-'}
                     </td>
-                    <td className={`${TABLE_STYLES.tdNoWrap} ${TABLE_STYLES.muted}`}>
-                      {device.last_seen_at
-                        ? new Date(device.last_seen_at).toLocaleString()
-                        : '-'}
+                    {/* Last Seen - Using OnlineStatusCell with relative time */}
+                    <td className={TABLE_STYLES.tdNoWrap}>
+                      <OnlineStatusCell
+                        lastSeen={device.last_seen_at}
+                        isOnline={device.is_online}
+                      />
                     </td>
                     <td className={TABLE_STYLES.td}>
                       <div className="flex items-center gap-2" role="group" aria-label={t('devices.table.actionsFor', { name: device.device_name })}>
                         {/* View Logs - Opens Device Logs Modal */}
                         <button
                           onClick={() => setLogsModal({ isOpen: true, device })}
-                          className={TABLE_STYLES.actionBtnPurple}
+                          className={ACTION_BUTTON.LOGS}
                           title={t('devices.actions.viewLogs')}
                           aria-label={t('devices.actions.viewLogsFor', { name: device.device_name })}
                         >
@@ -512,7 +586,7 @@ export function DeviceTable() {
                         {/* View Device - Opens unified modal (Overview tab) */}
                         <button
                           onClick={() => setDeviceManagementModal({ isOpen: true, device, defaultTab: 'overview' })}
-                          className={TABLE_STYLES.actionBtnGray}
+                          className={ACTION_BUTTON.VIEW}
                           title={t('devices.actions.viewDevice')}
                           aria-label={t('devices.actions.viewDeviceFor', { name: device.device_name })}
                         >
@@ -523,7 +597,7 @@ export function DeviceTable() {
                         {canUpdate && (
                           <button
                             onClick={() => setContentAssignmentModal({ isOpen: true, device, defaultTab: 'direct' })}
-                            className={TABLE_STYLES.actionBtnIndigo}
+                            className={ACTION_BUTTON.ASSIGN}
                             title={t('devices.actions.manageContent')}
                             aria-label={t('devices.actions.manageContentFor', { name: device.device_name })}
                           >
@@ -535,11 +609,11 @@ export function DeviceTable() {
                         {canUpdate && (
                           <button
                             onClick={() => setSettingsModal({ isOpen: true, device })}
-                            className={TABLE_STYLES.actionBtnBlue}
+                            className={ACTION_BUTTON.EDIT}
                             title={t('devices.actions.editSettings')}
                             aria-label={t('devices.actions.editSettingsFor', { name: device.device_name })}
                           >
-                            <Edit className="w-4 h-4" aria-hidden="true" />
+                            <Pencil className="w-4 h-4" aria-hidden="true" />
                           </button>
                         )}
 
@@ -547,7 +621,7 @@ export function DeviceTable() {
                         {canDelete && (
                           <button
                             onClick={() => setDeleteModal({ isOpen: true, device })}
-                            className={TABLE_STYLES.actionBtnRed}
+                            className={ACTION_BUTTON.DELETE}
                             title={t('devices.actions.deleteDevice')}
                             aria-label={t('devices.actions.deleteDeviceFor', { name: device.device_name })}
                           >
@@ -561,6 +635,19 @@ export function DeviceTable() {
               </tbody>
             </table>
           </div>
+
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="px-6 py-4 border-t border-gray-200 dark:border-gray-700">
+              <Pagination
+                currentPage={pagination.currentPage}
+                totalPages={totalPages}
+                onPageChange={pagination.goToPage}
+                totalItems={total}
+                pageSize={pagination.pageSize}
+              />
+            </div>
+          )}
         </div>
       )}
 

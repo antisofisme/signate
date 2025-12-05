@@ -12,7 +12,7 @@ import {
   RotateCcw,
 } from 'lucide-react';
 import { toast } from '@/shared/utils/toast';
-import { usePagination, useTableSort } from '@/shared/hooks';
+import { usePagination, useTableSort, useTableSelection } from '@/shared/hooks';
 import {
   Pagination,
   TableSkeleton,
@@ -21,6 +21,7 @@ import {
   ConfirmDialog,
   Button,
   TABLE_STYLES,
+  ACTION_BUTTON,
   SortableTableHeader,
 } from '@/shared/components';
 import { useCanPerformAction } from '@/features/rbac/hooks/usePermissions';
@@ -72,8 +73,16 @@ export function MenuMediaDeletedTable() {
   const [mediaToRestore, setMediaToRestore] = useState<MenuMedia | null>(null);
   const [mediaToDelete, setMediaToDelete] = useState<MenuMedia | null>(null);
   const [showPreview, setShowPreview] = useState(false);
-  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [showBulkDeleteConfirm, setShowBulkDeleteConfirm] = useState(false);
+
+  // Selection hook (replaces manual selection state)
+  const {
+    selectedIds,
+    isSelected,
+    toggleSelection,
+    toggleSelectAll,
+    clearSelection,
+  } = useTableSelection<number>();
 
   // Queries
   const { data: mediaData, isLoading, error } = useDeletedMenuMediaList({
@@ -106,34 +115,13 @@ export function MenuMediaDeletedTable() {
     setShowPreview(true);
   };
 
-  // Selection handlers
-  const toggleSelection = (id: number) => {
-    setSelectedIds((prev) => {
-      const newSet = new Set(prev);
-      if (newSet.has(id)) {
-        newSet.delete(id);
-      } else {
-        newSet.add(id);
-      }
-      return newSet;
-    });
-  };
-
-  const toggleSelectAll = () => {
-    if (selectedIds.size === mediaData?.items.length) {
-      setSelectedIds(new Set());
-    } else {
-      setSelectedIds(new Set(mediaData?.items.map((m) => m.id) || []));
-    }
-  };
-
   const handleBulkPermanentDelete = async () => {
     if (selectedIds.size === 0) {
       toast.error(t('menus.media.messages.selectAtLeastOne'));
       return;
     }
     await bulkPermanentDeleteMutation.mutateAsync(Array.from(selectedIds));
-    setSelectedIds(new Set());
+    clearSelection();
     setShowBulkDeleteConfirm(false);
   };
 
@@ -190,7 +178,7 @@ export function MenuMediaDeletedTable() {
       {/* Loading State */}
       {isLoading && (
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
-          <TableSkeleton columns={6} rows={10} />
+          <TableSkeleton columns={7} rows={10} />
         </div>
       )}
 
@@ -201,35 +189,35 @@ export function MenuMediaDeletedTable() {
             <table className={`${TABLE_STYLES.table} table-fixed`}>
               <thead className={TABLE_STYLES.thead}>
                 <tr>
-                  <th className={`${TABLE_STYLES.th} text-center w-12`}>
+                  <th className="w-10 px-2 py-3 text-center whitespace-nowrap">
                     <input
                       type="checkbox"
                       checked={selectedIds.size > 0 && selectedIds.size === mediaData.items.length}
-                      onChange={toggleSelectAll}
+                      onChange={() => toggleSelectAll(mediaData?.items || [])}
                       className="w-4 h-4 text-red-600 bg-gray-100 border-gray-300 rounded focus:ring-red-500"
                     />
                   </th>
-                  <th className={`${TABLE_STYLES.th} w-[35%]`}>
+                  <th className="w-72 px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                     <SortableTableHeader columnKey="original_filename" sortConfig={sortConfig} onSortChange={onSortChange}>
                       {t('menus.media.table.image')}
                     </SortableTableHeader>
                   </th>
-                  <th className={`${TABLE_STYLES.th} w-24`}>
+                  <th className="w-20 px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider whitespace-nowrap">
                     <SortableTableHeader columnKey="file_size" sortConfig={sortConfig} onSortChange={onSortChange}>
                       {t('menus.media.table.size')}
                     </SortableTableHeader>
                   </th>
-                  <th className={`${TABLE_STYLES.th} w-28`}>
+                  <th className="w-24 px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider whitespace-nowrap">
                     <SortableTableHeader columnKey="width" sortConfig={sortConfig} onSortChange={onSortChange}>
                       {t('menus.media.table.dimensions')}
                     </SortableTableHeader>
                   </th>
-                  <th className={`${TABLE_STYLES.th} w-36`}>
+                  <th className="w-28 px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider whitespace-nowrap">
                     <SortableTableHeader columnKey="deleted_at" sortConfig={sortConfig} onSortChange={onSortChange}>
                       {t('menus.media.table.deletedAt')}
                     </SortableTableHeader>
                   </th>
-                  <th className={`${TABLE_STYLES.th} w-28`}>
+                  <th className="w-24 px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider whitespace-nowrap">
                     {t('menus.media.table.actions')}
                   </th>
                 </tr>
@@ -237,27 +225,27 @@ export function MenuMediaDeletedTable() {
               <tbody className={TABLE_STYLES.tbody}>
                 {mediaData.items.map((media) => (
                   <tr key={media.id} className={`${TABLE_STYLES.tr} hover:!bg-red-50 dark:hover:!bg-red-900/10`}>
-                    <td className={`${TABLE_STYLES.td} text-center`}>
+                    <td className="px-2 py-3 text-center whitespace-nowrap">
                       <input
                         type="checkbox"
-                        checked={selectedIds.has(media.id)}
+                        checked={isSelected(media.id)}
                         onChange={() => toggleSelection(media.id)}
                         className="w-4 h-4 text-red-600 bg-gray-100 border-gray-300 rounded focus:ring-red-500"
                       />
                     </td>
-                    <td className={TABLE_STYLES.td}>
+                    <td className="px-3 py-4 overflow-hidden">
                       <div className="flex items-center min-w-0">
-                        <div className="relative">
+                        <div className="relative mr-2 flex-shrink-0">
                           <img
                             src={media.url}
                             alt={media.alt_text || media.original_filename}
-                            className="w-10 h-10 rounded object-cover mr-3 flex-shrink-0 opacity-60"
+                            className="w-10 h-10 rounded object-cover opacity-60"
                           />
                           <div className="absolute inset-0 flex items-center justify-center">
                             <Trash2 className="w-4 h-4 text-red-500" />
                           </div>
                         </div>
-                        <div className="min-w-0 flex-1">
+                        <div className="min-w-0 flex-1 overflow-hidden">
                           <p className="text-sm font-medium text-gray-500 dark:text-gray-400 truncate line-through" title={media.title || media.original_filename}>
                             {media.title || media.original_filename}
                           </p>
@@ -267,27 +255,36 @@ export function MenuMediaDeletedTable() {
                         </div>
                       </div>
                     </td>
-                    <td className={`${TABLE_STYLES.td} text-gray-500 dark:text-gray-400`}>
+                    <td className="px-4 py-3 whitespace-nowrap text-gray-500 dark:text-gray-400">
                       {formatFileSize(media.file_size)}
                     </td>
-                    <td className={`${TABLE_STYLES.td} text-gray-500 dark:text-gray-400`}>
+                    <td className="px-4 py-3 whitespace-nowrap text-gray-500 dark:text-gray-400">
                       {media.width}x{media.height}
                     </td>
-                    <td className={`${TABLE_STYLES.td} text-red-600 dark:text-red-400`}>
-                      {formatDate(media.deleted_at)}
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      <div className="flex flex-col">
+                        <span className="text-sm text-red-600 dark:text-red-400">
+                          {formatDate(media.deleted_at)}
+                        </span>
+                        {media.deleted_by_name && (
+                          <span className="text-xs text-gray-400 dark:text-gray-500 truncate" title={media.deleted_by_name}>
+                            {media.deleted_by_name}
+                          </span>
+                        )}
+                      </div>
                     </td>
-                    <td className={TABLE_STYLES.td}>
+                    <td className="px-4 py-3 whitespace-nowrap">
                       <div className="flex items-center gap-1">
                         <button
                           onClick={() => handlePreview(media)}
-                          className={TABLE_STYLES.actionBtnBlue}
+                          className={ACTION_BUTTON.VIEW}
                           title={t('menus.media.actions.preview')}
                         >
                           <Eye className="w-4 h-4" />
                         </button>
                         <button
                           onClick={() => setMediaToRestore(media)}
-                          className={TABLE_STYLES.actionBtnGreen}
+                          className={ACTION_BUTTON.RESTORE}
                           title={t('menus.media.actions.restore')}
                         >
                           <RotateCcw className="w-4 h-4" />
@@ -295,7 +292,7 @@ export function MenuMediaDeletedTable() {
                         {canDelete && (
                           <button
                             onClick={() => setMediaToDelete(media)}
-                            className={TABLE_STYLES.actionBtnRed}
+                            className={ACTION_BUTTON.DELETE}
                             title={t('menus.media.actions.permanentlyDelete')}
                           >
                             <Trash2 className="w-4 h-4" />

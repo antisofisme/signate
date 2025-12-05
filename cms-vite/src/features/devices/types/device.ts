@@ -24,6 +24,17 @@ export interface Device {
   user_agent?: string;
   connection_type?: string;
   connection_speed?: number;
+  connection_drops_count?: number;
+
+  // GeoIP data (Phase 6)
+  geo_city?: string;
+  geo_country?: string;
+  geo_country_code?: string;
+  geo_region?: string;
+  geo_isp?: string;
+  geo_timezone?: string;
+  geo_latitude?: number;
+  geo_longitude?: number;
 
   // Device metadata
   screen_width?: number;
@@ -50,6 +61,9 @@ export interface Device {
   location_type: LocationType;
   is_personalization_supported: boolean;
   privacy_mode: PrivacyMode;
+
+  // Assigned playlist info
+  playlist_name?: string;  // Name of assigned playlist (from backend JOIN)
 
   // Metadata
   created_at: string;
@@ -82,6 +96,50 @@ export interface DeviceLog {
   message: string;
   metadata?: Record<string, any>;
   created_at: string;
+}
+
+/**
+ * Device Capabilities (static data sent once on startup)
+ * Corresponds to device_capabilities table
+ */
+export interface DeviceCapabilities {
+  id: number;
+  device_id: number;
+  organization_id: number;
+
+  // Screen & Display
+  screen_width: number;
+  screen_height: number;
+  device_pixel_ratio: number;
+  display_refresh_rate: number;
+
+  // Hardware
+  hardware_concurrency: number;
+  device_memory_gb?: number;
+
+  // Video Codec Support
+  codec_h264: boolean;
+  codec_h265: boolean;
+  codec_vp9: boolean;
+  codec_av1: boolean;
+
+  // Audio Codec Support
+  codec_aac: boolean;
+  codec_opus: boolean;
+
+  // Graphics
+  webgl_version: string;
+  webgl_renderer?: string;
+  webgl_vendor?: string;
+
+  // Software
+  user_agent: string;
+  platform: string;
+  player_version: string;
+
+  // Timestamps
+  recorded_at: string;
+  updated_at?: string;
 }
 
 export interface DeviceCommand {

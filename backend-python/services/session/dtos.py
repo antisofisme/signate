@@ -49,6 +49,7 @@ class SessionResponse(BaseModel):
     expires_at: datetime
     revoked_at: Optional[datetime]
     is_active: bool
+    is_current: bool = False  # Mark if this is the session making the request
 
     class Config:
         from_attributes = True
@@ -75,6 +76,9 @@ class AllSessionResponse(BaseModel):
     created_at: datetime
     last_activity_at: datetime
     expires_at: datetime
+    revoked_at: Optional[datetime] = None  # When session was revoked
+    status: str = "active"  # active, revoked, or expired
+    is_current: bool = False  # Mark if this is the session making the request
     # User info
     username: str
     email: str
