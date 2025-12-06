@@ -140,7 +140,21 @@ class RequestActivationCodeUseCase:
                     is_volume_enabled=True,
                     location_type='guest_room',
                     is_personalization_supported=True,
-                    privacy_mode='limited'
+                    privacy_mode='limited',
+                    # Geo fields
+                    geo_city=None,
+                    geo_country=None,
+                    geo_country_code=None,
+                    geo_region=None,
+                    geo_isp=None,
+                    geo_timezone=None,
+                    geo_latitude=None,
+                    geo_longitude=None,
+                    geo_updated_at=None,
+                    # Connection tracking
+                    connection_drops_count=0,
+                    # Playlist name (denormalized)
+                    playlist_name=None
                 )
 
                 # Save to database

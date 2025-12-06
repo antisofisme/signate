@@ -219,8 +219,18 @@ class PlayerHeartbeatClass implements IHeartbeat {
 
       SharedLogger.log('[PlayerHeartbeat] ✅ Heartbeat sent successfully');
     } catch (error: any) {
+      const status = error?.response?.status || error?.status;
+
+      // Check if device has been hard-deleted (404 error)
+      if (status === 404) {
+        SharedLogger.warn('[PlayerHeartbeat] 🔴 Device hard-deleted (404) - Full reset and re-register');
+        this.stop();
+        await this.handleDeviceHardDeleted();
+        return;
+      }
+
       // Check if device has been released (403 error)
-      if (error?.response?.status === 403) {
+      if (status === 403) {
         SharedLogger.warn('[PlayerHeartbeat] ⚠️ Device has been released (403) - Triggering re-registration');
         this.stop();
         await this.handleDeviceReleased();
@@ -288,6 +298,46 @@ class PlayerHeartbeatClass implements IHeartbeat {
       }, 1000);
     } catch (error) {
       SharedLogger.error('[PlayerHeartbeat] ❌ Failed to handle device released:', error);
+    }
+  }
+
+  /**
+   * Handle device hard-deleted by CMS admin (from Unsigned Pool)
+   * Triggered when heartbeat returns 404
+   *
+   * Flow:
+   * 1. Clear ALL data including org_id
+   * 2. Clear media cache
+   * 3. Reload to trigger re-registration
+   * 4. Device will request code WITHOUT org_id
+   * 5. Device appears in GLOBAL pending list
+   */
+  private async handleDeviceHardDeleted(): Promise<void> {
+    try {
+      SharedLogger.log('[PlayerHeartbeat] 🔴 Handling device hard delete...');
+
+      // Clear ALL data including org_id (hard reset)
+      await deviceConfigStorage.hardReset();
+
+      SharedLogger.log('[PlayerHeartbeat] ✅ All data cleared (hard reset)');
+
+      // Also clear localStorage
+      localStorage.clear();
+
+      // Emit event via SharedEventBus
+      SharedEventBus.emit('device:hardDeleted', {
+        timestamp: new Date().toISOString(),
+        releaseType: 'hard_delete',
+      });
+
+      // Reload to show activation screen
+      // Device will request new code WITHOUT org_id parameter (global pending)
+      SharedLogger.log('[PlayerHeartbeat] 🔄 Reloading for global re-registration...');
+      setTimeout(() => {
+        window.location.reload();
+      }, 1000);
+    } catch (error) {
+      SharedLogger.error('[PlayerHeartbeat] ❌ Failed to handle device hard delete:', error);
     }
   }
 

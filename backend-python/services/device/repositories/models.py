@@ -199,7 +199,6 @@ class DeviceHealthMetricModel(Base):
     # Display metrics
     display_resolution = Column(String(20), nullable=True)
     display_refresh_rate = Column(Integer, nullable=True)
-    gpu_usage = Column(__import__('sqlalchemy').Numeric(5, 2), nullable=True)
 
     # Player metrics
     player_version = Column(String(50), nullable=True)

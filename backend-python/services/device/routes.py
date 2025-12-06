@@ -389,7 +389,6 @@ def record_device_health(
             # Display metrics
             display_resolution=request_body.display_resolution,
             display_refresh_rate=request_body.display_refresh_rate,
-            gpu_usage=request_body.gpu_usage,
             # Player metrics
             player_version=request_body.player_version,
             player_uptime_hours=request_body.player_uptime_hours,
@@ -428,7 +427,6 @@ def record_device_health(
             connection_quality=health_metric.connection_quality,
             display_resolution=health_metric.display_resolution,
             display_refresh_rate=health_metric.display_refresh_rate,
-            gpu_usage=float(health_metric.gpu_usage) if health_metric.gpu_usage else None,
             player_version=health_metric.player_version,
             player_uptime_hours=health_metric.player_uptime_hours,
             content_errors_count=health_metric.content_errors_count,

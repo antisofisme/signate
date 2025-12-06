@@ -10,6 +10,9 @@ import type { CachedMediaEntry, ContentCacheInfo, CacheSyncResult } from './medi
 class MediaCache {
   private readonly STORE_NAME = 'media_files';
 
+  // Track active blob URLs for proper cleanup (prevent memory leak)
+  private activeBlobUrls: Set<string> = new Set();
+
   /**
    * Initialize media cache database
    */
@@ -190,6 +193,7 @@ class MediaCache {
 
   /**
    * Get cached blob URL for playback
+   * NOTE: All blob URLs are tracked and MUST be revoked via revokeAllBlobUrls()
    */
   async getCachedBlobUrl(contentId: number): Promise<string | null> {
     try {
@@ -203,6 +207,10 @@ class MediaCache {
       // This is critical for video playback - browser needs to know the video format
       const typedBlob = new Blob([cached.blob], { type: cached.mime_type });
       const blobUrl = URL.createObjectURL(typedBlob);
+
+      // Track blob URL for cleanup
+      this.activeBlobUrls.add(blobUrl);
+
       return blobUrl;
     } catch (error) {
       SharedLogger.error(`[MediaCache] Failed to get cached blob URL for ${contentId}:`, error);
@@ -211,14 +219,41 @@ class MediaCache {
   }
 
   /**
-   * Revoke blob URL to free memory
+   * Revoke a single blob URL to free memory
    */
   revokeBlobUrl(blobUrl: string): void {
     try {
       URL.revokeObjectURL(blobUrl);
+      this.activeBlobUrls.delete(blobUrl);
     } catch (error) {
       SharedLogger.error('[MediaCache] Failed to revoke blob URL:', error);
     }
+  }
+
+  /**
+   * Revoke all tracked blob URLs
+   * IMPORTANT: Call this on content transition to prevent memory leaks
+   */
+  revokeAllBlobUrls(): void {
+    const count = this.activeBlobUrls.size;
+    if (count === 0) return;
+
+    this.activeBlobUrls.forEach(url => {
+      try {
+        URL.revokeObjectURL(url);
+      } catch (e) {
+        // Ignore - URL might already be revoked
+      }
+    });
+    this.activeBlobUrls.clear();
+    SharedLogger.log(`[MediaCache] 🧹 Revoked ${count} blob URLs`);
+  }
+
+  /**
+   * Get count of active blob URLs (for debugging)
+   */
+  getActiveBlobUrlCount(): number {
+    return this.activeBlobUrls.size;
   }
 
   /**

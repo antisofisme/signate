@@ -17,7 +17,7 @@ import { SharedModal } from '@shared/ui';
 import { DeviceInfoCollector } from '@shared/services/device-info';
 import { formatUptime } from '@shared/utils/performance-info';
 import { SharedEventBus, EventNames } from '@shared/events/shared-event-bus';
-import { getSharedWebSocket, getPlayerCapabilitiesReporter } from '@shared/services/service-registry';
+import { getSharedWebSocket, getPlayerCapabilitiesReporter, getPlayerMediaCache, getPlayerVideoJS } from '@shared/services/service-registry';
 import { detectVideoCodecs, detectAudioCodecs } from '@shared/utils/device-capabilities';
 import type { CompleteDeviceInfo } from '@shared/services/device-info';
 
@@ -435,6 +435,14 @@ class DeviceInfoPopupClass {
                     <span class="debug-info-label">Uptime</span>
                     <span class="debug-info-value" id="debug-uptime">...</span>
                   </div>
+                  <div class="debug-info-row">
+                    <span class="debug-info-label">Blob URLs</span>
+                    <span class="debug-info-value" id="debug-blob-urls">...</span>
+                  </div>
+                  <div class="debug-info-row">
+                    <span class="debug-info-label">Items Played</span>
+                    <span class="debug-info-value" id="debug-items-cleanup">...</span>
+                  </div>
                 </div>
               </div>
             </div>
@@ -600,9 +608,16 @@ class DeviceInfoPopupClass {
           display: flex;
           flex-direction: column;
         }
-        /* Status tab - no scroll, fixed height */
+        /* Status tab - normal on desktop, horizontal scroll on mobile */
         .status-tab-fixed {
           overflow: hidden;
+        }
+        @media (max-width: 768px) {
+          .status-tab-fixed {
+            overflow-x: auto;
+            overflow-y: hidden;
+            -webkit-overflow-scrolling: touch;
+          }
         }
         .status-tab-fixed .status-combined-layout {
           flex: 1;
@@ -809,7 +824,6 @@ class DeviceInfoPopupClass {
           grid-template-columns: 1fr 1fr 1fr;
           gap: 0.75rem;
           width: 100%;
-          min-width: 0;
         }
         .status-column-left,
         .status-column-middle,
@@ -819,6 +833,21 @@ class DeviceInfoPopupClass {
           gap: 0.4rem;
           min-width: 0;
           overflow: hidden;
+        }
+        /* Mobile: full width scroll - same as modal full width */
+        @media (max-width: 768px) {
+          .status-combined-layout {
+            /* Use same width as desktop modal (800px) for consistent scroll experience */
+            grid-template-columns: 1fr 1fr 1fr;
+            width: 800px;
+            min-width: 800px;
+          }
+          .status-column-left,
+          .status-column-middle,
+          .status-column-right {
+            min-width: 0;
+            overflow: hidden;
+          }
         }
         .status-column-left .collapsible-section,
         .status-column-middle .collapsible-section,
@@ -1391,6 +1420,20 @@ class DeviceInfoPopupClass {
       this.setHtml('debug-cpu-pressure', this.formatCpuPressure(performance.cpuPressure));
       this.setHtml('debug-long-tasks', this.formatLongTasks(performance.longTasksCount));
       this.setText('debug-ttfb', performance.ttfbMs !== null ? `${performance.ttfbMs}ms` : 'N/A');
+
+      // Update Blob URL tracking (memory leak prevention)
+      const PlayerMediaCache = getPlayerMediaCache();
+      const PlayerVideoJS = getPlayerVideoJS();
+      const mediaCacheBlobCount = PlayerMediaCache?.getActiveBlobUrlCount?.() ?? 0;
+      const playerBlobCount = PlayerVideoJS?.getActiveBlobUrlCount?.() ?? 0;
+      const totalBlobs = mediaCacheBlobCount + playerBlobCount;
+      const blobColor = totalBlobs > 10 ? 'status-offline' : totalBlobs > 5 ? 'status-pending' : 'status-online';
+      this.setHtml('debug-blob-urls', `<span class="${blobColor}">${totalBlobs}</span> (MC:${mediaCacheBlobCount} P:${playerBlobCount})`);
+
+      // Items since cleanup
+      const itemsSinceCleanup = PlayerVideoJS?.getItemsSinceCleanup?.() ?? 0;
+      const cleanupThreshold = PlayerVideoJS?.getCleanupThreshold?.() ?? 20;
+      this.setText('debug-items-cleanup', `${itemsSinceCleanup} / ${cleanupThreshold}`);
 
       // Update Playback Stats section (Phase 3: Behavioral Metrics)
       this.setText('debug-ttfp', playbackStats.timeToFirstPlaybackMs !== null

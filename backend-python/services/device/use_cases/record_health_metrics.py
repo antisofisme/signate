@@ -41,7 +41,6 @@ class RecordHealthMetricsUseCase:
         network_upload_mbps: Optional[float] = None,
         display_resolution: Optional[str] = None,
         display_refresh_rate: Optional[int] = None,
-        gpu_usage: Optional[float] = None,
         player_version: Optional[str] = None,
         player_uptime_hours: Optional[int] = None,
         content_errors_count: int = 0,
@@ -92,12 +91,6 @@ class RecordHealthMetricsUseCase:
                 details={"disk_usage": disk_usage}
             )
 
-        if gpu_usage is not None and not (0 <= gpu_usage <= 100):
-            raise ValidationError(
-                message="GPU usage must be between 0 and 100",
-                details={"gpu_usage": gpu_usage}
-            )
-
         # Create health metric
         health_metric = DeviceHealthMetric.create_new(
             device_id=device_id,
@@ -114,7 +107,6 @@ class RecordHealthMetricsUseCase:
             network_upload_mbps=network_upload_mbps,
             display_resolution=display_resolution,
             display_refresh_rate=display_refresh_rate,
-            gpu_usage=gpu_usage,
             player_version=player_version,
             player_uptime_hours=player_uptime_hours,
             content_errors_count=content_errors_count,

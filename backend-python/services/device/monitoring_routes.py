@@ -766,7 +766,6 @@ def record_device_health(
             network_upload_mbps=request.network_upload_mbps,
             display_resolution=request.display_resolution,
             display_refresh_rate=request.display_refresh_rate,
-            gpu_usage=request.gpu_usage,
             player_version=request.player_version,
             player_uptime_hours=request.player_uptime_hours,
             content_errors_count=request.content_errors_count,

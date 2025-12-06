@@ -74,64 +74,107 @@ class HardResetHandlerManager {
   }
 
   /**
-   * Validate password via backend API and execute reset if valid
+   * Check if error indicates orphaned device (device deleted from backend)
+   * Orphaned devices should be allowed to reset locally
+   */
+  private isOrphanedDeviceError(error: any): boolean {
+    const status = error?.response?.status;
+    // 401 = Unauthorized (invalid/expired token)
+    // 403 = Forbidden (device doesn't exist or no permission)
+    // 404 = Not found (device deleted)
+    return status === 401 || status === 403 || status === 404;
+  }
+
+  /**
+   * Validate Organization PIN and execute reset if valid
    *
    * Flow:
-   * 1. Send password to backend for validation
-   * 2. If valid, backend sets status='released'
-   * 3. Backend returns success
-   * 4. Clear ALL device config (including org_id)
-   * 5. Reload → device requests code WITHOUT org_id
-   * 6. Device appears in GLOBAL pending list
+   * 1. Get organization_id from device config
+   * 2. Validate PIN via /api/v1/organizations/{org_id}/validate-reset-pin
+   * 3. If valid, clear ALL device config (including org_id)
+   * 4. Reload → device requests code WITHOUT org_id
+   * 5. Device appears in GLOBAL pending list
+   *
+   * IMPORTANT: If device has no org_id (orphaned), skip PIN validation
+   * and just clear local data. This allows recovery of completely orphaned devices.
    */
-  private async validatePasswordAndReset(password: string): Promise<void> {
+  private async validatePasswordAndReset(pin: string): Promise<void> {
     try {
-      // Get device ID
+      // Get device config
       const deviceConfig = await deviceConfigStorage.getDeviceConfig();
       const deviceId = deviceConfig.device_id;
+      const orgId = deviceConfig.organization_id;
 
-      if (!deviceId) {
-        SharedToast.error('Device not configured. Cannot perform hard reset.');
-        SharedLogger.error('[HardReset] No device_id found');
-        this.isResetting = false;
-        return;
-      }
+      SharedLogger.log('[HardReset] Starting reset validation...', { deviceId, orgId });
 
-      SharedLogger.log('[HardReset] Validating password with backend...', { deviceId });
+      // Scenario 1: Device with org_id → validate with organization PIN
+      if (orgId) {
+        SharedLogger.log('[HardReset] Validating with organization PIN...', { orgId });
 
-      // Step 1: Validate password via backend
-      const validation = await SharedAPIClient.post<{ valid: boolean; message: string }>(
-        '/api/v1/devices/validate-reset-password',
-        {
-          password,
-          device_id: deviceId,
+        try {
+          const validation = await SharedAPIClient.post<{ valid: boolean; message?: string }>(
+            `/api/v1/organizations/${orgId}/validate-reset-pin`,
+            { pin }
+          );
+
+          if (!validation.valid) {
+            SharedToast.error('Invalid organization PIN. Hard reset cancelled.');
+            SharedLogger.error('[HardReset] ❌ Organization PIN validation failed');
+            this.isResetting = false;
+            return;
+          }
+
+          SharedLogger.log('[HardReset] ✅ Organization PIN validated');
+        } catch (valError: any) {
+          // If org not found or network error → proceed with reset anyway
+          // This handles edge case where org was deleted but device still has org_id cached
+          SharedLogger.warn('[HardReset] Org validation failed (proceeding with reset):', valError?.response?.status);
         }
-      );
+      } else {
+        // Scenario 2: No org_id (orphaned device) → skip PIN validation
+        SharedLogger.warn('[HardReset] No org_id - skipping PIN validation (orphaned device recovery)');
 
-      if (!validation.valid) {
-        SharedToast.error('Incorrect password. Hard reset cancelled.');
-        SharedLogger.error('[HardReset] ❌ Password validation failed');
-        this.isResetting = false;
-        return;
+        // Still require non-empty PIN to prevent accidental resets
+        if (!pin || pin.length === 0) {
+          SharedToast.error('PIN required for reset. Hard reset cancelled.');
+          this.isResetting = false;
+          return;
+        }
       }
 
-      SharedLogger.log('[HardReset] ✅ Password validated by backend');
-
-      // Step 2: Call backend hard reset endpoint
-      await SharedAPIClient.post(`/api/v1/devices/${deviceId}/hard-reset`);
-      SharedLogger.log('[HardReset] ✅ Backend hard reset endpoint called');
+      // Step 2: Try to call backend hard reset endpoint (optional - may fail for orphaned devices)
+      if (deviceId) {
+        try {
+          await SharedAPIClient.post(`/api/v1/devices/${deviceId}/hard-reset`);
+          SharedLogger.log('[HardReset] ✅ Backend hard reset endpoint called');
+        } catch (resetError: any) {
+          // If device is orphaned (401/403/404), proceed anyway
+          if (this.isOrphanedDeviceError(resetError)) {
+            SharedLogger.warn('[HardReset] Device orphaned - skipping backend call');
+          } else {
+            // Log but don't fail - local reset is the important part
+            SharedLogger.warn('[HardReset] Backend reset failed (proceeding with local reset):', resetError?.message);
+          }
+        }
+      } else {
+        SharedLogger.log('[HardReset] No device_id - skipping backend call');
+      }
 
       // Step 3: Clear ALL local data and reload
+      SharedToast.success('Resetting device...');
       await this.executeReset();
     } catch (error: any) {
       SharedLogger.error('[HardReset] Error during hard reset:', error);
 
-      if (error?.response?.status === 404) {
-        SharedToast.error('Device not found. Please contact administrator.');
-      } else {
-        SharedToast.error('Hard reset failed. Please try again.');
+      // Check if device is orphaned - if so, still allow local reset
+      if (this.isOrphanedDeviceError(error)) {
+        SharedLogger.warn('[HardReset] Device orphaned - proceeding with local data clear');
+        SharedToast.warning('Device not found in server. Clearing local data...');
+        await this.executeReset();
+        return;
       }
 
+      SharedToast.error('Hard reset failed. Please try again.');
       this.isResetting = false;
     }
   }
@@ -153,20 +196,20 @@ class HardResetHandlerManager {
 
         SharedLogger.log('[HardReset] Hard reset button clicked');
 
-        // Prompt for password using modal
-        let password: string;
+        // Prompt for organization PIN using modal
+        let pin: string;
         try {
-          password = await SharedModal.prompt(
+          pin = await SharedModal.prompt(
             'Factory Reset Device',
-            'This will ERASE ALL DATA and require re-activation. Enter admin password to confirm:'
+            'This will ERASE ALL DATA and require re-activation. Enter organization PIN to confirm:'
           );
         } catch (err: any) {
-          // User cancelled or didn't enter password
+          // User cancelled or didn't enter PIN
           const errorMsg = err?.message || 'Unknown error';
 
           if (errorMsg === 'No input provided') {
-            SharedToast.warning('Password required for factory reset.');
-            SharedLogger.log('[HardReset] Hard reset cancelled - no password provided');
+            SharedToast.warning('Organization PIN required for factory reset.');
+            SharedLogger.log('[HardReset] Hard reset cancelled - no PIN provided');
           } else {
             SharedLogger.log('[HardReset] Hard reset cancelled (modal closed)');
           }
@@ -174,8 +217,8 @@ class HardResetHandlerManager {
           return;
         }
 
-        // Validate password via backend API
-        await this.validatePasswordAndReset(password);
+        // Validate PIN via organization API
+        await this.validatePasswordAndReset(pin);
       });
 
       SharedLogger.log('[HardReset] Hard reset button listener attached');

@@ -651,21 +651,33 @@ export function DeviceTable() {
         </div>
       )}
 
-      {/* Delete Confirmation Dialog */}
+      {/* Delete Confirmation Dialog - Different messaging for Release vs Permanent Delete */}
       <ConfirmDialog
         open={deleteModal.isOpen}
         onOpenChange={(open) => !open && setDeleteModal({ isOpen: false, device: null })}
-        title={t('devices.modals.deleteDevice', 'Delete Device')}
+        title={
+          // Unsigned Pool (released devices) = Permanent Delete
+          // Device List (my_org) = Release to Unsigned Pool
+          scope === 'released'
+            ? t('devices.modals.permanentlyDelete', 'Permanently Delete Device')
+            : t('devices.modals.releaseDevice', 'Release Device')
+        }
         description={
           deleteModal.device
-            ? t('devices.confirmDelete') + ` "${deleteModal.device.device_name}"?`
+            ? scope === 'released'
+              ? t('devices.confirmPermanentDelete', 'This will PERMANENTLY delete "{{name}}". The device record will be removed, all assignments will be deleted, and the device must re-register from scratch.', { name: deleteModal.device.device_name })
+              : t('devices.confirmRelease', 'This will move "{{name}}" to Unsigned Pool. The device will stop displaying content but can be re-activated later. Assigned playlists will be preserved.', { name: deleteModal.device.device_name })
             : ''
         }
-        confirmLabel={t('devices.buttons.delete')}
+        confirmLabel={
+          scope === 'released'
+            ? t('devices.buttons.permanentlyDelete', 'Permanently Delete')
+            : t('devices.buttons.release', 'Release Device')
+        }
         cancelLabel={t('devices.buttons.cancel')}
         onConfirm={handleDelete}
         isLoading={deleteMutation.isPending}
-        variant="danger"
+        variant={scope === 'released' ? 'danger' : 'warning'}
       />
 
       {/* Lazy loaded modals - Only loaded when needed */}

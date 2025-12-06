@@ -208,6 +208,7 @@ class CacheService:
         self.delete(f"device:{device_id}")
         self.clear_pattern(f"device:{device_id}:*")
         self.clear_pattern("devices:list:*")
+        self.clear_pattern("org:global:devices:*")  # Clear global device list cache
         if org_id:
             self.clear_pattern(f"org:{org_id}:devices:*")
     

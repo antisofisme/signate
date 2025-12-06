@@ -321,7 +321,8 @@ class DeviceRepository(IDeviceRepository):
             selectinload(DeviceModel.health_metrics)
         ).filter(
             DeviceModel.organization_id == organization_id,
-            DeviceModel.status == 'released'
+            DeviceModel.status == 'released',
+            DeviceModel.deleted_at.is_(None)  # Exclude soft-deleted devices
         ).order_by(DeviceModel.released_at.desc()).all()
 
         return [self._to_entity(model) for model in device_models]
@@ -350,7 +351,8 @@ class DeviceRepository(IDeviceRepository):
             selectinload(DeviceModel.health_metrics)
         ).filter(
             DeviceModel.organization_id == organization_id,
-            DeviceModel.status.in_(['active', 'inactive'])
+            DeviceModel.status.in_(['active', 'inactive']),
+            DeviceModel.deleted_at.is_(None)  # Exclude soft-deleted devices
         )
 
         # Apply sorting

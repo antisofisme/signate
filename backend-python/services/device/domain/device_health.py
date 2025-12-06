@@ -36,7 +36,6 @@ class DeviceHealthMetric:
     # Display metrics
     display_resolution: Optional[str] = None
     display_refresh_rate: Optional[int] = None
-    gpu_usage: Optional[Decimal] = None
 
     # Player metrics
     player_version: Optional[str] = None
@@ -163,7 +162,6 @@ class DeviceHealthMetric:
         network_upload_mbps: Optional[float] = None,
         display_resolution: Optional[str] = None,
         display_refresh_rate: Optional[int] = None,
-        gpu_usage: Optional[float] = None,
         player_version: Optional[str] = None,
         player_uptime_hours: Optional[int] = None,
         content_errors_count: int = 0,
@@ -201,7 +199,6 @@ class DeviceHealthMetric:
             network_upload_mbps=Decimal(str(network_upload_mbps)) if network_upload_mbps is not None else None,
             display_resolution=display_resolution,
             display_refresh_rate=display_refresh_rate,
-            gpu_usage=Decimal(str(gpu_usage)) if gpu_usage is not None else None,
             player_version=player_version,
             player_uptime_hours=player_uptime_hours,
             content_errors_count=content_errors_count,

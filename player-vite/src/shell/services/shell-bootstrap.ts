@@ -179,6 +179,10 @@ class ShellBootstrapClass implements IShellBootstrap {
    * Refresh device token from server
    * Used when device is active but missing token (activated before token feature)
    * Uses device fingerprint UUID to get token (always available, unlike device_code)
+   *
+   * Handles device lifecycle:
+   * - 404: Device hard-deleted from backend → full reset and re-register
+   * - 403: Device soft-released from backend → keep org_id, re-register to same org
    */
   private async refreshDeviceToken(): Promise<void> {
     try {
@@ -210,11 +214,82 @@ class ShellBootstrapClass implements IShellBootstrap {
         }
       } else {
         SharedLogger.warn('[ShellBootstrap] ⚠️ Token refresh failed - no device or token in response');
+        // Device not found in backend - likely deleted
+        await this.handleDeviceNotFoundOnRefresh();
       }
-    } catch (error) {
+    } catch (error: any) {
+      const status = error?.response?.status || error?.status;
       SharedLogger.error('[ShellBootstrap] ❌ Failed to refresh device token:', error);
-      // Don't block player startup - WebSocket just won't connect
+
+      if (status === 404) {
+        // Device hard-deleted from backend → full reset and re-register
+        SharedLogger.warn('[ShellBootstrap] 🔴 Device 404 - hard deleted from backend');
+        await this.handleDeviceHardDeleted();
+        return;
+      }
+
+      if (status === 403) {
+        // Device soft-released from backend → keep org_id, re-register to same org
+        SharedLogger.warn('[ShellBootstrap] 🟡 Device 403 - soft released from backend');
+        await this.handleDeviceSoftReleased();
+        return;
+      }
+
+      // Other errors - don't block player startup, WebSocket just won't connect
     }
+  }
+
+  /**
+   * Handle device not found during token refresh (device likely deleted)
+   */
+  private async handleDeviceNotFoundOnRefresh(): Promise<void> {
+    SharedLogger.warn('[ShellBootstrap] Device not found during token refresh, triggering re-registration');
+    await this.handleDeviceHardDeleted();
+  }
+
+  /**
+   * Handle device hard deleted (404)
+   * Clear ALL data including org_id, re-register to global pending
+   */
+  private async handleDeviceHardDeleted(): Promise<void> {
+    const { deviceConfigStorage } = await import('@shared/storage/device-config-storage');
+
+    SharedLogger.warn('[ShellBootstrap] 🔴 Handling hard delete - clearing ALL data');
+
+    // Clear ALL data including organization_id
+    await deviceConfigStorage.hardReset();
+
+    // Also clear localStorage device state
+    SharedDeviceState.clearDeviceData();
+
+    // Clear any remaining localStorage items
+    localStorage.clear();
+
+    SharedLogger.log('[ShellBootstrap] ✅ All data cleared, reloading for re-registration...');
+
+    // Reload to trigger fresh registration (to global pending)
+    location.reload();
+  }
+
+  /**
+   * Handle device soft released (403)
+   * Clear tokens but KEEP org_id, re-register to same organization
+   */
+  private async handleDeviceSoftReleased(): Promise<void> {
+    const { deviceConfigStorage } = await import('@shared/storage/device-config-storage');
+
+    SharedLogger.warn('[ShellBootstrap] 🟡 Handling soft release - keeping org_id');
+
+    // Clear tokens but keep organization_id
+    await deviceConfigStorage.clearTokens();
+
+    // Clear localStorage device state (but org_id is in IndexedDB, preserved)
+    SharedDeviceState.clearDeviceData();
+
+    SharedLogger.log('[ShellBootstrap] ✅ Tokens cleared, org_id preserved, reloading for re-registration...');
+
+    // Reload to trigger fresh registration (to same organization)
+    location.reload();
   }
 
   /**

@@ -167,12 +167,22 @@ class UpdateDeviceUseCase:
                 f"user belongs to organization {current_user_org_id}"
             )
 
-        # Release device (move to Unsigned Pool)
-        # Note: organization_id is KEPT - device still belongs to same org
-        device.status = 'released'
-        device.released_at = datetime.now(timezone.utc)
-        if deleted_by_id is not None:
-            device.deleted_by_id = deleted_by_id
+        now = datetime.now(timezone.utc)
 
-        self.device_repo.update(device)
-        return True
+        # Check current status to determine action:
+        # - If device is active/inactive → Release to Unsigned Pool (soft release)
+        # - If device is already released → HARD DELETE (permanent, so player can re-register)
+        if device.status == 'released':
+            # Already in Unsigned Pool - perform HARD DELETE
+            # This allows the player to re-register with fresh device record
+            return self.device_repo.delete(device_id)
+        else:
+            # Release device (move to Unsigned Pool)
+            # Note: organization_id is KEPT - device still belongs to same org
+            device.status = 'released'
+            device.released_at = now
+            if deleted_by_id is not None:
+                device.deleted_by_id = deleted_by_id
+
+            self.device_repo.update(device)
+            return True

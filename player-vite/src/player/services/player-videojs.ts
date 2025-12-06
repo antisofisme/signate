@@ -49,6 +49,10 @@ class PlayerVideoJSClass implements IPlayerVideoJS {
   // Track created blob URLs for cleanup
   private activeBlobUrls: Set<string> = new Set();
 
+  // Periodic cleanup tracking (safety net for long-running playback)
+  private itemsPlayedSinceCleanup = 0;
+  private readonly CLEANUP_EVERY_N_ITEMS = 20;
+
   // Player configuration
   private readonly playerConfig: PlayerConfig = {
     autoplay: true,
@@ -110,6 +114,35 @@ class PlayerVideoJSClass implements IPlayerVideoJS {
     });
     this.activeBlobUrls.clear();
     SharedLogger.log('[PlayerVideoJS] ✅ All blob URLs revoked');
+  }
+
+  /**
+   * Perform periodic cleanup (safety net for long-running playback)
+   * Forces all caches to revoke their blob URLs
+   */
+  private performPeriodicCleanup(): void {
+    SharedLogger.log('[PlayerVideoJS] 🧹 Performing periodic blob URL cleanup...');
+
+    // Revoke blob URLs from PlayerMediaCache
+    const PlayerMediaCache = getPlayerMediaCache();
+    if (PlayerMediaCache) {
+      const count = PlayerMediaCache.getActiveBlobUrlCount();
+      if (count > 0) {
+        PlayerMediaCache.revokeAllBlobUrls();
+      }
+    }
+
+    // Reset counter
+    this.itemsPlayedSinceCleanup = 0;
+
+    // Log memory status if available
+    if (typeof performance !== 'undefined' && (performance as any).memory) {
+      const usedMB = ((performance as any).memory.usedJSHeapSize / 1048576).toFixed(2);
+      const totalMB = ((performance as any).memory.totalJSHeapSize / 1048576).toFixed(2);
+      SharedLogger.log(`[PlayerVideoJS] 📊 Memory: ${usedMB} MB / ${totalMB} MB`);
+    }
+
+    SharedLogger.log('[PlayerVideoJS] ✅ Periodic cleanup complete');
   }
 
   /**
@@ -191,6 +224,12 @@ class PlayerVideoJSClass implements IPlayerVideoJS {
     if (index < 0 || index >= this.state.playlist.items.length) {
       SharedLogger.warn('[PlayerVideoJS] Invalid item index:', index);
       return;
+    }
+
+    // Increment items counter and perform periodic cleanup if needed
+    this.itemsPlayedSinceCleanup++;
+    if (this.itemsPlayedSinceCleanup >= this.CLEANUP_EVERY_N_ITEMS) {
+      this.performPeriodicCleanup();
     }
 
     // Log playback end for previous item (if switching items)
@@ -788,6 +827,27 @@ class PlayerVideoJSClass implements IPlayerVideoJS {
   }
 
   /**
+   * Get count of active blob URLs (for debugging/monitoring)
+   */
+  getActiveBlobUrlCount(): number {
+    return this.activeBlobUrls.size;
+  }
+
+  /**
+   * Get items played since last cleanup (for debugging/monitoring)
+   */
+  getItemsSinceCleanup(): number {
+    return this.itemsPlayedSinceCleanup;
+  }
+
+  /**
+   * Get cleanup threshold (for debugging/monitoring)
+   */
+  getCleanupThreshold(): number {
+    return this.CLEANUP_EVERY_N_ITEMS;
+  }
+
+  /**
    * Setup Video.js event listeners
    */
   private setupEventListeners(): void {
@@ -910,6 +970,7 @@ class PlayerVideoJSClass implements IPlayerVideoJS {
 
   /**
    * Cleanup temporary elements (images, iframes, widgets)
+   * IMPORTANT: Revokes all blob URLs to prevent memory leaks during long playback
    */
   private cleanupTemporaryElements(): void {
     document.getElementById('temp-image')?.remove();
@@ -918,8 +979,14 @@ class PlayerVideoJSClass implements IPlayerVideoJS {
     // Clear widgets
     playerWidgetRenderer.clearWidgets();
 
-    // Revoke all blob URLs from previous item
+    // Revoke all blob URLs from previous item (PlayerVideoJS internal tracking for HLS)
     this.revokeAllBlobURLs();
+
+    // Revoke blob URLs from PlayerMediaCache (images, videos, audio from cache)
+    const PlayerMediaCache = getPlayerMediaCache();
+    if (PlayerMediaCache) {
+      PlayerMediaCache.revokeAllBlobUrls();
+    }
 
     if (this.videoElement) {
       this.videoElement.style.display = 'block';

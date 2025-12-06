@@ -24,6 +24,9 @@ class PlayerMediaCacheClass implements IPlayerMediaCache {
   private storeName = 'media';
   private db: IDBDatabase | null = null;
 
+  // Track active blob URLs for proper cleanup (prevent memory leak)
+  private activeBlobUrls: Set<string> = new Set();
+
   /**
    * Initialize IndexedDB
    */
@@ -133,6 +136,7 @@ class PlayerMediaCacheClass implements IPlayerMediaCache {
 
   /**
    * Get cached media as Blob URL
+   * NOTE: All blob URLs are tracked and MUST be revoked via revokeAllBlobUrls()
    */
   async getCachedBlobURL(url: string): Promise<string | null> {
     const cached = await this.getCachedMedia(url);
@@ -141,17 +145,62 @@ class PlayerMediaCacheClass implements IPlayerMediaCache {
     // Update last accessed
     await this.updateLastAccessed(url);
 
-    // Create Blob URL
+    // Create Blob URL and track it
     const blob = new Blob([cached.data], { type: cached.mimeType });
-    return URL.createObjectURL(blob);
+    const blobUrl = URL.createObjectURL(blob);
+    this.activeBlobUrls.add(blobUrl);
+    return blobUrl;
   }
 
   /**
-   * Create Blob URL from cached media (alias for getCachedBlobURL)
+   * Create Blob URL from cached media
+   * NOTE: All blob URLs are tracked and MUST be revoked via revokeAllBlobUrls()
    */
   async createBlobUrl(cachedMedia: CachedMedia): Promise<string> {
     const blob = new Blob([cachedMedia.data], { type: cachedMedia.mimeType });
-    return URL.createObjectURL(blob);
+    const blobUrl = URL.createObjectURL(blob);
+    this.activeBlobUrls.add(blobUrl);
+    return blobUrl;
+  }
+
+  /**
+   * Revoke a single blob URL
+   */
+  revokeBlobUrl(blobUrl: string): void {
+    if (this.activeBlobUrls.has(blobUrl)) {
+      try {
+        URL.revokeObjectURL(blobUrl);
+      } catch (e) {
+        // Ignore - URL might already be revoked
+      }
+      this.activeBlobUrls.delete(blobUrl);
+    }
+  }
+
+  /**
+   * Revoke all tracked blob URLs
+   * IMPORTANT: Call this on content transition to prevent memory leaks
+   */
+  revokeAllBlobUrls(): void {
+    const count = this.activeBlobUrls.size;
+    if (count === 0) return;
+
+    this.activeBlobUrls.forEach(url => {
+      try {
+        URL.revokeObjectURL(url);
+      } catch (e) {
+        // Ignore - URL might already be revoked
+      }
+    });
+    this.activeBlobUrls.clear();
+    SharedLogger.log(`[PlayerMediaCache] 🧹 Revoked ${count} blob URLs`);
+  }
+
+  /**
+   * Get count of active blob URLs (for debugging)
+   */
+  getActiveBlobUrlCount(): number {
+    return this.activeBlobUrls.size;
   }
 
   /**

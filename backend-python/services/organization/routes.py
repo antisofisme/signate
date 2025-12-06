@@ -29,6 +29,8 @@ from .dtos import (
     UpdateOrganizationQuotaRequest,
     UpdatePinRequest,
     RegeneratePinResponse,
+    ValidateResetPinRequest,
+    ValidateResetPinResponse,
 )
 from .use_cases.create_organization import CreateOrganizationUseCase
 from .use_cases.list_organizations import ListOrganizationsUseCase
@@ -791,3 +793,90 @@ def update_organization_pin(
         new_pin=request_body.new_pin,
         message="PIN updated successfully"
     )
+
+
+# =============================================================================
+# DEVICE RESET PIN VALIDATION (NO AUTH REQUIRED)
+# =============================================================================
+
+@router.post(f"{OrganizationRoutes.BASE}/{{org_id:int}}/validate-reset-pin", response_model=ValidateResetPinResponse)
+@handle_errors
+def validate_reset_pin(
+    org_id: int,
+    request_body: ValidateResetPinRequest,
+    http_request: Request,
+    db: Session = Depends(get_db)
+):
+    """
+    Validate organization PIN for device hard reset
+
+    This endpoint does NOT require device authentication because:
+    - The device may have been deleted from the backend
+    - The device token may be invalid/expired
+    - This allows orphaned devices to be reset
+
+    Security:
+    - Only validates PIN, does not perform any reset
+    - Rate limiting recommended at nginx level
+    - PIN validation is logged for security audit
+
+    Returns:
+    - { valid: true } if PIN matches organization PIN
+    - { valid: false, message: "..." } if validation fails
+    """
+    from services.auth.repositories.models import OrganizationModel
+
+    start_time = time.time()
+
+    # Get organization
+    org = db.query(OrganizationModel).filter(
+        OrganizationModel.id == org_id
+    ).first()
+
+    if not org:
+        # Return false instead of 404 to prevent organization enumeration
+        return ValidateResetPinResponse(
+            valid=False,
+            message="Organization not found or invalid PIN"
+        )
+
+    # Check if organization has a PIN set
+    if not org.pin:
+        return ValidateResetPinResponse(
+            valid=False,
+            message="Organization PIN not configured"
+        )
+
+    # Validate PIN
+    if request_body.pin == org.pin:
+        # Calculate duration
+        duration_ms = (time.time() - start_time) * 1000
+
+        # Log request
+        request_logger.log_request(
+            method="POST",
+            path=f"/organizations/{org_id}/validate-reset-pin",
+            status_code=200,
+            duration_ms=duration_ms
+        )
+
+        return ValidateResetPinResponse(
+            valid=True,
+            message="PIN validated successfully"
+        )
+    else:
+        # Calculate duration
+        duration_ms = (time.time() - start_time) * 1000
+
+        # Log request (failed attempt)
+        request_logger.log_request(
+            method="POST",
+            path=f"/organizations/{org_id}/validate-reset-pin",
+            status_code=200,
+            duration_ms=duration_ms
+        )
+
+        return ValidateResetPinResponse(
+            valid=False,
+            message="Invalid PIN"
+        )
