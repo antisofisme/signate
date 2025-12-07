@@ -14,6 +14,7 @@ PROJECT_BESAR/
 │   ├── BUSINESS_ACCOUNTING_STANDARDS.md    # Business & Accounting V1 (Section 1-9, 12)
 │   ├── BUSINESS_ACCOUNTING_STANDARDS_V2.md # Business & Accounting V2 (Section 10-15)
 │   ├── CONTRADICTIONS_RESOLUTION.md   # Resolusi kontradiksi standards (Decisions #79-99)
+│   ├── DATABASE_SCHEMA_PLATFORM.md    # Schema Platform DB & Community DB (Decisions #106-116)
 │   ├── PLATFORM_VISION.md             # Visi platform & arsitektur
 │   ├── PMS_DECISIONS.md               # 245 keputusan yang sudah disetujui
 │   ├── PMS_DATABASE_ANALYSIS.md       # Analisis database lama (Firebird)
@@ -43,6 +44,7 @@ PROJECT_BESAR/
 - **[BUSINESS_ACCOUNTING_STANDARDS.md](./docs/BUSINESS_ACCOUNTING_STANDARDS.md)** - Standar bisnis & akuntansi (Section 1-9, 12)
 - **[BUSINESS_ACCOUNTING_STANDARDS_V2.md](./docs/BUSINESS_ACCOUNTING_STANDARDS_V2.md)** - Standar bisnis & akuntansi (Section 10-15)
 - **[SHARED_CODE_STANDARDS.md](./docs/SHARED_CODE_STANDARDS.md)** - Standar shared/centralized code (Decisions #100-105)
+- **[DATABASE_SCHEMA_PLATFORM.md](./docs/DATABASE_SCHEMA_PLATFORM.md)** - Schema Platform DB & Community DB (Decisions #106-116)
 - **[ACCOUNTING_RESEARCH_SUMMARY.md](./docs/ACCOUNTING_RESEARCH_SUMMARY.md)** - Kompilasi research standar akuntansi
 - **[PLATFORM_VISION.md](./docs/PLATFORM_VISION.md)** - Visi platform & arsitektur
 

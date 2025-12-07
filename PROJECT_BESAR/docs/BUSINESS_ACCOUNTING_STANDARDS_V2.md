@@ -3048,6 +3048,22 @@ CREATE INDEX idx_consol_tb_run ON consolidated_trial_balance(run_id);
 | 104 | Naming Convention | I-prefix (interface), Request/Info suffix (DTO), Base prefix (base class), Mixin suffix, snake_case (functions) | 2025-12-07 |
 | 105 | Dependency Injection | Hybrid: Constructor DI untuk Use Cases/Services, FastAPI Depends untuk Routes wiring only | 2025-12-07 |
 
+### Owner System & Platform Architecture
+
+| # | Topic | Decision | Date |
+|---|-------|----------|------|
+| 106 | Tenant Status Lifecycle | 5 status: pending → trial → active → suspended → closed | 2025-12-07 |
+| 107 | Trial Period | Configurable per tenant (default 14 days), stored in tenant record | 2025-12-07 |
+| 108 | Subscription Model | Hybrid: base fee + per app + per user tier | 2025-12-07 |
+| 109 | Billing Cycle | Choice per tenant: monthly atau yearly, stored in tenant record | 2025-12-07 |
+| 110 | Organization Hierarchy | 3-level: Holding → Regional → Property (within tenant) | 2025-12-07 |
+| 111 | Subscription Granularity | Per App per Sub-organization (bukan per tenant) | 2025-12-07 |
+| 112 | Owner Team Roles | 5 roles: super_admin, admin, finance, support, viewer | 2025-12-07 |
+| 113 | Data Visibility | Metadata only (tenant info, billing), bukan detail operational/transactional | 2025-12-07 |
+| 114 | Feature Tiers | 3-tier per app: Basic, Pro, Enterprise - feature matrix di app_tier_features | 2025-12-07 |
+| 115 | Invoice Model | Choice per tenant: per sub-org atau consolidated ke parent | 2025-12-07 |
+| 116 | User Multi-Org | 1 user (community account) dapat assignment ke multiple orgs dalam tenant dengan roles berbeda | 2025-12-07 |
+
 ---
 
 *Continues from BUSINESS_ACCOUNTING_STANDARDS.md*
