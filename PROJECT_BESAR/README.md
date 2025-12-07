@@ -18,6 +18,7 @@ PROJECT_BESAR/
 │   ├── API_CONTRACTS_PLATFORM.md      # API Contracts Platform & Community
 │   ├── UIUX_WIREFRAMES_FLOWS.md       # Wireframes & User Flows
 │   ├── SECURITY_AUTH_REQUIREMENTS.md  # Security & Auth Requirements
+│   ├── INTEGRATION_SPECS.md           # Integration Specs (Payment, Tax)
 │   ├── PLATFORM_VISION.md             # Visi platform & arsitektur
 │   ├── PMS_DECISIONS.md               # 245 keputusan yang sudah disetujui
 │   ├── PMS_DATABASE_ANALYSIS.md       # Analisis database lama (Firebird)
@@ -51,6 +52,7 @@ PROJECT_BESAR/
 - **[API_CONTRACTS_PLATFORM.md](./docs/API_CONTRACTS_PLATFORM.md)** - API Contracts Platform & Community
 - **[UIUX_WIREFRAMES_FLOWS.md](./docs/UIUX_WIREFRAMES_FLOWS.md)** - Wireframes & User Flows
 - **[SECURITY_AUTH_REQUIREMENTS.md](./docs/SECURITY_AUTH_REQUIREMENTS.md)** - Security & Authentication Requirements
+- **[INTEGRATION_SPECS.md](./docs/INTEGRATION_SPECS.md)** - Integration Specs (Payment, Tax, Email, Storage)
 - **[ACCOUNTING_RESEARCH_SUMMARY.md](./docs/ACCOUNTING_RESEARCH_SUMMARY.md)** - Kompilasi research standar akuntansi
 - **[PLATFORM_VISION.md](./docs/PLATFORM_VISION.md)** - Visi platform & arsitektur
 
