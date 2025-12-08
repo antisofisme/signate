@@ -1849,6 +1849,8 @@ class RoomTypeUseCase:
 
 ### 5.9 Ringkasan
 
+#### Backend (Redis)
+
 | Aspek | Aturan |
 |-------|--------|
 | **Storage** | Redis |
@@ -1859,6 +1861,277 @@ class RoomTypeUseCase:
 | **Role change** | Invalidate permission semua user role |
 | **User role change** | Invalidate permission user |
 | **Helper** | Gunakan `CacheInvalidator` agar tidak lupa |
+
+#### Frontend (TanStack Query)
+
+| Aspek | Aturan |
+|-------|--------|
+| **Storage** | TanStack Query (in-memory) |
+| **Key management** | Centralized `queryKeys.ts` factory (WAJIB) |
+| **CREATE** | `invalidateQueries({ queryKey: entity.lists() })` |
+| **UPDATE** | `invalidateQueries({ queryKey: entity.detail(id) })` + `entity.lists()` |
+| **DELETE** | `invalidateQueries({ queryKey: entity.all })` |
+| **Related entity** | Gunakan `alsoInvalidate: [...]` di mutation helper |
+| **Manual key** | ❌ DILARANG - pakai factory |
+
+---
+
+### 5.10 Frontend Query Cache (TanStack Query)
+
+**Problem:** Query key tersebar di banyak file, invalidation manual sering salah/terlewat.
+
+**Solution:** Centralized Query Key Factory dengan auto-invalidation.
+
+---
+
+#### 5.10.1 Query Key Factory (WAJIB)
+
+```typescript
+// src/lib/query/queryKeys.ts - SINGLE SOURCE OF TRUTH
+
+export const queryKeys = {
+  // ============ DEVICES ============
+  devices: {
+    all: ['devices'] as const,
+    lists: () => [...queryKeys.devices.all, 'list'] as const,
+    list: (filters: DeviceFilters) => [...queryKeys.devices.lists(), filters] as const,
+    details: () => [...queryKeys.devices.all, 'detail'] as const,
+    detail: (id: number) => [...queryKeys.devices.details(), id] as const,
+  },
+
+  // ============ CONTENTS ============
+  contents: {
+    all: ['contents'] as const,
+    lists: () => [...queryKeys.contents.all, 'list'] as const,
+    list: (filters: ContentFilters) => [...queryKeys.contents.lists(), filters] as const,
+    details: () => [...queryKeys.contents.all, 'detail'] as const,
+    detail: (id: number) => [...queryKeys.contents.details(), id] as const,
+    deleted: (filters?: DeletedFilters) => [...queryKeys.contents.all, 'deleted', filters] as const,
+  },
+
+  // ============ PLAYLISTS ============
+  playlists: {
+    all: ['playlists'] as const,
+    lists: () => [...queryKeys.playlists.all, 'list'] as const,
+    list: (filters: PlaylistFilters) => [...queryKeys.playlists.lists(), filters] as const,
+    details: () => [...queryKeys.playlists.all, 'detail'] as const,
+    detail: (id: number) => [...queryKeys.playlists.details(), id] as const,
+  },
+
+  // ============ SCHEDULES ============
+  schedules: {
+    all: ['schedules'] as const,
+    lists: () => [...queryKeys.schedules.all, 'list'] as const,
+    list: (filters: ScheduleFilters) => [...queryKeys.schedules.lists(), filters] as const,
+    details: () => [...queryKeys.schedules.all, 'detail'] as const,
+    detail: (id: number) => [...queryKeys.schedules.details(), id] as const,
+  },
+
+  // ============ MENUS ============
+  menus: {
+    all: ['menus'] as const,
+    lists: () => [...queryKeys.menus.all, 'list'] as const,
+    list: (filters: MenuFilters) => [...queryKeys.menus.lists(), filters] as const,
+    details: () => [...queryKeys.menus.all, 'detail'] as const,
+    detail: (id: number) => [...queryKeys.menus.details(), id] as const,
+  },
+} as const;
+
+export type QueryKeys = typeof queryKeys;
+```
+
+---
+
+#### 5.10.2 Usage di Hooks
+
+```typescript
+// ✅ BENAR - Pakai query key factory
+import { queryKeys } from '@/lib/query/queryKeys';
+
+// Query
+export function useDevices(filters: DeviceFilters) {
+  return useQuery({
+    queryKey: queryKeys.devices.list(filters),  // Type-safe, autocomplete
+    queryFn: () => deviceApi.getDevices(filters),
+  });
+}
+
+export function useDevice(id: number) {
+  return useQuery({
+    queryKey: queryKeys.devices.detail(id),
+    queryFn: () => deviceApi.getDevice(id),
+  });
+}
+
+// ❌ SALAH - Query key manual (JANGAN!)
+export function useDevices(filters: DeviceFilters) {
+  return useQuery({
+    queryKey: ['devices', 'list', filters],  // Typo risk, no autocomplete
+    queryFn: () => deviceApi.getDevices(filters),
+  });
+}
+```
+
+---
+
+#### 5.10.3 Mutation dengan Auto-Invalidation
+
+```typescript
+// src/features/devices/hooks/useDeviceMutations.ts
+import { queryKeys } from '@/lib/query/queryKeys';
+
+export function useDeleteDevice() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: deviceApi.deleteDevice,
+    onSuccess: () => {
+      // ✅ Invalidate ALL device queries (list + detail + any variant)
+      queryClient.invalidateQueries({ queryKey: queryKeys.devices.all });
+    },
+  });
+}
+
+export function useUpdateDevice() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ id, data }: { id: number; data: UpdateDeviceDTO }) =>
+      deviceApi.updateDevice(id, data),
+    onSuccess: (_, { id }) => {
+      // ✅ Invalidate specific detail + all lists
+      queryClient.invalidateQueries({ queryKey: queryKeys.devices.detail(id) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.devices.lists() });
+    },
+  });
+}
+
+// Dengan related entity invalidation
+export function useDeleteContent() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: contentApi.deleteContent,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.contents.all });
+      // ✅ Content deleted → playlist might be affected
+      queryClient.invalidateQueries({ queryKey: queryKeys.playlists.lists() });
+    },
+  });
+}
+```
+
+---
+
+#### 5.10.4 Generic Mutation Helper (Optional, Advanced)
+
+```typescript
+// src/lib/query/createMutation.ts
+
+type EntityType = keyof typeof queryKeys;
+
+interface MutationConfig<TData, TVariables> {
+  entity: EntityType;
+  mutationFn: (variables: TVariables) => Promise<TData>;
+  invalidate?: 'all' | 'lists' | 'none';
+  alsoInvalidate?: EntityType[];  // Related entities
+}
+
+export function useEntityMutation<TData, TVariables>(
+  config: MutationConfig<TData, TVariables>
+) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: config.mutationFn,
+    onSuccess: () => {
+      const keys = queryKeys[config.entity];
+
+      // Auto invalidate based on config
+      if (config.invalidate === 'all') {
+        queryClient.invalidateQueries({ queryKey: keys.all });
+      } else if (config.invalidate === 'lists') {
+        queryClient.invalidateQueries({ queryKey: keys.lists() });
+      }
+
+      // Invalidate related entities
+      config.alsoInvalidate?.forEach(entity => {
+        queryClient.invalidateQueries({ queryKey: queryKeys[entity].all });
+      });
+    },
+  });
+}
+
+// Usage - Super clean!
+export function useDeleteContent() {
+  return useEntityMutation({
+    entity: 'contents',
+    mutationFn: contentApi.deleteContent,
+    invalidate: 'all',
+    alsoInvalidate: ['playlists'],  // ✅ Auto invalidate playlists too
+  });
+}
+
+export function useCreateDevice() {
+  return useEntityMutation({
+    entity: 'devices',
+    mutationFn: contentApi.createDevice,
+    invalidate: 'lists',  // Only invalidate list, not details
+  });
+}
+```
+
+---
+
+#### 5.10.5 File Structure
+
+```
+cms-vite/src/
+├── lib/
+│   └── query/
+│       ├── queryKeys.ts        # ✅ SINGLE SOURCE OF TRUTH
+│       ├── queryClient.ts      # QueryClient configuration
+│       └── createMutation.ts   # Generic mutation helper (optional)
+│
+├── features/
+│   └── devices/
+│       ├── hooks/
+│       │   ├── useDevices.ts         # Uses queryKeys.devices.list()
+│       │   └── useDeviceMutations.ts # Uses queryKeys.devices.all
+│       └── ...
+```
+
+---
+
+#### 5.10.6 Invalidation Matrix (Frontend)
+
+| Action | Query Key to Invalidate | Related Entities |
+|--------|-------------------------|------------------|
+| **CREATE** | `entity.lists()` | Jika ada relasi |
+| **UPDATE** | `entity.detail(id)` + `entity.lists()` | Jika field relasi berubah |
+| **DELETE** | `entity.all` | Entity yang depend |
+| **RESTORE** | `entity.all` | Jika ada relasi |
+
+**Relasi Umum yang Sering Terlewat:**
+
+| Entity Diubah | Invalidate Juga |
+|---------------|-----------------|
+| Content deleted | `playlists.lists()` |
+| Playlist deleted | `schedules.lists()` |
+| Device location changed | `schedules.lists()` (jika schedule by location) |
+| Menu deleted | `menuItems.all` |
+
+---
+
+#### 5.10.7 Benefit
+
+| Aspect | Manual Keys | Query Key Factory |
+|--------|-------------|-------------------|
+| Typo risk | ✅ Runtime bug | ❌ Compile-time error |
+| Change endpoint | Update N files | Update 1 file |
+| Autocomplete | None | Full TypeScript |
+| Invalidation | Manual, error-prone | Centralized, consistent |
+| Related entity | Sering lupa | `alsoInvalidate: [...]` |
 
 ---
 
