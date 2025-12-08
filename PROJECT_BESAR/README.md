@@ -45,6 +45,7 @@ PROJECT_BESAR/
 - **[PMS_DECISIONS.md](./docs/PMS_DECISIONS.md)** - 245 keputusan yang sudah disetujui
 - **[DEVELOPMENT_STANDARDS.md](./docs/DEVELOPMENT_STANDARDS.md)** - Standards #1-7
 - **[DEVELOPMENT_STANDARDS_V2.md](./docs/DEVELOPMENT_STANDARDS_V2.md)** - Standards #8-16
+- **[DEVELOPMENT_STANDARDS_V3.md](./docs/DEVELOPMENT_STANDARDS_V3.md)** - Standards #17+ (Centralized Registries)
 - **[BUSINESS_ACCOUNTING_STANDARDS.md](./docs/BUSINESS_ACCOUNTING_STANDARDS.md)** - Standar bisnis & akuntansi (Section 1-9, 12)
 - **[BUSINESS_ACCOUNTING_STANDARDS_V2.md](./docs/BUSINESS_ACCOUNTING_STANDARDS_V2.md)** - Standar bisnis & akuntansi (Section 10-15)
 - **[SHARED_CODE_STANDARDS.md](./docs/SHARED_CODE_STANDARDS.md)** - Standar shared/centralized code (Decisions #100-105)
@@ -90,6 +91,7 @@ PROJECT_BESAR/
 | 14 | TimescaleDB & Operational | ✅ V2 |
 | 15 | Logging & Observability | ✅ V2 |
 | 16 | Internationalization (i18n) | ✅ V2 |
+| 17 | Centralized Registries | ✅ V3 |
 
 ---
 
