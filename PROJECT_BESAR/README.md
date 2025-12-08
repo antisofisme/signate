@@ -48,7 +48,7 @@ PROJECT_BESAR/
 - **[BUSINESS_ACCOUNTING_STANDARDS.md](./docs/BUSINESS_ACCOUNTING_STANDARDS.md)** - Standar bisnis & akuntansi (Section 1-9, 12)
 - **[BUSINESS_ACCOUNTING_STANDARDS_V2.md](./docs/BUSINESS_ACCOUNTING_STANDARDS_V2.md)** - Standar bisnis & akuntansi (Section 10-15)
 - **[SHARED_CODE_STANDARDS.md](./docs/SHARED_CODE_STANDARDS.md)** - Standar shared/centralized code (Decisions #100-105)
-- **[DATABASE_SCHEMA_PLATFORM.md](./docs/DATABASE_SCHEMA_PLATFORM.md)** - Schema Platform DB & Community DB (Decisions #106-116)
+- **[DATABASE_SCHEMA_PLATFORM.md](./docs/DATABASE_SCHEMA_PLATFORM.md)** - Schema Platform DB & Community DB (Decisions #106-122)
 - **[API_CONTRACTS_PLATFORM.md](./docs/API_CONTRACTS_PLATFORM.md)** - API Contracts Platform & Community
 - **[UIUX_WIREFRAMES_FLOWS.md](./docs/UIUX_WIREFRAMES_FLOWS.md)** - Wireframes & User Flows
 - **[SECURITY_AUTH_REQUIREMENTS.md](./docs/SECURITY_AUTH_REQUIREMENTS.md)** - Security & Authentication Requirements
@@ -129,4 +129,4 @@ PROJECT_BESAR/
 
 ---
 
-*Last Updated: 2025-12-07*
+*Last Updated: 2025-12-08*

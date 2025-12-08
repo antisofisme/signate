@@ -3064,6 +3064,17 @@ CREATE INDEX idx_consol_tb_run ON consolidated_trial_balance(run_id);
 | 115 | Invoice Model | Choice per tenant: per sub-org atau consolidated ke parent | 2025-12-07 |
 | 116 | User Multi-Org | 1 user (community account) dapat assignment ke multiple orgs dalam tenant dengan roles berbeda | 2025-12-07 |
 
+### Management Groups & Membership System
+
+| # | Topic | Decision | Date |
+|---|-------|----------|------|
+| 117 | Management Groups | Entitas untuk mengelompokkan tenant yang 1 owner/management, enable cross-tenant features | 2025-12-08 |
+| 118 | User Dual Role | 1 Community user bisa jadi Staff (dengan RBAC role) DAN/ATAU Member (dengan tier) di tenant berbeda | 2025-12-08 |
+| 119 | Guest Types | 2 tipe: Registered (linked ke Community account, bisa login) + Walk-in (data only, tanpa login) | 2025-12-08 |
+| 120 | Membership Programs | Multiple programs per management group (misal: "Hotel Rewards", "Dining Club"), cross-tenant dalam 1 group | 2025-12-08 |
+| 121 | Employee Membership | Cross-tenant dalam management group, karyawan Hotel A dapat benefit di Hotel B (1 owner) | 2025-12-08 |
+| 122 | Points & Tiers | Shared across tenants dalam 1 management group, tiers: Silver → Gold → Platinum (configurable) | 2025-12-08 |
+
 ---
 
 *Continues from BUSINESS_ACCOUNTING_STANDARDS.md*

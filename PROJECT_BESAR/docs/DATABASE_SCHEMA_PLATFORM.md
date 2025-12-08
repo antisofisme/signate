@@ -1,7 +1,7 @@
 # Database Schema: Platform & Community
 
-> **Date**: 2025-12-07
-> **Decisions**: #106 - #116
+> **Date**: 2025-12-08
+> **Decisions**: #106 - #122
 > **Status**: Draft
 
 ---
@@ -15,6 +15,7 @@
 │                                                                         │
 │  ┌─────────────────────────────────────────────────────────────────┐   │
 │  │  PLATFORM DB (Owner System)                                      │   │
+│  │  - Management groups (Decision #117)                             │   │
 │  │  - Tenant management                                             │   │
 │  │  - App catalog & subscriptions                                   │   │
 │  │  - Billing & payments                                            │   │
@@ -26,6 +27,8 @@
 │  │  - Users (all users, all tenants)                                │   │
 │  │  - Organizations (linked to tenants)                             │   │
 │  │  - RBAC (roles, permissions)                                     │   │
+│  │  - Membership programs (Decision #120)                           │   │
+│  │  - Guest & Employee membership (Decision #119, #121)             │   │
 │  │  - Audit & settings                                              │   │
 │  └─────────────────────────────────────────────────────────────────┘   │
 │                                                                         │
@@ -59,6 +62,53 @@
 
 ## Part 1: Platform Database (Owner System)
 
+### 1.0 Management Groups (Decision #117)
+
+```sql
+-- ============================================================
+-- MANAGEMENT_GROUPS: Group tenants under same owner/management
+-- Enables cross-tenant features like shared membership programs
+-- ============================================================
+CREATE TABLE management_groups (
+    -- Primary Key
+    id INTEGER PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+
+    -- Group Info
+    code VARCHAR(20) NOT NULL UNIQUE,           -- 'BUDI-GROUP'
+    name VARCHAR(200) NOT NULL,                  -- 'Budi Hotel Group'
+    description TEXT,
+
+    -- Owner (Community User who created the group)
+    owner_user_id INTEGER NOT NULL,              -- References community.users(id)
+
+    -- Status
+    is_active BOOLEAN DEFAULT TRUE NOT NULL,
+
+    -- Settings
+    settings JSONB DEFAULT '{}',
+    metadata JSONB DEFAULT '{}',
+
+    -- Soft Delete
+    is_deleted BOOLEAN DEFAULT FALSE NOT NULL,
+    deleted_at TIMESTAMP WITH TIME ZONE,
+    deleted_by_id INTEGER,
+
+    -- Audit
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW() NOT NULL,
+    updated_at TIMESTAMP WITH TIME ZONE,
+    created_by_id INTEGER,
+    updated_by_id INTEGER
+);
+
+-- Indexes
+CREATE INDEX idx_mgmt_groups_code ON management_groups(code) WHERE is_deleted = FALSE;
+CREATE INDEX idx_mgmt_groups_owner ON management_groups(owner_user_id) WHERE is_deleted = FALSE;
+
+-- Comments
+COMMENT ON TABLE management_groups IS 'Groups tenants under same owner for cross-tenant features (Decision #117)';
+COMMENT ON COLUMN management_groups.owner_user_id IS 'Community user who owns this management group';
+```
+
 ### 1.1 Tenants (Root Organizations)
 
 ```sql
@@ -68,6 +118,9 @@
 CREATE TABLE tenants (
     -- Primary Key
     id INTEGER PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+
+    -- Management Group (Decision #117)
+    management_group_id INTEGER REFERENCES management_groups(id),
 
     -- Tenant Info
     code VARCHAR(20) NOT NULL UNIQUE,           -- 'HTL-001'
@@ -1155,6 +1208,251 @@ CREATE INDEX idx_settings_org ON settings(organization_id) WHERE scope = 'organi
 CREATE INDEX idx_settings_user ON settings(user_id) WHERE scope = 'user';
 ```
 
+### 2.11 Membership Programs (Decision #120)
+
+```sql
+-- ============================================================
+-- MEMBERSHIP_PROGRAMS: Loyalty programs per management group
+-- Cross-tenant within same management group
+-- ============================================================
+CREATE TABLE membership_programs (
+    -- Primary Key
+    id INTEGER PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+
+    -- Management Group (cross-tenant scope)
+    management_group_id INTEGER NOT NULL,        -- References platform.management_groups(id)
+
+    -- Program Info
+    code VARCHAR(20) NOT NULL,                    -- 'BUDI-REWARDS'
+    name VARCHAR(200) NOT NULL,                   -- 'Budi Hotel Rewards'
+    description TEXT,
+    program_type VARCHAR(20) NOT NULL,            -- 'guest', 'employee'
+
+    -- Points Settings
+    points_per_currency DECIMAL(18,4) DEFAULT 1,  -- Points earned per 1 IDR spent
+    points_expiry_days INTEGER,                   -- NULL = no expiry
+
+    -- Status
+    is_active BOOLEAN DEFAULT TRUE NOT NULL,
+
+    -- Settings
+    settings JSONB DEFAULT '{}',
+
+    -- Soft Delete
+    is_deleted BOOLEAN DEFAULT FALSE NOT NULL,
+    deleted_at TIMESTAMP WITH TIME ZONE,
+
+    -- Audit
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW() NOT NULL,
+    updated_at TIMESTAMP WITH TIME ZONE,
+    created_by_id INTEGER,
+
+    -- Constraints
+    UNIQUE(management_group_id, code)
+);
+
+-- Indexes
+CREATE INDEX idx_membership_prog_mgmt ON membership_programs(management_group_id) WHERE is_deleted = FALSE;
+CREATE INDEX idx_membership_prog_type ON membership_programs(program_type) WHERE is_deleted = FALSE;
+
+-- Comments
+COMMENT ON TABLE membership_programs IS 'Loyalty programs, cross-tenant within management group (Decision #120)';
+COMMENT ON COLUMN membership_programs.program_type IS 'guest = hotel guests (PMS), employee = staff (HRM)';
+```
+
+### 2.12 Membership Tiers (Decision #122)
+
+```sql
+-- ============================================================
+-- MEMBERSHIP_TIERS: Tier levels for membership programs
+-- Silver, Gold, Platinum, etc.
+-- ============================================================
+CREATE TABLE membership_tiers (
+    -- Primary Key
+    id INTEGER PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+
+    -- Program Reference
+    program_id INTEGER NOT NULL REFERENCES membership_programs(id) ON DELETE CASCADE,
+
+    -- Tier Info
+    code VARCHAR(20) NOT NULL,                    -- 'SILVER', 'GOLD', 'PLATINUM'
+    name VARCHAR(100) NOT NULL,                   -- 'Silver Member'
+    description TEXT,
+    level INTEGER NOT NULL,                       -- 1, 2, 3 (for ordering)
+
+    -- Qualification
+    min_points INTEGER DEFAULT 0,                 -- Minimum points to reach this tier
+    min_stays INTEGER,                            -- Minimum stays (for hotel)
+    min_nights INTEGER,                           -- Minimum nights (for hotel)
+
+    -- Benefits (JSON array)
+    benefits JSONB DEFAULT '[]',                  -- ["10% discount", "Free breakfast"]
+
+    -- Status
+    is_active BOOLEAN DEFAULT TRUE NOT NULL,
+
+    -- Audit
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW() NOT NULL,
+    updated_at TIMESTAMP WITH TIME ZONE,
+
+    -- Constraints
+    UNIQUE(program_id, code),
+    UNIQUE(program_id, level)
+);
+
+-- Indexes
+CREATE INDEX idx_membership_tiers_program ON membership_tiers(program_id);
+
+-- Comments
+COMMENT ON TABLE membership_tiers IS 'Tier levels: Silver, Gold, Platinum (Decision #122)';
+```
+
+### 2.13 Members (Decision #118, #119)
+
+```sql
+-- ============================================================
+-- MEMBERS: Guest and Employee membership records
+-- Can be linked to Community user (registered) or standalone (walk-in)
+-- ============================================================
+CREATE TABLE members (
+    -- Primary Key
+    id INTEGER PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+
+    -- Program Reference
+    program_id INTEGER NOT NULL REFERENCES membership_programs(id),
+
+    -- Member Type (Decision #119)
+    member_type VARCHAR(20) NOT NULL,             -- 'registered', 'walkin'
+
+    -- User Link (for registered members)
+    user_id INTEGER,                              -- NULL for walk-in guests
+
+    -- Member Info (for walk-in or override)
+    member_number VARCHAR(50) NOT NULL UNIQUE,    -- 'BHR-000001'
+    name VARCHAR(200) NOT NULL,
+    email VARCHAR(255),
+    phone VARCHAR(30),
+
+    -- Identity (for walk-in)
+    id_type VARCHAR(20),                          -- 'ktp', 'passport', 'sim'
+    id_number VARCHAR(50),
+
+    -- Current Tier
+    current_tier_id INTEGER REFERENCES membership_tiers(id),
+
+    -- Points
+    total_points INTEGER DEFAULT 0,
+    available_points INTEGER DEFAULT 0,
+    lifetime_points INTEGER DEFAULT 0,
+
+    -- Stats
+    total_stays INTEGER DEFAULT 0,
+    total_nights INTEGER DEFAULT 0,
+    total_spent DECIMAL(18,4) DEFAULT 0,
+
+    -- Status
+    status VARCHAR(20) DEFAULT 'active' NOT NULL, -- 'active', 'inactive', 'blacklisted'
+    joined_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+
+    -- Soft Delete
+    is_deleted BOOLEAN DEFAULT FALSE NOT NULL,
+    deleted_at TIMESTAMP WITH TIME ZONE,
+
+    -- Audit
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW() NOT NULL,
+    updated_at TIMESTAMP WITH TIME ZONE,
+    created_by_id INTEGER
+);
+
+-- Indexes
+CREATE INDEX idx_members_program ON members(program_id) WHERE is_deleted = FALSE;
+CREATE INDEX idx_members_user ON members(user_id) WHERE user_id IS NOT NULL AND is_deleted = FALSE;
+CREATE INDEX idx_members_number ON members(member_number) WHERE is_deleted = FALSE;
+CREATE INDEX idx_members_tier ON members(current_tier_id) WHERE is_deleted = FALSE;
+
+-- Comments
+COMMENT ON TABLE members IS 'Guest/Employee membership records (Decision #118, #119)';
+COMMENT ON COLUMN members.member_type IS 'registered = linked to Community user, walkin = data only';
+COMMENT ON COLUMN members.user_id IS 'NULL for walk-in guests who dont have Community account';
+```
+
+### 2.14 Points Transactions (Decision #122)
+
+```sql
+-- ============================================================
+-- POINTS_TRANSACTIONS: Points earn/redeem history
+-- ============================================================
+CREATE TABLE points_transactions (
+    -- Primary Key
+    id BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+
+    -- Member Reference
+    member_id INTEGER NOT NULL REFERENCES members(id),
+
+    -- Transaction Info
+    transaction_type VARCHAR(20) NOT NULL,        -- 'earn', 'redeem', 'expire', 'adjust'
+    points INTEGER NOT NULL,                      -- Positive for earn, negative for redeem
+    balance_after INTEGER NOT NULL,               -- Running balance
+
+    -- Source
+    source_type VARCHAR(50),                      -- 'stay', 'purchase', 'promotion', 'manual'
+    source_tenant_id INTEGER,                     -- Which tenant the transaction occurred
+    source_reference VARCHAR(100),                -- 'FOLIO-001', 'POS-123'
+
+    -- Description
+    description TEXT,
+
+    -- Expiry (for earn transactions)
+    expires_at TIMESTAMP WITH TIME ZONE,
+
+    -- Audit
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW() NOT NULL,
+    created_by_id INTEGER
+);
+
+-- Indexes
+CREATE INDEX idx_points_trans_member ON points_transactions(member_id);
+CREATE INDEX idx_points_trans_date ON points_transactions(created_at DESC);
+CREATE INDEX idx_points_trans_type ON points_transactions(transaction_type);
+
+-- Comments
+COMMENT ON TABLE points_transactions IS 'Points earn/redeem history (Decision #122)';
+```
+
+### 2.15 Tier History
+
+```sql
+-- ============================================================
+-- TIER_HISTORY: Track tier changes for members
+-- ============================================================
+CREATE TABLE tier_history (
+    -- Primary Key
+    id INTEGER PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+
+    -- Member Reference
+    member_id INTEGER NOT NULL REFERENCES members(id),
+
+    -- Tier Change
+    from_tier_id INTEGER REFERENCES membership_tiers(id),
+    to_tier_id INTEGER NOT NULL REFERENCES membership_tiers(id),
+
+    -- Reason
+    change_reason VARCHAR(50) NOT NULL,           -- 'qualification', 'downgrade', 'manual', 'promotion'
+    notes TEXT,
+
+    -- Audit
+    changed_at TIMESTAMP WITH TIME ZONE DEFAULT NOW() NOT NULL,
+    changed_by_id INTEGER
+);
+
+-- Indexes
+CREATE INDEX idx_tier_history_member ON tier_history(member_id);
+CREATE INDEX idx_tier_history_date ON tier_history(changed_at DESC);
+
+-- Comments
+COMMENT ON TABLE tier_history IS 'Track member tier upgrades/downgrades';
+```
+
 ---
 
 ## Part 3: ERD Diagram (Mermaid)
@@ -1272,7 +1570,8 @@ INSERT INTO permissions (code, name, module, category) VALUES
 
 | Database | Table | Purpose |
 |----------|-------|---------|
-| **Platform** | tenants | Root customers |
+| **Platform** | management_groups | Group tenants under same owner |
+| | tenants | Root customers |
 | | tenant_organizations | Hierarchy within tenant |
 | | apps | Product catalog |
 | | app_tiers | Basic/Pro/Enterprise |
@@ -1293,6 +1592,11 @@ INSERT INTO permissions (code, name, module, category) VALUES
 | | sessions | Login sessions |
 | | audit_logs | Action audit |
 | | settings | Configurable settings |
+| | membership_programs | Loyalty programs per management group |
+| | membership_tiers | Silver/Gold/Platinum tiers |
+| | members | Guest & employee members |
+| | points_transactions | Points earn/redeem history |
+| | tier_history | Tier upgrade/downgrade history |
 
 ### Decisions Applied
 
@@ -1309,7 +1613,13 @@ INSERT INTO permissions (code, name, module, category) VALUES
 | 114 | Tier-based Features | app_tiers, app_tier_features |
 | 115 | Consolidated Invoice Option | invoices.is_consolidated |
 | 116 | User Multi-Org | user_org_assignments |
+| 117 | Management Groups | management_groups table, tenants.management_group_id |
+| 118 | User Dual Role | members table (staff & member di tenant berbeda) |
+| 119 | Guest Types | members.member_type (registered/walkin) |
+| 120 | Membership Programs | membership_programs table (multiple per group) |
+| 121 | Employee Membership | membership_programs.program_type (guest/employee) |
+| 122 | Points & Tiers | membership_tiers, points_transactions, tier_history |
 
 ---
 
-*Last Updated: 2025-12-07*
+*Last Updated: 2025-12-08*
