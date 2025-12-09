@@ -20,6 +20,7 @@ PROJECT_BESAR/
 │   ├── SECURITY_AUTH_REQUIREMENTS.md  # Security & Auth Requirements
 │   ├── INTEGRATION_SPECS.md           # Integration Specs (Payment, Tax)
 │   ├── PLATFORM_VISION.md             # Visi platform & arsitektur
+│   ├── PUZZLE_ARCHITECTURE.md         # Arsitektur modular puzzle-like
 │   ├── PMS_DECISIONS.md               # 245 keputusan yang sudah disetujui
 │   ├── PMS_DATABASE_ANALYSIS.md       # Analisis database lama (Firebird)
 │   ├── PMS_DATABASE_SCHEMA.md         # Schema lengkap dari Firebird
@@ -56,6 +57,7 @@ PROJECT_BESAR/
 - **[INTEGRATION_SPECS.md](./docs/INTEGRATION_SPECS.md)** - Integration Specs (Payment, Tax, Email, Storage)
 - **[ACCOUNTING_RESEARCH_SUMMARY.md](./docs/ACCOUNTING_RESEARCH_SUMMARY.md)** - Kompilasi research standar akuntansi
 - **[PLATFORM_VISION.md](./docs/PLATFORM_VISION.md)** - Visi platform & arsitektur
+- **[PUZZLE_ARCHITECTURE.md](./docs/PUZZLE_ARCHITECTURE.md)** - Arsitektur modular puzzle-like (Module System, Hooks, Slots)
 
 ### Referensi Legacy (Firebird)
 - **[PMS_DATABASE_ANALYSIS.md](./docs/PMS_DATABASE_ANALYSIS.md)** - Analisis business flow
@@ -131,4 +133,4 @@ PROJECT_BESAR/
 
 ---
 
-*Last Updated: 2025-12-08*
+*Last Updated: 2025-12-09*
