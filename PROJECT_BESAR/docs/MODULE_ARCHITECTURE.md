@@ -1645,6 +1645,198 @@ Cross-Module Add-ons adalah **special modules** yang menganalisis atau bekerja l
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
+### 5.5 Internal Development Tools
+
+Internal Development Tools adalah **platform tools** untuk development team, bukan untuk end-user.
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                       INTERNAL DEVELOPMENT TOOLS                             │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  Characteristics:                                                           │
+│  • Untuk internal development team only                                    │
+│  • Tidak di-expose ke customer/operational user                            │
+│  • Mendukung development workflow & documentation                          │
+│  • Accessible via Web UI + CLI + MCP (Claude Code)                         │
+│                                                                             │
+│  ┌───────────────────────────────────────────────────────────────────────┐ │
+│  │                                                                        │ │
+│  │  DVL - Development Log & Documentation System                         │ │
+│  │  ──────────────────────────────────────────────────────────────────   │ │
+│  │  Code: dvl                                                            │ │
+│  │  Type: Internal Platform Tool                                         │ │
+│  │                                                                        │ │
+│  │  Purpose:                                                              │ │
+│  │  • Work logs (siapa mengerjakan apa, kapan, berapa lama)              │ │
+│  │  • Module documentation (living docs, auto-updated)                   │ │
+│  │  • Feature specifications & progress tracking                         │ │
+│  │  • Decision logs (why we chose X over Y)                              │ │
+│  │  • Team collaboration (standup, blockers, discussions)                │ │
+│  │  • GitHub integration (sync commits, PRs, issues)                     │ │
+│  │  • Claude Code integration (MCP server for CLI access)                │ │
+│  │                                                                        │ │
+│  │  Access Methods:                                                       │ │
+│  │  ┌─────────────────────────────────────────────────────────────────┐ │ │
+│  │  │                                                                  │ │ │
+│  │  │  1. Web UI (Dashboard)                                          │ │ │
+│  │  │     └── Full-featured interface for browsing & editing          │ │ │
+│  │  │                                                                  │ │ │
+│  │  │  2. CLI (dvl-cli)                                               │ │ │
+│  │  │     └── Quick commands from terminal                            │ │ │
+│  │  │         $ dvl log "Fixed reservation validation" --module pms   │ │ │
+│  │  │         $ dvl status                                            │ │ │
+│  │  │         $ dvl docs pms.reservation                              │ │ │
+│  │  │                                                                  │ │ │
+│  │  │  3. MCP Server (Claude Code Integration)                        │ │ │
+│  │  │     └── Claude Code can read/write logs automatically           │ │ │
+│  │  │         - Auto-log completed tasks                              │ │ │
+│  │  │         - Query module documentation                            │ │ │
+│  │  │         - Search decision history                               │ │ │
+│  │  │         - Get context before coding                             │ │ │
+│  │  │                                                                  │ │ │
+│  │  │  4. REST API                                                    │ │ │
+│  │  │     └── For custom integrations & automation                    │ │ │
+│  │  │                                                                  │ │ │
+│  │  └─────────────────────────────────────────────────────────────────┘ │ │
+│  │                                                                        │ │
+│  └───────────────────────────────────────────────────────────────────────┘ │
+│                                                                             │
+│  Core Features:                                                             │
+│  ┌───────────────────────────────────────────────────────────────────────┐ │
+│  │                                                                        │ │
+│  │  1. WORK LOGS                                                         │ │
+│  │  ┌─────────────────────────────────────────────────────────────────┐ │ │
+│  │  │ [2025-12-11 14:30] @budi - Module: PMS                          │ │ │
+│  │  │ ├── Task: Fix reservation date validation                       │ │ │
+│  │  │ ├── Status: In Progress → Done                                  │ │ │
+│  │  │ ├── Time: 2h 15m                                                │ │ │
+│  │  │ ├── Files: reservation_service.py, validators.py                │ │ │
+│  │  │ ├── Commit: abc1234 (auto-linked from GitHub)                   │ │ │
+│  │  │ └── Notes: Edge case untuk checkout same-day                    │ │ │
+│  │  └─────────────────────────────────────────────────────────────────┘ │ │
+│  │                                                                        │ │
+│  │  2. MODULE DOCUMENTATION                                              │ │
+│  │  ┌─────────────────────────────────────────────────────────────────┐ │ │
+│  │  │ Module: PMS                                                      │ │ │
+│  │  │ ├── Overview (synced from MODULE_ARCHITECTURE.md)               │ │ │
+│  │  │ ├── Features                                                     │ │ │
+│  │  │ │   ├── Reservations ✅ Done                                    │ │ │
+│  │  │ │   │   ├── Specs (requirements, acceptance criteria)           │ │ │
+│  │  │ │   │   ├── API Endpoints (auto-gen from OpenAPI)               │ │ │
+│  │  │ │   │   ├── Database Tables (auto-gen from schema)              │ │ │
+│  │  │ │   │   └── Work History (linked from work logs)                │ │ │
+│  │  │ │   ├── Room Management 🔄 70%                                  │ │ │
+│  │  │ │   └── Housekeeping 📋 Planned                                 │ │ │
+│  │  │ ├── Decisions Log                                                │ │ │
+│  │  │ └── Team: @andi (lead), @budi, @citra                           │ │ │
+│  │  └─────────────────────────────────────────────────────────────────┘ │ │
+│  │                                                                        │ │
+│  │  3. DECISION LOGS                                                     │ │
+│  │  ┌─────────────────────────────────────────────────────────────────┐ │ │
+│  │  │ Decision #247: IoT Architecture                                  │ │ │
+│  │  │ ├── Date: 2025-12-11                                            │ │ │
+│  │  │ ├── Module: IOT                                                  │ │ │
+│  │  │ ├── Context: Pilih self-hosted MQTT atau Tuya Cloud             │ │ │
+│  │  │ ├── Options:                                                     │ │ │
+│  │  │ │   ├── Self-hosted EMQX - butuh firmware dev                   │ │ │
+│  │  │ │   ├── Tuya Cloud API ✅ - simple, wide support                │ │ │
+│  │  │ │   └── NATS - overkill                                         │ │ │
+│  │  │ ├── Decision: Tuya Cloud API + RabbitMQ                         │ │ │
+│  │  │ ├── Rationale: Tidak perlu develop firmware                     │ │ │
+│  │  │ └── Participants: @khoirul, @claude                              │ │ │
+│  │  └─────────────────────────────────────────────────────────────────┘ │ │
+│  │                                                                        │ │
+│  │  4. TEAM COLLABORATION                                                │ │
+│  │  ┌─────────────────────────────────────────────────────────────────┐ │ │
+│  │  │ • Daily standup logs (yesterday/today/blockers)                 │ │ │
+│  │  │ • Blocker tracking & resolution                                 │ │ │
+│  │  │ • Code review notes                                             │ │ │
+│  │  │ • Sprint/milestone tracking                                     │ │ │
+│  │  │ • Time tracking per module/feature                              │ │ │
+│  │  └─────────────────────────────────────────────────────────────────┘ │ │
+│  │                                                                        │ │
+│  └───────────────────────────────────────────────────────────────────────┘ │
+│                                                                             │
+│  MCP Server (Claude Code Integration):                                      │
+│  ┌───────────────────────────────────────────────────────────────────────┐ │
+│  │                                                                        │ │
+│  │  // ~/.claude/settings.json                                           │ │
+│  │  {                                                                     │ │
+│  │    "mcpServers": {                                                    │ │
+│  │      "dvl": {                                                         │ │
+│  │        "command": "npx",                                              │ │
+│  │        "args": ["@anthropic/dvl-mcp-server"],                         │ │
+│  │        "env": {                                                       │ │
+│  │          "DVL_API_URL": "https://dvl.internal.company.com",           │ │
+│  │          "DVL_API_KEY": "your-api-key"                                │ │
+│  │        }                                                              │ │
+│  │      }                                                                │ │
+│  │    }                                                                  │ │
+│  │  }                                                                     │ │
+│  │                                                                        │ │
+│  │  Available MCP Tools:                                                  │ │
+│  │  ┌─────────────────────────────────────────────────────────────────┐ │ │
+│  │  │                                                                  │ │ │
+│  │  │  dvl_log_work        → Log completed work automatically         │ │ │
+│  │  │  dvl_get_module_docs → Get module/feature documentation         │ │ │
+│  │  │  dvl_search_decisions→ Search decision history                  │ │ │
+│  │  │  dvl_log_decision    → Log a new decision                       │ │ │
+│  │  │  dvl_get_context     → Get context before starting work         │ │ │
+│  │  │  dvl_report_blocker  → Report a blocker                         │ │ │
+│  │  │  dvl_get_my_tasks    → Get assigned tasks                       │ │ │
+│  │  │                                                                  │ │ │
+│  │  └─────────────────────────────────────────────────────────────────┘ │ │
+│  │                                                                        │ │
+│  │  Example Claude Code Workflow:                                         │ │
+│  │  ┌─────────────────────────────────────────────────────────────────┐ │ │
+│  │  │                                                                  │ │ │
+│  │  │  User: "Saya mau kerja di module PMS bagian reservation"        │ │ │
+│  │  │                                                                  │ │ │
+│  │  │  Claude: [Calls dvl_get_context(module="pms.reservation")]      │ │ │
+│  │  │          "Berdasarkan DVL:                                      │ │ │
+│  │  │           - Last update: @budi fixed validation (2h ago)        │ │ │
+│  │  │           - Open blocker: None                                  │ │ │
+│  │  │           - Recent decision: Use UTC for all dates              │ │ │
+│  │  │           Apa yang mau dikerjakan?"                             │ │ │
+│  │  │                                                                  │ │ │
+│  │  │  ... (after completing work) ...                                │ │ │
+│  │  │                                                                  │ │ │
+│  │  │  Claude: [Calls dvl_log_work(...)]                              │ │ │
+│  │  │          "Work sudah di-log ke DVL. Mau commit?"                │ │ │
+│  │  │                                                                  │ │ │
+│  │  └─────────────────────────────────────────────────────────────────┘ │ │
+│  │                                                                        │ │
+│  └───────────────────────────────────────────────────────────────────────┘ │
+│                                                                             │
+│  CLI Commands (dvl-cli):                                                    │
+│  ┌───────────────────────────────────────────────────────────────────────┐ │
+│  │                                                                        │ │
+│  │  $ dvl log "Fixed validation" --module pms --time 2h                 │ │
+│  │  $ dvl docs pms.reservation                                           │ │
+│  │  $ dvl decision search "Tuya"                                         │ │
+│  │  $ dvl status                                                         │ │
+│  │  $ dvl blocker "Need API spec" --module acc                          │ │
+│  │  $ dvl standup --yesterday "..." --today "..." --blocker "..."       │ │
+│  │                                                                        │ │
+│  └───────────────────────────────────────────────────────────────────────┘ │
+│                                                                             │
+│  Database Schema: dvl.* (separate from tenant schemas)                     │
+│  ┌───────────────────────────────────────────────────────────────────────┐ │
+│  │ dvl.work_logs       dvl.decisions       dvl.modules       dvl.features│ │
+│  │ dvl.blockers        dvl.standups        dvl.team_members  dvl.sprints │ │
+│  └───────────────────────────────────────────────────────────────────────┘ │
+│                                                                             │
+│  API: /api/internal/dvl/* (internal only)                                  │
+│                                                                             │
+│  GitHub Integration:                                                        │
+│  • Auto-sync commits → work logs                                           │
+│  • Auto-sync PRs → feature progress                                        │
+│  • Auto-sync issues → blockers                                             │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
 ---
 
 ## 6. Integration Points
@@ -2137,6 +2329,10 @@ class CrossModuleCode(str, Enum):
     FDA = "fda"   # Fraud Detection & Audit Intelligence
     ICH = "ich"   # Internal Collaboration Hub
 
+class InternalToolCode(str, Enum):
+    """Internal development tools (not exposed to customers)"""
+    DVL = "dvl"   # Development Log & Documentation System
+
 class FeatureModuleCode(str, Enum):
     """Feature module codes"""
     # PMS Features
@@ -2195,6 +2391,7 @@ class FeatureModuleCode(str, Enum):
 | **Core Modules** | 14 standalone-capable (incl. IoT) | Section 4 |
 | **Platform Modules** | 2 multi-property/chain | Section 5.3 |
 | **Cross-Module Add-ons** | 2 cross-module add-ons | Section 5.4 |
+| **Internal Dev Tools** | DVL (Development Log) + MCP | Section 5.5 |
 | **Feature Modules** | 25+ requiring parent | Section 5 |
 | **Integration** | Auto-enabled when both subscribed | Section 6 |
 | **Configuration** | Config-driven behavior | [Standard #43](./DEVELOPMENT_STANDARDS_V12.md) |
@@ -2203,4 +2400,4 @@ class FeatureModuleCode(str, Enum):
 
 ---
 
-*Last Updated: 2025-12-11 (IoT Module - Tuya Cloud API + RabbitMQ architecture finalized)*
+*Last Updated: 2025-12-11 (DVL - Development Log with MCP/CLI integration added)*
