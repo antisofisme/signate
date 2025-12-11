@@ -116,6 +116,7 @@ class RequestActivationCodeUseCase:
                     device_uuid=device_uuid,
                     platform=platform,
                     ip_address=None,
+                    local_ip=None,  # Local IP from WebRTC (set during heartbeat)
                     screen_width=None,
                     screen_height=None,
                     viewport_width=None,

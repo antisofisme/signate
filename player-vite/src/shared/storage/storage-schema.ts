@@ -133,6 +133,7 @@ export const STATUS = {
     PENDING: 'pending',
     ACTIVE: 'active',
     INACTIVE: 'inactive',
+    RELEASED: 'released',
   },
   DOWNLOAD: {
     PENDING: 'pending',

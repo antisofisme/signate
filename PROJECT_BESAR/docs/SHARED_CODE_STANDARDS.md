@@ -15,6 +15,41 @@ Dokumen ini mendefinisikan standar untuk **shared/centralized code** yang diguna
 3. **Maintainability** - Mudah di-maintain dan di-update
 4. **Microservice-ready** - Siap split ke microservices
 
+### Perbedaan Shared vs Core Services
+
+```
+╔═══════════════════════════════════════════════════════════════════════════╗
+║  PENTING: Shared ≠ Core Services                                          ║
+╠═══════════════════════════════════════════════════════════════════════════╣
+║                                                                            ║
+║  SHARED (Utilities) - Dokumen ini                                         ║
+║  ────────────────────────────────                                         ║
+║  • Pure functions tanpa side effects                                      ║
+║  • TIDAK punya database tables                                            ║
+║  • TIDAK punya API endpoints                                              ║
+║  • TIDAK punya state                                                      ║
+║  • Contoh: formatDate(), Button component, validators                     ║
+║                                                                            ║
+║  CORE SERVICES - Lihat PUZZLE_ARCHITECTURE.md Section 2.1                 ║
+║  ────────────────────────────────────────────────────────                 ║
+║  • Business services dengan database dan API                              ║
+║  • PUNYA database tables                                                  ║
+║  • PUNYA API endpoints                                                    ║
+║  • PUNYA state                                                            ║
+║  • Contoh: Auth, RBAC, Notification, Audit, Search, Files                 ║
+║                                                                            ║
+╚═══════════════════════════════════════════════════════════════════════════╝
+```
+
+| Aspek | Shared (Utilities) | Core Services |
+|-------|-------------------|---------------|
+| Database | ❌ Tidak | ✅ Ya |
+| API Endpoints | ❌ Tidak | ✅ Ya |
+| State | ❌ Tidak | ✅ Ya |
+| Side Effects | ❌ Tidak | ✅ Ya |
+| Lokasi | `shared/` | `core/services/` |
+| Dokumentasi | Dokumen ini | PUZZLE_ARCHITECTURE.md |
+
 ---
 
 ## 1. Backend Shared Structure (Decision #100)
@@ -43,41 +78,46 @@ shared/
 │
 ├── repositories/            # Shared/base repositories
 │   ├── __init__.py
-│   ├── base_repository.py
-│   └── user_repository.py
+│   └── base_repository.py   # Base class only, NOT concrete repos
 │
-├── services/                # Shared services
-│   ├── __init__.py
-│   ├── cache_service.py
-│   ├── audit_service.py
-│   ├── event_service.py
-│   └── rounding_service.py
-│
-├── validators/              # Reusable validators
+├── validators/              # Reusable validators (pure functions)
 │   ├── __init__.py
 │   ├── money_validator.py
 │   ├── date_validator.py
 │   └── period_validator.py
 │
-├── utils/                   # Utility functions
+├── utils/                   # Utility functions (pure functions)
 │   ├── __init__.py
-│   ├── formatters.py
-│   ├── calculators.py
-│   └── generators.py
+│   ├── formatters.py        # format_currency(), format_date()
+│   ├── calculators.py       # calculate_tax(), round_money()
+│   └── generators.py        # generate_uuid(), generate_code()
 │
-├── types/                   # Shared types/enums
+├── types/                   # Shared types/enums (no logic)
 │   ├── __init__.py
 │   ├── enums.py
 │   └── aliases.py
 │
-├── middleware/              # Shared middleware
-│   ├── __init__.py
-│   ├── auth_middleware.py
-│   ├── audit_middleware.py
-│   └── correlation_middleware.py
-│
 └── dependencies.py          # FastAPI Depends factories
 ```
+
+> **PERHATIAN**: `shared/services/` DIHAPUS dari struktur ini!
+>
+> Business services seperti `audit_service`, `cache_service`, `notification_service`
+> sekarang berada di `core/services/` - lihat PUZZLE_ARCHITECTURE.md Section 2.1.
+
+**Yang BOLEH ada di shared/:**
+- ✅ Base classes (BaseRepository, BaseUseCase)
+- ✅ Pure utility functions (formatters, calculators)
+- ✅ Type definitions (enums, aliases)
+- ✅ Validators (pure functions)
+- ✅ Contracts/Interfaces
+- ✅ Configuration loaders
+
+**Yang TIDAK BOLEH ada di shared/:**
+- ❌ Services dengan database (pindah ke core/services/)
+- ❌ Services dengan API endpoints (pindah ke core/services/)
+- ❌ Services dengan state (pindah ke core/services/)
+- ❌ Middleware dengan business logic (pindah ke core/middleware/)
 
 ---
 
@@ -779,6 +819,725 @@ function ChargeActions({ chargeId }: { chargeId: number }) {
 
 ---
 
+## 9. Flexible Configuration Pattern (Decision #106)
+
+### Overview
+
+Pattern untuk **konfigurasi yang bisa diubah tanpa edit code**. Prinsip:
+
+1. **Admin-Editable**: Hotel admin bisa ubah settings tanpa developer
+2. **Context-Aware UI**: Tampilkan data terkait saat edit config
+3. **Visual Formula**: Formula builder yang user-friendly
+4. **Preview**: Real-time preview hasil kalkulasi
+5. **Audit Trail**: History semua perubahan config
+
+```
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                     FLEXIBLE CONFIGURATION ARCHITECTURE                          │
+├─────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                 │
+│   ┌─────────────┐         ┌─────────────────┐         ┌─────────────┐          │
+│   │   Admin     │         │   Config API    │         │  Database   │          │
+│   │  Dashboard  │◄───────►│   /settings/*   │◄───────►│tenant_config│          │
+│   └─────────────┘         └────────┬────────┘         └─────────────┘          │
+│         │                          │                                            │
+│         │ UI Config                │ ConfigService                              │
+│         ▼                          ▼                                            │
+│   ┌─────────────────────────────────────────────────────────────────────────┐  │
+│   │                        BUSINESS LOGIC                                    │  │
+│   │                                                                          │  │
+│   │   # TIDAK hardcode ❌                                                    │  │
+│   │   total = room_rate * nights * 1.21                                      │  │
+│   │                                                                          │  │
+│   │   # PAKAI config ✅                                                      │  │
+│   │   total = await config.calculate(org_id, "room_total_formula", {...})    │  │
+│   │                                                                          │  │
+│   └─────────────────────────────────────────────────────────────────────────┘  │
+│                                                                                 │
+└─────────────────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+### 9.1 Database Schema
+
+```sql
+-- Definisi config yang tersedia (master, dikelola developer)
+CREATE TABLE config_definitions (
+    id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+
+    -- Identity
+    config_key VARCHAR(100) NOT NULL UNIQUE,   -- 'pms.pricing.room_total_formula'
+    config_name VARCHAR(255) NOT NULL,          -- 'Formula Total Kamar'
+    description TEXT,
+
+    -- Type & Validation
+    config_type VARCHAR(50) NOT NULL,           -- 'formula', 'number', 'boolean', 'select', 'json'
+    default_value JSONB NOT NULL,
+    validation_rules JSONB,                     -- {"min": 0, "max": 100, "required": true}
+
+    -- Grouping
+    module VARCHAR(50) NOT NULL,                -- 'pms', 'pos', 'accounting'
+    category VARCHAR(50) NOT NULL,              -- 'pricing', 'workflow', 'notification'
+
+    -- UI Configuration (Developer-defined)
+    ui_config JSONB NOT NULL DEFAULT '{}',
+
+    -- Meta
+    is_active BOOLEAN DEFAULT true,
+    sort_order INTEGER DEFAULT 0,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Value config per tenant (dikelola admin hotel)
+CREATE TABLE tenant_configs (
+    id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    organization_id INTEGER NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+    config_key VARCHAR(100) NOT NULL REFERENCES config_definitions(config_key),
+    config_value JSONB NOT NULL,
+
+    -- Audit
+    updated_by INTEGER REFERENCES users(id),
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+
+    UNIQUE(organization_id, config_key)
+);
+
+-- History perubahan config (audit trail)
+CREATE TABLE tenant_config_history (
+    id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    organization_id INTEGER NOT NULL,
+    config_key VARCHAR(100) NOT NULL,
+    old_value JSONB,
+    new_value JSONB,
+    changed_by INTEGER REFERENCES users(id),
+    changed_at TIMESTAMPTZ DEFAULT NOW(),
+    change_reason TEXT
+);
+
+-- Indexes
+CREATE INDEX idx_config_definitions_module ON config_definitions(module);
+CREATE INDEX idx_config_definitions_category ON config_definitions(module, category);
+CREATE INDEX idx_tenant_configs_org ON tenant_configs(organization_id);
+CREATE INDEX idx_tenant_config_history_org ON tenant_config_history(organization_id, changed_at DESC);
+```
+
+---
+
+### 9.2 UI Config Structure
+
+Developer mendefinisikan `ui_config` untuk setiap config:
+
+```json
+{
+    "input_type": "formula",
+
+    "related_tables": [
+        {
+            "table": "room_types",
+            "display_name": "Room Types",
+            "columns": ["name", "base_rate"],
+            "enabled": true
+        },
+        {
+            "table": "tax_codes",
+            "display_name": "Tax Codes",
+            "columns": ["name", "percentage"],
+            "enabled": true
+        }
+    ],
+
+    "formula_variables": [
+        {
+            "key": "room_rate",
+            "label": "Room Rate",
+            "icon": "🏷️",
+            "type": "currency",
+            "sample_value": 500000
+        },
+        {
+            "key": "nights",
+            "label": "Jumlah Malam",
+            "icon": "🌙",
+            "type": "number",
+            "sample_value": 2
+        },
+        {
+            "key": "tax_percent",
+            "label": "Tax %",
+            "icon": "📊",
+            "type": "percent",
+            "sample_value": 11
+        }
+    ],
+
+    "help_text": "Gunakan variabel yang tersedia untuk membuat formula",
+    "preview_enabled": true
+}
+```
+
+**Input Types:**
+
+| Type | UI Component | Use Case |
+|------|--------------|----------|
+| `boolean` | Toggle switch | Enable/disable fitur |
+| `number` | Number input + unit | Persentase, jumlah |
+| `string` | Text input | Teks bebas |
+| `select` | Dropdown | Pilihan terbatas |
+| `json` | JSON editor | Complex settings |
+| `formula` | Formula Builder | Kalkulasi dinamis |
+
+---
+
+### 9.3 Config Key Naming Convention
+
+Pattern: `{module}.{category}.{name}`
+
+```python
+# PMS Module - Pricing
+"pms.pricing.service_charge"           # Service charge %
+"pms.pricing.tax_rate"                 # Tax %
+"pms.pricing.room_total_formula"       # Formula kalkulasi
+"pms.pricing.rounding_method"          # round_up, round_down, round_nearest
+
+# PMS Module - Check-in/out
+"pms.checkin.default_time"             # "14:00"
+"pms.checkin.early_checkin_charge"     # Biaya early check-in
+"pms.checkin.require_deposit"          # true/false
+"pms.checkout.default_time"            # "12:00"
+"pms.checkout.late_checkout_charge"    # Biaya late checkout
+
+# PMS Module - Reservation
+"pms.reservation.min_stay"             # Minimum nights
+"pms.reservation.max_stay"             # Maximum nights
+"pms.reservation.allow_same_day"       # Allow same day booking
+"pms.reservation.overbooking_allowed"  # Allow overbooking
+"pms.reservation.overbooking_percent"  # Max overbooking %
+
+# POS Module
+"pos.pricing.service_charge"
+"pos.pricing.tax_rate"
+"pos.receipt.show_tax_breakdown"
+"pos.order.auto_print_kitchen"
+
+# Notification
+"notification.email.booking_confirmation"
+"notification.whatsapp.checkin_reminder"
+"notification.sms.payment_reminder"
+```
+
+---
+
+### 9.4 Backend Implementation
+
+#### ConfigService
+
+```python
+# core/services/config_service.py
+
+from typing import Any, Optional, List
+from decimal import Decimal
+import simpleeval
+from shared.exceptions import ConfigNotFoundError, ConfigValidationError
+
+class ConfigService:
+    """Service untuk manage tenant configurations"""
+
+    def __init__(self, db: Database, cache: Redis):
+        self.db = db
+        self.cache = cache
+        self._cache_ttl = 300  # 5 minutes
+
+    async def get(
+        self,
+        org_id: int,
+        config_key: str,
+        default: Any = None
+    ) -> Any:
+        """Get config value untuk tenant, dengan fallback ke default"""
+
+        # 1. Check cache
+        cache_key = f"config:{org_id}:{config_key}"
+        cached = await self.cache.get(cache_key)
+        if cached is not None:
+            return cached
+
+        # 2. Query database
+        result = await self.db.fetch_one("""
+            SELECT
+                COALESCE(tc.config_value, cd.default_value) as value
+            FROM config_definitions cd
+            LEFT JOIN tenant_configs tc
+                ON tc.config_key = cd.config_key
+                AND tc.organization_id = $1
+            WHERE cd.config_key = $2 AND cd.is_active = true
+        """, org_id, config_key)
+
+        if not result:
+            return default
+
+        value = result['value']
+
+        # 3. Cache & return
+        await self.cache.set(cache_key, value, ex=self._cache_ttl)
+        return value
+
+    async def get_bool(self, org_id: int, key: str, default: bool = False) -> bool:
+        """Get boolean config"""
+        value = await self.get(org_id, key, default)
+        return bool(value)
+
+    async def get_number(self, org_id: int, key: str, default: Decimal = Decimal("0")) -> Decimal:
+        """Get numeric config as Decimal"""
+        value = await self.get(org_id, key, default)
+        return Decimal(str(value))
+
+    async def get_string(self, org_id: int, key: str, default: str = "") -> str:
+        """Get string config"""
+        value = await self.get(org_id, key, default)
+        return str(value) if value else default
+
+    async def calculate(
+        self,
+        org_id: int,
+        formula_key: str,
+        variables: dict[str, Any]
+    ) -> Decimal:
+        """Execute formula dengan variables (safe evaluation)"""
+
+        formula = await self.get(org_id, formula_key)
+        if not formula:
+            raise ConfigNotFoundError(f"Formula '{formula_key}' not found")
+
+        # Safe evaluation - tidak bisa execute arbitrary code
+        try:
+            result = simpleeval.simple_eval(
+                formula,
+                names=variables,
+                functions={
+                    "min": min, "max": max, "abs": abs, "round": round
+                }
+            )
+            return Decimal(str(result))
+        except Exception as e:
+            raise ConfigValidationError(f"Formula error: {e}")
+
+    async def set(
+        self,
+        org_id: int,
+        config_key: str,
+        value: Any,
+        user_id: int,
+        reason: Optional[str] = None
+    ) -> None:
+        """Set config value untuk tenant dengan audit trail"""
+
+        # 1. Validate definition exists
+        definition = await self._get_definition(config_key)
+        if not definition:
+            raise ConfigNotFoundError(f"Config '{config_key}' not defined")
+
+        # 2. Validate value
+        await self._validate_value(definition, value)
+
+        # 3. Get old value for history
+        old_value = await self.get(org_id, config_key)
+
+        # 4. Upsert config
+        await self.db.execute("""
+            INSERT INTO tenant_configs (organization_id, config_key, config_value, updated_by)
+            VALUES ($1, $2, $3, $4)
+            ON CONFLICT (organization_id, config_key)
+            DO UPDATE SET
+                config_value = EXCLUDED.config_value,
+                updated_by = EXCLUDED.updated_by,
+                updated_at = NOW()
+        """, org_id, config_key, value, user_id)
+
+        # 5. Save history
+        await self.db.execute("""
+            INSERT INTO tenant_config_history
+            (organization_id, config_key, old_value, new_value, changed_by, change_reason)
+            VALUES ($1, $2, $3, $4, $5, $6)
+        """, org_id, config_key, old_value, value, user_id, reason)
+
+        # 6. Invalidate cache
+        await self.cache.delete(f"config:{org_id}:{config_key}")
+
+    async def get_with_ui(
+        self,
+        org_id: int,
+        config_key: str
+    ) -> dict:
+        """Get config dengan UI metadata dan related data untuk frontend"""
+
+        # Get definition + current value
+        result = await self.db.fetch_one("""
+            SELECT
+                cd.config_key,
+                cd.config_name,
+                cd.description,
+                cd.config_type,
+                cd.default_value,
+                cd.validation_rules,
+                cd.ui_config,
+                COALESCE(tc.config_value, cd.default_value) as current_value
+            FROM config_definitions cd
+            LEFT JOIN tenant_configs tc
+                ON tc.config_key = cd.config_key
+                AND tc.organization_id = $1
+            WHERE cd.config_key = $2 AND cd.is_active = true
+        """, org_id, config_key)
+
+        if not result:
+            raise ConfigNotFoundError(f"Config '{config_key}' not found")
+
+        ui_config = result['ui_config'] or {}
+
+        # Fetch related tables data
+        related_data = []
+        for table_config in ui_config.get('related_tables', []):
+            if table_config.get('enabled', True):
+                data = await self._fetch_related_table(
+                    org_id,
+                    table_config['table'],
+                    table_config.get('columns', [])
+                )
+                related_data.append({
+                    **table_config,
+                    'data': data
+                })
+
+        # Calculate preview if formula
+        preview = None
+        if result['config_type'] == 'formula' and ui_config.get('preview_enabled'):
+            preview = await self._calculate_preview(
+                result['current_value'],
+                ui_config.get('formula_variables', [])
+            )
+
+        return {
+            'config': {
+                'key': result['config_key'],
+                'name': result['config_name'],
+                'description': result['description'],
+                'type': result['config_type'],
+                'value': result['current_value'],
+                'default_value': result['default_value'],
+                'validation': result['validation_rules']
+            },
+            'ui': {
+                'input_type': ui_config.get('input_type', result['config_type']),
+                'help_text': ui_config.get('help_text'),
+                'preview_enabled': ui_config.get('preview_enabled', False),
+                'formula_variables': ui_config.get('formula_variables', []),
+                'related_tables': related_data,
+                'input_props': ui_config.get('input_props', {})
+            },
+            'preview': preview
+        }
+
+    async def list_by_module(
+        self,
+        org_id: int,
+        module: str,
+        category: Optional[str] = None
+    ) -> List[dict]:
+        """List semua config untuk module tertentu"""
+
+        query = """
+            SELECT
+                cd.config_key,
+                cd.config_name,
+                cd.description,
+                cd.config_type,
+                cd.category,
+                COALESCE(tc.config_value, cd.default_value) as current_value,
+                cd.default_value
+            FROM config_definitions cd
+            LEFT JOIN tenant_configs tc
+                ON tc.config_key = cd.config_key
+                AND tc.organization_id = $1
+            WHERE cd.module = $2 AND cd.is_active = true
+        """
+        params = [org_id, module]
+
+        if category:
+            query += " AND cd.category = $3"
+            params.append(category)
+
+        query += " ORDER BY cd.category, cd.sort_order"
+
+        return await self.db.fetch_all(query, *params)
+```
+
+#### Usage in Business Logic
+
+```python
+# SEBELUM (Hardcoded) ❌
+class ReservationService:
+    async def calculate_total(self, room_rate: Decimal, nights: int) -> Decimal:
+        service_charge = Decimal("0.10")  # Hardcoded!
+        tax = Decimal("0.11")              # Hardcoded!
+        subtotal = room_rate * nights
+        return subtotal * (1 + service_charge + tax)
+
+
+# SESUDAH (Flexible Config) ✅
+class ReservationService:
+    def __init__(self, config: ConfigService):
+        self.config = config
+
+    async def calculate_total(
+        self,
+        org_id: int,
+        room_rate: Decimal,
+        nights: int
+    ) -> Decimal:
+        # Option 1: Individual configs
+        service = await self.config.get_number(org_id, "pms.pricing.service_charge")
+        tax = await self.config.get_number(org_id, "pms.pricing.tax_rate")
+
+        subtotal = room_rate * nights
+        return subtotal * (1 + service/100 + tax/100)
+
+        # Option 2: Formula (more flexible)
+        # return await self.config.calculate(
+        #     org_id,
+        #     "pms.pricing.room_total_formula",
+        #     {"room_rate": room_rate, "nights": nights}
+        # )
+```
+
+---
+
+### 9.5 API Endpoints
+
+```python
+# routes/settings.py
+
+from fastapi import APIRouter, Depends
+from core.services.config_service import ConfigService
+
+router = APIRouter(prefix="/settings", tags=["Settings"])
+
+@router.get("")
+async def list_settings(
+    module: str,
+    category: Optional[str] = None,
+    current_user: User = Depends(get_current_user),
+    config: ConfigService = Depends(get_config_service)
+):
+    """List semua config untuk module"""
+    return await config.list_by_module(
+        org_id=current_user.organization_id,
+        module=module,
+        category=category
+    )
+
+@router.get("/{config_key:path}")
+async def get_setting(
+    config_key: str,
+    current_user: User = Depends(get_current_user),
+    config: ConfigService = Depends(get_config_service)
+):
+    """Get single config dengan UI metadata"""
+    return await config.get_with_ui(
+        org_id=current_user.organization_id,
+        config_key=config_key
+    )
+
+@router.put("/{config_key:path}")
+async def update_setting(
+    config_key: str,
+    body: UpdateConfigRequest,
+    current_user: User = Depends(require_permission("settings.edit")),
+    config: ConfigService = Depends(get_config_service)
+):
+    """Update config value"""
+    await config.set(
+        org_id=current_user.organization_id,
+        config_key=config_key,
+        value=body.value,
+        user_id=current_user.id,
+        reason=body.reason
+    )
+    return {"status": "updated"}
+
+@router.get("/{config_key:path}/history")
+async def get_setting_history(
+    config_key: str,
+    current_user: User = Depends(require_permission("settings.view")),
+    config: ConfigService = Depends(get_config_service)
+):
+    """Get config change history"""
+    return await config.get_history(
+        org_id=current_user.organization_id,
+        config_key=config_key
+    )
+```
+
+---
+
+### 9.6 Frontend Components
+
+#### Component Structure
+
+```
+src/components/config/
+├── ConfigEditor.tsx              # Main container
+├── ConfigForm.tsx                # Form wrapper
+├── RelatedDataPanel.tsx          # Panel tabel terkait
+│
+├── inputs/                       # Input types
+│   ├── TextInput.tsx
+│   ├── NumberInput.tsx
+│   ├── SelectInput.tsx
+│   ├── BooleanInput.tsx
+│   ├── JsonInput.tsx
+│   └── FormulaBuilder/           # Formula builder
+│       ├── FormulaBuilder.tsx
+│       ├── FormulaCanvas.tsx     # Drop zone for tokens
+│       ├── VariableChip.tsx      # Draggable variable
+│       ├── OperatorButton.tsx    # +, -, ×, ÷
+│       └── PreviewPanel.tsx      # Live preview
+│
+└── hooks/
+    ├── useConfig.ts              # Get/update config
+    └── useFormulaEvaluator.ts    # Evaluate formula client-side
+```
+
+#### Formula Builder UI
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│  Formula Builder: Total Kamar                                               │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  Formula Canvas (drop zone):                                                │
+│  ┌─────────────────────────────────────────────────────────────────────┐   │
+│  │                                                                     │   │
+│  │  ┌──────────────┐     ┌──────────────┐     ┌──────────────┐        │   │
+│  │  │ 🏷️ Room Rate │  ×  │ 🌙 Nights    │  ×  │     1.21     │        │   │
+│  │  └──────────────┘     └──────────────┘     └──────────────┘        │   │
+│  │                                                                     │   │
+│  └─────────────────────────────────────────────────────────────────────┘   │
+│                                                                             │
+│  ┌─────────────────────┐  ┌─────────────────┐  ┌─────────────────────────┐ │
+│  │ Available Variables │  │ Operators       │  │ Live Preview            │ │
+│  │                     │  │                 │  │                         │ │
+│  │ 🏷️ Room Rate [drag] │  │  + │ - │ × │ ÷  │  │ Room Rate: Rp 500.000   │ │
+│  │ 🌙 Nights    [drag] │  │  ( │ ) │       │  │ Nights: 2               │ │
+│  │ 📊 Tax %     [drag] │  │                 │  │ ───────────────────     │ │
+│  │ 📊 Service % [drag] │  │                 │  │ Result: Rp 1.210.000    │ │
+│  │ 🏛️ City Tax  [drag] │  │                 │  │                         │ │
+│  └─────────────────────┘  └─────────────────┘  └─────────────────────────┘ │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+#### VariableChip Styling
+
+```tsx
+// Variable chip dengan warna berdasarkan type
+const chipStyles = {
+  currency: {
+    background: '#e8f5e9',
+    border: '1px solid #4caf50',
+    color: '#2e7d32'
+  },
+  percent: {
+    background: '#e3f2fd',
+    border: '1px solid #2196f3',
+    color: '#1565c0'
+  },
+  number: {
+    background: '#fff3e0',
+    border: '1px solid #ff9800',
+    color: '#e65100'
+  }
+};
+
+const VariableChip = ({ variable, draggable, onRemove }) => (
+  <div
+    className="variable-chip"
+    style={chipStyles[variable.type]}
+    draggable={draggable}
+  >
+    <span className="icon">{variable.icon}</span>
+    <span className="label">{variable.label}</span>
+    {onRemove && <button onClick={onRemove}>×</button>}
+  </div>
+);
+```
+
+---
+
+### 9.7 Config Editor with Related Data
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│  Settings > PMS > Pricing                                                   │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  ┌─────────────────────────────────────┐  ┌───────────────────────────────┐│
+│  │  Service Charge                     │  │  📋 Related Data              ││
+│  │                                     │  │                               ││
+│  │  ┌─────────────────────────────┐   │  │  Room Types:                  ││
+│  │  │  [    10    ] %             │   │  │  ┌──────────┬───────────┐    ││
+│  │  └─────────────────────────────┘   │  │  │ Deluxe   │ Rp 500.000│    ││
+│  │                                     │  │  │ Suite    │ Rp 900.000│    ││
+│  │  ℹ️ Persentase biaya layanan yang   │  │  │ Standard │ Rp 350.000│    ││
+│  │    ditambahkan ke total bill       │  │  └──────────┴───────────┘    ││
+│  │                                     │  │                               ││
+│  ├─────────────────────────────────────┤  │  Tax Codes:                   ││
+│  │  Tax Rate                           │  │  ┌──────────┬───────────┐    ││
+│  │                                     │  │  │ PPN      │ 11%       │    ││
+│  │  ┌─────────────────────────────┐   │  │  │ Service  │ 10%       │    ││
+│  │  │  [    11    ] %             │   │  │  └──────────┴───────────┘    ││
+│  │  └─────────────────────────────┘   │  │                               ││
+│  │                                     │  │  Rate Plans:                  ││
+│  │  ℹ️ Pajak yang dikenakan            │  │  • Best Available Rate (BAR) ││
+│  │                                     │  │  • Corporate Rate            ││
+│  │                                     │  │  • Promo Rate                ││
+│  └─────────────────────────────────────┘  └───────────────────────────────┘│
+│                                                                             │
+│  [💾 Save Changes]                              Last updated: 2 hours ago  │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+### 9.8 Permission
+
+| Permission | Who | Actions |
+|------------|-----|---------|
+| `settings.view` | All staff | Lihat config values |
+| `settings.edit` | Hotel Admin | Edit config values |
+| `settings.define` | Developer | Create/modify config_definitions |
+
+---
+
+### 9.9 Summary
+
+| Aspect | Implementation |
+|--------|----------------|
+| **Storage** | `config_definitions` + `tenant_configs` tables |
+| **Caching** | Redis, TTL 5 menit |
+| **Access** | Via `ConfigService` (dependency injection) |
+| **Naming** | `{module}.{category}.{name}` |
+| **Types** | boolean, number, string, select, json, formula |
+| **UI Metadata** | `ui_config` JSONB column |
+| **Related Data** | Developer-defined, fetched on demand |
+| **Formula** | Visual builder dengan drag-drop |
+| **Preview** | Real-time calculation |
+| **Audit** | History table + user tracking |
+| **Permission** | Hotel Admin = edit, Developer = define |
+
+---
+
 ## Summary
 
 | Decision | Topic | Pattern |
@@ -789,7 +1548,8 @@ function ChargeActions({ chargeId }: { chargeId: number }) {
 | #103 | Interface/Contract | Self-contained (Interface + DTO) |
 | #104 | Naming | I-prefix, Request/Info suffix, etc. |
 | #105 | Dependency Injection | Hybrid (Constructor + FastAPI Depends) |
+| #106 | Flexible Configuration | Config tables + Visual UI + Formula Builder |
 
 ---
 
-*Last Updated: 2025-12-07*
+*Last Updated: 2025-12-10*

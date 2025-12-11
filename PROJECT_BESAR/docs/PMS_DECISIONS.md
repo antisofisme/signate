@@ -137,13 +137,17 @@ Berdasarkan analisis komprehensif dengan multi-agent terhadap database PMS lama 
 
 ### C. Database Design - Core (19-35)
 
-19. **Soft delete untuk semua entity** - Data tidak dihapus permanen, hanya ditandai `deleted_at` agar bisa di-restore dan ada audit trail
+19. **Soft delete untuk semua entity** - Data tidak dihapus permanen, menggunakan pattern lengkap:
+    - `is_deleted BOOLEAN DEFAULT FALSE NOT NULL` - Flag untuk query filtering
+    - `deleted_at TIMESTAMP WITH TIME ZONE` - Timestamp kapan dihapus
+    - `deleted_by_id INTEGER REFERENCES users(id)` - Siapa yang menghapus
 
 20. **Audit trail lengkap** - Setiap tabel wajib punya:
     - `created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()`
     - `created_by_id INTEGER REFERENCES users(id)`
     - `updated_at TIMESTAMP WITH TIME ZONE`
     - `updated_by_id INTEGER REFERENCES users(id)`
+    - `is_deleted BOOLEAN DEFAULT FALSE NOT NULL`
     - `deleted_at TIMESTAMP WITH TIME ZONE`
     - `deleted_by_id INTEGER REFERENCES users(id)`
 
@@ -155,7 +159,7 @@ Berdasarkan analisis komprehensif dengan multi-agent terhadap database PMS lama 
 
 24. **Multi-tenancy dengan organization_id** - Satu database untuk banyak hotel, isolasi data per organization dengan Row-Level Security (RLS)
 
-25. **DECIMAL/NUMERIC untuk uang** - Semua kolom harga/nominal pakai `NUMERIC(15,4)` agar tidak ada floating-point rounding error
+25. **DECIMAL/NUMERIC untuk uang** - Semua kolom harga/nominal pakai `DECIMAL(18,4)` agar tidak ada floating-point rounding error dan cukup untuk high-denomination currencies (IDR, VND)
 
 26. **Optimistic locking dengan version column** - Setiap tabel yang bisa di-edit concurrent wajib punya kolom `version INTEGER` untuk mencegah lost updates
 

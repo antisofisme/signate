@@ -88,6 +88,8 @@ class DeviceRoutes:
     # Device lifecycle
     HEARTBEAT = f"{BASE}/{{device_id}}/heartbeat"
     RELEASE = f"{BASE}/{{device_id}}/release"  # CMS admin release (soft)
+    RESTORE = f"{BASE}/{{device_id}}/restore"  # CMS admin restore from released
+    LIST_RELEASED = f"{BASE}/released"  # List released/unassigned devices
     HARD_RESET = f"{BASE}/{{device_id}}/hard-reset"  # Player factory reset (public)
 
     # Content resolution
@@ -109,6 +111,7 @@ class DeviceRoutes:
 
     # Security
     VALIDATE_RESET_PASSWORD = f"{BASE}/validate-reset-password"
+    HARD_RESET_WITH_PIN = f"{BASE}/{{device_id}}/hard-reset-pin"  # Hard reset with org PIN (no JWT needed)
 
 
 # =============================================================================

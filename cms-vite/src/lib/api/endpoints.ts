@@ -63,6 +63,7 @@ export const API_ENDPOINTS = {
     SEND_COMMAND: (id: number) => `/api/v1/devices/${id}/commands`,
     CONTENT_RESOLVED: (id: number) => `/api/v1/devices/${id}/content/resolved`,
     RELEASE: (id: number) => `/api/v1/devices/${id}/release`,
+    RESTORE: (id: number) => `/api/v1/devices/${id}/restore`,
     SPEED_TEST: (id: number) => `/api/v1/devices/${id}/speed-test`,
     SPEED_TESTS: (id: number) => `/api/v1/devices/${id}/speed-tests`,
 

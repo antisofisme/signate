@@ -3,11 +3,11 @@
  * Real-time device updates via WebSocket
  */
 
-import { useEffect } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { useWebSocketEvents } from '@/lib/websocket'
 import { toast } from '@/shared/utils/toast'
 import { logger } from '@/shared/utils/logger'
+import { deviceKeys } from './useDevices'
 import type {
   DeviceStatusData,
   DeviceHeartbeatData,
@@ -28,12 +28,10 @@ export function useDeviceWebSocket() {
     'device:status': (data: DeviceStatusData) => {
       logger.debug('[WS] Device status:', data)
 
-      // Invalidate device list query
-      queryClient.invalidateQueries({ queryKey: ['devices'] })
-
-      // Invalidate specific device query
-      queryClient.invalidateQueries({
-        queryKey: ['devices', data.device_id]
+      // Invalidate ALL device queries (using deviceKeys.all for proper matching)
+      void queryClient.invalidateQueries({
+        queryKey: deviceKeys.all,
+        refetchType: 'all',
       })
 
       // Show toast notification
@@ -49,14 +47,20 @@ export function useDeviceWebSocket() {
     // Device connected
     'device:connected': (data: DeviceStatusData) => {
       logger.debug('[WS] Device connected:', data)
-      queryClient.invalidateQueries({ queryKey: ['devices'] })
+      void queryClient.invalidateQueries({
+        queryKey: deviceKeys.all,
+        refetchType: 'all',
+      })
       toast.success(`Device #${data.device_id} connected`)
     },
 
     // Device disconnected
     'device:disconnected': (data: DeviceStatusData) => {
       logger.debug('[WS] Device disconnected:', data)
-      queryClient.invalidateQueries({ queryKey: ['devices'] })
+      void queryClient.invalidateQueries({
+        queryKey: deviceKeys.all,
+        refetchType: 'all',
+      })
       toast.info(`Device #${data.device_id} disconnected`)
     },
 
@@ -65,7 +69,7 @@ export function useDeviceWebSocket() {
       logger.debug('[WS] Device heartbeat:', data.device_id)
 
       // Update cache without full refetch (optimistic update)
-      queryClient.setQueryData(['devices', data.device_id], (oldData: any) => {
+      queryClient.setQueryData(deviceKeys.detail(data.device_id), (oldData: any) => {
         if (!oldData) return oldData
         return {
           ...oldData,
@@ -85,8 +89,8 @@ export function useDeviceWebSocket() {
     // Command completed
     'command:complete': (data: CommandCompleteData) => {
       logger.debug('[WS] Command completed:', data)
-      queryClient.invalidateQueries({
-        queryKey: ['devices', data.device_id, 'commands']
+      void queryClient.invalidateQueries({
+        queryKey: deviceKeys.commands(data.device_id),
       })
       toast.success(`Command completed on device #${data.device_id}`)
     },
@@ -109,12 +113,12 @@ export function useDeviceWebSocketById(deviceId: number | undefined) {
   useWebSocketEvents({
     'device:status': (data: DeviceStatusData) => {
       if (data.device_id === deviceId) {
-        queryClient.invalidateQueries({
-          queryKey: ['devices', deviceId]
+        void queryClient.invalidateQueries({
+          queryKey: deviceKeys.detail(deviceId),
         })
         // Also invalidate health when status changes
-        queryClient.invalidateQueries({
-          queryKey: ['device-health', deviceId]
+        void queryClient.invalidateQueries({
+          queryKey: [...deviceKeys.all, 'health', deviceId],
         })
       }
     },
@@ -122,7 +126,7 @@ export function useDeviceWebSocketById(deviceId: number | undefined) {
     'device:heartbeat': (data: DeviceHeartbeatData) => {
       if (data.device_id === deviceId) {
         // Update device data optimistically
-        queryClient.setQueryData(['devices', deviceId], (oldData: any) => {
+        queryClient.setQueryData(deviceKeys.detail(deviceId), (oldData: any) => {
           if (!oldData) return oldData
           return {
             ...oldData,
@@ -132,8 +136,8 @@ export function useDeviceWebSocketById(deviceId: number | undefined) {
           }
         })
         // Invalidate health query for fresh metrics
-        queryClient.invalidateQueries({
-          queryKey: ['device-health', deviceId]
+        void queryClient.invalidateQueries({
+          queryKey: [...deviceKeys.all, 'health', deviceId],
         })
       }
     },

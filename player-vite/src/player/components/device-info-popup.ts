@@ -346,6 +346,10 @@ class DeviceInfoPopupClass {
                     <span class="debug-info-value" id="debug-speed">...</span>
                   </div>
                   <div class="debug-info-row">
+                    <span class="debug-info-label">Local IP</span>
+                    <span class="debug-info-value code" id="debug-local-ip">...</span>
+                  </div>
+                  <div class="debug-info-row">
                     <span class="debug-info-label">Client IP</span>
                     <span class="debug-info-value code" id="debug-client-ip">...</span>
                   </div>
@@ -1748,6 +1752,7 @@ class DeviceInfoPopupClass {
     const { device, network, system, performance, playbackStats } = this.deviceInfo;
 
     // Network Details
+    this.setText('debug-local-ip', network.localIP || 'Not detected');
     this.setText('debug-client-ip', network.clientIP || 'Not detected');
     this.setText('debug-public-ip', network.publicIP || 'Detecting...');
     this.setText('debug-connection-type', network.connectionType);

@@ -20,6 +20,7 @@ import { SharedEventBus } from '@shared/events/shared-event-bus';
 import { deviceConfigStorage } from '@shared/storage';
 import type { Heartbeat as IHeartbeat } from '@player/types/player.types';
 import { ServiceRegistry } from '@shared/services/service-registry';
+import { getCachedLocalIP } from '@shared/utils/device-fingerprint';
 
 /**
  * Player Heartbeat Class
@@ -185,6 +186,9 @@ class PlayerHeartbeatClass implements IHeartbeat {
 
         // Connection reliability tracking
         connection_drops_count: this.connectionDropsCount,
+
+        // Local IP address for device identification (from WebRTC)
+        local_ip: getCachedLocalIP() || null,
       };
 
       // Only include viewport if changed (semi-static data)

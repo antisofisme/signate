@@ -39,7 +39,8 @@ from .dtos import (
     DeviceHealthWithAlertsResponse,
     HealthHistoryResponse,
     DeviceCapabilitiesCreate,
-    DeviceCapabilitiesResponse
+    DeviceCapabilitiesResponse,
+    HardResetWithPinRequest,
 )
 from .use_cases.request_activation_code import RequestActivationCodeUseCase
 from .use_cases.activate_device import ActivateDeviceUseCase
@@ -48,6 +49,9 @@ from .use_cases.list_devices import ListDevicesUseCase
 from .use_cases.update_device import UpdateDeviceUseCase
 from .repositories.device_repo import DeviceRepository
 from .domain.device import DeviceHeartbeat
+
+# Import organization repository for hard reset PIN validation
+from services.organization.repositories.organization_repo import OrganizationRepository
 
 # WebSocket imports
 from shared.websocket_manager import websocket_manager
@@ -84,6 +88,11 @@ async def broadcast_device_event(organization_id: int, event_type: str, data: di
 def get_device_repository(db: Session = Depends(get_db)) -> DeviceRepository:
     """Get device repository instance"""
     return DeviceRepository(db)
+
+
+def get_organization_repository(db: Session = Depends(get_db)) -> OrganizationRepository:
+    """Get organization repository instance for PIN validation"""
+    return OrganizationRepository(db)
 
 
 def get_request_activation_code_use_case(
@@ -264,6 +273,9 @@ async def device_heartbeat(
         # Extract real client IP (handles X-Forwarded-For from Nginx proxy)
         client_ip = get_client_ip(http_request)
 
+        # Debug: log what we receive
+        print(f"[Heartbeat] 📦 Received local_ip: {request.local_ip}")
+
         heartbeat_data = DeviceHeartbeat(
             unique_code=request.unique_code,
             device_uuid=request.device_uuid,
@@ -280,7 +292,9 @@ async def device_heartbeat(
             connection_speed=request.connection_speed,
             # Connection reliability (NEW)
             connection_drops_count=request.connection_drops_count,
-            ip_address=client_ip
+            ip_address=client_ip,
+            # Local IP from WebRTC (for device identification)
+            local_ip=request.local_ip
         )
 
         # Use case is now async for GeoIP lookup
@@ -1179,15 +1193,16 @@ def list_devices(
             response = device_to_response(device)
             device_responses.append(response)
 
-        # Get counts
-        total = use_case.count_devices(organization_id)
-        online = use_case.count_online_devices(organization_id)
-        
-        # Update metrics
-        update_device_metrics(organization_id, online, total - online)
+        # Count from actual filtered results (scope-aware)
+        total = len(device_responses)
+        online = sum(1 for d in device_responses if d.is_online)
+
+        # Update metrics only for my_org scope (actual org devices)
+        if scope == "my_org":
+            update_device_metrics(organization_id, online, total - online)
 
         result = DeviceListResponse(
-            items=device_responses,  # Changed from 'devices' to 'items'
+            items=device_responses,
             total=total,
             online=online
         )
@@ -1738,3 +1753,259 @@ def validate_reset_password(
             "valid": False,
             "message": "Incorrect password"
         }
+
+
+@router.post(DeviceRoutes.HARD_RESET_WITH_PIN)
+def hard_reset_with_pin(
+    device_id: int,
+    request: HardResetWithPinRequest,
+    http_request: Request,
+    device_repo: DeviceRepository = Depends(get_device_repository),
+    org_repo: OrganizationRepository = Depends(get_organization_repository)
+):
+    """
+    Hard reset device with organization PIN validation (no JWT required)
+
+    Called by player when device JWT is not available (e.g., after cache clear).
+    This endpoint combines PIN validation and hard reset in one call.
+
+    Flow:
+    1. Player shows PIN input dialog
+    2. Player calls this endpoint with device_id, organization_id, and PIN
+    3. Backend validates PIN against organization's reset PIN
+    4. If valid, set device status to 'released' and clear unique_code
+    5. Player clears ALL local data and reloads
+    6. Device requests new code and appears in global pending list
+
+    Security:
+    - No authentication required (player may not have valid JWT)
+    - Organization PIN serves as authentication
+    - IP address logged for audit trail
+    - Rate limiting recommended (TODO)
+    """
+    from datetime import datetime, timezone
+
+    # Get device (verify it exists)
+    device = device_repo.find_by_id(device_id)
+
+    if not device:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Device not found"
+        )
+
+    # Verify device belongs to the specified organization
+    if device.organization_id != request.organization_id:
+        audit_logger.log_action(
+            user_id=None,
+            action="device.hard_reset_pin.org_mismatch",
+            resource_type="device",
+            resource_id=device_id,
+            details={
+                "device_org_id": device.organization_id,
+                "request_org_id": request.organization_id,
+                "ip_address": http_request.client.host if http_request.client else None,
+                "severity": "WARNING"
+            }
+        )
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Device does not belong to this organization"
+        )
+
+    # Validate organization PIN
+    organization = org_repo.find_by_id(request.organization_id)
+    if not organization:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Organization not found"
+        )
+
+    # Check PIN
+    if organization.reset_pin != request.pin:
+        audit_logger.log_action(
+            user_id=None,
+            action="device.hard_reset_pin.invalid_pin",
+            resource_type="device",
+            resource_id=device_id,
+            details={
+                "organization_id": request.organization_id,
+                "ip_address": http_request.client.host if http_request.client else None,
+                "severity": "WARNING",
+                "security_note": "Invalid PIN attempt"
+            }
+        )
+        # Add delay to prevent brute force
+        import time
+        time.sleep(1)
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Invalid organization PIN"
+        )
+
+    # PIN validated - perform hard reset
+    original_status = device.status
+    original_org_id = device.organization_id
+
+    device.status = 'released'
+    device.released_at = datetime.now(timezone.utc)
+    device.unique_code = None  # Clear code - player will get new one
+
+    device_repo.update(device)
+
+    # Audit log
+    audit_logger.log_action(
+        user_id=None,
+        action="device.hard_reset_pin",
+        resource_type="device",
+        resource_id=device_id,
+        details={
+            "device_name": device.device_name,
+            "organization_id": original_org_id,
+            "previous_status": original_status,
+            "new_status": "released",
+            "reset_type": "Factory reset via organization PIN",
+            "ip_address": http_request.client.host if http_request.client else None,
+            "user_agent": http_request.headers.get("User-Agent") if http_request else None,
+        }
+    )
+
+    print(f"[Hard Reset PIN] ✅ Device {device_id} ({device.device_name}) factory reset completed via organization PIN")
+
+    return {
+        "success": True,
+        "message": "Device factory reset completed"
+    }
+
+
+# =============================================================================
+# RESTORE DEVICE (From Released to Active)
+# =============================================================================
+
+@router.post(DeviceRoutes.RESTORE, response_model=DeviceResponse)
+@handle_errors
+def restore_device(
+    device_id: int,
+    http_request: Request,
+    current_user: dict = Depends(require_permission("devices", "edit")),
+    device_repo: DeviceRepository = Depends(get_device_repository)
+):
+    """
+    Restore a released device back to active status.
+
+    Flow:
+    1. Admin clicks "Restore" button in CMS for released device
+    2. Backend sets status='active', clears released_at
+    3. Player's next check-activation-by-uuid will see 'active' status
+    4. Player automatically loads content
+
+    Requires: devices.edit permission
+    """
+    from datetime import datetime, timezone
+
+    start_time = time.time()
+
+    # Get device - must be in released status
+    device = device_repo.find_by_id(device_id, organization_id=current_user["organization_id"])
+
+    if not device:
+        raise NotFoundError(
+            message=f"Device with ID {device_id} not found",
+            resource_type="device",
+            resource_id=device_id
+        )
+
+    # Verify ownership
+    if device.organization_id != current_user["organization_id"]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You can only restore devices in your organization"
+        )
+
+    # Must be released to restore
+    if device.status != 'released':
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Device is not released (current status: {device.status})"
+        )
+
+    original_status = device.status
+
+    # Restore device to active
+    device.status = 'active'
+    device.released_at = None
+
+    updated_device = device_repo.update(device)
+
+    # 🔧 FIX: Invalidate cache IMMEDIATELY after update
+    # This was missing and caused stale data in frontend!
+    cache.invalidate_device(device_id, current_user["organization_id"])
+
+    # Log audit
+    audit_logger.log_action(
+        user_id=current_user["user_id"],
+        action="device.restore",
+        resource_type="device",
+        resource_id=device_id,
+        details={
+            "device_name": device.device_name,
+            "previous_status": original_status,
+            "new_status": "active",
+        },
+        ip_address=http_request.client.host if http_request.client else None,
+        organization_id=current_user["organization_id"]
+    )
+
+    print(f"[Restore Device] ✅ Device {device_id} ({device.device_name}) restored to active - cache invalidated")
+
+    return device_to_response(updated_device)
+
+
+@router.get(DeviceRoutes.LIST_RELEASED, response_model=DeviceListResponse)
+@handle_errors
+def list_released_devices(
+    http_request: Request,
+    current_user: dict = Depends(require_permission("devices", "read")),
+    device_repo: DeviceRepository = Depends(get_device_repository)
+):
+    """
+    List all released/unassigned devices for the organization.
+
+    Returns devices that have been released (soft delete) but not hard reset.
+    These devices can be restored back to active status.
+
+    Requires: devices.read permission
+    """
+    start_time = time.time()
+
+    org_id = current_user["organization_id"]
+
+    # Get released devices for organization
+    devices = device_repo.list_released_by_organization(organization_id=org_id)
+
+    device_responses = [
+        DeviceResponse(
+            id=d.id,
+            device_name=d.device_name,
+            device_type=d.device_type,
+            unique_code=d.unique_code,
+            status=d.status,
+            organization_id=d.organization_id,
+            location=d.location,
+            ip_address=d.ip_address,
+            mac_address=d.mac_address,
+            is_online=d.is_online,
+            last_seen_at=d.last_seen_at,
+            created_at=d.created_at,
+            updated_at=d.updated_at,
+            released_at=d.released_at
+        )
+        for d in devices
+    ]
+
+    print(f"[List Released] Found {len(device_responses)} released devices for org {org_id}")
+
+    return DeviceListResponse(
+        devices=device_responses,
+        total=len(device_responses)
+    )

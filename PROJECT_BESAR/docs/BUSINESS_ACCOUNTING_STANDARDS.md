@@ -18,9 +18,9 @@
 7. [Bank & Cash Management](#7-bank--cash-management)
 8. [Accounts Receivable (AR)](#8-accounts-receivable-ar)
 9. [Accounts Payable (AP)](#9-accounts-payable-ap)
-10. [Integration with Other Modules](#10-integration-with-other-modules)
-11. [Audit Trail & Compliance](#11-audit-trail--compliance)
-12. [Business Rules Engine](#12-business-rules-engine) ✅
+10. [Business Rules Engine](#10-business-rules-engine) ✅
+
+**11-16**: See [BUSINESS_ACCOUNTING_STANDARDS_V2.md](./BUSINESS_ACCOUNTING_STANDARDS_V2.md)
 
 ---
 
@@ -2579,25 +2579,11 @@ CREATE INDEX idx_ap_invoices_due ON ap_invoices(due_date) WHERE status IN ('appr
 
 ---
 
-## 10-15. Continued in V2
-
-> **See**: [BUSINESS_ACCOUNTING_STANDARDS_V2.md](./BUSINESS_ACCOUNTING_STANDARDS_V2.md)
-
-**Sections in V2:**
-- 10. Integration with Other Modules ✅
-- 11. Audit Trail & Compliance ✅
-- 12. Fixed Assets (Pending)
-- 13. Inventory Costing (Pending)
-- 14. Budgeting (Pending)
-- 15. Consolidation (Pending)
-
----
-
-## 12. Business Rules Engine
+## 10. Business Rules Engine
 
 > **Status**: ✅ Approved (2025-12-07)
 
-### 12.1 Core Concept: Hard vs Soft Rules
+### 10.1 Core Concept: Hard vs Soft Rules
 
 **Masalah**: Business logic yang bervariasi per organization TIDAK BOLEH di-hardcode di backend.
 
@@ -2608,7 +2594,7 @@ CREATE INDEX idx_ap_invoices_due ON ap_invoices(due_date) WHERE status IN ('appr
 | **Hard Rules** | Business logic fundamental, tidak pernah berubah | Embedded in code | Never |
 | **Soft Rules** | Business logic yang bisa bervariasi per organization | Configurable via UI | Always |
 
-### 12.2 Hard Rules (Embedded)
+### 10.2 Hard Rules (Embedded)
 
 Rules yang HARUS ada di code, tidak bisa dikonfigurasi:
 
@@ -2630,7 +2616,7 @@ Rules yang HARUS ada di code, tidak bisa dikonfigurasi:
 - Invoice numbering uniqueness
 - Posted journal immutability
 
-### 12.3 Soft Rules (Configurable)
+### 10.3 Soft Rules (Configurable)
 
 Rules yang BISA dikonfigurasi via UI per organization:
 
@@ -2660,7 +2646,7 @@ Rules yang BISA dikonfigurasi via UI per organization:
 - Consolidation rules
 - Currency conversion methods
 
-### 12.4 Per-Page Config Panel
+### 10.4 Per-Page Config Panel
 
 Setiap halaman yang memiliki Soft Rules menampilkan tombol **Config** dengan panel:
 
@@ -2689,7 +2675,7 @@ Setiap halaman yang memiliki Soft Rules menampilkan tombol **Config** dengan pan
 └─────────────────────────────────────────────────────────┘
 ```
 
-### 12.5 Rule Types
+### 10.5 Rule Types
 
 | Type | UI Component | Example |
 |------|--------------|---------|
@@ -2700,7 +2686,7 @@ Setiap halaman yang memiliki Soft Rules menampilkan tombol **Config** dengan pan
 | `mapping` | Table editor | GL account mapping per transaction |
 | `percentage` | Slider/Input | Service charge: 10% |
 
-### 12.6 Formula Engine
+### 10.6 Formula Engine
 
 **Safe Formula Evaluation** menggunakan `simpleeval`:
 
@@ -2741,7 +2727,7 @@ result = evaluator.evaluate(
 # Result: 1578947.37
 ```
 
-### 12.7 Impact Analysis
+### 10.7 Impact Analysis
 
 Menggunakan **dependency graph** untuk track rule relationships:
 
@@ -2787,7 +2773,7 @@ affected = analyzer.get_affected("TOTAL_ROOMS_FORMULA")
 # Returns: All affected reports and calculations
 ```
 
-### 12.8 Data Dictionary (Auto-Generated)
+### 10.8 Data Dictionary (Auto-Generated)
 
 System knows its own structure via database introspection + manual annotations:
 
@@ -2826,7 +2812,7 @@ data_annotations = {
 }
 ```
 
-### 12.9 Visual Report/Formula Builder
+### 10.9 Visual Report/Formula Builder
 
 **Concept**: Users dapat membuat report dan formula via UI tanpa SQL.
 
@@ -2865,7 +2851,7 @@ FROM daily_statistics
 WHERE date BETWEEN :start_date AND :end_date
 ```
 
-### 12.10 Database Schema
+### 10.10 Database Schema
 
 ```sql
 -- Business Rules Definitions (System + Organization)
@@ -3031,7 +3017,7 @@ CREATE TABLE report_fields (
 );
 ```
 
-### 12.11 Tech Stack
+### 10.11 Tech Stack
 
 **Backend:**
 - FastAPI - API framework
@@ -3047,7 +3033,7 @@ CREATE TABLE report_fields (
 - ReactFlow - Impact graph visualization
 - Monaco Editor - Formula editing (optional)
 
-### 12.12 Usage Pattern
+### 10.12 Usage Pattern
 
 **Getting a rule value:**
 ```python

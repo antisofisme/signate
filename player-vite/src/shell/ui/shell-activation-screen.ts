@@ -247,6 +247,120 @@ class ShellActivationScreenClass {
   }
 
   /**
+   * Render released/disconnected screen
+   * Shows when device is released from device list (moved to unsigned pool)
+   * Device waits for admin to restore it from CMS
+   */
+  async renderReleased(containerId = 'shell-container'): Promise<void> {
+    this.container = document.getElementById(containerId);
+    if (!this.container) {
+      SharedLogger.error('[ShellActivationScreen] Container not found:', containerId);
+      return;
+    }
+
+    const deviceName = SharedDeviceState.getDeviceName() || 'This Device';
+
+    SharedLogger.log('[ShellActivationScreen] Rendering released device screen...', {
+      deviceName,
+    });
+
+    this.container.innerHTML = `
+      <div id="activation-screen">
+        <div class="activation-card released-card">
+          <div class="released-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M18.36 6.64a9 9 0 1 1-12.73 0"/>
+              <line x1="12" x2="12" y1="2" y2="12"/>
+            </svg>
+          </div>
+
+          <h1>Device Disconnected</h1>
+
+          <div id="released-message">
+            <p style="font-size: 1.25rem; opacity: 0.9; margin-bottom: 1rem;">
+              <strong>${deviceName}</strong> has been released from the device list.
+            </p>
+            <p style="font-size: 1rem; opacity: 0.7; margin-bottom: 1.5rem;">
+              This device is now in the unassigned pool.
+            </p>
+          </div>
+
+          <div class="spinner"></div>
+
+          <p id="status-message" style="font-size: 1.25rem; margin: 1rem 0;">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display: inline-block; vertical-align: middle; margin-right: 6px;">
+              <circle cx="12" cy="12" r="10"/>
+              <polyline points="12 6 12 12 16 14"/>
+            </svg>
+            Waiting for admin to restore...
+          </p>
+
+          <p id="activation-instruction" style="margin-top: 1.5rem; font-size: 0.9rem; opacity: 0.6;">
+            An admin can restore this device from the CMS Unassigned Devices page
+          </p>
+        </div>
+      </div>
+    `;
+
+    // Add styles (includes released styles)
+    this.injectStyles();
+    this.injectReleasedStyles();
+
+    // Store references
+    this.statusElement = document.getElementById('status-message');
+
+    SharedLogger.log('[ShellActivationScreen] ✅ Released screen rendered');
+  }
+
+  /**
+   * Inject CSS styles for released screen
+   */
+  private injectReleasedStyles(): void {
+    const existingStyle = document.getElementById('shell-released-styles');
+    if (existingStyle) return;
+
+    const style = document.createElement('style');
+    style.id = 'shell-released-styles';
+    style.textContent = `
+      /* Released/Disconnected Screen Styles */
+      .released-card {
+        border-color: rgba(245, 158, 11, 0.3) !important;
+        background: rgba(245, 158, 11, 0.05) !important;
+      }
+
+      .released-icon {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 100px;
+        height: 100px;
+        margin: 0 auto 1.5rem;
+        background: rgba(245, 158, 11, 0.15);
+        border-radius: 50%;
+        color: #f59e0b;
+      }
+
+      .released-card h1 {
+        color: #f59e0b !important;
+        margin-bottom: 1.5rem;
+      }
+
+      #released-message {
+        text-align: center;
+        color: white;
+      }
+
+      /* Amber/orange spinner for released screen */
+      .released-card .spinner {
+        border-color: rgba(245, 158, 11, 0.3);
+        border-top-color: #f59e0b;
+      }
+    `;
+
+    document.head.appendChild(style);
+  }
+
+  /**
    * Hide activation screen
    */
   hide(): void {

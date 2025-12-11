@@ -65,6 +65,9 @@ class HeartbeatRequest(BaseModel):
     # Connection reliability tracking (NEW)
     connection_drops_count: Optional[int] = Field(None, ge=0, description="Number of network disconnections since startup")
 
+    # Local network IP (for device identification on same network)
+    local_ip: Optional[str] = Field(None, max_length=45, description="Local network IP from WebRTC (e.g., 192.168.1.100)")
+
 
 class UpdateDeviceRequest(BaseModel):
     """Update device settings - called by CMS admin"""
@@ -98,6 +101,18 @@ class BatchDeviceLogsRequest(BaseModel):
 class ValidateResetPasswordRequest(BaseModel):
     """Validate reset password - called by player before hard reset"""
     password: str = Field(..., min_length=1, max_length=100)
+
+
+class HardResetWithPinRequest(BaseModel):
+    """
+    Hard reset with organization PIN validation
+    Called by player when Device JWT is not available
+
+    This endpoint validates organization PIN and performs hard reset in one call,
+    eliminating the need for device JWT authentication.
+    """
+    organization_id: int = Field(..., gt=0, description="Organization ID for PIN validation")
+    pin: str = Field(..., min_length=1, max_length=20, description="Organization reset PIN")
 
 
 class ConnectionLogEntryDTO(BaseModel):
@@ -194,6 +209,7 @@ class DeviceResponse(BaseModel):
 
     # Network info
     ip_address: Optional[str]
+    local_ip: Optional[str] = None  # Local network IP from WebRTC
     platform: Optional[str]
 
     # GeoIP data (Phase 6)

@@ -281,6 +281,842 @@ await session_repo.revoke_all_for_user(user_id, reason="password_changed")
 await session_repo.revoke_all_for_user_org(user_id, org_id, reason="access_revoked")
 ```
 
+### 1.6 Hybrid Authentication (Identity Providers)
+
+Platform mendukung **multiple authentication methods** yang dapat dikonfigurasi per organization.
+
+#### 1.6.1 Supported Identity Providers
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                    SUPPORTED IDENTITY PROVIDERS                              │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  PHASE 1 (MVP) ✅                                                          │
+│  ┌─────────────────────────────────────────────────────────────────────┐   │
+│  │ Provider        │ Type          │ Use Case                         │   │
+│  ├─────────────────┼───────────────┼──────────────────────────────────┤   │
+│  │ Google OAuth    │ Social/Work   │ Quick login, Google Workspace    │   │
+│  │ Email+Password  │ Traditional   │ Fallback, no Google users        │   │
+│  └─────────────────────────────────────────────────────────────────────┘   │
+│                                                                             │
+│  PHASE 2 (Future) 📋                                                       │
+│  ┌─────────────────────────────────────────────────────────────────────┐   │
+│  │ Apple Sign-in   │ Social        │ iOS users                        │   │
+│  │ Microsoft OAuth │ Work          │ Corporate/Microsoft 365 users    │   │
+│  │ SAML 2.0 SSO    │ Enterprise    │ Hotel chains with Okta/Azure AD  │   │
+│  └─────────────────────────────────────────────────────────────────────┘   │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+#### 1.6.2 Organization Auth Configuration
+
+```yaml
+# Per-organization auth settings
+organization_auth_config:
+  org_id: 123
+  org_code: "grandindo"
+
+  # Enabled login methods
+  login_methods:
+    google_oauth: true       # Allow Google login
+    email_password: true     # Allow traditional login
+    apple_signin: false      # Future
+    microsoft_oauth: false   # Future
+    saml_sso: false          # Enterprise future
+
+  # Google OAuth settings
+  google_oauth_config:
+    allow_any_google: false  # false = must link first via invitation
+    allowed_domains: []      # Empty = any domain, or ["company.com"] for Google Workspace
+
+  # Password policy (if email_password enabled)
+  password_policy:
+    min_length: 8
+    require_uppercase: true
+    require_number: true
+    require_symbol: false
+    expire_days: 0           # 0 = never expire
+
+  # MFA settings
+  mfa_config:
+    required_for_roles: ["owner", "admin", "manager", "accountant"]
+    methods: ["totp", "sms"]
+```
+
+#### 1.6.3 Google OAuth Flow
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                    GOOGLE OAUTH LOGIN FLOW                                   │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  1. User clicks "Sign in with Google"                                      │
+│                     │                                                       │
+│                     ▼                                                       │
+│  2. Redirect to Google OAuth consent screen                                │
+│     - Scopes: openid, email, profile                                       │
+│                     │                                                       │
+│                     ▼                                                       │
+│  3. User grants permission, Google returns id_token                        │
+│                     │                                                       │
+│                     ▼                                                       │
+│  4. Backend validates id_token with Google                                 │
+│     - Verify signature                                                     │
+│     - Check expiry                                                         │
+│     - Extract: google_id, email, name                                      │
+│                     │                                                       │
+│                     ▼                                                       │
+│  5. Lookup user by google_id + org_code                                    │
+│     ┌─────────────────────────────────────────┐                            │
+│     │ Found?                                   │                            │
+│     │ ├─ YES → Issue JWT (login success)      │                            │
+│     │ └─ NO  → Check org config               │                            │
+│     │         ├─ allow_any_google: true       │                            │
+│     │         │   → Auto-create user? (risky) │                            │
+│     │         └─ allow_any_google: false      │                            │
+│     │             → "Account not linked"      │                            │
+│     └─────────────────────────────────────────┘                            │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+### 1.7 User Invitation & Account Linking
+
+User onboarding menggunakan **invitation-based flow** dimana admin mengirim undangan dan user memilih cara login.
+
+#### 1.7.1 Invitation Flow
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                    INVITATION FLOW                                           │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  STEP 1: Admin Creates User                                                │
+│  ───────────────────────────────────────────────────────────────────────── │
+│  Admin Dashboard → Users → Add New User                                    │
+│                                                                             │
+│  ┌─────────────────────────────────────────┐                               │
+│  │ Name:       [John Doe            ]      │                               │
+│  │ Work Email: [john@company.com    ]      │ ← For invitation              │
+│  │ Role:       [Front Office Staff  ▼]     │                               │
+│  │ Department: [Front Office        ▼]     │                               │
+│  │                                         │                               │
+│  │ [✓] Send invitation email              │                               │
+│  │                                         │                               │
+│  │ [Create User]                           │                               │
+│  └─────────────────────────────────────────┘                               │
+│                                                                             │
+│  STEP 2: System Sends Email                                                │
+│  ───────────────────────────────────────────────────────────────────────── │
+│  To: john@company.com                                                      │
+│  Subject: You're invited to {Organization Name}                            │
+│                                                                             │
+│  Content:                                                                   │
+│  ┌─────────────────────────────────────────────────────────────────────┐   │
+│  │ Hi John,                                                            │   │
+│  │                                                                      │   │
+│  │ You've been invited to join Grand Indo Hotel system.               │   │
+│  │ Click the button below to set up your account.                     │   │
+│  │                                                                      │   │
+│  │ [Set Up My Account]                                                 │   │
+│  │                                                                      │   │
+│  │ Link expires: {7 days from now}                                    │   │
+│  │                                                                      │   │
+│  │ If you didn't expect this, ignore this email.                      │   │
+│  └─────────────────────────────────────────────────────────────────────┘   │
+│                                                                             │
+│  STEP 3: User Clicks Link → Account Setup                                  │
+│  ───────────────────────────────────────────────────────────────────────── │
+│  URL: https://{org}.app.com/setup?token={invitation_token}                 │
+│                                                                             │
+│  ┌─────────────────────────────────────────┐                               │
+│  │                                         │                               │
+│  │  Welcome, John!                         │                               │
+│  │  Complete your account setup            │                               │
+│  │                                         │                               │
+│  │  Choose how you want to sign in:       │                               │
+│  │                                         │                               │
+│  │  ┌─────────────────────────────────┐   │                               │
+│  │  │ 🔵 Link Google Account          │   │ ← Recommended                 │
+│  │  │    Fast & secure login          │   │                               │
+│  │  └─────────────────────────────────┘   │                               │
+│  │                                         │                               │
+│  │  ─────────── OR ───────────            │                               │
+│  │                                         │                               │
+│  │  ┌─────────────────────────────────┐   │                               │
+│  │  │ 🔑 Create Password              │   │ ← Traditional                 │
+│  │  └─────────────────────────────────┘   │                               │
+│  │                                         │                               │
+│  └─────────────────────────────────────────┘                               │
+│                                                                             │
+│  STEP 4a: Google Linking                                                   │
+│  ───────────────────────────────────────────────────────────────────────── │
+│  1. User clicks "Link Google Account"                                      │
+│  2. Google OAuth popup → select account                                    │
+│  3. System receives google_id_token                                        │
+│  4. System stores: google_id, google_email, google_linked_at              │
+│  5. Account activated → redirect to dashboard                              │
+│                                                                             │
+│  STEP 4b: Password Setup                                                   │
+│  ───────────────────────────────────────────────────────────────────────── │
+│  1. User clicks "Create Password"                                          │
+│  2. Enter password + confirm password                                      │
+│  3. System validates password policy                                       │
+│  4. System stores: password_hash                                           │
+│  5. Account activated → redirect to dashboard                              │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+#### 1.7.2 User Database Schema
+
+```sql
+-- Users table with Google linking support
+CREATE TABLE users (
+    id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    organization_id INTEGER NOT NULL REFERENCES organizations(id),
+
+    -- Basic info
+    employee_code VARCHAR(50),                -- Optional employee ID
+    name VARCHAR(200) NOT NULL,
+    email VARCHAR(255) NOT NULL,              -- Work email (for invitations)
+    phone VARCHAR(50),
+
+    -- Department & Role
+    department_id INTEGER REFERENCES departments(id),
+    role_id INTEGER NOT NULL REFERENCES roles(id),
+
+    -- Password authentication (optional)
+    password_hash VARCHAR(255),               -- NULL if using Google only
+    password_changed_at TIMESTAMPTZ,
+
+    -- Google OAuth linking
+    google_id VARCHAR(255) UNIQUE,            -- Google's unique user ID
+    google_email VARCHAR(255),                -- Google email (can differ from work email)
+    google_linked_at TIMESTAMPTZ,
+
+    -- Future: Other providers
+    apple_id VARCHAR(255) UNIQUE,
+    microsoft_id VARCHAR(255) UNIQUE,
+
+    -- Invitation tracking
+    invitation_token VARCHAR(100),
+    invitation_token_hash VARCHAR(64),        -- SHA256 for lookup
+    invitation_sent_at TIMESTAMPTZ,
+    invitation_expires_at TIMESTAMPTZ,
+    invitation_accepted_at TIMESTAMPTZ,
+    invited_by INTEGER REFERENCES users(id),
+
+    -- Status
+    status VARCHAR(20) NOT NULL DEFAULT 'invited',
+    -- invited: awaiting setup
+    -- active: can login
+    -- inactive: disabled by admin
+    -- locked: too many failed attempts
+
+    -- Audit
+    last_login_at TIMESTAMPTZ,
+    failed_login_attempts INTEGER DEFAULT 0,
+    locked_until TIMESTAMPTZ,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+
+    CONSTRAINT uq_user_org_email UNIQUE (organization_id, email),
+    CONSTRAINT chk_user_status CHECK (status IN ('invited', 'active', 'inactive', 'locked'))
+);
+
+-- Indexes
+CREATE INDEX idx_users_org ON users(organization_id);
+CREATE INDEX idx_users_google ON users(google_id) WHERE google_id IS NOT NULL;
+CREATE INDEX idx_users_invitation ON users(invitation_token_hash) WHERE invitation_token_hash IS NOT NULL;
+CREATE INDEX idx_users_status ON users(organization_id, status);
+
+-- Auth audit log
+CREATE TABLE user_auth_events (
+    id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    user_id INTEGER NOT NULL REFERENCES users(id),
+    event_type VARCHAR(50) NOT NULL,
+    -- login_success, login_failed, logout, password_changed,
+    -- google_linked, google_unlinked, mfa_enabled, mfa_disabled,
+    -- invitation_sent, invitation_accepted, account_locked, account_unlocked
+
+    performed_by INTEGER REFERENCES users(id),  -- NULL if self, user_id if admin
+    ip_address INET,
+    user_agent TEXT,
+    device_info JSONB,
+    metadata JSONB,                             -- Additional event data
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- TimescaleDB hypertable
+SELECT create_hypertable('user_auth_events', 'created_at',
+    chunk_time_interval => INTERVAL '1 month',
+    if_not_exists => TRUE
+);
+
+CREATE INDEX idx_auth_events_user ON user_auth_events(user_id, created_at DESC);
+CREATE INDEX idx_auth_events_type ON user_auth_events(event_type, created_at DESC);
+```
+
+#### 1.7.3 Admin Management of Linked Accounts
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                    ADMIN: USER MANAGEMENT                                    │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  Users List View                                                           │
+│  ┌─────────────────────────────────────────────────────────────────────┐   │
+│  │ Name          │ Work Email        │ Auth Method      │ Status │ ⚙️ │   │
+│  ├───────────────┼───────────────────┼──────────────────┼────────┼────┤   │
+│  │ John Doe      │ john@company.com  │ 🔵 Google        │ Active │ ⚙️ │   │
+│  │               │                   │ john@gmail.com   │        │    │   │
+│  ├───────────────┼───────────────────┼──────────────────┼────────┼────┤   │
+│  │ Mary Jane     │ mary@company.com  │ 🔵 Google + 🔑   │ Active │ ⚙️ │   │
+│  │               │                   │ mary@yahoo.com   │        │    │   │
+│  ├───────────────┼───────────────────┼──────────────────┼────────┼────┤   │
+│  │ Bob Smith     │ bob@company.com   │ ⏳ Pending       │Invited │ ⚙️ │   │
+│  ├───────────────┼───────────────────┼──────────────────┼────────┼────┤   │
+│  │ Alice Wong    │ alice@company.com │ 🔑 Password only │ Active │ ⚙️ │   │
+│  └─────────────────────────────────────────────────────────────────────┘   │
+│                                                                             │
+│  Legend:                                                                    │
+│  🔵 Google      = Google account linked                                    │
+│  🔑 Password    = Password set                                             │
+│  🔵 + 🔑        = Both methods available                                   │
+│  ⏳ Pending     = Invitation sent, not yet setup                           │
+│                                                                             │
+│  ─────────────────────────────────────────────────────────────────────────  │
+│                                                                             │
+│  User Detail: John Doe                                                     │
+│  ┌─────────────────────────────────────────────────────────────────────┐   │
+│  │                                                                      │   │
+│  │  Authentication Methods                                             │   │
+│  │  ────────────────────────────────────────────────────────────────   │   │
+│  │                                                                      │   │
+│  │  Google Account                                                     │   │
+│  │  ┌──────────────────────────────────────────────────────────────┐   │   │
+│  │  │ Status:    ✅ Linked                                         │   │   │
+│  │  │ Email:     johndoe.personal@gmail.com                        │   │   │
+│  │  │ Linked on: 2024-01-15 10:30 WIB                              │   │   │
+│  │  │                                                               │   │   │
+│  │  │ [🔓 Unlink Google Account]                                   │   │   │
+│  │  └──────────────────────────────────────────────────────────────┘   │   │
+│  │                                                                      │   │
+│  │  Password                                                           │   │
+│  │  ┌──────────────────────────────────────────────────────────────┐   │   │
+│  │  │ Status:    ❌ Not set                                        │   │   │
+│  │  │                                                               │   │   │
+│  │  │ [📧 Send Password Setup Link]                                │   │   │
+│  │  └──────────────────────────────────────────────────────────────┘   │   │
+│  │                                                                      │   │
+│  │  ────────────────────────────────────────────────────────────────   │   │
+│  │                                                                      │   │
+│  │  Admin Actions                                                      │   │
+│  │  [📧 Resend Invitation]                                            │   │
+│  │  [🔄 Reset All Auth] ← Unlink all, force re-setup                  │   │
+│  │  [🚫 Deactivate User]                                              │   │
+│  │                                                                      │   │
+│  └─────────────────────────────────────────────────────────────────────┘   │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+#### 1.7.4 API Endpoints
+
+```yaml
+# ============================================
+# USER INVITATION & AUTH LINKING APIs
+# ============================================
+
+# Admin: Create user with invitation
+POST /api/v1/admin/users
+Authorization: Bearer {admin_token}
+Body:
+  name: "John Doe"
+  email: "john@company.com"
+  role_id: 5
+  department_id: 2
+  send_invitation: true
+Response:
+  id: 123
+  status: "invited"
+  invitation_sent_at: "2024-01-15T10:00:00Z"
+  invitation_expires_at: "2024-01-22T10:00:00Z"
+
+# Admin: Resend invitation
+POST /api/v1/admin/users/{id}/resend-invitation
+Authorization: Bearer {admin_token}
+Response:
+  success: true
+  invitation_expires_at: "2024-01-22T10:00:00Z"
+
+# Admin: Unlink Google account
+DELETE /api/v1/admin/users/{id}/auth/google
+Authorization: Bearer {admin_token}
+Response:
+  success: true
+  message: "Google account unlinked"
+  # User must re-link or set password to login
+
+# Admin: Force password reset
+POST /api/v1/admin/users/{id}/auth/force-password-reset
+Authorization: Bearer {admin_token}
+Response:
+  success: true
+  reset_link_sent: true
+
+# Admin: Reset all auth (nuclear option)
+POST /api/v1/admin/users/{id}/auth/reset-all
+Authorization: Bearer {admin_token}
+Response:
+  success: true
+  # Unlinks Google, clears password, sends new invitation
+
+# ─────────────────────────────────────────────────────────────
+
+# Public: Validate invitation token
+GET /api/v1/auth/invitation/{token}
+Response:
+  valid: true
+  user_name: "John Doe"
+  organization_name: "Grand Indo Hotel"
+  organization_logo: "https://cdn.../logo.png"
+  expires_at: "2024-01-22T10:00:00Z"
+  available_methods: ["google", "password"]
+
+# Public: Complete setup with Google
+POST /api/v1/auth/invitation/{token}/link-google
+Body:
+  google_id_token: "eyJhbGciOiJSUzI1NiIs..."
+Response:
+  success: true
+  access_token: "eyJ..."
+  refresh_token: "..."
+  user: { id, name, email, role, ... }
+
+# Public: Complete setup with password
+POST /api/v1/auth/invitation/{token}/set-password
+Body:
+  password: "SecureP@ssw0rd!"
+  confirm_password: "SecureP@ssw0rd!"
+Response:
+  success: true
+  access_token: "eyJ..."
+  refresh_token: "..."
+  user: { id, name, email, role, ... }
+
+# ─────────────────────────────────────────────────────────────
+
+# Public: Login with Google
+POST /api/v1/auth/login/google
+Body:
+  google_id_token: "eyJhbGciOiJSUzI1NiIs..."
+  org_code: "grandindo"  # From subdomain
+Response:
+  success: true
+  access_token: "eyJ..."
+  refresh_token: "..."
+  user: { id, name, email, role, organization, ... }
+
+# Public: Login with password
+POST /api/v1/auth/login
+Body:
+  email: "john@company.com"
+  password: "..."
+  org_code: "grandindo"
+Response:
+  success: true
+  access_token: "eyJ..."
+  refresh_token: "..."
+  user: { id, name, email, role, organization, ... }
+```
+
+---
+
+### 1.8 Guest Authentication (Public Users)
+
+Untuk aplikasi public-facing (pms.ibe, pos.online, pms.guest_app), auth berbeda dari staff.
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                    GUEST AUTHENTICATION                                      │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  POS.ONLINE (Self-Order / Online Menu)                                     │
+│  ───────────────────────────────────────────────────────────────────────── │
+│  Auth: NONE REQUIRED ✓                                                     │
+│                                                                             │
+│  • Anonymous session (session_id in cookie)                                │
+│  • Optional: Phone number for order updates                                │
+│  • Order linked to: table_number + session_id                              │
+│  • No account needed                                                       │
+│                                                                             │
+│  Flow:                                                                      │
+│  Scan QR → Browse menu → Add to cart → Checkout                            │
+│          (no login required)                                                │
+│                                                                             │
+│  Payment options (configured per organization):                            │
+│  • Pay now (QRIS, e-wallet) → Order auto-sent to kitchen                  │
+│  • Pay later (room charge, cashier) → Staff confirms → Order sent         │
+│                                                                             │
+│  ─────────────────────────────────────────────────────────────────────────  │
+│                                                                             │
+│  PMS.IBE (Booking Engine)                                                  │
+│  ───────────────────────────────────────────────────────────────────────── │
+│  Auth: EMAIL REQUIRED ✓ (for confirmation)                                 │
+│                                                                             │
+│  Options:                                                                   │
+│  1. Guest checkout (no account)                                            │
+│     • Enter: name, email, phone                                            │
+│     • Confirmation sent to email                                           │
+│     • Booking code for lookup                                              │
+│                                                                             │
+│  2. Quick checkout with Google                                             │
+│     • Click "Continue with Google"                                         │
+│     • Auto-fill name & email from Google                                   │
+│     • Faster checkout                                                       │
+│                                                                             │
+│  3. Create account (optional)                                              │
+│     • Email + password                                                     │
+│     • Can manage bookings later                                            │
+│     • View booking history                                                 │
+│                                                                             │
+│  ─────────────────────────────────────────────────────────────────────────  │
+│                                                                             │
+│  PMS.GUEST_APP (Guest Mobile App)                                          │
+│  ───────────────────────────────────────────────────────────────────────── │
+│  Auth: BOOKING VERIFICATION ✓                                              │
+│                                                                             │
+│  Options:                                                                   │
+│  1. Booking code + Last name                                               │
+│     • Enter: BOOK-12345 + "Doe"                                            │
+│     • Verify against reservation                                           │
+│     • Session valid during stay                                            │
+│                                                                             │
+│  2. QR code from confirmation email                                        │
+│     • Scan QR → auto-login                                                 │
+│     • Links to specific reservation                                        │
+│                                                                             │
+│  3. Google (if booked with Google)                                         │
+│     • Match Google email with booking email                                │
+│     • Auto-find reservations                                               │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+#### 1.8.1 Guest Database Schema
+
+```sql
+-- Guests table (for booking engine & guest app)
+CREATE TABLE guests (
+    id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    organization_id INTEGER NOT NULL REFERENCES organizations(id),
+
+    -- Basic info
+    name VARCHAR(200) NOT NULL,
+    email VARCHAR(255),
+    phone VARCHAR(50),
+
+    -- Optional account
+    password_hash VARCHAR(255),        -- NULL if guest checkout
+    google_id VARCHAR(255),
+
+    -- Verification
+    email_verified BOOLEAN DEFAULT FALSE,
+    email_verified_at TIMESTAMPTZ,
+
+    -- Status
+    is_registered BOOLEAN DEFAULT FALSE,  -- true if created account
+
+    -- Audit
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    last_booking_at TIMESTAMPTZ,
+
+    CONSTRAINT uq_guest_org_email UNIQUE (organization_id, email)
+);
+
+CREATE INDEX idx_guests_email ON guests(organization_id, email);
+CREATE INDEX idx_guests_google ON guests(google_id) WHERE google_id IS NOT NULL;
+```
+
+---
+
+### 1.9 Subdomain & Multi-Tenant Routing
+
+Platform menggunakan **subdomain-based multi-tenancy** dengan single codebase.
+
+#### 1.9.1 Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                    SUBDOMAIN ARCHITECTURE                                    │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  SINGLE CODEBASE - DYNAMIC TENANT DETECTION                                │
+│  ───────────────────────────────────────────────────────────────────────── │
+│                                                                             │
+│       grandindo.app.com  ──┐                                               │
+│       aston.app.com      ──┼──►  [ Single React App ]  ──►  [ Single API ]│
+│       hyatt.app.com      ──┘           │                                   │
+│                                        │                                   │
+│                                        ▼                                   │
+│                              ┌─────────────────┐                           │
+│                              │ Detect subdomain│                           │
+│                              │ Load org config │                           │
+│                              │ Apply branding  │                           │
+│                              └─────────────────┘                           │
+│                                                                             │
+│  Benefits:                                                                  │
+│  • Single deployment = easier maintenance                                  │
+│  • Single codebase = consistent features                                   │
+│  • Dynamic branding = white-label ready                                    │
+│  • Cost efficient = no per-tenant infrastructure                           │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+#### 1.9.2 URL Structure
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                    URL STRUCTURE                                             │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  STAFF APPS (Internal)                                                     │
+│  ───────────────────────────────────────────────────────────────────────── │
+│  https://{org_code}.app.com/                    → Dashboard                │
+│  https://{org_code}.app.com/pms                 → PMS module               │
+│  https://{org_code}.app.com/pos                 → POS module               │
+│  https://{org_code}.app.com/accounting          → Accounting               │
+│  https://{org_code}.app.com/hrm                 → HRM                      │
+│  https://{org_code}.app.com/inventory           → Inventory                │
+│                                                                             │
+│  PUBLIC APPS (Guest-facing)                                                │
+│  ───────────────────────────────────────────────────────────────────────── │
+│  https://{org_code}.app.com/book                → Booking engine (IBE)     │
+│  https://{org_code}.app.com/menu                → Online menu (pos.online) │
+│  https://{org_code}.app.com/guest               → Guest app                │
+│                                                                             │
+│  PLATFORM (SaaS Admin)                                                     │
+│  ───────────────────────────────────────────────────────────────────────── │
+│  https://platform.app.com/                      → Platform admin           │
+│                                                                             │
+│  Examples:                                                                  │
+│  https://grandindo.app.com/pms/reservations     → Grand Indo's PMS         │
+│  https://aston.app.com/pos/orders               → Aston's POS              │
+│  https://grandindo.app.com/book                 → Grand Indo booking       │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+#### 1.9.3 Frontend Tenant Detection
+
+```typescript
+// src/hooks/useTenant.ts
+import { useEffect, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
+
+interface OrgConfig {
+  org_id: number;
+  org_code: string;
+  name: string;
+  logo_url: string;
+  favicon_url: string;
+  primary_color: string;
+  secondary_color: string;
+  login_methods: ('google' | 'password')[];
+  features: string[];
+  timezone: string;
+  locale: string;
+}
+
+export function useTenant() {
+  const [orgCode, setOrgCode] = useState<string | null>(null);
+
+  useEffect(() => {
+    const hostname = window.location.hostname;
+
+    if (hostname.includes('.app.com')) {
+      // Production: grandindo.app.com → "grandindo"
+      const subdomain = hostname.split('.')[0];
+      setOrgCode(subdomain);
+    } else if (hostname === 'localhost') {
+      // Development: use query param
+      const params = new URLSearchParams(window.location.search);
+      setOrgCode(params.get('org') || 'demo');
+    }
+  }, []);
+
+  const { data: config, isLoading, error } = useQuery({
+    queryKey: ['org-config', orgCode],
+    queryFn: () => fetchOrgConfig(orgCode!),
+    enabled: !!orgCode,
+    staleTime: 5 * 60 * 1000, // Cache 5 minutes
+  });
+
+  return { orgCode, config, isLoading, error };
+}
+
+async function fetchOrgConfig(orgCode: string): Promise<OrgConfig> {
+  const response = await fetch(`/api/v1/public/org-config?code=${orgCode}`);
+  if (!response.ok) {
+    if (response.status === 404) {
+      throw new Error('Organization not found');
+    }
+    throw new Error('Failed to load organization');
+  }
+  return response.json();
+}
+```
+
+#### 1.9.4 Dynamic Branding
+
+```typescript
+// src/providers/TenantProvider.tsx
+import { createContext, useContext, useEffect, ReactNode } from 'react';
+import { useTenant, OrgConfig } from '../hooks/useTenant';
+
+const TenantContext = createContext<OrgConfig | null>(null);
+
+export function TenantProvider({ children }: { children: ReactNode }) {
+  const { config, isLoading, error } = useTenant();
+
+  useEffect(() => {
+    if (config) {
+      // Apply CSS variables
+      const root = document.documentElement;
+      root.style.setProperty('--color-primary', config.primary_color);
+      root.style.setProperty('--color-secondary', config.secondary_color);
+
+      // Set favicon
+      const favicon = document.querySelector("link[rel='icon']") as HTMLLinkElement;
+      if (favicon && config.favicon_url) {
+        favicon.href = config.favicon_url;
+      }
+
+      // Set page title
+      document.title = config.name;
+    }
+  }, [config]);
+
+  if (isLoading) {
+    return <LoadingScreen />;
+  }
+
+  if (error) {
+    return <OrgNotFoundScreen message={error.message} />;
+  }
+
+  return (
+    <TenantContext.Provider value={config}>
+      {children}
+    </TenantContext.Provider>
+  );
+}
+
+export function useTenantConfig() {
+  const context = useContext(TenantContext);
+  if (!context) {
+    throw new Error('useTenantConfig must be used within TenantProvider');
+  }
+  return context;
+}
+```
+
+#### 1.9.5 Traefik Configuration
+
+```yaml
+# docker-compose.yml - Traefik with wildcard subdomain
+services:
+  traefik:
+    image: traefik:v3.0
+    command:
+      - "--providers.docker=true"
+      - "--entrypoints.websecure.address=:443"
+      - "--certificatesresolvers.letsencrypt.acme.tlschallenge=true"
+      - "--certificatesresolvers.letsencrypt.acme.email=admin@domain.com"
+      - "--certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json"
+    ports:
+      - "443:443"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - letsencrypt:/letsencrypt
+
+  frontend:
+    image: app-frontend:latest
+    labels:
+      # Catch ALL subdomains *.app.com
+      - "traefik.http.routers.frontend.rule=HostRegexp(`{subdomain:[a-z0-9-]+}.app.com`)"
+      - "traefik.http.routers.frontend.entrypoints=websecure"
+      - "traefik.http.routers.frontend.tls=true"
+      - "traefik.http.routers.frontend.tls.certresolver=letsencrypt"
+      # Wildcard certificate
+      - "traefik.http.routers.frontend.tls.domains[0].main=app.com"
+      - "traefik.http.routers.frontend.tls.domains[0].sans=*.app.com"
+
+  backend:
+    image: app-backend:latest
+    labels:
+      - "traefik.http.routers.api.rule=HostRegexp(`{subdomain:[a-z0-9-]+}.app.com`) && PathPrefix(`/api`)"
+      - "traefik.http.routers.api.entrypoints=websecure"
+      - "traefik.http.routers.api.tls=true"
+
+volumes:
+  letsencrypt:
+```
+
+#### 1.9.6 Backend Tenant Middleware
+
+```python
+# middleware/tenant.py
+from fastapi import Request, HTTPException
+from typing import Optional
+
+async def get_tenant_from_request(request: Request) -> dict:
+    """Extract tenant/organization from subdomain."""
+
+    host = request.headers.get("host", "")
+
+    # Extract subdomain: grandindo.app.com → grandindo
+    if ".app.com" in host:
+        org_code = host.split(".")[0]
+    else:
+        # Development: check header or query param
+        org_code = request.headers.get("X-Org-Code") or \
+                   request.query_params.get("org_code")
+
+    if not org_code:
+        raise HTTPException(status_code=400, detail="Organization not specified")
+
+    # Lookup organization
+    org = await organization_repo.get_by_code(org_code)
+    if not org:
+        raise HTTPException(status_code=404, detail="Organization not found")
+
+    if org.status != "active":
+        raise HTTPException(status_code=403, detail="Organization is not active")
+
+    return {
+        "org_id": org.id,
+        "org_code": org.code,
+        "tenant_id": org.tenant_id,
+        "timezone": org.timezone,
+        "locale": org.locale,
+    }
+
+# Dependency for protected routes
+async def require_tenant(request: Request):
+    tenant = await get_tenant_from_request(request)
+    request.state.tenant = tenant
+    return tenant
+```
+
 ---
 
 ## Part 2: Authorization
@@ -321,58 +1157,70 @@ await session_repo.revoke_all_for_user_org(user_id, org_id, reason="access_revok
 | Role | Description | Permissions |
 |------|-------------|-------------|
 | `super_admin` | Full system access | `*` |
-| `admin` | Tenant & subscription management | `tenants.*`, `subscriptions.*`, `apps.read`, `users.read` |
-| `finance` | Billing & payment only | `invoices.*`, `payments.*`, `tenants.read`, `subscriptions.read` |
-| `support` | Read-only + limited actions | `*.read`, `tenants.support_actions` |
-| `viewer` | Read-only access | `*.read` |
+| `admin` | Tenant & subscription management | `platform.tenants.*`, `platform.subscriptions.*`, `platform.apps.read`, `core.users.read` |
+| `finance` | Billing & payment only | `platform.invoices.*`, `platform.payments.*`, `platform.tenants.read`, `platform.subscriptions.read` |
+| `support` | Read-only + limited actions | `*.*.read`, `platform.tenants.support` |
+| `viewer` | Read-only access | `*.*.read` |
 
 ### 2.3 Community Roles (Per Organization)
 
 | Role | Description | Typical Permissions |
 |------|-------------|---------------------|
 | `owner` | Organization owner | `*` (all permissions) |
-| `admin` | Full admin access | `users.*`, `roles.*`, `settings.*`, `apps.*` |
-| `manager` | Operational management | `apps.*`, `reports.*`, `users.read` |
-| `operator` | Day-to-day operations | `apps.use`, `reports.read` |
-| `viewer` | Read-only | `*.read` |
+| `admin` | Full admin access | `core.users.*`, `core.roles.*`, `core.settings.*`, `pms.*`, `pos.*`, `accounting.*` |
+| `manager` | Operational management | `pms.*`, `pos.*`, `core.reports.*`, `core.users.read` |
+| `operator` | Day-to-day operations | `pms.reservations.*`, `pos.orders.*`, `core.reports.read` |
+| `viewer` | Read-only | `*.*.read` |
 
 ### 2.4 Permission Structure
 
 ```
-Permission Format: {resource}.{action}
+Permission Format: {app}.{module}.{action}
 
-Resources:
-- users
-- roles
-- organizations
-- settings
-- reports
-- [app_specific]: pms, pos, accounting, etc.
+Apps (Level 1):
+- platform     # Platform-level (tenant management)
+- core         # Core services (users, roles, settings)
+- pms          # Property Management System
+- pos          # Point of Sale
+- accounting   # Accounting & Finance
+- hrm          # Human Resource Management
+- inventory    # Inventory Management
 
-Actions:
+Modules (Level 2):
+- users, roles, settings, reports       # Core modules
+- reservations, rooms, guests, folios   # PMS modules
+- orders, payments, tables              # POS modules
+- journals, invoices, accounts          # Accounting modules
+
+Actions (Level 3):
 - create
 - read
 - update
 - delete
-- manage (all CRUD)
-- use (app-specific)
-- export
+- manage (= create + read + update + delete)
 - approve
+- export
+- void
 
 Examples:
-- users.create
-- users.read
-- users.manage (= create + read + update + delete)
-- pms.use
-- reports.export
-- invoices.approve
+- core.users.create
+- core.users.read
+- core.users.manage (= all CRUD)
+- core.roles.manage
+- pms.reservations.create
+- pms.rooms.manage
+- pms.folios.void
+- pos.orders.create
+- accounting.journals.approve
+- accounting.reports.export
+- platform.tenants.manage
 ```
 
 ### 2.5 Permission Check Flow
 
 ```python
 # Middleware/Decorator approach
-@require_permission("users.create")
+@require_permission("core.users.create")
 async def create_user(request: Request, dto: CreateUserDTO):
     # Only reaches here if permission check passes
     pass
@@ -380,11 +1228,11 @@ async def create_user(request: Request, dto: CreateUserDTO):
 # Manual check in use case
 class CreateUserUseCase:
     async def execute(self, actor: Actor, dto: CreateUserDTO):
-        if not actor.has_permission("users.create"):
+        if not actor.has_permission("core.users.create"):
             raise PermissionDeniedError("Cannot create users")
 
         # Additional checks
-        if dto.role == "admin" and not actor.has_permission("users.assign_admin"):
+        if dto.role == "admin" and not actor.has_permission("core.users.assign_admin"):
             raise PermissionDeniedError("Cannot assign admin role")
 ```
 
@@ -817,7 +1665,7 @@ CREATE INDEX idx_audit_action ON audit_logs(action, created_at DESC);
   "actor_type": "user",
   "actor_id": 456,
   "actor_email": "admin@tenant.com",
-  "action": "user.update",
+  "action": "core.users.update",
   "resource_type": "user",
   "resource_id": "789",
   "tenant_id": 1,
@@ -1070,4 +1918,4 @@ Escalation:
 
 ---
 
-*Last Updated: 2025-12-07*
+*Last Updated: 2025-12-11 (Hybrid Auth, Subdomain Architecture Added)*

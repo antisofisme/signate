@@ -29,6 +29,7 @@ class DeviceModel(Base):
 
     # Network info
     ip_address = Column(String(45), nullable=True)  # IPv6 support
+    local_ip = Column(String(45), nullable=True)  # Local network IP from WebRTC (e.g., 192.168.1.100)
     platform = Column(String(50), nullable=True)  # 'webOS', 'browser', etc.
 
     # GeoIP data (Phase 6: Server-Side Features)

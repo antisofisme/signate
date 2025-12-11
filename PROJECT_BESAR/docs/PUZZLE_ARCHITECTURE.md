@@ -7,7 +7,17 @@
 ## Daftar Isi
 
 1. [Konsep Dasar](#1-konsep-dasar)
+   - 1.1 Apa itu Puzzle Architecture?
+   - 1.2 Prinsip Utama
+   - 1.3 Kenapa Modular Monolith?
+   - 1.4 **Arsitektur 4-Layer** ← NEW
 2. [Komponen Core](#2-komponen-core)
+   - 2.1 **Core Services** (Auth, RBAC, Notification, Audit, etc.) ← NEW
+   - 2.2 **Core Infrastructure** (Events, Registry, Slots, Router) ← NEW
+   - 2.3 Event Bus
+   - 2.4 Module Registry
+   - 2.5 Slot Registry
+   - 2.6 Slot Component
 3. [Module Structure](#3-module-structure)
 4. [Hooks System](#4-hooks-system)
 5. [Slots System](#5-slots-system)
@@ -86,37 +96,215 @@
 
 > **Best Practice**: Start with a well-designed modular monolith. This enables teams to develop a thorough understanding of the domain, define precise boundaries, and delay expensive distributed system costs until necessary.
 
+### 1.4 Arsitektur 4-Layer
+
+Platform ini menggunakan arsitektur 4-layer yang jelas:
+
+```
+╔═══════════════════════════════════════════════════════════════════════════╗
+║                         ARSITEKTUR 4-LAYER                                 ║
+╠═══════════════════════════════════════════════════════════════════════════╣
+║                                                                            ║
+║  ┌─────────────────────────────────────────────────────────────────────┐  ║
+║  │  LAYER 1: CORE SERVICES (Centralized Business Services)             │  ║
+║  │  ──────────────────────────────────────────────────────────────     │  ║
+║  │  Services dengan DATABASE dan API yang SEMUA module butuhkan        │  ║
+║  │                                                                      │  ║
+║  │  ┌────────┐ ┌────────┐ ┌────────┐ ┌────────┐ ┌────────┐            │  ║
+║  │  │  Auth  │ │  RBAC  │ │ Notif  │ │ Audit  │ │ Search │            │  ║
+║  │  └────────┘ └────────┘ └────────┘ └────────┘ └────────┘            │  ║
+║  │  ┌────────┐ ┌────────┐ ┌────────┐ ┌────────┐ ┌────────┐            │  ║
+║  │  │ Files  │ │  User  │ │  Org   │ │ Config │ │ i18n   │            │  ║
+║  │  └────────┘ └────────┘ └────────┘ └────────┘ └────────┘            │  ║
+║  └─────────────────────────────────────────────────────────────────────┘  ║
+║                                    │                                       ║
+║                        Provides APIs & Events                             ║
+║                                    │                                       ║
+║  ┌─────────────────────────────────────────────────────────────────────┐  ║
+║  │  LAYER 2: CORE INFRASTRUCTURE (Orchestration)                       │  ║
+║  │  ──────────────────────────────────────────────────────────────     │  ║
+║  │  Infrastructure TANPA database, hanya orchestrate system            │  ║
+║  │                                                                      │  ║
+║  │  ┌────────┐ ┌────────┐ ┌────────┐ ┌────────┐ ┌────────┐            │  ║
+║  │  │ Events │ │Registry│ │ Slots  │ │ Router │ │Middlewr│            │  ║
+║  │  │  Bus   │ │        │ │        │ │        │ │        │            │  ║
+║  │  └────────┘ └────────┘ └────────┘ └────────┘ └────────┘            │  ║
+║  └─────────────────────────────────────────────────────────────────────┘  ║
+║                                    │                                       ║
+║                          Import & Use                                      ║
+║                                    │                                       ║
+║  ┌─────────────────────────────────────────────────────────────────────┐  ║
+║  │  LAYER 3: SHARED UTILITIES (Pure Functions, No State)               │  ║
+║  │  ──────────────────────────────────────────────────────────────     │  ║
+║  │  Code yang BISA di-copy paste tanpa side effects                    │  ║
+║  │                                                                      │  ║
+║  │  ┌────────┐ ┌────────┐ ┌────────┐ ┌────────┐ ┌────────┐            │  ║
+║  │  │  UI    │ │ Format │ │Validate│ │ Types  │ │Constant│            │  ║
+║  │  │Compnts │ │  Utils │ │  Utils │ │        │ │        │            │  ║
+║  │  └────────┘ └────────┘ └────────┘ └────────┘ └────────┘            │  ║
+║  └─────────────────────────────────────────────────────────────────────┘  ║
+║                                    │                                       ║
+║                          Business Logic                                    ║
+║                                    │                                       ║
+║  ┌─────────────────────────────────────────────────────────────────────┐  ║
+║  │  LAYER 4: MODULES (Business Domains - Puzzle Pieces)                │  ║
+║  │  ──────────────────────────────────────────────────────────────     │  ║
+║  │  Domain-specific business logic, dapat di-enable/disable            │  ║
+║  │                                                                      │  ║
+║  │  ┌────────┐ ┌────────┐ ┌────────┐ ┌────────┐ ┌────────┐            │  ║
+║  │  │  PMS   │ │  POS   │ │  HRM   │ │Account │ │Inventory            │  ║
+║  │  │   🧩   │ │   🧩   │ │   🧩   │ │   🧩   │ │   🧩   │            │  ║
+║  │  └────────┘ └────────┘ └────────┘ └────────┘ └────────┘            │  ║
+║  └─────────────────────────────────────────────────────────────────────┘  ║
+║                                                                            ║
+╚═══════════════════════════════════════════════════════════════════════════╝
+```
+
+#### Perbedaan Antar Layer
+
+| Layer | Punya Database? | Punya API? | Punya State? | Contoh |
+|-------|-----------------|------------|--------------|--------|
+| **Core Services** | ✅ Ya | ✅ Ya | ✅ Ya | Auth, Notification, Audit, Search, Files |
+| **Core Infrastructure** | ❌ Tidak | ❌ Tidak | ✅ Ya (in-memory) | Event Bus, Module Registry, Slots |
+| **Shared Utilities** | ❌ Tidak | ❌ Tidak | ❌ Tidak | formatDate(), Button component |
+| **Modules** | ✅ Ya | ✅ Ya | ✅ Ya | PMS, POS, HRM, Accounting |
+
+#### Aturan Dependency
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│  DEPENDENCY RULES                                                        │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                          │
+│  Module → dapat menggunakan → Core Services ✅                           │
+│  Module → dapat menggunakan → Core Infrastructure ✅                     │
+│  Module → dapat menggunakan → Shared Utilities ✅                        │
+│  Module → TIDAK BOLEH langsung → Module lain ❌                          │
+│                                                                          │
+│  Core Services → dapat menggunakan → Core Infrastructure ✅              │
+│  Core Services → dapat menggunakan → Shared Utilities ✅                 │
+│  Core Services → TIDAK BOLEH → Modules ❌                                │
+│                                                                          │
+│  Shared Utilities → HANYA pure functions, tidak import apapun ✅         │
+│                                                                          │
+│  Cross-Module Communication → via Events/Hooks SAJA ✅                   │
+│                                                                          │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
 ---
 
 ## 2. Komponen Core
 
-### 2.1 Overview
+Core terdiri dari 2 bagian: **Core Services** dan **Core Infrastructure**.
 
-Core system HANYA berisi komponen orchestration:
+### 2.1 Core Services (Centralized Business Services)
+
+Core Services adalah business services dengan database dan API yang **SEMUA module butuhkan**:
 
 ```
 core/
-├── auth/                       # Authentication service
-├── events/                     # Event bus
+├── services/                       # Centralized Business Services
+│   │
+│   ├── auth/                       # Authentication Service
+│   │   ├── models.py               # users, sessions, tokens tables
+│   │   ├── routes.py               # /auth/login, /auth/logout, /auth/refresh
+│   │   ├── repositories/
+│   │   ├── use_cases/
+│   │   └── events.py               # auth.login, auth.logout, auth.token_refresh
+│   │
+│   ├── rbac/                       # Authorization Service
+│   │   ├── models.py               # roles, permissions, user_roles tables
+│   │   ├── routes.py               # /roles, /permissions
+│   │   ├── decorators.py           # @require_permission()
+│   │   └── events.py               # rbac.role_assigned, rbac.permission_granted
+│   │
+│   ├── organization/               # Organization/Tenant Service
+│   │   ├── models.py               # organizations, memberships tables
+│   │   ├── routes.py               # /organizations, /memberships
+│   │   └── events.py               # org.created, org.member_added
+│   │
+│   ├── user/                       # User Management Service
+│   │   ├── models.py               # user profiles, preferences
+│   │   ├── routes.py               # /users, /profile
+│   │   └── events.py               # user.created, user.updated, user.deleted
+│   │
+│   ├── notification/               # Notification Service
+│   │   ├── models.py               # notifications, templates, preferences tables
+│   │   ├── routes.py               # /notifications
+│   │   ├── channels/               # in_app, push, email handlers
+│   │   └── events.py               # notification.sent, notification.read
+│   │
+│   ├── audit/                      # Audit Logging Service
+│   │   ├── models.py               # audit_logs table
+│   │   ├── routes.py               # /audit-logs (read only)
+│   │   ├── middleware.py           # Auto-capture all actions
+│   │   └── handlers.py             # Listens to ALL events
+│   │
+│   ├── files/                      # File Management Service
+│   │   ├── models.py               # files, file_references tables
+│   │   ├── routes.py               # /files/upload, /files/download
+│   │   ├── storage/                # R2, S3 adapters
+│   │   └── events.py               # file.uploaded, file.deleted
+│   │
+│   ├── search/                     # Search Service
+│   │   ├── routes.py               # /search
+│   │   ├── indexer.py              # Meilisearch integration
+│   │   └── handlers.py             # Listens to entity changes for indexing
+│   │
+│   └── config/                     # Configuration Service
+│       ├── models.py               # system_settings, org_settings tables
+│       ├── routes.py               # /settings
+│       └── feature_flags.py        # Feature flag management
+│
+└── ...
+```
+
+**Karakteristik Core Services:**
+- ✅ Punya database tables sendiri
+- ✅ Punya API endpoints sendiri
+- ✅ Publish dan subscribe events
+- ✅ Digunakan oleh SEMUA modules
+- ❌ TIDAK boleh import dari modules
+
+### 2.2 Core Infrastructure (Orchestration)
+
+Core Infrastructure adalah komponen orchestration **TANPA database**:
+
+```
+core/
+├── events/                     # Event Bus
 │   ├── EventBus.ts
 │   ├── types.ts
 │   └── hooks.ts
-├── registry/                   # Module registry
+├── registry/                   # Module Registry
 │   ├── ModuleRegistry.ts
 │   ├── types.ts
 │   └── loader.ts
-├── slots/                      # UI slot system
+├── slots/                      # UI Slot System
 │   ├── SlotRegistry.ts
 │   ├── Slot.tsx
 │   └── types.ts
-├── router/                     # Dynamic route registry
+├── router/                     # Dynamic Route Registry
 │   ├── DynamicRouter.ts
 │   └── ModuleRoutes.tsx
+├── middleware/                 # Core Middleware
+│   ├── auth.py                 # JWT validation
+│   ├── tenant.py               # Multi-tenant context
+│   ├── rate_limit.py           # Rate limiting
+│   └── security_headers.py     # Security headers
 └── config/
     └── modules.config.ts
 ```
 
-### 2.2 Event Bus
+**Karakteristik Core Infrastructure:**
+- ❌ TIDAK punya database tables
+- ❌ TIDAK punya API endpoints
+- ✅ In-memory state (registries, caches)
+- ✅ Orchestrate modules dan services
+- ✅ Provide extension points (hooks, slots)
+
+### 2.3 Event Bus
 
 Central event system untuk komunikasi antar module:
 
@@ -183,7 +371,7 @@ class EventBus {
 export const eventBus = new EventBus();
 ```
 
-### 2.3 Module Registry
+### 2.4 Module Registry
 
 Central registry untuk manage modules:
 
@@ -338,7 +526,7 @@ class ModuleRegistry {
 export const moduleRegistry = new ModuleRegistry();
 ```
 
-### 2.4 Slot Registry
+### 2.5 Slot Registry
 
 UI injection point system:
 
@@ -396,7 +584,7 @@ class SlotRegistry {
 export const slotRegistry = new SlotRegistry();
 ```
 
-### 2.5 Slot Component
+### 2.6 Slot Component
 
 React component untuk render slot content:
 

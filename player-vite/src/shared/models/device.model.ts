@@ -18,7 +18,7 @@ import { SharedDeviceState } from '@shared/device';
 /**
  * Device status enumeration
  */
-export type DeviceStatus = 'pending' | 'active' | 'inactive';
+export type DeviceStatus = 'pending' | 'active' | 'inactive' | 'released';
 
 /**
  * Device data interface

@@ -171,9 +171,10 @@ class ShellActivationPollClass implements IShellActivationPoll {
         if (getShellRegistration()) { await getShellRegistration()!.setPendingCode(null);
         }
 
-        // Reload to player context
-        SharedLogger.log('[ShellActivationPoll] 🔄 Reloading to player context...');
-        window.location.reload();
+        // Redirect to /device/{device_id} for persistent URL-based device identification
+        // This ensures the device URL persists across cache clears
+        SharedLogger.log(`[ShellActivationPoll] 🔄 Redirecting to /device/${newDeviceId}...`);
+        window.location.href = `/device/${newDeviceId}`;
       }
     } catch (error) {
       SharedLogger.error('[ShellActivationPoll] ❌ Activation check failed:', error);

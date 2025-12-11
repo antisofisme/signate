@@ -24,11 +24,14 @@ import {
   FileSymlink,
   RefreshCw,
   ListMusic,
+  RotateCcw,
 } from 'lucide-react';
 import {
   useDeviceList,
   useDeleteDevice,
   useUpdateDevice,
+  useRestoreDevice,
+  useReleaseDevice,
 } from '../hooks/useDevices';
 import type { Device, DeviceStatus, DeviceType, LocationType } from '../types/device';
 import { toast } from '@/shared/utils/toast';
@@ -173,16 +176,48 @@ export function DeviceTable() {
 
   // Mutations
   const deleteMutation = useDeleteDevice();
+  const releaseMutation = useReleaseDevice();
+  const restoreMutation = useRestoreDevice();
 
-  // Delete handler
+  // Restore modal state
+  const [restoreModal, setRestoreModal] = useState<{
+    isOpen: boolean;
+    device: Device | null;
+  }>({ isOpen: false, device: null });
+
+  // Delete handler - releases when in Device List, permanently deletes in Unassigned Pool
   const handleDelete = async () => {
     if (!deleteModal.device) return;
 
     try {
-      await deleteMutation.mutateAsync(deleteModal.device.id);
+      if (scope === 'my_org') {
+        // Device List: Release to Unassigned Pool
+        await releaseMutation.mutateAsync(deleteModal.device.id);
+      } else {
+        // Unassigned Pool: Permanent delete
+        await deleteMutation.mutateAsync(deleteModal.device.id);
+      }
       setDeleteModal({ isOpen: false, device: null });
+      // Cache invalidation is handled by the mutation's onSuccess
+      // Using refetchType: 'active' to prevent race conditions
     } catch (error) {
       // Error handled by mutation
+    }
+  };
+
+  // Restore handler
+  const handleRestore = async () => {
+    if (!restoreModal.device) return;
+
+    try {
+      await restoreMutation.mutateAsync(restoreModal.device.id);
+      // Close modal - device already removed from list via optimistic update
+      setRestoreModal({ isOpen: false, device: null });
+      // Don't auto-switch tab - let user see the device disappear first
+      // User can manually switch to Device List to see the restored device
+    } catch (error) {
+      // Error handled by mutation
+      setRestoreModal({ isOpen: false, device: null });
     }
   };
 
@@ -617,6 +652,18 @@ export function DeviceTable() {
                           </button>
                         )}
 
+                        {/* Restore Device - Only in released scope */}
+                        {scope === 'released' && canUpdate && (
+                          <button
+                            onClick={() => setRestoreModal({ isOpen: true, device })}
+                            className={ACTION_BUTTON.RESTORE}
+                            title={t('devices.actions.restoreDevice', 'Restore Device')}
+                            aria-label={t('devices.actions.restoreDeviceFor', { name: device.device_name })}
+                          >
+                            <RotateCcw className="w-4 h-4" aria-hidden="true" />
+                          </button>
+                        )}
+
                         {/* Delete Device */}
                         {canDelete && (
                           <button
@@ -676,8 +723,25 @@ export function DeviceTable() {
         }
         cancelLabel={t('devices.buttons.cancel')}
         onConfirm={handleDelete}
-        isLoading={deleteMutation.isPending}
+        isLoading={scope === 'my_org' ? releaseMutation.isPending : deleteMutation.isPending}
         variant={scope === 'released' ? 'danger' : 'warning'}
+      />
+
+      {/* Restore Confirmation Dialog */}
+      <ConfirmDialog
+        open={restoreModal.isOpen}
+        onOpenChange={(open) => !open && setRestoreModal({ isOpen: false, device: null })}
+        title={t('devices.modals.restoreDevice', 'Restore Device')}
+        description={
+          restoreModal.device
+            ? t('devices.confirmRestore', 'This will restore "{{name}}" to active device list. The device will start displaying content again.', { name: restoreModal.device.device_name })
+            : ''
+        }
+        confirmLabel={t('devices.buttons.restore', 'Restore')}
+        cancelLabel={t('devices.buttons.cancel')}
+        onConfirm={handleRestore}
+        isLoading={restoreMutation.isPending}
+        variant="info"
       />
 
       {/* Lazy loaded modals - Only loaded when needed */}

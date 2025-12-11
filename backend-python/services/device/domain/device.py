@@ -23,6 +23,7 @@ class Device:
     code_expires_at: Optional[datetime]
     device_uuid: Optional[str]  # For WebOS
     ip_address: Optional[str]
+    local_ip: Optional[str]  # Local network IP from WebRTC (e.g., 192.168.1.100)
     platform: Optional[str]  # 'webOS', 'browser', etc.
 
     # GeoIP data (Phase 6)
@@ -140,3 +141,4 @@ class DeviceHeartbeat:
     # Connection reliability
     connection_drops_count: Optional[int] = None
     ip_address: Optional[str] = None  # Client IP from HTTP request
+    local_ip: Optional[str] = None  # Local network IP from WebRTC (e.g., 192.168.1.100)

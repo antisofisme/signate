@@ -246,6 +246,23 @@ class ShellRegistrationClass implements IShellRegistration {
             SharedLogger.log('[ShellRegistration] Device is pending → Start polling');
             if (getShellActivationPoll()) { getShellActivationPoll()!.startPolling();
             }
+            return;
+          }
+
+          // If device is released, show disconnected screen (NOT activation code screen)
+          if (existingCheck.status === 'released') {
+            SharedLogger.log('[ShellRegistration] Device is released → Show disconnected screen');
+            // Update device state with release info
+            SharedDeviceState.setDeviceStatus('released');
+            // Show released/disconnected UI
+            if (getShellActivationScreen()) {
+              await getShellActivationScreen()!.renderReleased();
+            }
+            // Start polling to detect restore or permanent delete
+            if (getShellBootstrap()) {
+              getShellBootstrap()!.startReleasedDevicePolling();
+            }
+            return;
           }
 
           return;

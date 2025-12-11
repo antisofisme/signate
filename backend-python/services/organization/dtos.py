@@ -212,9 +212,11 @@ class RegeneratePinResponse(BaseModel):
 class ValidateResetPinRequest(BaseModel):
     """Request to validate organization PIN for device hard reset"""
     pin: str = Field(..., min_length=1, max_length=8, description="Organization PIN to validate")
+    device_id: Optional[int] = Field(None, description="Device ID to hard reset (if provided and PIN valid, performs reset)")
 
 
 class ValidateResetPinResponse(BaseModel):
     """Response for PIN validation"""
     valid: bool
     message: Optional[str] = None
+    device_reset: Optional[bool] = Field(None, description="True if device was successfully reset")

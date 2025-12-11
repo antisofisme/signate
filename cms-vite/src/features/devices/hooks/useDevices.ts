@@ -42,7 +42,8 @@ export const useDeviceList = (filters?: {
   return useQuery({
     queryKey: deviceKeys.list(orgId, filters),
     queryFn: () => deviceApi.list(filters),
-    staleTime: 30000, // 30 seconds - data is fresh for this duration
+    staleTime: 0, // Always refetch on query key change (scope/filters change)
+    gcTime: 5 * 60 * 1000, // Keep unused data in cache for 5 minutes
     // Note: Backend handles org filtering via JWT (regular users) or X-Organization-Id header (super admin)
   });
 };
@@ -67,13 +68,15 @@ export const useUpdateDevice = () => {
   return useMutation({
     mutationFn: ({ id, data }: { id: number; data: Partial<Device> }) =>
       deviceApi.update(id, data),
-    onSuccess: (response, variables) => {
-      // Invalidate specific device and list
-      queryClient.invalidateQueries({ queryKey: deviceKeys.detail(variables.id) });
-      queryClient.invalidateQueries({ queryKey: deviceKeys.lists() });
+    onSuccess: async (response, variables) => {
+      // Invalidate ALL device queries (lists and detail)
+      await queryClient.invalidateQueries({
+        queryKey: deviceKeys.all,
+        refetchType: 'all',
+      });
 
       // Invalidate dashboard queries (device status/health may change)
-      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+      await queryClient.invalidateQueries({ queryKey: ['dashboard'] });
 
       toast.success('Device updated successfully');
     },
@@ -148,6 +151,146 @@ export const useDeleteDevice = () => {
   });
 };
 
+/**
+ * Release device (move to Unassigned Pool)
+ * Uses optimistic update for immediate visual feedback
+ */
+export const useReleaseDevice = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (id: number) => deviceApi.release(id),
+    retry: false,
+    onMutate: async (releasedId) => {
+      // Cancel ALL device queries to prevent race conditions
+      await queryClient.cancelQueries({ queryKey: deviceKeys.all });
+
+      // Snapshot previous values for rollback - match ALL list queries
+      const previousData = queryClient.getQueriesData({
+        queryKey: ['devices', 'list'],
+        exact: false,
+      });
+
+      // Optimistically update: remove device from my_org lists
+      queryClient.setQueriesData(
+        {
+          queryKey: ['devices', 'list'],
+          exact: false,
+        },
+        (old: any) => {
+          if (!old?.items) return old;
+          // Filter out the released device from any list
+          return {
+            ...old,
+            items: old.items.filter((device: Device) => device.id !== releasedId),
+            total: Math.max(0, old.total - 1),
+          };
+        }
+      );
+
+      // Return context with previous data for potential rollback
+      return { previousData };
+    },
+    onSuccess: async (device) => {
+      toast.success(`Device "${device.device_name}" released to Unassigned Pool`);
+      // Force immediate refetch of ALL device queries to sync with server
+      await queryClient.invalidateQueries({
+        queryKey: deviceKeys.all,
+        refetchType: 'all',
+      });
+
+      // Invalidate dashboard queries (device count changes)
+      await queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+    },
+    onError: (error: unknown, _releasedId, context) => {
+      // Rollback optimistic update on error
+      if (context?.previousData) {
+        context.previousData.forEach(([queryKey, data]) => {
+          queryClient.setQueryData(queryKey, data);
+        });
+      }
+      toast.error(handleAPIError(error).message);
+    },
+    onSettled: async () => {
+      // Always ensure fresh data after mutation completes
+      await queryClient.invalidateQueries({
+        queryKey: deviceKeys.all,
+        refetchType: 'all',
+      });
+    },
+  });
+};
+
+/**
+ * Restore released device back to active status
+ * Uses optimistic update for immediate visual feedback
+ */
+export const useRestoreDevice = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (id: number) => deviceApi.restore(id),
+    retry: false,
+    onMutate: async (restoredId) => {
+      // Cancel ALL device queries to prevent race conditions
+      await queryClient.cancelQueries({ queryKey: deviceKeys.all });
+
+      // Snapshot previous values for rollback - match ALL list queries
+      const previousData = queryClient.getQueriesData({
+        queryKey: ['devices', 'list'],
+        exact: false,
+      });
+
+      // Optimistically update: remove device from released lists
+      queryClient.setQueriesData(
+        {
+          queryKey: ['devices', 'list'],
+          exact: false,
+        },
+        (old: any) => {
+          if (!old?.items) return old;
+          // Filter out the restored device from any list
+          return {
+            ...old,
+            items: old.items.filter((device: Device) => device.id !== restoredId),
+            total: Math.max(0, old.total - 1),
+          };
+        }
+      );
+
+      // Return context with previous data for potential rollback
+      return { previousData };
+    },
+    onSuccess: async (device) => {
+      toast.success(`Device "${device.device_name}" restored successfully`);
+      // Force immediate refetch of ALL device queries to sync with server
+      await queryClient.invalidateQueries({
+        queryKey: deviceKeys.all,
+        refetchType: 'all',
+      });
+
+      // Invalidate dashboard queries (device count changes)
+      await queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+    },
+    onError: (error: unknown, _restoredId, context) => {
+      // Rollback optimistic update on error
+      if (context?.previousData) {
+        context.previousData.forEach(([queryKey, data]) => {
+          queryClient.setQueryData(queryKey, data);
+        });
+      }
+      toast.error(handleAPIError(error).message);
+    },
+    onSettled: async () => {
+      // Always ensure fresh data after mutation completes
+      await queryClient.invalidateQueries({
+        queryKey: deviceKeys.all,
+        refetchType: 'all',
+      });
+    },
+  });
+};
+
 // ========================================
 // Device Registration & Activation
 // ========================================
@@ -160,12 +303,15 @@ export const useTVRegister = () => {
 
   return useMutation({
     mutationFn: (data: TVRegisterRequest) => deviceApi.tvRegister(data),
-    onSuccess: (device) => {
-      // Invalidate device list to refetch
-      queryClient.invalidateQueries({ queryKey: deviceKeys.lists() });
+    onSuccess: async (device) => {
+      // Invalidate ALL device list queries (with any orgId and filters)
+      await queryClient.invalidateQueries({
+        queryKey: deviceKeys.all,
+        refetchType: 'all',
+      });
 
       // Invalidate dashboard queries (new device affects device count)
-      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+      await queryClient.invalidateQueries({ queryKey: ['dashboard'] });
 
       toast.success(`TV registered successfully. Activation code: ${device.unique_code}`);
     },
@@ -183,12 +329,15 @@ export const useMonitorRegister = () => {
 
   return useMutation({
     mutationFn: (data: MonitorRegisterRequest) => deviceApi.monitorRegister(data),
-    onSuccess: () => {
-      // Invalidate device list to refetch
-      queryClient.invalidateQueries({ queryKey: deviceKeys.lists() });
+    onSuccess: async () => {
+      // Invalidate ALL device list queries (with any orgId and filters)
+      await queryClient.invalidateQueries({
+        queryKey: deviceKeys.all,
+        refetchType: 'all',
+      });
 
       // Invalidate dashboard queries (new device affects device count)
-      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+      await queryClient.invalidateQueries({ queryKey: ['dashboard'] });
 
       toast.success('Monitor registered successfully');
     },
@@ -206,13 +355,16 @@ export const useActivateDevice = () => {
 
   return useMutation({
     mutationFn: (data: ActivateDeviceRequest) => deviceApi.activate(data),
-    onSuccess: (device) => {
-      // Invalidate device list and specific device
-      queryClient.invalidateQueries({ queryKey: deviceKeys.lists() });
-      queryClient.invalidateQueries({ queryKey: deviceKeys.detail(device.id) });
+    onSuccess: async (device) => {
+      // Invalidate ALL device list queries (with any orgId and filters)
+      // Using deviceKeys.all matches all queries starting with ['devices']
+      await queryClient.invalidateQueries({
+        queryKey: deviceKeys.all,
+        refetchType: 'all',
+      });
 
       // Invalidate dashboard queries (device status changed)
-      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+      await queryClient.invalidateQueries({ queryKey: ['dashboard'] });
 
       toast.success(`Device "${device.device_name}" activated successfully`);
     },

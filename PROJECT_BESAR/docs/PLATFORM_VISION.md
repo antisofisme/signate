@@ -214,7 +214,127 @@ Platform enterprise yang menghubungkan **semua stakeholder** dalam ekosistem hos
 
 ---
 
-#### 4. HRM (Human Resource Management)
+#### 4. Channel Manager
+**Target User**: Revenue Manager, Reservations, Sales
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                        CHANNEL MANAGER                                   │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                          │
+│  ┌────────────────────────────────────────────────────────────────────┐ │
+│  │                      OTA CONNECTIONS (2-Way Sync)                   │ │
+│  │                                                                     │ │
+│  │  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐ │ │
+│  │  │Booking   │ │ Agoda    │ │ Expedia  │ │Traveloka │ │ Tiket    │ │ │
+│  │  │.com      │ │          │ │          │ │          │ │ .com     │ │ │
+│  │  └────┬─────┘ └────┬─────┘ └────┬─────┘ └────┬─────┘ └────┬─────┘ │ │
+│  │       │            │            │            │            │        │ │
+│  │       └────────────┴─────┬──────┴────────────┴────────────┘        │ │
+│  │                          │                                          │ │
+│  │                          ▼                                          │ │
+│  │              ┌───────────────────────┐                             │ │
+│  │              │   CHANNEL MANAGER     │                             │ │
+│  │              │   (Centralized Hub)   │                             │ │
+│  │              └───────────┬───────────┘                             │ │
+│  │                          │                                          │ │
+│  │                          ▼                                          │ │
+│  │              ┌───────────────────────┐                             │ │
+│  │              │         PMS           │                             │ │
+│  │              │  (Single Source of    │                             │ │
+│  │              │       Truth)          │                             │ │
+│  │              └───────────────────────┘                             │ │
+│  │                                                                     │ │
+│  └────────────────────────────────────────────────────────────────────┘ │
+│                                                                          │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+**Features:**
+
+```
+┌─────────────────────────────────────────┐
+│         CHANNEL MANAGER FEATURES         │
+├─────────────────────────────────────────┤
+│                                         │
+│  ┌─────────────┐  ┌─────────────┐      │
+│  │    Rate     │  │ Availability│      │
+│  │ Distribution│  │    Sync     │      │
+│  ├─────────────┤  ├─────────────┤      │
+│  │• Push to OTA│  │• Real-time  │      │
+│  │• Rate parity│  │• Auto close │      │
+│  │• Dynamic    │  │• Stop sell  │      │
+│  │  pricing    │  │• Overbooking│      │
+│  │• Promotions │  │  control    │      │
+│  └─────────────┘  └─────────────┘      │
+│                                         │
+│  ┌─────────────┐  ┌─────────────┐      │
+│  │ Reservation │  │  Content    │      │
+│  │    Sync     │  │    Sync     │      │
+│  ├─────────────┤  ├─────────────┤      │
+│  │• Pull from  │  │• Room photos│      │
+│  │  OTA        │  │• Description│      │
+│  │• Modify/    │  │• Amenities  │      │
+│  │  Cancel     │  │• Policies   │      │
+│  │• Guest data │  │• Room types │      │
+│  └─────────────┘  └─────────────┘      │
+│                                         │
+│  ┌─────────────┐  ┌─────────────┐      │
+│  │  Revenue    │  │  Booking    │      │
+│  │ Analytics   │  │   Engine    │      │
+│  ├─────────────┤  ├─────────────┤      │
+│  │• Channel    │  │• Direct     │      │
+│  │  performance│  │  booking    │      │
+│  │• RevPAR by  │  │• Website    │      │
+│  │  channel    │  │  widget     │      │
+│  │• Commission │  │• Best rate  │      │
+│  │  report     │  │  guarantee  │      │
+│  │• Pickup     │  │• Promo codes│      │
+│  └─────────────┘  └─────────────┘      │
+│                                         │
+└─────────────────────────────────────────┘
+```
+
+**Supported OTAs:**
+- **Global**: Booking.com, Agoda, Expedia, Hotels.com, Trip.com, Airbnb
+- **Indonesia**: Traveloka, Tiket.com, PegiPegi, RedDoorz
+- **Metasearch**: Google Hotel Ads, Trivago, Kayak
+- **GDS**: Amadeus, Sabre, Travelport (optional)
+- **Direct**: Own Booking Engine (Website)
+
+**Integration Points:**
+```
+┌─────────────────────────────────────────────────────────────────┐
+│              CHANNEL MANAGER ↔ PMS INTEGRATION                   │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│  Channel Manager              PMS                                │
+│       │                        │                                 │
+│       ├── Rates ──────────────►│ Rate Management                │
+│       │                        │                                 │
+│       ├── Availability ◄──────►│ Room Inventory                 │
+│       │                        │                                 │
+│       ├── Reservations ───────►│ Reservation System             │
+│       │                        │                                 │
+│       ├── Modifications ◄─────►│ Booking Changes                │
+│       │                        │                                 │
+│       ├── Cancellations ◄─────►│ Cancellation Handling          │
+│       │                        │                                 │
+│       └── Guest Data ─────────►│ Guest Profiles                 │
+│                                                                  │
+│  Events:                                                         │
+│  • pms.room.availability_changed → Push to all channels         │
+│  • pms.rate.updated → Push new rates to channels                │
+│  • channel.reservation.created → Create in PMS                  │
+│  • channel.reservation.modified → Update in PMS                 │
+│  • channel.reservation.cancelled → Cancel in PMS                │
+│                                                                  │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+#### 5. HRM (Human Resource Management)
 **Target User**: HR, Department Heads, Employees
 
 ```
@@ -1032,26 +1152,295 @@ CREATE TABLE supplier_contacts (
 
 ## Summary
 
-**Total Applications: 12+**
+**Total Applications: 13+**
 
 | # | Application | Target Users | Priority |
 |---|-------------|--------------|----------|
 | 1 | PMS | Front Office, Reservations | P1 |
-| 2 | Digital Signage (CMS) | Marketing | Done |
-| 3 | POS | F&B Outlets | P2 |
-| 4 | Online Menu | Guests | P2 |
-| 5 | Inventory | Warehouse, Cost Control | P3 |
-| 6 | Procurement | Purchasing | P3 |
-| 7 | Supplier Portal | Suppliers | P3 |
-| 8 | HRM | HR Department | P4 |
-| 9 | Payroll | Finance, HR | P4 |
-| 10 | Guest App | Guests, Members | P5 |
-| 11 | Accounting | Finance | P5 |
-| 12 | Asset Management | Engineering, Finance | P5 |
+| 2 | Channel Manager | Revenue, Reservations | P1 |
+| 3 | Digital Signage (CMS) | Marketing | Done |
+| 4 | POS | F&B Outlets | P2 |
+| 5 | Online Menu | Guests | P2 |
+| 6 | Inventory | Warehouse, Cost Control | P3 |
+| 7 | Procurement | Purchasing | P3 |
+| 8 | Supplier Portal | Suppliers | P3 |
+| 9 | HRM | HR Department | P4 |
+| 10 | Payroll | Finance, HR | P4 |
+| 11 | Guest App | Guests, Members | P5 |
+| 12 | Accounting | Finance | P5 |
+| 13 | Asset Management | Engineering, Finance | P5 |
 
 **Unified Backend**: Single FastAPI backend serving all applications
 **Unified Database**: Single PostgreSQL database with multi-tenancy
 **Unified Auth**: Single sign-on across all applications
+
+---
+
+## Tech Stack
+
+### Core vs Puzzle Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────────────────────────┐
+│                           SYSTEM ARCHITECTURE                                        │
+│                                                                                      │
+│   ██████ = CORE SYSTEM (Fixed, tidak diganti)                                       │
+│   ░░░░░░ = PUZZLE SYSTEM (Modular, bisa swap)                                       │
+│                                                                                      │
+├─────────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                      │
+│                              ENTRY LAYER (Puzzle)                                    │
+│  ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░ │
+│  ░  ┌─────────────┐                                                              ░  │
+│  ░  │   Traefik   │ ←── bisa ganti: Kong, Nginx, Istio                          ░  │
+│  ░  │ (API Gateway)│                                                             ░  │
+│  ░  └──────┬──────┘                                                              ░  │
+│  ░░░░░░░░░░│░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░ │
+│            │                                                                         │
+│            ▼                                                                         │
+│  ┌─────────────────────────────────────────────────────────────────────────────────┐│
+│  │                          CORE SYSTEM (Fixed)                                    ││
+│  │██████████████████████████████████████████████████████████████████████████████████││
+│  │██                                                                              ██││
+│  │██   ┌─────────────────────┐         ┌─────────────────────┐                   ██││
+│  │██   │      FRONTEND       │         │       BACKEND       │                   ██││
+│  │██   │  React + Vite + Bun │◄───────►│   Python + FastAPI  │                   ██││
+│  │██   │    + TypeScript     │   API   │                     │                   ██││
+│  │██   └─────────────────────┘         └──────────┬──────────┘                   ██││
+│  │██                                              │                               ██││
+│  │██                          ┌───────────────────┼───────────────────┐          ██││
+│  │██                          ▼                   ▼                   ▼          ██││
+│  │██                 ┌─────────────┐     ┌─────────────┐     ┌─────────────┐     ██││
+│  │██                 │ TimescaleDB │     │    Redis    │     │  RabbitMQ   │     ██││
+│  │██                 │ + PgBouncer │     │   (Cache)   │     │  (Broker)   │     ██││
+│  │██                 └─────────────┘     └─────────────┘     └─────────────┘     ██││
+│  │██                                                                              ██││
+│  │██                          ┌─────────────┐                                     ██││
+│  │██                          │   Celery    │                                     ██││
+│  │██                          │  (Workers)  │                                     ██││
+│  │██                          └─────────────┘                                     ██││
+│  │██                                                                              ██││
+│  │██████████████████████████████████████████████████████████████████████████████████││
+│  └─────────────────────────────────────────────────────────────────────────────────┘│
+│            │                                                                         │
+│            │ Interfaces (Abstract)                                                   │
+│            ▼                                                                         │
+│  ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░│
+│  ░                         PUZZLE LAYER (Swappable)                                ░│
+│  ░                                                                                  ░│
+│  ░   ┌──────────────────┐  ┌──────────────────┐  ┌──────────────────┐             ░│
+│  ░   │  Search Engine   │  │   File Storage   │  │    Real-time     │             ░│
+│  ░   │   Meilisearch    │  │  Cloudflare R2   │  │   Centrifugo     │             ░│
+│  ░   │        ↓         │  │        ↓         │  │        ↓         │             ░│
+│  ░   │  Elasticsearch   │  │    AWS S3        │  │    Socket.io     │             ░│
+│  ░   └──────────────────┘  └──────────────────┘  └──────────────────┘             ░│
+│  ░                                                                                  ░│
+│  ░   ┌──────────────────┐  ┌──────────────────┐  ┌──────────────────┐             ░│
+│  ░   │  Email Service   │  │  SMS/WA Gateway  │  │  PDF Generator   │             ░│
+│  ░   │     AWS SES      │  │    (TBD)         │  │   WeasyPrint     │             ░│
+│  ░   │        ↓         │  │        ↓         │  │        ↓         │             ░│
+│  ░   │  Resend/Mailgun  │  │  Twilio/Fonnte   │  │    Puppeteer     │             ░│
+│  ░   └──────────────────┘  └──────────────────┘  └──────────────────┘             ░│
+│  ░                                                                                  ░│
+│  ░   ┌──────────────────┐  ┌──────────────────┐                                    ░│
+│  ░   │ Payment Gateway  │  │    Guest App     │                                    ░│
+│  ░   │    Midtrans      │  │      PWA         │                                    ░│
+│  ░   │        ↓         │  │        ↓         │                                    ░│
+│  ░   │  Xendit/Stripe   │  │  React Native    │                                    ░│
+│  ░   └──────────────────┘  └──────────────────┘                                    ░│
+│  ░                                                                                  ░│
+│  ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░│
+│                                                                                      │
+│            │                                                                         │
+│            ▼                                                                         │
+│  ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░│
+│  ░                      INFRASTRUCTURE LAYER (Puzzle)                              ░│
+│  ░                                                                                  ░│
+│  ░   ┌──────────────────┐  ┌──────────────────┐  ┌──────────────────┐             ░│
+│  ░   │  Orchestration   │  │   Log Storage    │  │   Log Collector  │             ░│
+│  ░   │  Docker Swarm    │  │      Loki        │  │    Fluent Bit    │             ░│
+│  ░   │        ↓         │  │        ↓         │  │        ↓         │             ░│
+│  ░   │   Kubernetes     │  │   ELK Stack      │  │     Fluentd      │             ░│
+│  ░   └──────────────────┘  └──────────────────┘  └──────────────────┘             ░│
+│  ░                                                                                  ░│
+│  ░   ┌─────────────────────────────────────────────────────────────┐              ░│
+│  ░   │                    OBSERVABILITY (Fixed)                     │              ░│
+│  ░   │        Prometheus    +    Grafana    +    Jaeger             │              ░│
+│  ░   └─────────────────────────────────────────────────────────────┘              ░│
+│  ░                                                                                  ░│
+│  ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░│
+│                                                                                      │
+└─────────────────────────────────────────────────────────────────────────────────────┘
+```
+
+### Summary: Core vs Puzzle
+
+| Layer | Type | Komponen | Swap To |
+|-------|------|----------|---------|
+| **Entry** | Puzzle | Traefik | Kong, Nginx, Istio |
+| **Frontend** | Core | React + Vite + Bun | - (fixed) |
+| **Backend** | Core | Python + FastAPI | - (fixed) |
+| **Database** | Core | TimescaleDB | - (fixed) |
+| **Cache** | Core | Redis | - (fixed) |
+| **Broker** | Core | RabbitMQ | - (fixed) |
+| **Workers** | Core | Celery | - (fixed) |
+| **Search** | Puzzle | Meilisearch | Elasticsearch |
+| **Storage** | Puzzle | Cloudflare R2 | AWS S3, MinIO |
+| **Real-time** | Puzzle | Centrifugo | Socket.io, Soketi |
+| **Email** | Puzzle | AWS SES | Resend, Mailgun |
+| **SMS/WA** | Puzzle | TBD | Twilio, Fonnte |
+| **PDF** | Puzzle | WeasyPrint | Puppeteer |
+| **Payment** | Puzzle | Midtrans | Xendit, Stripe |
+| **Guest App** | Puzzle | PWA | React Native, Flutter |
+| **Orchestration** | Puzzle | Docker Swarm | Kubernetes |
+| **Log Storage** | Puzzle | Loki | ELK Stack |
+| **Monitoring** | Core | Prometheus + Grafana + Jaeger | - (fixed) |
+
+---
+
+### Core Stack
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                              CORE STACK                                      │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  ┌─────────────────────┐    ┌─────────────────────┐                        │
+│  │      Frontend       │    │      Backend        │                        │
+│  │  React + Vite + Bun │    │  Python + FastAPI   │                        │
+│  │    + TypeScript     │    │                     │                        │
+│  └──────────┬──────────┘    └──────────┬──────────┘                        │
+│             │                          │                                    │
+│             └────────────┬─────────────┘                                    │
+│                          ▼                                                  │
+│  ┌─────────────────────────────────────────────────────────────────────┐   │
+│  │                         DATA LAYER                                   │   │
+│  │  ┌───────────┐  ┌───────────┐  ┌───────────┐  ┌───────────┐        │   │
+│  │  │TimescaleDB│  │   Redis   │  │ RabbitMQ  │  │Meilisearch│        │   │
+│  │  │+PgBouncer │  │  (Cache)  │  │ (Broker)  │  │ (Search)  │        │   │
+│  │  └───────────┘  └───────────┘  └───────────┘  └───────────┘        │   │
+│  └─────────────────────────────────────────────────────────────────────┘   │
+│                                                                             │
+│  ┌─────────────────────────────────────────────────────────────────────┐   │
+│  │                      SUPPORTING SERVICES                             │   │
+│  │  ┌───────────┐  ┌───────────┐  ┌───────────┐                        │   │
+│  │  │  Celery   │  │Centrifugo │  │Cloudflare │                        │   │
+│  │  │  (Jobs)   │  │(Real-time)│  │ R2 (Files)│                        │   │
+│  │  └───────────┘  └───────────┘  └───────────┘                        │   │
+│  └─────────────────────────────────────────────────────────────────────┘   │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+| Category | Technology | Purpose |
+|----------|------------|---------|
+| **Backend** | Python + FastAPI | REST API, business logic |
+| **Frontend** | React + Vite + Bun + TypeScript | SPA, PWA |
+| **Database** | TimescaleDB + PgBouncer | Primary data + time-series |
+| **Cache** | Redis | Session, cache, rate limiting |
+| **Message Broker** | RabbitMQ | Event-driven, job queue |
+| **Background Jobs** | Celery | Async tasks, scheduled jobs |
+| **File Storage** | Cloudflare R2 | Media, documents |
+| **Search** | Meilisearch | Full-text search |
+| **Real-time** | Centrifugo | WebSocket, push notifications |
+
+---
+
+### Infrastructure Stack
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                          INFRASTRUCTURE                                      │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│                         ┌─────────────────┐                                 │
+│         Internet ──────►│    Traefik      │ (API Gateway, SSL, Routing)    │
+│                         └────────┬────────┘                                 │
+│                                  │                                          │
+│                                  ▼                                          │
+│  ┌─────────────────────────────────────────────────────────────────────┐   │
+│  │                       Docker Swarm Cluster                           │   │
+│  │  ┌─────────┐  ┌─────────┐  ┌─────────┐  ┌─────────┐  ┌─────────┐   │   │
+│  │  │   API   │  │ Worker  │  │ Worker  │  │ Celery  │  │  Nginx  │   │   │
+│  │  │ Service │  │   #1    │  │   #2    │  │ Worker  │  │ (Static)│   │   │
+│  │  └─────────┘  └─────────┘  └─────────┘  └─────────┘  └─────────┘   │   │
+│  └─────────────────────────────────────────────────────────────────────┘   │
+│                                  │                                          │
+│                                  ▼                                          │
+│  ┌─────────────────────────────────────────────────────────────────────┐   │
+│  │                         OBSERVABILITY                                │   │
+│  │  ┌───────────┐  ┌───────────┐  ┌───────────┐  ┌───────────┐        │   │
+│  │  │Fluent Bit │  │   Loki    │  │Prometheus │  │  Jaeger   │        │   │
+│  │  │(Collector)│  │  (Logs)   │  │ (Metrics) │  │ (Tracing) │        │   │
+│  │  └───────────┘  └───────────┘  └───────────┘  └───────────┘        │   │
+│  │                         │                                            │   │
+│  │                         ▼                                            │   │
+│  │                  ┌───────────┐                                       │   │
+│  │                  │  Grafana  │ (Unified Dashboard)                   │   │
+│  │                  └───────────┘                                       │   │
+│  └─────────────────────────────────────────────────────────────────────┘   │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+| Category | Technology | Purpose |
+|----------|------------|---------|
+| **API Gateway** | Traefik | SSL, routing, load balancing |
+| **Orchestration** | Docker Swarm | Container orchestration (→ K8s later) |
+| **CI/CD** | GitHub Actions | Build, test, deploy automation |
+| **Log Collector** | Fluent Bit | Log aggregation (abstraction layer) |
+| **Log Storage** | Loki | Log search & analytics (→ ELK optional) |
+| **Metrics** | Prometheus | Time-series metrics |
+| **Tracing** | Jaeger | Distributed tracing |
+| **Dashboard** | Grafana | Unified monitoring UI |
+
+---
+
+### External Services
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                        EXTERNAL SERVICES (Modular)                          │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  ┌─────────────────────┐    ┌─────────────────────┐                        │
+│  │    Email Service    │    │  SMS/WA Gateway     │                        │
+│  │      AWS SES        │    │    (Provider TBD)   │                        │
+│  │                     │    │  Twilio/Fonnte/etc  │                        │
+│  └─────────────────────┘    └─────────────────────┘                        │
+│                                                                             │
+│  ┌─────────────────────┐    ┌─────────────────────┐                        │
+│  │   PDF Generator     │    │   Payment Gateway   │                        │
+│  │  WeasyPrint (fast)  │    │      Midtrans       │                        │
+│  │  Puppeteer (complex)│    │   Xendit (backup)   │                        │
+│  └─────────────────────┘    └─────────────────────┘                        │
+│                                                                             │
+│  ┌─────────────────────┐                                                   │
+│  │  Guest Application  │                                                   │
+│  │    PWA (Primary)    │                                                   │
+│  │  Native (Optional)  │                                                   │
+│  └─────────────────────┘                                                   │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+| Category | Technology | Purpose |
+|----------|------------|---------|
+| **Email** | AWS SES | Transactional emails |
+| **SMS/WhatsApp** | Modular (TBD) | OTP, notifications |
+| **PDF Generator** | WeasyPrint + Puppeteer | Invoice, reports, folio |
+| **Payment** | Midtrans / Xendit | Payment processing |
+| **Guest App** | PWA | Mobile-first guest experience |
+
+---
+
+### Stack Design Principles
+
+1. **Modular/Puzzle Architecture**: Setiap komponen bisa diganti tanpa ubah business logic
+2. **Abstraction Layer**: Gateway, collector, dan service interface memudahkan swap
+3. **Future-proof**: Docker Swarm → Kubernetes, Loki → ELK siap migrasi
+4. **Cost-effective**: Mulai simple, scale sesuai kebutuhan
+5. **Unified Observability**: Satu dashboard (Grafana) untuk semua monitoring
 
 ---
 

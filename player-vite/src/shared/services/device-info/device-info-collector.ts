@@ -151,8 +151,9 @@ class DeviceInfoCollectorClass {
     const baseNetworkInfo = await getNetworkInfo();
     const downlinkSpeed = getDownloadSpeed();
 
-    // Get client IP from backend (most reliable method)
+    // Get client IP and stored local_ip from backend
     let clientIP: string | null = null;
+    let backendLocalIP: string | null = null;  // Fallback if WebRTC fails
     try {
       const deviceToken = SharedDeviceState.getDeviceToken();
       console.log('[DeviceInfoCollector] Fetching client IP from backend...');
@@ -175,10 +176,13 @@ class DeviceInfoCollectorClass {
           console.log('[DeviceInfoCollector] Device data (summary):', {
             id: data.id,
             ip_address: data.ip_address,
+            local_ip: data.local_ip,
             status: data.status
           });
           clientIP = data.ip_address || null;
+          backendLocalIP = data.local_ip || null;  // Get stored local_ip from backend
           console.log('[DeviceInfoCollector] ✅ Client IP from backend:', clientIP);
+          console.log('[DeviceInfoCollector] ✅ Local IP from backend:', backendLocalIP);
         } else {
           console.warn('[DeviceInfoCollector] ❌ Failed to fetch device data:', response.statusText);
         }
@@ -189,8 +193,12 @@ class DeviceInfoCollectorClass {
       console.error('[DeviceInfoCollector] ❌ Error fetching client IP:', error);
     }
 
+    // Use WebRTC local IP if available, otherwise fallback to backend stored value
+    const finalLocalIP = baseNetworkInfo.localIP || backendLocalIP;
+    console.log('[DeviceInfoCollector] 🌐 Final Local IP:', finalLocalIP, '(WebRTC:', baseNetworkInfo.localIP, '| Backend:', backendLocalIP, ')');
+
     return {
-      localIP: baseNetworkInfo.localIP,
+      localIP: finalLocalIP,
       publicIP: baseNetworkInfo.publicIP,
       clientIP,
       connectionType: baseNetworkInfo.connectionType,

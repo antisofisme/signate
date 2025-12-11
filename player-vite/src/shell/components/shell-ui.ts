@@ -16,7 +16,7 @@ import { SharedToast } from '@shared/ui';
 /**
  * Device status type
  */
-export type DeviceStatus = 'pending' | 'active' | 'inactive';
+export type DeviceStatus = 'pending' | 'active' | 'inactive' | 'released';
 
 /**
  * Shell UI Manager Class

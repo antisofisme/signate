@@ -188,6 +188,32 @@ export const deviceApi = {
     await apiClient.delete(API_ENDPOINTS.DEVICES.DELETE(id));
   },
 
+  /**
+   * Release device (move to Unassigned Pool)
+   * @param id - Device ID
+   * @returns Released device info
+   */
+  release: async (id: number): Promise<Device> => {
+    const response = await apiClient.post<DetailResponse>(
+      API_ENDPOINTS.DEVICES.RELEASE(id),
+      {}
+    );
+    return unwrapResponse<Device>(response);
+  },
+
+  /**
+   * Restore released device back to active status
+   * @param id - Device ID
+   * @returns Restored device
+   */
+  restore: async (id: number): Promise<Device> => {
+    const response = await apiClient.post<DetailResponse>(
+      API_ENDPOINTS.DEVICES.RESTORE(id),
+      {}
+    );
+    return unwrapResponse<Device>(response);
+  },
+
   // ========================================
   // Device Registration & Activation
   // ========================================

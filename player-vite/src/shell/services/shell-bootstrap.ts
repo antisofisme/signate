@@ -14,6 +14,7 @@ import { SharedLogger } from '@shared/logger';
 import { SharedAPIClient } from '@shared/api';
 import { SharedDeviceState } from '@shared/device';
 import { serviceActionAsync, serviceAction } from '@shared/utils';
+import { initializeLocalIP } from '@shared/utils/device-fingerprint';
 import { ShellRegistration } from './shell-registration';
 import { ShellActivationPoll } from './shell-activation-poll';
 import type { ShellBootstrap as IShellBootstrap, VerifyDeviceResponse } from '@shell/types/shell.types';
@@ -39,6 +40,13 @@ class ShellBootstrapClass implements IShellBootstrap {
    */
   async init(): Promise<void> {
     SharedLogger.log('[ShellBootstrap] 🚀 Initializing player...');
+
+    // Initialize local IP first (required for accurate device fingerprint)
+    // This uses WebRTC to get local network IP (e.g., 192.168.1.100)
+    // Critical for distinguishing devices with identical hardware specs
+    SharedLogger.log('[ShellBootstrap] 🌐 Fetching local IP via WebRTC...');
+    await initializeLocalIP();
+    SharedLogger.log('[ShellBootstrap] ✅ Local IP initialized');
 
     // Check if device is registered
     const deviceId = SharedDeviceState.getDeviceId();
@@ -76,6 +84,18 @@ class ShellBootstrapClass implements IShellBootstrap {
       // Skip backend verification - trust localStorage state
       // Device was already verified during activation process
       this.startPlayer();
+      return;
+    }
+
+    // Route 3.5: Has device ID but status is released → Show disconnected screen
+    // This happens when device is released from CMS but player still has device_id
+    if (deviceStatus === 'released') {
+      SharedLogger.log('[ShellBootstrap] Device released → Show disconnected screen');
+      // Import and show released screen
+      const { ShellActivationScreen } = await import('@shell/ui/shell-activation-screen');
+      await ShellActivationScreen.renderReleased();
+      // Start polling to detect restore or permanent delete
+      this.startReleasedDevicePolling();
       return;
     }
 
@@ -290,6 +310,98 @@ class ShellBootstrapClass implements IShellBootstrap {
 
     // Reload to trigger fresh registration (to same organization)
     location.reload();
+  }
+
+  /**
+   * Poll for released device status changes
+   * Detects:
+   * - Device restored (status = active) → reload to start player
+   * - Device permanently deleted (404) → clear data and request new activation code
+   *
+   * PUBLIC: Can be called from ShellRegistration when device is found as released
+   */
+  private releasedPollingInterval: number | null = null;
+  public startReleasedDevicePolling(): void {
+    const POLL_INTERVAL_MS = 10000; // 10 seconds
+
+    SharedLogger.log('[ShellBootstrap] 🔄 Starting released device polling...');
+
+    // Clear any existing polling
+    if (this.releasedPollingInterval) {
+      clearInterval(this.releasedPollingInterval);
+    }
+
+    // Start polling
+    this.releasedPollingInterval = window.setInterval(async () => {
+      await this.checkReleasedDeviceStatus();
+    }, POLL_INTERVAL_MS);
+
+    // Also check immediately
+    this.checkReleasedDeviceStatus();
+  }
+
+  /**
+   * Check released device status from backend
+   */
+  private async checkReleasedDeviceStatus(): Promise<void> {
+    try {
+      const { getOrCreateDeviceUUID } = await import('@shared/utils/device-fingerprint');
+      const deviceUUID = getOrCreateDeviceUUID();
+
+      SharedLogger.log('[ShellBootstrap] 🔍 Checking released device status...');
+
+      const response = await SharedAPIClient.get<any>(
+        `${config.api.baseURL}/api/v1/devices/verify-fingerprint/${deviceUUID}`
+      );
+
+      if (response.device) {
+        const newStatus = response.device.status;
+        SharedLogger.log('[ShellBootstrap] Device status from backend:', newStatus);
+
+        if (newStatus === 'active') {
+          // Device has been restored! Stop polling and reload
+          SharedLogger.log('[ShellBootstrap] ✅ Device restored! Reloading to start player...');
+          this.stopReleasedDevicePolling();
+
+          // Update local state
+          SharedDeviceState.setDeviceStatus('active');
+          if (response.token) {
+            SharedDeviceState.setDeviceToken(response.token);
+          }
+
+          // Reload to start player
+          location.reload();
+          return;
+        }
+
+        // Still released, continue polling
+        SharedLogger.log('[ShellBootstrap] Device still released, continuing to poll...');
+      }
+    } catch (error: any) {
+      const status = error?.response?.status || error?.status;
+
+      if (status === 404) {
+        // Device permanently deleted
+        SharedLogger.log('[ShellBootstrap] 🔴 Device permanently deleted (404) - requesting new activation code');
+        this.stopReleasedDevicePolling();
+        await this.handleDeviceHardDeleted();
+        return;
+      }
+
+      SharedLogger.warn('[ShellBootstrap] ⚠️ Error checking released device status:', error);
+      // Continue polling on other errors
+    }
+  }
+
+  /**
+   * Stop released device polling
+   */
+  private stopReleasedDevicePolling(): void {
+    if (this.releasedPollingInterval) {
+      clearInterval(this.releasedPollingInterval);
+      this.releasedPollingInterval = null;
+      SharedLogger.log('[ShellBootstrap] 🛑 Released device polling stopped');
+    }
   }
 
   /**

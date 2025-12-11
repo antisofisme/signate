@@ -367,7 +367,7 @@ def release_device(
     """
     Release device without deletion
 
-    Sets status to 'inactive', clears code, records release timestamp.
+    Sets status to 'released', clears code, records release timestamp.
     Sends RESET command to device to clear storage.
     """
     # Check device exists
@@ -382,10 +382,10 @@ def release_device(
             detail=f"Device with ID {device_id} not found"
         )
 
-    # Update device to inactive
+    # Update device to released
     update_query = text("""
         UPDATE devices
-        SET status = 'inactive',
+        SET status = 'released',
             unique_code = NULL,
             code_expires_at = NULL,
             released_at = NOW()

@@ -2,7 +2,7 @@
 
 > Standar fundamental yang berlaku untuk SEMUA code di platform.
 >
-> **Last Updated**: 2025-12-06
+> **Last Updated**: 2025-12-10
 > **Status**: Draft - Sedang dirumuskan
 
 ---
@@ -56,13 +56,15 @@ CREATE TABLE reservations (
     arrival_date DATE NOT NULL,
     departure_date DATE NOT NULL,
     total_nights INTEGER NOT NULL,
-    total_amount NUMERIC(15,4) NOT NULL,
+    total_amount DECIMAL(18,4) NOT NULL,
     is_guaranteed BOOLEAN DEFAULT FALSE NOT NULL,
     is_cancelled BOOLEAN DEFAULT FALSE NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW() NOT NULL,
     created_by_id INTEGER REFERENCES users(id),
     updated_at TIMESTAMP WITH TIME ZONE,
-    deleted_at TIMESTAMP WITH TIME ZONE
+    is_deleted BOOLEAN DEFAULT FALSE NOT NULL,
+    deleted_at TIMESTAMP WITH TIME ZONE,
+    deleted_by_id INTEGER REFERENCES users(id)
 );
 
 CREATE INDEX idx_reservations_org_arrival ON reservations(organization_id, arrival_date);
@@ -328,6 +330,306 @@ SENTRY_DSN=https://xxx@sentry.io/xxx
 
 ---
 
+### 1.7 Cross-Module Naming Convention
+
+Platform ini memiliki banyak module (PMS, POS, Accounting, HRM, dll) yang sering memiliki konsep serupa. Untuk menghindari collision dan kebingungan, berikut standar naming cross-module:
+
+#### 1.7.1 Problem: Generic Term Collision
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                    GENERIC TERMS YANG COLLISION                              │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  "Invoice" ada di mana-mana:                                                │
+│  • PMS: Guest Folio/Bill                                                    │
+│  • POS: Sales Receipt                                                       │
+│  • Accounting: AR Invoice, AP Invoice                                       │
+│  • Procurement: Purchase Invoice                                            │
+│                                                                             │
+│  "Transaction" ada di mana-mana:                                            │
+│  • PMS: Folio Transaction                                                   │
+│  • POS: Sales Transaction                                                   │
+│  • Accounting: Journal Entry                                                │
+│  • Inventory: Stock Transaction                                             │
+│                                                                             │
+│  "Payment" ada di mana-mana:                                                │
+│  • PMS: Guest Payment                                                       │
+│  • POS: Order Payment                                                       │
+│  • Accounting: Payment Voucher                                              │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+#### 1.7.2 Solution: Domain-Specific Naming
+
+**RULE: Gunakan istilah domain-specific, HINDARI generic terms.**
+
+| Generic Term | Module | Domain-Specific Term | Table Name |
+|--------------|--------|---------------------|------------|
+| Invoice | PMS | Folio, Guest Bill | `pms.folios`, `pms.folio_items` |
+| Invoice | POS | Receipt, Check, Order | `pos.receipts`, `pos.orders` |
+| Invoice | Accounting | AR Invoice, AP Invoice | `acc.ar_invoices`, `acc.ap_invoices` |
+| Invoice | Procurement | Purchase Order, Supplier Invoice | `proc.purchase_orders`, `proc.supplier_invoices` |
+| Transaction | PMS | Folio Transaction, Posting | `pms.folio_transactions` |
+| Transaction | POS | Order Item, Sale Line | `pos.order_items` |
+| Transaction | Accounting | Journal Entry, Ledger Entry | `acc.journal_entries` |
+| Transaction | Inventory | Stock Movement | `inv.stock_movements` |
+| Payment | PMS | Folio Payment, Settlement | `pms.folio_payments` |
+| Payment | POS | Order Payment | `pos.order_payments` |
+| Payment | Accounting | Payment Voucher, Receipt Voucher | `acc.payment_vouchers` |
+| Customer | PMS | Guest | `pms.guests` |
+| Customer | POS | Customer, Diner | `pos.customers` |
+| Customer | Accounting | Debtor | `acc.debtors` |
+| Vendor | Procurement | Supplier | `proc.suppliers` |
+| Vendor | Accounting | Creditor | `acc.creditors` |
+
+#### 1.7.3 Database Table Naming
+
+**Format: `{schema}.{domain_specific_name}`**
+
+```sql
+-- ✅ GOOD: Domain-specific naming dengan schema prefix
+pms.folios                    -- Guest billing
+pms.folio_transactions        -- Charges & payments
+pms.guests                    -- Hotel guests
+pms.reservations              -- Room bookings
+
+pos.orders                    -- F&B orders
+pos.order_items               -- Order line items
+pos.receipts                  -- Printed receipts
+
+acc.journal_entries           -- Accounting entries
+acc.ar_invoices               -- Accounts Receivable
+acc.ap_invoices               -- Accounts Payable
+acc.chart_of_accounts         -- COA
+
+inv.stock_items               -- Inventory items
+inv.stock_movements           -- Stock in/out
+
+proc.purchase_orders          -- PO
+proc.purchase_requisitions    -- PR
+proc.suppliers                -- Vendors
+
+hrm.employees                 -- Staff
+hrm.attendance_records        -- Clock in/out
+hrm.payroll_runs              -- Salary processing
+
+-- ❌ BAD: Generic naming tanpa context
+invoices                      -- Dari module mana?
+transactions                  -- Ambigu!
+customers                     -- PMS? POS? Accounting?
+payments                      -- Shared? Module mana?
+```
+
+#### 1.7.4 Shared Tables (Cross-Module)
+
+Beberapa data memang harus shared antar module. Gunakan schema `shared`:
+
+```sql
+-- Schema: shared (data yang dipakai banyak module)
+shared.payment_methods        -- Cash, Card, Transfer, etc. (used by PMS, POS, SPA)
+shared.tax_types              -- Tax definitions (used by all)
+shared.currencies             -- Currency list
+shared.countries              -- Country master
+shared.units_of_measure       -- UoM (used by Inventory, POS, Procurement)
+shared.lookup_types           -- Generic lookups
+
+-- Tabel reference: module A ke module B
+shared.module_references (
+    id,
+    source_module,            -- 'pms'
+    source_entity,            -- 'folio_payments'
+    source_id,                -- 12345
+    target_module,            -- 'acc'
+    target_entity,            -- 'journal_entries'
+    target_id,                -- 67890
+    created_at
+)
+```
+
+#### 1.7.5 API Endpoint Naming
+
+**Format: `/api/v1/{module}/{resource}`**
+
+```yaml
+# ✅ GOOD: Module prefix di API
+GET  /api/v1/pms/folios                    # PMS folios
+GET  /api/v1/pms/folios/123/transactions   # Folio transactions
+GET  /api/v1/pos/orders                    # POS orders
+GET  /api/v1/pos/orders/456/items          # Order items
+GET  /api/v1/acc/journal-entries           # Accounting entries
+GET  /api/v1/acc/ar-invoices               # AR invoices
+GET  /api/v1/inv/stock-items               # Inventory items
+GET  /api/v1/proc/purchase-orders          # Purchase orders
+
+# Shared resources (tanpa module prefix)
+GET  /api/v1/shared/payment-methods        # Used by all
+GET  /api/v1/shared/tax-types              # Used by all
+GET  /api/v1/lookup/currencies             # Lookup data
+
+# ❌ BAD: Generic tanpa module prefix
+GET  /api/v1/invoices                      # Ambigu!
+GET  /api/v1/transactions                  # Module mana?
+GET  /api/v1/payments                      # ???
+```
+
+#### 1.7.6 Event/Message Naming
+
+**Format: `{module}.{entity}.{action}`**
+
+```yaml
+# ✅ GOOD: Module prefix di events
+pms.folio.created
+pms.folio.payment_added
+pms.reservation.confirmed
+pms.guest.checked_in
+
+pos.order.created
+pos.order.completed
+pos.receipt.printed
+
+acc.journal_entry.posted
+acc.period.closed
+
+inv.stock.received
+inv.stock.adjusted
+
+proc.purchase_order.approved
+proc.purchase_order.received
+
+# Cross-module events (clearly indicate source and target)
+integration.pms_to_acc.folio_posted        # PMS folio → Accounting
+integration.pos_to_inv.stock_deducted      # POS sale → Inventory
+integration.proc_to_inv.goods_received     # Procurement → Inventory
+
+# ❌ BAD: Ambigu
+payment.completed                          # Module mana?
+invoice.created                            # PMS? Accounting?
+transaction.posted                         # ???
+```
+
+#### 1.7.7 Config Key Naming
+
+**Format: `{module}.{category}.{name}`**
+
+```yaml
+# ✅ GOOD: Module prefix di config
+pms.pricing.tax_rate: 11
+pms.pricing.service_charge: 10
+pms.checkout.default_time: "12:00"
+pms.checkin.default_time: "14:00"
+
+pos.pricing.tax_rate: 10                   # Bisa beda dari PMS!
+pos.receipt.footer_text: "Thank you"
+pos.order.auto_print_receipt: true
+
+acc.fiscal.year_start_month: 1
+acc.journal.require_approval: true
+acc.period.auto_close: false
+
+inv.stock.low_stock_threshold: 10
+inv.valuation.method: "average"            # FIFO, LIFO, Average
+
+# Shared config (apply ke semua module)
+shared.currency.default: "IDR"
+shared.locale.timezone: "Asia/Jakarta"
+shared.format.date: "DD/MM/YYYY"
+
+# ❌ BAD: Tanpa module prefix
+pricing.tax_rate: ???                      # Module mana?
+default_time: ???                          # Checkout? Checkin?
+```
+
+#### 1.7.8 Class/Service Naming
+
+**Format: `{Module}{Entity}{Type}`**
+
+```python
+# ✅ GOOD: Module prefix di class names
+# PMS
+class PmsFolioService:
+class PmsFolioModel:
+class PmsFolioCreateDTO:
+class PmsGuestRepository:
+
+# POS
+class PosOrderService:
+class PosOrderModel:
+class PosReceiptService:
+
+# Accounting
+class AccJournalEntryService:
+class AccArInvoiceModel:
+class AccPeriodService:
+
+# Shared services (no module prefix, clearly named)
+class PaymentMethodService:          # Shared
+class TaxCalculationService:         # Shared
+class AuditLogService:               # Shared
+
+# Cross-module integration
+class PmsToAccIntegrationService:    # PMS → Accounting
+class PosToInvIntegrationService:    # POS → Inventory
+
+# ❌ BAD: Generic
+class InvoiceService:                # Module mana?
+class TransactionService:            # Ambigu
+class PaymentService:                # PMS? POS?
+```
+
+#### 1.7.9 Module Code Registry
+
+**Standard module codes untuk consistency:**
+
+| Code | Module | Full Name |
+|------|--------|-----------|
+| `pms` | Property Management | Hotel Operations |
+| `pos` | Point of Sale | F&B, Retail |
+| `acc` | Accounting | Financial Accounting |
+| `inv` | Inventory | Stock Management |
+| `proc` | Procurement | Purchasing |
+| `hrm` | Human Resources | HR & Payroll |
+| `ast` | Asset Management | Fixed Assets |
+| `cms` | Content Management | Digital Signage |
+| `chm` | Channel Manager | OTA Integration |
+| `crm` | Customer Relations | Guest Relations |
+| `spa` | Spa & Wellness | Spa Operations |
+| `evt` | Events | Banquet & Events |
+| `eng` | Engineering | Maintenance |
+
+```python
+# Module registry
+class ModuleCode(Enum):
+    PMS = "pms"
+    POS = "pos"
+    ACC = "acc"
+    INV = "inv"
+    PROC = "proc"
+    HRM = "hrm"
+    AST = "ast"
+    CMS = "cms"
+    CHM = "chm"
+    CRM = "crm"
+    SPA = "spa"
+    EVT = "evt"
+    ENG = "eng"
+```
+
+#### 1.7.10 Quick Reference Matrix
+
+| Item | Pattern | Example |
+|------|---------|---------|
+| **Database Table** | `{schema}.{domain_entity}` | `pms.folios`, `acc.journal_entries` |
+| **API Endpoint** | `/api/v1/{module}/{resource}` | `/api/v1/pms/folios` |
+| **Event Name** | `{module}.{entity}.{action}` | `pms.folio.created` |
+| **Config Key** | `{module}.{category}.{name}` | `pms.pricing.tax_rate` |
+| **Class Name** | `{Module}{Entity}{Type}` | `PmsFolioService` |
+| **Shared Table** | `shared.{entity}` | `shared.payment_methods` |
+| **Cross-Module Event** | `integration.{src}_to_{tgt}.{action}` | `integration.pms_to_acc.folio_posted` |
+
+---
+
 ## 2. Database Patterns ✅
 
 ### 2.0 Arsitektur Database (2-Layer + Schema per App)
@@ -462,6 +764,7 @@ updated_at      TIMESTAMP WITH TIME ZONE,
 updated_by_id   INTEGER REFERENCES users(id) ON DELETE SET NULL,
 
 -- Untuk table yang support soft delete (hampir semua)
+is_deleted      BOOLEAN DEFAULT FALSE NOT NULL,
 deleted_at      TIMESTAMP WITH TIME ZONE,
 deleted_by_id   INTEGER REFERENCES users(id) ON DELETE SET NULL
 ```
@@ -499,6 +802,9 @@ CREATE TABLE example_table (
     created_by_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
     updated_at TIMESTAMP WITH TIME ZONE,
     updated_by_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+
+    -- Soft delete
+    is_deleted BOOLEAN DEFAULT FALSE NOT NULL,
     deleted_at TIMESTAMP WITH TIME ZONE,
     deleted_by_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
 
@@ -508,7 +814,7 @@ CREATE TABLE example_table (
 
 -- Indexes
 CREATE INDEX idx_example_table_org ON example_table(organization_id);
-CREATE INDEX idx_example_table_status ON example_table(status) WHERE deleted_at IS NULL;
+CREATE INDEX idx_example_table_active ON example_table(status) WHERE is_deleted = FALSE;
 ```
 
 ---
@@ -522,20 +828,22 @@ CREATE INDEX idx_example_table_status ON example_table(status) WHERE deleted_at 
 
 **Pattern:**
 ```sql
--- Soft delete: set deleted_at
+-- Soft delete: set is_deleted, deleted_at, deleted_by_id
 UPDATE users SET
+    is_deleted = TRUE,
     deleted_at = NOW(),
     deleted_by_id = :current_user_id
 WHERE id = :user_id;
 
--- Query active records (SELALU filter deleted_at)
-SELECT * FROM users WHERE deleted_at IS NULL;
+-- Query active records (SELALU filter is_deleted)
+SELECT * FROM users WHERE is_deleted = FALSE;
 
 -- Query including deleted (untuk admin/audit)
 SELECT * FROM users; -- tanpa filter
 
 -- Restore soft deleted
 UPDATE users SET
+    is_deleted = FALSE,
     deleted_at = NULL,
     deleted_by_id = NULL
 WHERE id = :user_id;
@@ -547,13 +855,21 @@ class BaseRepository:
     def get_all(self, include_deleted: bool = False):
         query = select(self.model)
         if not include_deleted:
-            query = query.where(self.model.deleted_at.is_(None))
+            query = query.where(self.model.is_deleted == False)
         return query
 
     def soft_delete(self, id: int, deleted_by_id: int):
         entity = self.get_by_id(id)
+        entity.is_deleted = True
         entity.deleted_at = datetime.now(timezone.utc)
         entity.deleted_by_id = deleted_by_id
+        return entity
+
+    def restore(self, id: int):
+        entity = self.get_by_id(id, include_deleted=True)
+        entity.is_deleted = False
+        entity.deleted_at = None
+        entity.deleted_by_id = None
         return entity
 ```
 
@@ -728,23 +1044,24 @@ local_time = now_utc.astimezone(local_tz)
 
 ### 2.6 Money / Currency
 
-**Rule:** NUMERIC(15,4) untuk semua monetary amounts.
+**Rule:** DECIMAL(18,4) untuk semua monetary amounts.
 
 ```sql
 -- Column definition
-total_amount NUMERIC(15,4) NOT NULL,
-tax_amount NUMERIC(15,4) NOT NULL DEFAULT 0,
-discount_amount NUMERIC(15,4) NOT NULL DEFAULT 0,
-exchange_rate NUMERIC(15,6) NOT NULL DEFAULT 1,  -- 6 decimals untuk rate
+total_amount DECIMAL(18,4) NOT NULL,
+tax_amount DECIMAL(18,4) NOT NULL DEFAULT 0,
+discount_amount DECIMAL(18,4) NOT NULL DEFAULT 0,
+exchange_rate DECIMAL(18,6) NOT NULL DEFAULT 1,  -- 6 decimals untuk rate
 
 -- Constraints
 CONSTRAINT chk_positive_amount CHECK (total_amount >= 0)
 ```
 
-**Kenapa NUMERIC(15,4)?**
-- 15 digits total: supports up to 99,999,999,999.9999 (cukup untuk IDR billions)
+**Kenapa DECIMAL(18,4)?**
+- 18 digits total: supports up to 99,999,999,999,999.9999 (99 triliun - cukup untuk IDR high-volume)
 - 4 decimal places: precision untuk tax calculations
-- NUMERIC not FLOAT: exact precision, no floating-point errors
+- DECIMAL not FLOAT: exact precision, no floating-point errors
+- Enterprise standard untuk accounting systems
 
 **Python:**
 ```python
@@ -1497,20 +1814,73 @@ def sanitize_for_log(data: dict) -> dict:
 
 ### 4.6 Retention Policy
 
+**Rule:** Perpetual retention dengan cold storage archive (Decision #80)
+
 ```sql
--- Hapus log lama (scheduled job)
+-- TIDAK ADA hard delete untuk audit logs
+-- Data di-archive ke cold storage setelah threshold
 
--- Auth logs: 1 tahun
-DELETE FROM auth_logs WHERE created_at < NOW() - INTERVAL '1 year';
+-- Archive ke cold storage (scheduled job)
+-- Auth logs: archive setelah 1 tahun
+INSERT INTO auth_logs_archive SELECT * FROM auth_logs
+WHERE created_at < NOW() - INTERVAL '1 year';
 
--- App logs: sesuai compliance
--- Financial (accounting): 7 tahun
-DELETE FROM accounting.audit_logs WHERE created_at < NOW() - INTERVAL '7 years';
+-- Financial (accounting): archive setelah 2 tahun (keep hot for reporting)
+INSERT INTO accounting.audit_logs_archive SELECT * FROM accounting.audit_logs
+WHERE created_at < NOW() - INTERVAL '2 years';
+
+-- Operational (pms, hrm): archive setelah 1 tahun
+INSERT INTO pms.audit_logs_archive SELECT * FROM pms.audit_logs
+WHERE created_at < NOW() - INTERVAL '1 year';
+```
+
+**Cold Storage Strategy:**
+- Archive tables → Cloudflare R2 / S3 Glacier
+- Compressed Parquet format untuk cost efficiency
+- Queryable via Athena/Trino jika diperlukan
+
+**Optional: Time-Based Deletion (jika dibutuhkan)**
+
+Untuk organisasi yang membutuhkan hard delete (GDPR, storage constraints), bisa dikonfigurasi per tenant:
+
+```sql
+-- organization_settings table
+ALTER TABLE organization_settings ADD COLUMN retention_policy JSONB DEFAULT '{
+    "mode": "perpetual",
+    "auth_logs_years": null,
+    "operational_logs_years": null,
+    "financial_logs_years": null
+}';
+
+-- Contoh config untuk time-based deletion:
+UPDATE organization_settings SET retention_policy = '{
+    "mode": "time_based",
+    "auth_logs_years": 1,
+    "operational_logs_years": 3,
+    "financial_logs_years": 10
+}' WHERE organization_id = :org_id;
+
+-- Scheduled job untuk hard delete (jika mode = time_based)
+-- Financial (accounting): 10 tahun (UU Perpajakan Indonesia)
+DELETE FROM accounting.audit_logs
+WHERE organization_id = :org_id
+  AND created_at < NOW() - INTERVAL '10 years';
 
 -- Operational (pms, hrm): 3 tahun
-DELETE FROM pms.audit_logs WHERE created_at < NOW() - INTERVAL '3 years';
-DELETE FROM hrm.audit_logs WHERE created_at < NOW() - INTERVAL '3 years';
+DELETE FROM pms.audit_logs
+WHERE organization_id = :org_id
+  AND created_at < NOW() - INTERVAL '3 years';
+
+-- Auth logs: 1 tahun
+DELETE FROM auth_logs
+WHERE organization_id = :org_id
+  AND created_at < NOW() - INTERVAL '1 year';
 ```
+
+**Catatan:**
+- Default: `perpetual` (tidak ada hard delete)
+- `time_based`: Harus explicit di-set per organisasi
+- Financial logs: MINIMUM 10 tahun (compliance UU Perpajakan)
 
 ---
 
@@ -1536,7 +1906,7 @@ pg_dump -n pms -t pms.audit_logs db_hotel_a > hotel_a_pms_auditlogs.sql
 | **What to log** | All CRUD, business actions, sensitive access |
 | **Format** | JSON with old/new values and diff |
 | **Sensitive data** | Mask/redact before logging |
-| **Retention** | Auth: 1yr, General: 3yr, Financial: 7yr |
+| **Retention** | Default: Perpetual + cold storage. Optional: time-based per tenant |
 | **Backup** | Ikut saat backup schema app |
 
 ---

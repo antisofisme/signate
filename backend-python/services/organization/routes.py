@@ -849,6 +849,39 @@ def validate_reset_pin(
 
     # Validate PIN
     if request_body.pin == org.pin:
+        device_reset = None
+        reset_message = "PIN validated successfully"
+
+        # If device_id provided, perform hard reset
+        if request_body.device_id:
+            from datetime import datetime, timezone
+            from services.device.repositories.models import DeviceModel
+
+            device = db.query(DeviceModel).filter(
+                DeviceModel.id == request_body.device_id
+            ).first()
+
+            if device:
+                # Verify device belongs to this organization
+                if device.organization_id == org_id:
+                    # Perform hard reset: set status to 'released' and clear unique_code
+                    device.status = 'released'
+                    device.released_at = datetime.now(timezone.utc)
+                    device.unique_code = None  # Clear code - player will get new one
+                    db.commit()
+
+                    device_reset = True
+                    reset_message = f"PIN validated and device {device.device_name} reset successfully"
+                    print(f"[HardReset] ✅ Device {request_body.device_id} ({device.device_name}) factory reset via PIN validation")
+                else:
+                    device_reset = False
+                    reset_message = "PIN valid but device does not belong to this organization"
+                    print(f"[HardReset] ❌ Device {request_body.device_id} org mismatch: {device.organization_id} != {org_id}")
+            else:
+                device_reset = False
+                reset_message = "PIN valid but device not found"
+                print(f"[HardReset] ❌ Device {request_body.device_id} not found")
+
         # Calculate duration
         duration_ms = (time.time() - start_time) * 1000
 
@@ -862,7 +895,8 @@ def validate_reset_pin(
 
         return ValidateResetPinResponse(
             valid=True,
-            message="PIN validated successfully"
+            message=reset_message,
+            device_reset=device_reset
         )
     else:
         # Calculate duration

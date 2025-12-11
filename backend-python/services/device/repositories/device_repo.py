@@ -170,6 +170,7 @@ class DeviceRepository(IDeviceRepository):
             code_expires_at=device.code_expires_at,
             device_uuid=device.device_uuid,
             ip_address=device.ip_address,
+            local_ip=device.local_ip,
             platform=device.platform,
             screen_width=device.screen_width,
             screen_height=device.screen_height,
@@ -211,6 +212,7 @@ class DeviceRepository(IDeviceRepository):
         device_model.code_expires_at = device.code_expires_at
         device_model.device_uuid = device.device_uuid
         device_model.ip_address = device.ip_address
+        device_model.local_ip = device.local_ip
         device_model.platform = device.platform
         # GeoIP data (Phase 6)
         device_model.geo_city = device.geo_city
@@ -251,8 +253,8 @@ class DeviceRepository(IDeviceRepository):
             device_model.deleted_by_id = device.deleted_by_id
         if device.deleted_at is not None:
             device_model.deleted_at = device.deleted_at
-        if device.released_at is not None:
-            device_model.released_at = device.released_at
+        # Always update released_at (can be None to clear it during restore)
+        device_model.released_at = device.released_at
 
         self.db.commit()
         self.db.refresh(device_model)
@@ -378,6 +380,7 @@ class DeviceRepository(IDeviceRepository):
             code_expires_at=model.code_expires_at,
             device_uuid=model.device_uuid,
             ip_address=model.ip_address,
+            local_ip=model.local_ip,
             platform=model.platform,
             # GeoIP data (Phase 6)
             geo_city=model.geo_city,

@@ -56,7 +56,7 @@ import { NetworkSpeedTest } from '@shared/services/network-speed-test';
 import { VersionChecker } from '@shared/services/version-checker';
 
 // Import media cache for periodic cleanup
-import { mediaCache } from '@shared/storage';
+import { mediaCache, deviceConfigStorage } from '@shared/storage';
 
 // Import player services to trigger registration
 import { PlayerPlaylistSync } from '@player/services';
@@ -107,6 +107,93 @@ const isPortalRoute = (): { isPortal: boolean; portalSlug: string | null } => {
   }
 
   return { isPortal: false, portalSlug: null };
+};
+
+/**
+ * Check if current URL is a device route
+ * Format: /device/{device_id}
+ * Example: /device/7680
+ *
+ * This route is used for persistent device identification.
+ * After activation, player redirects to /device/{device_id}.
+ * IndexedDB stores device credentials that only hard reset can clear.
+ */
+const isDeviceRoute = (): { isDevice: boolean; deviceId: number | null } => {
+  const path = window.location.pathname;
+  // Match device ID format: /device/{numeric_id}
+  const deviceMatch = path.match(/^\/device\/(\d+)$/);
+
+  if (deviceMatch) {
+    return { isDevice: true, deviceId: parseInt(deviceMatch[1], 10) };
+  }
+
+  return { isDevice: false, deviceId: null };
+};
+
+/**
+ * Handle device route validation
+ * Validates URL device_id against stored credentials in IndexedDB
+ *
+ * Security:
+ * - If no credentials in IndexedDB → redirect to /
+ * - If device_id mismatch → show error and redirect to /
+ * - If valid → continue with player bootstrap
+ */
+const handleDeviceRoute = async (urlDeviceId: number): Promise<boolean> => {
+  SharedLogger.log(`[DeviceRoute] Validating device ID from URL: ${urlDeviceId}`);
+
+  // Get stored config from IndexedDB
+  const config = await deviceConfigStorage.getDeviceConfig();
+
+  // Check if we have stored device credentials
+  if (!config.device_id) {
+    SharedLogger.warn('[DeviceRoute] No device credentials in IndexedDB, redirecting to /');
+    window.location.href = '/';
+    return false;
+  }
+
+  // Validate URL device_id against stored device_id
+  if (config.device_id !== urlDeviceId) {
+    SharedLogger.error(
+      `[DeviceRoute] Device ID mismatch! URL: ${urlDeviceId}, Stored: ${config.device_id}`
+    );
+    SharedLogger.warn('[DeviceRoute] This may be a different device trying to use same URL');
+    // Show error toast and redirect
+    alert(`Device ID mismatch. This URL is for device ${urlDeviceId}, but this device is ${config.device_id}`);
+    window.location.href = '/';
+    return false;
+  }
+
+  SharedLogger.log('[DeviceRoute] ✅ Device ID validated successfully');
+  return true;
+};
+
+/**
+ * Handle root route - check for existing device and redirect
+ * If device exists in IndexedDB, redirect to /device/{device_id}
+ */
+const handleRootRoute = async (): Promise<boolean> => {
+  const path = window.location.pathname;
+
+  // Only handle exact root path
+  if (path !== '/') {
+    return true; // Not root, continue normally
+  }
+
+  SharedLogger.log('[RootRoute] Checking for existing device credentials...');
+
+  // Get stored config from IndexedDB
+  const storedConfig = await deviceConfigStorage.getDeviceConfig();
+
+  // If we have a device_id, redirect to /device/{device_id}
+  if (storedConfig.device_id) {
+    SharedLogger.log(`[RootRoute] Found existing device, redirecting to /device/${storedConfig.device_id}`);
+    window.location.href = `/device/${storedConfig.device_id}`;
+    return false; // Stop current initialization, redirect will handle it
+  }
+
+  SharedLogger.log('[RootRoute] No existing device, continuing with normal bootstrap');
+  return true; // Continue with normal bootstrap (show activation screen)
 };
 
 /**
@@ -200,6 +287,24 @@ const initApp = async () => {
     SharedLogger.log('🍽️ Menu route detected, initializing Menu Viewer...');
     await initMenuViewer(publicCode);
     return; // Exit early, don't initialize player
+  }
+
+  // Check if this is a device route - validate device ID
+  const { isDevice, deviceId: urlDeviceId } = isDeviceRoute();
+  if (isDevice && urlDeviceId) {
+    SharedLogger.log(`📺 Device route detected: /device/${urlDeviceId}`);
+    const isValid = await handleDeviceRoute(urlDeviceId);
+    if (!isValid) {
+      return; // Redirect will happen, stop initialization
+    }
+    // Device validated, continue with player bootstrap
+    SharedLogger.log('[DeviceRoute] Continuing with validated device...');
+  } else {
+    // Check if root route needs redirect to /device/{id}
+    const shouldContinue = await handleRootRoute();
+    if (!shouldContinue) {
+      return; // Redirect will happen, stop initialization
+    }
   }
 
   // Verify containers exist (should already be in index.html)

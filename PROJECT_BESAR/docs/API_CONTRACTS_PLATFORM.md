@@ -44,12 +44,58 @@
 | Standard | Pattern | Reference |
 |----------|---------|-----------|
 | Action Endpoints | `POST /resource/{id}/{action}` | Decision #87 |
-| Pagination | `?page=1&per_page=20` | Dev Standards |
+| Pagination | `?page=1&page_size=20` | Dev Standards |
 | Filtering | `?status=active&search=keyword` | Dev Standards |
 | Sorting | `?sort_by=created_at&sort_order=desc` | Dev Standards |
-| Response Format | `{ data, meta, errors }` | Dev Standards |
-| Error Format | `{ code, message, details }` | Dev Standards |
+| Response Format | `{ success, data, meta }` | Dev Standards 6.3 |
+| Error Format | `{ success: false, error: { code, message, details } }` | Dev Standards 6.3 |
 | Date Format | ISO 8601 (`2025-12-07T10:30:00Z`) | Dev Standards |
+
+---
+
+## Response Format
+
+> **Reference**: DEVELOPMENT_STANDARDS.md Section 6.3
+
+### Success Response (Single Entity)
+```json
+{
+  "success": true,
+  "data": { ... },
+  "message": "Optional success message"
+}
+```
+
+### Success Response (List with Pagination)
+```json
+{
+  "success": true,
+  "data": [ ... ],
+  "meta": {
+    "page": 1,
+    "page_size": 20,
+    "total_items": 150,
+    "total_pages": 8,
+    "has_next": true,
+    "has_prev": false
+  }
+}
+```
+
+### Error Response
+```json
+{
+  "success": false,
+  "error": {
+    "code": "ERROR_CODE",
+    "message": "Human readable message",
+    "details": [ ... ],
+    "request_id": "req-abc-123"
+  }
+}
+```
+
+> **Note**: Semua response di dokumen ini mengikuti format di atas. Untuk brevity, beberapa contoh mungkin tidak menampilkan field `success` secara eksplisit.
 
 ---
 
@@ -103,7 +149,7 @@ List all tenants dengan pagination & filtering.
 | Param | Type | Description |
 |-------|------|-------------|
 | page | int | Page number (default: 1) |
-| per_page | int | Items per page (default: 20, max: 100) |
+| page_size | int | Items per page (default: 20, max: 100) |
 | status | string | Filter by status (pending, trial, active, suspended, closed) |
 | search | string | Search by name, code, email |
 | sort_by | string | Sort field (created_at, name, status) |
@@ -112,6 +158,7 @@ List all tenants dengan pagination & filtering.
 **Response (200):**
 ```json
 {
+  "success": true,
   "data": [
     {
       "id": 1,
@@ -128,8 +175,8 @@ List all tenants dengan pagination & filtering.
   ],
   "meta": {
     "page": 1,
-    "per_page": 20,
-    "total": 150,
+    "page_size": 20,
+    "total_items": 150,
     "total_pages": 8
   }
 }
@@ -141,6 +188,7 @@ Get tenant detail.
 **Response (200):**
 ```json
 {
+  "success": true,
   "data": {
     "id": 1,
     "code": "HTL-001",
@@ -502,8 +550,9 @@ List all subscriptions.
   ],
   "meta": {
     "page": 1,
-    "per_page": 20,
-    "total": 45
+    "page_size": 20,
+    "total_items": 45,
+    "total_pages": 3
   }
 }
 ```

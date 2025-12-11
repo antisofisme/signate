@@ -89,6 +89,10 @@ class DeviceHeartbeatUseCase:
         if heartbeat_data.device_uuid:
             device.device_uuid = heartbeat_data.device_uuid
 
+        # Update local IP (from WebRTC detection on player)
+        if heartbeat_data.local_ip:
+            device.local_ip = heartbeat_data.local_ip
+
         # Update IP address from HTTP request
         ip_changed = False
         if heartbeat_data.ip_address:

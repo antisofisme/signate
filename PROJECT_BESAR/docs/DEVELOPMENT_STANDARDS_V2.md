@@ -3950,6 +3950,419 @@ Grafana/
 
 ---
 
+### 15.9 Sentry Integration (Error Tracking)
+
+#### 15.9.1 Overview
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                     SENTRY - ERROR TRACKING SYSTEM                        │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                          │
+│  Purpose:                                                                │
+│  ├── Error tracking & grouping                                          │
+│  ├── Stack traces with source maps                                      │
+│  ├── Performance monitoring (transactions, spans)                       │
+│  ├── Session replay for debugging                                       │
+│  ├── Release tracking & deployment                                      │
+│  └── Alerting on new/recurring issues                                   │
+│                                                                          │
+│  Deployment: Sentry SaaS (sentry.io) OR Self-hosted                     │
+│                                                                          │
+│  Multi-Tenant: All errors tagged with organization_id, tenant_id        │
+│                                                                          │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+#### 15.9.2 Backend Integration (FastAPI)
+
+**Dependencies:**
+```
+# requirements.txt
+sentry-sdk[fastapi,celery,sqlalchemy,redis,httpx]==2.19.0
+```
+
+**Initialization:**
+```python
+# app/core/sentry.py
+import sentry_sdk
+from sentry_sdk.integrations.fastapi import FastApiIntegration
+from sentry_sdk.integrations.celery import CeleryIntegration
+from sentry_sdk.integrations.sqlalchemy import SqlalchemyIntegration
+from sentry_sdk.integrations.redis import RedisIntegration
+from sentry_sdk.integrations.httpx import HttpxIntegration
+from sentry_sdk.integrations.logging import LoggingIntegration
+
+from app.core.config import settings
+
+
+def init_sentry():
+    """Initialize Sentry SDK with all integrations."""
+    if not settings.SENTRY_DSN:
+        return  # Sentry disabled
+
+    sentry_sdk.init(
+        dsn=settings.SENTRY_DSN,
+        environment=settings.ENVIRONMENT,  # production, staging, development
+        release=settings.APP_VERSION,       # e.g., "pms@1.2.3"
+
+        # Performance monitoring
+        traces_sample_rate=_get_traces_sample_rate(),
+        profiles_sample_rate=0.1,  # 10% profiling
+
+        # Error sampling (100% - capture all errors)
+        sample_rate=1.0,
+
+        integrations=[
+            FastApiIntegration(transaction_style="endpoint"),
+            CeleryIntegration(monitor_beat_tasks=True),
+            SqlalchemyIntegration(),
+            RedisIntegration(),
+            HttpxIntegration(),
+            LoggingIntegration(
+                level=logging.INFO,
+                event_level=logging.ERROR
+            ),
+        ],
+
+        # Multi-tenant context
+        before_send=add_tenant_context,
+        before_send_transaction=add_tenant_context_to_transaction,
+
+        # PII scrubbing
+        send_default_pii=False,
+
+        # Ignore certain errors
+        ignore_errors=[
+            KeyboardInterrupt,
+            ConnectionResetError,
+        ],
+    )
+
+
+def _get_traces_sample_rate() -> float:
+    """Dynamic sample rate based on environment."""
+    rates = {
+        "production": 0.1,   # 10% sampling
+        "staging": 0.5,      # 50% sampling
+        "development": 1.0,  # 100% sampling
+    }
+    return rates.get(settings.ENVIRONMENT, 0.1)
+
+
+def add_tenant_context(event, hint):
+    """Add tenant context to all Sentry events."""
+    from app.core.context import get_current_tenant
+
+    tenant = get_current_tenant()
+    if tenant:
+        event.setdefault("tags", {})
+        event["tags"]["organization_id"] = tenant.organization_id
+        event["tags"]["org_code"] = tenant.org_code
+        event["tags"]["tenant_id"] = tenant.tenant_id
+
+        event.setdefault("extra", {})
+        event["extra"]["tenant"] = {
+            "organization_id": tenant.organization_id,
+            "org_code": tenant.org_code,
+            "tenant_id": tenant.tenant_id,
+        }
+
+    return event
+
+
+def add_tenant_context_to_transaction(event, hint):
+    """Add tenant context to performance transactions."""
+    return add_tenant_context(event, hint)
+
+
+# === Manual Error Capture ===
+
+def capture_error(error: Exception, extra: dict = None):
+    """Manually capture an error with extra context."""
+    with sentry_sdk.push_scope() as scope:
+        if extra:
+            for key, value in extra.items():
+                scope.set_extra(key, value)
+        sentry_sdk.capture_exception(error)
+
+
+def capture_message(message: str, level: str = "info", extra: dict = None):
+    """Capture a message (not an exception)."""
+    with sentry_sdk.push_scope() as scope:
+        if extra:
+            for key, value in extra.items():
+                scope.set_extra(key, value)
+        sentry_sdk.capture_message(message, level=level)
+```
+
+**Usage in FastAPI:**
+```python
+# app/main.py
+from app.core.sentry import init_sentry
+
+# Initialize before app creation
+init_sentry()
+
+app = FastAPI(...)
+
+# Sentry automatically captures exceptions from routes
+@app.get("/api/v1/reservations/{id}")
+async def get_reservation(id: int):
+    reservation = await repo.get(id)
+    if not reservation:
+        # This error will be auto-captured by Sentry
+        raise HTTPException(404, "Reservation not found")
+    return reservation
+```
+
+**User Context:**
+```python
+# app/api/deps.py
+import sentry_sdk
+
+async def get_current_user_with_sentry(
+    user: User = Depends(get_current_user)
+) -> User:
+    """Set Sentry user context for better error tracking."""
+    sentry_sdk.set_user({
+        "id": str(user.id),
+        "email": user.email,
+        "username": user.name,
+        "ip_address": "{{auto}}",  # Auto-detect from request
+    })
+    return user
+```
+
+#### 15.9.3 Frontend Integration (React)
+
+**Dependencies:**
+```json
+// package.json
+{
+  "dependencies": {
+    "@sentry/react": "^8.40.0"
+  }
+}
+```
+
+**Initialization:**
+```typescript
+// src/lib/sentry.ts
+import * as Sentry from "@sentry/react";
+
+export function initSentry() {
+  if (!import.meta.env.VITE_SENTRY_DSN) return;
+
+  Sentry.init({
+    dsn: import.meta.env.VITE_SENTRY_DSN,
+    environment: import.meta.env.VITE_ENVIRONMENT,
+    release: import.meta.env.VITE_APP_VERSION,
+
+    integrations: [
+      // Browser tracing for performance
+      Sentry.browserTracingIntegration(),
+
+      // Session replay for debugging
+      Sentry.replayIntegration({
+        maskAllText: false,
+        maskAllInputs: true,  // Mask password, credit card fields
+        blockAllMedia: false,
+      }),
+
+      // React-specific error boundary
+      Sentry.reactRouterV6BrowserTracingIntegration({
+        useEffect: React.useEffect,
+      }),
+    ],
+
+    // Performance sampling
+    tracesSampleRate: import.meta.env.VITE_ENVIRONMENT === "production" ? 0.1 : 1.0,
+
+    // Session replay sampling
+    replaysSessionSampleRate: 0.1,  // 10% of all sessions
+    replaysOnErrorSampleRate: 1.0,  // 100% of sessions with errors
+
+    // Filter out noisy errors
+    ignoreErrors: [
+      "ResizeObserver loop limit exceeded",
+      "Network request failed",
+      "Load failed",
+    ],
+
+    // Multi-tenant context
+    beforeSend(event) {
+      const tenant = getTenantFromStore();  // Get from Zustand/Redux
+      if (tenant) {
+        event.tags = {
+          ...event.tags,
+          organization_id: tenant.organizationId,
+          org_code: tenant.orgCode,
+        };
+      }
+      return event;
+    },
+  });
+}
+
+// Set user context after login
+export function setSentryUser(user: User | null) {
+  if (user) {
+    Sentry.setUser({
+      id: String(user.id),
+      email: user.email,
+      username: user.name,
+    });
+  } else {
+    Sentry.setUser(null);
+  }
+}
+
+// Manual error capture
+export function captureError(error: Error, context?: Record<string, unknown>) {
+  Sentry.captureException(error, { extra: context });
+}
+```
+
+**Error Boundary:**
+```tsx
+// src/components/ErrorBoundary.tsx
+import * as Sentry from "@sentry/react";
+
+export const SentryErrorBoundary = Sentry.withErrorBoundary;
+
+// Usage in App.tsx
+import { SentryErrorBoundary } from "./components/ErrorBoundary";
+
+function App() {
+  return (
+    <Sentry.ErrorBoundary
+      fallback={({ error, resetError }) => (
+        <ErrorFallback error={error} onRetry={resetError} />
+      )}
+      showDialog  // Show feedback dialog to users
+    >
+      <RouterProvider router={router} />
+    </Sentry.ErrorBoundary>
+  );
+}
+```
+
+**Source Maps Upload (CI/CD):**
+```yaml
+# .github/workflows/deploy.yml
+- name: Upload Source Maps to Sentry
+  env:
+    SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+    SENTRY_ORG: your-org
+    SENTRY_PROJECT: frontend
+  run: |
+    npx @sentry/cli releases new ${{ env.VERSION }}
+    npx @sentry/cli releases files ${{ env.VERSION }} upload-sourcemaps ./dist
+    npx @sentry/cli releases finalize ${{ env.VERSION }}
+```
+
+#### 15.9.4 Celery Integration
+
+```python
+# app/celery/config.py
+import sentry_sdk
+from sentry_sdk.integrations.celery import CeleryIntegration
+
+# Sentry already initialized in main app, but for Celery worker:
+sentry_sdk.init(
+    dsn=settings.SENTRY_DSN,
+    integrations=[
+        CeleryIntegration(
+            monitor_beat_tasks=True,  # Track periodic tasks
+            propagate_traces=True,    # Connect traces across services
+        ),
+    ],
+)
+
+# Example task with manual context
+@celery_app.task(bind=True)
+def process_night_audit(self, organization_id: int):
+    """Night audit task with Sentry context."""
+    with sentry_sdk.push_scope() as scope:
+        scope.set_tag("organization_id", organization_id)
+        scope.set_tag("task_name", "night_audit")
+
+        try:
+            # Process night audit
+            result = night_audit_service.run(organization_id)
+            return result
+        except Exception as e:
+            sentry_sdk.capture_exception(e)
+            raise  # Re-raise for Celery retry
+```
+
+#### 15.9.5 Sentry Project Structure
+
+```
+Sentry Organization: your-company
+│
+├── Project: backend-api
+│   ├── Environment: production
+│   ├── Environment: staging
+│   └── Alerts: High error rate, new issue
+│
+├── Project: frontend-app
+│   ├── Environment: production
+│   ├── Environment: staging
+│   └── Alerts: JavaScript errors
+│
+├── Project: celery-workers
+│   ├── Environment: production
+│   └── Alerts: Failed tasks
+│
+└── Team: hospitality-platform
+    └── Members: dev team
+```
+
+#### 15.9.6 Alerting Rules
+
+| Alert | Condition | Action |
+|-------|-----------|--------|
+| New Issue (Production) | New error never seen before | Slack #errors |
+| Regression | Previously resolved error recurs | Slack #errors + PagerDuty |
+| High Error Rate | > 50 events/hour | PagerDuty |
+| Performance Degradation | p95 > 3s | Slack #performance |
+
+#### 15.9.7 Sentry + Claude Code CLI Integration
+
+```bash
+# Install sentry-cli
+npm install -g @sentry/cli
+
+# Configure authentication
+sentry-cli login
+
+# List recent issues
+sentry-cli issues list --org your-org --project backend-api
+
+# Get issue details
+sentry-cli issues info ISSUE_ID
+
+# Example: Query via API (for Claude Code)
+curl -H "Authorization: Bearer ${SENTRY_AUTH_TOKEN}" \
+  "https://sentry.io/api/0/projects/your-org/backend-api/issues/?query=is:unresolved"
+```
+
+**MCP Server for Sentry (Custom):**
+```typescript
+// For Claude Code integration, create custom MCP server
+// that wraps Sentry API for error queries
+
+// Commands available:
+// - List unresolved issues
+// - Get issue details + stack trace
+// - Search issues by tag (organization_id, user_id)
+// - Mark issue as resolved
+```
+
+---
+
 ## 16. Internationalization (i18n) ✅
 
 ### 16.1 Prinsip i18n

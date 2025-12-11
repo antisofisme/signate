@@ -9,20 +9,20 @@
 
 ## Table of Contents
 
-10. [Integration with Other Modules](#10-integration-with-other-modules) ✅
-11. [Audit Trail & Compliance](#11-audit-trail--compliance) ✅
-12. [Fixed Assets](#12-fixed-assets) ✅
-13. [Inventory Costing](#13-inventory-costing) ✅
-14. [Budgeting](#14-budgeting) ✅
-15. [Consolidation](#15-consolidation) ✅
+11. [Integration with Other Modules](#11-integration-with-other-modules) ✅
+12. [Audit Trail & Compliance](#12-audit-trail--compliance) ✅
+13. [Fixed Assets](#13-fixed-assets) ✅
+14. [Inventory Costing](#14-inventory-costing) ✅
+15. [Budgeting](#15-budgeting) ✅
+16. [Consolidation](#16-consolidation) ✅
 
 ---
 
-## 10. Integration with Other Modules
+## 11. Integration with Other Modules
 
 > **Status**: ✅ Approved (2025-12-07)
 
-### 10.1 Hard vs Soft Rules Summary
+### 11.1 Hard vs Soft Rules Summary
 
 | Rule Type | Hard (Embedded) | Soft (Configurable) |
 |-----------|-----------------|---------------------|
@@ -32,7 +32,7 @@
 | GL Mapping | ❌ | ✅ (per transaction type) |
 | Source Document Link | ✅ (mandatory) | ❌ |
 
-### 10.2 Integration Architecture
+### 11.2 Integration Architecture
 
 **Real-time Integration Flow:**
 
@@ -76,9 +76,9 @@ journal = JournalEntry(
 )
 ```
 
-### 10.3 Module Integration Points
+### 11.3 Module Integration Points
 
-#### 10.3.1 PMS → Accounting
+#### 11.3.1 PMS → Accounting
 
 | PMS Transaction | Journal Type | Debit | Credit |
 |-----------------|--------------|-------|--------|
@@ -89,7 +89,7 @@ journal = JournalEntry(
 | Deposit Received | CR | Cash/Bank | Guest Deposit (Liability) |
 | Deposit Applied | GJ | Guest Deposit | AR - Guest Ledger |
 
-#### 10.3.2 POS → Accounting
+#### 11.3.2 POS → Accounting
 
 | POS Transaction | Journal Type | Debit | Credit |
 |-----------------|--------------|-------|--------|
@@ -99,7 +99,7 @@ journal = JournalEntry(
 | Void | SJ (Reverse) | Revenue + Tax | Cash/AR |
 | Settlement | CR | Bank | AR - Card |
 
-#### 10.3.3 Inventory → Accounting
+#### 11.3.3 Inventory → Accounting
 
 | Inventory Transaction | Journal Type | Debit | Credit |
 |-----------------------|--------------|-------|--------|
@@ -108,7 +108,7 @@ journal = JournalEntry(
 | Adjustment (Shrinkage) | IV | Inventory Loss | Inventory |
 | Transfer Between Locations | IV | Inv - Dest | Inv - Source |
 
-#### 10.3.4 Payroll → Accounting
+#### 11.3.4 Payroll → Accounting
 
 | Payroll Transaction | Journal Type | Debit | Credit |
 |--------------------|--------------|-------|--------|
@@ -116,7 +116,7 @@ journal = JournalEntry(
 | BPJS Expense | PY | BPJS Expense | BPJS Payable |
 | Bonus/THR | PY | Bonus Expense | PPh 21 Payable + Bank |
 
-### 10.4 GL Mapping Configuration (Soft)
+### 11.4 GL Mapping Configuration (Soft)
 
 **Configurable per Transaction Type:**
 
@@ -143,7 +143,7 @@ journal = JournalEntry(
 └─────────────────────────────────────────────────────────┘
 ```
 
-### 10.5 Auto-Post Configuration (Soft)
+### 11.5 Auto-Post Configuration (Soft)
 
 **Configurable per Journal Type:**
 
@@ -182,7 +182,7 @@ journal = JournalEntry(
 └─────────────────────────────────────────────────────────┘
 ```
 
-### 10.6 Error Handling
+### 11.6 Error Handling
 
 **Failed Integration Journal:**
 
@@ -208,7 +208,7 @@ journal = JournalEntry(
 └─────────────────────────────────────────────────────────┘
 ```
 
-### 10.7 Database Schema
+### 11.7 Database Schema
 
 ```sql
 -- Integration Mappings
@@ -267,11 +267,11 @@ CREATE INDEX idx_integration_queue_status ON integration_queue(organization_id, 
 
 ---
 
-## 11. Audit Trail & Compliance
+## 12. Audit Trail & Compliance
 
 > **Status**: ✅ Approved (2025-12-07)
 
-### 11.1 Hard vs Soft Rules Summary
+### 12.1 Hard vs Soft Rules Summary
 
 | Rule Type | Hard (Embedded) | Soft (Configurable) |
 |-----------|-----------------|---------------------|
@@ -281,7 +281,7 @@ CREATE INDEX idx_integration_queue_status ON integration_queue(organization_id, 
 | Posted Journal Immutability | ✅ | ❌ |
 | User Action Logging | ✅ | ❌ |
 
-### 11.2 Audit Trail Scope
+### 12.2 Audit Trail Scope
 
 **Everything is Logged:**
 
@@ -293,7 +293,7 @@ CREATE INDEX idx_integration_queue_status ON integration_queue(organization_id, 
 | **Security** | users, roles, permissions | All changes + login/logout |
 | **System** | period closing, year-end | All actions |
 
-### 11.3 Audit Log Structure
+### 12.3 Audit Log Structure
 
 **For Every Change:**
 
@@ -330,7 +330,7 @@ CREATE INDEX idx_integration_queue_status ON integration_queue(organization_id, 
 }
 ```
 
-### 11.4 Transaction Immutability (Hard)
+### 12.4 Transaction Immutability (Hard)
 
 **Posted Journals Cannot Be Changed:**
 
@@ -355,7 +355,7 @@ Journal JNL-2025-12-00001 (POSTED)
 4. Original marked as VOIDED
 5. Both linked for audit trail
 
-### 11.5 User Action Logging
+### 12.5 User Action Logging
 
 **All User Actions Tracked:**
 
@@ -390,7 +390,7 @@ Journal JNL-2025-12-00001 (POSTED)
 └─────────────────────────────────────────────────────────┘
 ```
 
-### 11.6 Compliance Features
+### 12.6 Compliance Features
 
 **SOX/Financial Controls:**
 
@@ -410,7 +410,7 @@ Journal JNL-2025-12-00001 (POSTED)
 | **PSAK** | Standard financial reports |
 | **OJK** | If applicable, regulatory reports |
 
-### 11.7 Audit Trail Viewer
+### 12.7 Audit Trail Viewer
 
 ```
 ┌─────────────────────────────────────────────────────────┐
@@ -437,7 +437,7 @@ Journal JNL-2025-12-00001 (POSTED)
 └─────────────────────────────────────────────────────────┘
 ```
 
-### 11.8 Data Retention (Soft)
+### 12.8 Data Retention (Soft)
 
 **Configurable Retention:**
 
@@ -454,7 +454,7 @@ Journal JNL-2025-12-00001 (POSTED)
 }
 ```
 
-### 11.9 Database Schema
+### 12.9 Database Schema
 
 ```sql
 -- Comprehensive Audit Log
@@ -536,11 +536,11 @@ CREATE INDEX idx_login_history_ip ON login_history(ip_address, login_at DESC);
 
 ---
 
-## 12. Fixed Assets
+## 13. Fixed Assets
 
 > **Status**: ✅ Approved (2025-12-07)
 
-### 12.1 Hard vs Soft Rules Summary
+### 13.1 Hard vs Soft Rules Summary
 
 | Rule Type | Hard (Embedded) | Soft (Configurable) |
 |-----------|-----------------|---------------------|
@@ -552,7 +552,7 @@ CREATE INDEX idx_login_history_ip ON login_history(ip_address, login_at DESC);
 | Revaluation policy | ❌ | ✅ (frequency) |
 | Useful life | ❌ | ✅ (per asset/category) |
 
-### 12.2 Depreciation Methods (Soft)
+### 13.2 Depreciation Methods (Soft)
 
 **All Methods Available - User Selects per Asset:**
 
@@ -593,7 +593,7 @@ CREATE INDEX idx_login_history_ip ON login_history(ip_address, login_at DESC);
 └─────────────────────────────────────────────────────────┘
 ```
 
-### 12.3 Asset Categories (Hard - Fiskal)
+### 13.3 Asset Categories (Hard - Fiskal)
 
 **Fixed Categories per PMK No. 96/PMK.03/2009:**
 
@@ -639,7 +639,7 @@ Bangunan (20/10 tahun):
 └── Temporary Structures
 ```
 
-### 12.4 Asset Lifecycle & Disposal (Full Workflow)
+### 13.4 Asset Lifecycle & Disposal (Full Workflow)
 
 **Asset Lifecycle Flow:**
 
@@ -726,7 +726,7 @@ Bangunan (20/10 tahun):
 └─────────────────────────────────────────────────────────┘
 ```
 
-### 12.5 Revaluation (PSAK 16 Compliant)
+### 13.5 Revaluation (PSAK 16 Compliant)
 
 **Mandatory Periodic Revaluation:**
 
@@ -785,7 +785,7 @@ Revaluation Surplus (OCI)        │                 │ 5,000,000,000
                                  │ 5,500,000,000   │ 5,500,000,000
 ```
 
-### 12.6 Monthly Depreciation Run
+### 13.6 Monthly Depreciation Run
 
 **Automated Monthly Process:**
 
@@ -818,7 +818,7 @@ Revaluation Surplus (OCI)        │                 │ 5,000,000,000
 └─────────────────────────────────────────────────────────┘
 ```
 
-### 12.7 Database Schema
+### 13.7 Database Schema
 
 ```sql
 -- Asset Categories (Fixed - Fiscal)
@@ -1029,7 +1029,7 @@ CREATE INDEX idx_depreciation_period ON depreciation_history(period_year, period
 CREATE INDEX idx_asset_disposals_status ON asset_disposals(organization_id, status);
 ```
 
-### 12.8 Business Rules Configuration
+### 13.8 Business Rules Configuration
 
 **Soft Rules for Fixed Assets:**
 
@@ -1068,11 +1068,11 @@ CREATE INDEX idx_asset_disposals_status ON asset_disposals(organization_id, stat
 
 ---
 
-## 13. Inventory Costing
+## 14. Inventory Costing
 
 > **Status**: ✅ Approved (2025-12-07)
 
-### 13.1 Hard vs Soft Rules Summary
+### 14.1 Hard vs Soft Rules Summary
 
 | Rule Type | Hard (Embedded) | Soft (Configurable) |
 |-----------|-----------------|---------------------|
@@ -1084,7 +1084,7 @@ CREATE INDEX idx_asset_disposals_status ON asset_disposals(organization_id, stat
 | Warehouse structure | ❌ | ✅ (configurable) |
 | Count frequency | ❌ | ✅ (annual/cycle) |
 
-### 13.2 Costing Methods (Soft)
+### 14.2 Costing Methods (Soft)
 
 **All Methods Available - Configurable per Item:**
 
@@ -1125,7 +1125,7 @@ CREATE INDEX idx_asset_disposals_status ON asset_disposals(organization_id, stat
 └─────────────────────────────────────────────────────────┘
 ```
 
-### 13.3 Valuation Types (Hybrid)
+### 14.3 Valuation Types (Hybrid)
 
 **Perpetual vs Periodic:**
 
@@ -1161,7 +1161,7 @@ CREATE INDEX idx_asset_disposals_status ON asset_disposals(organization_id, stat
 └─────────────────────────────────────────────────────────┘
 ```
 
-### 13.4 Warehouse & Location Structure
+### 14.4 Warehouse & Location Structure
 
 **Three-Level Hierarchy:**
 
@@ -1227,7 +1227,7 @@ Hotel Grand Indonesia
 └─────────────────────────────────────────────────────────┘
 ```
 
-### 13.5 Inter-Warehouse Transfer
+### 14.5 Inter-Warehouse Transfer
 
 **Transfer Workflow:**
 
@@ -1271,11 +1271,11 @@ Inventory - Main Store           │             │ 3,350,000
                                  │ 3,350,000   │ 3,350,000
 ```
 
-### 13.6 Physical Count / Stock Opname
+### 14.6 Physical Count / Stock Opname
 
 **Two Counting Methods Available:**
 
-#### 13.6.1 Annual Full Count
+#### 14.6.1 Annual Full Count
 
 ```
 ┌─────────────────────────────────────────────────────────┐
@@ -1306,7 +1306,7 @@ Inventory - Main Store           │             │ 3,350,000
 └─────────────────────────────────────────────────────────┘
 ```
 
-#### 13.6.2 Cycle Counting
+#### 14.6.2 Cycle Counting
 
 ```
 ┌─────────────────────────────────────────────────────────┐
@@ -1334,7 +1334,7 @@ Inventory - Main Store           │             │ 3,350,000
 └─────────────────────────────────────────────────────────┘
 ```
 
-### 13.7 Variance & Adjustment
+### 14.7 Variance & Adjustment
 
 **Count Result & Variance:**
 
@@ -1395,7 +1395,7 @@ Inventory - Main Store           │ 105,000     │
 Inventory Overage (Other Income) │             │ 105,000
 ```
 
-### 13.8 COGS Calculation
+### 14.8 COGS Calculation
 
 **Perpetual Method (Real-time):**
 
@@ -1433,7 +1433,7 @@ avg_cost = total_cost / total_qty  # = 248,182 per kg
 cogs = 5 * 248182  # = Rp 1,240,909
 ```
 
-### 13.9 Database Schema
+### 14.9 Database Schema
 
 ```sql
 -- Warehouses
@@ -1753,7 +1753,7 @@ CREATE INDEX idx_stock_on_hand_item ON stock_on_hand(item_id);
 CREATE INDEX idx_stock_counts_status ON stock_counts(organization_id, status);
 ```
 
-### 13.10 Business Rules Configuration
+### 14.10 Business Rules Configuration
 
 **Soft Rules for Inventory:**
 
@@ -1798,11 +1798,11 @@ CREATE INDEX idx_stock_counts_status ON stock_counts(organization_id, status);
 
 ---
 
-## 14. Budgeting
+## 15. Budgeting
 
 > **Status**: ✅ Approved (2025-12-07)
 
-### 14.1 Hard vs Soft Rules Summary
+### 15.1 Hard vs Soft Rules Summary
 
 | Rule Type | Hard (Embedded) | Soft (Configurable) |
 |-----------|-----------------|---------------------|
@@ -1813,7 +1813,7 @@ CREATE INDEX idx_stock_counts_status ON stock_counts(organization_id, status);
 | Entry methods | ❌ | ✅ (manual/import/formula) |
 | Approval workflow | ❌ | ✅ (configurable) |
 
-### 14.2 Budget Structure (Full Detail)
+### 15.2 Budget Structure (Full Detail)
 
 **Three-Dimensional Budget:**
 
@@ -1851,7 +1851,7 @@ Example:
 └────────────────────────────────────────────────────────────────┘
 ```
 
-### 14.3 Budget Scenarios (Multiple Versions)
+### 15.3 Budget Scenarios (Multiple Versions)
 
 **Available Scenarios:**
 
@@ -1886,9 +1886,9 @@ Example:
 └─────────────────────────────────────────────────────────┘
 ```
 
-### 14.4 Budget Entry Methods
+### 15.4 Budget Entry Methods
 
-#### 14.4.1 Manual Entry
+#### 15.4.1 Manual Entry
 
 ```
 ┌─────────────────────────────────────────────────────────┐
@@ -1917,7 +1917,7 @@ Example:
 └─────────────────────────────────────────────────────────┘
 ```
 
-#### 14.4.2 Excel Import
+#### 15.4.2 Excel Import
 
 ```
 ┌─────────────────────────────────────────────────────────┐
@@ -1955,7 +1955,7 @@ Example:
 | 4101-001 | RM | 2,500,000,000 | 2,300,000,000 | 2,800,000,000 | ... | 3,800,000,000 | 35,000,000,000 |
 | 5101-001 | RM | 200,000,000 | 190,000,000 | 220,000,000 | ... | 300,000,000 | 2,800,000,000 |
 
-#### 14.4.3 Formula-Based Entry
+#### 15.4.3 Formula-Based Entry
 
 ```
 ┌─────────────────────────────────────────────────────────┐
@@ -1998,7 +1998,7 @@ Example:
 └─────────────────────────────────────────────────────────┘
 ```
 
-### 14.5 Budget Approval Workflow
+### 15.5 Budget Approval Workflow
 
 ```
 ┌─────────────────────────────────────────────────────────┐
@@ -2033,7 +2033,7 @@ Example:
 └─────────────────────────────────────────────────────────┘
 ```
 
-### 14.6 Variance Analysis (Full)
+### 15.6 Variance Analysis (Full)
 
 **Dashboard View:**
 
@@ -2133,7 +2133,7 @@ Example:
 └─────────────────────────────────────────────────────────┘
 ```
 
-### 14.7 Rolling Forecast
+### 15.7 Rolling Forecast
 
 **Automatic Forecast Update:**
 
@@ -2165,7 +2165,7 @@ Example:
 └─────────────────────────────────────────────────────────┘
 ```
 
-### 14.8 Database Schema
+### 15.8 Database Schema
 
 ```sql
 -- Budget Scenarios
@@ -2341,7 +2341,7 @@ CREATE INDEX idx_budget_lines_account ON budget_lines(account_id);
 CREATE INDEX idx_budget_variance_cache_period ON budget_variance_cache(scenario_id, period_year, period_month);
 ```
 
-### 14.9 Business Rules Configuration
+### 15.9 Business Rules Configuration
 
 **Soft Rules for Budgeting:**
 
@@ -2392,11 +2392,11 @@ CREATE INDEX idx_budget_variance_cache_period ON budget_variance_cache(scenario_
 
 ---
 
-## 15. Consolidation
+## 16. Consolidation
 
 > **Status**: ✅ Approved (2025-12-07)
 
-### 15.1 Hard vs Soft Rules Summary
+### 16.1 Hard vs Soft Rules Summary
 
 | Rule Type | Hard (Embedded) | Soft (Configurable) |
 |-----------|-----------------|---------------------|
@@ -2407,7 +2407,7 @@ CREATE INDEX idx_budget_variance_cache_period ON budget_variance_cache(scenario_
 | Intercompany detection | ❌ | ✅ (semi-auto) |
 | Consolidation frequency | ❌ | ✅ (on-demand/monthly/annual) |
 
-### 15.2 Configurable Consolidation Scope
+### 16.2 Configurable Consolidation Scope
 
 **Each feature can be enabled/disabled per consolidation group:**
 
@@ -2446,7 +2446,7 @@ CREATE INDEX idx_budget_variance_cache_period ON budget_variance_cache(scenario_
 └─────────────────────────────────────────────────────────┘
 ```
 
-### 15.3 Multi-Level Entity Hierarchy
+### 16.3 Multi-Level Entity Hierarchy
 
 **Three-Level Structure:**
 
@@ -2510,7 +2510,7 @@ PT Hospitality Group (Holding)
 └─────────────────────────────────────────────────────────┘
 ```
 
-### 15.4 Intercompany Transaction Detection (Semi-Auto)
+### 16.4 Intercompany Transaction Detection (Semi-Auto)
 
 **Detection Process:**
 
@@ -2574,7 +2574,7 @@ Step 2: User Reviews & Confirms Matches
 └─────────────────────────────────────────────────────────┘
 ```
 
-### 15.5 Consolidation Process
+### 16.5 Consolidation Process
 
 **On-Demand Consolidation:**
 
@@ -2642,7 +2642,7 @@ Step 2: User Reviews & Confirms Matches
 └─────────────────────────────────────────────────────────┘
 ```
 
-### 15.6 Elimination Entries
+### 16.6 Elimination Entries
 
 **Intercompany Eliminations:**
 
@@ -2705,7 +2705,7 @@ Entry #4: Minority Interest Recognition
 └─────────────────────────────────────────────────────────┘
 ```
 
-### 15.7 Consolidated Financial Statements
+### 16.7 Consolidated Financial Statements
 
 **Consolidated Balance Sheet:**
 
@@ -2745,7 +2745,7 @@ Entry #4: Minority Interest Recognition
 └─────────────────────────────────────────────────────────┘
 ```
 
-### 15.8 Database Schema
+### 16.8 Database Schema
 
 ```sql
 -- Consolidation Groups
@@ -2934,7 +2934,7 @@ CREATE INDEX idx_consol_runs_period ON consolidation_runs(group_id, period_year,
 CREATE INDEX idx_consol_tb_run ON consolidated_trial_balance(run_id);
 ```
 
-### 15.9 Business Rules Configuration
+### 16.9 Business Rules Configuration
 
 **Soft Rules for Consolidation:**
 

@@ -2,27 +2,36 @@
  * Network Information Utilities
  * Get IP Address and Network info from browser
  *
- * NOTE: Local IP detection removed - browser privacy (mDNS) blocks WebRTC detection.
- * Use backend-provided IP instead (from HTTP request headers).
+ * Local IP detection is now handled by device-fingerprint.ts using WebRTC
+ * and cached for reuse across the application.
  */
 
+import { getCachedLocalIP, getLocalIP as getLocalIPFromFingerprint } from './device-fingerprint';
+
 export interface NetworkInfo {
-  localIP: string | null;  // Deprecated - always null due to browser privacy
+  localIP: string | null;  // From WebRTC (cached in device-fingerprint)
   publicIP: string | null;
   connectionType: string;
   online: boolean;
 }
 
 /**
- * DEPRECATED: Local IP detection via WebRTC
- * Always returns null due to browser mDNS privacy mode
- * @deprecated Use backend-provided IP from device API instead
+ * Get local IP address from cached fingerprint
+ * Uses WebRTC-based detection from device-fingerprint module
+ * Returns cached value if available, otherwise fetches new
  */
 export async function getLocalIP(): Promise<string | null> {
-  // Browser privacy (mDNS RFC 8828) blocks local IP detection
-  // Use backend-provided IP from HTTP request headers instead
-  console.log('[NetworkInfo] ℹ️ Local IP detection skipped (browser privacy blocks WebRTC)');
-  return null;
+  // First try cached value (fast path)
+  const cached = getCachedLocalIP();
+  if (cached && cached !== 'unknown') {
+    console.log('[NetworkInfo] ✅ Using cached local IP:', cached);
+    return cached;
+  }
+
+  // If not cached yet, fetch it
+  const ip = await getLocalIPFromFingerprint();
+  console.log('[NetworkInfo] 🌐 Fetched local IP:', ip);
+  return ip !== 'unknown' ? ip : null;
 }
 
 /**
