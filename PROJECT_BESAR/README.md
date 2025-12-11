@@ -186,7 +186,7 @@ PROJECT_BESAR/
 
 ---
 
-## Applications (13+)
+## Applications (14+)
 
 | # | Application | Status |
 |---|-------------|--------|
@@ -202,7 +202,8 @@ PROJECT_BESAR/
 | 10 | Inventory | 📋 Planned |
 | 11 | Asset Management | 📋 Planned |
 | 12 | Accounting | 📋 Planned |
+| 13 | IoT & Smart Devices | 📋 Planned |
 
 ---
 
-*Last Updated: 2025-12-11 (Sentry + Observability Core added)*
+*Last Updated: 2025-12-11 (IoT Module added)*

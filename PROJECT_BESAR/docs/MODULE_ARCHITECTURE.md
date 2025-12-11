@@ -869,6 +869,20 @@ Core Modules adalah **standalone-capable modules** yang dapat berjalan sendiri a
 │  │        │ ✓ Personal Training         │                                  ││
 │  │        │ ✓ Direct Billing            │                                  ││
 │  │        │                             │                                  ││
+│  ├────────┼─────────────────────────────┼─────────────────────────────────┤│
+│  │        │                             │                                  ││
+│  │ IOT    │ ✓ Device Management         │ +PMS: Room-device linking,       ││
+│  │        │ ✓ Zones & Groups            │       Check-in/out automation,   ││
+│  │        │ ✓ Device Control            │       Guest app control,         ││
+│  │        │ ✓ Scenes & Automation       │       Guest preferences sync     ││
+│  │        │ ✓ Schedules                 │                                  ││
+│  │        │ ✓ Sensors & Monitoring      │ +HRM.ENG: Device maintenance     ││
+│  │        │ ✓ Energy Reports            │       work orders                ││
+│  │        │ ✓ Alerts                    │                                  ││
+│  │        │                             │ +ACC: Energy cost allocation     ││
+│  │        │                             │                                  ││
+│  │        │                             │ +AST: Devices as assets          ││
+│  │        │                             │                                  ││
 │  └────────┴─────────────────────────────┴─────────────────────────────────┘│
 │                                                                             │
 └─────────────────────────────────────────────────────────────────────────────┘
@@ -1190,6 +1204,183 @@ Core Modules adalah **standalone-capable modules** yang dapat berjalan sendiri a
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
+#### 4.3.7 IOT (IoT & Smart Device Management)
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│  MODULE: IOT (IoT & Smart Device Management)                                  │
+│  Code: iot                                                                    │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  Purpose: Smart device management, automation, and monitoring               │
+│                                                                             │
+│  Standalone: YES (office, restaurant, warehouse, any commercial space)      │
+│  Integrated: PMS (smart hotel room), HRM.ENG, ACC, AST                      │
+│                                                                             │
+│  Core Features:                                                             │
+│  ┌─────────────────────────────────────────────────────────────────────┐   │
+│  │ • Device registration & pairing (Tuya Cloud API)                    │   │
+│  │ • Device types: Switch, Dimmer, AC, TV, Curtain, Sensor, Lock       │   │
+│  │ • Device status monitoring (online/offline, last seen)              │   │
+│  │ • Zones & grouping (building > floor > area > room)                 │   │
+│  │ • Manual device control (on/off, dimming, temperature)              │   │
+│  │ • Scenes (preset command sets: "Welcome", "Sleep", "Energy Save")   │   │
+│  │ • Schedules (time-based automation)                                 │   │
+│  │ • Rules/Triggers (sensor-based automation)                          │   │
+│  │ • Sensor data collection (temperature, humidity, motion, door)      │   │
+│  │ • Energy monitoring & reports                                       │   │
+│  │ • Alerts (device offline, sensor threshold exceeded)                │   │
+│  │ • Firmware status tracking                                          │   │
+│  └─────────────────────────────────────────────────────────────────────┘   │
+│                                                                             │
+│  Platform Integration: Tuya Cloud API + RabbitMQ (Single Broker)           │
+│  ┌─────────────────────────────────────────────────────────────────────┐   │
+│  │                                                                      │   │
+│  │  Architecture Decision:                                             │   │
+│  │  • Device Communication: Tuya Cloud API (Tuya handles MQTT)         │   │
+│  │  • Internal Events: RabbitMQ (existing, single broker)              │   │
+│  │  • NO separate MQTT broker needed                                   │   │
+│  │                                                                      │   │
+│  │  ┌──────────┐    ┌──────────────┐    ┌──────────┐    ┌──────────┐ │   │
+│  │  │  Tuya    │    │  Tuya Cloud  │    │   Our    │    │ RabbitMQ │ │   │
+│  │  │  Device  │───▶│  (MQTT+API)  │◀──▶│  Backend │───▶│(Internal)│ │   │
+│  │  └──────────┘    └──────────────┘    └──────────┘    └──────────┘ │   │
+│  │       │                                                     │      │   │
+│  │       │  Tuya handles:              Internal events:        │      │   │
+│  │       │  • Device MQTT              • iot.device.*          │      │   │
+│  │       │  • Security                 • iot.alert.*           │      │   │
+│  │       │  • Provisioning             • pms.reservation.*     │      │   │
+│  │                                                                      │   │
+│  │  Supported: All Tuya/Smart Life compatible devices                  │   │
+│  │  Tuya API: HTTPS (commands) + Webhook/MQTT (status updates)         │   │
+│  │                                                                      │   │
+│  │  Why Tuya Cloud (not self-hosted MQTT)?                             │   │
+│  │  • No firmware development needed                                   │   │
+│  │  • Wide device compatibility (thousands of products)                │   │
+│  │  • Tuya handles security, OTA, provisioning                         │   │
+│  │  • Simpler infrastructure                                           │   │
+│  │                                                                      │   │
+│  └─────────────────────────────────────────────────────────────────────┘   │
+│                                                                             │
+│  Database Schema: iot.*                                                     │
+│  ┌─────────────────────────────────────────────────────────────────────┐   │
+│  │ iot.devices              iot.zones               iot.scenes         │   │
+│  │ iot.device_types         iot.device_status       iot.scene_actions  │   │
+│  │ iot.automations          iot.automation_triggers iot.schedules      │   │
+│  │ iot.telemetry (ts)       iot.alerts              iot.energy_logs    │   │
+│  │ iot.room_mappings        iot.guest_preferences   iot.tuya_tokens    │   │
+│  └─────────────────────────────────────────────────────────────────────┘   │
+│                                                                             │
+│  API Endpoints: /api/v1/iot/*                                               │
+│  Events: iot.device.*, iot.scene.*, iot.automation.*, iot.alert.*          │
+│  Config Keys: iot.tuya.*, iot.defaults.*, iot.energy.*                     │
+│                                                                             │
+│  Uses Building Blocks:                                                       │
+│  • Notification Engine (alerts, device status)                             │
+│  • Reporting Engine (energy reports, usage analytics)                      │
+│  • Observability Engine (device telemetry to TimescaleDB)                  │
+│                                                                             │
+│  ───────────────────────────────────────────────────────────────────────   │
+│                                                                             │
+│  Standalone Mode (e.g., office building, restaurant):                      │
+│  ┌─────────────────────────────────────────────────────────────────────┐   │
+│  │                                                                      │   │
+│  │  Features:                                                          │   │
+│  │  • Full device management                                           │   │
+│  │  • Zone hierarchy (Building > Floor > Area)                         │   │
+│  │  • Scene management                                                 │   │
+│  │  • Schedule automation                                              │   │
+│  │  • Energy monitoring per zone                                       │   │
+│  │  • Alert notifications                                              │   │
+│  │                                                                      │   │
+│  │  Example Use Cases:                                                 │   │
+│  │  • Office: Auto lights off at 8PM, AC schedule                      │   │
+│  │  • Restaurant: Mood lighting scenes, kitchen exhaust control        │   │
+│  │  • Warehouse: Temperature monitoring, security sensors              │   │
+│  │                                                                      │   │
+│  └─────────────────────────────────────────────────────────────────────┘   │
+│                                                                             │
+│  ───────────────────────────────────────────────────────────────────────   │
+│                                                                             │
+│  Integrated Mode (with PMS - Smart Hotel Room):                            │
+│  ┌─────────────────────────────────────────────────────────────────────┐   │
+│  │                                                                      │   │
+│  │  Room-Device Linking:                                               │   │
+│  │  ┌───────────────────────────────────────────────────────────────┐ │   │
+│  │  │  Room 101                                                      │ │   │
+│  │  │  ├── main_light     → Tuya Dimmer Switch                      │ │   │
+│  │  │  ├── bathroom_light → Tuya Switch                             │ │   │
+│  │  │  ├── ac_unit        → Tuya IR Controller                      │ │   │
+│  │  │  ├── tv             → Tuya IR Controller                      │ │   │
+│  │  │  ├── curtain        → Tuya Curtain Motor                      │ │   │
+│  │  │  ├── door_lock      → Tuya Smart Lock                         │ │   │
+│  │  │  └── motion_sensor  → Tuya Motion Sensor                      │ │   │
+│  │  └───────────────────────────────────────────────────────────────┘ │   │
+│  │                                                                      │   │
+│  │  PMS Events → IoT Automation:                                       │   │
+│  │  ┌───────────────────────────────────────────────────────────────┐ │   │
+│  │  │                                                                │ │   │
+│  │  │  pms.reservation.checked_in                                   │ │   │
+│  │  │  ├── Activate door lock for guest (keycard/PIN)               │ │   │
+│  │  │  ├── Load guest preferences (AC temp, lighting)               │ │   │
+│  │  │  ├── Apply "Welcome Scene"                                    │ │   │
+│  │  │  └── TV: Display welcome message                              │ │   │
+│  │  │                                                                │ │   │
+│  │  │  pms.reservation.checked_out                                  │ │   │
+│  │  │  ├── Deactivate door lock                                     │ │   │
+│  │  │  ├── Apply "Energy Save Scene" (all off, AC 28°C)            │ │   │
+│  │  │  └── Notify housekeeping                                      │ │   │
+│  │  │                                                                │ │   │
+│  │  │  pms.housekeeping.room_cleaned                                │ │   │
+│  │  │  ├── Reset all devices to default                             │ │   │
+│  │  │  └── Pre-cool AC if booking arriving today                    │ │   │
+│  │  │                                                                │ │   │
+│  │  └───────────────────────────────────────────────────────────────┘ │   │
+│  │                                                                      │   │
+│  │  Guest App Control (via pms.guest_app):                             │   │
+│  │  ┌───────────────────────────────────────────────────────────────┐ │   │
+│  │  │ • Control room devices (light, AC, TV, curtain)               │ │   │
+│  │  │ • Set temperature preference                                   │ │   │
+│  │  │ • Digital key (unlock door via app/NFC)                       │ │   │
+│  │  │ • Save preferences to guest profile (for next stay)           │ │   │
+│  │  │ • Do Not Disturb toggle → Updates PMS status                  │ │   │
+│  │  └───────────────────────────────────────────────────────────────┘ │   │
+│  │                                                                      │   │
+│  │  Energy Management:                                                 │   │
+│  │  ┌───────────────────────────────────────────────────────────────┐ │   │
+│  │  │ • Energy consumption per room                                  │ │   │
+│  │  │ • Energy cost per guest stay (for billing/analytics)          │ │   │
+│  │  │ • Floor/building energy comparison                            │ │   │
+│  │  │ • Anomaly detection (unusually high consumption)              │ │   │
+│  │  └───────────────────────────────────────────────────────────────┘ │   │
+│  │                                                                      │   │
+│  └─────────────────────────────────────────────────────────────────────┘   │
+│                                                                             │
+│  ───────────────────────────────────────────────────────────────────────   │
+│                                                                             │
+│  Integration with Other Modules:                                           │
+│  ┌─────────────────────────────────────────────────────────────────────┐   │
+│  │                                                                      │   │
+│  │  +HRM.ENG (Engineering/Maintenance):                                │   │
+│  │  • Device offline alert → Auto-create work order                   │   │
+│  │  • Sensor threshold exceeded → Maintenance ticket                  │   │
+│  │  • Device replacement tracking                                      │   │
+│  │                                                                      │   │
+│  │  +ACC (Accounting):                                                 │   │
+│  │  • Energy cost allocation per department                           │   │
+│  │  • Monthly energy expense reports                                   │   │
+│  │  • Budget vs actual energy consumption                              │   │
+│  │                                                                      │   │
+│  │  +AST (Asset Management):                                           │   │
+│  │  • IoT devices as fixed assets                                      │   │
+│  │  • Depreciation tracking                                            │   │
+│  │  • Warranty & lifecycle management                                  │   │
+│  │                                                                      │   │
+│  └─────────────────────────────────────────────────────────────────────┘   │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
 *(Similar detail blocks for INV, HRM, CHM, PROC, AST, CRM, PRJ)*
 
 ---
@@ -1253,6 +1444,12 @@ Feature Modules adalah **sub-modules** yang memerlukan parent module untuk berop
 │  ├────────────────┼───────────────────────┼────────────────────────────┤   │
 │  │                │                       │                            │   │
 │  │ AST            │ ast.maintenance       │ Preventive maintenance     │   │
+│  │                │                       │                            │   │
+│  ├────────────────┼───────────────────────┼────────────────────────────┤   │
+│  │                │                       │                            │   │
+│  │ IOT            │ iot.energy            │ Advanced energy analytics  │   │
+│  │                │ iot.bms               │ Building Management System │   │
+│  │                │ iot.access            │ Access control (locks)     │   │
 │  │                │                       │                            │   │
 │  └────────────────┴───────────────────────┴────────────────────────────┘   │
 │                                                                             │
@@ -1928,6 +2125,7 @@ class ModuleCode(str, Enum):
     LDR = "ldr"   # Laundry - standalone capable
     SPA = "spa"   # Spa & Wellness - standalone capable
     GYM = "gym"   # Fitness Center - standalone capable
+    IOT = "iot"   # IoT & Smart Device Management - standalone capable
 
 class PlatformModuleCode(str, Enum):
     """Platform module codes (multi-property / chain)"""
@@ -1979,6 +2177,11 @@ class FeatureModuleCode(str, Enum):
 
     # AST Features
     AST_MAINTENANCE = "ast.maintenance"
+
+    # IOT Features
+    IOT_ENERGY = "iot.energy"      # Advanced energy management
+    IOT_BMS = "iot.bms"            # Building Management System
+    IOT_ACCESS = "iot.access"      # Access control (locks, elevators)
 ```
 
 ---
@@ -1989,7 +2192,7 @@ class FeatureModuleCode(str, Enum):
 |--------|-------------|-----------|
 | **Philosophy** | Build once, use everywhere | This document |
 | **Building Blocks** | 13 shared engines (incl. Observability) | Section 3 |
-| **Core Modules** | 13 standalone-capable | Section 4 |
+| **Core Modules** | 14 standalone-capable (incl. IoT) | Section 4 |
 | **Platform Modules** | 2 multi-property/chain | Section 5.3 |
 | **Cross-Module Add-ons** | 2 cross-module add-ons | Section 5.4 |
 | **Feature Modules** | 25+ requiring parent | Section 5 |
@@ -2000,4 +2203,4 @@ class FeatureModuleCode(str, Enum):
 
 ---
 
-*Last Updated: 2025-12-11 (Observability Engine added to Core Building Blocks)*
+*Last Updated: 2025-12-11 (IoT Module - Tuya Cloud API + RabbitMQ architecture finalized)*
