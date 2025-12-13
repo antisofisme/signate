@@ -1918,4 +1918,798 @@ Escalation:
 
 ---
 
-*Last Updated: 2025-12-11 (Hybrid Auth, Subdomain Architecture Added)*
+## Part 8: Frontend Security
+
+### 8.1 Content Security Policy (CSP)
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                    CONTENT SECURITY POLICY                              │
+└─────────────────────────────────────────────────────────────────────────┘
+
+HTTP Header:
+Content-Security-Policy:
+  default-src 'self';
+  script-src 'self' 'unsafe-inline' https://cdn.domain.com;
+  style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
+  font-src 'self' https://fonts.gstatic.com;
+  img-src 'self' data: https: blob:;
+  connect-src 'self' https://api.domain.com wss://ws.domain.com;
+  frame-ancestors 'none';
+  form-action 'self';
+  base-uri 'self';
+  upgrade-insecure-requests;
+```
+
+#### 8.1.1 CSP Implementation
+
+```typescript
+// next.config.js
+const securityHeaders = [
+  {
+    key: 'Content-Security-Policy',
+    value: [
+      "default-src 'self'",
+      "script-src 'self' 'unsafe-eval' 'unsafe-inline'", // Next.js requires
+      "style-src 'self' 'unsafe-inline'",
+      "img-src 'self' data: https: blob:",
+      "font-src 'self' data:",
+      "connect-src 'self' https://api.* wss://*",
+      "frame-ancestors 'none'",
+      "form-action 'self'",
+    ].join('; ')
+  },
+  {
+    key: 'X-Frame-Options',
+    value: 'DENY'
+  },
+  {
+    key: 'X-Content-Type-Options',
+    value: 'nosniff'
+  },
+  {
+    key: 'Referrer-Policy',
+    value: 'strict-origin-when-cross-origin'
+  },
+  {
+    key: 'Permissions-Policy',
+    value: 'camera=(), microphone=(), geolocation=(self), payment=()'
+  }
+];
+```
+
+### 8.2 XSS Prevention
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                    XSS PREVENTION LAYERS                                │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                         │
+│  Layer 1: Input Validation                                              │
+│  ├── Sanitize on input (forms, URL params)                             │
+│  ├── Whitelist allowed characters                                       │
+│  └── Reject/escape dangerous patterns                                   │
+│                                                                         │
+│  Layer 2: Output Encoding                                               │
+│  ├── React auto-escapes by default                                     │
+│  ├── NEVER use dangerouslySetInnerHTML                                 │
+│  └── Use DOMPurify for rich text                                       │
+│                                                                         │
+│  Layer 3: CSP                                                           │
+│  ├── Block inline scripts                                              │
+│  └── Whitelist script sources                                          │
+│                                                                         │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+#### 8.2.1 Sanitization Utilities
+
+```typescript
+// lib/security/sanitize.ts
+import DOMPurify from 'isomorphic-dompurify';
+
+// HTML sanitization untuk rich text
+export function sanitizeHtml(dirty: string): string {
+  return DOMPurify.sanitize(dirty, {
+    ALLOWED_TAGS: ['b', 'i', 'em', 'strong', 'a', 'p', 'br', 'ul', 'ol', 'li'],
+    ALLOWED_ATTR: ['href', 'target', 'rel'],
+    ALLOW_DATA_ATTR: false,
+  });
+}
+
+// Input sanitization - remove dangerous characters
+export function sanitizeInput(input: string): string {
+  return input
+    .replace(/[<>]/g, '') // Remove angle brackets
+    .replace(/javascript:/gi, '') // Remove javascript: protocol
+    .replace(/on\w+=/gi, '') // Remove event handlers
+    .trim();
+}
+
+// URL sanitization
+export function sanitizeUrl(url: string): string {
+  try {
+    const parsed = new URL(url);
+    if (!['http:', 'https:', 'mailto:'].includes(parsed.protocol)) {
+      return '#';
+    }
+    return url;
+  } catch {
+    return '#';
+  }
+}
+
+// SQL-like pattern detection (untuk search inputs)
+export function detectSqlInjection(input: string): boolean {
+  const patterns = [
+    /(\b(SELECT|INSERT|UPDATE|DELETE|DROP|UNION|ALTER)\b)/i,
+    /(--)|(\/\*)|(\*\/)/,
+    /(;|\||&)/,
+  ];
+  return patterns.some(p => p.test(input));
+}
+```
+
+### 8.3 CSRF Protection
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                    CSRF PROTECTION                                      │
+└─────────────────────────────────────────────────────────────────────────┘
+
+Strategy: Double Submit Cookie + SameSite
+
+1. Backend sets CSRF token in cookie (HttpOnly=false, SameSite=Strict)
+2. Frontend reads cookie, sends in header
+3. Backend validates header matches cookie
+
+Implementation:
+┌─────────────┐     ┌─────────────┐     ┌─────────────┐
+│   Client    │────►│   Cookie    │────►│   Server    │
+│             │     │ csrf_token  │     │             │
+│ Header:     │     │             │     │ Compare     │
+│ X-CSRF-Token│     │             │     │ cookie ==   │
+│             │     │             │     │ header      │
+└─────────────┘     └─────────────┘     └─────────────┘
+```
+
+#### 8.3.1 CSRF Implementation
+
+```typescript
+// Frontend: API client
+import Cookies from 'js-cookie';
+
+const apiClient = axios.create({
+  baseURL: process.env.NEXT_PUBLIC_API_URL,
+  withCredentials: true, // Include cookies
+});
+
+apiClient.interceptors.request.use((config) => {
+  const csrfToken = Cookies.get('csrf_token');
+  if (csrfToken) {
+    config.headers['X-CSRF-Token'] = csrfToken;
+  }
+  return config;
+});
+```
+
+```python
+# Backend: FastAPI middleware
+from fastapi import Request, HTTPException
+from fastapi.responses import Response
+
+CSRF_COOKIE = "csrf_token"
+CSRF_HEADER = "X-CSRF-Token"
+SAFE_METHODS = {"GET", "HEAD", "OPTIONS"}
+
+async def csrf_middleware(request: Request, call_next):
+    if request.method not in SAFE_METHODS:
+        cookie_token = request.cookies.get(CSRF_COOKIE)
+        header_token = request.headers.get(CSRF_HEADER)
+
+        if not cookie_token or cookie_token != header_token:
+            raise HTTPException(403, "CSRF validation failed")
+
+    response = await call_next(request)
+
+    # Set/refresh CSRF cookie on GET requests
+    if request.method == "GET":
+        token = generate_csrf_token()
+        response.set_cookie(
+            CSRF_COOKIE,
+            token,
+            httponly=False,  # JS needs to read
+            samesite="strict",
+            secure=True,
+            max_age=3600
+        )
+
+    return response
+```
+
+### 8.4 Secure Storage
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                    CLIENT-SIDE STORAGE RULES                            │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                         │
+│  ✅ ALLOWED in localStorage:                                            │
+│  ├── UI preferences (theme, language)                                  │
+│  ├── Non-sensitive cache (product list)                                │
+│  └── Feature flags                                                      │
+│                                                                         │
+│  ❌ NEVER store in localStorage:                                        │
+│  ├── Access tokens (use httpOnly cookie)                               │
+│  ├── Refresh tokens                                                     │
+│  ├── PII (name, email, phone)                                          │
+│  ├── Payment information                                                │
+│  └── Session identifiers                                                │
+│                                                                         │
+│  🔐 Token Storage Strategy:                                             │
+│  ├── Access token: Memory only (React state/context)                   │
+│  ├── Refresh token: httpOnly secure cookie                             │
+│  └── Auto-refresh via silent /auth/refresh endpoint                    │
+│                                                                         │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## Part 9: Dependency Security
+
+### 9.1 Dependency Scanning
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                    DEPENDENCY SECURITY PIPELINE                         │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                         │
+│  ┌─────────┐    ┌─────────┐    ┌─────────┐    ┌─────────┐             │
+│  │ Commit  │───►│ CI Scan │───►│ Report  │───►│ Block/  │             │
+│  │         │    │         │    │         │    │ Allow   │             │
+│  └─────────┘    └─────────┘    └─────────┘    └─────────┘             │
+│                      │                             │                    │
+│                      ▼                             ▼                    │
+│               ┌─────────────┐              ┌─────────────┐             │
+│               │ npm audit   │              │ Critical/   │             │
+│               │ pip-audit   │              │ High: Block │             │
+│               │ trivy       │              │ Med: Warn   │             │
+│               │ snyk        │              │ Low: Log    │             │
+│               └─────────────┘              └─────────────┘             │
+│                                                                         │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+### 9.2 CI/CD Security Pipeline
+
+```yaml
+# .github/workflows/security.yml
+name: Security Scan
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: '0 6 * * 1'  # Weekly Monday 6 AM
+
+jobs:
+  dependency-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Python dependencies
+      - name: Python Audit
+        run: |
+          pip install pip-audit safety
+          pip-audit --strict --desc on
+          safety check --full-report
+
+      # Node dependencies
+      - name: NPM Audit
+        working-directory: ./frontend
+        run: |
+          npm audit --audit-level=high
+          npx better-npm-audit audit
+
+      # Container scan
+      - name: Trivy Scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          severity: 'CRITICAL,HIGH'
+          exit-code: '1'
+
+      # SAST
+      - name: Semgrep
+        uses: returntocorp/semgrep-action@v1
+        with:
+          config: >-
+            p/security-audit
+            p/secrets
+            p/owasp-top-ten
+
+  secret-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: TruffleHog
+        uses: trufflesecurity/trufflehog@main
+        with:
+          path: ./
+          extra_args: --only-verified
+```
+
+### 9.3 Dependency Update Policy
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                    DEPENDENCY UPDATE POLICY                             │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                         │
+│  Severity    │ Response Time   │ Action                                 │
+│  ───────────────────────────────────────────────────────────────────── │
+│  Critical    │ 24 hours        │ Immediate patch, hotfix deploy        │
+│  High        │ 7 days          │ Next sprint, expedited review         │
+│  Medium      │ 30 days         │ Regular sprint planning               │
+│  Low         │ 90 days         │ Quarterly maintenance                 │
+│                                                                         │
+│  Automated Tools:                                                       │
+│  ├── Dependabot (GitHub) - auto PRs                                    │
+│  ├── Renovate - grouped updates                                        │
+│  └── Snyk - continuous monitoring                                      │
+│                                                                         │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+### 9.4 Approved Dependencies Registry
+
+```yaml
+# .github/dependency-policy.yml
+allowed:
+  licenses:
+    - MIT
+    - Apache-2.0
+    - BSD-2-Clause
+    - BSD-3-Clause
+    - ISC
+
+  # Pre-approved packages (critical dependencies)
+  packages:
+    python:
+      - fastapi
+      - sqlalchemy
+      - pydantic
+      - celery
+      - redis
+
+    node:
+      - react
+      - next
+      - @tanstack/react-query
+      - zustand
+      - zod
+
+banned:
+  licenses:
+    - GPL-3.0  # Copyleft concern
+    - AGPL-3.0
+
+  packages:
+    - event-stream  # Known compromised
+    - flatmap-stream
+    - colors@>1.4.0  # Sabotaged versions
+
+review_required:
+  - packages with < 1000 weekly downloads
+  - packages with no updates in 2+ years
+  - packages with known CVEs
+```
+
+---
+
+## Part 10: Penetration Testing
+
+### 10.1 Penetration Testing Schedule
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                    PENETRATION TESTING CALENDAR                         │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                         │
+│  Type              │ Frequency    │ Scope                               │
+│  ─────────────────────────────────────────────────────────────────────  │
+│  Automated Scan    │ Weekly       │ OWASP ZAP, Nuclei                   │
+│  Internal Pentest  │ Quarterly    │ Full application                    │
+│  External Pentest  │ Annually     │ Full scope + infrastructure         │
+│  Bug Bounty        │ Continuous   │ Production environment              │
+│                                                                         │
+│  Pre-Release Testing:                                                   │
+│  ├── Major release: Full pentest before launch                         │
+│  ├── Minor release: Automated scan + spot check                        │
+│  └── Hotfix: Targeted test on changed components                       │
+│                                                                         │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+### 10.2 Testing Scope
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                    PENETRATION TEST SCOPE                               │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                         │
+│  IN SCOPE:                                                              │
+│  ├── Web Applications                                                   │
+│  │   ├── Platform Admin (platform.domain.com)                          │
+│  │   ├── Community Apps (*.tenant.domain.com)                          │
+│  │   └── Public Website (www.domain.com)                               │
+│  │                                                                      │
+│  ├── APIs                                                               │
+│  │   ├── REST API (api.domain.com)                                     │
+│  │   ├── WebSocket (ws.domain.com)                                     │
+│  │   └── Webhooks (hooks.domain.com)                                   │
+│  │                                                                      │
+│  ├── Authentication                                                     │
+│  │   ├── Login flows                                                   │
+│  │   ├── Password reset                                                │
+│  │   ├── MFA bypass attempts                                           │
+│  │   └── Session management                                            │
+│  │                                                                      │
+│  └── Authorization                                                      │
+│      ├── Tenant isolation                                              │
+│      ├── Role escalation                                               │
+│      └── IDOR vulnerabilities                                          │
+│                                                                         │
+│  OUT OF SCOPE:                                                          │
+│  ├── Physical security                                                  │
+│  ├── Social engineering on employees                                    │
+│  ├── DDoS attacks                                                       │
+│  └── Third-party integrations (unless agreed)                          │
+│                                                                         │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+### 10.3 Automated Security Testing
+
+```yaml
+# scripts/security-test.sh
+#!/bin/bash
+
+# OWASP ZAP Baseline Scan
+docker run -t owasp/zap2docker-stable zap-baseline.py \
+  -t https://staging.domain.com \
+  -r zap-report.html \
+  -c zap-rules.conf
+
+# Nuclei Vulnerability Scan
+nuclei -u https://staging.domain.com \
+  -t cves/ \
+  -t vulnerabilities/ \
+  -t exposed-panels/ \
+  -severity critical,high \
+  -o nuclei-report.txt
+
+# SQLMap (authorized testing only)
+sqlmap -u "https://staging.domain.com/api/v1/search?q=test" \
+  --batch \
+  --level=3 \
+  --risk=2 \
+  --output-dir=sqlmap-results
+
+# SSL/TLS Check
+testssl --severity HIGH \
+  --htmlfile ssl-report.html \
+  staging.domain.com
+```
+
+### 10.4 Vulnerability Disclosure Policy
+
+```markdown
+## Responsible Disclosure Policy
+
+### Reporting
+- Email: security@domain.com
+- PGP Key: [link to public key]
+- Response time: 48 hours acknowledgment
+
+### Rules of Engagement
+1. Do not access or modify other users' data
+2. Do not perform denial of service attacks
+3. Do not use automated scanners on production without approval
+4. Stop testing if you discover sensitive data
+
+### Rewards (Bug Bounty)
+| Severity | Reward |
+|----------|--------|
+| Critical | $1,000 - $5,000 |
+| High | $500 - $1,000 |
+| Medium | $100 - $500 |
+| Low | Recognition |
+
+### Safe Harbor
+We will not pursue legal action against researchers who:
+- Follow this policy
+- Report findings promptly
+- Do not exploit vulnerabilities beyond proof-of-concept
+```
+
+---
+
+## Part 11: Web Application Firewall (WAF)
+
+### 11.1 WAF Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                    WAF ARCHITECTURE                                     │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                         │
+│  Internet                                                               │
+│      │                                                                  │
+│      ▼                                                                  │
+│  ┌─────────────┐                                                        │
+│  │ Cloudflare  │  Layer 1: DDoS Protection                             │
+│  │ / AWS WAF   │  - Rate limiting                                       │
+│  │             │  - Bot detection                                       │
+│  │             │  - Geo blocking                                        │
+│  └──────┬──────┘                                                        │
+│         │                                                               │
+│         ▼                                                               │
+│  ┌─────────────┐                                                        │
+│  │ Load        │  Layer 2: SSL Termination                             │
+│  │ Balancer    │  - Certificate management                             │
+│  │             │  - Health checks                                       │
+│  └──────┬──────┘                                                        │
+│         │                                                               │
+│         ▼                                                               │
+│  ┌─────────────┐                                                        │
+│  │ Application │  Layer 3: Application Logic                           │
+│  │ Servers     │  - Input validation                                    │
+│  │             │  - Business rules                                      │
+│  └─────────────┘                                                        │
+│                                                                         │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+### 11.2 WAF Rules
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                    WAF RULE CATEGORIES                                  │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                         │
+│  1. OWASP Core Rule Set (CRS)                                          │
+│     ├── SQL Injection (SQLi)                                           │
+│     ├── Cross-Site Scripting (XSS)                                     │
+│     ├── Local File Inclusion (LFI)                                     │
+│     ├── Remote Code Execution (RCE)                                    │
+│     └── Protocol violations                                            │
+│                                                                         │
+│  2. Rate Limiting Rules                                                 │
+│     ├── Login: 5 req/min per IP                                        │
+│     ├── API: 100 req/min per user                                      │
+│     ├── Search: 30 req/min per user                                    │
+│     └── File upload: 10 req/min per user                               │
+│                                                                         │
+│  3. Bot Protection                                                      │
+│     ├── Known bad bots: Block                                          │
+│     ├── Headless browsers: Challenge                                   │
+│     ├── Scrapers: Rate limit                                           │
+│     └── Good bots (Google, Bing): Allow                                │
+│                                                                         │
+│  4. Geo Restrictions                                                    │
+│     ├── Default: Allow all                                             │
+│     ├── High-risk countries: Challenge                                 │
+│     └── Sanctioned countries: Block (compliance)                       │
+│                                                                         │
+│  5. Custom Rules                                                        │
+│     ├── Block user-agent: curl, wget (API only)                        │
+│     ├── Require headers: X-Tenant-ID on /api/*                         │
+│     └── Block empty referer on forms                                   │
+│                                                                         │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+### 11.3 Cloudflare Configuration
+
+```typescript
+// Cloudflare WAF Rules (Terraform)
+resource "cloudflare_ruleset" "waf_custom" {
+  zone_id = var.zone_id
+  name    = "Custom WAF Rules"
+  kind    = "zone"
+  phase   = "http_request_firewall_custom"
+
+  // Block SQL injection patterns
+  rules {
+    action      = "block"
+    expression  = "(http.request.uri.query contains \"UNION SELECT\") or (http.request.uri.query contains \"1=1\")"
+    description = "Block SQLi patterns"
+  }
+
+  // Rate limit login
+  rules {
+    action = "block"
+    action_parameters {
+      response {
+        status_code = 429
+        content     = "{\"error\":\"Too many requests\"}"
+        content_type = "application/json"
+      }
+    }
+    expression  = "(http.request.uri.path eq \"/api/v1/auth/login\") and (rate(5m) > 5)"
+    description = "Rate limit login attempts"
+  }
+
+  // Challenge suspicious requests
+  rules {
+    action      = "managed_challenge"
+    expression  = "(cf.threat_score > 30) or (cf.bot_management.score < 30)"
+    description = "Challenge suspicious traffic"
+  }
+
+  // Require tenant header on API
+  rules {
+    action      = "block"
+    expression  = "(http.request.uri.path contains \"/api/v1/\") and (not http.request.headers[\"x-tenant-id\"])"
+    description = "Require X-Tenant-ID header"
+  }
+}
+```
+
+### 11.4 AWS WAF Configuration
+
+```yaml
+# AWS WAF Rules (CloudFormation)
+AWSTemplateFormatVersion: '2010-09-09'
+Resources:
+  WebACL:
+    Type: AWS::WAFv2::WebACL
+    Properties:
+      Name: ProjectBesarWAF
+      Scope: REGIONAL
+      DefaultAction:
+        Allow: {}
+      Rules:
+        # AWS Managed Rules
+        - Name: AWSManagedRulesCommonRuleSet
+          Priority: 1
+          OverrideAction:
+            None: {}
+          Statement:
+            ManagedRuleGroupStatement:
+              VendorName: AWS
+              Name: AWSManagedRulesCommonRuleSet
+          VisibilityConfig:
+            SampledRequestsEnabled: true
+            CloudWatchMetricsEnabled: true
+            MetricName: CommonRuleSet
+
+        - Name: AWSManagedRulesSQLiRuleSet
+          Priority: 2
+          OverrideAction:
+            None: {}
+          Statement:
+            ManagedRuleGroupStatement:
+              VendorName: AWS
+              Name: AWSManagedRulesSQLiRuleSet
+          VisibilityConfig:
+            SampledRequestsEnabled: true
+            CloudWatchMetricsEnabled: true
+            MetricName: SQLiRuleSet
+
+        # Rate limiting
+        - Name: RateLimitRule
+          Priority: 3
+          Action:
+            Block: {}
+          Statement:
+            RateBasedStatement:
+              Limit: 2000
+              AggregateKeyType: IP
+          VisibilityConfig:
+            SampledRequestsEnabled: true
+            CloudWatchMetricsEnabled: true
+            MetricName: RateLimit
+
+      VisibilityConfig:
+        SampledRequestsEnabled: true
+        CloudWatchMetricsEnabled: true
+        MetricName: ProjectBesarWebACL
+```
+
+---
+
+## Part 12: Security Checklist Summary
+
+### 12.1 Pre-Production Checklist
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                    PRE-PRODUCTION SECURITY CHECKLIST                    │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                         │
+│  AUTHENTICATION                                                         │
+│  [ ] JWT RS256 with key rotation                                       │
+│  [ ] Password hashing (argon2/bcrypt)                                  │
+│  [ ] MFA implementation                                                 │
+│  [ ] Session timeout configured                                         │
+│  [ ] Account lockout after failed attempts                             │
+│                                                                         │
+│  AUTHORIZATION                                                          │
+│  [ ] RBAC fully implemented                                            │
+│  [ ] Tenant isolation verified                                         │
+│  [ ] Permission checks on all endpoints                                │
+│  [ ] No horizontal privilege escalation                                │
+│                                                                         │
+│  DATA PROTECTION                                                        │
+│  [ ] Encryption at rest (AES-256)                                      │
+│  [ ] Encryption in transit (TLS 1.3)                                   │
+│  [ ] PII fields encrypted                                              │
+│  [ ] Backup encryption enabled                                         │
+│                                                                         │
+│  INPUT VALIDATION                                                       │
+│  [ ] All inputs validated (Pydantic/Zod)                               │
+│  [ ] SQL injection prevented                                           │
+│  [ ] XSS prevented                                                      │
+│  [ ] File upload validation                                            │
+│                                                                         │
+│  INFRASTRUCTURE                                                         │
+│  [ ] WAF configured                                                    │
+│  [ ] Rate limiting enabled                                             │
+│  [ ] Security headers set                                              │
+│  [ ] CSP configured                                                    │
+│  [ ] Secrets in vault (not env files)                                  │
+│                                                                         │
+│  MONITORING                                                             │
+│  [ ] Security logging enabled                                          │
+│  [ ] Alerting configured                                               │
+│  [ ] Audit trail complete                                              │
+│  [ ] Incident response plan ready                                      │
+│                                                                         │
+│  TESTING                                                                │
+│  [ ] Dependency scan passed                                            │
+│  [ ] SAST scan passed                                                  │
+│  [ ] Penetration test completed                                        │
+│  [ ] Vulnerability remediation done                                    │
+│                                                                         │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+### 12.2 Security Metrics
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                    SECURITY KPIs                                        │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                         │
+│  Metric                    │ Target          │ Alert Threshold          │
+│  ─────────────────────────────────────────────────────────────────────  │
+│  Failed login rate         │ < 5%            │ > 10%                    │
+│  Critical vuln count       │ 0               │ > 0                      │
+│  High vuln count           │ < 5             │ > 10                     │
+│  Mean time to patch (crit) │ < 24h           │ > 48h                    │
+│  WAF block rate            │ < 1%            │ > 5%                     │
+│  Security incidents/month  │ < 2             │ > 5                      │
+│  Audit log coverage        │ 100%            │ < 95%                    │
+│  Dependency freshness      │ < 30 days       │ > 90 days                │
+│                                                                         │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+*Last Updated: 2025-12-13 (Frontend Security, Dependency Scanning, Pentest, WAF Added)*

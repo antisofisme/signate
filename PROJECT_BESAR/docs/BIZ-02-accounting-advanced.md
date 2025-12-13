@@ -2985,6 +2985,215 @@ CREATE INDEX idx_consol_tb_run ON consolidated_trial_balance(run_id);
 
 ---
 
+## 17. Variance Report & Analysis
+
+> **Status**: 📋 Concept (detail implementation discussion later)
+
+### 17.1 Purpose
+Identify deviations dari expected values (budget, forecast, prior period) untuk root cause analysis dan corrective action.
+
+### 17.2 Variance Types
+| Type | Compares | Use Case |
+|------|----------|----------|
+| **Budget Variance** | Actual vs Budget | Monthly control |
+| **Forecast Variance** | Actual vs Forecast | Trend analysis |
+| **Period Variance** | This period vs Same period last year (YoY) | Seasonality analysis |
+| **Prior Period Variance** | MTD vs Last month (MoM) | Growth tracking |
+
+### 17.3 Variance Calculation
+```
+Variance = Actual - Budgeted
+Variance % = (Actual - Budgeted) / Budgeted × 100%
+
+Status:
+  ✅ Favorable (positive for revenue/negative for expense)
+  ⚠️  Unfavorable (negative for revenue/positive for expense)
+  ℹ️ Neutral (≤ tolerance threshold)
+```
+
+### 17.4 Variance Report Structure
+- **Account Level**: Detail per GL account
+- **Department Level**: Summarized by cost/revenue center
+- **Period Level**: YTD, MTD, or custom date range
+- **Drill-down**: Click to see transactions behind variance
+
+### 17.5 Key Metrics
+- Absolute variance amount
+- Variance percentage
+- Variance trend (improving/deteriorating)
+- Top 10 unfavorable variances (for attention)
+
+---
+
+## 18. Night Audit & Automated Controls
+
+> **Status**: 📋 Concept (detail implementation discussion later)
+
+### 18.1 Purpose
+Enforce business rules automatically at end-of-day to ensure accuracy and compliance without manual intervention.
+
+### 18.2 Night Audit Processes
+| Process | Trigger | Action | Enforced |
+|---------|---------|--------|----------|
+| **Revenue Recognition** | End of day | Recognize revenue per business rule | Auto-post journal |
+| **Payment Clearing** | End of day | Match received payments to invoices | Auto-reconcile if matched |
+| **Posting Validation** | Before period close | Validate all draft journals posted | Block period close if unposted |
+| **Balance Check** | Before period close | Verify GL debit = credit | Raise alert if unbalanced |
+
+### 18.3 Hotel-Specific Examples
+- Room charge at checkout → Auto-post AR journal
+- Guest payment received → Auto-match to open AR
+- F&B charge to room → Auto-post revenue journal
+- Shift settlement → Auto-post cash/AR journal
+
+### 18.4 Control Points
+```
+┌─────────────────────────────────────────────┐
+│ End of Day                                  │
+├─────────────────────────────────────────────┤
+│ 1. Validate all transactions posted         │
+│ 2. Recognize revenue per rules              │
+│ 3. Clear payments (auto-match)              │
+│ 4. Balance GL (debit = credit)              │
+│ 5. Generate exception report                │
+│ 6. Block manual override                    │
+└─────────────────────────────────────────────┘
+```
+
+---
+
+## 19. Automatic Reconciliation
+
+> **Status**: 📋 Concept (detail implementation discussion later)
+
+### 19.1 Purpose
+Auto-match transactions from different sources (bank, AR, AP) to reduce manual work and catch discrepancies early.
+
+### 19.2 Reconciliation Types
+
+#### 19.2.1 Bank Reconciliation
+- **Source**: Bank statement import
+- **Match**: Against GL cash account
+- **Logic**: Amount + Date ± tolerance
+- **Result**: Matched, Unmatched, Pending confirmation
+
+#### 19.2.2 AR Reconciliation
+- **Source**: Invoice vs Payment received
+- **Match**: Invoice # or customer reference
+- **Logic**: Amount match, date proximity
+- **Result**: Fully matched, Partially matched, Aged open
+
+#### 19.2.3 AP Reconciliation
+- **Source**: PO vs Invoice vs Payment
+- **Match**: PO #, invoice #
+- **Logic**: 3-way match (quantity, amount, date)
+- **Result**: Fully matched, Variance flagged
+
+### 19.3 Match Status Flow
+```
+┌─────────────┐      ┌──────────────┐      ┌───────────┐
+│ Unreconciled│ ───► │ Partially    │ ───► │ Fully     │
+│             │      │ Matched      │      │ Matched ✓ │
+└─────────────┘      └──────────────┘      └───────────┘
+       ▲                                          │
+       │                                          │
+       └──────────────────────────────────────────┘
+            (Exception: aging > threshold)
+```
+
+### 19.4 Auto-Match Algorithm
+- Exact match: Amount + Reference = immediate match
+- Fuzzy match: Amount ± tolerance + date proximity = pending confirmation
+- No match: Flag as discrepancy for investigation
+
+### 19.5 Tolerance Configuration
+```json
+{
+  "bank_reconciliation": {
+    "amount_tolerance": 1000,
+    "amount_tolerance_pct": 0.1,
+    "date_tolerance_days": 3
+  },
+  "ar_reconciliation": {
+    "amount_tolerance": 5000,
+    "amount_tolerance_pct": 0.5,
+    "date_tolerance_days": 7
+  },
+  "ap_reconciliation": {
+    "amount_tolerance": 10000,
+    "quantity_tolerance_pct": 2,
+    "date_tolerance_days": 14
+  }
+}
+```
+
+---
+
+## 20. Investigative UI & Drill-down
+
+> **Status**: 📋 Concept (detail implementation discussion later)
+
+### 20.1 Purpose
+UI sebagai alat investigasi (investigation tool), bukan sekadar dashboard untuk melihat angka cantik. Akuntan harus bisa melacak "mengapa angka ini muncul".
+
+### 20.2 Core Principles
+| Principle | Implementation |
+|-----------|----------------|
+| **Traceability** | Setiap angka → klik → lihat transaksi asli → klik → lihat dokumentasi |
+| **Transparency** | Breakdown detail, bukan hanya summary |
+| **Auditability** | Siapa input, kapan, dari mana (source system) |
+| **Flexibility** | Filter, sort, group by berbagai dimensi |
+
+### 20.3 Investigative Capabilities
+```
+User Flow: Balance Sheet → Click AR Balance
+    ↓
+[AR Summary]
+  Total AR: Rp 5,000,000,000
+  ├─ Current (< 30 days): Rp 3,500,000,000
+  ├─ 30-60 days: Rp 1,000,000,000
+  └─ > 60 days: Rp 500,000,000
+    ↓ Click "Current" bucket
+[AR Aging Detail]
+  ├─ Invoice INV-001: Rp 500,000,000 (due 2025-12-15)
+  ├─ Invoice INV-002: Rp 400,000,000 (due 2025-12-20)
+  └─ [Total 50 invoices]
+    ↓ Click INV-001
+[Invoice Detail]
+  Invoice #: INV-001
+  Date: 2025-11-15
+  Customer: Hotel XYZ
+  Total: Rp 500,000,000
+  [View Transactions] [View Payments] [View Source Document]
+    ↓ Click [View Transactions]
+[General Ledger Entry]
+  Journal: SJ-2025-11-00045
+  Debit: 1103-001 (AR Guest Ledger) Rp 500,000,000
+  Credit: 4101-001-RM (Room Revenue) Rp 435,000,000
+  Credit: 2103-001 (PPN Keluaran) Rp 65,000,000
+  Posted by: Front Office
+  Posted at: 2025-11-15 14:30
+  [View Full Journal] [View Source Transaction (PMS)]
+```
+
+### 20.4 Filter & Analysis Options
+| Feature | Purpose |
+|---------|---------|
+| **Filter** | By date range, department, GL account, status, user |
+| **Group By** | By department, GL account, customer, transaction type |
+| **Sort** | By amount, date, age, status |
+| **Export** | Excel, CSV untuk further analysis |
+| **Drill-down** | Summary → Detail → Transaction → Source |
+
+### 20.5 Key Investigation Tools
+1. **GL Account Inquiry** - semua transaksi per account
+2. **Customer Statement** - semua AR/AP per customer
+3. **Transaction History** - track perubahan status dan audit trail
+4. **Exception Report** - flagged items (unmatched, aged, variance)
+5. **Variance Explanation** - breakdown aktual vs budget/forecast
+
+---
+
 ## Decisions Log (V2)
 
 | # | Topic | Decision | Date |

@@ -1,0 +1,64 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash /mnt/g/khoirul/signate/.claude/hooks/session-start.sh"
+          }
+        ]
+      }
+    ],
+
+    "PreToolUse": [
+      {
+        "matcher": "Write|Edit|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash /mnt/g/khoirul/signate/.claude/hooks/pre-edit-check.sh \"$CLAUDE_FILE_PATH\""
+          },
+          {
+            "type": "command",
+            "command": "bash /mnt/g/khoirul/signate/.claude/hooks/tenant-check.sh \"$CLAUDE_FILE_PATH\""
+          }
+        ]
+      }
+    ],
+
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash /mnt/g/khoirul/signate/.claude/hooks/post-edit-lint.sh \"$CLAUDE_FILE_PATH\""
+          }
+        ]
+      },
+      {
+        "matcher": "Bash:git commit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash /mnt/g/khoirul/signate/.claude/hooks/pre-commit-check.sh"
+          }
+        ]
+      }
+    ],
+
+    "Stop": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo '[SESSION] Ended at $(date)'"
+          }
+        ]
+      }
+    ]
+  }
+}

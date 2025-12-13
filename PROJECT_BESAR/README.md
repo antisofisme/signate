@@ -8,145 +8,200 @@
 
 ```
 PROJECT_BESAR/
-├── docs/                              # Dokumentasi proyek
-│   ├── DEVELOPMENT_STANDARDS.md       # Standards V1 (#1-7)
-│   ├── DEVELOPMENT_STANDARDS_V2.md    # Standards V2 (#8-16)
-│   ├── DEVELOPMENT_STANDARDS_V3.md    # Standards V3 (#17-19)
-│   ├── DEVELOPMENT_STANDARDS_V4.md    # Standards V4 (#20-22)
-│   ├── DEVELOPMENT_STANDARDS_V5.md    # Standards V5 (#23-26)
-│   ├── DEVELOPMENT_STANDARDS_V6.md    # Standards V6 (#27)
-│   ├── DEVELOPMENT_STANDARDS_V7.md    # Standards V7 (#28-30)
-│   ├── DEVELOPMENT_STANDARDS_V8.md    # Standards V8 (#31-33)
-│   ├── DEVELOPMENT_STANDARDS_V9.md    # Standards V9 (#34-36)
-│   ├── DEVELOPMENT_STANDARDS_V10.md   # Standards V10 (#37-39)
-│   ├── DEVELOPMENT_STANDARDS_V11.md   # Standards V11 (#40-42)
-│   ├── DEVELOPMENT_STANDARDS_V12.md   # Standards V12 (#43)
-│   ├── DEVELOPMENT_STANDARDS_V13.md   # Standards V13 (#44)
-│   ├── DEVELOPMENT_STANDARDS_V14.md   # Standards V14 (#45)
-│   ├── BUSINESS_ACCOUNTING_STANDARDS.md    # Business & Accounting V1 (Section 1-10)
-│   ├── BUSINESS_ACCOUNTING_STANDARDS_V2.md # Business & Accounting V2 (Section 11-16)
-│   ├── CONTRADICTIONS_RESOLUTION.md   # Resolusi kontradiksi (Decisions #79-99)
-│   ├── DATABASE_SCHEMA_PLATFORM.md    # Schema Platform DB & Community DB
-│   ├── API_CONTRACTS_PLATFORM.md      # API Contracts Platform & Community
-│   ├── SECURITY_AUTH_REQUIREMENTS.md  # Security & Auth Requirements
-│   ├── SHARED_CODE_STANDARDS.md       # Shared/centralized code patterns
-│   ├── PUZZLE_ARCHITECTURE.md         # Arsitektur modular puzzle-like
-│   ├── MODULE_ARCHITECTURE.md         # Module Architecture & Building Blocks
-│   ├── INTEGRATION_SPECS.md           # Integration Specs (Payment, Tax)
-│   ├── UIUX_WIREFRAMES_FLOWS.md       # Wireframes & User Flows
-│   ├── TESTING_STRATEGY.md            # Testing strategy
-│   ├── PLATFORM_VISION.md             # Visi platform & arsitektur
-│   ├── PMS_DECISIONS.md               # 245 keputusan yang sudah disetujui
+├── docs/                                    # Dokumentasi proyek
 │   │
-│   └── archive/                       # Archived documentation
-│       ├── analysis/                  # Audit & analysis reports (resolved)
-│       │   ├── API_BACKEND_CONTRADICTIONS_REPORT.md
-│       │   ├── DATABASE_CONTRADICTIONS_REPORT.md
-│       │   ├── SECURITY_COMPLIANCE_GAP_ANALYSIS.md
-│       │   └── STANDARDS_AUDIT_REPORT.md
-│       │
-│       └── legacy/                    # Legacy Firebird reference
-│           ├── PMS_DATABASE_ANALYSIS.md
-│           ├── PMS_DATABASE_SCHEMA.md
-│           └── PMS_WEAKNESSES_ANALYSIS.md
+│   ├── ARCH-01-platform-vision.md           # Visi platform & arsitektur
+│   ├── ARCH-02-module-architecture.md       # Module Architecture & Building Blocks
+│   ├── ARCH-03-puzzle-architecture.md       # Arsitektur modular puzzle-like
+│   │
+│   ├── STD-01-core-naming-db-rbac-api.md    # Standards #1-7 (Naming, DB, RBAC, Audit, Cache, API, Error)
+│   ├── STD-02-validation-frontend-backend.md # Standards #8-16 (Validation, Testing, Code Structure, Frontend, Infrastructure)
+│   ├── STD-03-registries-events-files.md    # Standards #17-19 (Registries, Events, Files)
+│   ├── STD-04-realtime-jobs-search.md       # Standards #20-22 (Real-time, Jobs, Search)
+│   ├── STD-05-notification-versioning-flags-sla.md # Standards #23-26 (Notification, API Versioning, Feature Flags, Performance SLA)
+│   ├── STD-06-lookup-tables.md              # Standards #27 (Lookup Tables)
+│   ├── STD-07-state-tenancy-ratelimit.md    # Standards #28-30 (State Machine, Multi-tenancy, Rate Limiting)
+│   ├── STD-08-backup-webhook-reports.md     # Standards #31-33 (Backup & DR, Webhook, Reports)
+│   ├── STD-09-import-email-pwa.md           # Standards #34-36 (Import/Export, Email Templates, PWA)
+│   ├── STD-10-circuit-health-archival.md    # Standards #37-39 (Circuit Breaker, Health Checks, Data Archival)
+│   ├── STD-11-tracing-secrets-tasks.md      # Standards #40-42 (Distributed Tracing, Secrets Management, Scheduled Tasks)
+│   ├── STD-12-config-governance.md          # Standards #43 (Config Governance)
+│   ├── STD-13-fraud-audit.md                # Standards #44 (Fraud Detection & Audit Intelligence)
+│   ├── STD-14-collaboration-hub.md          # Standards #45 (Internal Collaboration Hub)
+│   ├── STD-15-input-design-flow.md          # Standard #46 (Input Design Flow & Constraint-Based UI)
+│   ├── STD-16-smart-suggestions-approval.md # Standard #47 (Smart Suggestions & Human-in-the-Loop)
+│   │
+│   ├── BIZ-01-accounting-core.md            # Business & Accounting (Section 1-10)
+│   ├── BIZ-02-accounting-advanced.md        # Business & Accounting (Section 11-16)
+│   ├── BIZ-03-accounting-reconciliation-controls.md # Reconciliation, Controls & Audit Trail
+│   │
+│   ├── SPEC-01-api-contracts.md             # API Contracts Platform & Community
+│   ├── SPEC-02-database-schema.md           # Schema Platform DB & Community DB
+│   ├── SPEC-03-integration.md               # Integration Specs (Payment, Tax, Email, Storage)
+│   ├── SPEC-04-data-integration-ocr.md      # OCR Integration, Image Processing, Data Extraction
+│   │
+│   ├── SEC-01-security-auth.md              # Security & Auth Requirements (OWASP, WAF, Pentest)
+│   │
+│   ├── UI-01-design-system.md               # UI Design System (Colors, Typography, Components)
+│   ├── UI-02-components.md                  # UI Components Specification (Detail)
+│   ├── UI-03-wireframes-flows.md            # Wireframes & User Flows
+│   │
+│   ├── TEST-01-testing-strategy.md          # Testing Strategy
+│   │
+│   ├── GUIDE-01-development-flow.md         # Flow guide untuk AI-assisted development (22 flows)
+│   ├── GUIDE-02-module-docs-template.md     # Standard dokumentasi per module & DVL Tool
+│   │
+│   ├── REF-01-decisions.md                  # 245 keputusan yang sudah disetujui
+│   ├── REF-02-shared-code.md                # Shared/centralized code patterns
+│   │
+│   └── archive/                             # Archived documentation
+│       ├── contradictions-resolution.md     # Resolusi kontradiksi (historical)
+│       ├── analysis/                        # Audit & analysis reports (resolved)
+│       └── legacy/                          # Legacy Firebird reference
 │
-└── database/                          # Database reference (Firebird legacy)
-    ├── powerfo.gdb                    # Front Office database (1.4GB)
-    ├── powerbo.gdb                    # Back Office database (914MB)
-    ├── powerfo.sql                    # Front Office schema export
-    ├── powerbo.sql                    # Back Office schema export
-    └── analyze_database_schema.sql    # Script analisis schema
+└── database/                                # Database reference (Firebird legacy)
+    ├── powerfo.gdb                          # Front Office database (1.4GB)
+    ├── powerbo.gdb                          # Back Office database (914MB)
+    ├── powerfo.sql                          # Front Office schema export
+    ├── powerbo.sql                          # Back Office schema export
+    └── analyze_database_schema.sql          # Script analisis schema
 ```
 
 ---
 
-## Quick Links
+## Quick Links by Category
 
-### Dokumentasi Utama
-- **[PMS_DECISIONS.md](./docs/PMS_DECISIONS.md)** - 245 keputusan yang sudah disetujui
-- **[DEVELOPMENT_STANDARDS.md](./docs/DEVELOPMENT_STANDARDS.md)** - Standards #1-7
-- **[DEVELOPMENT_STANDARDS_V2.md](./docs/DEVELOPMENT_STANDARDS_V2.md)** - Standards #8-16
-- **[DEVELOPMENT_STANDARDS_V3.md](./docs/DEVELOPMENT_STANDARDS_V3.md)** - Standards #17-19 (Registries, Events, Files)
-- **[DEVELOPMENT_STANDARDS_V4.md](./docs/DEVELOPMENT_STANDARDS_V4.md)** - Standards #20-22 (Real-time, Jobs, Search)
-- **[DEVELOPMENT_STANDARDS_V5.md](./docs/DEVELOPMENT_STANDARDS_V5.md)** - Standards #23-26 (Notification, API Versioning, Feature Flags, Performance SLA)
-- **[DEVELOPMENT_STANDARDS_V6.md](./docs/DEVELOPMENT_STANDARDS_V6.md)** - Standards #27 (Lookup Tables)
-- **[DEVELOPMENT_STANDARDS_V7.md](./docs/DEVELOPMENT_STANDARDS_V7.md)** - Standards #28-30 (State Machine, Multi-tenancy, Rate Limiting)
-- **[DEVELOPMENT_STANDARDS_V8.md](./docs/DEVELOPMENT_STANDARDS_V8.md)** - Standards #31-33 (Backup & DR, Webhook, Reports)
-- **[DEVELOPMENT_STANDARDS_V9.md](./docs/DEVELOPMENT_STANDARDS_V9.md)** - Standards #34-36 (Import/Export, Email Templates, PWA)
-- **[DEVELOPMENT_STANDARDS_V10.md](./docs/DEVELOPMENT_STANDARDS_V10.md)** - Standards #37-39 (Circuit Breaker, Health Checks, Data Archival)
-- **[DEVELOPMENT_STANDARDS_V11.md](./docs/DEVELOPMENT_STANDARDS_V11.md)** - Standards #40-42 (Distributed Tracing, Secrets Management, Scheduled Tasks)
-- **[DEVELOPMENT_STANDARDS_V12.md](./docs/DEVELOPMENT_STANDARDS_V12.md)** - Standards #43 (Config Governance)
-- **[DEVELOPMENT_STANDARDS_V13.md](./docs/DEVELOPMENT_STANDARDS_V13.md)** - Standards #44 (Fraud Detection & Audit Intelligence)
-- **[DEVELOPMENT_STANDARDS_V14.md](./docs/DEVELOPMENT_STANDARDS_V14.md)** - Standards #45 (Internal Collaboration Hub)
-- **[BUSINESS_ACCOUNTING_STANDARDS.md](./docs/BUSINESS_ACCOUNTING_STANDARDS.md)** - Standar bisnis & akuntansi (Section 1-10)
-- **[BUSINESS_ACCOUNTING_STANDARDS_V2.md](./docs/BUSINESS_ACCOUNTING_STANDARDS_V2.md)** - Standar bisnis & akuntansi (Section 11-16)
-- **[SHARED_CODE_STANDARDS.md](./docs/SHARED_CODE_STANDARDS.md)** - Standar shared/centralized code
-- **[DATABASE_SCHEMA_PLATFORM.md](./docs/DATABASE_SCHEMA_PLATFORM.md)** - Schema Platform DB & Community DB
-- **[API_CONTRACTS_PLATFORM.md](./docs/API_CONTRACTS_PLATFORM.md)** - API Contracts Platform & Community
-- **[SECURITY_AUTH_REQUIREMENTS.md](./docs/SECURITY_AUTH_REQUIREMENTS.md)** - Security & Authentication Requirements
-- **[PUZZLE_ARCHITECTURE.md](./docs/PUZZLE_ARCHITECTURE.md)** - Arsitektur modular puzzle-like
-- **[MODULE_ARCHITECTURE.md](./docs/MODULE_ARCHITECTURE.md)** - Module Architecture & Shared Building Blocks
-- **[INTEGRATION_SPECS.md](./docs/INTEGRATION_SPECS.md)** - Integration Specs (Payment, Tax, Email, Storage)
-- **[UIUX_WIREFRAMES_FLOWS.md](./docs/UIUX_WIREFRAMES_FLOWS.md)** - Wireframes & User Flows
-- **[TESTING_STRATEGY.md](./docs/TESTING_STRATEGY.md)** - Testing Strategy
-- **[PLATFORM_VISION.md](./docs/PLATFORM_VISION.md)** - Visi platform & arsitektur
-- **[CONTRADICTIONS_RESOLUTION.md](./docs/CONTRADICTIONS_RESOLUTION.md)** - Resolusi kontradiksi (Decisions #79-99)
+### Architecture (ARCH)
+| File | Description |
+|------|-------------|
+| [ARCH-01-platform-vision](./docs/ARCH-01-platform-vision.md) | Visi platform & arsitektur |
+| [ARCH-02-module-architecture](./docs/ARCH-02-module-architecture.md) | Module Architecture & Building Blocks |
+| [ARCH-03-puzzle-architecture](./docs/ARCH-03-puzzle-architecture.md) | Arsitektur modular puzzle-like |
 
-### Archived Documentation
-- **[archive/legacy/](./docs/archive/legacy/)** - Legacy Firebird reference (PMS database analysis, schema, weaknesses)
-- **[archive/analysis/](./docs/archive/analysis/)** - Audit reports & analysis (resolved issues)
+### Development Standards (STD)
+| File | Standards | Topics |
+|------|-----------|--------|
+| [STD-01-core](./docs/STD-01-core-naming-db-rbac-api.md) | #1-7 | Naming, Database, RBAC, Audit, Cache, API, Error |
+| [STD-02-validation](./docs/STD-02-validation-frontend-backend.md) | #8-16 | Validation, Testing, Code Structure, Frontend, Infrastructure |
+| [STD-03-registries](./docs/STD-03-registries-events-files.md) | #17-19 | Registries, Events, Files |
+| [STD-04-realtime](./docs/STD-04-realtime-jobs-search.md) | #20-22 | Real-time, Jobs, Search |
+| [STD-05-notification](./docs/STD-05-notification-versioning-flags-sla.md) | #23-26 | Notification, API Versioning, Feature Flags, SLA |
+| [STD-06-lookup](./docs/STD-06-lookup-tables.md) | #27 | Lookup Tables |
+| [STD-07-state](./docs/STD-07-state-tenancy-ratelimit.md) | #28-30 | State Machine, Multi-tenancy, Rate Limiting |
+| [STD-08-backup](./docs/STD-08-backup-webhook-reports.md) | #31-33 | Backup & DR, Webhook, Reports |
+| [STD-09-import](./docs/STD-09-import-email-pwa.md) | #34-36 | Import/Export, Email Templates, PWA |
+| [STD-10-circuit](./docs/STD-10-circuit-health-archival.md) | #37-39 | Circuit Breaker, Health Checks, Data Archival |
+| [STD-11-tracing](./docs/STD-11-tracing-secrets-tasks.md) | #40-42 | Distributed Tracing, Secrets, Scheduled Tasks |
+| [STD-12-config](./docs/STD-12-config-governance.md) | #43 | Config Governance |
+| [STD-13-fraud](./docs/STD-13-fraud-audit.md) | #44 | Fraud Detection & Audit Intelligence |
+| [STD-14-collab](./docs/STD-14-collaboration-hub.md) | #45 | Internal Collaboration Hub |
+| [STD-15-input](./docs/STD-15-input-design-flow.md) | #46 | Input Design Flow & Constraint-Based UI |
+| [STD-16-suggestions](./docs/STD-16-smart-suggestions-approval.md) | #47 | Smart Suggestions & Human-in-the-Loop |
+
+### Business Standards (BIZ)
+| File | Description |
+|------|-------------|
+| [BIZ-01-accounting-core](./docs/BIZ-01-accounting-core.md) | Business & Accounting (Section 1-10) |
+| [BIZ-02-accounting-advanced](./docs/BIZ-02-accounting-advanced.md) | Business & Accounting (Section 11-16) |
+| [BIZ-03-reconciliation](./docs/BIZ-03-accounting-reconciliation-controls.md) | Reconciliation, Controls & Audit Trail |
+
+### Specifications (SPEC)
+| File | Description |
+|------|-------------|
+| [SPEC-01-api-contracts](./docs/SPEC-01-api-contracts.md) | API Contracts Platform & Community |
+| [SPEC-02-database-schema](./docs/SPEC-02-database-schema.md) | Schema Platform DB & Community DB |
+| [SPEC-03-integration](./docs/SPEC-03-integration.md) | Integration Specs (Payment, Tax, Email, Storage) |
+| [SPEC-04-ocr](./docs/SPEC-04-data-integration-ocr.md) | OCR Integration, Image Processing, Data Extraction |
+
+### Security (SEC)
+| File | Description |
+|------|-------------|
+| [SEC-01-security-auth](./docs/SEC-01-security-auth.md) | Security & Auth (OWASP, WAF, Pentest, Dependency Scan) |
+
+### UI/UX (UI)
+| File | Description |
+|------|-------------|
+| [UI-01-design-system](./docs/UI-01-design-system.md) | Design System (Colors, Typography, Components) |
+| [UI-02-components](./docs/UI-02-components.md) | UI Components Specification (Detail) |
+| [UI-03-wireframes-flows](./docs/UI-03-wireframes-flows.md) | Wireframes & User Flows |
+
+### Testing (TEST)
+| File | Description |
+|------|-------------|
+| [TEST-01-testing-strategy](./docs/TEST-01-testing-strategy.md) | Testing Strategy |
+
+### Guides (GUIDE)
+| File | Description |
+|------|-------------|
+| [GUIDE-01-development-flow](./docs/GUIDE-01-development-flow.md) | 22 Development Flows for AI-assisted Development |
+| [GUIDE-02-module-docs-template](./docs/GUIDE-02-module-docs-template.md) | Module Documentation Standard & DVL Tool |
+
+### Reference (REF)
+| File | Description |
+|------|-------------|
+| [REF-01-decisions](./docs/REF-01-decisions.md) | 245 keputusan yang sudah disetujui |
+| [REF-02-shared-code](./docs/REF-02-shared-code.md) | Shared/centralized code patterns |
+
+### Archived
+| File | Description |
+|------|-------------|
+| [archive/contradictions-resolution](./docs/archive/contradictions-resolution.md) | Resolusi kontradiksi (historical) |
+| [archive/legacy/](./docs/archive/legacy/) | Legacy Firebird reference |
+| [archive/analysis/](./docs/archive/analysis/) | Audit reports (resolved) |
 
 ---
 
-## Standards Summary
+## Standards Summary (45 Standards)
 
-| # | Standard | Status |
-|---|----------|--------|
-| 1 | Naming Conventions | ✅ V1 |
-| 2 | Database Patterns | ✅ V1 |
-| 3 | RBAC / Permission | ✅ V1 |
-| 4 | Audit Log | ✅ V1 |
-| 5 | Caching | ✅ V1 |
-| 6 | API Patterns | ✅ V1 |
-| 7 | Error Handling | ✅ V1 |
-| 8 | Validation | ✅ V2 |
-| 9 | Testing | ✅ V2 |
-| 10 | Code Structure | ✅ V2 |
-| 11 | Frontend Patterns | ✅ V2 |
-| 12 | Infrastructure & DevOps | ✅ V2 |
-| 13 | Payment & Licensing | ✅ V2 |
-| 14 | TimescaleDB & Operational | ✅ V2 |
-| 15 | Logging & Observability | ✅ V2 |
-| 16 | Internationalization (i18n) | ✅ V2 |
-| 17 | Centralized Registries | ✅ V3 |
-| 18 | Event/Message Schema | ✅ V3 |
-| 19 | File/Media Handling | ✅ V3 |
-| 20 | Real-time/WebSocket | ✅ V4 |
-| 21 | Background Job (Celery) | ✅ V4 |
-| 22 | Search (Meilisearch) | ✅ V4 |
-| 23 | Notification | ✅ V5 |
-| 24 | API Versioning | 📋 V5 |
-| 25 | Feature Flags | 📋 V5 |
-| 26 | Performance SLA | ✅ V5 |
-| 27 | Lookup/Type Tables | ✅ V6 |
-| 28 | State Machine / Workflow | ✅ V7 |
-| 29 | Multi-tenancy Deep Dive | ✅ V7 |
-| 30 | Rate Limiting & Throttling | ✅ V7 |
-| 31 | Backup & Disaster Recovery | ✅ V8 |
-| 32 | Webhook System | ✅ V8 |
-| 33 | Report Generation | ✅ V8 |
-| 34 | Data Import/Export | ✅ V9 |
-| 35 | Email Templates | ✅ V9 |
-| 36 | Offline/PWA Support | ✅ V9 |
-| 37 | Circuit Breaker & Resilience | ✅ V10 |
-| 38 | Health Checks & Readiness | ✅ V10 |
-| 39 | Data Archival & Retention | ✅ V10 |
-| 40 | Distributed Tracing (OpenTelemetry) | ✅ V11 |
-| 41 | Secrets & Configuration Management | ✅ V11 |
-| 42 | Scheduled Tasks & Cron Management | ✅ V11 |
-| 43 | Configuration Governance | ✅ V12 |
-| 44 | Fraud Detection & Audit Intelligence | ✅ V13 |
-| 45 | Internal Collaboration Hub | ✅ V14 |
+| # | Standard | File |
+|---|----------|------|
+| 1 | Naming Conventions | STD-01 |
+| 2 | Database Patterns | STD-01 |
+| 3 | RBAC / Permission | STD-01 |
+| 4 | Audit Log | STD-01 |
+| 5 | Caching | STD-01 |
+| 6 | API Patterns | STD-01 |
+| 7 | Error Handling | STD-01 |
+| 8 | Validation | STD-02 |
+| 9 | Testing | STD-02 |
+| 10 | Code Structure | STD-02 |
+| 11 | Frontend Patterns | STD-02 |
+| 12 | Infrastructure & DevOps | STD-02 |
+| 13 | Payment & Licensing | STD-02 |
+| 14 | TimescaleDB & Operational | STD-02 |
+| 15 | Logging & Observability | STD-02 |
+| 16 | Internationalization (i18n) | STD-02 |
+| 17 | Centralized Registries | STD-03 |
+| 18 | Event/Message Schema | STD-03 |
+| 19 | File/Media Handling | STD-03 |
+| 20 | Real-time/WebSocket | STD-04 |
+| 21 | Background Job (Celery) | STD-04 |
+| 22 | Search (Meilisearch) | STD-04 |
+| 23 | Notification | STD-05 |
+| 24 | API Versioning | STD-05 |
+| 25 | Feature Flags | STD-05 |
+| 26 | Performance SLA | STD-05 |
+| 27 | Lookup/Type Tables | STD-06 |
+| 28 | State Machine / Workflow | STD-07 |
+| 29 | Multi-tenancy Deep Dive | STD-07 |
+| 30 | Rate Limiting & Throttling | STD-07 |
+| 31 | Backup & Disaster Recovery | STD-08 |
+| 32 | Webhook System | STD-08 |
+| 33 | Report Generation | STD-08 |
+| 34 | Data Import/Export | STD-09 |
+| 35 | Email Templates | STD-09 |
+| 36 | Offline/PWA Support | STD-09 |
+| 37 | Circuit Breaker & Resilience | STD-10 |
+| 38 | Health Checks & Readiness | STD-10 |
+| 39 | Data Archival & Retention | STD-10 |
+| 40 | Distributed Tracing (OpenTelemetry) | STD-11 |
+| 41 | Secrets & Configuration Management | STD-11 |
+| 42 | Scheduled Tasks & Cron Management | STD-11 |
+| 43 | Configuration Governance | STD-12 |
+| 44 | Fraud Detection & Audit Intelligence | STD-13 |
+| 45 | Internal Collaboration Hub | STD-14 |
+| 46 | Input Design Flow & Constraint-Based UI | STD-15 |
+| 47 | Smart Suggestions & Human-in-the-Loop | STD-16 |
 
 ---
 
@@ -206,4 +261,20 @@ PROJECT_BESAR/
 
 ---
 
-*Last Updated: 2025-12-11 (IoT Module added)*
+## File Naming Convention
+
+| Prefix | Category | Example |
+|--------|----------|---------|
+| `ARCH-` | Architecture | ARCH-01-platform-vision.md |
+| `STD-` | Development Standards | STD-01-core-naming-db-rbac-api.md |
+| `BIZ-` | Business Standards | BIZ-01-accounting-core.md |
+| `SPEC-` | Specifications | SPEC-01-api-contracts.md |
+| `SEC-` | Security | SEC-01-security-auth.md |
+| `UI-` | UI/UX | UI-01-design-system.md |
+| `TEST-` | Testing | TEST-01-testing-strategy.md |
+| `GUIDE-` | Guides | GUIDE-01-development-flow.md |
+| `REF-` | Reference | REF-01-decisions.md |
+
+---
+
+*Last Updated: 2025-12-13 (Documentation reorganized with prefix-based naming)*
