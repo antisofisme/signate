@@ -191,7 +191,139 @@ Management Group Template (customized)
         └──► PT C CoA (copy + customize)
 ```
 
-### 1.6 App Integration Mode
+### 1.6 Department Code Validation Rules
+
+**Purpose**: Enforce when department codes are mandatory vs optional for GL account creation, ensuring consistent account structure across the organization.
+
+#### Rule: Department Code Requirement by Account Category
+
+| Account Category | Account Type | Department Required? | Rationale |
+|---|---|---|---|
+| **Revenue** | Room Revenue, F&B Revenue | ✅ YES | Revenue must be traced to operating department |
+| **Revenue** | Other Revenue (misc, late fees) | ❌ NO | Not departmentalized |
+| **Cost of Sales** | COGS, F&B Purchases | ✅ YES | Must align with revenue department |
+| **Operating Expense** | Department-specific (payroll, utilities, supplies) | ✅ YES | Operating expenses traced to cost center |
+| **Operating Expense** | General/Corporate (admin, insurance, rent) | ❌ NO | Corporate expenses, not departmentalized |
+| **Other Expense** | Interest, taxes, depreciation | ❌ NO | Non-operating, non-departmentalized |
+
+#### Enforcement Rules
+
+**When Creating GL Account (coa_accounts):**
+
+```sql
+-- New constraint: Department requirement based on account type
+ALTER TABLE coa_accounts ADD CONSTRAINT check_department_requirement (
+  (
+    -- Revenue or COGS: department_id REQUIRED
+    (type_id IN (SELECT id FROM coa_types WHERE code IN ('ROOM_REV', 'FB_REV', 'COGS'))
+     AND department_id IS NOT NULL)
+    OR
+    -- Operating Expense: department_id REQUIRED
+    (type_id IN (SELECT id FROM coa_types WHERE code LIKE 'OPEX_%')
+     AND department_id IS NOT NULL)
+    OR
+    -- Other categories: department_id OPTIONAL (can be NULL)
+    (type_id NOT IN (SELECT id FROM coa_types WHERE code IN ('ROOM_REV', 'FB_REV', 'COGS')
+                      OR code LIKE 'OPEX_%'))
+  )
+);
+```
+
+**Implementation Logic:**
+
+```typescript
+function validateDepartmentRequirement(
+  accountType: AccountType,
+  departmentId: UUID | null
+): { valid: boolean; error?: string } {
+  const departmentRequiredCategories = ['ROOM_REV', 'FB_REV', 'COGS', 'OPEX_PAYROLL', 'OPEX_UTILITIES', 'OPEX_SUPPLIES'];
+
+  if (departmentRequiredCategories.includes(accountType.code)) {
+    // Department required
+    if (!departmentId) {
+      return {
+        valid: false,
+        error: `Department is required for ${accountType.name} account. Cannot create account without department assignment.`
+      };
+    }
+  } else {
+    // Department optional - allow NULL or specific department
+    // No error if departmentId is NULL
+  }
+
+  return { valid: true };
+}
+
+// Usage:
+const result = validateDepartmentRequirement(accountType, providedDepartmentId);
+if (!result.valid) {
+  throw new ValidationError(result.error);
+}
+```
+
+**Practical Examples:**
+
+```json
+{
+  "scenario_1_revenue": {
+    "description": "Creating room revenue account",
+    "account_type": "ROOM_REV",
+    "department_id": "RM",  // ← REQUIRED
+    "is_valid": true,
+    "reason": "Room revenue must be departmentalized"
+  },
+  "scenario_2_general_revenue": {
+    "description": "Creating miscellaneous revenue account",
+    "account_type": "MISC_REV",
+    "department_id": null,  // ← OK (optional)
+    "is_valid": true,
+    "reason": "Non-departmentalized revenue"
+  },
+  "scenario_3_expense_no_dept": {
+    "description": "Creating payroll expense account without department",
+    "account_type": "OPEX_PAYROLL",
+    "department_id": null,  // ← ERROR (required)
+    "is_valid": false,
+    "error": "Department is required for Payroll Expense account"
+  },
+  "scenario_4_interest_expense": {
+    "description": "Creating interest expense account",
+    "account_type": "INTEREST_EXPENSE",
+    "department_id": null,  // ← OK (optional)
+    "is_valid": true,
+    "reason": "Non-operating expense, not departmentalized"
+  }
+}
+```
+
+#### Audit Trail
+
+All department assignments (or lack thereof) are logged:
+
+```sql
+-- In coa_audit_logs
+INSERT INTO coa_audit_logs (
+  table_name, record_id, organization_id, action,
+  old_values, new_values, changed_fields, reason,
+  changed_by_id, changed_at
+) VALUES (
+  'coa_accounts', 'acc-1234', 'org-001', 'CREATE',
+  '{}',
+  '{"type_id": "room_rev", "department_id": "RM"}',
+  '["department_id"]',
+  'Required department for revenue account',
+  'user-123', NOW()
+);
+```
+
+#### Exceptions & Overrides
+
+- **Exception Request**: If an account needs to deviate (e.g., departmentalize a general expense), submit exception request
+- **Approval Required**: Finance Director approval needed
+- **Documentation**: All exceptions logged with justification
+- **Expiry**: Exceptions auto-expire after 12 months (require renewal)
+
+### 1.7 App Integration Mode
 
 | Mode | Description | Database | CoA |
 |------|-------------|----------|-----|
@@ -443,6 +575,27 @@ Dr. Salary Expense (by dept) xxx
 
 > **Status**: ✅ Approved (2025-12-07)
 > **Implementation**: Phase 2 (Schema ready, fitur dikerjakan nanti)
+
+### 3.0 Implementation Phases (Clarification)
+
+**Phase 1 (MVP - Initial Release)**:
+- ✅ Support multiple functional currencies (one per tenant)
+- ✅ Manual exchange rate entry via form
+- ✅ Excel/CSV exchange rate import
+- ✅ Transaction recording in foreign currency + functional currency conversion
+- ✅ Realized forex (settlement gains/losses)
+- ✅ Manual revaluation (user-triggered period-end revaluation)
+- ✅ Database schema prepared for all features
+- ✅ Functional currency selection at tenant setup (immutable)
+
+**Phase 2 (Future Enhancement)**:
+- ⏳ Automatic exchange rate fetching from external APIs (Central Bank, etc.)
+- ⏳ Scheduled revaluation (auto-run at period end)
+- ⏳ Multi-ledger consolidation for multi-currency periods
+- ⏳ Configurable forex accounting treatment (P&L vs OCI)
+- ⏳ Advanced reporting (currency-specific GL views)
+
+**Key Point**: Phase 1 is fully functional for multi-currency operations. Phase 2 adds automation and advanced features, not essential for core operations.
 
 ### 3.1 Currency Concepts (IAS 21)
 

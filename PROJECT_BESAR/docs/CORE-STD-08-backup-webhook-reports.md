@@ -7,6 +7,16 @@
 ## Table of Contents
 
 - [Standard #31: Backup & Disaster Recovery](#standard-31-backup--disaster-recovery)
+  - [31.1 Overview](#311-overview)
+  - [31.2 Backup Strategy](#312-backup-strategy)
+  - [31.3 Backup Types & Schedule](#313-backup-types--schedule)
+  - [31.4 Database Backup Implementation](#314-database-backup-implementation)
+  - [31.5 Application Backup](#315-application-backup)
+  - [31.6 Recovery Procedures](#316-recovery-procedures)
+  - [31.7 Disaster Recovery Plan](#317-disaster-recovery-plan)
+  - [31.8 Monitoring & Alerting](#318-monitoring--alerting)
+  - [31.9 Best Practices](#319-best-practices)
+  - [31.10 Multi-Tenant Backup & Restore](#3110-multi-tenant-backup--restore)
 - [Standard #32: Webhook System](#standard-32-webhook-system)
 - [Standard #33: Report Generation](#standard-33-report-generation)
 
@@ -624,6 +634,614 @@ groups:
 | 6 | Automate | Automate backup and recovery processes |
 | 7 | Version Control | Keep backup scripts in version control |
 | 8 | Separate Credentials | Use separate credentials for backups |
+
+### 31.10 Multi-Tenant Backup & Restore
+
+> Strategi backup & restore untuk arsitektur multi-tenant dengan single database
+
+#### 31.10.1 Core Principle
+
+```
+╔═══════════════════════════════════════════════════════════════════════════╗
+║  MULTI-TENANT BACKUP & RESTORE PRINCIPLE                                  ║
+╠═══════════════════════════════════════════════════════════════════════════╣
+║                                                                           ║
+║  "Backup & restore adalah masalah DESAIN DATA,                           ║
+║   bukan jumlah database."                                                ║
+║                                                                           ║
+║  Dengan:                                                                  ║
+║  • 1 Database (Neon PostgreSQL)                                          ║
+║  • tenant_id disiplin di semua tabel                                     ║
+║  • Append-only + Event-Driven architecture                               ║
+║  • Soft delete & versioning                                              ║
+║                                                                           ║
+║  Restore bisa:                                                            ║
+║  ✅ Selektif (per tenant, per module)                                    ║
+║  ✅ Aman (tidak ganggu tenant lain)                                      ║
+║  ✅ Tanpa downtime                                                       ║
+║                                                                           ║
+╚═══════════════════════════════════════════════════════════════════════════╝
+```
+
+**Key Insight:**
+- ❌ **SALAH:** Satu database = restore harus satu database
+- ✅ **BENAR:** Restore dilakukan terarah (per tenant, per module, per waktu)
+
+#### 31.10.2 Three Levels of Restore
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                    RESTORE LEVELS HIERARCHY                              │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                         │
+│  LEVEL 1: GLOBAL (Emergency Only)                                       │
+│  ┌───────────────────────────────────────────────────────────────┐    │
+│  │ • Point-in-Time Recovery (PITR)                                │    │
+│  │ • Rollback seluruh database                                    │    │
+│  │ • Use case: Bug deployment fatal, corrupt data global         │    │
+│  │ • Frequency: Jarang (emergency besar saja)                     │    │
+│  │ • Tool: Neon PITR, pg_basebackup                               │    │
+│  └───────────────────────────────────────────────────────────────┘    │
+│                                                                         │
+│  LEVEL 2: TENANT (Most Common) ⭐                                       │
+│  ┌───────────────────────────────────────────────────────────────┐    │
+│  │ • Restore data 1 tenant saja                                   │    │
+│  │ • Tenant lain tidak tersentuh                                  │    │
+│  │ • Use case: Data tenant A salah, tenant B-Z tetap aman        │    │
+│  │ • Frequency: Paling sering                                     │    │
+│  │ • Tool: Neon Branching + selective SQL restore                 │    │
+│  └───────────────────────────────────────────────────────────────┘    │
+│                                                                         │
+│  LEVEL 3: MODULE (Targeted)                                             │
+│  ┌───────────────────────────────────────────────────────────────┐    │
+│  │ • Restore module tertentu (pms.*, acc.*, inv.*)                │    │
+│  │ • Tetap difilter dengan tenant_id                              │    │
+│  │ • Use case: Error di module PMS, module lain OK               │    │
+│  │ • Frequency: Jarang (spesifik case)                            │    │
+│  │ • Tool: Schema-level restore + tenant filter                   │    │
+│  └───────────────────────────────────────────────────────────────┘    │
+│                                                                         │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+#### 31.10.3 Tenant-Level Restore (Most Common)
+
+**Scenario:**
+Tenant A accidentally deleted critical data. Need to restore Tenant A only without affecting Tenant B, C, D, etc.
+
+**Prerequisites:**
+1. All business data tables have `tenant_id` column
+2. Regular backups or Neon branching available
+3. Tenant isolation properly implemented
+
+**Process:**
+
+```sql
+-- Step 1: Create Neon branch at specific timestamp
+-- (Done via Neon console or API)
+-- Branch name: restore_tenant_a_20241223
+
+-- Step 2: Connect to branch database
+-- Query data to restore
+
+-- Step 3: Extract tenant-specific data
+SELECT *
+FROM reservations
+WHERE tenant_id = 'tenant_abc123'
+  AND created_at <= '2024-12-23 10:00:00';
+
+-- Step 4: Compare with production
+-- Identify rows that need restoration
+
+-- Step 5: Selective restore to production
+BEGIN;
+
+-- Backup current state (in case rollback needed)
+CREATE TEMP TABLE reservations_backup AS
+SELECT * FROM reservations
+WHERE tenant_id = 'tenant_abc123';
+
+-- Restore specific rows
+DELETE FROM reservations
+WHERE tenant_id = 'tenant_abc123'
+  AND id IN (...specific IDs to restore...);
+
+INSERT INTO reservations
+SELECT * FROM branch_database.reservations
+WHERE tenant_id = 'tenant_abc123'
+  AND id IN (...specific IDs to restore...);
+
+-- Verify
+SELECT COUNT(*) FROM reservations WHERE tenant_id = 'tenant_abc123';
+
+-- If OK, commit
+COMMIT;
+-- If issues, rollback
+-- ROLLBACK;
+```
+
+**Automation Script:**
+
+```python
+# scripts/backup/tenant_restore.py
+from datetime import datetime
+import psycopg2
+from neon_api import create_branch, get_branch_connection
+
+def restore_tenant(
+    tenant_id: str,
+    restore_timestamp: datetime,
+    tables: list[str] = None,
+    dry_run: bool = True
+):
+    """
+    Restore specific tenant data from backup.
+
+    Args:
+        tenant_id: Tenant to restore
+        restore_timestamp: Point in time to restore from
+        tables: List of tables to restore (None = all tables)
+        dry_run: If True, only show what would be restored
+    """
+    # Create Neon branch
+    branch = create_branch(
+        name=f"restore_{tenant_id}_{restore_timestamp.strftime('%Y%m%d_%H%M%S')}",
+        parent_timestamp=restore_timestamp
+    )
+
+    # Connect to branch
+    branch_conn = get_branch_connection(branch.id)
+    branch_cur = branch_conn.cursor()
+
+    # Connect to production
+    prod_conn = psycopg2.connect(PROD_DATABASE_URL)
+    prod_cur = prod_conn.cursor()
+
+    # Get list of tables to restore
+    if tables is None:
+        branch_cur.execute("""
+            SELECT table_name
+            FROM information_schema.tables
+            WHERE table_schema = 'public'
+              AND table_name NOT LIKE 'pg_%'
+              AND table_name NOT LIKE '_timescaledb%'
+        """)
+        tables = [row[0] for row in branch_cur.fetchall()]
+
+    # Filter only tables with tenant_id column
+    tables_with_tenant = []
+    for table in tables:
+        branch_cur.execute(f"""
+            SELECT column_name
+            FROM information_schema.columns
+            WHERE table_name = '{table}'
+              AND column_name = 'tenant_id'
+        """)
+        if branch_cur.fetchone():
+            tables_with_tenant.append(table)
+
+    print(f"Tables to restore for tenant {tenant_id}:")
+    for table in tables_with_tenant:
+        # Count rows in branch
+        branch_cur.execute(f"SELECT COUNT(*) FROM {table} WHERE tenant_id = %s", (tenant_id,))
+        branch_count = branch_cur.fetchone()[0]
+
+        # Count rows in production
+        prod_cur.execute(f"SELECT COUNT(*) FROM {table} WHERE tenant_id = %s", (tenant_id,))
+        prod_count = prod_cur.fetchone()[0]
+
+        print(f"  {table}: {prod_count} (current) → {branch_count} (restore)")
+
+    if dry_run:
+        print("\n[DRY RUN] No changes made. Use dry_run=False to apply.")
+        return
+
+    # Confirm
+    confirm = input(f"\nRestore {len(tables_with_tenant)} tables for tenant {tenant_id}? (yes/no): ")
+    if confirm.lower() != 'yes':
+        print("Restore cancelled.")
+        return
+
+    # Perform restore
+    prod_conn.autocommit = False
+    try:
+        for table in tables_with_tenant:
+            print(f"Restoring {table}...")
+
+            # Delete current data
+            prod_cur.execute(f"DELETE FROM {table} WHERE tenant_id = %s", (tenant_id,))
+            deleted = prod_cur.rowcount
+
+            # Insert from branch
+            branch_cur.execute(f"SELECT * FROM {table} WHERE tenant_id = %s", (tenant_id,))
+            columns = [desc[0] for desc in branch_cur.description]
+            rows = branch_cur.fetchall()
+
+            if rows:
+                placeholders = ','.join(['%s'] * len(columns))
+                insert_sql = f"INSERT INTO {table} ({','.join(columns)}) VALUES ({placeholders})"
+                prod_cur.executemany(insert_sql, rows)
+                inserted = prod_cur.rowcount
+
+                print(f"  ✓ {table}: deleted {deleted}, inserted {inserted}")
+
+        # Commit transaction
+        prod_conn.commit()
+        print(f"\n✅ Restore completed for tenant {tenant_id}")
+
+    except Exception as e:
+        prod_conn.rollback()
+        print(f"\n❌ Restore failed: {e}")
+        raise
+
+    finally:
+        branch_cur.close()
+        branch_conn.close()
+        prod_cur.close()
+        prod_conn.close()
+
+# Usage
+if __name__ == '__main__':
+    restore_tenant(
+        tenant_id='tenant_abc123',
+        restore_timestamp=datetime(2024, 12, 23, 10, 0, 0),
+        dry_run=True  # Set False to actually restore
+    )
+```
+
+#### 31.10.4 Module-Level Restore
+
+**Scenario:**
+Error in PMS module for Tenant A. Need to restore only PMS tables for this tenant.
+
+```python
+# Restore specific module for specific tenant
+restore_tenant(
+    tenant_id='tenant_abc123',
+    restore_timestamp=datetime(2024, 12, 23, 10, 0, 0),
+    tables=['pms_reservations', 'pms_rooms', 'pms_guests', 'pms_folios'],
+    dry_run=False
+)
+```
+
+**Or using schema-based approach:**
+
+```sql
+-- Restore all tables in pms schema for specific tenant
+DO $$
+DECLARE
+    tbl RECORD;
+BEGIN
+    FOR tbl IN
+        SELECT tablename
+        FROM pg_tables
+        WHERE schemaname = 'pms'
+    LOOP
+        -- Check if table has tenant_id column
+        IF EXISTS (
+            SELECT 1
+            FROM information_schema.columns
+            WHERE table_schema = 'pms'
+              AND table_name = tbl.tablename
+              AND column_name = 'tenant_id'
+        ) THEN
+            -- Restore this table
+            EXECUTE format('
+                DELETE FROM pms.%I WHERE tenant_id = $1;
+                INSERT INTO pms.%I
+                SELECT * FROM branch_db.pms.%I WHERE tenant_id = $1;
+            ', tbl.tablename, tbl.tablename, tbl.tablename)
+            USING 'tenant_abc123';
+
+            RAISE NOTICE 'Restored pms.%', tbl.tablename;
+        END IF;
+    END LOOP;
+END $$;
+```
+
+#### 31.10.5 Required Data Design Patterns
+
+**For restore to work properly, implement these patterns:**
+
+**1. Append-Only Data (Critical Tables)**
+
+```sql
+-- Accounting ledger - NEVER UPDATE OR DELETE
+CREATE TABLE acc_journal_entries (
+    id INTEGER PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+    tenant_id VARCHAR(50) NOT NULL,
+    journal_id VARCHAR(100) NOT NULL,
+    period VARCHAR(10) NOT NULL,
+    amount DECIMAL(15,2) NOT NULL,
+    account_code VARCHAR(50) NOT NULL,
+    -- ... other fields
+    created_at TIMESTAMP DEFAULT NOW() NOT NULL,
+    created_by VARCHAR(100) NOT NULL,
+
+    -- Append-only: no updated_at, no deleted_at
+    -- If correction needed, create reversal entry
+
+    CONSTRAINT check_no_update CHECK (false) -- Prevent updates via trigger
+);
+
+-- Trigger to prevent updates
+CREATE TRIGGER prevent_journal_update
+BEFORE UPDATE ON acc_journal_entries
+FOR EACH ROW
+EXECUTE FUNCTION raise_exception('Journal entries are append-only');
+
+-- Audit log - NEVER DELETE
+CREATE TABLE audit_logs (
+    id BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+    tenant_id VARCHAR(50) NOT NULL,
+    table_name VARCHAR(100) NOT NULL,
+    record_id VARCHAR(100) NOT NULL,
+    action VARCHAR(20) NOT NULL, -- INSERT, UPDATE, DELETE
+    old_value JSONB,
+    new_value JSONB,
+    changed_by VARCHAR(100) NOT NULL,
+    changed_at TIMESTAMP DEFAULT NOW() NOT NULL,
+
+    -- Append-only, immutable
+    -- Long retention (7-10 years for compliance)
+);
+```
+
+**2. Soft Delete & Versioning (Operational Tables)**
+
+```sql
+-- Soft delete pattern
+CREATE TABLE pms_reservations (
+    id INTEGER PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+    tenant_id VARCHAR(50) NOT NULL,
+    reservation_code VARCHAR(50) NOT NULL,
+    -- ... business fields
+
+    -- Versioning & soft delete
+    version INTEGER DEFAULT 1 NOT NULL,
+    created_at TIMESTAMP DEFAULT NOW() NOT NULL,
+    updated_at TIMESTAMP,
+    deleted_at TIMESTAMP, -- Soft delete
+    deleted_by VARCHAR(100),
+
+    -- Only select non-deleted
+    -- WHERE deleted_at IS NULL
+);
+
+-- Function to restore soft-deleted record
+CREATE FUNCTION restore_deleted_reservation(p_reservation_id INTEGER)
+RETURNS VOID AS $$
+BEGIN
+    UPDATE pms_reservations
+    SET deleted_at = NULL,
+        deleted_by = NULL,
+        updated_at = NOW()
+    WHERE id = p_reservation_id;
+END;
+$$ LANGUAGE plpgsql;
+```
+
+**3. Event-Driven Recovery**
+
+```sql
+-- Event store (source of truth)
+CREATE TABLE events (
+    id BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+    tenant_id VARCHAR(50) NOT NULL,
+    event_type VARCHAR(100) NOT NULL,
+    aggregate_type VARCHAR(100) NOT NULL,
+    aggregate_id VARCHAR(100) NOT NULL,
+    event_data JSONB NOT NULL,
+    metadata JSONB,
+    created_at TIMESTAMP DEFAULT NOW() NOT NULL,
+    created_by VARCHAR(100) NOT NULL,
+
+    -- Append-only, never delete
+    -- Can rebuild read models by replaying events
+);
+
+-- Read model (can be deleted & rebuilt)
+CREATE TABLE pms_reservations_read (
+    id INTEGER PRIMARY KEY,
+    tenant_id VARCHAR(50) NOT NULL,
+    -- ... denormalized fields for fast reads
+
+    -- This is derived data, can be rebuilt from events
+    last_event_id BIGINT REFERENCES events(id)
+);
+
+-- Rebuild read model from events
+CREATE FUNCTION rebuild_reservations_read_model(p_tenant_id VARCHAR)
+RETURNS VOID AS $$
+BEGIN
+    -- Delete current read model
+    DELETE FROM pms_reservations_read WHERE tenant_id = p_tenant_id;
+
+    -- Replay events
+    -- (Implementation depends on event sourcing framework)
+END;
+$$ LANGUAGE plpgsql;
+```
+
+#### 31.10.6 Neon Branching for Zero-Downtime Restore
+
+**Neon Database Branching:**
+Neon allows creating instant database branches (copy-on-write) for any point in time.
+
+```bash
+# Create branch via Neon API
+curl -X POST https://console.neon.tech/api/v2/projects/{project_id}/branches \
+  -H "Authorization: Bearer $NEON_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "branch": {
+      "name": "restore_tenant_a_20241223",
+      "parent_timestamp": "2024-12-23T10:00:00Z"
+    }
+  }'
+
+# Response:
+{
+  "branch": {
+    "id": "br-abc123",
+    "name": "restore_tenant_a_20241223",
+    "connection_uri": "postgres://user:pass@br-abc123.neon.tech/db"
+  }
+}
+```
+
+**Restore Workflow with Branching:**
+
+```
+1. Create branch at desired timestamp
+   ↓
+2. Connect to branch (read-only)
+   ↓
+3. Query tenant data to verify
+   ↓
+4. Compare with production
+   ↓
+5. If correct, copy specific rows to production
+   ↓
+6. Delete branch when done
+```
+
+**Benefits:**
+- ✅ No production downtime
+- ✅ Can inspect data before restore
+- ✅ Branch creation is instant (COW)
+- ✅ Only pay for storage delta
+- ✅ Can keep branch for investigation
+
+#### 31.10.7 Backup Retention by Data Type
+
+| Data Type | Retention | Reason |
+|-----------|-----------|--------|
+| **Accounting** | 7-10 years | Legal compliance |
+| **Audit Logs** | 7 years | Compliance & forensics |
+| **Event Store** | 5 years | Business intelligence & replay |
+| **Operational** | 90 days | Recent history sufficient |
+| **Temporary** | 7 days | Short-term debug only |
+
+**Implementation:**
+
+```sql
+-- Retention policies via partitioning
+CREATE TABLE audit_logs (
+    -- ... columns
+    created_at TIMESTAMP NOT NULL
+) PARTITION BY RANGE (created_at);
+
+-- Monthly partitions
+CREATE TABLE audit_logs_2024_12 PARTITION OF audit_logs
+FOR VALUES FROM ('2024-12-01') TO ('2025-01-01');
+
+-- Drop old partitions instead of DELETE (much faster)
+DROP TABLE audit_logs_2017_12; -- After 7 years
+```
+
+#### 31.10.8 What NOT to Do
+
+**❌ Anti-Patterns:**
+
+| Anti-Pattern | Why Bad | Better Alternative |
+|--------------|---------|-------------------|
+| **Database per tenant** | Backup & restore nightmare for hundreds of DBs | Single DB with tenant_id |
+| **Schema per tenant** | Complex queries, hard to manage | Single schema with tenant_id |
+| **Hard delete critical data** | Cannot restore, compliance risk | Soft delete + append-only |
+| **No tenant_id** | Cannot selective restore | Always include tenant_id |
+| **Manual restore process** | Error-prone, slow | Automated scripts |
+| **No restore testing** | Discover issues during emergency | Regular restore drills |
+
+#### 31.10.9 Restore Testing & Drills
+
+**Monthly Restore Drill:**
+
+```bash
+#!/bin/bash
+# scripts/backup/restore_drill.sh
+
+# Test restore for random tenant
+RANDOM_TENANT=$(psql -t -c "SELECT tenant_id FROM tenants ORDER BY RANDOM() LIMIT 1")
+
+echo "=== Restore Drill for Tenant: $RANDOM_TENANT ==="
+
+# 1. Create test branch
+echo "Creating branch..."
+BRANCH_ID=$(neon_cli branch create \
+  --name "drill_${RANDOM_TENANT}_$(date +%Y%m%d)" \
+  --parent-timestamp "1 hour ago" \
+  --format json | jq -r '.id')
+
+# 2. Verify branch
+echo "Verifying branch data..."
+BRANCH_COUNT=$(psql "$BRANCH_URI" -t -c \
+  "SELECT COUNT(*) FROM reservations WHERE tenant_id = '$RANDOM_TENANT'")
+
+echo "Branch has $BRANCH_COUNT reservations"
+
+# 3. Simulate restore (dry run)
+echo "Simulating restore..."
+python3 scripts/backup/tenant_restore.py \
+  --tenant-id "$RANDOM_TENANT" \
+  --branch-id "$BRANCH_ID" \
+  --dry-run
+
+# 4. Cleanup
+echo "Cleaning up branch..."
+neon_cli branch delete --id "$BRANCH_ID"
+
+echo "✅ Restore drill completed"
+```
+
+**Run automatically:**
+
+```yaml
+# .github/workflows/restore-drill.yml
+name: Monthly Restore Drill
+
+on:
+  schedule:
+    - cron: '0 2 1 * *'  # 1st of month, 2 AM
+
+jobs:
+  restore-drill:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Run restore drill
+        run: ./scripts/backup/restore_drill.sh
+      - name: Report results
+        if: failure()
+        uses: slackapi/slack-github-action@v1
+        with:
+          payload: |
+            {"text": "⚠️ Restore drill failed! Check logs."}
+```
+
+#### 31.10.10 Summary & Checklist
+
+**Multi-Tenant Restore Checklist:**
+
+```
+✅ All business tables have tenant_id
+✅ Append-only pattern for critical data (accounting, audit)
+✅ Soft delete implemented (deleted_at, not hard DELETE)
+✅ Event sourcing for stateful entities
+✅ Neon branching configured
+✅ Automated restore scripts tested
+✅ Monthly restore drills scheduled
+✅ Retention policies enforced
+✅ Restore runbook documented
+✅ Team trained on restore procedures
+```
+
+**Key Takeaways:**
+1. ✅ Single database + tenant_id discipline = selective restore possible
+2. ✅ Neon branching = zero-downtime investigation & restore
+3. ✅ Append-only + event sourcing = data safety net
+4. ✅ Test restores regularly = confidence during emergency
+5. ✅ Automation > manual = fewer errors, faster recovery
 
 ---
 

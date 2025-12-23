@@ -265,6 +265,301 @@ CREATE TABLE integration_queue (
 CREATE INDEX idx_integration_queue_status ON integration_queue(organization_id, status);
 ```
 
+### 11.8 Tax Withholding Exemption Mechanism
+
+> **Status**: ✅ Approved (2025-12-07)
+
+**Purpose**: Handle scenarios where certain suppliers, services, or transactions are exempt from tax withholding (PPh 21, BPJS contributions, or other statutory taxes). This section addresses:
+- Exemption entity definition and types
+- Application logic and rules
+- GL mapping for withheld vs non-withheld taxes
+- Approval workflow for granting exemptions
+- Audit trail and compliance
+
+#### 11.8.1 Exemption Types
+
+| Exemption Type | Trigger | Scope | GL Impact |
+|---|---|---|---|
+| **Supplier Exemption** | Supplier is registered as tax-exempt entity | All invoices from this supplier | PPh/Withholding accounts skipped for all transactions |
+| **Service Exemption** | Service type is exempted (e.g., medical services, education) | Only matching services | Tax withholding not applied to these service lines |
+| **Transaction Exemption** | Specific transaction is manually exempted | Single purchase order or invoice | Override default tax withholding for this transaction |
+| **Operational Exemption** | Operational expense below threshold (e.g., < 1M IDR) | Automatically exempted expenses | No withholding for small-value transactions |
+
+#### 11.8.2 Exemption Entity Definition
+
+```sql
+-- Tax Exemption Master
+CREATE TABLE tax_exemptions (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+
+    exemption_type VARCHAR(50) NOT NULL,  -- 'supplier', 'service', 'transaction', 'operational'
+
+    -- Target entity (based on exemption_type)
+    supplier_id UUID REFERENCES suppliers(id) ON DELETE CASCADE,
+    service_id UUID REFERENCES services(id) ON DELETE CASCADE,
+    po_id UUID REFERENCES purchase_orders(id) ON DELETE CASCADE,
+
+    -- Exemption details
+    tax_category VARCHAR(50) NOT NULL,     -- 'pph_21', 'pph_23', 'pph_1', 'bpjs', 'all'
+    exemption_reason VARCHAR(255) NOT NULL,  -- 'Tax-exempt entity', 'Medical service', etc.
+
+    -- Temporal validity
+    effective_date DATE NOT NULL,
+    expiration_date DATE,  -- NULL means indefinite
+
+    -- Approval workflow
+    status VARCHAR(20) NOT NULL DEFAULT 'draft',  -- 'draft', 'pending_approval', 'approved', 'rejected', 'revoked'
+    requested_by UUID NOT NULL REFERENCES users(id),
+    approved_by UUID REFERENCES users(id),
+    approved_at TIMESTAMP WITH TIME ZONE,
+    rejection_reason TEXT,
+
+    -- Audit
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE,
+    deleted_at TIMESTAMP WITH TIME ZONE,
+
+    CONSTRAINT check_valid_dates CHECK (expiration_date IS NULL OR expiration_date > effective_date),
+    CONSTRAINT check_one_target CHECK (
+        (exemption_type = 'supplier' AND supplier_id IS NOT NULL AND service_id IS NULL AND po_id IS NULL) OR
+        (exemption_type = 'service' AND service_id IS NOT NULL AND supplier_id IS NULL AND po_id IS NULL) OR
+        (exemption_type = 'transaction' AND po_id IS NOT NULL AND supplier_id IS NULL AND service_id IS NULL) OR
+        (exemption_type = 'operational' AND supplier_id IS NULL AND service_id IS NULL AND po_id IS NULL)
+    )
+);
+
+-- Exemption change history (audit trail)
+CREATE TABLE tax_exemption_changes (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+    exemption_id UUID NOT NULL REFERENCES tax_exemptions(id) ON DELETE CASCADE,
+
+    action VARCHAR(50) NOT NULL,  -- 'created', 'submitted_for_approval', 'approved', 'rejected', 'revoked', 'expired'
+    old_status VARCHAR(20),
+    new_status VARCHAR(20),
+    reason TEXT,
+
+    performed_by UUID NOT NULL REFERENCES users(id),
+    performed_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+
+    UNIQUE(tenant_id, exemption_id, performed_at)
+);
+
+CREATE INDEX idx_tax_exemptions_active ON tax_exemptions(tenant_id, status, effective_date)
+    WHERE deleted_at IS NULL AND status = 'approved';
+CREATE INDEX idx_tax_exemptions_supplier ON tax_exemptions(tenant_id, supplier_id)
+    WHERE exemption_type = 'supplier' AND deleted_at IS NULL;
+CREATE INDEX idx_tax_exemptions_service ON tax_exemptions(tenant_id, service_id)
+    WHERE exemption_type = 'service' AND deleted_at IS NULL;
+```
+
+#### 11.8.3 Exemption Application Logic
+
+**Decision Flow When Recording Purchase Invoice:**
+
+```
+Input: Invoice for Supplier X, PPh 21 Tax Category, Amount 10M IDR
+
+Step 1: Check Active Exemptions (in priority order)
+  ├─ Transaction Exemption? (specific PO marked exempt)
+  │  └─ If YES → Skip all tax withholding
+  ├─ Supplier Exemption? (supplier marked as exempt entity)
+  │  └─ If YES → Skip all tax withholding
+  ├─ Operational Exemption? (amount < threshold)
+  │  └─ If YES → Skip all tax withholding
+  └─ Service Exemption? (for each line item)
+     └─ If YES → Skip tax withholding for that line only
+
+Step 2: If No Exemption Found
+  └─ Apply standard tax withholding rules (as per section 11.3.4)
+
+Step 3: Record GL Entries
+  ├─ Debit: Expense account (as configured)
+  ├─ Credit: Supplier AP account
+  └─ If tax withheld → Credit: PPh Payable account
+     If tax exempt → No tax withholding entry
+```
+
+**Code Example:**
+
+```typescript
+async function calculateTaxWithholding(
+  invoice: Invoice,
+  supplierId: UUID,
+  poId: UUID,
+  taxCategory: string,
+  tenantId: UUID
+): Promise<{ taxAmount: number; isExempt: boolean; exemptionReason: string }> {
+
+  // Check transaction exemption first (highest priority)
+  const transactionExempt = await checkTransactionExemption(
+    poId,
+    taxCategory,
+    tenantId
+  );
+  if (transactionExempt) {
+    return {
+      taxAmount: 0,
+      isExempt: true,
+      exemptionReason: 'Transaction-specific exemption'
+    };
+  }
+
+  // Check supplier exemption
+  const supplierExempt = await checkSupplierExemption(
+    supplierId,
+    taxCategory,
+    tenantId
+  );
+  if (supplierExempt) {
+    return {
+      taxAmount: 0,
+      isExempt: true,
+      exemptionReason: 'Supplier tax-exempt status'
+    };
+  }
+
+  // Check operational exemption (threshold-based)
+  if (invoice.total < getOperationalThreshold(tenantId)) {
+    return {
+      taxAmount: 0,
+      isExempt: true,
+      exemptionReason: `Below threshold (IDR ${getOperationalThreshold(tenantId)})`
+    };
+  }
+
+  // No exemption → calculate tax
+  const taxRate = getTaxRate(taxCategory, tenantId);
+  return {
+    taxAmount: invoice.total * taxRate,
+    isExempt: false,
+    exemptionReason: null
+  };
+}
+```
+
+#### 11.8.4 GL Mapping for Tax Withholding
+
+| Exemption Status | PPh Withheld? | GL Mapping | Account Flow |
+|---|---|---|---|
+| **Not Exempt** | Yes (default) | Debit: Expense / Credit: Supplier AP / Credit: PPh Payable | Standard (section 11.3.4) |
+| **Exempt** | No | Debit: Expense / Credit: Supplier AP | No PPh Payable entry |
+| **Partial** (service level) | Yes (other lines) | Line 1: Exempt (Exp/AP) / Line 2: Taxed (Exp/AP/PPh) | Mixed per line |
+
+**Journal Entry Examples:**
+
+```
+Scenario 1: Non-Exempt Invoice (10M IDR, PPh 21 @ 2%)
+
+Debit: Service Expense               10,000,000
+  Credit: Supplier AP (Net)                      9,800,000
+  Credit: PPh 21 Payable                           200,000
+
+---
+
+Scenario 2: Supplier Exemption (Same amount, same rate)
+
+Debit: Service Expense               10,000,000
+  Credit: Supplier AP (Full)                    10,000,000
+  (No PPh withholding applied)
+
+---
+
+Scenario 3: Partial Exemption (e.g., 2 lines, only 1 exempted)
+
+Line 1 (Medical service - exempt):
+  Debit: Medical Expense               5,000,000
+    Credit: Supplier AP                        5,000,000
+
+Line 2 (Consulting - taxable):
+  Debit: Consulting Expense            5,000,000
+    Credit: Supplier AP (Net)                  4,900,000
+    Credit: PPh 21 Payable                       100,000
+```
+
+#### 11.8.5 Exemption Approval Workflow
+
+**Approval Authority by Exemption Type:**
+
+| Exemption Type | Approval Authority | Escalation |
+|---|---|---|
+| **Supplier Exemption** | Finance Director (for new vendor) or CFO (>1B IDR) | Up to CFO if amount unclear |
+| **Service Exemption** | Finance Manager (for < 100M IDR annually) or CFO (>100M IDR) | CFO for strategic categories |
+| **Transaction Exemption** | Finance Manager (emergency override, < 10 days) or CFO (permanent) | CFO for permanent decisions |
+| **Operational Exemption** | System-based (automatic) | N/A |
+
+**Approval Workflow Steps:**
+
+```
+1. Request Creation
+   ├─ Requestor submits tax exemption request with reason
+   ├─ System validates: correct exemption type, target exists, authority defined
+   └─ Status: DRAFT
+
+2. Submission for Approval
+   ├─ Requestor clicks "Submit for Approval"
+   ├─ Status changes to PENDING_APPROVAL
+   └─ Notification sent to assigned approver(s)
+
+3. Approval Decision
+   ├─ Approver reviews: exemption reason, financial impact, compliance
+   ├─ Options:
+   │  ├─ APPROVED → Status APPROVED, effective_date activated
+   │  ├─ REJECTED → Status REJECTED, rejection_reason recorded
+   │  └─ REQUEST_INFO → Status PENDING_INFO, notification to requestor
+   └─ Auto-expiry: 14 days of inactivity → REJECTED
+
+4. Activation
+   ├─ Once APPROVED, exemption is active from effective_date
+   ├─ All matching transactions use this exemption
+   └─ expiration_date controls end of validity (auto-revokes if past date)
+
+5. Revocation
+   ├─ Approver can revoke active exemption with reason
+   ├─ Status changes to REVOKED
+   └─ effective_date: past revocation date, exemption no longer applies
+```
+
+#### 11.8.6 Audit Trail & Compliance
+
+**Exemption Audit Requirements:**
+
+```json
+{
+  "exemption_audit_requirement": {
+    "event_logging": [
+      "exemption_created",
+      "exemption_submitted_for_approval",
+      "exemption_approved",
+      "exemption_rejected",
+      "exemption_revoked",
+      "exemption_expired",
+      "exemption_applied_to_transaction"
+    ],
+    "retention_period": "7 years",
+    "immutability_rules": [
+      "approved_at cannot be updated",
+      "approved_by cannot be changed",
+      "exemption_changes table is append-only"
+    ],
+    "compliance_queries": [
+      "All withheld taxes per supplier (vs exempt suppliers)",
+      "All exemptions granted and by whom",
+      "All revoked exemptions with reasons",
+      "Exemption audit trail for tax compliance review"
+    ]
+  }
+}
+```
+
+**Integration with Audit Trail (Section 12):**
+
+- Exemption creation, approval, and revocation logged in `audit_logs` table
+- All changes recorded in `tax_exemption_changes` (immutable)
+- Financial impact: PPh withheld vs PPh skipped tracked per exemption
+- Tax compliance: Exemptions must be justified and retained for 7-year audit
+
 ---
 
 ## 12. Audit Trail & Compliance

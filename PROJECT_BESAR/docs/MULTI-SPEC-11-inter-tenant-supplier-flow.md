@@ -1,0 +1,1115 @@
+# SPEC-11: Inter-Tenant Supplier Flow
+
+This document specifies the **cross-tenant business process** for supplier relationships in PROJECT_BESAR. It defines how a Buyer Tenant (e.g., Hotel) and Seller Tenant (e.g., Supplier) interact through the platform without sharing databases.
+
+**Key Concept**: Two completely isolated Tenants interact through events and API calls, maintaining separate accounting records and complete data isolation.
+
+---
+
+## Core Principles (Locked)
+
+### Principle 1: Tenants are Completely Separate
+- Hotel Tenant and Supplier Tenant have separate databases
+- No shared tables or schemas
+- Complete data isolation (no cross-tenant queries)
+- Separate audit trails
+
+### Principle 2: Integration via Events & Contracts
+- No direct database access between tenants
+- Communication through:
+  - Events (PO issued, invoice created, payment made)
+  - Synchronous API calls (with explicit permission)
+  - Business contracts (formal agreements)
+
+### Principle 3: Both Tenants Must Have Accounting
+- Hotel needs Accounting (to track AP - Accounts Payable)
+- Supplier needs Accounting (to track AR - Accounts Receivable)
+- Financial integrity: two separate ledgers, no shared journal
+
+### Principle 4: Inventory is Optional (For Goods Suppliers Only)
+- Service suppliers (laundry, cleaning): no inventory tracking
+- Goods suppliers (FMCG, warehouse): inventory tracking enabled
+- Inventory state managed in supplier's Tenant only
+
+### Principle 5: Business Contract Governs Relationship
+- Formal contract between Hotel and Supplier
+- Specifies: pricing, payment terms, service levels
+- Contract ID links all transactions
+- Enables audit trail of relationship
+
+---
+
+## Supplier Types
+
+### Type A: Service Supplier
+**Examples**: Laundry, Cleaning, Maintenance, Spa Partner, Consulting
+
+**Characteristics**:
+- No physical goods inventory
+- Service performed on-demand or scheduled
+- No stock reduction (no Inventory module needed)
+- Invoice generated after service completion
+
+**Modules Required**:
+- Supplier App (to accept POs, track service)
+- Accounting (to issue invoices and track AR)
+- ❌ Inventory (not needed)
+
+**Data Model**:
+```
+PurchaseOrder → ServiceScheduled → ServiceCompleted → Invoice → Payment
+```
+
+---
+
+### Type B: Goods Supplier
+**Examples**: FMCG supplier, warehouse, food supplier, maintenance materials
+
+**Characteristics**:
+- Physical goods with inventory
+- Stock managed in supplier's system
+- Goods shipped to buyer
+- Invoice generated after delivery and receipt
+
+**Modules Required**:
+- Supplier App (to manage inventory and accept POs)
+- Accounting (to issue invoices and track AR)
+- ✅ Inventory (to track stock, deductions, receipts)
+
+**Data Model**:
+```
+PurchaseOrder → InventoryReserved → GoodsPicked → ShippingNotice →
+GoodsReceived → Invoice → Payment
+```
+
+---
+
+## Main Flow: Supplier Invitation to Payment
+
+### Phase 1: Supplier Invitation & Business Contract
+
+**Trigger**: Hotel wants to establish relationship with Supplier
+
+**Steps**:
+
+#### 1.1: Hotel Invites Supplier
+1. Hotel admin navigates to "Add Supplier"
+2. Enters Supplier details (name, email, contact)
+3. Sends invitation to Supplier
+
+**Event Published** (Hotel Tenant):
+```json
+{
+  "event_type": "Supplier.Invited.v1",
+  "event_version": "v1",
+  "tenant_id": "hotel-123",
+  "data": {
+    "supplier_email": "supplier@company.com",
+    "supplier_name": "ABC Laundry",
+    "invitation_token": "token-xyz"
+  }
+}
+```
+
+#### 1.2: Supplier Accepts Invitation
+1. Supplier receives email with acceptance link
+2. Supplier clicks link (creates account or logs in)
+3. Supplier accepts invitation
+
+**Event Published** (Supplier Tenant created):
+```json
+{
+  "event_type": "Supplier.InvitationAccepted.v1",
+  "event_version": "v1",
+  "tenant_id": "supplier-456",
+  "data": {
+    "supplier_name": "ABC Laundry",
+    "from_tenant_id": "hotel-123",
+    "contract_id": "contract-999"
+  }
+}
+```
+
+#### 1.3: Business Contract Created
+1. Platform creates Business Contract record
+2. Links Hotel Tenant ↔ Supplier Tenant
+3. Records contract terms (optional: pricing, payment terms)
+
+**Contract Record**:
+```
+BusinessContract {
+  id: "contract-999",
+  buyer_tenant_id: "hotel-123",     // Hotel
+  seller_tenant_id: "supplier-456", // Supplier
+  status: "ACTIVE",
+  contract_date: "2025-12-21",
+  payment_terms: "NET 30",
+  created_at: timestamp
+}
+```
+
+#### 1.4: Supplier Sets Up (Initial Configuration)
+1. Supplier configures:
+   - Bank account for payments
+   - Delivery address (if goods)
+   - Service areas (if services)
+   - Pricing (per service or per item)
+2. Supplier marks as "Ready to Accept Orders"
+
+**Output**: Business relationship active, both tenants aware
+
+---
+
+### Phase 2: Purchase Order (PO) Creation & Acceptance
+
+**Trigger**: Hotel needs service or goods from Supplier
+
+**Steps**:
+
+#### 2.1: Hotel Creates PO
+1. Hotel procurement staff creates PO:
+   - Supplier: ABC Laundry
+   - Items/Services: Laundry services (qty, rate)
+   - Delivery date: Tomorrow
+   - Total amount: $500
+
+**PO Record** (Hotel Tenant):
+```
+PurchaseOrder {
+  id: "po-12345",
+  tenant_id: "hotel-123",
+  contract_id: "contract-999",
+  supplier_tenant_id: "supplier-456",
+  status: "DRAFT" | "ISSUED" | "ACCEPTED" | "REJECTED" | "COMPLETED",
+
+  line_items: [
+    {
+      description: "Laundry service - 50 kg",
+      quantity: 50,
+      unit: "kg",
+      unit_price: 10,
+      total: 500
+    }
+  ],
+
+  total_amount: 500,
+  delivery_date: "2025-12-22",
+
+  // Rejection fields (only populated if status = REJECTED)
+  rejection_reason: string | null,      // Why supplier rejected (e.g., "Capacity exceeded for this date")
+  rejected_by: UUID | null,             // Supplier user who rejected
+  rejected_at: timestamp | null,        // When rejection occurred
+
+  created_by: "procurement-staff-123",
+  created_at: timestamp
+}
+```
+
+#### 2.2: Hotel Sends PO to Supplier
+1. Hotel publishes event: "PO Issued"
+2. Event sent to Supplier Tenant (via contract)
+
+**Event Published**:
+```json
+{
+  "event_type": "Procurement.PurchaseOrder.Issued.v1",
+  "event_version": "v1",
+  "event_id": "evt-po-issued-123",
+  "correlation_id": "po-12345",
+  "tenant_id": "hotel-123",
+  "from_tenant_id": "hotel-123",
+  "to_tenant_id": "supplier-456",
+  "contract_id": "contract-999",
+
+  "payload": {
+    "po_id": "po-12345",
+    "supplier_tenant_id": "supplier-456",
+    "items": [
+      {
+        "description": "Laundry service - 50 kg",
+        "quantity": 50,
+        "unit_price": 10,
+        "total": 500
+      }
+    ],
+    "total_amount": 500,
+    "delivery_date": "2025-12-22"
+  }
+}
+```
+
+#### 2.3: Supplier Receives & Reviews PO
+1. Supplier receives event
+2. Supplier staff reviews PO in their system
+3. Supplier checks capacity/availability
+
+**Decision Gateway**: Can Supplier fulfill?
+
+**Path A: Supplier Accepts**
+1. Supplier clicks "Accept PO"
+2. System creates PO copy in Supplier Tenant (for their records)
+
+**Event Published**:
+```json
+{
+  "event_type": "Procurement.PurchaseOrder.Accepted.v1",
+  "event_version": "v1",
+  "event_id": "evt-po-accepted-456",
+  "correlation_id": "po-12345",
+  "tenant_id": "supplier-456",
+  "from_tenant_id": "supplier-456",
+  "to_tenant_id": "hotel-123",
+  "contract_id": "contract-999",
+
+  "payload": {
+    "po_id": "po-12345",
+    "status": "ACCEPTED",
+    "expected_completion_date": "2025-12-22"
+  }
+}
+```
+
+**Path B: Supplier Rejects**
+1. Supplier clicks "Reject PO" (with optional reason)
+
+**Event Published**:
+```json
+{
+  "event_type": "Procurement.PurchaseOrder.Rejected.v1",
+  "event_version": "v1",
+  "payload": {
+    "po_id": "po-12345",
+    "reason": "Capacity exceeded for this date"
+  }
+}
+```
+
+---
+
+### Phase 3: Fulfillment
+
+This phase differs based on supplier type.
+
+#### 3A: Service Supplier Fulfillment (Laundry Example)
+
+**Steps**:
+1. Supplier schedules laundry pickup/delivery
+2. Hotel provides dirty laundry
+3. Supplier processes laundry
+4. Supplier delivers clean laundry
+
+**Event Published** (completion):
+```json
+{
+  "event_type": "Supplier.Service.Completed.v1",
+  "event_version": "v1",
+  "event_id": "evt-service-completed-789",
+  "correlation_id": "po-12345",
+  "tenant_id": "supplier-456",
+  "from_tenant_id": "supplier-456",
+  "to_tenant_id": "hotel-123",
+
+  "payload": {
+    "po_id": "po-12345",
+    "service_type": "laundry",
+    "completion_date": "2025-12-22",
+    "quantity_processed": 50,
+    "status": "COMPLETED"
+  }
+}
+```
+
+#### 3B: Goods Supplier Fulfillment (Warehouse Example)
+
+**Steps**:
+1. Supplier reserves inventory (in their Inventory module)
+2. Supplier picks goods from warehouse
+3. Supplier packs and ships goods
+4. Hotel receives goods and verifies
+
+**Events Published**:
+
+**Event 1**: Goods Shipped
+```json
+{
+  "event_type": "Procurement.Goods.Shipped.v1",
+  "event_version": "v1",
+  "payload": {
+    "po_id": "po-12345",
+    "tracking_number": "TRACK-12345",
+    "shipped_date": "2025-12-21"
+  }
+}
+```
+
+**Event 2**: Goods Received (Hotel confirms receipt)
+```json
+{
+  "event_type": "Procurement.Goods.Received.v1",
+  "event_version": "v1",
+  "tenant_id": "hotel-123",
+  "payload": {
+    "po_id": "po-12345",
+    "received_date": "2025-12-22",
+    "quantity_received": 50,
+    "quantity_damaged": 0,
+    "status": "RECEIVED"
+  }
+}
+```
+
+---
+
+### Phase 4: Invoice Issuance (Inter-Tenant Invoice)
+
+**Trigger**: Service completed OR goods received
+
+**Steps**:
+
+#### 4.1: Supplier Creates Invoice
+1. Supplier system creates invoice based on:
+   - PO details (quantity, unit price)
+   - Actual fulfillment (service completed, goods received)
+   - Contract terms (payment terms, taxes)
+
+**Invoice Record** (Supplier Tenant):
+```
+Invoice {
+  id: "inv-001",
+  tenant_id: "supplier-456",
+  po_id: "po-12345",
+  contract_id: "contract-999",
+  buyer_tenant_id: "hotel-123",
+
+  line_items: [
+    {
+      description: "Laundry service - 50 kg",
+      quantity: 50,
+      unit_price: 10,
+      total: 500
+    }
+  ],
+
+  subtotal: 500,
+  tax: 50,  // Assume 10% tax
+  total: 550,
+
+  invoice_date: "2025-12-22",
+  due_date: "2026-01-21",  // NET 30 per contract
+  status: "ISSUED",
+
+  accounting: {
+    account_code: "4100",  // Service Revenue
+    ar_account_code: "1200"  // Accounts Receivable
+  }
+}
+```
+
+#### 4.2: Supplier Publishes Inter-Tenant Invoice Event
+```json
+{
+  "event_type": "Accounting.Invoice.Issued.v1",
+  "event_version": "v1",
+  "event_id": "evt-invoice-issued-001",
+  "correlation_id": "po-12345",
+  "tenant_id": "supplier-456",
+  "from_tenant_id": "supplier-456",
+  "to_tenant_id": "hotel-123",
+  "contract_id": "contract-999",
+
+  "payload": {
+    "invoice_id": "inv-001",
+    "po_id": "po-12345",
+    "buyer_tenant_id": "hotel-123",
+    "seller_name": "ABC Laundry",
+    "invoice_date": "2025-12-22",
+    "due_date": "2026-01-21",
+    "
+    "line_items": [
+      {
+        "description": "Laundry service - 50 kg",
+        "quantity": 50,
+        "unit_price": 10,
+        "total": 500
+      }
+    ],
+    "subtotal": 500,
+    "tax": 50,
+    "total": 550
+  }
+}
+```
+
+#### 4.3: Hotel Receives Invoice (Creates AP)
+1. Hotel Accounting service consumes event
+2. Creates **Accounts Payable** (AP) record
+
+**AP Record** (Hotel Tenant):
+```
+AccountsPayable {
+  id: "ap-001",
+  tenant_id: "hotel-123",
+  invoice_id: "inv-001",
+  supplier_tenant_id: "supplier-456",
+  contract_id: "contract-999",
+
+  invoice_details: [
+    {
+      description: "Laundry service",
+      amount: 500
+    }
+  ],
+
+  subtotal: 500,
+  tax: 50,
+  total_due: 550,
+
+  invoice_date: "2025-12-22",
+  due_date: "2026-01-21",
+  status: "RECEIVED",  // Not yet approved
+
+  accounting: {
+    expense_account: "6100",  // Service Expense
+    ap_account: "2200"  // Accounts Payable
+  }
+}
+```
+
+**Supplier Accounting**:
+- Supplier records AR (Accounts Receivable) for $550
+- Account 1200: AR increase
+- Account 4100: Service Revenue
+
+**Hotel Accounting**:
+- Hotel records AP (Accounts Payable) for $550
+- Account 2200: AP increase
+- Account 6100: Service Expense (or 4100 if cost of goods)
+
+---
+
+### Phase 5: Invoice Approval & Journal Posting
+
+**Trigger**: Hotel receives invoice and reviews
+
+**Steps**:
+
+#### 5.1: Hotel Reviews & Approves Invoice
+1. Accounting staff reviews invoice in AP
+2. Verifies:
+   - Amount matches PO
+   - Service/goods actually received
+   - Invoice date and terms correct
+3. Clicks "Approve"
+
+**Event Published**:
+```json
+{
+  "event_type": "Accounting.Invoice.Approved.v1",
+  "event_version": "v1",
+  "tenant_id": "hotel-123",
+  "payload": {
+    "invoice_id": "inv-001",
+    "approved_by": "accounting-staff-123",
+    "approved_at": "2025-12-23"
+  }
+}
+```
+
+#### 5.2: Hotel Accounting Posts Journal Entry
+
+**Supplier's Perspective** (Supplier Tenant):
+```
+Journal Entry {
+  entry_id: "je-supplier-001",
+  description: "Service revenue recognized",
+
+  lines: [
+    {
+      account: "1200",  // AR
+      debit: 550,
+      credit: 0
+    },
+    {
+      account: "4100",  // Service Revenue
+      debit: 0,
+      credit: 500
+    },
+    {
+      account: "2300",  // Tax Payable
+      debit: 0,
+      credit: 50
+    }
+  ]
+}
+```
+
+**Hotel's Perspective** (Hotel Tenant):
+```
+Journal Entry {
+  entry_id: "je-hotel-001",
+  description: "Service expense - laundry",
+
+  lines: [
+    {
+      account: "6100",  // Service Expense
+      debit: 500,
+      credit: 0
+    },
+    {
+      account: "2300",  // Tax Payable
+      debit: 50,
+      credit: 0
+    },
+    {
+      account: "2200",  // AP
+      debit: 0,
+      credit: 550
+    }
+  ]
+}
+```
+
+**Key**: Two completely separate journal entries in two separate ledgers. No shared GL accounts.
+
+---
+
+### Phase 6: Payment Settlement
+
+**Trigger**: Invoice approved and due date approaching
+
+**Steps**:
+
+#### 6.1: Hotel Pays Invoice
+1. Hotel accounting initiates payment
+2. Payment method: bank transfer, credit card, etc.
+3. Sends payment to Supplier
+
+**Payment Record** (Hotel Tenant):
+```
+Payment {
+  id: "pay-001",
+  tenant_id: "hotel-123",
+  ap_id: "ap-001",
+  invoice_id: "inv-001",
+
+  amount: 550,
+  payment_method: "BANK_TRANSFER",
+  reference: "bank-txn-12345",
+  payment_date: "2025-12-30",
+  status: "COMPLETED"
+}
+```
+
+#### 6.2: Hotel Posts Payment Journal Entry
+```
+Journal Entry {
+  entry_id: "je-hotel-002",
+  description: "Payment to ABC Laundry",
+
+  lines: [
+    {
+      account: "2200",  // AP
+      debit: 550,
+      credit: 0
+    },
+    {
+      account: "1000",  // Cash / Bank
+      debit: 0,
+      credit: 550
+    }
+  ]
+}
+```
+
+Result: AP is now $0 (closed)
+
+#### 6.3: Payment Notification to Supplier
+1. Hotel publishes payment event
+
+**Event Published**:
+```json
+{
+  "event_type": "Accounting.Payment.Received.v1",
+  "event_version": "v1",
+  "event_id": "evt-payment-received-001",
+  "correlation_id": "po-12345",
+  "tenant_id": "hotel-123",
+  "from_tenant_id": "hotel-123",
+  "to_tenant_id": "supplier-456",
+
+  "payload": {
+    "invoice_id": "inv-001",
+    "amount_paid": 550,
+    "payment_date": "2025-12-30",
+    "payment_reference": "bank-txn-12345"
+  }
+}
+```
+
+#### 6.4: Supplier Posts Payment Journal Entry
+```
+Journal Entry {
+  entry_id: "je-supplier-002",
+  description: "Payment received from Hotel",
+
+  lines: [
+    {
+      account: "1000",  // Cash / Bank
+      debit: 550,
+      credit: 0
+    },
+    {
+      account: "1200",  // AR
+      debit: 0,
+      credit: 550
+    }
+  ]
+}
+```
+
+Result: AR is now $0 (settled)
+
+---
+
+## Status Lifecycle & Cross-Tenant Synchronization
+
+### PurchaseOrder Status Lifecycle
+
+**Status Machine**:
+```
+DRAFT ──[send]--> ISSUED ──[supplier_accepts]──> ACCEPTED ──[fulfill]--> COMPLETED
+  │                  │
+  │                  └──[supplier_rejects]──> REJECTED
+  │
+  └──[cancel]──> CANCELLED
+```
+
+**Status Meanings**:
+
+| Status | Owned By | Meaning | Actions Allowed |
+|--------|----------|---------|-----------------|
+| DRAFT | Buyer | PO created, not sent yet | Edit, send, cancel |
+| ISSUED | Buyer | PO sent to supplier, awaiting response | Track supplier response, retract, cancel |
+| ACCEPTED | Supplier | Supplier accepted the PO | Proceed with fulfillment |
+| REJECTED | Supplier | Supplier rejected the PO | View rejection reason, re-send modified PO |
+| COMPLETED | Buyer | Fulfillment complete, invoiced | View history, reference for future |
+| CANCELLED | Buyer | Buyer cancelled PO | View history (cannot reactivate) |
+
+### Cross-Tenant Status Synchronization
+
+**Problem**: Hotel's PO status and Supplier's copy may diverge due to:
+- Event delivery delays
+- Network timeouts
+- Both tenants updating independently
+
+**Solution**: Event-Driven Sync with Optimistic Lock
+
+**Hotel's View**:
+```
+PurchaseOrder {
+  id: "po-12345",
+  status: "ISSUED",
+  supplier_status: "ISSUED",     // What we know supplier thinks
+  supplier_status_as_of: timestamp,  // When we last confirmed
+  version: 1                      // Optimistic lock version
+}
+```
+
+**Supplier's View**:
+```
+PurchaseOrder {
+  id: "po-12345",
+  status: "ACCEPTED",             // What supplier actually did
+  buyer_status: "ISSUED",         // What we know hotel thinks
+  buyer_status_as_of: timestamp,
+  version: 1
+}
+```
+
+**Synchronization Flow**:
+
+```
+1. Hotel creates PO (status=DRAFT)
+   → Hotel: status=DRAFT
+   → Supplier: (doesn't exist yet)
+
+2. Hotel sends PO (status=ISSUED)
+   → Publishes: Procurement.PurchaseOrder.Issued.v1
+   → Hotel: status=ISSUED, supplier_status=UNKNOWN
+   → Supplier: receives event, creates local copy
+
+3. Supplier receives event (async processing)
+   → Creates PurchaseOrder (status=ISSUED)
+   → Supplier: status=ISSUED, buyer_status=ISSUED
+   → Publishes: Procurement.PurchaseOrder.Received.v1
+   → Hotel: receives "supplier received our PO"
+   → Hotel: Updates supplier_status=ISSUED
+
+4. Supplier accepts (status=ACCEPTED)
+   → Publishes: Procurement.PurchaseOrder.Accepted.v1
+   → Supplier: status=ACCEPTED, buyer_status=ISSUED (old, will sync)
+   → Hotel: receives event, updates supplier_status=ACCEPTED
+   → Hotel: status=ISSUED → ACCEPTED (matches supplier)
+
+5. If conflict (both updating):
+   → Use optimistic lock (version number)
+   → Last-write-wins with audit trail
+   → Log conflict resolution
+```
+
+**Reconciliation Query** (Detect Mismatches):
+```sql
+-- Find POs where Hotel and Supplier status disagree
+SELECT
+  h.po_id,
+  h.status as hotel_status,
+  h.supplier_status as hotel_knows_supplier_status,
+  CASE WHEN h.supplier_status != h.actual_supplier_status THEN 'MISMATCH' ELSE 'OK' END as sync_status
+FROM (
+  -- Hotel's view
+  SELECT po_id, status, supplier_status, supplier_status_as_of
+  FROM purchase_orders
+  WHERE tenant_id = 'hotel-123'
+) h
+LEFT JOIN (
+  -- Supplier's actual status (pulled via API or event)
+  SELECT po_id, status as actual_supplier_status
+  FROM purchase_orders
+  WHERE tenant_id = 'supplier-456'
+) s ON h.po_id = s.po_id
+WHERE h.supplier_status != s.actual_supplier_status;
+```
+
+### Status Sync Rules (LOCKED)
+
+**Rule 1: Status Changes via Events Only**
+- ❌ DO NOT poll supplier system to check status
+- ✅ DO listen to status-change events
+- ✅ DO accept events as source of truth for status
+
+**Rule 2: Idempotency**
+- Status change event received twice → No change (idempotent)
+- Retries don't cause duplicate status updates
+
+**Rule 3: Order Guarantee**
+- Events must be processed in order per PO
+- Queue events by PO ID to maintain order
+- Use sequence_number field to detect out-of-order
+
+**Rule 4: Conflict Resolution**
+- If both parties update simultaneously → Last write wins (by timestamp)
+- But: Sequence number determines "latest"
+- Conflict logged in audit trail
+
+---
+
+## Alternative Flows
+
+### Flow A: Partial Delivery / Partial Invoice
+
+**Scenario**: Supplier delivers part of order, invoices for partial amount
+
+**Steps**:
+1. Supplier ships only 30 kg (instead of 50 kg)
+2. Supplier creates partial invoice for $300 (30 × $10)
+3. Hotel receives partial invoice
+4. AP recorded for $300
+5. Remaining $200 PO remains open
+6. Supplier delivers remaining 20 kg later
+7. Supplier creates second invoice for $200
+
+**Implementation**: Multiple invoices, multiple APs, same PO
+
+---
+
+### Flow B: Invoice Dispute
+
+**Scenario**: Hotel questions invoice amount or quality
+
+**Steps**:
+1. Invoice received, status: "RECEIVED"
+2. Accounting staff finds discrepancy (overcharge or quality issue)
+3. Accounting holds invoice (status: "DISPUTED")
+4. Sends dispute message to Supplier
+5. Supplier and Hotel negotiate
+6. **Option 1**: Supplier issues credit note (reduces invoice)
+7. **Option 2**: Supplier re-delivers (removes invoice)
+8. AP updated once resolved
+
+**Implementation**: Workflow status, dispute tracking, comment thread
+
+---
+
+### Flow C: Credit Note / Return
+
+**Scenario**: Hotel returns goods or rejects service, Supplier issues credit note
+
+**Steps**:
+1. Hotel returns 10 kg of laundry (damaged)
+2. Hotel creates "Return" record
+3. Supplier issues credit note for $100 (10 × $10)
+
+**Event Published**:
+```json
+{
+  "event_type": "Accounting.CreditNote.Issued.v1",
+  "event_version": "v1",
+  "payload": {
+    "invoice_id": "inv-001",
+    "credit_note_id": "cn-001",
+    "reason": "Damaged laundry return",
+    "amount": -100  // Negative invoice
+  }
+}
+```
+
+**Supplier Accounting**:
+```
+Journal Entry {
+  lines: [
+    {
+      account: "4100",  // Service Revenue
+      debit: 100,       // Reverse revenue
+      credit: 0
+    },
+    {
+      account: "1200",  // AR
+      debit: 0,
+      credit: 100       // Reduce AR
+    }
+  ]
+}
+```
+
+**Hotel Accounting**:
+```
+Journal Entry {
+  lines: [
+    {
+      account: "2200",  // AP
+      debit: 100,       // Reduce AP
+      credit: 0
+    },
+    {
+      account: "6100",  // Service Expense
+      debit: 0,
+      credit: 100       // Reverse expense
+    }
+  ]
+}
+```
+
+---
+
+## Key Events (Cross-Tenant Event Contracts)
+
+All inter-tenant events follow this pattern:
+
+```json
+{
+  "event_type": "...",
+  "event_id": "...",
+  "correlation_id": "po-id",  // Links all related events
+  "tenant_id": "source-tenant",
+  "from_tenant_id": "source-tenant",
+  "to_tenant_id": "target-tenant",
+  "contract_id": "business-contract-id",
+  "payload": { ... }
+}
+```
+
+**Critical Fields**:
+- `from_tenant_id`: Which tenant is sending
+- `to_tenant_id`: Which tenant receives
+- `contract_id`: Business contract binding them
+- `correlation_id`: Trace all related transactions
+
+---
+
+## Accounting Rules (Non-Negotiable)
+
+### Rule 1: Separate Ledgers
+- Supplier has own ledger (AR for Hotel invoice)
+- Hotel has own ledger (AP for Supplier invoice)
+- No shared journals, no shared accounts
+
+### Rule 2: No Direct GL Writes
+- Events do NOT write to ledger directly
+- Accounting service consumes events
+- Accounting service creates journal entries
+- Ensures audit trail and validation
+
+### Rule 3: Event Doesn't Equal Recognition
+- Invoice event published ≠ revenue recognized
+- Revenue recognized only after:
+  - Invoice received
+  - Invoice approved
+  - Journal entry posted
+- Same for expense (Hotel side)
+
+### Rule 4: Complete Audit Trail
+- Every transaction traced: PO → Invoice → Payment → Journal
+- Correlation IDs link all steps
+- Both tenants have audit records
+- Can answer: "What happened with PO-12345?"
+
+### Rule 5: Rejection Reason Capture
+- When Supplier rejects PO, rejection_reason MUST be captured
+- Rejection reason is immutable (cannot be edited after rejection)
+- Hotel can use reason to improve PO and resubmit
+- Rejection reason must be logged in audit trail
+- Hotel can query: "Why was PO-12345 rejected?"
+
+### Rule 6: Cross-Tenant Currency Handling
+
+When Hotel and Supplier operate in different currencies:
+
+**Currency Recording**:
+- Invoice generated in Supplier's currency (supplier's GL perspective)
+- Hotel records AP in Hotel's currency (hotel's GL perspective)
+- Both must maintain original currency + amount
+
+**Multi-Currency Invoice Record**:
+```
+Invoice {
+  invoice_id: "inv-001",
+  supplier_currency: "USD",           // Supplier's home currency
+  supplier_amount: 550.00             // In supplier's currency
+
+  buyer_currency: "IDR",              // Hotel's home currency
+  buyer_amount: 8,250,000.00          // Converted for hotel's records
+  exchange_rate: 15000 USD/IDR        // Rate at invoice_date
+  rate_date: "2025-12-22"             // When rate locked
+}
+```
+
+**Exchange Rate Determination** (LOCKED RULE):
+- **Source**: Exchange rate at invoice_date (when invoice created)
+- **Lock Point**: Rate is immutable once invoice posted
+- **If changing suppliers**: Use published rate (no manual adjustment)
+- **Rate Provider**: Central bank rate or contract-specified provider
+
+**Journal Entries** (Both Tenants):
+```
+Supplier Accounting (Supplier Tenant):
+  Currency: USD (supplier's currency)
+
+  DR 1200 (AR)        550.00 USD
+    CR 4100 (Revenue) 500.00 USD
+    CR 2300 (Tax)      50.00 USD
+
+Hotel Accounting (Hotel Tenant):
+  Currency: IDR (hotel's currency)
+
+  DR 2200 (AP)        8,250,000 IDR
+    CR 6100 (Expense) 7,500,000 IDR  (500 × 15000)
+    CR 2300 (Tax)       750,000 IDR  (50 × 15000)
+
+Note: Each tenant uses their OWN currency. No currency conversion in GL.
+```
+
+**Payment Settlement**:
+```
+Payment Example:
+  Supplier wants payment in USD
+  Hotel has IDR
+
+Option 1: Hotel converts and sends USD
+  - Hotel: DR 2200 (AP) 8,250,000 IDR, CR Bank (USD equivalent)
+  - Exchange loss/gain: Posted to GL (FX Gain/Loss account)
+  - Supplier: Receives 550 USD, records: DR Bank 550, CR AR 550
+
+Option 2: Agreed middle currency (if multi-supply)
+  - Contract specifies payment currency
+  - Both calculate final amount at payment time
+  - Lock rate: Rate at payment_date
+  - Difference in rate → FX gain/loss for payor
+```
+
+**Revaluation**:
+- ❌ DO NOT revalue payables after posting
+- ✅ DO record FX gain/loss at payment time (separate transaction)
+- ✅ DO lock rate at invoice date (do not update)
+
+---
+
+## Business Contract
+
+### Contract Structure
+```
+BusinessContract {
+  id: "contract-999",
+  buyer_tenant_id: "hotel-123",
+  seller_tenant_id: "supplier-456",
+
+  status: "ACTIVE" | "SUSPENDED" | "CANCELLED",
+
+  terms: {
+    payment_terms: "NET 30",
+    default_tax_rate: 0.10,
+    price_list_version: 1
+  },
+
+  created_at: timestamp,
+  created_by: "buyer-admin",
+
+  modifications: [
+    { date, field, old_value, new_value, modified_by }
+  ]
+}
+```
+
+### Contract Governance
+- Buyer initiates (sends invitation)
+- Seller accepts (creates relationship)
+- Either party can suspend/cancel
+- All changes audited
+- Modifications require both parties' awareness
+
+### Contract Revocation & Data Cleanup
+When a Business Contract is revoked (see SPEC-10 for details):
+
+**Handling of Rejected POs**:
+- Rejected POs (status = REJECTED) are archived (not deleted)
+- Rejection reasons are preserved for audit trail
+- Hotel can still view rejection history
+- New POs cannot be created under revoked contract
+- Open/Accepted POs must be cancelled (with notification to Supplier)
+
+**Data Cleanup Options**:
+- **ARCHIVE** (default): Keep all PO history (including rejections), mark as inactive
+- **DELETE_CROSS_REFERENCES** (Buyer only): Remove supplier_tenant_id from POs, preserve local copy
+- **KEEP** (Read-only): Maintain references, revoke write access, can still view rejection reasons
+
+---
+
+## Implementation Checklist
+
+When implementing inter-tenant supplier flow:
+
+- [ ] Business Contract model created
+- [ ] PO model supports inter-tenant reference
+- [ ] PO can be sent via event to supplier
+- [ ] Supplier receives and can accept/reject PO
+- [ ] Invoice model supports inter-tenant reference
+- [ ] Invoice can be sent via event to buyer
+- [ ] Buyer AP created from received invoice
+- [ ] Supplier AR created from issued invoice
+- [ ] Payment event sent from buyer to seller
+- [ ] Journal entries created in both ledgers
+- [ ] No shared database tables between tenants
+- [ ] All events have correlation_id for tracing
+- [ ] Audit logs show both buyer and seller perspective
+- [ ] Tests verify complete transaction flow
+- [ ] Tests verify accounting balancing (both sides)
+
+---
+
+## Related Documents
+
+- **REF-05**: Core Concepts — User, Tenant, App relationships
+- **SPEC-10**: Accounting Core Process — How AP/AR and journal entries work
+- **SPEC-09**: PMS Core Process — How hotel operations generate requirements
+- **STD-19**: Event Model — How cross-tenant events are structured
+- **ARCH-09**: Modularization Principles — How modules interact
+- **SEC-02**: Data Protection — How data isolation is enforced

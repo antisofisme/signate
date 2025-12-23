@@ -22,7 +22,9 @@
       "Bash(rsync:*)",
       "Bash(xargs:*)",
       "Bash(where:*)",
-      "Bash(tree:*)"
+      "Bash(tree:*)",
+      "Bash(grep:*)",
+      "Bash(ls:*)"
     ],
     "deny": [],
     "ask": []

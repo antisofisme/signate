@@ -1429,19 +1429,25 @@ class DomainEvent(BaseModel, Generic[T]):
 ║  EVENT TYPE NAMING                                                         ║
 ╠═══════════════════════════════════════════════════════════════════════════╣
 ║                                                                            ║
-║  {app}      = pms, pos, accounting, hrm, inventory                        ║
-║  {entity}   = reservation, order, journal, employee, stock                ║
-║  {action}   = created, updated, deleted, approved, posted, voided         ║
+║  {Module}   = PMS, POS, Accounting, HRM, Inventory (PascalCase)          ║
+║  {Entity}   = Reservation, Order, Journal, Employee, Stock (PascalCase)  ║
+║  {Action}   = Created, Updated, Deleted, Approved, Posted, Voided       ║
 ║  {version}  = v1, v2 (untuk breaking changes)                             ║
 ║                                                                            ║
+║  FORMAT: {Module}.{Entity}.{Action}.v{N} — ALL PascalCase, NO exceptions  ║
+║                                                                            ║
 ║  Examples:                                                                 ║
-║  • pms.reservation.created.v1                                             ║
-║  • pms.room_charge.posted.v1                                              ║
-║  • pos.order.completed.v1                                                 ║
-║  • accounting.journal.approved.v1                                         ║
-║  • accounting.journal.voided.v1                                           ║
-║  • hrm.employee.terminated.v1                                             ║
-║  • inventory.stock.adjusted.v1                                            ║
+║  • PMS.Reservation.Created.v1            (was: pms.reservation.created)   ║
+║  • PMS.RoomCharge.Posted.v1              (was: pms.room_charge.posted)    ║
+║  • POS.Order.Completed.v1                (was: pos.order.completed)       ║
+║  • Accounting.Journal.Approved.v1        (was: accounting.journal.appr)   ║
+║  • Accounting.Journal.Voided.v1          (was: accounting.journal.voided) ║
+║  • HRM.Employee.Terminated.v1            (was: hrm.employee.terminated)   ║
+║  • Inventory.Stock.Adjusted.v1           (was: inventory.stock.adjusted)  ║
+║                                                                            ║
+║  VALIDATION RULE (MANDATORY):                                             ║
+║  ✅ Event name MUST match regex: ^[A-Z][a-z]+\\.[A-Z][a-z]+\\.[A-Z][a-z]+\\.v\\d+$ ║
+║  ❌ MUST NOT use lowercase, underscores, hyphens (dots only)              ║
 ║                                                                            ║
 ╚═══════════════════════════════════════════════════════════════════════════╝
 ```
@@ -1470,11 +1476,11 @@ class DomainEvent(BaseModel, Generic[T]):
 ```json
 {
   "event_id": "evt-550e8400-e29b-41d4-a716-446655440000",
-  "event_type": "pms.room_charge.posted.v1",
+  "event_type": "PMS.RoomCharge.Posted.v1",
   "timestamp": "2025-12-09T10:30:00.123Z",
 
   "source_service": "pms",
-  "tenant_id": "org_123",
+  "tenant_id": "550e8400-e29b-41d4-a716-446655440000",
   "user_id": 456,
 
   "correlation_id": "req-abc-123-def",
@@ -1568,47 +1574,47 @@ export const EVENT_TYPES = {
   // PMS Events
   PMS: {
     RESERVATION: {
-      CREATED: 'pms.reservation.created.v1',
-      UPDATED: 'pms.reservation.updated.v1',
-      CANCELLED: 'pms.reservation.cancelled.v1',
-      CHECKED_IN: 'pms.reservation.checked_in.v1',
-      CHECKED_OUT: 'pms.reservation.checked_out.v1',
+      CREATED: 'PMS.Reservation.Created.v1',
+      UPDATED: 'PMS.Reservation.Updated.v1',
+      CANCELLED: 'PMS.Reservation.Cancelled.v1',
+      CHECKED_IN: 'PMS.Reservation.CheckedIn.v1',
+      CHECKED_OUT: 'PMS.Reservation.CheckedOut.v1',
     },
     ROOM_CHARGE: {
-      POSTED: 'pms.room_charge.posted.v1',
-      VOIDED: 'pms.room_charge.voided.v1',
+      POSTED: 'PMS.RoomCharge.Posted.v1',
+      VOIDED: 'PMS.RoomCharge.Voided.v1',
     },
   },
 
   // POS Events
   POS: {
     ORDER: {
-      CREATED: 'pos.order.created.v1',
-      COMPLETED: 'pos.order.completed.v1',
-      CANCELLED: 'pos.order.cancelled.v1',
+      CREATED: 'POS.Order.Created.v1',
+      COMPLETED: 'POS.Order.Completed.v1',
+      CANCELLED: 'POS.Order.Cancelled.v1',
     },
   },
 
   // Accounting Events
   ACCOUNTING: {
     JOURNAL: {
-      CREATED: 'accounting.journal.created.v1',
-      POSTED: 'accounting.journal.posted.v1',
-      APPROVED: 'accounting.journal.approved.v1',
-      VOIDED: 'accounting.journal.voided.v1',
+      CREATED: 'Accounting.Journal.Created.v1',
+      POSTED: 'Accounting.Journal.Posted.v1',
+      APPROVED: 'Accounting.Journal.Approved.v1',
+      VOIDED: 'Accounting.Journal.Voided.v1',
     },
     INVOICE: {
-      CREATED: 'accounting.invoice.created.v1',
-      PAID: 'accounting.invoice.paid.v1',
+      CREATED: 'Accounting.Invoice.Created.v1',
+      PAID: 'Accounting.Invoice.Paid.v1',
     },
   },
 
   // Inventory Events
   INVENTORY: {
     STOCK: {
-      RECEIVED: 'inventory.stock.received.v1',
-      ISSUED: 'inventory.stock.issued.v1',
-      ADJUSTED: 'inventory.stock.adjusted.v1',
+      RECEIVED: 'Inventory.Stock.Received.v1',
+      ISSUED: 'Inventory.Stock.Issued.v1',
+      ADJUSTED: 'Inventory.Stock.Adjusted.v1',
     },
   },
 } as const;
@@ -1621,28 +1627,28 @@ export type EventType = typeof EVENT_TYPES;
 class EventTypes:
     class PMS:
         class RESERVATION:
-            CREATED = "pms.reservation.created.v1"
-            UPDATED = "pms.reservation.updated.v1"
-            CANCELLED = "pms.reservation.cancelled.v1"
-            CHECKED_IN = "pms.reservation.checked_in.v1"
-            CHECKED_OUT = "pms.reservation.checked_out.v1"
+            CREATED = "PMS.Reservation.Created.v1"
+            UPDATED = "PMS.Reservation.Updated.v1"
+            CANCELLED = "PMS.Reservation.Cancelled.v1"
+            CHECKED_IN = "PMS.Reservation.CheckedIn.v1"
+            CHECKED_OUT = "PMS.Reservation.CheckedOut.v1"
 
         class ROOM_CHARGE:
-            POSTED = "pms.room_charge.posted.v1"
-            VOIDED = "pms.room_charge.voided.v1"
+            POSTED = "PMS.RoomCharge.Posted.v1"
+            VOIDED = "PMS.RoomCharge.Voided.v1"
 
     class POS:
         class ORDER:
-            CREATED = "pos.order.created.v1"
-            COMPLETED = "pos.order.completed.v1"
-            CANCELLED = "pos.order.cancelled.v1"
+            CREATED = "POS.Order.Created.v1"
+            COMPLETED = "POS.Order.Completed.v1"
+            CANCELLED = "POS.Order.Cancelled.v1"
 
     class ACCOUNTING:
         class JOURNAL:
-            CREATED = "accounting.journal.created.v1"
-            POSTED = "accounting.journal.posted.v1"
-            APPROVED = "accounting.journal.approved.v1"
-            VOIDED = "accounting.journal.voided.v1"
+            CREATED = "Accounting.Journal.Created.v1"
+            POSTED = "Accounting.Journal.Posted.v1"
+            APPROVED = "Accounting.Journal.Approved.v1"
+            VOIDED = "Accounting.Journal.Voided.v1"
 ```
 
 ---
