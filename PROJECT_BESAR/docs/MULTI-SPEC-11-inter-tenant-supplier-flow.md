@@ -437,6 +437,27 @@ Invoice {
 }
 ```
 
+**HIGH GUARDRAIL - Invoice-PO Matching (3-Way Match)**:
+```
+RULE: Invoice must match PO and GoodsReceipt (or ServiceCompletion) before posting
+RULE: Discrepancies > 1% must be reviewed and approved before posting AP
+```
+**Matching Process**:
+- PO Validation: Invoice.po_id must reference existing, ACCEPTED PO
+- Quantity Match: Invoice quantity ≤ PO quantity (for partial invoices)
+- Amount Match: Invoice total must match PO amount (within 1% tolerance)
+- If Invoice > PO amount by > 1%:
+  - Create PO-Invoice mismatch alert
+  - Set AP status = PENDING_MATCH
+  - Require manual review + approval before payment
+- GoodsReceipt Match (for goods):
+  - Invoice quantity ≤ GoodsReceipt quantity received
+  - Prevents invoicing for undelivered goods
+- ServiceCompletion Match (for services):
+  - Invoice issued AFTER service marked COMPLETED
+  - Prevents premature invoicing
+- Once matched: AP status = APPROVED, ready for payment
+
 #### 4.2: Supplier Publishes Inter-Tenant Invoice Event
 ```json
 {
@@ -734,6 +755,29 @@ DRAFT ──[send]--> ISSUED ──[supplier_accepts]──> ACCEPTED ──[ful
 | REJECTED | Supplier | Supplier rejected the PO | View rejection reason, re-send modified PO |
 | COMPLETED | Buyer | Fulfillment complete, invoiced | View history, reference for future |
 | CANCELLED | Buyer | Buyer cancelled PO | View history (cannot reactivate) |
+
+### HIGH GUARDRAIL - PO Modification Rules
+
+**Modification Allowed**:
+- DRAFT: Full modification allowed (amount, items, delivery date)
+- ISSUED: Buyer can retract, Supplier has NOT accepted yet
+- REJECTED: Buyer can create new PO with modifications
+
+**Modification NOT Allowed**:
+- ACCEPTED: No modifications (supplier committed to PO)
+- COMPLETED: Read-only (historical record)
+- CANCELLED: Cannot reactivate (create new PO instead)
+
+**Amount Changes**:
+- If line items changed: Must increase tolerance by ≤ 10%
+- If increase > 10%: Requires re-negotiation (cancel + new PO)
+- Any amount change AFTER supplier accepted: New negotiation required
+
+**Implementation**:
+- Check PO.status before allowing modification
+- Log all modifications with reason and approval chain
+- If ACCEPTED and modification attempted: Block with message "Cannot modify accepted PO"
+- Prevents invoice-PO mismatch disputes
 
 ### Cross-Tenant Status Synchronization
 

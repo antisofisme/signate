@@ -43,6 +43,27 @@ Current stock is CALCULATED, not stored.
 Can rebuild any time from movement history.
 ```
 
+### HIGH GUARDRAIL - Stock Reconciliation (Cycle Count)
+```
+RULE: Physical stock must be verified against system stock periodically
+RULE: Reconciliation required at least monthly, more often for high-value items
+RULE: Discrepancies must be investigated and approved
+```
+**Implementation**:
+- Warehouse staff performs physical count (full or cycle count)
+- System calculates system_qty from StockMovement history
+- If physical_qty ≠ system_qty:
+  - Create CycleCountAdjustment record (pending approval)
+  - Calculate variance: abs(physical_qty - system_qty)
+  - If variance > threshold (e.g., 5% or 10 units):
+    - Require manager approval
+    - Publish InventoryAdjustment.VarianceFound.v1 event
+  - If variance ≤ threshold: Auto-approve (normal shrinkage tolerance)
+- Once approved: Create StockMovement with movement_type='adjustment'
+- Adjustment includes reason (shrinkage, waste, count_error, theft)
+- Records who counted, when counted, adjustment amount, and approval chain
+- Prevents silent inventory drift from accumulating
+
 ---
 
 ## Domain 1: Master Data
@@ -71,6 +92,18 @@ Can rebuild any time from movement history.
 - sku is human-readable identifier
 - unit_of_measure controls quantity units
 - reorder_level triggers alerts
+
+**HIGH GUARDRAIL - Unit of Measure Consistency**:
+```
+RULE: All stock movements for an Item MUST use the same unit_of_measure
+RULE: Cannot convert or mix units in transactions
+```
+**Implementation**:
+- When creating StockMovement: Validate movement.quantity_unit matches Item.unit_of_measure
+- Reject any movement with mismatched unit (error: "Unit mismatch: expected 'kg', got 'box'")
+- If unit conversion needed: Create separate adjustment movement with explicit conversion
+- Audit trail records unit conversion with approval
+- Prevents silent quantity errors (e.g., 50 units in one UOM treated as 50 in another)
 
 ---
 
@@ -200,6 +233,25 @@ StockMovement → GoodsReceipt (via reference_id)
 GoodsReceipt 1--* GoodsReceiptLine
 GoodsReceipt → StockMovement (via reference_id)
 ```
+
+**HIGH GUARDRAIL - Goods Receipt Variance Tolerance**:
+```
+RULE: Received quantity must match PO quantity (within tolerance)
+RULE: Variance > tolerance requires investigation and approval
+RULE: QC (Quality Check) required for goods before posting
+```
+**Implementation**:
+- When receiving goods: Calculate variance = abs(received_qty - po_qty) / po_qty
+- If variance ≤ 3%: Auto-approve (normal tolerance for shortages/overages)
+- If variance > 3%:
+  - Create GoodsReceiptVariance record (pending review)
+  - Require warehouse manager + procurement approval
+  - Can accept (adjust PO) or reject (send back to supplier)
+- QC process mandatory before posting to GL:
+  - Inspect goods for damage, expiry, quality
+  - If QC fails: Mark as rejected, create return authorization
+  - If QC passes: Allow posting to StockMovement
+- Prevents posting incorrect quantities to inventory
 
 ---
 
