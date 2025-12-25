@@ -146,7 +146,7 @@ WHERE item_id = $1 AND warehouse_id = $2
 | `quantity` | INT | NOT NULL | Quantity moved (positive) |
 | `unit_cost` | DECIMAL(12,4) | | Unit cost at time of movement (for COGS) |
 | `reference_type` | ENUM | NOT NULL | 'po', 'goods_receipt', 'issue', 'count', 'manual' |
-| `reference_id` | VARCHAR | | FK to originating document |
+| `reference_id` | VARCHAR | NOT NULL | FK to originating document (MANDATORY - audit trail requires traceability) |
 | `occurred_at` | TIMESTAMP | NOT NULL | When movement happened |
 | `created_at` | TIMESTAMP | NOT NULL | Record creation |
 
@@ -318,6 +318,17 @@ Posts GL (DR COGS Expense, CR Inventory Asset)
 - COGSEntry does NOT modify GL
 - Creates event for Accounting to consume
 - Maintains separation of concerns
+
+**GUARDRAIL - GL Posting Failure Handling**:
+If Accounting.Adjustment handler fails to post GL entry after Inventory.COGS.Calculated event:
+- COGSEntry remains in database (non-repudiation)
+- Accounting adds to failed_processing queue with retry logic (per CORE-STD-20 lines 575-590)
+- If GL posting fails permanently after 24-hour retry window:
+  1. COGSEntry marked status = PENDING_GL_CORRECTION
+  2. Alert published: OperationalAlert.COGSGLPostingFailed.v1
+  3. Manual GL correction entry required
+  4. Never automatically reverse or delete COGSEntry
+- Inventory stock level already reduced (no compensation needed - stock is physical fact)
 
 ### COGS Approval Workflow (For Manual Adjustments)
 

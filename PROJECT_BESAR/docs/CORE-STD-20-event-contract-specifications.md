@@ -229,9 +229,9 @@ Published when guest checks in.
 
 ---
 
-### PMS.Guest.CheckedOut.v1
+### PMS.Reservation.CheckedOut.v1
 
-Published when guest checks out and folio closes.
+Published when guest checks out and folio closes. Signals reservation completion and folio settlement.
 
 ```json
 {
@@ -245,6 +245,10 @@ Published when guest checks out and folio closes.
 ```
 
 **Consumer**: Accounting.Adapter (finalizes folio invoice, posts GL)
+
+---
+
+**Note**: Prior naming (PMS.Guest.CheckedOut.v1, PMS.Folio.Settled.v1) is deprecated. Use PMS.Reservation.CheckedOut.v1 as authoritative event name for all implementations.
 
 ---
 
@@ -371,24 +375,22 @@ Published when action requires approval (e.g., invoice >$5K).
 
 ---
 
-### Approval.Decided.v1
+### Approval Events (Authoritative - See CORE-SPEC-09)
 
-Published when approver decides (approved/rejected).
+**NOTE**: Approval event names are standardized in CORE-SPEC-09. Do NOT use `Approval.Decided.v1` (deprecated).
 
-```json
-{
-  "approval_id": "uuid",
-  "entity_id": "uuid",
-  "decision": "approved|rejected",
-  "decided_by": "uuid",
-  "decided_at": "ISO-8601",
-  "notes": "string|null"
-}
-```
+**Authoritative Approval Events**:
+- `Approval.Submitted.v1` — Approval request submitted (entity moves to PENDING_APPROVAL)
+- `Approval.Approved.v1` — Approved by authorized user (entity moves to APPROVED)
+- `Approval.Rejected.v1` — Rejected with reason (entity moves to REJECTED)
+- `Approval.Expired.v1` — Auto-expired after timeout (entity moves to ARCHIVED)
 
-**Consumers**:
-- Original process (continues if approved)
-- Audit trail (records decision)
+**Consumers of Approval Events**:
+- Original process continues if approved
+- Process halts if rejected (awaits resubmission)
+- Audit trail records all approval decisions
+
+See CORE-SPEC-09 sections 175-252 for complete approval event specifications, including payload schemas and state machine diagrams.
 
 ---
 
@@ -462,20 +464,63 @@ const signature = crypto
 event.signature = signature;
 ```
 
-### Consumer Verification
+### Consumer Verification & Enforcement
 
-Consumers MUST verify signature before processing:
+Consumers MUST verify signature before processing. **MANDATORY error handling**:
 
 ```typescript
-function isValidEvent(event) {
+function processEvent(event) {
+  // Step 1: Check signature field exists
+  if (!event.signature || typeof event.signature !== 'string') {
+    throw new SecurityException(
+      'SIGNATURE_MISSING_OR_INVALID',
+      `Event ${event.event_id} missing signature field. Rejecting to prevent tampering.`
+    );
+  }
+
+  // Step 2: Verify signature matches
   const expected = crypto
     .createHmac('sha256', SECRET_KEY)
     .update(JSON.stringify({...event, signature: undefined}))
     .digest('hex');
 
-  return event.signature === expected;
+  if (event.signature !== expected) {
+    // Log tampering attempt
+    logger.error('TAMPERING_DETECTED', {
+      event_id: event.event_id,
+      event_type: event.event_type,
+      tenant_id: event.tenant_id,
+      expected_signature: expected,
+      received_signature: event.signature
+    });
+
+    // Route to dead-letter-queue (DLQ)
+    await publishToDeadLetterQueue(event, 'SIGNATURE_VERIFICATION_FAILED');
+
+    // Reject event processing
+    throw new SecurityException(
+      'SIGNATURE_VERIFICATION_FAILED',
+      `Event ${event.event_id} signature verification failed. Event routed to DLQ.`
+    );
+  }
+
+  // Step 3: Event is valid, proceed with processing
+  return handleEvent(event);
 }
 ```
+
+**Error Handling Rules**:
+- Missing signature field → Throw `SecurityException` (reject immediately)
+- Signature mismatch → Throw `SecurityException` + route to DLQ (dead-letter-queue)
+- Do NOT silently skip verification
+- Do NOT log sensitive event payloads to standard logs (only to secure audit log)
+- Do NOT process event if signature verification fails
+
+**DLQ (Dead-Letter-Queue) Routing**:
+- Failed events stored in `events_invalid_signature` table
+- Event state: `TAMPERING_DETECTED`
+- Alerts: Publish `SecurityEvent.TamperingDetected.v1` to operations team
+- Investigation: Security team reviews DLQ weekly for tampering patterns
 
 ### Audit Logging
 
@@ -489,6 +534,132 @@ function isValidEvent(event) {
 - Events for Tenant A cannot be read by Tenant B (database-level filtering)
 - Event consumers scoped to tenant context
 - Cross-tenant events (Supplier flows) use separate flow with explicit approval
+
+---
+
+## Atomic Financial Event Processing
+
+For **financial events** (payment, invoice, journal entry, FX gain/loss), the system MUST guarantee atomicity between event publishing and persistent state changes:
+
+### Rule: GL Posting MUST Succeed Before Event Marked Processed
+
+Financial event processing follows strict ordering:
+
+```
+1. Receive event
+2. Verify signature (fail = reject, no GL processing)
+3. Acquire pessimistic lock on affected accounts
+4. Attempt GL posting (journal entry creation)
+   ├─ IF GL posting SUCCEEDS → Mark event status = PROCESSED
+   └─ IF GL posting FAILS → Event returns to retry queue (NOT DLQ)
+5. Release lock
+6. Publish acknowledgment to producer
+```
+
+**Idempotency Key Requirement**:
+```
+Every financial event MUST include idempotency_key field.
+If event processed twice, GL posting is idempotent (no duplicate entries).
+
+Example:
+{
+  "event_id": "evt-123",
+  "idempotency_key": "inv-payment-456-attempt-1",
+  "event_type": "Accounting.Payment.Recorded.v1",
+  ...
+}
+```
+
+**Failure Handling**:
+- **GL posting fails** → Event stored in `events_failed_processing` table
+- **Retry policy**: Exponential backoff (1s, 2s, 4s, 8s, 30s) up to 24 hours
+- **Max retries**: 10 attempts before manual intervention flag
+- **Alert on failure**: Publish `OperationalAlert.PaymentProcessingFailed.v1` to finance team
+- **Manual override**: Finance team can manually post GL and mark event processed
+
+**Compensation Pattern** (if GL posting impossible):
+```
+IF GL posting fails after 24 hours:
+  1. Publish CompensationRequired.v1 event (signals reversal needed)
+  2. Create audit record: "GL posting failed, reversal initiated"
+  3. Notify finance: "Manual GL correction required for event EVT-123"
+  4. Wait for manual reconciliation before moving event to FAILED
+```
+
+**Transaction Isolation for Financial Events**:
+- Financial events processed **serially per tenant** (no parallelization)
+- Prevents race conditions on GL account balances
+- Ordered by occurred_at timestamp (not published_at)
+- No out-of-order processing allowed for same tenant
+
+### Temporal Consistency Guarantee
+
+For multi-step workflows (invoice → payment → FX settlement):
+```
+Events processed in order of occurred_at:
+  1. Accounting.Invoice.Created.v1 (occurred_at: T1)
+  2. Accounting.Payment.Recorded.v1 (occurred_at: T2)
+  3. Accounting.FXGainLoss.Realized.v1 (occurred_at: T3)
+
+GL state after each step MUST be consistent:
+  T1: GL shows invoice (AP balance updated)
+  T2: GL shows payment (AP paid down, bank updated)
+  T3: GL shows FX adjustment (FX account updated)
+
+Consumer MUST process in this order or REJECT out-of-order event.
+```
+
+---
+
+## Mandatory Event Fields (Non-Optional)
+
+Every event MUST include ALL of the following fields. Missing or null values result in rejection:
+
+| Field | Type | Required | Validation | Consequence if Missing |
+|-------|------|----------|------------|------------------------|
+| `event_id` | UUID string | **✅ MANDATORY** | UUID v4 format, globally unique | 400 Bad Request, event rejected |
+| `event_type` | string | **✅ MANDATORY** | Format: `Module.Entity.Action.vN` (PascalCase) | 400 Bad Request, event rejected |
+| `event_version` | string | **✅ MANDATORY** | Must match version in event_type (e.g., "v1") | 400 Bad Request, version mismatch error |
+| `tenant_id` | UUID string | **✅ MANDATORY** | UUID v4 format, identifies tenant | 400 Bad Request, tenant isolation violated |
+| `correlation_id` | UUID string | **✅ MANDATORY** | UUID v4 format, links related events | 400 Bad Request, tracing broken |
+| `occurred_at` | ISO-8601 timestamp | **✅ MANDATORY** | When event occurred in source system | 400 Bad Request, chronological ordering impossible |
+| `published_at` | ISO-8601 timestamp | **✅ MANDATORY** | When event was published | 400 Bad Request, audit trail gaps |
+| `signature` | HMAC-SHA256 hex string | **✅ MANDATORY** | 64-character hex string, non-null, non-empty | 400 Bad Request, **SECURITY REJECTION** - unsigned events BLOCKED |
+| `payload` | JSON object | **✅ MANDATORY** (can be empty `{}`) | Valid JSON, max 10 KB | 400 Bad Request if exceeds 10 KB |
+
+**Enforcement**: Event publishing API MUST validate ALL mandatory fields before accepting event:
+
+```typescript
+function validateMandatoryFields(event: Event): void {
+  const requiredFields = [
+    'event_id', 'event_type', 'event_version', 'tenant_id',
+    'correlation_id', 'occurred_at', 'published_at', 'signature', 'payload'
+  ];
+
+  for (const field of requiredFields) {
+    if (!event[field]) {
+      throw new ValidationError('MISSING_MANDATORY_FIELD',
+        `Event field "${field}" is mandatory and cannot be null or empty. Rejecting event.`);
+    }
+
+    // Special check for signature: cannot be empty string
+    if (field === 'signature' && (!event.signature || event.signature.trim() === '')) {
+      throw new ValidationError('INVALID_SIGNATURE',
+        `Event signature field cannot be null or empty. Rejecting event.`);
+    }
+  }
+
+  // Additional validation: signature must be 64 hex characters
+  if (!/^[a-f0-9]{64}$/i.test(event.signature)) {
+    throw new ValidationError('INVALID_SIGNATURE_FORMAT',
+      `Event signature must be 64-character hex string (HMAC-SHA256). Got: ${event.signature}`);
+  }
+}
+
+// Call before publish
+validateMandatoryFields(event);
+await publishEvent(event);
+```
 
 ---
 
@@ -506,7 +677,8 @@ function isValidEvent(event) {
 | **Omitting correlation_id** | **Breaks event tracing and correlation** | **Publishing event without correlation_id (ALWAYS REQUIRED)** |
 | Using event for immediate data sync | Events are async, not guaranteed ordering | Publishing event and immediately reading from DB before consumer processes |
 | Free-form event_type | Makes discoverability and versioning impossible | Publishing as "event_123" or "stuff_happened" |
-| Omitting signature | Enables tampering and security breaches | Publishing unsigned events |
+| **Omitting signature** | **Enables tampering and security breaches** | **Publishing event without signature field results in 400 Bad Request (MANDATORY)** |
+| **Signature field is null/empty** | **Violates security contract** | **signature: null or signature: "" rejected at publishing time (NOT optional)** |
 
 ---
 
@@ -516,7 +688,7 @@ function isValidEvent(event) {
 
 ```
 1. Guest checks out
-   └─ PMS publishes: PMS.Guest.CheckedOut.v1
+   └─ PMS publishes: PMS.Reservation.CheckedOut.v1
       payload: {reservation_id, folio_id, charges}
       correlation_id: "abc-123"
 

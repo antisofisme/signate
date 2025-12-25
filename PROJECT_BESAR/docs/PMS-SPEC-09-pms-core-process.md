@@ -176,12 +176,12 @@ If reservation came from Channel Manager (OTA, travel agent, booking.com):
    - (Optional) sends notification to guest
 
 4. During stay:
-   - PMS publishes: PMS.Guest.CheckedIn.v1
+   - PMS publishes: PMS.Reservation.CheckedIn.v1 (per CORE-STD-20)
    - Channel Manager receives and updates OTA status
    - Prevents cancellation during active stay
 
 5. At check-out:
-   - PMS publishes: PMS.Guest.CheckedOut.v1
+   - PMS publishes: PMS.Reservation.CheckedOut.v1 (per CORE-STD-20, replaces deprecated PMS.Guest.CheckedOut.v1)
    - Folio closed and invoice created
    - Channel Manager receives, marks booking complete
    - Channel Manager ready for guest review/rating
@@ -231,7 +231,10 @@ If reservation came from Channel Manager (OTA, travel agent, booking.com):
 4. Staff assigns room:
    - System suggests available rooms of requested type
    - Staff can override (if guest requests different room)
-   - System holds room (prevents double-assignment)
+   - **GUARDRAIL**: System holds room via pessimistic locking (SELECT ... FOR UPDATE) to prevent double-assignment
+     - Prevents race condition: two staff cannot assign same room simultaneously
+     - Lock held until check-in confirmed OR cancelled
+     - Timeout: 30 seconds (if transaction fails, lock auto-released)
 
 5. System **creates Folio**:
    ```
@@ -400,6 +403,11 @@ Rule: Staff cannot post charge for date > 3 days past without manager approval
 **Prerequisites**:
 - Guest folio is OPEN
 - Guest has settled payment or authorized billing method
+- **GUARDRAIL**: Folio balance_due = 0 BEFORE check-out allowed
+  - Cannot transition folio to SETTLED/CLOSED unless balance_due = 0
+  - If balance_due > 0: Manager override required
+  - Override creates CLOSED folio (not SETTLED)
+  - Prevents revenue leakage from unpaid guests
 
 **Steps**:
 

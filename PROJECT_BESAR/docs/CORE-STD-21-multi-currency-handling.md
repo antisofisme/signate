@@ -209,7 +209,7 @@ CREATE TABLE exchange_rates (
   INDEX idx_rates_lookup (tenant_id, from_currency, to_currency, rate_date DESC)
 );
 
--- FX gain/loss ledger
+-- FX gain/loss ledger (IMMUTABLE AFTER POSTING)
 CREATE TABLE fx_transactions (
   id UUID PRIMARY KEY,
   tenant_id UUID NOT NULL REFERENCES tenants(id),
@@ -222,20 +222,97 @@ CREATE TABLE fx_transactions (
   from_amount DECIMAL(18,2) NOT NULL,
   to_amount DECIMAL(18,2) NOT NULL,
 
-  rate_at_creation DECIMAL(18,8),
-  rate_at_settlement DECIMAL(18,8),
+  rate_at_creation DECIMAL(18,8) NOT NULL,  -- IMMUTABLE (locked at invoice date, cannot change)
+  rate_at_settlement DECIMAL(18,8),         -- IMMUTABLE (locked at settlement, cannot change)
 
   fx_gain_loss DECIMAL(18,2),           -- Positive = gain, Negative = loss
   fx_gain_loss_type VARCHAR(20),        -- 'REALIZED', 'UNREALIZED'
 
   gl_entry_id UUID REFERENCES journal_entries(id),
 
-  posted_at TIMESTAMP,
+  posted_at TIMESTAMP,              -- NULL before posting, immutable after
   posted_by UUID REFERENCES users(id),
 
   created_at TIMESTAMP DEFAULT NOW(),
-  updated_at TIMESTAMP
+  -- NOTE: NO updated_at field - once posted, record is immutable
+
+  -- CRITICAL: Enforce immutability - rates CANNOT change once record created
+  -- Application code MUST validate before UPDATE attempts
+  -- This table designed for INSERT/SELECT only, UPDATE forbidden on rate fields
+  CHECK (posted_at IS NOT NULL OR (rate_at_creation IS NOT NULL AND rate_at_settlement IS NULL)),
+
+  -- Prevent dual-state (partially posted)
+  CHECK ((posted_at IS NULL AND posted_by IS NULL) OR (posted_at IS NOT NULL AND posted_by IS NOT NULL)),
+
+  -- GUARDRAIL: Prevent any UPDATE to rate fields (immutability enforcement)
+  -- Database-level: CREATE TRIGGER prevent_rate_updates
+  --   IF rate_at_creation_old != rate_at_creation_new OR rate_at_settlement_old != rate_at_settlement_new
+  --   THEN RAISE EXCEPTION 'FX rates are immutable after creation'
+  -- Application-level: All UPDATE statements FORBIDDEN on rate_at_creation, rate_at_settlement
+
+  INDEX idx_fx_lookup (tenant_id, source_transaction_id),
+  INDEX idx_fx_settlement (tenant_id, posted_at DESC)
 );
+```
+
+### Immutability Enforcement
+
+**Database Level**: CHECK constraints prevent schema violations
+
+**Application Level**: All code that updates fx_transactions must enforce immutability:
+
+```typescript
+async function updateFXTransaction(txnId: string, updates: Partial<FXTransaction>): Promise<void> {
+  // Step 1: Fetch current state
+  const current = await getFXTransaction(txnId);
+
+  // Step 2: CRITICAL CHECK - if posted, reject any updates
+  if (current.posted_at !== null) {
+    throw new ValidationError('IMMUTABLE_RECORD',
+      `FX transaction ${txnId} has been posted to GL (posted_at=${current.posted_at}). ` +
+      `Cannot modify posted FX transactions. ` +
+      `To correct: create reversal entry + repost.`);
+  }
+
+  // Step 3: Allow updates only to pre-posting fields
+  const allowedUpdates = [
+    'fx_gain_loss_type'  // Only type can change before posting
+  ];
+
+  for (const field of Object.keys(updates)) {
+    if (field === 'rate_at_creation' || field === 'rate_at_settlement') {
+      throw new ValidationError('RATE_IMMUTABLE',
+        `Cannot modify ${field} - exchange rates locked at transaction creation. ` +
+        `Current value: ${current[field]}. ` +
+        `To adjust: create new FX transaction with updated rates.`);
+    }
+
+    if (!allowedUpdates.includes(field)) {
+      throw new ValidationError('UPDATE_NOT_ALLOWED',
+        `Field ${field} cannot be updated on FX transactions.`);
+    }
+  }
+
+  // Step 4: Safe to update (only allows non-critical fields)
+  await db.query(
+    `UPDATE fx_transactions SET fx_gain_loss_type = $1 WHERE id = $2 AND posted_at IS NULL`,
+    [updates.fx_gain_loss_type, txnId]
+  );
+}
+```
+
+**Correction Pattern** (if error found after posting):
+
+```
+❌ WRONG: Try to UPDATE posted FX transaction
+          → Rejected by immutability check
+
+✅ CORRECT: Create reversal entry + new posting
+1. Publish: Accounting.FXAdjustment.Reversal.v1 (reverses original GL entry)
+2. Create new fx_transactions record with corrected rates
+3. Publish: Accounting.FXAdjustment.Corrected.v1 (posts corrected GL entry)
+4. Original transaction marked REVERSED (not deleted)
+5. Audit trail shows full correction history
 ```
 
 ---

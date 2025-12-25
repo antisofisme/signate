@@ -40,13 +40,43 @@ This document specifies how tenants establish formal business relationships and 
 
 ## Contract Lifecycle
 
-### State Machine
-```
-DRAFT ──[accept]--> ACTIVE ──[revoke]--> REVOKED
-                      │
-                      └─[reject]--> REJECTED
+### State Machine (Two-Phase Revocation to Prevent Race Conditions)
 
-Terminal states: ACTIVE (for 7 years), REVOKED, REJECTED
+```
+DRAFT ──[accept]──> ACTIVE ──[revoke]──> REVOKING ──[revoke-confirm]──> REVOKED
+                      │
+                      └─[reject]──> REJECTED
+
+State Details:
+- DRAFT: Contract created, not yet active
+- ACTIVE: Contract in force, cross-tenant operations allowed
+- REVOKING: Revocation initiated, new operations BLOCKED, in-flight ops drain
+- REVOKED: Contract terminated, no further access
+- REJECTED: Contract creation rejected, terminal state
+- Terminal states: ACTIVE (for 7 years), REVOKED, REJECTED
+```
+
+**Why Two-Phase Revocation?**
+Prevents race condition where cross-tenant operation is initiated under ACTIVE contract but completes after contract becomes REVOKED.
+
+### Transition Timing Rules
+
+```
+1. Revocation request received
+   ├─ Contract state changes: ACTIVE → REVOKING (atomic)
+   ├─ All new operations IMMEDIATELY blocked (no new POs, invoices)
+   └─ In-flight operations allowed to complete (up to 5 minutes grace period)
+
+2. Grace period monitoring (5-minute drain window)
+   ├─ Monitor active operations count
+   ├─ Alert if operations still pending after 4.5 minutes
+   └─ Force completion after 5 minutes (auto-timeout)
+
+3. Revocation confirmation
+   ├─ Check: all in-flight operations completed or timed out
+   ├─ Contract state changes: REVOKING → REVOKED (atomic)
+   ├─ Audit: "Contract REVOKED at 2025-12-24T14:05:00Z after 5-minute drain"
+   └─ Publish: Contract.Revoked.v1 event
 ```
 
 ---
@@ -215,9 +245,9 @@ Response:
 
 ## Contract Revocation
 
-Either party can revoke an active contract at any time.
+Either party can revoke an active contract. **Two-phase revocation prevents race conditions with in-flight operations.**
 
-### Revocation by Initiating Party (Buyer)
+### Phase 1: Initiate Revocation (ACTIVE → REVOKING)
 
 ```
 POST /api/v1/contracts/{contract_id}/revoke
@@ -225,25 +255,223 @@ POST /api/v1/contracts/{contract_id}/revoke
 Request:
 {
   "revoked_by": "hotel-admin-123",
-  "revocation_reason": "Ending supplier relationship",
+  "revocation_reason": "Ending supplier relationship"
+}
+
+Response:
+{
+  "contract_id": "contract-999",
+  "status": "REVOKING",  // ← Transient state, NOT final
+  "revocation_initiated_at": "2025-12-24T15:00:00Z",
+  "revocation_deadline": "2025-12-24T15:05:00Z",  // 5-minute grace period
+  "active_operations_count": 3,  // In-flight operations that will be allowed to complete
+  "message": "Contract revocation initiated. New operations blocked. Existing operations have 5 minutes to complete."
+}
+```
+
+**Behavior Changes Immediately**:
+- ✅ Existing operations complete (invoices, payments, POs initiated before revocation)
+- ❌ NEW operations BLOCKED (cannot create new POs, invoices, payments)
+- Status queries show: "REVOKING" (not yet final)
+
+**Events Published**:
+- `Contract.RevocationInitiated.v1` (to both tenants)
+- Payload includes: active_operations_count, revocation_deadline
+
+### Phase 1 Implementation
+
+```typescript
+async function initiateRevocation(contractId: string, revokerId: string, reason: string) {
+  // Step 1: Check contract is ACTIVE
+  const contract = await getContract(contractId);
+  if (contract.status !== 'ACTIVE') {
+    throw new ConflictError('INVALID_STATUS',
+      `Cannot revoke contract in state ${contract.status}`);
+  }
+
+  // Step 2: Count in-flight operations (POs, invoices, payments initiated but not completed)
+  const inFlightOps = await countInFlightOperations(contractId);
+
+  // Step 3: Transition to REVOKING (atomic)
+  const revocationDeadline = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes
+
+  await db.query(
+    `UPDATE contracts
+     SET status = 'REVOKING', revocation_deadline = $1
+     WHERE id = $2 AND status = 'ACTIVE'`,
+    [revocationDeadline, contractId]
+  );
+
+  // Step 4: Publish event
+  await publishEvent({
+    event_type: 'Contract.RevocationInitiated.v1',
+    contract_id: contractId,
+    revoked_by: revokerId,
+    reason: reason,
+    active_operations_count: inFlightOps,
+    revocation_deadline: revocationDeadline
+  });
+
+  return {
+    status: 'REVOKING',
+    revocation_deadline: revocationDeadline,
+    active_operations_count: inFlightOps
+  };
+}
+```
+
+### Phase 2: Confirm Revocation (REVOKING → REVOKED)
+
+Called after grace period (automatically via scheduled job, or manually):
+
+```
+POST /api/v1/contracts/{contract_id}/revoke-confirm
+
+Request:
+{
   "data_cleanup": "ARCHIVE"  // or DELETE_CROSS_REFERENCES
 }
 
 Response:
 {
   "contract_id": "contract-999",
-  "status": "REVOKED",
-  "revoked_at": "2025-12-24T15:00:00Z",
-  "revoked_by_tenant": "hotel-001",
-  "data_cleanup_started": true,
-  "cleanup_job_id": "job-123"
+  "status": "REVOKED",  // ← Final state
+  "revoked_at": "2025-12-24T15:05:00Z",
+  "revocation_duration_seconds": 300,  // 5-minute drain period
+  "completed_operations_count": 3,
+  "timed_out_operations_count": 0,
+  "data_cleanup_job_id": "job-123",
+  "data_cleanup_status": "STARTED"
 }
 ```
 
-**Events**:
-- `Contract.Revoked.v1` published (to both tenants)
+**Behavior After Confirmation**:
+- ❌ ALL operations BLOCKED (contract access terminated)
+- Status queries show: "REVOKED" (final)
+- Any attempt to use contract returns: 403 Forbidden (contract terminated)
+
+### Phase 2 Implementation
+
+```typescript
+async function confirmRevocation(contractId: string, dataCleanup: string) {
+  // Step 1: Check contract is in REVOKING state
+  const contract = await getContract(contractId);
+  if (contract.status !== 'REVOKING') {
+    throw new ConflictError('INVALID_STATUS',
+      `Cannot confirm revocation of contract in state ${contract.status}`);
+  }
+
+  // Step 2: Check if grace period has expired
+  const now = new Date();
+  const secondsElapsed = (now.getTime() - contract.revocation_initiated_at.getTime()) / 1000;
+
+  if (secondsElapsed < 300 && contract.active_operations_count > 0) {  // 5 minutes = 300 seconds
+    throw new ConflictError('GRACE_PERIOD_NOT_EXPIRED',
+      `Grace period not elapsed. ${contract.active_operations_count} operations still pending.` +
+      ` Expires at ${contract.revocation_deadline.toISOString()}`);
+  }
+
+  // Step 3: Force-complete any operations that exceeded timeout
+  const timedOutOps = await forceCompleteTimedOutOperations(contractId);
+
+  // Step 4: Transition to REVOKED (atomic)
+  await db.query(
+    `UPDATE contracts
+     SET status = 'REVOKED', revoked_at = NOW()
+     WHERE id = $1 AND status = 'REVOKING'`,
+    [contractId]
+  );
+
+  // Step 5: Start cleanup job asynchronously
+  const cleanupJobId = await startCleanupJob(contractId, dataCleanup);
+
+  // Step 6: Publish final event
+  await publishEvent({
+    event_type: 'Contract.Revoked.v1',
+    contract_id: contractId,
+    revocation_duration_seconds: secondsElapsed,
+    completed_operations_count: contract.active_operations_count - timedOutOps.length,
+    timed_out_operations_count: timedOutOps.length,
+    data_cleanup_job_id: cleanupJobId
+  });
+
+  return {
+    status: 'REVOKED',
+    revocation_duration_seconds: Math.round(secondsElapsed),
+    data_cleanup_job_id: cleanupJobId
+  };
+}
+```
+
+### Contract Access Check During REVOKING State
+
+Operations initiated BEFORE revocation → allowed to complete
+Operations initiated DURING REVOKING → blocked with clear error
+
+```typescript
+async function checkContractAccessAllowed(contractId: string, operationType: string): Promise<boolean> {
+  const contract = await getContract(contractId);
+
+  if (contract.status === 'ACTIVE') {
+    return true;  // All operations allowed
+  }
+
+  if (contract.status === 'REVOKING') {
+    // Check if this operation was initiated BEFORE revocation
+    const operation = await getOperationByIdFromRequest(operationType);
+
+    if (operation.created_at < contract.revocation_initiated_at) {
+      return true;  // Initiated before revocation, allow completion
+    } else {
+      throw new ForbiddenError('CONTRACT_REVOKING',
+        `Contract ${contractId} revocation in progress. New operations not allowed.` +
+        ` Try again after ${contract.revocation_deadline.toISOString()}.`);
+    }
+  }
+
+  if (contract.status === 'REVOKED') {
+    throw new ForbiddenError('CONTRACT_TERMINATED',
+      `Contract ${contractId} has been revoked. Access denied.`);
+  }
+
+  throw new ConflictError('INVALID_STATUS',
+    `Contract in unexpected state: ${contract.status}`);
+}
+```
+
+### Automatic Revocation Confirmation (Scheduled Job)
+
+Run every 1 minute to confirm revocations that have elapsed grace period:
+
+```typescript
+async function autoConfirmExpiredRevocations() {
+  // Find contracts in REVOKING state past their deadline
+  const expiredRevocations = await db.query(
+    `SELECT * FROM contracts
+     WHERE status = 'REVOKING'
+     AND revocation_deadline < NOW()`
+  );
+
+  for (const contract of expiredRevocations) {
+    try {
+      await confirmRevocation(contract.id, 'ARCHIVE');
+      logger.info('Auto-confirmed revocation', {
+        contract_id: contract.id,
+        elapsed_time: '300+ seconds'
+      });
+    } catch (error) {
+      logger.error('Failed to auto-confirm revocation', {
+        contract_id: contract.id,
+        error: error.message
+      });
+    }
+  }
+}
+```
 
 ### Revocation by Responding Party (Seller)
+
+Seller can also initiate revocation (same two-phase process):
 
 ```
 POST /api/v1/contracts/{contract_id}/revoke
@@ -251,12 +479,13 @@ POST /api/v1/contracts/{contract_id}/revoke
 Request:
 {
   "revoked_by": "supplier-owner-456",
-  "revocation_reason": "Supplier ceasing operations",
-  "data_cleanup": "KEEP"  // Seller can't delete data, just unlink
+  "revocation_reason": "Supplier ceasing operations"
 }
 ```
 
-**Note**: Responder can revoke but cannot DELETE data (only KEEP/ARCHIVE)
+**Difference**: Seller cannot select `DELETE_CROSS_REFERENCES` (only ARCHIVE or KEEP)
+
+**Note**: Both parties follow same two-phase revocation process
 
 ---
 

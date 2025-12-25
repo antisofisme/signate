@@ -95,6 +95,7 @@ WorkflowInstance {
   entity_id: UUID,                 // The actual invoice/PO id
   current_state: enum,
   current_approver_id: UUID,       // Who needs to approve now (null if no one)
+  version: int NOT NULL DEFAULT 1, // ← OPTIMISTIC LOCKING: Incremented on every state change
   created_by: UUID,
   created_at: timestamp,
   submitted_at: timestamp,
@@ -102,6 +103,9 @@ WorkflowInstance {
   completed_at: timestamp
 }
 ```
+
+**Optimistic Locking Requirement**:
+All state transition updates MUST include version check to prevent concurrent approval race conditions.
 
 #### 4. Workflow Transition
 ```
@@ -165,6 +169,129 @@ WorkflowStep {
 | REJECTED | Submit | PENDING_APPROVAL | `invoice.submit` | Resubmit after changes |
 | APPROVED | (terminal) | - | - | No further transitions |
 | ARCHIVED | (terminal) | - | - | No further transitions |
+
+---
+
+## Concurrency Control: Preventing Duplicate Approvals
+
+**Problem**: Two approvers might simultaneously approve the same workflow instance, creating conflicting decisions.
+
+**Solution**: Optimistic locking on WorkflowInstance.version field.
+
+### State Transition Implementation (SQL Example)
+
+```sql
+-- CORRECT: Optimistic locking prevents duplicate approvals
+UPDATE workflow_instances
+SET
+  current_state = 'APPROVED',
+  version = version + 1,        -- Increment version on success
+  completed_at = NOW()
+WHERE
+  id = $workflow_id
+  AND tenant_id = $tenant_id
+  AND current_state = 'PENDING_APPROVAL'  -- Check from_state
+  AND version = $expected_version         -- CRITICAL: Version check
+RETURNING version;
+
+-- If no rows updated, version mismatch occurred
+-- → Workflow state changed between read and write
+-- → Return 409 Conflict to client
+```
+
+### Application Logic (TypeScript Example)
+
+```typescript
+async function approveWorkflow(workflowId: string, approverId: string, reason: string) {
+  // Step 1: Read current workflow state
+  const workflow = await getWorkflowInstance(workflowId);
+
+  // Check if workflow can be approved
+  if (workflow.current_state !== 'PENDING_APPROVAL') {
+    throw new ConflictError('INVALID_STATE',
+      `Cannot approve workflow in state ${workflow.current_state}`);
+  }
+
+  if (workflow.current_approver_id !== approverId) {
+    throw new ForbiddenError('NOT_CURRENT_APPROVER',
+      `User ${approverId} is not current approver`);
+  }
+
+  // Step 2: Attempt state transition with version check
+  const result = await db.query(
+    `UPDATE workflow_instances
+     SET current_state = 'APPROVED', version = version + 1, completed_at = NOW()
+     WHERE id = $1 AND tenant_id = $2 AND version = $3 AND current_state = 'PENDING_APPROVAL'
+     RETURNING version`,
+    [workflowId, workflow.tenant_id, workflow.version]
+  );
+
+  // Step 3: Check if update succeeded
+  if (result.rowCount === 0) {
+    // Version mismatch = workflow changed since we read it
+    throw new ConflictError('WORKFLOW_CHANGED',
+      'Workflow state changed during approval. Another user may have acted. Retry.'
+    );
+  }
+
+  // Step 4: Record approval action (immutable)
+  await createWorkflowStep({
+    workflow_instance_id: workflowId,
+    approver_id: approverId,
+    action: 'APPROVED',
+    action_reason: reason,
+    action_at: new Date(),
+    is_immutable: true
+  });
+
+  // Step 5: Publish approval event
+  await publishEvent({
+    event_type: 'Approval.Approved.v1',
+    workflow_instance_id: workflowId,
+    approved_by: approverId,
+    approval_reason: reason
+  });
+
+  return { status: 'APPROVED', version: result.rows[0].version };
+}
+```
+
+### Race Condition Handled
+
+```
+Timeline of concurrent approval race (NOW PREVENTED):
+
+T1: Approver A reads workflow (version=5, state=PENDING_APPROVAL)
+T2: Approver B reads workflow (version=5, state=PENDING_APPROVAL)
+T3: Approver A clicks "Approve"
+    → UPDATE ... WHERE version = 5 (succeeds)
+    → version becomes 6
+T4: Approver B clicks "Reject"
+    → UPDATE ... WHERE version = 5 (FAILS - version now 6)
+    → Returns 409 Conflict
+    → Approver B sees: "Workflow already approved, refresh to see details"
+
+Result: Only A's approval accepted. B's action rejected with clear error.
+```
+
+### Client-Side Retry Logic
+
+```typescript
+async function approveWithRetry(workflowId: string, maxRetries: number = 3) {
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      return await approveWorkflow(workflowId, userId, reason);
+    } catch (error) {
+      if (error.code === 'WORKFLOW_CHANGED' && attempt < maxRetries) {
+        // Workflow changed, wait and retry
+        await delay(1000 * attempt);  // Exponential backoff
+        continue;
+      }
+      throw error;  // Other errors or max retries reached
+    }
+  }
+}
+```
 
 ---
 

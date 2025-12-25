@@ -271,6 +271,158 @@ if (payloadSize > 10240) {  // 10 KB hard limit
 
 ---
 
+## Event Version Consistency Validation
+
+**Rule**: `event_version` field MUST match the version suffix in `event_type`. This is MANDATORY for all events.
+
+### Version Format Specification
+
+```
+event_type format: {Module}.{Entity}.{Action}.v{N}
+                                           ↑
+                                    Version suffix
+
+event_version format: v{N}
+                      ↑
+              MUST match the suffix above
+```
+
+### Validation Logic (Producer)
+
+**Before publishing, event producer MUST validate version consistency:**
+
+```typescript
+function validateEventVersion(event: Event): void {
+  // Step 1: Extract version from event_type
+  const match = event.event_type.match(/\.v(\d+)$/);
+  if (!match) {
+    throw new ValidationError('INVALID_EVENT_TYPE',
+      `event_type "${event.event_type}" does not end with .vN format`);
+  }
+
+  const expectedVersion = `v${match[1]}`;  // e.g., "v1"
+
+  // Step 2: Verify event_version matches
+  if (event.event_version !== expectedVersion) {
+    throw new ValidationError('VERSION_MISMATCH',
+      `event_version="${event.event_version}" does not match event_type suffix="${expectedVersion}"`
+    );
+  }
+}
+
+// Usage: Call before publishEvent()
+const event = {
+  event_type: 'Accounting.Invoice.Finalized.v2',
+  event_version: 'v2',  // ✅ Matches
+  ...
+};
+validateEventVersion(event);  // Passes
+publishEvent(event);
+```
+
+### Validation Logic (Consumer)
+
+**Event consumers MUST also validate version consistency before processing:**
+
+```typescript
+async function processEvent(event: Event): Promise<void> {
+  // Step 1: Validate version consistency
+  const match = event.event_type.match(/\.v(\d+)$/);
+  const expectedVersion = `v${match[1]}`;
+
+  if (event.event_version !== expectedVersion) {
+    logger.error('VERSION_MISMATCH_DETECTED', {
+      event_id: event.event_id,
+      event_type: event.event_type,
+      event_version: event.event_version,
+      expected_version: expectedVersion,
+      severity: 'CRITICAL'
+    });
+
+    // Route to DLQ (malformed event)
+    await publishToDeadLetterQueue(event, 'SCHEMA_MISMATCH');
+
+    throw new ValidationError('VERSION_MISMATCH',
+      `Event ${event.event_id} has mismatched versions. Routed to DLQ.`
+    );
+  }
+
+  // Step 2: Select handler based on event_version
+  const handler = this.handlers.get(`${event.event_type}`);
+  if (!handler) {
+    throw new ValidationError('UNKNOWN_EVENT_TYPE',
+      `No handler for ${event.event_type}`);
+  }
+
+  // Step 3: Route to version-specific handler
+  switch (event.event_version) {
+    case 'v1':
+      return await handleV1(event);
+    case 'v2':
+      return await handleV2(event);
+    default:
+      throw new ValidationError('UNSUPPORTED_VERSION',
+        `Unsupported version ${event.event_version} for ${event.event_type}`);
+  }
+}
+```
+
+### Error Handling Matrix
+
+| Scenario | Producer | Consumer | Result |
+|----------|----------|----------|--------|
+| event_type=Inv.Fin.v1, event_version=v1 | ✅ Valid | ✅ Valid | Process normally |
+| event_type=Inv.Fin.v2, event_version=v1 | ❌ Reject | ❌ Reject + DLQ | 400 Bad Request |
+| event_type=Inv.Fin.v1, event_version=v2 | ❌ Reject | ❌ Reject + DLQ | 400 Bad Request |
+| Missing event_version field | ❌ Reject | ❌ Reject + DLQ | 400 Bad Request |
+
+### Testing Requirements
+
+All implementations MUST test version validation:
+
+```typescript
+describe('Event Version Validation', () => {
+  it('should accept event with matching version', () => {
+    const event = {
+      event_type: 'Accounting.Invoice.Finalized.v1',
+      event_version: 'v1'
+    };
+    expect(() => validateEventVersion(event)).not.toThrow();
+  });
+
+  it('should reject event with mismatched version', () => {
+    const event = {
+      event_type: 'Accounting.Invoice.Finalized.v1',
+      event_version: 'v2'  // MISMATCH
+    };
+    expect(() => validateEventVersion(event)).toThrow('VERSION_MISMATCH');
+  });
+
+  it('should reject event with missing event_version', () => {
+    const event = {
+      event_type: 'Accounting.Invoice.Finalized.v1'
+      // event_version missing
+    };
+    expect(() => validateEventVersion(event)).toThrow();
+  });
+
+  it('should route mismatched events to DLQ', async () => {
+    const event = {
+      event_id: 'evt-123',
+      event_type: 'Accounting.Invoice.Finalized.v1',
+      event_version: 'v2'
+    };
+    await expect(processEvent(event)).rejects.toThrow('VERSION_MISMATCH');
+    expect(dlqPublished).toContainEqual({
+      event: event,
+      reason: 'SCHEMA_MISMATCH'
+    });
+  });
+});
+```
+
+---
+
 ## Event Categories
 
 ### 1. Identity & Tenant Lifecycle
@@ -379,7 +531,7 @@ Period Events:
 
 ### Example 1: GuestCheckedOut
 
-**Event Type**: `PMS.Reservation.CheckedOut.v1` (or `PMS.Folio.Settled.v1`)
+**Event Type**: `PMS.Reservation.CheckedOut.v1` (authoritative - folio settlement is recorded as part of checkout)
 
 ```json
 {

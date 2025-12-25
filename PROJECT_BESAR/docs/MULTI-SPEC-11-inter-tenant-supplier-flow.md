@@ -102,7 +102,10 @@ GoodsReceived → Invoice → Payment
 {
   "event_type": "Supplier.Invited.v1",
   "event_version": "v1",
+  "event_id": "evt-supplier-invited-001",
+  "correlation_id": "supplier-123",
   "tenant_id": "hotel-123",
+  "signature": "a7f3e1b9d8c4f2e6a9b3d7f1c5e8a2b6d9f3e7a1b5c9d3e7f1a5b9c3d7e1f5",
   "data": {
     "supplier_email": "supplier@company.com",
     "supplier_name": "ABC Laundry",
@@ -121,7 +124,12 @@ GoodsReceived → Invoice → Payment
 {
   "event_type": "Supplier.InvitationAccepted.v1",
   "event_version": "v1",
+  "event_id": "evt-invitation-accepted-001",
+  "correlation_id": "supplier-123",
   "tenant_id": "supplier-456",
+  "from_tenant_id": "supplier-456",
+  "to_tenant_id": "hotel-123",
+  "signature": "f2e7d1b9a5c8e3f6d2a7b1c9e4f8a3b6c1d5e9f2a7b3c6d1e5f8a2b6c9d3e",
   "data": {
     "supplier_name": "ABC Laundry",
     "from_tenant_id": "hotel-123",
@@ -220,6 +228,7 @@ PurchaseOrder {
   "from_tenant_id": "hotel-123",
   "to_tenant_id": "supplier-456",
   "contract_id": "contract-999",
+  "signature": "c9d3e7f1a5b2c6d1e8f2a9b3c7d1e5f9a2b6c3d7e1f5a9b3c7d1e5f9a2b6c",
 
   "payload": {
     "po_id": "po-12345",
@@ -260,6 +269,7 @@ PurchaseOrder {
   "from_tenant_id": "supplier-456",
   "to_tenant_id": "hotel-123",
   "contract_id": "contract-999",
+  "signature": "d1e5f9a2b6c3d7e1f5a9b3c7d1e5f9a2b6c3d7e1f5a9b3c7d1e5f9a2b6c3d",
 
   "payload": {
     "po_id": "po-12345",
@@ -277,6 +287,13 @@ PurchaseOrder {
 {
   "event_type": "Procurement.PurchaseOrder.Rejected.v1",
   "event_version": "v1",
+  "event_id": "evt-po-rejected-789",
+  "correlation_id": "po-12345",
+  "tenant_id": "supplier-456",
+  "from_tenant_id": "supplier-456",
+  "to_tenant_id": "hotel-123",
+  "contract_id": "contract-999",
+  "signature": "e2f6a3b7c1d5e8f2a6b3c7d1e5f8a2b6c3d7e1f5a9b2c6d1e5f8a2b6c3d7",
   "payload": {
     "po_id": "po-12345",
     "reason": "Capacity exceeded for this date"
@@ -308,6 +325,8 @@ This phase differs based on supplier type.
   "tenant_id": "supplier-456",
   "from_tenant_id": "supplier-456",
   "to_tenant_id": "hotel-123",
+  "contract_id": "contract-999",
+  "signature": "f3a7b1c5d9e2f6a3b7c1d5e8f2a6b3c7d1e5f9a2b6c3d7e1f5a9b3c7d1e5",
 
   "payload": {
     "po_id": "po-12345",
@@ -334,6 +353,13 @@ This phase differs based on supplier type.
 {
   "event_type": "Procurement.Goods.Shipped.v1",
   "event_version": "v1",
+  "event_id": "evt-goods-shipped-001",
+  "correlation_id": "po-12345",
+  "tenant_id": "supplier-456",
+  "from_tenant_id": "supplier-456",
+  "to_tenant_id": "hotel-123",
+  "contract_id": "contract-999",
+  "signature": "a4b8c2d6e9f3a7b1c5d8e2f6a3b7c1d5e8f2a6b3c7d1e5f8a2b6c3d7e1f5a",
   "payload": {
     "po_id": "po-12345",
     "tracking_number": "TRACK-12345",
@@ -347,7 +373,13 @@ This phase differs based on supplier type.
 {
   "event_type": "Procurement.Goods.Received.v1",
   "event_version": "v1",
+  "event_id": "evt-goods-received-001",
+  "correlation_id": "po-12345",
   "tenant_id": "hotel-123",
+  "from_tenant_id": "hotel-123",
+  "to_tenant_id": "supplier-456",
+  "contract_id": "contract-999",
+  "signature": "b5c9d3e7f1a4b8c2d6e9f3a7b1c5d8e2f6a3b7c1d5e8f2a6b3c7d1e5f8a2b",
   "payload": {
     "po_id": "po-12345",
     "received_date": "2025-12-22",
@@ -416,6 +448,7 @@ Invoice {
   "from_tenant_id": "supplier-456",
   "to_tenant_id": "hotel-123",
   "contract_id": "contract-999",
+  "signature": "c6d1e5f8a2b6c3d7e1f5a9b2c6d1e5f8a2b6c3d7e1f5a9b2c6d1e5f8a2b6c3",
 
   "payload": {
     "invoice_id": "inv-001",
@@ -424,7 +457,6 @@ Invoice {
     "seller_name": "ABC Laundry",
     "invoice_date": "2025-12-22",
     "due_date": "2026-01-21",
-    "
     "line_items": [
       {
         "description": "Laundry service - 50 kg",
@@ -506,7 +538,13 @@ AccountsPayable {
 {
   "event_type": "Accounting.Invoice.Approved.v1",
   "event_version": "v1",
+  "event_id": "evt-invoice-approved-001",
+  "correlation_id": "po-12345",
   "tenant_id": "hotel-123",
+  "from_tenant_id": "hotel-123",
+  "to_tenant_id": "supplier-456",
+  "contract_id": "contract-999",
+  "signature": "d7e2f6a3b7c1d5e8f2a6b3c7d1e5f8a2b6c3d7e1f5a9b2c6d1e5f8a2b6c3d",
   "payload": {
     "invoice_id": "inv-001",
     "approved_by": "accounting-staff-123",
@@ -636,6 +674,8 @@ Result: AP is now $0 (closed)
   "tenant_id": "hotel-123",
   "from_tenant_id": "hotel-123",
   "to_tenant_id": "supplier-456",
+  "contract_id": "contract-999",
+  "signature": "e8f3a7b1c5d8e2f6a3b7c1d5e8f2a6b3c7d1e5f8a2b6c3d7e1f5a9b2c6d1",
 
   "payload": {
     "invoice_id": "inv-001",
@@ -854,11 +894,18 @@ WHERE h.supplier_status != s.actual_supplier_status;
 {
   "event_type": "Accounting.CreditNote.Issued.v1",
   "event_version": "v1",
+  "event_id": "evt-creditnote-issued-001",
+  "correlation_id": "po-12345",
+  "tenant_id": "supplier-456",
+  "from_tenant_id": "supplier-456",
+  "to_tenant_id": "hotel-123",
+  "contract_id": "contract-999",
+  "signature": "f1a5b9c3d7e1f5a9b3c7d1e5f9a2b6c3d7e1f5a9b3c7d1e5f9a2b6c3d7e1f5",
   "payload": {
     "invoice_id": "inv-001",
     "credit_note_id": "cn-001",
     "reason": "Damaged laundry return",
-    "amount": -100  // Negative invoice
+    "amount": -100
   }
 }
 ```

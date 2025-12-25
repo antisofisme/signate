@@ -162,6 +162,32 @@ enum SubscriptionStatus {
 
 ---
 
+## 8.1 Folio Statuses (PMS - Guest Billing Record)
+
+**Entity**: Folio
+**Valid Transitions**: OPEN → SETTLED or CLOSED (non-payment)
+
+```typescript
+enum FolioStatus {
+  OPEN = "OPEN",                  // Guest in house, charges accumulating
+  SETTLED = "SETTLED",            // Guest checked out, balance due = 0 (fully paid)
+  CLOSED = "CLOSED",              // Guest checked out with unpaid balance (manager override)
+}
+```
+
+**State Machine**:
+- `OPEN`: Initial state when guest checks in. Charges can be posted.
+- `SETTLED`: Guest checked out AND payment collected (balance_due = 0). Final, immutable.
+- `CLOSED`: Guest checked out but unpaid (manager override required). Can be reopened if payment received later.
+
+**Rules**:
+- Cannot transition OPEN → SETTLED unless balance_due = 0
+- Cannot transition OPEN → CLOSED without manager override
+- SETTLED is terminal (cannot reopen)
+- CLOSED can reopen if payment received
+
+---
+
 ## 9. Supplier/Vendor Statuses
 
 **Entity**: Supplier
