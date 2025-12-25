@@ -114,6 +114,13 @@ Alternative paths from CREATED:
    - Taxes and fees
    - Total estimated amount
 
+4. **GUARDRAIL - Overbooking Prevention**: System verifies available room inventory
+   - Check available rooms of requested type for entire stay period
+   - If no rooms available: Reject reservation with message "Room type unavailable for selected dates"
+   - If available rooms exist: Reserve one room (mark as tentatively held for confirmation)
+   - Tentative hold expires in 15 minutes (timeout prevents blocking inventory)
+   - This applies to direct bookings, OTA imports, and walk-ins
+
 4. System displays confirmation:
    - Reservation number
    - Guest name
@@ -466,7 +473,15 @@ Balance Due:              $0.00
    - If cash: staff collects and records
    - If corporate: invoice sent to corporate
 
-4. Payment status: `COMPLETED`
+4. **GUARDRAIL - Credit Card Authorization Required**:
+   - For credit card payments > $100: Require explicit authorization hold on card
+   - Hold amount = total folio charges + estimated incidentals (10% buffer)
+   - If authorization fails: Display error, do not settle folio
+   - If authorization succeeds: Proceed with charging
+   - Release hold within 24 hours of card charge (prevents double-holds)
+   - For payments < $100: Direct charge without hold
+
+5. Payment status: `COMPLETED`
 
 #### 4.6: Close Folio
 1. System updates Folio status: SETTLED
@@ -816,6 +831,46 @@ INVARIANT: FolioCharge with amount > 0 → Payment exists (or guest agreed to la
 ```
 - No charge without collection
 - Outstanding balance tracked and followed up
+
+### Reservation Modification Rules (HIGH GUARDRAIL)
+```
+RULE: Reservation modifications allowed ONLY before check-in
+RULE: After check-in → Only extensions allowed, no date changes
+RULE: Rate changes only allowed DURING reservation (not after posting)
+```
+**Modification Allowed**:
+- Before check-in: Date changes, room type upgrades, duration changes
+- During stay: Extend checkout date (add more nights)
+- Pre-approval only: Rate re-negotiation (requires manager override)
+
+**Modification NOT Allowed**:
+- After check-in: Cannot move to different dates (only extend or check out early)
+- After folio posted: Cannot change room charge rate (prevents GL corruption)
+- After night audit: Cannot modify any reservation fields (audit-locked)
+
+**Implementation**:
+- Check `Reservation.status` before allowing modification
+- If CREATED or CONFIRMED: Allow modifications
+- If CHECKED_IN or later: Block date changes, allow extensions only
+- Log all modifications with user ID, timestamp, and old/new values
+
+### Housekeeping Coordination (HIGH GUARDRAIL)
+```
+RULE: Room.status and Reservation.status must be synchronized
+RULE: Room cannot be marked CLEANING while guest is CHECKED_IN
+RULE: Housekeeping tasks must reference valid reservation
+```
+**Room Status Transitions**:
+- OCCUPIED: Guest checked in → Housekeeping cannot access
+- CLEANING: Guest checked out → Housekeeping cleans for next guest
+- AVAILABLE: Housekeeping completed → Ready for check-in
+
+**Implementation**:
+- When guest checks out: Set Room.status = CLEANING, create Housekeeping.Task
+- Task contains: room_id, reservation_id (for audit), expected_completion_time
+- Housekeeping marks task COMPLETE → Room.status = AVAILABLE
+- If room cleaning fails: Room.status = MAINTENANCE (requires manager attention)
+- Cannot override: Staff cannot force AVAILABLE status while reservation exists for that room
 
 ---
 
