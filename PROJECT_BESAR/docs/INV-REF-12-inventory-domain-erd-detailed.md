@@ -443,6 +443,18 @@ Manager checks:
 - Reorder quantity calculated as: economic order quantity (EOQ) formula
   - Prevents: Over-ordering, stock-outs, carrying costs
 
+**MEDIUM GUARDRAIL - Inter-Warehouse Transfer Procedures**:
+- Transfer must reference: source_warehouse, destination_warehouse, items_qty
+- Transfer flow: PENDING → IN_TRANSIT → RECEIVED → COMPLETED
+- Only managers can initiate transfers
+- Transit timeout: If transfer not received within 7 days → Auto-escalate
+- Receiving warehouse must physically confirm receipt:
+  - Item count verified against manifest
+  - Quality check (no damage)
+  - Signature/timestamp recorded
+- If variance > 5%: Flag for investigation
+- Prevents: Lost inventory during transfers, quantity discrepancies
+
 ```
 Event: Approval.Approved.v1
 {

@@ -1191,6 +1191,31 @@ BusinessContract {
 - All changes audited
 - Modifications require both parties' awareness
 
+**MEDIUM GUARDRAIL - Supplier Performance Metrics & Scorecards**:
+- System tracks per supplier:
+  - On-time delivery rate (% POs delivered by due date)
+  - Quality acceptance rate (% goods accepted vs rejected)
+  - Invoice accuracy rate (% invoices matching PO without disputes)
+  - Response time (avg hours to accept/reject PO)
+- Monthly scorecard generated:
+  - Score = (on_time × 40%) + (quality × 30%) + (accuracy × 20%) + (response × 10%)
+  - Threshold: If score < 70% → Manager review triggered
+  - If score < 60% → Automatic suspension notice sent
+- Reports available: Supplier performance trends, benchmark against peers
+- Prevents: Silent supplier degradation, quality issues going unnoticed
+
+**MEDIUM GUARDRAIL - Contract Renewal & Termination Procedures**:
+- Contract has: effective_date, renewal_date, termination_date
+- 30 days before renewal: System sends renewal notification
+- No auto-renewal (manual approval required)
+- Termination requires: 30-day notice, settlement of all open POs/invoices
+- Upon termination:
+  - Block new POs to this supplier
+  - Complete all in-flight transactions
+  - Archive all contract history (never delete)
+  - Send termination confirmation event
+- Prevents: Accidental contract expiration, orphaned transactions
+
 ### Contract Revocation & Data Cleanup
 When a Business Contract is revoked (see SPEC-10 for details):
 

@@ -924,6 +924,27 @@ RULE: Refund reason documented and tracked
   5. Email confirmation to guest when refund posts
 - Prevents: Lost refunds, untracked refund delays
 
+### MEDIUM GUARDRAIL - Guest Communication & Notification Preferences
+
+```
+RULE: Guest must consent to electronic notifications
+RULE: Communication preferences stored and enforced
+RULE: Compliance with privacy regulations (GDPR, etc.)
+```
+
+**Implementation**:
+- At check-in: Collect notification preferences
+  - Email: Charges, folio summary, checkout reminder, offers
+  - SMS: Check-in confirmation, urgent issues only
+  - None: Opt-out of all communications
+- Store preferences in guest profile
+- System respects preferences:
+  - Before sending notification: Check preference
+  - If opt-out: Do not send (except critical: payment declined, system error)
+- Audit trail: Track all communications sent (timestamp, channel, response)
+- Reports: Guest communication compliance, opt-out rate
+- Prevents: Unwanted communications, privacy violations
+
 ---
 
 ## Integration with Accounting

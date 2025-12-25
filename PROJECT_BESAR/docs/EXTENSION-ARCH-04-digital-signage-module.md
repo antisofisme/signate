@@ -979,6 +979,31 @@ RULE: Critical content (emergency messages) always kept
   - Health report tracks cleanup events
 - Prevents: Disk full errors, lost emergency messages
 
+### MEDIUM GUARDRAIL - Device Health Monitoring & Alerting
+
+```
+RULE: Critical health issues escalated to managers immediately
+RULE: Device health trends tracked for predictive maintenance
+RULE: Health data retained for historical analysis
+```
+
+**Implementation**:
+- Health metrics reported every 60 seconds:
+  - Memory usage, CPU usage, disk space, network latency
+  - Uptime, last sync time, current playlist version, errors
+- Alert thresholds:
+  - CRITICAL: Memory > 95%, Disk > 95%, Offline > 30 min → Alert manager immediately
+  - WARNING: Memory > 80%, Disk > 80%, Offline > 10 min → Log and monitor
+  - INFO: All metrics logged for trend analysis
+- Escalation:
+  - CRITICAL alerts: SMS + Email to device manager
+  - If unresolved after 1 hour: Escalate to ops director
+- Trend analysis:
+  - System detects patterns (e.g., device goes offline every evening at 6 PM)
+  - Predictive: Alert if pattern suggests impending failure
+  - Reports: Device health dashboard, maintenance schedule
+- Prevents: Silent device failures, missed maintenance windows
+
 ---
 
 ## 6. Backend Integration
