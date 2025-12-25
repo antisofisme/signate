@@ -904,6 +904,17 @@ WHERE h.supplier_status != s.actual_supplier_status;
 
 **Implementation**: Multiple invoices, multiple APs, same PO
 
+**MEDIUM GUARDRAIL - Partial Invoice Tracking**:
+- PO tracks: total_qty_ordered, total_qty_invoiced, total_qty_received
+- Invoice must reference: po_id, percentage_of_po (if partial)
+- If invoice < 100% of PO:
+  - Flag as "partial" in AP system
+  - Remaining balance tracked separately
+  - Cannot mark PO COMPLETED until all invoices received
+- Prevent duplicate invoicing: System checks cumulative qty invoiced ≤ qty ordered
+- Reports available: Outstanding partial deliveries by supplier
+- Prevents: Over-invoicing, lost partial shipments
+
 ---
 
 ### Flow B: Invoice Dispute
@@ -921,6 +932,15 @@ WHERE h.supplier_status != s.actual_supplier_status;
 8. AP updated once resolved
 
 **Implementation**: Workflow status, dispute tracking, comment thread
+
+**MEDIUM GUARDRAIL - Invoice Dispute Resolution SLA**:
+- Disputed invoice must be resolved within 14 days
+- After 14 days: Automatically escalate to Finance Director
+- Resolution options: Credit note, accept invoice, reject+return, price adjustment
+- Payment hold: Cannot pay disputed invoice until resolved
+- Comment trail: All negotiations documented for audit
+- Credit note validation: Must match dispute amount
+- Prevents: Indefinite payment holds, lost disputes
 
 ---
 
@@ -1050,6 +1070,20 @@ All inter-tenant events follow this pattern:
 - Hotel can use reason to improve PO and resubmit
 - Rejection reason must be logged in audit trail
 - Hotel can query: "Why was PO-12345 rejected?"
+
+### MEDIUM GUARDRAIL - Payment Terms Enforcement & Early Payment Discounts
+
+**Payment Terms Management**:
+- Contract specifies: payment_terms (e.g., "NET 30", "2/10 NET 30")
+- Due date calculated as: invoice_date + payment_terms (days)
+- Early payment discount: If "2/10" = 2% discount if paid within 10 days
+- System tracks: invoice_date, due_date, discount_date, discount_percentage
+- Payment validation:
+  - If payment date ≤ discount_date: Apply discount automatically
+  - If payment date > due_date: Flag as "late" and include in aging report
+  - If payment date = due_date: Mark as "on-time"
+- Reports: Aging of payables, early payment opportunities
+- Prevents: Missed discount opportunities, payment date errors
 
 ### Rule 6: Cross-Tenant Currency Handling
 

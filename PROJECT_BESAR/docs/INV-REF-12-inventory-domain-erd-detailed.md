@@ -423,6 +423,26 @@ Manager checks:
 - Should this be recorded as waste (COGS) or insurance claim?
 - Click "Approve"
 
+**MEDIUM GUARDRAIL - Inventory Aging & Expiration Tracking**:
+- Items with expiration dates must track: received_date, expiration_date, days_until_expiry
+- System triggers alerts when stock aging > 80% of shelf life
+- FIFO enforcement: Oldest stock must be consumed first (for perishables)
+- Monthly aging report: Items over 90% of shelf life flagged for review
+- Cannot issue items past expiration_date (system blocks with error)
+- Expired items must be marked as waste/spoilage (creates COGS adjustment)
+
+**MEDIUM GUARDRAIL - Reorder Point Automation & Escalation**:
+- When stock level ≤ reorder_level:
+  - System publishes Inventory.LowStock.Alert.v1 event
+  - Notification sent to procurement manager
+  - Auto-create purchase requisition (if enabled)
+- For critical items (stock = 0):
+  - Escalate to manager immediately
+  - Block new issues if stock unavailable (prevent over-commitment)
+  - Create backorder tracking
+- Reorder quantity calculated as: economic order quantity (EOQ) formula
+  - Prevents: Over-ordering, stock-outs, carrying costs
+
 ```
 Event: Approval.Approved.v1
 {

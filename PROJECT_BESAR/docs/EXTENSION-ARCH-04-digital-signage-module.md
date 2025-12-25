@@ -928,6 +928,57 @@ RULE: Device must acknowledge command execution
   - Failed commands logged with error details
   - Enables traceability for security investigations
 
+### MEDIUM GUARDRAIL - Device Offline Handling & Graceful Degradation
+
+```
+RULE: Device must display cached content when offline (no blank screens)
+RULE: Device must sync with server when connection restored
+RULE: Health reporting continues during offline periods
+```
+
+**Implementation**:
+- Device maintains local cache of:
+  - Current playlist (includes all content metadata)
+  - Last 3 playlist versions (for rollback if corrupt)
+  - Content files downloaded (images, videos, html)
+- Offline detection:
+  - Device monitors network connectivity every 10 seconds
+  - If connection lost: Switch to cached playlist immediately
+  - Continue displaying cached content (prevents "no signal" screens)
+- Offline sync queue:
+  - Queue any changes (playlist updates) that occur while offline
+  - When connection restored: Send sync request with queued items
+  - Server responds with latest state, device reconciles
+- Health reporting offline:
+  - Device logs health metrics locally while offline
+  - Uploads health log when connection restored
+  - Server records: offline_duration, content_displayed_offline, cache_hit_rate
+- Prevents: Blank screens during network outages, missed updates after reconnection
+
+### MEDIUM GUARDRAIL - Content Cache Lifecycle & Storage Management
+
+```
+RULE: Device must manage storage to prevent "disk full" errors
+RULE: Oldest content auto-deleted when storage threshold exceeded
+RULE: Critical content (emergency messages) always kept
+```
+
+**Implementation**:
+- Storage management:
+  - Device monitors disk_used_percentage
+  - If usage > 80%: Begin cleanup (remove oldest cached content)
+  - If usage > 95%: Aggressive cleanup (remove all except current playlist)
+  - If usage > 99%: Emergency mode (cannot download new content)
+- Content prioritization:
+  - Critical: Emergency messages, safety warnings (never delete)
+  - Normal: Regular playlist content (delete oldest first)
+  - Cached: Downloaded backup versions (delete oldest first)
+- Cleanup timeline:
+  - Content unused for > 30 days: Candidate for deletion
+  - Content not in any playlist: Delete after 7 days
+  - Health report tracks cleanup events
+- Prevents: Disk full errors, lost emergency messages
+
 ---
 
 ## 6. Backend Integration

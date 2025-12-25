@@ -635,6 +635,13 @@ System generates:
    - Policy C: Charge per cancellation policy
    - (Policy selected based on rate plan used)
 
+**MEDIUM GUARDRAIL - No-Show Policy Enforcement**:
+   - Policy must be referenced from rate_code at time of reservation
+   - Cannot change no-show policy after reservation created
+   - If policy updated: Only applies to future reservations
+   - System logs: { policy_applied, amount_charged, policy_version, effective_date }
+   - Prevents: Silent policy changes affecting existing reservations
+
 4. System posts no-show charge to temporary folio
 5. System attempts to charge payment method on file
 6. System sends notification to guest
@@ -871,6 +878,51 @@ RULE: Housekeeping tasks must reference valid reservation
 - Housekeeping marks task COMPLETE → Room.status = AVAILABLE
 - If room cleaning fails: Room.status = MAINTENANCE (requires manager attention)
 - Cannot override: Staff cannot force AVAILABLE status while reservation exists for that room
+
+### MEDIUM GUARDRAIL - Charge Audit Trail & Documentation
+
+```
+RULE: Every folio charge must have documented reason and authorization
+RULE: Manual charges require manager approval
+RULE: Charge modifications logged with full audit trail
+```
+
+**Implementation**:
+- Automatic charges: Generated from system events (room revenue, service charges)
+  - No manager approval required
+  - Logged with source (e.g., "system:room-charge", "pos:restaurant")
+- Manual charges: Applied by staff (adjustments, corrections)
+  - Require manager approval before posting
+  - Must include: charge_reason, applied_by, amount, approval_by, approval_timestamp
+  - Examples: "Damage charge", "Late checkout fee", "Minibar overcharge correction"
+- Charge modification tracking:
+  - If charge removed/reduced: Log with reason and approval
+  - Cannot delete charges without manager override
+  - Original charge ID preserved in audit log
+- Reports available:
+  - Manual charges by staff (accountability)
+  - Modification audit trail (tracks changes)
+  - Prevents: Unexplained charges, unauthorized adjustments
+
+### MEDIUM GUARDRAIL - Refund Processing Timeline
+
+```
+RULE: Refunds must be processed within defined timeline
+RULE: Refund reason documented and tracked
+```
+
+**Implementation**:
+- Refund types & timelines:
+  - Advance cancellation (≥7 days): Full refund within 3 business days
+  - Short cancellation: Per cancellation policy, refund within 5 business days
+  - Damage claim: Refund approval required, process within 10 business days
+- Refund processing:
+  1. Create Refund record with: original_payment_method, amount, reason
+  2. Initiate refund transaction to original payment method (credit card, etc.)
+  3. Log refund status: PENDING → PROCESSING → COMPLETED/FAILED
+  4. If refund fails: Retry up to 3 times, then escalate to manager
+  5. Email confirmation to guest when refund posts
+- Prevents: Lost refunds, untracked refund delays
 
 ---
 
