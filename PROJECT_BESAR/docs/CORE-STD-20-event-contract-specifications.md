@@ -577,6 +577,38 @@ Example:
 - **Alert on failure**: Publish `OperationalAlert.PaymentProcessingFailed.v1` to finance team
 - **Manual override**: Finance team can manually post GL and mark event processed
 
+### CRITICAL GUARDRAIL: GL Posting Atomicity
+
+**Rule: GL posting MUST be atomic (all-or-nothing)**
+```
+Scenario: Invoice event creates 2 GL lines (debit AR, credit Revenue)
+If debit line succeeds but credit line fails:
+  ✅ CORRECT: Entire transaction rolls back (both lines deleted)
+  ❌ WRONG: Debit posted but credit missing (GL imbalance)
+```
+
+**Implementation**:
+- GL posting happens in single database transaction (BEGIN/COMMIT)
+- All journal lines created together or not at all
+- If ANY line validation fails: ROLLBACK entire transaction
+- If ROLLBACK fails (database error):
+  1. Transaction remains INCOMPLETE in database
+  2. Compensation job detects INCOMPLETE GL entries (runs every 5 min)
+  3. Compensation attempts manual ROLLBACK via DELETE
+  4. If manual rollback succeeds: Mark transaction as ROLLED_BACK
+  5. If manual rollback fails: Escalate to DBA (system alert)
+  6. GL stays in INCOMPLETE state until manually resolved
+  7. Period close is BLOCKED if any GL entries in INCOMPLETE state
+
+**Idempotency Guarantee**:
+- Each GL posting attempt uses unique idempotency_key
+- If same event processed twice:
+  1. First attempt: Creates GL lines, stores idempotency_key in journal_entry table
+  2. Second attempt: Queries for existing entry with same idempotency_key
+  3. If found: Return existing GL entry (duplicate posting prevented)
+  4. If not found: Process normally
+- Prevents: Duplicate journal entries from message retries
+
 **Compensation Pattern** (if GL posting impossible):
 ```
 IF GL posting fails after 24 hours:

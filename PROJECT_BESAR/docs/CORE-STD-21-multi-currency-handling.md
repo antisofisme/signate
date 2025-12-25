@@ -257,9 +257,33 @@ CREATE TABLE fx_transactions (
 
 ### Immutability Enforcement
 
-**Database Level**: CHECK constraints prevent schema violations
+**PRIMARY: Database Level CHECK Constraints** (MUST be enforced first)
+- Database CHECK constraint is the ONLY source of truth for immutability
+- Application code cannot bypass database constraints
+- All UPDATE attempts that violate immutability are rejected at database level
 
-**Application Level**: All code that updates fx_transactions must enforce immutability:
+```sql
+-- REQUIRED: Trigger to prevent ANY update to rate fields after posting
+CREATE TRIGGER prevent_fx_rate_updates
+BEFORE UPDATE ON fx_transactions
+FOR EACH ROW
+WHEN (OLD.posted_at IS NOT NULL)
+BEGIN
+  IF (NEW.rate_at_creation != OLD.rate_at_creation
+      OR NEW.rate_at_settlement != OLD.rate_at_settlement) THEN
+    RAISE EXCEPTION 'FX rates are immutable after posting (posted_at=%)', OLD.posted_at;
+  END IF;
+END;
+
+-- Prevents: Application bug bypassing immutability, concurrent updates
+```
+
+**SECONDARY: Application Level Validation** (Defense-in-depth, runs BEFORE database attempt)
+- Application checks before executing any UPDATE statement
+- Prevents unnecessary database round-trips and provides better error messages
+- But database constraint is the FINAL enforcement (cannot be bypassed)
+
+All code that updates fx_transactions must enforce immutability:
 
 ```typescript
 async function updateFXTransaction(txnId: string, updates: Partial<FXTransaction>): Promise<void> {

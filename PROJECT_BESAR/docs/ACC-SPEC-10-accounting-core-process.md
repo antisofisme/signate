@@ -883,7 +883,14 @@ INSERT INTO journal_entries (...) VALUES (...)
   reason = 'Corrected posting';
 
 -- Update original entry to mark reversed
-UPDATE journal_entries SET is_reversed = TRUE WHERE id = 'je-001';
+-- NOTE: This is NOT an "edit" of financial data - only a status flag change
+-- The financial amounts (debit/credit) REMAIN IMMUTABLE
+UPDATE journal_entries
+SET is_reversed = TRUE,
+    related_to = 'je-002'  -- Link to reversal entry
+WHERE id = 'je-001'
+AND status = 'POSTED'
+AND is_reversed = FALSE;  -- Prevent double-reversal
 
 -- Create audit log entry
 INSERT INTO audit_logs (...) VALUES (...)
@@ -895,14 +902,32 @@ INSERT INTO audit_logs (...) VALUES (...)
 COMMIT;
 ```
 
+**CRITICAL GUARDRAIL: is_reversed Field Update**
+```
+RULE: Only status flags can be updated on POSTED entries
+RULE: Financial amounts (debit/credit) MUST remain immutable forever
+RULE: is_reversed can only transition FALSE → TRUE (never back to FALSE)
+```
+
+**What CAN be updated**:
+- is_reversed: FALSE → TRUE (when valid reversal entry is posted)
+- related_to: NULL → reversal_entry_id (link to reversal for audit trail)
+
+**What CANNOT be updated**:
+- debit, credit (financial amounts)
+- account_id (which account affected)
+- description (reason for entry)
+- posted_at, posted_by (posting timestamp/user)
+
 **Step 5: Final State**
 
 GL now shows:
-- je-001: REVERSED (original error)
-- je-002: POSTED (reversal, -$1,000)
-- je-003: POSTED (corrected, +$500)
+- je-001: REVERSED = TRUE, related_to = 'je-002' (original error)
+- je-002: POSTED, status = REVERSAL (reversal, -$1,000)
+- je-003: POSTED, status = CORRECTION (corrected, +$500)
 
 Net GL impact: $500 (correct)
+Audit trail: Shows original → reversal → correction chain
 
 ### Correction Approval Rules (LOCKED)
 

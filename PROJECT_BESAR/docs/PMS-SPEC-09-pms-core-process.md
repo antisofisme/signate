@@ -23,6 +23,20 @@ This document specifies the **core operational workflow** of the PMS (Property M
    - No backdating charges after night audit
    - Immutable record for accounting
 
+**CRITICAL CLARIFICATION - Night Audit Lock Precedence**:
+```
+RULE: After night audit for day D, NO charges can be posted to date ≤ D
+EXCEPTION: Manager override allowed for documented corrections (rare)
+
+If manager override is used:
+  1. Manager must provide written reason (damage claim, billing error, etc.)
+  2. Override creates audit log entry (who, when, reason)
+  3. Corrected GL entries are marked as POST-AUDIT CORRECTION
+  4. Accounting team must review before period close
+  5. Cannot use override to change amounts without approval
+  6. Override cannot backdate > 7 days
+```
+
 4. **Accounting Integration**
    - PMS generates events (reservations, charges, payments)
    - Accounting system consumes events asynchronously
