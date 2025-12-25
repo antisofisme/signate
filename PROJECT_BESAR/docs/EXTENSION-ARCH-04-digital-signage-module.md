@@ -849,6 +849,85 @@ device (tenant_id=hotel-123) → playlist (tenant_id=hotel-123)
 - Always use soft delete (set deleted_at)
 - Preserves history for compliance and auditing
 
+### CRITICAL GUARDRAIL - Device Registration & Authentication
+
+```
+RULE: Device must authenticate as belonging to specific tenant
+RULE: Device token scoped to single tenant (cannot access other tenants' content)
+RULE: Device registration requires valid tenant context
+```
+
+**Implementation**:
+- Device registration endpoint requires:
+  - tenant_id from JWT claims (from authenticated user)
+  - device_id (unique within tenant, not globally)
+  - platform, os_version, app_version (for version management)
+- Device is associated with registration tenant only
+- All subsequent API calls must include device_id + jwt_token
+- JWT token contains: { tenant_id, device_id, permissions: ['read-playlists'] }
+- Token validation checks:
+  1. JWT signature valid
+  2. tenant_id matches device.tenant_id
+  3. device_id matches device.id
+  4. Token not expired
+- **Prevents**: Device from one tenant accessing another tenant's content
+- **Prevents**: Impersonation attacks (device claiming different tenant)
+
+### CRITICAL GUARDRAIL - Playlist Version Management & Content Freshness
+
+```
+RULE: Devices must verify playlist version before displaying
+RULE: Content delivery uses checksums for integrity verification
+RULE: Failed downloads must retry or fallback to cached content
+```
+
+**Implementation**:
+- Each playlist has immutable version number (monotonically increasing)
+- Device maintains local playlist_version cached
+- On sync interval:
+  1. Device sends current playlist_version to backend
+  2. Backend returns: { version: N, items: [...], checksum: "sha256:..." }
+  3. If version unchanged: Device keeps displaying (no download needed)
+  4. If version newer: Device downloads new playlist
+  5. Device verifies checksum matches before displaying
+- Content delivery includes checksum for integrity:
+  - URL: "https://cdn.example.com/content/{content_id}"
+  - Response header: "X-Content-Checksum: sha256:abc..."
+  - Device verifies downloaded file matches checksum
+- Failed downloads:
+  - Retry up to 3 times with exponential backoff
+  - If all retries fail: Continue displaying cached content
+  - Log error to health endpoint for monitoring
+- Prevents: Corrupted content display, man-in-the-middle attacks
+
+### HIGH GUARDRAIL - Remote Command Authorization & Audit Trail
+
+```
+RULE: Remote commands (reboot, clear cache, etc.) require authorization
+RULE: All remote commands logged for audit trail
+RULE: Device must acknowledge command execution
+```
+
+**Implementation**:
+- Remote commands require:
+  - User must have 'manage-devices' permission in tenant
+  - Command type specified (e.g., 'reboot', 'clear-cache', 'fetch-playlist')
+  - Command signed with server private key (prevent tampering)
+- Command flow:
+  1. User initiates command via CMS dashboard
+  2. Server generates command_id, signs with timestamp
+  3. Device receives command, verifies signature
+  4. Device executes command, sends acknowledgment with result
+  5. Server logs: { command_id, device_id, executed_at, result }
+- Prevent unauthorized commands:
+  - Device checks command signature against known server public key
+  - Only commands signed by server are executed
+  - Unknown commands logged as security event
+- Audit trail stored for compliance:
+  - Command log includes who issued, when, result status
+  - Failed commands logged with error details
+  - Enables traceability for security investigations
+
 ---
 
 ## 6. Backend Integration
