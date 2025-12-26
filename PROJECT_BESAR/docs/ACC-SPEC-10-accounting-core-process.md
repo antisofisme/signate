@@ -1767,6 +1767,550 @@ interface JournalLine {
 
 ---
 
+## Financial Integrity Guardrails
+
+**CRITICAL GUARDRAIL: GL Posting Failure Recovery - Full Escalation Policy (Financial Gap #1)**
+
+**RULE**: GL posting failures MUST follow strict escalation sequence: auto-retry (1-24 hours) → Finance Director notification → manual recovery options.
+
+**Problem**: Without clear escalation policy, GL posting failures could be missed or escalated too early, causing incomplete financial records or unnecessary manual intervention.
+
+**Implementation Requirement**:
+
+**Phase 1: Automatic Recovery (0-24 hours)**
+```typescript
+// Exponential backoff: 1s, 2s, 4s, 8s, 16s, 32s, 1m, 2m, 4m, 8m, 16m, 32m, 1h
+// Total attempts: 13 retries over ~24 hours
+const RETRY_SCHEDULE = [
+  1,      // 1 second
+  2, 4, 8, 16, 32,        // 32 seconds cumulative
+  60, 120, 240, 480, 960, 1920, 3600  // Up to 1 hour each, max 24 hours cumulative
+];
+
+async function postGLEntryWithAutoRecovery(event: AccountingEvent) {
+  try {
+    // Attempt to post immediately
+    await postJournalEntry(event);
+  } catch (error) {
+    // Store failure record for retry
+    const failedRecord = await createFailedProcessingRecord({
+      event_id: event.event_id,
+      event_type: event.event_type,
+      error_message: error.message,
+      error_stack: error.stack,
+      status: 'FAILED',
+      retry_count: 0,
+      next_retry_at: calculateNextRetry(0),
+      escalation_sent_at: null,  // Not yet escalated
+      last_attempted_at: new Date()
+    });
+
+    // Schedule automatic retry
+    await scheduleRetry(failedRecord.id);
+  }
+}
+
+async function retryFailedGLPosting(jobId: string) {
+  const job = await getFailedProcessingRecord(jobId);
+
+  if (job.retry_count >= 24) {
+    // Max retries exceeded - escalate to Finance Director
+    await escalateToFinanceDirector(job);
+    return;
+  }
+
+  try {
+    const event = await reconstructEventFromFailedRecord(job);
+    await postJournalEntry(event);
+
+    // Success - mark as recovered
+    await updateFailedProcessingRecord(jobId, { status: 'RECOVERED' });
+  } catch (error) {
+    // Update retry count and schedule next attempt
+    const nextRetryCount = job.retry_count + 1;
+    const nextRetryTime = calculateNextRetry(nextRetryCount);
+
+    if (nextRetryCount > 24) {
+      // Escalate after 24 hours of retries
+      await escalateToFinanceDirector({
+        ...job,
+        retry_count: nextRetryCount,
+        error_message: error.message
+      });
+    }
+
+    await updateFailedProcessingRecord(jobId, {
+      retry_count: nextRetryCount,
+      next_retry_at: nextRetryTime,
+      last_attempted_at: new Date()
+    });
+  }
+}
+```
+
+**Phase 2: Escalation to Finance Director (24+ hours)**
+```typescript
+async function escalateToFinanceDirector(failedRecord: FailedProcessingRecord) {
+  // STEP 1: Update escalation status
+  await updateFailedProcessingRecord(failedRecord.id, {
+    status: 'ESCALATED',
+    escalation_sent_at: new Date(),
+    escalation_acknowledged: false
+  });
+
+  // STEP 2: Send urgent notification
+  const notification = {
+    to: 'finance_director@company.com',
+    cc: ['accounting_manager@company.com'],
+    subject: `🚨 URGENT: GL Posting Failure - 24+ Hours Without Recovery`,
+    priority: 'high',
+    body: `
+EVENT ID: ${failedRecord.event_id}
+EVENT TYPE: ${failedRecord.event_type}
+FAILURE TIME: ${failedRecord.created_at}
+RETRY ATTEMPTS: ${failedRecord.retry_count}
+
+ERROR: ${failedRecord.error_message}
+
+ACTION REQUIRED:
+1. Review failed posting details
+2. Investigate root cause
+3. Choose recovery option:
+   a) Manual GL entry adjustment
+   b) Event replay after issue fixed
+   c) Accounting reversal & restatement
+
+LINK: /accounting/failed-gl-posting/${failedRecord.id}
+
+SLA: Acknowledge within 2 hours. Resolve within 8 business hours.
+    `
+  };
+
+  await sendEmail(notification);
+  await sendSlackAlert('#finance-critical', notification);
+}
+```
+
+**Phase 3: Manual Recovery Options**
+```typescript
+interface ManualRecoveryOptions {
+  // Option 1: Retry the failed GL posting
+  retryNow: async (jobId: string) => Promise<void>,
+
+  // Option 2: Manual GL entry adjustment
+  manualAdjustment: async (jobId: string, manualEntryData: JournalEntry) => Promise<void>,
+
+  // Option 3: Acknowledge and defer (if resolved externally)
+  acknowledgeAndResolve: async (jobId: string, resolutionNotes: string) => Promise<void>,
+
+  // Option 4: Escalate to CFO (for high-value or systemic issues)
+  escalateToCFO: async (jobId: string, reason: string) => Promise<void>
+}
+```
+
+**Audit Trail Requirements**:
+- ✅ EVERY retry attempt logged: timestamp, retry_count, error_message, next_retry_time
+- ✅ EVERY escalation logged: escalation_time, recipient, notification_method
+- ✅ EVERY manual action logged: action_type, performed_by, timestamp, justification
+- ✅ EVERY resolution logged: resolution_type, details, who_resolved, timestamp
+- ✅ Link all logs to audit_trail_id for full event traceability
+
+---
+
+**CRITICAL GUARDRAIL: FX Rate Immutability - Multi-Layer Enforcement (Financial Gap #2)**
+
+**RULE**: FX rates MUST be immutable after GL posting. Database trigger is PRIMARY enforcement; application validation is SECONDARY defense-in-depth.
+
+**Problem**: If FX rates can be modified after posting, historical GL entries would become invalid, financial statements could be restated arbitrarily, and audit trail would be corrupted.
+
+**Implementation Requirement**:
+
+**Layer 1: Database Trigger (PRIMARY ENFORCEMENT)**
+```sql
+-- Primary enforcement: Database trigger prevents any FX rate updates after posting
+CREATE TRIGGER prevent_fx_rate_updates_after_posting
+BEFORE UPDATE ON fx_transactions
+FOR EACH ROW
+WHEN (OLD.posted_at IS NOT NULL)  -- Only applies to POSTED transactions
+BEGIN
+  -- Check if rate fields are being changed
+  IF (NEW.rate_at_creation != OLD.rate_at_creation
+      OR NEW.rate_at_settlement != OLD.rate_at_settlement
+      OR NEW.spread_applied != OLD.spread_applied) THEN
+    RAISE EXCEPTION 'FX_RATE_IMMUTABLE_AFTER_POSTING'
+      USING MESSAGE = 'FX rates are immutable after GL posting. ' +
+                      'Posted at: ' || OLD.posted_at ||
+                      '. To correct FX errors, create reversal entry.';
+  END IF;
+
+  -- Only allow updates to non-rate fields (status, audit fields)
+  IF (NEW.status != OLD.status  -- Allow status changes
+      OR NEW.reconciled_at != OLD.reconciled_at
+      OR NEW.reconciled_by != OLD.reconciled_by) THEN
+    -- Allow non-rate field updates
+    RETURN NEW;
+  END IF;
+
+  RETURN NEW;
+END;
+
+CREATE INDEX idx_fx_posted_at ON fx_transactions(posted_at)
+  WHERE posted_at IS NOT NULL;  -- Index only posted transactions for performance
+```
+
+**Layer 2: Application Validation (SECONDARY DEFENSE)**
+```typescript
+async function updateFXTransaction(
+  txnId: string,
+  updates: Partial<FXTransaction>,
+  userId: string
+): Promise<FXTransaction> {
+  // STEP 1: Load current transaction
+  const current = await fxService.getTransaction(txnId);
+
+  // STEP 2: Check if transaction is posted
+  if (current.posted_at !== null) {
+    // STEP 3: If posted, reject ANY rate field updates
+    const rateFields = ['rate_at_creation', 'rate_at_settlement', 'spread_applied'];
+    const attemptedRateUpdate = rateFields.some(
+      field => updates[field] !== undefined && updates[field] !== current[field]
+    );
+
+    if (attemptedRateUpdate) {
+      throw new Error(
+        `FX rate immutability violation. Transaction ${txnId} was posted on ` +
+        `${current.posted_at.toISOString()}. FX rates cannot be modified after posting. ` +
+        `To correct FX errors, create a reversal entry (new FX transaction with opposite direction).`
+      );
+    }
+
+    // Log attempt for audit trail (even if rejected)
+    await auditService.log({
+      action: 'FX_UPDATE_REJECTED',
+      reason: 'RATE_IMMUTABILITY_VIOLATION',
+      transaction_id: txnId,
+      attempted_changes: updates,
+      user_id: userId,
+      timestamp: new Date()
+    });
+  }
+
+  // STEP 4: Allow updates to non-rate fields
+  const allowedFields = ['status', 'reconciled_at', 'reconciled_by', 'notes'];
+  const safeUpdates = Object.keys(updates).reduce((acc, key) => {
+    if (allowedFields.includes(key)) {
+      acc[key] = updates[key];
+    }
+    return acc;
+  }, {});
+
+  return await fxService.update(txnId, safeUpdates);
+}
+```
+
+**Layer 3: Testing & Verification**
+```typescript
+// Unit test: Verify database trigger enforces immutability
+test('FX rate immutability - database trigger prevents update', async () => {
+  const txn = await createPostedFXTransaction({
+    rate_at_creation: 16500,
+    posted_at: new Date()
+  });
+
+  // Attempt to update FX rate (should fail at database level)
+  const promise = db.raw(`
+    UPDATE fx_transactions
+    SET rate_at_creation = 16600
+    WHERE id = $1
+  `, [txn.id]);
+
+  await expect(promise).rejects.toThrow('FX_RATE_IMMUTABLE_AFTER_POSTING');
+});
+
+// Unit test: Verify application rejects FX rate updates
+test('FX rate immutability - application validation rejects update', async () => {
+  const txn = await createPostedFXTransaction({ rate_at_creation: 16500 });
+
+  const promise = fxService.updateTransaction(txn.id, {
+    rate_at_creation: 16600
+  }, userId);
+
+  await expect(promise).rejects.toThrow('FX rate immutability violation');
+});
+```
+
+---
+
+**CRITICAL GUARDRAIL: FX Adjustment Audit Trail - Mandatory for All Changes (Financial Gap #3)**
+
+**RULE**: EVERY FX adjustment (including reconciliation, accrual, settlement) MUST generate detailed audit trail entry with before/after values.
+
+**Problem**: Without mandatory audit trails, FX adjustments could be made without accountability, making it impossible to trace FX-related GL errors back to the decision maker.
+
+**Implementation Requirement**:
+```typescript
+async function recordFXAdjustment(
+  adjustment: FXAdjustment,
+  context: {
+    user_id: string,
+    reason: string,
+    authorization_level: 'ACCOUNTING_STAFF' | 'ACCOUNTING_MANAGER' | 'CFO',
+    approval_reference?: string  // For high-value adjustments
+  }
+): Promise<FXAdjustmentRecord> {
+  // STEP 1: Validate authorization level vs adjustment amount
+  if (adjustment.amount > 10000 && context.authorization_level === 'ACCOUNTING_STAFF') {
+    throw new Error(`Adjustment amount > $10,000 requires ACCOUNTING_MANAGER or CFO approval`);
+  }
+
+  // STEP 2: Create adjustment record with full audit trail
+  const record = await fxAdjustmentService.create({
+    // Identification
+    id: generateId('fxadj'),
+    tenant_id: adjustment.tenant_id,
+    fx_transaction_id: adjustment.fx_transaction_id,
+
+    // Adjustment details
+    adjustment_type: adjustment.type,  // 'RECONCILIATION', 'ACCRUAL', 'SETTLEMENT', 'CORRECTION'
+    amount: adjustment.amount,
+    currency: adjustment.currency,
+    rate_before: adjustment.rate_before,
+    rate_after: adjustment.rate_after,
+    gl_impact_debit_account: adjustment.debit_account,
+    gl_impact_credit_account: adjustment.credit_account,
+
+    // Business context
+    reason: context.reason,  // e.g., "Q4 year-end accrual", "Bank statement reconciliation"
+    approval_reference: context.approval_reference,  // PO reference, approval document
+
+    // Authorization trail
+    authorized_by: context.user_id,
+    authorization_level: context.authorization_level,
+    authorized_at: new Date(),
+
+    // GL Integration
+    gl_entry_id: null,  // Will be populated after GL posting
+    gl_posting_status: 'PENDING',
+
+    // Timestamps
+    created_at: new Date(),
+    created_by: context.user_id,
+    posted_at: null,  // Only set after GL posting succeeds
+    posted_by: null
+  });
+
+  // STEP 3: Log detailed audit entry
+  await auditService.log({
+    action: 'FX_ADJUSTMENT_CREATED',
+    entity_type: 'FXAdjustment',
+    entity_id: record.id,
+    changes: {
+      before: null,
+      after: {
+        adjustment_type: record.adjustment_type,
+        amount: record.amount,
+        rate_before: record.rate_before,
+        rate_after: record.rate_after,
+        reason: record.reason
+      }
+    },
+    performed_by: context.user_id,
+    authorization_level: context.authorization_level,
+    timestamp: new Date(),
+    request_id: generateRequestId()
+  });
+
+  return record;
+}
+
+// Post FX adjustment to GL
+async function postFXAdjustmentToGL(adjustmentId: string) {
+  const adjustment = await fxAdjustmentService.get(adjustmentId);
+
+  // Create GL entry for FX adjustment
+  const glEntry = {
+    lines: [
+      {
+        account_code: adjustment.gl_impact_debit_account,
+        debit: Math.abs(adjustment.amount),
+        description: `FX ${adjustment.adjustment_type}: ${adjustment.reason}`
+      },
+      {
+        account_code: adjustment.gl_impact_credit_account,
+        credit: Math.abs(adjustment.amount),
+        description: `FX ${adjustment.adjustment_type}: ${adjustment.reason}`
+      }
+    ],
+    source_adjustment_id: adjustmentId
+  };
+
+  try {
+    const je = await glService.postJournalEntry(glEntry);
+
+    // Update adjustment record with GL reference
+    await fxAdjustmentService.update(adjustmentId, {
+      gl_entry_id: je.id,
+      gl_posting_status: 'POSTED',
+      posted_at: new Date(),
+      posted_by: getCurrentUser().id
+    });
+
+    // Log GL posting success
+    await auditService.log({
+      action: 'FX_ADJUSTMENT_POSTED_TO_GL',
+      entity_type: 'FXAdjustment',
+      entity_id: adjustmentId,
+      reference_id: je.id,
+      timestamp: new Date()
+    });
+  } catch (error) {
+    // Log GL posting failure
+    await auditService.log({
+      action: 'FX_ADJUSTMENT_GL_POSTING_FAILED',
+      entity_type: 'FXAdjustment',
+      entity_id: adjustmentId,
+      error: error.message,
+      timestamp: new Date()
+    });
+
+    throw error;
+  }
+}
+```
+
+---
+
+**CRITICAL GUARDRAIL: Reconciliation Failure SLA - Escalation & Resolution Timeline (Financial Gap #4)**
+
+**RULE**: Reconciliation failures MUST be resolved within SLA based on severity. Unresolved reconciliation blocks period close and financial reporting.
+
+**Problem**: Without SLA definition, reconciliation failures could languish unresolved, delaying period close and hiding financial discrepancies.
+
+**Implementation Requirement**:
+
+**Severity Classification**:
+```
+┌────────────────┬──────────────────┬──────────────────┬─────────────────────┐
+│ Severity       │ Discrepancy Type │ Amount Threshold │ SLA Resolution      │
+├────────────────┼──────────────────┼──────────────────┼─────────────────────┤
+│ CRITICAL       │ Bank mismatch     │ Any amount       │ 2 hours             │
+│ CRITICAL       │ GL unbalanced     │ Any amount       │ 4 hours             │
+│ HIGH           │ AR/AP mismatch    │ > $10,000        │ 8 hours / 1 bus day │
+│ MEDIUM         │ AR/AP mismatch    │ $1,000 - $10,000 │ 1 business day      │
+│ LOW            │ Rounding/timing   │ < $1,000         │ 3 business days     │
+└────────────────┴──────────────────┴──────────────────┴─────────────────────┘
+```
+
+**Escalation Workflow**:
+```typescript
+async function handleReconciliationFailure(
+  failure: ReconciliationFailure,
+  severity: 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW'
+) {
+  const SLA_MAP = {
+    'CRITICAL': { hours: 2, escalationEmail: 'cfo@company.com' },
+    'HIGH': { hours: 8, escalationEmail: 'accounting_manager@company.com' },
+    'MEDIUM': { hours: 24, escalationEmail: 'accounting_manager@company.com' },
+    'LOW': { hours: 72, escalationEmail: 'accounting_staff@company.com' }
+  };
+
+  const sla = SLA_MAP[severity];
+  const dueDate = new Date(Date.now() + sla.hours * 60 * 60 * 1000);
+
+  // Create reconciliation issue record
+  const issue = await reconciliationIssueService.create({
+    id: generateId('reconcile-issue'),
+    period_id: failure.period_id,
+    failure_type: failure.type,
+    discrepancy_amount: failure.amount,
+    severity,
+    sla_due_date: dueDate,
+    assigned_to: sla.escalationEmail,
+    created_at: new Date(),
+    status: 'OPEN'
+  });
+
+  // Prevent period close
+  await periodService.blockClose(failure.period_id, {
+    reason: `Reconciliation failure: ${failure.description}`,
+    blocking_issue_id: issue.id
+  });
+
+  // Send initial notification
+  await sendNotification(sla.escalationEmail, {
+    subject: `${severity} Reconciliation Issue - ${failure.description}`,
+    dueDate,
+    issueLink: `/accounting/reconciliation-issues/${issue.id}`
+  });
+
+  // Schedule escalation reminders
+  await scheduleEscalation(issue.id, {
+    at: new Date(dueDate.getTime() - 30 * 60 * 1000),  // 30 min before SLA
+    escalateTo: 'accounting_manager@company.com',
+    message: 'Reconciliation issue approaching SLA deadline'
+  });
+}
+
+// Verify and resolve reconciliation
+async function resolveReconciliationIssue(
+  issueId: string,
+  resolution: {
+    resolution_type: 'MANUAL_ADJUSTMENT' | 'REVERSAL' | 'TIMING_DIFFERENCE' | 'DATA_ERROR',
+    adjustment_entries?: JournalEntry[],
+    notes: string,
+    resolved_by: string
+  }
+) {
+  const issue = await reconciliationIssueService.get(issueId);
+
+  // Verify SLA compliance
+  if (new Date() > issue.sla_due_date) {
+    // Log SLA violation
+    await auditService.log({
+      action: 'RECONCILIATION_SLA_VIOLATION',
+      entity_id: issueId,
+      resolved_at: new Date(),
+      due_at: issue.sla_due_date,
+      hours_overdue: (new Date().getTime() - issue.sla_due_date.getTime()) / (60 * 60 * 1000)
+    });
+  }
+
+  // Post adjustment entries if provided
+  if (resolution.adjustment_entries && resolution.adjustment_entries.length > 0) {
+    for (const entry of resolution.adjustment_entries) {
+      await glService.postJournalEntry({
+        ...entry,
+        description: `Reconciliation adjustment: ${resolution.notes}`,
+        source_reconciliation_issue_id: issueId
+      });
+    }
+  }
+
+  // Mark issue resolved
+  await reconciliationIssueService.update(issueId, {
+    status: 'RESOLVED',
+    resolution_type: resolution.resolution_type,
+    resolution_notes: resolution.notes,
+    resolved_by: resolution.resolved_by,
+    resolved_at: new Date()
+  });
+
+  // Allow period close to proceed
+  await periodService.unblockClose(issue.period_id, issueId);
+
+  // Log resolution
+  await auditService.log({
+    action: 'RECONCILIATION_ISSUE_RESOLVED',
+    entity_id: issueId,
+    resolution_type: resolution.resolution_type,
+    resolved_by: resolution.resolved_by,
+    timestamp: new Date()
+  });
+}
+```
+
+---
+
 ## Multi-Tenant Guardrails
 
 **CRITICAL GUARDRAIL: GL Query Tenant Isolation in JOINs (Multi-Tenant Gap #1)**
