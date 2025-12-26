@@ -1558,6 +1558,232 @@ When a Business Contract is revoked (see SPEC-10 for details):
 
 ---
 
+## Critical Failure Scenario Guardrails
+
+**CRITICAL GUARDRAIL: Cross-Tenant Event Delivery Failure (Missing Guardrail #6)**
+
+**RULE**: Events between tenants (e.g., Invoice.Created from Supplier to Buyer) MUST be delivered reliably with guaranteed delivery semantics. Failures MUST be retried with compensation pattern. Dead-letter queue required for undeliverable events.
+
+**Problem**: If Supplier publishes Invoice.Created event to Buyer tenant but event delivery fails, Buyer won't create AP, leaving Buyer without record of liability and Supplier without record of revenue. Systems become inconsistent.
+
+**Implementation Requirement**:
+
+**Cross-Tenant Event Delivery Pattern**:
+```typescript
+// Event delivery with guaranteed semantics
+async function publishInterTenantEventWithGuarantee(
+  event: InterTenantEvent,
+  buyerTenantId: string,
+  supplierId: string
+): Promise<{ success: boolean, deliveryId: string }> {
+  // STEP 1: Create delivery record (for tracking)
+  const delivery = await eventDeliveryService.create({
+    id: generateId('evt-del'),
+    event_id: event.event_id,
+    event_type: event.event_type,
+    from_tenant_id: event.from_tenant_id,
+    to_tenant_id: buyerTenantId,
+    supplier_id: supplierId,
+    event_payload: event,
+    status: 'PENDING',  // Not yet delivered
+    retry_count: 0,
+    next_retry_at: new Date(),
+    created_at: new Date(),
+    delivery_attempts: []
+  });
+
+  // STEP 2: Attempt immediate delivery
+  try {
+    await deliverEventToBuyerTenant({
+      event,
+      buyerTenantId,
+      deliveryId: delivery.id
+    });
+
+    // Success - mark as delivered
+    await eventDeliveryService.markDelivered(delivery.id, {
+      delivered_at: new Date(),
+      status: 'SUCCESS'
+    });
+
+    return { success: true, deliveryId: delivery.id };
+
+  } catch (error) {
+    // STEP 3: Delivery failed - schedule retry
+    const retrySchedule = getExponentialBackoffMs(0);  // Start with 1s
+
+    await eventDeliveryService.update(delivery.id, {
+      status: 'PENDING_RETRY',
+      retry_count: 1,
+      next_retry_at: new Date(Date.now() + retrySchedule),
+      last_error: error.message,
+      delivery_attempts: [
+        {
+          attempted_at: new Date(),
+          error: error.message,
+          backoff_ms: retrySchedule
+        }
+      ]
+    });
+
+    // Schedule async retry job
+    await scheduleEventDeliveryRetry({
+      deliveryId: delivery.id,
+      nextRetryAt: new Date(Date.now() + retrySchedule)
+    });
+
+    return { success: false, deliveryId: delivery.id };
+  }
+}
+
+// Async retry logic with exponential backoff
+async function retryEventDelivery(deliveryId: string) {
+  const delivery = await eventDeliveryService.get(deliveryId);
+  const maxRetries = 48;  // 24+ hours of retries
+
+  if (delivery.retry_count >= maxRetries) {
+    // Max retries exceeded - move to dead-letter queue
+    await moveToDeadLetterQueue(delivery);
+    return;
+  }
+
+  try {
+    // STEP 1: Verify contract is still active
+    const contract = await businessContractService.getContract(
+      delivery.from_tenant_id,
+      delivery.to_tenant_id,
+      delivery.event_payload.contract_id
+    );
+
+    if (!contract || contract.status !== 'ACTIVE') {
+      // Contract no longer active - move to dead-letter
+      await moveToDeadLetterQueue(delivery, {
+        reason: 'CONTRACT_NO_LONGER_ACTIVE',
+        contract_status: contract?.status
+      });
+      return;
+    }
+
+    // STEP 2: Attempt delivery
+    await deliverEventToBuyerTenant({
+      event: delivery.event_payload,
+      buyerTenantId: delivery.to_tenant_id,
+      deliveryId
+    });
+
+    // Success - mark as delivered
+    await eventDeliveryService.markDelivered(deliveryId, {
+      delivered_at: new Date(),
+      status: 'SUCCESS',
+      final_retry_count: delivery.retry_count
+    });
+
+  } catch (error) {
+    // STEP 3: Retry failed - schedule next attempt
+    const nextRetryCount = delivery.retry_count + 1;
+    const backoffMs = getExponentialBackoffMs(nextRetryCount);
+
+    const newAttempt = {
+      attempted_at: new Date(),
+      error: error.message,
+      retry_count: nextRetryCount,
+      backoff_ms: backoffMs
+    };
+
+    await eventDeliveryService.update(deliveryId, {
+      retry_count: nextRetryCount,
+      next_retry_at: new Date(Date.now() + backoffMs),
+      last_error: error.message,
+      delivery_attempts: [...delivery.delivery_attempts, newAttempt]
+    });
+
+    // Schedule next retry
+    await scheduleEventDeliveryRetry({
+      deliveryId,
+      nextRetryAt: new Date(Date.now() + backoffMs)
+    });
+  }
+}
+
+// Dead-letter queue for undeliverable events
+async function moveToDeadLetterQueue(
+  delivery: EventDelivery,
+  details?: { reason: string, [key: string]: any }
+) {
+  await eventDeliveryService.update(delivery.id, {
+    status: 'DEAD_LETTERED',
+    dead_lettered_at: new Date(),
+    dead_letter_reason: details?.reason || 'MAX_RETRIES_EXCEEDED',
+    dead_letter_details: details
+  });
+
+  // Create dead-letter event
+  const dlEvent = await deadLetterQueueService.create({
+    id: generateId('dlq'),
+    event_id: delivery.event_id,
+    event_type: delivery.event_type,
+    from_tenant_id: delivery.from_tenant_id,
+    to_tenant_id: delivery.to_tenant_id,
+    event_payload: delivery.event_payload,
+    original_delivery_id: delivery.id,
+    retry_count: delivery.retry_count,
+    last_error: delivery.last_error,
+    created_at: new Date()
+  });
+
+  // Send alert to operations team
+  await sendAlert({
+    to: 'operations-team@company.com',
+    subject: `CRITICAL: Cross-Tenant Event Undeliverable - Dead Letter Queue`,
+    body: `
+Event ID: ${delivery.event_id}
+Event Type: ${delivery.event_type}
+From Tenant: ${delivery.from_tenant_id}
+To Tenant: ${delivery.to_tenant_id}
+Retry Attempts: ${delivery.retry_count}
+Last Error: ${delivery.last_error}
+Dead Letter Reason: ${details?.reason || 'MAX_RETRIES_EXCEEDED'}
+
+ACTION REQUIRED:
+1. Investigate why Buyer tenant is not accepting events
+2. Check network connectivity between tenants
+3. Check if Buyer system is down or busy
+4. Manually deliver event to Buyer if needed
+5. Update dead-letter event status when resolved
+
+Link: /operations/dead-letter-queue/${dlEvent.id}
+
+NOTE: Supplier's revenue is in ledger (AR posted).
+      Buyer's liability is NOT in ledger (AP not created).
+      Manual reconciliation may be required.
+    `
+  });
+
+  // Log dead-letter event for audit
+  await auditService.log({
+    action: 'EVENT_DEAD_LETTERED',
+    event_id: delivery.event_id,
+    reason: details?.reason,
+    retry_count: delivery.retry_count,
+    timestamp: new Date()
+  });
+}
+```
+
+**Guaranteed Delivery Pattern Enforcement**:
+- ✅ Schema: event_deliveries table tracks every cross-tenant event
+- ✅ Every event has delivery_id and status (PENDING, SUCCESS, PENDING_RETRY, DEAD_LETTERED)
+- ✅ Exponential backoff retry: 1s, 2s, 4s, 8s... up to 1h, max 48 times (24+ hours)
+- ✅ Delivery attempts logged with timestamp and error
+- ✅ Dead-letter queue for undeliverable events (manual intervention point)
+- ✅ Contract validation before retry (reject if contract terminated)
+- ✅ Alerts to operations team for dead-lettered events
+- ✅ Test: Simulate Buyer tenant unavailable; verify event retries and eventually dead-letters
+- ✅ Test: Verify contract termination prevents delivery of new events
+- ✅ Test: Verify dead-letter events can be manually redelivered
+
+---
+
 ## Multi-Tenant Isolation Guardrails
 
 **CRITICAL GUARDRAIL: Cross-Tenant Event Publishing Requires BusinessContract Validation (Multi-Tenant Gap #2)**

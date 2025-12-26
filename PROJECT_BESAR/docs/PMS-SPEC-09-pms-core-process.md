@@ -1665,6 +1665,195 @@ POS System              PMS System            Event Broker         Accounting
 
 ---
 
+## Critical Failure Scenario Guardrails
+
+**CRITICAL GUARDRAIL: Concurrent Updates to Same Folio Charge (Missing Guardrail #4)**
+
+**RULE**: Concurrent updates to the same folio charge MUST be prevented using optimistic locking. Last-write-wins is NOT allowed; conflicts MUST be detected and resolved explicitly.
+
+**Problem**: If two simultaneous requests (e.g., POS system posting charge + Guest modifying folio in UI) try to update the same charge, one update could silently overwrite the other, causing incorrect balances or double-charging.
+
+**Implementation Requirement**:
+
+**Optimistic Locking Pattern for Folio Charges**:
+```typescript
+interface FolioCharge {
+  id: string;
+  folio_id: string;
+  tenant_id: string;
+  amount: number;
+  category: string;
+  description: string;
+  posted_at: Date;
+
+  // Optimistic locking fields
+  version: number;          // Incremented on every update
+  updated_at: Date;
+  updated_by: string;
+
+  status: 'PENDING' | 'POSTED' | 'DISPUTED' | 'REVERSED';
+}
+
+// Update charge with optimistic locking
+async function updateFolioCharge(
+  chargeId: string,
+  updates: Partial<FolioCharge>,
+  expectedVersion: number,  // Version from client
+  userId: string
+): Promise<FolioCharge> {
+  // STEP 1: Load current charge
+  const charge = await db('folio_charges').where('id', chargeId).first();
+
+  if (!charge) {
+    throw new Error(`Charge ${chargeId} not found`);
+  }
+
+  // STEP 2: Check version - detect concurrent modifications
+  if (charge.version !== expectedVersion) {
+    // Conflict detected! Another process modified the charge
+    throw new ConcurrentUpdateError(
+      `Folio charge ${chargeId} was modified by another process. ` +
+      `Expected version: ${expectedVersion}, Current version: ${charge.version}. ` +
+      `Your changes conflict. Please reload and try again.`
+    );
+  }
+
+  // STEP 3: Check folio status - prevent changes to closed folios
+  const folio = await db('folios').where('id', charge.folio_id).first();
+  if (folio.status === 'CLOSED') {
+    throw new Error(
+      `Cannot modify charge. Folio ${charge.folio_id} is CLOSED. ` +
+      `Contact manager to reopen folio if needed.`
+    );
+  }
+
+  // STEP 4: Update with atomic version increment
+  const updated = await db('folio_charges')
+    .where('id', chargeId)
+    .where('version', expectedVersion)  // Optimistic lock condition
+    .update({
+      ...updates,
+      version: expectedVersion + 1,  // Increment version
+      updated_at: new Date(),
+      updated_by: userId
+    })
+    .returning('*');
+
+  // STEP 5: Check if update succeeded (affected rows == 1)
+  if (!updated || updated.length === 0) {
+    // Version mismatch - concurrent update occurred
+    const current = await db('folio_charges').where('id', chargeId).first();
+    throw new ConcurrentUpdateError(
+      `Failed to update charge. Concurrent modification detected. ` +
+      `Your version: ${expectedVersion}, Current version: ${current.version}. ` +
+      `Current state: ${JSON.stringify(current)}. Please reload and retry.`
+    );
+  }
+
+  // STEP 6: Log the update for audit trail
+  await auditService.log({
+    action: 'FOLIO_CHARGE_UPDATED',
+    entity_type: 'FolioCharge',
+    entity_id: chargeId,
+    changes: {
+      before: { version: expectedVersion, ...charge },
+      after: { ...updated[0] }
+    },
+    performed_by: userId,
+    timestamp: new Date()
+  });
+
+  return updated[0];
+}
+
+// Posting charge with conflict detection
+async function postChargeToFolio(
+  folio_id: string,
+  chargeData: {
+    amount: number,
+    category: string,
+    description: string,
+    source: string  // 'POS', 'MANUAL', etc.
+  },
+  userId: string
+): Promise<FolioCharge> {
+  // STEP 1: Load folio with locking
+  const folio = await db('folios')
+    .where('id', folio_id)
+    .where('tenant_id', getCurrentTenant())
+    .forUpdate()  // Lock folio row
+    .first();
+
+  if (!folio) {
+    throw new Error(`Folio ${folio_id} not found or access denied`);
+  }
+
+  // STEP 2: Check folio status
+  if (folio.status !== 'OPEN' && folio.status !== 'IN_HOUSE') {
+    throw new Error(
+      `Cannot post charge to folio with status ${folio.status}. ` +
+      `Only OPEN or IN_HOUSE folios can receive charges.`
+    );
+  }
+
+  // STEP 3: Check day is not locked by Night Audit
+  const day = await checkIfDayLocked(folio.property_id, getCurrentDate());
+  if (day && day.locked_by_night_audit) {
+    throw new Error(
+      `Cannot post charge. Day ${getCurrentDate()} is locked by Night Audit. ` +
+      `Contact manager to unlock day.`
+    );
+  }
+
+  // STEP 4: Create charge with initial version
+  const charge = await db('folio_charges').insert({
+    id: generateId('fc'),
+    folio_id: folio.id,
+    tenant_id: folio.tenant_id,
+    amount: chargeData.amount,
+    category: chargeData.category,
+    description: chargeData.description,
+    source: chargeData.source,
+    posted_at: new Date(),
+    posted_by: userId,
+    status: 'POSTED',
+    version: 1,  // Initial version
+    updated_at: new Date(),
+    updated_by: userId
+  }).returning('*');
+
+  // STEP 5: Update folio balance (atomic with charge creation)
+  await db('folios')
+    .where('id', folio_id)
+    .increment('balance', chargeData.amount)
+    .update('updated_at', new Date());
+
+  // STEP 6: Publish event with version info
+  await eventBus.publish({
+    event_type: 'FolioCharge.Posted.v1',
+    folio_id,
+    charge_id: charge.id,
+    charge_version: charge.version,
+    amount: chargeData.amount,
+    posted_at: new Date()
+  });
+
+  return charge[0];
+}
+```
+
+**Enforcement**:
+- ✅ Schema: EVERY folio_charges table MUST have version column (DEFAULT 1, NOT NULL)
+- ✅ Code: EVERY folio charge update MUST include expected version in WHERE clause
+- ✅ Code: UPDATE must check affected rows == 1; if 0 rows, throw ConcurrentUpdateError
+- ✅ API: Return current state + version if conflict detected (client can refresh & retry)
+- ✅ Client: Display "This charge was modified by another user" error; prompt to reload
+- ✅ Test: Concurrent update test - two processes try to update same charge; one must fail
+- ✅ Test: Verify version increments correctly after each update
+- ✅ Test: Verify UPDATE with wrong version fails (returns 0 rows affected)
+
+---
+
 ## Related Documents
 
 - **SPEC-07**: Use Cases — what Staff and Guest can do

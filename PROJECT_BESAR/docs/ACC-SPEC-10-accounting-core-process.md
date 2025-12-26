@@ -2311,6 +2311,406 @@ async function resolveReconciliationIssue(
 
 ---
 
+## Critical Failure Scenario Guardrails
+
+**CRITICAL GUARDRAIL: Database Transaction Failure Halfway Through GL Posting (Missing Guardrail #1)**
+
+**RULE**: If a database transaction fails halfway through GL posting, ALL changes MUST be rolled back atomically. Partial GL entries MUST NOT exist in the ledger.
+
+**Problem**: If a multi-statement transaction (e.g., UPDATE journal_entry, INSERT journal_line, UPDATE account_balance) fails midway, some statements could succeed while others fail, creating an inconsistent GL state where debits ≠ credits.
+
+**Implementation Requirement**:
+
+**Pattern: Atomic GL Posting Transaction**
+```typescript
+async function postJournalEntryAtomically(
+  entry: JournalEntry
+): Promise<JournalEntry> {
+  // Use database transaction for atomicity
+  return await db.transaction(async (trx) => {
+    try {
+      // STEP 1: Verify GL structure is balanced
+      const debits = entry.lines
+        .filter(l => l.debit)
+        .reduce((sum, l) => sum + l.debit, 0);
+      const credits = entry.lines
+        .filter(l => l.credit)
+        .reduce((sum, l) => sum + l.credit, 0);
+
+      if (Math.abs(debits - credits) > 0.01) {
+        throw new Error(`Journal entry unbalanced. Debits: ${debits}, Credits: ${credits}`);
+      }
+
+      // STEP 2: Lock all affected GL accounts (prevents concurrent updates)
+      const accountIds = [...new Set(entry.lines.map(l => l.account_id))];
+      await trx('gl_accounts')
+        .whereIn('id', accountIds)
+        .forUpdate()  // SELECT...FOR UPDATE (pessimistic lock)
+        .select('id', 'balance');  // Just lock, don't modify yet
+
+      // STEP 3: Create journal entry record
+      const je = await trx('journal_entries').insert({
+        id: entry.id,
+        tenant_id: entry.tenant_id,
+        period_id: entry.period_id,
+        entry_date: entry.entry_date,
+        description: entry.description,
+        status: 'DRAFT',  // Start as DRAFT, post after lines inserted
+        created_at: new Date()
+      }).returning('*');
+
+      // STEP 4: Insert all journal lines (each line is a single operation)
+      const lines = await Promise.all(
+        entry.lines.map(line =>
+          trx('journal_lines').insert({
+            id: generateId('jl'),
+            journal_entry_id: je.id,
+            account_id: line.account_id,
+            tenant_id: entry.tenant_id,
+            debit_amount: line.debit || null,
+            credit_amount: line.credit || null,
+            description: line.description,
+            created_at: new Date()
+          }).returning('*')
+        )
+      );
+
+      // STEP 5: Update GL account balances (only if all lines inserted successfully)
+      for (const line of lines) {
+        const impact = (line.debit_amount || 0) - (line.credit_amount || 0);
+        await trx('gl_accounts')
+          .where('id', line.account_id)
+          .increment('balance', impact);
+      }
+
+      // STEP 6: Mark entry as POSTED (atomic with above updates)
+      await trx('journal_entries')
+        .where('id', je.id)
+        .update({
+          status: 'POSTED',
+          posted_at: new Date(),
+          posted_by: getCurrentUserId()
+        });
+
+      // STEP 7: Return posted entry
+      return {
+        ...je,
+        lines,
+        status: 'POSTED',
+        posted_at: new Date()
+      };
+
+    } catch (error) {
+      // Transaction automatically rolled back on error
+      throw new Error(`GL posting failed. All changes rolled back. Error: ${error.message}`);
+    }
+  });
+}
+```
+
+**Atomicity Enforcement**:
+- ✅ Use database-level transactions (ACID compliance)
+- ✅ Lock all affected accounts before modifying (pessimistic locking)
+- ✅ Single logical unit: validate → lock → insert → update → mark posted
+- ✅ Automatic rollback on ANY error (database guarantee)
+- ✅ No partial GL states allowed (no orphaned lines or unbalanced accounts)
+- ✅ Test: Simulate mid-transaction failure; verify complete rollback
+
+---
+
+**CRITICAL GUARDRAIL: Payment Gateway Timeout During Check-Out (Missing Guardrail #2)**
+
+**RULE**: Payment gateway timeouts MUST NOT result in loss of guest charges or incomplete payments. Use compensation pattern for recovery.
+
+**Problem**: If payment processor times out after authorizing but before settling, guest could be charged twice, or folio could have incomplete GL posting, leaving accounts payable hanging.
+
+**Implementation Requirement**:
+
+**Three-Phase Payment Processing**:
+```typescript
+enum PaymentPhase {
+  PENDING = 'PENDING',      // Payment initiated, awaiting processor response
+  AUTHORIZED = 'AUTHORIZED', // Processor confirmed authorization, not yet settled
+  SETTLED = 'SETTLED',      // Payment successfully settled, GL posted
+  FAILED = 'FAILED',        // Payment failed or timed out
+  COMPENSATING = 'COMPENSATING'  // Attempting to cancel authorization
+}
+
+async function processPaymentWithTimeoutRecovery(
+  folio: Folio,
+  payment: PaymentRequest,
+  timeoutMs: number = 30000  // 30 second timeout
+): Promise<PaymentResult> {
+  let paymentRecord = {
+    id: generateId('pay'),
+    folio_id: folio.id,
+    tenant_id: folio.tenant_id,
+    amount: payment.amount,
+    phase: PaymentPhase.PENDING,
+    initiated_at: new Date(),
+    authorization_code: null,
+    settlement_reference: null,
+    last_error: null
+  };
+
+  try {
+    // PHASE 1: Authorization (with timeout)
+    paymentRecord = await authorizePaymentWithTimeout(
+      payment,
+      timeoutMs
+    );
+
+    if (paymentRecord.phase === PaymentPhase.AUTHORIZED) {
+      // PHASE 2: Settlement
+      try {
+        paymentRecord = await settleAuthorizedPayment(paymentRecord);
+
+        if (paymentRecord.phase === PaymentPhase.SETTLED) {
+          // PHASE 3: GL Posting
+          await postPaymentToGL(paymentRecord);
+          paymentRecord.phase = PaymentPhase.SETTLED;
+          return { success: true, payment: paymentRecord };
+        }
+      } catch (settlementError) {
+        // Settlement failed after authorization
+        // Compensate: Void the authorization
+        await compensateAuthorization(paymentRecord);
+        paymentRecord.phase = PaymentPhase.FAILED;
+        paymentRecord.last_error = settlementError.message;
+      }
+    }
+  } catch (error) {
+    if (error.code === 'TIMEOUT') {
+      // Handle timeout-specific logic
+      paymentRecord.phase = PaymentPhase.PENDING;
+      paymentRecord.last_error = `Payment timeout after ${timeoutMs}ms`;
+
+      // Schedule async recovery
+      await schedulePaymentRecoveryRetry({
+        payment_id: paymentRecord.id,
+        folio_id: folio.id,
+        initial_attempt_at: paymentRecord.initiated_at,
+        retry_attempts: 0,
+        next_retry_at: new Date(Date.now() + 60000) // Retry in 1 minute
+      });
+
+      // Return partial result - folio NOT closed yet
+      return { success: false, payment: paymentRecord, retryable: true };
+    }
+
+    paymentRecord.phase = PaymentPhase.FAILED;
+    paymentRecord.last_error = error.message;
+  }
+
+  // Persist payment record (for audit & recovery)
+  await savePaymentRecord(paymentRecord);
+
+  return { success: false, payment: paymentRecord };
+}
+
+// Async recovery of timed-out payments
+async function retryTimedOutPayment(recoveryJob: PaymentRecoveryJob) {
+  const maxRetries = 5;
+  const payment = await getPaymentRecord(recoveryJob.payment_id);
+
+  if (recoveryJob.retry_attempts >= maxRetries) {
+    // Escalate to management
+    await escalatePaymentFailureToFront(recoveryJob);
+    return;
+  }
+
+  try {
+    // STEP 1: Check payment processor for authorization status
+    const processorStatus = await getPaymentProcessorStatus(
+      payment.authorization_code
+    );
+
+    if (processorStatus === 'AUTHORIZED') {
+      // Authorization succeeded - retry settlement
+      const settled = await settleAuthorizedPayment(payment);
+      if (settled.phase === PaymentPhase.SETTLED) {
+        // Success - post to GL
+        await postPaymentToGL(settled);
+        return;
+      }
+    } else if (processorStatus === 'DECLINED') {
+      // Authorization already declined
+      await markPaymentFailed(payment);
+      await sendGuestNotification(payment.folio_id, 'Payment was declined');
+      return;
+    }
+
+    // Still pending or unknown - retry
+    await schedulePaymentRecoveryRetry({
+      ...recoveryJob,
+      retry_attempts: recoveryJob.retry_attempts + 1,
+      next_retry_at: new Date(Date.now() + 60000 * (recoveryJob.retry_attempts + 1))
+    });
+
+  } catch (error) {
+    // Retry failed
+    await schedulePaymentRecoveryRetry({
+      ...recoveryJob,
+      retry_attempts: recoveryJob.retry_attempts + 1,
+      next_retry_at: new Date(Date.now() + 300000)  // Retry in 5 minutes
+    });
+  }
+}
+```
+
+**SLA for Payment Recovery**:
+- ✅ Timeout detected → immediate async retry scheduled
+- ✅ Retry every 1 minute for up to 5 attempts (5-minute window)
+- ✅ If still pending after 5 minutes → escalate to Front Desk Manager
+- ✅ Manager can: (1) retry manually, (2) check payment processor, (3) cancel charge
+- ✅ All actions logged with audit trail
+- ✅ Guest never charged multiple times (idempotent payment processing)
+
+---
+
+**CRITICAL GUARDRAIL: Journal Entry Posted But Event Publish Fails (Missing Guardrail #3)**
+
+**RULE**: If GL posting succeeds but event publishing fails, a compensation job MUST republish the event asynchronously. Events MUST eventually reach subscribers.
+
+**Problem**: If journal entry is posted to GL but the event broadcast fails, downstream systems (PMS, Inventory) won't know about GL changes, creating inconsistency between GL and operational systems.
+
+**Implementation Requirement**:
+
+**Compensating Transaction Pattern**:
+```typescript
+async function postGLAndPublishEventWithCompensation(
+  event: AccountingEvent,
+  glEntry: JournalEntry
+): Promise<{ success: boolean, details: any }> {
+  let glPosted = false;
+  let eventPublished = false;
+
+  try {
+    // STEP 1: Post GL entry (primary action)
+    const posted = await postJournalEntryAtomically(glEntry);
+    glPosted = true;
+
+    // STEP 2: Publish event to subscribers
+    const published = await eventBus.publish(event);
+    eventPublished = true;
+
+    return { success: true, details: { glPosted, eventPublished } };
+
+  } catch (error) {
+    if (glPosted && !eventPublished) {
+      // GL succeeded, event failed - compensate
+      console.error('GL posted but event publish failed. Creating compensation job.');
+
+      // Create compensation record for async retry
+      const compensationJob = await createEventPublishingCompensationJob({
+        id: generateId('comp-evt-pub'),
+        event_id: event.event_id,
+        event_type: event.event_type,
+        event_payload: event,
+        journal_entry_id: glEntry.id,
+        status: 'PENDING',
+        retry_count: 0,
+        next_retry_at: new Date(Date.now() + 5000),  // Retry in 5 seconds
+        created_at: new Date(),
+        failed_reason: error.message
+      });
+
+      // Schedule compensation job
+      await scheduleCompensationJob(compensationJob);
+
+      return {
+        success: false,
+        details: {
+          glPosted: true,
+          eventPublished: false,
+          compensationJobId: compensationJob.id,
+          message: 'GL posted successfully. Event publish failed. Async retry scheduled.'
+        }
+      };
+    }
+
+    throw error;
+  }
+}
+
+// Async compensation job to retry event publishing
+async function compensateEventPublishing(jobId: string) {
+  const job = await getCompensationJob(jobId);
+  const maxRetries = 24; // 24 hours of exponential backoff
+
+  if (job.retry_count >= maxRetries) {
+    // Escalate to event delivery team
+    await escalateEventDeliveryFailure(job);
+    return;
+  }
+
+  try {
+    // Republish the event
+    await eventBus.publish(job.event_payload);
+
+    // Success - mark job resolved
+    await markCompensationJobResolved(jobId, {
+      resolved_at: new Date(),
+      resolved_by: 'COMPENSATION_JOB',
+      note: `Event republished successfully after ${job.retry_count} retries`
+    });
+
+  } catch (error) {
+    // Retry failed - schedule next attempt
+    const nextRetryCount = job.retry_count + 1;
+    const backoffMs = calculateExponentialBackoff(nextRetryCount);
+
+    await updateCompensationJob(jobId, {
+      retry_count: nextRetryCount,
+      next_retry_at: new Date(Date.now() + backoffMs),
+      last_error: error.message,
+      last_attempt_at: new Date()
+    });
+  }
+}
+
+// Escalation for persistent event delivery failures
+async function escalateEventDeliveryFailure(job: CompensationJob) {
+  // Mark job as escalated
+  await updateCompensationJob(job.id, {
+    status: 'ESCALATED',
+    escalated_at: new Date()
+  });
+
+  // Send alert to event delivery team
+  await sendAlert({
+    to: 'event-delivery-team@company.com',
+    subject: 'CRITICAL: Event Delivery Failure - 24+ Hours Without Success',
+    body: `
+Event ID: ${job.event_id}
+Journal Entry ID: ${job.journal_entry_id}
+Retry Attempts: ${job.retry_count}
+Last Error: ${job.last_error}
+
+GL POST: ✅ Successful (data is in ledger)
+EVENT PUBLISH: ❌ Failed (downstream systems unaware)
+
+ACTION REQUIRED:
+1. Investigate event publishing infrastructure
+2. Check if subscribers are receiving other events
+3. Manually republish event or mark as acknowledged
+4. Update compensation job status
+
+Link: /accounting/compensation-jobs/${job.id}
+    `
+  });
+}
+```
+
+**Enforcement**:
+- ✅ EVERY GL posting followed by event publishing in same logical transaction
+- ✅ Compensation job created IMMEDIATELY if event publish fails
+- ✅ Async retry every 30s-1h (exponential backoff) for up to 24 hours
+- ✅ Escalation after 24 hours to event delivery team
+- ✅ Test: Simulate event publish failure; verify compensation job retries successfully
+
+---
+
 ## Multi-Tenant Guardrails
 
 **CRITICAL GUARDRAIL: GL Query Tenant Isolation in JOINs (Multi-Tenant Gap #1)**

@@ -1597,7 +1597,148 @@ return False
 
 ---
 
-### 3.7 Multi-Tenant Permission Guardrail
+### 3.7 Critical Failure Scenario: Session Expiry During Long-Running Operations
+
+**CRITICAL GUARDRAIL: User Session Expires During GL Post (Missing Guardrail #5)**
+
+**RULE**: Long-running operations (GL posting, report generation) MUST be independent of user session state. If session expires mid-operation, operation MUST complete successfully or rollback entirely.
+
+**Problem**: If a user's session expires during GL posting (e.g., user goes idle, browser closes), the GL entry could be partially posted, leaving accounts unbalanced, or the entire operation could fail after hours of processing.
+
+**Implementation Requirement**:
+
+**Async Operations Independent of Session**:
+```typescript
+// WRONG: Uses session context during long operation
+async function postGLEntryWithSession(
+  entry: JournalEntry,
+  currentUser: User  // User context from session
+): Promise<void> {
+  // ❌ PROBLEM: If session expires below, operation fails mid-transaction
+  await startTransaction();
+
+  // ... hours of processing ...
+
+  await postJournalEntry(entry);  // If session expired, this fails!
+}
+
+// CORRECT: Decouple operation from session
+async function postGLEntryAsyncJob(
+  entry: JournalEntry,
+  requestingUser: User
+): Promise<{ jobId: string }> {
+  // STEP 1: Create async job record (session-independent)
+  const job = await asyncJobService.create({
+    id: generateId('job'),
+    type: 'GL_POSTING',
+    entity_id: entry.id,
+    tenant_id: entry.tenant_id,
+    status: 'PENDING',
+    initiated_by: requestingUser.id,
+    initiated_at: new Date(),
+    initiated_from_session_id: getSessionId(),  // For reference only
+    journal_entry_payload: entry,
+    max_retries: 3,
+    retry_count: 0,
+    next_retry_at: new Date()
+  });
+
+  // STEP 2: Queue job for async processing (session-independent)
+  await jobQueue.enqueue({
+    jobId: job.id,
+    jobType: 'GL_POSTING',
+    priority: 'HIGH'
+  });
+
+  // STEP 3: Return immediately to user (don't wait for completion)
+  return {
+    jobId: job.id,
+    status: 'QUEUED',
+    message: 'GL posting queued for asynchronous processing. ' +
+             'You will receive notification when complete.'
+  };
+}
+
+// Async job processor (session-independent, runs in background)
+async function processGLPostingJob(jobId: string) {
+  const job = await asyncJobService.get(jobId);
+
+  try {
+    // STEP 1: Validate tenant access (using tenant_id, not session)
+    const tenant = await tenantService.get(job.tenant_id);
+    if (!tenant) {
+      throw new Error(`Tenant ${job.tenant_id} not found`);
+    }
+
+    // STEP 2: Reconstruct entry from payload (session-independent)
+    const entry = job.journal_entry_payload;
+
+    // STEP 3: Post GL entry (no session required)
+    await postJournalEntryAtomically(entry);
+
+    // STEP 4: Mark job complete
+    await asyncJobService.markComplete(jobId, {
+      completed_at: new Date(),
+      status: 'SUCCESS'
+    });
+
+    // STEP 5: Notify user (email/in-app notification)
+    await notificationService.send({
+      user_id: job.initiated_by,
+      type: 'GL_POSTING_COMPLETE',
+      title: 'GL Posting Successful',
+      message: `Journal entry ${entry.id} has been posted to ledger.`,
+      link: `/accounting/journal/${entry.id}`
+    });
+
+  } catch (error) {
+    // STEP 6: Handle failure with retry logic
+    if (job.retry_count < job.max_retries) {
+      // Retry
+      const backoffMs = calculateExponentialBackoff(job.retry_count);
+      await asyncJobService.update(jobId, {
+        status: 'PENDING',
+        retry_count: job.retry_count + 1,
+        next_retry_at: new Date(Date.now() + backoffMs),
+        last_error: error.message
+      });
+    } else {
+      // Max retries exceeded
+      await asyncJobService.update(jobId, {
+        status: 'FAILED',
+        failed_at: new Date(),
+        failure_reason: error.message
+      });
+
+      // Escalate to Finance Director
+      await escalateGLPostingFailure(jobId, error);
+    }
+  }
+}
+```
+
+**Session-Independent Guarantees**:
+- ✅ User initiates GL posting via API
+- ✅ Job created and queued IMMEDIATELY
+- ✅ Response returned to user IMMEDIATELY (not waiting for completion)
+- ✅ User session can expire without affecting job processing
+- ✅ Job processes asynchronously in background (session-independent)
+- ✅ Notifications sent to user when complete (no session required)
+- ✅ Job retry logic is independent of session lifecycle
+- ✅ Escalation works even if user is offline
+
+**Enforcement**:
+- ✅ Schema: async_jobs table tracks all long-running operations
+- ✅ Code: NO long-running operation should depend on active session
+- ✅ Code: Use tenant_id for authorization, never session context
+- ✅ Code: All job processing happens in background workers (not HTTP request)
+- ✅ Code: Notifications use async delivery (email, webhook, etc.)
+- ✅ Test: Kill session mid-job; verify job completes successfully
+- ✅ Test: Verify user receives notification even after logging out
+
+---
+
+### 3.8 Multi-Tenant Permission Guardrail
 
 **CRITICAL GUARDRAIL: Permission Check MUST Validate tenant_id Synchronization (Multi-Tenant Gap #5)**
 
