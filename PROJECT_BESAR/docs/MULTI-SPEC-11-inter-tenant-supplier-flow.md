@@ -1558,6 +1558,144 @@ When a Business Contract is revoked (see SPEC-10 for details):
 
 ---
 
+## Multi-Tenant Isolation Guardrails
+
+**CRITICAL GUARDRAIL: Cross-Tenant Event Publishing Requires BusinessContract Validation (Multi-Tenant Gap #2)**
+
+**RULE**: No event can be published between two tenants without validating an active BusinessContract exists.
+
+**Problem**: If Supplier Tenant publishes Invoice.Created event to Buyer Tenant without verifying the contract is active, invoices could be created under expired/revoked contracts, violating contractual obligations and creating orphaned financial records.
+
+**Implementation Requirement**:
+```typescript
+async function publishInterTenantEvent(
+  event: InterTenantEvent,
+  fromTenantId: string,
+  toTenantId: string,
+  contractId?: string
+): Promise<void> {
+  // STEP 1: Fetch BusinessContract from SHARED registry
+  const contract = await businessContractService.getContract(
+    fromTenantId,
+    toTenantId,
+    contractId  // Optional: validate specific contract if provided
+  );
+
+  // STEP 2: Validate contract exists and is ACTIVE
+  if (!contract) {
+    throw new Error(
+      `No active BusinessContract between tenant ${fromTenantId} and ${toTenantId}. ` +
+      `Event publishing blocked. Create contract first.`
+    );
+  }
+
+  if (contract.status !== 'ACTIVE') {
+    throw new Error(
+      `BusinessContract ${contract.id} is ${contract.status}, not ACTIVE. ` +
+      `Cannot publish events on inactive contract.`
+    );
+  }
+
+  if (contract.terminated_at !== null) {
+    throw new Error(
+      `BusinessContract ${contract.id} was terminated on ${contract.terminated_at}. ` +
+      `No events allowed after termination.`
+    );
+  }
+
+  // STEP 3: Attach contract_id to event for audit trail
+  const eventWithContract = {
+    ...event,
+    contract_id: contract.id,
+    from_tenant_id: fromTenantId,
+    to_tenant_id: toTenantId
+  };
+
+  // STEP 4: Publish event
+  await eventPublisher.publish(eventWithContract);
+}
+```
+
+**Enforcement**:
+- ✅ Code: EVERY cross-tenant event must call publishInterTenantEvent() (not direct publish())
+- ✅ Test: Unit test must verify event is REJECTED if contract is INACTIVE or TERMINATED
+- ✅ Test: Unit test must verify event is REJECTED if no contract exists
+- ✅ Code review: Zero tolerance for direct publish() calls in inter-tenant flows
+- ✅ Database: Foreign key constraint: events.contract_id REFERENCES business_contracts.id
+- ✅ Audit: All contract validation attempts logged (success and failures)
+
+---
+
+**CRITICAL GUARDRAIL: AP Creation Requires Active Supplier Contract Validation (Multi-Tenant Gap #3)**
+
+**RULE**: Buyer Tenant can ONLY create AP from received invoice if Supplier Tenant has an active BusinessContract.
+
+**Problem**: If Buyer creates AP from invoice without validating the Supplier contract is active, the invoice could be from a supplier who is no longer authorized to do business, or the contract was already terminated.
+
+**Implementation Requirement**:
+```typescript
+async function createAPFromSupplierInvoice(
+  event: SupplierInvoiceReceivedEvent,
+  buyerTenantId: string
+): Promise<AccountsPayable> {
+  // STEP 1: Verify BusinessContract exists and is ACTIVE
+  const contract = await businessContractService.getActiveContract(
+    supplierId: event.supplier_tenant_id,
+    buyerId: buyerTenantId
+  );
+
+  if (!contract || contract.status !== 'ACTIVE') {
+    throw new Error(
+      `Cannot create AP. Supplier ${event.supplier_tenant_id} has no active ` +
+      `BusinessContract with Buyer ${buyerTenantId}. ` +
+      `Invoice from unauthorized supplier.`
+    );
+  }
+
+  // STEP 2: Verify supplier is not terminated
+  if (contract.terminated_at !== null) {
+    throw new Error(
+      `Cannot create AP. Contract with Supplier was terminated on ` +
+      `${contract.terminated_at}. No new AP allowed after termination.`
+    );
+  }
+
+  // STEP 3: Verify PO exists and was issued under THIS contract
+  const po = await poService.getPO(event.po_id);
+
+  if (!po || po.contract_id !== contract.id) {
+    throw new Error(
+      `Invoice ${event.invoice_id} references PO ${event.po_id}, ` +
+      `but PO was issued under different contract. Contract mismatch.`
+    );
+  }
+
+  // STEP 4: Create AP with contract_id reference
+  const ap = await accountsPayableService.create({
+    invoice_id: event.invoice_id,
+    po_id: event.po_id,
+    supplier_tenant_id: event.supplier_tenant_id,
+    contract_id: contract.id,  // MANDATORY: Link to contract
+    amount: event.amount,
+    status: 'PENDING_MATCH',
+    buyer_tenant_id: buyerTenantId
+  });
+
+  return ap;
+}
+```
+
+**Enforcement**:
+- ✅ Schema: AP table MUST have contract_id column (NOT NULL, FOREIGN KEY)
+- ✅ Code: Every AP creation MUST validate supplier contract is ACTIVE
+- ✅ Test: Unit test must verify AP creation is REJECTED if contract is TERMINATED
+- ✅ Test: Unit test must verify AP creation is REJECTED if no contract exists
+- ✅ Test: Unit test must verify PO contract matches supplier contract
+- ✅ Code review: Zero tolerance for AP creation without contract validation
+- ✅ Audit: Contract validation failure logged with: timestamp, user, invoice_id, reason
+
+---
+
 ## Implementation Checklist
 
 When implementing inter-tenant supplier flow:

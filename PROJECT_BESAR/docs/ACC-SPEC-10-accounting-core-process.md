@@ -1767,6 +1767,88 @@ interface JournalLine {
 
 ---
 
+## Multi-Tenant Guardrails
+
+**CRITICAL GUARDRAIL: GL Query Tenant Isolation in JOINs (Multi-Tenant Gap #1)**
+
+**RULE**: All GL queries MUST filter tenant_id at EVERY table join, not just the primary table.
+
+**Problem**: When queries LEFT JOIN from accounts → journal_lines → journal_entries, filtering only je.tenant_id = $1 can miss tenant isolation if journal_lines lacks a tenant_id filter. This creates data leak risk.
+
+**Implementation Requirement**:
+```sql
+-- CORRECT: Explicit tenant_id filters on ALL tables in joins
+SELECT
+  a.account_code,
+  a.account_name,
+  SUM(jl.debit_amount) AS total_debit,
+  SUM(jl.credit_amount) AS total_credit
+FROM accounts a
+LEFT JOIN journal_lines jl ON a.id = jl.account_id
+  AND jl.tenant_id = $1  -- MANDATORY: tenant_id filter on joined table
+LEFT JOIN journal_entries je ON jl.journal_entry_id = je.id
+  AND je.tenant_id = $1  -- MANDATORY: tenant_id filter on joined table
+WHERE a.tenant_id = $1  -- MANDATORY: tenant_id filter on primary table
+  AND a.is_header = FALSE
+  AND je.posted_at IS NOT NULL
+  AND je.is_deleted = FALSE  -- MANDATORY: exclude soft-deleted entries
+GROUP BY a.id, a.account_code, a.account_name
+ORDER BY a.account_code;
+```
+
+**Enforcement**:
+- ✅ Database schema: journal_lines table MUST have tenant_id column (indexed)
+- ✅ Code review: Every GL query MUST have tenant_id filters on ALL joined tables
+- ✅ Test: Unit test must verify cross-tenant data isolation (query with tenant-A credentials cannot see tenant-B accounts)
+- ✅ Database trigger: Prevent INSERT into journal_lines without tenant_id
+- ✅ ORM mappings: journal_lines.tenant_id MUST be automatically set from current request context
+
+---
+
+**CRITICAL GUARDRAIL: Soft-Delete Exclusion in GL Calculations (Multi-Tenant Gap #4)**
+
+**RULE**: All GL calculations (trial balance, financial statements, account balances) MUST exclude soft-deleted records.
+
+**Problem**: If a journal entry or journal line is soft-deleted (is_deleted=true) but not hard-deleted, GL calculations will be incorrect. Reversals MUST NOT be treated as soft-deletions; they are explicit reversal entries.
+
+**Implementation Requirement**:
+```sql
+-- MANDATORY: ALL GL calculation queries must include is_deleted filter
+
+-- Trial Balance Query
+SELECT a.account_code, SUM(jl.debit_amount) AS total_debit
+FROM accounts a
+LEFT JOIN journal_lines jl ON a.id = jl.account_id AND jl.tenant_id = $1
+LEFT JOIN journal_entries je ON jl.journal_entry_id = je.id AND je.tenant_id = $1
+WHERE a.tenant_id = $1
+  AND je.posted_at IS NOT NULL
+  AND je.is_deleted = FALSE      -- MANDATORY: Exclude soft-deleted entries
+  AND jl.is_deleted = FALSE      -- MANDATORY: Exclude soft-deleted lines
+  AND a.is_deleted = FALSE       -- MANDATORY: Exclude soft-deleted accounts
+GROUP BY a.id, a.account_code;
+
+-- Account Balance Query
+SELECT SUM(COALESCE(debit, 0) - COALESCE(credit, 0)) AS balance
+FROM journal_lines
+WHERE account_id = $1
+  AND tenant_id = $2
+  AND is_deleted = FALSE         -- MANDATORY: exclude soft-deleted
+  AND journal_entry_id IN (
+    SELECT id FROM journal_entries
+    WHERE posted_at IS NOT NULL
+    AND is_deleted = FALSE       -- MANDATORY: exclude soft-deleted entries
+  );
+```
+
+**Enforcement**:
+- ✅ Schema: All GL-related tables (journal_entries, journal_lines, accounts) MUST have is_deleted column
+- ✅ Audit Trail: When is_deleted = true, MUST log: who deleted, when, reason
+- ✅ Code review: Zero tolerance — any GL query without is_deleted filter is CODE RED
+- ✅ Test: Unit test must verify that soft-deleted entries don't affect GL balance
+- ✅ Reversal vs Deletion: is_deleted used ONLY for administrative deletions (mistakes); reversals create explicit reversal entries
+
+---
+
 ## Related Documents
 
 - **SPEC-09**: PMS Core Process — source of revenue transactions

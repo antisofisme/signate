@@ -1597,6 +1597,97 @@ return False
 
 ---
 
+### 3.7 Multi-Tenant Permission Guardrail
+
+**CRITICAL GUARDRAIL: Permission Check MUST Validate tenant_id Synchronization (Multi-Tenant Gap #5)**
+
+**RULE**: Every permission check MUST verify that the user's organization/tenant context matches the requested resource's tenant_id. Permission granted does NOT mean access to ANY tenant's data.
+
+**Problem**: If permission check validates user has "pms:reservation:view" but doesn't verify the requested reservation belongs to the user's current tenant, user could access data from another tenant by directly requesting it with different tenant_id parameter.
+
+**Implementation Requirement**:
+```python
+# INCORRECT: Permission check alone is insufficient for multi-tenant isolation
+async def view_reservation(reservation_id: str):
+    # ❌ BAD: Only checks permission, not tenant_id
+    user = await get_current_user()
+    has_permission = await check_permission(user.id, user.org_id, "pms:reservation:view")
+    if not has_permission:
+        raise HTTPException(403, "Permission denied")
+
+    # ❌ VULNERABILITY: Could load reservation from ANY tenant
+    reservation = await db.get_reservation(reservation_id)
+    return reservation
+
+# CORRECT: Permission check + explicit tenant_id validation
+async def view_reservation(reservation_id: str):
+    # STEP 1: Verify permission
+    user = await get_current_user()
+    current_org_id = await get_current_org(user.id)  # User's active tenant
+
+    has_permission = await check_permission(
+        user.id,
+        current_org_id,
+        "pms:reservation:view"
+    )
+    if not has_permission:
+        raise HTTPException(403, "Permission denied")
+
+    # STEP 2: Load resource AND VERIFY tenant_id matches
+    reservation = await db.get_reservation(reservation_id)
+    if not reservation:
+        raise HTTPException(404, "Reservation not found")
+
+    # STEP 3: MANDATORY: Explicit tenant_id check
+    if reservation.tenant_id != current_org_id:
+        raise HTTPException(
+            403,
+            f"Access denied. Reservation belongs to tenant {reservation.tenant_id}, " +
+            f"but you are in tenant {current_org_id}"
+        )
+
+    return reservation
+```
+
+**Multi-Tenant Isolation Pattern (Universally Applied)**:
+```python
+# Every service method MUST follow this pattern:
+async def update_reservation(reservation_id: str, dto: UpdateDTO, tenant_id: str):
+    # STEP 1: Load resource
+    resource = await db.get_by_id(reservation_id)
+    if not resource:
+        raise HTTPException(404, "Not found")
+
+    # STEP 2: MANDATORY GUARD: Verify resource belongs to tenant
+    if resource.tenant_id != tenant_id:
+        # ⚠️ DO NOT return 404 (data leakage) - return 403 or 401
+        # Reason: 404 tells attacker "data exists but you can't access"
+        #         403 says "you're not allowed" without revealing existence
+        raise HTTPException(403, "Access denied")
+
+    # STEP 3: Check permission for the action
+    user = get_current_user()  # tenant_id already validated above
+    if not await has_permission(user, tenant_id, "pms:reservation:update"):
+        raise HTTPException(403, "Permission denied")
+
+    # STEP 4: Update
+    updated = await db.update(reservation_id, dto)
+    return updated
+```
+
+**Enforcement Checklist**:
+- ✅ Schema: EVERY table with multi-tenant data MUST have tenant_id column (indexed)
+- ✅ Schema: Foreign key constraints MUST include tenant_id (e.g., `FOREIGN KEY (tenant_id, reservation_id)`)
+- ✅ Code: EVERY query MUST filter by tenant_id in WHERE clause
+- ✅ Code: EVERY route MUST pass tenant_id to use case/service method
+- ✅ Code: EVERY service method MUST verify loaded resource.tenant_id matches request context
+- ✅ Test: Unit test must verify request for cross-tenant resource returns 403, not 404
+- ✅ Test: Unit test must verify permission check WITHOUT tenant_id validation fails in code review
+- ✅ Code review: Zero tolerance — any service method loading resource without tenant_id check is CODE RED
+- ✅ Audit: Log permission check failures with: user_id, resource_type, resource_id, expected_tenant_id, actual_tenant_id
+
+---
+
 ## 4. Audit Log ✅
 
 ### 4.0 Konsep Audit Log per App
