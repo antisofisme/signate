@@ -84,6 +84,217 @@ async function getExchangeRate(
 
   throw new Error(`No exchange rate found for ${fromCurrency}/${toCurrency} on ${rateDate}`);
 }
+
+**CLARIFICATION - FX Rate Fallback Definition (Ambiguity #7 Resolution)**:
+```
+RULE: "Last known good" = most recent published rate within 2 business days
+RULE: If no rate within 2 business days, REJECT transaction with error
+RULE: Fallback rate must be marked in GL with flag 'rate_source=FALLBACK' for audit
+RULE: Cannot use rate > 2 business days old (prevents stale rates)
+```
+
+**Fallback Rate Logic**:
+
+```typescript
+async function getLastKnownRate(
+  fromCurrency: string,
+  toCurrency: string
+): Promise<{ rate: Decimal; date: Date } | null> {
+  const twoBusinessDaysAgo = calculateBusinessDaysBack(new Date(), 2);
+
+  // Query most recent rate within 2 business days
+  const lastRate = await db('exchange_rates')
+    .where({
+      from_currency: fromCurrency,
+      to_currency: toCurrency,
+      rate_date: { gte: twoBusinessDaysAgo }
+    })
+    .orderBy('rate_date', 'desc')
+    .first();
+
+  return lastRate
+    ? { rate: lastRate.rate, date: lastRate.rate_date }
+    : null;
+}
+
+function calculateBusinessDaysBack(date: Date, numDays: number): Date {
+  let currentDate = new Date(date);
+  let daysBack = 0;
+
+  while (daysBack < numDays) {
+    currentDate.setDate(currentDate.getDate() - 1);
+
+    // Skip weekends
+    const dayOfWeek = currentDate.getDay();
+    if (dayOfWeek !== 0 && dayOfWeek !== 6) {  // Not Sunday or Saturday
+      daysBack++;
+    }
+  }
+
+  return currentDate;
+}
+
+function isWithin2BusinessDays(rateDate: Date, transactionDate: Date): boolean {
+  const twoBusinessDaysAgo = calculateBusinessDaysBack(transactionDate, 2);
+  return rateDate >= twoBusinessDaysAgo;
+}
+```
+
+**Transaction Rejection Example**:
+
+```typescript
+try {
+  const rate = await getExchangeRate('USD', 'IDR', new Date('2025-12-24'), tenantId);
+} catch (error) {
+  if (error.message.includes('No exchange rate found')) {
+    // Rate not available within 2 business days
+    throw new RateUnavailableError({
+      message: 'FX rate unavailable for USD/IDR on 2025-12-24. ' +
+               'No published rate within 2 business days. ' +
+               'Please contact Finance to manually enter rate or try again later.',
+      currency_pair: 'USD/IDR',
+      transaction_date: '2025-12-24',
+      last_available_rate_date: lastRateDate || 'N/A',
+      days_since_last_rate: daysSinceLastRate
+    });
+  }
+}
+```
+
+**GL Audit Flag for Fallback Rates**:
+
+```sql
+-- Add rate_source flag to GL entries
+ALTER TABLE journal_lines ADD COLUMN fx_rate_source VARCHAR(20);
+-- Values: 'PUBLISHED_RATE', 'FALLBACK', 'CONTRACT_SPECIFIED'
+
+-- Example GL entry using fallback rate
+INSERT INTO journal_lines (
+  journal_entry_id,
+  account_id,
+  debit,
+  credit,
+  currency,
+  exchange_rate,
+  fx_rate_source,  -- ← Audit flag
+  rate_date
+) VALUES (
+  'je-001',
+  '1200',
+  12500000,
+  0,
+  'IDR',
+  12500,
+  'FALLBACK',  -- ← Indicates fallback rate used
+  '2025-12-22'  -- Date of fallback rate (not transaction date)
+);
+```
+
+**Audit Trail Requirements**:
+
+```typescript
+await auditLog({
+  action: 'FX_RATE_FALLBACK_USED',
+  entity_type: 'JournalEntry',
+  entity_id: journalEntryId,
+  details: {
+    currency_pair: 'USD/IDR',
+    transaction_date: '2025-12-24',
+    requested_rate_date: '2025-12-24',
+    fallback_rate_date: '2025-12-22',  // 2 business days old
+    fallback_rate: 12500,
+    rate_source: 'FALLBACK',
+    reason: 'No published rate for transaction date, using last known good rate',
+    approval_required: false  // Auto-approved for fallback within 2 days
+  }
+});
+```
+
+**Report for Fallback Usage**:
+
+```sql
+-- Finance report: All transactions using fallback rates
+SELECT
+  je.id AS journal_entry_id,
+  je.entry_date,
+  jl.currency,
+  jl.exchange_rate,
+  jl.fx_rate_source,
+  jl.rate_date AS fallback_rate_date,
+  je.entry_date AS transaction_date,
+  DATEDIFF(je.entry_date, jl.rate_date) AS days_difference
+FROM journal_entries je
+JOIN journal_lines jl ON je.id = jl.journal_entry_id
+WHERE jl.fx_rate_source = 'FALLBACK'
+  AND je.tenant_id = $1
+  AND je.entry_date BETWEEN $2 AND $3
+ORDER BY je.entry_date DESC;
+```
+
+**Example Scenarios**:
+
+**Scenario 1: Rate Available (no fallback)**
+```
+Transaction Date: 2025-12-24 (Wednesday)
+Published Rate for 2025-12-24: Available
+→ Use published rate
+→ rate_source = 'PUBLISHED_RATE'
+```
+
+**Scenario 2: Rate Unavailable, Fallback Used**
+```
+Transaction Date: 2025-12-24 (Wednesday)
+Published Rate for 2025-12-24: NOT available
+Last Published Rate: 2025-12-22 (Monday) - 2 business days ago
+→ Use fallback rate from 2025-12-22
+→ rate_source = 'FALLBACK'
+→ Audit log: "Using fallback rate (2 business days old)"
+```
+
+**Scenario 3: Rate Too Old, Transaction Rejected**
+```
+Transaction Date: 2025-12-24 (Wednesday)
+Published Rate for 2025-12-24: NOT available
+Last Published Rate: 2025-12-19 (Thursday) - 5 business days ago
+→ REJECT transaction
+→ Error: "FX rate unavailable for USD/IDR. Last rate is > 2 business days old."
+→ User must contact Finance or wait for new rate
+```
+
+**Manual Rate Entry (Override)**:
+
+If Finance Director needs to manually enter rate:
+
+```typescript
+async function manuallyEnterFXRate(
+  fromCurrency: string,
+  toCurrency: string,
+  rate: Decimal,
+  rateDate: Date,
+  userId: string
+) {
+  await db('exchange_rates').insert({
+    from_currency: fromCurrency,
+    to_currency: toCurrency,
+    rate: rate,
+    rate_date: rateDate,
+    rate_source: 'MANUAL_ENTRY',
+    created_by: userId,
+    created_at: new Date()
+  });
+
+  await auditLog({
+    action: 'FX_RATE_MANUAL_ENTRY',
+    performed_by: userId,
+    details: {
+      currency_pair: `${fromCurrency}/${toCurrency}`,
+      rate: rate,
+      rate_date: rateDate,
+      reason: 'Manual entry by Finance Director (rate unavailable from provider)'
+    }
+  });
+}
+}
 ```
 
 ---
@@ -161,6 +372,192 @@ GL Entry:
 - Balance all open payables/receivables at period-end rates
 - Record unrealized gains/losses to Unrealized FX account
 - Reverse at next period start
+
+**CRITICAL GUARDRAIL - Phase 1 Unrealized FX Treatment (Contradiction #9 Resolution)**:
+```
+RULE: Phase 1 calculates ONLY realized FX at settlement
+RULE: Unrealized FX field is reserved for Phase 2 (set to NULL in Phase 1)
+RULE: Open AR/AP are valued at original invoice rate (no revaluation)
+RULE: Balance sheet FX disclosure shows open payables at original rate
+```
+
+**Phase 1 Implementation**:
+
+**AR/AP Valuation**:
+```typescript
+// Phase 1: Open AR/AP valued at ORIGINAL RATE (no revaluation)
+async function getOpenReceivables(tenantId: string, asOfDate: Date) {
+  const openAR = await db('invoices')
+    .where({
+      tenant_id: tenantId,
+      status: 'OPEN',  // Not yet paid
+      invoice_date: { lte: asOfDate }
+    })
+    .select(
+      'id',
+      'invoice_date',
+      'supplier_currency',
+      'supplier_amount',
+      'functional_currency',
+      'recorded_amount',  // At ORIGINAL rate (invoice_date rate)
+      'exchange_rate'     // LOCKED at invoice_date, NEVER updated
+    );
+
+  // Calculate total AR at original rates
+  const totalAR = openAR.reduce((sum, inv) => sum + inv.recorded_amount, 0);
+
+  return {
+    total_ar: totalAR,
+    currency: openAR[0]?.functional_currency,
+    valuation_method: 'HISTORICAL_RATE',  // Phase 1: Original rate
+    note: 'Open AR valued at invoice rate. No unrealized FX revaluation.'
+  };
+}
+```
+
+**Balance Sheet Disclosure**:
+
+```
+Balance Sheet - Hotel Tenant (IDR)
+As of December 31, 2025
+
+ASSETS
+Current Assets:
+  Cash and Bank                     50,000,000
+  Accounts Receivable               12,500,000  (a)
+    Less: Allowance for Doubtful       (250,000)
+  Inventory                          8,000,000
+                                   ────────────
+Total Current Assets                70,250,000
+
+(a) Accounts Receivable - FX Disclosure:
+    Open AR includes USD $1,000 @ rate 12,500 (original invoice rate)
+    Current rate: 12,800 (for information only, not revalued)
+    Unrealized FX potential gain: $300 (not recognized in Phase 1)
+```
+
+**Unrealized FX Field Handling**:
+
+```sql
+-- Phase 1: fx_transactions table
+CREATE TABLE fx_transactions (
+  id UUID PRIMARY KEY,
+
+  -- Realized FX (populated in Phase 1)
+  rate_at_creation DECIMAL(18,8) NOT NULL,  -- Invoice rate (locked)
+  rate_at_settlement DECIMAL(18,8),         -- Settlement rate (locked when paid)
+  realized_fx_gain_loss DECIMAL(18,2),      -- Calculated at payment
+
+  -- Unrealized FX (reserved for Phase 2, NULL in Phase 1)
+  unrealized_fx_gain_loss DECIMAL(18,2) DEFAULT NULL,  -- ← Phase 2 only
+  unrealized_fx_type VARCHAR(20),  -- NULL in Phase 1
+
+  -- Audit
+  posted_at TIMESTAMP,
+  CHECK (posted_at IS NOT NULL OR realized_fx_gain_loss IS NOT NULL),
+
+  -- PHASE 1 CONSTRAINT: Unrealized fields must be NULL
+  CHECK (
+    (unrealized_fx_gain_loss IS NULL AND unrealized_fx_type IS NULL)
+    OR posted_at > '2026-01-01'  -- Phase 2 date (example)
+  )
+);
+```
+
+**Phase 1 FX Calculation Example**:
+
+```typescript
+// Invoice created: USD 1,000 @ rate 12,500 = IDR 12,500,000
+const invoice = {
+  supplier_currency: 'USD',
+  supplier_amount: 1000,
+  functional_currency: 'IDR',
+  recorded_amount: 12500000,
+  exchange_rate: 12500,
+  rate_date: '2025-12-01',
+  unrealized_fx: null  // Phase 1: Always NULL
+};
+
+// Payment made later: USD 1,000 @ rate 12,800 = IDR 12,800,000
+const payment = {
+  supplier_amount: 1000,
+  payment_rate: 12800,
+  actual_idr_paid: 12800000,
+
+  // Realized FX: Difference between invoice and payment rate
+  realized_fx_loss: 12800000 - 12500000,  // = 300,000 IDR loss
+
+  // Unrealized FX: NULL (not calculated in Phase 1)
+  unrealized_fx: null
+};
+
+// GL Entry for Payment:
+// DR AP 12,500,000 (clear original invoice)
+// DR FX Loss 300,000 (realized at payment)
+// CR Bank 12,800,000 (actual payment)
+```
+
+**Period-End Reporting (Phase 1)**:
+
+```typescript
+async function generatePeriodEndFXReport(tenantId: string, periodEnd: Date) {
+  // Step 1: Calculate realized FX for period
+  const realizedFX = await db('fx_transactions')
+    .where({
+      tenant_id: tenantId,
+      posted_at: { between: [periodStart, periodEnd] },
+      realized_fx_gain_loss: { isNotNull: true }
+    })
+    .sum('realized_fx_gain_loss as total_realized_fx');
+
+  // Step 2: Note open AR/AP (informational only, not revalued)
+  const openAR = await getOpenReceivables(tenantId, periodEnd);
+  const openAP = await getOpenPayables(tenantId, periodEnd);
+
+  // Step 3: Generate report
+  return {
+    period: periodEnd,
+    realized_fx_gain_loss: realizedFX.total_realized_fx,
+    unrealized_fx_gain_loss: null,  // Phase 1: Not calculated
+
+    open_positions_note: {
+      open_ar: openAR.total_ar,
+      open_ap: openAP.total_ap,
+      valuation_method: 'HISTORICAL_RATE',
+      disclosure: 'Open AR/AP valued at original invoice rates. ' +
+                  'Unrealized FX not recognized in Phase 1.'
+    }
+  };
+}
+```
+
+**Migration Path to Phase 2**:
+
+When Phase 2 is implemented:
+
+1. **Enable Unrealized FX Calculation**:
+   ```typescript
+   // At period close, revalue open AR/AP
+   const currentRate = await getCurrentRate('USD', 'IDR');
+   const unrealizedFX = (openAR.supplier_amount * currentRate) - openAR.recorded_amount;
+
+   // Create unrealized FX entry
+   await createUnrealizedFXEntry({
+     source_invoice_id: openAR.id,
+     unrealized_fx_gain_loss: unrealizedFX,
+     rate_at_period_end: currentRate,
+     reversal_scheduled_at: nextPeriodStart
+   });
+   ```
+
+2. **Update Schema**:
+   - Remove Phase 1 constraint on unrealized_fx fields
+   - Add period_end_revaluation table
+   - Add reversal entries at period start
+
+3. **Balance Sheet Changes**:
+   - AR/AP shown at current rate (not original rate)
+   - Unrealized FX shown separately in equity or other comprehensive income
 
 ---
 

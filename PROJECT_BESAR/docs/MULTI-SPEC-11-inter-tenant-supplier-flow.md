@@ -458,6 +458,88 @@ RULE: Discrepancies > 1% must be reviewed and approved before posting AP
   - Prevents premature invoicing
 - Once matched: AP status = APPROVED, ready for payment
 
+**CRITICAL GUARDRAIL - AP Payment Authorization (Contradiction #5 Resolution)**:
+```
+RULE: AP can ONLY be paid if status = APPROVED
+RULE: PENDING_MATCH is a pre-approval state that BLOCKS payment
+RULE: Payment cannot proceed until matching discrepancies resolved
+```
+
+**Payment Authorization Matrix**:
+
+| AP Amount | Approval Authority | Escalation SLA |
+|-----------|-------------------|----------------|
+| $0 - $1,000 | Procurement Manager | Auto-approve if exact match |
+| $1,000 - $5,000 | Procurement Manager | 1 business day |
+| $5,001 - $25,000 | Finance Manager | 2 business days |
+| $25,001+ | Finance Director | 3 business days |
+
+**Approval Workflow**:
+1. If AP status = PENDING_MATCH AND amount > $1K:
+   - Create approval request
+   - Assign to appropriate authority based on amount
+   - Block payment until approval received
+   - SLA timer starts (if not approved within SLA, auto-escalate)
+
+2. If PENDING_MATCH > 7 days without approval:
+   - Auto-escalate to Finance Director
+   - Send notification: "AP inv-XXX pending match > 7 days, requires immediate attention"
+   - Flag in aging report as "STUCK IN MATCHING"
+
+3. Approval Decision Outcomes:
+   - APPROVED → AP status = APPROVED, payment can proceed
+   - REJECTED → AP status = REJECTED, supplier notified, PO cancelled or amended
+   - PARTIAL_APPROVED → Amount adjusted, AP updated, payment proceeds with new amount
+
+4. Timeout Policy:
+   - If no decision after 14 days: Auto-reject with reason "Approval timeout"
+   - Supplier notified of rejection
+   - Procurement can resubmit with corrected invoice
+
+**Implementation Pseudocode**:
+```typescript
+async function payInvoice(apId: string) {
+  const ap = await getAccountsPayable(apId);
+
+  // CRITICAL CHECK: Block payment if not APPROVED
+  if (ap.status !== 'APPROVED') {
+    throw new PaymentBlockedError(
+      `Cannot pay AP ${apId}. Status = ${ap.status}. ` +
+      `Payment only allowed when status = APPROVED. ` +
+      `Current status indicates: ${getStatusExplanation(ap.status)}`
+    );
+  }
+
+  // Check approval authority
+  const approvalRequired = getRequiredApproval(ap.total_amount);
+  if (!ap.approved_by || !hasAuthority(ap.approved_by, approvalRequired)) {
+    throw new InsufficientApprovalError(
+      `AP ${apId} requires ${approvalRequired} approval. ` +
+      `Current approval: ${ap.approved_by || 'NONE'}`
+    );
+  }
+
+  // Proceed with payment
+  const payment = await processPayment(ap);
+  return payment;
+}
+
+function getStatusExplanation(status: string): string {
+  const explanations = {
+    'PENDING_MATCH': 'Invoice-PO discrepancy requires manual review',
+    'REJECTED': 'Invoice rejected, cannot pay',
+    'DRAFT': 'Invoice not yet posted to GL',
+  };
+  return explanations[status] || 'Unknown status';
+}
+```
+
+**Audit Trail Requirements**:
+- All approval decisions logged with: approver_id, timestamp, decision, reason
+- Payment attempts logged (successful and blocked)
+- Escalations logged with SLA breach notification
+- Aging report shows: days_in_pending_match, escalation_count, assigned_approver
+
 #### 4.2: Supplier Publishes Inter-Tenant Invoice Event
 ```json
 {
@@ -880,6 +962,142 @@ WHERE h.supplier_status != s.actual_supplier_status;
 - Queue events by PO ID to maintain order
 - Use sequence_number field to detect out-of-order
 
+**CRITICAL GUARDRAIL - Event Order vs Idempotency (Contradiction #8 Resolution)**:
+```
+RULE: Use sequence_number to guarantee order, even if duplicates arrive out-of-order
+RULE: Idempotency prevents duplicate processing; Order guarantee prevents state corruption
+RULE: These are COMPLEMENTARY, not conflicting mechanisms
+```
+
+**Order Guarantee + Idempotency Implementation**:
+
+When event arrives at receiver tenant:
+
+```typescript
+async function processInterTenantEvent(event: InterTenantEvent) {
+  const { po_id, sequence_number, event_id } = event;
+
+  // Step 1: Idempotency check (prevent duplicate processing)
+  const alreadyProcessed = await checkEventIdProcessed(event_id);
+  if (alreadyProcessed) {
+    logger.info(`Event ${event_id} already processed, skipping`);
+    return; // Idempotent: No side effects from duplicate
+  }
+
+  // Step 2: Sequence number ordering check
+  const expectedSeq = await getNextExpectedSequence(po_id);
+
+  if (sequence_number > expectedSeq) {
+    // Future event arrived before earlier events
+    logger.warn(
+      `Out-of-order event: PO ${po_id}, ` +
+      `expected seq ${expectedSeq}, got ${sequence_number}. Queueing.`
+    );
+    await queueOutOfOrderEvent(po_id, sequence_number, event);
+    return; // Don't process yet, wait for earlier events
+  }
+
+  if (sequence_number < expectedSeq) {
+    // Late-arriving duplicate (already processed by sequence)
+    logger.warn(
+      `Late event: PO ${po_id}, ` +
+      `expected seq ${expectedSeq}, got ${sequence_number}. Ignoring.`
+    );
+    await markEventProcessed(event_id); // Mark as seen for idempotency
+    return;
+  }
+
+  // Step 3: Process event (sequence matches expected)
+  await processEvent(event);
+  await markEventProcessed(event_id);
+  await incrementExpectedSequence(po_id);
+
+  // Step 4: Check if any queued out-of-order events can now be processed
+  await processQueuedEvents(po_id, expectedSeq + 1);
+}
+
+async function processQueuedEvents(po_id: string, nextSeq: number) {
+  const queuedEvent = await getQueuedEvent(po_id, nextSeq);
+
+  if (queuedEvent) {
+    logger.info(`Processing queued event seq ${nextSeq} for PO ${po_id}`);
+    await processInterTenantEvent(queuedEvent); // Recursive processing
+  }
+}
+```
+
+**Example Scenario - Events Arrive Out of Order**:
+
+Timeline:
+1. Supplier publishes events in order:
+   - Event A (seq=1): PO.Issued
+   - Event B (seq=2): PO.Accepted
+   - Event C (seq=3): Invoice.Issued
+
+2. Network delay causes events to arrive at Hotel in this order:
+   - Event C arrives first (seq=3)
+   - Event A arrives second (seq=1)
+   - Event B arrives third (seq=2)
+
+Processing:
+```
+Hotel receives Event C (seq=3):
+  - Expected seq = 1
+  - seq 3 > 1 → Queue Event C, don't process yet
+  - Event stored in out_of_order_queue
+
+Hotel receives Event A (seq=1):
+  - Expected seq = 1
+  - seq 1 = 1 → Process Event A immediately
+  - Increment expected to 2
+  - Check queue: Event B (seq=2) not yet arrived, wait
+
+Hotel receives Event B (seq=2):
+  - Expected seq = 2
+  - seq 2 = 2 → Process Event B immediately
+  - Increment expected to 3
+  - Check queue: Event C (seq=3) found!
+  - Process Event C from queue
+  - All events processed in correct order: A → B → C
+```
+
+**Database Schema Addition**:
+
+```sql
+CREATE TABLE inter_tenant_event_sequence (
+  po_id UUID NOT NULL,
+  tenant_id UUID NOT NULL,
+  next_expected_sequence INT NOT NULL DEFAULT 1,
+  last_processed_at TIMESTAMP,
+
+  PRIMARY KEY (po_id, tenant_id)
+);
+
+CREATE TABLE inter_tenant_event_queue (
+  id UUID PRIMARY KEY,
+  po_id UUID NOT NULL,
+  tenant_id UUID NOT NULL,
+  sequence_number INT NOT NULL,
+  event_payload JSONB NOT NULL,
+  queued_at TIMESTAMP DEFAULT NOW(),
+
+  UNIQUE (po_id, tenant_id, sequence_number)
+);
+
+CREATE TABLE processed_event_ids (
+  event_id VARCHAR(255) PRIMARY KEY,
+  po_id UUID,
+  processed_at TIMESTAMP DEFAULT NOW(),
+
+  INDEX idx_processed_event_po (po_id, processed_at)
+);
+```
+
+**Audit Trail**:
+- All out-of-order events logged with: event_id, expected_seq, actual_seq, queued_at
+- Sequence gaps detected and alerted (missing event detection)
+- Processing order verified in logs
+
 **Rule 4: Conflict Resolution**
 - If both parties update simultaneously → Last write wins (by timestamp)
 - But: Sequence number determines "latest"
@@ -914,6 +1132,113 @@ WHERE h.supplier_status != s.actual_supplier_status;
 - Prevent duplicate invoicing: System checks cumulative qty invoiced ≤ qty ordered
 - Reports available: Outstanding partial deliveries by supplier
 - Prevents: Over-invoicing, lost partial shipments
+
+**CLARIFICATION - Partial Invoice Definition (Ambiguity #5 Resolution)**:
+```
+RULE: "Partial" is based on BOTH quantity AND amount
+RULE: Supplier can invoice partial quantity OR partial amount OR both
+RULE: System tracks BOTH dimensions independently
+```
+
+**Partial Invoice Scenarios**:
+
+**Scenario 1: Partial Quantity (Full Rate)**
+- PO: 100 units @ $10/unit = $1,000
+- Supplier ships 50 units only
+- Supplier invoices: 50 units @ $10/unit = $500
+- **Result**: Partial quantity (50%), full rate, partial amount (50%)
+- System tracks: qty_invoiced = 50, amount_invoiced = $500
+- Remaining: 50 units, $500
+
+**Scenario 2: Full Quantity (Partial Rate - Discount)**
+- PO: 100 units @ $10/unit = $1,000
+- Supplier ships 100 units with 20% discount
+- Supplier invoices: 100 units @ $8/unit = $800
+- **Result**: Full quantity (100%), discounted rate (80%), partial amount (80%)
+- System validation: Amount < PO amount triggers mismatch alert
+- Require approval: Procurement Manager must approve discount
+
+**Scenario 3: Partial Quantity + Different Rate**
+- PO: 100 units @ $10/unit = $1,000
+- Supplier ships 60 units @ $12/unit (price increase)
+- Supplier invoices: 60 units @ $12/unit = $720
+- **Result**: Partial quantity (60%), increased rate (120%), partial amount (72%)
+- System validation: Rate mismatch detected
+- Require approval: Procurement + Finance Manager approval required
+
+**Validation Rules**:
+
+1. **Quantity Validation**:
+   ```typescript
+   const totalQtyInvoiced = sumPreviousInvoices(po_id, 'quantity') + currentInvoice.quantity;
+   if (totalQtyInvoiced > po.total_quantity) {
+     throw new ValidationError(
+       `Over-invoicing detected: PO ${po_id} qty = ${po.total_quantity}, ` +
+       `total invoiced = ${totalQtyInvoiced}`
+     );
+   }
+   ```
+
+2. **Amount Validation**:
+   ```typescript
+   const totalAmountInvoiced = sumPreviousInvoices(po_id, 'amount') + currentInvoice.amount;
+   if (totalAmountInvoiced > po.total_amount * 1.01) { // 1% tolerance
+     throw new ValidationError(
+       `Over-invoicing detected: PO ${po_id} amount = ${po.total_amount}, ` +
+       `total invoiced = ${totalAmountInvoiced}`
+     );
+   }
+   ```
+
+3. **Rate Validation**:
+   ```typescript
+   const expectedUnitPrice = po.unit_price;
+   const actualUnitPrice = invoice.amount / invoice.quantity;
+
+   if (Math.abs(actualUnitPrice - expectedUnitPrice) / expectedUnitPrice > 0.01) {
+     // Rate differs by > 1%
+     createMismatchAlert({
+       type: 'RATE_MISMATCH',
+       po_id,
+       expected_rate: expectedUnitPrice,
+       actual_rate: actualUnitPrice,
+       variance_pct: ((actualUnitPrice - expectedUnitPrice) / expectedUnitPrice) * 100
+     });
+   }
+   ```
+
+**Approval Matrix for Mismatches (Ambiguity #4 Resolution)**:
+
+| Mismatch Type | Amount | Required Approval | SLA |
+|---------------|--------|------------------|-----|
+| Qty < PO (partial delivery) | Any | Procurement Manager | 1 business day |
+| Amount < PO (discount) | $1 - $5K | Procurement Manager | 1 business day |
+| Amount < PO (discount) | $5K - $25K | Finance Manager | 2 business days |
+| Amount > PO (price increase) | $1 - $5K | Procurement + Finance Manager | 2 business days |
+| Amount > PO (price increase) | $5K+ | Finance Director | 3 business days |
+| Rate mismatch > 5% | Any | Procurement + Finance Manager | 2 business days |
+
+**SLA Escalation Policy**:
+- If not approved within SLA → Auto-escalate to next level
+- Example: $10K price increase not approved in 2 days → escalate to Finance Director
+- After 7 days total: Finance Director must approve or reject (cannot ignore)
+- After 14 days: Auto-reject with notification to supplier
+
+**Database Schema**:
+```sql
+ALTER TABLE invoices ADD COLUMN is_partial_qty BOOLEAN DEFAULT FALSE;
+ALTER TABLE invoices ADD COLUMN is_partial_amount BOOLEAN DEFAULT FALSE;
+ALTER TABLE invoices ADD COLUMN qty_percentage DECIMAL(5,2); -- 50.00 = 50%
+ALTER TABLE invoices ADD COLUMN amount_percentage DECIMAL(5,2);
+
+ALTER TABLE purchase_orders ADD COLUMN total_qty_invoiced DECIMAL(18,2) DEFAULT 0;
+ALTER TABLE purchase_orders ADD COLUMN total_amount_invoiced DECIMAL(18,2) DEFAULT 0;
+```
+
+**Reports**:
+- **Partial Delivery Report**: All POs with qty_invoiced < qty_ordered
+- **Invoice Mismatch Report**: All invoices with rate variance > 1%
+- **Pending Approval Aging**: All mismatches awaiting approval, grouped by SLA status
 
 ---
 

@@ -157,6 +157,260 @@ PMS generates guest folio, publishes event:
 3. Checks for duplicates (idempotency key = event_id + accounting-service)
 4. Extracts invoice data from event
 
+**CLARIFICATION - GL Posting Failure Recovery (Ambiguity #1 Resolution)**:
+```
+RULE: If GL post fails, store in failed_processing queue and retry with exponential backoff
+RULE: After 24 hours of failed retries, escalate to Finance Director
+RULE: Manual recovery process available with full audit trail
+```
+
+**GL Posting Retry Logic**:
+
+```typescript
+async function processGLPostingEvent(event: AccountingEvent) {
+  const maxRetries = 100; // Up to 24 hours with exponential backoff
+  let retryCount = 0;
+
+  try {
+    // Attempt GL posting
+    await postJournalEntry(event.data);
+
+  } catch (error) {
+    // GL posting failed
+    logger.error(`GL posting failed for event ${event.event_id}: ${error.message}`);
+
+    // Store in failed_processing queue
+    const failedJob = await createFailedProcessingRecord({
+      event_id: event.event_id,
+      event_type: event.event_type,
+      error_message: error.message,
+      error_stack: error.stack,
+      status: 'FAILED',
+      retry_count: 0,
+      next_retry_at: calculateNextRetry(0), // 1 second
+      created_at: new Date()
+    });
+
+    // Schedule retry
+    await scheduleRetry(failedJob.id);
+
+    throw error; // Propagate error for logging
+  }
+}
+
+function calculateNextRetry(retryCount: number): Date {
+  // Exponential backoff: 1s, 2s, 4s, 8s, ..., max 24 hours
+  const delays = [
+    1,      // 0: 1 second
+    2,      // 1: 2 seconds
+    4,      // 2: 4 seconds
+    8,      // 3: 8 seconds
+    16,     // 4: 16 seconds
+    32,     // 5: 32 seconds
+    60,     // 6: 1 minute
+    120,    // 7: 2 minutes
+    300,    // 8: 5 minutes
+    600,    // 9: 10 minutes
+    1800,   // 10: 30 minutes
+    3600,   // 11+: 1 hour (max)
+  ];
+
+  const delaySeconds = delays[Math.min(retryCount, delays.length - 1)];
+  return new Date(Date.now() + delaySeconds * 1000);
+}
+
+// Background job: Retry failed GL postings
+async function retryFailedGLPostings() {
+  const failedJobs = await getFailedJobs({
+    status: 'FAILED',
+    next_retry_at: { lte: new Date() }
+  });
+
+  for (const job of failedJobs) {
+    try {
+      // Retry GL posting
+      await postJournalEntry(JSON.parse(job.event_data));
+
+      // Success!
+      await updateFailedJob(job.id, {
+        status: 'RECOVERED',
+        recovered_at: new Date(),
+        retry_count: job.retry_count + 1
+      });
+
+      logger.info(
+        `GL posting recovered for event ${job.event_id} ` +
+        `after ${job.retry_count + 1} retries`
+      );
+
+    } catch (error) {
+      const newRetryCount = job.retry_count + 1;
+
+      if (newRetryCount >= 100 || Date.now() - job.created_at.getTime() > 24 * 3600 * 1000) {
+        // Max retries exceeded OR 24 hours passed
+        await updateFailedJob(job.id, {
+          status: 'ESCALATED',
+          retry_count: newRetryCount,
+          escalated_at: new Date()
+        });
+
+        await escalateToFinanceDirector({
+          event_id: job.event_id,
+          event_type: job.event_type,
+          error_message: error.message,
+          retry_count: newRetryCount,
+          time_elapsed: `${Math.round((Date.now() - job.created_at.getTime()) / 3600000)} hours`,
+          action_required: 'Manual review and recovery required'
+        });
+
+        logger.error(
+          `GL posting failed after ${newRetryCount} retries (24h). ` +
+          `Event ${job.event_id} escalated to Finance Director.`
+        );
+
+      } else {
+        // Schedule next retry
+        await updateFailedJob(job.id, {
+          retry_count: newRetryCount,
+          next_retry_at: calculateNextRetry(newRetryCount),
+          last_error: error.message
+        });
+      }
+    }
+  }
+}
+```
+
+**Dead-Letter Queue Design**:
+
+```sql
+CREATE TABLE failed_gl_processing (
+  id UUID PRIMARY KEY,
+  tenant_id UUID NOT NULL,
+
+  event_id VARCHAR(255) NOT NULL UNIQUE,
+  event_type VARCHAR(100) NOT NULL,
+  event_data JSONB NOT NULL,
+
+  error_message TEXT,
+  error_stack TEXT,
+
+  status VARCHAR(20) NOT NULL, -- 'FAILED', 'RECOVERED', 'ESCALATED', 'MANUALLY_RESOLVED'
+  retry_count INT DEFAULT 0,
+  next_retry_at TIMESTAMP,
+
+  created_at TIMESTAMP DEFAULT NOW(),
+  recovered_at TIMESTAMP,
+  escalated_at TIMESTAMP,
+  resolved_at TIMESTAMP,
+  resolved_by UUID REFERENCES users(id),
+
+  INDEX idx_failed_retry (status, next_retry_at),
+  INDEX idx_failed_tenant (tenant_id, created_at DESC)
+);
+```
+
+**Manual Recovery Steps**:
+
+When Finance Director receives escalation:
+
+1. **Review Failed Event**:
+   ```sql
+   SELECT * FROM failed_gl_processing
+   WHERE status = 'ESCALATED'
+   ORDER BY created_at DESC;
+   ```
+
+2. **Diagnose Root Cause**:
+   - Check error message: "Account code 4100 does not exist"
+   - Check event data: Verify GL accounts, amounts, dates
+
+3. **Fix Root Cause**:
+   - Create missing GL account OR
+   - Correct event data (if source system sent wrong data)
+
+4. **Manual Retry**:
+   ```typescript
+   async function manualRetryGLPosting(failedJobId: string, userId: string) {
+     const job = await getFailedJob(failedJobId);
+
+     // Finance Director fixes issue (e.g., creates missing account)
+     // Then manually retries
+
+     try {
+       await postJournalEntry(JSON.parse(job.event_data));
+
+       await updateFailedJob(job.id, {
+         status: 'MANUALLY_RESOLVED',
+         resolved_at: new Date(),
+         resolved_by: userId
+       });
+
+       await auditLog({
+         action: 'MANUAL_GL_RECOVERY',
+         entity_type: 'FailedGLProcessing',
+         entity_id: job.id,
+         performed_by: userId,
+         details: `Manually resolved after ${job.retry_count} failed retries`
+       });
+
+       return { success: true };
+
+     } catch (error) {
+       throw new Error(`Manual retry failed: ${error.message}`);
+     }
+   }
+   ```
+
+**Escalation Notification**:
+
+```typescript
+async function escalateToFinanceDirector(details: EscalationDetails) {
+  const notification = {
+    recipient: 'finance_director@company.com',
+    subject: `[URGENT] GL Posting Failure - Manual Review Required`,
+    body: `
+Event ID: ${details.event_id}
+Event Type: ${details.event_type}
+Error: ${details.error_message}
+Retry Attempts: ${details.retry_count}
+Time Elapsed: ${details.time_elapsed}
+
+Action Required: ${details.action_required}
+
+View Details: /accounting/failed-processing/${details.event_id}
+    `
+  };
+
+  await sendEmail(notification);
+  await sendSlackAlert('#finance-alerts', notification);
+}
+```
+
+**Dashboard View**:
+
+```
+Finance Director Dashboard:
+┌──────────────────────────────────────────────────────────┐
+│ Failed GL Processing Queue                               │
+│                                                           │
+│ Status: 3 ESCALATED items require attention              │
+│                                                           │
+│ Event ID       Type           Error              Retries │
+│ ─────────────────────────────────────────────────────────│
+│ evt-001   Invoice.Posted   Account 4100 missing   100   │
+│ evt-002   Payment.Received  Validation failed      85   │
+│ evt-003   Refund.Issued     Balance mismatch       92   │
+│                                                           │
+│ [Review & Retry]  [Export to CSV]                        │
+└──────────────────────────────────────────────────────────┘
+```
+
+**Audit Trail Requirements**:
+- All retry attempts logged with timestamp, retry_count, error
+- Escalations logged with Finance Director notification timestamp
+- Manual resolutions logged with user_id, resolution_timestamp, reason
+
 #### 1.3: Create Invoice Record
 System creates **Invoice** record:
 ```
@@ -947,6 +1201,199 @@ Audit trail: Shows original → reversal → correction chain
 **Rule 3: Approval Deadline**
 - Correction requests expire after 7 days (auto-reject if not approved)
 - Staff can resubmit after expiry
+
+**CLARIFICATION - Correction Approval Expiry (Ambiguity #6 Resolution)**:
+```
+RULE: If approval expires (auto-reject after 7 days), reversal+corrected GL entries are auto-rolled back
+RULE: Staff must resubmit correction request from beginning
+RULE: Original error GL entry remains in place (never deleted)
+```
+
+**Approval Expiry Workflow**:
+
+**Scenario**: Correction request not approved within 7 days
+
+```typescript
+// Background job: Check for expired approval requests
+async function checkExpiredCorrectionRequests() {
+  const expiredRequests = await getCorrectionRequests({
+    status: 'PENDING_APPROVAL',
+    created_at: { lt: new Date(Date.now() - 7 * 24 * 3600 * 1000) } // 7 days ago
+  });
+
+  for (const request of expiredRequests) {
+    try {
+      // Step 1: Auto-reject expired request
+      await updateCorrectionRequest(request.id, {
+        status: 'AUTO_REJECTED',
+        rejected_reason: 'Approval timeout (7 days)',
+        rejected_at: new Date()
+      });
+
+      // Step 2: Rollback any GL entries created during correction attempt
+      if (request.reversal_entry_id || request.corrected_entry_id) {
+        await rollbackCorrectionEntries({
+          reversal_entry_id: request.reversal_entry_id,
+          corrected_entry_id: request.corrected_entry_id,
+          reason: 'Approval expired'
+        });
+
+        logger.warn(
+          `Rolled back GL entries for expired correction ${request.id}. ` +
+          `Reversal: ${request.reversal_entry_id}, Corrected: ${request.corrected_entry_id}`
+        );
+      }
+
+      // Step 3: Notify staff
+      await sendNotification({
+        recipient: request.created_by,
+        subject: 'Correction Request Expired',
+        body: `
+Your correction request ${request.id} was auto-rejected due to timeout.
+Reason: No approval received within 7 days.
+
+Original GL entry ${request.original_entry_id} remains unchanged.
+
+To proceed, please resubmit correction request.
+        `
+      });
+
+      // Step 4: Audit log
+      await auditLog({
+        action: 'CORRECTION_EXPIRED_AUTO_ROLLBACK',
+        entity_type: 'CorrectionRequest',
+        entity_id: request.id,
+        original_entry_id: request.original_entry_id,
+        outcome: 'Reversal and corrected entries rolled back',
+        timestamp: new Date()
+      });
+
+    } catch (error) {
+      logger.error(`Failed to process expired correction ${request.id}: ${error.message}`);
+    }
+  }
+}
+
+async function rollbackCorrectionEntries(entries: RollbackEntries) {
+  const trx = await db.transaction();
+
+  try {
+    // Rollback reversal entry if exists
+    if (entries.reversal_entry_id) {
+      await trx('journal_entries')
+        .where({ id: entries.reversal_entry_id })
+        .update({
+          status: 'CANCELLED',
+          cancelled_reason: entries.reason,
+          cancelled_at: new Date()
+        });
+    }
+
+    // Rollback corrected entry if exists
+    if (entries.corrected_entry_id) {
+      await trx('journal_entries')
+        .where({ id: entries.corrected_entry_id })
+        .update({
+          status: 'CANCELLED',
+          cancelled_reason: entries.reason,
+          cancelled_at: new Date()
+        });
+    }
+
+    await trx.commit();
+
+  } catch (error) {
+    await trx.rollback();
+    throw error;
+  }
+}
+```
+
+**Consequences of Auto-Reject**:
+
+1. **Original GL Entry Preserved**:
+   - Original error entry (je-001) remains with status = POSTED
+   - Financial data unchanged (prevents orphaned entries)
+   - Entry visible in GL with original amounts
+
+2. **Reversal Entry Cancelled** (if created):
+   - Reversal entry (je-002) status → CANCELLED
+   - Not counted in trial balance
+   - Marked as "cancelled due to approval expiry"
+
+3. **Corrected Entry Cancelled** (if created):
+   - Corrected entry (je-003) status → CANCELLED
+   - Not counted in trial balance
+
+4. **Staff Can Resubmit**:
+   - Create new correction request
+   - Start approval process from beginning
+   - Fresh 7-day approval window
+
+**Prevents Orphaned GL Entries**:
+
+```
+Scenario WITHOUT auto-rollback:
+- je-001: Original error (POSTED)
+- je-002: Reversal (POSTED) - no approval
+- Result: je-001 reversed but je-003 never posted → orphaned reversal
+
+Scenario WITH auto-rollback (correct):
+- je-001: Original error (POSTED)
+- je-002: Reversal (CANCELLED) - approval expired
+- Result: je-001 remains as-is, no orphaned entries
+```
+
+**CLARIFICATION - Session Expiry During GL Transaction (Ambiguity #3 Resolution)**:
+```
+RULE: Session expiry does NOT cancel database transactions
+RULE: Transactions complete (commit or rollback) independent of session state
+RULE: User must login again to see result after session expires
+```
+
+**Session Expiry Handling**:
+
+```typescript
+async function postJournalEntryWithSession(
+  userId: string,
+  sessionToken: string,
+  journalEntry: JournalEntry
+) {
+  // Step 1: Validate session BEFORE transaction
+  const session = await validateSession(sessionToken);
+  if (!session || session.expired) {
+    throw new SessionExpiredError('Session expired. Please login again.');
+  }
+
+  // Step 2: Start database transaction (independent of session)
+  const trx = await db.transaction();
+
+  try {
+    // GL posting (runs to completion regardless of session state)
+    await trx('journal_entries').insert(journalEntry);
+    await trx('journal_lines').insert(journalEntry.lines);
+    await trx.commit();
+
+    // After commit, check if session still valid
+    const sessionStillValid = await checkSessionValid(sessionToken);
+    if (!sessionStillValid) {
+      await auditLog({
+        action: 'GL_POST_SESSION_EXPIRED_DURING_TRANSACTION',
+        user_id: userId,
+        journal_entry_id: journalEntry.id,
+        outcome: 'Transaction completed, session expired',
+        note: 'User must login to see result'
+      });
+    }
+
+    return { success: true, session_valid: sessionStillValid };
+
+  } catch (error) {
+    await trx.rollback();
+    throw error;
+  }
+}
+```
 
 **Rule 4: No Manual Journal Entries**
 - ❌ DO NOT allow staff to post reversal entries manually

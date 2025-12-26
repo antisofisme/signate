@@ -403,6 +403,199 @@ TenantApp {
 - Modules disabled
 - Event: `SubscriptionExpired`
 
+**CRITICAL GUARDRAIL - In-Flight Transaction Handling (Contradiction #6 Resolution)**:
+```
+RULE: Subscription suspension does NOT interrupt in-flight database transactions
+RULE: Database transactions complete regardless of subscription status changes
+RULE: After transaction completes, NEW requests from suspended tenant are rejected
+```
+
+**In-Flight Transaction Protection**:
+
+**Scenario**: User is mid-GL-posting when subscription expires and tenant becomes SUSPENDED
+
+```typescript
+// Transaction starts BEFORE suspension
+async function postJournalEntry(tenantId: string, journalEntry: JournalEntry) {
+  // Step 1: Check subscription status BEFORE starting transaction
+  const subscription = await getSubscription(tenantId);
+  if (subscription.status === 'EXPIRED' || subscription.status === 'SUSPENDED') {
+    throw new SubscriptionExpiredError(
+      `Tenant ${tenantId} subscription expired. Cannot start new transactions.`
+    );
+  }
+
+  // Step 2: Start database transaction
+  const trx = await db.transaction();
+
+  try {
+    // Step 3: Post GL entries (CRITICAL: runs to completion)
+    await trx('journal_entries').insert(journalEntry);
+    await trx('journal_lines').insert(journalEntry.lines);
+
+    // Step 4: Update account balances
+    await updateAccountBalances(trx, journalEntry.lines);
+
+    // Step 5: COMMIT (even if subscription expired during transaction)
+    await trx.commit();
+
+    logger.info(
+      `Journal entry ${journalEntry.id} committed for tenant ${tenantId}. ` +
+      `Transaction completed successfully.`
+    );
+
+    return { success: true, journal_entry_id: journalEntry.id };
+
+  } catch (error) {
+    // Rollback on error (subscription status irrelevant)
+    await trx.rollback();
+    throw error;
+  }
+}
+
+// Middleware: Check subscription BEFORE accepting new requests
+async function subscriptionCheckMiddleware(req, res, next) {
+  const tenantId = req.user.tenant_id;
+  const subscription = await getSubscription(tenantId);
+
+  if (subscription.status === 'SUSPENDED' || subscription.status === 'EXPIRED') {
+    return res.status(403).json({
+      error: 'SUBSCRIPTION_EXPIRED',
+      message: 'Your subscription has expired. Please renew to continue using this service.',
+      recovery_url: '/billing/renew'
+    });
+  }
+
+  // Subscription active: proceed with request
+  next();
+}
+```
+
+**Timeline Example**:
+
+```
+T=0:   User starts GL posting transaction (subscription = ACTIVE)
+       → Transaction begins
+       → Database lock acquired
+
+T=2:   Subscription renewal fails (grace period expired)
+       → Subscription status → EXPIRED
+       → Tenant status → SUSPENDED
+       → Event published: SubscriptionExpired
+
+T=3:   GL posting transaction continues (UNAFFECTED by suspension)
+       → Validation passes
+       → Entries posted to ledger
+       → Account balances updated
+
+T=4:   Transaction COMMITS successfully
+       → GL entry now in database
+       → User session remains valid until token expires
+
+T=5:   User tries to create NEXT transaction (NEW request)
+       → Middleware checks subscription status
+       → Subscription = EXPIRED → Request REJECTED
+       → Error: "Subscription expired"
+       → User redirected to billing page
+```
+
+**Key Principle**: Database Transaction Isolation
+
+- Database transactions are ACID-compliant (Atomic, Consistent, Isolated, Durable)
+- Subscription status is checked at REQUEST ENTRY, not during transaction execution
+- Once transaction starts, it runs to completion (commit or rollback)
+- Suspension does not trigger rollback of in-flight transactions
+
+**Recovery After Suspension**:
+
+**Scenario**: Tenant re-subscribes after suspension
+
+**Step 1: User Renews Subscription**
+- User pays renewal fee
+- Subscription status → ACTIVE
+- Tenant status → ACTIVE
+- Modules re-enabled
+
+**Step 2: Data Integrity Verification**
+```typescript
+async function reactivateTenant(tenantId: string) {
+  // Step 2a: Verify no orphaned transactions
+  const orphanedTxns = await findOrphanedTransactions(tenantId);
+  if (orphanedTxns.length > 0) {
+    logger.warn(
+      `Found ${orphanedTxns.length} orphaned transactions for tenant ${tenantId}. ` +
+      `These were completed during suspension.`
+    );
+    // All transactions are valid (completed before suspension took effect)
+  }
+
+  // Step 2b: Restore access
+  await updateTenant(tenantId, { status: 'ACTIVE' });
+
+  // Step 2c: Publish reactivation event
+  await publishEvent({
+    event_type: 'Tenant.Reactivated.v1',
+    tenant_id: tenantId,
+    reactivated_at: new Date()
+  });
+
+  return { success: true };
+}
+```
+
+**Step 3: User Sees Completed Transactions**
+- All transactions posted during suspension are visible
+- No data loss
+- User can continue from where they left off
+
+**Backup Recovery Options**:
+
+If user needs to restore from backup (e.g., wants to undo work done during grace period):
+
+```typescript
+async function restoreFromBackup(tenantId: string, backupDate: Date) {
+  // Step 1: Verify subscription is ACTIVE
+  const subscription = await getSubscription(tenantId);
+  if (subscription.status !== 'ACTIVE') {
+    throw new Error('Cannot restore backup: subscription not active');
+  }
+
+  // Step 2: Restore database to backup point
+  await restoreDatabase(tenantId, backupDate);
+
+  // Step 3: Audit log
+  await auditLog({
+    action: 'BACKUP_RESTORE',
+    tenant_id: tenantId,
+    backup_date: backupDate,
+    performed_at: new Date()
+  });
+
+  return { success: true, restored_to: backupDate };
+}
+```
+
+**Audit Trail**:
+- All subscription status changes logged with timestamp
+- Transactions completed during grace period flagged with 'completed_during_grace'
+- No transactions rolled back due to suspension (unless user explicitly requests restore)
+
+**Error Messages**:
+
+```
+User tries to start NEW transaction after suspension:
+┌─────────────────────────────────────────────────────────┐
+│ ⚠️ Subscription Expired                                 │
+│                                                          │
+│ Your subscription expired on 2025-12-24.                │
+│ You cannot create new transactions.                     │
+│                                                          │
+│ All data from in-flight transactions has been saved.    │
+│                                                          │
+│ [Renew Subscription]  [View Billing]                    │
+└─────────────────────────────────────────────────────────┘
+```
+
 ---
 
 ### Flow D: Payment Failure & Recovery

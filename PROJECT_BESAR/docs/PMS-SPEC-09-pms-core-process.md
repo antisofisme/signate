@@ -257,6 +257,165 @@ If reservation came from Channel Manager (OTA, travel agent, booking.com):
      - Lock held until check-in confirmed OR cancelled
      - Timeout: 30 seconds (if transaction fails, lock auto-released)
 
+**CRITICAL GUARDRAIL - Lock Hierarchy (Contradiction #7 Resolution)**:
+```
+RULE: Reservation tentative hold (15 min) is INVENTORY-level lock
+RULE: Check-in pessimistic lock (30 sec) is ASSIGNMENT-level lock
+RULE: These locks operate on DIFFERENT resources - NO CONFLICT
+RULE: Separate timeout enforcement for each lock type
+```
+
+**Lock Hierarchy Explanation**:
+
+**Lock Type 1: Inventory Reservation Hold** (Step 1: Reservation)
+- **Resource**: Room TYPE inventory count (e.g., "double rooms available")
+- **Purpose**: Block inventory from being oversold during reservation flow
+- **Duration**: 15 minutes
+- **Scope**: Decrements available_count for room_type
+- **Release**: When reservation confirmed OR timeout expires
+- **Example**: User selects "2 double rooms", system holds 2 from inventory
+
+**Lock Type 2: Check-In Assignment Lock** (Step 2: Check-In)
+- **Resource**: Specific ROOM record (e.g., "Room 101")
+- **Purpose**: Prevent two staff from assigning same physical room to different guests
+- **Duration**: 30 seconds
+- **Scope**: Locks single room row in database
+- **Release**: When check-in confirmed OR timeout expires OR transaction rolled back
+- **Example**: Staff assigns "Room 101" to Guest A, lock prevents Staff B from assigning same room
+
+**Why No Conflict**:
+```
+Reservation Hold:
+  - Affects: room_types.available_count (aggregate count)
+  - SQL: UPDATE room_types SET available_count = available_count - 1
+         WHERE type = 'double' AND available_count > 0
+
+Check-In Assignment:
+  - Affects: rooms.id (specific room)
+  - SQL: SELECT * FROM rooms WHERE id = 'room-101' FOR UPDATE
+
+These are DIFFERENT tables/resources, so locks don't interfere.
+```
+
+**Combined Flow Example**:
+
+1. **Reservation Phase** (Inventory Hold):
+   ```sql
+   -- Hold 1 double room from inventory
+   UPDATE room_types
+   SET available_count = available_count - 1
+   WHERE type = 'double' AND available_count > 0;
+
+   -- Timeout: 15 minutes
+   -- If not confirmed: auto-release
+   ```
+
+2. **Check-In Phase** (Assignment Lock):
+   ```sql
+   -- Lock specific room for assignment
+   SELECT * FROM rooms
+   WHERE id = 'room-101'
+     AND status = 'AVAILABLE'
+   FOR UPDATE;
+
+   -- Timeout: 30 seconds
+   -- If transaction fails: auto-release
+   ```
+
+**Timeout Enforcement**:
+
+```typescript
+async function holdInventory(roomType: string, qty: number) {
+  const hold = await createInventoryHold(roomType, qty);
+
+  // Set 15-minute timeout
+  setTimeout(async () => {
+    const holdStillPending = await checkHoldStatus(hold.id);
+    if (holdStillPending && hold.status === 'PENDING') {
+      await releaseInventoryHold(hold.id);
+      logger.info(`Inventory hold ${hold.id} expired after 15 minutes`);
+    }
+  }, 15 * 60 * 1000); // 15 minutes
+
+  return hold;
+}
+
+async function assignRoom(roomId: string, guestId: string) {
+  // Pessimistic lock with 30-second timeout
+  const result = await db.transaction(async (trx) => {
+    const room = await trx('rooms')
+      .where({ id: roomId, status: 'AVAILABLE' })
+      .forUpdate()
+      .timeout(30000) // 30 seconds
+      .first();
+
+    if (!room) {
+      throw new Error('Room not available or lock timeout');
+    }
+
+    await trx('rooms')
+      .where({ id: roomId })
+      .update({ status: 'OCCUPIED', guest_id: guestId });
+
+    return room;
+  });
+
+  return result;
+}
+```
+
+**Diagram - Lock Hierarchy**:
+
+```
+┌─────────────────────────────────────────────────────┐
+│ RESERVATION PHASE (Inventory Hold)                  │
+│                                                      │
+│ Resource: room_types.available_count                │
+│ Duration: 15 minutes                                 │
+│ Lock Type: Optimistic (decrement counter)           │
+│                                                      │
+│ ┌───────────────────────────────────────────────┐  │
+│ │ Check inventory: available_count >= qty?      │  │
+│ │ YES → Decrement available_count by qty        │  │
+│ │ NO → Reject reservation (sold out)            │  │
+│ └───────────────────────────────────────────────┘  │
+└─────────────────────────────────────────────────────┘
+                         │
+                         │ Guest arrives for check-in
+                         ▼
+┌─────────────────────────────────────────────────────┐
+│ CHECK-IN PHASE (Assignment Lock)                    │
+│                                                      │
+│ Resource: rooms.id (specific room)                  │
+│ Duration: 30 seconds                                 │
+│ Lock Type: Pessimistic (SELECT FOR UPDATE)          │
+│                                                      │
+│ ┌───────────────────────────────────────────────┐  │
+│ │ Lock room: SELECT * FROM rooms WHERE id=...   │  │
+│ │            FOR UPDATE (30 sec timeout)         │  │
+│ │ Assign: UPDATE rooms SET guest_id=...         │  │
+│ │ Commit → Lock released                         │  │
+│ └───────────────────────────────────────────────┘  │
+└─────────────────────────────────────────────────────┘
+```
+
+**Edge Case: Both Locks Active Simultaneously**:
+
+Scenario: Guest A has inventory hold, Guest B is being checked in to same room type
+
+```
+Timeline:
+T=0:   Guest A creates reservation → Inventory hold active (15 min)
+T=5:   Guest B arrives, staff starts check-in
+T=5.5: Staff assigns Room 101 to Guest B → Assignment lock (30 sec)
+T=6:   Guest A confirms reservation → System picks Room 102 (not 101)
+```
+
+Result: No conflict. Inventory hold and assignment lock operate independently.
+- Guest B gets Room 101 (assigned first)
+- Guest A gets Room 102 (next available room)
+- Both reservations succeed
+
 5. System **creates Folio**:
    ```
    Folio {
@@ -494,6 +653,221 @@ Balance Due:              $0.00
    - If authorization succeeds: Proceed with charging
    - Release hold within 24 hours of card charge (prevents double-holds)
    - For payments < $100: Direct charge without hold
+
+**CLARIFICATION - Payment Gateway Timeout Recovery (Ambiguity #2 Resolution)**:
+```
+RULE: If payment authorization timeout (>5 sec), folio status remains OPEN
+RULE: System retries payment automatically every 1 hour up to 24 hours
+RULE: Guest cannot leave until payment succeeds OR manager override approved
+```
+
+**Payment Timeout Workflow**:
+
+**Scenario**: Guest checks out, payment gateway times out during card authorization
+
+**Step 1: Timeout Detection**
+```typescript
+async function processCheckoutPayment(folioId: string, cardToken: string) {
+  try {
+    const payment = await paymentGateway.authorize(cardToken, {
+      timeout: 5000 // 5 seconds
+    });
+
+    if (payment.status === 'AUTHORIZED') {
+      await settleFolio(folioId, payment.id);
+      return { success: true, folio_status: 'SETTLED' };
+    }
+
+  } catch (error) {
+    if (error.code === 'TIMEOUT') {
+      // Timeout occurred
+      logger.warn(`Payment timeout for folio ${folioId}`);
+
+      // Create pending payment record
+      await createPendingPayment({
+        folio_id: folioId,
+        card_token: cardToken,
+        status: 'TIMEOUT_PENDING_RETRY',
+        next_retry_at: new Date(Date.now() + 3600000), // 1 hour
+        retry_count: 0,
+        max_retries: 24 // 24 hours total
+      });
+
+      return {
+        success: false,
+        folio_status: 'OPEN',
+        message: 'Payment gateway timeout. System will retry automatically.'
+      };
+    }
+
+    throw error;
+  }
+}
+```
+
+**Step 2: Folio Remains OPEN**
+- Folio.status = 'OPEN' (not settled)
+- Folio.balance_due = original amount (not reduced)
+- Guest cannot leave without manager override
+
+**Step 3: Automatic Retry Schedule**
+
+```typescript
+// Background job runs every 1 hour
+async function retryPendingPayments() {
+  const pendingPayments = await getPendingPayments({
+    status: 'TIMEOUT_PENDING_RETRY',
+    next_retry_at: { lte: new Date() }
+  });
+
+  for (const pending of pendingPayments) {
+    try {
+      const payment = await paymentGateway.authorize(pending.card_token);
+
+      if (payment.status === 'AUTHORIZED') {
+        // Success!
+        await settleFolio(pending.folio_id, payment.id);
+        await updatePendingPayment(pending.id, {
+          status: 'SUCCEEDED',
+          settled_at: new Date()
+        });
+
+        // Notify guest and staff
+        await sendNotification(pending.folio_id, {
+          type: 'PAYMENT_SUCCEEDED_AFTER_RETRY',
+          message: 'Your payment has been processed successfully.'
+        });
+
+      } else if (payment.status === 'DECLINED') {
+        // Payment failed permanently
+        await updatePendingPayment(pending.id, {
+          status: 'FAILED',
+          failure_reason: payment.error_message
+        });
+
+        await sendNotification(pending.folio_id, {
+          type: 'PAYMENT_FAILED',
+          message: 'Payment declined. Please provide alternative payment method.'
+        });
+      }
+
+    } catch (error) {
+      // Retry failed (network/timeout again)
+      const newRetryCount = pending.retry_count + 1;
+
+      if (newRetryCount >= pending.max_retries) {
+        // Max retries exceeded (24 hours passed)
+        await updatePendingPayment(pending.id, {
+          status: 'MAX_RETRIES_EXCEEDED',
+          retry_count: newRetryCount
+        });
+
+        await escalateToManager(pending.folio_id, {
+          reason: 'Payment timeout exceeded 24 hours',
+          action_required: 'Manager override or alternative payment required'
+        });
+
+      } else {
+        // Schedule next retry (exponential backoff)
+        await updatePendingPayment(pending.id, {
+          retry_count: newRetryCount,
+          next_retry_at: new Date(Date.now() + 3600000) // 1 hour
+        });
+      }
+    }
+  }
+}
+```
+
+**Step 4: Guest Departure Decision**
+
+**Option 1: Payment Succeeds on Retry**
+- Folio auto-settles when payment succeeds
+- Guest receives confirmation email
+- Guest can leave (folio closed)
+
+**Option 2: Payment Ultimately Fails**
+- After 24 hours of retries, payment still fails
+- Manager notification sent
+- Guest must provide alternative payment method OR
+- Manager override required to close folio (not settle)
+
+**Manager Override Workflow**:
+
+```typescript
+async function managerOverrideFolio(folioId: string, managerId: string, reason: string) {
+  // Validate manager authority
+  const manager = await getUser(managerId);
+  if (!manager.hasPermission('FOLIO_OVERRIDE')) {
+    throw new AuthorizationError('Insufficient permissions for folio override');
+  }
+
+  // Close folio without payment
+  await updateFolio(folioId, {
+    status: 'CLOSED', // NOT 'SETTLED'
+    balance_due: await getFolioBalance(folioId), // Outstanding balance tracked
+    override_by: managerId,
+    override_reason: reason,
+    override_at: new Date()
+  });
+
+  // Create AR (Accounts Receivable) entry
+  await createAccountsReceivable({
+    folio_id: folioId,
+    amount: await getFolioBalance(folioId),
+    status: 'OUTSTANDING',
+    collection_attempts: []
+  });
+
+  // Audit log
+  await auditLog({
+    action: 'FOLIO_OVERRIDE',
+    entity_type: 'Folio',
+    entity_id: folioId,
+    performed_by: managerId,
+    reason: reason,
+    impact: 'Folio closed without payment, AR created'
+  });
+}
+```
+
+**Guest Departure Authorization Matrix**:
+
+| Scenario | Folio Status | Can Guest Leave? | Required Action |
+|----------|-------------|------------------|----------------|
+| Payment succeeds immediately | SETTLED | YES | None |
+| Payment timeout, retry pending | OPEN | NO | Wait for retry or manager override |
+| Payment succeeds on retry (< 24h) | SETTLED (auto) | YES | None (auto-notification) |
+| Payment fails after retries | OPEN | NO | Alternative payment or manager override |
+| Manager override approved | CLOSED (not settled) | YES | AR created, collection process starts |
+
+**UI/UX Considerations**:
+
+```
+Staff View (Front Desk):
+┌───────────────────────────────────────────────────┐
+│ Folio #12345 - Guest John Doe                     │
+│ Status: OPEN (Payment Pending)                    │
+│ Balance Due: $314.60                              │
+│                                                    │
+│ ⚠️ Payment gateway timeout                        │
+│ System will retry automatically every 1 hour      │
+│                                                    │
+│ Next retry in: 45 minutes                         │
+│ Retry attempts: 3 / 24                            │
+│                                                    │
+│ Options:                                           │
+│ [1] Guest provides alternative payment method     │
+│ [2] Manager override (close folio, create AR)     │
+│ [3] Wait for automatic retry                      │
+└───────────────────────────────────────────────────┘
+```
+
+**Audit Trail Requirements**:
+- All payment timeouts logged with timestamp, folio_id, retry_count
+- Manager overrides logged with reason, manager_id, approval_timestamp
+- Retry outcomes logged (success/failure/timeout)
+- AR created for unpaid folios with override reason
 
 5. Payment status: `COMPLETED`
 
