@@ -1,0 +1,113 @@
+╔════════════════════════════════════════════════════════════════════════════╗
+║           🎙️  JARVIS VOICE ASSISTANT - WINDOWS QUICK START               ║
+║                       Successfully Installed? Here's How to Run             ║
+╚════════════════════════════════════════════════════════════════════════════╝
+
+✅ YOU'VE SUCCESSFULLY INSTALLED ALL DEPENDENCIES!
+
+Now let's run JARVIS. Here's the Windows-specific command:
+
+════════════════════════════════════════════════════════════════════════════════
+
+🎯 TO RUN JARVIS ON WINDOWS:
+
+Open Command Prompt (cmd.exe) and enter:
+
+   python -m jarvis.main
+
+(Note: Use "python" NOT "python3" on Windows)
+
+════════════════════════════════════════════════════════════════════════════════
+
+📋 STEP-BY-STEP:
+
+1. Open Command Prompt
+   - Press Windows Key + R
+   - Type: cmd
+   - Press Enter
+
+2. Navigate to your project folder
+   - If you downloaded to Downloads:
+     cd C:\Users\YourUsername\Downloads\SEMAR
+
+   - Or use the full path:
+     cd "C:\path\to\SEMAR"
+
+3. Run JARVIS
+   python -m jarvis.main
+
+4. Expected Output
+   You should see:
+   - MainLoopOrchestrator initialized...
+   - HotkeyListener started (F12)
+   - Waiting for hotkey press...
+
+════════════════════════════════════════════════════════════════════════════════
+
+🎤 ONCE RUNNING:
+
+1. Press and HOLD F12
+   - You'll hear a beep (optional)
+   - Start speaking your command
+
+2. Release F12
+   - JARVIS will process your voice
+   - Shows transcription on screen
+
+3. Results will appear
+
+Example commands:
+   - "help" → Show all commands
+   - "what is Python?" → Send to Claude
+   - "mode coding" → Switch to coding mode
+   - "delete all files" → BLOCKED (dangerous pattern)
+
+════════════════════════════════════════════════════════════════════════════════
+
+❌ TROUBLESHOOTING - If you get errors:
+
+ERROR: "'python' is not recognized"
+→ Python not in PATH. Try:
+  • Reinstall Python from python.org
+  • IMPORTANT: CHECK "Add Python to PATH" during installation
+  • Restart Command Prompt
+
+ERROR: "No module named 'jarvis'"
+→ You're in the wrong directory
+→ Make sure you're in SEMAR folder
+→ Run: cd SEMAR
+
+ERROR: "No audio device found"
+→ Check your microphone is connected
+→ Check Windows Sound Settings
+
+ERROR: "F12 hotkey not detected"
+→ Make JARVIS window focused (click on it)
+→ Some laptops use F12 for special functions
+→ Try running as Administrator:
+   Right-click Command Prompt → "Run as Administrator"
+   Then run: python -m jarvis.main
+
+════════════════════════════════════════════════════════════════════════════════
+
+✅ VERIFICATION:
+
+After running "python -m jarvis.main", verify:
+
+[ ] Terminal shows "MainLoopOrchestrator initialized"
+[ ] Terminal shows "HotkeyListener started (F12)"
+[ ] Terminal says "Waiting for..."
+[ ] No error messages
+[ ] Application is responsive
+
+If all checked ✓ → JARVIS is ready!
+
+════════════════════════════════════════════════════════════════════════════════
+
+🎉 YOU'RE ALL SET!
+
+Just run: python -m jarvis.main
+
+Then press F12 and start using JARVIS!
+
+════════════════════════════════════════════════════════════════════════════════

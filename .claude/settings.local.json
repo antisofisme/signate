@@ -24,9 +24,15 @@
       "Bash(where:*)",
       "Bash(tree:*)",
       "Bash(grep:*)",
-      "Bash(ls:*)"
+      "Bash(ls:*)",
+      "Bash(pip3 install:*)",
+      "Bash(python3:*)"
     ],
     "deny": [],
     "ask": []
-  }
+  },
+  "enabledMcpjsonServers": [
+    "memory",
+    "sequential-thinking"
+  ]
 }

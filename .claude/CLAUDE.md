@@ -1,4 +1,4 @@
-# PROJECT_BESAR - Claude Context
+# ATLAS_PANDAWA - Claude Context
 
 ## Project Overview
 Enterprise Hospitality Platform dengan 14 modules:
@@ -106,7 +106,7 @@ PMS, POS, HRM, Accounting, Inventory, Procurement, Asset, Guest, Channel, Signag
 
 ## Directory Structure
 ```
-PROJECT_BESAR/
+ATLAS_PANDAWA/
 ├── docs/                    # Documentation (scope-category-based naming)
 │   │
 │   ├── CORE-*.md           # Foundational docs (58 files)

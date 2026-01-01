@@ -1,0 +1,6 @@
+pynput>=1.7.6
+sounddevice>=0.4.5
+numpy>=1.24.0
+openai-whisper>=20231117
+pytest>=7.4.0
+mypy>=1.5.0
