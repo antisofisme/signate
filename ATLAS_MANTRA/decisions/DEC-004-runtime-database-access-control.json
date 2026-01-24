@@ -1,0 +1,44 @@
+{
+  "decision_id": "c3d4e5f6-a7b8-4c9d-0e1f-2a3b4c5d6e7f",
+  "group_id": "GROUP-3",
+  "feature_id": "F-11",
+  "statement": "Runtime database access uses role 'mantra_app' with SELECT and INSERT privileges only. DDL and UPDATE/DELETE operations require 'mantra_owner' role, restricted to migration contexts.",
+  "rationale": "Principle of least privilege. Runtime application cannot modify schema or existing records. Enforces immutability at database layer. Separation prevents accidental or malicious data modification.",
+  "constraints": [
+    {
+      "constraint_id": "C-001",
+      "statement": "Runtime role (mantra_app) must have SELECT and INSERT only",
+      "type": "REQUIREMENT"
+    },
+    {
+      "constraint_id": "C-002",
+      "statement": "Runtime role must not have UPDATE or DELETE privileges",
+      "type": "PROHIBITION"
+    },
+    {
+      "constraint_id": "C-003",
+      "statement": "DDL operations require mantra_owner role",
+      "type": "REQUIREMENT"
+    },
+    {
+      "constraint_id": "C-004",
+      "statement": "mantra_owner role must be used only in migration context",
+      "type": "LIMITATION"
+    }
+  ],
+  "invariants": [
+    "Runtime cannot modify existing records",
+    "Runtime cannot alter schema",
+    "Privilege escalation requires context change"
+  ],
+  "scope": "APPLICATION",
+  "blast_radius": "HIGH",
+  "version": "1.0.0",
+  "created_by": "Human Decision Maker",
+  "created_at": "2025-01-24T00:00:00Z",
+  "approved_by": "Human Decision Maker",
+  "approved_at": "2025-01-24T00:00:00Z",
+  "supersedes": null,
+  "related_decisions": ["a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d"],
+  "x_recording_session": "HUMAN DECISION NORMALIZATION SESSION (POST-DOGFOODING)"
+}

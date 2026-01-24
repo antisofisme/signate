@@ -1,0 +1,296 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://atlas-mantra.org/schemas/decision-v2.json",
+  "title": "MANTRA Decision Schema v2",
+  "x-amendment": "MANTRA-SPEC-001-AMENDMENT-001: status field removed",
+  "type": "object",
+  "required": [
+    "decision_id",
+    "group_id",
+    "feature_id",
+    "statement",
+    "rationale",
+    "constraints",
+    "invariants",
+    "scope",
+    "blast_radius",
+    "version"
+  ],
+  "properties": {
+    "decision_id": {
+      "type": "string",
+      "format": "uuid",
+      "readOnly": true
+    },
+    "group_id": {
+      "$ref": "#/$defs/GroupId"
+    },
+    "feature_id": {
+      "$ref": "#/$defs/FeatureId"
+    },
+    "statement": {
+      "type": "string",
+      "minLength": 1
+    },
+    "rationale": {
+      "type": "string",
+      "minLength": 1
+    },
+    "constraints": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/Constraint"
+      }
+    },
+    "invariants": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "scope": {
+      "$ref": "#/$defs/Scope"
+    },
+    "blast_radius": {
+      "$ref": "#/$defs/BlastRadius"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+    },
+    "created_by": {
+      "type": "string"
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "approved_by": {
+      "type": "string"
+    },
+    "approved_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "supersedes": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "related_decisions": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "format": "uuid"
+      }
+    }
+  },
+  "$defs": {
+    "GroupId": {
+      "type": "string",
+      "enum": [
+        "GROUP-1",
+        "GROUP-2",
+        "GROUP-3",
+        "GROUP-4"
+      ]
+    },
+    "FeatureId": {
+      "type": "string",
+      "enum": [
+        "F-01",
+        "F-02",
+        "F-03",
+        "F-04",
+        "F-05",
+        "F-06",
+        "F-07",
+        "F-08",
+        "F-09",
+        "F-10",
+        "F-11",
+        "F-12",
+        "F-13",
+        "F-14",
+        "F-15",
+        "F-16"
+      ]
+    },
+    "Scope": {
+      "type": "string",
+      "enum": [
+        "ORGANIZATION",
+        "DOMAIN",
+        "APPLICATION"
+      ]
+    },
+    "BlastRadius": {
+      "type": "string",
+      "enum": [
+        "LOW",
+        "MEDIUM",
+        "HIGH",
+        "CRITICAL"
+      ]
+    },
+    "ConstraintType": {
+      "type": "string",
+      "enum": [
+        "PROHIBITION",
+        "REQUIREMENT",
+        "LIMITATION"
+      ]
+    },
+    "Constraint": {
+      "type": "object",
+      "required": [
+        "constraint_id",
+        "statement",
+        "type"
+      ],
+      "properties": {
+        "constraint_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "statement": {
+          "type": "string",
+          "minLength": 1
+        },
+        "type": {
+          "$ref": "#/$defs/ConstraintType"
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "group_id": {
+            "const": "GROUP-1"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "feature_id": {
+            "enum": [
+              "F-01",
+              "F-02",
+              "F-03",
+              "F-04"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "group_id": {
+            "const": "GROUP-2"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "feature_id": {
+            "enum": [
+              "F-05",
+              "F-06",
+              "F-07",
+              "F-08"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "group_id": {
+            "const": "GROUP-3"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "feature_id": {
+            "enum": [
+              "F-09",
+              "F-10",
+              "F-11",
+              "F-12"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "group_id": {
+            "const": "GROUP-4"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "feature_id": {
+            "enum": [
+              "F-13",
+              "F-14",
+              "F-15",
+              "F-16"
+            ]
+          }
+        }
+      }
+    }
+  ],
+  "x-invalid-states": [
+    "decision_id assigned by non-system entity",
+    "decision_id modified after creation",
+    "group_id value not in enumeration",
+    "feature_id value not in enumeration",
+    "feature_id incompatible with group_id",
+    "statement empty or absent",
+    "statement authored by AI",
+    "rationale empty or absent",
+    "rationale authored by AI",
+    "approved_by contains AI identifier",
+    "version not incremented on change",
+    "scope value not in enumeration",
+    "scope value empty or null",
+    "blast_radius value not in enumeration",
+    "blast_radius value empty or null",
+    "constraint missing constraint_id",
+    "constraint missing statement",
+    "constraint missing type",
+    "constraint type not in enumeration",
+    "constraint_id not unique within decision",
+    "constraint statement empty",
+    "invariant string empty"
+  ],
+  "x-ai-permissions": [
+    "Read decision records",
+    "Detect potential conflicts",
+    "Flag potential gaps",
+    "Generate advisory warnings",
+    "Produce analysis for human review"
+  ],
+  "x-ai-prohibitions": [
+    "Create decision_id",
+    "Assign group_id",
+    "Assign feature_id",
+    "Write statement",
+    "Write rationale",
+    "Approve decisions",
+    "Reject decisions",
+    "Finalize decisions",
+    "Imply approval through language",
+    "Override human determinations"
+  ]
+}

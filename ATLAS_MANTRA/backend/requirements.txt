@@ -1,0 +1,25 @@
+# ATLAS_MANTRA Backend Dependencies
+
+# Web Framework
+fastapi==0.115.0
+uvicorn[standard]==0.30.0
+pydantic==2.8.0
+
+# Database
+sqlalchemy==2.0.31
+psycopg2-binary==2.9.9
+asyncpg==0.29.0
+
+# Utilities
+python-dotenv==1.0.0
+python-multipart==0.0.9
+
+# Testing
+pytest==8.2.0
+pytest-asyncio==0.23.0
+httpx==0.27.0
+
+# Development
+black==24.4.0
+isort==5.13.0
+mypy==1.10.0

@@ -1,0 +1,40 @@
+{
+  "decision_id": "a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d",
+  "group_id": "GROUP-4",
+  "feature_id": "F-13",
+  "statement": "Decision records do not have a status field. Evolution occurs exclusively via version increment and supersedes reference. Once stored, decision records are absolutely immutable — no modification or deletion permitted.",
+  "rationale": "Status-based lifecycle creates ambiguity about which decision is 'current' or 'valid'. Version-based evolution preserves complete history and prevents silent reinterpretation. Immutability ensures audit trail integrity.",
+  "constraints": [
+    {
+      "constraint_id": "C-001",
+      "statement": "No status field shall exist in decision schema",
+      "type": "PROHIBITION"
+    },
+    {
+      "constraint_id": "C-002",
+      "statement": "Decision evolution must use version + supersedes mechanism only",
+      "type": "REQUIREMENT"
+    },
+    {
+      "constraint_id": "C-003",
+      "statement": "Stored decisions must not be modified or deleted",
+      "type": "PROHIBITION"
+    }
+  ],
+  "invariants": [
+    "Decision records are immutable after storage",
+    "Version history is always complete and traceable",
+    "No decision can be silently reinterpreted"
+  ],
+  "scope": "ORGANIZATION",
+  "blast_radius": "CRITICAL",
+  "version": "1.0.0",
+  "created_by": "Human Decision Maker",
+  "created_at": "2025-01-24T00:00:00Z",
+  "approved_by": "Human Decision Maker",
+  "approved_at": "2025-01-24T00:00:00Z",
+  "supersedes": null,
+  "related_decisions": [],
+  "x_merged_from": ["#5 - Decisions are Absolutely Immutable"],
+  "x_recording_session": "HUMAN DECISION NORMALIZATION SESSION (POST-DOGFOODING)"
+}
