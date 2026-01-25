@@ -62,6 +62,12 @@ job "mantra-backend" {
         LOG_LEVEL   = "INFO"
         ENABLE_DOCS = "true"
         CORS_ORIGINS = "http://localhost:3000,http://localhost:5173,http://31.97.111.175:3001"
+
+        # AI Configuration (set via Nomad variables or Consul keys)
+        AI_PROVIDER = "openai"
+        AI_MODEL    = "gpt-4o-mini"
+        OPENAI_API_KEY   = "${OPENAI_API_KEY}"
+        DEEPSEEK_API_KEY = "${DEEPSEEK_API_KEY}"
       }
 
       template {
