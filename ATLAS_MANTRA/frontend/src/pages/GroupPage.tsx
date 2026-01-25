@@ -17,6 +17,7 @@ import {
 
 interface Decision {
   decision_id: string
+  decision_code: string | null  // Human-readable code: INT-F01-001-v1.0.0
   version: string
   statement: string
   rationale: string
@@ -30,18 +31,25 @@ interface Decision {
 }
 
 const GROUP_COLORS: Record<string, { bg: string; text: string; border: string; light: string }> = {
-  'GROUP-1': { bg: 'bg-blue-600', text: 'text-blue-600', border: 'border-blue-200', light: 'bg-blue-50' },
-  'GROUP-2': { bg: 'bg-green-600', text: 'text-green-600', border: 'border-green-200', light: 'bg-green-50' },
-  'GROUP-3': { bg: 'bg-orange-600', text: 'text-orange-600', border: 'border-orange-200', light: 'bg-orange-50' },
-  'GROUP-4': { bg: 'bg-purple-600', text: 'text-purple-600', border: 'border-purple-200', light: 'bg-purple-50' },
+  'INT': { bg: 'bg-blue-600', text: 'text-blue-600', border: 'border-blue-200', light: 'bg-blue-50' },
+  'ARCH': { bg: 'bg-green-600', text: 'text-green-600', border: 'border-green-200', light: 'bg-green-50' },
+  'CTL': { bg: 'bg-orange-600', text: 'text-orange-600', border: 'border-orange-200', light: 'bg-orange-50' },
+  'EVO': { bg: 'bg-purple-600', text: 'text-purple-600', border: 'border-purple-200', light: 'bg-purple-50' },
+}
+
+const PATH_TO_GROUP: Record<string, string> = {
+  'int': 'INT',
+  'arch': 'ARCH',
+  'ctl': 'CTL',
+  'evo': 'EVO',
 }
 
 export default function GroupPage() {
   const { groupNum } = useParams<{ groupNum: string }>()
-  const groupId = `GROUP-${groupNum}`
+  const groupId = PATH_TO_GROUP[groupNum?.toLowerCase() || ''] || 'INT'
   const [activeTab, setActiveTab] = useState<'features' | 'projections'>('features')
 
-  const colors = GROUP_COLORS[groupId] || GROUP_COLORS['GROUP-1']
+  const colors = GROUP_COLORS[groupId] || GROUP_COLORS['INT']
   const features = FEATURES[groupId] || []
 
   const { data } = useQuery({
@@ -77,11 +85,11 @@ export default function GroupPage() {
       <div className={clsx("rounded-lg p-6", colors.light)}>
         <div className="flex items-center gap-4">
           <div className={clsx("w-12 h-12 rounded-lg flex items-center justify-center text-white", colors.bg)}>
-            <span className="font-bold text-lg">{groupNum}</span>
+            <span className="font-bold text-lg">{groupId}</span>
           </div>
           <div>
             <h1 className="text-2xl font-bold text-gray-900">{GROUP_LABELS[groupId]}</h1>
-            <p className="text-gray-600">Group {groupNum} • {GROUP_SCOPES[groupId]}</p>
+            <p className="text-gray-600">{groupId} • {GROUP_SCOPES[groupId]}</p>
           </div>
         </div>
 
@@ -164,8 +172,8 @@ export default function GroupPage() {
                           className="block p-3 bg-gray-50 rounded hover:bg-gray-100 transition-colors"
                         >
                           <div className="flex items-center justify-between">
-                            <span className="font-mono text-xs text-gray-500">
-                              {decision.decision_id.slice(0, 12)}...
+                            <span className="font-mono text-xs text-indigo-600 font-medium">
+                              {decision.decision_code || decision.decision_id.slice(0, 12) + '...'}
                             </span>
                             <span className="text-xs text-gray-400">v{decision.version}</span>
                           </div>
@@ -206,26 +214,29 @@ export default function GroupPage() {
             <div className="p-4">
               {groupDecisions.filter(d => d.supersedes).length > 0 ? (
                 <div className="space-y-3">
-                  {groupDecisions.filter(d => d.supersedes).map(decision => (
-                    <div key={decision.decision_id} className="flex items-center gap-3 p-3 bg-gray-50 rounded">
-                      <Link
-                        to={`/decisions/${decision.supersedes}`}
-                        className="font-mono text-xs text-gray-500 hover:text-gray-700"
-                      >
-                        {decision.supersedes?.slice(0, 8)}...
-                      </Link>
-                      <span className="text-gray-400">→</span>
-                      <Link
-                        to={`/decisions/${decision.decision_id}`}
-                        className={clsx("font-mono text-xs", colors.text, "hover:underline")}
-                      >
-                        {decision.decision_id.slice(0, 8)}...
-                      </Link>
-                      <span className="text-xs text-gray-400 ml-auto">
-                        {decision.feature_id}
-                      </span>
-                    </div>
-                  ))}
+                  {groupDecisions.filter(d => d.supersedes).map(decision => {
+                    const supersededDecision = allDecisions.find(d => d.decision_id === decision.supersedes)
+                    return (
+                      <div key={decision.decision_id} className="flex items-center gap-3 p-3 bg-gray-50 rounded">
+                        <Link
+                          to={`/decisions/${decision.supersedes}`}
+                          className="font-mono text-xs text-gray-500 hover:text-gray-700"
+                        >
+                          {supersededDecision?.decision_code || decision.supersedes?.slice(0, 8) + '...'}
+                        </Link>
+                        <span className="text-gray-400">→</span>
+                        <Link
+                          to={`/decisions/${decision.decision_id}`}
+                          className={clsx("font-mono text-xs", colors.text, "hover:underline")}
+                        >
+                          {decision.decision_code || decision.decision_id.slice(0, 8) + '...'}
+                        </Link>
+                        <span className="text-xs text-gray-400 ml-auto">
+                          {decision.feature_id}
+                        </span>
+                      </div>
+                    )
+                  })}
                 </div>
               ) : (
                 <p className="text-gray-400 text-sm text-center py-4">
@@ -251,7 +262,7 @@ export default function GroupPage() {
                           to={`/decisions/${decision.decision_id}`}
                           className={clsx("font-mono text-xs", colors.text, "hover:underline")}
                         >
-                          {decision.decision_id.slice(0, 12)}...
+                          {decision.decision_code || decision.decision_id.slice(0, 12) + '...'}
                         </Link>
                         <span className="text-xs text-gray-400">({decision.feature_id})</span>
                       </div>
@@ -265,7 +276,7 @@ export default function GroupPage() {
                               to={`/decisions/${relId}`}
                               className="text-xs px-2 py-1 bg-gray-200 rounded hover:bg-gray-300"
                             >
-                              G{related.group_id.split('-')[1]} → {relId.slice(0, 8)}
+                              {related.group_id} → {related.decision_code || relId.slice(0, 8)}
                             </Link>
                           )
                         })}
@@ -300,8 +311,8 @@ export default function GroupPage() {
                         className="flex items-center justify-between p-3 bg-gray-50 rounded hover:bg-gray-100 transition-colors"
                       >
                         <div>
-                          <span className="font-mono text-xs text-gray-500">
-                            {decision.decision_id.slice(0, 12)}...
+                          <span className="font-mono text-xs text-indigo-600 font-medium">
+                            {decision.decision_code || decision.decision_id.slice(0, 12) + '...'}
                           </span>
                           <span className="text-xs text-gray-400 ml-2">
                             {decision.feature_id}

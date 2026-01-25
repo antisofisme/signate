@@ -6,7 +6,7 @@ import { api } from '../shared/api'
 // Sample decision per MANTRA-SCHEMA-001 v2 (no status field)
 const EXAMPLE_DECISION = {
   decision_id: "550e8400-e29b-41d4-a716-446655440000",
-  group_id: "GROUP-1",
+  group_id: "INT",
   feature_id: "F-01",
   statement: "All user authentication must use multi-factor authentication",
   rationale: "Security requirement for enterprise systems",
@@ -123,6 +123,19 @@ export default function Validator() {
                         </div>
                         <p className="text-gray-700 mt-1">{v.message}</p>
                       </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {mutation.data.warnings?.length > 0 && (
+                <div>
+                  <h4 className="text-orange-600 text-sm mb-2 font-medium">⚠️ Warnings</h4>
+                  <div className="space-y-1">
+                    {mutation.data.warnings.map((w: string, i: number) => (
+                      <p key={i} className="text-sm text-orange-700 bg-orange-50 p-2 rounded">
+                        {w}
+                      </p>
                     ))}
                   </div>
                 </div>

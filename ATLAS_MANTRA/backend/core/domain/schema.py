@@ -18,6 +18,7 @@ from typing import List, Optional
 from pydantic import BaseModel, Field, field_validator
 from datetime import datetime
 import uuid
+import re
 
 
 # ============================================================================
@@ -26,10 +27,10 @@ import uuid
 
 class GroupId(str, Enum):
     """4 Groups per MANTRA-DEC-001"""
-    GROUP_1 = "GROUP-1"
-    GROUP_2 = "GROUP-2"
-    GROUP_3 = "GROUP-3"
-    GROUP_4 = "GROUP-4"
+    INT = "INT"    # Intent & Direction (WHY/WHAT)
+    ARCH = "ARCH"  # Architecture & Boundaries (HOW/WHERE)
+    CTL = "CTL"    # Control, Policy & Risk (CAN/MUST NOT)
+    EVO = "EVO"    # Execution & Evolution (CHANGE SAFELY)
 
 
 class FeatureId(str, Enum):
@@ -79,16 +80,74 @@ class ConstraintType(str, Enum):
 # ============================================================================
 
 GROUP_FEATURE_MATRIX = {
-    GroupId.GROUP_1: [FeatureId.F_01, FeatureId.F_02, FeatureId.F_03, FeatureId.F_04],
-    GroupId.GROUP_2: [FeatureId.F_05, FeatureId.F_06, FeatureId.F_07, FeatureId.F_08],
-    GroupId.GROUP_3: [FeatureId.F_09, FeatureId.F_10, FeatureId.F_11, FeatureId.F_12],
-    GroupId.GROUP_4: [FeatureId.F_13, FeatureId.F_14, FeatureId.F_15, FeatureId.F_16],
+    GroupId.INT: [FeatureId.F_01, FeatureId.F_02, FeatureId.F_03, FeatureId.F_04],
+    GroupId.ARCH: [FeatureId.F_05, FeatureId.F_06, FeatureId.F_07, FeatureId.F_08],
+    GroupId.CTL: [FeatureId.F_09, FeatureId.F_10, FeatureId.F_11, FeatureId.F_12],
+    GroupId.EVO: [FeatureId.F_13, FeatureId.F_14, FeatureId.F_15, FeatureId.F_16],
 }
 
 
 def is_feature_compatible(group_id: GroupId, feature_id: FeatureId) -> bool:
     """Check if feature is compatible with group per MANTRA-DEC-002"""
     return feature_id in GROUP_FEATURE_MATRIX.get(group_id, [])
+
+
+# ============================================================================
+# Decision Code Generator
+# ============================================================================
+
+def generate_decision_code(
+    group_id: GroupId,
+    feature_id: FeatureId,
+    sequence: int,
+    version: str
+) -> str:
+    """
+    Generate human-readable decision code.
+
+    Format: {group}-{feature}{seq:03d}-v{version}
+    Example: INT-F01-001-v1.0.0
+
+    Args:
+        group_id: Group ID (INT, ARCH, CTL, EVO)
+        feature_id: Feature ID (F-01 to F-16)
+        sequence: Sequence number within the feature (1-based)
+        version: Semver version string
+
+    Returns:
+        Human-readable decision code
+    """
+    # Extract group abbreviation
+    group_abbr = group_id.value
+
+    # Convert F-01 to F01 (remove dash)
+    feature_num = feature_id.value.replace("-", "")
+
+    return f"{group_abbr}-{feature_num}-{sequence:03d}-v{version}"
+
+
+def parse_decision_code(code: str) -> Optional[dict]:
+    """
+    Parse a decision code back into its components.
+
+    Args:
+        code: Decision code like INT-F01-001-v1.0.0
+
+    Returns:
+        Dict with group_id, feature_id, sequence, version or None if invalid
+    """
+    pattern = r"^(INT|ARCH|CTL|EVO)-F(\d{2})-(\d{3})-v(\d+\.\d+\.\d+)$"
+    match = re.match(pattern, code)
+
+    if not match:
+        return None
+
+    return {
+        "group_id": match.group(1),
+        "feature_id": f"F-{match.group(2)}",
+        "sequence": int(match.group(3)),
+        "version": match.group(4)
+    }
 
 
 # ============================================================================
@@ -115,8 +174,18 @@ class Decision(BaseModel):
     Per Human Decision (Phase 4):
     - NO status field (lifecycle is NOT encoded in domain)
     - Evolution expressed via version + supersedes only
+
+    UX Enhancement (Phase 5):
+    - decision_code provides human-readable identifier
+    - Format: {group}-{feature}{seq}-v{version}
+    - Example: INT-F01-001-v1.0.0
     """
     decision_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    decision_code: Optional[str] = Field(
+        default=None,
+        description="Human-readable decision code (e.g., INT-F01-001-v1.0.0). "
+                   "Generated on storage, not required for creation."
+    )
     group_id: GroupId
     feature_id: FeatureId
     statement: str = Field(..., min_length=1)
@@ -169,7 +238,8 @@ class Decision(BaseModel):
         json_schema_extra = {
             "example": {
                 "decision_id": "550e8400-e29b-41d4-a716-446655440000",
-                "group_id": "GROUP-1",
+                "decision_code": "INT-F01-001-v1.0.0",
+                "group_id": "INT",
                 "feature_id": "F-01",
                 "statement": "All user authentication must use multi-factor authentication",
                 "rationale": "Security requirement for enterprise systems",

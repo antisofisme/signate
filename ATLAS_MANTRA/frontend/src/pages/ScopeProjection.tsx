@@ -17,6 +17,7 @@ import { api } from '../shared/api'
 
 interface Decision {
   decision_id: string
+  decision_code: string | null  // Human-readable code: INT-F01-001-v1.0.0
   version: string
   statement: string
   scope: string
@@ -109,8 +110,8 @@ export default function ScopeProjection() {
                   to={`/decisions/${decision.decision_id}`}
                   className="block p-2 bg-gray-50 rounded hover:bg-gray-100 transition-colors"
                 >
-                  <div className="text-xs text-gray-500 font-mono">
-                    {decision.decision_id.slice(0, 8)}...
+                  <div className="text-xs text-indigo-600 font-mono font-medium">
+                    {decision.decision_code || decision.decision_id.slice(0, 8) + '...'}
                   </div>
                   <div className="text-xs text-gray-600 truncate">
                     {decision.statement.slice(0, 50)}...
@@ -151,9 +152,9 @@ export default function ScopeProjection() {
                   <td className="px-3 py-2">
                     <Link
                       to={`/decisions/${decision.decision_id}`}
-                      className="text-indigo-600 hover:text-indigo-500 font-mono text-xs"
+                      className="text-indigo-600 hover:text-indigo-500 font-mono text-xs font-medium"
                     >
-                      {decision.decision_id.slice(0, 8)}...
+                      {decision.decision_code || decision.decision_id.slice(0, 8) + '...'}
                     </Link>
                   </td>
                   <td className="px-3 py-2">
@@ -179,24 +180,27 @@ export default function ScopeProjection() {
         <h3 className="font-semibold text-gray-900 mb-4">Cross-Group References</h3>
         {crossGroupRefs.length > 0 ? (
           <div className="space-y-2">
-            {crossGroupRefs.map((ref, index) => (
-              <div key={index} className="flex items-center gap-2 text-sm">
-                <Link
-                  to={`/decisions/${ref.from.decision_id}`}
-                  className="text-indigo-600 hover:text-indigo-500 font-mono text-xs"
-                >
-                  {ref.from.decision_id.slice(0, 8)}
-                </Link>
-                <span className="text-gray-500">(G{ref.from.group_id.split('-')[1]})</span>
-                <span className="text-gray-400">→</span>
-                <Link
-                  to={`/decisions/${ref.to}`}
-                  className="text-indigo-600 hover:text-indigo-500 font-mono text-xs"
-                >
-                  {ref.to.slice(0, 8)}
-                </Link>
-              </div>
-            ))}
+            {crossGroupRefs.map((ref, index) => {
+              const toDecision = decisions.find(d => d.decision_id === ref.to)
+              return (
+                <div key={index} className="flex items-center gap-2 text-sm">
+                  <Link
+                    to={`/decisions/${ref.from.decision_id}`}
+                    className="text-indigo-600 hover:text-indigo-500 font-mono text-xs font-medium"
+                  >
+                    {ref.from.decision_code || ref.from.decision_id.slice(0, 8)}
+                  </Link>
+                  <span className="text-gray-500">(G{ref.from.group_id.split('-')[1]})</span>
+                  <span className="text-gray-400">→</span>
+                  <Link
+                    to={`/decisions/${ref.to}`}
+                    className="text-indigo-600 hover:text-indigo-500 font-mono text-xs font-medium"
+                  >
+                    {toDecision?.decision_code || ref.to.slice(0, 8)}
+                  </Link>
+                </div>
+              )
+            })}
           </div>
         ) : (
           <p className="text-gray-500 text-sm">No cross-group references found</p>

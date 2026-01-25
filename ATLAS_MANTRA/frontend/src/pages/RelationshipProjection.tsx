@@ -19,6 +19,7 @@ import { GROUP_LABELS } from '../shared/constants'
 
 interface Decision {
   decision_id: string
+  decision_code: string | null  // Human-readable code: INT-F01-001-v1.0.0
   version: string
   statement: string
   group_id: string
@@ -168,9 +169,9 @@ export default function RelationshipProjection() {
                     >
                       <Link
                         to={`/decisions/${decision.decision_id}`}
-                        className="text-indigo-600 hover:text-indigo-500 font-mono text-xs block"
+                        className="text-indigo-600 hover:text-indigo-500 font-mono text-xs block font-medium"
                       >
-                        {decision.decision_id.slice(0, 8)}
+                        {decision.decision_code || decision.decision_id.slice(0, 8)}
                       </Link>
                       <div className="text-xs text-gray-500 mt-1">
                         {decision.feature_id}
@@ -204,9 +205,9 @@ export default function RelationshipProjection() {
                 <div className="flex-1">
                   <Link
                     to={`/decisions/${rel.from.decision_id}`}
-                    className="text-indigo-600 hover:text-indigo-500 font-mono text-xs"
+                    className="text-indigo-600 hover:text-indigo-500 font-mono text-xs font-medium"
                   >
-                    {rel.from.decision_id.slice(0, 8)}
+                    {rel.from.decision_code || rel.from.decision_id.slice(0, 8)}
                   </Link>
                   <span className="text-gray-500 text-xs ml-2">
                     (G{rel.from.group_id.split('-')[1]}/{rel.from.feature_id})
@@ -216,9 +217,9 @@ export default function RelationshipProjection() {
                 <div className="flex-1">
                   <Link
                     to={`/decisions/${rel.to.decision_id}`}
-                    className="text-indigo-600 hover:text-indigo-500 font-mono text-xs"
+                    className="text-indigo-600 hover:text-indigo-500 font-mono text-xs font-medium"
                   >
-                    {rel.to.decision_id.slice(0, 8)}
+                    {rel.to.decision_code || rel.to.decision_id.slice(0, 8)}
                   </Link>
                   <span className="text-gray-500 text-xs ml-2">
                     (G{rel.to.group_id.split('-')[1]}/{rel.to.feature_id})
@@ -240,9 +241,9 @@ export default function RelationshipProjection() {
                 <div className="flex-1">
                   <Link
                     to={`/decisions/${rel.from.decision_id}`}
-                    className="text-indigo-600 hover:text-indigo-500 font-mono text-xs"
+                    className="text-indigo-600 hover:text-indigo-500 font-mono text-xs font-medium"
                   >
-                    {rel.from.decision_id.slice(0, 8)}
+                    {rel.from.decision_code || rel.from.decision_id.slice(0, 8)}
                   </Link>
                   <span className="text-gray-500 text-xs ml-2">
                     ({rel.from.feature_id})
@@ -252,9 +253,9 @@ export default function RelationshipProjection() {
                 <div className="flex-1">
                   <Link
                     to={`/decisions/${rel.to.decision_id}`}
-                    className="text-indigo-600 hover:text-indigo-500 font-mono text-xs"
+                    className="text-indigo-600 hover:text-indigo-500 font-mono text-xs font-medium"
                   >
-                    {rel.to.decision_id.slice(0, 8)}
+                    {rel.to.decision_code || rel.to.decision_id.slice(0, 8)}
                   </Link>
                   <span className="text-gray-500 text-xs ml-2">
                     ({rel.to.feature_id})

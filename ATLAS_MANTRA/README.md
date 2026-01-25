@@ -75,12 +75,12 @@ Implemented per Layer 1 specifications:
 
 4 Groups × 4 Features = 16 Decision Categories
 
-| Group | Features |
-|-------|----------|
-| GROUP-1 | F-01, F-02, F-03, F-04 |
-| GROUP-2 | F-05, F-06, F-07, F-08 |
-| GROUP-3 | F-09, F-10, F-11, F-12 |
-| GROUP-4 | F-13, F-14, F-15, F-16 |
+| Group | Meaning | Features |
+|-------|---------|----------|
+| INT | Intent & Direction | F-01, F-02, F-03, F-04 |
+| ARCH | Architecture & Boundaries | F-05, F-06, F-07, F-08 |
+| CTL | Control, Policy & Risk | F-09, F-10, F-11, F-12 |
+| EVO | Execution & Evolution | F-13, F-14, F-15, F-16 |
 
 ## Validation Rules
 
@@ -144,7 +144,7 @@ curl -X POST http://localhost:8001/api/v1/validate \
   -d '{
     "record": {
       "decision_id": "550e8400-e29b-41d4-a716-446655440000",
-      "group_id": "GROUP-1",
+      "group_id": "INT",
       "feature_id": "F-01",
       "statement": "All authentication must use MFA",
       "rationale": "Security requirement",

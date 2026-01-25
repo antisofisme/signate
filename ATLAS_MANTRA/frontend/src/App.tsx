@@ -10,6 +10,7 @@ import EvolutionTimeline from './pages/EvolutionTimeline'
 import ScopeProjection from './pages/ScopeProjection'
 import RelationshipProjection from './pages/RelationshipProjection'
 import ChangeSummary from './pages/ChangeSummary'
+import AuditLog from './pages/AuditLog'
 
 function App() {
   return (
@@ -30,6 +31,7 @@ function App() {
           <Route path="changes" element={<ChangeSummary />} />
           {/* Tools */}
           <Route path="validate" element={<Validator />} />
+          <Route path="audit" element={<AuditLog />} />
         </Route>
       </Routes>
     </BrowserRouter>

@@ -70,12 +70,12 @@ Per **MANTRA-LAW-001**:
 
 4 Groups × 4 Features = 16 Decision Categories
 
-| Group | Features |
-|-------|----------|
-| GROUP-1 | F-01, F-02, F-03, F-04 |
-| GROUP-2 | F-05, F-06, F-07, F-08 |
-| GROUP-3 | F-09, F-10, F-11, F-12 |
-| GROUP-4 | F-13, F-14, F-15, F-16 |
+| Group | Meaning | Features |
+|-------|---------|----------|
+| INT | Intent & Direction | F-01, F-02, F-03, F-04 |
+| ARCH | Architecture & Boundaries | F-05, F-06, F-07, F-08 |
+| CTL | Control, Policy & Risk | F-09, F-10, F-11, F-12 |
+| EVO | Execution & Evolution | F-13, F-14, F-15, F-16 |
 
 ### Validation Rules
 

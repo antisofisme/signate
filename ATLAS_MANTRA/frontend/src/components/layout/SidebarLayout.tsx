@@ -76,25 +76,37 @@ const Icons = {
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
     </svg>
   ),
+  Audit: () => (
+    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+    </svg>
+  ),
 }
 
 const GROUP_ICONS: Record<string, React.FC> = {
-  'GROUP-1': Icons.Target,
-  'GROUP-2': Icons.Layers,
-  'GROUP-3': Icons.Shield,
-  'GROUP-4': Icons.Refresh,
+  'INT': Icons.Target,
+  'ARCH': Icons.Layers,
+  'CTL': Icons.Shield,
+  'EVO': Icons.Refresh,
 }
 
 const GROUP_COLORS: Record<string, { text: string; bg: string; hover: string }> = {
-  'GROUP-1': { text: 'text-blue-600', bg: 'bg-blue-600', hover: 'hover:bg-blue-50' },
-  'GROUP-2': { text: 'text-green-600', bg: 'bg-green-600', hover: 'hover:bg-green-50' },
-  'GROUP-3': { text: 'text-orange-600', bg: 'bg-orange-600', hover: 'hover:bg-orange-50' },
-  'GROUP-4': { text: 'text-purple-600', bg: 'bg-purple-600', hover: 'hover:bg-purple-50' },
+  'INT': { text: 'text-blue-600', bg: 'bg-blue-600', hover: 'hover:bg-blue-50' },
+  'ARCH': { text: 'text-green-600', bg: 'bg-green-600', hover: 'hover:bg-green-50' },
+  'CTL': { text: 'text-orange-600', bg: 'bg-orange-600', hover: 'hover:bg-orange-50' },
+  'EVO': { text: 'text-purple-600', bg: 'bg-purple-600', hover: 'hover:bg-purple-50' },
+}
+
+const GROUP_PATH_MAP: Record<string, string> = {
+  'int': 'INT',
+  'arch': 'ARCH',
+  'ctl': 'CTL',
+  'evo': 'EVO',
 }
 
 function getGroupFromPath(pathname: string): string | undefined {
-  const match = pathname.match(/\/group\/(\d)/)
-  return match ? `GROUP-${match[1]}` : undefined
+  const match = pathname.match(/\/group\/([a-z]+)/i)
+  return match ? GROUP_PATH_MAP[match[1].toLowerCase()] : undefined
 }
 
 export function SidebarLayout() {
@@ -172,11 +184,10 @@ export function SidebarLayout() {
             {GROUPS.map((groupId) => {
               const Icon = GROUP_ICONS[groupId]
               const colors = GROUP_COLORS[groupId]
-              const groupNum = groupId.split('-')[1]
               return (
                 <NavLink
                   key={groupId}
-                  to={`/group/${groupNum}`}
+                  to={`/group/${groupId.toLowerCase()}`}
                   onClick={() => setSidebarOpen(false)}
                   className={({ isActive }) => clsx(
                     "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors",
@@ -188,7 +199,7 @@ export function SidebarLayout() {
                   <Icon />
                   <div className="flex flex-col">
                     <span>{GROUP_LABELS[groupId]}</span>
-                    <span className="text-xs opacity-70">Group {groupNum}</span>
+                    <span className="text-xs opacity-70">{groupId}</span>
                   </div>
                 </NavLink>
               )
@@ -277,6 +288,20 @@ export function SidebarLayout() {
             >
               <Icons.Check />
               <span>Validator</span>
+            </NavLink>
+
+            <NavLink
+              to="/audit"
+              onClick={() => setSidebarOpen(false)}
+              className={({ isActive }) => clsx(
+                "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors",
+                isActive
+                  ? "bg-indigo-600 text-white"
+                  : "text-gray-600 hover:bg-gray-100"
+              )}
+            >
+              <Icons.Audit />
+              <span>Audit Log</span>
             </NavLink>
           </nav>
 

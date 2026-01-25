@@ -9,8 +9,8 @@ from abc import ABC, abstractmethod
 from typing import List, Optional
 from datetime import datetime
 
-from ..domain.schema import Decision, GroupId
-from ..domain.decision import StoredDecision, DecisionEvent
+from ..domain.schema import Decision, GroupId, FeatureId
+from ..domain.decision import StoredDecision, DecisionEvent, AuditEntry, AuditEventType
 
 
 class DecisionRepository(ABC):
@@ -67,8 +67,68 @@ class DecisionRepository(ABC):
         pass
 
     @abstractmethod
+    def count_by_feature(self, feature_id: FeatureId) -> int:
+        """
+        Count decisions by feature.
+
+        Used for generating decision_code sequence numbers.
+        Returns the count of all decisions with the given feature_id.
+        """
+        pass
+
+    @abstractmethod
     def record_event(self, event: DecisionEvent) -> None:
         """Record a domain event for audit trail."""
+        pass
+
+    # =========================================================================
+    # Audit Trail Methods (Command-Style API)
+    # =========================================================================
+
+    @abstractmethod
+    def record_audit(self, entry: AuditEntry) -> None:
+        """
+        Record an audit entry.
+
+        Per MANTRA-LAW-001: All operations must be auditable.
+        """
+        pass
+
+    @abstractmethod
+    def get_audit_entries(
+        self,
+        limit: int = 100,
+        offset: int = 0,
+        decision_id: Optional[str] = None,
+        event_type: Optional[AuditEventType] = None,
+        actor: Optional[str] = None,
+    ) -> List[AuditEntry]:
+        """
+        Get audit entries with optional filtering.
+
+        Returns entries ordered by timestamp descending (most recent first).
+        """
+        pass
+
+    @abstractmethod
+    def count_audit_entries(
+        self,
+        decision_id: Optional[str] = None,
+        event_type: Optional[AuditEventType] = None,
+        actor: Optional[str] = None,
+    ) -> int:
+        """Count audit entries with optional filtering."""
+        pass
+
+    @abstractmethod
+    def find_supersedes_chain(self, decision_id: str) -> List[StoredDecision]:
+        """
+        Find the complete supersedes chain for a decision.
+
+        Returns: List of decisions in chain order (oldest first).
+        - If decision A supersedes B, and B supersedes C:
+          Returns [C, B, A] (chain from oldest to newest)
+        """
         pass
 
 
@@ -83,6 +143,7 @@ class InMemoryDecisionRepository(DecisionRepository):
     def __init__(self):
         self._decisions: dict[str, StoredDecision] = {}
         self._events: List[DecisionEvent] = []
+        self._audit_entries: List[AuditEntry] = []
 
     def save(self, stored_decision: StoredDecision) -> None:
         """
@@ -132,6 +193,13 @@ class InMemoryDecisionRepository(DecisionRepository):
         """Count total decisions."""
         return len(self._decisions)
 
+    def count_by_feature(self, feature_id: FeatureId) -> int:
+        """Count decisions by feature for sequence generation."""
+        return sum(
+            1 for sd in self._decisions.values()
+            if sd.decision.feature_id == feature_id
+        )
+
     def record_event(self, event: DecisionEvent) -> None:
         """Record a domain event."""
         self._events.append(event)
@@ -144,3 +212,107 @@ class InMemoryDecisionRepository(DecisionRepository):
         """Clear all data (for testing)."""
         self._decisions.clear()
         self._events.clear()
+        self._audit_entries.clear()
+
+    # =========================================================================
+    # Audit Trail Methods Implementation
+    # =========================================================================
+
+    def record_audit(self, entry: AuditEntry) -> None:
+        """Record an audit entry."""
+        self._audit_entries.append(entry)
+
+    def get_audit_entries(
+        self,
+        limit: int = 100,
+        offset: int = 0,
+        decision_id: Optional[str] = None,
+        event_type: Optional[AuditEventType] = None,
+        actor: Optional[str] = None,
+    ) -> List[AuditEntry]:
+        """Get audit entries with optional filtering."""
+        # Filter entries
+        entries = self._audit_entries.copy()
+
+        if decision_id:
+            entries = [e for e in entries if e.decision_id == decision_id]
+
+        if event_type:
+            entries = [e for e in entries if e.event_type == event_type]
+
+        if actor:
+            entries = [e for e in entries if e.actor == actor]
+
+        # Sort by timestamp descending (most recent first)
+        entries.sort(key=lambda e: e.timestamp, reverse=True)
+
+        # Apply pagination
+        return entries[offset:offset + limit]
+
+    def count_audit_entries(
+        self,
+        decision_id: Optional[str] = None,
+        event_type: Optional[AuditEventType] = None,
+        actor: Optional[str] = None,
+    ) -> int:
+        """Count audit entries with optional filtering."""
+        entries = self._audit_entries.copy()
+
+        if decision_id:
+            entries = [e for e in entries if e.decision_id == decision_id]
+
+        if event_type:
+            entries = [e for e in entries if e.event_type == event_type]
+
+        if actor:
+            entries = [e for e in entries if e.actor == actor]
+
+        return len(entries)
+
+    def find_supersedes_chain(self, decision_id: str) -> List[StoredDecision]:
+        """
+        Find the complete supersedes chain for a decision.
+
+        Returns: List of decisions in chain order (oldest first).
+        """
+        chain = []
+        current_id = decision_id
+
+        # Build chain going backwards (to older versions)
+        while current_id:
+            stored = self._decisions.get(current_id)
+            if not stored:
+                break
+            chain.append(stored)
+            current_id = stored.decision.supersedes
+
+        # Also find decisions that supersede the given decision
+        # (newer versions of the decision)
+        current_id = decision_id
+        newer_versions = []
+
+        # Find all decisions that supersede this one
+        while True:
+            found_newer = None
+            for sd in self._decisions.values():
+                if sd.decision.supersedes == current_id:
+                    found_newer = sd
+                    break
+
+            if found_newer:
+                newer_versions.append(found_newer)
+                current_id = found_newer.decision.decision_id
+            else:
+                break
+
+        # Combine: older first, then current, then newer
+        # chain is [current, older, oldest...], so reverse it
+        chain.reverse()
+        # Now add newer versions
+        chain.extend(newer_versions)
+
+        return chain
+
+    def get_all_audit_entries(self) -> List[AuditEntry]:
+        """Get all audit entries (for testing)."""
+        return self._audit_entries.copy()

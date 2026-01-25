@@ -4,57 +4,114 @@
 **STATUS**: Active
 **AUTHORITY**: Human Decision Only
 
----
-
-## Notice
-
-Layer 0 contains constitutional law and binding schema. It is not guidance.
-
-Higher layers contain specifications and operational boundaries subordinate to Layer 0.
+> **Easy to leave, hard to want to leave.**
 
 ---
 
-## Structure
+## Quick Start
+
+New to MANTRA? Start here:
+
+| Document | Purpose |
+|----------|---------|
+| [VALUE-001: Why MANTRA?](./value/VALUE-001-why-mantra.md) | Understand the problem MANTRA solves |
+| [GUIDE-001: Getting Started](./guides/GUIDE-001-getting-started.md) | Record your first decision in 5 minutes |
+| [Examples](./examples/README.md) | Real-world decision templates |
+| [Self-Recorded Decisions](./decisions/README.md) | How MANTRA uses MANTRA |
+
+---
+
+## Documentation Structure
 
 ```
 docs/
-├── README.md                                        ← This file
-├── layer-0/                                         ← Constitutional Law (LOCKED)
-│   ├── README.md
-│   ├── MANTRA-LAW-001-decision-matrix-canon.md      ← Constitutional Law
-│   ├── MANTRA-SCHEMA-001-decision-schema-v1.json    ← JSON Schema
-│   ├── MANTRA-DEC-001-004-schema-decisions.md       ← Binding Decisions
-│   ├── MANTRA-DOC-001-decision-schema-reference.md  ← Reference Documentation
-│   └── MANTRA-SPEC-001-validator-linting-specification.md ← Validator Specification
+├── README.md                 ← This file (start here)
 │
-├── layer-1/                                         ← Implementation Specifications (FROZEN)
-│   ├── README.md
-│   ├── MANTRA-LAYER-1-BOUNDARY-001-implementation-boundary-rules.md ← Boundary Rules [FROZEN]
-│   ├── MANTRA-L1-IMPL-VALIDATOR-001-validator-implementation-specification.md ← Validator [FROZEN]
-│   ├── MANTRA-L1-IMPL-DECISION-STORE-001-decision-store-implementation-specification.md ← Store [FROZEN]
-│   ├── MANTRA-L1-IMPL-PUBLIC-READ-API-001-public-read-api-implementation-specification.md ← Read API [FROZEN]
-│   ├── MANTRA-L1-FREEZE-001-layer-1-freeze-declaration.md ← Freeze Declaration
-│   └── MANTRA-L1-CORRECTION-001-layer-1-documentation-corrections.md ← Corrections
+├── value/                    ← WHY use MANTRA
+│   └── VALUE-001-why-mantra.md
 │
-├── layer-2/                                         ← Technical Architecture (FROZEN)
-│   ├── README.md
-│   ├── MANTRA-LAYER-2-BOUNDARY-001-architecture-boundary-rules.md ← Architecture Boundary [FROZEN]
-│   ├── MANTRA-L2-FREEZE-001-layer-2-boundary-freeze-declaration.md ← Boundary Freeze Declaration
-│   ├── MANTRA-L2-IMPL-RUNTIME-TOPOLOGY-001-runtime-topology-specification.md ← Runtime Topology [FROZEN]
-│   ├── MANTRA-L2-IMPL-DATA-FLOW-001-data-flow-realization-specification.md ← Data Flow [FROZEN]
-│   ├── MANTRA-L2-IMPL-INTEGRATION-BOUNDARIES-001-integration-boundary-specification.md ← Integration [FROZEN]
-│   ├── MANTRA-L2-IMPL-FAILURE-SURFACES-001-failure-surface-specification.md ← Failure Surfaces [FROZEN]
-│   └── MANTRA-L2-IMPL-FREEZE-001-layer-2-implementation-freeze-declaration.md ← Implementation Freeze
+├── guides/                   ← HOW to use MANTRA
+│   └── GUIDE-001-getting-started.md
 │
-└── layer-3/                                         ← Operational Guidelines (Boundary FROZEN)
-    ├── README.md
-    ├── MANTRA-LAYER-3-BOUNDARY-001-operational-boundary-rules.md ← Operational Boundary [FROZEN]
-    └── MANTRA-L3-FREEZE-001-layer-3-boundary-freeze-declaration.md ← Boundary Freeze
+├── examples/                 ← TEMPLATE decisions
+│   ├── README.md
+│   ├── EXAMPLE-G1-001-product-vision.md
+│   ├── EXAMPLE-G1-002-problem-scope.md
+│   ├── EXAMPLE-G2-001-service-boundary.md
+│   ├── EXAMPLE-G2-002-data-ownership.md
+│   ├── EXAMPLE-G3-001-access-control.md
+│   ├── EXAMPLE-G3-002-approval-authority.md
+│   ├── EXAMPLE-G4-001-api-versioning.md
+│   └── EXAMPLE-G4-002-deprecation-policy.md
+│
+├── decisions/                ← MANTRA's own decisions (self-validation)
+│   ├── README.md
+│   ├── MANTRA-DECISION-001-immutability-principle.md
+│   ├── MANTRA-DECISION-002-ai-authority-zero.md
+│   ├── MANTRA-DECISION-003-no-status-field.md
+│   ├── MANTRA-DECISION-004-supersedes-chain.md
+│   └── MANTRA-DECISION-005-four-group-taxonomy.md
+│
+└── layer-*/                  ← Constitutional & Technical (see below)
 ```
 
 ---
 
-## Layer 0: Constitutional Law
+## User Documentation
+
+### Value Proposition
+
+| Document | Summary |
+|----------|---------|
+| [VALUE-001](./value/VALUE-001-why-mantra.md) | Why MANTRA exists, what problem it solves, easy to leave philosophy |
+
+### Guides
+
+| Document | Summary |
+|----------|---------|
+| [GUIDE-001](./guides/GUIDE-001-getting-started.md) | 5-minute quick start, record your first decision |
+| [GUIDE-002](./guides/GUIDE-002-api-reference.md) | Complete API reference with all endpoints |
+
+### Examples (Templates)
+
+| Group | Examples |
+|-------|----------|
+| INT (Intent) | [Product Vision](./examples/EXAMPLE-G1-001-product-vision.md), [Problem Scope](./examples/EXAMPLE-G1-002-problem-scope.md) |
+| ARCH (Architecture) | [Service Boundary](./examples/EXAMPLE-G2-001-service-boundary.md), [Data Ownership](./examples/EXAMPLE-G2-002-data-ownership.md) |
+| CTL (Control) | [Access Control](./examples/EXAMPLE-G3-001-access-control.md), [Approval Authority](./examples/EXAMPLE-G3-002-approval-authority.md) |
+| EVO (Evolution) | [API Versioning](./examples/EXAMPLE-G4-001-api-versioning.md), [Deprecation Policy](./examples/EXAMPLE-G4-002-deprecation-policy.md) |
+
+### Self-Recorded Decisions
+
+MANTRA records decisions about itself, demonstrating the system works:
+
+| Decision | Statement |
+|----------|-----------|
+| [MANTRA-DECISION-001](./decisions/MANTRA-DECISION-001-immutability-principle.md) | Decisions MUST NOT be modified or deleted |
+| [MANTRA-DECISION-002](./decisions/MANTRA-DECISION-002-ai-authority-zero.md) | AI authority in decision-making is ZERO |
+| [MANTRA-DECISION-003](./decisions/MANTRA-DECISION-003-no-status-field.md) | No status field, lifecycle via supersedes |
+| [MANTRA-DECISION-004](./decisions/MANTRA-DECISION-004-supersedes-chain.md) | Evolution via supersedes chain |
+| [MANTRA-DECISION-005](./decisions/MANTRA-DECISION-005-four-group-taxonomy.md) | 4 Groups × 4 Features = 16-cell taxonomy |
+
+---
+
+## Technical Documentation
+
+> **Notice**: Layer documentation contains constitutional law and binding specifications.
+> It is not guidance. See User Documentation above for onboarding.
+
+### Layer Structure
+
+```
+layer-0/              ← Constitutional Law (LOCKED)
+layer-1/              ← Implementation Specifications (FROZEN)
+layer-2/              ← Technical Architecture (FROZEN)
+layer-3/              ← Operational Guidelines (Boundary FROZEN)
+```
+
+---
+
+### Layer 0: Constitutional Law
 
 Contains binding law and schema governing the Decision Matrix.
 
@@ -72,7 +129,7 @@ Do not use for onboarding or tutorials.
 
 ---
 
-## Layer 1: Implementation Specifications (FROZEN)
+### Layer 1: Implementation Specifications (FROZEN)
 
 Contains implementation specifications subordinate to Layer 0.
 
@@ -82,6 +139,7 @@ Contains implementation specifications subordinate to Layer 0.
 | MANTRA-L1-IMPL-VALIDATOR-001 | Implementation Specification | FROZEN |
 | MANTRA-L1-IMPL-DECISION-STORE-001 | Implementation Specification | FROZEN |
 | MANTRA-L1-IMPL-PUBLIC-READ-API-001 | Implementation Specification | FROZEN |
+| [MANTRA-L1-DATA-INTEGRITY-001](./layer-1/MANTRA-L1-DATA-INTEGRITY-001-data-integrity-specification.md) | Data Integrity Specification | ACTIVE |
 | MANTRA-L1-FREEZE-001 | Governance Declaration | ACTIVE |
 | MANTRA-L1-CORRECTION-001 | Correction Record | ACTIVE |
 
@@ -93,7 +151,7 @@ Layer 0 prevails in all conflicts.
 
 ---
 
-## Layer 2: Technical Architecture (FROZEN)
+### Layer 2: Technical Architecture (FROZEN)
 
 Contains architectural boundary and implementation specifications subordinate to Layer 0 and Layer 1.
 
@@ -115,7 +173,7 @@ Layer 2 defines architectural shape. Layer 2 does not define runtime behavior.
 
 ---
 
-## Layer 3: Operational Guidelines (Boundary FROZEN)
+### Layer 3: Operational Guidelines (Boundary FROZEN)
 
 Contains operational boundary specifications subordinate to Layer 0, Layer 1, and Layer 2.
 
@@ -134,7 +192,7 @@ All frozen layers prevail in conflicts.
 
 ---
 
-## Layer Status
+### Layer Status
 
 | Layer | Purpose | Status |
 |-------|---------|--------|
@@ -143,37 +201,82 @@ All frozen layers prevail in conflicts.
 | layer-2 | Technical Architecture | FROZEN |
 | layer-3 | Operational Guidelines | Boundary FROZEN |
 
-Layer 0 is constitutionally sealed.
-
-Layer 1 is frozen per MANTRA-L1-FREEZE-001.
-
-Layer 2 is frozen per MANTRA-L2-FREEZE-001 and MANTRA-L2-IMPL-FREEZE-001.
-
-Layer 3 Boundary is frozen per MANTRA-L3-FREEZE-001.
-
 ---
 
-## Precedence Rule
+### Precedence Rule
 
 **LAW > Decision Entries > Schema > Specification > Documentation**
 
 ---
 
-## Layer 0 Immutability and Boundary Rule
+### Immutability Rules
 
 All Layer 0 documents are constitutional and immutable.
 
-They MUST NOT be modified, reinterpreted, or overridden by any lower layer.
-
 Higher layers MAY reference Layer 0 documents but MUST NOT:
-
 - Redefine authority
 - Alter decision validity rules
 - Expand AI permissions
 - Introduce alternative interpretations
 
-Any attempt to do so is INVALID per MANTRA-LAW-001.
+Any violation is INVALID per MANTRA-LAW-001.
 
 ---
 
-**END OF README**
+## Access MANTRA
+
+**URL**: `http://31.97.111.175:3001`
+
+| Endpoint | Purpose |
+|----------|---------|
+| `/` | Dashboard - View decisions by group |
+| `/decisions` | All decisions |
+| `/validator` | Validate decision format |
+| `/audit` | Audit log |
+| `/docs` | API documentation |
+
+---
+
+## Core Principles
+
+| Principle | Description |
+|-----------|-------------|
+| **Immutable** | Decisions cannot be changed or deleted |
+| **Human Authority** | Only humans can create/approve decisions |
+| **Explicit Evolution** | Change happens via supersedes, not edits |
+| **Structured Taxonomy** | 4 Groups × 4 Features = 16 categories |
+| **Audit Trail** | Every action is logged permanently |
+
+---
+
+## The 4×4 Taxonomy
+
+```
+INT: Intent & Direction (WHY/WHAT)
+├── F-01: Vision & Outcome
+├── F-02: Problem Statement
+├── F-03: Scope & Non-Goals
+└── F-04: Principles & Values
+
+ARCH: Architecture & Boundaries (HOW/WHERE)
+├── F-05: Domain & Bounded Context
+├── F-06: Service & Module Boundary
+├── F-07: Data Ownership & Sovereignty
+└── F-08: Integration & Contract Model
+
+CTL: Control, Policy & Risk (CAN/MUST NOT)
+├── F-09: Policy & Rules
+├── F-10: Approval & Authority Model
+├── F-11: Security & Compliance Posture
+└── F-12: Risk, Blast Radius & Failure Tolerance
+
+EVO: Execution & Evolution (CHANGE SAFELY)
+├── F-13: Decision Lifecycle
+├── F-14: Reversibility & Exit Strategy
+├── F-15: Environment & Promotion Rules
+└── F-16: Anti-Drift & Consistency Rules
+```
+
+---
+
+**Easy to leave. Hard to want to leave.**

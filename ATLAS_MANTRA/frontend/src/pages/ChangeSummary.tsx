@@ -19,6 +19,7 @@ import { FEATURE_LABELS } from '../shared/constants'
 
 interface Decision {
   decision_id: string
+  decision_code: string | null  // Human-readable code: INT-F01-001-v1.0.0
   version: string
   statement: string
   rationale: string
@@ -162,9 +163,9 @@ export default function ChangeSummary() {
                     <div className="flex-1 min-w-0">
                       <Link
                         to={`/decisions/${decision.decision_id}`}
-                        className="text-indigo-600 hover:text-indigo-500 font-mono text-xs"
+                        className="text-indigo-600 hover:text-indigo-500 font-mono text-xs font-medium"
                       >
-                        {decision.decision_id.slice(0, 12)}...
+                        {decision.decision_code || decision.decision_id.slice(0, 12) + '...'}
                       </Link>
                       <div className="flex items-center gap-2 mt-1">
                         <span className="text-xs text-gray-500">G{decision.group_id.split('-')[1]}</span>
@@ -177,17 +178,20 @@ export default function ChangeSummary() {
                       <p className="text-xs text-gray-500 mt-1 truncate">
                         {decision.statement}
                       </p>
-                      {decision.supersedes && (
-                        <div className="mt-2 text-xs">
-                          <span className="text-gray-500">Supersedes: </span>
-                          <Link
-                            to={`/decisions/${decision.supersedes}`}
-                            className="text-gray-600 hover:text-gray-700 font-mono"
-                          >
-                            {decision.supersedes.slice(0, 8)}...
-                          </Link>
-                        </div>
-                      )}
+                      {decision.supersedes && (() => {
+                        const supersededDecision = decisions.find(d => d.decision_id === decision.supersedes)
+                        return (
+                          <div className="mt-2 text-xs">
+                            <span className="text-gray-500">Supersedes: </span>
+                            <Link
+                              to={`/decisions/${decision.supersedes}`}
+                              className="text-gray-600 hover:text-gray-700 font-mono"
+                            >
+                              {supersededDecision?.decision_code || decision.supersedes.slice(0, 8) + '...'}
+                            </Link>
+                          </div>
+                        )
+                      })()}
                     </div>
                     <div className="text-xs text-gray-400 font-mono">
                       v{decision.version}
@@ -222,7 +226,7 @@ export default function ChangeSummary() {
                     to={`/decisions/${decision.decision_id}`}
                     className="text-gray-500 hover:text-gray-700 font-mono text-xs"
                   >
-                    {decision.decision_id.slice(0, 12)}...
+                    {decision.decision_code || decision.decision_id.slice(0, 12) + '...'}
                   </Link>
                   <span className="text-gray-400">→</span>
                   <span className="text-xs text-gray-500">superseded by</span>
@@ -230,9 +234,9 @@ export default function ChangeSummary() {
                   {supersededBy && (
                     <Link
                       to={`/decisions/${supersededBy.decision_id}`}
-                      className="text-indigo-600 hover:text-indigo-500 font-mono text-xs"
+                      className="text-indigo-600 hover:text-indigo-500 font-mono text-xs font-medium"
                     >
-                      {supersededBy.decision_id.slice(0, 12)}...
+                      {supersededBy.decision_code || supersededBy.decision_id.slice(0, 12) + '...'}
                     </Link>
                   )}
                 </div>

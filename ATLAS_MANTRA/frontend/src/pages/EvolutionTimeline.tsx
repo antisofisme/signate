@@ -19,6 +19,7 @@ import { FEATURE_LABELS, GROUP_LABELS } from '../shared/constants'
 
 interface Decision {
   decision_id: string
+  decision_code: string | null  // Human-readable code: INT-F01-001-v1.0.0
   version: string
   created_at: string
   supersedes: string | null
@@ -95,7 +96,7 @@ export default function EvolutionTimeline() {
       {selectedChain && selectedChain.length > 0 && (
         <div className="bg-white rounded-lg shadow-sm border p-6 border-indigo-200">
           <h3 className="text-indigo-600 font-medium mb-4">
-            Chain for: {selectedChain[selectedChain.length - 1].decision_id.slice(0, 8)}...
+            Chain for: {selectedChain[selectedChain.length - 1].decision_code || selectedChain[selectedChain.length - 1].decision_id.slice(0, 8) + '...'}
           </h3>
           <div className="relative">
             {/* Timeline line */}
@@ -124,7 +125,7 @@ export default function EvolutionTimeline() {
                       to={`/decisions/${decision.decision_id}`}
                       className="text-indigo-600 hover:text-indigo-500 font-mono text-sm"
                     >
-                      {decision.decision_id.slice(0, 12)}...
+                      {decision.decision_code || decision.decision_id.slice(0, 12) + '...'}
                     </Link>
                     <p className="text-sm text-gray-600 mt-2 line-clamp-2">
                       {decision.rationale}

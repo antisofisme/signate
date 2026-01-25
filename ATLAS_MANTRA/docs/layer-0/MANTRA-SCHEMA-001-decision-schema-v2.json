@@ -89,10 +89,10 @@
     "GroupId": {
       "type": "string",
       "enum": [
-        "GROUP-1",
-        "GROUP-2",
-        "GROUP-3",
-        "GROUP-4"
+        "INT",
+        "ARCH",
+        "CTL",
+        "EVO"
       ]
     },
     "FeatureId": {
@@ -169,7 +169,7 @@
       "if": {
         "properties": {
           "group_id": {
-            "const": "GROUP-1"
+            "const": "INT"
           }
         }
       },
@@ -190,7 +190,7 @@
       "if": {
         "properties": {
           "group_id": {
-            "const": "GROUP-2"
+            "const": "ARCH"
           }
         }
       },
@@ -211,7 +211,7 @@
       "if": {
         "properties": {
           "group_id": {
-            "const": "GROUP-3"
+            "const": "CTL"
           }
         }
       },
@@ -232,7 +232,7 @@
       "if": {
         "properties": {
           "group_id": {
-            "const": "GROUP-4"
+            "const": "EVO"
           }
         }
       },

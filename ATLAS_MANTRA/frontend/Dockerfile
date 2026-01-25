@@ -1,31 +1,29 @@
-# ATLAS_MANTRA Frontend Dockerfile
-# Uses Bun for fast builds
+# ATLAS_MANTRA Frontend - Production Dockerfile
+# Builds React app and serves via nginx
 
-FROM oven/bun:1 AS builder
+# Stage 1: Build
+FROM node:20-alpine AS builder
 
 WORKDIR /app
 
 # Install dependencies
-COPY package.json bun.lock* ./
-RUN bun install --frozen-lockfile || bun install
+COPY package.json ./
+RUN npm install
 
-# Copy source
+# Copy source and build
 COPY . .
+RUN npm run build
 
-# Build
-ARG VITE_API_URL=http://localhost:8001
-ENV VITE_API_URL=$VITE_API_URL
-RUN bun run build
-
-# Production stage
+# Stage 2: Production
 FROM nginx:alpine
+
+# Copy nginx config
+COPY nginx.conf /etc/nginx/conf.d/default.conf
 
 # Copy built assets
 COPY --from=builder /app/dist /usr/share/nginx/html
 
-# Nginx configuration
-COPY nginx.conf /etc/nginx/conf.d/default.conf
-
+# Expose port
 EXPOSE 3000
 
 CMD ["nginx", "-g", "daemon off;"]

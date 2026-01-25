@@ -9,7 +9,7 @@ BEGIN;
 -- Enumerations per MANTRA-SCHEMA-001
 -- ============================================================================
 
-CREATE TYPE group_id AS ENUM ('GROUP-1', 'GROUP-2', 'GROUP-3', 'GROUP-4');
+CREATE TYPE group_id AS ENUM ('INT', 'ARCH', 'CTL', 'EVO');
 
 CREATE TYPE feature_id AS ENUM (
     'F-01', 'F-02', 'F-03', 'F-04',

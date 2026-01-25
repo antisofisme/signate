@@ -35,8 +35,17 @@ This boundary specification prevents Layer 1 from violating Layer 0.
 | MANTRA-L1-IMPL-VALIDATOR-001 | Implementation Specification | Validator implementation requirements | FROZEN |
 | MANTRA-L1-IMPL-DECISION-STORE-001 | Implementation Specification | Decision Store storage requirements | FROZEN |
 | MANTRA-L1-IMPL-PUBLIC-READ-API-001 | Implementation Specification | Public Read API access requirements | FROZEN |
+| [MANTRA-L1-DATA-INTEGRITY-001](./MANTRA-L1-DATA-INTEGRITY-001-data-integrity-specification.md) | Implementation Specification | Data integrity: supersedes validation, typed metadata, warnings | ACTIVE |
 | MANTRA-L1-FREEZE-001 | Governance Declaration | Layer 1 freeze declaration | ACTIVE |
 | MANTRA-L1-CORRECTION-001 | Correction Record | Post-audit documentation corrections | APPLIED |
+
+### AI Assistance Documents
+
+| Document | Type | Purpose | Status |
+|----------|------|---------|--------|
+| [MANTRA-L1-AI-OPERATIONAL-GUIDELINES-001](./MANTRA-L1-AI-OPERATIONAL-GUIDELINES-001.md) | AI Guidelines | Authority boundaries, workflow, suggestion rules | ACTIVE |
+| [MANTRA-L1-AI-WORKFLOW-SPECIFICATION-001](./MANTRA-L1-AI-WORKFLOW-SPECIFICATION-001.md) | AI Workflow | Input→Evaluate→Compare→Suggest workflow | ACTIVE |
+| [MANTRA-L1-AI-CLASSIFICATION-GUIDE-001](./MANTRA-L1-AI-CLASSIFICATION-GUIDE-001.md) | AI Classification | 4x4 taxonomy classification guide | ACTIVE |
 
 ---
 
@@ -60,6 +69,7 @@ If conflict exists between Layer 1 and Layer 0:
 | `MANTRA-L1-IMPL-` | Implementation specifications | In frozen baseline |
 | `MANTRA-L1-FREEZE-` | Freeze declarations | In frozen baseline |
 | `MANTRA-L1-CORRECTION-` | Correction records | Documentation only |
+| `MANTRA-L1-AI-` | AI assistance guidelines | Not in frozen baseline |
 | `MANTRA-ARCH-` | Technical architecture documents | Not in frozen baseline |
 | `MANTRA-PROC-` | Operational procedures | Not in frozen baseline |
 | `MANTRA-GUIDE-` | Integration guides | Not in frozen baseline |
