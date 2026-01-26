@@ -10,7 +10,14 @@
  * Phase: 4
  */
 
-import { v4 as uuidv4 } from 'uuid';
+// UUID generation using crypto API (no external dependency)
+function uuidv4(): string {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0;
+    const v = c === 'x' ? r : (r & 0x3) | 0x8;
+    return v.toString(16);
+  });
+}
 
 // =============================================================================
 // TYPES
@@ -27,6 +34,7 @@ export interface RequestContext {
 export interface PaginationParams {
   page?: number;
   limit?: number;
+  [key: string]: string | number | undefined;
 }
 
 export interface ApiResponse<T> {

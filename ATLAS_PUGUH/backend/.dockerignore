@@ -1,0 +1,74 @@
+# ============================================================================
+# Docker Build Ignore - ATLAS_PUGUH Backend
+# ============================================================================
+# Exclude files not needed in Docker image to optimize build
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Virtual environments
+venv/
+env/
+ENV/
+.venv
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+*.cover
+.hypothesis/
+tests/
+
+# Documentation
+docs/
+*.md
+!README.md
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Git
+.git/
+.gitignore
+.gitattributes
+
+# Environment files (should be provided at runtime)
+.env
+.env.*
+!.env.example
+
+# Scripts (not needed in runtime image)
+scripts/
+
+# Infrastructure code (Phase 2 disabled features)
+infrastructure/cache/
+infrastructure/rate_limit/
+infrastructure/metrics/
+infrastructure/tracing/
+
+# Test requirements
+requirements-test.txt
+requirements-phase2.txt
+requirements-phase2-week2.txt
+pytest.ini
+
+# Build artifacts
+dist/
+build/
+*.egg-info/
+
+# Logs
+*.log
+
+# OS
+.DS_Store
+Thumbs.db

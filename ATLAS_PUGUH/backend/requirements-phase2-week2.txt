@@ -1,0 +1,13 @@
+# Phase 2 Week 2 Dependencies (Caching & Performance)
+# Install with: pip install -r requirements-phase2-week2.txt
+
+# Phase 1 + Week 1 dependencies are inherited (not listed here)
+# This file contains ONLY Week 2 additions
+
+# Redis client (async)
+redis[hiredis]==5.0.1
+
+# Load testing
+locust==2.20.0
+
+# Note: All Phase 1 and Week 1 dependencies still required

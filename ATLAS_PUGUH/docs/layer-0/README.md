@@ -55,6 +55,37 @@ All 10 foundational questions are answered. No unresolved contradictions.
 
 ---
 
+## Overlay Documents
+
+The following documents **complement** the core Layer 0 documents above. They provide additional enforcement rules and clarifications **without changing** the foundational concepts.
+
+### 4. [INFRA-DEC-004: Control Plane Overview](./INFRA-DEC-004-control-plane-overview.md) (OVERLAY)
+
+**Type**: OVERLAY DOCUMENT
+**Complements**: INFRA-DEC-001, INFRA-DEC-002, INFRA-DEC-003
+
+Defines the relationship between the 5 infra functions and clarifies lifecycle boundaries.
+
+---
+
+### 5. [INFRA-DEC-005: Enforcement & Anti-Bypass Rules](./INFRA-DEC-005-enforcement-anti-bypass.md) (OVERLAY)
+
+**Type**: OVERLAY DOCUMENT
+**Complements**: All previous DEC documents
+
+Defines bypass classifications, enforcement rules, and AI boundary constraints.
+
+---
+
+### 6. [INFRA-DEC-006: Event & Audit as Immutable Facts](./INFRA-DEC-006-event-audit-immutable-facts.md) (OVERLAY)
+
+**Type**: OVERLAY DOCUMENT
+**Complements**: INFRA-DEC-001, INFRA-LAY1-002, INFRA-LAY2-003
+
+Defines event immutability guarantees and failure mode laws.
+
+---
+
 ## Quick Reference: 10 Foundational Questions
 
 | # | Question | Answer Summary | Document |
@@ -115,6 +146,11 @@ These are **deferred to Layer 1+**:
 4. Study INFRA-DEC-003 sections on condition syntax & workflows
 5. Cross-reference LAYER-0-VERIFICATION for consistency
 
+**For Enforcement & Compliance:**
+1. Read INFRA-DEC-004 (control plane overview, 5 functions)
+2. Read INFRA-DEC-005 (enforcement rules, anti-bypass, AI boundaries)
+3. Read INFRA-DEC-006 (event immutability, failure mode laws)
+
 ---
 
 ## Next Phase: Layer 1
@@ -139,5 +175,9 @@ See LAYER-0-VERIFICATION.md § 8 for detailed Layer 1 scope.
 | 2025-12-27 | INFRA-DEC-003 Created | LOCKED |
 | 2025-12-27 | LAYER-0-VERIFICATION Created | COMPLETE |
 | 2025-12-27 | Files reorganized to layer-0/ | ORGANIZED |
+| 2025-01-24 | INFRA-DEC-004 Added | OVERLAY |
+| 2025-01-24 | INFRA-DEC-005 Added | OVERLAY |
+| 2025-01-24 | INFRA-DEC-006 Added | OVERLAY |
 
-**Layer 0 is FROZEN** (no further changes without user approval)
+**Core Documents (001-003)**: LOCKED - no changes allowed.
+**Overlay Documents (004-006)**: Complement core documents without modifying them.
