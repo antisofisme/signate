@@ -1,0 +1,16 @@
+{
+  "title": "Getting Started",
+  "description": "Learn how to get started with ATLAS PUGUH.",
+  "slug": "/category/getting-started",
+  "permalink": "/docs/category/getting-started",
+  "navigation": {
+    "previous": {
+      "title": "Welcome to ATLAS PUGUH",
+      "permalink": "/docs/"
+    },
+    "next": {
+      "title": "Quick Start Guide",
+      "permalink": "/docs/getting-started/quick-start"
+    }
+  }
+}

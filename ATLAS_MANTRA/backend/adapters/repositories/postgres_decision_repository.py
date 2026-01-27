@@ -18,7 +18,10 @@ from datetime import datetime
 import asyncpg
 
 from core.repositories.decision_repository import DecisionRepository
-from core.domain.schema import Decision, GroupId, FeatureId, Constraint, ConstraintType, Scope, BlastRadius, Relation, RelationType
+from core.domain.schema import (
+    Decision, GroupId, FeatureId, Constraint, ConstraintType, Scope, BlastRadius,
+    Relation, RelationType, ContentSection, SectionType
+)
 from core.domain.decision import StoredDecision, DecisionEvent, AuditEntry, AuditEventType
 
 logger = logging.getLogger(__name__)
@@ -116,6 +119,21 @@ class PostgresDecisionRepository(DecisionRepository):
                 type=RelationType(r['type']),
             ))
 
+        # Parse Layer B sections
+        raw_sections = row.get('sections', []) or []
+        if isinstance(raw_sections, str):
+            raw_sections = json.loads(raw_sections)
+
+        sections = []
+        for s in raw_sections:
+            sections.append(ContentSection(
+                section_id=s.get('section_id', ''),
+                section_type=SectionType(s.get('section_type', 'OVERVIEW')),
+                title=s.get('title', ''),
+                content=s.get('content', ''),
+                order=s.get('order', 0),
+            ))
+
         # Generate decision_code if not set
         decision_code = row.get('decision_code')
         if not decision_code and sequence is not None:
@@ -144,6 +162,10 @@ class PostgresDecisionRepository(DecisionRepository):
             relations=relations,
             tags=raw_tags,
             tech_stack=raw_tech_stack,
+            # Layer B Content
+            detailed_content=row.get('detailed_content'),
+            sections=sections,
+            content_summary=row.get('content_summary'),
         )
 
         return StoredDecision(
@@ -157,15 +179,28 @@ class PostgresDecisionRepository(DecisionRepository):
         """
         Save a decision (synchronous wrapper).
 
-        For async usage, call save_async directly.
+        WARNING: This method should NOT be used in FastAPI routes.
+        Use save_async() instead for proper async database access.
+
+        In async context (FastAPI), this creates a fire-and-forget task
+        which may not complete before response is sent.
         """
         import asyncio
-        loop = asyncio.get_event_loop()
-        if loop.is_running():
-            # If we're in an async context, create a task
+        try:
+            loop = asyncio.get_running_loop()
+            # We're in async context - log warning and create task
+            logger.warning(
+                "save() called in async context. Use save_async() instead. "
+                "Creating background task - data persistence not guaranteed."
+            )
             asyncio.create_task(self.save_async(stored_decision))
-        else:
-            loop.run_until_complete(self.save_async(stored_decision))
+        except RuntimeError:
+            # No running loop - safe to use sync
+            loop = asyncio.new_event_loop()
+            try:
+                loop.run_until_complete(self.save_async(stored_decision))
+            finally:
+                loop.close()
 
     async def save_async(self, stored_decision: StoredDecision) -> None:
         """
@@ -195,19 +230,35 @@ class PostgresDecisionRepository(DecisionRepository):
             for r in decision.relations
         ]
 
+        # Convert sections to JSONB-compatible format
+        sections_json = [
+            {
+                'section_id': s.section_id,
+                'section_type': s.section_type.value if hasattr(s.section_type, 'value') else s.section_type,
+                'title': s.title,
+                'content': s.content,
+                'order': s.order,
+            }
+            for s in (decision.sections or [])
+        ]
+
         query = """
             INSERT INTO decisions (
                 decision_id, group_id, feature_id, statement, rationale,
                 constraints, invariants, scope, blast_radius, version,
                 created_by, created_at, approved_by, approved_at,
                 supersedes, related_decisions, relations,
-                stored_at, stored_by, storage_version
+                stored_at, stored_by, storage_version,
+                detailed_content, sections, content_summary,
+                tags, tech_stack
             ) VALUES (
                 $1, $2, $3, $4, $5,
                 $6, $7, $8, $9, $10,
                 $11, $12, $13, $14,
                 $15, $16, $17,
-                $18, $19, $20
+                $18, $19, $20,
+                $21, $22, $23,
+                $24, $25
             )
         """
 
@@ -234,6 +285,13 @@ class PostgresDecisionRepository(DecisionRepository):
                 stored_decision.stored_at or datetime.utcnow(),
                 stored_decision.stored_by,
                 stored_decision.storage_version,
+                # Layer B Content
+                decision.detailed_content,
+                json.dumps(sections_json) if sections_json else '[]',
+                getattr(decision, 'content_summary', None),
+                # Metadata fields
+                json.dumps(decision.tags) if decision.tags else '[]',
+                json.dumps(decision.tech_stack) if decision.tech_stack else '[]',
             )
             logger.info(f"Decision {decision.decision_id} saved to PostgreSQL")
         except asyncpg.UniqueViolationError:
@@ -243,14 +301,28 @@ class PostgresDecisionRepository(DecisionRepository):
             )
 
     def find_by_id(self, decision_id: str) -> Optional[StoredDecision]:
-        """Find decision by ID (synchronous wrapper)."""
+        """
+        Find decision by ID (synchronous wrapper).
+
+        WARNING: Returns None in async context (FastAPI).
+        Use find_by_id_async() instead for routes.
+        """
         import asyncio
-        loop = asyncio.get_event_loop()
-        if loop.is_running():
-            # Return None for sync calls in async context
-            # Use find_by_id_async instead
+        try:
+            asyncio.get_running_loop()
+            # We're in async context - cannot block
+            logger.warning(
+                f"find_by_id({decision_id}) called in async context. "
+                "Returning None. Use find_by_id_async() instead."
+            )
             return None
-        return loop.run_until_complete(self.find_by_id_async(decision_id))
+        except RuntimeError:
+            # No running loop - safe to use sync
+            loop = asyncio.new_event_loop()
+            try:
+                return loop.run_until_complete(self.find_by_id_async(decision_id))
+            finally:
+                loop.close()
 
     async def find_by_id_async(self, decision_id: str) -> Optional[StoredDecision]:
         """Find decision by ID with auto-generated decision_code."""
@@ -273,12 +345,26 @@ class PostgresDecisionRepository(DecisionRepository):
         return self._row_to_stored_decision(row, sequence=row['seq'])
 
     def find_all(self, limit: int = 100, offset: int = 0) -> List[StoredDecision]:
-        """Find all decisions (synchronous wrapper)."""
+        """
+        Find all decisions (synchronous wrapper).
+
+        WARNING: Returns [] in async context (FastAPI).
+        Use find_all_async() instead for routes.
+        """
         import asyncio
-        loop = asyncio.get_event_loop()
-        if loop.is_running():
+        try:
+            asyncio.get_running_loop()
+            logger.warning(
+                "find_all() called in async context. "
+                "Returning []. Use find_all_async() instead."
+            )
             return []
-        return loop.run_until_complete(self.find_all_async(limit, offset))
+        except RuntimeError:
+            loop = asyncio.new_event_loop()
+            try:
+                return loop.run_until_complete(self.find_all_async(limit, offset))
+            finally:
+                loop.close()
 
     async def find_all_async(self, limit: int = 100, offset: int = 0) -> List[StoredDecision]:
         """Find all decisions with pagination and auto-generated decision_code."""
@@ -305,12 +391,26 @@ class PostgresDecisionRepository(DecisionRepository):
         limit: int = 100,
         offset: int = 0
     ) -> List[StoredDecision]:
-        """Find decisions by group (synchronous wrapper)."""
+        """
+        Find decisions by group (synchronous wrapper).
+
+        WARNING: Returns [] in async context (FastAPI).
+        Use find_by_group_async() instead for routes.
+        """
         import asyncio
-        loop = asyncio.get_event_loop()
-        if loop.is_running():
+        try:
+            asyncio.get_running_loop()
+            logger.warning(
+                f"find_by_group({group_id}) called in async context. "
+                "Returning []. Use find_by_group_async() instead."
+            )
             return []
-        return loop.run_until_complete(self.find_by_group_async(group_id, limit, offset))
+        except RuntimeError:
+            loop = asyncio.new_event_loop()
+            try:
+                return loop.run_until_complete(self.find_by_group_async(group_id, limit, offset))
+            finally:
+                loop.close()
 
     async def find_by_group_async(
         self,
@@ -338,12 +438,26 @@ class PostgresDecisionRepository(DecisionRepository):
         return [self._row_to_stored_decision(row, sequence=row['seq']) for row in rows]
 
     def count(self) -> int:
-        """Count total decisions (synchronous wrapper)."""
+        """
+        Count total decisions (synchronous wrapper).
+
+        WARNING: Returns 0 in async context (FastAPI).
+        Use count_async() instead for routes.
+        """
         import asyncio
-        loop = asyncio.get_event_loop()
-        if loop.is_running():
+        try:
+            asyncio.get_running_loop()
+            logger.warning(
+                "count() called in async context. "
+                "Returning 0. Use count_async() instead."
+            )
             return 0
-        return loop.run_until_complete(self.count_async())
+        except RuntimeError:
+            loop = asyncio.new_event_loop()
+            try:
+                return loop.run_until_complete(self.count_async())
+            finally:
+                loop.close()
 
     async def count_async(self) -> int:
         """Count total decisions."""
@@ -352,12 +466,26 @@ class PostgresDecisionRepository(DecisionRepository):
         return result or 0
 
     def count_by_feature(self, feature_id: FeatureId) -> int:
-        """Count decisions by feature (synchronous wrapper)."""
+        """
+        Count decisions by feature (synchronous wrapper).
+
+        WARNING: Returns 0 in async context (FastAPI).
+        Use count_by_feature_async() instead for routes.
+        """
         import asyncio
-        loop = asyncio.get_event_loop()
-        if loop.is_running():
+        try:
+            asyncio.get_running_loop()
+            logger.warning(
+                f"count_by_feature({feature_id}) called in async context. "
+                "Returning 0. Use count_by_feature_async() instead."
+            )
             return 0
-        return loop.run_until_complete(self.count_by_feature_async(feature_id))
+        except RuntimeError:
+            loop = asyncio.new_event_loop()
+            try:
+                return loop.run_until_complete(self.count_by_feature_async(feature_id))
+            finally:
+                loop.close()
 
     async def count_by_feature_async(self, feature_id: FeatureId) -> int:
         """Count decisions by feature."""
@@ -369,13 +497,26 @@ class PostgresDecisionRepository(DecisionRepository):
         return result or 0
 
     def record_event(self, event: DecisionEvent) -> None:
-        """Record domain event (synchronous wrapper)."""
+        """
+        Record domain event (synchronous wrapper).
+
+        WARNING: In async context, creates background task (not guaranteed to complete).
+        Use record_event_async() instead for routes.
+        """
         import asyncio
-        loop = asyncio.get_event_loop()
-        if loop.is_running():
+        try:
+            asyncio.get_running_loop()
+            logger.warning(
+                "record_event() called in async context. "
+                "Creating background task. Use record_event_async() instead."
+            )
             asyncio.create_task(self.record_event_async(event))
-        else:
-            loop.run_until_complete(self.record_event_async(event))
+        except RuntimeError:
+            loop = asyncio.new_event_loop()
+            try:
+                loop.run_until_complete(self.record_event_async(event))
+            finally:
+                loop.close()
 
     async def record_event_async(self, event: DecisionEvent) -> None:
         """Record a domain event."""
@@ -398,13 +539,26 @@ class PostgresDecisionRepository(DecisionRepository):
         )
 
     def record_audit(self, entry: AuditEntry) -> None:
-        """Record audit entry (synchronous wrapper)."""
+        """
+        Record audit entry (synchronous wrapper).
+
+        WARNING: In async context, creates background task (not guaranteed to complete).
+        Use record_audit_async() instead for routes.
+        """
         import asyncio
-        loop = asyncio.get_event_loop()
-        if loop.is_running():
+        try:
+            asyncio.get_running_loop()
+            logger.warning(
+                "record_audit() called in async context. "
+                "Creating background task. Use record_audit_async() instead."
+            )
             asyncio.create_task(self.record_audit_async(entry))
-        else:
-            loop.run_until_complete(self.record_audit_async(entry))
+        except RuntimeError:
+            loop = asyncio.new_event_loop()
+            try:
+                loop.run_until_complete(self.record_audit_async(entry))
+            finally:
+                loop.close()
 
     async def record_audit_async(self, entry: AuditEntry) -> None:
         """Record an audit entry."""
@@ -434,14 +588,28 @@ class PostgresDecisionRepository(DecisionRepository):
         event_type: Optional[AuditEventType] = None,
         actor: Optional[str] = None,
     ) -> List[AuditEntry]:
-        """Get audit entries (synchronous wrapper)."""
+        """
+        Get audit entries (synchronous wrapper).
+
+        WARNING: Returns [] in async context (FastAPI).
+        Use get_audit_entries_async() instead for routes.
+        """
         import asyncio
-        loop = asyncio.get_event_loop()
-        if loop.is_running():
+        try:
+            asyncio.get_running_loop()
+            logger.warning(
+                "get_audit_entries() called in async context. "
+                "Returning []. Use get_audit_entries_async() instead."
+            )
             return []
-        return loop.run_until_complete(
-            self.get_audit_entries_async(limit, offset, decision_id, event_type, actor)
-        )
+        except RuntimeError:
+            loop = asyncio.new_event_loop()
+            try:
+                return loop.run_until_complete(
+                    self.get_audit_entries_async(limit, offset, decision_id, event_type, actor)
+                )
+            finally:
+                loop.close()
 
     async def get_audit_entries_async(
         self,
@@ -504,14 +672,28 @@ class PostgresDecisionRepository(DecisionRepository):
         event_type: Optional[AuditEventType] = None,
         actor: Optional[str] = None,
     ) -> int:
-        """Count audit entries (synchronous wrapper)."""
+        """
+        Count audit entries (synchronous wrapper).
+
+        WARNING: Returns 0 in async context (FastAPI).
+        Use count_audit_entries_async() instead for routes.
+        """
         import asyncio
-        loop = asyncio.get_event_loop()
-        if loop.is_running():
+        try:
+            asyncio.get_running_loop()
+            logger.warning(
+                "count_audit_entries() called in async context. "
+                "Returning 0. Use count_audit_entries_async() instead."
+            )
             return 0
-        return loop.run_until_complete(
-            self.count_audit_entries_async(decision_id, event_type, actor)
-        )
+        except RuntimeError:
+            loop = asyncio.new_event_loop()
+            try:
+                return loop.run_until_complete(
+                    self.count_audit_entries_async(decision_id, event_type, actor)
+                )
+            finally:
+                loop.close()
 
     async def count_audit_entries_async(
         self,
@@ -548,12 +730,26 @@ class PostgresDecisionRepository(DecisionRepository):
         return result or 0
 
     def find_supersedes_chain(self, decision_id: str) -> List[StoredDecision]:
-        """Find supersedes chain (synchronous wrapper)."""
+        """
+        Find supersedes chain (synchronous wrapper).
+
+        WARNING: Returns [] in async context (FastAPI).
+        Use find_supersedes_chain_async() instead for routes.
+        """
         import asyncio
-        loop = asyncio.get_event_loop()
-        if loop.is_running():
+        try:
+            asyncio.get_running_loop()
+            logger.warning(
+                f"find_supersedes_chain({decision_id}) called in async context. "
+                "Returning []. Use find_supersedes_chain_async() instead."
+            )
             return []
-        return loop.run_until_complete(self.find_supersedes_chain_async(decision_id))
+        except RuntimeError:
+            loop = asyncio.new_event_loop()
+            try:
+                return loop.run_until_complete(self.find_supersedes_chain_async(decision_id))
+            finally:
+                loop.close()
 
     async def find_supersedes_chain_async(self, decision_id: str) -> List[StoredDecision]:
         """Find the complete supersedes chain for a decision."""

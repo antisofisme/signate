@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query'
 import { clsx } from 'clsx'
 import { Link } from 'react-router-dom'
 import { decisionsApi, Decision, FieldDifference } from '../shared/api'
-import { GROUP_LABELS, FEATURE_LABELS, GROUP_COLORS } from '../shared/constants'
+import { FEATURE_LABELS, GROUP_COLORS } from '../shared/constants'
 
 export default function Compare() {
   const [decisionA, setDecisionA] = useState('')
@@ -233,7 +233,6 @@ function DecisionCard({
   color: 'blue' | 'purple'
 }) {
   const borderColor = color === 'blue' ? 'border-blue-500' : 'border-purple-500'
-  const bgColor = color === 'blue' ? 'bg-blue-50' : 'bg-purple-50'
   const textColor = color === 'blue' ? 'text-blue-700' : 'text-purple-700'
 
   return (

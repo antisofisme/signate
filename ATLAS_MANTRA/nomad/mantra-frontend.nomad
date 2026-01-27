@@ -7,8 +7,8 @@ job "mantra-frontend" {
   type        = "service"
 
   meta {
-    version     = "1.0.1"
-    description = "Decision Matrix UI - Projection Layer (Read-Only)"
+    version     = "1.2.6"
+    description = "Decision Matrix UI - Current vs Total Decision Display"
   }
 
   group "web" {
@@ -45,7 +45,7 @@ job "mantra-frontend" {
       driver = "docker"
 
       config {
-        image      = "atlas-mantra-web:v1.0.1"
+        image      = "atlas-mantra-web:v1.2.6"
         ports      = ["http"]
         force_pull = false
       }

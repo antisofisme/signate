@@ -21,6 +21,7 @@ import {
   RELATION_LABELS,
   RELATION_EDGE_STYLES,
 } from '../shared/constants'
+import { getDecisionCounts } from '../shared/decisionUtils'
 
 // =============================================================================
 // Types for Graph
@@ -256,11 +257,14 @@ export default function RelationshipProjection() {
     return () => window.removeEventListener('resize', updateDimensions)
   }, [])
 
-  const { nodes, edges, decisionMap, stats } = useMemo(() => {
-    if (!data?.decisions) return { nodes: [], edges: [], decisionMap: new Map(), stats: { total: 0, relations: 0, crossGroup: 0 } }
+  const { nodes, edges, decisionMap, stats, decisionCounts } = useMemo(() => {
+    if (!data?.decisions) return { nodes: [], edges: [], decisionMap: new Map(), stats: { total: 0, relations: 0, crossGroup: 0 }, decisionCounts: { total: 0, current: 0, superseded: 0 } }
 
     const decisions: Decision[] = data.decisions
     const decisionMap = new Map<string, Decision>(decisions.map(d => [d.decision_id, d]))
+
+    // Calculate current vs superseded
+    const counts = getDecisionCounts(decisions as any[])
 
     const filteredDecisions = filterGroup
       ? decisions.filter(d => d.group_id === filterGroup)
@@ -316,7 +320,8 @@ export default function RelationshipProjection() {
       nodes,
       edges,
       decisionMap,
-      stats: { total: nodes.length, relations: edges.length, crossGroup: crossGroupCount }
+      stats: { total: nodes.length, relations: edges.length, crossGroup: crossGroupCount },
+      decisionCounts: counts
     }
   }, [data?.decisions, filterGroup])
 
@@ -381,7 +386,13 @@ export default function RelationshipProjection() {
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Relationship Graph</h1>
           <p className="mt-1 text-gray-600">
-            {stats.total} decisions · {stats.relations} relations · {stats.crossGroup} cross-group
+            {decisionCounts.current} current decisions
+            {decisionCounts.superseded > 0 && (
+              <span className="text-gray-400 ml-1">
+                ({decisionCounts.total} total)
+              </span>
+            )}
+            {' · '}{stats.relations} relations · {stats.crossGroup} cross-group
           </p>
         </div>
         <div className="flex gap-2">

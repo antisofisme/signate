@@ -11,7 +11,7 @@ from uuid import UUID, uuid4
 from typing import Any, Dict, Optional
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, kw_only=True)
 class DomainEvent:
     """
     Base class for all domain events

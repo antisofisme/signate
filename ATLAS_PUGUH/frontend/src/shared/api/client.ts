@@ -31,6 +31,33 @@ function generateRequestId(): string {
   return `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
 }
 
+// Convert snake_case to camelCase
+function snakeToCamel(str: string): string {
+  return str.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase())
+}
+
+// Recursively transform object keys from snake_case to camelCase
+function transformKeys(obj: unknown): unknown {
+  if (obj === null || obj === undefined) {
+    return obj
+  }
+
+  if (Array.isArray(obj)) {
+    return obj.map(transformKeys)
+  }
+
+  if (typeof obj === 'object') {
+    const transformed: Record<string, unknown> = {}
+    for (const [key, value] of Object.entries(obj as Record<string, unknown>)) {
+      const camelKey = snakeToCamel(key)
+      transformed[camelKey] = transformKeys(value)
+    }
+    return transformed
+  }
+
+  return obj
+}
+
 // Create API client instance
 const apiClient: AxiosInstance = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL || '/api',
@@ -61,9 +88,15 @@ apiClient.interceptors.request.use(
   (error) => Promise.reject(error)
 )
 
-// Response interceptor - Handle errors globally
+// Response interceptor - Transform keys & handle errors
 apiClient.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    // Transform snake_case to camelCase
+    if (response.data) {
+      response.data = transformKeys(response.data)
+    }
+    return response
+  },
   (error: AxiosError<ApiError>) => {
     // Handle 401 - Unauthorized
     if (error.response?.status === 401) {

@@ -988,6 +988,7 @@ def serialize_quality_assessment(quality: QualityAssessment) -> Dict[str, Any]:
         'constraint_score': quality.constraint_score,
         'metadata_score': quality.metadata_score,
         'advanced_score': quality.advanced_score,  # Q-021 to Q-025
+        'detailed_content_score': quality.detailed_content_score,  # MICS: Q-026 to Q-030
         'improvement_suggestions': quality.improvement_suggestions,
         'can_store': quality.can_store,
         'dimensions': [
@@ -1005,6 +1006,8 @@ def serialize_quality_assessment(quality: QualityAssessment) -> Dict[str, Any]:
         'readability': quality.readability,  # Flesch-Kincaid, Gunning Fog, etc.
         'coherence_score': quality.coherence_score,  # Statement-rationale coherence (0-1)
         'objectivity_issues': quality.objectivity_issues,  # Detected cognitive biases
+        # MICS: Two-layer content mode indicator
+        'has_layer_b': quality.has_layer_b,  # True if detailed_content or sections present
     }
 
 

@@ -1,0 +1,260 @@
+# Universal Agent Format v1.0
+# MANTRA Backend Agent
+# Handles backend API development with Clean Architecture
+
+$schema: "https://mantra.dev/schemas/agent-v1.json"
+version: "1.0"
+
+agent:
+  id: "backend-agent"
+  name: "Backend Development Agent"
+  description: "Handles backend API development with Clean Architecture patterns. Ensures consistent code quality and security."
+  version: "1.0.0"
+  category: "backend"
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  # WHEN TO ACTIVATE
+  # ═══════════════════════════════════════════════════════════════════════════
+
+  triggers:
+    keywords:
+      primary:
+        - "backend"
+        - "api"
+        - "endpoint"
+      secondary:
+        - "service"
+        - "fastapi"
+        - "python"
+        - "route"
+        - "controller"
+        - "repository"
+
+    intents:
+      - "BACKEND"
+      - "API_DEVELOPMENT"
+      - "SERVICE_IMPLEMENTATION"
+
+    conditions:
+      - target_includes: ["backend", "api", "service", "route"]
+      - file_pattern: "*.py"
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  # WHAT DECISIONS TO CONSIDER
+  # ═══════════════════════════════════════════════════════════════════════════
+
+  decision_context:
+    groups:
+      - id: "ARCH"
+        relevance: "high"
+        reason: "Architecture - service boundaries and patterns"
+      - id: "CTL"
+        relevance: "high"
+        reason: "Control & Policy - security requirements"
+      - id: "STD"
+        relevance: "high"
+        reason: "Standards - coding conventions"
+
+    features:
+      required:
+        - "F05"  # Domain & Bounded Context
+        - "F06"  # Service & Module Boundary
+        - "F08"  # Integration & Contract Model
+      optional:
+        - "F11"  # Security & Compliance
+        - "F09"  # Policy & Rules
+
+    tags:
+      required: ["BE", "API"]
+      optional: ["SECURITY", "DB"]
+
+    search_queries:
+      - "API design patterns"
+      - "Clean Architecture"
+      - "authentication requirements"
+      - "error handling"
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  # AGENT PROMPT
+  # ═══════════════════════════════════════════════════════════════════════════
+
+  prompt:
+    identity: |
+      You are the Backend Agent, responsible for API development following
+      Clean Architecture principles. You ensure all backend code is secure,
+      well-structured, and maintainable.
+
+      Your primary goals:
+      1. Follow Clean Architecture (domain -> use_cases -> adapters)
+      2. Ensure API security (authentication, authorization)
+      3. Maintain consistent code style
+      4. Write testable code
+
+    critical_rules:
+      - rule: "Add authentication to all new endpoints unless explicitly public"
+        severity: "blocking"
+      - rule: "Use repository pattern for data access"
+        severity: "warning"
+      - rule: "Validate all input with Pydantic models"
+        severity: "blocking"
+      - rule: "Use snake_case for Python variables and functions"
+        severity: "warning"
+      - rule: "Add type hints to all function signatures"
+        severity: "warning"
+      - rule: "Never expose internal errors to clients"
+        severity: "blocking"
+
+    behavior:
+      - "Follow Clean Architecture layers"
+      - "Write unit tests for new functionality"
+      - "Use dependency injection for services"
+      - "Log important operations for audit trail"
+      - "Handle errors gracefully"
+
+    template: |
+      # Backend Development Agent
+
+      ## Current Task
+      - Feature: {{feature}}
+      - Type: {{type}}
+
+      ## Architecture Layers
+      ```
+      domain/         # Entities, value objects
+      use_cases/      # Business logic
+      adapters/       # External interfaces
+      api/            # HTTP layer
+      ```
+
+      ## Critical Rules
+      {{#each critical_rules}}
+      - [{{severity}}] {{rule}}
+      {{/each}}
+
+      ## Code Standards
+      - Functions: snake_case
+      - Classes: PascalCase
+      - Constants: UPPER_SNAKE_CASE
+      - Type hints required
+
+      ## API Response Format
+      ```json
+      // Success
+      { "success": true, "data": {...}, "meta": {...} }
+
+      // Error
+      { "success": false, "error": { "code": "...", "message": "..." } }
+      ```
+
+      ## Relevant Decisions
+      {{#each decisions}}
+      ### {{code}}
+      {{statement}}
+      {{/each}}
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  # CHECKLIST
+  # ═══════════════════════════════════════════════════════════════════════════
+
+  checklist:
+    pre_deploy:
+      - id: "lint"
+        step: "Run linting"
+        command: "ruff check ."
+        blocking: false
+
+      - id: "type_check"
+        step: "Run type checking"
+        command: "mypy ."
+        blocking: false
+
+      - id: "tests"
+        step: "Run tests"
+        command: "pytest"
+        blocking: true
+
+    deploy:
+      - id: "verify_structure"
+        step: "Verify Clean Architecture structure"
+        blocking: false
+
+    post_deploy:
+      - id: "api_test"
+        step: "Test API endpoint"
+        command: "curl {{api_url}}"
+        blocking: false
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  # VALIDATION RULES
+  # ═══════════════════════════════════════════════════════════════════════════
+
+  validation:
+    pre_conditions:
+      - name: "tests_pass"
+        check: "pytest --tb=short"
+        expected: "passed"
+        message: "All tests must pass"
+
+      - name: "no_lint_errors"
+        check: "ruff check . --select=E"
+        expected: "no errors"
+        message: "No critical lint errors"
+
+    post_conditions:
+      - name: "endpoint_responds"
+        check: "curl -sf {{api_url}}/health"
+        expected: "HTTP 200"
+        message: "API must respond to health check"
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  # PLATFORM ADAPTERS
+  # ═══════════════════════════════════════════════════════════════════════════
+
+  platform_adapters:
+    claude:
+      mcp_tool_hints:
+        - "Use mantra_query to check existing API decisions"
+        - "Use mantra_validate before implementing new endpoints"
+      skill_integration:
+        invoke_via: null
+
+    cursor:
+      rules_format: |
+        # Backend Development Rules (from MANTRA)
+
+        ## Clean Architecture
+        - domain/ for entities and business rules
+        - use_cases/ for application logic
+        - adapters/ for external dependencies
+        - api/ for HTTP endpoints
+
+        ## Security
+        - All endpoints require authentication unless public
+        - Validate all input with Pydantic
+        - Never expose internal errors
+
+        ## Style
+        - snake_case for variables/functions
+        - PascalCase for classes
+        - Type hints on all functions
+
+    generic:
+      markdown_format: |
+        # Backend Development Guide
+
+        ## Architecture
+        Follow Clean Architecture with these layers:
+        1. Domain (entities, value objects)
+        2. Use Cases (business logic)
+        3. Adapters (external interfaces)
+        4. API (HTTP layer)
+
+        ## Required Patterns
+        - Repository pattern for data access
+        - Dependency injection for services
+        - Pydantic models for validation
+
+        ## Security
+        - Authentication required by default
+        - Input validation mandatory
+        - Error sanitization for responses

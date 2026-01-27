@@ -3,11 +3,12 @@ import { Link, useSearchParams } from 'react-router-dom'
 import { api } from '../shared/api'
 import { GROUP_LABELS, FEATURE_LABELS } from '../shared/constants'
 import { useState, useMemo, useEffect } from 'react'
-import { Decision } from '../shared/api'
+// Decision type imported via AnnotatedDecision from decisionUtils
 import { SkeletonTable } from '../components/ui/skeleton'
 import { ScrollTable } from '../components/ui/scroll-table'
 import { useDebounce } from '../hooks/useDebounce'
 import { InfoTooltip } from '../components/ui/tooltip'
+import { annotateDecisions, getDecisionCounts, AnnotatedDecision } from '../shared/decisionUtils'
 
 export default function DecisionList() {
   const [searchParams] = useSearchParams()
@@ -18,6 +19,7 @@ export default function DecisionList() {
   const [searchQuery, setSearchQuery] = useState(initialSearch)
   const [filterGroup, setFilterGroup] = useState<string>(initialGroup)
   const [filterFeature, setFilterFeature] = useState<string>(initialFeature)
+  const [showHistorical, setShowHistorical] = useState(false)
 
   // Debounce search query for better performance
   const debouncedSearch = useDebounce(searchQuery, 300)
@@ -34,11 +36,25 @@ export default function DecisionList() {
     queryFn: () => api.get('/api/v1/decisions').then(r => r.data),
   })
 
+  // Decision counts for display
+  const decisionCounts = useMemo(() => {
+    return getDecisionCounts(data?.decisions || [])
+  }, [data?.decisions])
+
+  // Annotate decisions with currency info
+  const annotatedDecisions = useMemo(() => {
+    if (!data?.decisions) return []
+    return annotateDecisions(data.decisions)
+  }, [data?.decisions])
+
   // Filter and search decisions
   const filteredDecisions = useMemo(() => {
-    if (!data?.decisions) return []
+    if (!annotatedDecisions.length) return []
 
-    return data.decisions.filter((decision: Decision) => {
+    return annotatedDecisions.filter((decision: AnnotatedDecision) => {
+      // Historical filter - hide superseded unless toggle is on
+      if (!showHistorical && !decision._isCurrent) return false
+
       // Group filter
       if (filterGroup && decision.group_id !== filterGroup) return false
 
@@ -65,7 +81,7 @@ export default function DecisionList() {
 
       return true
     })
-  }, [data?.decisions, debouncedSearch, filterGroup, filterFeature])
+  }, [annotatedDecisions, debouncedSearch, filterGroup, filterFeature, showHistorical])
 
   if (isLoading) {
     return (
@@ -92,8 +108,13 @@ export default function DecisionList() {
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Decisions</h1>
           <p className="mt-1 text-gray-600">
-            Total: {data?.total_count ?? 0} decisions
-            {filteredDecisions.length !== data?.total_count && (
+            {decisionCounts.current} current decisions
+            {decisionCounts.superseded > 0 && (
+              <span className="text-gray-400 ml-1">
+                ({decisionCounts.total} total incl. {decisionCounts.superseded} historical)
+              </span>
+            )}
+            {filteredDecisions.length !== (showHistorical ? decisionCounts.total : decisionCounts.current) && (
               <span className="text-indigo-600 ml-2">
                 (showing {filteredDecisions.length} filtered)
               </span>
@@ -161,6 +182,19 @@ export default function DecisionList() {
             })}
           </select>
 
+          {/* Historical Toggle */}
+          {decisionCounts.superseded > 0 && (
+            <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={showHistorical}
+                onChange={(e) => setShowHistorical(e.target.checked)}
+                className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+              />
+              Show historical ({decisionCounts.superseded})
+            </label>
+          )}
+
           {/* Clear Filters */}
           {(searchQuery || filterGroup || filterFeature) && (
             <button
@@ -201,15 +235,32 @@ export default function DecisionList() {
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
-            {filteredDecisions.map((decision: Decision) => (
-              <tr key={decision.decision_id} className="hover:bg-gray-50 transition-colors">
+            {filteredDecisions.map((decision: AnnotatedDecision) => (
+              <tr
+                key={decision.decision_id}
+                className={`hover:bg-gray-50 transition-colors ${!decision._isCurrent ? 'opacity-60 bg-gray-50' : ''}`}
+              >
                 <td className="px-4 py-3">
-                  <Link
-                    to={`/decisions/${decision.decision_id}`}
-                    className="text-indigo-600 hover:text-indigo-500 font-mono text-sm font-semibold"
-                  >
-                    {decision.decision_code || decision.decision_id.slice(0, 12) + '...'}
-                  </Link>
+                  <div className="flex items-center gap-2">
+                    <Link
+                      to={`/decisions/${decision.decision_id}`}
+                      className="text-indigo-600 hover:text-indigo-500 font-mono text-sm font-semibold"
+                    >
+                      {decision.decision_code || decision.decision_id.slice(0, 12) + '...'}
+                    </Link>
+                    {!decision._isCurrent && decision._supersededBy && (
+                      <Link
+                        to={`/decisions/${decision._supersededBy}`}
+                        className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-gray-200 text-gray-600 text-xs rounded hover:bg-gray-300 transition-colors"
+                        title={`Superseded by ${decision._supersededByCode || decision._supersededBy.slice(0, 8)}`}
+                      >
+                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                        </svg>
+                        Superseded
+                      </Link>
+                    )}
+                  </div>
                 </td>
                 <td className="px-4 py-3 text-sm">
                   <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${

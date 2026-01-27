@@ -10,7 +10,7 @@ from uuid import UUID
 from typing import Optional
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, kw_only=True)
 class ProjectEvent:
     """Base class for project events"""
 

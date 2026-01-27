@@ -1,0 +1,16 @@
+{
+  "title": "Advanced Topics",
+  "description": "Advanced configuration and best practices.",
+  "slug": "/category/advanced",
+  "permalink": "/docs/category/advanced",
+  "navigation": {
+    "previous": {
+      "title": "SDK Usage",
+      "permalink": "/docs/api-reference/sdk-usage"
+    },
+    "next": {
+      "title": "Multi-Tenant Architecture",
+      "permalink": "/docs/advanced/multi-tenant"
+    }
+  }
+}

@@ -127,31 +127,65 @@ export function getGroupScope(groupId: string): string {
 }
 
 /**
- * Area Tags
- * For categorizing decisions by affected area
+ * Area Tags (Technical Areas)
+ * For categorizing decisions by affected technical area
+ *
+ * NOTE: ARCH here refers to "Architecture/Design Pattern" technical area,
+ * NOT to be confused with ARCH decision group (GROUP-2: Architecture & Boundaries)
+ *
+ * 12 Technical Areas:
+ * - Core Development: FE, BE, DB, API
+ * - Infrastructure & Operations: INFRA, CICD, DEVOPS
+ * - Quality & Security: SECURITY, TESTING, PERF
+ * - Architecture & Data: DATA, ARCH
  */
-export const AREA_TAGS = ['FE', 'BE', 'DB', 'INFRA', 'CICD', 'API', 'SECURITY', 'DEVOPS'] as const
+export const AREA_TAGS = [
+  'FE', 'BE', 'DB', 'API',           // Core Development
+  'INFRA', 'CICD', 'DEVOPS',         // Infrastructure & Operations
+  'SECURITY', 'TESTING', 'PERF',     // Quality & Security
+  'DATA', 'ARCH',                     // Architecture & Data
+] as const
 
 export const TAG_LABELS: Record<string, string> = {
+  // Core Development
   'FE': 'Frontend',
   'BE': 'Backend',
   'DB': 'Database',
+  'API': 'API Design',
+  // Infrastructure & Operations
   'INFRA': 'Infrastructure',
   'CICD': 'CI/CD',
-  'API': 'API Design',
-  'SECURITY': 'Security',
   'DEVOPS': 'DevOps',
+  // Quality & Security
+  'SECURITY': 'Security',
+  'TESTING': 'Testing',
+  'PERF': 'Performance',
+  // Architecture & Data
+  'DATA': 'Data Engineering',
+  'ARCH': 'Architecture',
+  // Fallback
+  'OTHER': 'Other',
 }
 
 export const TAG_COLORS: Record<string, string> = {
+  // Core Development
   'FE': 'bg-blue-100 text-blue-700',
   'BE': 'bg-green-100 text-green-700',
-  'DB': 'bg-amber-100 text-amber-700',
+  'DB': 'bg-cyan-100 text-cyan-700',
+  'API': 'bg-teal-100 text-teal-700',
+  // Infrastructure & Operations
   'INFRA': 'bg-purple-100 text-purple-700',
   'CICD': 'bg-orange-100 text-orange-700',
-  'API': 'bg-cyan-100 text-cyan-700',
+  'DEVOPS': 'bg-amber-100 text-amber-700',
+  // Quality & Security
   'SECURITY': 'bg-red-100 text-red-700',
-  'DEVOPS': 'bg-indigo-100 text-indigo-700',
+  'TESTING': 'bg-pink-100 text-pink-700',
+  'PERF': 'bg-yellow-100 text-yellow-700',
+  // Architecture & Data
+  'DATA': 'bg-indigo-100 text-indigo-700',
+  'ARCH': 'bg-violet-100 text-violet-700',
+  // Fallback
+  'OTHER': 'bg-gray-100 text-gray-500',
 }
 
 /**
@@ -184,20 +218,38 @@ export const RELATION_EDGE_STYLES: Record<string, { stroke: string; strokeDashar
 /**
  * Common Tech Stack Items
  * Suggestions for tech_stack field
+ * Matches keywords in metadata_inference.py
  */
 export const COMMON_TECH_STACK = [
-  // Frontend
-  'React', 'Vue', 'Angular', 'TypeScript', 'JavaScript', 'Tailwind CSS', 'Vite',
-  // Backend
-  'FastAPI', 'Django', 'Flask', 'Node.js', 'Express', 'NestJS', 'Python',
-  // Database
+  // Languages
+  'Python', 'TypeScript', 'JavaScript',
+  // Frontend Frameworks
+  'React', 'Vue', 'Angular', 'Svelte', 'Next.js', 'Vite',
+  // Frontend Libraries
+  'Tailwind CSS', 'Zustand', 'TanStack Query',
+  // Backend Frameworks
+  'FastAPI', 'Django', 'Flask', 'Express', 'NestJS',
+  // Backend Libraries
+  'Pydantic', 'SQLAlchemy',
+  // Databases
   'PostgreSQL', 'MySQL', 'MongoDB', 'Redis', 'SQLite', 'TimescaleDB',
+  'Elasticsearch', 'Qdrant',
   // Infrastructure
-  'Docker', 'Kubernetes', 'Nomad', 'Terraform', 'AWS', 'GCP', 'Azure',
+  'Docker', 'Kubernetes', 'Nomad', 'Consul', 'Terraform',
+  // Cloud Providers
+  'AWS', 'GCP', 'Azure',
+  // Web Servers / Proxy
+  'Nginx', 'Traefik',
+  // Storage
+  'S3', 'MinIO',
+  // Message Queues
+  'RabbitMQ', 'Kafka', 'Celery',
+  // API & Protocols
+  'GraphQL', 'REST', 'gRPC', 'WebSocket', 'MCP',
   // CI/CD
   'GitHub Actions', 'GitLab CI', 'Jenkins', 'ArgoCD',
-  // Other
-  'GraphQL', 'REST', 'gRPC', 'RabbitMQ', 'Kafka', 'Nginx', 'Traefik',
+  // Data & AI
+  'Pandas', 'Airflow', 'LangChain', 'OpenAI', 'Anthropic',
 ] as const
 
 // =============================================================================

@@ -18,7 +18,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { useInvoices } from '@/features/billing'
-import type { Invoice, InvoiceStatus } from '@/features/billing'
+import type { InvoiceStatus } from '@/features/billing'
 
 export function InvoicesPage() {
   const { data, isLoading, error } = useInvoices()

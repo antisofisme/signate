@@ -41,20 +41,52 @@ job "puguh-frontend" {
       driver = "docker"
 
       config {
-        # Build image dari Dockerfile
-        # Atau upload pre-built image ke registry
-        image = "atlas-puguh-frontend:phase-a"
-
+        image = "nginx:alpine"
         ports = ["http"]
 
-        # Build from Dockerfile (development)
-        # Uncomment jika mau build di server
-        # build {
-        #   context = "/opt/atlas-puguh/frontend"
-        # }
+        # Mount dist folder dan nginx config
+        volumes = [
+          "/root/atlas-puguh/frontend/dist:/usr/share/nginx/html:ro",
+          "local/nginx.conf:/etc/nginx/conf.d/default.conf:ro"
+        ]
       }
 
-      # Environment variables (minimal untuk nginx)
+      # Nginx config untuk SPA routing
+      template {
+        data = <<EOF
+server {
+    listen 80;
+    server_name _;
+    root /usr/share/nginx/html;
+    index index.html;
+
+    # Gzip compression
+    gzip on;
+    gzip_types text/plain text/css application/json application/javascript text/xml application/xml;
+
+    # Health check endpoint
+    location /health {
+        access_log off;
+        return 200 'healthy';
+        add_header Content-Type text/plain;
+    }
+
+    # Static assets with cache
+    location /assets/ {
+        expires 1y;
+        add_header Cache-Control "public, immutable";
+    }
+
+    # SPA fallback - semua route diarahkan ke index.html
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+}
+EOF
+        destination = "local/nginx.conf"
+      }
+
+      # Environment variables
       env {
         NGINX_HOST = "0.0.0.0"
         NGINX_PORT = "80"
@@ -77,9 +109,9 @@ job "puguh-frontend" {
           "phase-a",
           "puguh",
 
-          # Traefik tags (jika mau pakai domain)
+          # Traefik tags
           "traefik.enable=true",
-          "traefik.http.routers.puguh-frontend.rule=Host(`puguh.atlashub.com`) || PathPrefix(`/`)",
+          "traefik.http.routers.puguh-frontend.rule=Host(`admin-puguh.atlashub.com`) || Host(`puguh.atlashub.com`)",
           "traefik.http.routers.puguh-frontend.entrypoints=web",
         ]
 
@@ -96,14 +128,6 @@ job "puguh-frontend" {
             grace           = "10s"
             ignore_warnings = false
           }
-        }
-
-        # TCP check
-        check {
-          name     = "tcp-alive"
-          type     = "tcp"
-          interval = "30s"
-          timeout  = "3s"
         }
       }
 

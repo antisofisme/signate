@@ -1,0 +1,27 @@
+{
+  "unversionedId": "advanced/scoping",
+  "id": "advanced/scoping",
+  "title": "Resource Scoping",
+  "description": "Understand how resources are scoped in ATLAS PUGUH.",
+  "source": "@site/docs/advanced/scoping.md",
+  "sourceDirName": "advanced",
+  "slug": "/advanced/scoping",
+  "permalink": "/docs/advanced/scoping",
+  "draft": false,
+  "editUrl": "https://github.com/atlashub/puguh/tree/main/docs-site/docs/advanced/scoping.md",
+  "tags": [],
+  "version": "current",
+  "sidebarPosition": 2,
+  "frontMatter": {
+    "sidebar_position": 2
+  },
+  "sidebar": "tutorialSidebar",
+  "previous": {
+    "title": "Multi-Tenant Architecture",
+    "permalink": "/docs/advanced/multi-tenant"
+  },
+  "next": {
+    "title": "Best Practices",
+    "permalink": "/docs/advanced/best-practices"
+  }
+}

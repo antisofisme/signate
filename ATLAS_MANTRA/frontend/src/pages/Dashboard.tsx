@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { useState, useMemo } from 'react'
 import { api, Decision } from '../shared/api'
 import { GROUPS, GROUP_LABELS, FEATURES, FEATURE_LABELS } from '../shared/constants'
+import { getDecisionCounts, getCurrentCountsByGroup } from '../shared/decisionUtils'
 // Skeleton components available via ../components/ui/skeleton when needed
 
 const GROUP_COLORS: Record<string, { bg: string; text: string; light: string }> = {
@@ -27,6 +28,16 @@ export default function Dashboard() {
     queryFn: () => api.get('/api/v1/decisions').then(r => r.data),
   })
 
+  const { data: pendingApprovals } = useQuery({
+    queryKey: ['pending-approvals'],
+    queryFn: () => api.get('/api/v1/approvals/pending').then(r => r.data).catch(() => ({ approvals: [] })),
+  })
+
+  const { data: searchStats } = useQuery({
+    queryKey: ['search-stats'],
+    queryFn: () => api.get('/api/v1/search/stats').then(r => r.data).catch(() => null),
+  })
+
   // Global search - filter decisions by code, statement, or rationale
   const searchResults = useMemo(() => {
     if (!searchQuery.trim() || !decisions?.decisions) return []
@@ -43,13 +54,21 @@ export default function Dashboard() {
       .slice(0, 8) // Limit results
   }, [searchQuery, decisions?.decisions])
 
-  // Neutral metrics - structural counts only
-  const groupCounts = decisions?.decisions?.reduce((acc: Record<string, number>, d: any) => {
+  // Decision counts - current vs total
+  const decisionCounts = useMemo(() => {
+    return getDecisionCounts(decisions?.decisions || [])
+  }, [decisions?.decisions])
+
+  // Group counts for CURRENT decisions only
+  const currentGroupCounts = useMemo(() => {
+    return getCurrentCountsByGroup(decisions?.decisions || [])
+  }, [decisions?.decisions])
+
+  // Total group counts (for comparison)
+  const totalGroupCounts = decisions?.decisions?.reduce((acc: Record<string, number>, d: any) => {
     acc[d.group_id] = (acc[d.group_id] || 0) + 1
     return acc
   }, {} as Record<string, number>) || {}
-
-  const hasSupersedes = decisions?.decisions?.filter((d: any) => d.supersedes).length ?? 0
 
   const handleSearchSelect = (decisionId: string) => {
     setSearchQuery('')
@@ -187,12 +206,17 @@ export default function Dashboard() {
       </div>
 
       {/* Structural Metrics */}
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
         <div className="bg-white rounded-lg shadow-sm border p-6">
-          <div className="text-sm text-gray-500">Total Decisions</div>
+          <div className="text-sm text-gray-500">Current Decisions</div>
           <div className="text-3xl font-bold text-gray-900 mt-1">
-            {decisions?.total_count ?? 0}
+            {decisionCounts.current}
           </div>
+          {decisionCounts.superseded > 0 && (
+            <div className="text-xs text-gray-400 mt-1">
+              {decisionCounts.total} total ({decisionCounts.superseded} historical)
+            </div>
+          )}
         </div>
         <div className="bg-white rounded-lg shadow-sm border p-6">
           <div className="text-sm text-gray-500">Groups</div>
@@ -202,12 +226,26 @@ export default function Dashboard() {
           <div className="text-sm text-gray-500">Features</div>
           <div className="text-3xl font-bold text-indigo-600 mt-1">16</div>
         </div>
-        <div className="bg-white rounded-lg shadow-sm border p-6">
-          <div className="text-sm text-gray-500">Version Chains</div>
+        <Link
+          to="/timeline"
+          className="bg-white rounded-lg shadow-sm border p-6 hover:shadow-md transition-shadow"
+        >
+          <div className="text-sm text-gray-500">Historical Versions</div>
           <div className="text-3xl font-bold text-gray-500 mt-1">
-            {hasSupersedes}
+            {decisionCounts.superseded}
           </div>
-        </div>
+        </Link>
+        <Link
+          to="/approvals"
+          className="bg-white rounded-lg shadow-sm border p-6 hover:shadow-md transition-shadow"
+        >
+          <div className="text-sm text-gray-500">Pending Approvals</div>
+          <div className={`text-3xl font-bold mt-1 ${
+            (pendingApprovals?.approvals?.length ?? 0) > 0 ? 'text-amber-600' : 'text-gray-400'
+          }`}>
+            {pendingApprovals?.approvals?.length ?? 0}
+          </div>
+        </Link>
       </div>
 
       {/* Decision Groups */}
@@ -216,7 +254,9 @@ export default function Dashboard() {
         <div className="grid grid-cols-2 gap-4">
           {GROUPS.map(groupId => {
             const colors = GROUP_COLORS[groupId]
-            const count = groupCounts[groupId] ?? 0
+            const currentCount = currentGroupCounts[groupId] ?? 0
+            const totalCount = totalGroupCounts[groupId] ?? 0
+            const hasHistorical = totalCount > currentCount
             const features = FEATURES[groupId] || []
 
             return (
@@ -235,8 +275,11 @@ export default function Dashboard() {
                     </h4>
                   </div>
                   <div className="text-right">
-                    <div className="text-2xl font-bold text-gray-900">{count}</div>
-                    <div className="text-xs text-gray-500">decisions</div>
+                    <div className="text-2xl font-bold text-gray-900">{currentCount}</div>
+                    <div className="text-xs text-gray-500">current</div>
+                    {hasHistorical && (
+                      <div className="text-xs text-gray-400">({totalCount} total)</div>
+                    )}
                   </div>
                 </div>
                 <div className="mt-4 flex flex-wrap gap-2">
@@ -280,11 +323,37 @@ export default function Dashboard() {
       {/* Service Status */}
       <div className="bg-white rounded-lg shadow-sm border p-6">
         <h3 className="font-semibold text-gray-900 mb-4">Service Status</h3>
-        <div className="flex items-center space-x-3">
-          <span className={`w-3 h-3 rounded-full ${health ? 'bg-green-500' : 'bg-red-500'}`} />
-          <span className="text-gray-600">
-            {health ? 'Backend API Connected' : 'Backend API Unavailable'}
-          </span>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="flex items-center space-x-3">
+            <span className={`w-3 h-3 rounded-full ${health ? 'bg-green-500' : 'bg-red-500'}`} />
+            <div>
+              <div className="text-sm font-medium text-gray-700">Backend API</div>
+              <div className="text-xs text-gray-500">{health ? 'Connected' : 'Unavailable'}</div>
+            </div>
+          </div>
+          <div className="flex items-center space-x-3">
+            <span className={`w-3 h-3 rounded-full ${health?.mics_enabled ? 'bg-green-500' : 'bg-gray-300'}`} />
+            <div>
+              <div className="text-sm font-medium text-gray-700">MICS</div>
+              <div className="text-xs text-gray-500">{health?.mics_enabled ? 'Active' : 'Disabled'}</div>
+            </div>
+          </div>
+          <div className="flex items-center space-x-3">
+            <span className={`w-3 h-3 rounded-full ${searchStats?.qdrant_status === 'connected' ? 'bg-green-500' : 'bg-amber-500'}`} />
+            <div>
+              <div className="text-sm font-medium text-gray-700">Search Index</div>
+              <div className="text-xs text-gray-500">
+                {searchStats?.total_indexed ?? 0} indexed
+              </div>
+            </div>
+          </div>
+          <div className="flex items-center space-x-3">
+            <span className={`w-3 h-3 rounded-full ${health?.validation_rules ? 'bg-green-500' : 'bg-amber-500'}`} />
+            <div>
+              <div className="text-sm font-medium text-gray-700">Validation</div>
+              <div className="text-xs text-gray-500">{health?.validation_rules ?? 44} rules</div>
+            </div>
+          </div>
         </div>
       </div>
     </div>

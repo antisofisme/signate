@@ -10,7 +10,6 @@ import {
   CreditCard,
   Calendar,
   AlertTriangle,
-  CheckCircle,
   XCircle,
   ArrowUpRight,
   Loader2,
@@ -59,7 +58,9 @@ export function BillingSettingsPage() {
     )
   }
 
-  const { subscription, plan, usage } = data
+  const subscription = data.data
+  const plan = data.plan
+  const usage = data.usage
 
   const getStatusBadge = () => {
     switch (subscription.status) {

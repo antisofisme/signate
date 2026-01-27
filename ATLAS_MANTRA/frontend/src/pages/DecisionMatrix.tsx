@@ -1,8 +1,10 @@
 import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
+import { useMemo } from 'react'
 import { api } from '../shared/api'
 import { GROUPS, FEATURES, GROUP_LABELS, FEATURE_LABELS } from '../shared/constants'
 import { SkeletonMatrix } from '../components/ui/skeleton'
+import { buildSupersededSet } from '../shared/decisionUtils'
 
 /**
  * Matrix Overview Projection
@@ -27,19 +29,32 @@ export default function DecisionMatrix() {
     queryFn: () => api.get('/api/v1/grouped').then(r => r.data),
   })
 
+  // Build superseded set for filtering
+  const supersededSet = useMemo(() => {
+    if (!grouped?.grouped) return new Set<string>()
+    const allDecisions = Object.values(grouped.grouped)
+      .flatMap((group: any) => Object.values(group).flat())
+    return buildSupersededSet(allDecisions as any[])
+  }, [grouped])
+
   if (isLoading) {
     return <SkeletonMatrix />
   }
 
-  // Count decisions per group/feature
-  const getCount = (group: string, feature: string): number => {
+  // Count CURRENT decisions per group/feature
+  const getCurrentCount = (group: string, feature: string): number => {
+    const decisions = grouped?.grouped?.[group]?.[feature] ?? []
+    return decisions.filter((d: any) => !supersededSet.has(d.decision_id)).length
+  }
+
+  // Count TOTAL decisions per group/feature (for tooltip)
+  const getTotalCount = (group: string, feature: string): number => {
     return grouped?.grouped?.[group]?.[feature]?.length ?? 0
   }
 
-  // Count version chains (decisions with supersedes)
-  const getChainCount = (group: string, feature: string): number => {
-    const decisions = grouped?.grouped?.[group]?.[feature] ?? []
-    return decisions.filter((d: any) => d.supersedes).length
+  // Count historical decisions per group/feature
+  const getHistoricalCount = (group: string, feature: string): number => {
+    return getTotalCount(group, feature) - getCurrentCount(group, feature)
   }
 
   return (
@@ -74,13 +89,15 @@ export default function DecisionMatrix() {
                   </div>
                 </td>
                 {FEATURES[group].map((feature) => {
-                  const count = getCount(group, feature)
-                  const chainCount = getChainCount(group, feature)
+                  const currentCount = getCurrentCount(group, feature)
+                  const historicalCount = getHistoricalCount(group, feature)
+                  const totalCount = getTotalCount(group, feature)
                   return (
                     <td key={feature} className="px-4 py-4">
                       <Link
                         to={`/decisions?group=${group}&feature=${feature}`}
                         className="block p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors text-center border"
+                        title={`${currentCount} current, ${historicalCount} historical`}
                       >
                         <div className="text-xs text-gray-500 mb-1">
                           {feature}
@@ -89,14 +106,14 @@ export default function DecisionMatrix() {
                           {FEATURE_LABELS[feature]}
                         </div>
                         <div className="text-2xl font-bold text-gray-900">
-                          {count}
+                          {currentCount}
                         </div>
                         <div className="text-xs text-gray-500 mt-1">
-                          {count === 1 ? 'decision' : 'decisions'}
+                          current {currentCount === 1 ? 'decision' : 'decisions'}
                         </div>
-                        {chainCount > 0 && (
+                        {historicalCount > 0 && (
                           <div className="text-xs text-gray-400 mt-1">
-                            {chainCount} version {chainCount === 1 ? 'chain' : 'chains'}
+                            ({totalCount} total)
                           </div>
                         )}
                       </Link>

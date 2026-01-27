@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Plus, Edit2, Trash2, Building2, Check, X } from 'lucide-react'
+import { Plus, Edit2, Trash2, Building2, Check, X, AlertCircle, Lock } from 'lucide-react'
 import { Button, Card, CardContent, CardHeader, CardTitle, Input } from '@/components/ui'
 import { listTenants, createTenant, deleteTenant } from '@/lib/api'
 import { formatDate } from '@/lib/utils'
@@ -80,8 +80,42 @@ export function Tenants() {
 
   if (error) {
     return (
-      <div className="text-center text-red-500 p-4">
-        Failed to load tenants. Please try again.
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-2xl font-bold">Tenants</h1>
+          <p className="text-gray-500">Manage chat tenants and configurations</p>
+        </div>
+
+        <div className="bg-amber-50 border border-amber-200 rounded-xl p-6">
+          <div className="flex items-start gap-3">
+            <Lock className="h-6 w-6 text-amber-500 mt-0.5" />
+            <div>
+              <p className="font-medium text-amber-800">Admin authentication required</p>
+              <p className="text-sm text-amber-600 mt-1">
+                Tenant management requires admin privileges. Please sign in with an admin account to access this feature.
+              </p>
+              <p className="text-xs text-amber-500 mt-3">
+                Current tenant: <span className="font-mono">{localStorage.getItem('tenant_id') || 'none'}</span>
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Show demo tenant info */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <Building2 className="h-5 w-5 text-blue-600" />
+              Demo Tenant (Read-only)
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-gray-600">
+              You are currently using the demo tenant. Chat and other features are available,
+              but tenant management requires authentication.
+            </p>
+          </CardContent>
+        </Card>
       </div>
     )
   }

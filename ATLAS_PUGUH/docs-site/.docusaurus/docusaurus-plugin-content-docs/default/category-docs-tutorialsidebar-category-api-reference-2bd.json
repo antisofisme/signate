@@ -1,0 +1,16 @@
+{
+  "title": "API Reference",
+  "description": "Complete API documentation for ATLAS PUGUH.",
+  "slug": "/category/api-reference",
+  "permalink": "/docs/category/api-reference",
+  "navigation": {
+    "previous": {
+      "title": "Metrics Dashboard",
+      "permalink": "/docs/user-guides/control/rollback"
+    },
+    "next": {
+      "title": "API Authentication",
+      "permalink": "/docs/api-reference/authentication"
+    }
+  }
+}

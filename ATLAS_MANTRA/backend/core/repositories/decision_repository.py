@@ -3,6 +3,11 @@ Decision Repository
 
 Provides data access abstraction for Decision aggregate.
 Per MANTRA-LAW-001 §10, stored decisions are immutable.
+
+Architecture Note:
+    This ABC defines both sync and async methods. FastAPI routes MUST use
+    async methods (_async suffix) to avoid blocking the event loop.
+    Sync methods are provided for testing and non-async contexts.
 """
 
 from abc import ABC, abstractmethod
@@ -21,22 +26,32 @@ class DecisionRepository(ABC):
     - Write-once semantics
     - Append-only storage
     - Immutability enforcement
+
+    IMPORTANT: FastAPI routes MUST use async methods (suffix _async).
+    Sync methods may not work correctly in async contexts for DB implementations.
     """
+
+    # =========================================================================
+    # Sync Methods (for testing and non-async contexts)
+    # WARNING: These may return None/[] in async contexts for DB implementations
+    # =========================================================================
 
     @abstractmethod
     def save(self, stored_decision: StoredDecision) -> None:
         """
-        Save a decision.
+        Save a decision (sync version).
 
         Per MANTRA-LAW-001 §10:
         - MUST NOT modify existing decisions
         - MUST fail if decision_id already exists
+
+        NOTE: Use save_async() in FastAPI routes.
         """
         pass
 
     @abstractmethod
     def find_by_id(self, decision_id: str) -> Optional[StoredDecision]:
-        """Find a decision by its ID."""
+        """Find a decision by its ID (sync version). Use find_by_id_async() in routes."""
         pass
 
     @abstractmethod
@@ -45,7 +60,7 @@ class DecisionRepository(ABC):
         limit: int = 100,
         offset: int = 0
     ) -> List[StoredDecision]:
-        """Find all decisions with pagination."""
+        """Find all decisions (sync version). Use find_all_async() in routes."""
         pass
 
     @abstractmethod
@@ -55,7 +70,7 @@ class DecisionRepository(ABC):
         limit: int = 100,
         offset: int = 0
     ) -> List[StoredDecision]:
-        """Find decisions by group."""
+        """Find decisions by group (sync version). Use find_by_group_async() in routes."""
         pass
 
     # find_by_status: REMOVED per MANTRA-SPEC-001-AMENDMENT-001
@@ -63,34 +78,32 @@ class DecisionRepository(ABC):
 
     @abstractmethod
     def count(self) -> int:
-        """Count total decisions."""
+        """Count total decisions (sync version). Use count_async() in routes."""
         pass
 
     @abstractmethod
     def count_by_feature(self, feature_id: FeatureId) -> int:
         """
-        Count decisions by feature.
+        Count decisions by feature (sync version).
 
         Used for generating decision_code sequence numbers.
         Returns the count of all decisions with the given feature_id.
+        Use count_by_feature_async() in routes.
         """
         pass
 
     @abstractmethod
     def record_event(self, event: DecisionEvent) -> None:
-        """Record a domain event for audit trail."""
+        """Record a domain event (sync version). Use record_event_async() in routes."""
         pass
-
-    # =========================================================================
-    # Audit Trail Methods (Command-Style API)
-    # =========================================================================
 
     @abstractmethod
     def record_audit(self, entry: AuditEntry) -> None:
         """
-        Record an audit entry.
+        Record an audit entry (sync version).
 
         Per MANTRA-LAW-001: All operations must be auditable.
+        Use record_audit_async() in routes.
         """
         pass
 
@@ -104,9 +117,10 @@ class DecisionRepository(ABC):
         actor: Optional[str] = None,
     ) -> List[AuditEntry]:
         """
-        Get audit entries with optional filtering.
+        Get audit entries (sync version).
 
         Returns entries ordered by timestamp descending (most recent first).
+        Use get_audit_entries_async() in routes.
         """
         pass
 
@@ -117,17 +131,122 @@ class DecisionRepository(ABC):
         event_type: Optional[AuditEventType] = None,
         actor: Optional[str] = None,
     ) -> int:
-        """Count audit entries with optional filtering."""
+        """Count audit entries (sync version). Use count_audit_entries_async() in routes."""
         pass
 
     @abstractmethod
     def find_supersedes_chain(self, decision_id: str) -> List[StoredDecision]:
         """
-        Find the complete supersedes chain for a decision.
+        Find the complete supersedes chain (sync version).
 
         Returns: List of decisions in chain order (oldest first).
         - If decision A supersedes B, and B supersedes C:
           Returns [C, B, A] (chain from oldest to newest)
+
+        Use find_supersedes_chain_async() in routes.
+        """
+        pass
+
+    # =========================================================================
+    # Async Methods (REQUIRED for FastAPI routes)
+    # These are the primary interface for database implementations
+    # =========================================================================
+
+    @abstractmethod
+    async def save_async(self, stored_decision: StoredDecision) -> None:
+        """
+        Save a decision (async version - USE THIS IN ROUTES).
+
+        Per MANTRA-LAW-001 §10:
+        - MUST NOT modify existing decisions
+        - MUST fail if decision_id already exists
+        """
+        pass
+
+    @abstractmethod
+    async def find_by_id_async(self, decision_id: str) -> Optional[StoredDecision]:
+        """Find a decision by its ID (async version - USE THIS IN ROUTES)."""
+        pass
+
+    @abstractmethod
+    async def find_all_async(
+        self,
+        limit: int = 100,
+        offset: int = 0
+    ) -> List[StoredDecision]:
+        """Find all decisions with pagination (async version - USE THIS IN ROUTES)."""
+        pass
+
+    @abstractmethod
+    async def find_by_group_async(
+        self,
+        group_id: GroupId,
+        limit: int = 100,
+        offset: int = 0
+    ) -> List[StoredDecision]:
+        """Find decisions by group (async version - USE THIS IN ROUTES)."""
+        pass
+
+    @abstractmethod
+    async def count_async(self) -> int:
+        """Count total decisions (async version - USE THIS IN ROUTES)."""
+        pass
+
+    @abstractmethod
+    async def count_by_feature_async(self, feature_id: FeatureId) -> int:
+        """
+        Count decisions by feature (async version - USE THIS IN ROUTES).
+
+        Used for generating decision_code sequence numbers.
+        """
+        pass
+
+    @abstractmethod
+    async def record_event_async(self, event: DecisionEvent) -> None:
+        """Record a domain event (async version - USE THIS IN ROUTES)."""
+        pass
+
+    @abstractmethod
+    async def record_audit_async(self, entry: AuditEntry) -> None:
+        """
+        Record an audit entry (async version - USE THIS IN ROUTES).
+
+        Per MANTRA-LAW-001: All operations must be auditable.
+        """
+        pass
+
+    @abstractmethod
+    async def get_audit_entries_async(
+        self,
+        limit: int = 100,
+        offset: int = 0,
+        decision_id: Optional[str] = None,
+        event_type: Optional[AuditEventType] = None,
+        actor: Optional[str] = None,
+    ) -> List[AuditEntry]:
+        """
+        Get audit entries (async version - USE THIS IN ROUTES).
+
+        Returns entries ordered by timestamp descending (most recent first).
+        """
+        pass
+
+    @abstractmethod
+    async def count_audit_entries_async(
+        self,
+        decision_id: Optional[str] = None,
+        event_type: Optional[AuditEventType] = None,
+        actor: Optional[str] = None,
+    ) -> int:
+        """Count audit entries (async version - USE THIS IN ROUTES)."""
+        pass
+
+    @abstractmethod
+    async def find_supersedes_chain_async(self, decision_id: str) -> List[StoredDecision]:
+        """
+        Find the complete supersedes chain (async version - USE THIS IN ROUTES).
+
+        Returns: List of decisions in chain order (oldest first).
         """
         pass
 

@@ -10,8 +10,6 @@ import type {
   CreateTenantRequest,
   UpdateTenantRequest,
   InviteMemberRequest,
-  UpdateMemberRoleRequest,
-  AcceptInvitationRequest,
   MemberRole,
 } from '../types'
 

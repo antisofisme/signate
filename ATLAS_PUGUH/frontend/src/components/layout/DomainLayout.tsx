@@ -1,9 +1,10 @@
 /**
- * Domain Layout - Phase 4
- * Main layout with 5-domain navigation
+ * Domain Layout - Phase 4 + Phase 6 Help Integration
+ * Main layout with 5-domain navigation and help system
  */
 
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
+import { useEffect } from 'react'
 import {
   Users,
   Building2,
@@ -15,15 +16,18 @@ import {
   LayoutDashboard,
   LogOut,
   User,
+  HelpCircle,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useState } from 'react'
 import { useAuthStore } from '@/stores/authStore'
 import { useTenantStore } from '@/stores/tenantStore'
+import { useHelpStore } from '@/stores/helpStore'
 import { useLogout } from '@/features/auth/hooks'
 import { Button } from '@/components/ui/button'
 import { TenantSelector } from '@/components/TenantSelector'
 import { Badge } from '@/components/ui/badge'
+import { HelpSidebar, GuidedTour } from '@/components/help'
 
 interface DomainConfig {
   name: string
@@ -87,7 +91,25 @@ export function DomainLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const { user } = useAuthStore()
   const { currentTenant } = useTenantStore()
+  const { setCurrentPage, setOpen: setHelpOpen, hasSeenWelcome, setActiveTour, markWelcomeSeen } = useHelpStore()
   const logoutMutation = useLogout()
+
+  // Track current page for contextual help
+  useEffect(() => {
+    setCurrentPage(location.pathname)
+  }, [location.pathname, setCurrentPage])
+
+  // Show welcome tour for first-time users on dashboard
+  useEffect(() => {
+    if (!hasSeenWelcome && location.pathname === '/app') {
+      // Delay to allow page to render
+      const timer = setTimeout(() => {
+        setActiveTour('dashboard-intro')
+        markWelcomeSeen()
+      }, 1000)
+      return () => clearTimeout(timer)
+    }
+  }, [hasSeenWelcome, location.pathname, setActiveTour, markWelcomeSeen])
 
   return (
     <div className="min-h-screen bg-background">
@@ -112,7 +134,7 @@ export function DomainLayout() {
           </div>
 
           {/* Tenant Selector */}
-          <div className="hidden md:block">
+          <div className="hidden md:block" data-tour="tenant-selector">
             <TenantSelector className="bg-white/10 border-white/20 text-white hover:bg-white/20" />
           </div>
 
@@ -142,6 +164,17 @@ export function DomainLayout() {
                 <span>{user.name || user.email}</span>
               </div>
             )}
+            {/* Help Button */}
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-white hover:bg-white/10"
+              onClick={() => setHelpOpen(true)}
+              data-tour="help-button"
+            >
+              <HelpCircle size={16} className="mr-2" />
+              <span className="hidden sm:inline">Help</span>
+            </Button>
             <Button
               variant="ghost"
               size="sm"
@@ -158,10 +191,13 @@ export function DomainLayout() {
 
       <div className="flex">
         {/* Sidebar */}
-        <aside className={cn(
-          "fixed inset-y-0 left-0 z-30 w-64 transform bg-card border-r pt-14 transition-transform lg:translate-x-0 lg:static lg:pt-0",
-          sidebarOpen ? "translate-x-0" : "-translate-x-full"
-        )}>
+        <aside
+          data-tour="sidebar"
+          className={cn(
+            "fixed inset-y-0 left-0 z-30 w-64 transform bg-card border-r pt-14 transition-transform lg:translate-x-0 lg:static lg:pt-0",
+            sidebarOpen ? "translate-x-0" : "-translate-x-full"
+          )}
+        >
           <nav className="p-4 space-y-1">
             {/* Mobile Tenant Selector */}
             <div className="md:hidden mb-4">
@@ -242,6 +278,21 @@ export function DomainLayout() {
           <Outlet />
         </main>
       </div>
+
+      {/* Help System Components */}
+      <HelpSidebar />
+      <GuidedTour />
+
+      {/* Floating Help Button (mobile) */}
+      <Button
+        variant="default"
+        size="icon"
+        className="fixed bottom-4 right-4 rounded-full shadow-lg lg:hidden z-50 bg-amber-500 hover:bg-amber-600"
+        onClick={() => setHelpOpen(true)}
+        data-tour="help-button-mobile"
+      >
+        <HelpCircle className="h-5 w-5" />
+      </Button>
     </div>
   )
 }

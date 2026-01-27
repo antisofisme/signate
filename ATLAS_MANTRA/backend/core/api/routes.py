@@ -71,8 +71,9 @@ from ..use_cases.audit_log import (
     ListAuditResult,
 )
 from ..domain.decision import AuditEventType, ChallengeMetadata
-from ..repositories.decision_repository import DecisionRepository, InMemoryDecisionRepository
+from ..repositories.decision_repository import DecisionRepository
 from ..runtime.config import get_config
+from factory.container import Container
 
 
 # ============================================================================
@@ -81,53 +82,25 @@ from ..runtime.config import get_config
 
 router = APIRouter(prefix="/api/v1", tags=["decisions"])
 
-# Dependency injection for repository
-_repository: Optional[DecisionRepository] = None
-_repository_initialized: bool = False
-
 
 def get_repository() -> DecisionRepository:
-    """Get repository instance (singleton)."""
-    global _repository
-    if _repository is None:
-        # Fallback to in-memory if not set
-        # Production should call set_repository() with PostgresDecisionRepository
-        _repository = InMemoryDecisionRepository()
-    return _repository
+    """
+    Get repository instance from Container (singleton).
+
+    The repository is initialized during application startup via Container.initialize().
+    """
+    return Container.get_decision_repository()
 
 
 def set_repository(repo: DecisionRepository) -> None:
-    """Set repository instance (for testing/production switch)."""
-    global _repository, _repository_initialized
-    _repository = repo
-    _repository_initialized = True
+    """
+    Set repository instance (for testing purposes).
 
-
-async def initialize_repository() -> None:
-    """Initialize the repository (call on app startup)."""
-    global _repository, _repository_initialized
-
-    if _repository_initialized:
-        return
-
-    config = get_config()
-
-    if config.database_url:
-        try:
-            from adapters.repositories.postgres_decision_repository import PostgresDecisionRepository
-            repo = PostgresDecisionRepository(config.database_url)
-            await repo.initialize()
-            _repository = repo
-            _repository_initialized = True
-            print(f"  - Repository: PostgreSQL")
-        except Exception as e:
-            print(f"  - Repository: PostgreSQL FAILED ({e}), using InMemory")
-            _repository = InMemoryDecisionRepository()
-            _repository_initialized = True
-    else:
-        print(f"  - Repository: InMemory (no DATABASE_URL)")
-        _repository = InMemoryDecisionRepository()
-        _repository_initialized = True
+    Note: This directly sets the Container's internal repository.
+    Use Container.reset() to clear and reinitialize.
+    """
+    Container._decision_repository = repo
+    Container._repository_initialized = True
 
 
 # ============================================================================
@@ -182,6 +155,10 @@ class DecisionResponse(BaseModel):
     UX Enhancement (Phase 5):
     - decision_code provides human-readable identifier
     - Format: {group}-{feature}-{seq}-v{version}
+
+    MICS Two-Layer Content Model:
+    - Layer A: statement, rationale (summary/executive)
+    - Layer B: detailed_content, sections (full specification)
     """
     decision_id: str
     decision_code: Optional[str] = None
@@ -203,6 +180,10 @@ class DecisionResponse(BaseModel):
     # Projection fields
     tags: List[str] = []
     tech_stack: List[str] = []
+    # MICS Layer B Content
+    detailed_content: Optional[str] = None
+    sections: Optional[List[Dict[str, Any]]] = None
+    content_summary: Optional[str] = None
 
 
 class ListDecisionsResponse(BaseModel):
@@ -450,6 +431,13 @@ class EnhancedValidateResponse(BaseModel):
     # Metadata Inference (Phase 7) - Auto-suggested metadata
     metadata_suggestions: Optional[Dict[str, Any]] = None
 
+    # AI Classification - Auto-detect group/feature (when missing)
+    classification_required: bool = False  # True if group_id/feature_id missing
+    classification_context: Optional[Dict[str, Any]] = None  # For delegated AI
+
+    # Auto-Supersedes Detection - Suggest if this updates existing decision
+    supersedes_suggestion: Optional[Dict[str, Any]] = None
+
     # User Approval Flow - User must explicitly approve before storing
     requires_user_approval: bool = True  # Always true - user must approve
     approval_summary: Optional[Dict[str, Any]] = None  # Summary for user review
@@ -624,6 +612,25 @@ async def validate_enhanced_endpoint(
             for v in request.arbitration_verdicts
         ]
 
+    # =========================================================================
+    # AI CLASSIFICATION: Check if group_id/feature_id need classification
+    # =========================================================================
+    classification_required = False
+    classification_context = None
+    supersedes_suggestion = None
+
+    group_id = request.record.get('group_id')
+    feature_id = request.record.get('feature_id')
+    statement = request.record.get('statement', '')
+    rationale = request.record.get('rationale', '')
+    constraints = request.record.get('constraints', [])
+
+    # If group_id or feature_id missing, provide classification context
+    if not group_id or not feature_id:
+        from ..use_cases.ai_arbiter import get_classification_context
+        classification_required = True
+        classification_context = get_classification_context(statement, rationale, constraints)
+
     # Run enhanced validation
     result = await validate_enhanced_async(
         record=request.record,
@@ -635,6 +642,19 @@ async def validate_enhanced_endpoint(
 
     # Serialize to response
     serialized = serialize_enhanced_response(result)
+
+    # =========================================================================
+    # AUTO-SUPERSEDES: Check if this should supersede existing decision
+    # =========================================================================
+    # Only check if we have valid group/feature and statement
+    if group_id and feature_id and statement:
+        supersedes_suggestion = await _check_supersedes_suggestion(
+            statement=statement,
+            rationale=rationale,
+            group_id=group_id,
+            feature_id=feature_id,
+            repository=repository
+        )
 
     # =========================================================================
     # USER APPROVAL FLOW: Store proposal for later approval
@@ -678,6 +698,11 @@ async def validate_enhanced_endpoint(
         ai_verdicts=serialized.get('ai_verdicts'),
         # Metadata inference
         metadata_suggestions=serialized.get('metadata_suggestions'),
+        # AI Classification (when group_id/feature_id missing)
+        classification_required=classification_required,
+        classification_context=classification_context,
+        # Auto-Supersedes Detection
+        supersedes_suggestion=supersedes_suggestion,
         # User Approval Flow
         requires_user_approval=True,
         approval_summary=serialized.get('approval_summary'),
@@ -812,6 +837,384 @@ async def validate_impact_endpoint(
         recommendations=serialized['recommendations'],
         summary=serialized['summary'],
     )
+
+
+# ============================================================================
+# AI Classification Endpoint
+# ============================================================================
+
+class ClassifyRequest(BaseModel):
+    """Request body for decision classification."""
+    statement: str = Field(..., min_length=10, description="Decision statement to classify")
+    rationale: str = Field(..., min_length=10, description="Decision rationale")
+    constraints: Optional[List[Dict[str, Any]]] = Field(None, description="Decision constraints")
+    # Mode: SERVER = MANTRA's AI classifies, DELEGATED = return context for client AI
+    classification_mode: ArbitrationModeInput = Field(
+        ArbitrationModeInput.DELEGATED,
+        description="DELEGATED returns prompt for client AI, SERVER uses MANTRA's AI"
+    )
+    # If client AI already classified (delegated mode follow-up)
+    classification_result: Optional[Dict[str, Any]] = Field(
+        None,
+        description="Client AI's classification result: {group_id: str, feature_id: str, confidence: float}"
+    )
+
+
+class ClassifyResponse(BaseModel):
+    """Response body for decision classification."""
+    # Classification result (if available)
+    group_id: Optional[str] = None
+    feature_id: Optional[str] = None
+    group_label: Optional[str] = None
+    feature_label: Optional[str] = None
+    confidence: Optional[float] = None
+
+    # For delegated mode: context for client AI to classify
+    classification_required: bool = False
+    classification_context: Optional[Dict[str, Any]] = None
+
+    # Supersedes detection (auto-detect if this updates existing decision)
+    supersedes_suggestion: Optional[Dict[str, Any]] = None
+
+    # Status
+    is_valid: bool
+    message: str
+
+
+@router.post(
+    "/classify",
+    response_model=ClassifyResponse,
+    summary="Auto-classify decision into Group and Feature",
+    description="""
+    AI-powered decision classification.
+
+    **Purpose:**
+    - Remove human error in categorizing decisions
+    - AI determines the correct Group (INT/ARCH/CTL/EVO) and Feature (F01-F16)
+    - Also detects if this decision should supersede an existing one
+
+    **Modes:**
+    - DELEGATED (default): Returns prompt/context for your AI to classify
+    - SERVER: MANTRA's AI classifies directly (costs MANTRA)
+
+    **Flow:**
+    1. POST /classify with statement + rationale → Get classification_context
+    2. Your AI classifies using the context
+    3. POST /classify again with classification_result
+    4. Receive group_id, feature_id, and supersedes_suggestion
+
+    **Taxonomy:**
+    - INT: Intent & Direction (WHY/WHAT) → F01-F04
+    - ARCH: Architecture & Boundaries (HOW/WHERE) → F05-F08
+    - CTL: Control, Policy & Risk (CAN/MUST NOT) → F09-F12
+    - EVO: Execution & Evolution (CHANGE SAFELY) → F13-F16
+    """
+)
+async def classify_endpoint(
+    request: ClassifyRequest,
+    repository: DecisionRepository = Depends(get_repository)
+) -> ClassifyResponse:
+    """Classify decision into correct Group and Feature."""
+    from ..use_cases.ai_arbiter import (
+        DecisionClassifier,
+        get_classification_context,
+        validate_classification_result,
+        get_ai_client,
+    )
+    from ..domain.schema import GROUP_LABELS, FEATURE_LABELS
+
+    classifier = DecisionClassifier()
+
+    # If client provided classification result (delegated mode follow-up)
+    if request.classification_result:
+        group_id = request.classification_result.get('group_id', '').upper()
+        feature_id = request.classification_result.get('feature_id', '').upper()
+        confidence = float(request.classification_result.get('confidence', 0.8))
+
+        # Validate the classification
+        is_valid, error = validate_classification_result(group_id, feature_id)
+
+        if not is_valid:
+            return ClassifyResponse(
+                is_valid=False,
+                message=error or "Invalid classification",
+                classification_required=True,
+                classification_context=get_classification_context(
+                    request.statement,
+                    request.rationale,
+                    request.constraints
+                )
+            )
+
+        # Check for supersedes (similar existing decision)
+        supersedes_suggestion = await _check_supersedes_suggestion(
+            request.statement,
+            request.rationale,
+            group_id,
+            feature_id,
+            repository
+        )
+
+        return ClassifyResponse(
+            group_id=group_id,
+            feature_id=feature_id,
+            group_label=GROUP_LABELS.get(group_id, group_id),
+            feature_label=FEATURE_LABELS.get(feature_id, feature_id),
+            confidence=confidence,
+            supersedes_suggestion=supersedes_suggestion,
+            is_valid=True,
+            message=f"Classified as {group_id}/{feature_id}" + (
+                f" (suggests supersedes {supersedes_suggestion['existing_code']})"
+                if supersedes_suggestion else ""
+            )
+        )
+
+    # DELEGATED mode: Return context for client AI
+    if request.classification_mode == ArbitrationModeInput.DELEGATED:
+        ctx = get_classification_context(
+            request.statement,
+            request.rationale,
+            request.constraints
+        )
+        return ClassifyResponse(
+            classification_required=True,
+            classification_context=ctx,
+            is_valid=True,
+            message="Classification context provided. Use your AI to classify, then submit classification_result."
+        )
+
+    # SERVER mode: Use MANTRA's AI (requires configured AI client)
+    ai_client = get_ai_client()
+
+    if not ai_client.is_configured:
+        # Fallback to delegated mode if AI not configured
+        ctx = get_classification_context(
+            request.statement,
+            request.rationale,
+            request.constraints
+        )
+        return ClassifyResponse(
+            classification_required=True,
+            classification_context=ctx,
+            is_valid=True,
+            message="Server-side AI not configured. Please use delegated mode or provide classification_result."
+        )
+
+    # Build classifier and perform server-side classification
+    classifier = DecisionClassifier()
+    prompt = classifier.build_prompt(
+        request.statement,
+        request.rationale,
+        request.constraints
+    )
+
+    try:
+        # Call AI for classification
+        response_text = await ai_client.complete(prompt)
+        result = classifier._parse_response(response_text)
+
+        if result.requires_ai or not result.group_id:
+            # AI response couldn't be parsed - return delegated context
+            ctx = get_classification_context(
+                request.statement,
+                request.rationale,
+                request.constraints
+            )
+            return ClassifyResponse(
+                classification_required=True,
+                classification_context=ctx,
+                is_valid=True,
+                message="AI classification failed to produce valid result. Please use delegated mode."
+            )
+
+        # Successful classification - check for supersedes
+        supersedes_suggestion = await _check_supersedes_suggestion(
+            request.statement,
+            request.rationale,
+            result.group_id,
+            result.feature_id,
+            repository
+        )
+
+        return ClassifyResponse(
+            classification_required=False,
+            group_id=result.group_id,
+            feature_id=result.feature_id,
+            confidence=result.confidence,
+            supersedes_suggestion=supersedes_suggestion,
+            is_valid=True,
+            message=f"AI classified as {result.group_id}/{result.feature_id} (confidence: {result.confidence:.0%})" + (
+                f" - suggests supersedes {supersedes_suggestion['existing_code']}"
+                if supersedes_suggestion else ""
+            )
+        )
+
+    except Exception as e:
+        # AI call failed - fallback to delegated mode
+        ctx = get_classification_context(
+            request.statement,
+            request.rationale,
+            request.constraints
+        )
+        return ClassifyResponse(
+            classification_required=True,
+            classification_context=ctx,
+            is_valid=True,
+            message=f"Server-side AI error: {str(e)}. Please use delegated mode."
+        )
+
+
+async def _check_supersedes_suggestion(
+    statement: str,
+    rationale: str,
+    group_id: str,
+    feature_id: str,
+    repository: DecisionRepository
+) -> Optional[Dict[str, Any]]:
+    """
+    Check if this decision should supersede an existing one.
+
+    TIERED APPROACH (minimize AI cost):
+    - >80% similarity: AUTO (auto-set supersedes, no AI needed)
+    - 60-80% similarity: AI_REVIEW (delegated AI decides)
+    - 40-60% similarity: MANUAL_REVIEW (human decides)
+    - <40% similarity: NOT_RELATED (no suggestion)
+
+    This approach uses simple word-overlap first, only invoking AI for ambiguous cases.
+    """
+    try:
+        # Convert string to enum for repository call
+        from ..domain.schema import GroupId, FeatureId
+        group_enum = GroupId(group_id)
+
+        # Get existing decisions in same group, then filter by feature
+        all_in_group = await repository.find_by_group_async(
+            group_id=group_enum,
+            limit=50  # Get more to filter
+        )
+
+        # Filter by feature_id (compare enum values or strings)
+        existing = [
+            d for d in all_in_group
+            if (d.decision.feature_id.value if hasattr(d.decision.feature_id, 'value') else d.decision.feature_id) == feature_id
+        ][:10]
+
+        if not existing:
+            return None
+
+        # Simple similarity check (Jaccard index on words)
+        statement_lower = statement.lower()
+        rationale_lower = rationale.lower()
+
+        best_match = None
+        best_score = 0.0
+
+        for stored in existing:
+            # Calculate word overlap similarity (Jaccard index)
+            # stored is StoredDecision, access .decision for the actual Decision
+            existing_statement = (stored.decision.statement or '').lower()
+            existing_rationale = (stored.decision.rationale or '').lower()
+
+            # Statement similarity
+            statement_words = set(statement_lower.split())
+            existing_words = set(existing_statement.split())
+
+            if not statement_words or not existing_words:
+                continue
+
+            overlap = len(statement_words & existing_words)
+            union = len(statement_words | existing_words)
+            stmt_similarity = overlap / union if union > 0 else 0
+
+            # Rationale similarity (if available)
+            rat_similarity = 0.0
+            rationale_words = set(rationale_lower.split())
+            existing_rat_words = set(existing_rationale.split())
+            if rationale_words and existing_rat_words:
+                rat_overlap = len(rationale_words & existing_rat_words)
+                rat_union = len(rationale_words | existing_rat_words)
+                rat_similarity = rat_overlap / rat_union if rat_union > 0 else 0
+
+            # Combined similarity (weighted: statement 60%, rationale 40%)
+            similarity = (stmt_similarity * 0.6) + (rat_similarity * 0.4)
+
+            if similarity > best_score and similarity >= 0.4:
+                best_score = similarity
+                best_match = stored  # StoredDecision object
+
+        if not best_match or best_score < 0.4:
+            return None
+
+        # TIERED DECISION:
+        # >80%: AUTO - definitely an update, auto-supersedes
+        # 60-80%: AI_REVIEW - likely an update, AI decides
+        # 40-60%: MANUAL_REVIEW - possibly related, human decides
+
+        # best_match is StoredDecision, access .decision for attributes
+        match_decision = best_match.decision
+
+        if best_score >= 0.8:
+            # HIGH confidence - AUTO supersedes
+            recommendation = 'AUTO'
+            message = (
+                f"SIMILARITY {int(best_score * 100)}%: This is clearly an update to "
+                f"{match_decision.decision_code or match_decision.decision_id[:8]}. "
+                f"Supersedes will be auto-set."
+            )
+            auto_populate = {'supersedes': match_decision.decision_id}
+            ai_context = None
+
+        elif best_score >= 0.6:
+            # MEDIUM confidence - AI decides
+            recommendation = 'AI_REVIEW'
+            message = (
+                f"SIMILARITY {int(best_score * 100)}%: This might be an update to "
+                f"{match_decision.decision_code or match_decision.decision_id[:8]}. "
+                f"AI will determine if this should supersede."
+            )
+            auto_populate = None
+            # Provide context for delegated AI
+            ai_context = {
+                'prompt': (
+                    f"Decide if the NEW decision supersedes the EXISTING decision.\n\n"
+                    f"NEW:\n  Statement: \"{statement[:200]}...\"\n\n"
+                    f"EXISTING ({match_decision.decision_code or match_decision.decision_id[:8]}):\n"
+                    f"  Statement: \"{match_decision.statement[:200]}...\"\n\n"
+                    f"Respond JSON only: {{\"is_supersedes\": true|false, \"confidence\": 0.0-1.0}}"
+                ),
+                'existing_id': match_decision.decision_id,
+                'existing_code': match_decision.decision_code,
+            }
+
+        else:
+            # LOW confidence - manual review
+            recommendation = 'MANUAL_REVIEW'
+            message = (
+                f"SIMILARITY {int(best_score * 100)}%: This might be related to "
+                f"{match_decision.decision_code or match_decision.decision_id[:8]}. "
+                f"Please review if this should supersede or be a separate decision."
+            )
+            auto_populate = None
+            ai_context = None
+
+        return {
+            'existing_id': match_decision.decision_id,
+            'existing_code': match_decision.decision_code or f"{group_id}-{feature_id}",
+            'existing_statement': (
+                match_decision.statement[:100] + '...'
+                if len(match_decision.statement) > 100
+                else match_decision.statement
+            ),
+            'similarity': round(best_score, 2),
+            'recommendation': recommendation,
+            'message': message,
+            'auto_populate': auto_populate,
+            'ai_context': ai_context,
+        }
+
+    except Exception:
+        # Silently fail - supersedes suggestion is optional
+        return None
 
 
 # ============================================================================
@@ -1003,6 +1406,9 @@ async def store_endpoint(
         related_decisions=request.decision.related_decisions,
         tags=request.decision.tags,
         tech_stack=request.decision.tech_stack,
+        # Layer B Content (MICS Long Content Strategy)
+        detailed_content=request.decision.detailed_content,
+        sections=request.decision.sections,
     )
 
     # Store decision - use async version to ensure persistence completes
@@ -1092,6 +1498,19 @@ async def list_endpoint(
                 related_decisions=d.related_decisions,
                 tags=d.tags,
                 tech_stack=d.tech_stack,
+                # MICS Layer B Content
+                detailed_content=getattr(d, 'detailed_content', None),
+                sections=[
+                    {
+                        "section_id": s.section_id,
+                        "title": s.title,
+                        "section_type": s.section_type.value if hasattr(s.section_type, 'value') else s.section_type,
+                        "content": s.content,
+                        "order": s.order
+                    }
+                    for s in getattr(d, 'sections', []) or []
+                ] if getattr(d, 'sections', None) else None,
+                content_summary=getattr(d, 'content_summary', None),
             )
             for d in decisions
         ],
@@ -1142,6 +1561,19 @@ async def get_endpoint(
         related_decisions=d.related_decisions,
         tags=d.tags,
         tech_stack=d.tech_stack,
+        # MICS Layer B Content
+        detailed_content=getattr(d, 'detailed_content', None),
+        sections=[
+            {
+                "section_id": s.section_id,
+                "title": s.title,
+                "section_type": s.section_type.value if hasattr(s.section_type, 'value') else s.section_type,
+                "content": s.content,
+                "order": s.order
+            }
+            for s in getattr(d, 'sections', []) or []
+        ] if getattr(d, 'sections', None) else None,
+        content_summary=getattr(d, 'content_summary', None),
     )
 
 
@@ -1209,6 +1641,164 @@ async def health_endpoint() -> HealthResponse:
         version="1.0.0",
         timestamp=datetime.utcnow()
     )
+
+
+# ============================================================================
+# MICS Context Assembly Endpoints
+# ============================================================================
+
+class ContextRequest(BaseModel):
+    """Request body for context assembly endpoint."""
+    task_description: str = Field(..., description="What you're trying to accomplish")
+    code_context: Optional[str] = Field(None, description="Current code or file path for context")
+    token_budget: int = Field(default=2000, ge=100, le=10000, description="Max tokens for context")
+    include_groups: Optional[List[str]] = Field(None, description="Only include these groups")
+    exclude_groups: Optional[List[str]] = Field(None, description="Exclude these groups")
+    detail_level: Optional[str] = Field(
+        default="standard",
+        description="micro|standard|detailed|sections - controls content depth"
+    )
+
+
+class ContextResponse(BaseModel):
+    """Response body for context assembly endpoint."""
+    decisions: List[Dict[str, Any]]
+    total_tokens: int
+    token_budget: int
+    context_summary: str
+    task_analysis: Dict[str, Any]
+    priority_breakdown: Dict[str, int]
+
+
+@router.post(
+    "/context",
+    response_model=ContextResponse,
+    summary="Get relevant context for a task (MICS)",
+    description="""
+    MICS Smart Context Injection - Get relevant decisions for your current task.
+
+    **Pipeline:**
+    1. Analyze task description to extract intent and keywords
+    2. Select relevant decisions from the knowledge base
+    3. Rank by relevance to your task
+    4. Allocate token budget across decisions
+    5. Return context with appropriate detail levels
+
+    **Token Budget Strategy:**
+    - Critical decisions (60%): Full detailed content (Layer B)
+    - High priority (30%): Standard content (Layer A)
+    - Medium priority (10%): Micro summaries only
+
+    **Detail Levels:**
+    - micro: ~100 tokens - content_summary only
+    - standard: ~500 tokens - statement + rationale
+    - detailed: ~2000+ tokens - full content including Layer B
+    - sections: variable - specific sections only
+
+    Use this to inject relevant MANTRA context into your AI workflow.
+    """
+)
+async def get_context_endpoint(
+    request: ContextRequest,
+    repository: DecisionRepository = Depends(get_repository)
+) -> ContextResponse:
+    """Get relevant context for a task using MICS pipeline."""
+    try:
+        from context.pipeline import ContextPipeline
+
+        pipeline = ContextPipeline(repository)
+        result = await pipeline.assemble(
+            task=request.task_description,
+            code=request.code_context,
+            budget=request.token_budget,
+            include_groups=request.include_groups,
+            exclude_groups=request.exclude_groups
+        )
+
+        return ContextResponse(
+            decisions=result.get("decisions", []),
+            total_tokens=result.get("total_tokens", 0),
+            token_budget=request.token_budget,
+            context_summary=result.get("context_summary", ""),
+            task_analysis=result.get("task_analysis", {}),
+            priority_breakdown=result.get("priority_breakdown", {})
+        )
+    except ImportError:
+        # Fallback if context module not available
+        return ContextResponse(
+            decisions=[],
+            total_tokens=0,
+            token_budget=request.token_budget,
+            context_summary="Context pipeline not available",
+            task_analysis={"task": request.task_description, "error": "Module not loaded"},
+            priority_breakdown={}
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Context assembly failed: {str(e)}"
+        )
+
+
+class SummaryRequest(BaseModel):
+    """Request body for content summary generation."""
+    record: Dict[str, Any] = Field(..., description="Decision record to summarize")
+
+
+class SummaryResponse(BaseModel):
+    """Response body for content summary generation."""
+    summary: str
+    word_count: int
+    estimated_tokens: int
+    key_terms: List[str]
+    compression_ratio: float
+
+
+@router.post(
+    "/summarize",
+    response_model=SummaryResponse,
+    summary="Generate content summary for a decision (MICS)",
+    description="""
+    Generate a token-efficient summary for a decision record.
+
+    Used for:
+    - Auto-populating content_summary field (Layer A)
+    - Micro-level context injection (~100 tokens)
+    - Quick reference in AI prompts
+
+    The summary preserves:
+    - Key decision intent
+    - Technical terminology
+    - Actionable clarity
+
+    Compresses to ~50-100 words while maintaining meaning.
+    """
+)
+async def generate_summary_endpoint(request: SummaryRequest) -> SummaryResponse:
+    """Generate content summary for a decision."""
+    try:
+        from context.summarizer import ContentSummarizer
+
+        summarizer = ContentSummarizer()
+        result = summarizer.summarize(request.record)
+
+        return SummaryResponse(
+            summary=result.summary,
+            word_count=result.word_count,
+            estimated_tokens=result.estimated_tokens,
+            key_terms=result.key_terms,
+            compression_ratio=result.compression_ratio
+        )
+    except ImportError:
+        # Fallback - simple truncation
+        statement = request.record.get("statement", "")
+        return SummaryResponse(
+            summary=statement[:200] + "..." if len(statement) > 200 else statement,
+            word_count=len(statement.split()),
+            estimated_tokens=len(statement) // 4,
+            key_terms=[],
+            compression_ratio=1.0
+        )
 
 
 # ============================================================================
@@ -1697,3 +2287,704 @@ async def audit_list_endpoint(
         limit=limit,
         offset=offset,
     )
+
+
+# ============================================================================
+# MCP Tool Routes (HTTP Bridge)
+# ============================================================================
+# These routes expose MCP tools via HTTP for testing and alternative integration.
+# IMPORTANT: Write operations require human_confirmed=true
+
+class MCPClassifyRequest(BaseModel):
+    """Request for AI decision classification."""
+    statement: str = Field(..., description="Decision statement to classify")
+    rationale: str = Field(..., description="Decision rationale")
+    constraints: Optional[List[Dict[str, Any]]] = Field(default=None, description="Optional constraints")
+
+
+class MCPClassifyResponse(BaseModel):
+    """Response with delegated classification context."""
+    classification_type: str
+    prompt: str
+    taxonomy: str
+    expected_response: Dict[str, Any]
+
+
+@router.post(
+    "/mcp/classify",
+    response_model=MCPClassifyResponse,
+    summary="Get AI classification context (delegated)",
+    description="""
+    Returns classification context for delegated AI mode.
+    The calling AI performs the actual classification using the returned prompt.
+    MANTRA does NOT call AI - the cost is on the user's AI.
+    """
+)
+async def mcp_classify(
+    request: MCPClassifyRequest,
+) -> MCPClassifyResponse:
+    """Get classification context for delegated AI."""
+    from ..use_cases.ai_arbiter.decision_classifier import get_classification_context
+
+    result = get_classification_context(
+        statement=request.statement,
+        rationale=request.rationale,
+        constraints=request.constraints,
+    )
+
+    return MCPClassifyResponse(
+        classification_type=result.get("classification_type", "DECISION_CLASSIFICATION"),
+        prompt=result.get("prompt", ""),
+        taxonomy=result.get("taxonomy", ""),
+        expected_response=result.get("expected_response", {}),
+    )
+
+
+class MCPProposeRequest(BaseModel):
+    """Request to propose a new decision."""
+    decision: Dict[str, Any] = Field(..., description="Decision record to propose")
+    proposed_by: str = Field(default="ai_assistant", description="Who is proposing")
+    classification_result: Optional[Dict[str, Any]] = Field(
+        default=None,
+        description="Classification result from AI (group_id, feature_id, confidence)"
+    )
+
+
+class MCPProposeResponse(BaseModel):
+    """Response from propose operation."""
+    result: str
+    proposal_id: Optional[str] = None
+    decision_id: Optional[str] = None
+    validation_status: Optional[str] = None
+    advisory_notes: Optional[List[str]] = None
+    blocking_reasons: Optional[List[str]] = None
+    error: Optional[str] = None
+
+
+@router.post(
+    "/mcp/propose",
+    response_model=MCPProposeResponse,
+    summary="Propose a new decision (validate without storing)",
+    description="""
+    Validates a decision and creates a proposal for human review.
+    Does NOT store the decision - human must approve via /mcp/store.
+    """
+)
+async def mcp_propose(
+    request: MCPProposeRequest,
+    repository: DecisionRepository = Depends(get_repository),
+) -> MCPProposeResponse:
+    """Propose a decision for human review."""
+    import uuid
+    from datetime import datetime
+    from ..use_cases.validate_decision import DecisionValidator
+    from ..use_cases.quality_scoring import assess_quality
+
+    decision = request.decision.copy()
+
+    # Apply classification result if provided
+    if request.classification_result:
+        if "group_id" in request.classification_result:
+            decision["group_id"] = request.classification_result["group_id"]
+        if "feature_id" in request.classification_result:
+            decision["feature_id"] = request.classification_result["feature_id"]
+
+    # Generate IDs if not present
+    if "decision_id" not in decision:
+        decision["decision_id"] = str(uuid.uuid4())
+
+    # Validate
+    try:
+        from ..use_cases.validate_decision import ValidationStatus
+        validator = DecisionValidator()
+        result = validator.validate(decision)
+
+        if result.status != ValidationStatus.VALID:
+            # Extract error messages from violations
+            error_messages = [v.message for v in result.violations] if result.violations else []
+            return MCPProposeResponse(
+                result="INVALID",
+                blocking_reasons=error_messages,
+                error=error_messages[0] if error_messages else "Validation failed",
+            )
+
+        # Quality assessment
+        quality = assess_quality(decision)
+
+        # Generate proposal
+        proposal_id = str(uuid.uuid4())
+
+        return MCPProposeResponse(
+            result="READY",
+            proposal_id=proposal_id,
+            decision_id=decision["decision_id"],
+            validation_status="VALID",
+            advisory_notes=[
+                f"Quality score: {quality.overall_score}/100",
+                "Decision is valid and ready to store.",
+                "Call POST /mcp/store with human_confirmed=true to store.",
+            ],
+        )
+    except Exception as e:
+        return MCPProposeResponse(
+            result="ERROR",
+            error=str(e),
+        )
+
+
+class MCPStoreRequest(BaseModel):
+    """Request to store a decision."""
+    decision: Dict[str, Any] = Field(..., description="Decision record to store")
+    human_confirmed: bool = Field(..., description="MUST be true - human has reviewed and approved")
+    stored_by: str = Field(default="human_user", description="Who is storing (should be human)")
+
+
+class MCPStoreResponse(BaseModel):
+    """Response from store operation."""
+    action: str
+    reason: Optional[str] = None
+    message: Optional[str] = None
+    decision_id: Optional[str] = None
+    decision_code: Optional[str] = None
+    stored_at: Optional[str] = None
+
+
+@router.post(
+    "/mcp/store",
+    response_model=MCPStoreResponse,
+    summary="Store a decision (requires human confirmation)",
+    description="""
+    Stores a decision in MANTRA.
+
+    IMPORTANT: human_confirmed MUST be true.
+    This ensures a human has reviewed and approved the decision.
+    AI assistants should NOT set human_confirmed=true automatically.
+    """
+)
+async def mcp_store(
+    request: MCPStoreRequest,
+    repository: DecisionRepository = Depends(get_repository),
+) -> MCPStoreResponse:
+    """Store a decision with human confirmation."""
+    if not request.human_confirmed:
+        return MCPStoreResponse(
+            action="REJECTED",
+            reason="HUMAN_CONFIRMATION_REQUIRED",
+            message=(
+                "Cannot store decision without human confirmation. "
+                "Set human_confirmed=true ONLY after the human user has reviewed "
+                "and explicitly approved this decision. AI assistants must NOT "
+                "set this flag automatically."
+            ),
+        )
+
+    try:
+        import uuid
+        from ..domain.schema import Decision, GroupId, FeatureId, Scope, BlastRadius
+
+        dec = request.decision
+
+        # Create Decision object (not DecisionCreate)
+        decision_obj = Decision(
+            decision_id=dec.get("decision_id") or str(uuid.uuid4()),
+            group_id=GroupId(dec.get("group_id", "INT")),
+            feature_id=FeatureId(dec.get("feature_id", "F01")),
+            statement=dec.get("statement", ""),
+            rationale=dec.get("rationale", ""),
+            version=dec.get("version", "1.0.0"),
+            constraints=dec.get("constraints", []),
+            invariants=dec.get("invariants", []),
+            scope=Scope(dec.get("scope", "APPLICATION")),
+            blast_radius=BlastRadius(dec.get("blast_radius", "LOW")),
+            created_by=request.stored_by,
+            created_at=datetime.utcnow(),
+            related_decisions=dec.get("related_decisions", []),
+            tags=dec.get("tags", []),
+            tech_stack=dec.get("tech_stack", []),
+            supersedes=dec.get("supersedes"),
+        )
+
+        # Store using repository
+        result = await store_decision_async(
+            decision_obj,
+            request.stored_by,
+            repository,
+        )
+
+        if result.result == StoreResult.STORED:
+            return MCPStoreResponse(
+                action="STORED",
+                decision_id=result.decision_id,
+                stored_at=result.stored_at.isoformat() if result.stored_at else datetime.utcnow().isoformat(),
+            )
+        else:
+            return MCPStoreResponse(
+                action="FAILED",
+                reason=result.result.value,
+                message=result.error_message,
+            )
+    except Exception as e:
+        return MCPStoreResponse(
+            action="ERROR",
+            reason="EXCEPTION",
+            message=str(e),
+        )
+
+
+class MCPTaskContextRequest(BaseModel):
+    """Request for MICS task context."""
+    intent: str = Field(..., description="What the user wants to do (e.g., 'deploy to production')")
+    target: Optional[str] = Field(default=None, description="Target component/service")
+    environment: Optional[str] = Field(default=None, description="Environment (dev/staging/production)")
+    code_context: Optional[str] = Field(default=None, description="Current code context")
+    token_budget: int = Field(default=4000, description="Max tokens for context")
+
+
+class MCPTaskContextResponse(BaseModel):
+    """Response with MICS task context."""
+    agent: Optional[Dict[str, Any]] = None
+    relevant_decisions: Optional[List[Dict[str, Any]]] = None
+    checklist: Optional[List[str]] = None
+    critical_rules: Optional[List[str]] = None
+    context_prompt: Optional[str] = None
+    token_count: Optional[int] = None
+    error: Optional[str] = None
+
+
+@router.post(
+    "/mcp/task-context",
+    response_model=MCPTaskContextResponse,
+    summary="Get intelligent task context (MICS)",
+    description="""
+    Returns context-aware guidance for a specific task.
+
+    MICS (MANTRA Intelligent Context System) analyzes the intent
+    and returns:
+    - Relevant agent profile (deployment, database, frontend, etc.)
+    - Applicable decisions from MANTRA
+    - Pre-flight checklist
+    - Critical rules that must be followed
+
+    This uses the 7-stage Context Assembly Pipeline:
+    1. Intent Recognition - Identify task type
+    2. Agent Loading - Load from YAML definitions
+    3. Decision Retrieval - Get relevant decisions
+    4. Constraint Extraction - Extract rules
+    5. Codebase Context - Add file info
+    6. Template Rendering - Build prompt
+    7. Platform Adaptation - Format for target
+    """
+)
+async def mcp_task_context(
+    request: MCPTaskContextRequest,
+    repository: DecisionRepository = Depends(get_repository),
+) -> MCPTaskContextResponse:
+    """
+    Get MICS task context using 7-stage Context Assembly Pipeline.
+
+    Uses MICSToolProvider with AgentLoader for:
+    - YAML-based agent definitions (Universal Agent Format)
+    - Actual decision retrieval from repository
+    - Constraint extraction from both agents and decisions
+    - Template rendering with context variables
+    """
+    import os
+
+    try:
+        # Import MICSToolProvider
+        import sys
+        backend_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        if backend_dir not in sys.path:
+            sys.path.insert(0, backend_dir)
+        from mcp.tools import MICSToolProvider
+
+        # Initialize with repository and agents directory
+        agents_dir = os.path.join(backend_dir, "agents")
+
+        mics_provider = MICSToolProvider(
+            repository=repository,
+            agents_dir=agents_dir
+        )
+
+        # Call the full 7-stage pipeline
+        result = await mics_provider.get_task_context(
+            intent=request.intent,
+            target=request.target,
+            environment=request.environment,
+            code_context=request.code_context,
+            token_budget=request.token_budget,
+            platform="claude-code"
+        )
+
+        # Extract task_context from result
+        task_ctx = result.get("task_context", {})
+        meta = result.get("meta", {})
+
+        # Build response in expected format
+        agent_info = task_ctx.get("agent", {})
+        decisions = task_ctx.get("decisions", [])
+        constraints = task_ctx.get("constraints", {})
+        checklist_items = task_ctx.get("checklist", [])
+
+        # Convert checklist to list of strings
+        checklist_strings = []
+        for item in checklist_items:
+            if isinstance(item, dict):
+                step = item.get("step", "")
+                cmd = item.get("command", "")
+                if cmd:
+                    checklist_strings.append(f"{step} (`{cmd}`)")
+                else:
+                    checklist_strings.append(step)
+            else:
+                checklist_strings.append(str(item))
+
+        # Extract critical rules (blocking constraints/prohibitions)
+        critical_rules = constraints.get("prohibitions", [])
+        critical_rules.extend(constraints.get("requirements", [])[:3])  # Add top 3 requirements
+
+        return MCPTaskContextResponse(
+            agent={
+                "id": agent_info.get("id", "backend-agent"),
+                "name": agent_info.get("name", "Backend Agent"),
+                "version": agent_info.get("version", "1.0.0"),
+                "category": agent_info.get("category", "general"),
+                "confidence": agent_info.get("confidence", 0.5),
+            },
+            relevant_decisions=decisions if decisions else None,
+            checklist=checklist_strings if checklist_strings else None,
+            critical_rules=critical_rules if critical_rules else None,
+            context_prompt=task_ctx.get("prompt"),
+            token_count=meta.get("token_estimate", 0),
+        )
+
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).error(f"MICS task context error: {e}")
+
+        # Fallback to simple response on error
+        return MCPTaskContextResponse(
+            agent={"name": "Backend Agent", "id": "backend-agent"},
+            error=f"MICS pipeline error: {str(e)}",
+        )
+
+
+# =============================================================================
+# MICS Additional MCP Endpoints
+# =============================================================================
+
+class MCPListAgentsRequest(BaseModel):
+    """Request to list available agents."""
+    category: Optional[str] = Field(
+        default=None,
+        description="Filter by category: infrastructure, development, quality, workflow, all"
+    )
+
+
+class MCPListAgentsResponse(BaseModel):
+    """Response with list of agents."""
+    agents: List[Dict[str, Any]]
+    total: int
+    category_filter: str
+
+
+@router.post(
+    "/mcp/list-agents",
+    response_model=MCPListAgentsResponse,
+    summary="List all available task agents (MICS)",
+    description="""
+    List all available task agents for MICS context assembly.
+
+    Use this to discover what specialized agents are available
+    for different task types (deployment, database, backend, frontend, security).
+    """
+)
+async def mcp_list_agents(
+    request: MCPListAgentsRequest,
+    repository: DecisionRepository = Depends(get_repository),
+) -> MCPListAgentsResponse:
+    """List available MICS agents."""
+    import os
+
+    try:
+        import sys
+        backend_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        if backend_dir not in sys.path:
+            sys.path.insert(0, backend_dir)
+        from mcp.tools import MICSToolProvider
+
+        agents_dir = os.path.join(backend_dir, "agents")
+
+        provider = MICSToolProvider(repository=repository, agents_dir=agents_dir)
+        result = await provider.list_agents(category=request.category)
+
+        return MCPListAgentsResponse(
+            agents=result.get("agents", []),
+            total=result.get("total", 0),
+            category_filter=result.get("category_filter", "all"),
+        )
+
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).error(f"MICS list agents error: {e}")
+        return MCPListAgentsResponse(agents=[], total=0, category_filter="all")
+
+
+class MCPChecklistRequest(BaseModel):
+    """Request for task checklist."""
+    task_type: str = Field(..., description="Type of task (deployment, database, backend, frontend, security)")
+    target: Optional[str] = Field(default=None, description="Target system")
+    phase: str = Field(default="all", description="Phase: pre_deploy, deploy, post_deploy, all")
+
+
+class MCPChecklistResponse(BaseModel):
+    """Response with task checklist."""
+    task_type: str
+    agent: Dict[str, Any]
+    target: Optional[str]
+    phase: str
+    checklist: Dict[str, List[Dict[str, Any]]]
+    critical_rules: List[str]
+    total_steps: int
+    error: Optional[str] = None
+
+
+@router.post(
+    "/mcp/checklist",
+    response_model=MCPChecklistResponse,
+    summary="Get checklist for a task type (MICS)",
+    description="""
+    Get the step-by-step checklist for a specific task type.
+
+    Returns commands that should be executed for:
+    - pre_deploy: Steps before deployment
+    - deploy: Deployment steps
+    - post_deploy: Verification steps after deployment
+    """
+)
+async def mcp_get_checklist(
+    request: MCPChecklistRequest,
+    repository: DecisionRepository = Depends(get_repository),
+) -> MCPChecklistResponse:
+    """Get MICS task checklist."""
+    import os
+
+    try:
+        import sys
+        backend_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        if backend_dir not in sys.path:
+            sys.path.insert(0, backend_dir)
+        from mcp.tools import MICSToolProvider
+
+        agents_dir = os.path.join(backend_dir, "agents")
+
+        provider = MICSToolProvider(repository=repository, agents_dir=agents_dir)
+        result = await provider.get_checklist_for_task(
+            task_type=request.task_type,
+            target=request.target,
+            phase=request.phase
+        )
+
+        if "error" in result:
+            return MCPChecklistResponse(
+                task_type=request.task_type,
+                agent={},
+                target=request.target,
+                phase=request.phase,
+                checklist={},
+                critical_rules=[],
+                total_steps=0,
+                error=result["error"]
+            )
+
+        return MCPChecklistResponse(
+            task_type=result.get("task_type", request.task_type),
+            agent=result.get("agent", {}),
+            target=result.get("target"),
+            phase=result.get("phase", "all"),
+            checklist=result.get("checklist", {}),
+            critical_rules=result.get("critical_rules", []),
+            total_steps=result.get("total_steps", 0),
+        )
+
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).error(f"MICS checklist error: {e}")
+        return MCPChecklistResponse(
+            task_type=request.task_type,
+            agent={},
+            target=request.target,
+            phase=request.phase,
+            checklist={},
+            critical_rules=[],
+            total_steps=0,
+            error=str(e)
+        )
+
+
+class MCPValidateActionsRequest(BaseModel):
+    """Request to validate proposed actions."""
+    task_type: str = Field(..., description="Type of task (DEPLOYMENT, DEVELOPMENT, DATABASE, etc.)")
+    proposed_actions: List[str] = Field(..., description="List of actions to validate")
+
+
+class MCPValidateActionsResponse(BaseModel):
+    """Response with validation result."""
+    valid: bool
+    task_type: str
+    actions_checked: int
+    violations: List[Dict[str, Any]]
+    warnings: List[Dict[str, Any]]
+    suggestions: List[str]
+    error: Optional[str] = None
+
+
+@router.post(
+    "/mcp/validate-actions",
+    response_model=MCPValidateActionsResponse,
+    summary="Validate proposed actions against MANTRA decisions (MICS)",
+    description="""
+    Validate proposed actions against MANTRA decisions and constraints.
+
+    Before executing significant actions, use this to check if they
+    comply with established decisions and constraints.
+
+    Returns:
+    - valid: Whether the actions are allowed
+    - violations: BLOCKING issues that must be fixed
+    - warnings: Advisory notes
+    - suggestions: How to make actions compliant
+    """
+)
+async def mcp_validate_actions(
+    request: MCPValidateActionsRequest,
+    repository: DecisionRepository = Depends(get_repository),
+) -> MCPValidateActionsResponse:
+    """Validate actions against MICS rules."""
+    import os
+    import sys
+
+    try:
+        backend_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        if backend_dir not in sys.path:
+            sys.path.insert(0, backend_dir)
+        from mcp.tools import MICSToolProvider
+
+        agents_dir = os.path.join(backend_dir, "agents")
+
+        provider = MICSToolProvider(repository=repository, agents_dir=agents_dir)
+        result = await provider.validate_actions(
+            task_type=request.task_type,
+            proposed_actions=request.proposed_actions
+        )
+
+        return MCPValidateActionsResponse(
+            valid=result.get("valid", True),
+            task_type=result.get("task_type", request.task_type),
+            actions_checked=result.get("actions_checked", len(request.proposed_actions)),
+            violations=result.get("violations", []),
+            warnings=result.get("warnings", []),
+            suggestions=result.get("suggestions", []),
+        )
+
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).error(f"MICS validate actions error: {e}")
+        return MCPValidateActionsResponse(
+            valid=True,
+            task_type=request.task_type,
+            actions_checked=0,
+            violations=[],
+            warnings=[],
+            suggestions=[],
+            error=str(e)
+        )
+
+
+class MCPTaskContextWithBudgetRequest(BaseModel):
+    """Request for task context with token budget management."""
+    intent: str = Field(..., description="What the user wants to do")
+    target: Optional[str] = Field(default=None, description="Target component/service")
+    environment: Optional[str] = Field(default=None, description="Environment")
+    code_context: Optional[str] = Field(default=None, description="Current code context")
+    token_budget: int = Field(default=4000, description="Max tokens for context")
+    platform: str = Field(default="claude-code", description="Target platform")
+
+
+class MCPTaskContextWithBudgetResponse(BaseModel):
+    """Response with position-optimized task context."""
+    task_context: Dict[str, Any]
+    meta: Dict[str, Any]
+    budget_summary: Dict[str, Any]
+    hints: Dict[str, Any]
+    error: Optional[str] = None
+
+
+@router.post(
+    "/mcp/task-context-v2",
+    response_model=MCPTaskContextWithBudgetResponse,
+    summary="Get task context with token budget management (MICS v2)",
+    description="""
+    Enhanced version of task-context with proper token budget management.
+
+    Features:
+    - TIER 1 (CRITICAL): Agent identity, Layer 0, PROHIBITIONS -> START position
+    - TIER 2 (IMPORTANT): Decisions, Requirements, Checklist -> NEAR_START position
+    - TIER 3 (SUPPLEMENTARY): Codebase context, Hints -> END position
+    - TIER 4 (REFERENCE): On-demand details
+
+    Position optimization avoids "lost in the middle" problem.
+    """
+)
+async def mcp_task_context_v2(
+    request: MCPTaskContextWithBudgetRequest,
+    repository: DecisionRepository = Depends(get_repository),
+) -> MCPTaskContextWithBudgetResponse:
+    """Get MICS task context with token budget management."""
+    import os
+    import sys
+
+    try:
+        backend_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        if backend_dir not in sys.path:
+            sys.path.insert(0, backend_dir)
+        from mcp.tools import MICSToolProvider
+
+        agents_dir = os.path.join(backend_dir, "agents")
+
+        provider = MICSToolProvider(repository=repository, agents_dir=agents_dir)
+        result = await provider.get_task_context_with_budget(
+            intent=request.intent,
+            target=request.target,
+            environment=request.environment,
+            code_context=request.code_context,
+            token_budget=request.token_budget,
+            platform=request.platform
+        )
+
+        if "error" in result:
+            return MCPTaskContextWithBudgetResponse(
+                task_context={},
+                meta={},
+                budget_summary={},
+                hints={},
+                error=result["error"]
+            )
+
+        return MCPTaskContextWithBudgetResponse(
+            task_context=result.get("task_context", {}),
+            meta=result.get("meta", {}),
+            budget_summary=result.get("budget_summary", {}),
+            hints=result.get("hints", {}),
+        )
+
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).error(f"MICS task context v2 error: {e}")
+        return MCPTaskContextWithBudgetResponse(
+            task_context={},
+            meta={},
+            budget_summary={},
+            hints={},
+            error=str(e)
+        )

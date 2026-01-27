@@ -32,6 +32,13 @@ from .base import (
 from .quality_arbiter import QualityArbiter
 from .duplicate_classifier import DuplicateClassifier
 from .conflict_arbiter import ConflictArbiter
+from .decision_classifier import (
+    DecisionClassifier,
+    ClassificationResult,
+    ClassificationContext,
+    get_classification_context,
+    validate_classification_result,
+)
 from .ai_client import (
     AIClient,
     AIConfig,
@@ -54,6 +61,12 @@ __all__ = [
     'QualityArbiter',
     'DuplicateClassifier',
     'ConflictArbiter',
+    # Decision Classifier (auto-categorization)
+    'DecisionClassifier',
+    'ClassificationResult',
+    'ClassificationContext',
+    'get_classification_context',
+    'validate_classification_result',
     # AI Client
     'AIClient',
     'AIConfig',

@@ -6,7 +6,7 @@
 
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import type { Tenant, TenantWithMembership, MemberRole } from '@/features/tenant'
+import type { TenantWithMembership, MemberRole } from '@/features/tenant'
 
 interface CurrentTenant {
   tenant_id: string

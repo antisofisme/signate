@@ -67,8 +67,46 @@ export function Memory() {
 
   if (error) {
     return (
-      <div className="text-center text-red-500 p-4">
-        Failed to load memory facts. Please try again.
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-2xl font-bold">Memory</h1>
+          <p className="text-gray-500">User facts and learned information</p>
+        </div>
+
+        <div className="bg-amber-50 border border-amber-200 rounded-xl p-6">
+          <div className="flex items-start gap-3">
+            <AlertCircle className="h-6 w-6 text-amber-500 mt-0.5" />
+            <div>
+              <p className="font-medium text-amber-800">Memory service temporarily unavailable</p>
+              <p className="text-sm text-amber-600 mt-1">
+                The memory facts feature is currently unavailable. This could be due to a backend service issue.
+                Chat functionality is still available.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Still show empty state UI */}
+        <div className="grid gap-4 md:grid-cols-4">
+          {['preference', 'context', 'goal', 'constraint'].map((type) => {
+            const Icon = getFactIcon(type)
+            return (
+              <Card key={type} className="opacity-50">
+                <CardContent className="pt-6">
+                  <div className="flex items-center gap-3">
+                    <div className={cn('rounded-lg p-2', getFactColor(type))}>
+                      <Icon className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <p className="text-2xl font-bold">-</p>
+                      <p className="text-sm text-gray-500 capitalize">{type}s</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )
+          })}
+        </div>
       </div>
     )
   }

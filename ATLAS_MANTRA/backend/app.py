@@ -14,7 +14,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 from datetime import datetime
 
-from core.api.routes import router as api_router, initialize_repository
+from core.api.routes import router as api_router
 from core.api.ai_routes import router as ai_router
 from core.api.api_key_routes import router as api_key_router
 from core.api.search_routes import router as search_router
@@ -43,13 +43,9 @@ async def lifespan(app: FastAPI):
     print(f"  - Cache: {config.cache}")
     print(f"  - Embedding: {config.embedding_service}")
 
-    # Initialize repository
-    await initialize_repository()
-
-    # Initialize semantic search services
-    if config.enable_semantic_search:
-        await Container.initialize()
-        print(f"  - Container initialized")
+    # Initialize all services (repository, vector store, cache, embedding)
+    await Container.initialize()
+    print(f"  - Container initialized")
 
     yield
 

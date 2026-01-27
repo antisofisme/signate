@@ -1,0 +1,183 @@
+{
+  "docusaurus-plugin-content-docs": {
+    "default": {
+      "path": "/docs",
+      "versions": [
+        {
+          "name": "current",
+          "label": "Next",
+          "isLast": true,
+          "path": "/docs",
+          "mainDocId": "intro",
+          "docs": [
+            {
+              "id": "advanced/best-practices",
+              "path": "/docs/advanced/best-practices",
+              "sidebar": "tutorialSidebar"
+            },
+            {
+              "id": "advanced/multi-tenant",
+              "path": "/docs/advanced/multi-tenant",
+              "sidebar": "tutorialSidebar"
+            },
+            {
+              "id": "advanced/scoping",
+              "path": "/docs/advanced/scoping",
+              "sidebar": "tutorialSidebar"
+            },
+            {
+              "id": "advanced/troubleshooting",
+              "path": "/docs/advanced/troubleshooting",
+              "sidebar": "tutorialSidebar"
+            },
+            {
+              "id": "api-reference/authentication",
+              "path": "/docs/api-reference/authentication",
+              "sidebar": "tutorialSidebar"
+            },
+            {
+              "id": "api-reference/decisions-api",
+              "path": "/docs/api-reference/decisions-api",
+              "sidebar": "tutorialSidebar"
+            },
+            {
+              "id": "api-reference/rules-api",
+              "path": "/docs/api-reference/rules-api",
+              "sidebar": "tutorialSidebar"
+            },
+            {
+              "id": "api-reference/sdk-usage",
+              "path": "/docs/api-reference/sdk-usage",
+              "sidebar": "tutorialSidebar"
+            },
+            {
+              "id": "getting-started/first-project",
+              "path": "/docs/getting-started/first-project",
+              "sidebar": "tutorialSidebar"
+            },
+            {
+              "id": "getting-started/first-rule",
+              "path": "/docs/getting-started/first-rule",
+              "sidebar": "tutorialSidebar"
+            },
+            {
+              "id": "getting-started/first-tenant",
+              "path": "/docs/getting-started/first-tenant",
+              "sidebar": "tutorialSidebar"
+            },
+            {
+              "id": "getting-started/quick-start",
+              "path": "/docs/getting-started/quick-start",
+              "sidebar": "tutorialSidebar"
+            },
+            {
+              "id": "intro",
+              "path": "/docs/",
+              "sidebar": "tutorialSidebar"
+            },
+            {
+              "id": "user-guides/control/deployment",
+              "path": "/docs/user-guides/control/deployment",
+              "sidebar": "tutorialSidebar"
+            },
+            {
+              "id": "user-guides/control/environments",
+              "path": "/docs/user-guides/control/environments",
+              "sidebar": "tutorialSidebar"
+            },
+            {
+              "id": "user-guides/control/rollback",
+              "path": "/docs/user-guides/control/rollback",
+              "sidebar": "tutorialSidebar"
+            },
+            {
+              "id": "user-guides/decisions/rule-builder",
+              "path": "/docs/user-guides/decisions/rule-builder",
+              "sidebar": "tutorialSidebar"
+            },
+            {
+              "id": "user-guides/decisions/rules",
+              "path": "/docs/user-guides/decisions/rules",
+              "sidebar": "tutorialSidebar"
+            },
+            {
+              "id": "user-guides/decisions/testing",
+              "path": "/docs/user-guides/decisions/testing",
+              "sidebar": "tutorialSidebar"
+            },
+            {
+              "id": "user-guides/decisions/versioning",
+              "path": "/docs/user-guides/decisions/versioning",
+              "sidebar": "tutorialSidebar"
+            },
+            {
+              "id": "user-guides/iam/access-control",
+              "path": "/docs/user-guides/iam/access-control",
+              "sidebar": "tutorialSidebar"
+            },
+            {
+              "id": "user-guides/iam/permissions",
+              "path": "/docs/user-guides/iam/permissions",
+              "sidebar": "tutorialSidebar"
+            },
+            {
+              "id": "user-guides/iam/roles",
+              "path": "/docs/user-guides/iam/roles",
+              "sidebar": "tutorialSidebar"
+            },
+            {
+              "id": "user-guides/iam/users",
+              "path": "/docs/user-guides/iam/users",
+              "sidebar": "tutorialSidebar"
+            },
+            {
+              "id": "user-guides/workflows/creating",
+              "path": "/docs/user-guides/workflows/creating",
+              "sidebar": "tutorialSidebar"
+            },
+            {
+              "id": "user-guides/workflows/monitoring",
+              "path": "/docs/user-guides/workflows/monitoring",
+              "sidebar": "tutorialSidebar"
+            },
+            {
+              "id": "user-guides/workflows/triggers",
+              "path": "/docs/user-guides/workflows/triggers",
+              "sidebar": "tutorialSidebar"
+            },
+            {
+              "id": "/category/getting-started",
+              "path": "/docs/category/getting-started",
+              "sidebar": "tutorialSidebar"
+            },
+            {
+              "id": "/category/user-guides",
+              "path": "/docs/category/user-guides",
+              "sidebar": "tutorialSidebar"
+            },
+            {
+              "id": "/category/api-reference",
+              "path": "/docs/category/api-reference",
+              "sidebar": "tutorialSidebar"
+            },
+            {
+              "id": "/category/advanced",
+              "path": "/docs/category/advanced",
+              "sidebar": "tutorialSidebar"
+            }
+          ],
+          "draftIds": [],
+          "sidebars": {
+            "tutorialSidebar": {
+              "link": {
+                "path": "/docs/",
+                "label": "Introduction"
+              }
+            }
+          }
+        }
+      ],
+      "breadcrumbs": true
+    }
+  }
+}

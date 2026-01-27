@@ -1,0 +1,41 @@
+{
+  "permalink": "/blog/initial-release",
+  "editUrl": "https://github.com/atlashub/puguh/tree/main/docs-site/blog/2026-01-26-initial-release.md",
+  "source": "@site/blog/2026-01-26-initial-release.md",
+  "title": "ATLAS PUGUH Documentation Launch",
+  "description": "We're excited to announce the launch of the official ATLAS PUGUH documentation site!",
+  "date": "2026-01-26T00:00:00.000Z",
+  "formattedDate": "January 26, 2026",
+  "tags": [
+    {
+      "label": "release",
+      "permalink": "/blog/tags/release"
+    },
+    {
+      "label": "documentation",
+      "permalink": "/blog/tags/documentation"
+    }
+  ],
+  "readingTime": 1.035,
+  "hasTruncateMarker": false,
+  "authors": [
+    {
+      "name": "PUGUH Team",
+      "title": "ATLAS PUGUH Development Team",
+      "url": "https://atlashub.com",
+      "imageURL": "https://github.com/atlashub.png",
+      "key": "team"
+    }
+  ],
+  "frontMatter": {
+    "slug": "initial-release",
+    "title": "ATLAS PUGUH Documentation Launch",
+    "authors": [
+      "team"
+    ],
+    "tags": [
+      "release",
+      "documentation"
+    ]
+  }
+}

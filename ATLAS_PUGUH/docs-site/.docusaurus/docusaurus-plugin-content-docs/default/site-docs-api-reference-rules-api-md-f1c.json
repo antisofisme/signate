@@ -1,0 +1,27 @@
+{
+  "unversionedId": "api-reference/rules-api",
+  "id": "api-reference/rules-api",
+  "title": "Rules API",
+  "description": "Complete API reference for managing rules.",
+  "source": "@site/docs/api-reference/rules-api.md",
+  "sourceDirName": "api-reference",
+  "slug": "/api-reference/rules-api",
+  "permalink": "/docs/api-reference/rules-api",
+  "draft": false,
+  "editUrl": "https://github.com/atlashub/puguh/tree/main/docs-site/docs/api-reference/rules-api.md",
+  "tags": [],
+  "version": "current",
+  "sidebarPosition": 2,
+  "frontMatter": {
+    "sidebar_position": 2
+  },
+  "sidebar": "tutorialSidebar",
+  "previous": {
+    "title": "API Authentication",
+    "permalink": "/docs/api-reference/authentication"
+  },
+  "next": {
+    "title": "Decisions API",
+    "permalink": "/docs/api-reference/decisions-api"
+  }
+}

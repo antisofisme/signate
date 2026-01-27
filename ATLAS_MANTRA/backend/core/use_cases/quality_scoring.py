@@ -60,15 +60,19 @@ class QualityAssessment:
     rationale_score: int
     constraint_score: int
     metadata_score: int
-    advanced_score: int  # NEW: Q-021 to Q-025
-    dimensions: List[QualityDimension]
-    improvement_suggestions: List[str]
-    can_store: bool  # False if score < 30
+    advanced_score: int  # Q-021 to Q-025
+    detailed_content_score: int = 0  # MICS: Q-026 to Q-030 (Layer B validation)
+    dimensions: List[QualityDimension] = field(default_factory=list)
+    improvement_suggestions: List[str] = field(default_factory=list)
+    can_store: bool = True  # False if score < 30
 
-    # NEW: Advanced metrics
+    # Advanced metrics
     readability: Optional[dict] = None  # Readability metrics for statement/rationale
     coherence_score: float = 0.0        # Statement-rationale coherence (0-1)
     objectivity_issues: List[str] = field(default_factory=list)  # Detected bias
+
+    # MICS: Two-layer content mode indicator
+    has_layer_b: bool = False  # True if detailed_content or sections present
 
 
 # =============================================================================
@@ -200,8 +204,15 @@ def score_statement_quality(record: Dict[str, Any]) -> Tuple[int, QualityDimensi
     """
     Score statement quality (Q-001 to Q-005).
     Max: 20 points (REBALANCED: was 25 - Advanced dimensions now weighted higher)
+
+    MICS Two-Layer Content Model:
+    - If detailed_content exists (Layer B), statement is SUMMARY mode (shorter OK)
+    - If no detailed_content, statement is STANDALONE mode (normal limits)
     """
     statement = record.get('statement') or ''  # Handle None values
+    detailed_content = record.get('detailed_content') or ''
+    sections = record.get('sections') or []
+
     score = 0
     rules_passed = []
     rules_failed = []
@@ -210,22 +221,44 @@ def score_statement_quality(record: Dict[str, Any]) -> Tuple[int, QualityDimensi
     words = statement.lower().split()
     word_count = len(words)
 
-    # Q-001: Length (10-200 words) - 4 points (REBALANCED: was 5)
-    if 10 <= word_count <= 200:
-        score += 4
-        rules_passed.append('Q-001')
-    elif 5 <= word_count < 10:
-        score += 2
-        rules_failed.append('Q-001')
-        suggestions.append(f'Statement is too short ({word_count} words). Aim for 10-200 words for clarity.')
-    elif word_count < 5:
-        score += 0
-        rules_failed.append('Q-001')
-        suggestions.append(f'Statement is very short ({word_count} words). Add more detail.')
+    # MICS: Check if Layer B content exists (two-layer mode)
+    has_layer_b = bool(detailed_content) or len(sections) > 0
+
+    # Q-001: Length - 4 points (REBALANCED: was 5)
+    # ADAPTIVE: Different limits for two-layer vs standalone mode
+    if has_layer_b:
+        # Two-layer mode: statement is executive summary (10-100 words ideal)
+        if 10 <= word_count <= 150:
+            score += 4
+            rules_passed.append('Q-001')
+        elif 5 <= word_count < 10:
+            score += 2
+            rules_failed.append('Q-001')
+            suggestions.append(f'Statement summary is too short ({word_count} words). Aim for 10-100 words.')
+        elif word_count < 5:
+            score += 0
+            rules_failed.append('Q-001')
+            suggestions.append(f'Statement summary is very short ({word_count} words). Provide a clear summary.')
+        else:
+            score += 3  # Longer is OK since Layer B has details
+            rules_passed.append('Q-001')
     else:
-        score += 2
-        rules_failed.append('Q-001')
-        suggestions.append(f'Statement is too long ({word_count} words). Consider being more concise.')
+        # Standalone mode: statement needs more detail (10-200 words)
+        if 10 <= word_count <= 200:
+            score += 4
+            rules_passed.append('Q-001')
+        elif 5 <= word_count < 10:
+            score += 2
+            rules_failed.append('Q-001')
+            suggestions.append(f'Statement is too short ({word_count} words). Aim for 10-200 words for clarity.')
+        elif word_count < 5:
+            score += 0
+            rules_failed.append('Q-001')
+            suggestions.append(f'Statement is very short ({word_count} words). Add more detail.')
+        else:
+            score += 2
+            rules_failed.append('Q-001')
+            suggestions.append(f'Statement is too long ({word_count} words). Consider adding detailed_content for Layer B.')
 
     # Q-002: Contains action verb - 4 points (REBALANCED: was 5)
     has_action_verb = any(verb in words for verb in ACTION_VERBS)
@@ -290,9 +323,16 @@ def score_rationale_quality(record: Dict[str, Any]) -> Tuple[int, QualityDimensi
     """
     Score rationale quality (Q-006 to Q-010).
     Max: 20 points (REBALANCED: was 25 - Advanced dimensions now weighted higher)
+
+    MICS Two-Layer Content Model:
+    - If detailed_content exists (Layer B), rationale can be shorter (summary of why)
+    - If no detailed_content, rationale needs full justification
     """
     rationale = record.get('rationale') or ''  # Handle None values
     statement = record.get('statement') or ''  # Handle None values
+    detailed_content = record.get('detailed_content') or ''
+    sections = record.get('sections') or []
+
     score = 0
     rules_passed = []
     rules_failed = []
@@ -301,22 +341,45 @@ def score_rationale_quality(record: Dict[str, Any]) -> Tuple[int, QualityDimensi
     words = rationale.lower().split()
     word_count = len(words)
 
-    # Q-006: Length (20-500 words) - 4 points (REBALANCED: was 5)
-    if 20 <= word_count <= 500:
-        score += 4
-        rules_passed.append('Q-006')
-    elif 10 <= word_count < 20:
-        score += 2
-        rules_failed.append('Q-006')
-        suggestions.append(f'Rationale is short ({word_count} words). Expand to explain the decision better.')
-    elif word_count < 10:
-        score += 0
-        rules_failed.append('Q-006')
-        suggestions.append(f'Rationale is too brief ({word_count} words). Provide meaningful explanation.')
+    # MICS: Check if Layer B content exists (two-layer mode)
+    has_layer_b = bool(detailed_content) or len(sections) > 0
+
+    # Q-006: Length - 4 points (REBALANCED: was 5)
+    # ADAPTIVE: Different limits for two-layer vs standalone mode
+    if has_layer_b:
+        # Two-layer mode: rationale is summary of why (20-300 words ideal)
+        # Detailed justification goes in Layer B
+        if 20 <= word_count <= 400:
+            score += 4
+            rules_passed.append('Q-006')
+        elif 10 <= word_count < 20:
+            score += 2
+            rules_failed.append('Q-006')
+            suggestions.append(f'Rationale summary is short ({word_count} words). Summarize the key reasons.')
+        elif word_count < 10:
+            score += 0
+            rules_failed.append('Q-006')
+            suggestions.append(f'Rationale summary is too brief ({word_count} words). Explain the main reasoning.')
+        else:
+            score += 3  # Longer is OK since Layer B has details
+            rules_passed.append('Q-006')
     else:
-        score += 2
-        rules_failed.append('Q-006')
-        suggestions.append('Rationale is too long. Focus on key points.')
+        # Standalone mode: rationale needs full justification (20-500 words)
+        if 20 <= word_count <= 500:
+            score += 4
+            rules_passed.append('Q-006')
+        elif 10 <= word_count < 20:
+            score += 2
+            rules_failed.append('Q-006')
+            suggestions.append(f'Rationale is short ({word_count} words). Expand to explain the decision better.')
+        elif word_count < 10:
+            score += 0
+            rules_failed.append('Q-006')
+            suggestions.append(f'Rationale is too brief ({word_count} words). Provide meaningful explanation.')
+        else:
+            score += 2
+            rules_failed.append('Q-006')
+            suggestions.append('Rationale is too long. Consider adding detailed_content for Layer B.')
 
     # Q-007: Explains "why" (causal keywords) - 4 points (REBALANCED: was 5)
     text_lower = rationale.lower()
@@ -873,12 +936,38 @@ def assess_quality(record: Dict[str, Any]) -> QualityAssessment:
     dimensions.append(adv_dim)
     all_suggestions.extend(adv_dim.suggestions)
 
-    # Calculate overall score (120 points max)
-    overall_score = stmt_score + rat_score + con_score + meta_score + adv_score
-    grade = determine_grade(overall_score, max_score=120)
+    # MICS: Score detailed content quality (Q-026 to Q-030) if Layer B present
+    from .detailed_content_validation import (
+        score_detailed_content_quality,
+        has_detailed_content,
+        DetailedContentDimension
+    )
+
+    detailed_score = 0
+    has_layer_b = has_detailed_content(record)
+    if has_layer_b:
+        detailed_score, detailed_dim = score_detailed_content_quality(record)
+        # Convert DetailedContentDimension to QualityDimension for consistency
+        detailed_quality_dim = QualityDimension(
+            dimension='detailed_content',
+            score=detailed_dim.score,
+            max_score=detailed_dim.max_score,
+            rules_passed=detailed_dim.rules_passed,
+            rules_failed=detailed_dim.rules_failed,
+            suggestions=detailed_dim.suggestions
+        )
+        dimensions.append(detailed_quality_dim)
+        all_suggestions.extend(detailed_dim.suggestions)
+
+    # Calculate overall score
+    # Base: 120 points (20+20+20+20+40)
+    # With Layer B: 140 points (adds 20 from Q-026 to Q-030)
+    max_score = 140 if has_layer_b else 120
+    overall_score = stmt_score + rat_score + con_score + meta_score + adv_score + detailed_score
+    grade = determine_grade(overall_score, max_score=max_score)
 
     # Scale overall_score to 0-100 for consistency
-    scaled_score = round((overall_score / 120) * 100)
+    scaled_score = round((overall_score / max_score) * 100)
 
     return QualityAssessment(
         overall_score=scaled_score,
@@ -888,10 +977,12 @@ def assess_quality(record: Dict[str, Any]) -> QualityAssessment:
         constraint_score=con_score,
         metadata_score=meta_score,
         advanced_score=adv_score,
+        detailed_content_score=detailed_score,
         dimensions=dimensions,
         improvement_suggestions=all_suggestions[:10],  # Limit to top 10
         can_store=scaled_score >= 30,
         readability=readability,
         coherence_score=coherence,
-        objectivity_issues=biases
+        objectivity_issues=biases,
+        has_layer_b=has_layer_b
     )

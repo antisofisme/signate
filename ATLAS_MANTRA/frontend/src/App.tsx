@@ -6,6 +6,10 @@ import DecisionList from './pages/DecisionList'
 import DecisionDetail from './pages/DecisionDetail'
 import Validator from './pages/Validator'
 import Compare from './pages/Compare'
+import SemanticSearch from './pages/SemanticSearch'
+import DecisionWizard from './pages/DecisionWizard'
+import ApprovalDashboard from './pages/ApprovalDashboard'
+import RelationEditor from './pages/RelationEditor'
 import GroupPage from './pages/GroupPage'
 import EvolutionTimeline from './pages/EvolutionTimeline'
 import ScopeProjection from './pages/ScopeProjection'
@@ -15,6 +19,7 @@ import TechStackProjection from './pages/TechStackProjection'
 import AuditLog from './pages/AuditLog'
 import ApiKeys from './pages/settings/ApiKeys'
 import AISettings from './pages/settings/AISettings'
+import MCPDashboard from './pages/MCPDashboard'
 
 function App() {
   return (
@@ -37,10 +42,16 @@ function App() {
           {/* Tools */}
           <Route path="validate" element={<Validator />} />
           <Route path="compare" element={<Compare />} />
+          <Route path="search" element={<SemanticSearch />} />
           <Route path="audit" element={<AuditLog />} />
+          {/* Workflow */}
+          <Route path="wizard" element={<DecisionWizard />} />
+          <Route path="approvals" element={<ApprovalDashboard />} />
+          <Route path="relation-editor" element={<RelationEditor />} />
           {/* Settings */}
           <Route path="settings/api-keys" element={<ApiKeys />} />
           <Route path="settings/ai" element={<AISettings />} />
+          <Route path="settings/mcp" element={<MCPDashboard />} />
         </Route>
       </Routes>
     </BrowserRouter>

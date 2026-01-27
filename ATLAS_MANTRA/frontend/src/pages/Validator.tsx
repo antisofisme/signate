@@ -3,6 +3,7 @@ import { useMutation, useQuery } from '@tanstack/react-query'
 import { clsx } from 'clsx'
 import {
   enhancedValidationApi,
+  classificationApi,
   ArbitrationMode,
   ArbitrationVerdictInput,
   QualityResult,
@@ -14,6 +15,8 @@ import {
   ApprovalSummary,
   ArbitrationContext,
   AIVerdictResult,
+  ClassificationContext,
+  ClassificationResult,
 } from '../shared/api'
 import {
   TAG_COLORS,
@@ -110,37 +113,19 @@ export default function Validator() {
   const [proposalExpiry, setProposalExpiry] = useState<number | null>(null)
   const [showQualityBreakdown, setShowQualityBreakdown] = useState(false)
 
+  // AI Classification state
+  const [classificationContext, setClassificationContext] = useState<ClassificationContext | null>(null)
+  const [isClassifying, setIsClassifying] = useState(false)
+  const [showClassificationPanel, setShowClassificationPanel] = useState(false)
+  // Track if classification was done by AI (for display purposes)
+  const [_classificationSource, setClassificationSource] = useState<'manual' | 'ai' | null>(null)
+
   // Get AI providers info
   const { data: providersInfo } = useQuery({
     queryKey: ['ai-providers'],
     queryFn: () => enhancedValidationApi.getProviders(),
     retry: false,
   })
-
-  // Proposal expiry timer effect
-  useEffect(() => {
-    if (!mutation.data?.proposal_id) {
-      setProposalExpiry(null)
-      return
-    }
-
-    // Set expiry to 30 minutes from now
-    const expiryTime = Date.now() + 30 * 60 * 1000
-    setProposalExpiry(expiryTime)
-
-    // Update every second
-    const timer = setInterval(() => {
-      const remaining = expiryTime - Date.now()
-      if (remaining <= 0) {
-        setProposalExpiry(null)
-        clearInterval(timer)
-      } else {
-        setProposalExpiry(expiryTime)
-      }
-    }, 1000)
-
-    return () => clearInterval(timer)
-  }, [mutation.data?.proposal_id])
 
   // Build record from form state
   const buildRecordFromForm = useCallback((): object => {
@@ -170,6 +155,31 @@ export default function Validator() {
         authorship_metadata: { author: formState.created_by || 'frontend-user', author_type: 'human' }
       }),
   })
+
+  // Proposal expiry timer effect
+  useEffect(() => {
+    if (!mutation.data?.proposal_id) {
+      setProposalExpiry(null)
+      return
+    }
+
+    // Set expiry to 30 minutes from now
+    const expiryTime = Date.now() + 30 * 60 * 1000
+    setProposalExpiry(expiryTime)
+
+    // Update every second
+    const timer = setInterval(() => {
+      const remaining = expiryTime - Date.now()
+      if (remaining <= 0) {
+        setProposalExpiry(null)
+        clearInterval(timer)
+      } else {
+        setProposalExpiry(expiryTime)
+      }
+    }, 1000)
+
+    return () => clearInterval(timer)
+  }, [mutation.data?.proposal_id])
 
   const approveMutation = useMutation({
     mutationFn: (proposalId: string) =>
@@ -225,6 +235,70 @@ export default function Validator() {
         ? prev.tech_stack.filter(t => t !== tech)
         : [...prev.tech_stack, tech]
     }))
+  }
+
+  // AI Classification handlers
+  const handleRequestClassification = async () => {
+    if (!formState.statement.trim()) {
+      alert('Please enter a statement first')
+      return
+    }
+
+    setIsClassifying(true)
+    try {
+      // UI users use SERVER mode (MANTRA's AI classifies)
+      // MCP/Claude Code users use DELEGATED mode (their AI classifies)
+      const response = await classificationApi.classify({
+        statement: formState.statement,
+        rationale: formState.rationale,
+        classification_mode: 'SERVER'  // UI = SERVER, MCP = DELEGATED
+      })
+
+      if (response.success && response.group_id && response.feature_id) {
+        // Server classified successfully
+        setFormState(prev => ({
+          ...prev,
+          group_id: response.group_id!,
+          feature_id: response.feature_id!
+        }))
+      } else if (response.classification_required && response.classification_context) {
+        // Delegated mode - show context to user
+        setClassificationContext(response.classification_context)
+        setShowClassificationPanel(true)
+      }
+    } catch (error) {
+      console.error('Classification error:', error)
+      // Fallback: get context directly
+      try {
+        const ctx = await classificationApi.getContext(formState.statement, formState.rationale)
+        setClassificationContext(ctx)
+        setShowClassificationPanel(true)
+      } catch {
+        alert('Failed to get classification context')
+      }
+    } finally {
+      setIsClassifying(false)
+    }
+  }
+
+  const handleSubmitClassification = async (result: ClassificationResult) => {
+    // Validate the classification
+    const validation = classificationApi.validate(result.group_id, result.feature_id)
+    if (!validation.valid) {
+      alert(validation.error)
+      return
+    }
+
+    // Apply classification to form
+    setFormState(prev => ({
+      ...prev,
+      group_id: result.group_id,
+      feature_id: result.feature_id
+    }))
+
+    setShowClassificationPanel(false)
+    setClassificationContext(null)
+    setClassificationSource('ai')
   }
 
   const handleSubmitVerdicts = () => {
@@ -375,6 +449,20 @@ export default function Validator() {
               onFieldChange={updateFormField}
               onToggleTag={toggleTag}
               onToggleTech={toggleTech}
+              onRequestClassification={handleRequestClassification}
+              isClassifying={isClassifying}
+            />
+          )}
+
+          {/* AI Classification Panel (Delegated Mode) */}
+          {showClassificationPanel && classificationContext && (
+            <ClassificationPanel
+              context={classificationContext}
+              onSubmit={handleSubmitClassification}
+              onCancel={() => {
+                setShowClassificationPanel(false)
+                setClassificationContext(null)
+              }}
             />
           )}
 
@@ -699,18 +787,50 @@ function FormInput({
   onFieldChange,
   onToggleTag,
   onToggleTech,
+  onRequestClassification,
+  isClassifying,
 }: {
   formState: FormState
   onFieldChange: <K extends keyof FormState>(field: K, value: FormState[K]) => void
   onToggleTag: (tag: string) => void
   onToggleTech: (tech: string) => void
+  onRequestClassification?: () => void
+  isClassifying?: boolean
 }) {
   return (
     <div className="space-y-4 max-h-80 overflow-y-auto pr-2">
-      {/* Group & Feature */}
-      <div className="grid grid-cols-2 gap-3">
-        <div>
-          <label className="block text-xs font-medium text-gray-700 mb-1">Group</label>
+      {/* Group & Feature with AI Classify button */}
+      <div>
+        <div className="flex items-center justify-between mb-1">
+          <label className="block text-xs font-medium text-gray-700">Group & Feature</label>
+          {onRequestClassification && (
+            <button
+              onClick={onRequestClassification}
+              disabled={isClassifying || !formState.statement.trim()}
+              className={clsx(
+                'px-2 py-0.5 text-xs rounded flex items-center gap-1 transition-all',
+                isClassifying
+                  ? 'bg-purple-100 text-purple-500 cursor-wait'
+                  : !formState.statement.trim()
+                  ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                  : 'bg-purple-100 text-purple-600 hover:bg-purple-200'
+              )}
+              title="AI will suggest Group/Feature based on your statement"
+            >
+              {isClassifying ? (
+                <>
+                  <span className="animate-spin">⏳</span>
+                  Classifying...
+                </>
+              ) : (
+                <>
+                  🤖 AI Suggest
+                </>
+              )}
+            </button>
+          )}
+        </div>
+        <div className="grid grid-cols-2 gap-3">
           <select
             value={formState.group_id}
             onChange={(e) => {
@@ -727,9 +847,6 @@ function FormInput({
               <option key={g} value={g}>{g} - {GROUP_LABELS[g]}</option>
             ))}
           </select>
-        </div>
-        <div>
-          <label className="block text-xs font-medium text-gray-700 mb-1">Feature</label>
           <select
             value={formState.feature_id}
             onChange={(e) => onFieldChange('feature_id', e.target.value)}
@@ -1265,6 +1382,167 @@ function WarningsCard({ warnings }: { warnings: string[] }) {
       <ul className="text-sm text-amber-700 list-disc list-inside">
         {warnings.map((w, i) => <li key={i}>{w}</li>)}
       </ul>
+    </div>
+  )
+}
+
+// =============================================================================
+// Component: Classification Panel (Delegated AI Mode)
+// =============================================================================
+function ClassificationPanel({
+  context,
+  onSubmit,
+  onCancel,
+}: {
+  context: ClassificationContext
+  onSubmit: (result: ClassificationResult) => void
+  onCancel: () => void
+}) {
+  const [selectedGroup, setSelectedGroup] = useState('')
+  const [selectedFeature, setSelectedFeature] = useState('')
+  const [confidence, setConfidence] = useState(0.8)
+  const [showPrompt, setShowPrompt] = useState(false)
+
+  const handleSubmit = () => {
+    if (!selectedGroup || !selectedFeature) {
+      alert('Please select both Group and Feature')
+      return
+    }
+    onSubmit({
+      group_id: selectedGroup,
+      feature_id: selectedFeature,
+      confidence
+    })
+  }
+
+  return (
+    <div className="mt-4 p-4 bg-purple-50 rounded-lg border border-purple-200">
+      <div className="flex items-center justify-between mb-3">
+        <h4 className="font-medium text-purple-800">🤖 AI Classification (Delegated Mode)</h4>
+        <button
+          onClick={onCancel}
+          className="text-purple-400 hover:text-purple-600"
+        >
+          ✕
+        </button>
+      </div>
+
+      <p className="text-sm text-purple-700 mb-3">
+        Use your AI assistant to classify this decision. Copy the prompt below, get the classification, then enter the result.
+      </p>
+
+      {/* Prompt Section */}
+      <div className="mb-4">
+        <button
+          onClick={() => setShowPrompt(!showPrompt)}
+          className="text-xs text-purple-600 hover:text-purple-800 mb-2 flex items-center gap-1"
+        >
+          {showPrompt ? '▼ Hide Prompt' : '▶ Show AI Prompt'}
+        </button>
+
+        {showPrompt && (
+          <div className="relative">
+            <pre className="p-3 bg-white rounded border border-purple-200 text-xs text-gray-700 whitespace-pre-wrap max-h-48 overflow-auto">
+              {context.prompt}
+            </pre>
+            <button
+              onClick={() => {
+                navigator.clipboard.writeText(context.prompt)
+                alert('Prompt copied to clipboard!')
+              }}
+              className="absolute top-2 right-2 px-2 py-1 bg-purple-100 text-purple-600 text-xs rounded hover:bg-purple-200"
+            >
+              📋 Copy
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* Taxonomy Quick Reference */}
+      <div className="mb-4 p-3 bg-white rounded border border-purple-100">
+        <p className="text-xs text-gray-500 mb-2 font-medium">Quick Reference:</p>
+        <div className="grid grid-cols-2 gap-2 text-xs">
+          <div>
+            <span className="font-medium text-blue-600">INT</span>
+            <span className="text-gray-500"> - Why/What (Vision, Problem, Scope, Principles)</span>
+          </div>
+          <div>
+            <span className="font-medium text-green-600">ARCH</span>
+            <span className="text-gray-500"> - How/Where (Domain, Service, Data, Integration)</span>
+          </div>
+          <div>
+            <span className="font-medium text-orange-600">CTL</span>
+            <span className="text-gray-500"> - Can/Must Not (Policy, Approval, Security, Risk)</span>
+          </div>
+          <div>
+            <span className="font-medium text-purple-600">EVO</span>
+            <span className="text-gray-500"> - Change Safely (Lifecycle, Reversibility, Deploy)</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Input Section */}
+      <div className="grid grid-cols-3 gap-3 mb-3">
+        <div>
+          <label className="block text-xs font-medium text-gray-700 mb-1">Group</label>
+          <select
+            value={selectedGroup}
+            onChange={(e) => {
+              setSelectedGroup(e.target.value)
+              setSelectedFeature('')
+            }}
+            className="w-full px-2 py-1.5 text-sm border rounded focus:ring-1 focus:ring-purple-500"
+          >
+            <option value="">Select...</option>
+            {GROUPS.map(g => (
+              <option key={g} value={g}>{g}</option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-gray-700 mb-1">Feature</label>
+          <select
+            value={selectedFeature}
+            onChange={(e) => setSelectedFeature(e.target.value)}
+            disabled={!selectedGroup}
+            className="w-full px-2 py-1.5 text-sm border rounded focus:ring-1 focus:ring-purple-500 disabled:bg-gray-100"
+          >
+            <option value="">Select...</option>
+            {(FEATURES[selectedGroup] || []).map(f => (
+              <option key={f} value={f}>{f} - {FEATURE_LABELS[f]}</option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-gray-700 mb-1">Confidence</label>
+          <input
+            type="number"
+            min="0"
+            max="1"
+            step="0.1"
+            value={confidence}
+            onChange={(e) => setConfidence(parseFloat(e.target.value) || 0.8)}
+            className="w-full px-2 py-1.5 text-sm border rounded focus:ring-1 focus:ring-purple-500"
+          />
+        </div>
+      </div>
+
+      {/* Actions */}
+      <div className="flex gap-2">
+        <button
+          onClick={handleSubmit}
+          disabled={!selectedGroup || !selectedFeature}
+          className="flex-1 px-3 py-2 bg-purple-600 text-white text-sm rounded hover:bg-purple-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
+        >
+          ✅ Apply Classification
+        </button>
+        <button
+          onClick={onCancel}
+          className="px-3 py-2 bg-gray-200 text-gray-700 text-sm rounded hover:bg-gray-300"
+        >
+          Cancel
+        </button>
+      </div>
     </div>
   )
 }

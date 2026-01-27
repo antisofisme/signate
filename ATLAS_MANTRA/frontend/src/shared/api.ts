@@ -586,5 +586,402 @@ export const enhancedValidationApi = {
   },
 }
 
+// =============================================================================
+// Semantic Search Types
+// =============================================================================
+
+export interface SearchHit {
+  decision_id: string
+  decision_code: string | null
+  statement: string
+  rationale: string
+  score: number
+  group_id: string
+  feature_id: string
+  version: string
+  tags: string[]
+  matched_fields: string[]
+}
+
+export interface SemanticSearchResponse {
+  query: string
+  hits: SearchHit[]
+  total_hits: number
+  search_time_ms: number
+  embedding_time_ms: number
+  filters_applied: Record<string, any>
+}
+
+export interface AlignmentResult {
+  decision_id: string
+  decision_code: string | null
+  statement: string
+  similarity: number
+  group_id: string
+  feature_id: string
+  alignment_type: 'CONFLICT' | 'ALIGNED' | 'RELATED' | 'NEUTRAL'
+  notes: string
+}
+
+export interface AlignmentResponse {
+  proposal_statement: string
+  proposal_group_id: string | null
+  proposal_feature_id: string | null
+  conflicts: AlignmentResult[]
+  aligned: AlignmentResult[]
+  related: AlignmentResult[]
+  overall_alignment_score: number
+  recommendation: 'PROCEED' | 'REVIEW_CONFLICTS' | 'MAJOR_CONFLICTS'
+  check_time_ms: number
+}
+
+export interface SearchStats {
+  total_decisions: number
+  indexed_decisions: number
+  index_size_mb: number
+  last_indexed_at: string | null
+  embedding_model: string
+}
+
+export interface SemanticSearchRequest {
+  query: string
+  group_id?: string
+  feature_id?: string
+  tags?: string[]
+  min_score?: number
+  limit?: number
+}
+
+export interface AlignmentCheckRequest {
+  statement: string
+  rationale?: string
+  group_id?: string
+  feature_id?: string
+  threshold?: number
+}
+
+// =============================================================================
+// Semantic Search API
+// =============================================================================
+
+export const searchApi = {
+  // Semantic search
+  search: async (request: SemanticSearchRequest) => {
+    const response = await api.post<SemanticSearchResponse>('/api/v1/search/semantic', request)
+    return response.data
+  },
+
+  // Check alignment
+  checkAlignment: async (request: AlignmentCheckRequest) => {
+    const response = await api.post<AlignmentResponse>('/api/v1/search/check-alignment', request)
+    return response.data
+  },
+
+  // Get index stats
+  getStats: async () => {
+    const response = await api.get<SearchStats>('/api/v1/search/stats')
+    return response.data
+  },
+
+  // Rebuild index
+  rebuildIndex: async () => {
+    const response = await api.post<{ message: string; indexed: number }>('/api/v1/search/rebuild-index')
+    return response.data
+  },
+
+  // Clear cache
+  clearCache: async () => {
+    await api.delete('/api/v1/search/cache')
+  },
+}
+
+// =============================================================================
+// Pending Approvals Types
+// =============================================================================
+
+export interface PendingApproval {
+  proposal_id: string
+  decision_id: string
+  decision: Decision
+  proposed_by: string
+  proposed_at: string
+  validation_status: string
+  quality_score: number
+  has_conflicts: boolean
+  has_duplicates: boolean
+  impact_level: string
+  expires_at: string | null
+}
+
+export interface PendingApprovalsResponse {
+  pending: PendingApproval[]
+  total_count: number
+}
+
+// =============================================================================
+// Approvals API
+// =============================================================================
+
+export const approvalsApi = {
+  // List pending approvals
+  listPending: async (params?: { limit?: number; offset?: number }) => {
+    const response = await api.get<PendingApprovalsResponse>('/api/v1/approvals/pending', { params })
+    return response.data
+  },
+
+  // Approve a decision
+  approve: async (proposalId: string, approvedBy: string, comment?: string) => {
+    const response = await api.post<ApproveDecisionResponse>('/api/v1/decisions/approve', {
+      proposal_id: proposalId,
+      approved_by: approvedBy,
+      approval_comment: comment,
+    })
+    return response.data
+  },
+
+  // Reject a decision
+  reject: async (proposalId: string, rejectedBy: string, reason: string) => {
+    const response = await api.post<{ result: string; message: string }>('/api/v1/decisions/reject', {
+      proposal_id: proposalId,
+      rejected_by: rejectedBy,
+      rejection_reason: reason,
+    })
+    return response.data
+  },
+}
+
+// =============================================================================
+// MCP (Model Context Protocol) Types & API
+// =============================================================================
+
+export interface MCPAgent {
+  id: string
+  name: string
+  description: string
+  capabilities: string[]
+  system_prompt?: string
+  tools: string[]
+  is_active: boolean
+  token_budget: number
+  priority: number
+}
+
+export interface MCPAgentsResponse {
+  agents: MCPAgent[]
+  total_count: number
+  active_count: number
+}
+
+export interface MCPChecklistItem {
+  id: string
+  text: string
+  priority: 'CRITICAL' | 'IMPORTANT' | 'SUPPLEMENTARY' | 'REFERENCE'
+  category: string
+  required: boolean
+}
+
+export interface MCPChecklistResponse {
+  checklist: MCPChecklistItem[]
+  task_type: string
+  total_items: number
+}
+
+export interface MCPValidationResult {
+  validation_result: 'APPROVED' | 'WARNING' | 'BLOCKED'
+  violations: Array<{ action: string; rule: string; severity: string }>
+  warnings: Array<{ action: string; suggestion: string }>
+  approved_actions: string[]
+  requires_review: boolean
+}
+
+export interface MCPTaskContextResponse {
+  decisions: Array<{
+    id: string
+    code: string
+    statement: string
+    relevance_score: number
+  }>
+  checklist: MCPChecklistItem[]
+  constraints: Array<{
+    text: string
+    type: string
+    source_decision: string
+  }>
+  total_decisions: number
+  execution_time_ms: number
+}
+
+export const mcpApi = {
+  // List available agents
+  listAgents: async (): Promise<MCPAgentsResponse> => {
+    const response = await api.post<MCPAgentsResponse>('/api/v1/mcp/list-agents', {})
+    return response.data
+  },
+
+  // Get checklist for task type
+  getChecklist: async (taskType: string): Promise<MCPChecklistResponse> => {
+    const response = await api.post<MCPChecklistResponse>('/api/v1/mcp/checklist', {
+      task_type: taskType
+    })
+    return response.data
+  },
+
+  // Validate proposed actions
+  validateActions: async (params: {
+    task_type: string
+    proposed_actions: string[]
+  }): Promise<MCPValidationResult> => {
+    const response = await api.post<MCPValidationResult>('/api/v1/mcp/validate-actions', params)
+    return response.data
+  },
+
+  // Get task context
+  getTaskContext: async (params: {
+    intent: string
+    project?: string
+    target?: string
+  }): Promise<MCPTaskContextResponse> => {
+    const response = await api.post<MCPTaskContextResponse>('/api/v1/mcp/task-context', params)
+    return response.data
+  },
+}
+
+// =============================================================================
+// Search Stats Types & API
+// =============================================================================
+
+export interface SearchStatsResponse {
+  total_indexed: number
+  qdrant_status: 'connected' | 'disconnected'
+  collection_info?: {
+    vectors_count: number
+    indexed_vectors_count: number
+    points_count: number
+  }
+  cache_stats?: {
+    hit_rate: number
+    total_requests: number
+    cached_queries: number
+  }
+  last_rebuild?: string
+}
+
+export const searchStatsApi = {
+  getStats: async (): Promise<SearchStatsResponse> => {
+    const response = await api.get<SearchStatsResponse>('/api/v1/search/stats')
+    return response.data
+  },
+
+  rebuildIndex: async (): Promise<{ message: string; indexed_count: number }> => {
+    const response = await api.post('/api/v1/search/rebuild-index')
+    return response.data
+  },
+
+  clearCache: async (): Promise<{ message: string }> => {
+    const response = await api.delete('/api/v1/search/cache')
+    return response.data
+  },
+}
+
+// =============================================================================
+// AI Classification Types & API
+// =============================================================================
+
+export interface ClassificationContext {
+  classification_type: string
+  prompt: string
+  taxonomy: string
+  expected_response: {
+    format: string
+    schema: {
+      group_id: string
+      feature_id: string
+      confidence: string
+    }
+  }
+}
+
+export interface ClassificationResult {
+  group_id: string   // INT, ARCH, CTL, EVO
+  feature_id: string // F01-F16
+  confidence: number // 0.0-1.0
+}
+
+export interface ClassifyRequest {
+  statement: string
+  rationale: string
+  constraints?: Array<{ type: string; statement: string }>
+  classification_mode?: 'SERVER' | 'DELEGATED'
+  classification_result?: ClassificationResult  // For follow-up with verdict
+}
+
+export interface ClassifyResponse {
+  group_id: string | null
+  feature_id: string | null
+  confidence: number
+  success: boolean
+  classification_required: boolean
+  classification_context: ClassificationContext | null
+  message: string | null
+}
+
+export const classificationApi = {
+  // Auto-classify decision into Group and Feature
+  classify: async (request: ClassifyRequest): Promise<ClassifyResponse> => {
+    const response = await api.post<ClassifyResponse>('/api/v1/classify', request)
+    return response.data
+  },
+
+  // Get classification context for delegated mode (MCP)
+  getContext: async (statement: string, rationale: string): Promise<ClassificationContext> => {
+    const response = await api.post<any>('/api/v1/mcp/classify', {
+      statement,
+      rationale
+    })
+    return {
+      classification_type: response.data.classification_type,
+      prompt: response.data.prompt,
+      taxonomy: response.data.taxonomy,
+      expected_response: response.data.expected_response
+    }
+  },
+
+  // Submit classification result (delegated mode follow-up)
+  submitClassification: async (
+    statement: string,
+    rationale: string,
+    result: ClassificationResult
+  ): Promise<ClassifyResponse> => {
+    const response = await api.post<ClassifyResponse>('/api/v1/classify', {
+      statement,
+      rationale,
+      classification_result: result
+    })
+    return response.data
+  },
+
+  // Validate classification result
+  validate: (groupId: string, featureId: string): { valid: boolean; error: string | null } => {
+    const validGroups = ['INT', 'ARCH', 'CTL', 'EVO']
+    const groupFeatures: Record<string, string[]> = {
+      INT: ['F01', 'F02', 'F03', 'F04'],
+      ARCH: ['F05', 'F06', 'F07', 'F08'],
+      CTL: ['F09', 'F10', 'F11', 'F12'],
+      EVO: ['F13', 'F14', 'F15', 'F16'],
+    }
+
+    if (!validGroups.includes(groupId)) {
+      return { valid: false, error: `Invalid group: ${groupId}. Must be one of: ${validGroups.join(', ')}` }
+    }
+
+    const validFeatures = groupFeatures[groupId] || []
+    if (!validFeatures.includes(featureId)) {
+      return { valid: false, error: `Feature ${featureId} not compatible with group ${groupId}. Valid: ${validFeatures.join(', ')}` }
+    }
+
+    return { valid: true, error: null }
+  }
+}
+
 // Export for backward compatibility
 export default api

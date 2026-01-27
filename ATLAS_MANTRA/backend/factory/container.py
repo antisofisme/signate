@@ -14,6 +14,7 @@ Usage:
     vector_store = Container.get_vector_store()
     cache = Container.get_cache()
     embedding = Container.get_embedding()
+    repository = Container.get_decision_repository()
 
     # Reset for testing
     Container.reset()
@@ -26,6 +27,7 @@ from core.runtime.config import get_config
 from core.ports.vector_store import VectorStoreProtocol
 from core.ports.cache import CacheProtocol
 from core.ports.embedding_service import EmbeddingProtocol
+from core.repositories.decision_repository import DecisionRepository
 
 logger = logging.getLogger(__name__)
 
@@ -42,6 +44,8 @@ class Container:
     _vector_store: Optional[VectorStoreProtocol] = None
     _cache: Optional[CacheProtocol] = None
     _embedding: Optional[EmbeddingProtocol] = None
+    _decision_repository: Optional[DecisionRepository] = None
+    _repository_initialized: bool = False
     _initialized: bool = False
 
     @classmethod
@@ -172,6 +176,69 @@ class Container:
         return cls._embedding
 
     @classmethod
+    def get_decision_repository(cls) -> DecisionRepository:
+        """
+        Get decision repository instance based on configuration.
+
+        Supports:
+        - postgresql: PostgreSQL database (production)
+        - memory: In-memory store for testing
+
+        Note: For PostgreSQL, call initialize() first to establish connection.
+
+        Returns:
+            DecisionRepository implementation
+        """
+        if cls._decision_repository is None:
+            config = get_config()
+
+            if config.database_url:
+                # PostgreSQL - will be initialized in initialize()
+                # Return a lazy proxy that requires initialization
+                from core.repositories.decision_repository import InMemoryDecisionRepository
+                # Temporarily use in-memory until initialize() is called
+                cls._decision_repository = InMemoryDecisionRepository()
+                logger.info("Decision repository: InMemory (pending initialization)")
+            else:
+                # No database configured - use in-memory
+                from core.repositories.decision_repository import InMemoryDecisionRepository
+                cls._decision_repository = InMemoryDecisionRepository()
+                cls._repository_initialized = True
+                logger.info("Using in-memory decision repository")
+
+        return cls._decision_repository
+
+    @classmethod
+    async def initialize_repository(cls) -> None:
+        """
+        Initialize the decision repository.
+
+        If database_url is configured, creates PostgreSQL repository.
+        Otherwise, keeps in-memory repository.
+        """
+        if cls._repository_initialized:
+            return
+
+        config = get_config()
+
+        if config.database_url:
+            try:
+                from adapters.repositories.postgres_decision_repository import PostgresDecisionRepository
+                repo = PostgresDecisionRepository(config.database_url)
+                await repo.initialize()
+                cls._decision_repository = repo
+                cls._repository_initialized = True
+                logger.info(f"Decision repository: PostgreSQL")
+            except Exception as e:
+                logger.error(f"PostgreSQL init failed ({e}), using InMemory")
+                from core.repositories.decision_repository import InMemoryDecisionRepository
+                cls._decision_repository = InMemoryDecisionRepository()
+                cls._repository_initialized = True
+        else:
+            logger.info("Decision repository: InMemory (no DATABASE_URL)")
+            cls._repository_initialized = True
+
+    @classmethod
     def reset(cls) -> None:
         """
         Reset all cached instances.
@@ -181,6 +248,8 @@ class Container:
         cls._vector_store = None
         cls._cache = None
         cls._embedding = None
+        cls._decision_repository = None
+        cls._repository_initialized = False
         cls._initialized = False
         logger.info("Container reset")
 
@@ -197,6 +266,8 @@ class Container:
             await cls._cache.close()
         if cls._embedding:
             await cls._embedding.close()
+        if cls._decision_repository and hasattr(cls._decision_repository, 'close'):
+            await cls._decision_repository.close()
         cls.reset()
         logger.info("Container closed all connections")
 
@@ -218,6 +289,9 @@ class Container:
             return
 
         logger.info("Initializing container services...")
+
+        # Initialize decision repository first (core service)
+        await cls.initialize_repository()
 
         # Initialize vector store collection
         if cls.is_semantic_search_enabled():

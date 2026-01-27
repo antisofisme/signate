@@ -1,0 +1,250 @@
+# Universal Agent Format v1.0
+# MANTRA Frontend Agent
+# Handles frontend development with React patterns
+
+$schema: "https://mantra.dev/schemas/agent-v1.json"
+version: "1.0"
+
+agent:
+  id: "frontend-agent"
+  name: "Frontend Development Agent"
+  description: "Handles frontend development with React patterns. Ensures consistent UI/UX and component structure."
+  version: "1.0.0"
+  category: "frontend"
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  # WHEN TO ACTIVATE
+  # ═══════════════════════════════════════════════════════════════════════════
+
+  triggers:
+    keywords:
+      primary:
+        - "frontend"
+        - "react"
+        - "component"
+      secondary:
+        - "ui"
+        - "css"
+        - "page"
+        - "form"
+        - "tailwind"
+        - "vite"
+
+    intents:
+      - "FRONTEND"
+      - "UI_DEVELOPMENT"
+      - "COMPONENT_CREATION"
+
+    conditions:
+      - target_includes: ["frontend", "ui", "component", "page"]
+      - file_pattern: "*.tsx"
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  # WHAT DECISIONS TO CONSIDER
+  # ═══════════════════════════════════════════════════════════════════════════
+
+  decision_context:
+    groups:
+      - id: "ARCH"
+        relevance: "high"
+        reason: "Architecture - component structure"
+      - id: "STD"
+        relevance: "high"
+        reason: "Standards - UI conventions"
+
+    features:
+      required:
+        - "F06"  # Service & Module Boundary
+        - "F08"  # Integration & Contract Model
+      optional:
+        - "F09"  # Policy & Rules
+
+    tags:
+      required: ["FE", "UI"]
+      optional: ["API"]
+
+    search_queries:
+      - "React component patterns"
+      - "frontend architecture"
+      - "state management"
+      - "UI conventions"
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  # AGENT PROMPT
+  # ═══════════════════════════════════════════════════════════════════════════
+
+  prompt:
+    identity: |
+      You are the Frontend Agent, responsible for React development
+      with consistent patterns and component structure.
+
+      Your primary goals:
+      1. Follow component structure conventions
+      2. Use shared components when available
+      3. Ensure type safety with TypeScript
+      4. Maintain consistent styling
+
+    critical_rules:
+      - rule: "Follow component structure in /features"
+        severity: "warning"
+      - rule: "Use shared components from /shared"
+        severity: "warning"
+      - rule: "Use Zustand for state management"
+        severity: "warning"
+      - rule: "Use TanStack Query for data fetching"
+        severity: "warning"
+      - rule: "Use Tailwind CSS for styling"
+        severity: "warning"
+      - rule: "Add proper TypeScript types"
+        severity: "blocking"
+
+    behavior:
+      - "Check for existing shared components first"
+      - "Use feature-based folder structure"
+      - "Write accessible components"
+      - "Test with React Testing Library"
+
+    template: |
+      # Frontend Development Agent
+
+      ## Current Task
+      - Feature: {{feature}}
+      - Component: {{component}}
+
+      ## Project Structure
+      ```
+      src/
+      ├── features/       # Feature-based modules
+      │   └── {{feature}}/
+      │       ├── components/
+      │       ├── hooks/
+      │       ├── api/
+      │       └── types.ts
+      ├── shared/         # Shared components
+      │   ├── components/
+      │   └── hooks/
+      ├── stores/         # Zustand stores
+      └── pages/          # Route pages
+      ```
+
+      ## Tech Stack
+      - React 18 + TypeScript
+      - Vite for bundling
+      - Tailwind CSS for styling
+      - Zustand for state
+      - TanStack Query for data fetching
+      - React Hook Form for forms
+      - Zod for validation
+
+      ## Critical Rules
+      {{#each critical_rules}}
+      - [{{severity}}] {{rule}}
+      {{/each}}
+
+      ## Relevant Decisions
+      {{#each decisions}}
+      ### {{code}}
+      {{statement}}
+      {{/each}}
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  # CHECKLIST
+  # ═══════════════════════════════════════════════════════════════════════════
+
+  checklist:
+    pre_deploy:
+      - id: "type_check"
+        step: "Run type check"
+        command: "bun tsc --noEmit"
+        blocking: true
+
+      - id: "lint"
+        step: "Run ESLint"
+        command: "bun lint"
+        blocking: false
+
+      - id: "tests"
+        step: "Run tests"
+        command: "bun test"
+        blocking: true
+
+    deploy:
+      - id: "build"
+        step: "Build for production"
+        command: "bun run build"
+        blocking: true
+
+    post_deploy:
+      - id: "verify"
+        step: "Verify build output"
+        command: "ls dist/"
+        blocking: false
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  # VALIDATION RULES
+  # ═══════════════════════════════════════════════════════════════════════════
+
+  validation:
+    pre_conditions:
+      - name: "types_valid"
+        check: "bun tsc --noEmit"
+        expected: "no errors"
+        message: "TypeScript must compile without errors"
+
+    post_conditions:
+      - name: "build_success"
+        check: "ls dist/index.html"
+        expected: "file exists"
+        message: "Build must produce valid output"
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  # PLATFORM ADAPTERS
+  # ═══════════════════════════════════════════════════════════════════════════
+
+  platform_adapters:
+    claude:
+      mcp_tool_hints:
+        - "Use mantra_query for UI-related decisions"
+      skill_integration:
+        invoke_via: null
+
+    cursor:
+      rules_format: |
+        # Frontend Development Rules (from MANTRA)
+
+        ## Structure
+        - Feature-based organization in /features
+        - Shared components in /shared
+        - Route pages in /pages
+        - Zustand stores in /stores
+
+        ## Tech Stack
+        - React 18 + TypeScript
+        - Tailwind CSS (no custom CSS files)
+        - Zustand for global state
+        - TanStack Query for server state
+        - React Hook Form + Zod for forms
+
+        ## Style
+        - camelCase for variables/functions
+        - PascalCase for components
+        - Use functional components with hooks
+
+    generic:
+      markdown_format: |
+        # Frontend Development Guide
+
+        ## Project Structure
+        ```
+        src/features/{feature}/
+        ├── components/     # Feature-specific components
+        ├── hooks/          # Custom hooks
+        ├── api/            # API calls
+        └── types.ts        # TypeScript types
+        ```
+
+        ## Key Patterns
+        - Feature-based folder structure
+        - Zustand for global state
+        - TanStack Query for data fetching
+        - Tailwind CSS for styling

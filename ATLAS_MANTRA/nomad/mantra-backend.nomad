@@ -12,8 +12,8 @@ job "mantra-backend" {
   type        = "service"
 
   meta {
-    version     = "1.1.2"
-    description = "Decision Matrix Constitutional Law System with Semantic Search"
+    version     = "1.3.1"
+    description = "Decision Matrix Constitutional Law System - MICS 7-Stage Pipeline + YAML Agents"
   }
 
   group "api" {
@@ -49,7 +49,7 @@ job "mantra-backend" {
       driver = "docker"
 
       config {
-        image      = "atlas-mantra-api:v1.1.2"
+        image      = "atlas-mantra-api:v1.3.1"
         ports      = ["http"]
 
         # Use local image, don't try to pull from registry
@@ -88,9 +88,12 @@ CACHE=redis
 REDIS_URL=redis://31.97.111.175:6380/0
 CACHE_TTL=300
 
-# API Keys (optional - stored in Consul KV)
+# AI API Keys (stored in Consul KV)
 {{- if keyExists "mantra/openai_api_key" }}
 OPENAI_API_KEY={{ key "mantra/openai_api_key" }}
+{{- end }}
+{{- if keyExists "mantra/deepseek_api_key" }}
+DEEPSEEK_API_KEY={{ key "mantra/deepseek_api_key" }}
 {{- end }}
 EOF
         destination = "secrets/env"
@@ -98,8 +101,8 @@ EOF
       }
 
       resources {
-        cpu    = 100
-        memory = 384
+        cpu    = 200
+        memory = 768
       }
 
       logs {

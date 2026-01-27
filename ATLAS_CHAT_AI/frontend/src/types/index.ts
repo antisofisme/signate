@@ -103,16 +103,17 @@ export interface APIKeyWithSecret extends APIKey {
 // Chat
 export interface ChatSession {
   id: string
-  tenant_id: string
-  user_id: string
-  title?: string
-  summary?: string
+  tenant_id?: string
+  user_id?: string
+  title?: string | null
+  summary?: string | null
   message_count: number
-  total_tokens: number
-  is_active: boolean
-  last_message_at?: string
-  created_at: string
-  updated_at: string
+  total_tokens?: number
+  is_active?: boolean
+  last_message_at?: string | null
+  started_at?: string  // API returns started_at
+  created_at?: string  // Keep for backwards compatibility
+  updated_at?: string
 }
 
 export interface ChatMessage {

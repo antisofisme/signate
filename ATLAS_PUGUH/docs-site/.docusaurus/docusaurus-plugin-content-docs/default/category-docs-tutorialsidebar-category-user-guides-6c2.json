@@ -1,0 +1,16 @@
+{
+  "title": "User Guides",
+  "description": "Detailed guides for using ATLAS PUGUH features.",
+  "slug": "/category/user-guides",
+  "permalink": "/docs/category/user-guides",
+  "navigation": {
+    "previous": {
+      "title": "Create Your First Rule",
+      "permalink": "/docs/getting-started/first-rule"
+    },
+    "next": {
+      "title": "User Management",
+      "permalink": "/docs/user-guides/iam/users"
+    }
+  }
+}

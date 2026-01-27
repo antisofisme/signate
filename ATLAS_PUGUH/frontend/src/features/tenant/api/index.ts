@@ -4,7 +4,7 @@
  * API functions for tenant management.
  */
 
-import { apiClient } from '@/shared/api/client'
+import apiClient from '@/shared/api/client'
 import type {
   CreateTenantRequest,
   CreateTenantResponse,

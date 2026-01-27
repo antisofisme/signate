@@ -70,8 +70,10 @@ export const useAuthStore = create<AuthState>()(
     {
       name: 'atlas-puguh-auth',
       partialize: (state) => ({
+        user: state.user,
         accessToken: state.accessToken,
         activeTenantId: state.activeTenantId,
+        isAuthenticated: state.isAuthenticated,
       }),
     }
   )

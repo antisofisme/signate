@@ -9,7 +9,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import {
   Scale,
   Shield,
-  Users,
   Workflow,
   BarChart3,
   Building2,
@@ -140,6 +139,9 @@ export function Landing() {
             </a>
             <a href="#pricing" className="text-muted-foreground hover:text-foreground transition-colors">
               Pricing
+            </a>
+            <a href="http://31.97.111.175:3002/docs/" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-foreground transition-colors">
+              Docs
             </a>
             <a href="#about" className="text-muted-foreground hover:text-foreground transition-colors">
               About
@@ -351,8 +353,8 @@ export function Landing() {
               <ul className="space-y-2 text-sm">
                 <li><a href="#features" className="hover:text-white transition-colors">Features</a></li>
                 <li><a href="#pricing" className="hover:text-white transition-colors">Pricing</a></li>
-                <li><a href="#" className="hover:text-white transition-colors">Documentation</a></li>
-                <li><a href="#" className="hover:text-white transition-colors">API Reference</a></li>
+                <li><a href="http://31.97.111.175:3002/docs/" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">Documentation</a></li>
+                <li><a href="http://31.97.111.175:3002/docs/api-reference" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">API Reference</a></li>
               </ul>
             </div>
             <div>

@@ -5,7 +5,7 @@ Qdrant is a high-performance vector database optimized for
 similarity search with filtering capabilities.
 
 Requirements:
-    pip install qdrant-client
+    pip install qdrant-client>=1.6.0
 
 Usage:
     store = QdrantVectorStore(url="http://localhost:6333")
@@ -17,7 +17,7 @@ Usage:
 import logging
 from typing import List, Optional, Dict, Any
 
-from qdrant_client import QdrantClient, models
+from qdrant_client import AsyncQdrantClient, models
 from qdrant_client.http.exceptions import UnexpectedResponse
 
 from core.ports.vector_store import VectorStoreProtocol, VectorSearchResult
@@ -33,6 +33,7 @@ class QdrantVectorStore(VectorStoreProtocol):
     - Payload filtering
     - Batch operations
     - Efficient memory usage
+    - True async operations (non-blocking)
     """
 
     def __init__(
@@ -43,7 +44,7 @@ class QdrantVectorStore(VectorStoreProtocol):
         timeout: float = 30.0,
     ):
         """
-        Initialize Qdrant client.
+        Initialize Qdrant async client.
 
         Args:
             url: Qdrant server URL
@@ -56,13 +57,13 @@ class QdrantVectorStore(VectorStoreProtocol):
         self.api_key = api_key
         self.timeout = timeout
 
-        # Initialize client
-        self.client = QdrantClient(
+        # Initialize async client (non-blocking)
+        self.client = AsyncQdrantClient(
             url=url,
             api_key=api_key,
             timeout=timeout,
         )
-        logger.info(f"Qdrant client initialized: {url}, collection={collection_name}")
+        logger.info(f"Qdrant async client initialized: {url}, collection={collection_name}")
 
     async def upsert(
         self,
@@ -72,7 +73,7 @@ class QdrantVectorStore(VectorStoreProtocol):
     ) -> None:
         """Insert or update a single vector."""
         try:
-            self.client.upsert(
+            await self.client.upsert(
                 collection_name=self.collection_name,
                 points=[
                     models.PointStruct(
@@ -105,7 +106,7 @@ class QdrantVectorStore(VectorStoreProtocol):
                 for item in items
             ]
 
-            self.client.upsert(
+            await self.client.upsert(
                 collection_name=self.collection_name,
                 points=points,
             )
@@ -147,7 +148,7 @@ class QdrantVectorStore(VectorStoreProtocol):
                 filter_obj = models.Filter(must=conditions)
 
             # Perform search
-            results = self.client.search(
+            results = await self.client.search(
                 collection_name=self.collection_name,
                 query_vector=query_vector,
                 limit=limit,
@@ -171,7 +172,7 @@ class QdrantVectorStore(VectorStoreProtocol):
     async def delete(self, id: str) -> bool:
         """Delete a vector by ID."""
         try:
-            self.client.delete(
+            await self.client.delete(
                 collection_name=self.collection_name,
                 points_selector=models.PointIdsList(points=[id]),
             )
@@ -187,7 +188,7 @@ class QdrantVectorStore(VectorStoreProtocol):
             return 0
 
         try:
-            self.client.delete(
+            await self.client.delete(
                 collection_name=self.collection_name,
                 points_selector=models.PointIdsList(points=ids),
             )
@@ -200,7 +201,7 @@ class QdrantVectorStore(VectorStoreProtocol):
     async def get(self, id: str) -> Optional[VectorSearchResult]:
         """Retrieve a vector by ID."""
         try:
-            results = self.client.retrieve(
+            results = await self.client.retrieve(
                 collection_name=self.collection_name,
                 ids=[id],
                 with_vectors=True,
@@ -221,7 +222,7 @@ class QdrantVectorStore(VectorStoreProtocol):
     async def collection_exists(self) -> bool:
         """Check if collection exists."""
         try:
-            collections = self.client.get_collections()
+            collections = await self.client.get_collections()
             return any(c.name == self.collection_name for c in collections.collections)
         except Exception as e:
             logger.error(f"Collection check failed: {e}")
@@ -234,7 +235,7 @@ class QdrantVectorStore(VectorStoreProtocol):
                 logger.info(f"Collection {self.collection_name} already exists")
                 return
 
-            self.client.create_collection(
+            await self.client.create_collection(
                 collection_name=self.collection_name,
                 vectors_config=models.VectorParams(
                     size=vector_size,
@@ -245,7 +246,7 @@ class QdrantVectorStore(VectorStoreProtocol):
 
             # Create payload indexes for filtering
             for field in ["group_id", "feature_id", "decision_code"]:
-                self.client.create_payload_index(
+                await self.client.create_payload_index(
                     collection_name=self.collection_name,
                     field_name=field,
                     field_schema=models.PayloadSchemaType.KEYWORD,
@@ -258,7 +259,7 @@ class QdrantVectorStore(VectorStoreProtocol):
     async def get_collection_info(self) -> Dict[str, Any]:
         """Get collection statistics."""
         try:
-            info = self.client.get_collection(self.collection_name)
+            info = await self.client.get_collection(self.collection_name)
             return {
                 "name": self.collection_name,
                 "count": info.points_count,

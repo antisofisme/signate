@@ -3,7 +3,7 @@
  * Per MANTRA-LAW-001 §3
  */
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { clsx } from 'clsx'
@@ -15,6 +15,7 @@ import {
   FEATURE_LABELS,
 } from '../shared/constants'
 import { SkeletonPage } from '../components/ui/skeleton'
+import { buildSupersededSet } from '../shared/decisionUtils'
 
 interface Decision {
   decision_id: string
@@ -65,16 +66,27 @@ export default function GroupPage() {
   const allDecisions: Decision[] = data?.decisions || []
   const groupDecisions = allDecisions.filter(d => d.group_id === groupId)
 
-  // Count decisions per feature
-  const featureCounts: Record<string, number> = {}
-  features.forEach(f => {
-    featureCounts[f] = groupDecisions.filter(d => d.feature_id === f).length
-  })
+  // Build superseded set for filtering
+  const supersededSet = useMemo(() => {
+    return buildSupersededSet(allDecisions as any[])
+  }, [allDecisions])
 
-  // Find version chains in this group
-  const supersededIds = new Set(groupDecisions.map(d => d.supersedes).filter(Boolean))
-  const chainHeads = groupDecisions.filter(d => !supersededIds.has(d.decision_id))
-  const chainsCount = chainHeads.filter(d => d.supersedes).length
+  // Current decisions in this group
+  const currentGroupDecisions = useMemo(() => {
+    return groupDecisions.filter(d => !supersededSet.has(d.decision_id))
+  }, [groupDecisions, supersededSet])
+
+  // Historical count
+  const historicalCount = groupDecisions.length - currentGroupDecisions.length
+
+  // Count CURRENT decisions per feature
+  const currentFeatureCounts: Record<string, number> = {}
+  const totalFeatureCounts: Record<string, number> = {}
+  features.forEach(f => {
+    const featureDecisions = groupDecisions.filter(d => d.feature_id === f)
+    totalFeatureCounts[f] = featureDecisions.length
+    currentFeatureCounts[f] = featureDecisions.filter(d => !supersededSet.has(d.decision_id)).length
+  })
 
   // Cross-group relationships
   const crossGroupRefs = groupDecisions.filter(d =>
@@ -115,16 +127,19 @@ export default function GroupPage() {
         {/* Quick Stats */}
         <div className="grid grid-cols-4 gap-4 mt-6">
           <div className="bg-white rounded-lg p-4 shadow-sm">
-            <div className="text-2xl font-bold text-gray-900">{groupDecisions.length}</div>
-            <div className="text-sm text-gray-500">Total Decisions</div>
+            <div className="text-2xl font-bold text-gray-900">{currentGroupDecisions.length}</div>
+            <div className="text-sm text-gray-500">Current Decisions</div>
+            {historicalCount > 0 && (
+              <div className="text-xs text-gray-400">({groupDecisions.length} total)</div>
+            )}
           </div>
           <div className="bg-white rounded-lg p-4 shadow-sm">
             <div className="text-2xl font-bold text-gray-900">{features.length}</div>
             <div className="text-sm text-gray-500">Features</div>
           </div>
           <div className="bg-white rounded-lg p-4 shadow-sm">
-            <div className="text-2xl font-bold text-gray-900">{chainsCount}</div>
-            <div className="text-sm text-gray-500">Version Chains</div>
+            <div className="text-2xl font-bold text-gray-900">{historicalCount}</div>
+            <div className="text-sm text-gray-500">Historical Versions</div>
           </div>
           <div className="bg-white rounded-lg p-4 shadow-sm">
             <div className="text-2xl font-bold text-gray-900">{crossGroupRefs.length}</div>
@@ -165,8 +180,12 @@ export default function GroupPage() {
       {activeTab === 'features' && (
         <div className="grid grid-cols-2 gap-4">
           {features.map(featureId => {
-            const count = featureCounts[featureId]
-            const featureDecisions = groupDecisions.filter(d => d.feature_id === featureId)
+            const currentCount = currentFeatureCounts[featureId]
+            const totalCount = totalFeatureCounts[featureId]
+            const hasHistorical = totalCount > currentCount
+            // Show only current decisions in the preview
+            const currentFeatureDecisions = groupDecisions
+              .filter(d => d.feature_id === featureId && !supersededSet.has(d.decision_id))
 
             return (
               <div key={featureId} className="bg-white rounded-lg border shadow-sm overflow-hidden">
@@ -176,15 +195,20 @@ export default function GroupPage() {
                       <span className={clsx("font-medium", colors.text)}>{featureId}</span>
                       <span className="text-gray-600 ml-2">{FEATURE_LABELS[featureId]}</span>
                     </div>
-                    <span className="bg-white px-2 py-1 rounded text-sm font-medium text-gray-600">
-                      {count} {count === 1 ? 'decision' : 'decisions'}
-                    </span>
+                    <div className="text-right">
+                      <span className="bg-white px-2 py-1 rounded text-sm font-medium text-gray-600">
+                        {currentCount} current
+                      </span>
+                      {hasHistorical && (
+                        <span className="text-xs text-gray-400 ml-1">({totalCount} total)</span>
+                      )}
+                    </div>
                   </div>
                 </div>
                 <div className="p-4">
-                  {featureDecisions.length > 0 ? (
+                  {currentFeatureDecisions.length > 0 ? (
                     <div className="space-y-2">
-                      {featureDecisions.slice(0, 3).map(decision => (
+                      {currentFeatureDecisions.slice(0, 3).map(decision => (
                         <Link
                           key={decision.decision_id}
                           to={`/decisions/${decision.decision_id}`}
@@ -201,18 +225,18 @@ export default function GroupPage() {
                           </p>
                         </Link>
                       ))}
-                      {featureDecisions.length > 3 && (
+                      {currentFeatureDecisions.length > 3 && (
                         <Link
                           to={`/decisions?group=${groupId}&feature=${featureId}`}
                           className={clsx("block text-center text-sm py-2", colors.text, "hover:underline")}
                         >
-                          View all {featureDecisions.length} decisions →
+                          View all {currentCount} current decisions →
                         </Link>
                       )}
                     </div>
                   ) : (
                     <p className="text-gray-400 text-sm text-center py-4">
-                      No decisions for this feature yet
+                      No current decisions for this feature
                     </p>
                   )}
                 </div>

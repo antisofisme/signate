@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import { api } from '../shared/api'
 import { SkeletonPage } from '../components/ui/skeleton'
+import { getCurrentDecisions, buildSupersededSet, getDecisionCounts } from '../shared/decisionUtils'
 
 /**
  * Scope Projection
@@ -26,27 +27,50 @@ interface Decision {
   group_id: string
   feature_id: string
   related_decisions: string[]
+  tags: string[]
+  tech_stack: string[]
 }
 
-const SCOPE_CATEGORIES = ['FE', 'BE', 'INFRA', 'CI-CD', 'ALL', 'OTHER'] as const
+// Technical Area Categories (12 total)
+const SCOPE_CATEGORIES = ['FE', 'BE', 'DB', 'API', 'INFRA', 'SECURITY', 'DEVOPS', 'TESTING', 'PERF', 'DATA', 'ARCH', 'OTHER'] as const
 
 const SCOPE_COLORS: Record<string, string> = {
+  // Core Development
   'FE': 'bg-blue-100 text-blue-700',
   'BE': 'bg-green-100 text-green-700',
+  'DB': 'bg-cyan-100 text-cyan-700',
+  'API': 'bg-teal-100 text-teal-700',
+  // Infrastructure & Operations
   'INFRA': 'bg-purple-100 text-purple-700',
-  'CI-CD': 'bg-orange-100 text-orange-700',
-  'ALL': 'bg-gray-100 text-gray-700',
-  'OTHER': 'bg-gray-50 text-gray-500',
+  'CICD': 'bg-orange-100 text-orange-700',
+  'DEVOPS': 'bg-amber-100 text-amber-700',
+  // Quality & Security
+  'SECURITY': 'bg-red-100 text-red-700',
+  'TESTING': 'bg-pink-100 text-pink-700',
+  'PERF': 'bg-yellow-100 text-yellow-700',
+  // Architecture & Data (NEW)
+  'DATA': 'bg-indigo-100 text-indigo-700',
+  'ARCH': 'bg-violet-100 text-violet-700',
+  // Fallback
+  'OTHER': 'bg-gray-100 text-gray-500',
 }
 
-function categorizeScope(scope: string): string {
-  const upper = scope?.toUpperCase() || ''
-  if (upper.includes('FRONTEND') || upper.includes('FE') || upper.includes('UI')) return 'FE'
-  if (upper.includes('BACKEND') || upper.includes('BE') || upper.includes('API')) return 'BE'
-  if (upper.includes('INFRA') || upper.includes('INFRASTRUCTURE') || upper.includes('DEPLOY')) return 'INFRA'
-  if (upper.includes('CI') || upper.includes('CD') || upper.includes('PIPELINE')) return 'CI-CD'
-  if (upper.includes('ALL') || upper.includes('SYSTEM')) return 'ALL'
-  return 'OTHER'
+function categorizeByTags(tags: string[]): string[] {
+  if (!tags || tags.length === 0) return ['OTHER']
+
+  const categories: string[] = []
+  const tagSet = new Set(tags.map(t => t.toUpperCase()))
+
+  // Direct mapping - each tag maps to its category
+  const directMappings = ['FE', 'BE', 'DB', 'API', 'INFRA', 'SECURITY', 'DEVOPS', 'CICD', 'TESTING', 'PERF', 'DATA', 'ARCH']
+
+  for (const tag of directMappings) {
+    if (tagSet.has(tag)) {
+      categories.push(tag)
+    }
+  }
+
+  return categories.length > 0 ? [...new Set(categories)] : ['OTHER']
 }
 
 export default function ScopeProjection() {
@@ -59,24 +83,42 @@ export default function ScopeProjection() {
     return <SkeletonPage />
   }
 
-  const decisions: Decision[] = data?.decisions || []
+  const allDecisions: Decision[] = data?.decisions || []
+  // Cast to any[] for utility functions (local Decision interface is compatible subset)
+  const currentDecisions = getCurrentDecisions(allDecisions as any[]) as Decision[]
+  const supersededSet = buildSupersededSet(allDecisions as any[])
+  const counts = getDecisionCounts(allDecisions as any[])
 
-  // Group by scope category
+  // Group CURRENT decisions by tags category (a decision can appear in multiple categories)
   const byScope: Record<string, Decision[]> = {}
   SCOPE_CATEGORIES.forEach(cat => {
     byScope[cat] = []
   })
 
-  decisions.forEach(decision => {
-    const category = categorizeScope(decision.scope)
-    byScope[category].push(decision)
+  currentDecisions.forEach(decision => {
+    const categories = categorizeByTags(decision.tags || [])
+    categories.forEach(category => {
+      if (byScope[category]) {
+        byScope[category].push(decision)
+      }
+    })
   })
 
-  // Cross-group references
+  // Track historical counts per category for indicators
+  const historicalByScope: Record<string, number> = {}
+  SCOPE_CATEGORIES.forEach(cat => {
+    const historicalInCategory = allDecisions.filter(d =>
+      supersededSet.has(d.decision_id) &&
+      categorizeByTags(d.tags || []).includes(cat)
+    )
+    historicalByScope[cat] = historicalInCategory.length
+  })
+
+  // Cross-group references (only from current decisions)
   const crossGroupRefs: { from: Decision; to: string }[] = []
-  decisions.forEach(decision => {
+  currentDecisions.forEach(decision => {
     decision.related_decisions?.forEach(relId => {
-      const related = decisions.find(d => d.decision_id === relId)
+      const related = allDecisions.find(d => d.decision_id === relId)
       if (related && related.group_id !== decision.group_id) {
         crossGroupRefs.push({ from: decision, to: relId })
       }
@@ -86,9 +128,14 @@ export default function ScopeProjection() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Scope Projection</h1>
+        <h1 className="text-2xl font-bold text-gray-900">Technical Areas</h1>
         <p className="mt-2 text-gray-600">
-          Decision impact areas - FE / BE / Infra / CI-CD (no priority judgment)
+          {counts.current} current decisions across 12 technical areas
+          {counts.superseded > 0 && (
+            <span className="text-gray-400 ml-1">
+              ({counts.total} total incl. {counts.superseded} historical)
+            </span>
+          )}
         </p>
       </div>
 
@@ -100,9 +147,16 @@ export default function ScopeProjection() {
               <span className={`px-3 py-1 rounded-full text-sm font-medium ${SCOPE_COLORS[category]}`}>
                 {category}
               </span>
-              <span className="text-2xl font-bold text-gray-900">
-                {byScope[category].length}
-              </span>
+              <div className="text-right">
+                <span className="text-2xl font-bold text-gray-900">
+                  {byScope[category].length}
+                </span>
+                {historicalByScope[category] > 0 && (
+                  <span className="text-xs text-gray-400 block">
+                    +{historicalByScope[category]} historical
+                  </span>
+                )}
+              </div>
             </div>
             <div className="space-y-2 max-h-40 overflow-y-auto">
               {byScope[category].slice(0, 5).map(decision => (
@@ -142,13 +196,13 @@ export default function ScopeProjection() {
             <thead>
               <tr className="border-b border-gray-200">
                 <th className="px-3 py-2 text-left text-gray-500 font-medium">Decision</th>
-                <th className="px-3 py-2 text-left text-gray-500 font-medium">Scope</th>
-                <th className="px-3 py-2 text-left text-gray-500 font-medium">Blast Radius</th>
+                <th className="px-3 py-2 text-left text-gray-500 font-medium">Technical Areas</th>
+                <th className="px-3 py-2 text-left text-gray-500 font-medium">Impact Level</th>
                 <th className="px-3 py-2 text-left text-gray-500 font-medium">Group/Feature</th>
               </tr>
             </thead>
             <tbody>
-              {decisions.slice(0, 10).map(decision => (
+              {currentDecisions.slice(0, 10).map(decision => (
                 <tr key={decision.decision_id} className="border-b border-gray-100">
                   <td className="px-3 py-2">
                     <Link
@@ -159,12 +213,31 @@ export default function ScopeProjection() {
                     </Link>
                   </td>
                   <td className="px-3 py-2">
-                    <span className={`px-2 py-0.5 rounded text-xs ${SCOPE_COLORS[categorizeScope(decision.scope)]}`}>
-                      {categorizeScope(decision.scope)}
-                    </span>
+                    <div className="flex flex-wrap gap-1">
+                      {(decision.tags || []).length > 0 ? (
+                        decision.tags.slice(0, 3).map(tag => (
+                          <span key={tag} className={`px-2 py-0.5 rounded text-xs ${SCOPE_COLORS[tag] || SCOPE_COLORS['OTHER']}`}>
+                            {tag}
+                          </span>
+                        ))
+                      ) : (
+                        <span className="px-2 py-0.5 rounded text-xs bg-gray-100 text-gray-500">-</span>
+                      )}
+                    </div>
                   </td>
-                  <td className="px-3 py-2 text-gray-700 text-xs">
-                    {decision.blast_radius || 'Not specified'}
+                  <td className="px-3 py-2">
+                    <div className="flex flex-col gap-1">
+                      <span className={`px-2 py-0.5 rounded text-xs inline-block w-fit ${
+                        decision.scope === 'ORGANIZATION' ? 'bg-red-100 text-red-700' :
+                        decision.scope === 'DOMAIN' ? 'bg-orange-100 text-orange-700' :
+                        'bg-green-100 text-green-700'
+                      }`}>
+                        {decision.scope || 'APP'}
+                      </span>
+                      <span className="text-gray-400 text-xs">
+                        Risk: {decision.blast_radius || 'LOW'}
+                      </span>
+                    </div>
                   </td>
                   <td className="px-3 py-2 text-gray-500 text-xs">
                     G{decision.group_id.split('-')[1]}/{decision.feature_id}
@@ -182,7 +255,7 @@ export default function ScopeProjection() {
         {crossGroupRefs.length > 0 ? (
           <div className="space-y-2">
             {crossGroupRefs.map((ref, index) => {
-              const toDecision = decisions.find(d => d.decision_id === ref.to)
+              const toDecision = allDecisions.find(d => d.decision_id === ref.to)
               return (
                 <div key={index} className="flex items-center gap-2 text-sm">
                   <Link

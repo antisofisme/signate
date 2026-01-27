@@ -112,6 +112,31 @@ const Icons = {
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
     </svg>
   ),
+  Search: () => (
+    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+    </svg>
+  ),
+  Wizard: () => (
+    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+    </svg>
+  ),
+  Approval: () => (
+    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+    </svg>
+  ),
+  Graph: () => (
+    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+    </svg>
+  ),
+  Robot: () => (
+    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+    </svg>
+  ),
 }
 
 const GROUP_ICONS: Record<string, React.FC> = {
@@ -380,6 +405,20 @@ export function SidebarLayout() {
             </NavLink>
 
             <NavLink
+              to="/search"
+              onClick={() => setSidebarOpen(false)}
+              className={({ isActive }) => clsx(
+                "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors",
+                isActive
+                  ? "bg-indigo-600 text-white"
+                  : "text-gray-600 hover:bg-gray-100"
+              )}
+            >
+              <Icons.Search />
+              <span>Semantic Search</span>
+            </NavLink>
+
+            <NavLink
               to="/audit"
               onClick={() => setSidebarOpen(false)}
               className={({ isActive }) => clsx(
@@ -391,6 +430,53 @@ export function SidebarLayout() {
             >
               <Icons.Audit />
               <span>Audit Log</span>
+            </NavLink>
+
+            {/* Workflow */}
+            <div className="text-xs font-semibold text-gray-400 uppercase tracking-wider mt-6 mb-3 px-3">
+              Workflow
+            </div>
+
+            <NavLink
+              to="/wizard"
+              onClick={() => setSidebarOpen(false)}
+              className={({ isActive }) => clsx(
+                "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors",
+                isActive
+                  ? "bg-emerald-600 text-white"
+                  : "text-gray-600 hover:bg-gray-100"
+              )}
+            >
+              <Icons.Wizard />
+              <span>New Decision</span>
+            </NavLink>
+
+            <NavLink
+              to="/approvals"
+              onClick={() => setSidebarOpen(false)}
+              className={({ isActive }) => clsx(
+                "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors",
+                isActive
+                  ? "bg-emerald-600 text-white"
+                  : "text-gray-600 hover:bg-gray-100"
+              )}
+            >
+              <Icons.Approval />
+              <span>Approvals</span>
+            </NavLink>
+
+            <NavLink
+              to="/relation-editor"
+              onClick={() => setSidebarOpen(false)}
+              className={({ isActive }) => clsx(
+                "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors",
+                isActive
+                  ? "bg-emerald-600 text-white"
+                  : "text-gray-600 hover:bg-gray-100"
+              )}
+            >
+              <Icons.Graph />
+              <span>Relation Editor</span>
             </NavLink>
 
             {/* Settings */}
@@ -424,6 +510,20 @@ export function SidebarLayout() {
             >
               <Icons.AI />
               <span>AI Settings</span>
+            </NavLink>
+
+            <NavLink
+              to="/settings/mcp"
+              onClick={() => setSidebarOpen(false)}
+              className={({ isActive }) => clsx(
+                "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors",
+                isActive
+                  ? "bg-indigo-600 text-white"
+                  : "text-gray-600 hover:bg-gray-100"
+              )}
+            >
+              <Icons.Robot />
+              <span>MCP Dashboard</span>
             </NavLink>
           </nav>
 

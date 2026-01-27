@@ -24,8 +24,8 @@ job "puguh-backend" {
       mode = "bridge"  # Use bridge network for Consul Connect readiness
 
       port "http" {
-        to = 8001  # Container internal port
-        # Dynamic port allocation (Nomad assigns random host port)
+        to     = 8001  # Container internal port
+        static = 8001  # Static host port for stable frontend connection
       }
     }
 
@@ -56,33 +56,14 @@ job "puguh-backend" {
         command = "sh"
         args = [
           "-c",
-          <<EOF
-# Install system dependencies
-apt-get update && apt-get install -y --no-install-recommends gcc postgresql-client curl
-
-# Install Python dependencies
-cd /app
-pip install --no-cache-dir \
-  fastapi==0.109.0 \
-  uvicorn[standard]==0.27.0 \
-  sqlalchemy[asyncio]==2.0.25 \
-  asyncpg==0.29.0 \
-  pydantic==2.5.3 \
-  pydantic-settings==2.1.0 \
-  python-jose[cryptography]==3.3.0 \
-  passlib[bcrypt]==1.7.4 \
-  python-multipart==0.0.6
-
-# Run application
-uvicorn core.app:app --host 0.0.0.0 --port 8001 --log-level debug
-EOF
+          "apt-get update && apt-get install -y --no-install-recommends gcc postgresql-client curl && cd /app && pip install --no-cache-dir -r requirements-phase-a.txt && uvicorn core.app:app --host 0.0.0.0 --port 8001 --log-level debug"
         ]
 
         # Mount application code
         # OPTION A: Build Docker image with code baked in (recommended)
         # OPTION B: Mount from host (development only)
         volumes = [
-          # "/opt/atlas-puguh/backend:/app:ro"  # Mount from host (if using Option 2)
+          "/root/atlas-puguh/backend:/app:ro"  # Mount from host
         ]
 
         # Force pull image
@@ -101,8 +82,8 @@ EOF
         # Environment
         ENVIRONMENT = "phase-a-staging"
 
-        # Database (Consul DNS resolution)
-        DATABASE_URL = "postgresql+asyncpg://atlas_user:CHANGE_THIS_PASSWORD_PRODUCTION@puguh-postgres.service.consul:5433/atlas_puguh"
+        # Database (direct IP - Consul DNS not available in Docker bridge mode)
+        DATABASE_URL = "postgresql+asyncpg://atlas_user:TBBQrXTZezvF8cybncpno686lSDA9_E6@31.97.111.175:5433/atlas_puguh"
 
         # JWT Authentication
         JWT_SECRET_KEY = "CHANGE_THIS_TO_RANDOM_32_CHAR_STRING_PRODUCTION"

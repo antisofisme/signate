@@ -6,6 +6,7 @@
 
 import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
+import { useState, useEffect } from 'react'
 import {
   BarChart3,
   Users,
@@ -20,9 +21,11 @@ import {
   Zap,
   History,
   ArrowRight,
+  AlertCircle,
 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui'
-import { getSystemStats } from '@/lib/api'
+import { getSystemStats, listTenants } from '@/lib/api'
+import type { TenantConfig } from '@/types'
 
 // Domain colors matching sidebar
 const DOMAIN_COLORS = {
@@ -41,13 +44,119 @@ const DOMAIN_COLORS = {
 }
 
 export function Dashboard() {
-  const { data: stats, isLoading, error } = useQuery({
-    queryKey: ['systemStats'],
-    queryFn: getSystemStats,
-    refetchInterval: 30000, // Refresh every 30 seconds
+  const [tenantId, setTenantId] = useState<string | null>(null)
+  const [selectedTenant, setSelectedTenant] = useState<TenantConfig | null>(null)
+
+  // Check localStorage for tenant_id on mount
+  // Default to 'demo' tenant if none is set (bootstrap)
+  useEffect(() => {
+    const storedTenantId = localStorage.getItem('tenant_id')
+    if (storedTenantId) {
+      setTenantId(storedTenantId)
+    } else {
+      // Auto-set demo tenant for bootstrap
+      const defaultTenantId = 'demo'
+      localStorage.setItem('tenant_id', defaultTenantId)
+      setTenantId(defaultTenantId)
+    }
+  }, [])
+
+  // Fetch tenants list (for selection when no tenant is set)
+  const { data: tenants, isLoading: tenantsLoading } = useQuery({
+    queryKey: ['tenants'],
+    queryFn: () => listTenants({ active_only: true }),
+    enabled: !tenantId, // Only fetch if no tenant selected
   })
 
-  if (isLoading) {
+  // Fetch stats (only when tenant is selected)
+  const { data: stats, isLoading: statsLoading, error: statsError } = useQuery({
+    queryKey: ['systemStats', tenantId],
+    queryFn: getSystemStats,
+    refetchInterval: 30000,
+    enabled: !!tenantId,
+  })
+
+  // Handle tenant selection
+  const handleSelectTenant = (tenant: TenantConfig) => {
+    localStorage.setItem('tenant_id', tenant.id)
+    setTenantId(tenant.id)
+    setSelectedTenant(tenant)
+    window.location.reload() // Reload to apply tenant context
+  }
+
+  // Show tenant selector if no tenant is selected
+  if (!tenantId) {
+    if (tenantsLoading) {
+      return (
+        <div className="flex items-center justify-center h-64">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4" />
+            <p className="text-gray-500">Loading tenants...</p>
+          </div>
+        </div>
+      )
+    }
+
+    return (
+      <div className="max-w-2xl mx-auto">
+        <Card className="border-2 border-blue-200">
+          <CardHeader className="bg-blue-50 border-b">
+            <CardTitle className="flex items-center gap-2 text-blue-700">
+              <Building2 className="h-5 w-5" />
+              Select a Tenant to Continue
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-6">
+            <p className="text-gray-600 mb-6">
+              Please select a tenant organization to access the dashboard and manage the RAG Chat system.
+            </p>
+
+            {tenants && tenants.length > 0 ? (
+              <div className="space-y-3">
+                {tenants.map((tenant) => (
+                  <button
+                    key={tenant.id}
+                    onClick={() => handleSelectTenant(tenant)}
+                    className="w-full p-4 text-left border rounded-lg hover:border-blue-400 hover:bg-blue-50 transition-colors group"
+                  >
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h3 className="font-medium text-gray-900 group-hover:text-blue-700">
+                          {tenant.name}
+                        </h3>
+                        {tenant.description && (
+                          <p className="text-sm text-gray-500 mt-1">{tenant.description}</p>
+                        )}
+                      </div>
+                      <ArrowRight className="h-5 w-5 text-gray-400 group-hover:text-blue-600" />
+                    </div>
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-8 bg-amber-50 rounded-lg border border-amber-200">
+                <AlertCircle className="h-8 w-8 text-amber-500 mx-auto mb-3" />
+                <p className="text-amber-800 font-medium">No tenants available</p>
+                <p className="text-sm text-amber-600 mt-1">
+                  Create a tenant first using the Tenants page.
+                </p>
+                <Link
+                  to="/tenants"
+                  className="inline-flex items-center gap-2 mt-4 px-4 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600"
+                >
+                  <Building2 className="h-4 w-4" />
+                  Go to Tenants
+                </Link>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
+  // Loading stats
+  if (statsLoading) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="text-center">
@@ -58,14 +167,8 @@ export function Dashboard() {
     )
   }
 
-  if (error) {
-    return (
-      <div className="text-center text-red-500 p-8 bg-red-50 rounded-xl">
-        <p className="font-medium">Failed to load stats</p>
-        <p className="text-sm mt-1">Please check if the backend is running.</p>
-      </div>
-    )
-  }
+  // Stats error - show dashboard without stats (still functional)
+  const showStatsError = !!statsError
 
   const statCards = [
     {
@@ -123,6 +226,28 @@ export function Dashboard() {
         </p>
       </div>
 
+      {/* Stats Error Banner */}
+      {showStatsError && (
+        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-start gap-3">
+          <AlertCircle className="h-5 w-5 text-amber-500 mt-0.5 flex-shrink-0" />
+          <div className="flex-1">
+            <p className="font-medium text-amber-800">Stats unavailable</p>
+            <p className="text-sm text-amber-600 mt-1">
+              Authentication required to view system statistics. The dashboard features below are still accessible.
+            </p>
+          </div>
+          <button
+            onClick={() => {
+              localStorage.removeItem('tenant_id')
+              window.location.reload()
+            }}
+            className="text-sm text-amber-700 hover:text-amber-900 underline"
+          >
+            Change Tenant
+          </button>
+        </div>
+      )}
+
       {/* System Architecture Banner */}
       <div className="bg-gradient-to-r from-blue-600 to-indigo-600 rounded-xl p-6 text-white">
         <h3 className="font-semibold mb-4 text-lg">4-Layer Memory Architecture</h3>
@@ -150,31 +275,33 @@ export function Dashboard() {
         </div>
       </div>
 
-      {/* Stats Grid */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {statCards.map((stat) => (
-          <Card key={stat.title}>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-gray-500">
-                {stat.title}
-              </CardTitle>
-              <div className={`rounded-lg p-2 ${stat.bg}`}>
-                <stat.icon className={`h-5 w-5 ${stat.color}`} />
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                {stat.value.toLocaleString()}
-                {stat.total !== undefined && (
-                  <span className="text-sm font-normal text-gray-500">
-                    {' '}/ {stat.total}
-                  </span>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+      {/* Stats Grid - Only show when stats are available */}
+      {!showStatsError && (
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {statCards.map((stat) => (
+            <Card key={stat.title}>
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-sm font-medium text-gray-500">
+                  {stat.title}
+                </CardTitle>
+                <div className={`rounded-lg p-2 ${stat.bg}`}>
+                  <stat.icon className={`h-5 w-5 ${stat.color}`} />
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">
+                  {stat.value.toLocaleString()}
+                  {stat.total !== undefined && (
+                    <span className="text-sm font-normal text-gray-500">
+                      {' '}/ {stat.total}
+                    </span>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
 
       {/* Domain Quick Access */}
       <div className="grid gap-6 md:grid-cols-2">

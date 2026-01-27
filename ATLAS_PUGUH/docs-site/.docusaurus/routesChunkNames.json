@@ -1,0 +1,204 @@
+{
+  "/blog-630": {
+    "__comp": "a6aa9e1f",
+    "__context": {
+      "plugin": "52c22ea3"
+    },
+    "sidebar": "814f3328",
+    "items": [
+      {
+        "content": "aa10270e"
+      }
+    ],
+    "metadata": "b2b675dd"
+  },
+  "/blog/archive-388": {
+    "__comp": "9e4087bc",
+    "__context": {
+      "plugin": "52c22ea3"
+    },
+    "archive": "b2f554cd"
+  },
+  "/blog/initial-release-e59": {
+    "__comp": "ccc49370",
+    "__context": {
+      "plugin": "52c22ea3"
+    },
+    "sidebar": "814f3328",
+    "content": "a43662ca"
+  },
+  "/blog/tags-a06": {
+    "__comp": "01a85c17",
+    "__context": {
+      "plugin": "52c22ea3"
+    },
+    "sidebar": "814f3328",
+    "tags": "a7023ddc"
+  },
+  "/blog/tags/documentation-5a2": {
+    "__comp": "6875c492",
+    "__context": {
+      "plugin": "52c22ea3"
+    },
+    "sidebar": "814f3328",
+    "items": [
+      {
+        "content": "aa10270e"
+      }
+    ],
+    "tag": "38f00f86",
+    "listMetadata": "992a3bb7"
+  },
+  "/blog/tags/release-d9a": {
+    "__comp": "6875c492",
+    "__context": {
+      "plugin": "52c22ea3"
+    },
+    "sidebar": "814f3328",
+    "items": [
+      {
+        "content": "aa10270e"
+      }
+    ],
+    "tag": "83d480e9",
+    "listMetadata": "9c021584"
+  },
+  "/docs-f69": {
+    "__comp": "1be78505",
+    "__context": {
+      "plugin": "5e70482d"
+    },
+    "versionMetadata": "935f2afb"
+  },
+  "/docs/-2bf": {
+    "__comp": "17896441",
+    "content": "0e384e19"
+  },
+  "/docs/advanced/best-practices-867": {
+    "__comp": "17896441",
+    "content": "dbe3b6b9"
+  },
+  "/docs/advanced/multi-tenant-ad8": {
+    "__comp": "17896441",
+    "content": "a9eae749"
+  },
+  "/docs/advanced/scoping-a71": {
+    "__comp": "17896441",
+    "content": "ca9a4075"
+  },
+  "/docs/advanced/troubleshooting-d25": {
+    "__comp": "17896441",
+    "content": "86d0835c"
+  },
+  "/docs/api-reference/authentication-bfb": {
+    "__comp": "17896441",
+    "content": "794baed2"
+  },
+  "/docs/api-reference/decisions-api-631": {
+    "__comp": "17896441",
+    "content": "9a58c655"
+  },
+  "/docs/api-reference/rules-api-5c8": {
+    "__comp": "17896441",
+    "content": "f1c92578"
+  },
+  "/docs/api-reference/sdk-usage-b56": {
+    "__comp": "17896441",
+    "content": "55acd835"
+  },
+  "/docs/category/advanced-345": {
+    "__comp": "14eb3368",
+    "categoryGeneratedIndex": "05d66ddd"
+  },
+  "/docs/category/api-reference-6be": {
+    "__comp": "14eb3368",
+    "categoryGeneratedIndex": "ef15815f"
+  },
+  "/docs/category/getting-started-01f": {
+    "__comp": "14eb3368",
+    "categoryGeneratedIndex": "3152febb"
+  },
+  "/docs/category/user-guides-0cf": {
+    "__comp": "14eb3368",
+    "categoryGeneratedIndex": "ded33845"
+  },
+  "/docs/getting-started/first-project-b2f": {
+    "__comp": "17896441",
+    "content": "9b674531"
+  },
+  "/docs/getting-started/first-rule-5fd": {
+    "__comp": "17896441",
+    "content": "ff42f17b"
+  },
+  "/docs/getting-started/first-tenant-d17": {
+    "__comp": "17896441",
+    "content": "48d40fbb"
+  },
+  "/docs/getting-started/quick-start-c34": {
+    "__comp": "17896441",
+    "content": "588bd741"
+  },
+  "/docs/user-guides/control/deployment-270": {
+    "__comp": "17896441",
+    "content": "26aec675"
+  },
+  "/docs/user-guides/control/environments-b8b": {
+    "__comp": "17896441",
+    "content": "e9396cd6"
+  },
+  "/docs/user-guides/control/rollback-6a2": {
+    "__comp": "17896441",
+    "content": "606d22a5"
+  },
+  "/docs/user-guides/decisions/rule-builder-d2a": {
+    "__comp": "17896441",
+    "content": "7731d2e4"
+  },
+  "/docs/user-guides/decisions/rules-651": {
+    "__comp": "17896441",
+    "content": "763b1a41"
+  },
+  "/docs/user-guides/decisions/testing-12b": {
+    "__comp": "17896441",
+    "content": "997f19b9"
+  },
+  "/docs/user-guides/decisions/versioning-c8d": {
+    "__comp": "17896441",
+    "content": "7f24b73b"
+  },
+  "/docs/user-guides/iam/access-control-af9": {
+    "__comp": "17896441",
+    "content": "560dbe50"
+  },
+  "/docs/user-guides/iam/permissions-5e7": {
+    "__comp": "17896441",
+    "content": "eca114b2"
+  },
+  "/docs/user-guides/iam/roles-ca0": {
+    "__comp": "17896441",
+    "content": "61a4bb0f"
+  },
+  "/docs/user-guides/iam/users-71d": {
+    "__comp": "17896441",
+    "content": "8f72dda8"
+  },
+  "/docs/user-guides/workflows/creating-58d": {
+    "__comp": "17896441",
+    "content": "ceabdfe9"
+  },
+  "/docs/user-guides/workflows/monitoring-81e": {
+    "__comp": "17896441",
+    "content": "3606ab2a"
+  },
+  "/docs/user-guides/workflows/triggers-01d": {
+    "__comp": "17896441",
+    "content": "379ef610"
+  },
+  "/-82c": {
+    "__comp": "c4f5d8e4",
+    "__context": {
+      "plugin": "42af2603"
+    },
+    "config": "5e9f5e1a"
+  }
+}

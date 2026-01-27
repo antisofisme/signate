@@ -13,7 +13,7 @@ from uuid import UUID, uuid4
 from typing import Optional
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, kw_only=True)
 class AuthDomainEvent:
     """Base class for auth domain events."""
     event_id: UUID = field(default_factory=uuid4)

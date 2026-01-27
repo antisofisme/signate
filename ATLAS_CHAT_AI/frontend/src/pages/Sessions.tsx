@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { MessageSquare, Trash2, ChevronDown, ChevronUp, Clock } from 'lucide-react'
+import { MessageSquare, Trash2, ChevronDown, ChevronUp, Clock, AlertCircle } from 'lucide-react'
 import { Button, Card, CardContent, CardHeader, CardTitle } from '@/components/ui'
 import { listSessions, getSessionMessages, deleteSession } from '@/lib/api'
 import { formatDate, formatRelativeTime, cn } from '@/lib/utils'
@@ -55,8 +55,23 @@ export function Sessions() {
 
   if (error) {
     return (
-      <div className="text-center text-red-500 p-4">
-        Failed to load sessions. Please try again.
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-2xl font-bold">Chat Sessions</h1>
+          <p className="text-gray-500">View and manage chat history</p>
+        </div>
+
+        <div className="bg-amber-50 border border-amber-200 rounded-xl p-6">
+          <div className="flex items-start gap-3">
+            <AlertCircle className="h-6 w-6 text-amber-500 mt-0.5" />
+            <div>
+              <p className="font-medium text-amber-800">Unable to load sessions</p>
+              <p className="text-sm text-amber-600 mt-1">
+                There was an issue loading your chat sessions. Please try refreshing the page.
+              </p>
+            </div>
+          </div>
+        </div>
       </div>
     )
   }
@@ -88,18 +103,22 @@ export function Sessions() {
                     </div>
                     <div>
                       <CardTitle className="text-base">
-                        {session.title || `Session ${session.id.slice(0, 8)}...`}
+                        {session.title || `Session ${session.id?.slice(0, 8) || 'Unknown'}...`}
                       </CardTitle>
                       <div className="flex items-center gap-3 text-xs text-gray-500 mt-1">
                         <span className="flex items-center gap-1">
                           <MessageSquare className="h-3 w-3" />
-                          {session.message_count} messages
+                          {session.message_count ?? 0} messages
                         </span>
                         <span className="flex items-center gap-1">
                           <Clock className="h-3 w-3" />
                           {session.last_message_at
                             ? formatRelativeTime(session.last_message_at)
-                            : formatRelativeTime(session.created_at)}
+                            : session.started_at
+                              ? formatRelativeTime(session.started_at)
+                              : session.created_at
+                                ? formatRelativeTime(session.created_at)
+                                : 'Unknown'}
                         </span>
                       </div>
                     </div>
@@ -149,15 +168,17 @@ export function Sessions() {
                               : 'bg-gray-100 text-gray-900'
                           )}
                         >
-                          <p className="whitespace-pre-wrap">{message.content}</p>
-                          <p
-                            className={cn(
-                              'text-xs mt-1',
-                              message.role === 'user' ? 'text-white/70' : 'text-gray-500'
-                            )}
-                          >
-                            {formatDate(message.created_at)}
-                          </p>
+                          <p className="whitespace-pre-wrap">{message.content || ''}</p>
+                          {message.created_at && (
+                            <p
+                              className={cn(
+                                'text-xs mt-1',
+                                message.role === 'user' ? 'text-white/70' : 'text-gray-500'
+                              )}
+                            >
+                              {formatDate(message.created_at)}
+                            </p>
+                          )}
                         </div>
                       </div>
                     ))}
@@ -170,8 +191,8 @@ export function Sessions() {
                   </div>
 
                   <div className="mt-4 pt-3 border-t text-xs text-gray-500 flex justify-between">
-                    <span>Total tokens: {session.total_tokens}</span>
-                    <span>Created: {formatDate(session.created_at)}</span>
+                    <span>Messages: {session.message_count ?? 0}</span>
+                    <span>Started: {session.started_at ? formatDate(session.started_at) : session.created_at ? formatDate(session.created_at) : 'Unknown'}</span>
                   </div>
                 </CardContent>
               )}

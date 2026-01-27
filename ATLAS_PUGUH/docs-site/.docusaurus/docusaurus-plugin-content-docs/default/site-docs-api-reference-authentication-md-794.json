@@ -1,0 +1,27 @@
+{
+  "unversionedId": "api-reference/authentication",
+  "id": "api-reference/authentication",
+  "title": "API Authentication",
+  "description": "Learn how to authenticate with the ATLAS PUGUH API.",
+  "source": "@site/docs/api-reference/authentication.md",
+  "sourceDirName": "api-reference",
+  "slug": "/api-reference/authentication",
+  "permalink": "/docs/api-reference/authentication",
+  "draft": false,
+  "editUrl": "https://github.com/atlashub/puguh/tree/main/docs-site/docs/api-reference/authentication.md",
+  "tags": [],
+  "version": "current",
+  "sidebarPosition": 1,
+  "frontMatter": {
+    "sidebar_position": 1
+  },
+  "sidebar": "tutorialSidebar",
+  "previous": {
+    "title": "API Reference",
+    "permalink": "/docs/category/api-reference"
+  },
+  "next": {
+    "title": "Rules API",
+    "permalink": "/docs/api-reference/rules-api"
+  }
+}

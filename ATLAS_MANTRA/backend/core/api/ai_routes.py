@@ -11,8 +11,8 @@ from datetime import datetime
 
 from core.ai.chat_service import get_chat_service
 from core.ai.hints_service import get_hints_service
-from core.repositories.decision_repository import InMemoryDecisionRepository
 from core.runtime.config import get_config
+from factory.container import Container
 
 
 router = APIRouter(prefix="/ai", tags=["AI Assistant"])
@@ -72,24 +72,28 @@ class ProvidersResponse(BaseModel):
 # Decision Repository (for context)
 # ============================================================================
 
-# Shared repository instance
-_repository = InMemoryDecisionRepository()
-
 
 def get_decisions_for_context() -> List[Dict]:
-    """Get all decisions for AI context."""
+    """
+    Get all decisions for AI context.
+
+    Uses the shared repository from Container to ensure AI endpoints
+    have access to the same decisions as the main API.
+    """
     try:
-        decisions = _repository.list_all()
+        repository = Container.get_decision_repository()
+        # Use find_all which is the standard interface method
+        stored_decisions = repository.find_all(limit=1000, offset=0)
         return [
             {
-                "decision_id": d.decision_id,
-                "decision_code": getattr(d, "decision_code", None),
-                "group_id": d.group_id.value if hasattr(d.group_id, "value") else str(d.group_id),
-                "feature_id": d.feature_id.value if hasattr(d.feature_id, "value") else str(d.feature_id),
-                "statement": d.statement,
-                "rationale": d.rationale,
+                "decision_id": sd.decision.decision_id,
+                "decision_code": getattr(sd.decision, "decision_code", None),
+                "group_id": sd.decision.group_id.value if hasattr(sd.decision.group_id, "value") else str(sd.decision.group_id),
+                "feature_id": sd.decision.feature_id.value if hasattr(sd.decision.feature_id, "value") else str(sd.decision.feature_id),
+                "statement": sd.decision.statement,
+                "rationale": sd.decision.rationale,
             }
-            for d in decisions
+            for sd in stored_decisions
         ]
     except Exception:
         return []

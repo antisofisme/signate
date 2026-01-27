@@ -24,23 +24,23 @@ TAG_KEYWORDS: Dict[str, Set[str]] = {
         "frontend", "ui", "react", "vue", "angular", "css", "component",
         "page", "user interface", "button", "form", "modal", "layout",
         "responsive", "mobile", "desktop", "browser", "dom", "html",
-        "client-side", "spa", "single page"
+        "client-side", "spa", "single page", "tailwind", "vite"
     },
     "BE": {
         "backend", "api", "server", "endpoint", "service", "fastapi",
         "python", "flask", "django", "express", "node", "server-side",
-        "microservice", "controller", "route", "handler"
+        "microservice", "controller", "route", "handler", "pydantic"
     },
     "DB": {
         "database", "postgresql", "postgres", "mysql", "mongodb", "redis",
         "query", "table", "schema", "migration", "index", "sql", "nosql",
-        "orm", "transaction", "acid", "persistence", "storage"
+        "orm", "transaction", "acid", "persistence", "storage", "sqlalchemy"
     },
     "INFRA": {
         "docker", "kubernetes", "k8s", "deployment", "server", "cloud",
         "aws", "gcp", "azure", "infrastructure", "nomad", "consul",
-        "terraform", "ansible", "ci/cd", "pipeline", "container",
-        "orchestration", "scaling", "load balancer"
+        "terraform", "ansible", "container", "orchestration", "scaling",
+        "load balancer", "nginx", "traefik", "minio", "s3"
     },
     "SECURITY": {
         "authentication", "authorization", "jwt", "oauth", "permission",
@@ -49,7 +49,8 @@ TAG_KEYWORDS: Dict[str, Set[str]] = {
     },
     "API": {
         "rest", "graphql", "endpoint", "api", "http", "request", "response",
-        "json", "openapi", "swagger", "grpc", "webhook", "rate limit"
+        "json", "openapi", "swagger", "grpc", "webhook", "rate limit",
+        "mcp", "model context protocol"
     },
     "CICD": {
         "ci/cd", "pipeline", "github actions", "gitlab", "jenkins",
@@ -61,22 +62,42 @@ TAG_KEYWORDS: Dict[str, Set[str]] = {
     },
     "TESTING": {
         "test", "testing", "unit test", "integration test", "e2e",
-        "coverage", "pytest", "jest", "cypress", "mock", "fixture"
+        "coverage", "pytest", "jest", "cypress", "mock", "fixture",
+        "playwright", "vitest"
     },
     "PERF": {
         "performance", "optimization", "caching", "latency", "throughput",
         "benchmark", "profiling", "bottleneck", "scalability"
     },
+    # NEW: Data & Analytics
+    "DATA": {
+        "data pipeline", "etl", "analytics", "data warehouse", "data lake",
+        "pandas", "airflow", "dbt", "data engineering", "data flow",
+        "batch processing", "stream processing", "data model"
+    },
+    # NEW: Architecture
+    "ARCH": {
+        "architecture", "design pattern", "clean architecture", "hexagonal",
+        "domain driven", "ddd", "microservices", "monolith", "modular",
+        "boundary", "layer", "coupling", "cohesion", "solid"
+    },
 }
 
 TECH_KEYWORDS: Dict[str, Set[str]] = {
+    # Languages
+    "python": {"python", "py", "cpython"},
+    "typescript": {"typescript", "ts"},
+    "javascript": {"javascript", "js", "ecmascript"},
+
     # Databases
     "postgresql": {"postgresql", "postgres", "psql"},
     "mysql": {"mysql", "mariadb"},
-    "mongodb": {"mongodb", "mongo", "nosql"},
-    "redis": {"redis", "cache", "caching"},
+    "mongodb": {"mongodb", "mongo"},
+    "redis": {"redis"},
     "timescaledb": {"timescale", "timescaledb", "time-series"},
-    "elasticsearch": {"elasticsearch", "elastic"},
+    "elasticsearch": {"elasticsearch", "elastic", "opensearch"},
+    "qdrant": {"qdrant", "vector database", "vector db"},
+    "sqlite": {"sqlite"},
 
     # Frameworks - Backend
     "fastapi": {"fastapi", "fast api", "starlette"},
@@ -84,6 +105,8 @@ TECH_KEYWORDS: Dict[str, Set[str]] = {
     "flask": {"flask"},
     "express": {"express", "expressjs"},
     "nestjs": {"nestjs", "nest.js"},
+    "pydantic": {"pydantic"},
+    "sqlalchemy": {"sqlalchemy", "alembic"},
 
     # Frameworks - Frontend
     "react": {"react", "reactjs", "react.js"},
@@ -91,26 +114,42 @@ TECH_KEYWORDS: Dict[str, Set[str]] = {
     "angular": {"angular"},
     "svelte": {"svelte"},
     "nextjs": {"nextjs", "next.js"},
+    "vite": {"vite", "vitejs"},
+    "tailwind": {"tailwind", "tailwindcss"},
+    "zustand": {"zustand"},
+    "tanstack": {"tanstack", "react-query", "tanstack query"},
 
     # Infrastructure
-    "docker": {"docker", "container", "dockerfile"},
+    "docker": {"docker", "dockerfile", "docker-compose"},
     "kubernetes": {"kubernetes", "k8s", "helm"},
     "nomad": {"nomad", "hashicorp nomad"},
-    "consul": {"consul", "service mesh"},
-    "terraform": {"terraform", "iac"},
-    "aws": {"aws", "amazon web services", "s3", "ec2", "lambda"},
+    "consul": {"consul", "service mesh", "service discovery"},
+    "terraform": {"terraform", "iac", "infrastructure as code"},
+    "aws": {"aws", "amazon web services", "ec2", "lambda", "ecs"},
     "gcp": {"gcp", "google cloud"},
-
-    # Message Queues
-    "rabbitmq": {"rabbitmq", "rabbit"},
-    "kafka": {"kafka"},
-    "celery": {"celery"},
-
-    # Other
-    "graphql": {"graphql", "apollo"},
-    "websocket": {"websocket", "socket.io", "real-time"},
     "nginx": {"nginx"},
     "traefik": {"traefik"},
+
+    # Storage
+    "s3": {"s3", "minio", "object storage"},
+
+    # Message Queues
+    "rabbitmq": {"rabbitmq", "rabbit", "amqp"},
+    "kafka": {"kafka"},
+    "celery": {"celery", "task queue"},
+
+    # API & Protocols
+    "graphql": {"graphql", "apollo"},
+    "grpc": {"grpc", "protobuf"},
+    "websocket": {"websocket", "socket.io", "real-time"},
+    "mcp": {"mcp", "model context protocol"},
+
+    # Data & AI
+    "pandas": {"pandas", "dataframe"},
+    "airflow": {"airflow", "dag"},
+    "langchain": {"langchain", "llm chain"},
+    "openai": {"openai", "gpt", "chatgpt"},
+    "anthropic": {"anthropic", "claude"},
 }
 
 BLAST_RADIUS_KEYWORDS: Dict[str, Set[str]] = {

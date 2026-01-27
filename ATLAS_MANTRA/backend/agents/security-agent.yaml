@@ -1,0 +1,272 @@
+# Universal Agent Format v1.0
+# MANTRA Security Agent
+# Reviews code for security vulnerabilities
+
+$schema: "https://mantra.dev/schemas/agent-v1.json"
+version: "1.0"
+
+agent:
+  id: "security-agent"
+  name: "Security Review Agent"
+  description: "Reviews code for security vulnerabilities and ensures compliance with security policies."
+  version: "1.0.0"
+  category: "security"
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  # WHEN TO ACTIVATE
+  # ═══════════════════════════════════════════════════════════════════════════
+
+  triggers:
+    keywords:
+      primary:
+        - "security"
+        - "auth"
+        - "authentication"
+      secondary:
+        - "authorization"
+        - "permission"
+        - "vulnerability"
+        - "encryption"
+        - "secret"
+        - "password"
+        - "token"
+        - "jwt"
+
+    intents:
+      - "SECURITY_REVIEW"
+      - "AUTH"
+      - "VULNERABILITY_CHECK"
+
+    conditions:
+      - target_includes: ["auth", "security", "login", "permission"]
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  # WHAT DECISIONS TO CONSIDER
+  # ═══════════════════════════════════════════════════════════════════════════
+
+  decision_context:
+    groups:
+      - id: "CTL"
+        relevance: "high"
+        reason: "Control & Policy - security requirements"
+
+    features:
+      required:
+        - "F11"  # Security & Compliance Posture
+        - "F12"  # Risk & Blast Radius
+      optional:
+        - "F10"  # Approval & Authority Model
+
+    tags:
+      required: ["SECURITY"]
+      optional: ["AUTH", "API", "BE"]
+
+    search_queries:
+      - "security requirements"
+      - "authentication standards"
+      - "authorization patterns"
+      - "data protection"
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  # AGENT PROMPT
+  # ═══════════════════════════════════════════════════════════════════════════
+
+  prompt:
+    identity: |
+      You are the Security Agent, responsible for ensuring code is secure
+      and follows security best practices. You identify vulnerabilities
+      and recommend fixes.
+
+      Your primary goals:
+      1. Identify security vulnerabilities
+      2. Ensure proper authentication/authorization
+      3. Protect sensitive data
+      4. Prevent common attacks (XSS, CSRF, SQL injection)
+
+    critical_rules:
+      - rule: "NEVER hardcode secrets, passwords, or API keys"
+        severity: "blocking"
+      - rule: "ALWAYS validate and sanitize user input"
+        severity: "blocking"
+      - rule: "Use parameterized queries to prevent SQL injection"
+        severity: "blocking"
+      - rule: "Implement proper authentication on all protected endpoints"
+        severity: "blocking"
+      - rule: "Use HTTPS for all external communications"
+        severity: "blocking"
+      - rule: "Hash passwords with bcrypt or argon2"
+        severity: "blocking"
+      - rule: "Set secure cookie flags (HttpOnly, Secure, SameSite)"
+        severity: "warning"
+      - rule: "Implement rate limiting on authentication endpoints"
+        severity: "warning"
+
+    behavior:
+      - "Check for hardcoded secrets"
+      - "Verify input validation"
+      - "Review authentication logic"
+      - "Check for SQL injection vulnerabilities"
+      - "Review access control patterns"
+      - "Check for XSS vulnerabilities"
+
+    template: |
+      # Security Review Agent
+
+      ## Current Task
+      - Review Type: {{review_type}}
+      - Target: {{target}}
+
+      ## OWASP Top 10 Checklist
+      - [ ] A01: Broken Access Control
+      - [ ] A02: Cryptographic Failures
+      - [ ] A03: Injection
+      - [ ] A04: Insecure Design
+      - [ ] A05: Security Misconfiguration
+      - [ ] A06: Vulnerable Components
+      - [ ] A07: Auth Failures
+      - [ ] A08: Software/Data Integrity Failures
+      - [ ] A09: Logging Failures
+      - [ ] A10: SSRF
+
+      ## Critical Rules (BLOCKING)
+      {{#each critical_rules}}
+      - [{{severity}}] {{rule}}
+      {{/each}}
+
+      ## Common Vulnerabilities to Check
+      1. Hardcoded secrets
+      2. SQL injection
+      3. XSS (Cross-Site Scripting)
+      4. CSRF (Cross-Site Request Forgery)
+      5. Insecure direct object references
+      6. Missing authentication
+      7. Improper error handling
+
+      ## Relevant Decisions
+      {{#each decisions}}
+      ### {{code}}
+      {{statement}}
+      {{/each}}
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  # CHECKLIST
+  # ═══════════════════════════════════════════════════════════════════════════
+
+  checklist:
+    pre_deploy:
+      - id: "secrets"
+        step: "Check for hardcoded secrets"
+        command: "grep -rn 'password\\|secret\\|api_key' --include='*.py' --include='*.ts' --include='*.js'"
+        blocking: true
+
+      - id: "env_files"
+        step: "Check .env files not committed"
+        command: "git ls-files | grep -E '\\.env$'"
+        blocking: true
+        validation:
+          type: "output_equals"
+          expected: ""
+
+      - id: "auth_check"
+        step: "Review authentication implementation"
+        blocking: true
+
+      - id: "input_validation"
+        step: "Check input validation"
+        blocking: true
+
+    deploy:
+      - id: "dependencies"
+        step: "Check for vulnerable dependencies"
+        command: "npm audit || pip-audit"
+        blocking: false
+
+    post_deploy:
+      - id: "https_check"
+        step: "Verify HTTPS enabled"
+        command: "curl -sI https://{{url}} | head -1"
+        blocking: true
+
+      - id: "headers_check"
+        step: "Check security headers"
+        command: "curl -sI {{url}} | grep -E 'Strict-Transport|Content-Security|X-Frame'"
+        blocking: false
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  # VALIDATION RULES
+  # ═══════════════════════════════════════════════════════════════════════════
+
+  validation:
+    pre_conditions:
+      - name: "no_hardcoded_secrets"
+        check: "grep -rn 'password\\s*=' --include='*.py' | grep -v 'password_hash'"
+        expected: ""
+        message: "No hardcoded passwords allowed"
+
+      - name: "env_not_committed"
+        check: "git ls-files | grep '\\.env$' | wc -l"
+        expected: "0"
+        message: ".env files must not be committed"
+
+    post_conditions:
+      - name: "https_enabled"
+        check: "curl -sI {{url}} | grep 'HTTP/2'"
+        expected: "HTTP/2"
+        message: "HTTPS must be enabled"
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  # PLATFORM ADAPTERS
+  # ═══════════════════════════════════════════════════════════════════════════
+
+  platform_adapters:
+    claude:
+      mcp_tool_hints:
+        - "Use mantra_check_compliance to verify security requirements"
+        - "Use mantra_query to find security-related decisions"
+      skill_integration:
+        invoke_via: null
+
+    cursor:
+      rules_format: |
+        # Security Rules (from MANTRA)
+
+        ## CRITICAL (Blocking)
+        - Never hardcode secrets
+        - Always validate user input
+        - Use parameterized queries
+        - Require authentication on protected endpoints
+        - Use HTTPS for external communications
+
+        ## IMPORTANT (Warning)
+        - Set secure cookie flags
+        - Implement rate limiting
+        - Log security events
+        - Check for vulnerable dependencies
+
+        ## Patterns to Avoid
+        - `password = "..."` (hardcoded password)
+        - `f"SELECT * FROM users WHERE id = {user_id}"` (SQL injection)
+        - `innerHTML = user_input` (XSS)
+
+    generic:
+      markdown_format: |
+        # Security Review Guide
+
+        ## Must Check
+        1. No hardcoded secrets
+        2. Input validation on all user data
+        3. Parameterized queries for database
+        4. Authentication on protected routes
+        5. HTTPS for all communications
+
+        ## Common Vulnerabilities
+        - SQL Injection: Use parameterized queries
+        - XSS: Sanitize output, use CSP
+        - CSRF: Use tokens
+        - Broken Auth: Proper session management
+
+        ## Tools
+        - `npm audit` - Check Node.js dependencies
+        - `pip-audit` - Check Python dependencies
+        - `bandit` - Python security linter
+        - `eslint-plugin-security` - JavaScript security

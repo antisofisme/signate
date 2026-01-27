@@ -191,25 +191,24 @@ class LoginUseCase:
     async def _load_user_tenants(self, user_id: str) -> List[TenantInfo]:
         """Load user's tenants and projects.
 
-        TODO: Implement with tenant service.
-        For now, returns empty list (will be populated after tenant service exists).
+        Uses TenantLoaderService to fetch tenants with their projects.
         """
         if not self._tenants:
             return []
 
-        # This will be implemented when tenant service is ready
-        # memberships = await self._tenants.get_user_memberships(user_id)
-        # return [
-        #     TenantInfo(
-        #         tenant_id=str(m.tenant.tenant_id),
-        #         name=m.tenant.name,
-        #         slug=m.tenant.slug,
-        #         role=m.role,
-        #         projects=[...],
-        #     )
-        #     for m in memberships
-        # ]
-        return []
+        # Use tenant loader service to get tenants with projects
+        tenant_infos = await self._tenants.get_user_tenants(user_id)
+
+        return [
+            TenantInfo(
+                tenant_id=t.tenant_id,
+                name=t.name,
+                slug=t.slug,
+                role=t.role,
+                projects=t.projects,
+            )
+            for t in tenant_infos
+        ]
 
     async def _emit_login_failed(
         self,

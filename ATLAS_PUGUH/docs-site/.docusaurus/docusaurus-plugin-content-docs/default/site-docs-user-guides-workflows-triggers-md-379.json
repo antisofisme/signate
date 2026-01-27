@@ -1,0 +1,27 @@
+{
+  "unversionedId": "user-guides/workflows/triggers",
+  "id": "user-guides/workflows/triggers",
+  "title": "Workflow Triggers",
+  "description": "Learn about the different ways workflows can be triggered.",
+  "source": "@site/docs/user-guides/workflows/triggers.md",
+  "sourceDirName": "user-guides/workflows",
+  "slug": "/user-guides/workflows/triggers",
+  "permalink": "/docs/user-guides/workflows/triggers",
+  "draft": false,
+  "editUrl": "https://github.com/atlashub/puguh/tree/main/docs-site/docs/user-guides/workflows/triggers.md",
+  "tags": [],
+  "version": "current",
+  "sidebarPosition": 2,
+  "frontMatter": {
+    "sidebar_position": 2
+  },
+  "sidebar": "tutorialSidebar",
+  "previous": {
+    "title": "Creating Workflows",
+    "permalink": "/docs/user-guides/workflows/creating"
+  },
+  "next": {
+    "title": "Monitoring Workflows",
+    "permalink": "/docs/user-guides/workflows/monitoring"
+  }
+}

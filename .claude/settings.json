@@ -6,7 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash /mnt/g/khoirul/signate/.claude/hooks/session-start.sh"
+            "command": "bash /mnt/f/WINDSURF/neliti_code/signate/.claude/hooks/session-start.sh"
           }
         ]
       }
@@ -18,11 +18,11 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash /mnt/g/khoirul/signate/.claude/hooks/pre-edit-check.sh \"$CLAUDE_FILE_PATH\""
+            "command": "bash /mnt/f/WINDSURF/neliti_code/signate/.claude/hooks/pre-edit-check.sh \"$CLAUDE_FILE_PATH\""
           },
           {
             "type": "command",
-            "command": "bash /mnt/g/khoirul/signate/.claude/hooks/tenant-check.sh \"$CLAUDE_FILE_PATH\""
+            "command": "bash /mnt/f/WINDSURF/neliti_code/signate/.claude/hooks/tenant-check.sh \"$CLAUDE_FILE_PATH\""
           }
         ]
       }
@@ -34,7 +34,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash /mnt/g/khoirul/signate/.claude/hooks/post-edit-lint.sh \"$CLAUDE_FILE_PATH\""
+            "command": "bash /mnt/f/WINDSURF/neliti_code/signate/.claude/hooks/post-edit-lint.sh \"$CLAUDE_FILE_PATH\""
           }
         ]
       },
@@ -43,7 +43,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash /mnt/g/khoirul/signate/.claude/hooks/pre-commit-check.sh"
+            "command": "bash /mnt/f/WINDSURF/neliti_code/signate/.claude/hooks/pre-commit-check.sh"
           }
         ]
       }

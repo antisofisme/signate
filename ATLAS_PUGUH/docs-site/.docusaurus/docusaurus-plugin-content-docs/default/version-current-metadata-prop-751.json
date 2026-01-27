@@ -1,0 +1,408 @@
+{
+  "pluginId": "default",
+  "version": "current",
+  "label": "Next",
+  "banner": null,
+  "badge": false,
+  "noIndex": false,
+  "className": "docs-version-current",
+  "isLast": true,
+  "docsSidebars": {
+    "tutorialSidebar": [
+      {
+        "type": "link",
+        "label": "Introduction",
+        "href": "/docs/",
+        "docId": "intro"
+      },
+      {
+        "type": "category",
+        "label": "Getting Started",
+        "items": [
+          {
+            "type": "link",
+            "label": "Quick Start Guide",
+            "href": "/docs/getting-started/quick-start",
+            "docId": "getting-started/quick-start"
+          },
+          {
+            "type": "link",
+            "label": "Create Your First Tenant",
+            "href": "/docs/getting-started/first-tenant",
+            "docId": "getting-started/first-tenant"
+          },
+          {
+            "type": "link",
+            "label": "Create Your First Project",
+            "href": "/docs/getting-started/first-project",
+            "docId": "getting-started/first-project"
+          },
+          {
+            "type": "link",
+            "label": "Create Your First Rule",
+            "href": "/docs/getting-started/first-rule",
+            "docId": "getting-started/first-rule"
+          }
+        ],
+        "collapsed": true,
+        "collapsible": true,
+        "href": "/docs/category/getting-started"
+      },
+      {
+        "type": "category",
+        "label": "User Guides",
+        "items": [
+          {
+            "type": "category",
+            "label": "IAM",
+            "items": [
+              {
+                "type": "link",
+                "label": "User Management",
+                "href": "/docs/user-guides/iam/users",
+                "docId": "user-guides/iam/users"
+              },
+              {
+                "type": "link",
+                "label": "Roles & Permissions",
+                "href": "/docs/user-guides/iam/roles",
+                "docId": "user-guides/iam/roles"
+              },
+              {
+                "type": "link",
+                "label": "Permissions Reference",
+                "href": "/docs/user-guides/iam/permissions",
+                "docId": "user-guides/iam/permissions"
+              },
+              {
+                "type": "link",
+                "label": "Access Control",
+                "href": "/docs/user-guides/iam/access-control",
+                "docId": "user-guides/iam/access-control"
+              }
+            ],
+            "collapsed": true,
+            "collapsible": true
+          },
+          {
+            "type": "category",
+            "label": "Decisions",
+            "items": [
+              {
+                "type": "link",
+                "label": "Rules Overview",
+                "href": "/docs/user-guides/decisions/rules",
+                "docId": "user-guides/decisions/rules"
+              },
+              {
+                "type": "link",
+                "label": "Rule Builder",
+                "href": "/docs/user-guides/decisions/rule-builder",
+                "docId": "user-guides/decisions/rule-builder"
+              },
+              {
+                "type": "link",
+                "label": "Testing Rules",
+                "href": "/docs/user-guides/decisions/testing",
+                "docId": "user-guides/decisions/testing"
+              },
+              {
+                "type": "link",
+                "label": "Rule Versioning",
+                "href": "/docs/user-guides/decisions/versioning",
+                "docId": "user-guides/decisions/versioning"
+              }
+            ],
+            "collapsed": true,
+            "collapsible": true
+          },
+          {
+            "type": "category",
+            "label": "Workflows",
+            "items": [
+              {
+                "type": "link",
+                "label": "Creating Workflows",
+                "href": "/docs/user-guides/workflows/creating",
+                "docId": "user-guides/workflows/creating"
+              },
+              {
+                "type": "link",
+                "label": "Workflow Triggers",
+                "href": "/docs/user-guides/workflows/triggers",
+                "docId": "user-guides/workflows/triggers"
+              },
+              {
+                "type": "link",
+                "label": "Monitoring Workflows",
+                "href": "/docs/user-guides/workflows/monitoring",
+                "docId": "user-guides/workflows/monitoring"
+              }
+            ],
+            "collapsed": true,
+            "collapsible": true
+          },
+          {
+            "type": "category",
+            "label": "Control",
+            "items": [
+              {
+                "type": "link",
+                "label": "Audit Trail",
+                "href": "/docs/user-guides/control/environments",
+                "docId": "user-guides/control/environments"
+              },
+              {
+                "type": "link",
+                "label": "Event Timeline",
+                "href": "/docs/user-guides/control/deployment",
+                "docId": "user-guides/control/deployment"
+              },
+              {
+                "type": "link",
+                "label": "Metrics Dashboard",
+                "href": "/docs/user-guides/control/rollback",
+                "docId": "user-guides/control/rollback"
+              }
+            ],
+            "collapsed": true,
+            "collapsible": true
+          }
+        ],
+        "collapsed": true,
+        "collapsible": true,
+        "href": "/docs/category/user-guides"
+      },
+      {
+        "type": "category",
+        "label": "API Reference",
+        "items": [
+          {
+            "type": "link",
+            "label": "API Authentication",
+            "href": "/docs/api-reference/authentication",
+            "docId": "api-reference/authentication"
+          },
+          {
+            "type": "link",
+            "label": "Rules API",
+            "href": "/docs/api-reference/rules-api",
+            "docId": "api-reference/rules-api"
+          },
+          {
+            "type": "link",
+            "label": "Decisions API",
+            "href": "/docs/api-reference/decisions-api",
+            "docId": "api-reference/decisions-api"
+          },
+          {
+            "type": "link",
+            "label": "SDK Usage",
+            "href": "/docs/api-reference/sdk-usage",
+            "docId": "api-reference/sdk-usage"
+          }
+        ],
+        "collapsed": true,
+        "collapsible": true,
+        "href": "/docs/category/api-reference"
+      },
+      {
+        "type": "category",
+        "label": "Advanced",
+        "items": [
+          {
+            "type": "link",
+            "label": "Multi-Tenant Architecture",
+            "href": "/docs/advanced/multi-tenant",
+            "docId": "advanced/multi-tenant"
+          },
+          {
+            "type": "link",
+            "label": "Resource Scoping",
+            "href": "/docs/advanced/scoping",
+            "docId": "advanced/scoping"
+          },
+          {
+            "type": "link",
+            "label": "Best Practices",
+            "href": "/docs/advanced/best-practices",
+            "docId": "advanced/best-practices"
+          },
+          {
+            "type": "link",
+            "label": "Troubleshooting",
+            "href": "/docs/advanced/troubleshooting",
+            "docId": "advanced/troubleshooting"
+          }
+        ],
+        "collapsed": true,
+        "collapsible": true,
+        "href": "/docs/category/advanced"
+      }
+    ]
+  },
+  "docs": {
+    "advanced/best-practices": {
+      "id": "advanced/best-practices",
+      "title": "Best Practices",
+      "description": "Recommendations for using ATLAS PUGUH effectively.",
+      "sidebar": "tutorialSidebar"
+    },
+    "advanced/multi-tenant": {
+      "id": "advanced/multi-tenant",
+      "title": "Multi-Tenant Architecture",
+      "description": "Understanding multi-tenancy in ATLAS PUGUH.",
+      "sidebar": "tutorialSidebar"
+    },
+    "advanced/scoping": {
+      "id": "advanced/scoping",
+      "title": "Resource Scoping",
+      "description": "Understand how resources are scoped in ATLAS PUGUH.",
+      "sidebar": "tutorialSidebar"
+    },
+    "advanced/troubleshooting": {
+      "id": "advanced/troubleshooting",
+      "title": "Troubleshooting",
+      "description": "Common issues and how to resolve them.",
+      "sidebar": "tutorialSidebar"
+    },
+    "api-reference/authentication": {
+      "id": "api-reference/authentication",
+      "title": "API Authentication",
+      "description": "Learn how to authenticate with the ATLAS PUGUH API.",
+      "sidebar": "tutorialSidebar"
+    },
+    "api-reference/decisions-api": {
+      "id": "api-reference/decisions-api",
+      "title": "Decisions API",
+      "description": "API reference for requesting and querying decisions.",
+      "sidebar": "tutorialSidebar"
+    },
+    "api-reference/rules-api": {
+      "id": "api-reference/rules-api",
+      "title": "Rules API",
+      "description": "Complete API reference for managing rules.",
+      "sidebar": "tutorialSidebar"
+    },
+    "api-reference/sdk-usage": {
+      "id": "api-reference/sdk-usage",
+      "title": "SDK Usage",
+      "description": "Learn how to use the PUGUH SDK in your applications.",
+      "sidebar": "tutorialSidebar"
+    },
+    "getting-started/first-project": {
+      "id": "getting-started/first-project",
+      "title": "Create Your First Project",
+      "description": "Projects help you organize rules, workflows, and decisions within a tenant. They're ideal for separating environments (production/staging) or different applications.",
+      "sidebar": "tutorialSidebar"
+    },
+    "getting-started/first-rule": {
+      "id": "getting-started/first-rule",
+      "title": "Create Your First Rule",
+      "description": "Rules are the heart of ATLAS PUGUH. They define the logic that governs your decisions, specifying conditions and actions.",
+      "sidebar": "tutorialSidebar"
+    },
+    "getting-started/first-tenant": {
+      "id": "getting-started/first-tenant",
+      "title": "Create Your First Tenant",
+      "description": "A Tenant in ATLAS PUGUH represents your organization or workspace. All your rules, workflows, and team members are scoped within a tenant.",
+      "sidebar": "tutorialSidebar"
+    },
+    "getting-started/quick-start": {
+      "id": "getting-started/quick-start",
+      "title": "Quick Start Guide",
+      "description": "Get up and running with ATLAS PUGUH in under 5 minutes.",
+      "sidebar": "tutorialSidebar"
+    },
+    "intro": {
+      "id": "intro",
+      "title": "Welcome to ATLAS PUGUH",
+      "description": "ATLAS PUGUH is a Constitutional Law System for AI-assisted decision making. It provides enterprise-grade governance, compliance, and auditability for automated decisions.",
+      "sidebar": "tutorialSidebar"
+    },
+    "user-guides/control/deployment": {
+      "id": "user-guides/control/deployment",
+      "title": "Event Timeline",
+      "description": "Monitor real-time events and system activity.",
+      "sidebar": "tutorialSidebar"
+    },
+    "user-guides/control/environments": {
+      "id": "user-guides/control/environments",
+      "title": "Audit Trail",
+      "description": "Learn how to use the audit trail for compliance and troubleshooting.",
+      "sidebar": "tutorialSidebar"
+    },
+    "user-guides/control/rollback": {
+      "id": "user-guides/control/rollback",
+      "title": "Metrics Dashboard",
+      "description": "Monitor system health and performance with the metrics dashboard.",
+      "sidebar": "tutorialSidebar"
+    },
+    "user-guides/decisions/rule-builder": {
+      "id": "user-guides/decisions/rule-builder",
+      "title": "Rule Builder",
+      "description": "Use the visual rule builder to create conditions without writing code.",
+      "sidebar": "tutorialSidebar"
+    },
+    "user-guides/decisions/rules": {
+      "id": "user-guides/decisions/rules",
+      "title": "Rules Overview",
+      "description": "Learn about rules in ATLAS PUGUH's decision engine.",
+      "sidebar": "tutorialSidebar"
+    },
+    "user-guides/decisions/testing": {
+      "id": "user-guides/decisions/testing",
+      "title": "Testing Rules",
+      "description": "Learn how to test rules before deploying them to production.",
+      "sidebar": "tutorialSidebar"
+    },
+    "user-guides/decisions/versioning": {
+      "id": "user-guides/decisions/versioning",
+      "title": "Rule Versioning",
+      "description": "Learn how rule versioning works in ATLAS PUGUH.",
+      "sidebar": "tutorialSidebar"
+    },
+    "user-guides/iam/access-control": {
+      "id": "user-guides/iam/access-control",
+      "title": "Access Control",
+      "description": "Configure access control for your ATLAS PUGUH resources.",
+      "sidebar": "tutorialSidebar"
+    },
+    "user-guides/iam/permissions": {
+      "id": "user-guides/iam/permissions",
+      "title": "Permissions Reference",
+      "description": "Complete reference for all permissions in ATLAS PUGUH.",
+      "sidebar": "tutorialSidebar"
+    },
+    "user-guides/iam/roles": {
+      "id": "user-guides/iam/roles",
+      "title": "Roles & Permissions",
+      "description": "Understand how roles and permissions work in ATLAS PUGUH.",
+      "sidebar": "tutorialSidebar"
+    },
+    "user-guides/iam/users": {
+      "id": "user-guides/iam/users",
+      "title": "User Management",
+      "description": "Learn how to manage users in your ATLAS PUGUH tenant.",
+      "sidebar": "tutorialSidebar"
+    },
+    "user-guides/workflows/creating": {
+      "id": "user-guides/workflows/creating",
+      "title": "Creating Workflows",
+      "description": "Learn how to create and configure approval workflows.",
+      "sidebar": "tutorialSidebar"
+    },
+    "user-guides/workflows/monitoring": {
+      "id": "user-guides/workflows/monitoring",
+      "title": "Monitoring Workflows",
+      "description": "Learn how to monitor and manage active workflows.",
+      "sidebar": "tutorialSidebar"
+    },
+    "user-guides/workflows/triggers": {
+      "id": "user-guides/workflows/triggers",
+      "title": "Workflow Triggers",
+      "description": "Learn about the different ways workflows can be triggered.",
+      "sidebar": "tutorialSidebar"
+    }
+  }
+}

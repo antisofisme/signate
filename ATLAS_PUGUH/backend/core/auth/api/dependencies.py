@@ -16,6 +16,7 @@ from ..interfaces.user_repository import IUserRepository
 from ..adapters.local_auth import LocalAuthAdapter
 from ..adapters.token_service import JWTTokenService
 from ..adapters.user_repository import PostgresUserRepository
+from ..services.tenant_loader import TenantLoaderService
 from ..use_cases import (
     RegisterUseCase,
     LoginUseCase,
@@ -81,7 +82,6 @@ def get_token_service() -> ITokenService:
         raise RuntimeError("JWT secret not configured")
     return JWTTokenService(
         secret_key=_jwt_secret,
-        issuer=_jwt_issuer,
     )
 
 
@@ -111,18 +111,26 @@ async def get_register_use_case(
     )
 
 
+async def get_tenant_loader(
+    session: AsyncSession = Depends(get_session)
+) -> TenantLoaderService:
+    """Get tenant loader service."""
+    return TenantLoaderService(session)
+
+
 async def get_login_use_case(
     auth_provider: IAuthProvider = Depends(get_auth_provider),
     token_service: ITokenService = Depends(get_token_service),
     user_repo: IUserRepository = Depends(get_user_repository),
+    tenant_loader: TenantLoaderService = Depends(get_tenant_loader),
 ) -> LoginUseCase:
     """Get LoginUseCase with injected dependencies."""
     return LoginUseCase(
         auth_provider=auth_provider,
         token_service=token_service,
         user_repo=user_repo,
-        tenant_service=None,  # TODO: Add tenant service
-        event_bus=None,       # TODO: Add event bus
+        tenant_service=tenant_loader,  # Now using TenantLoaderService
+        event_bus=None,                # TODO: Add event bus
     )
 
 

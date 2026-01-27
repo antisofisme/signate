@@ -1,0 +1,27 @@
+{
+  "unversionedId": "user-guides/decisions/rule-builder",
+  "id": "user-guides/decisions/rule-builder",
+  "title": "Rule Builder",
+  "description": "Use the visual rule builder to create conditions without writing code.",
+  "source": "@site/docs/user-guides/decisions/rule-builder.md",
+  "sourceDirName": "user-guides/decisions",
+  "slug": "/user-guides/decisions/rule-builder",
+  "permalink": "/docs/user-guides/decisions/rule-builder",
+  "draft": false,
+  "editUrl": "https://github.com/atlashub/puguh/tree/main/docs-site/docs/user-guides/decisions/rule-builder.md",
+  "tags": [],
+  "version": "current",
+  "sidebarPosition": 2,
+  "frontMatter": {
+    "sidebar_position": 2
+  },
+  "sidebar": "tutorialSidebar",
+  "previous": {
+    "title": "Rules Overview",
+    "permalink": "/docs/user-guides/decisions/rules"
+  },
+  "next": {
+    "title": "Testing Rules",
+    "permalink": "/docs/user-guides/decisions/testing"
+  }
+}

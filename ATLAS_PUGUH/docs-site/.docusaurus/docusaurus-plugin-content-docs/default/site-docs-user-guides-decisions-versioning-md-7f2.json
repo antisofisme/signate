@@ -1,0 +1,27 @@
+{
+  "unversionedId": "user-guides/decisions/versioning",
+  "id": "user-guides/decisions/versioning",
+  "title": "Rule Versioning",
+  "description": "Learn how rule versioning works in ATLAS PUGUH.",
+  "source": "@site/docs/user-guides/decisions/versioning.md",
+  "sourceDirName": "user-guides/decisions",
+  "slug": "/user-guides/decisions/versioning",
+  "permalink": "/docs/user-guides/decisions/versioning",
+  "draft": false,
+  "editUrl": "https://github.com/atlashub/puguh/tree/main/docs-site/docs/user-guides/decisions/versioning.md",
+  "tags": [],
+  "version": "current",
+  "sidebarPosition": 4,
+  "frontMatter": {
+    "sidebar_position": 4
+  },
+  "sidebar": "tutorialSidebar",
+  "previous": {
+    "title": "Testing Rules",
+    "permalink": "/docs/user-guides/decisions/testing"
+  },
+  "next": {
+    "title": "Creating Workflows",
+    "permalink": "/docs/user-guides/workflows/creating"
+  }
+}

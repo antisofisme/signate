@@ -32,7 +32,7 @@ export function useLogin() {
   return useMutation({
     mutationFn: (data: LoginRequest) => authApi.login(data),
     onSuccess: (response) => {
-      const { user, accessToken, activeTenant, activeProject, redirectUrl } = response.data
+      const { user, accessToken, activeTenant, redirectUrl } = response.data
 
       // Store auth state
       login(
