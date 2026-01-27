@@ -5,7 +5,7 @@ Environment-based configuration for ATLAS_MANTRA backend.
 """
 
 import os
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Optional
 
 
@@ -38,13 +38,62 @@ class Config:
     # Feature flags
     enable_docs: bool = os.getenv("ENABLE_DOCS", "true").lower() == "true"
     enable_metrics: bool = os.getenv("ENABLE_METRICS", "false").lower() == "true"
+    enable_semantic_search: bool = os.getenv("ENABLE_SEMANTIC_SEARCH", "true").lower() == "true"
+
+    # AI Configuration
+    ai_provider: str = os.getenv("AI_PROVIDER", "openai")
+    openai_api_key: str = os.getenv("OPENAI_API_KEY", "")
+    deepseek_api_key: str = os.getenv("DEEPSEEK_API_KEY", "")
+    groq_api_key: str = os.getenv("GROQ_API_KEY", "")
+    openrouter_api_key: str = os.getenv("OPENROUTER_API_KEY", "")
+    zai_api_key: str = os.getenv("ZAI_API_KEY", "")
+
+    # AI Model settings
+    ai_model: str = os.getenv("AI_MODEL", "gpt-4o-mini")
+    ai_max_tokens: int = int(os.getenv("AI_MAX_TOKENS", "2000"))
+    ai_temperature: float = float(os.getenv("AI_TEMPERATURE", "0.7"))
+
+    # Vector Store Configuration
+    vector_store: str = os.getenv("VECTOR_STORE", "memory")  # qdrant, memory
+    qdrant_url: str = os.getenv("QDRANT_URL", "http://localhost:6333")
+    qdrant_api_key: str = os.getenv("QDRANT_API_KEY", "")
+    qdrant_collection: str = os.getenv("QDRANT_COLLECTION", "mantra_decisions")
+
+    # Cache Configuration
+    cache: str = os.getenv("CACHE", "memory")  # redis, memory
+    redis_url: str = os.getenv("REDIS_URL", "redis://localhost:6379/0")
+    cache_ttl: int = int(os.getenv("CACHE_TTL", "300"))  # 5 minutes default
+
+    # Embedding Configuration
+    embedding_service: str = os.getenv("EMBEDDING_SERVICE", "noop")  # openai, noop
+    embedding_model: str = os.getenv("EMBEDDING_MODEL", "text-embedding-3-small")
+    embedding_dimensions: int = int(os.getenv("EMBEDDING_DIMENSIONS", "1536"))
 
     @property
     def cors_origins_list(self) -> list[str]:
         """Parse CORS origins as list."""
         return [o.strip() for o in self.cors_origins.split(",") if o.strip()]
 
+    def get_ai_api_key(self, provider: Optional[str] = None) -> str:
+        """Get API key for the specified or default provider."""
+        p = provider or self.ai_provider
+        keys = {
+            "openai": self.openai_api_key,
+            "deepseek": self.deepseek_api_key,
+            "groq": self.groq_api_key,
+            "openrouter": self.openrouter_api_key,
+            "zai": self.zai_api_key,
+        }
+        return keys.get(p, "")
+
+
+# Singleton config instance
+_config: Optional[Config] = None
+
 
 def get_config() -> Config:
-    """Get configuration instance."""
-    return Config()
+    """Get configuration instance (singleton)."""
+    global _config
+    if _config is None:
+        _config = Config()
+    return _config

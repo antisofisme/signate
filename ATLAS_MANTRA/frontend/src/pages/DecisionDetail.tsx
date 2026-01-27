@@ -1,8 +1,11 @@
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { decisionsApi, Decision, ChallengeRequest } from '../shared/api'
-import { GROUP_LABELS, FEATURE_LABELS } from '../shared/constants'
+import { GROUP_LABELS, FEATURE_LABELS, TAG_LABELS, TAG_COLORS } from '../shared/constants'
 import { useState } from 'react'
+import { SkeletonDecisionDetail } from '../components/ui/skeleton'
+import { InfoTooltip } from '../components/ui/tooltip'
+import { HintsButton } from '../components/ai'
 
 export default function DecisionDetail() {
   const { id } = useParams<{ id: string }>()
@@ -41,7 +44,7 @@ export default function DecisionDetail() {
   })
 
   if (isLoading) {
-    return <div className="text-gray-500">Loading decision...</div>
+    return <SkeletonDecisionDetail />
   }
 
   if (error || !decision) {
@@ -263,11 +266,17 @@ export default function DecisionDetail() {
         <h3 className="font-semibold text-gray-900 mb-4">Metadata</h3>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
           <div>
-            <label className="text-xs text-gray-500 uppercase tracking-wide">Scope</label>
+            <label className="text-xs text-gray-500 uppercase tracking-wide flex items-center gap-1">
+              Scope
+              <InfoTooltip content="APPLICATION (local), TEAM, DEPARTMENT, ORGANIZATION (global)" />
+            </label>
             <p className="text-gray-900 font-medium">{decision.scope}</p>
           </div>
           <div>
-            <label className="text-xs text-gray-500 uppercase tracking-wide">Blast Radius</label>
+            <label className="text-xs text-gray-500 uppercase tracking-wide flex items-center gap-1">
+              Blast Radius
+              <InfoTooltip content="CRITICAL (org-wide impact), HIGH (multi-team), MEDIUM (team), LOW (component)" />
+            </label>
             <span className={`inline-flex px-2 py-1 rounded text-sm font-medium ${
               decision.blast_radius === 'CRITICAL' ? 'bg-red-100 text-red-800' :
               decision.blast_radius === 'HIGH' ? 'bg-orange-100 text-orange-800' :
@@ -287,6 +296,59 @@ export default function DecisionDetail() {
               {decision.created_at ? new Date(decision.created_at).toLocaleString() : 'Unknown'}
             </p>
           </div>
+        </div>
+      </div>
+
+      {/* Tags & Tech Stack */}
+      <div className="grid grid-cols-2 gap-6">
+        {/* Area Tags */}
+        <div className="bg-white rounded-lg shadow-sm border p-6">
+          <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
+            <svg className="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+            </svg>
+            Area Tags
+          </h3>
+          {decision.tags?.length > 0 ? (
+            <div className="flex flex-wrap gap-2">
+              {decision.tags.map((tag: string) => (
+                <Link
+                  key={tag}
+                  to={`/tech-stack?tag=${tag}`}
+                  className={`px-3 py-1 rounded-full text-sm font-medium cursor-pointer hover:opacity-80 transition-opacity ${TAG_COLORS[tag] || 'bg-gray-100 text-gray-700'}`}
+                  title={`View all ${TAG_LABELS[tag] || tag} decisions`}
+                >
+                  {TAG_LABELS[tag] || tag}
+                </Link>
+              ))}
+            </div>
+          ) : (
+            <p className="text-gray-400 text-sm">No tags assigned</p>
+          )}
+        </div>
+
+        {/* Tech Stack */}
+        <div className="bg-white rounded-lg shadow-sm border p-6">
+          <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
+            <svg className="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+            </svg>
+            Tech Stack
+          </h3>
+          {decision.tech_stack?.length > 0 ? (
+            <div className="flex flex-wrap gap-2">
+              {decision.tech_stack.map((tech: string) => (
+                <span
+                  key={tech}
+                  className="px-3 py-1 bg-gray-100 rounded text-sm text-gray-700"
+                >
+                  {tech}
+                </span>
+              ))}
+            </div>
+          ) : (
+            <p className="text-gray-400 text-sm">No tech stack specified</p>
+          )}
         </div>
       </div>
 
@@ -459,9 +521,17 @@ function ChallengeForm({
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Why are you challenging? *
-          </label>
+          <div className="flex items-center justify-between mb-1">
+            <label className="block text-sm font-medium text-gray-700">
+              Why are you challenging? *
+            </label>
+            <HintsButton
+              text={rationale}
+              fieldType="challenge_rationale"
+              context={{ decision_id: decision.decision_id, group_id: decision.group_id }}
+              onApplyGrammar={(corrected) => setRationale(corrected)}
+            />
+          </div>
           <textarea
             value={rationale}
             onChange={(e) => setRationale(e.target.value)}
@@ -473,9 +543,17 @@ function ChallengeForm({
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            New Statement *
-          </label>
+          <div className="flex items-center justify-between mb-1">
+            <label className="block text-sm font-medium text-gray-700">
+              New Statement *
+            </label>
+            <HintsButton
+              text={newStatement}
+              fieldType="statement"
+              context={{ decision_id: decision.decision_id, group_id: decision.group_id, feature_id: decision.feature_id }}
+              onApplyGrammar={(corrected) => setNewStatement(corrected)}
+            />
+          </div>
           <textarea
             value={newStatement}
             onChange={(e) => setNewStatement(e.target.value)}
@@ -486,9 +564,17 @@ function ChallengeForm({
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            New Rationale *
-          </label>
+          <div className="flex items-center justify-between mb-1">
+            <label className="block text-sm font-medium text-gray-700">
+              New Rationale *
+            </label>
+            <HintsButton
+              text={newRationale}
+              fieldType="rationale"
+              context={{ decision_id: decision.decision_id, group_id: decision.group_id, feature_id: decision.feature_id }}
+              onApplyGrammar={(corrected) => setNewRationale(corrected)}
+            />
+          </div>
           <textarea
             value={newRationale}
             onChange={(e) => setNewRationale(e.target.value)}

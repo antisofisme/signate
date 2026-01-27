@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import { api } from '../shared/api'
+import { SkeletonPage } from '../components/ui/skeleton'
 
 /**
  * Scope Projection
@@ -55,7 +56,7 @@ export default function ScopeProjection() {
   })
 
   if (isLoading) {
-    return <div className="text-gray-500">Loading scope projection...</div>
+    return <SkeletonPage />
   }
 
   const decisions: Decision[] = data?.decisions || []

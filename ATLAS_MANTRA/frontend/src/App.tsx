@@ -10,7 +10,10 @@ import EvolutionTimeline from './pages/EvolutionTimeline'
 import ScopeProjection from './pages/ScopeProjection'
 import RelationshipProjection from './pages/RelationshipProjection'
 import ChangeSummary from './pages/ChangeSummary'
+import TechStackProjection from './pages/TechStackProjection'
 import AuditLog from './pages/AuditLog'
+import ApiKeys from './pages/settings/ApiKeys'
+import AISettings from './pages/settings/AISettings'
 
 function App() {
   return (
@@ -29,9 +32,13 @@ function App() {
           <Route path="scope" element={<ScopeProjection />} />
           <Route path="relationships" element={<RelationshipProjection />} />
           <Route path="changes" element={<ChangeSummary />} />
+          <Route path="tech-stack" element={<TechStackProjection />} />
           {/* Tools */}
           <Route path="validate" element={<Validator />} />
           <Route path="audit" element={<AuditLog />} />
+          {/* Settings */}
+          <Route path="settings/api-keys" element={<ApiKeys />} />
+          <Route path="settings/ai" element={<AISettings />} />
         </Route>
       </Routes>
     </BrowserRouter>

@@ -77,10 +77,10 @@ Implemented per Layer 1 specifications:
 
 | Group | Meaning | Features |
 |-------|---------|----------|
-| INT | Intent & Direction | F-01, F-02, F-03, F-04 |
-| ARCH | Architecture & Boundaries | F-05, F-06, F-07, F-08 |
-| CTL | Control, Policy & Risk | F-09, F-10, F-11, F-12 |
-| EVO | Execution & Evolution | F-13, F-14, F-15, F-16 |
+| INT | Intent & Direction | F01, F02, F03, F04 |
+| ARCH | Architecture & Boundaries | F05, F06, F07, F08 |
+| CTL | Control, Policy & Risk | F09, F10, F11, F12 |
+| EVO | Execution & Evolution | F13, F14, F15, F16 |
 
 ## Validation Rules
 
@@ -145,7 +145,7 @@ curl -X POST http://localhost:8001/api/v1/validate \
     "record": {
       "decision_id": "550e8400-e29b-41d4-a716-446655440000",
       "group_id": "INT",
-      "feature_id": "F-01",
+      "feature_id": "F01",
       "statement": "All authentication must use MFA",
       "rationale": "Security requirement",
       "constraints": [],

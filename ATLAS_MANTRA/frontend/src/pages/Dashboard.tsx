@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { useState, useMemo } from 'react'
 import { api, Decision } from '../shared/api'
 import { GROUPS, GROUP_LABELS, FEATURES, FEATURE_LABELS } from '../shared/constants'
+// Skeleton components available via ../components/ui/skeleton when needed
 
 const GROUP_COLORS: Record<string, { bg: string; text: string; light: string }> = {
   'INT': { bg: 'bg-blue-600', text: 'text-blue-600', light: 'bg-blue-50' },

@@ -35,22 +35,22 @@ class GroupId(str, Enum):
 
 class FeatureId(str, Enum):
     """16 Features per MANTRA-DEC-002"""
-    F_01 = "F-01"
-    F_02 = "F-02"
-    F_03 = "F-03"
-    F_04 = "F-04"
-    F_05 = "F-05"
-    F_06 = "F-06"
-    F_07 = "F-07"
-    F_08 = "F-08"
-    F_09 = "F-09"
-    F_10 = "F-10"
-    F_11 = "F-11"
-    F_12 = "F-12"
-    F_13 = "F-13"
-    F_14 = "F-14"
-    F_15 = "F-15"
-    F_16 = "F-16"
+    F01 = "F01"
+    F02 = "F02"
+    F03 = "F03"
+    F04 = "F04"
+    F05 = "F05"
+    F06 = "F06"
+    F07 = "F07"
+    F08 = "F08"
+    F09 = "F09"
+    F10 = "F10"
+    F11 = "F11"
+    F12 = "F12"
+    F13 = "F13"
+    F14 = "F14"
+    F15 = "F15"
+    F16 = "F16"
 
 
 class Scope(str, Enum):
@@ -75,15 +75,43 @@ class ConstraintType(str, Enum):
     LIMITATION = "LIMITATION"
 
 
+class AreaTag(str, Enum):
+    """Area tags for decision impact"""
+    FE = "FE"          # Frontend
+    BE = "BE"          # Backend
+    DB = "DB"          # Database
+    INFRA = "INFRA"    # Infrastructure
+    CICD = "CICD"      # CI/CD Pipeline
+    API = "API"        # API Design
+    SECURITY = "SECURITY"  # Security
+    DEVOPS = "DEVOPS"  # DevOps
+
+
+class RelationType(str, Enum):
+    """
+    Typed relation types per Decision Graph Model.
+
+    - depends_on: This decision requires the target decision to be in effect
+    - conflicts_with: This decision cannot coexist with target decision
+    - informed_by: This decision was influenced by target decision
+
+    Note: supersedes is NOT a relation type - it has special semantics
+    (versioning/evolution) and remains a separate field.
+    """
+    DEPENDS_ON = "depends_on"
+    CONFLICTS_WITH = "conflicts_with"
+    INFORMED_BY = "informed_by"
+
+
 # ============================================================================
 # Group-Feature Compatibility Matrix per MANTRA-DEC-002
 # ============================================================================
 
 GROUP_FEATURE_MATRIX = {
-    GroupId.INT: [FeatureId.F_01, FeatureId.F_02, FeatureId.F_03, FeatureId.F_04],
-    GroupId.ARCH: [FeatureId.F_05, FeatureId.F_06, FeatureId.F_07, FeatureId.F_08],
-    GroupId.CTL: [FeatureId.F_09, FeatureId.F_10, FeatureId.F_11, FeatureId.F_12],
-    GroupId.EVO: [FeatureId.F_13, FeatureId.F_14, FeatureId.F_15, FeatureId.F_16],
+    GroupId.INT: [FeatureId.F01, FeatureId.F02, FeatureId.F03, FeatureId.F04],
+    GroupId.ARCH: [FeatureId.F05, FeatureId.F06, FeatureId.F07, FeatureId.F08],
+    GroupId.CTL: [FeatureId.F09, FeatureId.F10, FeatureId.F11, FeatureId.F12],
+    GroupId.EVO: [FeatureId.F13, FeatureId.F14, FeatureId.F15, FeatureId.F16],
 }
 
 
@@ -105,25 +133,22 @@ def generate_decision_code(
     """
     Generate human-readable decision code.
 
-    Format: {group}-{feature}{seq:03d}-v{version}
+    Format: {group}-{feature}-{seq:03d}-v{version}
     Example: INT-F01-001-v1.0.0
 
     Args:
         group_id: Group ID (INT, ARCH, CTL, EVO)
-        feature_id: Feature ID (F-01 to F-16)
+        feature_id: Feature ID (F01 to F16)
         sequence: Sequence number within the feature (1-based)
         version: Semver version string
 
     Returns:
         Human-readable decision code
     """
-    # Extract group abbreviation
     group_abbr = group_id.value
+    feature_code = feature_id.value  # Already F01, F02, etc.
 
-    # Convert F-01 to F01 (remove dash)
-    feature_num = feature_id.value.replace("-", "")
-
-    return f"{group_abbr}-{feature_num}-{sequence:03d}-v{version}"
+    return f"{group_abbr}-{feature_code}-{sequence:03d}-v{version}"
 
 
 def parse_decision_code(code: str) -> Optional[dict]:
@@ -136,7 +161,7 @@ def parse_decision_code(code: str) -> Optional[dict]:
     Returns:
         Dict with group_id, feature_id, sequence, version or None if invalid
     """
-    pattern = r"^(INT|ARCH|CTL|EVO)-F(\d{2})-(\d{3})-v(\d+\.\d+\.\d+)$"
+    pattern = r"^(INT|ARCH|CTL|EVO)-(F\d{2})-(\d{3})-v(\d+\.\d+\.\d+)$"
     match = re.match(pattern, code)
 
     if not match:
@@ -144,7 +169,7 @@ def parse_decision_code(code: str) -> Optional[dict]:
 
     return {
         "group_id": match.group(1),
-        "feature_id": f"F-{match.group(2)}",
+        "feature_id": match.group(2),  # F01, F02, etc.
         "sequence": int(match.group(3)),
         "version": match.group(4)
     }
@@ -159,6 +184,21 @@ class Constraint(BaseModel):
     constraint_id: str = Field(..., min_length=1)
     statement: str = Field(..., min_length=1)
     type: ConstraintType
+
+    class Config:
+        extra = "forbid"
+
+
+class Relation(BaseModel):
+    """
+    Typed relation to another decision.
+
+    Per Decision Graph Model:
+    - target_id: UUID of the target decision
+    - type: Semantic type of the relation
+    """
+    target_id: str = Field(..., description="UUID of the target decision")
+    type: RelationType = Field(..., description="Type of relation")
 
     class Config:
         extra = "forbid"
@@ -202,7 +242,27 @@ class Decision(BaseModel):
     approved_by: Optional[str] = None
     approved_at: Optional[datetime] = None
     supersedes: Optional[str] = None
-    related_decisions: List[str] = Field(default_factory=list)
+
+    # Relations (deprecated: related_decisions, use: relations)
+    related_decisions: List[str] = Field(
+        default_factory=list,
+        description="DEPRECATED: Use 'relations' field instead. "
+                   "Kept for backwards compatibility."
+    )
+    relations: List[Relation] = Field(
+        default_factory=list,
+        description="Typed relations: depends_on, conflicts_with, informed_by"
+    )
+
+    # Projection fields (for filtering and grouping)
+    tags: List[str] = Field(
+        default_factory=list,
+        description="Area tags: FE, BE, DB, INFRA, CICD, API, SECURITY, DEVOPS"
+    )
+    tech_stack: List[str] = Field(
+        default_factory=list,
+        description="Technologies/frameworks: React, FastAPI, PostgreSQL, Docker, etc."
+    )
 
     @field_validator("feature_id")
     @classmethod
@@ -240,7 +300,7 @@ class Decision(BaseModel):
                 "decision_id": "550e8400-e29b-41d4-a716-446655440000",
                 "decision_code": "INT-F01-001-v1.0.0",
                 "group_id": "INT",
-                "feature_id": "F-01",
+                "feature_id": "F01",
                 "statement": "All user authentication must use multi-factor authentication",
                 "rationale": "Security requirement for enterprise systems",
                 "constraints": [
@@ -255,7 +315,9 @@ class Decision(BaseModel):
                 "blast_radius": "HIGH",
                 "version": "1.0.0",
                 "supersedes": None,
-                "created_by": "human-admin"
+                "created_by": "human-admin",
+                "tags": ["BE", "SECURITY", "API"],
+                "tech_stack": ["FastAPI", "JWT", "Redis"]
             }
         }
 
@@ -278,6 +340,8 @@ class DecisionCreate(BaseModel):
     created_by: str
     supersedes: Optional[str] = None
     related_decisions: List[str] = Field(default_factory=list)
+    tags: List[str] = Field(default_factory=list)
+    tech_stack: List[str] = Field(default_factory=list)
 
 
 class AuthorshipMetadata(BaseModel):

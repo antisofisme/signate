@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import { api } from '../shared/api'
 import { GROUPS, FEATURES, GROUP_LABELS, FEATURE_LABELS } from '../shared/constants'
+import { SkeletonMatrix } from '../components/ui/skeleton'
 
 /**
  * Matrix Overview Projection
@@ -27,7 +28,7 @@ export default function DecisionMatrix() {
   })
 
   if (isLoading) {
-    return <div className="text-gray-500">Loading matrix...</div>
+    return <SkeletonMatrix />
   }
 
   // Count decisions per group/feature

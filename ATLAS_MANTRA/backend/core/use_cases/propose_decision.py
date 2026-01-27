@@ -133,6 +133,8 @@ class ProposeDecisionUseCase:
             created_at=datetime.utcnow(),
             supersedes=decision_create.supersedes,
             related_decisions=decision_create.related_decisions,
+            tags=decision_create.tags,
+            tech_stack=decision_create.tech_stack,
         )
 
         # Convert to dict for validation

@@ -4,6 +4,10 @@ import { api } from '../shared/api'
 import { GROUP_LABELS, FEATURE_LABELS } from '../shared/constants'
 import { useState, useMemo, useEffect } from 'react'
 import { Decision } from '../shared/api'
+import { SkeletonTable } from '../components/ui/skeleton'
+import { ScrollTable } from '../components/ui/scroll-table'
+import { useDebounce } from '../hooks/useDebounce'
+import { InfoTooltip } from '../components/ui/tooltip'
 
 export default function DecisionList() {
   const [searchParams] = useSearchParams()
@@ -14,6 +18,9 @@ export default function DecisionList() {
   const [searchQuery, setSearchQuery] = useState(initialSearch)
   const [filterGroup, setFilterGroup] = useState<string>(initialGroup)
   const [filterFeature, setFilterFeature] = useState<string>(initialFeature)
+
+  // Debounce search query for better performance
+  const debouncedSearch = useDebounce(searchQuery, 300)
 
   // Update state when URL params change
   useEffect(() => {
@@ -38,9 +45,9 @@ export default function DecisionList() {
       // Feature filter
       if (filterFeature && decision.feature_id !== filterFeature) return false
 
-      // Search query
-      if (searchQuery) {
-        const query = searchQuery.toLowerCase()
+      // Search query (using debounced value for filtering)
+      if (debouncedSearch) {
+        const query = debouncedSearch.toLowerCase()
         const searchFields = [
           decision.decision_code,
           decision.decision_id,
@@ -58,10 +65,25 @@ export default function DecisionList() {
 
       return true
     })
-  }, [data?.decisions, searchQuery, filterGroup, filterFeature])
+  }, [data?.decisions, debouncedSearch, filterGroup, filterFeature])
 
   if (isLoading) {
-    return <div className="text-gray-500">Loading decisions...</div>
+    return (
+      <div className="space-y-6">
+        <div>
+          <div className="h-8 w-32 bg-gray-200 rounded animate-pulse mb-2" />
+          <div className="h-4 w-48 bg-gray-200 rounded animate-pulse" />
+        </div>
+        <div className="bg-white rounded-lg shadow-sm border p-4">
+          <div className="flex gap-4">
+            <div className="h-10 flex-1 bg-gray-200 rounded animate-pulse" />
+            <div className="h-10 w-32 bg-gray-200 rounded animate-pulse" />
+            <div className="h-10 w-32 bg-gray-200 rounded animate-pulse" />
+          </div>
+        </div>
+        <SkeletonTable rows={8} />
+      </div>
+    )
   }
 
   return (
@@ -130,7 +152,7 @@ export default function DecisionList() {
           >
             <option value="">All Features</option>
             {Array.from({ length: 16 }, (_, i) => {
-              const featureId = `F-${String(i + 1).padStart(2, '0')}`
+              const featureId = `F${String(i + 1).padStart(2, '0')}`
               return (
                 <option key={featureId} value={featureId}>
                   {featureId}: {FEATURE_LABELS[featureId] || 'Unknown'}
@@ -156,15 +178,26 @@ export default function DecisionList() {
       </div>
 
       <div className="bg-white rounded-lg shadow-sm border overflow-hidden">
-        <table className="w-full">
+        <ScrollTable>
+        <table className="w-full min-w-[800px]">
           <thead className="bg-gray-50">
             <tr>
               <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">Code</th>
               <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">Group</th>
               <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">Feature</th>
               <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">Statement</th>
-              <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">Blast Radius</th>
-              <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">Supersedes</th>
+              <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">
+                <span className="flex items-center gap-1">
+                  Blast Radius
+                  <InfoTooltip content="Impact scope: CRITICAL (org-wide), HIGH (multi-team), MEDIUM (team), LOW (component)" />
+                </span>
+              </th>
+              <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">
+                <span className="flex items-center gap-1">
+                  Supersedes
+                  <InfoTooltip content="Decision that this one replaces (version chain)" />
+                </span>
+              </th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
@@ -224,7 +257,7 @@ export default function DecisionList() {
             {filteredDecisions.length === 0 && (
               <tr>
                 <td colSpan={6} className="px-4 py-8 text-center text-gray-500">
-                  {searchQuery || filterGroup || filterFeature
+                  {debouncedSearch || filterGroup || filterFeature
                     ? 'No decisions match your filters'
                     : 'No decisions found'}
                 </td>
@@ -232,6 +265,7 @@ export default function DecisionList() {
             )}
           </tbody>
         </table>
+        </ScrollTable>
       </div>
     </div>
   )

@@ -12,6 +12,8 @@ Per MANTRA-L2-IMPL-INTEGRATION-BOUNDARIES-001:
 - All responses are authoritative from the system only
 """
 
+import time
+from enum import Enum
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from pydantic import BaseModel, Field
 from typing import List, Optional, Dict, Any
@@ -28,8 +30,21 @@ from ..use_cases.validate_decision import (
     validate_decision,
     ValidationResult,
     ValidationStatus,
+    validate_related_decisions_integrity_async,
+    RelationshipValidationResult,
 )
-from ..use_cases.store_decision import store_decision, StoreResult
+from ..use_cases.enhanced_validation import (
+    validate_enhanced_async,
+    EnhancedValidationResponse,
+    EnhancedValidationStatus,
+    serialize_enhanced_response,
+)
+from ..use_cases.impact_analysis import (
+    analyze_impact_async,
+    serialize_impact_result,
+    ImpactLevel,
+)
+from ..use_cases.store_decision import store_decision, store_decision_async, StoreResult
 from ..use_cases.read_decision import (
     get_decision,
     list_decisions,
@@ -41,6 +56,7 @@ from ..use_cases.propose_decision import (
     ProposeResult,
     ProposeDecisionResult,
 )
+# ProposeResult imported for relationship validation override
 from ..use_cases.compare_decisions import (
     compare_decisions,
     get_decision_history,
@@ -56,6 +72,7 @@ from ..use_cases.audit_log import (
 )
 from ..domain.decision import AuditEventType, ChallengeMetadata
 from ..repositories.decision_repository import DecisionRepository, InMemoryDecisionRepository
+from ..runtime.config import get_config
 
 
 # ============================================================================
@@ -66,20 +83,51 @@ router = APIRouter(prefix="/api/v1", tags=["decisions"])
 
 # Dependency injection for repository
 _repository: Optional[DecisionRepository] = None
+_repository_initialized: bool = False
 
 
 def get_repository() -> DecisionRepository:
-    """Get repository instance (singleton for now)."""
+    """Get repository instance (singleton)."""
     global _repository
     if _repository is None:
+        # Fallback to in-memory if not set
+        # Production should call set_repository() with PostgresDecisionRepository
         _repository = InMemoryDecisionRepository()
     return _repository
 
 
 def set_repository(repo: DecisionRepository) -> None:
     """Set repository instance (for testing/production switch)."""
-    global _repository
+    global _repository, _repository_initialized
     _repository = repo
+    _repository_initialized = True
+
+
+async def initialize_repository() -> None:
+    """Initialize the repository (call on app startup)."""
+    global _repository, _repository_initialized
+
+    if _repository_initialized:
+        return
+
+    config = get_config()
+
+    if config.database_url:
+        try:
+            from adapters.repositories.postgres_decision_repository import PostgresDecisionRepository
+            repo = PostgresDecisionRepository(config.database_url)
+            await repo.initialize()
+            _repository = repo
+            _repository_initialized = True
+            print(f"  - Repository: PostgreSQL")
+        except Exception as e:
+            print(f"  - Repository: PostgreSQL FAILED ({e}), using InMemory")
+            _repository = InMemoryDecisionRepository()
+            _repository_initialized = True
+    else:
+        print(f"  - Repository: InMemory (no DATABASE_URL)")
+        _repository = InMemoryDecisionRepository()
+        _repository_initialized = True
 
 
 # ============================================================================
@@ -133,7 +181,7 @@ class DecisionResponse(BaseModel):
 
     UX Enhancement (Phase 5):
     - decision_code provides human-readable identifier
-    - Format: DEC-G{group}-{feature}-{seq}-v{version}
+    - Format: {group}-{feature}-{seq}-v{version}
     """
     decision_id: str
     decision_code: Optional[str] = None
@@ -152,6 +200,9 @@ class DecisionResponse(BaseModel):
     approved_at: Optional[datetime] = None
     supersedes: Optional[str] = None
     related_decisions: List[str] = []
+    # Projection fields
+    tags: List[str] = []
+    tech_stack: List[str] = []
 
 
 class ListDecisionsResponse(BaseModel):
@@ -263,6 +314,147 @@ class AuditListResponse(BaseModel):
     error_message: Optional[str] = None
 
 
+class RelationshipViolationResponse(BaseModel):
+    """Single relationship violation."""
+    rule_id: str
+    message: str
+    is_error: bool
+    related_id: Optional[str] = None
+    source_group: Optional[str] = None
+    target_group: Optional[str] = None
+
+
+class RelationshipValidationResponse(BaseModel):
+    """Response for relationship validation endpoint."""
+    is_valid: bool
+    violations: List[RelationshipViolationResponse] = []
+    advisory_notes: List[str] = []
+    cross_group_references: List[Dict[str, str]] = []
+
+
+class ArbitrationVerdictInput(BaseModel):
+    """Client AI's verdict for delegated arbitration."""
+    arbitration_type: str = Field(..., description="QUALITY, DUPLICATE, or CONFLICT")
+    verdict: str = Field(..., description="The AI's judgment (e.g., APPROVE, REJECT)")
+    confidence: float = Field(..., ge=0.0, le=1.0, description="Confidence 0.0-1.0")
+    reason: str = Field(..., description="Brief explanation")
+    suggestions: Optional[List[str]] = Field(None, description="Optional suggestions")
+
+
+# ============================================================================
+# User Approval Flow Models
+# ============================================================================
+
+class ApproveRequest(BaseModel):
+    """Request body for decision approval endpoint."""
+    proposal_id: str = Field(..., description="The proposal_id from validate/enhanced response")
+    approved_by: str = Field(..., description="Human identifier approving the decision")
+    acknowledgments: Optional[List[str]] = Field(
+        None,
+        description="Optional list of acknowledged warnings (required if decision has warnings)"
+    )
+
+
+class ApproveResponse(BaseModel):
+    """Response body for decision approval endpoint."""
+    result: str  # STORED, BLOCKED, NOT_FOUND, ERROR
+    decision_id: Optional[str] = None
+    decision_code: Optional[str] = None
+    stored_at: Optional[datetime] = None
+    error_message: Optional[str] = None
+
+
+# ============================================================================
+# Proposal Storage (In-Memory for now - tracks pending approvals)
+# ============================================================================
+
+from dataclasses import dataclass, field as dc_field
+from typing import Dict as TypingDict
+
+@dataclass
+class PendingProposal:
+    """Tracks a validated proposal awaiting user approval."""
+    proposal_id: str
+    decision_id: str
+    record: Dict[str, Any]
+    validation_result: str  # READY, INVALID, BLOCKED
+    can_store: bool
+    requires_acknowledgment: bool
+    warnings: List[str]
+    validated_at: datetime
+    expires_at: float  # Unix timestamp for expiration (30 min default)
+
+# In-memory proposal storage (replace with Redis/PostgreSQL in production)
+_pending_proposals: TypingDict[str, PendingProposal] = {}
+
+
+class ArbitrationModeInput(str, Enum):
+    """Arbitration mode for validation."""
+    SERVER = "SERVER"       # MANTRA's AI does arbitration (costs $)
+    DELEGATED = "DELEGATED" # Client AI does arbitration (returns context)
+    SKIP = "SKIP"           # No AI arbitration
+
+
+class EnhancedValidateRequest(BaseModel):
+    """Request body for enhanced validation endpoint."""
+    record: Dict[str, Any] = Field(..., description="Decision record to validate")
+    authorship_metadata: Optional[Dict[str, Any]] = Field(
+        None,
+        description="Optional authorship metadata for L-rules"
+    )
+    # AI Arbitration configuration
+    arbitration_mode: ArbitrationModeInput = Field(
+        ArbitrationModeInput.DELEGATED,
+        description="DELEGATED=returns context for client AI, SERVER=MANTRA's AI arbitrates, SKIP=no AI"
+    )
+    # Delegated arbitration: Client AI can submit verdicts
+    arbitration_verdicts: Optional[List[ArbitrationVerdictInput]] = Field(
+        None,
+        description="Client AI's verdicts for delegated arbitration. Submit after receiving arbitration_contexts."
+    )
+
+
+class EnhancedValidateResponse(BaseModel):
+    """Response body for enhanced validation endpoint."""
+    result: str  # READY, INVALID, or BLOCKED
+    proposal_id: str
+    decision_id: str
+
+    # Quality assessment
+    quality: Dict[str, Any]
+
+    # Consistency assessment
+    duplicates: Dict[str, Any]
+    conflicts: Dict[str, Any]
+
+    # Impact analysis
+    impact: Dict[str, Any]
+
+    # Violations and feedback
+    violations: List[Dict[str, Any]]
+    warnings: List[str]
+    advisory_notes: List[str]
+    skipped_rules: List[str]
+
+    # Status
+    validated_at: datetime
+    can_store: bool
+    requires_acknowledgment: bool
+    blocking_reasons: List[str]
+
+    # AI Arbiter (Phase 9) - Delegated arbitration for borderline cases
+    arbitration_required: bool = False
+    arbitration_contexts: Optional[List[Dict[str, Any]]] = None
+    ai_verdicts: Optional[Dict[str, Any]] = None
+
+    # Metadata Inference (Phase 7) - Auto-suggested metadata
+    metadata_suggestions: Optional[Dict[str, Any]] = None
+
+    # User Approval Flow - User must explicitly approve before storing
+    requires_user_approval: bool = True  # Always true - user must approve
+    approval_summary: Optional[Dict[str, Any]] = None  # Summary for user review
+
+
 # ============================================================================
 # Helper Functions
 # ============================================================================
@@ -364,6 +556,400 @@ async def validate_endpoint(request: ValidateRequest) -> ValidateResponse:
     )
 
 
+@router.post(
+    "/validate/enhanced",
+    response_model=EnhancedValidateResponse,
+    summary="Enhanced validation with quality, duplicate, conflict, and impact analysis",
+    description="""
+    Comprehensive 6-phase validation:
+
+    1. Schema Validation (S-001 to S-022)
+    2. Quality Scoring (Q-001 to Q-025)
+       - Statement quality (0-25)
+       - Rationale quality (0-25)
+       - Constraint quality (0-25)
+       - Metadata quality (0-25)
+       - Advanced: Readability, Coherence (SBERT), Objectivity
+       - Grade: EXCELLENT/GOOD/FAIR/POOR/REJECT
+
+    3. Duplicate Detection
+       - EXACT (100%): Block storage
+       - NEAR (85-99%): Require acknowledgment
+       - SEMANTIC (70-84%): Warning
+       - RELATED (50-69%): Suggest relation
+
+    4. Conflict Detection
+       - Technology conflicts (postgresql vs mongodb)
+       - Architecture conflicts (microservice vs monolith)
+       - Direct contradictions (must X vs must not X)
+
+    5. Law Compliance (L-001 to L-011)
+
+    6. Impact Analysis
+       - Dependency chain analysis
+       - Breaking change detection
+       - Risk scoring (0-100)
+       - Risk level: MINIMAL/LOW/MODERATE/HIGH/CRITICAL
+
+    Returns:
+    - READY: Can be stored
+    - INVALID: Has issues, can store with acknowledgment
+    - BLOCKED: Cannot be stored
+    """
+)
+async def validate_enhanced_endpoint(
+    request: EnhancedValidateRequest,
+    repository: DecisionRepository = Depends(get_repository)
+) -> EnhancedValidateResponse:
+    """Enhanced validation with quality, duplicate, and conflict detection."""
+    # Parse authorship metadata if provided
+    authorship = None
+    if request.authorship_metadata:
+        try:
+            authorship = AuthorshipMetadata(**request.authorship_metadata)
+        except Exception:
+            pass  # Will be handled in validation
+
+    # Parse client AI verdicts if provided (delegated arbitration)
+    client_verdicts = None
+    if request.arbitration_verdicts:
+        client_verdicts = [
+            {
+                'arbitration_type': v.arbitration_type,
+                'verdict': v.verdict,
+                'confidence': v.confidence,
+                'reason': v.reason,
+                'suggestions': v.suggestions or [],
+            }
+            for v in request.arbitration_verdicts
+        ]
+
+    # Run enhanced validation
+    result = await validate_enhanced_async(
+        record=request.record,
+        repository=repository,
+        authorship_metadata=authorship,
+        client_verdicts=client_verdicts,
+        arbitration_mode=request.arbitration_mode.value,  # SERVER, DELEGATED, or SKIP
+    )
+
+    # Serialize to response
+    serialized = serialize_enhanced_response(result)
+
+    # =========================================================================
+    # USER APPROVAL FLOW: Store proposal for later approval
+    # =========================================================================
+    # Clean up expired proposals first
+    _cleanup_expired_proposals()
+
+    # Store the proposal (30 minute expiration)
+    proposal = PendingProposal(
+        proposal_id=serialized['proposal_id'],
+        decision_id=serialized['decision_id'],
+        record=request.record,
+        validation_result=serialized['result'],
+        can_store=serialized['can_store'],
+        requires_acknowledgment=serialized['requires_acknowledgment'],
+        warnings=serialized['warnings'],
+        validated_at=result.validated_at,
+        expires_at=time.time() + (30 * 60),  # 30 minutes
+    )
+    _pending_proposals[serialized['proposal_id']] = proposal
+
+    return EnhancedValidateResponse(
+        result=serialized['result'],
+        proposal_id=serialized['proposal_id'],
+        decision_id=serialized['decision_id'],
+        quality=serialized['quality'],
+        duplicates=serialized['duplicates'],
+        conflicts=serialized['conflicts'],
+        impact=serialized['impact'],
+        violations=serialized['violations'],
+        warnings=serialized['warnings'],
+        advisory_notes=serialized['advisory_notes'],
+        skipped_rules=serialized['skipped_rules'],
+        validated_at=result.validated_at,
+        can_store=serialized['can_store'],
+        requires_acknowledgment=serialized['requires_acknowledgment'],
+        blocking_reasons=serialized['blocking_reasons'],
+        # AI Arbiter fields
+        arbitration_required=serialized.get('arbitration_required', False),
+        arbitration_contexts=serialized.get('arbitration_contexts'),
+        ai_verdicts=serialized.get('ai_verdicts'),
+        # Metadata inference
+        metadata_suggestions=serialized.get('metadata_suggestions'),
+        # User Approval Flow
+        requires_user_approval=True,
+        approval_summary=serialized.get('approval_summary'),
+    )
+
+
+def _cleanup_expired_proposals():
+    """Remove expired proposals from storage."""
+    now = time.time()
+    expired = [k for k, v in _pending_proposals.items() if v.expires_at < now]
+    for k in expired:
+        del _pending_proposals[k]
+
+
+@router.post(
+    "/validate/relationships",
+    response_model=RelationshipValidationResponse,
+    summary="Validate related_decisions integrity",
+    description="""
+    Validates referential integrity for related_decisions field.
+
+    Rules checked:
+    - D-015: All IDs in related_decisions MUST exist
+    - D-016: No circular reference (self or chain)
+    - D-017: Cross-group references generate advisory note (not error)
+
+    Use this to check relationships before storing a decision.
+    """
+)
+async def validate_relationships_endpoint(
+    request: ValidateRequest,
+    repository: DecisionRepository = Depends(get_repository)
+) -> RelationshipValidationResponse:
+    """Validate related_decisions referential integrity."""
+    result = await validate_related_decisions_integrity_async(
+        record=request.record,
+        repository=repository
+    )
+
+    return RelationshipValidationResponse(
+        is_valid=result.is_valid,
+        violations=[
+            RelationshipViolationResponse(
+                rule_id=v.rule_id,
+                message=v.message,
+                is_error=v.is_error,
+                related_id=v.related_id,
+                source_group=v.source_group,
+                target_group=v.target_group,
+            )
+            for v in result.violations
+        ],
+        advisory_notes=result.advisory_notes,
+        cross_group_references=result.cross_group_references,
+    )
+
+
+class ImpactAnalysisResponse(BaseModel):
+    """Response body for impact analysis endpoint."""
+    overall_risk: str  # MINIMAL, LOW, MODERATE, HIGH, CRITICAL
+    risk_score: int  # 0-100
+    affected_decisions: List[Dict[str, Any]]
+    affected_count: int
+    dependency_chains: List[Dict[str, Any]]
+    reverse_dependencies: List[Dict[str, Any]]
+    max_dependency_depth: int
+    breaking_changes: List[Dict[str, Any]]
+    has_breaking_changes: bool
+    affected_areas: List[str]
+    affected_tech_stack: List[str]
+    risk_factors: List[str]
+    recommendations: List[str]
+    summary: str
+
+
+@router.post(
+    "/validate/impact",
+    response_model=ImpactAnalysisResponse,
+    summary="Analyze impact of a proposed decision",
+    description="""
+    Comprehensive impact analysis for a proposed decision:
+
+    1. **Dependency Analysis**
+       - Finds decisions that depend on this decision
+       - Traces dependency chains up to 5 levels deep
+       - Detects circular dependencies
+
+    2. **Reverse Dependencies**
+       - Identifies what this decision depends on
+
+    3. **Breaking Change Detection**
+       - If superseding, identifies affected dependents
+       - Calculates risk level for breaking changes
+
+    4. **Area/Tech Impact**
+       - Tags (FE, BE, DB, INFRA, etc.)
+       - Tech stack overlap
+
+    5. **Risk Scoring**
+       - Score: 0-100
+       - Level: MINIMAL, LOW, MODERATE, HIGH, CRITICAL
+       - Based on: blast_radius, scope, dependencies, breaking changes
+
+    Use this before storing a decision to understand its system-wide impact.
+    """
+)
+async def validate_impact_endpoint(
+    request: ValidateRequest,
+    repository: DecisionRepository = Depends(get_repository)
+) -> ImpactAnalysisResponse:
+    """Analyze impact of a proposed decision."""
+    result = await analyze_impact_async(
+        record=request.record,
+        repository=repository
+    )
+
+    serialized = serialize_impact_result(result)
+
+    return ImpactAnalysisResponse(
+        overall_risk=serialized['overall_risk'],
+        risk_score=serialized['risk_score'],
+        affected_decisions=serialized['affected_decisions'],
+        affected_count=serialized['affected_count'],
+        dependency_chains=serialized['dependency_chains'],
+        reverse_dependencies=serialized['reverse_dependencies'],
+        max_dependency_depth=serialized['max_dependency_depth'],
+        breaking_changes=serialized['breaking_changes'],
+        has_breaking_changes=serialized['has_breaking_changes'],
+        affected_areas=serialized['affected_areas'],
+        affected_tech_stack=serialized['affected_tech_stack'],
+        risk_factors=serialized['risk_factors'],
+        recommendations=serialized['recommendations'],
+        summary=serialized['summary'],
+    )
+
+
+# ============================================================================
+# User Approval Flow Endpoint
+# ============================================================================
+
+@router.post(
+    "/decisions/approve",
+    response_model=ApproveResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Approve and store a validated decision",
+    description="""
+    User Approval Flow - Final step to store a decision.
+
+    **Flow:**
+    1. POST /validate/enhanced → Get proposal_id + approval_summary
+    2. User reviews approval_summary
+    3. POST /decisions/approve → Store decision permanently
+
+    **Why approval is required:**
+    - Decisions are IMMUTABLE once stored (MANTRA-LAW-001)
+    - User must consciously approve before storage
+    - Prevents accidental storage of decisions
+
+    **Requirements:**
+    - proposal_id: Must be from a recent /validate/enhanced call (< 30 min)
+    - approved_by: Human identifier taking responsibility
+    - acknowledgments: Required if decision has warnings
+
+    **Returns:**
+    - STORED: Decision stored successfully
+    - BLOCKED: Decision cannot be stored (check blocking_reasons)
+    - NOT_FOUND: Proposal expired or invalid
+    - ERROR: Storage failed
+    """
+)
+async def approve_decision_endpoint(
+    request: ApproveRequest,
+    repository: DecisionRepository = Depends(get_repository)
+) -> ApproveResponse:
+    """Approve and store a validated decision."""
+    import uuid
+
+    # Clean up expired proposals
+    _cleanup_expired_proposals()
+
+    # Find the proposal
+    proposal = _pending_proposals.get(request.proposal_id)
+    if not proposal:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Proposal {request.proposal_id} not found or expired. "
+                   "Please run /validate/enhanced again to get a new proposal."
+        )
+
+    # Check if proposal can be stored
+    if not proposal.can_store:
+        return ApproveResponse(
+            result="BLOCKED",
+            decision_id=proposal.decision_id,
+            error_message=f"Decision cannot be stored. Validation result: {proposal.validation_result}"
+        )
+
+    # Check acknowledgments if required
+    if proposal.requires_acknowledgment:
+        if not request.acknowledgments:
+            return ApproveResponse(
+                result="BLOCKED",
+                decision_id=proposal.decision_id,
+                error_message="This decision has warnings that must be acknowledged. "
+                              f"Please provide acknowledgments for: {proposal.warnings[:3]}"
+            )
+
+    # Build the decision from the proposal record
+    record = proposal.record
+    try:
+        decision = Decision(
+            decision_id=proposal.decision_id,
+            group_id=GroupId(record['group_id']),
+            feature_id=FeatureId(record['feature_id']),
+            statement=record['statement'],
+            rationale=record['rationale'],
+            constraints=record.get('constraints', []),
+            invariants=record.get('invariants', []),
+            scope=record.get('scope', 'APPLICATION'),
+            blast_radius=record.get('blast_radius', 'LOW'),
+            version=record.get('version', '1.0.0'),
+            created_by=record.get('created_by'),
+            created_at=datetime.utcnow(),
+            approved_by=request.approved_by,
+            approved_at=datetime.utcnow(),
+            supersedes=record.get('supersedes'),
+            related_decisions=record.get('related_decisions', []),
+            tags=record.get('tags', []),
+            tech_stack=record.get('tech_stack', []),
+        )
+    except Exception as e:
+        return ApproveResponse(
+            result="ERROR",
+            decision_id=proposal.decision_id,
+            error_message=f"Failed to build decision: {str(e)}"
+        )
+
+    # Store the decision
+    result = await store_decision_async(decision, request.approved_by, repository)
+
+    if result.result == StoreResult.STORED:
+        # Remove from pending proposals
+        del _pending_proposals[request.proposal_id]
+
+        # Record audit event
+        record_audit(
+            event_type=AuditEventType.DECISION_STORED,
+            actor=request.approved_by,
+            actor_type="human",
+            decision_id=proposal.decision_id,
+            repository=repository,
+            metadata={
+                "proposal_id": request.proposal_id,
+                "acknowledged_warnings": request.acknowledgments or [],
+                "approval_flow": "user_approval",
+            },
+        )
+
+        return ApproveResponse(
+            result="STORED",
+            decision_id=result.decision_id,
+            decision_code=decision.decision_code,
+            stored_at=result.stored_at,
+        )
+    else:
+        return ApproveResponse(
+            result="ERROR",
+            decision_id=proposal.decision_id,
+            error_message=result.error_message,
+        )
+
+
 # ============================================================================
 # Decision Store Endpoints
 # ============================================================================
@@ -415,10 +1001,12 @@ async def store_endpoint(
         created_at=datetime.utcnow(),
         supersedes=request.decision.supersedes,
         related_decisions=request.decision.related_decisions,
+        tags=request.decision.tags,
+        tech_stack=request.decision.tech_stack,
     )
 
-    # Store decision
-    result = store_decision(decision, request.stored_by, repository)
+    # Store decision - use async version to ensure persistence completes
+    result = await store_decision_async(decision, request.stored_by, repository)
 
     if result.result == StoreResult.STORED:
         return StoreResponse(
@@ -468,18 +1056,19 @@ async def list_endpoint(
     repository: DecisionRepository = Depends(get_repository)
 ) -> ListDecisionsResponse:
     """List ALL decisions - PURE DATA ACCESS."""
-    result = list_decisions(repository, limit=limit, offset=offset)
+    try:
+        # Use async version of find_all for proper database access
+        stored_decisions = await repository.find_all_async(limit=limit, offset=offset)
+        decisions = [sd.decision for sd in stored_decisions]
 
-    if result.result == ReadResult.ERROR:
+        # Structural filter only - by group_id
+        if group_id:
+            decisions = [d for d in decisions if d.group_id == group_id]
+    except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=result.error_message
+            detail=str(e)
         )
-
-    # Structural filter only - by group_id
-    decisions = result.decisions
-    if group_id:
-        decisions = [d for d in decisions if d.group_id == group_id]
 
     return ListDecisionsResponse(
         decisions=[
@@ -501,6 +1090,8 @@ async def list_endpoint(
                 approved_at=d.approved_at,
                 supersedes=d.supersedes,
                 related_decisions=d.related_decisions,
+                tags=d.tags,
+                tech_stack=d.tech_stack,
             )
             for d in decisions
         ],
@@ -521,20 +1112,16 @@ async def get_endpoint(
     repository: DecisionRepository = Depends(get_repository)
 ) -> DecisionResponse:
     """Get a decision by ID."""
-    result = get_decision(decision_id, repository)
+    # Use async version for proper database access
+    stored = await repository.find_by_id_async(decision_id)
 
-    if result.result == ReadResult.NOT_FOUND:
+    if stored is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Decision {decision_id} not found"
         )
-    elif result.result == ReadResult.ERROR:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=result.error_message
-        )
 
-    d = result.decision
+    d = stored.decision
     return DecisionResponse(
         decision_id=d.decision_id,
         decision_code=d.decision_code,
@@ -553,6 +1140,8 @@ async def get_endpoint(
         approved_at=d.approved_at,
         supersedes=d.supersedes,
         related_decisions=d.related_decisions,
+        tags=d.tags,
+        tech_stack=d.tech_stack,
     )
 
 
@@ -573,7 +1162,29 @@ async def grouped_endpoint(
     repository: DecisionRepository = Depends(get_repository)
 ) -> GroupedDecisionsResponse:
     """Get ALL decisions grouped by group/feature - PURE DATA ACCESS."""
-    grouped = group_decisions_by_group_feature(repository)
+    # Build grouped structure using async methods
+    grouped = {}
+
+    for group in GroupId:
+        grouped[group.value] = {}
+        stored_decisions = await repository.find_by_group_async(group)
+
+        for sd in stored_decisions:
+            feature_key = sd.decision.feature_id.value
+            if feature_key not in grouped[group.value]:
+                grouped[group.value][feature_key] = []
+
+            # Return ALL decisions, no filtering
+            grouped[group.value][feature_key].append({
+                "decision_id": sd.decision.decision_id,
+                "statement": sd.decision.statement,
+                "scope": sd.decision.scope.value,
+                "blast_radius": sd.decision.blast_radius.value,
+                "version": sd.decision.version,
+                "supersedes": sd.decision.supersedes,
+                "created_at": sd.decision.created_at.isoformat() if sd.decision.created_at else None
+            })
+
     return GroupedDecisionsResponse(
         grouped=grouped,
         generated_at=datetime.utcnow()
@@ -601,6 +1212,68 @@ async def health_endpoint() -> HealthResponse:
 
 
 # ============================================================================
+# AI Provider Configuration Endpoints
+# ============================================================================
+
+class AIProviderInfo(BaseModel):
+    """Information about an AI provider."""
+    id: str
+    name: str
+    default_model: str
+    env_key: str
+    models: List[str]
+
+
+class AIProvidersResponse(BaseModel):
+    """Response listing available AI providers."""
+    providers: List[AIProviderInfo]
+    current_provider: Optional[str] = None
+    is_configured: bool = False
+
+
+@router.get(
+    "/ai/providers",
+    response_model=AIProvidersResponse,
+    summary="List available AI providers",
+    description="""
+    Returns list of supported AI providers for server-side arbitration.
+
+    Supported providers:
+    - Anthropic (Claude) - Default, recommended
+    - OpenAI (GPT-4, GPT-3.5)
+    - DeepSeek
+    - Groq (fast inference)
+    - xAI (Grok)
+    - OpenRouter (multi-model aggregator)
+
+    Use these in arbitration_mode=SERVER requests.
+    Set the provider via AI_PROVIDER environment variable.
+    """
+)
+async def list_ai_providers_endpoint() -> AIProvidersResponse:
+    """List available AI providers."""
+    from ..use_cases.ai_arbiter import get_available_providers, get_ai_client
+
+    providers_data = get_available_providers()
+    client = get_ai_client()
+
+    return AIProvidersResponse(
+        providers=[
+            AIProviderInfo(
+                id=p['id'],
+                name=p['name'],
+                default_model=p['default_model'] or '',
+                env_key=p['env_key'] or '',
+                models=p['models'] or [],
+            )
+            for p in providers_data
+        ],
+        current_provider=client.config.provider.value if client.is_configured else None,
+        is_configured=client.is_configured,
+    )
+
+
+# ============================================================================
 # Command-Style API Endpoints
 # ============================================================================
 
@@ -615,6 +1288,12 @@ async def health_endpoint() -> HealthResponse:
     - Propose is PREPARATION, not storage
     - Returns a proposal_id and pre-generated decision_id
     - Consumer must call POST /decisions to actually store
+
+    Validation includes:
+    - Schema validation (S-001 to S-022)
+    - Decision consistency (D-001 to D-014)
+    - Relationship integrity (D-015 to D-017) - NEW
+    - Law compliance (L-001 to L-011)
 
     Returns:
     - READY: Decision is valid, ready to store
@@ -652,6 +1331,40 @@ async def propose_endpoint(
         authorship_metadata=authorship,
     )
 
+    # Additional: Validate relationship integrity (D-015 to D-017)
+    relationship_violations = []
+    relationship_advisory = []
+
+    if result.decision and result.decision.related_decisions:
+        # Build record dict for validation
+        record_dict = {
+            "decision_id": result.decision.decision_id,
+            "group_id": result.decision.group_id.value,
+            "feature_id": result.decision.feature_id.value,
+            "related_decisions": result.decision.related_decisions,
+        }
+        rel_result = await validate_related_decisions_integrity_async(record_dict, repository)
+
+        # Add relationship violations (errors only)
+        for v in rel_result.violations:
+            if v.is_error:
+                relationship_violations.append({
+                    "rule_id": v.rule_id,
+                    "level": "LEVEL_2",
+                    "message": v.message,
+                    "field": "related_decisions",
+                    "failure_result": "INVALID",
+                    "governing_reference": "MANTRA-SCHEMA-001",
+                })
+
+        # Add relationship advisory notes
+        relationship_advisory = rel_result.advisory_notes
+
+        # If relationship errors, change result to INVALID
+        if relationship_violations and result.result.value == "READY":
+            # We need to modify the result
+            result.result = ProposeResult.INVALID
+
     # Convert decision to dict for response
     decision_dict = None
     if result.decision:
@@ -671,6 +1384,8 @@ async def propose_endpoint(
             "created_at": result.decision.created_at.isoformat() if result.decision.created_at else None,
             "supersedes": result.decision.supersedes,
             "related_decisions": result.decision.related_decisions,
+            "tags": result.decision.tags,
+            "tech_stack": result.decision.tech_stack,
         }
 
     # Convert violations
@@ -688,18 +1403,29 @@ async def propose_endpoint(
             for v in result.validation_result.violations
         ]
 
+    # Add relationship violations (D-015, D-016, D-017)
+    violations.extend(relationship_violations)
+
     # Merge skipped_rules from validation result
     if result.validation_result:
         skipped_rules = list(set(skipped_rules + result.validation_result.skipped_rules))
 
+    # Merge advisory notes
+    all_advisory_notes = result.advisory_notes + relationship_advisory
+
+    # Determine final result status
+    final_result = result.result.value
+    if relationship_violations:
+        final_result = "INVALID"
+
     return ProposeResponse(
-        result=result.result.value,
+        result=final_result,
         proposal_id=result.proposal_id,
         decision_id=result.decision_id,
         decision=decision_dict,
         validation_status=result.validation_result.status.value if result.validation_result else "UNKNOWN",
         violations=violations,
-        advisory_notes=result.advisory_notes,
+        advisory_notes=all_advisory_notes,
         warnings=validation_warnings,
         skipped_rules=skipped_rules,
         proposed_at=result.proposed_at,
@@ -732,8 +1458,8 @@ async def challenge_endpoint(
     """Challenge a decision by creating a superseding decision."""
     import uuid
 
-    # Verify challenged decision exists
-    challenged = repository.find_by_id(decision_id)
+    # Verify challenged decision exists - use async version
+    challenged = await repository.find_by_id_async(decision_id)
     if not challenged:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -756,10 +1482,12 @@ async def challenge_endpoint(
         created_at=datetime.utcnow(),
         supersedes=decision_id,  # KEY: Link to challenged decision
         related_decisions=request.proposed_replacement.related_decisions + [decision_id],
+        tags=request.proposed_replacement.tags,
+        tech_stack=request.proposed_replacement.tech_stack,
     )
 
-    # Store the new decision
-    result = store_decision(new_decision, request.challenger, repository)
+    # Store the new decision - use async version
+    result = await store_decision_async(new_decision, request.challenger, repository)
 
     if result.result == StoreResult.STORED:
         # Record challenge audit event using typed metadata
@@ -832,6 +1560,8 @@ async def compare_endpoint(
             "created_by": d.created_by,
             "created_at": d.created_at.isoformat() if d.created_at else None,
             "supersedes": d.supersedes,
+            "tags": d.tags,
+            "tech_stack": d.tech_stack,
         }
 
     return CompareResponse(

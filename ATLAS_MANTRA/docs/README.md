@@ -253,28 +253,28 @@ Any violation is INVALID per MANTRA-LAW-001.
 
 ```
 INT: Intent & Direction (WHY/WHAT)
-├── F-01: Vision & Outcome
-├── F-02: Problem Statement
-├── F-03: Scope & Non-Goals
-└── F-04: Principles & Values
+├── F01: Vision & Outcome
+├── F02: Problem Statement
+├── F03: Scope & Non-Goals
+└── F04: Principles & Values
 
 ARCH: Architecture & Boundaries (HOW/WHERE)
-├── F-05: Domain & Bounded Context
-├── F-06: Service & Module Boundary
-├── F-07: Data Ownership & Sovereignty
-└── F-08: Integration & Contract Model
+├── F05: Domain & Bounded Context
+├── F06: Service & Module Boundary
+├── F07: Data Ownership & Sovereignty
+└── F08: Integration & Contract Model
 
 CTL: Control, Policy & Risk (CAN/MUST NOT)
-├── F-09: Policy & Rules
-├── F-10: Approval & Authority Model
-├── F-11: Security & Compliance Posture
-└── F-12: Risk, Blast Radius & Failure Tolerance
+├── F09: Policy & Rules
+├── F10: Approval & Authority Model
+├── F11: Security & Compliance Posture
+└── F12: Risk, Blast Radius & Failure Tolerance
 
 EVO: Execution & Evolution (CHANGE SAFELY)
-├── F-13: Decision Lifecycle
-├── F-14: Reversibility & Exit Strategy
-├── F-15: Environment & Promotion Rules
-└── F-16: Anti-Drift & Consistency Rules
+├── F13: Decision Lifecycle
+├── F14: Reversibility & Exit Strategy
+├── F15: Environment & Promotion Rules
+└── F16: Anti-Drift & Consistency Rules
 ```
 
 ---

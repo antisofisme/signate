@@ -12,10 +12,10 @@ BEGIN;
 CREATE TYPE group_id AS ENUM ('INT', 'ARCH', 'CTL', 'EVO');
 
 CREATE TYPE feature_id AS ENUM (
-    'F-01', 'F-02', 'F-03', 'F-04',
-    'F-05', 'F-06', 'F-07', 'F-08',
-    'F-09', 'F-10', 'F-11', 'F-12',
-    'F-13', 'F-14', 'F-15', 'F-16'
+    'F01', 'F02', 'F03', 'F04',
+    'F05', 'F06', 'F07', 'F08',
+    'F09', 'F10', 'F11', 'F12',
+    'F13', 'F14', 'F15', 'F16'
 );
 
 CREATE TYPE scope AS ENUM ('ORGANIZATION', 'DOMAIN', 'APPLICATION');

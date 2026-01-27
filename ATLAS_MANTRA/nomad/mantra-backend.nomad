@@ -12,8 +12,8 @@ job "mantra-backend" {
   type        = "service"
 
   meta {
-    version     = "1.0.0"
-    description = "Decision Matrix Constitutional Law System"
+    version     = "1.1.2"
+    description = "Decision Matrix Constitutional Law System with Semantic Search"
   }
 
   group "api" {
@@ -49,7 +49,7 @@ job "mantra-backend" {
       driver = "docker"
 
       config {
-        image      = "atlas-mantra-api:v1.0.0"
+        image      = "atlas-mantra-api:v1.1.2"
         ports      = ["http"]
 
         # Use local image, don't try to pull from registry
@@ -63,24 +63,43 @@ job "mantra-backend" {
         ENABLE_DOCS = "true"
         CORS_ORIGINS = "http://localhost:3000,http://localhost:5173,http://31.97.111.175:3001"
 
-        # AI Configuration (set via Nomad variables or Consul keys)
+        # AI Configuration
         AI_PROVIDER = "openai"
         AI_MODEL    = "gpt-4o-mini"
-        OPENAI_API_KEY   = "${OPENAI_API_KEY}"
-        DEEPSEEK_API_KEY = "${DEEPSEEK_API_KEY}"
+
+        # Semantic Search Configuration
+        ENABLE_SEMANTIC_SEARCH = "true"
+        EMBEDDING_SERVICE      = "noop"
+        EMBEDDING_MODEL        = "noop-embedding"
+        EMBEDDING_DIMENSIONS   = "1536"
       }
 
       template {
         data = <<EOF
 DATABASE_URL=postgresql://mantra_owner:{{ key "mantra/db_password" }}@{{ range service "mantra-postgres" }}{{ .Address }}:{{ .Port }}{{ end }}/atlas_mantra
+
+# Vector Store (Qdrant) - use service port but hardcode IPv4 address for single-node setup
+VECTOR_STORE=qdrant
+QDRANT_URL=http://31.97.111.175:6335
+QDRANT_COLLECTION=mantra_decisions
+
+# Cache (Redis) - use service port but hardcode IPv4 address for single-node setup
+CACHE=redis
+REDIS_URL=redis://31.97.111.175:6380/0
+CACHE_TTL=300
+
+# API Keys (optional - stored in Consul KV)
+{{- if keyExists "mantra/openai_api_key" }}
+OPENAI_API_KEY={{ key "mantra/openai_api_key" }}
+{{- end }}
 EOF
         destination = "secrets/env"
         env         = true
       }
 
       resources {
-        cpu    = 256
-        memory = 512
+        cpu    = 100
+        memory = 384
       }
 
       logs {

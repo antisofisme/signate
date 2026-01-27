@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import { Link, useSearchParams } from 'react-router-dom'
 import { api } from '../shared/api'
 import { FEATURE_LABELS, GROUP_LABELS } from '../shared/constants'
+import { SkeletonPage } from '../components/ui/skeleton'
 
 /**
  * Evolution Timeline Projection
@@ -39,7 +40,7 @@ export default function EvolutionTimeline() {
   })
 
   if (isLoading) {
-    return <div className="text-gray-500">Loading timeline...</div>
+    return <SkeletonPage />
   }
 
   const decisions: Decision[] = data?.decisions || []

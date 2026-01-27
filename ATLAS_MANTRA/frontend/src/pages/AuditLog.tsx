@@ -3,6 +3,8 @@ import { Link } from 'react-router-dom'
 import { auditApi, decisionsApi, AuditEntry, AuditMetadata } from '../shared/api'
 import { useState } from 'react'
 import { GROUP_LABELS, FEATURE_LABELS } from '../shared/constants'
+import { SkeletonTable } from '../components/ui/skeleton'
+import { ScrollTable } from '../components/ui/scroll-table'
 
 // Helper to render typed metadata
 function MetadataDisplay({ metadata }: { metadata: AuditMetadata }) {
@@ -235,8 +237,21 @@ export default function AuditLog() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-gray-500">Loading audit log...</div>
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <div className="h-8 w-32 bg-gray-200 rounded animate-pulse mb-2" />
+            <div className="h-4 w-64 bg-gray-200 rounded animate-pulse" />
+          </div>
+          <div className="h-10 w-24 bg-gray-200 rounded animate-pulse" />
+        </div>
+        <div className="bg-white rounded-lg shadow-sm border p-4">
+          <div className="flex gap-4">
+            <div className="h-10 w-40 bg-gray-200 rounded animate-pulse" />
+            <div className="h-10 w-32 bg-gray-200 rounded animate-pulse" />
+          </div>
+        </div>
+        <SkeletonTable rows={10} />
       </div>
     )
   }
@@ -297,7 +312,7 @@ export default function AuditLog() {
 
       {/* Table */}
       <div className="bg-white rounded-lg shadow-sm border overflow-hidden">
-        <div className="overflow-x-auto">
+        <ScrollTable>
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
@@ -381,7 +396,7 @@ export default function AuditLog() {
               No audit entries found
             </div>
           )}
-        </div>
+        </ScrollTable>
       </div>
     </div>
   )

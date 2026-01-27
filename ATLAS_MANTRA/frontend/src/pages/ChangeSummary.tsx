@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import { api } from '../shared/api'
 import { FEATURE_LABELS } from '../shared/constants'
+import { SkeletonPage } from '../components/ui/skeleton'
 
 /**
  * Change Summary Projection
@@ -36,7 +37,7 @@ export default function ChangeSummary() {
   })
 
   if (isLoading) {
-    return <div className="text-gray-500">Loading change summary...</div>
+    return <SkeletonPage />
   }
 
   const decisions: Decision[] = data?.decisions || []

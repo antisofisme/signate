@@ -14,6 +14,7 @@ import {
   GROUP_SCOPES,
   FEATURE_LABELS,
 } from '../shared/constants'
+import { SkeletonPage } from '../components/ui/skeleton'
 
 interface Decision {
   decision_id: string
@@ -52,10 +53,14 @@ export default function GroupPage() {
   const colors = GROUP_COLORS[groupId] || GROUP_COLORS['INT']
   const features = FEATURES[groupId] || []
 
-  const { data } = useQuery({
+  const { data, isLoading } = useQuery({
     queryKey: ['decisions'],
     queryFn: () => api.get('/api/v1/decisions').then(r => r.data),
   })
+
+  if (isLoading) {
+    return <SkeletonPage />
+  }
 
   const allDecisions: Decision[] = data?.decisions || []
   const groupDecisions = allDecisions.filter(d => d.group_id === groupId)
@@ -81,6 +86,20 @@ export default function GroupPage() {
 
   return (
     <div className="space-y-6">
+      {/* Breadcrumb */}
+      <nav className="flex items-center space-x-2 text-sm">
+        <Link to="/" className="text-gray-500 hover:text-gray-700">Dashboard</Link>
+        <span className="text-gray-300">/</span>
+        <span className={`px-2 py-0.5 rounded text-xs font-medium ${
+          groupId === 'INT' ? 'bg-blue-100 text-blue-800' :
+          groupId === 'ARCH' ? 'bg-green-100 text-green-800' :
+          groupId === 'CTL' ? 'bg-orange-100 text-orange-800' :
+          'bg-purple-100 text-purple-800'
+        }`}>
+          {GROUP_LABELS[groupId]}
+        </span>
+      </nav>
+
       {/* Header */}
       <div className={clsx("rounded-lg p-6", colors.light)}>
         <div className="flex items-center gap-4">

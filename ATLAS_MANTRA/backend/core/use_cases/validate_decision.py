@@ -636,3 +636,156 @@ def validate_decision(
     """
     validator = DecisionValidator()
     return validator.validate(record, authorship_metadata)
+
+
+# ============================================================================
+# Referential Integrity Validation (requires repository)
+# ============================================================================
+
+@dataclass
+class RelationshipViolation:
+    """Violation for relationship integrity checks."""
+    rule_id: str
+    message: str
+    is_error: bool  # True = error, False = advisory
+    related_id: Optional[str] = None
+    source_group: Optional[str] = None
+    target_group: Optional[str] = None
+
+
+@dataclass
+class RelationshipValidationResult:
+    """Result of relationship integrity validation."""
+    is_valid: bool
+    violations: List[RelationshipViolation]
+    advisory_notes: List[str]
+    cross_group_references: List[Dict[str, str]]  # [{from_group, to_group, decision_id}]
+
+
+def validate_related_decisions_integrity(
+    record: Dict[str, Any],
+    existing_decisions: List[Dict[str, Any]]
+) -> RelationshipValidationResult:
+    """
+    Validate related_decisions referential integrity.
+
+    Rules:
+    - D-015: All IDs in related_decisions MUST exist
+    - D-016: No circular reference (decision cannot reference itself)
+    - D-017: Cross-group references generate advisory note (not error)
+
+    Args:
+        record: Decision record to validate
+        existing_decisions: List of all existing decision dicts
+
+    Returns:
+        RelationshipValidationResult with violations and advisories
+    """
+    violations = []
+    advisory_notes = []
+    cross_group_refs = []
+
+    decision_id = record.get("decision_id")
+    group_id = record.get("group_id")
+    related_decisions = record.get("related_decisions", [])
+
+    # Build lookup map for existing decisions
+    existing_map = {d.get("decision_id"): d for d in existing_decisions}
+
+    for rel_id in related_decisions:
+        # D-016: Self-reference check
+        if rel_id == decision_id:
+            violations.append(RelationshipViolation(
+                rule_id="D-016",
+                message=f"Decision cannot reference itself in related_decisions",
+                is_error=True,
+                related_id=rel_id
+            ))
+            continue
+
+        # D-015: Existence check
+        if rel_id not in existing_map:
+            violations.append(RelationshipViolation(
+                rule_id="D-015",
+                message=f"Related decision '{rel_id}' does not exist",
+                is_error=True,
+                related_id=rel_id
+            ))
+            continue
+
+        # D-017: Cross-group reference advisory
+        related_decision = existing_map[rel_id]
+        related_group = related_decision.get("group_id")
+
+        if related_group and related_group != group_id:
+            cross_group_refs.append({
+                "from_group": group_id,
+                "to_group": related_group,
+                "related_decision_id": rel_id
+            })
+            advisory_notes.append(
+                f"D-017: Cross-group reference detected: "
+                f"{group_id} → {related_group} (decision {rel_id[:8]}...)"
+            )
+
+    # Check for potential circular chains (deeper than self-reference)
+    # This checks if adding this decision would create a cycle
+    visited = set()
+    to_check = list(related_decisions)
+
+    while to_check:
+        checking_id = to_check.pop(0)
+        if checking_id in visited:
+            continue
+        visited.add(checking_id)
+
+        if checking_id == decision_id:
+            violations.append(RelationshipViolation(
+                rule_id="D-016",
+                message=f"Circular reference chain detected through related_decisions",
+                is_error=True
+            ))
+            break
+
+        # Add the related decision's related_decisions to check
+        if checking_id in existing_map:
+            nested_related = existing_map[checking_id].get("related_decisions", [])
+            to_check.extend([r for r in nested_related if r not in visited])
+
+    has_errors = any(v.is_error for v in violations)
+
+    return RelationshipValidationResult(
+        is_valid=not has_errors,
+        violations=violations,
+        advisory_notes=advisory_notes,
+        cross_group_references=cross_group_refs
+    )
+
+
+async def validate_related_decisions_integrity_async(
+    record: Dict[str, Any],
+    repository
+) -> RelationshipValidationResult:
+    """
+    Async version that fetches existing decisions from repository.
+
+    Args:
+        record: Decision record to validate
+        repository: DecisionRepository instance
+
+    Returns:
+        RelationshipValidationResult
+    """
+    # Fetch all decisions for integrity check
+    stored_decisions = await repository.find_all_async(limit=10000, offset=0)
+    existing_decisions = [
+        {
+            "decision_id": sd.decision.decision_id,
+            "group_id": sd.decision.group_id.value,
+            "feature_id": sd.decision.feature_id.value,
+            "related_decisions": sd.decision.related_decisions
+        }
+        for sd in stored_decisions
+    ]
+
+    return validate_related_decisions_integrity(record, existing_decisions)

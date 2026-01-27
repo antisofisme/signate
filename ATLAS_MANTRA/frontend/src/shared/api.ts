@@ -26,6 +26,13 @@ export interface Constraint {
   statement: string
 }
 
+export type RelationType = 'depends_on' | 'conflicts_with' | 'informed_by'
+
+export interface Relation {
+  target_id: string
+  type: RelationType
+}
+
 export interface Decision {
   decision_id: string
   decision_code: string | null  // Human-readable code: INT-F01-001-v1.0.0
@@ -43,7 +50,10 @@ export interface Decision {
   approved_by: string | null
   approved_at: string | null
   supersedes: string | null
-  related_decisions: string[]
+  related_decisions: string[]  // DEPRECATED: Use relations instead
+  relations: Relation[]  // Typed relations: depends_on, conflicts_with, informed_by
+  tags: string[]  // Area tags: FE, BE, DB, INFRA, CICD, API, SECURITY, DEVOPS
+  tech_stack: string[]  // Technologies: React, FastAPI, PostgreSQL, Docker, etc.
 }
 
 export interface DecisionCreate {
@@ -58,7 +68,10 @@ export interface DecisionCreate {
   version: string
   created_by: string
   supersedes?: string | null
-  related_decisions?: string[]
+  related_decisions?: string[]  // DEPRECATED: Use relations instead
+  relations?: Relation[]  // Typed relations
+  tags?: string[]
+  tech_stack?: string[]
 }
 
 export interface DecisionListResponse {
@@ -204,6 +217,41 @@ export interface AuditResponse {
 }
 
 // =============================================================================
+// API Key Types
+// =============================================================================
+
+export interface ApiKey {
+  id: string
+  name: string
+  description: string | null
+  key_prefix: string
+  permissions: string[]
+  is_active: boolean
+  created_at: string
+  expires_at: string | null
+  last_used_at: string | null
+  revoked_at: string | null
+  created_by: string
+}
+
+export interface ApiKeyCreateRequest {
+  name: string
+  description?: string
+  permissions?: string[]
+  expires_at?: string | null
+}
+
+export interface ApiKeyCreatedResponse extends ApiKey {
+  full_key: string  // Only shown once!
+  warning: string
+}
+
+export interface ApiKeyListResponse {
+  keys: ApiKey[]
+  total_count: number
+}
+
+// =============================================================================
 // API Functions
 // =============================================================================
 
@@ -272,6 +320,268 @@ export const auditApi = {
   // List audit entries
   list: async (params?: { limit?: number; offset?: number; event_type?: string; actor?: string }) => {
     const response = await api.get<AuditResponse>('/api/v1/audit', { params })
+    return response.data
+  },
+}
+
+export const apiKeysApi = {
+  // List all API keys
+  list: async (params?: { limit?: number; offset?: number }) => {
+    const response = await api.get<ApiKeyListResponse>('/api/v1/api-keys', { params })
+    return response.data
+  },
+
+  // Create a new API key
+  create: async (request: ApiKeyCreateRequest, createdBy: string) => {
+    const response = await api.post<ApiKeyCreatedResponse>('/api/v1/api-keys', request, {
+      params: { created_by: createdBy }
+    })
+    return response.data
+  },
+
+  // Get single API key
+  get: async (keyId: string) => {
+    const response = await api.get<ApiKey>(`/api/v1/api-keys/${keyId}`)
+    return response.data
+  },
+
+  // Update API key
+  update: async (keyId: string, request: { name?: string; description?: string }) => {
+    const response = await api.put<ApiKey>(`/api/v1/api-keys/${keyId}`, request)
+    return response.data
+  },
+
+  // Revoke API key
+  revoke: async (keyId: string) => {
+    const response = await api.post<ApiKey>(`/api/v1/api-keys/${keyId}/revoke`)
+    return response.data
+  },
+
+  // Delete API key
+  delete: async (keyId: string) => {
+    await api.delete(`/api/v1/api-keys/${keyId}`)
+  },
+}
+
+// =============================================================================
+// Enhanced Validation Types
+// =============================================================================
+
+export type ArbitrationMode = 'SERVER' | 'DELEGATED' | 'SKIP'
+export type ArbitrationType = 'QUALITY' | 'DUPLICATE' | 'CONFLICT'
+export type ArbiterVerdict = 'APPROVE' | 'REJECT' | 'NEEDS_IMPROVEMENT' | 'DUPLICATE' | 'EVOLUTION' | 'DIFFERENT' | 'BLOCKING' | 'WARNING' | 'NOT_CONFLICT'
+
+export interface QualityDimension {
+  dimension: string
+  max_points: number
+  scored_points: number
+  details: { rule_id: string; points: number; max_points: number; reason: string }[]
+}
+
+export interface QualityResult {
+  overall_score: number
+  max_score: number
+  percentage: number
+  is_passing: boolean
+  dimensions: QualityDimension[]
+  suggestions: string[]
+}
+
+export interface DuplicateMatch {
+  decision_id: string
+  decision_code: string
+  similarity: number
+  group_id: string
+  feature_id: string
+  statement_preview: string
+}
+
+export interface SupersedesGuidance {
+  detected_duplicate_id: string
+  detected_duplicate_code: string
+  similarity: number
+  recommendation: 'SUPERSEDES' | 'RELATION'
+  message: string
+  auto_populate: Record<string, any>
+}
+
+export interface DuplicateResult {
+  has_exact_duplicate: boolean
+  exact_duplicate_id: string | null
+  near_duplicates: DuplicateMatch[]
+  max_similarity: number
+  supersedes_guidance: SupersedesGuidance | null
+}
+
+export interface ConflictItem {
+  decision_id: string
+  decision_code: string
+  severity: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL'
+  conflict_type: string
+  description: string
+}
+
+export interface ConflictResult {
+  has_blocking_conflicts: boolean
+  conflicts: ConflictItem[]
+  blocking_conflicts: ConflictItem[]
+  advisory_conflicts: ConflictItem[]
+}
+
+export interface AffectedDecision {
+  decision_id: string
+  decision_code: string
+  impact_type: string
+  description: string
+}
+
+export interface BreakingChange {
+  type: string
+  description: string
+  dependent_decisions: string[]
+}
+
+export interface ImpactResult {
+  declared_risk_score: number
+  calculated_risk_score: number
+  combined_risk_score: number
+  risk_level: 'MINIMAL' | 'LOW' | 'MODERATE' | 'HIGH' | 'CRITICAL'
+  risk_mismatch: boolean
+  risk_mismatch_warning: string | null
+  affected_decisions: AffectedDecision[]
+  breaking_changes: BreakingChange[]
+}
+
+export interface MetadataSuggestion {
+  suggested_tags: string[]
+  suggested_tech_stack: string[]
+  suggested_blast_radius: string
+  confidence: { tags: number; tech_stack: number; blast_radius: number }
+}
+
+export interface ArbitrationContext {
+  arbitration_type: ArbitrationType
+  prompt_template: string
+  context_data: Record<string, any>
+  expected_verdicts: string[]
+  instructions: string
+}
+
+export interface ArbitrationVerdictInput {
+  arbitration_type: ArbitrationType
+  verdict: ArbiterVerdict
+  confidence: number
+  reason: string
+}
+
+export interface AIVerdictResult {
+  verdict: ArbiterVerdict
+  confidence: number
+  reason: string
+  source: 'SERVER_AI' | 'DELEGATED'
+  provider?: string
+}
+
+export interface ApprovalSummary {
+  requires_user_approval: boolean
+  blocking_reasons: string[]
+  warnings: string[]
+  quality_concerns: string[]
+  duplicate_concerns: string[]
+  conflict_concerns: string[]
+  impact_concerns: string[]
+  recommendation: 'APPROVE' | 'REJECT' | 'REVIEW'
+  summary_text: string
+}
+
+export interface EnhancedValidationResponse {
+  result: 'READY' | 'INVALID' | 'PENDING_ARBITRATION' | 'PENDING_APPROVAL'
+  proposal_id: string | null
+  decision_id: string | null
+  decision: Decision | null
+
+  // Basic validation
+  validation_status: string
+  violations: Violation[]
+  warnings: string[]
+  skipped_rules: string[]
+  advisory_notes: string[]
+
+  // Enhanced validation results
+  quality: QualityResult | null
+  duplicates: DuplicateResult | null
+  conflicts: ConflictResult | null
+  impact: ImpactResult | null
+  metadata_suggestions: MetadataSuggestion | null
+
+  // Arbitration
+  arbitration_required: boolean
+  arbitration_contexts: ArbitrationContext[] | null
+  ai_verdicts: Record<string, AIVerdictResult> | null
+
+  // Approval flow
+  approval_summary: ApprovalSummary | null
+
+  schema_version: string
+  specification_version: string
+  validated_at: string
+}
+
+export interface EnhancedValidateRequest {
+  record: Record<string, any>
+  authorship_metadata?: { author: string; author_type: 'human' | 'ai'; session_id?: string }
+  arbitration_mode?: ArbitrationMode
+  arbitration_verdicts?: ArbitrationVerdictInput[]
+}
+
+export interface ApproveDecisionRequest {
+  proposal_id: string
+  approved_by: string
+  approval_comment?: string
+}
+
+export interface ApproveDecisionResponse {
+  result: 'APPROVED' | 'STORED' | 'REJECTED' | 'NOT_FOUND' | 'ERROR'
+  decision_id: string | null
+  decision_code: string | null
+  stored_at: string | null
+  message: string | null
+}
+
+// AI Provider Types
+export interface AIProviderInfo {
+  id: string
+  name: string
+  default_model: string
+  models: string[]
+}
+
+export interface AIProvidersResponse {
+  providers: AIProviderInfo[]
+  current_provider: string | null
+  is_configured: boolean
+}
+
+// =============================================================================
+// Enhanced Validation API
+// =============================================================================
+
+export const enhancedValidationApi = {
+  // Validate with enhanced features
+  validate: async (request: EnhancedValidateRequest) => {
+    const response = await api.post<EnhancedValidationResponse>('/api/v1/validate/enhanced', request)
+    return response.data
+  },
+
+  // Approve a pending decision
+  approve: async (request: ApproveDecisionRequest) => {
+    const response = await api.post<ApproveDecisionResponse>('/api/v1/decisions/approve', request)
+    return response.data
+  },
+
+  // Get available AI providers
+  getProviders: async () => {
+    const response = await api.get<AIProvidersResponse>('/api/v1/ai/providers')
     return response.data
   },
 }

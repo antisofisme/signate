@@ -10,6 +10,20 @@ sqlalchemy==2.0.31
 psycopg2-binary==2.9.9
 asyncpg==0.29.0
 
+# Semantic Search - Vector Store
+qdrant-client==1.12.0
+numpy>=1.24.0
+
+# Semantic Search - Cache
+redis>=5.0.0
+
+# Semantic Search - Embeddings
+openai>=1.0.0
+
+# Semantic Similarity (optional - for SBERT coherence scoring)
+# Install for better Q-023 coherence detection, falls back to TF-IDF if not installed
+sentence-transformers>=2.2.0
+
 # Utilities
 python-dotenv==1.0.0
 python-multipart==0.0.9

@@ -316,3 +316,73 @@ class InMemoryDecisionRepository(DecisionRepository):
     def get_all_audit_entries(self) -> List[AuditEntry]:
         """Get all audit entries (for testing)."""
         return self._audit_entries.copy()
+
+    # =========================================================================
+    # Async Methods (for FastAPI route compatibility)
+    # These wrap the sync methods since in-memory operations are instant.
+    # =========================================================================
+
+    async def save_async(self, stored_decision: StoredDecision) -> None:
+        """Async version of save."""
+        self.save(stored_decision)
+
+    async def find_by_id_async(self, decision_id: str) -> Optional[StoredDecision]:
+        """Async version of find_by_id."""
+        return self.find_by_id(decision_id)
+
+    async def find_all_async(
+        self,
+        limit: int = 100,
+        offset: int = 0
+    ) -> List[StoredDecision]:
+        """Async version of find_all."""
+        return self.find_all(limit, offset)
+
+    async def find_by_group_async(
+        self,
+        group_id: GroupId,
+        limit: int = 100,
+        offset: int = 0
+    ) -> List[StoredDecision]:
+        """Async version of find_by_group."""
+        return self.find_by_group(group_id, limit, offset)
+
+    async def count_async(self) -> int:
+        """Async version of count."""
+        return self.count()
+
+    async def count_by_feature_async(self, feature_id: FeatureId) -> int:
+        """Async version of count_by_feature."""
+        return self.count_by_feature(feature_id)
+
+    async def record_event_async(self, event: DecisionEvent) -> None:
+        """Async version of record_event."""
+        self.record_event(event)
+
+    async def record_audit_async(self, entry: AuditEntry) -> None:
+        """Async version of record_audit."""
+        self.record_audit(entry)
+
+    async def get_audit_entries_async(
+        self,
+        limit: int = 100,
+        offset: int = 0,
+        decision_id: Optional[str] = None,
+        event_type: Optional[AuditEventType] = None,
+        actor: Optional[str] = None,
+    ) -> List[AuditEntry]:
+        """Async version of get_audit_entries."""
+        return self.get_audit_entries(limit, offset, decision_id, event_type, actor)
+
+    async def count_audit_entries_async(
+        self,
+        decision_id: Optional[str] = None,
+        event_type: Optional[AuditEventType] = None,
+        actor: Optional[str] = None,
+    ) -> int:
+        """Async version of count_audit_entries."""
+        return self.count_audit_entries(decision_id, event_type, actor)
+
+    async def find_supersedes_chain_async(self, decision_id: str) -> List[StoredDecision]:
+        """Async version of find_supersedes_chain."""
+        return self.find_supersedes_chain(decision_id)

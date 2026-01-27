@@ -6,10 +6,10 @@
 export const GROUPS = ['INT', 'ARCH', 'CTL', 'EVO'] as const
 
 export const FEATURES: Record<string, readonly string[]> = {
-  'INT': ['F-01', 'F-02', 'F-03', 'F-04'],
-  'ARCH': ['F-05', 'F-06', 'F-07', 'F-08'],
-  'CTL': ['F-09', 'F-10', 'F-11', 'F-12'],
-  'EVO': ['F-13', 'F-14', 'F-15', 'F-16'],
+  'INT': ['F01', 'F02', 'F03', 'F04'],
+  'ARCH': ['F05', 'F06', 'F07', 'F08'],
+  'CTL': ['F09', 'F10', 'F11', 'F12'],
+  'EVO': ['F13', 'F14', 'F15', 'F16'],
 } as const
 
 /**
@@ -21,6 +21,17 @@ export const GROUP_LABELS: Record<string, string> = {
   'ARCH': 'Architecture & Boundaries',
   'CTL': 'Control, Policy & Risk',
   'EVO': 'Execution & Evolution',
+}
+
+/**
+ * Group Colors (hex)
+ * For graph and matrix visualizations
+ */
+export const GROUP_COLORS: Record<string, string> = {
+  'INT': '#2563EB',   // Blue - Intent & Direction
+  'ARCH': '#7C3AED',  // Purple - Architecture & Boundaries
+  'CTL': '#DC2626',   // Red - Control, Policy & Risk
+  'EVO': '#059669',   // Green - Execution & Evolution
 }
 
 /**
@@ -40,25 +51,25 @@ export const GROUP_SCOPES: Record<string, string> = {
  */
 export const FEATURE_LABELS: Record<string, string> = {
   // INT: Intent & Direction
-  'F-01': 'Vision & Outcome',
-  'F-02': 'Problem Statement',
-  'F-03': 'Scope & Non-Goals',
-  'F-04': 'Principles & Values',
+  'F01': 'Vision & Outcome',
+  'F02': 'Problem Statement',
+  'F03': 'Scope & Non-Goals',
+  'F04': 'Principles & Values',
   // ARCH: Architecture & Boundaries
-  'F-05': 'Domain & Bounded Context',
-  'F-06': 'Service & Module Boundary',
-  'F-07': 'Data Ownership & Sovereignty',
-  'F-08': 'Integration & Contract Model',
+  'F05': 'Domain & Bounded Context',
+  'F06': 'Service & Module Boundary',
+  'F07': 'Data Ownership & Sovereignty',
+  'F08': 'Integration & Contract Model',
   // CTL: Control, Policy & Risk
-  'F-09': 'Policy & Rules',
-  'F-10': 'Approval & Authority Model',
-  'F-11': 'Security & Compliance Posture',
-  'F-12': 'Risk & Blast Radius',
+  'F09': 'Policy & Rules',
+  'F10': 'Approval & Authority Model',
+  'F11': 'Security & Compliance Posture',
+  'F12': 'Risk & Blast Radius',
   // EVO: Execution & Evolution
-  'F-13': 'Decision Lifecycle',
-  'F-14': 'Reversibility & Exit Strategy',
-  'F-15': 'Environment & Promotion Rules',
-  'F-16': 'Anti-Drift & Consistency',
+  'F13': 'Decision Lifecycle',
+  'F14': 'Reversibility & Exit Strategy',
+  'F15': 'Environment & Promotion Rules',
+  'F16': 'Anti-Drift & Consistency',
 }
 
 /**
@@ -81,3 +92,200 @@ export function getGroupLabel(groupId: string): string {
 export function getGroupScope(groupId: string): string {
   return GROUP_SCOPES[groupId] || ''
 }
+
+/**
+ * Area Tags
+ * For categorizing decisions by affected area
+ */
+export const AREA_TAGS = ['FE', 'BE', 'DB', 'INFRA', 'CICD', 'API', 'SECURITY', 'DEVOPS'] as const
+
+export const TAG_LABELS: Record<string, string> = {
+  'FE': 'Frontend',
+  'BE': 'Backend',
+  'DB': 'Database',
+  'INFRA': 'Infrastructure',
+  'CICD': 'CI/CD',
+  'API': 'API Design',
+  'SECURITY': 'Security',
+  'DEVOPS': 'DevOps',
+}
+
+export const TAG_COLORS: Record<string, string> = {
+  'FE': 'bg-blue-100 text-blue-700',
+  'BE': 'bg-green-100 text-green-700',
+  'DB': 'bg-amber-100 text-amber-700',
+  'INFRA': 'bg-purple-100 text-purple-700',
+  'CICD': 'bg-orange-100 text-orange-700',
+  'API': 'bg-cyan-100 text-cyan-700',
+  'SECURITY': 'bg-red-100 text-red-700',
+  'DEVOPS': 'bg-indigo-100 text-indigo-700',
+}
+
+/**
+ * Relation Types
+ * Per Decision Graph Model
+ */
+export const RELATION_TYPES = ['depends_on', 'conflicts_with', 'informed_by'] as const
+
+export const RELATION_LABELS: Record<string, string> = {
+  'depends_on': 'Depends On',
+  'conflicts_with': 'Conflicts With',
+  'informed_by': 'Informed By',
+  'supersedes': 'Supersedes',  // Special case - stored in separate field
+}
+
+export const RELATION_COLORS: Record<string, string> = {
+  'depends_on': '#2563EB',     // Blue
+  'conflicts_with': '#DC2626', // Red
+  'informed_by': '#059669',    // Green
+  'supersedes': '#F59E0B',     // Amber
+}
+
+export const RELATION_EDGE_STYLES: Record<string, { stroke: string; strokeDasharray?: string }> = {
+  'depends_on': { stroke: '#2563EB' },
+  'conflicts_with': { stroke: '#DC2626', strokeDasharray: '5,5' },
+  'informed_by': { stroke: '#059669', strokeDasharray: '3,3' },
+  'supersedes': { stroke: '#F59E0B' },
+}
+
+/**
+ * Common Tech Stack Items
+ * Suggestions for tech_stack field
+ */
+export const COMMON_TECH_STACK = [
+  // Frontend
+  'React', 'Vue', 'Angular', 'TypeScript', 'JavaScript', 'Tailwind CSS', 'Vite',
+  // Backend
+  'FastAPI', 'Django', 'Flask', 'Node.js', 'Express', 'NestJS', 'Python',
+  // Database
+  'PostgreSQL', 'MySQL', 'MongoDB', 'Redis', 'SQLite', 'TimescaleDB',
+  // Infrastructure
+  'Docker', 'Kubernetes', 'Nomad', 'Terraform', 'AWS', 'GCP', 'Azure',
+  // CI/CD
+  'GitHub Actions', 'GitLab CI', 'Jenkins', 'ArgoCD',
+  // Other
+  'GraphQL', 'REST', 'gRPC', 'RabbitMQ', 'Kafka', 'Nginx', 'Traefik',
+] as const
+
+// =============================================================================
+// Validation Status Constants
+// =============================================================================
+
+export const VALIDATION_STATUS = ['READY', 'INVALID', 'PENDING_ARBITRATION', 'PENDING_APPROVAL'] as const
+
+export const VALIDATION_STATUS_COLORS: Record<string, string> = {
+  'READY': 'bg-green-100 text-green-700',
+  'INVALID': 'bg-red-100 text-red-700',
+  'PENDING_ARBITRATION': 'bg-amber-100 text-amber-700',
+  'PENDING_APPROVAL': 'bg-blue-100 text-blue-700',
+}
+
+export const VALIDATION_STATUS_LABELS: Record<string, string> = {
+  'READY': 'Ready to Store',
+  'INVALID': 'Invalid',
+  'PENDING_ARBITRATION': 'Needs Arbitration',
+  'PENDING_APPROVAL': 'Awaiting Approval',
+}
+
+// =============================================================================
+// AI Arbitration Constants
+// =============================================================================
+
+export const ARBITRATION_MODES = ['SERVER', 'DELEGATED', 'SKIP'] as const
+
+export const ARBITRATION_MODE_LABELS: Record<string, string> = {
+  'SERVER': 'Server AI',
+  'DELEGATED': 'Delegated',
+  'SKIP': 'Skip AI',
+}
+
+export const ARBITRATION_MODE_DESCRIPTIONS: Record<string, string> = {
+  'SERVER': 'MANTRA server AI evaluates borderline cases (costs $ per call)',
+  'DELEGATED': 'You (the user) review and decide on borderline cases',
+  'SKIP': 'No AI arbitration, accept validation uncertainty',
+}
+
+export const ARBITRATION_TYPES = ['QUALITY', 'DUPLICATE', 'CONFLICT'] as const
+
+export const ARBITRATION_TYPE_LABELS: Record<string, string> = {
+  'QUALITY': 'Quality Assessment',
+  'DUPLICATE': 'Duplicate Classification',
+  'CONFLICT': 'Conflict Resolution',
+}
+
+export const ARBITER_VERDICTS = {
+  // Quality verdicts
+  APPROVE: 'Approve decision as-is',
+  REJECT: 'Reject decision',
+  NEEDS_IMPROVEMENT: 'Requires improvements before approval',
+  // Duplicate verdicts
+  DUPLICATE: 'This is a duplicate (block)',
+  EVOLUTION: 'This is an evolution (should supersede)',
+  DIFFERENT: 'Different enough to coexist',
+  // Conflict verdicts
+  BLOCKING: 'Real conflict, cannot coexist',
+  WARNING: 'Potential tension, proceed with caution',
+  NOT_CONFLICT: 'False positive, no conflict',
+}
+
+// =============================================================================
+// AI Provider Constants
+// =============================================================================
+
+export const AI_PROVIDERS = ['anthropic', 'openai', 'deepseek', 'groq', 'xai', 'openrouter'] as const
+
+export const AI_PROVIDER_LABELS: Record<string, string> = {
+  'anthropic': 'Anthropic (Claude)',
+  'openai': 'OpenAI (GPT)',
+  'deepseek': 'DeepSeek',
+  'groq': 'Groq (Llama)',
+  'xai': 'xAI (Grok)',
+  'openrouter': 'OpenRouter',
+}
+
+export const AI_PROVIDER_COLORS: Record<string, string> = {
+  'anthropic': 'bg-orange-100 text-orange-700',
+  'openai': 'bg-green-100 text-green-700',
+  'deepseek': 'bg-blue-100 text-blue-700',
+  'groq': 'bg-purple-100 text-purple-700',
+  'xai': 'bg-gray-100 text-gray-700',
+  'openrouter': 'bg-indigo-100 text-indigo-700',
+}
+
+// =============================================================================
+// Quality Score Constants
+// =============================================================================
+
+export const QUALITY_THRESHOLDS = {
+  EXCELLENT: 80,
+  GOOD: 60,
+  BORDERLINE_MIN: 50,
+  BORDERLINE_MAX: 80,
+  FAIL: 50,
+}
+
+export const QUALITY_DIMENSION_LABELS: Record<string, string> = {
+  'Statement': 'Statement Quality',
+  'Rationale': 'Rationale Quality',
+  'Constraints': 'Constraints Quality',
+  'Metadata': 'Metadata Completeness',
+  'Advanced': 'Advanced Metrics (Coherence, Readability)',
+}
+
+// =============================================================================
+// Impact/Risk Constants
+// =============================================================================
+
+export const RISK_LEVELS = ['MINIMAL', 'LOW', 'MODERATE', 'HIGH', 'CRITICAL'] as const
+
+export const RISK_LEVEL_COLORS: Record<string, string> = {
+  'MINIMAL': 'bg-green-100 text-green-700',
+  'LOW': 'bg-green-100 text-green-700',
+  'MODERATE': 'bg-amber-100 text-amber-700',
+  'HIGH': 'bg-orange-100 text-orange-700',
+  'CRITICAL': 'bg-red-100 text-red-700',
+}
+
+export const BLAST_RADIUS_OPTIONS = ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'] as const
+
+export const SCOPE_OPTIONS = ['ORGANIZATION', 'DOMAIN', 'APPLICATION'] as const

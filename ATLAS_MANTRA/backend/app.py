@@ -14,8 +14,12 @@ from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 from datetime import datetime
 
-from core.api.routes import router as api_router
+from core.api.routes import router as api_router, initialize_repository
+from core.api.ai_routes import router as ai_router
+from core.api.api_key_routes import router as api_key_router
+from core.api.search_routes import router as search_router
 from core.runtime.config import get_config
+from factory.container import Container
 
 
 # ============================================================================
@@ -34,11 +38,24 @@ async def lifespan(app: FastAPI):
     print(f"  - Port: {config.port}")
     print(f"  - CORS: {config.cors_origins_list}")
     print(f"  - Docs: {'enabled' if config.enable_docs else 'disabled'}")
+    print(f"  - Semantic Search: {'enabled' if config.enable_semantic_search else 'disabled'}")
+    print(f"  - Vector Store: {config.vector_store}")
+    print(f"  - Cache: {config.cache}")
+    print(f"  - Embedding: {config.embedding_service}")
+
+    # Initialize repository
+    await initialize_repository()
+
+    # Initialize semantic search services
+    if config.enable_semantic_search:
+        await Container.initialize()
+        print(f"  - Container initialized")
 
     yield
 
     # Shutdown
     print(f"[{datetime.utcnow().isoformat()}] ATLAS_MANTRA shutting down...")
+    await Container.close_all()
 
 
 app = FastAPI(
@@ -72,10 +89,10 @@ Per **MANTRA-LAW-001**:
 
 | Group | Meaning | Features |
 |-------|---------|----------|
-| INT | Intent & Direction | F-01, F-02, F-03, F-04 |
-| ARCH | Architecture & Boundaries | F-05, F-06, F-07, F-08 |
-| CTL | Control, Policy & Risk | F-09, F-10, F-11, F-12 |
-| EVO | Execution & Evolution | F-13, F-14, F-15, F-16 |
+| INT | Intent & Direction | F01, F02, F03, F04 |
+| ARCH | Architecture & Boundaries | F05, F06, F07, F08 |
+| CTL | Control, Policy & Risk | F09, F10, F11, F12 |
+| EVO | Execution & Evolution | F13, F14, F15, F16 |
 
 ### Validation Rules
 
@@ -111,6 +128,9 @@ app.add_middleware(
 # ============================================================================
 
 app.include_router(api_router)
+app.include_router(ai_router, prefix="/api/v1")
+app.include_router(api_key_router)
+app.include_router(search_router)  # Semantic search endpoints
 
 
 @app.get("/", tags=["root"])
@@ -127,6 +147,13 @@ async def root():
             "validate": "POST /api/v1/validate",
             "decisions": "GET/POST /api/v1/decisions",
             "matrix": "GET /api/v1/matrix",
+            "ai_chat": "POST /api/v1/ai/chat",
+            "ai_hints": "POST /api/v1/ai/hints",
+            "api_keys": "GET/POST /api-keys",
+            "semantic_search": "POST /api/v1/search/semantic",
+            "check_alignment": "POST /api/v1/search/check-alignment",
+            "rebuild_index": "POST /api/v1/search/rebuild-index",
+            "search_stats": "GET /api/v1/search/stats",
         },
         "constitutional_notice": {
             "ai_authority": "ZERO",
