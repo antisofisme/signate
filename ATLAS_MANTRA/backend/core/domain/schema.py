@@ -24,33 +24,93 @@ import re
 # ============================================================================
 # Enumerations per MANTRA-SCHEMA-001
 # ============================================================================
+#
+# ═══════════════════════════════════════════════════════════════════════════
+# GROUP MAPPING (Abbreviated Code → MANTRA-LAW-001 Reference)
+# ═══════════════════════════════════════════════════════════════════════════
+#
+# | Code | Law Reference | Full Name                  | Scope          |
+# |------|---------------|----------------------------|----------------|
+# | INT  | GROUP-1, §3.2 | Intent & Direction         | WHY / WHAT     |
+# | ARCH | GROUP-2, §3.3 | Architecture & Boundaries  | HOW / WHERE    |
+# | CTL  | GROUP-3, §3.4 | Control, Policy & Risk     | CAN / MUST NOT |
+# | EVO  | GROUP-4, §3.5 | Execution & Evolution      | CHANGE SAFELY  |
+#
+# ═══════════════════════════════════════════════════════════════════════════
+# FEATURE MAPPING (4 Features per Group = 16 Total)
+# ═══════════════════════════════════════════════════════════════════════════
+#
+# GROUP-1 (INT):  F01 Vision, F02 Problem, F03 Scope, F04 Principles
+# GROUP-2 (ARCH): F05 Domain, F06 Service, F07 Data, F08 Integration
+# GROUP-3 (CTL):  F09 Policy, F10 Authority, F11 Security, F12 Risk
+# GROUP-4 (EVO):  F13 Lifecycle, F14 Reversibility, F15 Environment, F16 Drift
+#
+# ============================================================================
 
 class GroupId(str, Enum):
-    """4 Groups per MANTRA-DEC-001"""
-    INT = "INT"    # Intent & Direction (WHY/WHAT)
-    ARCH = "ARCH"  # Architecture & Boundaries (HOW/WHERE)
-    CTL = "CTL"    # Control, Policy & Risk (CAN/MUST NOT)
-    EVO = "EVO"    # Execution & Evolution (CHANGE SAFELY)
+    """
+    4 Groups per MANTRA-LAW-001 §3
+
+    Mapping:
+    - INT  = GROUP-1 (§3.2) - Intent & Direction
+    - ARCH = GROUP-2 (§3.3) - Architecture & Boundaries
+    - CTL  = GROUP-3 (§3.4) - Control, Policy & Risk
+    - EVO  = GROUP-4 (§3.5) - Execution & Evolution
+    """
+    INT = "INT"    # GROUP-1: Intent & Direction (WHY/WHAT)
+    ARCH = "ARCH"  # GROUP-2: Architecture & Boundaries (HOW/WHERE)
+    CTL = "CTL"    # GROUP-3: Control, Policy & Risk (CAN/MUST NOT)
+    EVO = "EVO"    # GROUP-4: Execution & Evolution (CHANGE SAFELY)
 
 
 class FeatureId(str, Enum):
-    """16 Features per MANTRA-DEC-002"""
-    F01 = "F01"
-    F02 = "F02"
-    F03 = "F03"
-    F04 = "F04"
-    F05 = "F05"
-    F06 = "F06"
-    F07 = "F07"
-    F08 = "F08"
-    F09 = "F09"
-    F10 = "F10"
-    F11 = "F11"
-    F12 = "F12"
-    F13 = "F13"
-    F14 = "F14"
-    F15 = "F15"
-    F16 = "F16"
+    """
+    16 Features per MANTRA-LAW-001 §3.2-§3.5
+
+    GROUP-1 (INT) - Intent & Direction:
+    - F01: Vision & Outcome
+    - F02: Problem Statement
+    - F03: Scope & Non-Goals
+    - F04: Principles & Values
+
+    GROUP-2 (ARCH) - Architecture & Boundaries:
+    - F05: Domain & Bounded Context
+    - F06: Service & Module Boundary
+    - F07: Data Ownership & Sovereignty
+    - F08: Integration & Contract Model
+
+    GROUP-3 (CTL) - Control, Policy & Risk:
+    - F09: Policy & Rules
+    - F10: Approval & Authority Model
+    - F11: Security & Compliance Posture
+    - F12: Risk & Blast Radius
+
+    GROUP-4 (EVO) - Execution & Evolution:
+    - F13: Decision Lifecycle
+    - F14: Reversibility & Exit Strategy
+    - F15: Environment & Promotion Rules
+    - F16: Anti-Drift & Consistency
+    """
+    # GROUP-1 (INT): Intent & Direction
+    F01 = "F01"  # Vision & Outcome
+    F02 = "F02"  # Problem Statement
+    F03 = "F03"  # Scope & Non-Goals
+    F04 = "F04"  # Principles & Values
+    # GROUP-2 (ARCH): Architecture & Boundaries
+    F05 = "F05"  # Domain & Bounded Context
+    F06 = "F06"  # Service & Module Boundary
+    F07 = "F07"  # Data Ownership & Sovereignty
+    F08 = "F08"  # Integration & Contract Model
+    # GROUP-3 (CTL): Control, Policy & Risk
+    F09 = "F09"  # Policy & Rules
+    F10 = "F10"  # Approval & Authority Model
+    F11 = "F11"  # Security & Compliance Posture
+    F12 = "F12"  # Risk & Blast Radius
+    # GROUP-4 (EVO): Execution & Evolution
+    F13 = "F13"  # Decision Lifecycle
+    F14 = "F14"  # Reversibility & Exit Strategy
+    F15 = "F15"  # Environment & Promotion Rules
+    F16 = "F16"  # Anti-Drift & Consistency
 
 
 class Scope(str, Enum):
@@ -104,7 +164,7 @@ class RelationType(str, Enum):
 
 
 # ============================================================================
-# Group-Feature Compatibility Matrix per MANTRA-DEC-002
+# Group-Feature Compatibility Matrix per MANTRA-LAW-001 §3.2-§3.5
 # ============================================================================
 
 GROUP_FEATURE_MATRIX = {
@@ -112,6 +172,50 @@ GROUP_FEATURE_MATRIX = {
     GroupId.ARCH: [FeatureId.F05, FeatureId.F06, FeatureId.F07, FeatureId.F08],
     GroupId.CTL: [FeatureId.F09, FeatureId.F10, FeatureId.F11, FeatureId.F12],
     GroupId.EVO: [FeatureId.F13, FeatureId.F14, FeatureId.F15, FeatureId.F16],
+}
+
+# ============================================================================
+# Group Metadata (for documentation and UI)
+# ============================================================================
+
+GROUP_LAW_REFERENCES = {
+    GroupId.INT: "GROUP-1, §3.2",
+    GroupId.ARCH: "GROUP-2, §3.3",
+    GroupId.CTL: "GROUP-3, §3.4",
+    GroupId.EVO: "GROUP-4, §3.5",
+}
+
+GROUP_LABELS = {
+    GroupId.INT: "Intent & Direction",
+    GroupId.ARCH: "Architecture & Boundaries",
+    GroupId.CTL: "Control, Policy & Risk",
+    GroupId.EVO: "Execution & Evolution",
+}
+
+GROUP_SCOPES = {
+    GroupId.INT: "WHY / WHAT",
+    GroupId.ARCH: "HOW / WHERE",
+    GroupId.CTL: "CAN / MUST NOT",
+    GroupId.EVO: "CHANGE SAFELY",
+}
+
+FEATURE_LABELS = {
+    FeatureId.F01: "Vision & Outcome",
+    FeatureId.F02: "Problem Statement",
+    FeatureId.F03: "Scope & Non-Goals",
+    FeatureId.F04: "Principles & Values",
+    FeatureId.F05: "Domain & Bounded Context",
+    FeatureId.F06: "Service & Module Boundary",
+    FeatureId.F07: "Data Ownership & Sovereignty",
+    FeatureId.F08: "Integration & Contract Model",
+    FeatureId.F09: "Policy & Rules",
+    FeatureId.F10: "Approval & Authority Model",
+    FeatureId.F11: "Security & Compliance Posture",
+    FeatureId.F12: "Risk & Blast Radius",
+    FeatureId.F13: "Decision Lifecycle",
+    FeatureId.F14: "Reversibility & Exit Strategy",
+    FeatureId.F15: "Environment & Promotion Rules",
+    FeatureId.F16: "Anti-Drift & Consistency",
 }
 
 

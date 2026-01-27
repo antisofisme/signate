@@ -1,9 +1,42 @@
 /**
  * ATLAS_MANTRA Constants
  * Per MANTRA-LAW-001 §3 - The Four Decision Groups
+ *
+ * ═══════════════════════════════════════════════════════════════════════════
+ * GROUP MAPPING (Abbreviated Code → Law Reference)
+ * ═══════════════════════════════════════════════════════════════════════════
+ *
+ * | Code | Law Reference | Full Name                  | Scope          |
+ * |------|---------------|----------------------------|----------------|
+ * | INT  | GROUP-1, §3.2 | Intent & Direction         | WHY / WHAT     |
+ * | ARCH | GROUP-2, §3.3 | Architecture & Boundaries  | HOW / WHERE    |
+ * | CTL  | GROUP-3, §3.4 | Control, Policy & Risk     | CAN / MUST NOT |
+ * | EVO  | GROUP-4, §3.5 | Execution & Evolution      | CHANGE SAFELY  |
+ *
+ * ═══════════════════════════════════════════════════════════════════════════
+ * FEATURE MAPPING (4 Features per Group)
+ * ═══════════════════════════════════════════════════════════════════════════
+ *
+ * GROUP-1 (INT):  F01, F02, F03, F04
+ * GROUP-2 (ARCH): F05, F06, F07, F08
+ * GROUP-3 (CTL):  F09, F10, F11, F12
+ * GROUP-4 (EVO):  F13, F14, F15, F16
+ *
+ * Total: 4 Groups × 4 Features = 16 Decision Cells
  */
 
 export const GROUPS = ['INT', 'ARCH', 'CTL', 'EVO'] as const
+
+/**
+ * Group to Law Reference Mapping
+ * Per MANTRA-LAW-001
+ */
+export const GROUP_LAW_REFERENCES: Record<string, string> = {
+  'INT': 'GROUP-1, §3.2',
+  'ARCH': 'GROUP-2, §3.3',
+  'CTL': 'GROUP-3, §3.4',
+  'EVO': 'GROUP-4, §3.5',
+}
 
 export const FEATURES: Record<string, readonly string[]> = {
   'INT': ['F01', 'F02', 'F03', 'F04'],

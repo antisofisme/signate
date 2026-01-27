@@ -73,14 +73,43 @@ Implemented per Layer 1 specifications:
 
 ## Decision Taxonomy
 
-4 Groups × 4 Features = 16 Decision Categories
+**4 Groups × 4 Features = 16 Decision Categories**
 
-| Group | Meaning | Features |
-|-------|---------|----------|
-| INT | Intent & Direction | F01, F02, F03, F04 |
-| ARCH | Architecture & Boundaries | F05, F06, F07, F08 |
-| CTL | Control, Policy & Risk | F09, F10, F11, F12 |
-| EVO | Execution & Evolution | F13, F14, F15, F16 |
+### Group Mapping (Code → MANTRA-LAW-001)
+
+| Code | Law Ref | Full Name | Scope | Question Answered |
+|------|---------|-----------|-------|-------------------|
+| **INT** | GROUP-1, §3.2 | Intent & Direction | WHY / WHAT | "Mengapa kita melakukan ini?" |
+| **ARCH** | GROUP-2, §3.3 | Architecture & Boundaries | HOW / WHERE | "Bagaimana strukturnya?" |
+| **CTL** | GROUP-3, §3.4 | Control, Policy & Risk | CAN / MUST NOT | "Apa yang boleh/dilarang?" |
+| **EVO** | GROUP-4, §3.5 | Execution & Evolution | CHANGE SAFELY | "Bagaimana berubah aman?" |
+
+### Feature Mapping
+
+| Group | Feature | Label |
+|-------|---------|-------|
+| **INT** | F01 | Vision & Outcome |
+| | F02 | Problem Statement |
+| | F03 | Scope & Non-Goals |
+| | F04 | Principles & Values |
+| **ARCH** | F05 | Domain & Bounded Context |
+| | F06 | Service & Module Boundary |
+| | F07 | Data Ownership & Sovereignty |
+| | F08 | Integration & Contract Model |
+| **CTL** | F09 | Policy & Rules |
+| | F10 | Approval & Authority Model |
+| | F11 | Security & Compliance Posture |
+| | F12 | Risk & Blast Radius |
+| **EVO** | F13 | Decision Lifecycle |
+| | F14 | Reversibility & Exit Strategy |
+| | F15 | Environment & Promotion Rules |
+| | F16 | Anti-Drift & Consistency |
+
+### Decision Code Format
+
+Format: `{GROUP}-{FEATURE}-{SEQ}-v{VERSION}`
+
+Example: `INT-F01-001-v1.0.0`
 
 ## Validation Rules
 
