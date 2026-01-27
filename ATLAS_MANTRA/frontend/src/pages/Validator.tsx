@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { clsx } from 'clsx'
 import {
@@ -6,6 +6,7 @@ import {
   ArbitrationMode,
   ArbitrationVerdictInput,
   QualityResult,
+  QualityDimension,
   DuplicateResult,
   ConflictResult,
   ImpactResult,
@@ -14,7 +15,17 @@ import {
   ArbitrationContext,
   AIVerdictResult,
 } from '../shared/api'
-import { TAG_COLORS } from '../shared/constants'
+import {
+  TAG_COLORS,
+  GROUPS,
+  FEATURES,
+  GROUP_LABELS,
+  FEATURE_LABELS,
+  SCOPE_OPTIONS,
+  BLAST_RADIUS_OPTIONS,
+  AREA_TAGS,
+  COMMON_TECH_STACK,
+} from '../shared/constants'
 
 // Sample decision per MANTRA-SCHEMA-001 v2
 const EXAMPLE_DECISION = {
@@ -57,11 +68,47 @@ const ARBITRATION_MODE_INFO: Record<ArbitrationMode, { label: string; descriptio
   }
 }
 
+// Input mode type
+type InputMode = 'form' | 'json'
+
+// Form state interface
+interface FormState {
+  group_id: string
+  feature_id: string
+  statement: string
+  rationale: string
+  scope: string
+  blast_radius: string
+  version: string
+  created_by: string
+  tags: string[]
+  tech_stack: string[]
+  supersedes: string
+}
+
+const INITIAL_FORM_STATE: FormState = {
+  group_id: 'INT',
+  feature_id: 'F01',
+  statement: '',
+  rationale: '',
+  scope: 'APPLICATION',
+  blast_radius: 'LOW',
+  version: '1.0.0',
+  created_by: '',
+  tags: [],
+  tech_stack: [],
+  supersedes: '',
+}
+
 export default function Validator() {
+  const [inputMode, setInputMode] = useState<InputMode>('form')
   const [input, setInput] = useState(JSON.stringify(EXAMPLE_DECISION, null, 2))
+  const [formState, setFormState] = useState<FormState>(INITIAL_FORM_STATE)
   const [arbitrationMode, setArbitrationMode] = useState<ArbitrationMode>('DELEGATED')
   const [showAdvanced, setShowAdvanced] = useState(false)
   const [pendingVerdicts, setPendingVerdicts] = useState<ArbitrationVerdictInput[]>([])
+  const [proposalExpiry, setProposalExpiry] = useState<number | null>(null)
+  const [showQualityBreakdown, setShowQualityBreakdown] = useState(false)
 
   // Get AI providers info
   const { data: providersInfo } = useQuery({
@@ -70,13 +117,57 @@ export default function Validator() {
     retry: false,
   })
 
+  // Proposal expiry timer effect
+  useEffect(() => {
+    if (!mutation.data?.proposal_id) {
+      setProposalExpiry(null)
+      return
+    }
+
+    // Set expiry to 30 minutes from now
+    const expiryTime = Date.now() + 30 * 60 * 1000
+    setProposalExpiry(expiryTime)
+
+    // Update every second
+    const timer = setInterval(() => {
+      const remaining = expiryTime - Date.now()
+      if (remaining <= 0) {
+        setProposalExpiry(null)
+        clearInterval(timer)
+      } else {
+        setProposalExpiry(expiryTime)
+      }
+    }, 1000)
+
+    return () => clearInterval(timer)
+  }, [mutation.data?.proposal_id])
+
+  // Build record from form state
+  const buildRecordFromForm = useCallback((): object => {
+    return {
+      group_id: formState.group_id,
+      feature_id: formState.feature_id,
+      statement: formState.statement,
+      rationale: formState.rationale,
+      scope: formState.scope,
+      blast_radius: formState.blast_radius,
+      version: formState.version,
+      created_by: formState.created_by || 'form-user',
+      tags: formState.tags,
+      tech_stack: formState.tech_stack,
+      ...(formState.supersedes ? { supersedes: formState.supersedes } : {}),
+      constraints: [],
+      invariants: [],
+    }
+  }, [formState])
+
   const mutation = useMutation({
     mutationFn: (request: { record: object; arbitration_verdicts?: ArbitrationVerdictInput[] }) =>
       enhancedValidationApi.validate({
         record: request.record,
         arbitration_mode: arbitrationMode,
         arbitration_verdicts: request.arbitration_verdicts,
-        authorship_metadata: { author: 'frontend-user', author_type: 'human' }
+        authorship_metadata: { author: formState.created_by || 'frontend-user', author_type: 'human' }
       }),
   })
 
@@ -90,13 +181,50 @@ export default function Validator() {
   })
 
   const handleValidate = () => {
-    try {
-      const record = JSON.parse(input)
-      setPendingVerdicts([])
+    setPendingVerdicts([])
+
+    if (inputMode === 'json') {
+      try {
+        const record = JSON.parse(input)
+        mutation.mutate({ record })
+      } catch {
+        alert('Invalid JSON')
+      }
+    } else {
+      // Form mode - validate required fields
+      if (!formState.statement.trim()) {
+        alert('Statement is required')
+        return
+      }
+      if (!formState.rationale.trim()) {
+        alert('Rationale is required')
+        return
+      }
+      const record = buildRecordFromForm()
       mutation.mutate({ record })
-    } catch {
-      alert('Invalid JSON')
     }
+  }
+
+  const updateFormField = <K extends keyof FormState>(field: K, value: FormState[K]) => {
+    setFormState(prev => ({ ...prev, [field]: value }))
+  }
+
+  const toggleTag = (tag: string) => {
+    setFormState(prev => ({
+      ...prev,
+      tags: prev.tags.includes(tag)
+        ? prev.tags.filter(t => t !== tag)
+        : [...prev.tags, tag]
+    }))
+  }
+
+  const toggleTech = (tech: string) => {
+    setFormState(prev => ({
+      ...prev,
+      tech_stack: prev.tech_stack.includes(tech)
+        ? prev.tech_stack.filter(t => t !== tech)
+        : [...prev.tech_stack, tech]
+    }))
   }
 
   const handleSubmitVerdicts = () => {
@@ -195,38 +323,83 @@ export default function Validator() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Input Panel */}
         <div className="bg-white rounded-lg shadow-sm border p-6">
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="font-semibold text-gray-900">Decision Record (JSON)</h3>
-            <button
-              onClick={() => setInput(JSON.stringify(EXAMPLE_DECISION, null, 2))}
-              className="text-xs text-indigo-600 hover:text-indigo-500"
-            >
-              Load Example
-            </button>
+          {/* Input Mode Toggle */}
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="font-semibold text-gray-900">Decision Input</h3>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setInputMode('form')}
+                className={clsx(
+                  'px-3 py-1 text-xs rounded-l border',
+                  inputMode === 'form'
+                    ? 'bg-indigo-600 text-white border-indigo-600'
+                    : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'
+                )}
+              >
+                📝 Form
+              </button>
+              <button
+                onClick={() => setInputMode('json')}
+                className={clsx(
+                  'px-3 py-1 text-xs rounded-r border',
+                  inputMode === 'json'
+                    ? 'bg-indigo-600 text-white border-indigo-600'
+                    : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'
+                )}
+              >
+                {'{ }'} JSON
+              </button>
+            </div>
           </div>
-          <textarea
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            className="w-full h-80 bg-gray-50 text-gray-700 font-mono text-sm p-4 rounded border border-gray-200 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-            placeholder="Paste decision JSON here..."
-          />
+
+          {inputMode === 'json' ? (
+            <>
+              <div className="flex justify-end mb-2">
+                <button
+                  onClick={() => setInput(JSON.stringify(EXAMPLE_DECISION, null, 2))}
+                  className="text-xs text-indigo-600 hover:text-indigo-500"
+                >
+                  Load Example
+                </button>
+              </div>
+              <textarea
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                className="w-full h-80 bg-gray-50 text-gray-700 font-mono text-sm p-4 rounded border border-gray-200 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                placeholder="Paste decision JSON here..."
+              />
+            </>
+          ) : (
+            <FormInput
+              formState={formState}
+              onFieldChange={updateFormField}
+              onToggleTag={toggleTag}
+              onToggleTech={toggleTech}
+            />
+          )}
+
           <button
             onClick={handleValidate}
             disabled={mutation.isPending}
             className="mt-4 btn btn-primary w-full"
           >
-            {mutation.isPending ? 'Validating...' : 'Validate (Enhanced)'}
+            {mutation.isPending ? 'Validating...' : '🔍 Validate Decision'}
           </button>
         </div>
 
         {/* Result Panel */}
-        <div className="bg-white rounded-lg shadow-sm border p-6 overflow-auto max-h-[600px]">
+        <div className="bg-white rounded-lg shadow-sm border p-6 overflow-auto max-h-[700px]">
           <h3 className="font-semibold text-gray-900 mb-3">Validation Result</h3>
 
           {mutation.data ? (
             <div className="space-y-4">
               {/* Overall Status */}
               <ResultStatus result={mutation.data.result} />
+
+              {/* Proposal Timer */}
+              {mutation.data.proposal_id && proposalExpiry && (
+                <ProposalTimer expiryTime={proposalExpiry} proposalId={mutation.data.proposal_id} />
+              )}
 
               {/* Approval Summary */}
               {mutation.data.approval_summary && (
@@ -265,8 +438,14 @@ export default function Validator() {
 
               {showAdvanced && (
                 <>
-                  {/* Quality Score */}
-                  {mutation.data.quality && <QualityCard quality={mutation.data.quality} />}
+                  {/* Quality Score with Breakdown */}
+                  {mutation.data.quality && (
+                    <QualityCard
+                      quality={mutation.data.quality}
+                      showBreakdown={showQualityBreakdown}
+                      onToggleBreakdown={() => setShowQualityBreakdown(!showQualityBreakdown)}
+                    />
+                  )}
 
                   {/* Duplicates */}
                   {mutation.data.duplicates && <DuplicatesCard duplicates={mutation.data.duplicates} />}
@@ -513,9 +692,259 @@ function AIVerdictsCard({ verdicts }: { verdicts: Record<string, AIVerdictResult
 }
 
 // =============================================================================
-// Component: Quality Card
+// Component: Form Input
 // =============================================================================
-function QualityCard({ quality }: { quality: QualityResult }) {
+function FormInput({
+  formState,
+  onFieldChange,
+  onToggleTag,
+  onToggleTech,
+}: {
+  formState: FormState
+  onFieldChange: <K extends keyof FormState>(field: K, value: FormState[K]) => void
+  onToggleTag: (tag: string) => void
+  onToggleTech: (tech: string) => void
+}) {
+  return (
+    <div className="space-y-4 max-h-80 overflow-y-auto pr-2">
+      {/* Group & Feature */}
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label className="block text-xs font-medium text-gray-700 mb-1">Group</label>
+          <select
+            value={formState.group_id}
+            onChange={(e) => {
+              onFieldChange('group_id', e.target.value)
+              // Auto-select first feature of new group
+              const features = FEATURES[e.target.value] || []
+              if (features.length > 0) {
+                onFieldChange('feature_id', features[0])
+              }
+            }}
+            className="w-full px-3 py-2 text-sm border rounded focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
+          >
+            {GROUPS.map(g => (
+              <option key={g} value={g}>{g} - {GROUP_LABELS[g]}</option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-gray-700 mb-1">Feature</label>
+          <select
+            value={formState.feature_id}
+            onChange={(e) => onFieldChange('feature_id', e.target.value)}
+            className="w-full px-3 py-2 text-sm border rounded focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
+          >
+            {(FEATURES[formState.group_id] || []).map(f => (
+              <option key={f} value={f}>{f} - {FEATURE_LABELS[f]}</option>
+            ))}
+          </select>
+        </div>
+      </div>
+
+      {/* Statement */}
+      <div>
+        <label className="block text-xs font-medium text-gray-700 mb-1">
+          Statement <span className="text-red-500">*</span>
+        </label>
+        <textarea
+          value={formState.statement}
+          onChange={(e) => onFieldChange('statement', e.target.value)}
+          rows={2}
+          placeholder="Clear, actionable decision statement..."
+          className="w-full px-3 py-2 text-sm border rounded focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
+        />
+      </div>
+
+      {/* Rationale */}
+      <div>
+        <label className="block text-xs font-medium text-gray-700 mb-1">
+          Rationale <span className="text-red-500">*</span>
+        </label>
+        <textarea
+          value={formState.rationale}
+          onChange={(e) => onFieldChange('rationale', e.target.value)}
+          rows={2}
+          placeholder="Why this decision? What problem does it solve?"
+          className="w-full px-3 py-2 text-sm border rounded focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
+        />
+      </div>
+
+      {/* Scope & Blast Radius */}
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label className="block text-xs font-medium text-gray-700 mb-1">Scope</label>
+          <select
+            value={formState.scope}
+            onChange={(e) => onFieldChange('scope', e.target.value)}
+            className="w-full px-3 py-2 text-sm border rounded focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
+          >
+            {SCOPE_OPTIONS.map(s => (
+              <option key={s} value={s}>{s}</option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-gray-700 mb-1">Blast Radius</label>
+          <select
+            value={formState.blast_radius}
+            onChange={(e) => onFieldChange('blast_radius', e.target.value)}
+            className="w-full px-3 py-2 text-sm border rounded focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
+          >
+            {BLAST_RADIUS_OPTIONS.map(b => (
+              <option key={b} value={b}>{b}</option>
+            ))}
+          </select>
+        </div>
+      </div>
+
+      {/* Version & Created By */}
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label className="block text-xs font-medium text-gray-700 mb-1">Version</label>
+          <input
+            type="text"
+            value={formState.version}
+            onChange={(e) => onFieldChange('version', e.target.value)}
+            placeholder="1.0.0"
+            className="w-full px-3 py-2 text-sm border rounded focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
+          />
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-gray-700 mb-1">Created By</label>
+          <input
+            type="text"
+            value={formState.created_by}
+            onChange={(e) => onFieldChange('created_by', e.target.value)}
+            placeholder="Your name"
+            className="w-full px-3 py-2 text-sm border rounded focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
+          />
+        </div>
+      </div>
+
+      {/* Tags */}
+      <div>
+        <label className="block text-xs font-medium text-gray-700 mb-1">Tags (Area)</label>
+        <div className="flex flex-wrap gap-1">
+          {AREA_TAGS.map(tag => (
+            <button
+              key={tag}
+              onClick={() => onToggleTag(tag)}
+              className={clsx(
+                'px-2 py-0.5 text-xs rounded transition-all',
+                formState.tags.includes(tag)
+                  ? TAG_COLORS[tag] || 'bg-gray-200 text-gray-700'
+                  : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+              )}
+            >
+              {tag}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Tech Stack */}
+      <div>
+        <label className="block text-xs font-medium text-gray-700 mb-1">Tech Stack</label>
+        <div className="flex flex-wrap gap-1 max-h-20 overflow-y-auto">
+          {COMMON_TECH_STACK.slice(0, 15).map(tech => (
+            <button
+              key={tech}
+              onClick={() => onToggleTech(tech)}
+              className={clsx(
+                'px-2 py-0.5 text-xs rounded transition-all',
+                formState.tech_stack.includes(tech)
+                  ? 'bg-indigo-100 text-indigo-700'
+                  : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+              )}
+            >
+              {tech}
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// =============================================================================
+// Component: Proposal Timer
+// =============================================================================
+function ProposalTimer({ expiryTime, proposalId }: { expiryTime: number; proposalId: string }) {
+  const [remaining, setRemaining] = useState(expiryTime - Date.now())
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setRemaining(expiryTime - Date.now())
+    }, 1000)
+    return () => clearInterval(timer)
+  }, [expiryTime])
+
+  const minutes = Math.floor(remaining / 60000)
+  const seconds = Math.floor((remaining % 60000) / 1000)
+
+  const isUrgent = minutes < 5
+  const isExpired = remaining <= 0
+
+  if (isExpired) {
+    return (
+      <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
+        <div className="flex items-center gap-2 text-red-700">
+          <span className="text-lg">⏰</span>
+          <span className="font-medium">Proposal Expired</span>
+        </div>
+        <p className="text-xs text-red-600 mt-1">
+          Please validate again to get a new proposal.
+        </p>
+      </div>
+    )
+  }
+
+  return (
+    <div className={clsx(
+      'p-3 rounded-lg border',
+      isUrgent ? 'bg-amber-50 border-amber-200' : 'bg-blue-50 border-blue-200'
+    )}>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <span className="text-lg">{isUrgent ? '⚠️' : '⏱️'}</span>
+          <span className={clsx(
+            'font-medium',
+            isUrgent ? 'text-amber-700' : 'text-blue-700'
+          )}>
+            Proposal Valid For
+          </span>
+        </div>
+        <div className={clsx(
+          'font-mono text-lg font-bold',
+          isUrgent ? 'text-amber-700' : 'text-blue-700'
+        )}>
+          {minutes.toString().padStart(2, '0')}:{seconds.toString().padStart(2, '0')}
+        </div>
+      </div>
+      <p className={clsx(
+        'text-xs mt-1',
+        isUrgent ? 'text-amber-600' : 'text-blue-600'
+      )}>
+        Proposal ID: {proposalId.slice(0, 8)}...
+        {isUrgent && ' - Approve soon or validate again'}
+      </p>
+    </div>
+  )
+}
+
+// =============================================================================
+// Component: Quality Card with Breakdown
+// =============================================================================
+function QualityCard({
+  quality,
+  showBreakdown,
+  onToggleBreakdown,
+}: {
+  quality: QualityResult
+  showBreakdown: boolean
+  onToggleBreakdown: () => void
+}) {
   const scoreColor = quality.percentage >= 80 ? 'text-green-600' :
                      quality.percentage >= 60 ? 'text-amber-600' : 'text-red-600'
 
@@ -540,26 +969,91 @@ function QualityCard({ quality }: { quality: QualityResult }) {
         />
       </div>
 
-      {/* Dimensions */}
+      {/* Dimensions Summary */}
       <div className="space-y-2">
         {quality.dimensions.map(dim => (
-          <div key={dim.dimension} className="text-sm">
-            <div className="flex justify-between">
-              <span className="text-gray-700">{dim.dimension}</span>
-              <span className="text-gray-500">{dim.scored_points}/{dim.max_points}</span>
-            </div>
-          </div>
+          <DimensionRow key={dim.dimension} dimension={dim} />
         ))}
       </div>
 
+      {/* Toggle Breakdown */}
+      <button
+        onClick={onToggleBreakdown}
+        className="w-full mt-3 pt-3 border-t border-green-200 text-xs text-green-700 hover:text-green-800"
+      >
+        {showBreakdown ? '▲ Hide Rule Breakdown' : '▼ Show Rule Breakdown (Q-001 to Q-025)'}
+      </button>
+
+      {/* Detailed Breakdown */}
+      {showBreakdown && (
+        <div className="mt-3 space-y-3">
+          {quality.dimensions.map(dim => (
+            <div key={dim.dimension} className="bg-white p-3 rounded border border-green-100">
+              <div className="font-medium text-gray-900 text-sm mb-2">{dim.dimension}</div>
+              <div className="space-y-1">
+                {dim.details?.map(detail => (
+                  <div key={detail.rule_id} className="flex items-start gap-2 text-xs">
+                    <span className="font-mono text-gray-500 w-12">{detail.rule_id}</span>
+                    <span className="flex-1 text-gray-600">{detail.reason}</span>
+                    <span className={clsx(
+                      'font-medium',
+                      detail.points === detail.max_points ? 'text-green-600' :
+                      detail.points > 0 ? 'text-amber-600' : 'text-red-600'
+                    )}>
+                      {detail.points}/{detail.max_points}
+                    </span>
+                  </div>
+                )) || (
+                  <div className="text-xs text-gray-400 italic">No detailed breakdown available</div>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
       {quality.suggestions.length > 0 && (
         <div className="mt-3 pt-3 border-t border-green-200">
-          <p className="text-xs text-green-700 font-medium mb-1">Suggestions:</p>
+          <p className="text-xs text-green-700 font-medium mb-1">💡 Suggestions:</p>
           <ul className="text-xs text-green-600 list-disc list-inside">
-            {quality.suggestions.slice(0, 3).map((s, i) => <li key={i}>{s}</li>)}
+            {quality.suggestions.slice(0, 5).map((s, i) => <li key={i}>{s}</li>)}
           </ul>
         </div>
       )}
+    </div>
+  )
+}
+
+// =============================================================================
+// Component: Dimension Row
+// =============================================================================
+function DimensionRow({ dimension }: { dimension: QualityDimension }) {
+  const percentage = dimension.max_points > 0
+    ? (dimension.scored_points / dimension.max_points) * 100
+    : 0
+
+  return (
+    <div className="text-sm">
+      <div className="flex justify-between mb-1">
+        <span className="text-gray-700">{dimension.dimension}</span>
+        <span className={clsx(
+          'font-medium',
+          percentage >= 80 ? 'text-green-600' :
+          percentage >= 60 ? 'text-amber-600' : 'text-red-600'
+        )}>
+          {dimension.scored_points}/{dimension.max_points}
+        </span>
+      </div>
+      <div className="w-full bg-gray-200 rounded-full h-1">
+        <div
+          className={clsx(
+            'h-1 rounded-full',
+            percentage >= 80 ? 'bg-green-400' :
+            percentage >= 60 ? 'bg-amber-400' : 'bg-red-400'
+          )}
+          style={{ width: `${percentage}%` }}
+        />
+      </div>
     </div>
   )
 }

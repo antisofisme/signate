@@ -5,6 +5,7 @@ import DecisionMatrix from './pages/DecisionMatrix'
 import DecisionList from './pages/DecisionList'
 import DecisionDetail from './pages/DecisionDetail'
 import Validator from './pages/Validator'
+import Compare from './pages/Compare'
 import GroupPage from './pages/GroupPage'
 import EvolutionTimeline from './pages/EvolutionTimeline'
 import ScopeProjection from './pages/ScopeProjection'
@@ -35,6 +36,7 @@ function App() {
           <Route path="tech-stack" element={<TechStackProjection />} />
           {/* Tools */}
           <Route path="validate" element={<Validator />} />
+          <Route path="compare" element={<Compare />} />
           <Route path="audit" element={<AuditLog />} />
           {/* Settings */}
           <Route path="settings/api-keys" element={<ApiKeys />} />
