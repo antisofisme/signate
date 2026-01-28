@@ -8,7 +8,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import { clsx } from 'clsx'
 import { approvalsApi, decisionsApi, PendingApproval, Decision } from '../shared/api'
-import { FEATURE_LABELS, GROUP_COLORS } from '../shared/constants'
+import { ASPECT_LABELS, DOMAIN_COLORS } from '../shared/constants'
 
 // =============================================================================
 // Component
@@ -274,11 +274,11 @@ function ApprovalCard({
           <div className="flex items-center gap-2 mb-2">
             <span
               className="px-2 py-0.5 rounded text-xs font-medium text-white"
-              style={{ backgroundColor: GROUP_COLORS[decision.group_id] || '#6B7280' }}
+              style={{ backgroundColor: DOMAIN_COLORS[decision.domain_id || (decision as any).group_id] || '#6B7280' }}
             >
-              {decision.group_id}
+              {decision.domain_id || (decision as any).group_id}
             </span>
-            <span className="text-xs text-gray-500">{FEATURE_LABELS[decision.feature_id]}</span>
+            <span className="text-xs text-gray-500">{ASPECT_LABELS[decision.aspect_id || (decision as any).feature_id]}</span>
             <span className="font-mono text-sm text-gray-700">
               {decision.decision_code || decision.decision_id.slice(0, 8)}
             </span>
@@ -359,6 +359,7 @@ function ApprovalCard({
 }
 
 function RecentDecisionCard({ decision }: { decision: Decision }) {
+  const domainId = decision.domain_id || (decision as any).group_id
   return (
     <div className="p-4 hover:bg-gray-50 transition-colors">
       <div className="flex items-start justify-between">
@@ -366,9 +367,9 @@ function RecentDecisionCard({ decision }: { decision: Decision }) {
           <div className="flex items-center gap-2 mb-1">
             <span
               className="px-2 py-0.5 rounded text-xs font-medium text-white"
-              style={{ backgroundColor: GROUP_COLORS[decision.group_id] || '#6B7280' }}
+              style={{ backgroundColor: DOMAIN_COLORS[domainId] || '#6B7280' }}
             >
-              {decision.group_id}
+              {domainId}
             </span>
             <span className="font-mono text-sm text-gray-700">
               {decision.decision_code || decision.decision_id.slice(0, 8)}

@@ -193,14 +193,14 @@ export const toolDefinitions = [
           type: 'number',
           description: 'Minimum similarity score 0.0-1.0 (default: 0.5)'
         },
-        group_id: {
+        domain_id: {
           type: 'string',
-          description: 'Filter by decision group',
+          description: 'Filter by decision domain',
           enum: ['INT', 'ARCH', 'CTL', 'EVO']
         },
-        feature_id: {
+        aspect_id: {
           type: 'string',
-          description: 'Filter by feature (F01-F16)'
+          description: 'Filter by aspect (A01-A16)'
         }
       },
       required: ['query']
@@ -220,9 +220,9 @@ export const toolDefinitions = [
           type: 'string',
           description: 'The rationale for the proposed decision'
         },
-        group_id: {
+        domain_id: {
           type: 'string',
-          description: 'Scope the check to a specific group',
+          description: 'Scope the check to a specific domain',
           enum: ['INT', 'ARCH', 'CTL', 'EVO']
         }
       },
@@ -526,8 +526,8 @@ ${result.similarities.map(s => `- ${s}`).join('\n')}
         query: args.query as string,
         limit: (args.limit as number) || 10,
         min_score: (args.min_score as number) || 0.5,
-        group_id: args.group_id as string | undefined,
-        feature_id: args.feature_id as string | undefined
+        domain_id: args.domain_id as string | undefined,
+        aspect_id: args.aspect_id as string | undefined
       })
 
       if (result.status === 'NOT_FOUND' || result.hits.length === 0) {
@@ -555,7 +555,7 @@ ${result.similarities.map(s => `- ${s}`).join('\n')}
         return `### ${idx + 1}. ${h.decision_code} (${score}% match)\n` +
           `**Statement:** ${h.statement}\n` +
           `**Rationale:** ${h.rationale.substring(0, 200)}${h.rationale.length > 200 ? '...' : ''}\n` +
-          `**Group:** ${h.group_id} | **Feature:** ${h.feature_id} | **Version:** ${h.version}\n` +
+          `**Domain:** ${h.domain_id} | **Aspect:** ${h.aspect_id} | **Version:** ${h.version}\n` +
           `**Tags:** ${h.tags.join(', ') || 'none'}`
       }).join('\n\n---\n\n')
 
@@ -587,7 +587,7 @@ ${result.similarities.map(s => `- ${s}`).join('\n')}
       const result = await client.checkAlignment({
         statement: args.statement as string,
         rationale: args.rationale as string | undefined,
-        group_id: args.group_id as string | undefined
+        domain_id: args.domain_id as string | undefined
       })
 
       if (result.status === 'UNKNOWN' && result.error_message) {

@@ -4,8 +4,8 @@ MANTRA MCP Resources
 Provides read-only resources for AI assistants:
 - decisions:// - List/filter decisions
 - decision:// - Get single decision
-- groups:// - List decision groups
-- features:// - List feature areas
+- domains:// - List decision domains
+- aspects:// - List aspect areas
 - matrix:// - Decision matrix view
 
 Resources return data that AI can use for context.
@@ -25,8 +25,8 @@ class DecisionResource:
     decision_code: str
     statement: str
     rationale: str
-    group_id: str
-    feature_id: str
+    domain_id: str
+    aspect_id: str
     scope: str
     status: str
     tags: List[str]
@@ -38,19 +38,19 @@ class DecisionResource:
 
 
 @dataclass
-class GroupResource:
-    """Decision group resource."""
-    group_id: str
+class DomainResource:
+    """Decision domain resource."""
+    domain_id: str
     name: str
     description: str
     decision_count: int
 
 
 @dataclass
-class FeatureResource:
-    """Feature area resource."""
-    feature_id: str
-    group_id: str
+class AspectResource:
+    """Aspect area resource."""
+    aspect_id: str
+    domain_id: str
     name: str
     description: str
     decision_count: int
@@ -108,8 +108,8 @@ class ResourceProvider:
                 record = {
                     "decision_id": d.decision_id,
                     "decision_code": d.decision_code,
-                    "group_id": d.group_id.value if hasattr(d.group_id, 'value') else d.group_id,
-                    "feature_id": d.feature_id.value if hasattr(d.feature_id, 'value') else d.feature_id,
+                    "domain_id": d.domain_id.value if hasattr(d.domain_id, 'value') else d.domain_id,
+                    "aspect_id": d.aspect_id.value if hasattr(d.aspect_id, 'value') else d.aspect_id,
                     "status": d.status.value if hasattr(d.status, 'value') else d.status,
                 }
 
@@ -189,8 +189,8 @@ class ResourceProvider:
             record = {
                 "decision_id": d.decision_id,
                 "decision_code": d.decision_code,
-                "group_id": d.group_id.value if hasattr(d.group_id, 'value') else d.group_id,
-                "feature_id": d.feature_id.value if hasattr(d.feature_id, 'value') else d.feature_id,
+                "domain_id": d.domain_id.value if hasattr(d.domain_id, 'value') else d.domain_id,
+                "aspect_id": d.aspect_id.value if hasattr(d.aspect_id, 'value') else d.aspect_id,
                 "statement": d.statement,
                 "rationale": d.rationale,
                 "scope": d.scope.value if hasattr(d.scope, 'value') else d.scope,
@@ -225,102 +225,102 @@ class ResourceProvider:
             logger.error(f"Error fetching decision {decision_id}: {e}")
             return {"error": str(e)}
 
-    async def get_groups(self) -> Dict[str, Any]:
+    async def get_domains(self) -> Dict[str, Any]:
         """
-        Get list of decision groups.
+        Get list of decision domains.
 
         Returns:
-            Dict with groups and their decision counts
+            Dict with domains and their decision counts
         """
-        # Static groups from schema
-        from ..domain.schema import Group
+        # Static domains from schema
+        from ..domain.schema import Domain
 
-        groups = []
-        for g in Group:
-            groups.append({
-                "group_id": g.value,
-                "name": g.name,
-                "description": _get_group_description(g.value),
+        domains = []
+        for d in Domain:
+            domains.append({
+                "domain_id": d.value,
+                "name": d.name,
+                "description": _get_domain_description(d.value),
             })
 
         # Add decision counts if repository available
         if self.repository:
             try:
-                for group in groups:
-                    count = await self._count_decisions_in_group(group["group_id"])
-                    group["decision_count"] = count
+                for domain in domains:
+                    count = await self._count_decisions_in_domain(domain["domain_id"])
+                    domain["decision_count"] = count
             except Exception as e:
                 logger.warning(f"Could not get decision counts: {e}")
 
-        return {"groups": groups}
+        return {"domains": domains}
 
-    async def get_features(self, group_id: Optional[str] = None) -> Dict[str, Any]:
+    async def get_aspects(self, domain_id: Optional[str] = None) -> Dict[str, Any]:
         """
-        Get list of feature areas.
+        Get list of aspect areas.
 
         Args:
-            group_id: Optional filter by group
+            domain_id: Optional filter by domain
 
         Returns:
-            Dict with features
+            Dict with aspects
         """
-        from ..domain.schema import Feature
+        from ..domain.schema import Aspect
 
-        features = []
-        for f in Feature:
-            feature_group = _get_feature_group(f.value)
-            if group_id and feature_group != group_id:
+        aspects = []
+        for a in Aspect:
+            aspect_domain = _get_aspect_domain(a.value)
+            if domain_id and aspect_domain != domain_id:
                 continue
 
-            features.append({
-                "feature_id": f.value,
-                "group_id": feature_group,
-                "name": f.name,
-                "description": _get_feature_description(f.value),
+            aspects.append({
+                "aspect_id": a.value,
+                "domain_id": aspect_domain,
+                "name": a.name,
+                "description": _get_aspect_description(a.value),
             })
 
-        return {"features": features}
+        return {"aspects": aspects}
 
     async def get_decision_matrix(self) -> Dict[str, Any]:
         """
-        Get decision matrix (groups x features).
+        Get decision matrix (domains x aspects).
 
         Returns:
             Matrix with decision counts per cell
         """
-        from ..domain.schema import Group, Feature
+        from ..domain.schema import Domain, Aspect
 
         matrix = {}
-        for g in Group:
-            matrix[g.value] = {}
-            for f in Feature:
-                # Only include relevant features for this group
-                if _get_feature_group(f.value) == g.value or _get_feature_group(f.value) == "COMMON":
-                    matrix[g.value][f.value] = 0
+        for d in Domain:
+            matrix[d.value] = {}
+            for a in Aspect:
+                # Only include relevant aspects for this domain
+                if _get_aspect_domain(a.value) == d.value or _get_aspect_domain(a.value) == "COMMON":
+                    matrix[d.value][a.value] = 0
 
         # Fill counts if repository available
         if self.repository:
             try:
                 stored_decisions = await self.repository.find_all_async(limit=10000, offset=0)
                 for sd in stored_decisions:
-                    g = sd.decision.group_id.value if hasattr(sd.decision.group_id, 'value') else sd.decision.group_id
-                    f = sd.decision.feature_id.value if hasattr(sd.decision.feature_id, 'value') else sd.decision.feature_id
-                    if g in matrix and f in matrix[g]:
-                        matrix[g][f] += 1
+                    d = sd.decision.domain_id.value if hasattr(sd.decision.domain_id, 'value') else sd.decision.domain_id
+                    a = sd.decision.aspect_id.value if hasattr(sd.decision.aspect_id, 'value') else sd.decision.aspect_id
+                    if d in matrix and a in matrix[d]:
+                        matrix[d][a] += 1
             except Exception as e:
                 logger.warning(f"Could not populate matrix: {e}")
 
         return {"matrix": matrix}
 
-    async def _count_decisions_in_group(self, group_id: str) -> int:
-        """Count decisions in a group."""
+    async def _count_decisions_in_domain(self, domain_id: str) -> int:
+        """Count decisions in a domain."""
         if not self.repository:
             return 0
         try:
             stored = await self.repository.find_all_async(limit=10000, offset=0)
             return sum(
                 1 for sd in stored
-                if (sd.decision.group_id.value if hasattr(sd.decision.group_id, 'value') else sd.decision.group_id) == group_id
+                if (sd.decision.domain_id.value if hasattr(sd.decision.domain_id, 'value') else sd.decision.domain_id) == domain_id
             )
         except:
             return 0
@@ -330,8 +330,8 @@ class ResourceProvider:
 # Helper Functions
 # =============================================================================
 
-def _get_group_description(group_id: str) -> str:
-    """Get human-readable group description."""
+def _get_domain_description(domain_id: str) -> str:
+    """Get human-readable domain description."""
     descriptions = {
         "ARCH": "Architectural decisions - system structure and design patterns",
         "STD": "Standards and conventions - coding style, naming, formatting",
@@ -339,11 +339,11 @@ def _get_group_description(group_id: str) -> str:
         "IMPL": "Implementation details - specific technical choices",
         "SPEC": "Specifications - detailed requirements and contracts",
     }
-    return descriptions.get(group_id, f"Decision group: {group_id}")
+    return descriptions.get(domain_id, f"Decision domain: {domain_id}")
 
 
-def _get_feature_description(feature_id: str) -> str:
-    """Get human-readable feature description."""
+def _get_aspect_description(aspect_id: str) -> str:
+    """Get human-readable aspect description."""
     descriptions = {
         "DATABASE": "Database design, queries, migrations",
         "API": "API design, endpoints, contracts",
@@ -355,13 +355,13 @@ def _get_feature_description(feature_id: str) -> str:
         "PERFORMANCE": "Performance optimization",
         "MONITORING": "Logging, metrics, observability",
     }
-    return descriptions.get(feature_id, f"Feature area: {feature_id}")
+    return descriptions.get(aspect_id, f"Aspect area: {aspect_id}")
 
 
-def _get_feature_group(feature_id: str) -> str:
-    """Get the primary group for a feature."""
-    # Most features are COMMON (applicable to multiple groups)
-    group_specific = {
-        # Add group-specific features here
+def _get_aspect_domain(aspect_id: str) -> str:
+    """Get the primary domain for an aspect."""
+    # Most aspects are COMMON (applicable to multiple domains)
+    domain_specific = {
+        # Add domain-specific aspects here
     }
-    return group_specific.get(feature_id, "COMMON")
+    return domain_specific.get(aspect_id, "COMMON")

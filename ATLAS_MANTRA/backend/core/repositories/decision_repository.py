@@ -14,7 +14,7 @@ from abc import ABC, abstractmethod
 from typing import List, Optional
 from datetime import datetime
 
-from ..domain.schema import Decision, GroupId, FeatureId
+from ..domain.schema import Decision, DomainId, AspectId
 from ..domain.decision import StoredDecision, DecisionEvent, AuditEntry, AuditEventType
 
 
@@ -64,13 +64,13 @@ class DecisionRepository(ABC):
         pass
 
     @abstractmethod
-    def find_by_group(
+    def find_by_domain(
         self,
-        group_id: GroupId,
+        domain_id: DomainId,
         limit: int = 100,
         offset: int = 0
     ) -> List[StoredDecision]:
-        """Find decisions by group (sync version). Use find_by_group_async() in routes."""
+        """Find decisions by domain (sync version). Use find_by_domain_async() in routes."""
         pass
 
     # find_by_status: REMOVED per MANTRA-SPEC-001-AMENDMENT-001
@@ -82,13 +82,13 @@ class DecisionRepository(ABC):
         pass
 
     @abstractmethod
-    def count_by_feature(self, feature_id: FeatureId) -> int:
+    def count_by_aspect(self, aspect_id: AspectId) -> int:
         """
-        Count decisions by feature (sync version).
+        Count decisions by aspect (sync version).
 
         Used for generating decision_code sequence numbers.
-        Returns the count of all decisions with the given feature_id.
-        Use count_by_feature_async() in routes.
+        Returns the count of all decisions with the given aspect_id.
+        Use count_by_aspect_async() in routes.
         """
         pass
 
@@ -178,13 +178,13 @@ class DecisionRepository(ABC):
         pass
 
     @abstractmethod
-    async def find_by_group_async(
+    async def find_by_domain_async(
         self,
-        group_id: GroupId,
+        domain_id: DomainId,
         limit: int = 100,
         offset: int = 0
     ) -> List[StoredDecision]:
-        """Find decisions by group (async version - USE THIS IN ROUTES)."""
+        """Find decisions by domain (async version - USE THIS IN ROUTES)."""
         pass
 
     @abstractmethod
@@ -193,9 +193,9 @@ class DecisionRepository(ABC):
         pass
 
     @abstractmethod
-    async def count_by_feature_async(self, feature_id: FeatureId) -> int:
+    async def count_by_aspect_async(self, aspect_id: AspectId) -> int:
         """
-        Count decisions by feature (async version - USE THIS IN ROUTES).
+        Count decisions by aspect (async version - USE THIS IN ROUTES).
 
         Used for generating decision_code sequence numbers.
         """
@@ -293,16 +293,16 @@ class InMemoryDecisionRepository(DecisionRepository):
         decisions = list(self._decisions.values())
         return decisions[offset:offset + limit]
 
-    def find_by_group(
+    def find_by_domain(
         self,
-        group_id: GroupId,
+        domain_id: DomainId,
         limit: int = 100,
         offset: int = 0
     ) -> List[StoredDecision]:
-        """Find decisions by group."""
+        """Find decisions by domain."""
         filtered = [
             sd for sd in self._decisions.values()
-            if sd.decision.group_id == group_id
+            if sd.decision.domain_id == domain_id
         ]
         return filtered[offset:offset + limit]
 
@@ -312,11 +312,11 @@ class InMemoryDecisionRepository(DecisionRepository):
         """Count total decisions."""
         return len(self._decisions)
 
-    def count_by_feature(self, feature_id: FeatureId) -> int:
-        """Count decisions by feature for sequence generation."""
+    def count_by_aspect(self, aspect_id: AspectId) -> int:
+        """Count decisions by aspect for sequence generation."""
         return sum(
             1 for sd in self._decisions.values()
-            if sd.decision.feature_id == feature_id
+            if sd.decision.aspect_id == aspect_id
         )
 
     def record_event(self, event: DecisionEvent) -> None:
@@ -457,22 +457,22 @@ class InMemoryDecisionRepository(DecisionRepository):
         """Async version of find_all."""
         return self.find_all(limit, offset)
 
-    async def find_by_group_async(
+    async def find_by_domain_async(
         self,
-        group_id: GroupId,
+        domain_id: DomainId,
         limit: int = 100,
         offset: int = 0
     ) -> List[StoredDecision]:
-        """Async version of find_by_group."""
-        return self.find_by_group(group_id, limit, offset)
+        """Async version of find_by_domain."""
+        return self.find_by_domain(domain_id, limit, offset)
 
     async def count_async(self) -> int:
         """Async version of count."""
         return self.count()
 
-    async def count_by_feature_async(self, feature_id: FeatureId) -> int:
-        """Async version of count_by_feature."""
-        return self.count_by_feature(feature_id)
+    async def count_by_aspect_async(self, aspect_id: AspectId) -> int:
+        """Async version of count_by_aspect."""
+        return self.count_by_aspect(aspect_id)
 
     async def record_event_async(self, event: DecisionEvent) -> None:
         """Async version of record_event."""

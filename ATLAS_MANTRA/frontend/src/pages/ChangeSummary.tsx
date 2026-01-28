@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import { api } from '../shared/api'
-import { FEATURE_LABELS } from '../shared/constants'
+import { ASPECT_LABELS } from '../shared/constants'
 import { SkeletonPage } from '../components/ui/skeleton'
 
 /**
@@ -20,12 +20,12 @@ import { SkeletonPage } from '../components/ui/skeleton'
 
 interface Decision {
   decision_id: string
-  decision_code: string | null  // Human-readable code: INT-F01-001-v1.0.0
+  decision_code: string | null  // Human-readable code: INT-A01-001-v1.0.0
   version: string
   statement: string
   rationale: string
-  group_id: string
-  feature_id: string
+  domain_id: string
+  aspect_id: string
   supersedes: string | null
   created_at: string
 }
@@ -55,10 +55,10 @@ export default function ChangeSummary() {
   const revisions = sortedDecisions.filter(d => d.supersedes)
   const supersededDecisions = decisions.filter(d => supersededIds.has(d.decision_id))
 
-  // Features affected (has at least one decision)
-  const affectedFeatures = new Set<string>()
+  // Aspects affected (has at least one decision)
+  const affectedAspects = new Set<string>()
   decisions.forEach(d => {
-    affectedFeatures.add(`${d.group_id}/${d.feature_id}`)
+    affectedAspects.add(`${d.domain_id}/${d.aspect_id}`)
   })
 
   // Group changes by date
@@ -100,24 +100,24 @@ export default function ChangeSummary() {
         </div>
       </div>
 
-      {/* Features Affected */}
+      {/* Aspects Affected */}
       <div className="bg-white rounded-lg shadow-sm border p-6">
-        <h3 className="font-semibold text-gray-900 mb-4">Features with Decisions</h3>
+        <h3 className="font-semibold text-gray-900 mb-4">Aspects with Decisions</h3>
         <div className="flex flex-wrap gap-2">
-          {Array.from(affectedFeatures).map(featureKey => {
-            const [groupId, featureId] = featureKey.split('/')
+          {Array.from(affectedAspects).map(aspectKey => {
+            const [domainId, aspectId] = aspectKey.split('/')
             const count = decisions.filter(
-              d => d.group_id === groupId && d.feature_id === featureId
+              d => d.domain_id === domainId && d.aspect_id === aspectId
             ).length
             return (
               <div
-                key={featureKey}
+                key={aspectKey}
                 className="px-3 py-2 bg-gray-50 rounded border"
               >
-                <div className="text-xs text-gray-400">G{groupId.split('-')[1]}</div>
-                <div className="text-sm text-indigo-600">{FEATURE_LABELS[featureId]}</div>
+                <div className="text-xs text-gray-400">{domainId}</div>
+                <div className="text-sm text-indigo-600">{ASPECT_LABELS[aspectId]}</div>
                 <div className="text-xs text-gray-500">
-                  {featureId}
+                  {aspectId}
                 </div>
                 <div className="text-xs text-gray-400 mt-1">
                   {count} decision{count !== 1 ? 's' : ''}
@@ -125,8 +125,8 @@ export default function ChangeSummary() {
               </div>
             )
           })}
-          {affectedFeatures.size === 0 && (
-            <p className="text-gray-500 text-sm">No features have decisions yet</p>
+          {affectedAspects.size === 0 && (
+            <p className="text-gray-500 text-sm">No aspects have decisions yet</p>
           )}
         </div>
       </div>
@@ -169,11 +169,11 @@ export default function ChangeSummary() {
                         {decision.decision_code || decision.decision_id.slice(0, 12) + '...'}
                       </Link>
                       <div className="flex items-center gap-2 mt-1">
-                        <span className="text-xs text-gray-500">G{decision.group_id.split('-')[1]}</span>
+                        <span className="text-xs text-gray-500">{decision.domain_id}</span>
                         <span className="text-gray-400">→</span>
-                        <span className="text-xs text-gray-600">{FEATURE_LABELS[decision.feature_id]}</span>
+                        <span className="text-xs text-gray-600">{ASPECT_LABELS[decision.aspect_id]}</span>
                         <span className="text-xs text-gray-400">
-                          ({decision.feature_id})
+                          ({decision.aspect_id})
                         </span>
                       </div>
                       <p className="text-xs text-gray-500 mt-1 truncate">

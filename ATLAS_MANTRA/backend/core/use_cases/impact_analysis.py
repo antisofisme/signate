@@ -46,7 +46,7 @@ class ImpactType(str, Enum):
     REVERSE_DEPENDENCY = "reverse_dependency"  # This depends on decision
     SUPERSEDES = "supersedes"              # This decision supersedes target
     SUPERSEDED_BY = "superseded_by"        # Target supersedes this
-    SAME_FEATURE = "same_feature"          # Same group+feature (potential override)
+    SAME_ASPECT = "same_aspect"            # Same domain+aspect (potential override)
     SAME_TAG = "same_tag"                  # Shares technical area
     SAME_TECH_STACK = "same_tech_stack"    # Shares technology
 
@@ -56,8 +56,8 @@ class AffectedDecision:
     """A decision affected by the proposed change."""
     decision_id: str
     decision_code: Optional[str]
-    group_id: str
-    feature_id: str
+    domain_id: str
+    aspect_id: str
     statement_preview: str
     impact_type: ImpactType
     impact_reason: str
@@ -147,7 +147,7 @@ IMPACT_TYPE_WEIGHTS = {
     ImpactType.REVERSE_DEPENDENCY: 5,   # This depends on something
     ImpactType.SUPERSEDES: 20,          # Superseding another decision
     ImpactType.SUPERSEDED_BY: 0,        # Info only
-    ImpactType.SAME_FEATURE: 10,        # Potential conflict
+    ImpactType.SAME_ASPECT: 10,         # Potential conflict
     ImpactType.SAME_TAG: 3,             # Related area
     ImpactType.SAME_TECH_STACK: 2,      # Related tech
 }
@@ -251,8 +251,8 @@ def find_dependents(
             dependents.append(AffectedDecision(
                 decision_id=existing.get('decision_id', ''),
                 decision_code=existing.get('decision_code'),
-                group_id=existing.get('group_id', ''),
-                feature_id=existing.get('feature_id', ''),
+                domain_id=existing.get('domain_id', ''),
+                aspect_id=existing.get('aspect_id', ''),
                 statement_preview=(existing.get('statement') or '')[:100],
                 impact_type=ImpactType.DEPENDENCY,
                 impact_reason="Listed in related_decisions",
@@ -271,8 +271,8 @@ def find_dependents(
                     dependents.append(AffectedDecision(
                         decision_id=existing.get('decision_id', ''),
                         decision_code=existing.get('decision_code'),
-                        group_id=existing.get('group_id', ''),
-                        feature_id=existing.get('feature_id', ''),
+                        domain_id=existing.get('domain_id', ''),
+                        aspect_id=existing.get('aspect_id', ''),
                         statement_preview=(existing.get('statement') or '')[:100],
                         impact_type=ImpactType.DEPENDENCY,
                         impact_reason=f"Has '{rel_type}' relation",
@@ -311,8 +311,8 @@ def find_reverse_dependencies(
             reverse_deps.append(AffectedDecision(
                 decision_id=existing_id,
                 decision_code=existing.get('decision_code'),
-                group_id=existing.get('group_id', ''),
-                feature_id=existing.get('feature_id', ''),
+                domain_id=existing.get('domain_id', ''),
+                aspect_id=existing.get('aspect_id', ''),
                 statement_preview=(existing.get('statement') or '')[:100],
                 impact_type=ImpactType.REVERSE_DEPENDENCY,
                 impact_reason="Referenced by this decision",
@@ -356,8 +356,8 @@ def find_supersession_impact(
     affected.append(AffectedDecision(
         decision_id=supersedes_id,
         decision_code=superseded.get('decision_code'),
-        group_id=superseded.get('group_id', ''),
-        feature_id=superseded.get('feature_id', ''),
+        domain_id=superseded.get('domain_id', ''),
+        aspect_id=superseded.get('aspect_id', ''),
         statement_preview=(superseded.get('statement') or '')[:100],
         impact_type=ImpactType.SUPERSEDES,
         impact_reason="Being superseded by this decision",
@@ -387,15 +387,15 @@ def find_supersession_impact(
     return affected, breaking_changes
 
 
-def find_same_feature_decisions(
+def find_same_aspect_decisions(
     record: Dict[str, Any],
     existing_decisions: List[Dict[str, Any]]
 ) -> List[AffectedDecision]:
-    """Find decisions in the same group+feature."""
-    same_feature = []
+    """Find decisions in the same domain+aspect."""
+    same_aspect = []
 
-    record_group = record.get('group_id')
-    record_feature = record.get('feature_id')
+    record_domain = record.get('domain_id')
+    record_aspect = record.get('aspect_id')
     record_id = record.get('decision_id', '')
     supersedes_id = record.get('supersedes')
 
@@ -406,23 +406,23 @@ def find_same_feature_decisions(
         if existing_id == record_id or existing_id == supersedes_id:
             continue
 
-        if (existing.get('group_id') == record_group and
-            existing.get('feature_id') == record_feature):
+        if (existing.get('domain_id') == record_domain and
+            existing.get('aspect_id') == record_aspect):
             created_at = _parse_datetime(existing.get('created_at'))
-            same_feature.append(AffectedDecision(
+            same_aspect.append(AffectedDecision(
                 decision_id=existing_id,
                 decision_code=existing.get('decision_code'),
-                group_id=existing.get('group_id', ''),
-                feature_id=existing.get('feature_id', ''),
+                domain_id=existing.get('domain_id', ''),
+                aspect_id=existing.get('aspect_id', ''),
                 statement_preview=(existing.get('statement') or '')[:100],
-                impact_type=ImpactType.SAME_FEATURE,
-                impact_reason="Same group and feature - potential overlap",
+                impact_type=ImpactType.SAME_ASPECT,
+                impact_reason="Same domain and aspect - potential overlap",
                 blast_radius=existing.get('blast_radius', 'UNKNOWN'),
                 scope=existing.get('scope', 'UNKNOWN'),
                 created_at=created_at
             ))
 
-    return same_feature
+    return same_aspect
 
 
 def find_tag_overlap(
@@ -454,8 +454,8 @@ def find_tag_overlap(
             overlapping.append(AffectedDecision(
                 decision_id=existing_id,
                 decision_code=existing.get('decision_code'),
-                group_id=existing.get('group_id', ''),
-                feature_id=existing.get('feature_id', ''),
+                domain_id=existing.get('domain_id', ''),
+                aspect_id=existing.get('aspect_id', ''),
                 statement_preview=(existing.get('statement') or '')[:100],
                 impact_type=ImpactType.SAME_TAG,
                 impact_reason=f"Shares tags: {', '.join(common_tags)}",
@@ -497,8 +497,8 @@ def find_tech_stack_overlap(
             overlapping.append(AffectedDecision(
                 decision_id=existing_id,
                 decision_code=existing.get('decision_code'),
-                group_id=existing.get('group_id', ''),
-                feature_id=existing.get('feature_id', ''),
+                domain_id=existing.get('domain_id', ''),
+                aspect_id=existing.get('aspect_id', ''),
                 statement_preview=(existing.get('statement') or '')[:100],
                 impact_type=ImpactType.SAME_TECH_STACK,
                 impact_reason=f"Shares tech: {', '.join(common_tech)}",
@@ -749,9 +749,9 @@ def generate_risk_factors(
     if max_depth > 3:
         factors.append(f"Deep dependency chain: {max_depth} levels")
 
-    same_feature = sum(1 for a in affected_decisions if a.impact_type == ImpactType.SAME_FEATURE)
-    if same_feature > 2:
-        factors.append(f"{same_feature} existing decisions in same feature - potential conflicts")
+    same_aspect = sum(1 for a in affected_decisions if a.impact_type == ImpactType.SAME_ASPECT)
+    if same_aspect > 2:
+        factors.append(f"{same_aspect} existing decisions in same aspect - potential conflicts")
 
     return factors
 
@@ -775,11 +775,11 @@ def generate_recommendations(
                 f"to reference this version instead of {bc.superseded_code or bc.superseded_id[:8]}"
             )
 
-    same_feature = [a for a in affected_decisions if a.impact_type == ImpactType.SAME_FEATURE]
-    if same_feature and not record.get('supersedes'):
+    same_aspect = [a for a in affected_decisions if a.impact_type == ImpactType.SAME_ASPECT]
+    if same_aspect and not record.get('supersedes'):
         recommendations.append(
-            f"Consider if this should supersede existing decision(s) in the same feature: "
-            f"{', '.join(a.decision_code or a.decision_id[:8] for a in same_feature[:3])}"
+            f"Consider if this should supersede existing decision(s) in the same aspect: "
+            f"{', '.join(a.decision_code or a.decision_id[:8] for a in same_aspect[:3])}"
         )
 
     if not record.get('tags'):
@@ -851,9 +851,9 @@ def analyze_impact(
     )
     all_affected.extend(supersession_affected)
 
-    # 2. Same feature decisions
-    same_feature = find_same_feature_decisions(record, existing_decisions)
-    all_affected.extend(same_feature)
+    # 2. Same aspect decisions
+    same_aspect = find_same_aspect_decisions(record, existing_decisions)
+    all_affected.extend(same_aspect)
 
     # 3. Reverse dependencies (what this decision depends on)
     reverse_deps = find_reverse_dependencies(record, existing_decisions)
@@ -959,8 +959,8 @@ async def analyze_impact_async(
         {
             'decision_id': sd.decision.decision_id,
             'decision_code': sd.decision.decision_code,
-            'group_id': sd.decision.group_id.value,
-            'feature_id': sd.decision.feature_id.value,
+            'domain_id': sd.decision.domain_id.value,
+            'aspect_id': sd.decision.aspect_id.value,
             'statement': sd.decision.statement,
             'scope': sd.decision.scope.value,
             'blast_radius': sd.decision.blast_radius.value,
@@ -992,8 +992,8 @@ def serialize_impact_result(result: ImpactAnalysisResult) -> Dict[str, Any]:
             {
                 'decision_id': a.decision_id,
                 'decision_code': a.decision_code,
-                'group_id': a.group_id,
-                'feature_id': a.feature_id,
+                'domain_id': a.domain_id,
+                'aspect_id': a.aspect_id,
                 'statement_preview': a.statement_preview,
                 'impact_type': a.impact_type.value,
                 'impact_reason': a.impact_reason,

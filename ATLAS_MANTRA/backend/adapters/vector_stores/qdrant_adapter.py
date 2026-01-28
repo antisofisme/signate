@@ -245,7 +245,7 @@ class QdrantVectorStore(VectorStoreProtocol):
             logger.info(f"Created collection {self.collection_name} with size {vector_size}")
 
             # Create payload indexes for filtering
-            for field in ["group_id", "feature_id", "decision_code"]:
+            for field in ["domain_id", "aspect_id", "decision_code"]:
                 await self.client.create_payload_index(
                     collection_name=self.collection_name,
                     field_name=field,

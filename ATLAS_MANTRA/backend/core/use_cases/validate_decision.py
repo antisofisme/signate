@@ -12,23 +12,25 @@ Per §2.2: The validator produces exactly one of three determinations:
 - REJECTED
 """
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, asdict
 from datetime import datetime
 from enum import Enum
 from typing import List, Optional, Dict, Any
 import json
+import hashlib
 
 from ..domain.schema import (
     Decision,
-    GroupId,
-    FeatureId,
+    DomainId,
+    AspectId,
     Scope,
     BlastRadius,
     ConstraintType,
-    GROUP_FEATURE_MATRIX,
-    is_feature_compatible,
+    DOMAIN_ASPECT_MATRIX,
+    is_aspect_compatible,
     AuthorshipMetadata,
 )
+from ..ports.cache import CacheProtocol, CacheTTL
 
 
 # ============================================================================
@@ -83,6 +85,42 @@ class ValidationResult:
 
 
 # ============================================================================
+# Cache Helper Functions
+# ============================================================================
+
+def _compute_record_hash(record: Dict[str, Any]) -> str:
+    """
+    Compute hash of record for caching.
+
+    Includes key fields that affect validation:
+    - decision_id, domain_id, aspect_id
+    - statement, rationale
+    - constraints, invariants
+    - scope, blast_radius
+    - version
+    """
+    # Select fields that affect validation
+    key_fields = {
+        'decision_id': record.get('decision_id', ''),
+        'domain_id': record.get('domain_id', ''),
+        'aspect_id': record.get('aspect_id', ''),
+        'statement': record.get('statement', ''),
+        'rationale': record.get('rationale', ''),
+        'scope': record.get('scope', ''),
+        'blast_radius': record.get('blast_radius', ''),
+        'version': record.get('version', ''),
+        'constraints_count': len(record.get('constraints', [])),
+        'invariants_count': len(record.get('invariants', [])),
+    }
+
+    # Create stable string representation
+    content = json.dumps(key_fields, sort_keys=True)
+
+    # Hash to get compact key
+    return hashlib.sha256(content.encode()).hexdigest()[:16]
+
+
+# ============================================================================
 # Validator Implementation
 # ============================================================================
 
@@ -103,9 +141,10 @@ class DecisionValidator:
     - Emit events or notifications
     """
 
-    def __init__(self):
+    def __init__(self, cache: Optional[CacheProtocol] = None):
         self.schema_version = "1.0.0"
         self.spec_version = "MANTRA-SPEC-001 v1.0.0"
+        self.cache = cache
 
     def validate(
         self,
@@ -113,7 +152,7 @@ class DecisionValidator:
         authorship_metadata: Optional[AuthorshipMetadata] = None
     ) -> ValidationResult:
         """
-        Validate a decision record.
+        Validate a decision record (sync version, no caching).
 
         Per §4.5 Execution Order:
         1. Phase 1: Level 1 (S-001 through S-022)
@@ -159,6 +198,94 @@ class DecisionValidator:
 
         return self._build_result(violations, skipped_rules, advisory_notes)
 
+    async def validate_async(
+        self,
+        record: Dict[str, Any],
+        authorship_metadata: Optional[AuthorshipMetadata] = None
+    ) -> ValidationResult:
+        """
+        Validate a decision record (async version with optional caching).
+
+        If cache is available:
+        1. Check cache for previous validation result
+        2. If cache miss, run validation
+        3. Store result in cache
+
+        Cache key is based on record content hash.
+        TTL is 30 minutes (CacheTTL.VALIDATION).
+
+        Args:
+            record: Decision record as dictionary
+            authorship_metadata: Optional authorship information
+
+        Returns:
+            ValidationResult with status, violations, and advisory notes
+        """
+        # Check cache first if available
+        if self.cache:
+            try:
+                record_hash = _compute_record_hash(record)
+                cache_key = f"mantra:validation:{record_hash}"
+                cached = await self.cache.get(cache_key)
+
+                if cached:
+                    # Reconstruct ValidationResult from cached dict
+                    # Handle Violation objects
+                    violations = [
+                        Violation(**v) if isinstance(v, dict) else v
+                        for v in cached.get('violations', [])
+                    ]
+                    return ValidationResult(
+                        status=ValidationStatus(cached['status']),
+                        violations=violations,
+                        skipped_rules=cached.get('skipped_rules', []),
+                        advisory_notes=cached.get('advisory_notes', []),
+                        validated_at=datetime.fromisoformat(cached.get('validated_at', datetime.utcnow().isoformat())),
+                        schema_version=cached.get('schema_version', self.schema_version),
+                        specification_version=cached.get('specification_version', self.spec_version)
+                    )
+            except Exception:
+                # Cache error - continue without cache
+                pass
+
+        # Run validation (sync logic)
+        result = self.validate(record, authorship_metadata)
+
+        # Cache result if cache available
+        if self.cache:
+            try:
+                record_hash = _compute_record_hash(record)
+                cache_key = f"mantra:validation:{record_hash}"
+
+                # Convert ValidationResult to dict for caching
+                # Need to handle nested Violation objects
+                cached_data = {
+                    'status': result.status.value,
+                    'violations': [
+                        {
+                            'rule_id': v.rule_id,
+                            'level': v.level.value,
+                            'message': v.message,
+                            'failure_result': v.failure_result.value,
+                            'governing_reference': v.governing_reference,
+                            'field': v.field
+                        }
+                        for v in result.violations
+                    ],
+                    'skipped_rules': result.skipped_rules,
+                    'advisory_notes': result.advisory_notes,
+                    'validated_at': result.validated_at.isoformat(),
+                    'schema_version': result.schema_version,
+                    'specification_version': result.specification_version
+                }
+
+                await self.cache.set(cache_key, cached_data, ttl=CacheTTL.VALIDATION)
+            except Exception:
+                # Cache error - continue without caching
+                pass
+
+        return result
+
     def _validate_level1(self, record: Dict[str, Any]) -> List[Violation]:
         """
         Level 1: Schema Validation (S-001 to S-022)
@@ -191,52 +318,52 @@ class DecisionValidator:
                     field="decision_id"
                 ))
 
-        # S-003: group_id presence
-        if "group_id" not in record:
+        # S-003: domain_id presence
+        if "domain_id" not in record:
             violations.append(Violation(
                 rule_id="S-003",
                 level=ValidationLevel.LEVEL_1,
-                message="group_id is required",
+                message="domain_id is required",
                 failure_result=FailureResult.INVALID,
                 governing_reference="MANTRA-SCHEMA-001",
-                field="group_id"
+                field="domain_id"
             ))
 
-        # S-004: group_id enumeration
-        if "group_id" in record:
-            valid_groups = [g.value for g in GroupId]
-            if record["group_id"] not in valid_groups:
+        # S-004: domain_id enumeration
+        if "domain_id" in record:
+            valid_domains = [g.value for g in DomainId]
+            if record["domain_id"] not in valid_domains:
                 violations.append(Violation(
                     rule_id="S-004",
                     level=ValidationLevel.LEVEL_1,
-                    message=f"group_id must be one of: {valid_groups}",
+                    message=f"domain_id must be one of: {valid_domains}",
                     failure_result=FailureResult.INVALID,
                     governing_reference="MANTRA-SCHEMA-001",
-                    field="group_id"
+                    field="domain_id"
                 ))
 
-        # S-005: feature_id presence
-        if "feature_id" not in record:
+        # S-005: aspect_id presence
+        if "aspect_id" not in record:
             violations.append(Violation(
                 rule_id="S-005",
                 level=ValidationLevel.LEVEL_1,
-                message="feature_id is required",
+                message="aspect_id is required",
                 failure_result=FailureResult.INVALID,
                 governing_reference="MANTRA-SCHEMA-001",
-                field="feature_id"
+                field="aspect_id"
             ))
 
-        # S-006: feature_id enumeration
-        if "feature_id" in record:
-            valid_features = [f.value for f in FeatureId]
-            if record["feature_id"] not in valid_features:
+        # S-006: aspect_id enumeration
+        if "aspect_id" in record:
+            valid_aspects = [f.value for f in AspectId]
+            if record["aspect_id"] not in valid_aspects:
                 violations.append(Violation(
                     rule_id="S-006",
                     level=ValidationLevel.LEVEL_1,
-                    message=f"feature_id must be one of: {valid_features}",
+                    message=f"aspect_id must be one of: {valid_aspects}",
                     failure_result=FailureResult.INVALID,
                     governing_reference="MANTRA-SCHEMA-001",
-                    field="feature_id"
+                    field="aspect_id"
                 ))
 
         # S-007: statement presence
@@ -425,21 +552,21 @@ class DecisionValidator:
         """
         violations = []
 
-        # D-001: Group-Feature compatibility
-        group_id = record.get("group_id")
-        feature_id = record.get("feature_id")
-        if group_id and feature_id:
+        # D-001: Domain-Aspect compatibility
+        domain_id = record.get("domain_id")
+        aspect_id = record.get("aspect_id")
+        if domain_id and aspect_id:
             try:
-                group = GroupId(group_id)
-                feature = FeatureId(feature_id)
-                if not is_feature_compatible(group, feature):
+                domain = DomainId(domain_id)
+                aspect = AspectId(aspect_id)
+                if not is_aspect_compatible(domain, aspect):
                     violations.append(Violation(
                         rule_id="D-001",
                         level=ValidationLevel.LEVEL_2,
-                        message=f"Feature {feature_id} is not compatible with group {group_id}",
+                        message=f"Aspect {aspect_id} is not compatible with domain {domain_id}",
                         failure_result=FailureResult.INVALID,
                         governing_reference="MANTRA-DEC-002",
-                        field="feature_id"
+                        field="aspect_id"
                     ))
             except ValueError:
                 pass  # Already caught in Level 1
@@ -572,7 +699,7 @@ class DecisionValidator:
         # Checked at storage layer
 
         # L-010: Singularity rule
-        # One decision per group-feature combination at ACTIVE status
+        # One decision per domain-aspect combination at ACTIVE status
 
         # L-011: Version increment on change
         # Would require previous version for comparison
@@ -622,7 +749,7 @@ def validate_decision(
     authorship_metadata: Optional[AuthorshipMetadata] = None
 ) -> ValidationResult:
     """
-    Validate a decision record.
+    Validate a decision record (sync version, no caching).
 
     This is the main entry point for the Validator Service
     per MANTRA-L1-IMPL-VALIDATOR-001.
@@ -636,6 +763,34 @@ def validate_decision(
     """
     validator = DecisionValidator()
     return validator.validate(record, authorship_metadata)
+
+
+async def validate_decision_async(
+    record: Dict[str, Any],
+    authorship_metadata: Optional[AuthorshipMetadata] = None,
+    cache: Optional[CacheProtocol] = None
+) -> ValidationResult:
+    """
+    Validate a decision record (async version with optional caching).
+
+    This is the async entry point that supports Redis caching
+    for expensive validation operations.
+
+    Cache Strategy:
+    - Cache key: Hash of record content (decision_id, statement, rationale, etc.)
+    - TTL: 30 minutes (CacheTTL.VALIDATION)
+    - Cache is optional - validation works without it
+
+    Args:
+        record: Decision record as dictionary
+        authorship_metadata: Optional authorship information
+        cache: Optional cache implementation for result caching
+
+    Returns:
+        ValidationResult with status, violations, and advisory notes
+    """
+    validator = DecisionValidator(cache=cache)
+    return await validator.validate_async(record, authorship_metadata)
 
 
 # ============================================================================
@@ -659,7 +814,7 @@ class RelationshipValidationResult:
     is_valid: bool
     violations: List[RelationshipViolation]
     advisory_notes: List[str]
-    cross_group_references: List[Dict[str, str]]  # [{from_group, to_group, decision_id}]
+    cross_domain_references: List[Dict[str, str]]  # [{from_domain, to_domain, decision_id}]
 
 
 def validate_related_decisions_integrity(
@@ -672,7 +827,7 @@ def validate_related_decisions_integrity(
     Rules:
     - D-015: All IDs in related_decisions MUST exist
     - D-016: No circular reference (decision cannot reference itself)
-    - D-017: Cross-group references generate advisory note (not error)
+    - D-017: Cross-domain references generate advisory note (not error)
 
     Args:
         record: Decision record to validate
@@ -686,7 +841,7 @@ def validate_related_decisions_integrity(
     cross_group_refs = []
 
     decision_id = record.get("decision_id")
-    group_id = record.get("group_id")
+    domain_id = record.get("domain_id")
     related_decisions = record.get("related_decisions", [])
 
     # Build lookup map for existing decisions
@@ -713,19 +868,19 @@ def validate_related_decisions_integrity(
             ))
             continue
 
-        # D-017: Cross-group reference advisory
+        # D-017: Cross-domain reference advisory
         related_decision = existing_map[rel_id]
-        related_group = related_decision.get("group_id")
+        related_domain = related_decision.get("domain_id")
 
-        if related_group and related_group != group_id:
+        if related_domain and related_domain != domain_id:
             cross_group_refs.append({
-                "from_group": group_id,
-                "to_group": related_group,
+                "from_domain": domain_id,
+                "to_domain": related_domain,
                 "related_decision_id": rel_id
             })
             advisory_notes.append(
-                f"D-017: Cross-group reference detected: "
-                f"{group_id} → {related_group} (decision {rel_id[:8]}...)"
+                f"D-017: Cross-domain reference detected: "
+                f"{domain_id} → {related_domain} (decision {rel_id[:8]}...)"
             )
 
     # Check for potential circular chains (deeper than self-reference)
@@ -758,7 +913,7 @@ def validate_related_decisions_integrity(
         is_valid=not has_errors,
         violations=violations,
         advisory_notes=advisory_notes,
-        cross_group_references=cross_group_refs
+        cross_domain_references=cross_group_refs
     )
 
 
@@ -781,8 +936,8 @@ async def validate_related_decisions_integrity_async(
     existing_decisions = [
         {
             "decision_id": sd.decision.decision_id,
-            "group_id": sd.decision.group_id.value,
-            "feature_id": sd.decision.feature_id.value,
+            "domain_id": sd.decision.domain_id.value,
+            "aspect_id": sd.decision.aspect_id.value,
             "related_decisions": sd.decision.related_decisions
         }
         for sd in stored_decisions

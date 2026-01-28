@@ -1,12 +1,12 @@
 """
 AI Decision Classifier
 
-Automatically classifies decisions into the correct Group and Feature
+Automatically classifies decisions into the correct Domain and Aspect
 based on content analysis. Removes human error in categorization.
 
 Per MANTRA-LAW-001:
-- 4 Groups (INT, ARCH, CTL, EVO)
-- 16 Features (F01-F16, 4 per group)
+- 4 Domains (INT, ARCH, CTL, EVO)
+- 16 Aspects (A01-A16, 4 per domain)
 
 This classifier analyzes statement + rationale to determine the best fit.
 
@@ -24,31 +24,31 @@ from enum import Enum
 # ============================================================================
 
 TAXONOMY_DEFINITION = """
-GROUP-FEATURE TAXONOMY (4 Groups × 4 Features = 16 Categories):
+DOMAIN-ASPECT TAXONOMY (4 Domains × 4 Aspects = 16 Categories):
 
 INT (Intent & Direction) - Answers: WHY? WHAT?
-├─ F01: Vision & Outcome - Long-term goals, desired end state, success metrics
-├─ F02: Problem Statement - Pain points, current issues, motivation for change
-├─ F03: Scope & Non-Goals - What's included/excluded, boundaries of concern
-└─ F04: Principles & Values - Core beliefs, guiding philosophy, non-negotiables
+├─ A01: Vision & Outcome - Long-term goals, desired end state, success metrics
+├─ A02: Problem Statement - Pain points, current issues, motivation for change
+├─ A03: Scope & Non-Goals - What's included/excluded, boundaries of concern
+└─ A04: Principles & Values - Core beliefs, guiding philosophy, non-negotiables
 
 ARCH (Architecture & Boundaries) - Answers: HOW? WHERE?
-├─ F05: Domain & Bounded Context - Business domains, DDD contexts, ownership
-├─ F06: Service & Module Boundary - Microservices, packages, component split
-├─ F07: Data Ownership & Sovereignty - Who owns data, storage location, GDPR
-└─ F08: Integration & Contract Model - APIs, protocols, inter-service contracts
+├─ A05: Domain & Bounded Context - Business domains, DDD contexts, ownership
+├─ A06: Service & Module Boundary - Microservices, packages, component split
+├─ A07: Data Ownership & Sovereignty - Who owns data, storage location, GDPR
+└─ A08: Integration & Contract Model - APIs, protocols, inter-service contracts
 
 CTL (Control, Policy & Risk) - Answers: CAN? MUST NOT?
-├─ F09: Policy & Rules - Governance rules, coding standards, conventions
-├─ F10: Approval & Authority Model - Who approves what, sign-off requirements
-├─ F11: Security & Compliance Posture - Auth, encryption, audit, compliance
-└─ F12: Risk & Blast Radius - Impact assessment, failure modes, mitigation
+├─ A09: Policy & Rules - Governance rules, coding standards, conventions
+├─ A10: Approval & Authority Model - Who approves what, sign-off requirements
+├─ A11: Security & Compliance Posture - Auth, encryption, audit, compliance
+└─ A12: Risk & Blast Radius - Impact assessment, failure modes, mitigation
 
 EVO (Execution & Evolution) - Answers: HOW TO CHANGE SAFELY?
-├─ F13: Decision Lifecycle - How decisions evolve, versioning strategy
-├─ F14: Reversibility & Exit Strategy - Rollback plans, migration paths
-├─ F15: Environment & Promotion Rules - Dev/staging/prod, deployment gates
-└─ F16: Anti-Drift & Consistency - Preventing deviation, enforcement methods
+├─ A13: Decision Lifecycle - How decisions evolve, versioning strategy
+├─ A14: Reversibility & Exit Strategy - Rollback plans, migration paths
+├─ A15: Environment & Promotion Rules - Dev/staging/prod, deployment gates
+└─ A16: Anti-Drift & Consistency - Preventing deviation, enforcement methods
 """
 
 
@@ -62,7 +62,7 @@ CLASSIFICATION_PROMPT = """You are a decision classifier for MANTRA (Decision Ma
 
 """ + TAXONOMY_DEFINITION + """
 
-TASK: Classify the decision into exactly ONE group and ONE feature.
+TASK: Classify the decision into exactly ONE domain and ONE aspect.
 
 INPUT:
 Statement: "{statement}"
@@ -77,7 +77,7 @@ RULES:
 5. If about "how to change safely" → EVO
 
 OUTPUT FORMAT (JSON only, no explanation):
-{{"group_id": "INT|ARCH|CTL|EVO", "feature_id": "F01-F16", "confidence": 0.0-1.0}}
+{{"domain_id": "INT|ARCH|CTL|EVO", "aspect_id": "A01-A16", "confidence": 0.0-1.0}}
 """
 
 
@@ -88,8 +88,8 @@ OUTPUT FORMAT (JSON only, no explanation):
 @dataclass
 class ClassificationResult:
     """Result of AI classification."""
-    group_id: str  # INT, ARCH, CTL, EVO
-    feature_id: str  # F01-F16
+    domain_id: str  # INT, ARCH, CTL, EVO
+    aspect_id: str  # A01-A16
     confidence: float  # 0.0-1.0
 
     # For delegated mode: context needed by client AI
@@ -121,13 +121,13 @@ class DecisionClassifier:
     2. DELEGATED: Returns context for client AI (costs user)
     """
 
-    # Valid groups and their features
-    VALID_GROUPS = {"INT", "ARCH", "CTL", "EVO"}
-    GROUP_FEATURES = {
-        "INT": ["F01", "F02", "F03", "F04"],
-        "ARCH": ["F05", "F06", "F07", "F08"],
-        "CTL": ["F09", "F10", "F11", "F12"],
-        "EVO": ["F13", "F14", "F15", "F16"],
+    # Valid domains and their aspects
+    VALID_DOMAINS = {"INT", "ARCH", "CTL", "EVO"}
+    DOMAIN_ASPECTS = {
+        "INT": ["A01", "A02", "A03", "A04"],
+        "ARCH": ["A05", "A06", "A07", "A08"],
+        "CTL": ["A09", "A10", "A11", "A12"],
+        "EVO": ["A13", "A14", "A15", "A16"],
     }
 
     def __init__(self, ai_client=None, model: str = "claude-3-haiku-20240307"):
@@ -209,8 +209,8 @@ class DecisionClassifier:
         if not self.ai_client:
             # Fallback: Return requires_ai=True for manual classification
             return ClassificationResult(
-                group_id="",
-                feature_id="",
+                domain_id="",
+                aspect_id="",
                 confidence=0.0,
                 requires_ai=True,
                 delegated_prompt=self.build_prompt(statement, rationale, constraints)
@@ -225,8 +225,8 @@ class DecisionClassifier:
         except Exception as e:
             # On error, return for manual/delegated classification
             return ClassificationResult(
-                group_id="",
-                feature_id="",
+                domain_id="",
+                aspect_id="",
                 confidence=0.0,
                 requires_ai=True,
                 delegated_prompt=prompt
@@ -272,20 +272,20 @@ class DecisionClassifier:
             else:
                 data = json.loads(response)
 
-            group_id = data.get('group_id', '').upper()
-            feature_id = data.get('feature_id', '').upper()
+            domain_id = data.get('domain_id', '').upper()
+            aspect_id = data.get('aspect_id', '').upper()
             confidence = float(data.get('confidence', 0.5))
 
             # Validate
-            if group_id not in self.VALID_GROUPS:
+            if domain_id not in self.VALID_DOMAINS:
                 return self._fallback_result()
 
-            if feature_id not in self.GROUP_FEATURES.get(group_id, []):
+            if aspect_id not in self.DOMAIN_ASPECTS.get(domain_id, []):
                 return self._fallback_result()
 
             return ClassificationResult(
-                group_id=group_id,
-                feature_id=feature_id,
+                domain_id=domain_id,
+                aspect_id=aspect_id,
                 confidence=confidence
             )
 
@@ -295,28 +295,28 @@ class DecisionClassifier:
     def _fallback_result(self) -> ClassificationResult:
         """Return fallback when parsing fails."""
         return ClassificationResult(
-            group_id="",
-            feature_id="",
+            domain_id="",
+            aspect_id="",
             confidence=0.0,
             requires_ai=True
         )
 
     def validate_classification(
         self,
-        group_id: str,
-        feature_id: str
+        domain_id: str,
+        aspect_id: str
     ) -> tuple[bool, Optional[str]]:
         """
         Validate a classification (from delegated AI or user).
 
         Returns: (is_valid, error_message)
         """
-        if group_id not in self.VALID_GROUPS:
-            return False, f"Invalid group_id: {group_id}. Must be one of: {self.VALID_GROUPS}"
+        if domain_id not in self.VALID_DOMAINS:
+            return False, f"Invalid domain_id: {domain_id}. Must be one of: {self.VALID_DOMAINS}"
 
-        valid_features = self.GROUP_FEATURES.get(group_id, [])
-        if feature_id not in valid_features:
-            return False, f"Feature {feature_id} not compatible with group {group_id}. Valid features: {valid_features}"
+        valid_aspects = self.DOMAIN_ASPECTS.get(domain_id, [])
+        if aspect_id not in valid_aspects:
+            return False, f"Aspect {aspect_id} not compatible with domain {domain_id}. Valid aspects: {valid_aspects}"
 
         return True, None
 
@@ -346,8 +346,8 @@ def get_classification_context(
         "expected_response": {
             "format": "JSON",
             "schema": {
-                "group_id": "INT|ARCH|CTL|EVO",
-                "feature_id": "F01-F16",
+                "domain_id": "INT|ARCH|CTL|EVO",
+                "aspect_id": "A01-A16",
                 "confidence": "0.0-1.0"
             }
         }
@@ -355,9 +355,9 @@ def get_classification_context(
 
 
 def validate_classification_result(
-    group_id: str,
-    feature_id: str
+    domain_id: str,
+    aspect_id: str
 ) -> tuple[bool, Optional[str]]:
     """Validate classification result from any source."""
     classifier = DecisionClassifier()
-    return classifier.validate_classification(group_id, feature_id)
+    return classifier.validate_classification(domain_id, aspect_id)

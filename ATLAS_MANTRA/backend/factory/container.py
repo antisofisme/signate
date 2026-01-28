@@ -27,6 +27,8 @@ from core.runtime.config import get_config
 from core.ports.vector_store import VectorStoreProtocol
 from core.ports.cache import CacheProtocol
 from core.ports.embedding_service import EmbeddingProtocol
+from core.ports.message_queue import MessageQueueProtocol
+from core.ports.text_search import TextSearchProtocol
 from core.repositories.decision_repository import DecisionRepository
 
 logger = logging.getLogger(__name__)
@@ -45,6 +47,8 @@ class Container:
     _cache: Optional[CacheProtocol] = None
     _embedding: Optional[EmbeddingProtocol] = None
     _decision_repository: Optional[DecisionRepository] = None
+    _message_queue: Optional[MessageQueueProtocol] = None
+    _text_search: Optional[TextSearchProtocol] = None
     _repository_initialized: bool = False
     _initialized: bool = False
 
@@ -209,6 +213,119 @@ class Container:
         return cls._decision_repository
 
     @classmethod
+    def get_message_queue(cls) -> Optional[MessageQueueProtocol]:
+        """
+        Get message queue instance based on configuration.
+
+        Returns None if RabbitMQ feature is disabled.
+
+        Supports:
+        - rabbitmq: RabbitMQ message broker (primary)
+        - redis_streams: Redis Streams (fallback)
+        - memory: In-memory queue for testing
+
+        Returns:
+            MessageQueueProtocol implementation or None
+        """
+        config = get_config()
+
+        # Feature flag check
+        if not config.feature_rabbitmq_enabled:
+            logger.debug("RabbitMQ feature is disabled")
+            return None
+
+        if cls._message_queue is None:
+            # Determine adapter based on config
+            if config.rabbitmq_url and config.rabbitmq_url.startswith("amqp"):
+                try:
+                    from adapters.message_queues.rabbitmq_adapter import RabbitMQAdapter
+                    cls._message_queue = RabbitMQAdapter(
+                        url=config.rabbitmq_url,
+                        exchange_name=config.rabbitmq_exchange,
+                    )
+                    logger.info(f"Using RabbitMQ message queue")
+                except ImportError:
+                    logger.warning("aio-pika not installed, using memory queue")
+                    from adapters.message_queues.memory_adapter import MemoryQueueAdapter
+                    cls._message_queue = MemoryQueueAdapter()
+
+            elif config.redis_url:
+                # Fallback to Redis Streams
+                try:
+                    from adapters.message_queues.redis_streams_adapter import RedisStreamsAdapter
+                    cls._message_queue = RedisStreamsAdapter(
+                        url=config.redis_url,
+                    )
+                    logger.info("Using Redis Streams message queue (fallback)")
+                except ImportError:
+                    from adapters.message_queues.memory_adapter import MemoryQueueAdapter
+                    cls._message_queue = MemoryQueueAdapter()
+
+            else:
+                # In-memory for development/testing
+                from adapters.message_queues.memory_adapter import MemoryQueueAdapter
+                cls._message_queue = MemoryQueueAdapter()
+                logger.info("Using in-memory message queue")
+
+        return cls._message_queue
+
+    @classmethod
+    def get_text_search(cls) -> Optional[TextSearchProtocol]:
+        """
+        Get text search instance based on configuration.
+
+        Returns None if Meilisearch feature is disabled.
+
+        Supports:
+        - meilisearch: Meilisearch search engine (primary)
+        - memory: In-memory search for testing
+
+        Returns:
+            TextSearchProtocol implementation or None
+        """
+        config = get_config()
+
+        # Feature flag check
+        if not config.feature_meilisearch_enabled:
+            logger.debug("Meilisearch feature is disabled")
+            return None
+
+        if cls._text_search is None:
+            if config.meilisearch_url:
+                try:
+                    from adapters.text_search.meilisearch_adapter import MeilisearchAdapter
+                    cls._text_search = MeilisearchAdapter(
+                        url=config.meilisearch_url,
+                        api_key=config.meilisearch_api_key or None,
+                        index_name=config.meilisearch_index_decisions,
+                    )
+                    logger.info(f"Using Meilisearch text search: {config.meilisearch_url}")
+                except ImportError:
+                    logger.warning("meilisearch-python-sdk not installed, using memory search")
+                    from adapters.text_search.memory_adapter import MemoryTextSearchAdapter
+                    cls._text_search = MemoryTextSearchAdapter()
+
+            else:
+                # In-memory for development/testing
+                from adapters.text_search.memory_adapter import MemoryTextSearchAdapter
+                cls._text_search = MemoryTextSearchAdapter()
+                logger.info("Using in-memory text search")
+
+        return cls._text_search
+
+    @classmethod
+    def is_meilisearch_enabled(cls) -> bool:
+        """Check if Meilisearch feature is enabled."""
+        config = get_config()
+        return config.feature_meilisearch_enabled
+
+    @classmethod
+    def is_rabbitmq_enabled(cls) -> bool:
+        """Check if RabbitMQ feature is enabled."""
+        config = get_config()
+        return config.feature_rabbitmq_enabled
+
+    @classmethod
     async def initialize_repository(cls) -> None:
         """
         Initialize the decision repository.
@@ -249,6 +366,8 @@ class Container:
         cls._cache = None
         cls._embedding = None
         cls._decision_repository = None
+        cls._message_queue = None
+        cls._text_search = None
         cls._repository_initialized = False
         cls._initialized = False
         logger.info("Container reset")
@@ -268,6 +387,10 @@ class Container:
             await cls._embedding.close()
         if cls._decision_repository and hasattr(cls._decision_repository, 'close'):
             await cls._decision_repository.close()
+        if cls._message_queue:
+            await cls._message_queue.close()
+        if cls._text_search:
+            await cls._text_search.close()
         cls.reset()
         logger.info("Container closed all connections")
 
@@ -303,6 +426,28 @@ class Container:
                     vector_size=embedding.dimensions
                 )
                 logger.info(f"Created vector collection with {embedding.dimensions} dimensions")
+
+        # Initialize message queue if enabled
+        if cls.is_rabbitmq_enabled():
+            message_queue = cls.get_message_queue()
+            if message_queue:
+                try:
+                    await message_queue.connect()
+                    logger.info("Message queue connected")
+                except Exception as e:
+                    logger.warning(f"Message queue connection failed: {e}")
+
+        # Initialize text search if enabled (no connection needed, lazy)
+        if cls.is_meilisearch_enabled():
+            text_search = cls.get_text_search()
+            if text_search:
+                try:
+                    if await text_search.health_check():
+                        logger.info("Text search service healthy")
+                    else:
+                        logger.warning("Text search service not available")
+                except Exception as e:
+                    logger.warning(f"Text search health check failed: {e}")
 
         cls._initialized = True
         logger.info("Container initialization complete")

@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { Link, useSearchParams } from 'react-router-dom'
 import { api } from '../shared/api'
-import { FEATURE_LABELS, GROUP_LABELS } from '../shared/constants'
+import { ASPECT_LABELS, DOMAIN_LABELS } from '../shared/constants'
 import { SkeletonPage } from '../components/ui/skeleton'
 
 /**
@@ -20,14 +20,14 @@ import { SkeletonPage } from '../components/ui/skeleton'
 
 interface Decision {
   decision_id: string
-  decision_code: string | null  // Human-readable code: INT-F01-001-v1.0.0
+  decision_code: string | null  // Human-readable code: INT-A01-001-v1.0.0
   version: string
   created_at: string
   supersedes: string | null
   statement: string
   rationale: string
-  group_id: string
-  feature_id: string
+  domain_id: string
+  aspect_id: string
 }
 
 export default function EvolutionTimeline() {
@@ -71,16 +71,16 @@ export default function EvolutionTimeline() {
   // If specific decision requested, show its chain
   const selectedChain = decisionId ? buildChain(decisionId) : null
 
-  // Group chains by feature
-  const chainsByFeature: Record<string, Decision[][]> = {}
+  // Group chains by aspect
+  const chainsByAspect: Record<string, Decision[][]> = {}
   chainHeads.forEach(head => {
     const chain = buildChain(head.decision_id)
     if (chain.length > 0) {
-      const featureKey = `${chain[0].group_id}/${chain[0].feature_id}`
-      if (!chainsByFeature[featureKey]) {
-        chainsByFeature[featureKey] = []
+      const aspectKey = `${chain[0].domain_id}/${chain[0].aspect_id}`
+      if (!chainsByAspect[aspectKey]) {
+        chainsByAspect[aspectKey] = []
       }
-      chainsByFeature[featureKey].push(chain)
+      chainsByAspect[aspectKey].push(chain)
     }
   })
 
@@ -139,19 +139,19 @@ export default function EvolutionTimeline() {
         </div>
       )}
 
-      {/* All Chains by Feature */}
+      {/* All Chains by Aspect */}
       {!selectedChain && (
         <div className="space-y-6">
-          {Object.entries(chainsByFeature).map(([featureKey, chains]) => {
-            const [groupId, featureId] = featureKey.split('/')
+          {Object.entries(chainsByAspect).map(([aspectKey, chains]) => {
+            const [domainId, aspectId] = aspectKey.split('/')
             return (
-              <div key={featureKey} className="bg-white rounded-lg shadow-sm border p-6">
+              <div key={aspectKey} className="bg-white rounded-lg shadow-sm border p-6">
                 <div className="flex items-center gap-3 mb-4">
-                  <span className="text-indigo-600 font-medium">{GROUP_LABELS[groupId]}</span>
+                  <span className="text-indigo-600 font-medium">{DOMAIN_LABELS[domainId]}</span>
                   <span className="text-gray-400">→</span>
-                  <span className="text-gray-700">{FEATURE_LABELS[featureId]}</span>
+                  <span className="text-gray-700">{ASPECT_LABELS[aspectId]}</span>
                   <span className="text-xs text-gray-400">
-                    (G{groupId.split('-')[1]}/{featureId})
+                    ({domainId}/{aspectId})
                   </span>
                 </div>
 
@@ -189,7 +189,7 @@ export default function EvolutionTimeline() {
             )
           })}
 
-          {Object.keys(chainsByFeature).length === 0 && (
+          {Object.keys(chainsByAspect).length === 0 && (
             <div className="bg-white rounded-lg shadow-sm border p-6 text-center text-gray-500">
               No version chains found. Decisions without supersedes links appear as single nodes.
             </div>

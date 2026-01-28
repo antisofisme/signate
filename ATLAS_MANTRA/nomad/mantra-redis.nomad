@@ -51,11 +51,13 @@ job "mantra-redis" {
       driver = "docker"
 
       config {
-        image = "redis:7-alpine"
-        ports = ["redis"]
+        image        = "redis:7-alpine"
+        network_mode = "host"
 
         args = [
           "redis-server",
+          "--port", "6380",
+          "--bind", "0.0.0.0",
           "--maxmemory", "256mb",
           "--maxmemory-policy", "allkeys-lru",
           "--appendonly", "no",

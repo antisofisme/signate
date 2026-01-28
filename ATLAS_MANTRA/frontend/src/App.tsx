@@ -10,7 +10,7 @@ import SemanticSearch from './pages/SemanticSearch'
 import DecisionWizard from './pages/DecisionWizard'
 import ApprovalDashboard from './pages/ApprovalDashboard'
 import RelationEditor from './pages/RelationEditor'
-import GroupPage from './pages/GroupPage'
+import DomainPage from './pages/DomainPage'
 import EvolutionTimeline from './pages/EvolutionTimeline'
 import ScopeProjection from './pages/ScopeProjection'
 import RelationshipProjection from './pages/RelationshipProjection'
@@ -20,6 +20,8 @@ import AuditLog from './pages/AuditLog'
 import ApiKeys from './pages/settings/ApiKeys'
 import AISettings from './pages/settings/AISettings'
 import MCPDashboard from './pages/MCPDashboard'
+import Principles from './pages/Principles'
+import Governance from './pages/Governance'
 
 function App() {
   return (
@@ -27,8 +29,11 @@ function App() {
       <Routes>
         <Route path="/" element={<SidebarLayout />}>
           <Route index element={<Dashboard />} />
-          {/* Group Routes */}
-          <Route path="group/:groupNum" element={<GroupPage />} />
+          {/* Constitutional Foundation */}
+          <Route path="principles" element={<Principles />} />
+          <Route path="governance" element={<Governance />} />
+          {/* Domain Routes */}
+          <Route path="domain/:domainId" element={<DomainPage />} />
           {/* Global Views */}
           <Route path="matrix" element={<DecisionMatrix />} />
           <Route path="decisions" element={<DecisionList />} />

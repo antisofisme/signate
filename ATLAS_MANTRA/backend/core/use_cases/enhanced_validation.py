@@ -311,16 +311,16 @@ def detect_arbitration_needs(
         dup_context = {
             'max_similarity': highest_match.similarity,
             'new_statement': record.get('statement', ''),
-            'group_id': record.get('group_id', ''),
-            'feature_id': record.get('feature_id', ''),
+            'domain_id': record.get('domain_id', ''),
+            'aspect_id': record.get('aspect_id', ''),
             'existing_id': highest_match.decision_id,
             'existing_code': highest_match.decision_code,
             'existing_statement': highest_match.statement_preview,
             'existing_created_at': 'Unknown',  # Would need to fetch from DB
             'similarity': highest_match.similarity,
             'same_cell': (
-                record.get('group_id') == highest_match.group_id and
-                record.get('feature_id') == highest_match.feature_id
+                record.get('domain_id') == highest_match.domain_id and
+                record.get('aspect_id') == highest_match.aspect_id
             ),
         }
         if dup_classifier.should_invoke(dup_context):
@@ -339,8 +339,8 @@ def detect_arbitration_needs(
             'conflict': {
                 'code': first_conflict.decision_code,
                 'statement': first_conflict.statement_preview,
-                'group_id': first_conflict.group_id,
-                'feature_id': first_conflict.feature_id,
+                'domain_id': first_conflict.domain_id,
+                'aspect_id': first_conflict.aspect_id,
                 'type': first_conflict.conflict_type.value,
                 'description': first_conflict.description,
                 'keywords': first_conflict.conflicting_keywords,
@@ -364,7 +364,7 @@ def fast_exact_duplicate_check(
     FAST exact duplicate check - runs BEFORE quality scoring.
 
     This saves ~200ms SBERT inference if exact duplicate is found.
-    Only checks for 100% match (same group + feature + normalized statement).
+    Only checks for 100% match (same domain + aspect + normalized statement).
 
     Returns:
         DuplicateMatch if exact duplicate found, None otherwise.
@@ -412,14 +412,14 @@ def fast_blocking_conflict_check(
     if superseded is None:
         return f"Supersedes references non-existent decision: {supersedes_id}"
 
-    # Check if trying to supersede a decision in different group/feature
+    # Check if trying to supersede a decision in different domain/aspect
     # This would be a critical conflict
-    if (record.get('group_id') != superseded.get('group_id') or
-        record.get('feature_id') != superseded.get('feature_id')):
+    if (record.get('domain_id') != superseded.get('domain_id') or
+        record.get('aspect_id') != superseded.get('aspect_id')):
         return (
             f"Cannot supersede decision from different category. "
-            f"New: {record.get('group_id')}-{record.get('feature_id')}, "
-            f"Target: {superseded.get('group_id')}-{superseded.get('feature_id')}"
+            f"New: {record.get('domain_id')}-{record.get('aspect_id')}, "
+            f"Target: {superseded.get('domain_id')}-{superseded.get('aspect_id')}"
         )
 
     return None
@@ -832,8 +832,8 @@ async def validate_enhanced_async(
         {
             'decision_id': sd.decision.decision_id,
             'decision_code': sd.decision.decision_code,
-            'group_id': sd.decision.group_id.value,
-            'feature_id': sd.decision.feature_id.value,
+            'domain_id': sd.decision.domain_id.value,
+            'aspect_id': sd.decision.aspect_id.value,
             'statement': sd.decision.statement,
             'scope': sd.decision.scope.value,
             'supersedes': sd.decision.supersedes,
@@ -1023,8 +1023,8 @@ def serialize_duplicate_result(duplicates: DuplicateDetectionResult) -> Dict[str
             {
                 'decision_id': m.decision_id,
                 'decision_code': m.decision_code,
-                'group_id': m.group_id,
-                'feature_id': m.feature_id,
+                'domain_id': m.domain_id,
+                'aspect_id': m.aspect_id,
                 'statement_preview': m.statement_preview,
                 'similarity': m.similarity,
                 'level': m.level.value,
@@ -1061,8 +1061,8 @@ def serialize_conflict_result(conflicts: ConflictDetectionResult) -> Dict[str, A
             {
                 'decision_id': c.decision_id,
                 'decision_code': c.decision_code,
-                'group_id': c.group_id,
-                'feature_id': c.feature_id,
+                'domain_id': c.domain_id,
+                'aspect_id': c.aspect_id,
                 'statement_preview': c.statement_preview,
                 'conflict_type': c.conflict_type.value,
                 'severity': c.severity.value,

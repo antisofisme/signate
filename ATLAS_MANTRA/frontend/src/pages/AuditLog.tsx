@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import { auditApi, decisionsApi, AuditEntry, AuditMetadata } from '../shared/api'
 import { useState } from 'react'
-import { GROUP_LABELS, FEATURE_LABELS } from '../shared/constants'
+import { DOMAIN_LABELS, ASPECT_LABELS } from '../shared/constants'
 import { SkeletonTable } from '../components/ui/skeleton'
 import { ScrollTable } from '../components/ui/scroll-table'
 
@@ -134,9 +134,9 @@ function DecisionDetail({ decisionId }: { decisionId: string }) {
         {decision.decision_code && (
           <span className="font-mono text-sm text-indigo-600 font-semibold">{decision.decision_code}</span>
         )}
-        <span className="text-sm font-medium text-gray-900">{GROUP_LABELS[decision.group_id]}</span>
+        <span className="text-sm font-medium text-gray-900">{DOMAIN_LABELS[decision.domain_id || (decision as any).group_id]}</span>
         <span className="text-gray-300">›</span>
-        <span className="text-sm text-gray-600">{FEATURE_LABELS[decision.feature_id] || decision.feature_id}</span>
+        <span className="text-sm text-gray-600">{ASPECT_LABELS[decision.aspect_id || (decision as any).feature_id] || decision.aspect_id || (decision as any).feature_id}</span>
         <span className={`ml-auto px-2 py-0.5 rounded text-xs ${
           decision.blast_radius === 'CRITICAL' ? 'bg-red-100 text-red-800' :
           decision.blast_radius === 'HIGH' ? 'bg-orange-100 text-orange-800' :

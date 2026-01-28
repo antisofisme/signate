@@ -25,8 +25,8 @@ import uuid
 from ..domain.schema import (
     Decision,
     DecisionCreate,
-    GroupId,
-    FeatureId,
+    DomainId,
+    AspectId,
     Scope,
     BlastRadius,
     Constraint,
@@ -120,8 +120,8 @@ class ProposeDecisionUseCase:
         # Create the full Decision object for validation
         decision = Decision(
             decision_id=decision_id,
-            group_id=decision_create.group_id,
-            feature_id=decision_create.feature_id,
+            domain_id=decision_create.domain_id,
+            aspect_id=decision_create.aspect_id,
             statement=decision_create.statement,
             rationale=decision_create.rationale,
             constraints=decision_create.constraints,
@@ -139,8 +139,8 @@ class ProposeDecisionUseCase:
 
         # Convert to dict for validation
         decision_dict = decision.model_dump()
-        decision_dict["group_id"] = decision.group_id.value
-        decision_dict["feature_id"] = decision.feature_id.value
+        decision_dict["domain_id"] = decision.domain_id.value
+        decision_dict["aspect_id"] = decision.aspect_id.value
         decision_dict["scope"] = decision.scope.value
         decision_dict["blast_radius"] = decision.blast_radius.value
         decision_dict["constraints"] = [

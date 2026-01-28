@@ -20,7 +20,7 @@ from dataclasses import dataclass
 from typing import List, Optional
 from enum import Enum
 
-from ..domain.schema import Decision, GroupId, FeatureId
+from ..domain.schema import Decision, DomainId, AspectId
 from ..domain.decision import StoredDecision, DecisionEvent, DecisionEventType
 from ..repositories.decision_repository import DecisionRepository
 
@@ -148,17 +148,17 @@ class ReadDecisionUseCase:
                 error_message=str(e)
             )
 
-    def list_by_group(
+    def list_by_domain(
         self,
-        group_id: GroupId,
+        domain_id: DomainId,
         limit: int = 100,
         offset: int = 0
     ) -> ListDecisionsResult:
         """
-        List decisions by group.
+        List decisions by domain.
 
         Args:
-            group_id: Group ID to filter by
+            domain_id: Domain ID to filter by
             limit: Maximum number of decisions to return
             offset: Number of decisions to skip
 
@@ -166,8 +166,8 @@ class ReadDecisionUseCase:
             ListDecisionsResult with filtered decisions
         """
         try:
-            stored_decisions = self.repository.find_by_group(
-                group_id, limit=limit, offset=offset
+            stored_decisions = self.repository.find_by_domain(
+                domain_id, limit=limit, offset=offset
             )
 
             decisions = [sd.decision for sd in stored_decisions]
@@ -184,32 +184,32 @@ class ReadDecisionUseCase:
                 error_message=str(e)
             )
 
-    def list_by_group_feature(
+    def list_by_domain_aspect(
         self,
-        group_id: GroupId,
-        feature_id: FeatureId
+        domain_id: DomainId,
+        aspect_id: AspectId
     ) -> ListDecisionsResult:
         """
-        List ALL decisions for a specific group/feature combination.
+        List ALL decisions for a specific domain/aspect combination.
 
         Per Human Decision (Phase 3):
         - Returns ALL matching records (no filtering)
         - Consumer interprets which is "current" or "active"
 
         Args:
-            group_id: Group ID to filter by
-            feature_id: Feature ID to filter by
+            domain_id: Domain ID to filter by
+            aspect_id: Aspect ID to filter by
 
         Returns:
             ListDecisionsResult with ALL matching decisions
         """
         try:
-            stored_decisions = self.repository.find_by_group(group_id)
+            stored_decisions = self.repository.find_by_domain(domain_id)
 
-            # Structural filter only - by feature_id
+            # Structural filter only - by aspect_id
             decisions = [
                 sd.decision for sd in stored_decisions
-                if sd.decision.feature_id == feature_id
+                if sd.decision.aspect_id == aspect_id
             ]
 
             return ListDecisionsResult(
@@ -224,9 +224,9 @@ class ReadDecisionUseCase:
                 error_message=str(e)
             )
 
-    def group_all_by_group_feature(self) -> dict:
+    def group_all_by_domain_aspect(self) -> dict:
         """
-        Group ALL decisions by group/feature - PURE DATA ACCESS.
+        Group ALL decisions by domain/aspect - PURE DATA ACCESS.
 
         Per Human Decision (Phase 3):
         - Returns ALL decisions grouped structurally
@@ -234,21 +234,21 @@ class ReadDecisionUseCase:
         - Consumer interprets the data
 
         Returns:
-            Dictionary with group/feature mapping of ALL decisions
+            Dictionary with domain/aspect mapping of ALL decisions
         """
         grouped = {}
 
-        for group in GroupId:
-            grouped[group.value] = {}
-            stored_decisions = self.repository.find_by_group(group)
+        for domain in DomainId:
+            grouped[domain.value] = {}
+            stored_decisions = self.repository.find_by_domain(domain)
 
             for sd in stored_decisions:
-                feature_key = sd.decision.feature_id.value
-                if feature_key not in grouped[group.value]:
-                    grouped[group.value][feature_key] = []
+                aspect_key = sd.decision.aspect_id.value
+                if aspect_key not in grouped[domain.value]:
+                    grouped[domain.value][aspect_key] = []
 
                 # Return ALL decisions, no filtering
-                grouped[group.value][feature_key].append({
+                grouped[domain.value][aspect_key].append({
                     "decision_id": sd.decision.decision_id,
                     "statement": sd.decision.statement,
                     "scope": sd.decision.scope.value,
@@ -294,9 +294,9 @@ def list_decisions(
     return use_case.list_all(limit=limit, offset=offset)
 
 
-def group_decisions_by_group_feature(repository: DecisionRepository) -> dict:
+def group_decisions_by_domain_aspect(repository: DecisionRepository) -> dict:
     """
-    Group ALL decisions by group/feature - PURE DATA ACCESS.
+    Group ALL decisions by domain/aspect - PURE DATA ACCESS.
 
     Per Human Decision (Phase 3):
     - Returns ALL decisions grouped by structural criteria only
@@ -304,4 +304,4 @@ def group_decisions_by_group_feature(repository: DecisionRepository) -> dict:
     - Consumer interprets the data
     """
     use_case = ReadDecisionUseCase(repository)
-    return use_case.group_all_by_group_feature()
+    return use_case.group_all_by_domain_aspect()

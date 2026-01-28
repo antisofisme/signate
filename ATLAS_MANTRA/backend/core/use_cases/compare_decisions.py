@@ -2,7 +2,7 @@
 Compare Decisions Use Case
 
 Compares two decision versions side-by-side.
-Shows differences, supersedes chain, common group/feature.
+Shows differences, supersedes chain, common domain/aspect.
 
 Per Human Decision (Phase 3):
 - Read operations are PURE DATA ACCESS
@@ -15,7 +15,7 @@ from datetime import datetime
 from typing import List, Optional, Any
 from enum import Enum
 
-from ..domain.schema import Decision, GroupId, FeatureId
+from ..domain.schema import Decision, DomainId, AspectId
 from ..domain.decision import StoredDecision, AuditEventType, CompareMetadata, ReadMetadata
 from .audit_log import record_audit
 from ..repositories.decision_repository import DecisionRepository
@@ -57,8 +57,8 @@ class DecisionComparison:
     differences: List[FieldDifference] = field(default_factory=list)
     is_supersedes_chain: bool = False  # A supersedes B or B supersedes A
     supersedes_direction: Optional[str] = None  # "a_supersedes_b" or "b_supersedes_a"
-    common_group: bool = False
-    common_feature: bool = False
+    common_domain: bool = False
+    common_aspect: bool = False
     error_message: Optional[str] = None
 
 
@@ -138,17 +138,17 @@ class CompareDecisionsUseCase:
             # Check supersedes relationship
             is_supersedes, direction = self._check_supersedes_chain(decision_a, decision_b)
 
-            # Check common group/feature
-            common_group = decision_a.group_id == decision_b.group_id
-            common_feature = decision_a.feature_id == decision_b.feature_id
+            # Check common domain/aspect
+            common_domain = decision_a.domain_id == decision_b.domain_id
+            common_aspect = decision_a.aspect_id == decision_b.aspect_id
 
             # Record audit event using typed metadata
             compare_metadata = CompareMetadata(
                 compared_with=decision_id_b,
                 differences_count=len(differences),
                 is_supersedes_chain=is_supersedes,
-                common_group=common_group,
-                common_feature=common_feature,
+                common_domain=common_domain,
+                common_aspect=common_aspect,
             )
             record_audit(
                 event_type=AuditEventType.DECISION_COMPARED,
@@ -168,8 +168,8 @@ class CompareDecisionsUseCase:
                 differences=differences,
                 is_supersedes_chain=is_supersedes,
                 supersedes_direction=direction,
-                common_group=common_group,
-                common_feature=common_feature,
+                common_domain=common_domain,
+                common_aspect=common_aspect,
             )
 
         except Exception as e:
@@ -244,8 +244,8 @@ class CompareDecisionsUseCase:
 
         # Fields to compare (excluding auto-generated/metadata)
         compare_fields = [
-            "group_id",
-            "feature_id",
+            "domain_id",
+            "aspect_id",
             "statement",
             "rationale",
             "scope",

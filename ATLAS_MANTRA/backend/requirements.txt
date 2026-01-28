@@ -20,6 +20,12 @@ redis>=5.0.0
 # Semantic Search - Embeddings
 openai>=1.0.0
 
+# Full-Text Search (Meilisearch) - optional
+meilisearch-python-sdk>=3.0.0
+
+# Message Queue (RabbitMQ) - optional
+aio-pika>=9.0.0
+
 # Semantic Similarity (optional - for SBERT coherence scoring)
 # Install for better Q-023 coherence detection, falls back to TF-IDF if not installed
 sentence-transformers>=2.2.0

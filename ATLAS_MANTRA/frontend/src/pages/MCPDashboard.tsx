@@ -22,8 +22,11 @@ interface Agent {
   version: string
   category: string
   keywords: string[]
-  groups: string[]
-  features: string[]
+  domains: string[]
+  aspects: string[]
+  // Backward compatibility
+  groups?: string[]
+  features?: string[]
 }
 
 interface AgentsResponse {
@@ -260,8 +263,9 @@ function AgentsTab() {
   const agents = data?.agents || []
   const totalAgents = data?.total || agents.length
   const uniqueCategories = new Set(agents.map(a => a.category).filter(Boolean))
-  const uniqueGroups = new Set(agents.flatMap(a => a.groups || []))
-  const uniqueFeatures = new Set(agents.flatMap(a => a.features || []))
+  // Support both new (domains/aspects) and old (groups/features) field names
+  const uniqueDomains = new Set(agents.flatMap(a => a.domains || a.groups || []))
+  const uniqueAspects = new Set(agents.flatMap(a => a.aspects || a.features || []))
 
   return (
     <div className="space-y-4">
@@ -269,8 +273,8 @@ function AgentsTab() {
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         <StatCard label="Total Agents" value={totalAgents} color="indigo" />
         <StatCard label="Categories" value={uniqueCategories.size} color="green" />
-        <StatCard label="Groups" value={uniqueGroups.size} color="purple" />
-        <StatCard label="Features" value={uniqueFeatures.size} color="gray" />
+        <StatCard label="Domains" value={uniqueDomains.size} color="purple" />
+        <StatCard label="Aspects" value={uniqueAspects.size} color="gray" />
       </div>
 
       {/* Agent Cards */}
@@ -336,9 +340,9 @@ function AgentCard({ agent }: { agent: Agent }) {
           )}
         </div>
 
-        {/* Groups & Features */}
+        {/* Domains & Aspects */}
         <div className="mt-3 flex items-center gap-4 text-xs text-gray-500">
-          <span>Groups: <span className="font-mono bg-gray-100 px-1.5 py-0.5 rounded">{agent.groups?.join(', ') || '-'}</span></span>
+          <span>Domains: <span className="font-mono bg-gray-100 px-1.5 py-0.5 rounded">{(agent.domains || agent.groups)?.join(', ') || '-'}</span></span>
         </div>
       </div>
 
@@ -352,11 +356,11 @@ function AgentCard({ agent }: { agent: Agent }) {
 
       {expanded && (
         <div className="px-4 pb-4 space-y-3 border-t border-gray-100 bg-gray-50">
-          {/* Features */}
+          {/* Aspects */}
           <div>
-            <div className="text-xs font-medium text-gray-500 mb-1">Features ({agent.features?.length || 0})</div>
+            <div className="text-xs font-medium text-gray-500 mb-1">Aspects ({(agent.aspects || agent.features)?.length || 0})</div>
             <div className="flex flex-wrap gap-1">
-              {agent.features?.map(f => (
+              {(agent.aspects || agent.features)?.map(f => (
                 <span key={f} className="px-1.5 py-0.5 bg-white border text-xs rounded font-mono">
                   {f}
                 </span>

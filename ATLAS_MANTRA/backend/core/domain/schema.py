@@ -4,7 +4,7 @@ MANTRA-SCHEMA-001 Implementation
 This module provides the JSON Schema and validation types for the Decision Matrix.
 Per MANTRA-LAW-001, this schema is constitutional and immutable.
 
-4 Groups x 4 Features = 16 Decision Taxonomy
+4 Domains x 4 Aspects = 16 Decision Taxonomy
 
 CRITICAL (Human Decision - Phase 4):
 - Decision records are ABSOLUTELY IMMUTABLE
@@ -26,91 +26,91 @@ import re
 # ============================================================================
 #
 # ═══════════════════════════════════════════════════════════════════════════
-# GROUP MAPPING (Abbreviated Code → MANTRA-LAW-001 Reference)
+# DOMAIN MAPPING (Abbreviated Code → MANTRA-LAW-001 Reference)
 # ═══════════════════════════════════════════════════════════════════════════
 #
-# | Code | Law Reference | Full Name                  | Scope          |
-# |------|---------------|----------------------------|----------------|
-# | INT  | GROUP-1, §3.2 | Intent & Direction         | WHY / WHAT     |
-# | ARCH | GROUP-2, §3.3 | Architecture & Boundaries  | HOW / WHERE    |
-# | CTL  | GROUP-3, §3.4 | Control, Policy & Risk     | CAN / MUST NOT |
-# | EVO  | GROUP-4, §3.5 | Execution & Evolution      | CHANGE SAFELY  |
+# | Code | Law Reference   | Full Name                  | Scope          |
+# |------|-----------------|----------------------------|----------------|
+# | INT  | DOMAIN-1, §3.2  | Intent & Direction         | WHY / WHAT     |
+# | ARCH | DOMAIN-2, §3.3  | Architecture & Boundaries  | HOW / WHERE    |
+# | CTL  | DOMAIN-3, §3.4  | Control, Policy & Risk     | CAN / MUST NOT |
+# | EVO  | DOMAIN-4, §3.5  | Execution & Evolution      | CHANGE SAFELY  |
 #
 # ═══════════════════════════════════════════════════════════════════════════
-# FEATURE MAPPING (4 Features per Group = 16 Total)
+# ASPECT MAPPING (4 Aspects per Domain = 16 Total)
 # ═══════════════════════════════════════════════════════════════════════════
 #
-# GROUP-1 (INT):  F01 Vision, F02 Problem, F03 Scope, F04 Principles
-# GROUP-2 (ARCH): F05 Domain, F06 Service, F07 Data, F08 Integration
-# GROUP-3 (CTL):  F09 Policy, F10 Authority, F11 Security, F12 Risk
-# GROUP-4 (EVO):  F13 Lifecycle, F14 Reversibility, F15 Environment, F16 Drift
+# DOMAIN-1 (INT):  A01 Vision, A02 Problem, A03 Scope, A04 Principles
+# DOMAIN-2 (ARCH): A05 Domain, A06 Service, A07 Data, A08 Integration
+# DOMAIN-3 (CTL):  A09 Policy, A10 Authority, A11 Security, A12 Risk
+# DOMAIN-4 (EVO):  A13 Lifecycle, A14 Reversibility, A15 Environment, A16 Drift
 #
 # ============================================================================
 
-class GroupId(str, Enum):
+class DomainId(str, Enum):
     """
-    4 Groups per MANTRA-LAW-001 §3
+    4 Domains per MANTRA-LAW-001 §3
 
     Mapping:
-    - INT  = GROUP-1 (§3.2) - Intent & Direction
-    - ARCH = GROUP-2 (§3.3) - Architecture & Boundaries
-    - CTL  = GROUP-3 (§3.4) - Control, Policy & Risk
-    - EVO  = GROUP-4 (§3.5) - Execution & Evolution
+    - INT  = DOMAIN-1 (§3.2) - Intent & Direction
+    - ARCH = DOMAIN-2 (§3.3) - Architecture & Boundaries
+    - CTL  = DOMAIN-3 (§3.4) - Control, Policy & Risk
+    - EVO  = DOMAIN-4 (§3.5) - Execution & Evolution
     """
-    INT = "INT"    # GROUP-1: Intent & Direction (WHY/WHAT)
-    ARCH = "ARCH"  # GROUP-2: Architecture & Boundaries (HOW/WHERE)
-    CTL = "CTL"    # GROUP-3: Control, Policy & Risk (CAN/MUST NOT)
-    EVO = "EVO"    # GROUP-4: Execution & Evolution (CHANGE SAFELY)
+    INT = "INT"    # DOMAIN-1: Intent & Direction (WHY/WHAT)
+    ARCH = "ARCH"  # DOMAIN-2: Architecture & Boundaries (HOW/WHERE)
+    CTL = "CTL"    # DOMAIN-3: Control, Policy & Risk (CAN/MUST NOT)
+    EVO = "EVO"    # DOMAIN-4: Execution & Evolution (CHANGE SAFELY)
 
 
-class FeatureId(str, Enum):
+class AspectId(str, Enum):
     """
-    16 Features per MANTRA-LAW-001 §3.2-§3.5
+    16 Aspects per MANTRA-LAW-001 §3.2-§3.5
 
-    GROUP-1 (INT) - Intent & Direction:
-    - F01: Vision & Outcome
-    - F02: Problem Statement
-    - F03: Scope & Non-Goals
-    - F04: Principles & Values
+    DOMAIN-1 (INT) - Intent & Direction:
+    - A01: Vision & Outcome
+    - A02: Problem Statement
+    - A03: Scope & Non-Goals
+    - A04: Principles & Values
 
-    GROUP-2 (ARCH) - Architecture & Boundaries:
-    - F05: Domain & Bounded Context
-    - F06: Service & Module Boundary
-    - F07: Data Ownership & Sovereignty
-    - F08: Integration & Contract Model
+    DOMAIN-2 (ARCH) - Architecture & Boundaries:
+    - A05: Domain & Bounded Context
+    - A06: Service & Module Boundary
+    - A07: Data Ownership & Sovereignty
+    - A08: Integration & Contract Model
 
-    GROUP-3 (CTL) - Control, Policy & Risk:
-    - F09: Policy & Rules
-    - F10: Approval & Authority Model
-    - F11: Security & Compliance Posture
-    - F12: Risk & Blast Radius
+    DOMAIN-3 (CTL) - Control, Policy & Risk:
+    - A09: Policy & Rules
+    - A10: Approval & Authority Model
+    - A11: Security & Compliance Posture
+    - A12: Risk & Blast Radius
 
-    GROUP-4 (EVO) - Execution & Evolution:
-    - F13: Decision Lifecycle
-    - F14: Reversibility & Exit Strategy
-    - F15: Environment & Promotion Rules
-    - F16: Anti-Drift & Consistency
+    DOMAIN-4 (EVO) - Execution & Evolution:
+    - A13: Decision Lifecycle
+    - A14: Reversibility & Exit Strategy
+    - A15: Environment & Promotion Rules
+    - A16: Anti-Drift & Consistency
     """
-    # GROUP-1 (INT): Intent & Direction
-    F01 = "F01"  # Vision & Outcome
-    F02 = "F02"  # Problem Statement
-    F03 = "F03"  # Scope & Non-Goals
-    F04 = "F04"  # Principles & Values
-    # GROUP-2 (ARCH): Architecture & Boundaries
-    F05 = "F05"  # Domain & Bounded Context
-    F06 = "F06"  # Service & Module Boundary
-    F07 = "F07"  # Data Ownership & Sovereignty
-    F08 = "F08"  # Integration & Contract Model
-    # GROUP-3 (CTL): Control, Policy & Risk
-    F09 = "F09"  # Policy & Rules
-    F10 = "F10"  # Approval & Authority Model
-    F11 = "F11"  # Security & Compliance Posture
-    F12 = "F12"  # Risk & Blast Radius
-    # GROUP-4 (EVO): Execution & Evolution
-    F13 = "F13"  # Decision Lifecycle
-    F14 = "F14"  # Reversibility & Exit Strategy
-    F15 = "F15"  # Environment & Promotion Rules
-    F16 = "F16"  # Anti-Drift & Consistency
+    # DOMAIN-1 (INT): Intent & Direction
+    A01 = "A01"  # Vision & Outcome
+    A02 = "A02"  # Problem Statement
+    A03 = "A03"  # Scope & Non-Goals
+    A04 = "A04"  # Principles & Values
+    # DOMAIN-2 (ARCH): Architecture & Boundaries
+    A05 = "A05"  # Domain & Bounded Context
+    A06 = "A06"  # Service & Module Boundary
+    A07 = "A07"  # Data Ownership & Sovereignty
+    A08 = "A08"  # Integration & Contract Model
+    # DOMAIN-3 (CTL): Control, Policy & Risk
+    A09 = "A09"  # Policy & Rules
+    A10 = "A10"  # Approval & Authority Model
+    A11 = "A11"  # Security & Compliance Posture
+    A12 = "A12"  # Risk & Blast Radius
+    # DOMAIN-4 (EVO): Execution & Evolution
+    A13 = "A13"  # Decision Lifecycle
+    A14 = "A14"  # Reversibility & Exit Strategy
+    A15 = "A15"  # Environment & Promotion Rules
+    A16 = "A16"  # Anti-Drift & Consistency
 
 
 class Scope(str, Enum):
@@ -194,64 +194,64 @@ class DetailLevel(str, Enum):
 
 
 # ============================================================================
-# Group-Feature Compatibility Matrix per MANTRA-LAW-001 §3.2-§3.5
+# Domain-Aspect Compatibility Matrix per MANTRA-LAW-001 §3.2-§3.5
 # ============================================================================
 
-GROUP_FEATURE_MATRIX = {
-    GroupId.INT: [FeatureId.F01, FeatureId.F02, FeatureId.F03, FeatureId.F04],
-    GroupId.ARCH: [FeatureId.F05, FeatureId.F06, FeatureId.F07, FeatureId.F08],
-    GroupId.CTL: [FeatureId.F09, FeatureId.F10, FeatureId.F11, FeatureId.F12],
-    GroupId.EVO: [FeatureId.F13, FeatureId.F14, FeatureId.F15, FeatureId.F16],
+DOMAIN_ASPECT_MATRIX = {
+    DomainId.INT: [AspectId.A01, AspectId.A02, AspectId.A03, AspectId.A04],
+    DomainId.ARCH: [AspectId.A05, AspectId.A06, AspectId.A07, AspectId.A08],
+    DomainId.CTL: [AspectId.A09, AspectId.A10, AspectId.A11, AspectId.A12],
+    DomainId.EVO: [AspectId.A13, AspectId.A14, AspectId.A15, AspectId.A16],
 }
 
 # ============================================================================
-# Group Metadata (for documentation and UI)
+# Domain Metadata (for documentation and UI)
 # ============================================================================
 
-GROUP_LAW_REFERENCES = {
-    GroupId.INT: "GROUP-1, §3.2",
-    GroupId.ARCH: "GROUP-2, §3.3",
-    GroupId.CTL: "GROUP-3, §3.4",
-    GroupId.EVO: "GROUP-4, §3.5",
+DOMAIN_LAW_REFERENCES = {
+    DomainId.INT: "DOMAIN-1, §3.2",
+    DomainId.ARCH: "DOMAIN-2, §3.3",
+    DomainId.CTL: "DOMAIN-3, §3.4",
+    DomainId.EVO: "DOMAIN-4, §3.5",
 }
 
-GROUP_LABELS = {
-    GroupId.INT: "Intent & Direction",
-    GroupId.ARCH: "Architecture & Boundaries",
-    GroupId.CTL: "Control, Policy & Risk",
-    GroupId.EVO: "Execution & Evolution",
+DOMAIN_LABELS = {
+    DomainId.INT: "Intent & Direction",
+    DomainId.ARCH: "Architecture & Boundaries",
+    DomainId.CTL: "Control, Policy & Risk",
+    DomainId.EVO: "Execution & Evolution",
 }
 
-GROUP_SCOPES = {
-    GroupId.INT: "WHY / WHAT",
-    GroupId.ARCH: "HOW / WHERE",
-    GroupId.CTL: "CAN / MUST NOT",
-    GroupId.EVO: "CHANGE SAFELY",
+DOMAIN_SCOPES = {
+    DomainId.INT: "WHY / WHAT",
+    DomainId.ARCH: "HOW / WHERE",
+    DomainId.CTL: "CAN / MUST NOT",
+    DomainId.EVO: "CHANGE SAFELY",
 }
 
-FEATURE_LABELS = {
-    FeatureId.F01: "Vision & Outcome",
-    FeatureId.F02: "Problem Statement",
-    FeatureId.F03: "Scope & Non-Goals",
-    FeatureId.F04: "Principles & Values",
-    FeatureId.F05: "Domain & Bounded Context",
-    FeatureId.F06: "Service & Module Boundary",
-    FeatureId.F07: "Data Ownership & Sovereignty",
-    FeatureId.F08: "Integration & Contract Model",
-    FeatureId.F09: "Policy & Rules",
-    FeatureId.F10: "Approval & Authority Model",
-    FeatureId.F11: "Security & Compliance Posture",
-    FeatureId.F12: "Risk & Blast Radius",
-    FeatureId.F13: "Decision Lifecycle",
-    FeatureId.F14: "Reversibility & Exit Strategy",
-    FeatureId.F15: "Environment & Promotion Rules",
-    FeatureId.F16: "Anti-Drift & Consistency",
+ASPECT_LABELS = {
+    AspectId.A01: "Vision & Outcome",
+    AspectId.A02: "Problem Statement",
+    AspectId.A03: "Scope & Non-Goals",
+    AspectId.A04: "Principles & Values",
+    AspectId.A05: "Domain & Bounded Context",
+    AspectId.A06: "Service & Module Boundary",
+    AspectId.A07: "Data Ownership & Sovereignty",
+    AspectId.A08: "Integration & Contract Model",
+    AspectId.A09: "Policy & Rules",
+    AspectId.A10: "Approval & Authority Model",
+    AspectId.A11: "Security & Compliance Posture",
+    AspectId.A12: "Risk & Blast Radius",
+    AspectId.A13: "Decision Lifecycle",
+    AspectId.A14: "Reversibility & Exit Strategy",
+    AspectId.A15: "Environment & Promotion Rules",
+    AspectId.A16: "Anti-Drift & Consistency",
 }
 
 
-def is_feature_compatible(group_id: GroupId, feature_id: FeatureId) -> bool:
-    """Check if feature is compatible with group per MANTRA-DEC-002"""
-    return feature_id in GROUP_FEATURE_MATRIX.get(group_id, [])
+def is_aspect_compatible(domain_id: DomainId, aspect_id: AspectId) -> bool:
+    """Check if aspect is compatible with domain per MANTRA-DEC-002"""
+    return aspect_id in DOMAIN_ASPECT_MATRIX.get(domain_id, [])
 
 
 # ============================================================================
@@ -259,30 +259,30 @@ def is_feature_compatible(group_id: GroupId, feature_id: FeatureId) -> bool:
 # ============================================================================
 
 def generate_decision_code(
-    group_id: GroupId,
-    feature_id: FeatureId,
+    domain_id: DomainId,
+    aspect_id: AspectId,
     sequence: int,
     version: str
 ) -> str:
     """
     Generate human-readable decision code.
 
-    Format: {group}-{feature}-{seq:03d}-v{version}
-    Example: INT-F01-001-v1.0.0
+    Format: {domain}-{aspect}-{seq:03d}-v{version}
+    Example: INT-A01-001-v1.0.0
 
     Args:
-        group_id: Group ID (INT, ARCH, CTL, EVO)
-        feature_id: Feature ID (F01 to F16)
-        sequence: Sequence number within the feature (1-based)
+        domain_id: Domain ID (INT, ARCH, CTL, EVO)
+        aspect_id: Aspect ID (A01 to A16)
+        sequence: Sequence number within the aspect (1-based)
         version: Semver version string
 
     Returns:
         Human-readable decision code
     """
-    group_abbr = group_id.value
-    feature_code = feature_id.value  # Already F01, F02, etc.
+    domain_abbr = domain_id.value
+    aspect_code = aspect_id.value  # Already A01, A02, etc.
 
-    return f"{group_abbr}-{feature_code}-{sequence:03d}-v{version}"
+    return f"{domain_abbr}-{aspect_code}-{sequence:03d}-v{version}"
 
 
 def parse_decision_code(code: str) -> Optional[dict]:
@@ -290,20 +290,20 @@ def parse_decision_code(code: str) -> Optional[dict]:
     Parse a decision code back into its components.
 
     Args:
-        code: Decision code like INT-F01-001-v1.0.0
+        code: Decision code like INT-A01-001-v1.0.0
 
     Returns:
-        Dict with group_id, feature_id, sequence, version or None if invalid
+        Dict with domain_id, aspect_id, sequence, version or None if invalid
     """
-    pattern = r"^(INT|ARCH|CTL|EVO)-(F\d{2})-(\d{3})-v(\d+\.\d+\.\d+)$"
+    pattern = r"^(INT|ARCH|CTL|EVO)-(A\d{2})-(\d{3})-v(\d+\.\d+\.\d+)$"
     match = re.match(pattern, code)
 
     if not match:
         return None
 
     return {
-        "group_id": match.group(1),
-        "feature_id": match.group(2),  # F01, F02, etc.
+        "domain_id": match.group(1),
+        "aspect_id": match.group(2),  # A01, A02, etc.
         "sequence": int(match.group(3)),
         "version": match.group(4)
     }
@@ -389,17 +389,17 @@ class Decision(BaseModel):
 
     UX Enhancement (Phase 5):
     - decision_code provides human-readable identifier
-    - Format: {group}-{feature}{seq}-v{version}
-    - Example: INT-F01-001-v1.0.0
+    - Format: {domain}-{aspect}{seq}-v{version}
+    - Example: INT-A01-001-v1.0.0
     """
     decision_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     decision_code: Optional[str] = Field(
         default=None,
-        description="Human-readable decision code (e.g., INT-F01-001-v1.0.0). "
+        description="Human-readable decision code (e.g., INT-A01-001-v1.0.0). "
                    "Generated on storage, not required for creation."
     )
-    group_id: GroupId
-    feature_id: FeatureId
+    domain_id: DomainId
+    aspect_id: AspectId
     statement: str = Field(..., min_length=1)
     rationale: str = Field(..., min_length=1)
     constraints: List[Constraint] = Field(default_factory=list)
@@ -495,15 +495,15 @@ class Decision(BaseModel):
         """
     )
 
-    @field_validator("feature_id")
+    @field_validator("aspect_id")
     @classmethod
-    def validate_group_feature_compatibility(cls, v, info):
-        """Validate feature is compatible with group per MANTRA-DEC-002"""
-        group_id = info.data.get("group_id")
-        if group_id and not is_feature_compatible(group_id, v):
+    def validate_domain_aspect_compatibility(cls, v, info):
+        """Validate aspect is compatible with domain per MANTRA-DEC-002"""
+        domain_id = info.data.get("domain_id")
+        if domain_id and not is_aspect_compatible(domain_id, v):
             raise ValueError(
-                f"Feature {v} is not compatible with group {group_id}. "
-                f"Valid features for {group_id}: {GROUP_FEATURE_MATRIX[group_id]}"
+                f"Aspect {v} is not compatible with domain {domain_id}. "
+                f"Valid aspects for {domain_id}: {DOMAIN_ASPECT_MATRIX[domain_id]}"
             )
         return v
 
@@ -549,9 +549,9 @@ class Decision(BaseModel):
         json_schema_extra = {
             "example": {
                 "decision_id": "550e8400-e29b-41d4-a716-446655440000",
-                "decision_code": "ARCH-F06-001-v1.0.0",
-                "group_id": "ARCH",
-                "feature_id": "F06",
+                "decision_code": "ARCH-A06-001-v1.0.0",
+                "domain_id": "ARCH",
+                "aspect_id": "A06",
                 "statement": "All projects must follow the feature-based folder structure with strict module boundaries.",
                 "rationale": "Feature-based structure improves code discoverability, enables lazy loading, and enforces bounded contexts. Each feature is self-contained, enabling independent development and testing.",
                 "constraints": [
@@ -620,8 +620,8 @@ class DecisionCreate(BaseModel):
     - Layer A (required): statement, rationale, constraints
     - Layer B (optional): detailed_content, sections
     """
-    group_id: GroupId
-    feature_id: FeatureId
+    domain_id: DomainId
+    aspect_id: AspectId
     statement: str = Field(..., min_length=1)
     rationale: str = Field(..., min_length=1)
     constraints: List[Constraint] = Field(default_factory=list)

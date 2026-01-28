@@ -46,7 +46,7 @@ agent:
   # ═══════════════════════════════════════════════════════════════════════════
 
   decision_context:
-    groups:
+    domains:
       - id: "ARCH"
         relevance: "high"
         reason: "Architecture - data ownership and sovereignty"
@@ -57,13 +57,13 @@ agent:
         relevance: "medium"
         reason: "Standards - naming conventions and patterns"
 
-    features:
+    aspects:
       required:
-        - "F07"  # Data Ownership & Sovereignty
-        - "F05"  # Domain & Bounded Context
+        - "A07"  # Data Ownership & Sovereignty
+        - "A05"  # Domain & Bounded Context
       optional:
-        - "F11"  # Security & Compliance
-        - "F12"  # Risk & Blast Radius
+        - "A11"  # Security & Compliance
+        - "A12"  # Risk & Blast Radius
 
     tags:
       required: ["DB"]

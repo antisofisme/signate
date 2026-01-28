@@ -57,8 +57,8 @@ class DuplicateClassifier(BaseArbiter):
         - A different decision (just happens to be similar)
         """
         new_statement = context.get('new_statement', '')
-        new_group = context.get('group_id', '')
-        new_feature = context.get('feature_id', '')
+        new_domain = context.get('domain_id', '')
+        new_aspect = context.get('aspect_id', '')
 
         existing_code = context.get('existing_code', '')
         existing_statement = context.get('existing_statement', '')
@@ -71,7 +71,7 @@ class DuplicateClassifier(BaseArbiter):
         prompt = f"""Classify relationship between two decisions ({similarity:.0%} similar).
 
 NEW: "{new_statement}"
-     [{new_group}/{new_feature}]
+     [{new_domain}/{new_aspect}]
 
 EXISTING ({existing_code}): "{existing_statement}"
      [{cell_info}] Created: {existing_created_at}
@@ -88,8 +88,8 @@ DIFFERENT = Similar wording, different intent → RELATE as informed_by"""
             prompt_template=prompt,
             context_data={
                 'new_statement': new_statement,
-                'group_id': new_group,
-                'feature_id': new_feature,
+                'domain_id': new_domain,
+                'aspect_id': new_aspect,
                 'existing_id': context.get('existing_id', ''),
                 'existing_code': existing_code,
                 'existing_statement': existing_statement,
@@ -126,7 +126,7 @@ DIFFERENT = Similar wording, different intent → RELATE as informed_by"""
             return ArbiterResult(
                 verdict=ArbiterVerdict.EVOLUTION,
                 confidence=0.7,
-                reason="Very high similarity in same group/feature suggests evolution",
+                reason="Very high similarity in same domain/aspect suggests evolution",
                 suggestions=["Add supersedes relationship to the existing decision"],
                 metadata={
                     'mode': 'QUICK_JUDGMENT',
@@ -152,7 +152,7 @@ DIFFERENT = Similar wording, different intent → RELATE as informed_by"""
             return ArbiterResult(
                 verdict=ArbiterVerdict.DIFFERENT,
                 confidence=0.7,
-                reason="Similar content in different group/feature suggests related decisions",
+                reason="Similar content in different domain/aspect suggests related decisions",
                 suggestions=["Consider adding as informed_by relation"],
                 metadata={
                     'mode': 'QUICK_JUDGMENT',

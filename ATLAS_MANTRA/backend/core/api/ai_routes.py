@@ -8,6 +8,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 from typing import List, Dict, Any, Optional
 from datetime import datetime
+import hashlib
 
 from core.ai.chat_service import get_chat_service
 from core.ai.hints_service import get_hints_service
@@ -88,8 +89,8 @@ def get_decisions_for_context() -> List[Dict]:
             {
                 "decision_id": sd.decision.decision_id,
                 "decision_code": getattr(sd.decision, "decision_code", None),
-                "group_id": sd.decision.group_id.value if hasattr(sd.decision.group_id, "value") else str(sd.decision.group_id),
-                "feature_id": sd.decision.feature_id.value if hasattr(sd.decision.feature_id, "value") else str(sd.decision.feature_id),
+                "domain_id": sd.decision.domain_id.value if hasattr(sd.decision.domain_id, "value") else str(sd.decision.domain_id),
+                "aspect_id": sd.decision.aspect_id.value if hasattr(sd.decision.aspect_id, "value") else str(sd.decision.aspect_id),
                 "statement": sd.decision.statement,
                 "rationale": sd.decision.rationale,
             }
@@ -142,14 +143,36 @@ async def get_chat_history(user_id: str):
 
     Returns all messages from the user's current session.
     """
+    cache = Container.get_cache()
+    cache_key = f"mantra:chat:history:{user_id}"
+
+    # Check cache first
+    if cache:
+        try:
+            cached = await cache.get(cache_key)
+            if cached:
+                return ChatHistoryResponse(**cached)
+        except Exception:
+            pass
+
+    # Original logic - get history
     chat_service = get_chat_service()
     messages = chat_service.get_history(user_id)
     session = chat_service.get_or_create_session(user_id)
 
-    return ChatHistoryResponse(
+    response = ChatHistoryResponse(
         messages=messages,
         session_id=session.id,
     )
+
+    # Cache result for 10 minutes
+    if cache:
+        try:
+            await cache.set(cache_key, response.model_dump(), ttl=600)
+        except Exception:
+            pass
+
+    return response
 
 
 @router.delete("/chat/clear")
@@ -161,6 +184,15 @@ async def clear_chat_history(user_id: str):
     """
     chat_service = get_chat_service()
     success = chat_service.clear_history(user_id)
+
+    # Invalidate cache
+    cache = Container.get_cache()
+    if cache and success:
+        try:
+            cache_key = f"mantra:chat:history:{user_id}"
+            await cache.delete(cache_key)
+        except Exception:
+            pass
 
     return {
         "success": success,
@@ -179,6 +211,23 @@ async def get_hints(request: HintsRequest):
     - Improvement suggestions
     - Classification recommendations
     """
+    # Build cache key from request content
+    cache = Container.get_cache()
+    content_hash = hashlib.sha256(
+        f"{request.text}:{request.field_type}".encode()
+    ).hexdigest()[:16]
+    cache_key = f"mantra:hints:{content_hash}"
+
+    # Check cache first
+    if cache:
+        try:
+            cached = await cache.get(cache_key)
+            if cached:
+                return HintsResponse(**cached)
+        except Exception:
+            pass
+
+    # Original logic - call AI service
     hints_service = get_hints_service()
     decisions = get_decisions_for_context()
 
@@ -189,13 +238,22 @@ async def get_hints(request: HintsRequest):
         context=request.context,
     )
 
-    return HintsResponse(
+    response = HintsResponse(
         success=result.get("success", False),
         hints=result.get("hints"),
         error=result.get("error"),
         provider=result.get("provider"),
         model=result.get("model"),
     )
+
+    # Cache result (hints for same text are stable) - 1 hour
+    if cache:
+        try:
+            await cache.set(cache_key, response.model_dump(), ttl=3600)
+        except Exception:
+            pass
+
+    return response
 
 
 @router.get("/providers", response_model=ProvidersResponse)

@@ -44,7 +44,7 @@ agent:
   # ═══════════════════════════════════════════════════════════════════════════
 
   decision_context:
-    groups:
+    domains:
       - id: "EVO"
         relevance: "high"
         reason: "Execution & Evolution - deployment procedures and lifecycle"
@@ -55,14 +55,14 @@ agent:
         relevance: "medium"
         reason: "Architecture - system boundaries and service dependencies"
 
-    features:
+    aspects:
       required:
-        - "F15"  # Environment & Promotion Rules
-        - "F13"  # Decision Lifecycle
+        - "A15"  # Environment & Promotion Rules
+        - "A13"  # Decision Lifecycle
       optional:
-        - "F14"  # Reversibility & Exit Strategy
-        - "F11"  # Security & Compliance
-        - "F12"  # Risk & Blast Radius
+        - "A14"  # Reversibility & Exit Strategy
+        - "A11"  # Security & Compliance
+        - "A12"  # Risk & Blast Radius
 
     tags:
       required: ["INFRA", "CICD"]

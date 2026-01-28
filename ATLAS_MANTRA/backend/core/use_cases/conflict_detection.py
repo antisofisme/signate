@@ -42,8 +42,8 @@ class ConflictMatch:
     """A detected conflict."""
     decision_id: str
     decision_code: Optional[str]
-    group_id: str
-    feature_id: str
+    domain_id: str
+    aspect_id: str
     statement_preview: str
     conflict_type: ConflictType
     severity: ConflictSeverity
@@ -217,13 +217,13 @@ def check_keyword_conflict(
             conflicting_pair = (kw2, kw1)
 
         if has_conflict:
-            # Determine severity based on feature match
-            same_feature = (record.get('feature_id') == existing.get('feature_id'))
-            same_group = (record.get('group_id') == existing.get('group_id'))
+            # Determine severity based on aspect match
+            same_aspect = (record.get('aspect_id') == existing.get('aspect_id'))
+            same_domain = (record.get('domain_id') == existing.get('domain_id'))
 
-            if same_feature:
+            if same_aspect:
                 severity = ConflictSeverity.ERROR
-            elif same_group:
+            elif same_domain:
                 severity = ConflictSeverity.WARNING
             else:
                 severity = ConflictSeverity.INFO
@@ -231,8 +231,8 @@ def check_keyword_conflict(
             conflicts.append(ConflictMatch(
                 decision_id=existing.get('decision_id') or '',
                 decision_code=existing.get('decision_code'),
-                group_id=existing.get('group_id') or '',
-                feature_id=existing.get('feature_id') or '',
+                domain_id=existing.get('domain_id') or '',
+                aspect_id=existing.get('aspect_id') or '',
                 statement_preview=(existing.get('statement') or '')[:100],
                 conflict_type=conflict_type,
                 severity=severity,
@@ -272,16 +272,16 @@ def check_contradiction(
                 neg_match_existing = re.search(neg_pattern, existing_statement)
 
                 if neg_match_existing:
-                    same_feature = (record.get('feature_id') == existing.get('feature_id'))
+                    same_aspect = (record.get('aspect_id') == existing.get('aspect_id'))
 
                     conflicts.append(ConflictMatch(
                         decision_id=existing.get('decision_id') or '',
                         decision_code=existing.get('decision_code'),
-                        group_id=existing.get('group_id') or '',
-                        feature_id=existing.get('feature_id') or '',
+                        domain_id=existing.get('domain_id') or '',
+                        aspect_id=existing.get('aspect_id') or '',
                         statement_preview=(existing.get('statement') or '')[:100],
                         conflict_type=ConflictType.DIRECT_CONTRADICTION,
-                        severity=ConflictSeverity.ERROR if same_feature else ConflictSeverity.WARNING,
+                        severity=ConflictSeverity.ERROR if same_aspect else ConflictSeverity.WARNING,
                         description=f"Direct contradiction: '{pos_match_new.group(0)}' vs '{neg_match_existing.group(0)}'",
                         conflicting_keywords=(captured_word, f"not {captured_word}")
                     ))
@@ -302,16 +302,16 @@ def check_contradiction(
                 neg_match_new = re.search(neg_pattern, new_statement)
 
                 if neg_match_new:
-                    same_feature = (record.get('feature_id') == existing.get('feature_id'))
+                    same_aspect = (record.get('aspect_id') == existing.get('aspect_id'))
 
                     conflicts.append(ConflictMatch(
                         decision_id=existing.get('decision_id') or '',
                         decision_code=existing.get('decision_code'),
-                        group_id=existing.get('group_id') or '',
-                        feature_id=existing.get('feature_id') or '',
+                        domain_id=existing.get('domain_id') or '',
+                        aspect_id=existing.get('aspect_id') or '',
                         statement_preview=(existing.get('statement') or '')[:100],
                         conflict_type=ConflictType.DIRECT_CONTRADICTION,
-                        severity=ConflictSeverity.ERROR if same_feature else ConflictSeverity.WARNING,
+                        severity=ConflictSeverity.ERROR if same_aspect else ConflictSeverity.WARNING,
                         description=f"Direct contradiction: new prohibits what existing requires ('{captured_word}')",
                         conflicting_keywords=(f"not {captured_word}", captured_word)
                     ))
@@ -328,26 +328,26 @@ def check_scope_overlap(
     """
     Check for scope overlap without supersedes relationship.
 
-    Same group + feature + scope without supersedes = potential conflict.
+    Same domain + aspect + scope without supersedes = potential conflict.
     """
-    same_group = record.get('group_id') == existing.get('group_id')
-    same_feature = record.get('feature_id') == existing.get('feature_id')
+    same_domain = record.get('domain_id') == existing.get('domain_id')
+    same_aspect = record.get('aspect_id') == existing.get('aspect_id')
     same_scope = record.get('scope') == existing.get('scope')
 
     # Check if there's a supersedes relationship
     supersedes = record.get('supersedes')
     is_superseding = supersedes == existing.get('decision_id')
 
-    if same_group and same_feature and same_scope and not is_superseding:
+    if same_domain and same_aspect and same_scope and not is_superseding:
         return ConflictMatch(
             decision_id=existing.get('decision_id') or '',
             decision_code=existing.get('decision_code'),
-            group_id=existing.get('group_id') or '',
-            feature_id=existing.get('feature_id') or '',
+            domain_id=existing.get('domain_id') or '',
+            aspect_id=existing.get('aspect_id') or '',
             statement_preview=(existing.get('statement') or '')[:100],
             conflict_type=ConflictType.SCOPE_OVERLAP,
             severity=ConflictSeverity.WARNING,
-            description=f"Same group/feature/scope without supersedes relationship",
+            description=f"Same domain/aspect/scope without supersedes relationship",
             conflicting_keywords=(record.get('scope') or '', existing.get('scope') or '')
         )
 
@@ -377,7 +377,7 @@ def generate_resolution_suggestions(conflicts: List[ConflictMatch]) -> List[str]
         elif conflict.severity == ConflictSeverity.ERROR:
             suggestions.append(
                 f"Critical conflict with {conflict.decision_code or conflict.decision_id[:8]} "
-                f"in same feature. Must resolve before storing."
+                f"in same aspect. Must resolve before storing."
             )
 
     return suggestions[:5]  # Limit to top 5
@@ -482,8 +482,8 @@ async def detect_conflicts_async(
         {
             'decision_id': sd.decision.decision_id,
             'decision_code': sd.decision.decision_code,
-            'group_id': sd.decision.group_id.value,
-            'feature_id': sd.decision.feature_id.value,
+            'domain_id': sd.decision.domain_id.value,
+            'aspect_id': sd.decision.aspect_id.value,
             'statement': sd.decision.statement,
             'scope': sd.decision.scope.value,
             'supersedes': sd.decision.supersedes,

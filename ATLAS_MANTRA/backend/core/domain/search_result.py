@@ -34,12 +34,12 @@ class SearchHit:
 
     Attributes:
         decision_id: ID of the matched decision
-        decision_code: Human-readable code (e.g., INT-F01-001-v1.0.0)
+        decision_code: Human-readable code (e.g., INT-A01-001-v1.0.0)
         statement: Decision statement
         rationale: Decision rationale
         score: Similarity score (0.0 to 1.0)
-        group_id: Decision group (INT, ARCH, CTL, EVO)
-        feature_id: Decision feature (F01-F16)
+        domain_id: Decision domain (INT, ARCH, CTL, EVO)
+        aspect_id: Decision aspect (A01-A16)
         version: Decision version
         tags: Decision tags
         matched_fields: Which fields contributed to the match
@@ -49,8 +49,8 @@ class SearchHit:
     statement: str
     rationale: str
     score: float
-    group_id: str
-    feature_id: str
+    domain_id: str
+    aspect_id: str
     version: str
     tags: List[str] = field(default_factory=list)
     matched_fields: List[str] = field(default_factory=lambda: ["statement", "rationale"])
@@ -63,8 +63,8 @@ class SearchHit:
             "statement": self.statement,
             "rationale": self.rationale,
             "score": self.score,
-            "group_id": self.group_id,
-            "feature_id": self.feature_id,
+            "domain_id": self.domain_id,
+            "aspect_id": self.aspect_id,
             "version": self.version,
             "tags": self.tags,
             "matched_fields": self.matched_fields,

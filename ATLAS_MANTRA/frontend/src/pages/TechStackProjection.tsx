@@ -21,8 +21,8 @@ interface Decision {
   decision_id: string
   decision_code: string | null
   statement: string
-  group_id: string
-  feature_id: string
+  domain_id: string
+  aspect_id: string
   tags: string[]
   tech_stack: string[]
 }

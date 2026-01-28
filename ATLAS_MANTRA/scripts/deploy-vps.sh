@@ -58,8 +58,8 @@ log_info "Code synced successfully"
 # Step 2: Build Docker image
 if [ "$SKIP_BUILD" = false ]; then
     log_info "Step 2: Building Docker image..."
-    ssh_cmd "cd $REMOTE_DIR/backend && docker build -t atlas-mantra-api:v1.2.0 ."
-    log_info "Docker image built: atlas-mantra-api:v1.2.0"
+    ssh_cmd "cd $REMOTE_DIR/backend && docker build -t atlas-mantra-api:v1.5.0 ."
+    log_info "Docker image built: atlas-mantra-api:v1.5.0"
 else
     log_warn "Step 2: Skipping Docker build (--skip-build)"
 fi

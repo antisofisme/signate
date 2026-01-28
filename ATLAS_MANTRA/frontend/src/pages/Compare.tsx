@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query'
 import { clsx } from 'clsx'
 import { Link } from 'react-router-dom'
 import { decisionsApi, Decision, FieldDifference } from '../shared/api'
-import { FEATURE_LABELS, GROUP_COLORS } from '../shared/constants'
+import { ASPECT_LABELS, DOMAIN_COLORS } from '../shared/constants'
 
 export default function Compare() {
   const [decisionA, setDecisionA] = useState('')
@@ -199,13 +199,13 @@ export default function Compare() {
               <span className={comparison.common_group ? 'text-green-500' : 'text-gray-400'}>
                 {comparison.common_group ? '✓' : '✗'}
               </span>
-              <span className="text-gray-700">Same Group</span>
+              <span className="text-gray-700">Same Domain</span>
             </div>
             <div className="flex items-center gap-2">
               <span className={comparison.common_feature ? 'text-green-500' : 'text-gray-400'}>
                 {comparison.common_feature ? '✓' : '✗'}
               </span>
-              <span className="text-gray-700">Same Feature</span>
+              <span className="text-gray-700">Same Aspect</span>
             </div>
             <div className="flex items-center gap-2">
               <span className={comparison.is_supersedes_chain ? 'text-green-500' : 'text-gray-400'}>
@@ -239,13 +239,13 @@ function DecisionCard({
     <div className={clsx('bg-white rounded-lg shadow-sm border-l-4 p-4', borderColor)}>
       <div className={clsx('text-xs font-medium mb-2', textColor)}>{label}</div>
 
-      {/* Code & Group */}
+      {/* Code & Domain */}
       <div className="flex items-center gap-2 mb-2">
         <span
           className="px-2 py-0.5 rounded text-xs text-white"
-          style={{ backgroundColor: GROUP_COLORS[decision.group_id] || '#6B7280' }}
+          style={{ backgroundColor: DOMAIN_COLORS[decision.domain_id || (decision as any).group_id] || '#6B7280' }}
         >
-          {decision.group_id}
+          {decision.domain_id || (decision as any).group_id}
         </span>
         <span className="font-mono text-sm text-gray-700">
           {decision.decision_code || decision.decision_id.slice(0, 8)}
@@ -260,8 +260,8 @@ function DecisionCard({
       {/* Metadata Grid */}
       <div className="grid grid-cols-2 gap-2 text-xs">
         <div>
-          <span className="text-gray-500">Feature:</span>
-          <span className="ml-1 text-gray-700">{FEATURE_LABELS[decision.feature_id] || decision.feature_id}</span>
+          <span className="text-gray-500">Aspect:</span>
+          <span className="ml-1 text-gray-700">{ASPECT_LABELS[decision.aspect_id || (decision as any).feature_id] || decision.aspect_id || (decision as any).feature_id}</span>
         </div>
         <div>
           <span className="text-gray-500">Version:</span>

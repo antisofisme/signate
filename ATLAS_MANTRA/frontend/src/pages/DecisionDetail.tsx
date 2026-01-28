@@ -1,7 +1,7 @@
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { decisionsApi, Decision, ChallengeRequest } from '../shared/api'
-import { GROUP_LABELS, FEATURE_LABELS, TAG_LABELS, TAG_COLORS } from '../shared/constants'
+import { DOMAIN_LABELS, ASPECT_LABELS, TAG_LABELS, TAG_COLORS } from '../shared/constants'
 import { useState } from 'react'
 import { SkeletonDecisionDetail } from '../components/ui/skeleton'
 import { InfoTooltip } from '../components/ui/tooltip'
@@ -67,15 +67,15 @@ export default function DecisionDetail() {
         <Link to="/decisions" className="text-gray-500 hover:text-gray-700">Decisions</Link>
         <span className="text-gray-300">/</span>
         <span className={`px-2 py-0.5 rounded text-xs font-medium ${
-          decision.group_id === 'INT' ? 'bg-blue-100 text-blue-800' :
-          decision.group_id === 'ARCH' ? 'bg-green-100 text-green-800' :
-          decision.group_id === 'CTL' ? 'bg-purple-100 text-purple-800' :
+          (decision.domain_id || (decision as any).group_id) === 'INT' ? 'bg-blue-100 text-blue-800' :
+          (decision.domain_id || (decision as any).group_id) === 'ARCH' ? 'bg-green-100 text-green-800' :
+          (decision.domain_id || (decision as any).group_id) === 'CTL' ? 'bg-purple-100 text-purple-800' :
           'bg-orange-100 text-orange-800'
         }`}>
-          {GROUP_LABELS[decision.group_id]}
+          {DOMAIN_LABELS[decision.domain_id || (decision as any).group_id]}
         </span>
         <span className="text-gray-300">/</span>
-        <span className="text-gray-700 font-medium">{decision.feature_id}</span>
+        <span className="text-gray-700 font-medium">{decision.aspect_id || (decision as any).feature_id}</span>
       </nav>
 
       {/* Decision Code Header */}
@@ -87,19 +87,19 @@ export default function DecisionDetail() {
               {decision.decision_code || `DEC-${decision.decision_id.slice(0, 8)}`}
             </h1>
 
-            {/* Group & Feature Labels */}
+            {/* Domain & Aspect Labels */}
             <div className="flex items-center gap-3 mt-3">
               <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-                decision.group_id === 'INT' ? 'bg-blue-200 text-blue-900' :
-                decision.group_id === 'ARCH' ? 'bg-green-200 text-green-900' :
-                decision.group_id === 'CTL' ? 'bg-purple-200 text-purple-900' :
+                (decision.domain_id || (decision as any).group_id) === 'INT' ? 'bg-blue-200 text-blue-900' :
+                (decision.domain_id || (decision as any).group_id) === 'ARCH' ? 'bg-green-200 text-green-900' :
+                (decision.domain_id || (decision as any).group_id) === 'CTL' ? 'bg-purple-200 text-purple-900' :
                 'bg-orange-200 text-orange-900'
               }`}>
-                {GROUP_LABELS[decision.group_id]}
+                {DOMAIN_LABELS[decision.domain_id || (decision as any).group_id]}
               </span>
-              <span className="text-indigo-200">•</span>
+              <span className="text-indigo-200">-</span>
               <span className="text-indigo-100">
-                {decision.feature_id}: {FEATURE_LABELS[decision.feature_id]}
+                {decision.aspect_id || (decision as any).feature_id}: {ASPECT_LABELS[decision.aspect_id || (decision as any).feature_id]}
               </span>
             </div>
 
@@ -475,8 +475,11 @@ function ChallengeForm({
       challenger,
       challenge_rationale: rationale,
       proposed_replacement: {
-        group_id: decision.group_id,
-        feature_id: decision.feature_id,
+        // Support both new (domain_id/aspect_id) and old (group_id/feature_id) API field names
+        domain_id: decision.domain_id || (decision as any).group_id,
+        aspect_id: decision.aspect_id || (decision as any).feature_id,
+        group_id: decision.domain_id || (decision as any).group_id,
+        feature_id: decision.aspect_id || (decision as any).feature_id,
         statement: newStatement,
         rationale: newRationale,
         constraints: decision.constraints,
@@ -528,7 +531,7 @@ function ChallengeForm({
             <HintsButton
               text={rationale}
               fieldType="challenge_rationale"
-              context={{ decision_id: decision.decision_id, group_id: decision.group_id }}
+              context={{ decision_id: decision.decision_id, domain_id: decision.domain_id || (decision as any).group_id }}
               onApplyGrammar={(corrected) => setRationale(corrected)}
             />
           </div>
@@ -550,7 +553,7 @@ function ChallengeForm({
             <HintsButton
               text={newStatement}
               fieldType="statement"
-              context={{ decision_id: decision.decision_id, group_id: decision.group_id, feature_id: decision.feature_id }}
+              context={{ decision_id: decision.decision_id, domain_id: decision.domain_id || (decision as any).group_id, aspect_id: decision.aspect_id || (decision as any).feature_id }}
               onApplyGrammar={(corrected) => setNewStatement(corrected)}
             />
           </div>
@@ -571,7 +574,7 @@ function ChallengeForm({
             <HintsButton
               text={newRationale}
               fieldType="rationale"
-              context={{ decision_id: decision.decision_id, group_id: decision.group_id, feature_id: decision.feature_id }}
+              context={{ decision_id: decision.decision_id, domain_id: decision.domain_id || (decision as any).group_id, aspect_id: decision.aspect_id || (decision as any).feature_id }}
               onApplyGrammar={(corrected) => setNewRationale(corrected)}
             />
           </div>

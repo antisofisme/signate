@@ -209,8 +209,8 @@ export class MantraClient {
     query: string
     limit?: number
     min_score?: number
-    group_id?: string
-    feature_id?: string
+    domain_id?: string
+    aspect_id?: string
     tags?: string[]
     use_cache?: boolean
   }): Promise<{
@@ -221,8 +221,8 @@ export class MantraClient {
       statement: string
       rationale: string
       score: number
-      group_id: string
-      feature_id: string
+      domain_id: string
+      aspect_id: string
       version: string
       tags: string[]
       matched_fields: string[]
@@ -240,8 +240,8 @@ export class MantraClient {
         query: params.query,
         limit: params.limit || 10,
         min_score: params.min_score || 0.5,
-        group_id: params.group_id,
-        feature_id: params.feature_id,
+        domain_id: params.domain_id,
+        aspect_id: params.aspect_id,
         tags: params.tags,
         use_cache: params.use_cache !== false
       })
@@ -251,7 +251,7 @@ export class MantraClient {
   async checkAlignment(params: {
     statement: string
     rationale?: string
-    group_id?: string
+    domain_id?: string
     min_score?: number
   }): Promise<{
     status: string
@@ -261,8 +261,8 @@ export class MantraClient {
       statement: string
       rationale: string
       score: number
-      group_id: string
-      feature_id: string
+      domain_id: string
+      aspect_id: string
       version: string
       tags: string[]
     }>
@@ -272,8 +272,8 @@ export class MantraClient {
       statement: string
       rationale: string
       score: number
-      group_id: string
-      feature_id: string
+      domain_id: string
+      aspect_id: string
       version: string
       tags: string[]
     }>
@@ -283,8 +283,8 @@ export class MantraClient {
       statement: string
       rationale: string
       score: number
-      group_id: string
-      feature_id: string
+      domain_id: string
+      aspect_id: string
       version: string
       tags: string[]
     }>
@@ -297,7 +297,7 @@ export class MantraClient {
       body: JSON.stringify({
         statement: params.statement,
         rationale: params.rationale || '',
-        group_id: params.group_id,
+        domain_id: params.domain_id,
         min_score: params.min_score || 0.6
       })
     })
@@ -306,7 +306,7 @@ export class MantraClient {
   async rebuildSearchIndex(params?: {
     force?: boolean
     batch_size?: number
-    group_id?: string
+    domain_id?: string
   }): Promise<{
     synced_count: number
     skipped_count: number
@@ -320,7 +320,7 @@ export class MantraClient {
       body: JSON.stringify({
         force: params?.force || false,
         batch_size: params?.batch_size || 50,
-        group_id: params?.group_id
+        domain_id: params?.domain_id
       })
     })
   }

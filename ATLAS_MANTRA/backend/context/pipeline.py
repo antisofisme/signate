@@ -94,8 +94,8 @@ class ContextPipeline:
         task: str,
         code: Optional[str] = None,
         budget: int = 2000,
-        include_groups: Optional[List[str]] = None,
-        exclude_groups: Optional[List[str]] = None
+        include_domains: Optional[List[str]] = None,
+        exclude_domains: Optional[List[str]] = None
     ) -> Dict[str, Any]:
         """
         Assemble context for a task.
@@ -112,8 +112,8 @@ class ContextPipeline:
             task: Task description
             code: Optional code context
             budget: Token budget
-            include_groups: Only include these groups
-            exclude_groups: Exclude these groups
+            include_domains: Only include these domains
+            exclude_domains: Exclude these domains
 
         Returns:
             Assembled context dict
@@ -126,7 +126,7 @@ class ContextPipeline:
         if not self.repository:
             return self._empty_context(task_analysis, budget)
 
-        all_decisions = await self._fetch_decisions(include_groups, exclude_groups)
+        all_decisions = await self._fetch_decisions(include_domains, exclude_domains)
         logger.debug(f"Fetched {len(all_decisions)} decisions")
 
         # Stage 3: Relevance Ranking
@@ -208,8 +208,8 @@ class ContextPipeline:
 
     async def _fetch_decisions(
         self,
-        include_groups: Optional[List[str]],
-        exclude_groups: Optional[List[str]]
+        include_domains: Optional[List[str]],
+        exclude_domains: Optional[List[str]]
     ) -> List[Any]:
         """Fetch decisions from repository."""
         try:
@@ -218,11 +218,11 @@ class ContextPipeline:
 
             for sd in stored:
                 d = sd.decision
-                group = d.group_id.value if hasattr(d.group_id, 'value') else d.group_id
+                domain = d.domain_id.value if hasattr(d.domain_id, 'value') else d.domain_id
 
-                if include_groups and group not in include_groups:
+                if include_domains and domain not in include_domains:
                     continue
-                if exclude_groups and group in exclude_groups:
+                if exclude_domains and domain in exclude_domains:
                     continue
 
                 decisions.append(d)
@@ -269,8 +269,8 @@ class ContextPipeline:
                 score += 0.2 * (len(tech_matches) / max(len(tech), 1))
 
             # Domain alignment (10% weight)
-            feature = d.feature_id.value if hasattr(d.feature_id, 'value') else d.feature_id
-            if feature in domains:
+            aspect = d.aspect_id.value if hasattr(d.aspect_id, 'value') else d.aspect_id
+            if aspect in domains:
                 score += 0.1
 
             # Determine priority
@@ -454,8 +454,8 @@ class ContextAssembler:
         base = {
             "decision_id": decision.decision_id,
             "decision_code": decision.decision_code,
-            "group_id": decision.group_id.value if hasattr(decision.group_id, 'value') else decision.group_id,
-            "feature_id": decision.feature_id.value if hasattr(decision.feature_id, 'value') else decision.feature_id,
+            "domain_id": decision.domain_id.value if hasattr(decision.domain_id, 'value') else decision.domain_id,
+            "aspect_id": decision.aspect_id.value if hasattr(decision.aspect_id, 'value') else decision.aspect_id,
         }
 
         if level == DetailLevel.MICRO:

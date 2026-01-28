@@ -42,9 +42,32 @@ async def lifespan(app: FastAPI):
     print(f"  - Vector Store: {config.vector_store}")
     print(f"  - Cache: {config.cache}")
     print(f"  - Embedding: {config.embedding_service}")
+    print(f"  - Message Queue: {'enabled' if config.feature_rabbitmq_enabled else 'disabled'}")
+    print(f"  - Text Search: {'enabled' if config.feature_meilisearch_enabled else 'disabled'}")
+    print(f"  - Redis Enhanced: {'enabled' if config.feature_redis_enhanced_cache else 'disabled'}")
 
     # Initialize all services (repository, vector store, cache, embedding)
     await Container.initialize()
+
+    # Check service connection status
+    if config.feature_rabbitmq_enabled:
+        queue = Container.get_message_queue()
+        if queue:
+            try:
+                healthy = await queue.health_check()
+                print(f"  - RabbitMQ: {'connected' if healthy else 'disconnected'}")
+            except Exception:
+                print(f"  - RabbitMQ: connection failed")
+
+    if config.feature_meilisearch_enabled:
+        text_search = Container.get_text_search()
+        if text_search:
+            try:
+                healthy = await text_search.health_check()
+                print(f"  - Meilisearch: {'connected' if healthy else 'disconnected'}")
+            except Exception:
+                print(f"  - Meilisearch: connection failed")
+
     print(f"  - Container initialized")
 
     yield

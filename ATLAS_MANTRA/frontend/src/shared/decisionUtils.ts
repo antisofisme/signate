@@ -74,14 +74,23 @@ export function getDecisionCounts(allDecisions: Decision[]): {
 }
 
 /**
- * Get counts per group for current decisions only
+ * Get counts per domain for current decisions only
  */
-export function getCurrentCountsByGroup(allDecisions: Decision[]): Record<string, number> {
+export function getCurrentCountsByDomain(allDecisions: Decision[]): Record<string, number> {
   const currentDecisions = getCurrentDecisions(allDecisions)
   return currentDecisions.reduce((acc, d) => {
-    acc[d.group_id] = (acc[d.group_id] || 0) + 1
+    // Support both new (domain_id) and old (group_id) field names
+    const domainId = d.domain_id || (d as any).group_id
+    acc[domainId] = (acc[domainId] || 0) + 1
     return acc
   }, {} as Record<string, number>)
+}
+
+/**
+ * @deprecated Use getCurrentCountsByDomain instead
+ */
+export function getCurrentCountsByGroup(allDecisions: Decision[]): Record<string, number> {
+  return getCurrentCountsByDomain(allDecisions)
 }
 
 /**

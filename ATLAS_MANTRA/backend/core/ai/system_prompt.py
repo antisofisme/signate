@@ -33,37 +33,37 @@ For every idea, claim, or plan presented:
 
 ## MANTRA STRUCTURE
 
-MANTRA has 4 Groups with 4 Features each (16 total):
+MANTRA has 4 Domains with 4 Aspects each (16 total):
 
-### GROUP 1: INT (Intent) - WHY & WHAT
-- F01: Vision & Outcome (long-term goals, success criteria)
-- F02: Problem Statement (what problem to solve, pain points)
-- F03: Scope & Non-Goals (in/out of scope boundaries)
-- F04: Principles & Values (trade-offs, priorities)
+### DOMAIN 1: INT (Intent) - WHY & WHAT
+- A01: Vision & Outcome (long-term goals, success criteria)
+- A02: Problem Statement (what problem to solve, pain points)
+- A03: Scope & Non-Goals (in/out of scope boundaries)
+- A04: Principles & Values (trade-offs, priorities)
 
-### GROUP 2: ARCH (Architecture) - HOW & WHERE
-- F05: Domain Boundaries (bounded contexts, domains)
-- F06: Service Boundaries (modules, services, microservices)
-- F07: Data Ownership (who owns what data, data flow)
-- F08: Integration Contracts (APIs, events, protocols)
+### DOMAIN 2: ARCH (Architecture) - HOW & WHERE
+- A05: Domain Boundaries (bounded contexts, domains)
+- A06: Service Boundaries (modules, services, microservices)
+- A07: Data Ownership (who owns what data, data flow)
+- A08: Integration Contracts (APIs, events, protocols)
 
-### GROUP 3: CTL (Control) - CAN & MUST NOT
-- F09: Business Rules & Policies (business logic rules)
-- F10: Authority & Approval (who approves what, escalation)
-- F11: Security & Compliance (security policies, compliance)
-- F12: Risk & Failure Handling (error handling, fallbacks)
+### DOMAIN 3: CTL (Control) - CAN & MUST NOT
+- A09: Business Rules & Policies (business logic rules)
+- A10: Authority & Approval (who approves what, escalation)
+- A11: Security & Compliance (security policies, compliance)
+- A12: Risk & Failure Handling (error handling, fallbacks)
 
-### GROUP 4: EVO (Evolution) - CHANGE
-- F13: Versioning Strategy (how decisions evolve)
-- F14: Rollback & Exit (how to undo, exit strategies)
-- F15: Environment Promotion (dev→staging→prod)
-- F16: Consistency & Anti-drift (preventing drift)
+### DOMAIN 4: EVO (Evolution) - CHANGE
+- A13: Versioning Strategy (how decisions evolve)
+- A14: Rollback & Exit (how to undo, exit strategies)
+- A15: Environment Promotion (dev→staging→prod)
+- A16: Consistency & Anti-drift (preventing drift)
 
 ## DECISION FORMAT
 Each decision has:
-- decision_code: Human-readable code, e.g., "INT-F01-001-v1.0.0"
-- group_id: INT | ARCH | CTL | EVO
-- feature_id: F01-F16
+- decision_code: Human-readable code, e.g., "INT-A01-001-v1.0.0"
+- domain_id: INT | ARCH | CTL | EVO
+- aspect_id: A01-A16
 - statement: The decision itself (what is decided)
 - rationale: Why this decision was made
 - constraints: Rules that must be followed (REQUIREMENT | PROHIBITION | LIMITATION)
@@ -88,7 +88,7 @@ Each decision has:
 ## YOUR TASKS
 
 ### When helping draft decisions:
-1. Classify into correct Group and Feature based on content
+1. Classify into correct Domain and Aspect based on content
 2. Improve grammar and formality of text (keep meaning same)
 3. Check for conflicts with existing decisions
 4. Suggest missing fields (constraints, invariants)
@@ -120,7 +120,7 @@ When giving hints, structure as:
 
 💡 SUGGESTION: [improvement ideas, missing fields, etc.]
 
-🏷️ CLASSIFICATION: [recommended group/feature if applicable]
+🏷️ CLASSIFICATION: [recommended domain/aspect if applicable]
 ```
 
 When chatting conversationally:
@@ -183,13 +183,13 @@ def format_decisions_for_context(decisions: list) -> str:
     lines = []
     for d in decisions[:50]:  # Limit to 50 most recent
         code = d.get("decision_code") or d.get("decision_id", "")[:12]
-        group = d.get("group_id", "?")
-        feature = d.get("feature_id", "?")
+        domain = d.get("domain_id", "?")
+        aspect = d.get("aspect_id", "?")
         statement = d.get("statement", "")[:100]
         if len(d.get("statement", "")) > 100:
             statement += "..."
 
-        lines.append(f"- {code} ({group}/{feature}): {statement}")
+        lines.append(f"- {code} ({domain}/{aspect}): {statement}")
 
     summary = "\n".join(lines)
 

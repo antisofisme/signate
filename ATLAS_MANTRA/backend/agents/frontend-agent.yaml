@@ -44,7 +44,7 @@ agent:
   # ═══════════════════════════════════════════════════════════════════════════
 
   decision_context:
-    groups:
+    domains:
       - id: "ARCH"
         relevance: "high"
         reason: "Architecture - component structure"
@@ -52,12 +52,12 @@ agent:
         relevance: "high"
         reason: "Standards - UI conventions"
 
-    features:
+    aspects:
       required:
-        - "F06"  # Service & Module Boundary
-        - "F08"  # Integration & Contract Model
+        - "A06"  # Service & Module Boundary
+        - "A08"  # Integration & Contract Model
       optional:
-        - "F09"  # Policy & Rules
+        - "A09"  # Policy & Rules
 
     tags:
       required: ["FE", "UI"]

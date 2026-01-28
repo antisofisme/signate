@@ -17,8 +17,8 @@ import uuid
 
 from .schema import (
     Decision,
-    GroupId,
-    FeatureId,
+    DomainId,
+    AspectId,
     Scope,
     BlastRadius,
     Constraint,
@@ -129,22 +129,22 @@ class CompareMetadata:
     - compared_with: ID of the other decision in comparison
     - differences_count: Number of fields that differ
     - is_supersedes_chain: Whether decisions are in same supersedes chain
-    - common_group: Whether decisions share same group
-    - common_feature: Whether decisions share same feature
+    - common_domain: Whether decisions share same domain
+    - common_aspect: Whether decisions share same aspect
     """
     compared_with: str
     differences_count: int
     is_supersedes_chain: bool
-    common_group: bool
-    common_feature: bool
+    common_domain: bool
+    common_aspect: bool
 
     def to_dict(self) -> dict:
         return {
             "compared_with": self.compared_with,
             "differences_count": self.differences_count,
             "is_supersedes_chain": self.is_supersedes_chain,
-            "common_group": self.common_group,
-            "common_feature": self.common_feature,
+            "common_domain": self.common_domain,
+            "common_aspect": self.common_aspect,
             "_metadata_type": "CompareMetadata",
         }
 
@@ -251,8 +251,8 @@ class StoredDecision:
 
 
 def create_decision(
-    group_id: GroupId,
-    feature_id: FeatureId,
+    domain_id: DomainId,
+    aspect_id: AspectId,
     statement: str,
     rationale: str,
     scope: Scope,
@@ -276,8 +276,8 @@ def create_decision(
     """
     return Decision(
         decision_id=str(uuid.uuid4()),
-        group_id=group_id,
-        feature_id=feature_id,
+        domain_id=domain_id,
+        aspect_id=aspect_id,
         statement=statement,
         rationale=rationale,
         constraints=constraints or [],

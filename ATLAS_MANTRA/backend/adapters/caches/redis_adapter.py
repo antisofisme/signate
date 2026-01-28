@@ -182,3 +182,190 @@ class RedisCache(CacheProtocol):
             logger.info("Redis cache closed")
         except Exception as e:
             logger.error(f"Cache close error: {e}")
+
+    # =============================================================================
+    # Enhanced Cache Methods
+    # =============================================================================
+
+    async def get_or_set(
+        self,
+        key: str,
+        factory,
+        ttl: int = None
+    ) -> Any:
+        """
+        Get from cache or compute and store.
+
+        Args:
+            key: Cache key
+            factory: Async function to compute value if not cached
+            ttl: Time-to-live in seconds
+
+        Returns:
+            Cached or computed value
+        """
+        value = await self.get(key)
+        if value is not None:
+            return value
+
+        # Compute new value
+        value = await factory()
+        if value is not None:
+            await self.set(key, value, ttl)
+        return value
+
+    async def increment(self, key: str, amount: int = 1) -> int:
+        """
+        Increment a counter in cache.
+
+        Args:
+            key: Cache key
+            amount: Amount to increment by
+
+        Returns:
+            New value after increment
+        """
+        try:
+            return await self.client.incrby(self._key(key), amount)
+        except Exception as e:
+            logger.error(f"Cache increment error for {key}: {e}")
+            return 0
+
+    async def decrement(self, key: str, amount: int = 1) -> int:
+        """
+        Decrement a counter in cache.
+
+        Args:
+            key: Cache key
+            amount: Amount to decrement by
+
+        Returns:
+            New value after decrement
+        """
+        try:
+            return await self.client.decrby(self._key(key), amount)
+        except Exception as e:
+            logger.error(f"Cache decrement error for {key}: {e}")
+            return 0
+
+    async def get_ttl(self, key: str) -> int:
+        """
+        Get remaining TTL for a key.
+
+        Args:
+            key: Cache key
+
+        Returns:
+            Remaining TTL in seconds (-1 if no TTL, -2 if key doesn't exist)
+        """
+        try:
+            return await self.client.ttl(self._key(key))
+        except Exception as e:
+            logger.error(f"Cache get_ttl error for {key}: {e}")
+            return -2
+
+    async def extend_ttl(self, key: str, ttl: int) -> bool:
+        """
+        Extend TTL for an existing key.
+
+        Args:
+            key: Cache key
+            ttl: New TTL in seconds
+
+        Returns:
+            True if successful
+        """
+        try:
+            return await self.client.expire(self._key(key), ttl)
+        except Exception as e:
+            logger.error(f"Cache extend_ttl error for {key}: {e}")
+            return False
+
+    async def add_to_set(self, key: str, *values: str) -> int:
+        """
+        Add values to a Redis set.
+
+        Args:
+            key: Set key
+            values: Values to add
+
+        Returns:
+            Number of new members added
+        """
+        try:
+            return await self.client.sadd(self._key(key), *values)
+        except Exception as e:
+            logger.error(f"Cache add_to_set error for {key}: {e}")
+            return 0
+
+    async def get_set_members(self, key: str) -> set:
+        """
+        Get all members of a Redis set.
+
+        Args:
+            key: Set key
+
+        Returns:
+            Set of members
+        """
+        try:
+            return await self.client.smembers(self._key(key))
+        except Exception as e:
+            logger.error(f"Cache get_set_members error for {key}: {e}")
+            return set()
+
+    async def is_member(self, key: str, value: str) -> bool:
+        """
+        Check if value is member of a set.
+
+        Args:
+            key: Set key
+            value: Value to check
+
+        Returns:
+            True if member
+        """
+        try:
+            return await self.client.sismember(self._key(key), value)
+        except Exception as e:
+            logger.error(f"Cache is_member error for {key}: {e}")
+            return False
+
+    async def health_check(self) -> bool:
+        """
+        Check if Redis is healthy.
+
+        Returns:
+            True if Redis is responding
+        """
+        try:
+            await self.client.ping()
+            return True
+        except Exception:
+            return False
+
+    async def get_stats(self) -> dict:
+        """
+        Get cache statistics.
+
+        Returns:
+            Dict with cache stats (key count, memory, etc.)
+        """
+        try:
+            info = await self.client.info("memory")
+            keys = await self.client.dbsize()
+
+            return {
+                "connected": True,
+                "key_count": keys,
+                "used_memory": info.get("used_memory_human", "unknown"),
+                "used_memory_peak": info.get("used_memory_peak_human", "unknown"),
+                "prefix": self.prefix,
+                "default_ttl": self.default_ttl,
+            }
+        except Exception as e:
+            logger.error(f"Cache get_stats error: {e}")
+            return {
+                "connected": False,
+                "error": str(e),
+            }

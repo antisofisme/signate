@@ -4,7 +4,7 @@ Search Decisions Use Case - Semantic search for MANTRA decisions.
 This use case implements high-performance semantic search using:
 - Vector embeddings for semantic similarity
 - Caching for fast repeated queries
-- Filtering by group, feature, tags
+- Filtering by domain, aspect, tags
 
 Usage:
     use_case = SearchDecisionsUseCase(vector_store, cache, embedding, repository)
@@ -36,8 +36,8 @@ class SearchDecisionsInput:
     query: str
     limit: int = 10
     min_score: float = 0.5
-    group_id: Optional[str] = None
-    feature_id: Optional[str] = None
+    domain_id: Optional[str] = None
+    aspect_id: Optional[str] = None
     tags: Optional[List[str]] = None
     use_cache: bool = True
 
@@ -70,7 +70,7 @@ class SearchDecisionsUseCase:
 
     def _cache_key(self, input: SearchDecisionsInput) -> str:
         """Generate cache key from search input."""
-        key_data = f"{input.query}:{input.limit}:{input.min_score}:{input.group_id}:{input.feature_id}:{input.tags}"
+        key_data = f"{input.query}:{input.limit}:{input.min_score}:{input.domain_id}:{input.aspect_id}:{input.tags}"
         hash_value = hashlib.sha256(key_data.encode()).hexdigest()[:16]
         return f"search:{hash_value}"
 
@@ -108,10 +108,10 @@ class SearchDecisionsUseCase:
 
             # 3. Build filters
             filters = {}
-            if input.group_id:
-                filters["group_id"] = input.group_id
-            if input.feature_id:
-                filters["feature_id"] = input.feature_id
+            if input.domain_id:
+                filters["domain_id"] = input.domain_id
+            if input.aspect_id:
+                filters["aspect_id"] = input.aspect_id
             if input.tags:
                 filters["tags"] = input.tags
 
@@ -135,8 +135,8 @@ class SearchDecisionsUseCase:
                         statement=decision.statement,
                         rationale=decision.rationale,
                         score=vr.score,
-                        group_id=decision.group_id.value if hasattr(decision.group_id, 'value') else str(decision.group_id),
-                        feature_id=decision.feature_id.value if hasattr(decision.feature_id, 'value') else str(decision.feature_id),
+                        domain_id=decision.domain_id.value if hasattr(decision.domain_id, 'value') else str(decision.domain_id),
+                        aspect_id=decision.aspect_id.value if hasattr(decision.aspect_id, 'value') else str(decision.aspect_id),
                         version=decision.version,
                         tags=[t.value if hasattr(t, 'value') else str(t) for t in (decision.tags or [])],
                     ))
@@ -149,8 +149,8 @@ class SearchDecisionsUseCase:
                         statement=payload.get("statement", ""),
                         rationale=payload.get("rationale", ""),
                         score=vr.score,
-                        group_id=payload.get("group_id", ""),
-                        feature_id=payload.get("feature_id", ""),
+                        domain_id=payload.get("domain_id", ""),
+                        aspect_id=payload.get("aspect_id", ""),
                         version=payload.get("version", "1.0.0"),
                         tags=payload.get("tags", []),
                     ))
@@ -201,8 +201,8 @@ async def search_decisions(
     repository: DecisionRepository,
     limit: int = 10,
     min_score: float = 0.5,
-    group_id: Optional[str] = None,
-    feature_id: Optional[str] = None,
+    domain_id: Optional[str] = None,
+    aspect_id: Optional[str] = None,
     tags: Optional[List[str]] = None,
     use_cache: bool = True,
 ) -> SemanticSearchResult:
@@ -217,8 +217,8 @@ async def search_decisions(
         repository: Decision repository
         limit: Maximum results
         min_score: Minimum similarity score
-        group_id: Filter by group
-        feature_id: Filter by feature
+        domain_id: Filter by domain
+        aspect_id: Filter by aspect
         tags: Filter by tags
         use_cache: Whether to use caching
 
@@ -235,8 +235,8 @@ async def search_decisions(
         query=query,
         limit=limit,
         min_score=min_score,
-        group_id=group_id,
-        feature_id=feature_id,
+        domain_id=domain_id,
+        aspect_id=aspect_id,
         tags=tags,
         use_cache=use_cache,
     ))

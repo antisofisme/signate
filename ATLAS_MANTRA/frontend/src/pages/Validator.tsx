@@ -20,10 +20,10 @@ import {
 } from '../shared/api'
 import {
   TAG_COLORS,
-  GROUPS,
-  FEATURES,
-  GROUP_LABELS,
-  FEATURE_LABELS,
+  DOMAINS,
+  ASPECTS,
+  DOMAIN_LABELS,
+  ASPECT_LABELS,
   SCOPE_OPTIONS,
   BLAST_RADIUS_OPTIONS,
   AREA_TAGS,
@@ -33,8 +33,8 @@ import {
 // Sample decision per MANTRA-SCHEMA-001 v2
 const EXAMPLE_DECISION = {
   decision_id: "550e8400-e29b-41d4-a716-446655440000",
-  group_id: "INT",
-  feature_id: "F01",
+  domain_id: "INT",
+  aspect_id: "A01",
   statement: "All user authentication must use multi-factor authentication",
   rationale: "Security requirement for enterprise systems. MFA reduces unauthorized access by 99.9% according to Microsoft security research.",
   constraints: [
@@ -76,8 +76,8 @@ type InputMode = 'form' | 'json'
 
 // Form state interface
 interface FormState {
-  group_id: string
-  feature_id: string
+  domain_id: string
+  aspect_id: string
   statement: string
   rationale: string
   scope: string
@@ -90,8 +90,8 @@ interface FormState {
 }
 
 const INITIAL_FORM_STATE: FormState = {
-  group_id: 'INT',
-  feature_id: 'F01',
+  domain_id: 'INT',
+  aspect_id: 'A01',
   statement: '',
   rationale: '',
   scope: 'APPLICATION',
@@ -130,8 +130,8 @@ export default function Validator() {
   // Build record from form state
   const buildRecordFromForm = useCallback((): object => {
     return {
-      group_id: formState.group_id,
-      feature_id: formState.feature_id,
+      domain_id: formState.domain_id,
+      aspect_id: formState.aspect_id,
       statement: formState.statement,
       rationale: formState.rationale,
       scope: formState.scope,
@@ -254,12 +254,12 @@ export default function Validator() {
         classification_mode: 'SERVER'  // UI = SERVER, MCP = DELEGATED
       })
 
-      if (response.success && response.group_id && response.feature_id) {
+      if (response.success && response.domain_id && response.aspect_id) {
         // Server classified successfully
         setFormState(prev => ({
           ...prev,
-          group_id: response.group_id!,
-          feature_id: response.feature_id!
+          domain_id: response.domain_id!,
+          aspect_id: response.aspect_id!
         }))
       } else if (response.classification_required && response.classification_context) {
         // Delegated mode - show context to user
@@ -283,7 +283,7 @@ export default function Validator() {
 
   const handleSubmitClassification = async (result: ClassificationResult) => {
     // Validate the classification
-    const validation = classificationApi.validate(result.group_id, result.feature_id)
+    const validation = classificationApi.validate(result.domain_id, result.aspect_id)
     if (!validation.valid) {
       alert(validation.error)
       return
@@ -292,8 +292,8 @@ export default function Validator() {
     // Apply classification to form
     setFormState(prev => ({
       ...prev,
-      group_id: result.group_id,
-      feature_id: result.feature_id
+      domain_id: result.domain_id,
+      aspect_id: result.aspect_id
     }))
 
     setShowClassificationPanel(false)
@@ -799,10 +799,10 @@ function FormInput({
 }) {
   return (
     <div className="space-y-4 max-h-80 overflow-y-auto pr-2">
-      {/* Group & Feature with AI Classify button */}
+      {/* Domain & Aspect with AI Classify button */}
       <div>
         <div className="flex items-center justify-between mb-1">
-          <label className="block text-xs font-medium text-gray-700">Group & Feature</label>
+          <label className="block text-xs font-medium text-gray-700">Domain & Aspect</label>
           {onRequestClassification && (
             <button
               onClick={onRequestClassification}
@@ -815,7 +815,7 @@ function FormInput({
                   ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
                   : 'bg-purple-100 text-purple-600 hover:bg-purple-200'
               )}
-              title="AI will suggest Group/Feature based on your statement"
+              title="AI will suggest Domain/Aspect based on your statement"
             >
               {isClassifying ? (
                 <>
@@ -832,28 +832,28 @@ function FormInput({
         </div>
         <div className="grid grid-cols-2 gap-3">
           <select
-            value={formState.group_id}
+            value={formState.domain_id}
             onChange={(e) => {
-              onFieldChange('group_id', e.target.value)
-              // Auto-select first feature of new group
-              const features = FEATURES[e.target.value] || []
-              if (features.length > 0) {
-                onFieldChange('feature_id', features[0])
+              onFieldChange('domain_id', e.target.value)
+              // Auto-select first aspect of new domain
+              const aspects = ASPECTS[e.target.value] || []
+              if (aspects.length > 0) {
+                onFieldChange('aspect_id', aspects[0])
               }
             }}
             className="w-full px-3 py-2 text-sm border rounded focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
           >
-            {GROUPS.map(g => (
-              <option key={g} value={g}>{g} - {GROUP_LABELS[g]}</option>
+            {DOMAINS.map(d => (
+              <option key={d} value={d}>{d} - {DOMAIN_LABELS[d]}</option>
             ))}
           </select>
           <select
-            value={formState.feature_id}
-            onChange={(e) => onFieldChange('feature_id', e.target.value)}
+            value={formState.aspect_id}
+            onChange={(e) => onFieldChange('aspect_id', e.target.value)}
             className="w-full px-3 py-2 text-sm border rounded focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
           >
-            {(FEATURES[formState.group_id] || []).map(f => (
-              <option key={f} value={f}>{f} - {FEATURE_LABELS[f]}</option>
+            {(ASPECTS[formState.domain_id] || []).map(a => (
+              <option key={a} value={a}>{a} - {ASPECT_LABELS[a]}</option>
             ))}
           </select>
         </div>
@@ -1398,19 +1398,19 @@ function ClassificationPanel({
   onSubmit: (result: ClassificationResult) => void
   onCancel: () => void
 }) {
-  const [selectedGroup, setSelectedGroup] = useState('')
-  const [selectedFeature, setSelectedFeature] = useState('')
+  const [selectedDomain, setSelectedDomain] = useState('')
+  const [selectedAspect, setSelectedAspect] = useState('')
   const [confidence, setConfidence] = useState(0.8)
   const [showPrompt, setShowPrompt] = useState(false)
 
   const handleSubmit = () => {
-    if (!selectedGroup || !selectedFeature) {
-      alert('Please select both Group and Feature')
+    if (!selectedDomain || !selectedAspect) {
+      alert('Please select both Domain and Aspect')
       return
     }
     onSubmit({
-      group_id: selectedGroup,
-      feature_id: selectedFeature,
+      domain_id: selectedDomain,
+      aspect_id: selectedAspect,
       confidence
     })
   }
@@ -1484,32 +1484,32 @@ function ClassificationPanel({
       {/* Input Section */}
       <div className="grid grid-cols-3 gap-3 mb-3">
         <div>
-          <label className="block text-xs font-medium text-gray-700 mb-1">Group</label>
+          <label className="block text-xs font-medium text-gray-700 mb-1">Domain</label>
           <select
-            value={selectedGroup}
+            value={selectedDomain}
             onChange={(e) => {
-              setSelectedGroup(e.target.value)
-              setSelectedFeature('')
+              setSelectedDomain(e.target.value)
+              setSelectedAspect('')
             }}
             className="w-full px-2 py-1.5 text-sm border rounded focus:ring-1 focus:ring-purple-500"
           >
             <option value="">Select...</option>
-            {GROUPS.map(g => (
-              <option key={g} value={g}>{g}</option>
+            {DOMAINS.map(d => (
+              <option key={d} value={d}>{d}</option>
             ))}
           </select>
         </div>
         <div>
-          <label className="block text-xs font-medium text-gray-700 mb-1">Feature</label>
+          <label className="block text-xs font-medium text-gray-700 mb-1">Aspect</label>
           <select
-            value={selectedFeature}
-            onChange={(e) => setSelectedFeature(e.target.value)}
-            disabled={!selectedGroup}
+            value={selectedAspect}
+            onChange={(e) => setSelectedAspect(e.target.value)}
+            disabled={!selectedDomain}
             className="w-full px-2 py-1.5 text-sm border rounded focus:ring-1 focus:ring-purple-500 disabled:bg-gray-100"
           >
             <option value="">Select...</option>
-            {(FEATURES[selectedGroup] || []).map(f => (
-              <option key={f} value={f}>{f} - {FEATURE_LABELS[f]}</option>
+            {(ASPECTS[selectedDomain] || []).map(a => (
+              <option key={a} value={a}>{a} - {ASPECT_LABELS[a]}</option>
             ))}
           </select>
         </div>
@@ -1531,7 +1531,7 @@ function ClassificationPanel({
       <div className="flex gap-2">
         <button
           onClick={handleSubmit}
-          disabled={!selectedGroup || !selectedFeature}
+          disabled={!selectedDomain || !selectedAspect}
           className="flex-1 px-3 py-2 bg-purple-600 text-white text-sm rounded hover:bg-purple-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
         >
           ✅ Apply Classification

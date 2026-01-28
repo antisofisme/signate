@@ -33,7 +33,7 @@ class CheckAlignmentInput:
     """Input for alignment check."""
     statement: str
     rationale: str = ""
-    group_id: Optional[str] = None  # Scope check to specific group
+    domain_id: Optional[str] = None  # Scope check to specific domain
     min_score: float = 0.6  # Threshold for related decisions
 
 
@@ -190,8 +190,8 @@ class CheckAlignmentUseCase:
 
             # 3. Build filters
             filters = {}
-            if input.group_id:
-                filters["group_id"] = input.group_id
+            if input.domain_id:
+                filters["domain_id"] = input.domain_id
 
             # 4. Search for similar decisions
             vector_results = await self.vector_store.search(
@@ -212,8 +212,8 @@ class CheckAlignmentUseCase:
                         statement=decision.statement,
                         rationale=decision.rationale,
                         score=vr.score,
-                        group_id=decision.group_id.value if hasattr(decision.group_id, 'value') else str(decision.group_id),
-                        feature_id=decision.feature_id.value if hasattr(decision.feature_id, 'value') else str(decision.feature_id),
+                        domain_id=decision.domain_id.value if hasattr(decision.domain_id, 'value') else str(decision.domain_id),
+                        aspect_id=decision.aspect_id.value if hasattr(decision.aspect_id, 'value') else str(decision.aspect_id),
                         version=decision.version,
                         tags=[t.value if hasattr(t, 'value') else str(t) for t in (decision.tags or [])],
                     ))
@@ -225,8 +225,8 @@ class CheckAlignmentUseCase:
                         statement=payload.get("statement", ""),
                         rationale=payload.get("rationale", ""),
                         score=vr.score,
-                        group_id=payload.get("group_id", ""),
-                        feature_id=payload.get("feature_id", ""),
+                        domain_id=payload.get("domain_id", ""),
+                        aspect_id=payload.get("aspect_id", ""),
                         version=payload.get("version", "1.0.0"),
                         tags=payload.get("tags", []),
                     ))
@@ -283,7 +283,7 @@ async def check_alignment(
     embedding_service: EmbeddingProtocol,
     repository: DecisionRepository,
     rationale: str = "",
-    group_id: Optional[str] = None,
+    domain_id: Optional[str] = None,
     min_score: float = 0.6,
 ) -> AlignmentCheckResult:
     """
@@ -296,7 +296,7 @@ async def check_alignment(
         embedding_service: Embedding service implementation
         repository: Decision repository
         rationale: Proposed rationale
-        group_id: Scope to specific group
+        domain_id: Scope to specific domain
         min_score: Minimum similarity threshold
 
     Returns:
@@ -311,6 +311,6 @@ async def check_alignment(
     return await use_case.execute(CheckAlignmentInput(
         statement=statement,
         rationale=rationale,
-        group_id=group_id,
+        domain_id=domain_id,
         min_score=min_score,
     ))

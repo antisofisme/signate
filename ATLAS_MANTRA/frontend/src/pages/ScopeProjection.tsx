@@ -19,13 +19,13 @@ import { getCurrentDecisions, buildSupersededSet, getDecisionCounts } from '../s
 
 interface Decision {
   decision_id: string
-  decision_code: string | null  // Human-readable code: INT-F01-001-v1.0.0
+  decision_code: string | null  // Human-readable code: INT-A01-001-v1.0.0
   version: string
   statement: string
   scope: string
   blast_radius: string
-  group_id: string
-  feature_id: string
+  domain_id: string
+  aspect_id: string
   related_decisions: string[]
   tags: string[]
   tech_stack: string[]
@@ -114,13 +114,13 @@ export default function ScopeProjection() {
     historicalByScope[cat] = historicalInCategory.length
   })
 
-  // Cross-group references (only from current decisions)
-  const crossGroupRefs: { from: Decision; to: string }[] = []
+  // Cross-domain references (only from current decisions)
+  const crossDomainRefs: { from: Decision; to: string }[] = []
   currentDecisions.forEach(decision => {
     decision.related_decisions?.forEach(relId => {
       const related = allDecisions.find(d => d.decision_id === relId)
-      if (related && related.group_id !== decision.group_id) {
-        crossGroupRefs.push({ from: decision, to: relId })
+      if (related && related.domain_id !== decision.domain_id) {
+        crossDomainRefs.push({ from: decision, to: relId })
       }
     })
   })
@@ -198,7 +198,7 @@ export default function ScopeProjection() {
                 <th className="px-3 py-2 text-left text-gray-500 font-medium">Decision</th>
                 <th className="px-3 py-2 text-left text-gray-500 font-medium">Technical Areas</th>
                 <th className="px-3 py-2 text-left text-gray-500 font-medium">Impact Level</th>
-                <th className="px-3 py-2 text-left text-gray-500 font-medium">Group/Feature</th>
+                <th className="px-3 py-2 text-left text-gray-500 font-medium">Domain/Aspect</th>
               </tr>
             </thead>
             <tbody>
@@ -240,7 +240,7 @@ export default function ScopeProjection() {
                     </div>
                   </td>
                   <td className="px-3 py-2 text-gray-500 text-xs">
-                    G{decision.group_id.split('-')[1]}/{decision.feature_id}
+                    {decision.domain_id}/{decision.aspect_id}
                   </td>
                 </tr>
               ))}
@@ -249,12 +249,12 @@ export default function ScopeProjection() {
         </div>
       </div>
 
-      {/* Cross-Group References */}
+      {/* Cross-Domain References */}
       <div className="bg-white rounded-lg shadow-sm border p-6">
-        <h3 className="font-semibold text-gray-900 mb-4">Cross-Group References</h3>
-        {crossGroupRefs.length > 0 ? (
+        <h3 className="font-semibold text-gray-900 mb-4">Cross-Domain References</h3>
+        {crossDomainRefs.length > 0 ? (
           <div className="space-y-2">
-            {crossGroupRefs.map((ref, index) => {
+            {crossDomainRefs.map((ref, index) => {
               const toDecision = allDecisions.find(d => d.decision_id === ref.to)
               return (
                 <div key={index} className="flex items-center gap-2 text-sm">
@@ -264,7 +264,7 @@ export default function ScopeProjection() {
                   >
                     {ref.from.decision_code || ref.from.decision_id.slice(0, 8)}
                   </Link>
-                  <span className="text-gray-500">(G{ref.from.group_id.split('-')[1]})</span>
+                  <span className="text-gray-500">({ref.from.domain_id})</span>
                   <span className="text-gray-400">→</span>
                   <Link
                     to={`/decisions/${ref.to}`}
@@ -277,7 +277,7 @@ export default function ScopeProjection() {
             })}
           </div>
         ) : (
-          <p className="text-gray-500 text-sm">No cross-group references found</p>
+          <p className="text-gray-500 text-sm">No cross-domain references found</p>
         )}
       </div>
 

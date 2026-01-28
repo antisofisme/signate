@@ -1,55 +1,55 @@
 /**
  * ATLAS_MANTRA Constants
- * Per MANTRA-LAW-001 §3 - The Four Decision Groups
+ * Per MANTRA-LAW-001 §3 - The Four Decision Domains
  *
  * ═══════════════════════════════════════════════════════════════════════════
- * GROUP MAPPING (Abbreviated Code → Law Reference)
+ * DOMAIN MAPPING (Abbreviated Code → Law Reference)
  * ═══════════════════════════════════════════════════════════════════════════
  *
- * | Code | Law Reference | Full Name                  | Scope          |
- * |------|---------------|----------------------------|----------------|
- * | INT  | GROUP-1, §3.2 | Intent & Direction         | WHY / WHAT     |
- * | ARCH | GROUP-2, §3.3 | Architecture & Boundaries  | HOW / WHERE    |
- * | CTL  | GROUP-3, §3.4 | Control, Policy & Risk     | CAN / MUST NOT |
- * | EVO  | GROUP-4, §3.5 | Execution & Evolution      | CHANGE SAFELY  |
+ * | Code | Law Reference   | Full Name                  | Scope          |
+ * |------|-----------------|----------------------------|----------------|
+ * | INT  | DOMAIN-1, §3.2  | Intent & Direction         | WHY / WHAT     |
+ * | ARCH | DOMAIN-2, §3.3  | Architecture & Boundaries  | HOW / WHERE    |
+ * | CTL  | DOMAIN-3, §3.4  | Control, Policy & Risk     | CAN / MUST NOT |
+ * | EVO  | DOMAIN-4, §3.5  | Execution & Evolution      | CHANGE SAFELY  |
  *
  * ═══════════════════════════════════════════════════════════════════════════
- * FEATURE MAPPING (4 Features per Group)
+ * ASPECT MAPPING (4 Aspects per Domain)
  * ═══════════════════════════════════════════════════════════════════════════
  *
- * GROUP-1 (INT):  F01, F02, F03, F04
- * GROUP-2 (ARCH): F05, F06, F07, F08
- * GROUP-3 (CTL):  F09, F10, F11, F12
- * GROUP-4 (EVO):  F13, F14, F15, F16
+ * DOMAIN-1 (INT):  A01, A02, A03, A04
+ * DOMAIN-2 (ARCH): A05, A06, A07, A08
+ * DOMAIN-3 (CTL):  A09, A10, A11, A12
+ * DOMAIN-4 (EVO):  A13, A14, A15, A16
  *
- * Total: 4 Groups × 4 Features = 16 Decision Cells
+ * Total: 4 Domains × 4 Aspects = 16 Decision Cells
  */
 
-export const GROUPS = ['INT', 'ARCH', 'CTL', 'EVO'] as const
+export const DOMAINS = ['INT', 'ARCH', 'CTL', 'EVO'] as const
 
 /**
- * Group to Law Reference Mapping
+ * Domain to Law Reference Mapping
  * Per MANTRA-LAW-001
  */
-export const GROUP_LAW_REFERENCES: Record<string, string> = {
-  'INT': 'GROUP-1, §3.2',
-  'ARCH': 'GROUP-2, §3.3',
-  'CTL': 'GROUP-3, §3.4',
-  'EVO': 'GROUP-4, §3.5',
+export const DOMAIN_LAW_REFERENCES: Record<string, string> = {
+  'INT': 'DOMAIN-1, §3.2',
+  'ARCH': 'DOMAIN-2, §3.3',
+  'CTL': 'DOMAIN-3, §3.4',
+  'EVO': 'DOMAIN-4, §3.5',
 }
 
-export const FEATURES: Record<string, readonly string[]> = {
-  'INT': ['F01', 'F02', 'F03', 'F04'],
-  'ARCH': ['F05', 'F06', 'F07', 'F08'],
-  'CTL': ['F09', 'F10', 'F11', 'F12'],
-  'EVO': ['F13', 'F14', 'F15', 'F16'],
+export const ASPECTS: Record<string, readonly string[]> = {
+  'INT': ['A01', 'A02', 'A03', 'A04'],
+  'ARCH': ['A05', 'A06', 'A07', 'A08'],
+  'CTL': ['A09', 'A10', 'A11', 'A12'],
+  'EVO': ['A13', 'A14', 'A15', 'A16'],
 } as const
 
 /**
- * Group Labels
+ * Domain Labels
  * Per MANTRA-LAW-001 §3.2-§3.5
  */
-export const GROUP_LABELS: Record<string, string> = {
+export const DOMAIN_LABELS: Record<string, string> = {
   'INT': 'Intent & Direction',
   'ARCH': 'Architecture & Boundaries',
   'CTL': 'Control, Policy & Risk',
@@ -57,10 +57,10 @@ export const GROUP_LABELS: Record<string, string> = {
 }
 
 /**
- * Group Colors (hex)
+ * Domain Colors (hex)
  * For graph and matrix visualizations
  */
-export const GROUP_COLORS: Record<string, string> = {
+export const DOMAIN_COLORS: Record<string, string> = {
   'INT': '#2563EB',   // Blue - Intent & Direction
   'ARCH': '#7C3AED',  // Purple - Architecture & Boundaries
   'CTL': '#DC2626',   // Red - Control, Policy & Risk
@@ -68,10 +68,32 @@ export const GROUP_COLORS: Record<string, string> = {
 }
 
 /**
- * Group Scopes
+ * Domain Tailwind Colors
+ * For consistent styling across pages (bg, text, border classes)
+ * Matches DOMAIN_COLORS hex values
+ */
+export const DOMAIN_TAILWIND_COLORS: Record<string, { bg: string; text: string; border: string }> = {
+  'INT': { bg: 'bg-blue-50', text: 'text-blue-700', border: 'border-blue-200' },
+  'ARCH': { bg: 'bg-purple-50', text: 'text-purple-700', border: 'border-purple-200' },
+  'CTL': { bg: 'bg-red-50', text: 'text-red-700', border: 'border-red-200' },
+  'EVO': { bg: 'bg-green-50', text: 'text-green-700', border: 'border-green-200' },
+}
+
+/**
+ * Domain Tailwind Border+Bg Combined (for simpler usage)
+ */
+export const DOMAIN_TAILWIND_COMBINED: Record<string, string> = {
+  'INT': 'border-blue-200 bg-blue-50',
+  'ARCH': 'border-purple-200 bg-purple-50',
+  'CTL': 'border-red-200 bg-red-50',
+  'EVO': 'border-green-200 bg-green-50',
+}
+
+/**
+ * Domain Scopes
  * Per MANTRA-LAW-001 §3.2-§3.5
  */
-export const GROUP_SCOPES: Record<string, string> = {
+export const DOMAIN_SCOPES: Record<string, string> = {
   'INT': 'WHY / WHAT',
   'ARCH': 'HOW / WHERE',
   'CTL': 'CAN / MUST NOT',
@@ -79,51 +101,85 @@ export const GROUP_SCOPES: Record<string, string> = {
 }
 
 /**
- * Feature Labels
+ * Aspect Labels
  * Per MANTRA-LAW-001 §3.2-§3.5
  */
-export const FEATURE_LABELS: Record<string, string> = {
+export const ASPECT_LABELS: Record<string, string> = {
   // INT: Intent & Direction
-  'F01': 'Vision & Outcome',
-  'F02': 'Problem Statement',
-  'F03': 'Scope & Non-Goals',
-  'F04': 'Principles & Values',
+  'A01': 'Vision & Outcome',
+  'A02': 'Problem Statement',
+  'A03': 'Scope & Non-Goals',
+  'A04': 'Principles & Values',
   // ARCH: Architecture & Boundaries
-  'F05': 'Domain & Bounded Context',
-  'F06': 'Service & Module Boundary',
-  'F07': 'Data Ownership & Sovereignty',
-  'F08': 'Integration & Contract Model',
+  'A05': 'Domain & Bounded Context',
+  'A06': 'Service & Module Boundary',
+  'A07': 'Data Ownership & Sovereignty',
+  'A08': 'Integration & Contract Model',
   // CTL: Control, Policy & Risk
-  'F09': 'Policy & Rules',
-  'F10': 'Approval & Authority Model',
-  'F11': 'Security & Compliance Posture',
-  'F12': 'Risk & Blast Radius',
+  'A09': 'Policy & Rules',
+  'A10': 'Approval & Authority Model',
+  'A11': 'Security & Compliance Posture',
+  'A12': 'Risk & Blast Radius',
   // EVO: Execution & Evolution
-  'F13': 'Decision Lifecycle',
-  'F14': 'Reversibility & Exit Strategy',
-  'F15': 'Environment & Promotion Rules',
-  'F16': 'Anti-Drift & Consistency',
+  'A13': 'Decision Lifecycle',
+  'A14': 'Reversibility & Exit Strategy',
+  'A15': 'Environment & Promotion Rules',
+  'A16': 'Anti-Drift & Consistency',
 }
 
 /**
- * Get feature label with fallback
+ * Aspect Icons (emoji-based for simplicity)
+ * Per MANTRA-LAW-001 §3.2-§3.5
  */
-export function getFeatureLabel(featureId: string): string {
-  return FEATURE_LABELS[featureId] || featureId
+export const ASPECT_ICONS: Record<string, string> = {
+  // INT: Intent & Direction (Blue domain)
+  'A01': '🎯',  // Vision & Outcome - Target
+  'A02': '❓',  // Problem Statement - Question
+  'A03': '📐',  // Scope & Non-Goals - Ruler/Boundary
+  'A04': '💎',  // Principles & Values - Gem/Value
+  // ARCH: Architecture & Boundaries (Green domain)
+  'A05': '🏗️',  // Domain & Bounded Context - Building
+  'A06': '📦',  // Service & Module Boundary - Package
+  'A07': '🗄️',  // Data Ownership & Sovereignty - Cabinet/Storage
+  'A08': '🔗',  // Integration & Contract Model - Link
+  // CTL: Control, Policy & Risk (Orange domain)
+  'A09': '📋',  // Policy & Rules - Clipboard
+  'A10': '👥',  // Approval & Authority Model - People
+  'A11': '🛡️',  // Security & Compliance Posture - Shield
+  'A12': '⚠️',  // Risk & Blast Radius - Warning
+  // EVO: Execution & Evolution (Purple domain)
+  'A13': '🔄',  // Decision Lifecycle - Cycle
+  'A14': '↩️',  // Reversibility & Exit Strategy - Return
+  'A15': '🚀',  // Environment & Promotion Rules - Rocket
+  'A16': '📏',  // Anti-Drift & Consistency - Ruler
 }
 
 /**
- * Get group label with fallback
+ * Get aspect icon with fallback
  */
-export function getGroupLabel(groupId: string): string {
-  return GROUP_LABELS[groupId] || groupId
+export function getAspectIcon(aspectId: string): string {
+  return ASPECT_ICONS[aspectId] || '📄'
 }
 
 /**
- * Get group scope with fallback
+ * Get aspect label with fallback
  */
-export function getGroupScope(groupId: string): string {
-  return GROUP_SCOPES[groupId] || ''
+export function getAspectLabel(aspectId: string): string {
+  return ASPECT_LABELS[aspectId] || aspectId
+}
+
+/**
+ * Get domain label with fallback
+ */
+export function getDomainLabel(domainId: string): string {
+  return DOMAIN_LABELS[domainId] || domainId
+}
+
+/**
+ * Get domain scope with fallback
+ */
+export function getDomainScope(domainId: string): string {
+  return DOMAIN_SCOPES[domainId] || ''
 }
 
 /**
@@ -131,7 +187,7 @@ export function getGroupScope(groupId: string): string {
  * For categorizing decisions by affected technical area
  *
  * NOTE: ARCH here refers to "Architecture/Design Pattern" technical area,
- * NOT to be confused with ARCH decision group (GROUP-2: Architecture & Boundaries)
+ * NOT to be confused with ARCH decision domain (DOMAIN-2: Architecture & Boundaries)
  *
  * 12 Technical Areas:
  * - Core Development: FE, BE, DB, API
@@ -374,3 +430,32 @@ export const RISK_LEVEL_COLORS: Record<string, string> = {
 export const BLAST_RADIUS_OPTIONS = ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'] as const
 
 export const SCOPE_OPTIONS = ['ORGANIZATION', 'DOMAIN', 'APPLICATION'] as const
+
+// =============================================================================
+// Backwards-Compatible Aliases (DEPRECATED - use DOMAINS/ASPECTS instead)
+// These aliases maintain compatibility while transitioning terminology
+// =============================================================================
+
+/** @deprecated Use DOMAINS instead */
+export const GROUPS = DOMAINS
+
+/** @deprecated Use ASPECTS instead */
+export const FEATURES = ASPECTS
+
+/** @deprecated Use DOMAIN_LABELS instead */
+export const GROUP_LABELS = DOMAIN_LABELS
+
+/** @deprecated Use DOMAIN_COLORS instead */
+export const GROUP_COLORS = DOMAIN_COLORS
+
+/** @deprecated Use DOMAIN_SCOPES instead */
+export const GROUP_SCOPES = DOMAIN_SCOPES
+
+/** @deprecated Use ASPECT_LABELS instead */
+export const FEATURE_LABELS = ASPECT_LABELS
+
+/** @deprecated Use getDomainLabel instead */
+export const getGroupLabel = getDomainLabel
+
+/** @deprecated Use getAspectLabel instead */
+export const getFeatureLabel = getAspectLabel

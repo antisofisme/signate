@@ -2,11 +2,11 @@ import { useQuery } from '@tanstack/react-query'
 import { Link, useNavigate } from 'react-router-dom'
 import { useState, useMemo } from 'react'
 import { api, Decision } from '../shared/api'
-import { GROUPS, GROUP_LABELS, FEATURES, FEATURE_LABELS } from '../shared/constants'
+import { DOMAINS, DOMAIN_LABELS, ASPECTS, ASPECT_LABELS } from '../shared/constants'
 import { getDecisionCounts, getCurrentCountsByGroup } from '../shared/decisionUtils'
 // Skeleton components available via ../components/ui/skeleton when needed
 
-const GROUP_COLORS: Record<string, { bg: string; text: string; light: string }> = {
+const DOMAIN_COLORS: Record<string, { bg: string; text: string; light: string }> = {
   'INT': { bg: 'bg-blue-600', text: 'text-blue-600', light: 'bg-blue-50' },
   'ARCH': { bg: 'bg-green-600', text: 'text-green-600', light: 'bg-green-50' },
   'CTL': { bg: 'bg-orange-600', text: 'text-orange-600', light: 'bg-orange-50' },
@@ -43,14 +43,18 @@ export default function Dashboard() {
     if (!searchQuery.trim() || !decisions?.decisions) return []
     const query = searchQuery.toLowerCase()
     return (decisions.decisions as Decision[])
-      .filter(d =>
-        d.decision_code?.toLowerCase().includes(query) ||
-        d.decision_id.toLowerCase().includes(query) ||
-        d.statement.toLowerCase().includes(query) ||
-        d.rationale?.toLowerCase().includes(query) ||
-        GROUP_LABELS[d.group_id]?.toLowerCase().includes(query) ||
-        FEATURE_LABELS[d.feature_id]?.toLowerCase().includes(query)
-      )
+      .filter(d => {
+        const domainId = (d as any).domain_id || (d as any).group_id
+        const aspectId = (d as any).aspect_id || (d as any).feature_id
+        return (
+          d.decision_code?.toLowerCase().includes(query) ||
+          d.decision_id.toLowerCase().includes(query) ||
+          d.statement.toLowerCase().includes(query) ||
+          d.rationale?.toLowerCase().includes(query) ||
+          DOMAIN_LABELS[domainId]?.toLowerCase().includes(query) ||
+          ASPECT_LABELS[aspectId]?.toLowerCase().includes(query)
+        )
+      })
       .slice(0, 8) // Limit results
   }, [searchQuery, decisions?.decisions])
 
@@ -59,14 +63,15 @@ export default function Dashboard() {
     return getDecisionCounts(decisions?.decisions || [])
   }, [decisions?.decisions])
 
-  // Group counts for CURRENT decisions only
-  const currentGroupCounts = useMemo(() => {
+  // Domain counts for CURRENT decisions only
+  const currentDomainCounts = useMemo(() => {
     return getCurrentCountsByGroup(decisions?.decisions || [])
   }, [decisions?.decisions])
 
-  // Total group counts (for comparison)
-  const totalGroupCounts = decisions?.decisions?.reduce((acc: Record<string, number>, d: any) => {
-    acc[d.group_id] = (acc[d.group_id] || 0) + 1
+  // Total domain counts (for comparison)
+  const totalDomainCounts = decisions?.decisions?.reduce((acc: Record<string, number>, d: any) => {
+    const domainId = d.domain_id || d.group_id
+    acc[domainId] = (acc[domainId] || 0) + 1
     return acc
   }, {} as Record<string, number>) || {}
 
@@ -133,33 +138,37 @@ export default function Dashboard() {
         {showResults && searchResults.length > 0 && (
           <div className="absolute z-50 w-full mt-2 bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden">
             <div className="py-2">
-              {searchResults.map((decision: Decision) => (
-                <button
-                  key={decision.decision_id}
-                  onClick={() => handleSearchSelect(decision.decision_id)}
-                  className="w-full px-4 py-3 text-left hover:bg-gray-50 transition-colors border-b border-gray-100 last:border-b-0"
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="font-mono text-sm text-indigo-600 font-semibold">
-                      {decision.decision_code || decision.decision_id.slice(0, 12) + '...'}
-                    </span>
-                    <span className={`px-2 py-0.5 rounded text-xs ${
-                      decision.group_id === 'INT' ? 'bg-blue-100 text-blue-700' :
-                      decision.group_id === 'ARCH' ? 'bg-green-100 text-green-700' :
-                      decision.group_id === 'CTL' ? 'bg-orange-100 text-orange-700' :
-                      'bg-purple-100 text-purple-700'
-                    }`}>
-                      {GROUP_LABELS[decision.group_id]}
-                    </span>
-                  </div>
-                  <p className="text-sm text-gray-600 mt-1 truncate">
-                    {decision.statement}
-                  </p>
-                  <div className="text-xs text-gray-400 mt-1">
-                    {FEATURE_LABELS[decision.feature_id]} • v{decision.version}
-                  </div>
-                </button>
-              ))}
+              {searchResults.map((decision: Decision) => {
+                const domainId = (decision as any).domain_id || (decision as any).group_id
+                const aspectId = (decision as any).aspect_id || (decision as any).feature_id
+                return (
+                  <button
+                    key={decision.decision_id}
+                    onClick={() => handleSearchSelect(decision.decision_id)}
+                    className="w-full px-4 py-3 text-left hover:bg-gray-50 transition-colors border-b border-gray-100 last:border-b-0"
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="font-mono text-sm text-indigo-600 font-semibold">
+                        {decision.decision_code || decision.decision_id.slice(0, 12) + '...'}
+                      </span>
+                      <span className={`px-2 py-0.5 rounded text-xs ${
+                        domainId === 'INT' ? 'bg-blue-100 text-blue-700' :
+                        domainId === 'ARCH' ? 'bg-green-100 text-green-700' :
+                        domainId === 'CTL' ? 'bg-orange-100 text-orange-700' :
+                        'bg-purple-100 text-purple-700'
+                      }`}>
+                        {DOMAIN_LABELS[domainId]}
+                      </span>
+                    </div>
+                    <p className="text-sm text-gray-600 mt-1 truncate">
+                      {decision.statement}
+                    </p>
+                    <div className="text-xs text-gray-400 mt-1">
+                      {ASPECT_LABELS[aspectId]} - v{decision.version}
+                    </div>
+                  </button>
+                )
+              })}
             </div>
             <div className="px-4 py-2 bg-gray-50 border-t border-gray-200">
               <Link
@@ -167,7 +176,7 @@ export default function Dashboard() {
                 className="text-sm text-indigo-600 hover:text-indigo-500"
                 onClick={() => setShowResults(false)}
               >
-                View all results →
+                View all results
               </Link>
             </div>
           </div>
@@ -181,7 +190,7 @@ export default function Dashboard() {
               </svg>
             </div>
             <p className="text-gray-500">No decisions found for "{searchQuery}"</p>
-            <p className="text-sm text-gray-400 mt-1">Try searching by code, statement, or group name</p>
+            <p className="text-sm text-gray-400 mt-1">Try searching by code, statement, or domain name</p>
           </div>
         )}
       </div>
@@ -219,11 +228,11 @@ export default function Dashboard() {
           )}
         </div>
         <div className="bg-white rounded-lg shadow-sm border p-6">
-          <div className="text-sm text-gray-500">Groups</div>
+          <div className="text-sm text-gray-500">Domains</div>
           <div className="text-3xl font-bold text-indigo-600 mt-1">4</div>
         </div>
         <div className="bg-white rounded-lg shadow-sm border p-6">
-          <div className="text-sm text-gray-500">Features</div>
+          <div className="text-sm text-gray-500">Aspects</div>
           <div className="text-3xl font-bold text-indigo-600 mt-1">16</div>
         </div>
         <Link
@@ -248,30 +257,30 @@ export default function Dashboard() {
         </Link>
       </div>
 
-      {/* Decision Groups */}
+      {/* Decision Domains */}
       <div>
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Decision Groups</h3>
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">Decision Domains</h3>
         <div className="grid grid-cols-2 gap-4">
-          {GROUPS.map(groupId => {
-            const colors = GROUP_COLORS[groupId]
-            const currentCount = currentGroupCounts[groupId] ?? 0
-            const totalCount = totalGroupCounts[groupId] ?? 0
+          {DOMAINS.map(domainId => {
+            const colors = DOMAIN_COLORS[domainId]
+            const currentCount = currentDomainCounts[domainId] ?? 0
+            const totalCount = totalDomainCounts[domainId] ?? 0
             const hasHistorical = totalCount > currentCount
-            const features = FEATURES[groupId] || []
+            const aspects = ASPECTS[domainId] || []
 
             return (
               <Link
-                key={groupId}
-                to={`/group/${groupId.toLowerCase()}`}
+                key={domainId}
+                to={`/domain/${domainId.toLowerCase()}`}
                 className="bg-white rounded-lg shadow-sm border p-6 hover:shadow-md transition-shadow"
               >
                 <div className="flex items-start justify-between">
                   <div>
                     <span className={`inline-block px-3 py-1 rounded-full text-sm font-medium text-white ${colors.bg}`}>
-                      {groupId}
+                      {domainId}
                     </span>
                     <h4 className="text-lg font-medium text-gray-900 mt-2">
-                      {GROUP_LABELS[groupId]}
+                      {DOMAIN_LABELS[domainId]}
                     </h4>
                   </div>
                   <div className="text-right">
@@ -283,12 +292,12 @@ export default function Dashboard() {
                   </div>
                 </div>
                 <div className="mt-4 flex flex-wrap gap-2">
-                  {features.slice(0, 4).map(featureId => (
+                  {aspects.slice(0, 4).map(aspectId => (
                     <span
-                      key={featureId}
+                      key={aspectId}
                       className={`text-xs px-2 py-1 rounded ${colors.light} ${colors.text}`}
                     >
-                      {FEATURE_LABELS[featureId]}
+                      {ASPECT_LABELS[aspectId]}
                     </span>
                   ))}
                 </div>
@@ -306,7 +315,7 @@ export default function Dashboard() {
         >
           <h3 className="font-semibold text-gray-900">Decision Matrix</h3>
           <p className="text-gray-500 text-sm mt-1">
-            4 Groups x 4 Features = 16 Categories
+            4 Domains x 4 Aspects = 16 Categories
           </p>
         </Link>
         <Link

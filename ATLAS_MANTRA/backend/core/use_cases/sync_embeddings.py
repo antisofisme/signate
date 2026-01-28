@@ -31,7 +31,8 @@ class SyncEmbeddingsInput:
     """Input for embedding sync."""
     batch_size: int = 50  # Decisions per batch
     force_rebuild: bool = False  # Force re-embed all
-    group_id: Optional[str] = None  # Sync specific group only
+    domain_id: Optional[str] = None  # Sync specific domain only
+    decision_ids: Optional[List[str]] = None  # Specific decision IDs to sync
 
 
 class SyncEmbeddingsUseCase:
@@ -96,13 +97,28 @@ class SyncEmbeddingsUseCase:
             # 1. Ensure collection exists
             await self._ensure_collection()
 
-            # 2. Get all decisions (StoredDecision objects)
-            stored_decisions = self.repository.find_all()
-            if input.group_id:
-                stored_decisions = [
-                    sd for sd in stored_decisions
-                    if (sd.decision.group_id.value if hasattr(sd.decision.group_id, 'value') else str(sd.decision.group_id)) == input.group_id
-                ]
+            # 2. Get decisions (StoredDecision objects)
+            if input.decision_ids:
+                # Sync specific decisions only - use async method
+                stored_decisions = []
+                for d_id in input.decision_ids:
+                    if hasattr(self.repository, 'find_by_id_async'):
+                        sd = await self.repository.find_by_id_async(d_id)
+                    else:
+                        sd = self.repository.find_by_id(d_id)
+                    if sd is not None:
+                        stored_decisions.append(sd)
+            else:
+                # Sync all decisions - use async method if available
+                if hasattr(self.repository, 'find_all_async'):
+                    stored_decisions = await self.repository.find_all_async(limit=10000, offset=0)
+                else:
+                    stored_decisions = self.repository.find_all()
+                if input.domain_id:
+                    stored_decisions = [
+                        sd for sd in stored_decisions
+                        if (sd.decision.domain_id.value if hasattr(sd.decision.domain_id, 'value') else str(sd.decision.domain_id)) == input.domain_id
+                    ]
 
             # Extract Decision objects for processing
             all_decisions = [sd.decision for sd in stored_decisions]
@@ -163,8 +179,8 @@ class SyncEmbeddingsUseCase:
                             "decision_code": decision.decision_code,
                             "statement": decision.statement,
                             "rationale": decision.rationale,
-                            "group_id": decision.group_id.value if hasattr(decision.group_id, 'value') else str(decision.group_id),
-                            "feature_id": decision.feature_id.value if hasattr(decision.feature_id, 'value') else str(decision.feature_id),
+                            "domain_id": decision.domain_id.value if hasattr(decision.domain_id, 'value') else str(decision.domain_id),
+                            "aspect_id": decision.aspect_id.value if hasattr(decision.aspect_id, 'value') else str(decision.aspect_id),
                             "version": decision.version,
                             "tags": [t.value if hasattr(t, 'value') else str(t) for t in (decision.tags or [])],
                             "text_hash": text_hash,
@@ -218,7 +234,7 @@ async def sync_embeddings(
     repository: DecisionRepository,
     batch_size: int = 50,
     force_rebuild: bool = False,
-    group_id: Optional[str] = None,
+    domain_id: Optional[str] = None,
 ) -> SyncResult:
     """
     Convenience function for embedding sync.
@@ -229,7 +245,7 @@ async def sync_embeddings(
         repository: Decision repository
         batch_size: Decisions per batch
         force_rebuild: Force re-embed all
-        group_id: Sync specific group only
+        domain_id: Sync specific domain only
 
     Returns:
         SyncResult
@@ -242,7 +258,7 @@ async def sync_embeddings(
     return await use_case.execute(SyncEmbeddingsInput(
         batch_size=batch_size,
         force_rebuild=force_rebuild,
-        group_id=group_id,
+        domain_id=domain_id,
     ))
 
 
@@ -267,7 +283,11 @@ async def sync_single_decision(
         True if synced successfully
     """
     try:
-        stored = repository.find_by_id(decision_id)
+        # Use async method if available
+        if hasattr(repository, 'find_by_id_async'):
+            stored = await repository.find_by_id_async(decision_id)
+        else:
+            stored = repository.find_by_id(decision_id)
         if not stored:
             logger.warning(f"Decision not found for sync: {decision_id}")
             return False
@@ -292,8 +312,8 @@ async def sync_single_decision(
             "decision_code": decision.decision_code,
             "statement": decision.statement,
             "rationale": decision.rationale,
-            "group_id": decision.group_id.value if hasattr(decision.group_id, 'value') else str(decision.group_id),
-            "feature_id": decision.feature_id.value if hasattr(decision.feature_id, 'value') else str(decision.feature_id),
+            "domain_id": decision.domain_id.value if hasattr(decision.domain_id, 'value') else str(decision.domain_id),
+            "aspect_id": decision.aspect_id.value if hasattr(decision.aspect_id, 'value') else str(decision.aspect_id),
             "version": decision.version,
             "tags": [t.value if hasattr(t, 'value') else str(t) for t in (decision.tags or [])],
             "text_hash": text_hash,

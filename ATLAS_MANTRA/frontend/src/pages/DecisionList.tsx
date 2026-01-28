@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { Link, useSearchParams } from 'react-router-dom'
 import { api } from '../shared/api'
-import { GROUP_LABELS, FEATURE_LABELS } from '../shared/constants'
+import { DOMAIN_LABELS, ASPECT_LABELS } from '../shared/constants'
 import { useState, useMemo, useEffect } from 'react'
 // Decision type imported via AnnotatedDecision from decisionUtils
 import { SkeletonTable } from '../components/ui/skeleton'
@@ -13,12 +13,12 @@ import { annotateDecisions, getDecisionCounts, AnnotatedDecision } from '../shar
 export default function DecisionList() {
   const [searchParams] = useSearchParams()
   const initialSearch = searchParams.get('search') || ''
-  const initialGroup = searchParams.get('group') || ''
-  const initialFeature = searchParams.get('feature') || ''
+  const initialDomain = searchParams.get('domain') || searchParams.get('group') || ''
+  const initialAspect = searchParams.get('aspect') || searchParams.get('feature') || ''
 
   const [searchQuery, setSearchQuery] = useState(initialSearch)
-  const [filterGroup, setFilterGroup] = useState<string>(initialGroup)
-  const [filterFeature, setFilterFeature] = useState<string>(initialFeature)
+  const [filterDomain, setFilterDomain] = useState<string>(initialDomain)
+  const [filterAspect, setFilterAspect] = useState<string>(initialAspect)
   const [showHistorical, setShowHistorical] = useState(false)
 
   // Debounce search query for better performance
@@ -27,8 +27,8 @@ export default function DecisionList() {
   // Update state when URL params change
   useEffect(() => {
     setSearchQuery(searchParams.get('search') || '')
-    setFilterGroup(searchParams.get('group') || '')
-    setFilterFeature(searchParams.get('feature') || '')
+    setFilterDomain(searchParams.get('domain') || searchParams.get('group') || '')
+    setFilterAspect(searchParams.get('aspect') || searchParams.get('feature') || '')
   }, [searchParams])
 
   const { data, isLoading } = useQuery({
@@ -55,11 +55,15 @@ export default function DecisionList() {
       // Historical filter - hide superseded unless toggle is on
       if (!showHistorical && !decision._isCurrent) return false
 
-      // Group filter
-      if (filterGroup && decision.group_id !== filterGroup) return false
+      // Support both old (group_id/feature_id) and new (domain_id/aspect_id) field names for API compatibility
+      const domainId = (decision as any).domain_id || (decision as any).group_id
+      const aspectId = (decision as any).aspect_id || (decision as any).feature_id
 
-      // Feature filter
-      if (filterFeature && decision.feature_id !== filterFeature) return false
+      // Domain filter
+      if (filterDomain && domainId !== filterDomain) return false
+
+      // Aspect filter
+      if (filterAspect && aspectId !== filterAspect) return false
 
       // Search query (using debounced value for filtering)
       if (debouncedSearch) {
@@ -69,8 +73,8 @@ export default function DecisionList() {
           decision.decision_id,
           decision.statement,
           decision.rationale,
-          GROUP_LABELS[decision.group_id],
-          FEATURE_LABELS[decision.feature_id],
+          DOMAIN_LABELS[domainId],
+          ASPECT_LABELS[aspectId],
           decision.version,
         ].filter(Boolean)
 
@@ -81,7 +85,7 @@ export default function DecisionList() {
 
       return true
     })
-  }, [annotatedDecisions, debouncedSearch, filterGroup, filterFeature, showHistorical])
+  }, [annotatedDecisions, debouncedSearch, filterDomain, filterAspect, showHistorical])
 
   if (isLoading) {
     return (
@@ -152,31 +156,31 @@ export default function DecisionList() {
             </div>
           </div>
 
-          {/* Group Filter */}
+          {/* Domain Filter */}
           <select
-            value={filterGroup}
-            onChange={(e) => setFilterGroup(e.target.value)}
+            value={filterDomain}
+            onChange={(e) => setFilterDomain(e.target.value)}
             className="px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
           >
-            <option value="">All Groups</option>
+            <option value="">All Domains</option>
             <option value="INT">INT: Intent</option>
             <option value="ARCH">ARCH: Architecture</option>
             <option value="CTL">CTL: Control</option>
             <option value="EVO">EVO: Evolution</option>
           </select>
 
-          {/* Feature Filter */}
+          {/* Aspect Filter */}
           <select
-            value={filterFeature}
-            onChange={(e) => setFilterFeature(e.target.value)}
+            value={filterAspect}
+            onChange={(e) => setFilterAspect(e.target.value)}
             className="px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
           >
-            <option value="">All Features</option>
+            <option value="">All Aspects</option>
             {Array.from({ length: 16 }, (_, i) => {
-              const featureId = `F${String(i + 1).padStart(2, '0')}`
+              const aspectId = `A${String(i + 1).padStart(2, '0')}`
               return (
-                <option key={featureId} value={featureId}>
-                  {featureId}: {FEATURE_LABELS[featureId] || 'Unknown'}
+                <option key={aspectId} value={aspectId}>
+                  {aspectId}: {ASPECT_LABELS[aspectId] || 'Unknown'}
                 </option>
               )
             })}
@@ -196,12 +200,12 @@ export default function DecisionList() {
           )}
 
           {/* Clear Filters */}
-          {(searchQuery || filterGroup || filterFeature) && (
+          {(searchQuery || filterDomain || filterAspect) && (
             <button
               onClick={() => {
                 setSearchQuery('')
-                setFilterGroup('')
-                setFilterFeature('')
+                setFilterDomain('')
+                setFilterAspect('')
               }}
               className="px-3 py-2 text-gray-500 hover:text-gray-700"
             >
@@ -217,8 +221,8 @@ export default function DecisionList() {
           <thead className="bg-gray-50">
             <tr>
               <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">Code</th>
-              <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">Group</th>
-              <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">Feature</th>
+              <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">Domain</th>
+              <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">Aspect</th>
               <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">Statement</th>
               <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">
                 <span className="flex items-center gap-1">
@@ -235,80 +239,84 @@ export default function DecisionList() {
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
-            {filteredDecisions.map((decision: AnnotatedDecision) => (
-              <tr
-                key={decision.decision_id}
-                className={`hover:bg-gray-50 transition-colors ${!decision._isCurrent ? 'opacity-60 bg-gray-50' : ''}`}
-              >
-                <td className="px-4 py-3">
-                  <div className="flex items-center gap-2">
-                    <Link
-                      to={`/decisions/${decision.decision_id}`}
-                      className="text-indigo-600 hover:text-indigo-500 font-mono text-sm font-semibold"
-                    >
-                      {decision.decision_code || decision.decision_id.slice(0, 12) + '...'}
-                    </Link>
-                    {!decision._isCurrent && decision._supersededBy && (
+            {filteredDecisions.map((decision: AnnotatedDecision) => {
+              const domainId = (decision as any).domain_id || (decision as any).group_id
+              const aspectId = (decision as any).aspect_id || (decision as any).feature_id
+              return (
+                <tr
+                  key={decision.decision_id}
+                  className={`hover:bg-gray-50 transition-colors ${!decision._isCurrent ? 'opacity-60 bg-gray-50' : ''}`}
+                >
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-2">
                       <Link
-                        to={`/decisions/${decision._supersededBy}`}
-                        className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-gray-200 text-gray-600 text-xs rounded hover:bg-gray-300 transition-colors"
-                        title={`Superseded by ${decision._supersededByCode || decision._supersededBy.slice(0, 8)}`}
+                        to={`/decisions/${decision.decision_id}`}
+                        className="text-indigo-600 hover:text-indigo-500 font-mono text-sm font-semibold"
                       >
-                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
-                        </svg>
-                        Superseded
+                        {decision.decision_code || decision.decision_id.slice(0, 12) + '...'}
                       </Link>
+                      {!decision._isCurrent && decision._supersededBy && (
+                        <Link
+                          to={`/decisions/${decision._supersededBy}`}
+                          className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-gray-200 text-gray-600 text-xs rounded hover:bg-gray-300 transition-colors"
+                          title={`Superseded by ${decision._supersededByCode || decision._supersededBy.slice(0, 8)}`}
+                        >
+                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                          </svg>
+                          Superseded
+                        </Link>
+                      )}
+                    </div>
+                  </td>
+                  <td className="px-4 py-3 text-sm">
+                    <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
+                      domainId === 'INT' ? 'bg-blue-100 text-blue-800' :
+                      domainId === 'ARCH' ? 'bg-green-100 text-green-800' :
+                      domainId === 'CTL' ? 'bg-purple-100 text-purple-800' :
+                      'bg-orange-100 text-orange-800'
+                    }`}>
+                      {DOMAIN_LABELS[domainId]}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3 text-sm">
+                    <span className="text-gray-700 font-medium">{aspectId}</span>
+                    <span className="text-xs text-gray-500 block">{ASPECT_LABELS[aspectId]}</span>
+                  </td>
+                  <td className="px-4 py-3 text-sm text-gray-600 max-w-md">
+                    <div className="truncate" title={decision.statement}>
+                      {decision.statement}
+                    </div>
+                  </td>
+                  <td className="px-4 py-3">
+                    <span className={`px-2 py-1 rounded text-xs font-medium ${
+                      decision.blast_radius === 'CRITICAL' ? 'bg-red-100 text-red-800' :
+                      decision.blast_radius === 'HIGH' ? 'bg-orange-100 text-orange-800' :
+                      decision.blast_radius === 'MEDIUM' ? 'bg-yellow-100 text-yellow-800' :
+                      'bg-green-100 text-green-800'
+                    }`}>
+                      {decision.blast_radius}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3 text-sm">
+                    {decision.supersedes ? (
+                      <Link
+                        to={`/decisions/${decision.supersedes}`}
+                        className="text-orange-600 hover:text-orange-500 font-mono text-xs"
+                      >
+                        {decision.supersedes.slice(0, 8)}...
+                      </Link>
+                    ) : (
+                      <span className="text-gray-400">-</span>
                     )}
-                  </div>
-                </td>
-                <td className="px-4 py-3 text-sm">
-                  <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
-                    decision.group_id === 'INT' ? 'bg-blue-100 text-blue-800' :
-                    decision.group_id === 'ARCH' ? 'bg-green-100 text-green-800' :
-                    decision.group_id === 'CTL' ? 'bg-purple-100 text-purple-800' :
-                    'bg-orange-100 text-orange-800'
-                  }`}>
-                    {GROUP_LABELS[decision.group_id]}
-                  </span>
-                </td>
-                <td className="px-4 py-3 text-sm">
-                  <span className="text-gray-700 font-medium">{decision.feature_id}</span>
-                  <span className="text-xs text-gray-500 block">{FEATURE_LABELS[decision.feature_id]}</span>
-                </td>
-                <td className="px-4 py-3 text-sm text-gray-600 max-w-md">
-                  <div className="truncate" title={decision.statement}>
-                    {decision.statement}
-                  </div>
-                </td>
-                <td className="px-4 py-3">
-                  <span className={`px-2 py-1 rounded text-xs font-medium ${
-                    decision.blast_radius === 'CRITICAL' ? 'bg-red-100 text-red-800' :
-                    decision.blast_radius === 'HIGH' ? 'bg-orange-100 text-orange-800' :
-                    decision.blast_radius === 'MEDIUM' ? 'bg-yellow-100 text-yellow-800' :
-                    'bg-green-100 text-green-800'
-                  }`}>
-                    {decision.blast_radius}
-                  </span>
-                </td>
-                <td className="px-4 py-3 text-sm">
-                  {decision.supersedes ? (
-                    <Link
-                      to={`/decisions/${decision.supersedes}`}
-                      className="text-orange-600 hover:text-orange-500 font-mono text-xs"
-                    >
-                      {decision.supersedes.slice(0, 8)}...
-                    </Link>
-                  ) : (
-                    <span className="text-gray-400">-</span>
-                  )}
-                </td>
-              </tr>
-            ))}
+                  </td>
+                </tr>
+              )
+            })}
             {filteredDecisions.length === 0 && (
               <tr>
                 <td colSpan={6} className="px-4 py-8 text-center text-gray-500">
-                  {debouncedSearch || filterGroup || filterFeature
+                  {debouncedSearch || filterDomain || filterAspect
                     ? 'No decisions match your filters'
                     : 'No decisions found'}
                 </td>

@@ -8,8 +8,8 @@ import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import { useState } from 'react'
 import { clsx } from 'clsx'
 import {
-  GROUPS,
-  GROUP_LABELS,
+  DOMAINS,
+  DOMAIN_LABELS,
 } from '../../shared/constants'
 import { FloatingChat } from '../ai'
 
@@ -137,40 +137,60 @@ const Icons = {
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
     </svg>
   ),
+  Constitution: () => (
+    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+    </svg>
+  ),
+  Users: () => (
+    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+    </svg>
+  ),
+  Activity: () => (
+    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+    </svg>
+  ),
+  Server: () => (
+    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2m-2-4h.01M17 16h.01" />
+    </svg>
+  ),
 }
 
-const GROUP_ICONS: Record<string, React.FC> = {
+const DOMAIN_ICONS: Record<string, React.FC> = {
   'INT': Icons.Target,
   'ARCH': Icons.Layers,
   'CTL': Icons.Shield,
   'EVO': Icons.Refresh,
 }
 
-const GROUP_COLORS: Record<string, { text: string; bg: string; hover: string }> = {
+const DOMAIN_COLORS: Record<string, { text: string; bg: string; hover: string }> = {
   'INT': { text: 'text-blue-600', bg: 'bg-blue-600', hover: 'hover:bg-blue-50' },
   'ARCH': { text: 'text-green-600', bg: 'bg-green-600', hover: 'hover:bg-green-50' },
   'CTL': { text: 'text-orange-600', bg: 'bg-orange-600', hover: 'hover:bg-orange-50' },
   'EVO': { text: 'text-purple-600', bg: 'bg-purple-600', hover: 'hover:bg-purple-50' },
 }
 
-const GROUP_PATH_MAP: Record<string, string> = {
+const DOMAIN_PATH_MAP: Record<string, string> = {
   'int': 'INT',
   'arch': 'ARCH',
   'ctl': 'CTL',
   'evo': 'EVO',
 }
 
-function getGroupFromPath(pathname: string): string | undefined {
-  const match = pathname.match(/\/group\/([a-z]+)/i)
-  return match ? GROUP_PATH_MAP[match[1].toLowerCase()] : undefined
+function getDomainFromPath(pathname: string): string | undefined {
+  const match = pathname.match(/\/domain\/([a-z]+)/i)
+  return match ? DOMAIN_PATH_MAP[match[1].toLowerCase()] : undefined
 }
 
 export function SidebarLayout() {
   const location = useLocation()
-  const currentGroup = getGroupFromPath(location.pathname)
+  const currentDomain = getDomainFromPath(location.pathname)
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
-  const currentColors = currentGroup ? GROUP_COLORS[currentGroup] : null
+  const currentColors = currentDomain ? DOMAIN_COLORS[currentDomain] : null
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -194,13 +214,13 @@ export function SidebarLayout() {
             <span className="text-white/70 text-sm hidden sm:inline">Decision Matrix</span>
           </div>
 
-          {/* Current Group Badge */}
-          {currentGroup && (
+          {/* Current Domain Badge */}
+          {currentDomain && (
             <div className="ml-auto flex items-center gap-2 text-white">
-              {GROUP_ICONS[currentGroup] && (
-                <span>{GROUP_ICONS[currentGroup]({})}</span>
+              {DOMAIN_ICONS[currentDomain] && (
+                <span>{DOMAIN_ICONS[currentDomain]({})}</span>
               )}
-              <span className="font-medium">{GROUP_LABELS[currentGroup]}</span>
+              <span className="font-medium">{DOMAIN_LABELS[currentDomain]}</span>
             </div>
           )}
         </div>
@@ -234,18 +254,53 @@ export function SidebarLayout() {
               </div>
             </NavLink>
 
-            {/* Decision Groups */}
+            {/* Constitutional Foundation */}
             <div className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 px-3">
-              Decision Groups
+              Foundation
             </div>
 
-            {GROUPS.map((groupId) => {
-              const Icon = GROUP_ICONS[groupId]
-              const colors = GROUP_COLORS[groupId]
+            <NavLink
+              to="/principles"
+              onClick={() => setSidebarOpen(false)}
+              className={({ isActive }) => clsx(
+                "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors",
+                isActive
+                  ? "bg-red-600 text-white"
+                  : "text-gray-600 hover:bg-red-50"
+              )}
+              title="Core Principles"
+            >
+              <Icons.Constitution />
+              <span>Principles</span>
+            </NavLink>
+
+            <NavLink
+              to="/governance"
+              onClick={() => setSidebarOpen(false)}
+              className={({ isActive }) => clsx(
+                "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors",
+                isActive
+                  ? "bg-purple-600 text-white"
+                  : "text-gray-600 hover:bg-purple-50"
+              )}
+              title="Approval Workflows"
+            >
+              <Icons.Users />
+              <span>Governance</span>
+            </NavLink>
+
+            {/* Decision Domains */}
+            <div className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 px-3">
+              Decision Domains
+            </div>
+
+            {DOMAINS.map((domainId) => {
+              const Icon = DOMAIN_ICONS[domainId]
+              const colors = DOMAIN_COLORS[domainId]
               return (
                 <NavLink
-                  key={groupId}
-                  to={`/group/${groupId.toLowerCase()}`}
+                  key={domainId}
+                  to={`/domain/${domainId.toLowerCase()}`}
                   onClick={() => setSidebarOpen(false)}
                   className={({ isActive }) => clsx(
                     "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors",
@@ -256,8 +311,8 @@ export function SidebarLayout() {
                 >
                   <Icon />
                   <div className="flex flex-col">
-                    <span>{GROUP_LABELS[groupId]}</span>
-                    <span className="text-xs opacity-70">{groupId}</span>
+                    <span>{DOMAIN_LABELS[domainId]}</span>
+                    <span className="text-xs opacity-70">{domainId}</span>
                   </div>
                 </NavLink>
               )
@@ -277,6 +332,7 @@ export function SidebarLayout() {
                   ? "bg-gray-700 text-white"
                   : "text-gray-600 hover:bg-gray-100"
               )}
+              title="MANTRA-DEC-002: 4×4 Decision Matrix"
             >
               <Icons.Grid />
               <span>Matrix View</span>
@@ -291,12 +347,13 @@ export function SidebarLayout() {
                   ? "bg-gray-700 text-white"
                   : "text-gray-600 hover:bg-gray-100"
               )}
+              title="Browse all Layer 1 decisions"
             >
               <Icons.List />
               <span>All Decisions</span>
             </NavLink>
 
-            {/* Projections */}
+            {/* Projections - per MANTRA-L1-PROJECTION-CATALOG-001 */}
             <div className="text-xs font-semibold text-gray-400 uppercase tracking-wider mt-6 mb-3 px-3">
               Projections
             </div>
@@ -310,6 +367,7 @@ export function SidebarLayout() {
                   ? "bg-gray-700 text-white"
                   : "text-gray-600 hover:bg-gray-100"
               )}
+              title="Evolution timeline - version chains and supersedes"
             >
               <Icons.Timeline />
               <span>Timeline</span>
@@ -324,6 +382,7 @@ export function SidebarLayout() {
                   ? "bg-gray-700 text-white"
                   : "text-gray-600 hover:bg-gray-100"
               )}
+              title="Decision dependency graph"
             >
               <Icons.Link />
               <span>Relationships</span>
@@ -338,9 +397,10 @@ export function SidebarLayout() {
                   ? "bg-gray-700 text-white"
                   : "text-gray-600 hover:bg-gray-100"
               )}
+              title="Scope impact projection"
             >
               <Icons.Scope />
-              <span>Scope</span>
+              <span>Scope Impact</span>
             </NavLink>
 
             <NavLink
@@ -352,6 +412,7 @@ export function SidebarLayout() {
                   ? "bg-gray-700 text-white"
                   : "text-gray-600 hover:bg-gray-100"
               )}
+              title="Technology distribution view"
             >
               <Icons.Stack />
               <span>Tech Stack</span>
@@ -366,9 +427,10 @@ export function SidebarLayout() {
                   ? "bg-gray-700 text-white"
                   : "text-gray-600 hover:bg-gray-100"
               )}
+              title="Recent changes and activity"
             >
-              <Icons.Changes />
-              <span>Changes</span>
+              <Icons.Activity />
+              <span>Recent Activity</span>
             </NavLink>
 
             {/* Tools */}
@@ -385,6 +447,7 @@ export function SidebarLayout() {
                   ? "bg-indigo-600 text-white"
                   : "text-gray-600 hover:bg-gray-100"
               )}
+              title="MANTRA-SPEC-001: Validate decisions against 44 rules"
             >
               <Icons.Check />
               <span>Validator</span>
@@ -399,6 +462,7 @@ export function SidebarLayout() {
                   ? "bg-indigo-600 text-white"
                   : "text-gray-600 hover:bg-gray-100"
               )}
+              title="Compare two decisions side-by-side"
             >
               <Icons.Compare />
               <span>Compare</span>
@@ -413,6 +477,7 @@ export function SidebarLayout() {
                   ? "bg-indigo-600 text-white"
                   : "text-gray-600 hover:bg-gray-100"
               )}
+              title="AI-powered semantic search using Qdrant"
             >
               <Icons.Search />
               <span>Semantic Search</span>
@@ -427,12 +492,13 @@ export function SidebarLayout() {
                   ? "bg-indigo-600 text-white"
                   : "text-gray-600 hover:bg-gray-100"
               )}
+              title="Complete audit trail - immutability evidence"
             >
               <Icons.Audit />
               <span>Audit Log</span>
             </NavLink>
 
-            {/* Workflow */}
+            {/* Workflow - per MANTRA-DEC-003 */}
             <div className="text-xs font-semibold text-gray-400 uppercase tracking-wider mt-6 mb-3 px-3">
               Workflow
             </div>
@@ -446,6 +512,7 @@ export function SidebarLayout() {
                   ? "bg-emerald-600 text-white"
                   : "text-gray-600 hover:bg-gray-100"
               )}
+              title="Create new decision with guided wizard"
             >
               <Icons.Wizard />
               <span>New Decision</span>
@@ -460,6 +527,7 @@ export function SidebarLayout() {
                   ? "bg-emerald-600 text-white"
                   : "text-gray-600 hover:bg-gray-100"
               )}
+              title="MANTRA-LAW-003: Human approval required"
             >
               <Icons.Approval />
               <span>Approvals</span>
@@ -474,14 +542,15 @@ export function SidebarLayout() {
                   ? "bg-emerald-600 text-white"
                   : "text-gray-600 hover:bg-gray-100"
               )}
+              title="Edit decision relations (depends_on, conflicts_with)"
             >
               <Icons.Graph />
               <span>Relation Editor</span>
             </NavLink>
 
-            {/* Settings */}
+            {/* Infrastructure */}
             <div className="text-xs font-semibold text-gray-400 uppercase tracking-wider mt-6 mb-3 px-3">
-              Settings
+              Infrastructure
             </div>
 
             <NavLink
@@ -490,9 +559,10 @@ export function SidebarLayout() {
               className={({ isActive }) => clsx(
                 "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors",
                 isActive
-                  ? "bg-indigo-600 text-white"
+                  ? "bg-gray-600 text-white"
                   : "text-gray-600 hover:bg-gray-100"
               )}
+              title="Manage API keys for external services"
             >
               <Icons.Key />
               <span>API Keys</span>
@@ -504,12 +574,13 @@ export function SidebarLayout() {
               className={({ isActive }) => clsx(
                 "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors",
                 isActive
-                  ? "bg-indigo-600 text-white"
+                  ? "bg-gray-600 text-white"
                   : "text-gray-600 hover:bg-gray-100"
               )}
+              title="AI provider configuration (assistance only, no authority)"
             >
               <Icons.AI />
-              <span>AI Settings</span>
+              <span>AI Config</span>
             </NavLink>
 
             <NavLink
@@ -518,11 +589,12 @@ export function SidebarLayout() {
               className={({ isActive }) => clsx(
                 "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors",
                 isActive
-                  ? "bg-indigo-600 text-white"
+                  ? "bg-gray-600 text-white"
                   : "text-gray-600 hover:bg-gray-100"
               )}
+              title="Model Context Protocol dashboard"
             >
-              <Icons.Robot />
+              <Icons.Server />
               <span>MCP Dashboard</span>
             </NavLink>
           </nav>

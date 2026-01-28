@@ -31,8 +31,8 @@ class DuplicateMatch:
     """A detected duplicate match."""
     decision_id: str
     decision_code: Optional[str]
-    group_id: str
-    feature_id: str
+    domain_id: str
+    aspect_id: str
     statement_preview: str  # First 100 chars
     similarity: float  # 0.0 to 1.0
     level: DuplicateLevel
@@ -198,11 +198,11 @@ def check_exact_duplicate(
     Check for exact duplicate (100% match).
 
     Exact match criteria:
-    - Same group_id AND feature_id
+    - Same domain_id AND aspect_id
     - Normalized statement is identical
     """
-    if (record.get('group_id') == existing.get('group_id') and
-        record.get('feature_id') == existing.get('feature_id')):
+    if (record.get('domain_id') == existing.get('domain_id') and
+        record.get('aspect_id') == existing.get('aspect_id')):
 
         norm_new = normalize_text(record.get('statement') or '')  # Handle None
         norm_existing = normalize_text(existing.get('statement') or '')  # Handle None
@@ -211,12 +211,12 @@ def check_exact_duplicate(
             return DuplicateMatch(
                 decision_id=existing.get('decision_id') or '',
                 decision_code=existing.get('decision_code'),
-                group_id=existing.get('group_id') or '',
-                feature_id=existing.get('feature_id') or '',
+                domain_id=existing.get('domain_id') or '',
+                aspect_id=existing.get('aspect_id') or '',
                 statement_preview=(existing.get('statement') or '')[:100],
                 similarity=1.0,
                 level=DuplicateLevel.EXACT,
-                reason=f"Exact duplicate in {existing.get('group_id')}-{existing.get('feature_id')}"
+                reason=f"Exact duplicate in {existing.get('domain_id')}-{existing.get('aspect_id')}"
             )
 
     return None
@@ -240,17 +240,17 @@ def check_similarity_duplicate(
     if similarity < min_threshold:
         return None
 
-    # Determine level based on similarity and group/feature match
-    same_group = record.get('group_id') == existing.get('group_id')
-    same_feature = record.get('feature_id') == existing.get('feature_id')
+    # Determine level based on similarity and domain/aspect match
+    same_domain = record.get('domain_id') == existing.get('domain_id')
+    same_aspect = record.get('aspect_id') == existing.get('aspect_id')
 
     if similarity >= 0.85:
-        if same_group and same_feature:
+        if same_domain and same_aspect:
             level = DuplicateLevel.NEAR
-            reason = f"Very similar ({similarity:.0%}) in same {existing.get('group_id')}-{existing.get('feature_id')}"
+            reason = f"Very similar ({similarity:.0%}) in same {existing.get('domain_id')}-{existing.get('aspect_id')}"
         else:
             level = DuplicateLevel.SEMANTIC
-            reason = f"Very similar ({similarity:.0%}) to {existing.get('group_id')}-{existing.get('feature_id')}"
+            reason = f"Very similar ({similarity:.0%}) to {existing.get('domain_id')}-{existing.get('aspect_id')}"
     elif similarity >= 0.70:
         level = DuplicateLevel.SEMANTIC
         reason = f"Similar meaning ({similarity:.0%}) to existing decision"
@@ -261,8 +261,8 @@ def check_similarity_duplicate(
     return DuplicateMatch(
         decision_id=existing.get('decision_id') or '',
         decision_code=existing.get('decision_code'),
-        group_id=existing.get('group_id') or '',
-        feature_id=existing.get('feature_id') or '',
+        domain_id=existing.get('domain_id') or '',
+        aspect_id=existing.get('aspect_id') or '',
         statement_preview=(existing.get('statement') or '')[:100],
         similarity=similarity,
         level=level,
@@ -278,8 +278,8 @@ def suggest_supersedes(
     If near-duplicate detected (85%+), provide supersedes guidance.
 
     When a decision is highly similar to an existing one:
-    - If same group+feature: likely an EVOLUTION (suggest supersedes)
-    - If different group/feature: likely RELATED (suggest relation)
+    - If same domain+aspect: likely an EVOLUTION (suggest supersedes)
+    - If different domain/aspect: likely RELATED (suggest relation)
 
     Args:
         record: The new decision record
@@ -292,10 +292,10 @@ def suggest_supersedes(
     if near_duplicate.similarity < 0.85:
         return None
 
-    # Check if same group+feature (likely evolution)
+    # Check if same domain+aspect (likely evolution)
     same_cell = (
-        record.get('group_id') == near_duplicate.group_id and
-        record.get('feature_id') == near_duplicate.feature_id
+        record.get('domain_id') == near_duplicate.domain_id and
+        record.get('aspect_id') == near_duplicate.aspect_id
     )
 
     if same_cell:
@@ -317,7 +317,7 @@ def suggest_supersedes(
             }
         )
     else:
-        # Different group/feature - suggest relation instead
+        # Different domain/aspect - suggest relation instead
         return SupersedesGuidance(
             detected_duplicate_id=near_duplicate.decision_id,
             detected_duplicate_code=near_duplicate.decision_code,
@@ -326,7 +326,7 @@ def suggest_supersedes(
             message=(
                 f"This decision is {near_duplicate.similarity:.0%} similar to "
                 f"{near_duplicate.decision_code or near_duplicate.decision_id} "
-                f"but in a different category ({near_duplicate.group_id}-{near_duplicate.feature_id}). "
+                f"but in a different category ({near_duplicate.domain_id}-{near_duplicate.aspect_id}). "
                 f"Consider adding as 'informed_by' relation."
             ),
             auto_populate={
@@ -360,18 +360,18 @@ def detect_duplicates(
     supersedes_guidance: Optional[SupersedesGuidance] = None
 
     decision_id = record.get('decision_id', '')
-    group_id = record.get('group_id', '')
-    feature_id = record.get('feature_id', '')
+    domain_id = record.get('domain_id', '')
+    aspect_id = record.get('aspect_id', '')
 
     for existing in existing_decisions:
         # Skip self-comparison
         if existing.get('decision_id') == decision_id:
             continue
 
-        # Skip if checking same feature only
+        # Skip if checking same aspect only
         if check_same_feature_only:
-            if (existing.get('group_id') != group_id or
-                existing.get('feature_id') != feature_id):
+            if (existing.get('domain_id') != domain_id or
+                existing.get('aspect_id') != aspect_id):
                 continue
 
         # Check exact duplicate first
@@ -440,8 +440,8 @@ async def detect_duplicates_async(
         {
             'decision_id': sd.decision.decision_id,
             'decision_code': sd.decision.decision_code,
-            'group_id': sd.decision.group_id.value,
-            'feature_id': sd.decision.feature_id.value,
+            'domain_id': sd.decision.domain_id.value,
+            'aspect_id': sd.decision.aspect_id.value,
             'statement': sd.decision.statement,
         }
         for sd in stored_decisions

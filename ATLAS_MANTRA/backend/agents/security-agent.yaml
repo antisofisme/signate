@@ -45,17 +45,17 @@ agent:
   # ═══════════════════════════════════════════════════════════════════════════
 
   decision_context:
-    groups:
+    domains:
       - id: "CTL"
         relevance: "high"
         reason: "Control & Policy - security requirements"
 
-    features:
+    aspects:
       required:
-        - "F11"  # Security & Compliance Posture
-        - "F12"  # Risk & Blast Radius
+        - "A11"  # Security & Compliance Posture
+        - "A12"  # Risk & Blast Radius
       optional:
-        - "F10"  # Approval & Authority Model
+        - "A10"  # Approval & Authority Model
 
     tags:
       required: ["SECURITY"]

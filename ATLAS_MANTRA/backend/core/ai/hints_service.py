@@ -33,7 +33,7 @@ Provide hints in this exact format:
 [Provide 1-3 specific suggestions to improve clarity, completeness, or professionalism.]
 
 🏷️ CLASSIFICATION:
-[If this is a statement, suggest the appropriate Group (INT/ARCH/CTL/EVO) and Feature (F01-F16). Explain briefly why.]
+[If this is a statement, suggest the appropriate Domain (INT/ARCH/CTL/EVO) and Aspect (A01-A16). Explain briefly why.]
 
 Keep responses concise and actionable. Use the same language as the input text (Indonesian or English)."""
 
@@ -97,10 +97,10 @@ class HintsService:
                 context_parts.append(f"- {code}: {statement}")
 
         if context:
-            if context.get("group_id"):
-                context_parts.append(f"Current group: {context['group_id']}")
-            if context.get("feature_id"):
-                context_parts.append(f"Current feature: {context['feature_id']}")
+            if context.get("domain_id"):
+                context_parts.append(f"Current domain: {context['domain_id']}")
+            if context.get("aspect_id"):
+                context_parts.append(f"Current aspect: {context['aspect_id']}")
 
         context_info = "\n".join(context_parts) if context_parts else "No additional context."
 

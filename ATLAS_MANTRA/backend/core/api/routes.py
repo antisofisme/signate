@@ -13,6 +13,8 @@ Per MANTRA-L2-IMPL-INTEGRATION-BOUNDARIES-001:
 """
 
 import time
+import uuid
+import logging
 from enum import Enum
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from pydantic import BaseModel, Field
@@ -22,8 +24,8 @@ from datetime import datetime
 from ..domain.schema import (
     Decision,
     DecisionCreate,
-    GroupId,
-    FeatureId,
+    DomainId,
+    AspectId,
     AuthorshipMetadata,
 )
 from ..use_cases.validate_decision import (
@@ -48,7 +50,7 @@ from ..use_cases.store_decision import store_decision, store_decision_async, Sto
 from ..use_cases.read_decision import (
     get_decision,
     list_decisions,
-    group_decisions_by_group_feature,
+    group_decisions_by_domain_aspect,
     ReadResult,
 )
 from ..use_cases.propose_decision import (
@@ -73,8 +75,12 @@ from ..use_cases.audit_log import (
 from ..domain.decision import AuditEventType, ChallengeMetadata
 from ..repositories.decision_repository import DecisionRepository
 from ..runtime.config import get_config
+from ..ports.cache import CacheKeys, CacheTTL
+from ..ports.message_queue import Message, MantraEvents
 from factory.container import Container
 
+# Setup logger
+logger = logging.getLogger(__name__)
 
 # ============================================================================
 # Router Setup
@@ -162,8 +168,8 @@ class DecisionResponse(BaseModel):
     """
     decision_id: str
     decision_code: Optional[str] = None
-    group_id: str
-    feature_id: str
+    domain_id: str
+    aspect_id: str
     statement: str
     rationale: str
     constraints: List[Dict[str, Any]]
@@ -260,8 +266,8 @@ class CompareResponse(BaseModel):
     differences: List[Dict[str, Any]] = []
     is_supersedes_chain: bool = False
     supersedes_direction: Optional[str] = None
-    common_group: bool = False
-    common_feature: bool = False
+    common_domain: bool = False
+    common_aspect: bool = False
     error_message: Optional[str] = None
 
 
@@ -365,8 +371,77 @@ class PendingProposal:
     validated_at: datetime
     expires_at: float  # Unix timestamp for expiration (30 min default)
 
-# In-memory proposal storage (replace with Redis/PostgreSQL in production)
+# In-memory proposal storage (Redis-backed with fallback)
 _pending_proposals: TypingDict[str, PendingProposal] = {}
+
+# Proposal storage helpers (Redis-backed)
+PROPOSAL_TTL = 1800  # 30 minutes
+
+async def _store_proposal(proposal_id: str, proposal: PendingProposal) -> None:
+    """Store proposal in Redis (or fallback to memory)."""
+    cache = Container.get_cache()
+    if cache:
+        try:
+            # Serialize proposal to dict
+            proposal_data = {
+                'proposal_id': proposal.proposal_id,
+                'decision_id': proposal.decision_id,
+                'record': proposal.record,
+                'validation_result': proposal.validation_result,
+                'can_store': proposal.can_store,
+                'requires_acknowledgment': proposal.requires_acknowledgment,
+                'warnings': proposal.warnings,
+                'validated_at': proposal.validated_at.isoformat(),
+                'expires_at': proposal.expires_at,
+            }
+            await cache.set(
+                f"mantra:proposal:{proposal_id}",
+                proposal_data,
+                ttl=PROPOSAL_TTL
+            )
+            return
+        except Exception:
+            # Silently fallback to memory on Redis errors
+            pass
+    # Fallback to memory
+    _pending_proposals[proposal_id] = proposal
+
+async def _get_proposal(proposal_id: str) -> Optional[PendingProposal]:
+    """Get proposal from Redis (or fallback to memory)."""
+    cache = Container.get_cache()
+    if cache:
+        try:
+            cached = await cache.get(f"mantra:proposal:{proposal_id}")
+            if cached:
+                # Deserialize from dict to PendingProposal
+                return PendingProposal(
+                    proposal_id=cached['proposal_id'],
+                    decision_id=cached['decision_id'],
+                    record=cached['record'],
+                    validation_result=cached['validation_result'],
+                    can_store=cached['can_store'],
+                    requires_acknowledgment=cached['requires_acknowledgment'],
+                    warnings=cached['warnings'],
+                    validated_at=datetime.fromisoformat(cached['validated_at']),
+                    expires_at=cached['expires_at'],
+                )
+        except Exception:
+            # Silently fallback to memory on Redis errors
+            pass
+    # Fallback to memory
+    return _pending_proposals.get(proposal_id)
+
+async def _delete_proposal(proposal_id: str) -> None:
+    """Delete proposal from Redis (or memory)."""
+    cache = Container.get_cache()
+    if cache:
+        try:
+            await cache.delete(f"mantra:proposal:{proposal_id}")
+        except Exception:
+            # Silently ignore Redis errors
+            pass
+    # Also remove from memory fallback
+    _pending_proposals.pop(proposal_id, None)
 
 
 class ArbitrationModeInput(str, Enum):
@@ -432,7 +507,7 @@ class EnhancedValidateResponse(BaseModel):
     metadata_suggestions: Optional[Dict[str, Any]] = None
 
     # AI Classification - Auto-detect group/feature (when missing)
-    classification_required: bool = False  # True if group_id/feature_id missing
+    classification_required: bool = False  # True if domain_id/aspect_id missing
     classification_context: Optional[Dict[str, Any]] = None  # For delegated AI
 
     # Auto-Supersedes Detection - Suggest if this updates existing decision
@@ -613,20 +688,20 @@ async def validate_enhanced_endpoint(
         ]
 
     # =========================================================================
-    # AI CLASSIFICATION: Check if group_id/feature_id need classification
+    # AI CLASSIFICATION: Check if domain_id/aspect_id need classification
     # =========================================================================
     classification_required = False
     classification_context = None
     supersedes_suggestion = None
 
-    group_id = request.record.get('group_id')
-    feature_id = request.record.get('feature_id')
+    domain_id = request.record.get('domain_id')
+    aspect_id = request.record.get('aspect_id')
     statement = request.record.get('statement', '')
     rationale = request.record.get('rationale', '')
     constraints = request.record.get('constraints', [])
 
-    # If group_id or feature_id missing, provide classification context
-    if not group_id or not feature_id:
+    # If domain_id or aspect_id missing, provide classification context
+    if not domain_id or not aspect_id:
         from ..use_cases.ai_arbiter import get_classification_context
         classification_required = True
         classification_context = get_classification_context(statement, rationale, constraints)
@@ -646,13 +721,13 @@ async def validate_enhanced_endpoint(
     # =========================================================================
     # AUTO-SUPERSEDES: Check if this should supersede existing decision
     # =========================================================================
-    # Only check if we have valid group/feature and statement
-    if group_id and feature_id and statement:
+    # Only check if we have valid domain/aspect and statement
+    if domain_id and aspect_id and statement:
         supersedes_suggestion = await _check_supersedes_suggestion(
             statement=statement,
             rationale=rationale,
-            group_id=group_id,
-            feature_id=feature_id,
+            domain_id=domain_id,
+            aspect_id=aspect_id,
             repository=repository
         )
 
@@ -674,7 +749,7 @@ async def validate_enhanced_endpoint(
         validated_at=result.validated_at,
         expires_at=time.time() + (30 * 60),  # 30 minutes
     )
-    _pending_proposals[serialized['proposal_id']] = proposal
+    await _store_proposal(serialized['proposal_id'], proposal)
 
     return EnhancedValidateResponse(
         result=serialized['result'],
@@ -698,7 +773,7 @@ async def validate_enhanced_endpoint(
         ai_verdicts=serialized.get('ai_verdicts'),
         # Metadata inference
         metadata_suggestions=serialized.get('metadata_suggestions'),
-        # AI Classification (when group_id/feature_id missing)
+        # AI Classification (when domain_id/aspect_id missing)
         classification_required=classification_required,
         classification_context=classification_context,
         # Auto-Supersedes Detection
@@ -709,8 +784,13 @@ async def validate_enhanced_endpoint(
     )
 
 
-def _cleanup_expired_proposals():
-    """Remove expired proposals from storage."""
+async def _cleanup_expired_proposals():
+    """
+    Remove expired proposals from memory storage.
+
+    Note: Redis entries are automatically expired via TTL,
+    so we only clean up the in-memory fallback here.
+    """
     now = time.time()
     expired = [k for k, v in _pending_proposals.items() if v.expires_at < now]
     for k in expired:
@@ -856,17 +936,17 @@ class ClassifyRequest(BaseModel):
     # If client AI already classified (delegated mode follow-up)
     classification_result: Optional[Dict[str, Any]] = Field(
         None,
-        description="Client AI's classification result: {group_id: str, feature_id: str, confidence: float}"
+        description="Client AI's classification result: {domain_id: str, aspect_id: str, confidence: float}"
     )
 
 
 class ClassifyResponse(BaseModel):
     """Response body for decision classification."""
     # Classification result (if available)
-    group_id: Optional[str] = None
-    feature_id: Optional[str] = None
-    group_label: Optional[str] = None
-    feature_label: Optional[str] = None
+    domain_id: Optional[str] = None
+    aspect_id: Optional[str] = None
+    domain_label: Optional[str] = None
+    aspect_label: Optional[str] = None
     confidence: Optional[float] = None
 
     # For delegated mode: context for client AI to classify
@@ -901,7 +981,7 @@ class ClassifyResponse(BaseModel):
     1. POST /classify with statement + rationale → Get classification_context
     2. Your AI classifies using the context
     3. POST /classify again with classification_result
-    4. Receive group_id, feature_id, and supersedes_suggestion
+    4. Receive domain_id, aspect_id, and supersedes_suggestion
 
     **Taxonomy:**
     - INT: Intent & Direction (WHY/WHAT) → F01-F04
@@ -921,18 +1001,18 @@ async def classify_endpoint(
         validate_classification_result,
         get_ai_client,
     )
-    from ..domain.schema import GROUP_LABELS, FEATURE_LABELS
+    from ..domain.schema import DOMAIN_LABELS, ASPECT_LABELS
 
     classifier = DecisionClassifier()
 
     # If client provided classification result (delegated mode follow-up)
     if request.classification_result:
-        group_id = request.classification_result.get('group_id', '').upper()
-        feature_id = request.classification_result.get('feature_id', '').upper()
+        domain_id = request.classification_result.get('domain_id', '').upper()
+        aspect_id = request.classification_result.get('aspect_id', '').upper()
         confidence = float(request.classification_result.get('confidence', 0.8))
 
         # Validate the classification
-        is_valid, error = validate_classification_result(group_id, feature_id)
+        is_valid, error = validate_classification_result(domain_id, aspect_id)
 
         if not is_valid:
             return ClassifyResponse(
@@ -950,20 +1030,20 @@ async def classify_endpoint(
         supersedes_suggestion = await _check_supersedes_suggestion(
             request.statement,
             request.rationale,
-            group_id,
-            feature_id,
+            domain_id,
+            aspect_id,
             repository
         )
 
         return ClassifyResponse(
-            group_id=group_id,
-            feature_id=feature_id,
-            group_label=GROUP_LABELS.get(group_id, group_id),
-            feature_label=FEATURE_LABELS.get(feature_id, feature_id),
+            domain_id=domain_id,
+            aspect_id=aspect_id,
+            domain_label=DOMAIN_LABELS.get(domain_id, domain_id),
+            aspect_label=ASPECT_LABELS.get(aspect_id, aspect_id),
             confidence=confidence,
             supersedes_suggestion=supersedes_suggestion,
             is_valid=True,
-            message=f"Classified as {group_id}/{feature_id}" + (
+            message=f"Classified as {domain_id}/{aspect_id}" + (
                 f" (suggests supersedes {supersedes_suggestion['existing_code']})"
                 if supersedes_suggestion else ""
             )
@@ -1013,7 +1093,7 @@ async def classify_endpoint(
         response_text = await ai_client.complete(prompt)
         result = classifier._parse_response(response_text)
 
-        if result.requires_ai or not result.group_id:
+        if result.requires_ai or not result.domain_id:
             # AI response couldn't be parsed - return delegated context
             ctx = get_classification_context(
                 request.statement,
@@ -1031,19 +1111,19 @@ async def classify_endpoint(
         supersedes_suggestion = await _check_supersedes_suggestion(
             request.statement,
             request.rationale,
-            result.group_id,
-            result.feature_id,
+            result.domain_id,
+            result.aspect_id,
             repository
         )
 
         return ClassifyResponse(
             classification_required=False,
-            group_id=result.group_id,
-            feature_id=result.feature_id,
+            domain_id=result.domain_id,
+            aspect_id=result.aspect_id,
             confidence=result.confidence,
             supersedes_suggestion=supersedes_suggestion,
             is_valid=True,
-            message=f"AI classified as {result.group_id}/{result.feature_id} (confidence: {result.confidence:.0%})" + (
+            message=f"AI classified as {result.domain_id}/{result.aspect_id} (confidence: {result.confidence:.0%})" + (
                 f" - suggests supersedes {supersedes_suggestion['existing_code']}"
                 if supersedes_suggestion else ""
             )
@@ -1067,8 +1147,8 @@ async def classify_endpoint(
 async def _check_supersedes_suggestion(
     statement: str,
     rationale: str,
-    group_id: str,
-    feature_id: str,
+    domain_id: str,
+    aspect_id: str,
     repository: DecisionRepository
 ) -> Optional[Dict[str, Any]]:
     """
@@ -1084,19 +1164,19 @@ async def _check_supersedes_suggestion(
     """
     try:
         # Convert string to enum for repository call
-        from ..domain.schema import GroupId, FeatureId
-        group_enum = GroupId(group_id)
+        from ..domain.schema import DomainId, AspectId
+        domain_enum = DomainId(domain_id)
 
-        # Get existing decisions in same group, then filter by feature
-        all_in_group = await repository.find_by_group_async(
-            group_id=group_enum,
+        # Get existing decisions in same domain, then filter by aspect
+        all_in_domain = await repository.find_by_domain_async(
+            domain_id=domain_enum,
             limit=50  # Get more to filter
         )
 
-        # Filter by feature_id (compare enum values or strings)
+        # Filter by aspect_id (compare enum values or strings)
         existing = [
-            d for d in all_in_group
-            if (d.decision.feature_id.value if hasattr(d.decision.feature_id, 'value') else d.decision.feature_id) == feature_id
+            d for d in all_in_domain
+            if (d.decision.aspect_id.value if hasattr(d.decision.aspect_id, 'value') else d.decision.aspect_id) == aspect_id
         ][:10]
 
         if not existing:
@@ -1199,7 +1279,7 @@ async def _check_supersedes_suggestion(
 
         return {
             'existing_id': match_decision.decision_id,
-            'existing_code': match_decision.decision_code or f"{group_id}-{feature_id}",
+            'existing_code': match_decision.decision_code or f"{domain_id}-{aspect_id}",
             'existing_statement': (
                 match_decision.statement[:100] + '...'
                 if len(match_decision.statement) > 100
@@ -1256,13 +1336,13 @@ async def approve_decision_endpoint(
     repository: DecisionRepository = Depends(get_repository)
 ) -> ApproveResponse:
     """Approve and store a validated decision."""
-    import uuid
+    config = get_config()
 
     # Clean up expired proposals
-    _cleanup_expired_proposals()
+    await _cleanup_expired_proposals()
 
     # Find the proposal
-    proposal = _pending_proposals.get(request.proposal_id)
+    proposal = await _get_proposal(request.proposal_id)
     if not proposal:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -1293,8 +1373,8 @@ async def approve_decision_endpoint(
     try:
         decision = Decision(
             decision_id=proposal.decision_id,
-            group_id=GroupId(record['group_id']),
-            feature_id=FeatureId(record['feature_id']),
+            domain_id=DomainId(record['domain_id']),
+            aspect_id=AspectId(record['aspect_id']),
             statement=record['statement'],
             rationale=record['rationale'],
             constraints=record.get('constraints', []),
@@ -1323,7 +1403,7 @@ async def approve_decision_endpoint(
 
     if result.result == StoreResult.STORED:
         # Remove from pending proposals
-        del _pending_proposals[request.proposal_id]
+        await _delete_proposal(request.proposal_id)
 
         # Record audit event
         record_audit(
@@ -1338,6 +1418,23 @@ async def approve_decision_endpoint(
                 "approval_flow": "user_approval",
             },
         )
+
+        # Publish decision approved event
+        queue = Container.get_message_queue()
+        if queue:
+            try:
+                await queue.publish(config.rabbitmq_queue_sync, Message(
+                    id=str(uuid.uuid4()),
+                    event_type=MantraEvents.DECISION_APPROVED,
+                    payload={
+                        "decision_id": result.decision_id,
+                        "approved_by": request.approved_by,
+                        "approved_at": datetime.utcnow().isoformat()
+                    },
+                    timestamp=datetime.utcnow().isoformat()
+                ))
+            except Exception as e:
+                logger.warning(f"Failed to queue approval event: {e}")
 
         return ApproveResponse(
             result="STORED",
@@ -1380,7 +1477,7 @@ async def store_endpoint(
     repository: DecisionRepository = Depends(get_repository)
 ) -> StoreResponse:
     """Store a validated decision."""
-    import uuid
+    config = get_config()
 
     # Use provided decision_id from propose, or generate new one
     # This preserves ID continuity between propose and store operations
@@ -1391,8 +1488,8 @@ async def store_endpoint(
     # Evolution via version + supersedes only
     decision = Decision(
         decision_id=final_decision_id,
-        group_id=request.decision.group_id,
-        feature_id=request.decision.feature_id,
+        domain_id=request.decision.domain_id,
+        aspect_id=request.decision.aspect_id,
         statement=request.decision.statement,
         rationale=request.decision.rationale,
         constraints=request.decision.constraints,
@@ -1415,6 +1512,19 @@ async def store_endpoint(
     result = await store_decision_async(decision, request.stored_by, repository)
 
     if result.result == StoreResult.STORED:
+        # Publish embedding sync event
+        queue = Container.get_message_queue()
+        if queue:
+            try:
+                await queue.publish(config.rabbitmq_queue_sync, Message(
+                    id=str(uuid.uuid4()),
+                    event_type=MantraEvents.EMBEDDING_SYNC_REQUESTED,
+                    payload={"decision_ids": [result.decision_id], "force_rebuild": False},
+                    timestamp=datetime.utcnow().isoformat()
+                ))
+            except Exception as e:
+                logger.warning(f"Failed to queue embedding sync: {e}")
+
         return StoreResponse(
             result=result.result.value,
             decision_id=result.decision_id,
@@ -1452,37 +1562,52 @@ async def store_endpoint(
     Per Human Decision (Phase 3):
     - Returns ALL decisions (no semantic filtering)
     - Consumer interprets which is current/active/valid
-    - Structural filtering only (group_id)
+    - Structural filtering only (domain_id)
     """
 )
 async def list_endpoint(
     limit: int = Query(default=100, ge=1, le=1000),
     offset: int = Query(default=0, ge=0),
-    group_id: Optional[GroupId] = Query(default=None),
+    domain_id: Optional[DomainId] = Query(default=None),
     repository: DecisionRepository = Depends(get_repository)
 ) -> ListDecisionsResponse:
     """List ALL decisions - PURE DATA ACCESS."""
+    # Check cache first
+    cache = Container.get_cache()
+
+    # Build cache key from parameters
+    domain_key = domain_id.value if domain_id else "all"
+    cache_key = f"mantra:decisions:list:{limit}:{offset}:{domain_key}"
+
+    if cache:
+        try:
+            cached = await cache.get(cache_key)
+            if cached:
+                return ListDecisionsResponse(**cached)
+        except Exception:
+            pass  # Cache miss or error, continue to DB
+
     try:
         # Use async version of find_all for proper database access
         stored_decisions = await repository.find_all_async(limit=limit, offset=offset)
         decisions = [sd.decision for sd in stored_decisions]
 
-        # Structural filter only - by group_id
-        if group_id:
-            decisions = [d for d in decisions if d.group_id == group_id]
+        # Structural filter only - by domain_id
+        if domain_id:
+            decisions = [d for d in decisions if d.domain_id == domain_id]
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=str(e)
         )
 
-    return ListDecisionsResponse(
+    result = ListDecisionsResponse(
         decisions=[
             DecisionResponse(
                 decision_id=d.decision_id,
                 decision_code=d.decision_code,
-                group_id=d.group_id.value,
-                feature_id=d.feature_id.value,
+                domain_id=d.domain_id.value,
+                aspect_id=d.aspect_id.value,
                 statement=d.statement,
                 rationale=d.rationale,
                 constraints=[serialize_constraint(c) for c in d.constraints],
@@ -1519,6 +1644,15 @@ async def list_endpoint(
         offset=offset,
     )
 
+    # Cache the result
+    if cache:
+        try:
+            await cache.set(cache_key, result.model_dump(), ttl=CacheTTL.DECISION_LIST)
+        except Exception:
+            pass
+
+    return result
+
 
 @router.get(
     "/decisions/{decision_id}",
@@ -1531,6 +1665,18 @@ async def get_endpoint(
     repository: DecisionRepository = Depends(get_repository)
 ) -> DecisionResponse:
     """Get a decision by ID."""
+    # Check cache first
+    cache = Container.get_cache()
+    cache_key = CacheKeys.decision(decision_id)
+
+    if cache:
+        try:
+            cached = await cache.get(cache_key)
+            if cached:
+                return DecisionResponse(**cached)
+        except Exception:
+            pass  # Cache miss or error, continue to DB
+
     # Use async version for proper database access
     stored = await repository.find_by_id_async(decision_id)
 
@@ -1541,11 +1687,11 @@ async def get_endpoint(
         )
 
     d = stored.decision
-    return DecisionResponse(
+    response = DecisionResponse(
         decision_id=d.decision_id,
         decision_code=d.decision_code,
-        group_id=d.group_id.value,
-        feature_id=d.feature_id.value,
+        domain_id=d.domain_id.value,
+        aspect_id=d.aspect_id.value,
         statement=d.statement,
         rationale=d.rationale,
         constraints=[serialize_constraint(c) for c in d.constraints],
@@ -1576,6 +1722,15 @@ async def get_endpoint(
         content_summary=getattr(d, 'content_summary', None),
     )
 
+    # Cache the result (decisions are immutable)
+    if cache:
+        try:
+            await cache.set(cache_key, response.model_dump(), ttl=CacheTTL.DECISION)
+        except Exception:
+            pass
+
+    return response
+
 
 @router.get(
     "/grouped",
@@ -1594,20 +1749,32 @@ async def grouped_endpoint(
     repository: DecisionRepository = Depends(get_repository)
 ) -> GroupedDecisionsResponse:
     """Get ALL decisions grouped by group/feature - PURE DATA ACCESS."""
+    # Check cache first
+    cache = Container.get_cache()
+    cache_key = "mantra:decisions:grouped"
+
+    if cache:
+        try:
+            cached = await cache.get(cache_key)
+            if cached:
+                return GroupedDecisionsResponse(**cached)
+        except Exception:
+            pass  # Cache miss or error, continue to DB
+
     # Build grouped structure using async methods
     grouped = {}
 
-    for group in GroupId:
-        grouped[group.value] = {}
-        stored_decisions = await repository.find_by_group_async(group)
+    for domain in DomainId:
+        grouped[domain.value] = {}
+        stored_decisions = await repository.find_by_domain_async(domain)
 
         for sd in stored_decisions:
-            feature_key = sd.decision.feature_id.value
-            if feature_key not in grouped[group.value]:
-                grouped[group.value][feature_key] = []
+            aspect_key = sd.decision.aspect_id.value
+            if aspect_key not in grouped[domain.value]:
+                grouped[domain.value][aspect_key] = []
 
             # Return ALL decisions, no filtering
-            grouped[group.value][feature_key].append({
+            grouped[domain.value][aspect_key].append({
                 "decision_id": sd.decision.decision_id,
                 "statement": sd.decision.statement,
                 "scope": sd.decision.scope.value,
@@ -1617,10 +1784,19 @@ async def grouped_endpoint(
                 "created_at": sd.decision.created_at.isoformat() if sd.decision.created_at else None
             })
 
-    return GroupedDecisionsResponse(
+    result = GroupedDecisionsResponse(
         grouped=grouped,
         generated_at=datetime.utcnow()
     )
+
+    # Cache the result
+    if cache:
+        try:
+            await cache.set(cache_key, result.model_dump(), ttl=CacheTTL.DECISION_LIST)
+        except Exception:
+            pass
+
+    return result
 
 
 # ============================================================================
@@ -1895,6 +2071,8 @@ async def propose_endpoint(
     repository: DecisionRepository = Depends(get_repository)
 ) -> ProposeResponse:
     """Propose a decision for storage."""
+    config = get_config()
+
     # Parse authorship metadata if provided (with explicit error handling)
     authorship = None
     validation_warnings = []
@@ -1929,8 +2107,8 @@ async def propose_endpoint(
         # Build record dict for validation
         record_dict = {
             "decision_id": result.decision.decision_id,
-            "group_id": result.decision.group_id.value,
-            "feature_id": result.decision.feature_id.value,
+            "domain_id": result.decision.domain_id.value,
+            "aspect_id": result.decision.aspect_id.value,
             "related_decisions": result.decision.related_decisions,
         }
         rel_result = await validate_related_decisions_integrity_async(record_dict, repository)
@@ -1961,8 +2139,8 @@ async def propose_endpoint(
         decision_dict = {
             "decision_id": result.decision.decision_id,
             "decision_code": result.decision.decision_code,
-            "group_id": result.decision.group_id.value,
-            "feature_id": result.decision.feature_id.value,
+            "domain_id": result.decision.domain_id.value,
+            "aspect_id": result.decision.aspect_id.value,
             "statement": result.decision.statement,
             "rationale": result.decision.rationale,
             "constraints": [serialize_constraint(c) for c in result.decision.constraints],
@@ -2008,6 +2186,26 @@ async def propose_endpoint(
     if relationship_violations:
         final_result = "INVALID"
 
+    # Publish decision proposed event for async validation
+    queue = Container.get_message_queue()
+    if queue and result.proposal_id:
+        try:
+            await queue.publish(config.rabbitmq_queue_validation, Message(
+                id=str(uuid.uuid4()),
+                event_type=MantraEvents.DECISION_PROPOSED,
+                payload={
+                    "proposal_id": result.proposal_id,
+                    "decision_id": result.decision_id,
+                    "statement": request.decision.statement,
+                    "rationale": request.decision.rationale,
+                    "domain_id": request.decision.domain_id.value,
+                    "aspect_id": request.decision.aspect_id.value
+                },
+                timestamp=datetime.utcnow().isoformat()
+            ))
+        except Exception as e:
+            logger.warning(f"Failed to queue validation: {e}")
+
     return ProposeResponse(
         result=final_result,
         proposal_id=result.proposal_id,
@@ -2046,7 +2244,7 @@ async def challenge_endpoint(
     repository: DecisionRepository = Depends(get_repository)
 ) -> ChallengeResponse:
     """Challenge a decision by creating a superseding decision."""
-    import uuid
+    config = get_config()
 
     # Verify challenged decision exists - use async version
     challenged = await repository.find_by_id_async(decision_id)
@@ -2059,8 +2257,8 @@ async def challenge_endpoint(
     # Create the new decision with supersedes set
     new_decision = Decision(
         decision_id=str(uuid.uuid4()),
-        group_id=request.proposed_replacement.group_id,
-        feature_id=request.proposed_replacement.feature_id,
+        domain_id=request.proposed_replacement.domain_id,
+        aspect_id=request.proposed_replacement.aspect_id,
         statement=request.proposed_replacement.statement,
         rationale=request.proposed_replacement.rationale,
         constraints=request.proposed_replacement.constraints,
@@ -2094,6 +2292,23 @@ async def challenge_endpoint(
             repository=repository,
             metadata=challenge_metadata.to_dict(),
         )
+
+        # Publish challenge event
+        queue = Container.get_message_queue()
+        if queue:
+            try:
+                await queue.publish(config.rabbitmq_queue_sync, Message(
+                    id=str(uuid.uuid4()),
+                    event_type=MantraEvents.DECISION_APPROVED,
+                    payload={
+                        "decision_id": result.decision_id,
+                        "challenged_id": decision_id,
+                        "reason": "challenge"
+                    },
+                    timestamp=datetime.utcnow().isoformat()
+                ))
+            except Exception as e:
+                logger.warning(f"Failed to queue challenge event: {e}")
 
         return ChallengeResponse(
             result="STORED",
@@ -2138,8 +2353,8 @@ async def compare_endpoint(
         return {
             "decision_id": d.decision_id,
             "decision_code": d.decision_code,
-            "group_id": d.group_id.value,
-            "feature_id": d.feature_id.value,
+            "domain_id": d.domain_id.value,
+            "aspect_id": d.aspect_id.value,
             "statement": d.statement,
             "rationale": d.rationale,
             "constraints": [serialize_constraint(c) for c in d.constraints],
@@ -2169,8 +2384,8 @@ async def compare_endpoint(
         ],
         is_supersedes_chain=result.is_supersedes_chain,
         supersedes_direction=result.supersedes_direction,
-        common_group=result.common_group,
-        common_feature=result.common_feature,
+        common_domain=result.common_domain,
+        common_aspect=result.common_aspect,
         error_message=result.error_message,
     )
 
@@ -2201,8 +2416,8 @@ async def history_endpoint(
         return {
             "decision_id": d.decision_id,
             "decision_code": d.decision_code,
-            "group_id": d.group_id.value,
-            "feature_id": d.feature_id.value,
+            "domain_id": d.domain_id.value,
+            "aspect_id": d.aspect_id.value,
             "statement": d.statement,
             "version": d.version,
             "created_by": d.created_by,
@@ -2346,7 +2561,7 @@ class MCPProposeRequest(BaseModel):
     proposed_by: str = Field(default="ai_assistant", description="Who is proposing")
     classification_result: Optional[Dict[str, Any]] = Field(
         default=None,
-        description="Classification result from AI (group_id, feature_id, confidence)"
+        description="Classification result from AI (domain_id, aspect_id, confidence)"
     )
 
 
@@ -2384,10 +2599,10 @@ async def mcp_propose(
 
     # Apply classification result if provided
     if request.classification_result:
-        if "group_id" in request.classification_result:
-            decision["group_id"] = request.classification_result["group_id"]
-        if "feature_id" in request.classification_result:
-            decision["feature_id"] = request.classification_result["feature_id"]
+        if "domain_id" in request.classification_result:
+            decision["domain_id"] = request.classification_result["domain_id"]
+        if "aspect_id" in request.classification_result:
+            decision["aspect_id"] = request.classification_result["aspect_id"]
 
     # Generate IDs if not present
     if "decision_id" not in decision:
@@ -2480,15 +2695,15 @@ async def mcp_store(
 
     try:
         import uuid
-        from ..domain.schema import Decision, GroupId, FeatureId, Scope, BlastRadius
+        from ..domain.schema import Decision, DomainId, AspectId, Scope, BlastRadius
 
         dec = request.decision
 
         # Create Decision object (not DecisionCreate)
         decision_obj = Decision(
             decision_id=dec.get("decision_id") or str(uuid.uuid4()),
-            group_id=GroupId(dec.get("group_id", "INT")),
-            feature_id=FeatureId(dec.get("feature_id", "F01")),
+            domain_id=DomainId(dec.get("domain_id", "INT")),
+            aspect_id=AspectId(dec.get("aspect_id", "F01")),
             statement=dec.get("statement", ""),
             rationale=dec.get("rationale", ""),
             version=dec.get("version", "1.0.0"),

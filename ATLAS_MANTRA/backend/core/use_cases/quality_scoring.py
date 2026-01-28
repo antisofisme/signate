@@ -23,12 +23,14 @@ from dataclasses import dataclass, field
 from typing import List, Dict, Any, Tuple, Optional
 from enum import Enum
 import re
+import hashlib
 
 from .readability_metrics import (
     calculate_readability,
     calculate_domain_aware_readability,
     ReadabilityScore
 )
+from ..ports.cache import CacheProtocol, CacheTTL
 
 
 class QualityGrade(str, Enum):
@@ -677,7 +679,7 @@ def detect_bias(text: str) -> List[str]:
 
 def calculate_coherence(statement: str, rationale: str) -> Tuple[float, str]:
     """
-    Calculate semantic coherence between statement and rationale.
+    Calculate semantic coherence between statement and rationale (sync version).
 
     Uses Sentence-BERT if available, falls back to TF-IDF hybrid.
     Phase 2 upgrade: Now uses semantic_similarity module for true semantic matching.
@@ -711,9 +713,79 @@ def calculate_coherence(statement: str, rationale: str) -> Tuple[float, str]:
         return (intersection / union if union > 0 else 0.0), "keyword"
 
 
+async def calculate_coherence_async(
+    statement: str,
+    rationale: str,
+    cache: Optional[CacheProtocol] = None
+) -> Tuple[float, str]:
+    """
+    Calculate semantic coherence with optional caching (async version).
+
+    SBERT coherence calculation is expensive (model inference).
+    Caching can significantly improve performance for repeated validations.
+
+    Cache Strategy:
+    - Cache key: Hash of statement + rationale content
+    - TTL: 2 hours (CacheTTL.ALIGNMENT) - coherence doesn't change
+    - Stores both score and method used
+
+    Args:
+        statement: The decision statement
+        rationale: The decision rationale
+        cache: Optional cache implementation
+
+    Returns:
+        (coherence_score, method_used)
+    """
+    if not statement or not rationale:
+        return 0.0, "empty"
+
+    # Check cache first
+    if cache:
+        try:
+            # Create content hash for cache key
+            content = f"{statement}:{rationale}"
+            content_hash = hashlib.sha256(content.encode()).hexdigest()[:16]
+            cache_key = f"mantra:coherence:{content_hash}"
+
+            cached = await cache.get(cache_key)
+            if cached is not None:
+                # Cache hit - return stored result
+                if isinstance(cached, dict):
+                    return cached.get('score', 0.0), cached.get('method', 'cached')
+                # Backward compatibility: if cached value is just the score
+                return float(cached), "cached"
+        except Exception:
+            # Cache error - continue without cache
+            pass
+
+    # Cache miss - compute coherence (expensive SBERT operation)
+    score, method = calculate_coherence(statement, rationale)
+
+    # Store in cache if available
+    if cache:
+        try:
+            content = f"{statement}:{rationale}"
+            content_hash = hashlib.sha256(content.encode()).hexdigest()[:16]
+            cache_key = f"mantra:coherence:{content_hash}"
+
+            # Store both score and method for better transparency
+            cached_data = {
+                'score': score,
+                'method': method
+            }
+
+            await cache.set(cache_key, cached_data, ttl=CacheTTL.ALIGNMENT)
+        except Exception:
+            # Cache error - continue without caching
+            pass
+
+    return score, method
+
+
 def score_advanced_quality(record: Dict[str, Any]) -> Tuple[int, QualityDimension, dict, float, List[str]]:
     """
-    Score advanced quality metrics (Q-021 to Q-025).
+    Score advanced quality metrics (Q-021 to Q-025) - sync version.
     Max: 40 points (REBALANCED: was 20 - Advanced dimensions now weighted higher)
 
     These metrics capture SUBSTANCE (semantic coherence, readability) vs FORM (length, keywords).
@@ -862,6 +934,161 @@ def score_advanced_quality(record: Dict[str, Any]) -> Tuple[int, QualityDimensio
     return score, dimension, readability_dict, coherence, biases
 
 
+async def score_advanced_quality_async(
+    record: Dict[str, Any],
+    cache: Optional[CacheProtocol] = None
+) -> Tuple[int, QualityDimension, dict, float, List[str]]:
+    """
+    Score advanced quality metrics (Q-021 to Q-025) - async version with caching.
+    Max: 40 points (REBALANCED: was 20 - Advanced dimensions now weighted higher)
+
+    This async version caches the expensive SBERT coherence calculation.
+
+    Cache Strategy:
+    - Only Q-023 (coherence) is cached - most expensive operation
+    - Q-021, Q-022 (readability) are fast (no caching needed)
+    - Q-024, Q-025 (bias detection) are pattern matching (fast)
+
+    Returns:
+        (score, dimension, readability_dict, coherence_score, bias_issues)
+    """
+    statement = record.get('statement') or ''
+    rationale = record.get('rationale') or ''
+
+    score = 0
+    rules_passed = []
+    rules_failed = []
+    suggestions = []
+
+    # Calculate readability with domain-aware adjustment (fast - no caching)
+    stmt_readability = calculate_domain_aware_readability(statement) if len(statement) > 20 else None
+    rat_readability = calculate_domain_aware_readability(rationale) if len(rationale) > 20 else None
+
+    readability_dict = {
+        'statement': {
+            'flesch_kincaid_grade': stmt_readability.flesch_kincaid_grade if stmt_readability else None,
+            'flesch_reading_ease': stmt_readability.flesch_reading_ease if stmt_readability else None,
+            'gunning_fog': stmt_readability.gunning_fog if stmt_readability else None,
+            'grade_level': stmt_readability.grade_level if stmt_readability else None,
+            'is_appropriate': stmt_readability.is_appropriate if stmt_readability else None,
+            'complexity_warning': stmt_readability.complexity_warning if stmt_readability else None,
+        } if stmt_readability else None,
+        'rationale': {
+            'flesch_kincaid_grade': rat_readability.flesch_kincaid_grade if rat_readability else None,
+            'flesch_reading_ease': rat_readability.flesch_reading_ease if rat_readability else None,
+            'gunning_fog': rat_readability.gunning_fog if rat_readability else None,
+            'grade_level': rat_readability.grade_level if rat_readability else None,
+            'is_appropriate': rat_readability.is_appropriate if rat_readability else None,
+            'complexity_warning': rat_readability.complexity_warning if rat_readability else None,
+        } if rat_readability else None,
+    }
+
+    # Q-021: Statement Readability (8 points)
+    if stmt_readability:
+        if stmt_readability.is_appropriate:
+            score += 8
+            rules_passed.append('Q-021')
+        elif stmt_readability.flesch_kincaid_grade > 16:
+            score += 2
+            rules_failed.append('Q-021')
+            suggestions.append(f"Statement too complex (Grade {stmt_readability.flesch_kincaid_grade}). Simplify language.")
+        elif stmt_readability.flesch_kincaid_grade < 6:
+            score += 4
+            rules_failed.append('Q-021')
+            suggestions.append(f"Statement too simple (Grade {stmt_readability.flesch_kincaid_grade}). Add technical precision.")
+        else:
+            score += 6
+            rules_passed.append('Q-021')
+    else:
+        score += 4
+        rules_failed.append('Q-021')
+
+    # Q-022: Rationale Readability (8 points)
+    if rat_readability:
+        if rat_readability.is_appropriate:
+            score += 8
+            rules_passed.append('Q-022')
+        elif rat_readability.flesch_kincaid_grade > 16:
+            score += 2
+            rules_failed.append('Q-022')
+            suggestions.append(f"Rationale too complex (Grade {rat_readability.flesch_kincaid_grade}). Use clearer language.")
+        elif rat_readability.flesch_kincaid_grade < 6:
+            score += 4
+            rules_failed.append('Q-022')
+            suggestions.append(f"Rationale too simple (Grade {rat_readability.flesch_kincaid_grade}). Add technical depth.")
+        else:
+            score += 6
+            rules_passed.append('Q-022')
+    else:
+        score += 4
+        rules_failed.append('Q-022')
+
+    # Q-023: Statement-Rationale Coherence (10 points) - WITH CACHING
+    # This is the MOST EXPENSIVE operation (SBERT inference)
+    coherence, coherence_method = await calculate_coherence_async(statement, rationale, cache=cache)
+
+    # Thresholds adjusted for semantic similarity
+    if coherence_method in ("sbert", "cached"):
+        threshold_high, threshold_mid = 0.5, 0.3
+    else:
+        threshold_high, threshold_mid = 0.35, 0.2
+
+    if coherence >= threshold_high:
+        score += 10
+        rules_passed.append('Q-023')
+    elif coherence >= threshold_mid:
+        score += 5
+        rules_failed.append('Q-023')
+        suggestions.append("Rationale should more directly relate to statement meaning.")
+    else:
+        score += 0
+        rules_failed.append('Q-023')
+        suggestions.append(f"Rationale seems disconnected from statement (coherence: {coherence:.2f}). Ensure semantic alignment.")
+
+    # Q-024: Rationale Objectivity (6 points) - fast pattern matching
+    biases = detect_bias(rationale)
+    if not biases:
+        score += 6
+        rules_passed.append('Q-024')
+    elif len(biases) == 1:
+        score += 3
+        rules_failed.append('Q-024')
+        suggestions.append(f"Potential {biases[0]} bias detected. Add evidence-based justification.")
+    else:
+        score += 0
+        rules_failed.append('Q-024')
+        suggestions.append(f"Multiple biases detected ({', '.join(biases)}). Use objective, evidence-based language.")
+
+    # Q-025: Evidence-Based Language (8 points) - fast keyword matching
+    rat_lower = rationale.lower()
+    evidence_count = sum(1 for kw in OBJECTIVITY_KEYWORDS if kw in rat_lower)
+    if evidence_count >= 3:
+        score += 8
+        rules_passed.append('Q-025')
+    elif evidence_count >= 1:
+        score += 4
+        rules_failed.append('Q-025')
+        suggestions.append("Add more evidence-based language (data, metrics, benchmarks).")
+    else:
+        score += 0
+        rules_failed.append('Q-025')
+        suggestions.append("Include evidence or data to support the decision rationale.")
+
+    dimension = QualityDimension(
+        dimension='advanced',
+        score=score,
+        max_score=40,
+        rules_passed=rules_passed,
+        rules_failed=rules_failed,
+        suggestions=suggestions
+    )
+
+    # Include coherence method in readability dict for transparency
+    readability_dict['coherence_method'] = coherence_method
+
+    return score, dimension, readability_dict, coherence, biases
+
+
 def determine_grade(score: int, max_score: int = 120) -> QualityGrade:
     """
     Determine quality grade from score.
@@ -893,7 +1120,7 @@ def determine_grade(score: int, max_score: int = 120) -> QualityGrade:
 
 def assess_quality(record: Dict[str, Any]) -> QualityAssessment:
     """
-    Perform complete quality assessment.
+    Perform complete quality assessment (sync version, no caching).
 
     Scoring breakdown (120 points total, REBALANCED):
     - Statement Quality (Q-001 to Q-005): 20 points (was 25)
@@ -933,6 +1160,113 @@ def assess_quality(record: Dict[str, Any]) -> QualityAssessment:
 
     # Score advanced quality (Q-021 to Q-025)
     adv_score, adv_dim, readability, coherence, biases = score_advanced_quality(record)
+    dimensions.append(adv_dim)
+    all_suggestions.extend(adv_dim.suggestions)
+
+    # MICS: Score detailed content quality (Q-026 to Q-030) if Layer B present
+    from .detailed_content_validation import (
+        score_detailed_content_quality,
+        has_detailed_content,
+        DetailedContentDimension
+    )
+
+    detailed_score = 0
+    has_layer_b = has_detailed_content(record)
+    if has_layer_b:
+        detailed_score, detailed_dim = score_detailed_content_quality(record)
+        # Convert DetailedContentDimension to QualityDimension for consistency
+        detailed_quality_dim = QualityDimension(
+            dimension='detailed_content',
+            score=detailed_dim.score,
+            max_score=detailed_dim.max_score,
+            rules_passed=detailed_dim.rules_passed,
+            rules_failed=detailed_dim.rules_failed,
+            suggestions=detailed_dim.suggestions
+        )
+        dimensions.append(detailed_quality_dim)
+        all_suggestions.extend(detailed_dim.suggestions)
+
+    # Calculate overall score
+    # Base: 120 points (20+20+20+20+40)
+    # With Layer B: 140 points (adds 20 from Q-026 to Q-030)
+    max_score = 140 if has_layer_b else 120
+    overall_score = stmt_score + rat_score + con_score + meta_score + adv_score + detailed_score
+    grade = determine_grade(overall_score, max_score=max_score)
+
+    # Scale overall_score to 0-100 for consistency
+    scaled_score = round((overall_score / max_score) * 100)
+
+    return QualityAssessment(
+        overall_score=scaled_score,
+        grade=grade,
+        statement_score=stmt_score,
+        rationale_score=rat_score,
+        constraint_score=con_score,
+        metadata_score=meta_score,
+        advanced_score=adv_score,
+        detailed_content_score=detailed_score,
+        dimensions=dimensions,
+        improvement_suggestions=all_suggestions[:10],  # Limit to top 10
+        can_store=scaled_score >= 30,
+        readability=readability,
+        coherence_score=coherence,
+        objectivity_issues=biases,
+        has_layer_b=has_layer_b
+    )
+
+
+async def assess_quality_async(
+    record: Dict[str, Any],
+    cache: Optional[CacheProtocol] = None
+) -> QualityAssessment:
+    """
+    Perform complete quality assessment (async version with caching).
+
+    This async version caches the expensive SBERT coherence calculation
+    in the advanced quality scoring (Q-023).
+
+    Cache Strategy:
+    - Only Q-023 (SBERT coherence) is cached - most expensive operation
+    - All other metrics are fast and run without caching
+    - Cache TTL: 2 hours (coherence doesn't change for same content)
+
+    Scoring breakdown (120 points total, REBALANCED):
+    - Statement Quality (Q-001 to Q-005): 20 points
+    - Rationale Quality (Q-006 to Q-010): 20 points
+    - Constraint Quality (Q-011 to Q-015): 20 points
+    - Metadata Quality (Q-016 to Q-020): 20 points
+    - Advanced Quality (Q-021 to Q-025): 40 points - WEIGHTED HIGHER
+    - Detailed Content (Q-026 to Q-030): 20 points (if Layer B present)
+
+    Args:
+        record: Decision record dictionary
+        cache: Optional cache implementation for SBERT results
+
+    Returns:
+        QualityAssessment with scores, suggestions, and advanced metrics
+    """
+    dimensions = []
+    all_suggestions = []
+
+    # Score each dimension (fast - no caching needed)
+    stmt_score, stmt_dim = score_statement_quality(record)
+    dimensions.append(stmt_dim)
+    all_suggestions.extend(stmt_dim.suggestions)
+
+    rat_score, rat_dim = score_rationale_quality(record)
+    dimensions.append(rat_dim)
+    all_suggestions.extend(rat_dim.suggestions)
+
+    con_score, con_dim = score_constraint_quality(record)
+    dimensions.append(con_dim)
+    all_suggestions.extend(con_dim.suggestions)
+
+    meta_score, meta_dim = score_metadata_quality(record)
+    dimensions.append(meta_dim)
+    all_suggestions.extend(meta_dim.suggestions)
+
+    # Score advanced quality (Q-021 to Q-025) - WITH CACHING for Q-023
+    adv_score, adv_dim, readability, coherence, biases = await score_advanced_quality_async(record, cache=cache)
     dimensions.append(adv_dim)
     all_suggestions.extend(adv_dim.suggestions)
 

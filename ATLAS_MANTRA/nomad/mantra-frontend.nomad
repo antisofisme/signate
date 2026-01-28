@@ -7,8 +7,8 @@ job "mantra-frontend" {
   type        = "service"
 
   meta {
-    version     = "1.2.6"
-    description = "Decision Matrix UI - Current vs Total Decision Display"
+    version     = "1.3.0"
+    description = "Decision Matrix UI - Domain/Aspect Terminology Rename"
   }
 
   group "web" {
@@ -45,7 +45,7 @@ job "mantra-frontend" {
       driver = "docker"
 
       config {
-        image      = "atlas-mantra-web:v1.2.6"
+        image      = "atlas-mantra-web:v1.3.0"
         ports      = ["http"]
         force_pull = false
       }

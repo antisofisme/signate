@@ -3,12 +3,12 @@
  * Visual editor for managing decision relations and dependencies
  */
 
-import { useState, useCallback, useMemo } from 'react'
+import { useState, useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import { clsx } from 'clsx'
 import { decisionsApi, Decision, RelationType } from '../shared/api'
-import { GROUP_COLORS, GROUP_LABELS } from '../shared/constants'
+import { DOMAIN_COLORS, DOMAIN_LABELS } from '../shared/constants'
 
 // =============================================================================
 // Types
@@ -27,10 +27,8 @@ interface RelationEdge {
 
 export default function RelationEditor() {
   const [selectedDecision, setSelectedDecision] = useState<Decision | null>(null)
-  const [newRelationType, setNewRelationType] = useState<RelationType>('depends_on')
-  const [newRelationTarget, setNewRelationTarget] = useState('')
   const [viewMode, setViewMode] = useState<'list' | 'graph'>('list')
-  const [filterGroup, setFilterGroup] = useState('')
+  const [filterDomain, setFilterDomain] = useState('')
 
   // Fetch all decisions
   const { data: decisionsData, isLoading } = useQuery({
@@ -42,9 +40,9 @@ export default function RelationEditor() {
 
   // Filter decisions
   const filteredDecisions = useMemo(() => {
-    if (!filterGroup) return decisions
-    return decisions.filter(d => d.group_id === filterGroup)
-  }, [decisions, filterGroup])
+    if (!filterDomain) return decisions
+    return decisions.filter(d => (d.domain_id || (d as any).group_id) === filterDomain)
+  }, [decisions, filterDomain])
 
   // Build relation edges for graph view
   const relationEdges = useMemo(() => {
@@ -76,22 +74,6 @@ export default function RelationEditor() {
     return { outgoing, incoming, total: outgoing + incoming }
   }
 
-  // Add relation (would need backend support)
-  const addRelation = useCallback(() => {
-    if (!selectedDecision || !newRelationTarget) return
-
-    // In a real implementation, this would call an API endpoint
-    console.log('Add relation:', {
-      from: selectedDecision.decision_id,
-      to: newRelationTarget,
-      type: newRelationType,
-    })
-
-    // For now, just show feedback
-    alert(`Relation added (UI only):\n${selectedDecision.decision_code} → ${newRelationTarget}\nType: ${newRelationType}`)
-    setNewRelationTarget('')
-  }, [selectedDecision, newRelationTarget, newRelationType])
-
   // Get related decisions for selected decision
   const relatedDecisions = useMemo(() => {
     if (!selectedDecision) return { outgoing: [], incoming: [] }
@@ -112,7 +94,7 @@ export default function RelationEditor() {
     return { outgoing, incoming }
   }, [selectedDecision, decisions, relationEdges])
 
-  const uniqueGroups = [...new Set(decisions.map(d => d.group_id))]
+  const uniqueDomains = [...new Set(decisions.map(d => (d.domain_id || (d as any).group_id)))]
 
   return (
     <div className="space-y-6">
@@ -172,15 +154,15 @@ export default function RelationEditor() {
       <div className="bg-white rounded-lg shadow-sm border p-4">
         <div className="flex flex-wrap items-center gap-4">
           <div>
-            <label className="block text-sm text-gray-500 mb-1">Filter by Group</label>
+            <label className="block text-sm text-gray-500 mb-1">Filter by Domain</label>
             <select
-              value={filterGroup}
-              onChange={(e) => setFilterGroup(e.target.value)}
+              value={filterDomain}
+              onChange={(e) => setFilterDomain(e.target.value)}
               className="px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500"
             >
-              <option value="">All Groups</option>
-              {uniqueGroups.map(g => (
-                <option key={g} value={g}>{g} - {GROUP_LABELS[g]}</option>
+              <option value="">All Domains</option>
+              {uniqueDomains.map(d => (
+                <option key={d} value={d}>{d} - {DOMAIN_LABELS[d]}</option>
               ))}
             </select>
           </div>
@@ -231,7 +213,7 @@ export default function RelationEditor() {
                       <div className="flex items-center gap-2">
                         <span
                           className="w-2 h-2 rounded-full"
-                          style={{ backgroundColor: GROUP_COLORS[decision.group_id] }}
+                          style={{ backgroundColor: DOMAIN_COLORS[(decision.domain_id || (decision as any).group_id)] }}
                         />
                         <span className="font-mono text-sm text-gray-700">
                           {decision.decision_code || decision.decision_id.slice(0, 8)}
@@ -263,9 +245,9 @@ export default function RelationEditor() {
                       <div className="flex items-center gap-2">
                         <span
                           className="px-2 py-0.5 rounded text-xs text-white"
-                          style={{ backgroundColor: GROUP_COLORS[selectedDecision.group_id] }}
+                          style={{ backgroundColor: DOMAIN_COLORS[selectedDecision.domain_id || (selectedDecision as any).group_id] }}
                         >
-                          {selectedDecision.group_id}
+                          {selectedDecision.domain_id || (selectedDecision as any).group_id}
                         </span>
                         <span className="font-mono font-medium">
                           {selectedDecision.decision_code || selectedDecision.decision_id.slice(0, 8)}
@@ -294,44 +276,57 @@ export default function RelationEditor() {
                   )}
                 </div>
 
-                {/* Add New Relation */}
-                <div className="bg-white rounded-lg shadow-sm border p-4">
-                  <h4 className="font-medium text-gray-900 mb-3">Add Relation</h4>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                    <select
-                      value={newRelationType}
-                      onChange={(e) => setNewRelationType(e.target.value as RelationType)}
-                      className="px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500"
-                    >
-                      <option value="depends_on">Depends On</option>
-                      <option value="conflicts_with">Conflicts With</option>
-                      <option value="informed_by">Informed By</option>
-                    </select>
-                    <select
-                      value={newRelationTarget}
-                      onChange={(e) => setNewRelationTarget(e.target.value)}
-                      className="px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 md:col-span-2"
-                    >
-                      <option value="">Select target decision...</option>
-                      {decisions
-                        .filter(d => d.decision_id !== selectedDecision.decision_id)
-                        .map(d => (
-                          <option key={d.decision_id} value={d.decision_id}>
-                            {d.decision_code || d.decision_id.slice(0, 8)} - {d.statement.slice(0, 40)}...
-                          </option>
-                        ))}
-                    </select>
+                {/* Immutability Notice & Alternatives */}
+                <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+                  <div className="flex items-start gap-3">
+                    <span className="text-2xl">🔒</span>
+                    <div>
+                      <h4 className="font-medium text-amber-800">Immutability Constraint</h4>
+                      <p className="text-sm text-amber-700 mt-1">
+                        Per MANTRA-LAW-001, decisions are <strong>immutable</strong> once created.
+                        Relations cannot be added or removed from existing decisions.
+                      </p>
+                      <div className="mt-3 space-y-2">
+                        <p className="text-sm text-amber-700 font-medium">To add relations:</p>
+                        <ul className="text-sm text-amber-600 list-disc list-inside space-y-1">
+                          <li>Create a new decision that <strong>supersedes</strong> this one with the desired relations</li>
+                          <li>Or specify relations when creating new decisions via the <Link to="/wizard" className="text-indigo-600 hover:underline">Decision Wizard</Link></li>
+                        </ul>
+                      </div>
+                      <Link
+                        to={`/wizard?supersedes=${selectedDecision.decision_id}`}
+                        className="mt-3 inline-flex items-center gap-2 px-3 py-1.5 bg-amber-600 text-white text-sm rounded hover:bg-amber-700"
+                      >
+                        <span>Create Superseding Version</span>
+                        <span>→</span>
+                      </Link>
+                    </div>
                   </div>
-                  <button
-                    onClick={addRelation}
-                    disabled={!newRelationTarget}
-                    className="mt-3 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:bg-gray-300"
-                  >
-                    Add Relation
-                  </button>
-                  <p className="mt-2 text-xs text-gray-500">
-                    Note: Relation changes require backend API support (not yet implemented)
-                  </p>
+                </div>
+
+                {/* Current Relations Summary */}
+                <div className="bg-gray-50 rounded-lg p-4">
+                  <h4 className="font-medium text-gray-700 mb-2">Current Relations</h4>
+                  <div className="grid grid-cols-3 gap-4 text-sm">
+                    <div className="text-center">
+                      <div className="text-lg font-bold text-blue-600">
+                        {selectedDecision.relations?.filter(r => r.type === 'depends_on').length || 0}
+                      </div>
+                      <div className="text-gray-500">depends_on</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-lg font-bold text-red-600">
+                        {selectedDecision.relations?.filter(r => r.type === 'conflicts_with').length || 0}
+                      </div>
+                      <div className="text-gray-500">conflicts_with</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-lg font-bold text-green-600">
+                        {selectedDecision.relations?.filter(r => r.type === 'informed_by').length || 0}
+                      </div>
+                      <div className="text-gray-500">informed_by</div>
+                    </div>
+                  </div>
                 </div>
 
                 {/* Outgoing Relations */}
@@ -507,7 +502,7 @@ function RelationCard({
       <div className="flex items-center gap-2 mt-1">
         <span
           className="w-2 h-2 rounded-full"
-          style={{ backgroundColor: GROUP_COLORS[decision.group_id] }}
+          style={{ backgroundColor: DOMAIN_COLORS[(decision.domain_id || (decision as any).group_id)] }}
         />
         <span className="font-mono text-sm">
           {decision.decision_code || decision.decision_id.slice(0, 8)}

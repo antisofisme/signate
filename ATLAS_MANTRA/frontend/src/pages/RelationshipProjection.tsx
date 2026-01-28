@@ -15,9 +15,9 @@ import { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import { api, Decision, Relation } from '../shared/api'
 import {
-  GROUPS,
-  GROUP_LABELS,
-  GROUP_COLORS,
+  DOMAINS,
+  DOMAIN_LABELS,
+  DOMAIN_COLORS,
   RELATION_LABELS,
   RELATION_EDGE_STYLES,
 } from '../shared/constants'
@@ -30,8 +30,8 @@ import { getDecisionCounts } from '../shared/decisionUtils'
 interface GraphNode {
   id: string
   code: string
-  group: string
-  feature: string
+  domain: string
+  aspect: string
   statement: string
   x: number
   y: number
@@ -64,7 +64,7 @@ function useForceSimulation(
   useEffect(() => {
     if (nodes.length === 0) return
 
-    const groupPositions: Record<string, { cx: number; cy: number }> = {
+    const domainPositions: Record<string, { cx: number; cy: number }> = {
       'INT': { cx: width * 0.25, cy: height * 0.25 },
       'ARCH': { cx: width * 0.75, cy: height * 0.25 },
       'CTL': { cx: width * 0.25, cy: height * 0.75 },
@@ -72,13 +72,13 @@ function useForceSimulation(
     }
 
     const initializedNodes = nodes.map(node => {
-      const groupPos = groupPositions[node.group] || { cx: width / 2, cy: height / 2 }
+      const domainPos = domainPositions[node.domain] || { cx: width / 2, cy: height / 2 }
       const angle = Math.random() * Math.PI * 2
       const radius = 50 + Math.random() * 80
       return {
         ...node,
-        x: groupPos.cx + Math.cos(angle) * radius,
-        y: groupPos.cy + Math.sin(angle) * radius,
+        x: domainPos.cx + Math.cos(angle) * radius,
+        y: domainPos.cy + Math.sin(angle) * radius,
         vx: 0,
         vy: 0,
       }
@@ -107,14 +107,14 @@ function useForceSimulation(
       node.vx += (width / 2 - node.x) * 0.005
       node.vy += (height / 2 - node.y) * 0.005
 
-      // Group center gravity
-      const groupCenters: Record<string, { cx: number; cy: number }> = {
+      // Domain center gravity
+      const domainCenters: Record<string, { cx: number; cy: number }> = {
         'INT': { cx: width * 0.25, cy: height * 0.25 },
         'ARCH': { cx: width * 0.75, cy: height * 0.25 },
         'CTL': { cx: width * 0.25, cy: height * 0.75 },
         'EVO': { cx: width * 0.75, cy: height * 0.75 },
       }
-      const gc = groupCenters[node.group]
+      const gc = domainCenters[node.domain]
       if (gc) {
         node.vx += (gc.cx - node.x) * 0.015
         node.vy += (gc.cy - node.y) * 0.015
@@ -231,7 +231,7 @@ function useForceSimulation(
 // =============================================================================
 
 export default function RelationshipProjection() {
-  const [filterGroup, setFilterGroup] = useState<string>('')
+  const [filterDomain, setFilterDomain] = useState<string>('')
   const [selectedNode, setSelectedNode] = useState<string | null>(null)
   const [hoveredNode, setHoveredNode] = useState<string | null>(null)
   const [viewMode, setViewMode] = useState<'graph' | 'matrix' | 'list'>('graph')
@@ -258,7 +258,7 @@ export default function RelationshipProjection() {
   }, [])
 
   const { nodes, edges, decisionMap, stats, decisionCounts } = useMemo(() => {
-    if (!data?.decisions) return { nodes: [], edges: [], decisionMap: new Map(), stats: { total: 0, relations: 0, crossGroup: 0 }, decisionCounts: { total: 0, current: 0, superseded: 0 } }
+    if (!data?.decisions) return { nodes: [], edges: [], decisionMap: new Map(), stats: { total: 0, relations: 0, crossDomain: 0 }, decisionCounts: { total: 0, current: 0, superseded: 0 } }
 
     const decisions: Decision[] = data.decisions
     const decisionMap = new Map<string, Decision>(decisions.map(d => [d.decision_id, d]))
@@ -266,22 +266,22 @@ export default function RelationshipProjection() {
     // Calculate current vs superseded
     const counts = getDecisionCounts(decisions as any[])
 
-    const filteredDecisions = filterGroup
-      ? decisions.filter(d => d.group_id === filterGroup)
+    const filteredDecisions = filterDomain
+      ? decisions.filter(d => (d.domain_id || (d as any).group_id) === filterDomain)
       : decisions
 
     const nodes: GraphNode[] = filteredDecisions.map(d => ({
       id: d.decision_id,
       code: d.decision_code || d.decision_id.slice(0, 8),
-      group: d.group_id,
-      feature: d.feature_id,
+      domain: (d.domain_id || (d as any).group_id),
+      aspect: (d.aspect_id || (d as any).feature_id),
       statement: d.statement,
       x: 0, y: 0, vx: 0, vy: 0,
     }))
 
     const nodeIds = new Set(nodes.map(n => n.id))
     const edges: GraphEdge[] = []
-    let crossGroupCount = 0
+    let crossDomainCount = 0
 
     filteredDecisions.forEach(d => {
       // Typed relations
@@ -294,7 +294,7 @@ export default function RelationshipProjection() {
               type: rel.type as GraphEdge['type'],
             })
             const target = decisionMap.get(rel.target_id)
-            if (target && target.group_id !== d.group_id) crossGroupCount++
+            if (target && (target.domain_id || (target as any).group_id) !== (d.domain_id || (d as any).group_id)) crossDomainCount++
           }
         })
       }
@@ -305,7 +305,7 @@ export default function RelationshipProjection() {
           if (nodeIds.has(targetId) && !edges.some(e => e.source === d.decision_id && e.target === targetId)) {
             edges.push({ source: d.decision_id, target: targetId, type: 'depends_on' })
             const target = decisionMap.get(targetId)
-            if (target && target.group_id !== d.group_id) crossGroupCount++
+            if (target && (target.domain_id || (target as any).group_id) !== (d.domain_id || (d as any).group_id)) crossDomainCount++
           }
         })
       }
@@ -320,10 +320,10 @@ export default function RelationshipProjection() {
       nodes,
       edges,
       decisionMap,
-      stats: { total: nodes.length, relations: edges.length, crossGroup: crossGroupCount },
+      stats: { total: nodes.length, relations: edges.length, crossDomain: crossDomainCount },
       decisionCounts: counts
     }
-  }, [data?.decisions, filterGroup])
+  }, [data?.decisions, filterDomain])
 
   const { positions, startDrag, drag, endDrag } = useForceSimulation(nodes, edges, dimensions.width, dimensions.height)
 
@@ -354,17 +354,17 @@ export default function RelationshipProjection() {
   // Matrix data
   const matrixData = useMemo(() => {
     const matrix: Record<string, Record<string, { count: number; types: Set<string> }>> = {}
-    GROUPS.forEach(g1 => {
-      matrix[g1] = {}
-      GROUPS.forEach(g2 => { matrix[g1][g2] = { count: 0, types: new Set() } })
+    DOMAINS.forEach(d1 => {
+      matrix[d1] = {}
+      DOMAINS.forEach(d2 => { matrix[d1][d2] = { count: 0, types: new Set() } })
     })
 
     edges.forEach(edge => {
       const s = nodes.find(n => n.id === edge.source)
       const t = nodes.find(n => n.id === edge.target)
       if (s && t) {
-        matrix[s.group][t.group].count++
-        matrix[s.group][t.group].types.add(edge.type)
+        matrix[s.domain][t.domain].count++
+        matrix[s.domain][t.domain].types.add(edge.type)
       }
     })
 
@@ -392,7 +392,7 @@ export default function RelationshipProjection() {
                 ({decisionCounts.total} total)
               </span>
             )}
-            {' · '}{stats.relations} relations · {stats.crossGroup} cross-group
+            {' · '}{stats.relations} relations · {stats.crossDomain} cross-domain
           </p>
         </div>
         <div className="flex gap-2">
@@ -414,15 +414,15 @@ export default function RelationshipProjection() {
       <div className="bg-white rounded-lg shadow-sm border p-4">
         <div className="flex flex-wrap gap-4 items-center">
           <div>
-            <label className="block text-xs font-medium text-gray-500 mb-1">Filter Group</label>
+            <label className="block text-xs font-medium text-gray-500 mb-1">Filter Domain</label>
             <select
-              value={filterGroup}
-              onChange={e => setFilterGroup(e.target.value)}
+              value={filterDomain}
+              onChange={e => setFilterDomain(e.target.value)}
               className="px-3 py-1.5 border rounded text-sm focus:ring-2 focus:ring-indigo-500"
             >
-              <option value="">All Groups</option>
-              {GROUPS.map(g => (
-                <option key={g} value={g}>{g}: {GROUP_LABELS[g]}</option>
+              <option value="">All Domains</option>
+              {DOMAINS.map(d => (
+                <option key={d} value={d}>{d}: {DOMAIN_LABELS[d]}</option>
               ))}
             </select>
           </div>
@@ -456,8 +456,8 @@ export default function RelationshipProjection() {
             onMouseUp={handleMouseUp}
             onMouseLeave={handleMouseUp}
           >
-            {/* Group Labels */}
-            {!filterGroup && GROUPS.map((g, i) => {
+            {/* Domain Labels */}
+            {!filterDomain && DOMAINS.map((d, i) => {
               const pos = [
                 { x: dimensions.width * 0.25, y: 24 },
                 { x: dimensions.width * 0.75, y: 24 },
@@ -465,9 +465,9 @@ export default function RelationshipProjection() {
                 { x: dimensions.width * 0.75, y: dimensions.height - 16 },
               ][i]
               return (
-                <text key={g} x={pos.x} y={pos.y} textAnchor="middle"
-                  fill={GROUP_COLORS[g]} className="text-xs font-semibold">
-                  {g}: {GROUP_LABELS[g]}
+                <text key={d} x={pos.x} y={pos.y} textAnchor="middle"
+                  fill={DOMAIN_COLORS[d]} className="text-xs font-semibold">
+                  {d}: {DOMAIN_LABELS[d]}
                 </text>
               )
             })}
@@ -520,7 +520,7 @@ export default function RelationshipProjection() {
 
               const isSelected = selectedNode === node.id
               const isHovered = hoveredNode === node.id
-              const nodeColor = GROUP_COLORS[node.group] || '#666'
+              const nodeColor = DOMAIN_COLORS[node.domain] || '#666'
 
               return (
                 <g key={node.id}
@@ -539,7 +539,7 @@ export default function RelationshipProjection() {
                   />
                   <text y={1} textAnchor="middle" dominantBaseline="middle"
                     fill="white" className="text-[10px] font-bold pointer-events-none">
-                    {node.feature}
+                    {node.aspect}
                   </text>
                 </g>
               )
@@ -559,11 +559,11 @@ export default function RelationshipProjection() {
                     {decisionMap.get(selectedNode)!.statement}
                   </p>
                   <div className="mt-2 flex flex-wrap gap-2 text-xs">
-                    <span className="px-2 py-0.5 rounded" style={{ backgroundColor: GROUP_COLORS[decisionMap.get(selectedNode)!.group_id] + '20', color: GROUP_COLORS[decisionMap.get(selectedNode)!.group_id] }}>
-                      {decisionMap.get(selectedNode)!.group_id}
+                    <span className="px-2 py-0.5 rounded" style={{ backgroundColor: DOMAIN_COLORS[decisionMap.get(selectedNode)!.domain_id || (decisionMap.get(selectedNode) as any)?.group_id] + '20', color: DOMAIN_COLORS[decisionMap.get(selectedNode)!.domain_id || (decisionMap.get(selectedNode) as any)?.group_id] }}>
+                      {decisionMap.get(selectedNode)!.domain_id || (decisionMap.get(selectedNode) as any)?.group_id}
                     </span>
                     <span className="px-2 py-0.5 rounded bg-gray-100 text-gray-700">
-                      {decisionMap.get(selectedNode)!.feature_id}
+                      {decisionMap.get(selectedNode)!.aspect_id || (decisionMap.get(selectedNode) as any)?.feature_id}
                     </span>
                     <span className="px-2 py-0.5 rounded bg-gray-100 text-gray-700">
                       {decisionMap.get(selectedNode)!.blast_radius}
@@ -584,21 +584,21 @@ export default function RelationshipProjection() {
       {/* Matrix View */}
       {viewMode === 'matrix' && (
         <div className="bg-white rounded-lg shadow-sm border p-6">
-          <h3 className="font-semibold text-gray-900 mb-4">Group × Group Relationship Matrix</h3>
+          <h3 className="font-semibold text-gray-900 mb-4">Domain × Domain Relationship Matrix</h3>
           <table className="w-full text-sm">
             <thead>
               <tr>
                 <th className="text-left p-2 text-gray-500 font-medium">From ↓ / To →</th>
-                {GROUPS.map(g => (
-                  <th key={g} className="p-2 text-center font-medium" style={{ color: GROUP_COLORS[g] }}>{g}</th>
+                {DOMAINS.map(d => (
+                  <th key={d} className="p-2 text-center font-medium" style={{ color: DOMAIN_COLORS[d] }}>{d}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
-              {GROUPS.map(from => (
+              {DOMAINS.map(from => (
                 <tr key={from}>
-                  <td className="p-2 font-medium" style={{ color: GROUP_COLORS[from] }}>{from}</td>
-                  {GROUPS.map(to => {
+                  <td className="p-2 font-medium" style={{ color: DOMAIN_COLORS[from] }}>{from}</td>
+                  {DOMAINS.map(to => {
                     const cell = matrixData[from][to]
                     const isCross = from !== to
                     return (
@@ -638,7 +638,7 @@ export default function RelationshipProjection() {
                 const s = nodes.find(n => n.id === edge.source)
                 const t = nodes.find(n => n.id === edge.target)
                 if (!s || !t) return null
-                const isCross = s.group !== t.group
+                const isCross = s.domain !== t.domain
 
                 return (
                   <tr key={i} className="hover:bg-gray-50">
@@ -646,7 +646,7 @@ export default function RelationshipProjection() {
                       <Link to={`/decisions/${edge.source}`} className="text-indigo-600 hover:text-indigo-500 font-mono text-xs">
                         {s.code}
                       </Link>
-                      <span className="ml-2 text-[10px]" style={{ color: GROUP_COLORS[s.group] }}>[{s.group}]</span>
+                      <span className="ml-2 text-[10px]" style={{ color: DOMAIN_COLORS[s.domain] }}>[{s.domain}]</span>
                     </td>
                     <td className="px-4 py-3">
                       <span className="px-2 py-0.5 rounded text-xs font-medium"
@@ -658,7 +658,7 @@ export default function RelationshipProjection() {
                       <Link to={`/decisions/${edge.target}`} className="text-indigo-600 hover:text-indigo-500 font-mono text-xs">
                         {t.code}
                       </Link>
-                      <span className="ml-2 text-[10px]" style={{ color: GROUP_COLORS[t.group] }}>[{t.group}]</span>
+                      <span className="ml-2 text-[10px]" style={{ color: DOMAIN_COLORS[t.domain] }}>[{t.domain}]</span>
                     </td>
                     <td className="px-4 py-3">
                       {isCross ? <span className="px-2 py-0.5 rounded text-xs bg-amber-100 text-amber-800">Yes</span> : <span className="text-gray-400">-</span>}

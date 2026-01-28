@@ -44,7 +44,7 @@ agent:
   # ═══════════════════════════════════════════════════════════════════════════
 
   decision_context:
-    groups:
+    domains:
       - id: "ARCH"
         relevance: "high"
         reason: "Architecture - service boundaries and patterns"
@@ -55,14 +55,14 @@ agent:
         relevance: "high"
         reason: "Standards - coding conventions"
 
-    features:
+    aspects:
       required:
-        - "F05"  # Domain & Bounded Context
-        - "F06"  # Service & Module Boundary
-        - "F08"  # Integration & Contract Model
+        - "A05"  # Domain & Bounded Context
+        - "A06"  # Service & Module Boundary
+        - "A08"  # Integration & Contract Model
       optional:
-        - "F11"  # Security & Compliance
-        - "F09"  # Policy & Rules
+        - "A11"  # Security & Compliance
+        - "A09"  # Policy & Rules
 
     tags:
       required: ["BE", "API"]

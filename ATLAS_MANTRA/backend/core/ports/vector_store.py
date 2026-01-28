@@ -84,7 +84,7 @@ class VectorStoreProtocol(ABC):
             query_vector: The query embedding vector
             limit: Maximum number of results
             min_score: Minimum similarity score (0.0 to 1.0)
-            filters: Optional field filters (e.g., {"group_id": "INT"})
+            filters: Optional field filters (e.g., {"domain_id": "INT"})
 
         Returns:
             List of VectorSearchResult ordered by similarity (highest first)

@@ -119,22 +119,22 @@ class AgentTriggers(BaseModel):
 # Decision Context Models
 # =============================================================================
 
-class GroupReference(BaseModel):
-    """Reference to a MANTRA decision group."""
-    id: str = Field(..., description="Group ID (INT, ARCH, CTL, EVO)")
+class DomainReference(BaseModel):
+    """Reference to a MANTRA decision domain."""
+    id: str = Field(..., description="Domain ID (INT, ARCH, CTL, EVO)")
     relevance: str = Field(default="medium", description="Relevance level")
-    reason: Optional[str] = Field(default=None, description="Why this group is relevant")
+    reason: Optional[str] = Field(default=None, description="Why this domain is relevant")
 
 
-class FeatureSet(BaseModel):
-    """Feature IDs to consider."""
+class AspectSet(BaseModel):
+    """Aspect IDs to consider."""
     required: List[str] = Field(
         default_factory=list,
-        description="Required features (F01-F16)"
+        description="Required aspects (F01-F16)"
     )
     optional: List[str] = Field(
         default_factory=list,
-        description="Optional features"
+        description="Optional aspects"
     )
 
 
@@ -152,13 +152,13 @@ class TagSet(BaseModel):
 
 class DecisionContext(BaseModel):
     """Configuration for which decisions to retrieve."""
-    groups: List[GroupReference] = Field(
+    domains: List[DomainReference] = Field(
         default_factory=list,
-        description="Groups to search"
+        description="Domains to search"
     )
-    features: FeatureSet = Field(
-        default_factory=FeatureSet,
-        description="Feature filters"
+    aspects: AspectSet = Field(
+        default_factory=AspectSet,
+        description="Aspect filters"
     )
     tags: TagSet = Field(
         default_factory=TagSet,
@@ -439,19 +439,19 @@ class AgentDefinition(BaseModel):
             self.triggers.keywords.secondary
         )
 
-    def get_required_groups(self) -> List[str]:
-        """Get group IDs to search."""
-        return [g.id for g in self.decision_context.groups]
+    def get_required_domains(self) -> List[str]:
+        """Get domain IDs to search."""
+        return [d.id for d in self.decision_context.domains]
 
-    def get_required_features(self) -> List[str]:
-        """Get required feature IDs."""
-        return self.decision_context.features.required
+    def get_required_aspects(self) -> List[str]:
+        """Get required aspect IDs."""
+        return self.decision_context.aspects.required
 
-    def get_all_features(self) -> List[str]:
-        """Get all feature IDs (required + optional)."""
+    def get_all_aspects(self) -> List[str]:
+        """Get all aspect IDs (required + optional)."""
         return (
-            self.decision_context.features.required +
-            self.decision_context.features.optional
+            self.decision_context.aspects.required +
+            self.decision_context.aspects.optional
         )
 
     def get_blocking_rules(self) -> List[str]:
@@ -481,8 +481,8 @@ class RetrievedDecision(BaseModel):
     """A decision retrieved for context."""
     decision_id: str
     decision_code: str
-    group_id: str
-    feature_id: str
+    domain_id: str
+    aspect_id: str
     statement: str
     rationale: Optional[str] = None
     constraints: List[Dict[str, str]] = Field(default_factory=list)

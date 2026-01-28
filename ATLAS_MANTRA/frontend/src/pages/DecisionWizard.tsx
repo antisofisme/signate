@@ -16,11 +16,11 @@ import {
   Relation,
 } from '../shared/api'
 import {
-  GROUPS,
-  FEATURES,
-  GROUP_LABELS,
-  FEATURE_LABELS,
-  GROUP_COLORS,
+  DOMAINS,
+  ASPECTS,
+  DOMAIN_LABELS,
+  ASPECT_LABELS,
+  DOMAIN_COLORS,
 } from '../shared/constants'
 
 // =============================================================================
@@ -29,8 +29,8 @@ import {
 
 interface WizardState {
   // Step 1: Basic Info
-  group_id: string
-  feature_id: string
+  domain_id: string
+  aspect_id: string
   statement: string
   rationale: string
 
@@ -54,8 +54,8 @@ interface WizardState {
 }
 
 const initialState: WizardState = {
-  group_id: '',
-  feature_id: '',
+  domain_id: '',
+  aspect_id: '',
   statement: '',
   rationale: '',
   scope: 'APPLICATION',
@@ -137,8 +137,8 @@ export default function DecisionWizard() {
 
   // Build decision record from wizard state
   const buildDecisionRecord = () => ({
-    group_id: state.group_id,
-    feature_id: state.feature_id,
+    domain_id: state.domain_id,
+    aspect_id: state.aspect_id,
     statement: state.statement,
     rationale: state.rationale,
     scope: state.scope,
@@ -167,7 +167,7 @@ export default function DecisionWizard() {
   const canProceed = (): boolean => {
     switch (currentStep) {
       case 1:
-        return !!state.group_id && !!state.feature_id && state.statement.length >= 20 && state.rationale.length >= 20
+        return !!state.domain_id && !!state.aspect_id && state.statement.length >= 20 && state.rationale.length >= 20
       case 2:
         return !!state.scope && !!state.blast_radius && !!state.version
       case 3:
@@ -338,27 +338,27 @@ function Step1BasicInfo({
   state: WizardState
   updateState: (updates: Partial<WizardState>) => void
 }) {
-  const featuresForGroup = state.group_id ? FEATURES[state.group_id] || [] : []
+  const aspectsForDomain = state.domain_id ? ASPECTS[state.domain_id] || [] : []
 
   return (
     <div className="space-y-6">
       <h3 className="text-lg font-semibold text-gray-900">Basic Information</h3>
 
-      {/* Group & Feature */}
+      {/* Domain & Aspect */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
-            Decision Group <span className="text-red-500">*</span>
+            Decision Domain <span className="text-red-500">*</span>
           </label>
           <select
-            value={state.group_id}
-            onChange={(e) => updateState({ group_id: e.target.value, feature_id: '' })}
+            value={state.domain_id}
+            onChange={(e) => updateState({ domain_id: e.target.value, aspect_id: '' })}
             className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500"
           >
-            <option value="">Select group...</option>
-            {GROUPS.map((g) => (
-              <option key={g} value={g}>
-                {g} - {GROUP_LABELS[g]}
+            <option value="">Select domain...</option>
+            {DOMAINS.map((d) => (
+              <option key={d} value={d}>
+                {d} - {DOMAIN_LABELS[d]}
               </option>
             ))}
           </select>
@@ -366,18 +366,18 @@ function Step1BasicInfo({
 
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
-            Feature <span className="text-red-500">*</span>
+            Aspect <span className="text-red-500">*</span>
           </label>
           <select
-            value={state.feature_id}
-            onChange={(e) => updateState({ feature_id: e.target.value })}
-            disabled={!state.group_id}
+            value={state.aspect_id}
+            onChange={(e) => updateState({ aspect_id: e.target.value })}
+            disabled={!state.domain_id}
             className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 disabled:bg-gray-100"
           >
-            <option value="">Select feature...</option>
-            {featuresForGroup.map((f) => (
-              <option key={f} value={f}>
-                {f} - {FEATURE_LABELS[f]}
+            <option value="">Select aspect...</option>
+            {aspectsForDomain.map((a) => (
+              <option key={a} value={a}>
+                {a} - {ASPECT_LABELS[a]}
               </option>
             ))}
           </select>
@@ -385,17 +385,17 @@ function Step1BasicInfo({
       </div>
 
       {/* Selected Cell Preview */}
-      {state.group_id && state.feature_id && (
+      {state.domain_id && state.aspect_id && (
         <div
           className="p-4 rounded-lg border-2"
-          style={{ borderColor: GROUP_COLORS[state.group_id] || '#6B7280' }}
+          style={{ borderColor: DOMAIN_COLORS[state.domain_id] || '#6B7280' }}
         >
           <div className="text-sm text-gray-500">Selected Cell</div>
           <div className="font-bold text-lg">
-            {state.group_id} / {state.feature_id}
+            {state.domain_id} / {state.aspect_id}
           </div>
           <div className="text-sm text-gray-600">
-            {GROUP_LABELS[state.group_id]} - {FEATURE_LABELS[state.feature_id]}
+            {DOMAIN_LABELS[state.domain_id]} - {ASPECT_LABELS[state.aspect_id]}
           </div>
         </div>
       )}
@@ -938,7 +938,7 @@ function Step5Review({
           <div>
             <span className="text-gray-500">Cell:</span>{' '}
             <span className="font-mono font-bold">
-              {state.group_id}/{state.feature_id}
+              {state.domain_id}/{state.aspect_id}
             </span>
           </div>
           <div>

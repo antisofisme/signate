@@ -14,11 +14,11 @@ import { clsx } from 'clsx'
 import { Link } from 'react-router-dom'
 import { api } from '../shared/api'
 import {
-  GROUPS,
-  GROUP_LABELS,
-  GROUP_COLORS,
-  FEATURES,
-  FEATURE_LABELS,
+  DOMAINS,
+  DOMAIN_LABELS,
+  DOMAIN_COLORS,
+  ASPECTS,
+  ASPECT_LABELS,
   AREA_TAGS,
   TAG_COLORS,
 } from '../shared/constants'
@@ -30,8 +30,8 @@ interface SearchHit {
   statement: string
   rationale: string
   score: number
-  group_id: string
-  feature_id: string
+  domain_id: string
+  aspect_id: string
   version: string
   tags: string[]
   matched_fields: string[]
@@ -66,8 +66,8 @@ export default function SemanticSearch() {
   const [query, setQuery] = useState('')
   const [statement, setStatement] = useState('')
   const [rationale, setRationale] = useState('')
-  const [groupFilter, setGroupFilter] = useState('')
-  const [featureFilter, setFeatureFilter] = useState('')
+  const [domainFilter, setDomainFilter] = useState('')
+  const [aspectFilter, setAspectFilter] = useState('')
   const [selectedTags, setSelectedTags] = useState<string[]>([])
   const [minScore, setMinScore] = useState(0.5)
 
@@ -78,8 +78,8 @@ export default function SemanticSearch() {
         query,
         limit: 20,
         min_score: minScore,
-        group_id: groupFilter || undefined,
-        feature_id: featureFilter || undefined,
+        domain_id: domainFilter || undefined,
+        aspect_id: aspectFilter || undefined,
         tags: selectedTags.length > 0 ? selectedTags : undefined,
       })
       return response.data
@@ -92,7 +92,7 @@ export default function SemanticSearch() {
       const response = await api.post<AlignmentResponse>('/api/v1/search/check-alignment', {
         statement,
         rationale,
-        group_id: groupFilter || undefined,
+        domain_id: domainFilter || undefined,
         min_score: minScore,
       })
       return response.data
@@ -220,36 +220,36 @@ export default function SemanticSearch() {
           <div className="mt-6 pt-6 border-t">
             <h4 className="text-sm font-medium text-gray-700 mb-3">Filters</h4>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {/* Group Filter */}
+              {/* Domain Filter */}
               <div>
-                <label className="block text-xs text-gray-500 mb-1">Group</label>
+                <label className="block text-xs text-gray-500 mb-1">Domain</label>
                 <select
-                  value={groupFilter}
+                  value={domainFilter}
                   onChange={(e) => {
-                    setGroupFilter(e.target.value)
-                    setFeatureFilter('')
+                    setDomainFilter(e.target.value)
+                    setAspectFilter('')
                   }}
                   className="w-full px-3 py-2 border rounded text-sm"
                 >
-                  <option value="">All Groups</option>
-                  {GROUPS.map(g => (
-                    <option key={g} value={g}>{g} - {GROUP_LABELS[g]}</option>
+                  <option value="">All Domains</option>
+                  {DOMAINS.map(d => (
+                    <option key={d} value={d}>{d} - {DOMAIN_LABELS[d]}</option>
                   ))}
                 </select>
               </div>
 
-              {/* Feature Filter */}
+              {/* Aspect Filter */}
               <div>
-                <label className="block text-xs text-gray-500 mb-1">Feature</label>
+                <label className="block text-xs text-gray-500 mb-1">Aspect</label>
                 <select
-                  value={featureFilter}
-                  onChange={(e) => setFeatureFilter(e.target.value)}
-                  disabled={!groupFilter}
+                  value={aspectFilter}
+                  onChange={(e) => setAspectFilter(e.target.value)}
+                  disabled={!domainFilter}
                   className="w-full px-3 py-2 border rounded text-sm disabled:bg-gray-100"
                 >
-                  <option value="">All Features</option>
-                  {groupFilter && FEATURES[groupFilter]?.map(f => (
-                    <option key={f} value={f}>{f} - {FEATURE_LABELS[f]}</option>
+                  <option value="">All Aspects</option>
+                  {domainFilter && ASPECTS[domainFilter]?.map(a => (
+                    <option key={a} value={a}>{a} - {ASPECT_LABELS[a]}</option>
                   ))}
                 </select>
               </div>
@@ -476,9 +476,9 @@ function SearchHitCard({
           <div className="flex items-center gap-2 mb-2">
             <span
               className="px-2 py-0.5 text-xs rounded text-white"
-              style={{ backgroundColor: GROUP_COLORS[hit.group_id] || '#6B7280' }}
+              style={{ backgroundColor: DOMAIN_COLORS[hit.domain_id] || '#6B7280' }}
             >
-              {hit.group_id}
+              {hit.domain_id}
             </span>
             <span className="font-mono text-sm text-gray-700">
               {hit.decision_code || hit.decision_id.slice(0, 8)}

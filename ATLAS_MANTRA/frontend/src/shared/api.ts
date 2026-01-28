@@ -35,9 +35,12 @@ export interface Relation {
 
 export interface Decision {
   decision_id: string
-  decision_code: string | null  // Human-readable code: INT-F01-001-v1.0.0
-  group_id: string
-  feature_id: string
+  decision_code: string | null  // Human-readable code: INT-A01-001-v1.0.0
+  domain_id: string  // INT, ARCH, CTL, EVO
+  aspect_id: string  // A01-A16
+  // Backward compatibility aliases (deprecated)
+  group_id?: string   // @deprecated Use domain_id instead
+  feature_id?: string // @deprecated Use aspect_id instead
   statement: string
   rationale: string
   constraints: Constraint[]
@@ -57,8 +60,11 @@ export interface Decision {
 }
 
 export interface DecisionCreate {
-  group_id: string
-  feature_id: string
+  domain_id: string  // INT, ARCH, CTL, EVO
+  aspect_id: string  // A01-A16
+  // Backward compatibility aliases (deprecated)
+  group_id?: string   // @deprecated Use domain_id instead
+  feature_id?: string // @deprecated Use aspect_id instead
   statement: string
   rationale: string
   constraints?: Constraint[]
@@ -131,8 +137,11 @@ export interface CompareResponse {
   differences: FieldDifference[]
   is_supersedes_chain: boolean
   supersedes_direction: string | null
-  common_group: boolean
-  common_feature: boolean
+  common_domain: boolean   // Renamed from common_group
+  common_aspect: boolean   // Renamed from common_feature
+  // Backward compatibility
+  common_group?: boolean   // @deprecated Use common_domain instead
+  common_feature?: boolean // @deprecated Use common_aspect instead
   error_message: string | null
 }
 
@@ -178,8 +187,11 @@ export interface CompareMetadata {
   compared_with: string
   differences_count: number
   is_supersedes_chain: boolean
-  common_group: boolean
-  common_feature: boolean
+  common_domain: boolean   // Renamed from common_group
+  common_aspect: boolean   // Renamed from common_feature
+  // Backward compatibility
+  common_group?: boolean   // @deprecated Use common_domain instead
+  common_feature?: boolean // @deprecated Use common_aspect instead
 }
 
 export interface ReadMetadata {
@@ -257,7 +269,7 @@ export interface ApiKeyListResponse {
 
 export const decisionsApi = {
   // List all decisions
-  list: async (params?: { limit?: number; offset?: number; group_id?: string; feature_id?: string }) => {
+  list: async (params?: { limit?: number; offset?: number; domain_id?: string; aspect_id?: string }) => {
     const response = await api.get<DecisionListResponse>('/api/v1/decisions', { params })
     return response.data
   },
@@ -391,8 +403,11 @@ export interface DuplicateMatch {
   decision_id: string
   decision_code: string
   similarity: number
-  group_id: string
-  feature_id: string
+  domain_id: string   // Renamed from group_id
+  aspect_id: string   // Renamed from feature_id
+  // Backward compatibility
+  group_id?: string   // @deprecated Use domain_id instead
+  feature_id?: string // @deprecated Use aspect_id instead
   statement_preview: string
 }
 
@@ -596,8 +611,11 @@ export interface SearchHit {
   statement: string
   rationale: string
   score: number
-  group_id: string
-  feature_id: string
+  domain_id: string   // Renamed from group_id
+  aspect_id: string   // Renamed from feature_id
+  // Backward compatibility
+  group_id?: string   // @deprecated Use domain_id instead
+  feature_id?: string // @deprecated Use aspect_id instead
   version: string
   tags: string[]
   matched_fields: string[]
@@ -617,16 +635,22 @@ export interface AlignmentResult {
   decision_code: string | null
   statement: string
   similarity: number
-  group_id: string
-  feature_id: string
+  domain_id: string   // Renamed from group_id
+  aspect_id: string   // Renamed from feature_id
+  // Backward compatibility
+  group_id?: string   // @deprecated Use domain_id instead
+  feature_id?: string // @deprecated Use aspect_id instead
   alignment_type: 'CONFLICT' | 'ALIGNED' | 'RELATED' | 'NEUTRAL'
   notes: string
 }
 
 export interface AlignmentResponse {
   proposal_statement: string
-  proposal_group_id: string | null
-  proposal_feature_id: string | null
+  proposal_domain_id: string | null   // Renamed from proposal_group_id
+  proposal_aspect_id: string | null   // Renamed from proposal_feature_id
+  // Backward compatibility
+  proposal_group_id?: string | null   // @deprecated Use proposal_domain_id instead
+  proposal_feature_id?: string | null // @deprecated Use proposal_aspect_id instead
   conflicts: AlignmentResult[]
   aligned: AlignmentResult[]
   related: AlignmentResult[]
@@ -645,8 +669,8 @@ export interface SearchStats {
 
 export interface SemanticSearchRequest {
   query: string
-  group_id?: string
-  feature_id?: string
+  domain_id?: string  // Filter by domain
+  aspect_id?: string  // Filter by aspect
   tags?: string[]
   min_score?: number
   limit?: number
@@ -655,8 +679,8 @@ export interface SemanticSearchRequest {
 export interface AlignmentCheckRequest {
   statement: string
   rationale?: string
-  group_id?: string
-  feature_id?: string
+  domain_id?: string  // Filter by domain
+  aspect_id?: string  // Filter by aspect
   threshold?: number
 }
 
@@ -894,16 +918,19 @@ export interface ClassificationContext {
   expected_response: {
     format: string
     schema: {
-      group_id: string
-      feature_id: string
+      domain_id: string  // Renamed from group_id
+      aspect_id: string  // Renamed from feature_id
       confidence: string
     }
   }
 }
 
 export interface ClassificationResult {
-  group_id: string   // INT, ARCH, CTL, EVO
-  feature_id: string // F01-F16
+  domain_id: string  // INT, ARCH, CTL, EVO
+  aspect_id: string  // A01-A16
+  // Backward compatibility
+  group_id?: string   // @deprecated Use domain_id instead
+  feature_id?: string // @deprecated Use aspect_id instead
   confidence: number // 0.0-1.0
 }
 
@@ -916,8 +943,11 @@ export interface ClassifyRequest {
 }
 
 export interface ClassifyResponse {
-  group_id: string | null
-  feature_id: string | null
+  domain_id: string | null  // Renamed from group_id
+  aspect_id: string | null  // Renamed from feature_id
+  // Backward compatibility
+  group_id?: string | null   // @deprecated Use domain_id instead
+  feature_id?: string | null // @deprecated Use aspect_id instead
   confidence: number
   success: boolean
   classification_required: boolean
@@ -961,22 +991,22 @@ export const classificationApi = {
   },
 
   // Validate classification result
-  validate: (groupId: string, featureId: string): { valid: boolean; error: string | null } => {
-    const validGroups = ['INT', 'ARCH', 'CTL', 'EVO']
-    const groupFeatures: Record<string, string[]> = {
-      INT: ['F01', 'F02', 'F03', 'F04'],
-      ARCH: ['F05', 'F06', 'F07', 'F08'],
-      CTL: ['F09', 'F10', 'F11', 'F12'],
-      EVO: ['F13', 'F14', 'F15', 'F16'],
+  validate: (domainId: string, aspectId: string): { valid: boolean; error: string | null } => {
+    const validDomains = ['INT', 'ARCH', 'CTL', 'EVO']
+    const domainAspects: Record<string, string[]> = {
+      INT: ['A01', 'A02', 'A03', 'A04'],
+      ARCH: ['A05', 'A06', 'A07', 'A08'],
+      CTL: ['A09', 'A10', 'A11', 'A12'],
+      EVO: ['A13', 'A14', 'A15', 'A16'],
     }
 
-    if (!validGroups.includes(groupId)) {
-      return { valid: false, error: `Invalid group: ${groupId}. Must be one of: ${validGroups.join(', ')}` }
+    if (!validDomains.includes(domainId)) {
+      return { valid: false, error: `Invalid domain: ${domainId}. Must be one of: ${validDomains.join(', ')}` }
     }
 
-    const validFeatures = groupFeatures[groupId] || []
-    if (!validFeatures.includes(featureId)) {
-      return { valid: false, error: `Feature ${featureId} not compatible with group ${groupId}. Valid: ${validFeatures.join(', ')}` }
+    const validAspects = domainAspects[domainId] || []
+    if (!validAspects.includes(aspectId)) {
+      return { valid: false, error: `Aspect ${aspectId} not compatible with domain ${domainId}. Valid: ${validAspects.join(', ')}` }
     }
 
     return { valid: true, error: null }

@@ -19,7 +19,7 @@ import asyncpg
 
 from core.repositories.decision_repository import DecisionRepository
 from core.domain.schema import (
-    Decision, GroupId, FeatureId, Constraint, ConstraintType, Scope, BlastRadius,
+    Decision, DomainId, AspectId, Constraint, ConstraintType, Scope, BlastRadius,
     Relation, RelationType, ContentSection, SectionType
 )
 from core.domain.decision import StoredDecision, DecisionEvent, AuditEntry, AuditEventType
@@ -137,15 +137,15 @@ class PostgresDecisionRepository(DecisionRepository):
         # Generate decision_code if not set
         decision_code = row.get('decision_code')
         if not decision_code and sequence is not None:
-            # Format: {group}-{feature}-{seq:03d}-v{version}
-            decision_code = f"{row['group_id']}-{row['feature_id']}-{sequence:03d}-v{row['version']}"
+            # Format: {domain}-{aspect}-{seq:03d}-v{version}
+            decision_code = f"{row['domain_id']}-{row['aspect_id']}-{sequence:03d}-v{row['version']}"
 
         # Create Decision object
         decision = Decision(
             decision_id=str(row['decision_id']),
             decision_code=decision_code,
-            group_id=GroupId(row['group_id']),
-            feature_id=FeatureId(row['feature_id']),
+            domain_id=DomainId(row['domain_id']),
+            aspect_id=AspectId(row['aspect_id']),
             statement=row['statement'],
             rationale=row['rationale'],
             constraints=constraints,
@@ -244,7 +244,7 @@ class PostgresDecisionRepository(DecisionRepository):
 
         query = """
             INSERT INTO decisions (
-                decision_id, group_id, feature_id, statement, rationale,
+                decision_id, domain_id, aspect_id, statement, rationale,
                 constraints, invariants, scope, blast_radius, version,
                 created_by, created_at, approved_by, approved_at,
                 supersedes, related_decisions, relations,
@@ -266,8 +266,8 @@ class PostgresDecisionRepository(DecisionRepository):
             await pool.execute(
                 query,
                 decision.decision_id,
-                decision.group_id.value,
-                decision.feature_id.value,
+                decision.domain_id.value,
+                decision.aspect_id.value,
                 decision.statement,
                 decision.rationale,
                 json.dumps(constraints_json),
@@ -332,7 +332,7 @@ class PostgresDecisionRepository(DecisionRepository):
         query = """
             SELECT d.*,
                 (SELECT COUNT(*) FROM decisions d2
-                 WHERE d2.feature_id = d.feature_id
+                 WHERE d2.aspect_id = d.aspect_id
                  AND d2.created_at <= d.created_at) as seq
             FROM decisions d
             WHERE d.decision_id = $1
@@ -370,11 +370,11 @@ class PostgresDecisionRepository(DecisionRepository):
         """Find all decisions with pagination and auto-generated decision_code."""
         pool = self._ensure_pool()
 
-        # Use window function to calculate sequence per feature
+        # Use window function to calculate sequence per aspect
         query = """
             SELECT *,
                 ROW_NUMBER() OVER (
-                    PARTITION BY feature_id
+                    PARTITION BY aspect_id
                     ORDER BY created_at ASC
                 ) as seq
             FROM decisions
@@ -385,56 +385,56 @@ class PostgresDecisionRepository(DecisionRepository):
         rows = await pool.fetch(query, limit, offset)
         return [self._row_to_stored_decision(row, sequence=row['seq']) for row in rows]
 
-    def find_by_group(
+    def find_by_domain(
         self,
-        group_id: GroupId,
+        domain_id: DomainId,
         limit: int = 100,
         offset: int = 0
     ) -> List[StoredDecision]:
         """
-        Find decisions by group (synchronous wrapper).
+        Find decisions by domain (synchronous wrapper).
 
         WARNING: Returns [] in async context (FastAPI).
-        Use find_by_group_async() instead for routes.
+        Use find_by_domain_async() instead for routes.
         """
         import asyncio
         try:
             asyncio.get_running_loop()
             logger.warning(
-                f"find_by_group({group_id}) called in async context. "
-                "Returning []. Use find_by_group_async() instead."
+                f"find_by_domain({domain_id}) called in async context. "
+                "Returning []. Use find_by_domain_async() instead."
             )
             return []
         except RuntimeError:
             loop = asyncio.new_event_loop()
             try:
-                return loop.run_until_complete(self.find_by_group_async(group_id, limit, offset))
+                return loop.run_until_complete(self.find_by_domain_async(domain_id, limit, offset))
             finally:
                 loop.close()
 
-    async def find_by_group_async(
+    async def find_by_domain_async(
         self,
-        group_id: GroupId,
+        domain_id: DomainId,
         limit: int = 100,
         offset: int = 0
     ) -> List[StoredDecision]:
-        """Find decisions by group with auto-generated decision_code."""
+        """Find decisions by domain with auto-generated decision_code."""
         pool = self._ensure_pool()
 
-        # Use window function to calculate sequence per feature
+        # Use window function to calculate sequence per aspect
         query = """
             SELECT *,
                 ROW_NUMBER() OVER (
-                    PARTITION BY feature_id
+                    PARTITION BY aspect_id
                     ORDER BY created_at ASC
                 ) as seq
             FROM decisions
-            WHERE group_id = $1
+            WHERE domain_id = $1
             ORDER BY created_at DESC
             LIMIT $2 OFFSET $3
         """
 
-        rows = await pool.fetch(query, group_id.value, limit, offset)
+        rows = await pool.fetch(query, domain_id.value, limit, offset)
         return [self._row_to_stored_decision(row, sequence=row['seq']) for row in rows]
 
     def count(self) -> int:
@@ -465,34 +465,34 @@ class PostgresDecisionRepository(DecisionRepository):
         result = await pool.fetchval("SELECT COUNT(*) FROM decisions")
         return result or 0
 
-    def count_by_feature(self, feature_id: FeatureId) -> int:
+    def count_by_aspect(self, aspect_id: AspectId) -> int:
         """
-        Count decisions by feature (synchronous wrapper).
+        Count decisions by aspect (synchronous wrapper).
 
         WARNING: Returns 0 in async context (FastAPI).
-        Use count_by_feature_async() instead for routes.
+        Use count_by_aspect_async() instead for routes.
         """
         import asyncio
         try:
             asyncio.get_running_loop()
             logger.warning(
-                f"count_by_feature({feature_id}) called in async context. "
-                "Returning 0. Use count_by_feature_async() instead."
+                f"count_by_aspect({aspect_id}) called in async context. "
+                "Returning 0. Use count_by_aspect_async() instead."
             )
             return 0
         except RuntimeError:
             loop = asyncio.new_event_loop()
             try:
-                return loop.run_until_complete(self.count_by_feature_async(feature_id))
+                return loop.run_until_complete(self.count_by_aspect_async(aspect_id))
             finally:
                 loop.close()
 
-    async def count_by_feature_async(self, feature_id: FeatureId) -> int:
-        """Count decisions by feature."""
+    async def count_by_aspect_async(self, aspect_id: AspectId) -> int:
+        """Count decisions by aspect."""
         pool = self._ensure_pool()
         result = await pool.fetchval(
-            "SELECT COUNT(*) FROM decisions WHERE feature_id = $1",
-            feature_id.value
+            "SELECT COUNT(*) FROM decisions WHERE aspect_id = $1",
+            aspect_id.value
         )
         return result or 0
 

@@ -185,8 +185,8 @@ class ToolProvider:
                 record = {
                     "decision_id": d.decision_id,
                     "decision_code": d.decision_code,
-                    "group_id": d.group_id.value if hasattr(d.group_id, 'value') else d.group_id,
-                    "feature_id": d.feature_id.value if hasattr(d.feature_id, 'value') else d.feature_id,
+                    "domain_id": d.domain_id.value if hasattr(d.domain_id, 'value') else d.domain_id,
+                    "aspect_id": d.aspect_id.value if hasattr(d.aspect_id, 'value') else d.aspect_id,
                     "relevance_score": score,
                 }
 
@@ -326,8 +326,8 @@ class ToolProvider:
                 "pattern_detected": pattern["name"],
                 "confidence": pattern["confidence"],
                 "suggested_decision": {
-                    "group_id": pattern["group"],
-                    "feature_id": pattern["feature"],
+                    "domain_id": pattern["domain"],
+                    "aspect_id": pattern["aspect"],
                     "statement": pattern["suggested_statement"],
                     "rationale": pattern["suggested_rationale"],
                 },
@@ -443,16 +443,16 @@ def _generate_context_summary(decisions: List[Dict], task: str) -> str:
     if not decisions:
         return "No relevant decisions found for this task."
 
-    groups = {}
+    domains = {}
     for d in decisions:
-        g = d.get("group_id", "UNKNOWN")
-        if g not in groups:
-            groups[g] = []
-        groups[g].append(d.get("decision_code", ""))
+        dom = d.get("domain_id", "UNKNOWN")
+        if dom not in domains:
+            domains[dom] = []
+        domains[dom].append(d.get("decision_code", ""))
 
     lines = [f"Found {len(decisions)} relevant decisions for: {task[:50]}..."]
-    for g, codes in groups.items():
-        lines.append(f"- {g}: {', '.join(codes[:3])}" + ("..." if len(codes) > 3 else ""))
+    for dom, codes in domains.items():
+        lines.append(f"- {dom}: {', '.join(codes[:3])}" + ("..." if len(codes) > 3 else ""))
 
     return "\n".join(lines)
 
@@ -466,8 +466,8 @@ def _detect_patterns(code: str) -> List[Dict[str, Any]]:
         patterns.append({
             "name": "Repository Pattern",
             "confidence": 0.9,
-            "group": "ARCH",
-            "feature": "DATABASE",
+            "domain": "ARCH",
+            "aspect": "DATABASE",
             "suggested_statement": "Use Repository pattern for data access abstraction",
             "suggested_rationale": "Repository pattern separates data access logic from business logic",
             "evidence": "Found Repository class definition"
@@ -478,8 +478,8 @@ def _detect_patterns(code: str) -> List[Dict[str, Any]]:
         patterns.append({
             "name": "Dependency Injection",
             "confidence": 0.7,
-            "group": "ARCH",
-            "feature": "API",
+            "domain": "ARCH",
+            "aspect": "API",
             "suggested_statement": "Use constructor injection for dependencies",
             "suggested_rationale": "DI enables loose coupling and testability",
             "evidence": "Found typed constructor parameters"
@@ -490,8 +490,8 @@ def _detect_patterns(code: str) -> List[Dict[str, Any]]:
         patterns.append({
             "name": "RESTful Endpoints",
             "confidence": 0.95,
-            "group": "STD",
-            "feature": "API",
+            "domain": "STD",
+            "aspect": "API",
             "suggested_statement": "Use RESTful conventions for API endpoints",
             "suggested_rationale": "RESTful APIs are predictable and self-documenting",
             "evidence": "Found FastAPI route decorators"
@@ -502,8 +502,8 @@ def _detect_patterns(code: str) -> List[Dict[str, Any]]:
         patterns.append({
             "name": "Type Hints",
             "confidence": 0.85,
-            "group": "STD",
-            "feature": "API",
+            "domain": "STD",
+            "aspect": "API",
             "suggested_statement": "Use type hints for all function signatures",
             "suggested_rationale": "Type hints improve code quality and IDE support",
             "evidence": "Found return type annotations"
@@ -569,7 +569,7 @@ class WriteToolProvider:
         constraints: Optional[List[Dict]] = None
     ) -> Dict[str, Any]:
         """
-        Auto-classify a decision into Group and Feature.
+        Auto-classify a decision into Domain and Aspect.
 
         Returns classification suggestion with confidence.
         Does NOT store anything.
@@ -580,7 +580,7 @@ class WriteToolProvider:
             constraints: Optional constraints list
 
         Returns:
-            Classification result with group_id, feature_id, confidence
+            Classification result with domain_id, aspect_id, confidence
         """
         try:
             from ..use_cases.ai_arbiter.decision_classifier import (
@@ -594,7 +594,7 @@ class WriteToolProvider:
             # Add helper info
             context["usage_hint"] = (
                 "As AI assistant, analyze the statement and rationale to determine "
-                "the best Group (INT/ARCH/CTL/EVO) and Feature (F01-F16). "
+                "the best Domain (INT/ARCH/CTL/EVO) and Aspect (F01-F16). "
                 "Return your classification with confidence score."
             )
 
@@ -670,13 +670,13 @@ class WriteToolProvider:
 
             # Check for supersedes suggestion if repository available
             supersedes_suggestion = None
-            if self.repository and decision.get("group_id") and decision.get("feature_id"):
+            if self.repository and decision.get("domain_id") and decision.get("aspect_id"):
                 from ..api.routes import _check_supersedes_suggestion
                 supersedes_suggestion = await _check_supersedes_suggestion(
                     statement=decision.get("statement", ""),
                     rationale=decision.get("rationale", ""),
-                    group_id=decision.get("group_id"),
-                    feature_id=decision.get("feature_id"),
+                    domain_id=decision.get("domain_id"),
+                    aspect_id=decision.get("aspect_id"),
                     repository=self.repository
                 )
 
@@ -1135,28 +1135,28 @@ class MICSToolProvider:
             return decisions
 
         try:
-            # Get groups and features from agent
-            groups = agent.get_required_groups() if agent else []
-            features = agent.get_all_features() if agent else []
+            # Get domains and aspects from agent
+            domains = agent.get_required_domains() if agent else []
+            aspects = agent.get_all_aspects() if agent else []
 
-            for group_id in groups[:2]:  # Limit to top 2 groups
-                from ..domain.schema import GroupId
+            for domain_id in domains[:2]:  # Limit to top 2 domains
+                from ..domain.schema import DomainId
                 try:
-                    group_enum = GroupId(group_id)
-                    stored_list = await self.repository.find_by_group_async(
-                        group_id=group_enum,
+                    domain_enum = DomainId(domain_id)
+                    stored_list = await self.repository.find_by_domain_async(
+                        domain_id=domain_enum,
                         limit=10
                     )
                     for stored in stored_list:
                         d = stored.decision
-                        # Filter by features
-                        feature_val = d.feature_id.value if hasattr(d.feature_id, 'value') else d.feature_id
-                        if not features or feature_val in features:
+                        # Filter by aspects
+                        aspect_val = d.aspect_id.value if hasattr(d.aspect_id, 'value') else d.aspect_id
+                        if not aspects or aspect_val in aspects:
                             decisions.append({
                                 "decision_id": d.decision_id,
                                 "decision_code": d.decision_code,
-                                "group_id": group_id,
-                                "feature_id": feature_val,
+                                "domain_id": domain_id,
+                                "aspect_id": aspect_val,
                                 "statement": d.statement,
                                 "rationale": d.rationale[:200] if d.rationale else "",
                                 "constraints": [
@@ -1169,7 +1169,7 @@ class MICSToolProvider:
                                 "tags": d.tags or [],
                             })
                 except Exception as e:
-                    logger.debug(f"Failed to fetch group {group_id}: {e}")
+                    logger.debug(f"Failed to fetch domain {domain_id}: {e}")
 
         except Exception as e:
             logger.error(f"Decision retrieval error: {e}")
@@ -1425,8 +1425,8 @@ class MICSToolProvider:
                 "decision_1": {
                     "decision_id": d1.decision_id,
                     "decision_code": d1.decision_code,
-                    "group_id": d1.group_id.value if hasattr(d1.group_id, 'value') else str(d1.group_id),
-                    "feature_id": d1.feature_id.value if hasattr(d1.feature_id, 'value') else str(d1.feature_id),
+                    "domain_id": d1.domain_id.value if hasattr(d1.domain_id, 'value') else str(d1.domain_id),
+                    "aspect_id": d1.aspect_id.value if hasattr(d1.aspect_id, 'value') else str(d1.aspect_id),
                     "statement": d1.statement,
                     "rationale": d1.rationale,
                     "scope": d1.scope.value if hasattr(d1.scope, 'value') else str(d1.scope) if d1.scope else None,
@@ -1438,8 +1438,8 @@ class MICSToolProvider:
                 "decision_2": {
                     "decision_id": d2.decision_id,
                     "decision_code": d2.decision_code,
-                    "group_id": d2.group_id.value if hasattr(d2.group_id, 'value') else str(d2.group_id),
-                    "feature_id": d2.feature_id.value if hasattr(d2.feature_id, 'value') else str(d2.feature_id),
+                    "domain_id": d2.domain_id.value if hasattr(d2.domain_id, 'value') else str(d2.domain_id),
+                    "aspect_id": d2.aspect_id.value if hasattr(d2.aspect_id, 'value') else str(d2.aspect_id),
                     "statement": d2.statement,
                     "rationale": d2.rationale,
                     "scope": d2.scope.value if hasattr(d2.scope, 'value') else str(d2.scope) if d2.scope else None,
@@ -1453,10 +1453,10 @@ class MICSToolProvider:
             }
 
             # Find differences
-            if d1.group_id != d2.group_id:
-                comparison["differences"].append(f"group_id: {comparison['decision_1']['group_id']} vs {comparison['decision_2']['group_id']}")
-            if d1.feature_id != d2.feature_id:
-                comparison["differences"].append(f"feature_id: {comparison['decision_1']['feature_id']} vs {comparison['decision_2']['feature_id']}")
+            if d1.domain_id != d2.domain_id:
+                comparison["differences"].append(f"domain_id: {comparison['decision_1']['domain_id']} vs {comparison['decision_2']['domain_id']}")
+            if d1.aspect_id != d2.aspect_id:
+                comparison["differences"].append(f"aspect_id: {comparison['decision_1']['aspect_id']} vs {comparison['decision_2']['aspect_id']}")
             if d1.scope != d2.scope:
                 comparison["differences"].append(f"scope: {comparison['decision_1']['scope']} vs {comparison['decision_2']['scope']}")
             if d1.blast_radius != d2.blast_radius:
@@ -1525,8 +1525,8 @@ class MICSToolProvider:
                     "version": agent.version,
                     "category": agent.category.value if hasattr(agent.category, 'value') else str(agent.category),
                     "keywords": agent.get_all_keywords()[:10],
-                    "groups": agent.get_required_groups(),
-                    "features": agent.get_all_features()[:5],
+                    "domains": agent.get_required_domains(),
+                    "aspects": agent.get_all_aspects()[:5],
                 }
 
                 # Filter by category if specified

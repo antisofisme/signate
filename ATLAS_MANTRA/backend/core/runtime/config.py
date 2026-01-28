@@ -40,6 +40,11 @@ class Config:
     enable_metrics: bool = os.getenv("ENABLE_METRICS", "false").lower() == "true"
     enable_semantic_search: bool = os.getenv("ENABLE_SEMANTIC_SEARCH", "true").lower() == "true"
 
+    # New Service Feature Flags (disabled by default for gradual rollout)
+    feature_meilisearch_enabled: bool = os.getenv("FEATURE_MEILISEARCH_ENABLED", "false").lower() == "true"
+    feature_rabbitmq_enabled: bool = os.getenv("FEATURE_RABBITMQ_ENABLED", "false").lower() == "true"
+    feature_redis_enhanced_cache: bool = os.getenv("FEATURE_REDIS_ENHANCED_CACHE", "true").lower() == "true"
+
     # AI Configuration
     ai_provider: str = os.getenv("AI_PROVIDER", "openai")
     openai_api_key: str = os.getenv("OPENAI_API_KEY", "")
@@ -68,6 +73,17 @@ class Config:
     embedding_service: str = os.getenv("EMBEDDING_SERVICE", "noop")  # openai, noop
     embedding_model: str = os.getenv("EMBEDDING_MODEL", "text-embedding-3-small")
     embedding_dimensions: int = int(os.getenv("EMBEDDING_DIMENSIONS", "1536"))
+
+    # Meilisearch Configuration
+    meilisearch_url: str = os.getenv("MEILISEARCH_URL", "http://localhost:7700")
+    meilisearch_api_key: str = os.getenv("MEILISEARCH_API_KEY", "")
+    meilisearch_index_decisions: str = os.getenv("MEILISEARCH_INDEX_DECISIONS", "mantra_decisions")
+
+    # RabbitMQ Configuration
+    rabbitmq_url: str = os.getenv("RABBITMQ_URL", "amqp://guest:guest@localhost:5672/")
+    rabbitmq_exchange: str = os.getenv("RABBITMQ_EXCHANGE", "mantra_events")
+    rabbitmq_queue_validation: str = os.getenv("RABBITMQ_QUEUE_VALIDATION", "mantra_validation")
+    rabbitmq_queue_sync: str = os.getenv("RABBITMQ_QUEUE_SYNC", "mantra_sync")
 
     @property
     def cors_origins_list(self) -> list[str]:

@@ -12,8 +12,8 @@ job "mantra-backend" {
   type        = "service"
 
   meta {
-    version     = "1.3.1"
-    description = "Decision Matrix Constitutional Law System - MICS 7-Stage Pipeline + YAML Agents"
+    version     = "1.6.1"
+    description = "Decision Matrix - Full Service Integration (Cache, Queue, Search)"
   }
 
   group "api" {
@@ -49,7 +49,7 @@ job "mantra-backend" {
       driver = "docker"
 
       config {
-        image      = "atlas-mantra-api:v1.3.1"
+        image      = "atlas-mantra-api:v1.6.1"
         ports      = ["http"]
 
         # Use local image, don't try to pull from registry
@@ -87,6 +87,24 @@ QDRANT_COLLECTION=mantra_decisions
 CACHE=redis
 REDIS_URL=redis://31.97.111.175:6380/0
 CACHE_TTL=300
+
+# Meilisearch (Full-text Search)
+MEILISEARCH_URL=http://31.97.111.175:7700
+MEILISEARCH_INDEX_DECISIONS=mantra_decisions
+{{- if keyExists "mantra/meilisearch_api_key" }}
+MEILISEARCH_API_KEY={{ key "mantra/meilisearch_api_key" }}
+{{- end }}
+
+# RabbitMQ (Message Queue)
+RABBITMQ_URL=amqp://mantra:{{ keyOrDefault "mantra/rabbitmq_password" "mantra_mq" }}@31.97.111.175:5672/mantra
+RABBITMQ_EXCHANGE=mantra_events
+RABBITMQ_QUEUE_VALIDATION=mantra_validation
+RABBITMQ_QUEUE_SYNC=mantra_sync
+
+# Feature Flags (services disabled by default, enable via Consul KV)
+FEATURE_REDIS_ENHANCED_CACHE={{ keyOrDefault "mantra/feature_redis_enhanced" "true" }}
+FEATURE_MEILISEARCH_ENABLED={{ keyOrDefault "mantra/feature_meilisearch" "false" }}
+FEATURE_RABBITMQ_ENABLED={{ keyOrDefault "mantra/feature_rabbitmq" "false" }}
 
 # AI API Keys (stored in Consul KV)
 {{- if keyExists "mantra/openai_api_key" }}

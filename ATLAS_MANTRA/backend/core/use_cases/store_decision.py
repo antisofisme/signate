@@ -167,11 +167,11 @@ class StoreDecisionUseCase:
 
         # Step 3: Generate decision_code if not already set
         if not decision.decision_code:
-            # Get sequence number for this feature (1-based)
-            sequence = self.repository.count_by_feature(decision.feature_id) + 1
+            # Get sequence number for this aspect (1-based)
+            sequence = self.repository.count_by_aspect(decision.aspect_id) + 1
             decision.decision_code = generate_decision_code(
-                group_id=decision.group_id,
-                feature_id=decision.feature_id,
+                domain_id=decision.domain_id,
+                aspect_id=decision.aspect_id,
                 sequence=sequence,
                 version=decision.version
             )
@@ -260,11 +260,11 @@ class StoreDecisionUseCase:
 
         # Step 3: Generate decision_code if not already set
         if not decision.decision_code:
-            # Get sequence number for this feature (1-based)
-            sequence = await self.repository.count_by_feature_async(decision.feature_id) + 1
+            # Get sequence number for this aspect (1-based)
+            sequence = await self.repository.count_by_aspect_async(decision.aspect_id) + 1
             decision.decision_code = generate_decision_code(
-                group_id=decision.group_id,
-                feature_id=decision.feature_id,
+                domain_id=decision.domain_id,
+                aspect_id=decision.aspect_id,
                 sequence=sequence,
                 version=decision.version
             )

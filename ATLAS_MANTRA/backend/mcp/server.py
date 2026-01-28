@@ -4,7 +4,7 @@ MANTRA MCP Server Implementation
 Implements Model Context Protocol for AI assistant integration.
 
 Supported Capabilities:
-- Resources: decisions://, groups://, features://
+- Resources: decisions://, domains://, aspects://
 - Tools: validate, query, get_context, suggest_decisions
 - Prompts: decision_template, validation_help
 
@@ -116,8 +116,8 @@ class MantraMCPServer:
         resource_provider = ResourceProvider(self.repository)
         self._resource_handlers['decisions'] = resource_provider.get_decisions
         self._resource_handlers['decision'] = resource_provider.get_decision
-        self._resource_handlers['groups'] = resource_provider.get_groups
-        self._resource_handlers['features'] = resource_provider.get_features
+        self._resource_handlers['domains'] = resource_provider.get_domains
+        self._resource_handlers['aspects'] = resource_provider.get_aspects
         self._resource_handlers['matrix'] = resource_provider.get_decision_matrix
 
         # Tools - Read Operations
@@ -187,21 +187,21 @@ class MantraMCPServer:
                 "mimeType": "application/json"
             },
             {
-                "uri": "mantra://groups",
-                "name": "Decision Groups",
-                "description": "List all decision groups (ARCH, STD, PROC, etc.)",
+                "uri": "mantra://domains",
+                "name": "Decision Domains",
+                "description": "List all decision domains (ARCH, STD, PROC, etc.)",
                 "mimeType": "application/json"
             },
             {
-                "uri": "mantra://features",
-                "name": "Feature Areas",
-                "description": "List all feature areas per group",
+                "uri": "mantra://aspects",
+                "name": "Aspect Areas",
+                "description": "List all aspect areas per domain",
                 "mimeType": "application/json"
             },
             {
                 "uri": "mantra://matrix",
                 "name": "Decision Matrix",
-                "description": "Group x Feature matrix of decision counts",
+                "description": "Domain x Aspect matrix of decision counts",
                 "mimeType": "application/json"
             },
             {
@@ -263,8 +263,8 @@ class MantraMCPServer:
                             "properties": {
                                 "statement": {"type": "string", "description": "Decision statement"},
                                 "rationale": {"type": "string", "description": "Why this decision was made"},
-                                "group_id": {"type": "string", "description": "Group: ARCH, STD, PROC, etc."},
-                                "feature_id": {"type": "string", "description": "Feature area"},
+                                "domain_id": {"type": "string", "description": "Domain: ARCH, STD, PROC, etc."},
+                                "aspect_id": {"type": "string", "description": "Aspect area"},
                                 "scope": {"type": "string", "enum": ["ORGANIZATION", "DOMAIN", "APPLICATION"]},
                                 "detailed_content": {"type": "string", "description": "Full specification (Layer B)"},
                                 "sections": {"type": "array", "description": "Structured sections for Layer B"},
@@ -304,8 +304,8 @@ class MantraMCPServer:
                         "filters": {
                             "type": "object",
                             "properties": {
-                                "group_id": {"type": "string"},
-                                "feature_id": {"type": "string"},
+                                "domain_id": {"type": "string"},
+                                "aspect_id": {"type": "string"},
                                 "tags": {"type": "array", "items": {"type": "string"}},
                                 "tech_stack": {"type": "array", "items": {"type": "string"}},
                                 "scope": {"type": "string"},
@@ -408,7 +408,7 @@ class MantraMCPServer:
             {
                 "name": "mantra_classify",
                 "description": (
-                    "Auto-classify a decision into Group (INT/ARCH/CTL/EVO) and Feature (F01-F16). "
+                    "Auto-classify a decision into Domain (INT/ARCH/CTL/EVO) and Aspect (F01-F16). "
                     "Returns classification context for AI to determine the best category. "
                     "Does NOT store anything - just provides classification guidance."
                 ),
@@ -447,8 +447,8 @@ class MantraMCPServer:
                             "properties": {
                                 "statement": {"type": "string"},
                                 "rationale": {"type": "string"},
-                                "group_id": {"type": "string"},
-                                "feature_id": {"type": "string"},
+                                "domain_id": {"type": "string"},
+                                "aspect_id": {"type": "string"},
                                 "scope": {"type": "string"},
                                 "blast_radius": {"type": "string"},
                                 "constraints": {"type": "array"},
@@ -731,8 +731,8 @@ Use this structure:
 {{
   "statement": "Clear, imperative statement of the decision",
   "rationale": "Explanation of WHY this decision was made",
-  "group_id": "ARCH|STD|PROC|IMPL|SPEC",
-  "feature_id": "Feature area this applies to",
+  "domain_id": "ARCH|STD|PROC|IMPL|SPEC",
+  "aspect_id": "Aspect area this applies to",
   "scope": "ORGANIZATION|DOMAIN|APPLICATION",
   "blast_radius": "LOW|MEDIUM|HIGH|CRITICAL",
   "tags": ["relevant", "tags"],
