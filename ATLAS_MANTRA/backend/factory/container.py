@@ -137,7 +137,9 @@ class Container:
         Get embedding service instance based on configuration.
 
         Supports:
-        - openai: OpenAI embeddings API
+        - openai: OpenAI embeddings API (cloud, requires API key)
+        - local: sentence-transformers (runs offline, no API needed)
+        - ollama: Ollama local server (self-hosted LLM)
         - noop: No-op embedding for testing
 
         Returns:
@@ -163,6 +165,28 @@ class Container:
                         dimensions=config.embedding_dimensions,
                     )
                     logger.info(f"Using OpenAI embedding: {config.embedding_model}")
+
+            elif service_type == "local":
+                try:
+                    from adapters.embeddings.local_adapter import LocalEmbedding
+                    cls._embedding = LocalEmbedding(
+                        model_name=config.local_embedding_model,
+                    )
+                    logger.info(f"Using local embedding: {config.local_embedding_model}")
+                except ImportError as e:
+                    logger.warning(f"Local embedding unavailable ({e}), falling back to noop")
+                    from adapters.embeddings.noop_adapter import NoOpEmbedding
+                    cls._embedding = NoOpEmbedding(
+                        dimensions=config.embedding_dimensions,
+                    )
+
+            elif service_type == "ollama":
+                from adapters.embeddings.ollama_adapter import OllamaEmbedding
+                cls._embedding = OllamaEmbedding(
+                    base_url=config.ollama_url,
+                    model=config.ollama_embedding_model,
+                )
+                logger.info(f"Using Ollama embedding: {config.ollama_embedding_model} at {config.ollama_url}")
 
             elif service_type == "noop":
                 from adapters.embeddings.noop_adapter import NoOpEmbedding
@@ -368,6 +392,8 @@ class Container:
         cls._decision_repository = None
         cls._message_queue = None
         cls._text_search = None
+        cls._validation_pipeline = None
+        cls._approval_manager = None
         cls._repository_initialized = False
         cls._initialized = False
         logger.info("Container reset")
@@ -451,3 +477,50 @@ class Container:
 
         cls._initialized = True
         logger.info("Container initialization complete")
+
+    # =========================================================================
+    # Validation Pipeline & Approval Manager
+    # =========================================================================
+
+    _validation_pipeline = None
+    _approval_manager = None
+
+    @classmethod
+    def get_validation_pipeline(cls):
+        """
+        Get validation pipeline instance (singleton).
+
+        The pipeline orchestrates the 3-gate validation process:
+        - Gate 1: Deterministic validation
+        - Gate 2: AI heuristic validation
+        - Gate 3: Human approval workflow
+
+        Returns:
+            ValidationPipeline instance
+        """
+        if cls._validation_pipeline is None:
+            from core.validation import create_pipeline
+            cls._validation_pipeline = create_pipeline()
+            logger.info("Validation pipeline created")
+        return cls._validation_pipeline
+
+    @classmethod
+    def get_approval_manager(cls):
+        """
+        Get human approval manager instance (singleton).
+
+        Manages the Gate 3 approval workflow:
+        - Pending approvals tracking
+        - Approval/rejection actions
+        - Review comments
+
+        Per MANTRA LAW §6: AI has ZERO authority for approval.
+
+        Returns:
+            HumanApprovalManager instance
+        """
+        if cls._approval_manager is None:
+            from core.validation import create_approval_manager
+            cls._approval_manager = create_approval_manager()
+            logger.info("Approval manager created")
+        return cls._approval_manager

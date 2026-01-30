@@ -18,6 +18,13 @@ from core.api.routes import router as api_router
 from core.api.ai_routes import router as ai_router
 from core.api.api_key_routes import router as api_key_router
 from core.api.search_routes import router as search_router
+from core.api.docs_routes import router as docs_router
+from core.api.validation_routes import router as validation_router
+from core.api.analytics_routes import router as analytics_router
+from core.api.retrieval_routes import router as retrieval_router
+from core.api.export_routes import router as export_router
+from core.api.jobs_routes import router as jobs_router
+from core.api.monitoring_routes import router as monitoring_router
 from core.runtime.config import get_config
 from factory.container import Container
 
@@ -150,6 +157,13 @@ app.include_router(api_router)
 app.include_router(ai_router, prefix="/api/v1")
 app.include_router(api_key_router)
 app.include_router(search_router)  # Semantic search endpoints
+app.include_router(docs_router)  # Document generation endpoints
+app.include_router(validation_router)  # 3-gate validation endpoints
+app.include_router(analytics_router)  # Usage analytics endpoints
+app.include_router(retrieval_router)  # Enhanced retrieval endpoints
+app.include_router(export_router)  # Export integration endpoints
+app.include_router(jobs_router)  # Background jobs endpoints
+app.include_router(monitoring_router)  # Health checks and metrics
 
 
 @app.get("/", tags=["root"])
@@ -173,6 +187,16 @@ async def root():
             "check_alignment": "POST /api/v1/search/check-alignment",
             "rebuild_index": "POST /api/v1/search/rebuild-index",
             "search_stats": "GET /api/v1/search/stats",
+            "docs_generate": "POST /api/v1/docs/generate",
+            "docs_types": "GET /api/v1/docs/types",
+            "validation_pipeline": "POST /api/v1/validation/pipeline",
+            "validation_gate1": "POST /api/v1/validation/gate1",
+            "validation_approvals": "GET /api/v1/validation/approvals/pending",
+            "analytics_track": "POST /api/v1/analytics/track/event",
+            "analytics_summary": "GET /api/v1/analytics/summary",
+            "retrieval": "POST /api/v1/retrieval/retrieve",
+            "retrieval_triggers": "POST /api/v1/retrieval/check-triggers",
+            "retrieval_hot": "GET /api/v1/retrieval/hot-decisions",
         },
         "constitutional_notice": {
             "ai_authority": "ZERO",

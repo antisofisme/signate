@@ -15,8 +15,8 @@ from typing import List, Optional
 from enum import Enum
 import uuid
 
-from .schema import (
-    Decision,
+from .schema_base import (
+    DecisionV2 as Decision,  # Use V2 as the base Decision type
     DomainId,
     AspectId,
     Scope,

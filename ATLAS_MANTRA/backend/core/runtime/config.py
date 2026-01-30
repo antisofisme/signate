@@ -70,9 +70,18 @@ class Config:
     cache_ttl: int = int(os.getenv("CACHE_TTL", "300"))  # 5 minutes default
 
     # Embedding Configuration
-    embedding_service: str = os.getenv("EMBEDDING_SERVICE", "noop")  # openai, noop
+    # Supported: openai, local, ollama, noop
+    embedding_service: str = os.getenv("EMBEDDING_SERVICE", "noop")
     embedding_model: str = os.getenv("EMBEDDING_MODEL", "text-embedding-3-small")
     embedding_dimensions: int = int(os.getenv("EMBEDDING_DIMENSIONS", "1536"))
+
+    # Local embedding (sentence-transformers)
+    # Models: all-MiniLM-L6-v2 (384), all-mpnet-base-v2 (768)
+    local_embedding_model: str = os.getenv("LOCAL_EMBEDDING_MODEL", "all-MiniLM-L6-v2")
+
+    # Ollama embedding
+    ollama_url: str = os.getenv("OLLAMA_URL", "http://localhost:11434")
+    ollama_embedding_model: str = os.getenv("OLLAMA_EMBEDDING_MODEL", "nomic-embed-text")
 
     # Meilisearch Configuration
     meilisearch_url: str = os.getenv("MEILISEARCH_URL", "http://localhost:7700")
