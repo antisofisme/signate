@@ -12,8 +12,8 @@ job "mantra-backend" {
   type        = "service"
 
   meta {
-    version     = "1.6.1"
-    description = "Decision Matrix - Full Service Integration (Cache, Queue, Search)"
+    version     = "1.7.0"
+    description = "Decision Matrix - CORE Implementation (Schema Facade, Exceptions, Monitoring, Jobs)"
   }
 
   group "api" {
@@ -49,11 +49,14 @@ job "mantra-backend" {
       driver = "docker"
 
       config {
-        image      = "atlas-mantra-api:v1.6.1"
+        image      = "atlas-mantra-api:v1.7.0"
         ports      = ["http"]
-
-        # Use local image, don't try to pull from registry
         force_pull = false
+
+        # Ensure binding to all interfaces including IPv4
+        port_map {
+          http = 8001
+        }
       }
 
       env {
@@ -69,8 +72,8 @@ job "mantra-backend" {
 
         # Semantic Search Configuration
         ENABLE_SEMANTIC_SEARCH = "true"
-        EMBEDDING_SERVICE      = "noop"
-        EMBEDDING_MODEL        = "noop-embedding"
+        EMBEDDING_SERVICE      = "openai"
+        EMBEDDING_MODEL        = "text-embedding-3-small"
         EMBEDDING_DIMENSIONS   = "1536"
       }
 

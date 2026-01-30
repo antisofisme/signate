@@ -17,8 +17,7 @@ from ..export import (
     NotionExporter,
     GitHubWikiExporter,
 )
-from ..docs.generator import DocumentGenerator
-from ..docs.types import DocumentType
+from ..docs import DocumentGenerator, DocumentType
 
 router = APIRouter(prefix="/api/v1/export", tags=["export"])
 

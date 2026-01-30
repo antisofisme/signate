@@ -1552,7 +1552,7 @@ class DecisionV3(BaseModel):
         new_value: Any,
         reason: str,
         amended_by: str,
-        amendment_type: AmendmentType = AmendmentType.ENRICHMENT,
+        amendment_type: EnrichmentType = EnrichmentType.OPERATIONAL_TAG,
         requires_approval: bool = False
     ) -> DecisionAmendment:
         """Create and add an amendment to this decision."""

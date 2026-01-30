@@ -30,6 +30,9 @@ aio-pika>=9.0.0
 # Install for better Q-023 coherence detection, falls back to TF-IDF if not installed
 sentence-transformers>=2.2.0
 
+# Monitoring
+prometheus-client>=0.20.0
+
 # Utilities
 python-dotenv==1.0.0
 python-multipart==0.0.9
