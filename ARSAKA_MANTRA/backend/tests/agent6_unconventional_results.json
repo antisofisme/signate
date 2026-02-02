@@ -1,0 +1,234 @@
+{
+  "timestamp": "2026-01-31 08:55:45",
+  "config": {
+    "num_decisions": 1000,
+    "num_queries": 10,
+    "num_iterations": 3,
+    "baseline": 0.8227
+  },
+  "baseline_actual": {
+    "relevance": 0.8159420289855072,
+    "std_dev": 0.23664926562580965,
+    "latency_ms": 6.109134356180827
+  },
+  "winners": [
+    {
+      "name": "SquaredK-0/100",
+      "relevance": 0.8417572463768115,
+      "std_dev": 0.20769362844151049,
+      "latency_ms": 6.240089734395345
+    },
+    {
+      "name": "MaxFusion",
+      "relevance": 0.8400815217391304,
+      "std_dev": 0.2108191665832961,
+      "latency_ms": 5.881818135579427
+    },
+    {
+      "name": "SquaredK-10/90",
+      "relevance": 0.8298460144927535,
+      "std_dev": 0.22307126101335076,
+      "latency_ms": 5.863610903422038
+    },
+    {
+      "name": "Squared+TopK100",
+      "relevance": 0.8253170289855072,
+      "std_dev": 0.22445669284751824,
+      "latency_ms": 5.862569808959961
+    },
+    {
+      "name": "SquaredK-20/80",
+      "relevance": 0.823641304347826,
+      "std_dev": 0.23283997053195613,
+      "latency_ms": 5.921570460001628
+    },
+    {
+      "name": "TopK-200",
+      "relevance": 0.8235054347826086,
+      "std_dev": 0.22664696986390023,
+      "latency_ms": 6.609551111857097
+    }
+  ],
+  "all_results": [
+    {
+      "name": "SquaredK-0/100",
+      "relevance": 0.8417572463768115,
+      "std_dev": 0.20769362844151049,
+      "latency_ms": 6.240089734395345
+    },
+    {
+      "name": "MaxFusion",
+      "relevance": 0.8400815217391304,
+      "std_dev": 0.2108191665832961,
+      "latency_ms": 5.881818135579427
+    },
+    {
+      "name": "SquaredK-10/90",
+      "relevance": 0.8298460144927535,
+      "std_dev": 0.22307126101335076,
+      "latency_ms": 5.863610903422038
+    },
+    {
+      "name": "Squared+TopK100",
+      "relevance": 0.8253170289855072,
+      "std_dev": 0.22445669284751824,
+      "latency_ms": 5.862569808959961
+    },
+    {
+      "name": "SquaredK-20/80",
+      "relevance": 0.823641304347826,
+      "std_dev": 0.23283997053195613,
+      "latency_ms": 5.921570460001628
+    },
+    {
+      "name": "TopK-200",
+      "relevance": 0.8235054347826086,
+      "std_dev": 0.22664696986390023,
+      "latency_ms": 6.609551111857097
+    },
+    {
+      "name": "TopK-20",
+      "relevance": 0.8216032608695651,
+      "std_dev": 0.227294504225354,
+      "latency_ms": 5.878456433614095
+    },
+    {
+      "name": "NegVec-0.3",
+      "relevance": 0.8210597826086956,
+      "std_dev": 0.22024115609589356,
+      "latency_ms": 5.8815717697143555
+    },
+    {
+      "name": "NegVec-0.2",
+      "relevance": 0.820516304347826,
+      "std_dev": 0.22683535148426492,
+      "latency_ms": 5.906828244527181
+    },
+    {
+      "name": "Squared+TopK50",
+      "relevance": 0.8197916666666666,
+      "std_dev": 0.23757326888453364,
+      "latency_ms": 6.669712066650391
+    },
+    {
+      "name": "TopK-100",
+      "relevance": 0.8196557971014492,
+      "std_dev": 0.22825081112866202,
+      "latency_ms": 6.307522455851237
+    },
+    {
+      "name": "NegVec-0.1",
+      "relevance": 0.8150362318840579,
+      "std_dev": 0.23121755764294075,
+      "latency_ms": 6.427208582560222
+    },
+    {
+      "name": "Multiply-bonus0.2",
+      "relevance": 0.814855072463768,
+      "std_dev": 0.22063065498966783,
+      "latency_ms": 6.133445103963216
+    },
+    {
+      "name": "TopK-50",
+      "relevance": 0.8148097826086955,
+      "std_dev": 0.23172946182180598,
+      "latency_ms": 6.160879135131836
+    },
+    {
+      "name": "LogScaled",
+      "relevance": 0.8144021739130434,
+      "std_dev": 0.228671177151728,
+      "latency_ms": 5.941263834635417
+    },
+    {
+      "name": "DomainBoost-1.2",
+      "relevance": 0.8135416666666666,
+      "std_dev": 0.23028870175375019,
+      "latency_ms": 6.609280904134114
+    },
+    {
+      "name": "SquaredK-30/70",
+      "relevance": 0.8126811594202897,
+      "std_dev": 0.23199675498482822,
+      "latency_ms": 6.326556205749512
+    },
+    {
+      "name": "NegVec-0.05",
+      "relevance": 0.811730072463768,
+      "std_dev": 0.2290328058334252,
+      "latency_ms": 6.57500425974528
+    },
+    {
+      "name": "DomainBoost-1.5",
+      "relevance": 0.7952445652173913,
+      "std_dev": 0.22997432352770444,
+      "latency_ms": 6.137498219807942
+    },
+    {
+      "name": "Multiply-bonus0.1",
+      "relevance": 0.7946557971014492,
+      "std_dev": 0.2155208292294188,
+      "latency_ms": 5.983392397562663
+    },
+    {
+      "name": "Multiply+ExpDecay",
+      "relevance": 0.7933876811594203,
+      "std_dev": 0.20967583437830614,
+      "latency_ms": 6.342148780822754
+    },
+    {
+      "name": "ExpDecay-0.1",
+      "relevance": 0.7892210144927535,
+      "std_dev": 0.2200932900069561,
+      "latency_ms": 6.278220812479655
+    },
+    {
+      "name": "Multiply-bonus0.3",
+      "relevance": 0.7831068840579709,
+      "std_dev": 0.24442344594962304,
+      "latency_ms": 5.950117111206055
+    },
+    {
+      "name": "ExpDecay-0.3",
+      "relevance": 0.7768115942028985,
+      "std_dev": 0.22171055066379852,
+      "latency_ms": 7.190688451131185
+    },
+    {
+      "name": "ExpDecay-0.2",
+      "relevance": 0.771195652173913,
+      "std_dev": 0.2315242906575058,
+      "latency_ms": 6.308301289876302
+    },
+    {
+      "name": "ExpDecay-0.05",
+      "relevance": 0.7583333333333333,
+      "std_dev": 0.2458152330671935,
+      "latency_ms": 6.0624440511067705
+    },
+    {
+      "name": "BordaCount",
+      "relevance": 0.7433876811594202,
+      "std_dev": 0.2664397845534449,
+      "latency_ms": 5.998651186625163
+    },
+    {
+      "name": "DomainBoost-3.0",
+      "relevance": 0.728034420289855,
+      "std_dev": 0.25915017657778977,
+      "latency_ms": 6.146542231241862
+    },
+    {
+      "name": "DomainBoost-2.0",
+      "relevance": 0.7229166666666667,
+      "std_dev": 0.2668905266240449,
+      "latency_ms": 6.083933512369792
+    },
+    {
+      "name": "Multiply-bonus0.0",
+      "relevance": 0.7128623188405796,
+      "std_dev": 0.2521213038737529,
+      "latency_ms": 6.282385190327962
+    }
+  ]
+}

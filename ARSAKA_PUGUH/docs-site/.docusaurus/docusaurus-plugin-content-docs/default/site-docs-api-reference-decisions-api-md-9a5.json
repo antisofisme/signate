@@ -1,0 +1,27 @@
+{
+  "unversionedId": "api-reference/decisions-api",
+  "id": "api-reference/decisions-api",
+  "title": "Decisions API",
+  "description": "API reference for requesting and querying decisions.",
+  "source": "@site/docs/api-reference/decisions-api.md",
+  "sourceDirName": "api-reference",
+  "slug": "/api-reference/decisions-api",
+  "permalink": "/docs/api-reference/decisions-api",
+  "draft": false,
+  "editUrl": "https://github.com/arsaka/puguh/tree/main/docs-site/docs/api-reference/decisions-api.md",
+  "tags": [],
+  "version": "current",
+  "sidebarPosition": 3,
+  "frontMatter": {
+    "sidebar_position": 3
+  },
+  "sidebar": "tutorialSidebar",
+  "previous": {
+    "title": "Rules API",
+    "permalink": "/docs/api-reference/rules-api"
+  },
+  "next": {
+    "title": "SDK Usage",
+    "permalink": "/docs/api-reference/sdk-usage"
+  }
+}

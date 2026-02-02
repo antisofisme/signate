@@ -7,6 +7,13 @@
     "sequential-thinking": {
       "command": "npx",
       "args": ["-y", "@modelcontextprotocol/server-sequential-thinking"]
+    },
+    "mantra": {
+      "type": "http",
+      "url": "http://31.97.111.175:8004/mcp",
+      "headers": {
+        "Authorization": "Bearer mk_master_mantra_constitutional_law_2026"
+      }
     }
   }
 }

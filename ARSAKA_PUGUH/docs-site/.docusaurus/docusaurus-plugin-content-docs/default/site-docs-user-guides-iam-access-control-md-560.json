@@ -1,0 +1,27 @@
+{
+  "unversionedId": "user-guides/iam/access-control",
+  "id": "user-guides/iam/access-control",
+  "title": "Access Control",
+  "description": "Configure access control for your ATLAS PUGUH resources.",
+  "source": "@site/docs/user-guides/iam/access-control.md",
+  "sourceDirName": "user-guides/iam",
+  "slug": "/user-guides/iam/access-control",
+  "permalink": "/docs/user-guides/iam/access-control",
+  "draft": false,
+  "editUrl": "https://github.com/arsaka/puguh/tree/main/docs-site/docs/user-guides/iam/access-control.md",
+  "tags": [],
+  "version": "current",
+  "sidebarPosition": 4,
+  "frontMatter": {
+    "sidebar_position": 4
+  },
+  "sidebar": "tutorialSidebar",
+  "previous": {
+    "title": "Permissions Reference",
+    "permalink": "/docs/user-guides/iam/permissions"
+  },
+  "next": {
+    "title": "Rules Overview",
+    "permalink": "/docs/user-guides/decisions/rules"
+  }
+}

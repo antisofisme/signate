@@ -1,0 +1,37 @@
+{
+  "name": "@arsaka-puguh/core-service-sdk",
+  "version": "1.0.0",
+  "description": "TypeScript SDK for ARSAKA_PUGUH Core Service API",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "clean": "rm -rf dist",
+    "prepublishOnly": "npm run clean && npm run build",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "arsaka-puguh",
+    "core-service",
+    "decision-engine",
+    "workflow",
+    "sdk",
+    "typescript"
+  ],
+  "author": "ARSAKA_PUGUH Team",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/arsaka-puguh/core-service-sdk"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "^5.3.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

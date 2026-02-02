@@ -1,0 +1,24 @@
+{
+  "unversionedId": "intro",
+  "id": "intro",
+  "title": "Welcome to ATLAS PUGUH",
+  "description": "ATLAS PUGUH is a Constitutional Law System for AI-assisted decision making. It provides enterprise-grade governance, compliance, and auditability for automated decisions.",
+  "source": "@site/docs/intro.md",
+  "sourceDirName": ".",
+  "slug": "/",
+  "permalink": "/docs/",
+  "draft": false,
+  "editUrl": "https://github.com/arsaka/puguh/tree/main/docs-site/docs/intro.md",
+  "tags": [],
+  "version": "current",
+  "sidebarPosition": 1,
+  "frontMatter": {
+    "sidebar_position": 1,
+    "slug": "/"
+  },
+  "sidebar": "tutorialSidebar",
+  "next": {
+    "title": "Getting Started",
+    "permalink": "/docs/category/getting-started"
+  }
+}

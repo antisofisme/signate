@@ -1,0 +1,692 @@
+{
+  "timestamp": "2026-01-31 08:56:00",
+  "test_config": {
+    "decisions": 1000,
+    "queries": 10,
+    "iterations_per_query": 3
+  },
+  "best_config": {
+    "name": "CombSUM-Normalized",
+    "approach": "combsum",
+    "params": {},
+    "relevance": 0.8544384057971014,
+    "std_dev": 0.18889888036523006,
+    "latency_ms": 6.217590967814128
+  },
+  "best_by_approach": {
+    "rrf_then_linear": {
+      "name": "RRF-k60+Linear(0.6,0.4)",
+      "params": {
+        "rrf_k": 60,
+        "linear_weights": [
+          0.6,
+          0.4
+        ]
+      },
+      "relevance": 0.8230072463768116,
+      "std_dev": 0.20126286844108268,
+      "latency_ms": 125.49667358398438
+    },
+    "weighted_rrf": {
+      "name": "WeightedRRF-k100(0.4,0.6)",
+      "params": {
+        "k": 100,
+        "source_weights": [
+          0.4,
+          0.6
+        ]
+      },
+      "relevance": 0.8188405797101449,
+      "std_dev": 0.20576280813381173,
+      "latency_ms": 6.698902448018392
+    },
+    "adaptive": {
+      "name": "Adaptive(short<=3,long>5)-k60",
+      "params": {
+        "short_threshold": 3,
+        "long_threshold": 5,
+        "rrf_k": 60
+      },
+      "relevance": 0.8514945652173912,
+      "std_dev": 0.20709277006341453,
+      "latency_ms": 6.223448117574056
+    },
+    "combsum": {
+      "name": "CombSUM-Normalized",
+      "params": {},
+      "relevance": 0.8544384057971014,
+      "std_dev": 0.18889888036523006,
+      "latency_ms": 6.217590967814128
+    },
+    "geometric": {
+      "name": "GeometricMean-eps0.1",
+      "params": {
+        "epsilon": 0.1
+      },
+      "relevance": 0.8526721014492753,
+      "std_dev": 0.18760409137439338,
+      "latency_ms": 7.760270436604817
+    },
+    "harmonic": {
+      "name": "HarmonicMean-eps0.001",
+      "params": {
+        "epsilon": 0.001
+      },
+      "relevance": 0.8452445652173912,
+      "std_dev": 0.21182323816066842,
+      "latency_ms": 7.141915957132976
+    }
+  },
+  "all_results": [
+    {
+      "name": "CombSUM-Normalized",
+      "approach": "combsum",
+      "params": {},
+      "relevance": 0.8544384057971014,
+      "std_dev": 0.18889888036523006,
+      "latency_ms": 6.217590967814128
+    },
+    {
+      "name": "GeometricMean-eps0.1",
+      "approach": "geometric",
+      "params": {
+        "epsilon": 0.1
+      },
+      "relevance": 0.8526721014492753,
+      "std_dev": 0.18760409137439338,
+      "latency_ms": 7.760270436604817
+    },
+    {
+      "name": "Adaptive(short<=3,long>5)-k60",
+      "approach": "adaptive",
+      "params": {
+        "short_threshold": 3,
+        "long_threshold": 5,
+        "rrf_k": 60
+      },
+      "relevance": 0.8514945652173912,
+      "std_dev": 0.20709277006341453,
+      "latency_ms": 6.223448117574056
+    },
+    {
+      "name": "HarmonicMean-eps0.001",
+      "approach": "harmonic",
+      "params": {
+        "epsilon": 0.001
+      },
+      "relevance": 0.8452445652173912,
+      "std_dev": 0.21182323816066842,
+      "latency_ms": 7.141915957132976
+    },
+    {
+      "name": "Adaptive(short<=3,long>5)-k100",
+      "approach": "adaptive",
+      "params": {
+        "short_threshold": 3,
+        "long_threshold": 5,
+        "rrf_k": 100
+      },
+      "relevance": 0.8445652173913043,
+      "std_dev": 0.2313358749375329,
+      "latency_ms": 6.645115216573079
+    },
+    {
+      "name": "GeometricMean-eps0.001",
+      "approach": "geometric",
+      "params": {
+        "epsilon": 0.001
+      },
+      "relevance": 0.8415307971014492,
+      "std_dev": 0.2056867352295039,
+      "latency_ms": 6.283911069234212
+    },
+    {
+      "name": "GeometricMean-eps0.05",
+      "approach": "geometric",
+      "params": {
+        "epsilon": 0.05
+      },
+      "relevance": 0.8408514492753623,
+      "std_dev": 0.2043498239147079,
+      "latency_ms": 6.390857696533203
+    },
+    {
+      "name": "HarmonicMean-eps0.1",
+      "approach": "harmonic",
+      "params": {
+        "epsilon": 0.1
+      },
+      "relevance": 0.8389039855072463,
+      "std_dev": 0.2099615525247038,
+      "latency_ms": 6.46510124206543
+    },
+    {
+      "name": "HarmonicMean-eps0.05",
+      "approach": "harmonic",
+      "params": {
+        "epsilon": 0.05
+      },
+      "relevance": 0.837998188405797,
+      "std_dev": 0.20259564218369627,
+      "latency_ms": 6.257088979085286
+    },
+    {
+      "name": "Adaptive(short<=3,long>5)-k30",
+      "approach": "adaptive",
+      "params": {
+        "short_threshold": 3,
+        "long_threshold": 5,
+        "rrf_k": 30
+      },
+      "relevance": 0.8349184782608695,
+      "std_dev": 0.21513474333729937,
+      "latency_ms": 6.534997622172038
+    },
+    {
+      "name": "HarmonicMean-eps0.01",
+      "approach": "harmonic",
+      "params": {
+        "epsilon": 0.01
+      },
+      "relevance": 0.8314311594202898,
+      "std_dev": 0.20332901006364953,
+      "latency_ms": 6.525627772013347
+    },
+    {
+      "name": "GeometricMean-eps0.01",
+      "approach": "geometric",
+      "params": {
+        "epsilon": 0.01
+      },
+      "relevance": 0.8301630434782608,
+      "std_dev": 0.1938383538827028,
+      "latency_ms": 6.388552983601888
+    },
+    {
+      "name": "Adaptive(short<=2,long>4)-k30",
+      "approach": "adaptive",
+      "params": {
+        "short_threshold": 2,
+        "long_threshold": 4,
+        "rrf_k": 30
+      },
+      "relevance": 0.823052536231884,
+      "std_dev": 0.21005521555828016,
+      "latency_ms": 8.31166903177897
+    },
+    {
+      "name": "RRF-k60+Linear(0.6,0.4)",
+      "approach": "rrf_then_linear",
+      "params": {
+        "rrf_k": 60,
+        "linear_weights": [
+          0.6,
+          0.4
+        ]
+      },
+      "relevance": 0.8230072463768116,
+      "std_dev": 0.20126286844108268,
+      "latency_ms": 125.49667358398438
+    },
+    {
+      "name": "RRF-k60+Linear(0.7,0.3)",
+      "approach": "rrf_then_linear",
+      "params": {
+        "rrf_k": 60,
+        "linear_weights": [
+          0.7,
+          0.3
+        ]
+      },
+      "relevance": 0.8209692028985507,
+      "std_dev": 0.20557937769445359,
+      "latency_ms": 6.7392269770304365
+    },
+    {
+      "name": "Adaptive(short<=2,long>3)-k30",
+      "approach": "adaptive",
+      "params": {
+        "short_threshold": 2,
+        "long_threshold": 3,
+        "rrf_k": 30
+      },
+      "relevance": 0.8189311594202898,
+      "std_dev": 0.22379498884451995,
+      "latency_ms": 7.100518544514974
+    },
+    {
+      "name": "WeightedRRF-k100(0.4,0.6)",
+      "approach": "weighted_rrf",
+      "params": {
+        "k": 100,
+        "source_weights": [
+          0.4,
+          0.6
+        ]
+      },
+      "relevance": 0.8188405797101449,
+      "std_dev": 0.20576280813381173,
+      "latency_ms": 6.698902448018392
+    },
+    {
+      "name": "RRF-k30+Linear(0.6,0.4)",
+      "approach": "rrf_then_linear",
+      "params": {
+        "rrf_k": 30,
+        "linear_weights": [
+          0.6,
+          0.4
+        ]
+      },
+      "relevance": 0.8156249999999999,
+      "std_dev": 0.1994343936748809,
+      "latency_ms": 6.6275835037231445
+    },
+    {
+      "name": "RRF-k100+Linear(0.6,0.4)",
+      "approach": "rrf_then_linear",
+      "params": {
+        "rrf_k": 100,
+        "linear_weights": [
+          0.6,
+          0.4
+        ]
+      },
+      "relevance": 0.8145380434782608,
+      "std_dev": 0.1963772736982849,
+      "latency_ms": 6.456168492635091
+    },
+    {
+      "name": "RRF-k100+Linear(0.4,0.6)",
+      "approach": "rrf_then_linear",
+      "params": {
+        "rrf_k": 100,
+        "linear_weights": [
+          0.4,
+          0.6
+        ]
+      },
+      "relevance": 0.8128170289855072,
+      "std_dev": 0.20955975215357034,
+      "latency_ms": 6.920973459879558
+    },
+    {
+      "name": "Adaptive(short<=1,long>3)-k100",
+      "approach": "adaptive",
+      "params": {
+        "short_threshold": 1,
+        "long_threshold": 3,
+        "rrf_k": 100
+      },
+      "relevance": 0.8121376811594202,
+      "std_dev": 0.22187586884204596,
+      "latency_ms": 6.354618072509766
+    },
+    {
+      "name": "RRF-k30+Linear(0.7,0.3)",
+      "approach": "rrf_then_linear",
+      "params": {
+        "rrf_k": 30,
+        "linear_weights": [
+          0.7,
+          0.3
+        ]
+      },
+      "relevance": 0.8120018115942028,
+      "std_dev": 0.20642107104375373,
+      "latency_ms": 6.453299522399902
+    },
+    {
+      "name": "WeightedRRF-k30(0.4,0.6)",
+      "approach": "weighted_rrf",
+      "params": {
+        "k": 30,
+        "source_weights": [
+          0.4,
+          0.6
+        ]
+      },
+      "relevance": 0.8097373188405796,
+      "std_dev": 0.2373301165797029,
+      "latency_ms": 6.4198652903238935
+    },
+    {
+      "name": "Adaptive(short<=2,long>4)-k60",
+      "approach": "adaptive",
+      "params": {
+        "short_threshold": 2,
+        "long_threshold": 4,
+        "rrf_k": 60
+      },
+      "relevance": 0.8061141304347825,
+      "std_dev": 0.22132180176541408,
+      "latency_ms": 7.8370412190755205
+    },
+    {
+      "name": "Adaptive(short<=1,long>3)-k30",
+      "approach": "adaptive",
+      "params": {
+        "short_threshold": 1,
+        "long_threshold": 3,
+        "rrf_k": 30
+      },
+      "relevance": 0.8045742753623187,
+      "std_dev": 0.21616975580421025,
+      "latency_ms": 7.81705379486084
+    },
+    {
+      "name": "Adaptive(short<=2,long>3)-k60",
+      "approach": "adaptive",
+      "params": {
+        "short_threshold": 2,
+        "long_threshold": 3,
+        "rrf_k": 60
+      },
+      "relevance": 0.8044384057971014,
+      "std_dev": 0.2424353716360091,
+      "latency_ms": 6.592154502868652
+    },
+    {
+      "name": "RRF-k60+Linear(0.5,0.5)",
+      "approach": "rrf_then_linear",
+      "params": {
+        "rrf_k": 60,
+        "linear_weights": [
+          0.5,
+          0.5
+        ]
+      },
+      "relevance": 0.8038949275362318,
+      "std_dev": 0.2399392088905406,
+      "latency_ms": 6.535164515177409
+    },
+    {
+      "name": "RRF-k60+Linear(0.4,0.6)",
+      "approach": "rrf_then_linear",
+      "params": {
+        "rrf_k": 60,
+        "linear_weights": [
+          0.4,
+          0.6
+        ]
+      },
+      "relevance": 0.8034420289855072,
+      "std_dev": 0.204160836811983,
+      "latency_ms": 7.0630232493082685
+    },
+    {
+      "name": "RRF-k30+Linear(0.4,0.6)",
+      "approach": "rrf_then_linear",
+      "params": {
+        "rrf_k": 30,
+        "linear_weights": [
+          0.4,
+          0.6
+        ]
+      },
+      "relevance": 0.8025362318840579,
+      "std_dev": 0.24997436612165583,
+      "latency_ms": 6.7517439524332685
+    },
+    {
+      "name": "RRF-k30+Linear(0.5,0.5)",
+      "approach": "rrf_then_linear",
+      "params": {
+        "rrf_k": 30,
+        "linear_weights": [
+          0.5,
+          0.5
+        ]
+      },
+      "relevance": 0.8011322463768116,
+      "std_dev": 0.229987425049463,
+      "latency_ms": 6.441752115885417
+    },
+    {
+      "name": "WeightedRRF-k100(0.5,0.5)",
+      "approach": "weighted_rrf",
+      "params": {
+        "k": 100,
+        "source_weights": [
+          0.5,
+          0.5
+        ]
+      },
+      "relevance": 0.7986865942028984,
+      "std_dev": 0.21327719061706624,
+      "latency_ms": 6.5588633219401045
+    },
+    {
+      "name": "WeightedRRF-k30(0.5,0.5)",
+      "approach": "weighted_rrf",
+      "params": {
+        "k": 30,
+        "source_weights": [
+          0.5,
+          0.5
+        ]
+      },
+      "relevance": 0.7984148550724637,
+      "std_dev": 0.2395178399333428,
+      "latency_ms": 6.86182975769043
+    },
+    {
+      "name": "Adaptive(short<=2,long>3)-k100",
+      "approach": "adaptive",
+      "params": {
+        "short_threshold": 2,
+        "long_threshold": 3,
+        "rrf_k": 100
+      },
+      "relevance": 0.7983695652173912,
+      "std_dev": 0.24606652308934926,
+      "latency_ms": 7.847420374552409
+    },
+    {
+      "name": "Adaptive(short<=2,long>4)-k100",
+      "approach": "adaptive",
+      "params": {
+        "short_threshold": 2,
+        "long_threshold": 4,
+        "rrf_k": 100
+      },
+      "relevance": 0.7962409420289854,
+      "std_dev": 0.25104395570316496,
+      "latency_ms": 6.906501452128093
+    },
+    {
+      "name": "WeightedRRF-k60(0.4,0.6)",
+      "approach": "weighted_rrf",
+      "params": {
+        "k": 60,
+        "source_weights": [
+          0.4,
+          0.6
+        ]
+      },
+      "relevance": 0.7949728260869564,
+      "std_dev": 0.23491506530619183,
+      "latency_ms": 6.558163960774739
+    },
+    {
+      "name": "WeightedRRF-k30(0.6,0.4)",
+      "approach": "weighted_rrf",
+      "params": {
+        "k": 30,
+        "source_weights": [
+          0.6,
+          0.4
+        ]
+      },
+      "relevance": 0.7926177536231883,
+      "std_dev": 0.19536319972407365,
+      "latency_ms": 6.251056989034017
+    },
+    {
+      "name": "Adaptive(short<=1,long>3)-k60",
+      "approach": "adaptive",
+      "params": {
+        "short_threshold": 1,
+        "long_threshold": 3,
+        "rrf_k": 60
+      },
+      "relevance": 0.7922101449275362,
+      "std_dev": 0.21713227555820871,
+      "latency_ms": 8.098403612772623
+    },
+    {
+      "name": "WeightedRRF-k100(0.6,0.4)",
+      "approach": "weighted_rrf",
+      "params": {
+        "k": 100,
+        "source_weights": [
+          0.6,
+          0.4
+        ]
+      },
+      "relevance": 0.7907608695652173,
+      "std_dev": 0.2253122064393662,
+      "latency_ms": 6.965351104736328
+    },
+    {
+      "name": "RRF-k100+Linear(0.7,0.3)",
+      "approach": "rrf_then_linear",
+      "params": {
+        "rrf_k": 100,
+        "linear_weights": [
+          0.7,
+          0.3
+        ]
+      },
+      "relevance": 0.7904438405797101,
+      "std_dev": 0.2460608532161472,
+      "latency_ms": 7.611966133117676
+    },
+    {
+      "name": "RRF-k100+Linear(0.5,0.5)",
+      "approach": "rrf_then_linear",
+      "params": {
+        "rrf_k": 100,
+        "linear_weights": [
+          0.5,
+          0.5
+        ]
+      },
+      "relevance": 0.7836503623188406,
+      "std_dev": 0.22615726893769905,
+      "latency_ms": 6.713906923929851
+    },
+    {
+      "name": "WeightedRRF-k60(0.6,0.4)",
+      "approach": "weighted_rrf",
+      "params": {
+        "k": 60,
+        "source_weights": [
+          0.6,
+          0.4
+        ]
+      },
+      "relevance": 0.7764039855072463,
+      "std_dev": 0.21989767082799885,
+      "latency_ms": 6.276504198710124
+    },
+    {
+      "name": "WeightedRRF-k60(0.5,0.5)",
+      "approach": "weighted_rrf",
+      "params": {
+        "k": 60,
+        "source_weights": [
+          0.5,
+          0.5
+        ]
+      },
+      "relevance": 0.7616847826086955,
+      "std_dev": 0.25009231111389035,
+      "latency_ms": 6.354236602783203
+    },
+    {
+      "name": "WeightedRRF-k100(0.7,0.3)",
+      "approach": "weighted_rrf",
+      "params": {
+        "k": 100,
+        "source_weights": [
+          0.7,
+          0.3
+        ]
+      },
+      "relevance": 0.759284420289855,
+      "std_dev": 0.2365403925056139,
+      "latency_ms": 6.646219889322917
+    },
+    {
+      "name": "WeightedRRF-k60(0.7,0.3)",
+      "approach": "weighted_rrf",
+      "params": {
+        "k": 60,
+        "source_weights": [
+          0.7,
+          0.3
+        ]
+      },
+      "relevance": 0.7489583333333333,
+      "std_dev": 0.2315452086365721,
+      "latency_ms": 6.34762446085612
+    },
+    {
+      "name": "WeightedRRF-k100(0.8,0.2)",
+      "approach": "weighted_rrf",
+      "params": {
+        "k": 100,
+        "source_weights": [
+          0.8,
+          0.2
+        ]
+      },
+      "relevance": 0.7416213768115941,
+      "std_dev": 0.23750107300941112,
+      "latency_ms": 7.252049446105957
+    },
+    {
+      "name": "WeightedRRF-k60(0.8,0.2)",
+      "approach": "weighted_rrf",
+      "params": {
+        "k": 60,
+        "source_weights": [
+          0.8,
+          0.2
+        ]
+      },
+      "relevance": 0.7394021739130434,
+      "std_dev": 0.22480092854582875,
+      "latency_ms": 6.986061731974284
+    },
+    {
+      "name": "WeightedRRF-k30(0.7,0.3)",
+      "approach": "weighted_rrf",
+      "params": {
+        "k": 30,
+        "source_weights": [
+          0.7,
+          0.3
+        ]
+      },
+      "relevance": 0.7358242753623188,
+      "std_dev": 0.2497418477963496,
+      "latency_ms": 6.281177202860515
+    },
+    {
+      "name": "WeightedRRF-k30(0.8,0.2)",
+      "approach": "weighted_rrf",
+      "params": {
+        "k": 30,
+        "source_weights": [
+          0.8,
+          0.2
+        ]
+      },
+      "relevance": 0.7253623188405797,
+      "std_dev": 0.25346408298311407,
+      "latency_ms": 6.718126932779948
+    }
+  ]
+}

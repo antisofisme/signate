@@ -1,0 +1,136 @@
+{
+  "timestamp": "2026-01-31 08:57:05",
+  "base_fusion": {
+    "method": "linear",
+    "vector_weight": 0.1,
+    "keyword_weight": 0.9
+  },
+  "best_reranking_config": {
+    "name": "CrossEncoder@75",
+    "relevance": 0.8196920289855072,
+    "std_dev": 0.1901466626014873,
+    "latency_ms": 9.48509693145752,
+    "parameters": {
+      "method": "crossencoder",
+      "top_n": 75,
+      "blend_ratio": 0.3,
+      "min_candidates": 5,
+      "bm25_k1": 1.2,
+      "bm25_b": 0.75,
+      "cascade_stage1_method": "tfidf",
+      "cascade_stage1_top_n": 50,
+      "cascade_stage2_method": "crossencoder"
+    }
+  },
+  "phase_winners": {
+    "top_n_sweep": {
+      "best_top_n": 75,
+      "relevance": 0.8196920289855072
+    },
+    "blend_ratio_sweep": {
+      "best_blend": 0.1,
+      "relevance": 0.8119202898550724
+    },
+    "bm25_tuning": {
+      "best_k1": 2.0,
+      "best_b": 0.85,
+      "relevance": 0.8166213768115942
+    },
+    "cascaded": {
+      "best_config": "Cascade-TF-IDF->CE@100->30",
+      "relevance": 0.8117572463768116
+    }
+  },
+  "top_15_results": [
+    {
+      "name": "CrossEncoder@75",
+      "relevance": 0.8196920289855072,
+      "std": 0.1901466626014873,
+      "latency": 9.48509693145752
+    },
+    {
+      "name": "CE@75+minCand5",
+      "relevance": 0.8183333333333332,
+      "std": 0.18870864822807001,
+      "latency": 8.766708374023438
+    },
+    {
+      "name": "Baseline (No Rerank)",
+      "relevance": 0.8173143115942029,
+      "std": 0.18916345558834646,
+      "latency": 7.460906505584717
+    },
+    {
+      "name": "CE@75+minCand15",
+      "relevance": 0.8171105072463767,
+      "std": 0.1889264241245221,
+      "latency": 8.794116973876953
+    },
+    {
+      "name": "CrossEncoder@30",
+      "relevance": 0.8166213768115942,
+      "std": 0.19029955220049502,
+      "latency": 8.60753059387207
+    },
+    {
+      "name": "BM25(k1=2.0,b=0.85)",
+      "relevance": 0.8166213768115942,
+      "std": 0.18964868333660426,
+      "latency": 11.86219056447347
+    },
+    {
+      "name": "CrossEncoder@10",
+      "relevance": 0.8159420289855072,
+      "std": 0.18978314293668597,
+      "latency": 11.217598915100098
+    },
+    {
+      "name": "BM25 (Optimized)",
+      "relevance": 0.8149909420289855,
+      "std": 0.18794975684047158,
+      "latency": 46.64250612258911
+    },
+    {
+      "name": "CrossEncoder@20",
+      "relevance": 0.814800724637681,
+      "std": 0.19131243775495577,
+      "latency": 10.722217559814453
+    },
+    {
+      "name": "CrossEncoder (Optimized)",
+      "relevance": 0.8147735507246376,
+      "std": 0.18911911658120534,
+      "latency": 8.779675960540771
+    },
+    {
+      "name": "BM25(k1=2.0,b=0.75)",
+      "relevance": 0.8144927536231884,
+      "std": 0.19034431672401564,
+      "latency": 12.364300092061361
+    },
+    {
+      "name": "BM25(k1=2.0,b=0.95)",
+      "relevance": 0.8141304347826086,
+      "std": 0.19033383759920636,
+      "latency": 12.190786997477213
+    },
+    {
+      "name": "CrossEncoder@15",
+      "relevance": 0.8140942028985506,
+      "std": 0.1900600714210023,
+      "latency": 11.526718139648438
+    },
+    {
+      "name": "BM25(k1=2.0,b=0.65)",
+      "relevance": 0.8127717391304347,
+      "std": 0.1908215089117794,
+      "latency": 12.999566396077475
+    },
+    {
+      "name": "Cascaded (Optimized)",
+      "relevance": 0.8119474637681159,
+      "std": 0.19031927795494982,
+      "latency": 12.731637954711914
+    }
+  ]
+}

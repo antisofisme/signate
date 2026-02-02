@@ -1,0 +1,154 @@
+# ARSAKA_MANTRA Additional Services
+# Redis, Meilisearch, RabbitMQ for enhanced features
+#
+# Usage:
+#   # Start core services + additional services
+#   docker-compose -f docker-compose.yml -f docker-compose.services.yml up -d
+#
+#   # Start only additional services
+#   docker-compose -f docker-compose.services.yml up -d
+#
+# Feature Flags (set in .env or environment):
+#   FEATURE_REDIS_ENHANCED_CACHE=true   # Enable Redis caching
+#   FEATURE_MEILISEARCH_ENABLED=true    # Enable full-text search
+#   FEATURE_RABBITMQ_ENABLED=true       # Enable async message queue
+
+version: '3.8'
+
+services:
+  # =============================================================================
+  # Redis - High-performance caching
+  # =============================================================================
+  redis:
+    image: redis:7-alpine
+    container_name: mantra-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - mantra-network
+
+  # =============================================================================
+  # Meilisearch - Full-text search engine
+  # =============================================================================
+  meilisearch:
+    image: getmeili/meilisearch:v1.6
+    container_name: mantra-meilisearch
+    restart: unless-stopped
+    environment:
+      MEILI_MASTER_KEY: ${MEILISEARCH_API_KEY:-meilisearch_master_key_change_me}
+      MEILI_NO_ANALYTICS: true
+      MEILI_ENV: ${MEILI_ENV:-development}
+    ports:
+      - "${MEILISEARCH_PORT:-7700}:7700"
+    volumes:
+      - meilisearch_data:/meili_data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:7700/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+    networks:
+      - mantra-network
+
+  # =============================================================================
+  # RabbitMQ - Message queue for async processing
+  # =============================================================================
+  rabbitmq:
+    image: rabbitmq:3.12-management-alpine
+    container_name: mantra-rabbitmq
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-mantra}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-rabbitmq_password_change_me}
+      RABBITMQ_DEFAULT_VHOST: ${RABBITMQ_VHOST:-mantra}
+    ports:
+      - "${RABBITMQ_PORT:-5672}:5672"     # AMQP protocol
+      - "${RABBITMQ_MGMT_PORT:-15672}:15672"  # Management UI
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    networks:
+      - mantra-network
+
+  # =============================================================================
+  # Qdrant - Vector database (optional, for semantic search)
+  # =============================================================================
+  qdrant:
+    image: qdrant/qdrant:v1.7.4
+    container_name: mantra-qdrant
+    restart: unless-stopped
+    ports:
+      - "${QDRANT_PORT:-6333}:6333"
+      - "${QDRANT_GRPC_PORT:-6334}:6334"
+    volumes:
+      - qdrant_data:/qdrant/storage
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:6333/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+    networks:
+      - mantra-network
+    profiles:
+      - semantic  # Only start with --profile semantic
+
+  # =============================================================================
+  # Worker - Background task processor
+  # =============================================================================
+  worker:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    container_name: mantra-worker
+    restart: unless-stopped
+    command: python -m workers
+    environment:
+      # Database (same as backend)
+      DATABASE_URL: postgresql://${DB_APP_USER:-mantra_app}:${DB_APP_PASSWORD:-app_secret_change_me}@postgres:5432/${POSTGRES_DB:-arsaka_mantra}
+      # Redis
+      REDIS_URL: redis://redis:6379/0
+      CACHE: redis
+      # Meilisearch
+      MEILISEARCH_URL: http://meilisearch:7700
+      MEILISEARCH_API_KEY: ${MEILISEARCH_API_KEY:-meilisearch_master_key_change_me}
+      # RabbitMQ
+      RABBITMQ_URL: amqp://${RABBITMQ_USER:-mantra}:${RABBITMQ_PASSWORD:-rabbitmq_password_change_me}@rabbitmq:5672/${RABBITMQ_VHOST:-mantra}
+      # Feature flags
+      FEATURE_REDIS_ENHANCED_CACHE: ${FEATURE_REDIS_ENHANCED_CACHE:-true}
+      FEATURE_MEILISEARCH_ENABLED: ${FEATURE_MEILISEARCH_ENABLED:-true}
+      FEATURE_RABBITMQ_ENABLED: ${FEATURE_RABBITMQ_ENABLED:-true}
+      # Logging
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+    depends_on:
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - mantra-network
+    profiles:
+      - workers  # Only start with --profile workers
+
+volumes:
+  redis_data:
+  meilisearch_data:
+  rabbitmq_data:
+  qdrant_data:
+
+networks:
+  mantra-network:
+    external: true
+    name: mantra-network

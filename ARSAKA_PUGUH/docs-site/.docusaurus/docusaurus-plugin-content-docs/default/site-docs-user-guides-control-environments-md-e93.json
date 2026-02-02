@@ -1,0 +1,27 @@
+{
+  "unversionedId": "user-guides/control/environments",
+  "id": "user-guides/control/environments",
+  "title": "Audit Trail",
+  "description": "Learn how to use the audit trail for compliance and troubleshooting.",
+  "source": "@site/docs/user-guides/control/environments.md",
+  "sourceDirName": "user-guides/control",
+  "slug": "/user-guides/control/environments",
+  "permalink": "/docs/user-guides/control/environments",
+  "draft": false,
+  "editUrl": "https://github.com/arsaka/puguh/tree/main/docs-site/docs/user-guides/control/environments.md",
+  "tags": [],
+  "version": "current",
+  "sidebarPosition": 1,
+  "frontMatter": {
+    "sidebar_position": 1
+  },
+  "sidebar": "tutorialSidebar",
+  "previous": {
+    "title": "Monitoring Workflows",
+    "permalink": "/docs/user-guides/workflows/monitoring"
+  },
+  "next": {
+    "title": "Event Timeline",
+    "permalink": "/docs/user-guides/control/deployment"
+  }
+}

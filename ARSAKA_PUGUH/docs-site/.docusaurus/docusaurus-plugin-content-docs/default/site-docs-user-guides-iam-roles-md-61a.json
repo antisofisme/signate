@@ -1,0 +1,27 @@
+{
+  "unversionedId": "user-guides/iam/roles",
+  "id": "user-guides/iam/roles",
+  "title": "Roles & Permissions",
+  "description": "Understand how roles and permissions work in ATLAS PUGUH.",
+  "source": "@site/docs/user-guides/iam/roles.md",
+  "sourceDirName": "user-guides/iam",
+  "slug": "/user-guides/iam/roles",
+  "permalink": "/docs/user-guides/iam/roles",
+  "draft": false,
+  "editUrl": "https://github.com/arsaka/puguh/tree/main/docs-site/docs/user-guides/iam/roles.md",
+  "tags": [],
+  "version": "current",
+  "sidebarPosition": 2,
+  "frontMatter": {
+    "sidebar_position": 2
+  },
+  "sidebar": "tutorialSidebar",
+  "previous": {
+    "title": "User Management",
+    "permalink": "/docs/user-guides/iam/users"
+  },
+  "next": {
+    "title": "Permissions Reference",
+    "permalink": "/docs/user-guides/iam/permissions"
+  }
+}

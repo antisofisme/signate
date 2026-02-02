@@ -1,0 +1,517 @@
+{
+  "timestamp": "2026-01-31T09:40:41.561020",
+  "config": {
+    "num_decisions": 1000,
+    "num_queries_per_type": 10,
+    "num_iterations": 3,
+    "query_types": [
+      "short",
+      "long",
+      "technical",
+      "conceptual",
+      "domain",
+      "exact",
+      "fuzzy",
+      "list",
+      "enforce",
+      "understand"
+    ]
+  },
+  "results": {
+    "MAX_ACCURACY (Optimized)": {
+      "avg_relevance": 0.14916712594113113,
+      "std_relevance": 0.12091932634776086,
+      "avg_precision": 0.9966666666666667,
+      "avg_recall": 0.08597006841837045,
+      "avg_latency_ms": 0.9806442260742188,
+      "total_tests": 300,
+      "by_query_type": {
+        "short": {
+          "relevance": 0.2943199848816259,
+          "precision": 1.0,
+          "recall": 0.17972492834841722,
+          "latency_ms": 0.8290847142537435
+        },
+        "long": {
+          "relevance": 0.0827954929254878,
+          "precision": 1.0,
+          "recall": 0.0432658872259067,
+          "latency_ms": 1.0874191919962566
+        },
+        "technical": {
+          "relevance": 0.13450009967382778,
+          "precision": 1.0,
+          "recall": 0.07230573023829438,
+          "latency_ms": 1.0637680689493816
+        },
+        "conceptual": {
+          "relevance": 0.2841012234028822,
+          "precision": 0.9666666666666667,
+          "recall": 0.17455373067132576,
+          "latency_ms": 1.038948694864909
+        },
+        "domain": {
+          "relevance": 0.06401327798073604,
+          "precision": 1.0,
+          "recall": 0.03308102359221835,
+          "latency_ms": 1.0884443918863933
+        },
+        "exact": {
+          "relevance": 0.08142916883816186,
+          "precision": 1.0,
+          "recall": 0.042531620519847636,
+          "latency_ms": 0.9453058242797852
+        },
+        "fuzzy": {
+          "relevance": 0.09184832162857319,
+          "precision": 1.0,
+          "recall": 0.048280956696450855,
+          "latency_ms": 0.9616533915201823
+        },
+        "list": {
+          "relevance": 0.07825362078812309,
+          "precision": 1.0,
+          "recall": 0.04072415223310364,
+          "latency_ms": 0.8832375208536783
+        },
+        "enforce": {
+          "relevance": 0.09109187357537828,
+          "precision": 1.0,
+          "recall": 0.04777318006201836,
+          "latency_ms": 0.9940067927042643
+        },
+        "understand": {
+          "relevance": 0.2893181957165152,
+          "precision": 1.0,
+          "recall": 0.1774594745961215,
+          "latency_ms": 0.9145736694335938
+        }
+      }
+    },
+    "HIGH_ACCURACY (CombSUM)": {
+      "avg_relevance": 0.15210549539375992,
+      "std_relevance": 0.12334046241881326,
+      "avg_precision": 0.9976666666666667,
+      "avg_recall": 0.08784233593357892,
+      "avg_latency_ms": 1.071946620941162,
+      "total_tests": 300,
+      "by_query_type": {
+        "short": {
+          "relevance": 0.32960505023210995,
+          "precision": 1.0,
+          "recall": 0.2049221400766008,
+          "latency_ms": 0.8186658223470052
+        },
+        "long": {
+          "relevance": 0.0898150757565782,
+          "precision": 1.0,
+          "recall": 0.04706223437502842,
+          "latency_ms": 1.6322215398152669
+        },
+        "technical": {
+          "relevance": 0.1330232156494284,
+          "precision": 1.0,
+          "recall": 0.07161579101975639,
+          "latency_ms": 1.4340559641520183
+        },
+        "conceptual": {
+          "relevance": 0.28138928049099404,
+          "precision": 0.9766666666666667,
+          "recall": 0.17118671280823392,
+          "latency_ms": 1.0571718215942383
+        },
+        "domain": {
+          "relevance": 0.06380431688477489,
+          "precision": 1.0,
+          "recall": 0.03297083157750435,
+          "latency_ms": 0.9878714879353842
+        },
+        "exact": {
+          "relevance": 0.08970560997707334,
+          "precision": 1.0,
+          "recall": 0.047046130727851986,
+          "latency_ms": 1.014987627665202
+        },
+        "fuzzy": {
+          "relevance": 0.09521926230177985,
+          "precision": 1.0,
+          "recall": 0.050108833713024624,
+          "latency_ms": 0.9888013203938802
+        },
+        "list": {
+          "relevance": 0.07659559138157711,
+          "precision": 1.0,
+          "recall": 0.039827023063479704,
+          "latency_ms": 0.8853912353515625
+        },
+        "enforce": {
+          "relevance": 0.09106886589715073,
+          "precision": 1.0,
+          "recall": 0.0477744444828331,
+          "latency_ms": 0.9772062301635742
+        },
+        "understand": {
+          "relevance": 0.27082868536613275,
+          "precision": 1.0,
+          "recall": 0.16590921749147586,
+          "latency_ms": 0.9230931599934896
+        }
+      }
+    },
+    "BALANCED": {
+      "avg_relevance": 0.15521786974248816,
+      "std_relevance": 0.12450480274224346,
+      "avg_precision": 0.999,
+      "avg_recall": 0.08966850439632065,
+      "avg_latency_ms": 1.0384035110473633,
+      "total_tests": 300,
+      "by_query_type": {
+        "short": {
+          "relevance": 0.33799229165469363,
+          "precision": 1.0,
+          "recall": 0.20923832972893924,
+          "latency_ms": 0.8983612060546875
+        },
+        "long": {
+          "relevance": 0.08836215471969182,
+          "precision": 1.0,
+          "recall": 0.04627373723286633,
+          "latency_ms": 1.157824198404948
+        },
+        "technical": {
+          "relevance": 0.12828303229274876,
+          "precision": 1.0,
+          "recall": 0.06889278414066953,
+          "latency_ms": 1.0993798573811848
+        },
+        "conceptual": {
+          "relevance": 0.26346214346991126,
+          "precision": 0.99,
+          "recall": 0.15827261992352087,
+          "latency_ms": 1.1059125264485676
+        },
+        "domain": {
+          "relevance": 0.06301077645657678,
+          "precision": 1.0,
+          "recall": 0.03255020030977329,
+          "latency_ms": 1.0434071222941081
+        },
+        "exact": {
+          "relevance": 0.09047539848822254,
+          "precision": 1.0,
+          "recall": 0.04743617953122783,
+          "latency_ms": 0.9936650594075521
+        },
+        "fuzzy": {
+          "relevance": 0.09203913882463664,
+          "precision": 1.0,
+          "recall": 0.0484012529848964,
+          "latency_ms": 1.0379711786905925
+        },
+        "list": {
+          "relevance": 0.07717766722367028,
+          "precision": 1.0,
+          "recall": 0.04014148552627976,
+          "latency_ms": 0.9765863418579102
+        },
+        "enforce": {
+          "relevance": 0.08553544530315098,
+          "precision": 1.0,
+          "recall": 0.044769119194447135,
+          "latency_ms": 1.0588010152180989
+        },
+        "understand": {
+          "relevance": 0.32584064899157894,
+          "precision": 1.0,
+          "recall": 0.20070933539058608,
+          "latency_ms": 1.0121266047159831
+        }
+      }
+    },
+    "LOW_LATENCY": {
+      "avg_relevance": 0.15361710802404982,
+      "std_relevance": 0.12262741536472033,
+      "avg_precision": 0.9986666666666667,
+      "avg_recall": 0.08860496934012732,
+      "avg_latency_ms": 1.0350235303243,
+      "total_tests": 300,
+      "by_query_type": {
+        "short": {
+          "relevance": 0.27815523273451037,
+          "precision": 1.0,
+          "recall": 0.16900847284397535,
+          "latency_ms": 0.9018023808797201
+        },
+        "long": {
+          "relevance": 0.08483632836163148,
+          "precision": 1.0,
+          "recall": 0.04435999129339039,
+          "latency_ms": 1.156918207804362
+        },
+        "technical": {
+          "relevance": 0.1421164219995232,
+          "precision": 1.0,
+          "recall": 0.07716030082117606,
+          "latency_ms": 1.0996341705322266
+        },
+        "conceptual": {
+          "relevance": 0.2916588529627439,
+          "precision": 0.9866666666666667,
+          "recall": 0.17827093423337448,
+          "latency_ms": 1.112985610961914
+        },
+        "domain": {
+          "relevance": 0.06329486578984439,
+          "precision": 1.0,
+          "recall": 0.032699456566962146,
+          "latency_ms": 1.0730743408203125
+        },
+        "exact": {
+          "relevance": 0.08905305540898373,
+          "precision": 1.0,
+          "recall": 0.046667822558635406,
+          "latency_ms": 1.0394970575968425
+        },
+        "fuzzy": {
+          "relevance": 0.09458800037702839,
+          "precision": 1.0,
+          "recall": 0.049799622867466906,
+          "latency_ms": 1.0243336359659831
+        },
+        "list": {
+          "relevance": 0.07722673575063735,
+          "precision": 1.0,
+          "recall": 0.040170380137829566,
+          "latency_ms": 0.9124199549357096
+        },
+        "enforce": {
+          "relevance": 0.09039550558502134,
+          "precision": 1.0,
+          "recall": 0.047407805979442455,
+          "latency_ms": 1.0592301686604817
+        },
+        "understand": {
+          "relevance": 0.3248460812705742,
+          "precision": 1.0,
+          "recall": 0.20050490609902044,
+          "latency_ms": 0.9703397750854492
+        }
+      }
+    },
+    "PURE_KEYWORD": {
+      "avg_relevance": 0.15241055651045737,
+      "std_relevance": 0.12362797735244094,
+      "avg_precision": 0.9993333333333333,
+      "avg_recall": 0.08798972639491887,
+      "avg_latency_ms": 1.0459454854329426,
+      "total_tests": 300,
+      "by_query_type": {
+        "short": {
+          "relevance": 0.299187209236333,
+          "precision": 1.0,
+          "recall": 0.18443510770103536,
+          "latency_ms": 0.8554379145304362
+        },
+        "long": {
+          "relevance": 0.08953481626881395,
+          "precision": 1.0,
+          "recall": 0.04692261753318824,
+          "latency_ms": 1.1141459147135417
+        },
+        "technical": {
+          "relevance": 0.1321010488018138,
+          "precision": 1.0,
+          "recall": 0.07107899765953254,
+          "latency_ms": 1.1246681213378906
+        },
+        "conceptual": {
+          "relevance": 0.28072105777214196,
+          "precision": 0.9933333333333333,
+          "recall": 0.17248031120889226,
+          "latency_ms": 1.20849609375
+        },
+        "domain": {
+          "relevance": 0.06374863943312714,
+          "precision": 1.0,
+          "recall": 0.03294158799836311,
+          "latency_ms": 1.0967810948689778
+        },
+        "exact": {
+          "relevance": 0.08993960268040573,
+          "precision": 1.0,
+          "recall": 0.047181631555263726,
+          "latency_ms": 1.0166645050048828
+        },
+        "fuzzy": {
+          "relevance": 0.09606795840580631,
+          "precision": 1.0,
+          "recall": 0.050586754100972985,
+          "latency_ms": 1.0315577189127605
+        },
+        "list": {
+          "relevance": 0.07695968972887433,
+          "precision": 1.0,
+          "recall": 0.04002500638166762,
+          "latency_ms": 0.9487390518188477
+        },
+        "enforce": {
+          "relevance": 0.0898279174383226,
+          "precision": 1.0,
+          "recall": 0.04712702831498883,
+          "latency_ms": 1.0489463806152344
+        },
+        "understand": {
+          "relevance": 0.30601762533893484,
+          "precision": 1.0,
+          "recall": 0.1871182214952839,
+          "latency_ms": 1.0140180587768555
+        }
+      }
+    },
+    "RRF_STANDARD": {
+      "avg_relevance": 0.15685308597672332,
+      "std_relevance": 0.12906495235084345,
+      "avg_precision": 0.999,
+      "avg_recall": 0.09110480172771454,
+      "avg_latency_ms": 1.0113811492919922,
+      "total_tests": 300,
+      "by_query_type": {
+        "short": {
+          "relevance": 0.3305465197652539,
+          "precision": 1.0,
+          "recall": 0.20544984103805827,
+          "latency_ms": 0.8587439854939779
+        },
+        "long": {
+          "relevance": 0.08151852484676081,
+          "precision": 1.0,
+          "recall": 0.042558857534612644,
+          "latency_ms": 1.1084953943888347
+        },
+        "technical": {
+          "relevance": 0.13851976644616873,
+          "precision": 1.0,
+          "recall": 0.07492105088654796,
+          "latency_ms": 1.08642578125
+        },
+        "conceptual": {
+          "relevance": 0.3109909070858166,
+          "precision": 0.99,
+          "recall": 0.19241043571001706,
+          "latency_ms": 1.102272669474284
+        },
+        "domain": {
+          "relevance": 0.0674234072624536,
+          "precision": 1.0,
+          "recall": 0.03489979514120917,
+          "latency_ms": 1.0467290878295898
+        },
+        "exact": {
+          "relevance": 0.08855957039205478,
+          "precision": 1.0,
+          "recall": 0.04642424064351525,
+          "latency_ms": 0.9920040766398112
+        },
+        "fuzzy": {
+          "relevance": 0.09307823589750326,
+          "precision": 1.0,
+          "recall": 0.048943750866740104,
+          "latency_ms": 1.019136110941569
+        },
+        "list": {
+          "relevance": 0.07709446061836221,
+          "precision": 1.0,
+          "recall": 0.04009851524383029,
+          "latency_ms": 0.8693218231201172
+        },
+        "enforce": {
+          "relevance": 0.08898244653192677,
+          "precision": 1.0,
+          "recall": 0.04663280837805339,
+          "latency_ms": 0.9940147399902344
+        },
+        "understand": {
+          "relevance": 0.2918170209209324,
+          "precision": 1.0,
+          "recall": 0.17870872183456124,
+          "latency_ms": 1.036667823791504
+        }
+      }
+    },
+    "LEGACY_10/90": {
+      "avg_relevance": 0.1493455302405527,
+      "std_relevance": 0.11964228660623459,
+      "avg_precision": 0.996,
+      "avg_recall": 0.08594300522441724,
+      "avg_latency_ms": 1.0427069664001465,
+      "total_tests": 300,
+      "by_query_type": {
+        "short": {
+          "relevance": 0.2896749789095715,
+          "precision": 1.0,
+          "recall": 0.17849524129061645,
+          "latency_ms": 0.8531093597412109
+        },
+        "long": {
+          "relevance": 0.08821724155990049,
+          "precision": 1.0,
+          "recall": 0.04618379037788864,
+          "latency_ms": 1.178431510925293
+        },
+        "technical": {
+          "relevance": 0.12336882363848353,
+          "precision": 1.0,
+          "recall": 0.06606946865679754,
+          "latency_ms": 1.1269013086954753
+        },
+        "conceptual": {
+          "relevance": 0.2658111741085073,
+          "precision": 0.96,
+          "recall": 0.16136181557567386,
+          "latency_ms": 1.106850306193034
+        },
+        "domain": {
+          "relevance": 0.06148079991784198,
+          "precision": 1.0,
+          "recall": 0.031737193115451555,
+          "latency_ms": 1.1063098907470703
+        },
+        "exact": {
+          "relevance": 0.08793347159213168,
+          "precision": 1.0,
+          "recall": 0.046071802870011405,
+          "latency_ms": 1.0273059209187825
+        },
+        "fuzzy": {
+          "relevance": 0.1015905759734621,
+          "precision": 1.0,
+          "recall": 0.05360659740010607,
+          "latency_ms": 1.0600487391153972
+        },
+        "list": {
+          "relevance": 0.07664216415133143,
+          "precision": 1.0,
+          "recall": 0.03985427370686613,
+          "latency_ms": 0.9514172871907552
+        },
+        "enforce": {
+          "relevance": 0.08842994020616236,
+          "precision": 1.0,
+          "recall": 0.04634079968705294,
+          "latency_ms": 1.0318199793497722
+        },
+        "understand": {
+          "relevance": 0.3103061323481347,
+          "precision": 1.0,
+          "recall": 0.18970906956370773,
+          "latency_ms": 0.9848753611246744
+        }
+      }
+    }
+  },
+  "winner": {
+    "name": "RRF_STANDARD",
+    "relevance": 0.15685308597672332,
+    "improvement_pct": 5.026970491904318
+  }
+}

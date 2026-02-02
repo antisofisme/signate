@@ -1,0 +1,27 @@
+{
+  "unversionedId": "getting-started/first-project",
+  "id": "getting-started/first-project",
+  "title": "Create Your First Project",
+  "description": "Projects help you organize rules, workflows, and decisions within a tenant. They're ideal for separating environments (production/staging) or different applications.",
+  "source": "@site/docs/getting-started/first-project.md",
+  "sourceDirName": "getting-started",
+  "slug": "/getting-started/first-project",
+  "permalink": "/docs/getting-started/first-project",
+  "draft": false,
+  "editUrl": "https://github.com/arsaka/puguh/tree/main/docs-site/docs/getting-started/first-project.md",
+  "tags": [],
+  "version": "current",
+  "sidebarPosition": 3,
+  "frontMatter": {
+    "sidebar_position": 3
+  },
+  "sidebar": "tutorialSidebar",
+  "previous": {
+    "title": "Create Your First Tenant",
+    "permalink": "/docs/getting-started/first-tenant"
+  },
+  "next": {
+    "title": "Create Your First Rule",
+    "permalink": "/docs/getting-started/first-rule"
+  }
+}

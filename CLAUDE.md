@@ -1,6 +1,6 @@
-# ATLASHUB - Multi-Project Repository
+# ARSAKAHUB - Multi-Project Repository
 
-Repository ini berisi beberapa project ATLAS dengan domain berbeda.
+Repository ini berisi beberapa project ARSAKA dengan domain berbeda.
 
 ---
 
@@ -8,48 +8,58 @@ Repository ini berisi beberapa project ATLAS dengan domain berbeda.
 
 | Project | Domain | Status | Description |
 |---------|--------|--------|-------------|
-| **ATLAS_PANDAWA** | Enterprise Hospitality | 📋 Planning | Full-stack hospitality platform (14 modules) |
-| **ATLAS_PUGUH** | Decision Engine | 🚧 Active | Constitutional law system for AI decisions |
-| **ATLAS_MANTRA** | Decision Visibility | 🚧 Active | MANTRA constitutional law dashboard |
-| **ATLAS_SEMAR** | Voice Assistant | 📋 Planning | Jarvis-like voice control for Claude CLI |
-| **Signage (Legacy)** | Digital Signage | ✅ Production | Digital signage CMS + Player |
+| **ARSAKA_PANDAWA** | Enterprise Hospitality | Planning | Full-stack hospitality platform (14 modules) |
+| **ARSAKA_PUGUH** | Decision Engine | Active | Constitutional law system for AI decisions |
+| **ARSAKA_MANTRA** | Decision Visibility | Active | MANTRA constitutional law dashboard |
+| **ARSAKA_SWARA** | Voice Assistant | Planning | Jarvis-like voice control for Claude CLI |
+| **ARSAKA_TUTUR** | Chat AI | Active | AI Chat service with RAG |
+| **Signage (Legacy)** | Digital Signage | Production | Digital signage CMS + Player |
 
 ---
 
 ## Project Details
 
-### ATLAS_PANDAWA
+### ARSAKA_PANDAWA
 Enterprise Hospitality Platform dengan 14 modules:
 - PMS, POS, HRM, Accounting, Inventory, Procurement
 - Asset, Guest, Channel, Signage, Supplier, IoT, Menu, Platform
 
 **Tech**: FastAPI + React + TimescaleDB + Redis + RabbitMQ
-**Docs**: `ATLAS_PANDAWA/docs/`
+**Docs**: `ARSAKA_PANDAWA/docs/`
 
-### ATLAS_PUGUH
+### ARSAKA_PUGUH
 Decision Engine dengan constitutional law enforcement:
 - Phase A+: Decision visibility dashboard
 - Nomad-based deployment
 
 **Tech**: FastAPI + React + PostgreSQL + Nomad
-**Docs**: `ATLAS_PUGUH/docs/`
+**Docs**: `ARSAKA_PUGUH/docs/`
 
-### ATLAS_MANTRA
+### ARSAKA_MANTRA
 MANTRA Constitutional Law System:
 - Layer 0: Core principles (immutable)
 - Layer 1: Decisions (append-only)
 - Layer 2: Implementations (mutable)
 
 **Tech**: FastAPI + React + PostgreSQL
-**Docs**: `ATLAS_MANTRA/docs/`
+**Docs**: `ARSAKA_MANTRA/docs/`
 
-### ATLAS_SEMAR
+### ARSAKA_SWARA
 Voice Assistant untuk Claude CLI:
 - Hotkey-triggered voice input
 - Speech-to-text integration
 
 **Tech**: Python + Cloud STT
-**Docs**: `ATLAS_SEMAR/docs/`
+**Docs**: `ARSAKA_SWARA/docs/`
+
+### ARSAKA_TUTUR
+AI Chat Service dengan RAG:
+- Multi-provider AI (OpenAI, DeepSeek, Groq)
+- Vector search dengan Qdrant
+- Conversation memory
+
+**Tech**: FastAPI + React + PostgreSQL + Qdrant
+**Docs**: `ARSAKA_TUTUR/docs/`
 
 ### Signage (Legacy)
 Digital Signage Platform:
@@ -66,10 +76,11 @@ Digital Signage Platform:
 
 ```
 signate/
-├── ATLAS_PANDAWA/       # Enterprise hospitality platform
-├── ATLAS_PUGUH/         # Decision engine
-├── ATLAS_MANTRA/        # MANTRA constitutional law
-├── ATLAS_SEMAR/         # Voice assistant
+├── ARSAKA_PANDAWA/      # Enterprise hospitality platform
+├── ARSAKA_PUGUH/        # Decision engine
+├── ARSAKA_MANTRA/       # MANTRA constitutional law
+├── ARSAKA_SWARA/        # Voice assistant
+├── ARSAKA_TUTUR/        # AI Chat service
 │
 ├── backend-python/      # Legacy signage backend
 ├── cms-vite/            # Legacy signage CMS
@@ -101,17 +112,17 @@ signate/
 ## Critical Rules (All Projects)
 
 ### DO
-- ✅ Use Clean Architecture patterns
-- ✅ Use `organization_id` / `tenant_id` for multi-tenancy
-- ✅ Use soft delete (`is_deleted`, `deleted_at`)
-- ✅ Use timestamps (`created_at`, `updated_at`)
-- ✅ Test locally before deploy
+- Use Clean Architecture patterns
+- Use `organization_id` / `tenant_id` for multi-tenancy
+- Use soft delete (`is_deleted`, `deleted_at`)
+- Use timestamps (`created_at`, `updated_at`)
+- Test locally before deploy
 
 ### DON'T
-- ❌ Hardcode credentials (use `.env`)
-- ❌ Bypass permission checks
-- ❌ Commit directly to main branch
-- ❌ Edit files in `/docs/archive/`
+- Hardcode credentials (use `.env`)
+- Bypass permission checks
+- Commit directly to main branch
+- Edit files in `/docs/archive/`
 
 ---
 
@@ -158,7 +169,7 @@ signate/
 
 | Server | IP | Purpose |
 |--------|----|---------|
-| VPS Production | 31.97.111.175 | ATLAS_PUGUH, ATLAS_MANTRA |
+| VPS Production | 72.61.209.224 | ARSAKA_PUGUH, ARSAKA_MANTRA, ARSAKA_TUTUR |
 | Local Network | 192.168.5.12 | Legacy Signage development |
 
 **Details**: See `docs/operations/SERVER_ACCESS.md`
@@ -173,6 +184,7 @@ signate/
 | Server Access | `docs/operations/SERVER_ACCESS.md` |
 | Docker Commands | `docs/operations/DOCKER_RUNBOOK.md` |
 | Deployment | `docs/operations/DEPLOYMENT.md` |
+| Cloudflare Setup | `docs/CLOUDFLARE-SETUP-GUIDE.md` |
 
 ### Database
 | Topic | File |
@@ -188,10 +200,11 @@ signate/
 ### Project-Specific
 | Project | Main Doc |
 |---------|----------|
-| ATLAS_PANDAWA | `ATLAS_PANDAWA/README.md` |
-| ATLAS_PUGUH | `ATLAS_PUGUH/README.md` |
-| ATLAS_MANTRA | `ATLAS_MANTRA/README.md` |
-| ATLAS_SEMAR | `ATLAS_SEMAR/README.md` |
+| ARSAKA_PANDAWA | `ARSAKA_PANDAWA/README.md` |
+| ARSAKA_PUGUH | `ARSAKA_PUGUH/README.md` |
+| ARSAKA_MANTRA | `ARSAKA_MANTRA/README.md` |
+| ARSAKA_SWARA | `ARSAKA_SWARA/README.md` |
+| ARSAKA_TUTUR | `ARSAKA_TUTUR/README.md` |
 
 ---
 
@@ -199,8 +212,9 @@ signate/
 
 Saat bekerja pada project tertentu, baca dulu:
 
-1. **ATLAS_PANDAWA**: `.claude/CLAUDE.md` (detail standards)
-2. **ATLAS_PUGUH**: `ATLAS_PUGUH/docs/` folder
-3. **ATLAS_MANTRA**: `ATLAS_MANTRA/docs/` folder
-4. **ATLAS_SEMAR**: `ATLAS_SEMAR/README.md`
-5. **Legacy Signage**: `docs/` folder (root level)
+1. **ARSAKA_PANDAWA**: `.claude/CLAUDE.md` (detail standards)
+2. **ARSAKA_PUGUH**: `ARSAKA_PUGUH/docs/` folder
+3. **ARSAKA_MANTRA**: `ARSAKA_MANTRA/docs/` folder
+4. **ARSAKA_SWARA**: `ARSAKA_SWARA/README.md`
+5. **ARSAKA_TUTUR**: `ARSAKA_TUTUR/README.md`
+6. **Legacy Signage**: `docs/` folder (root level)

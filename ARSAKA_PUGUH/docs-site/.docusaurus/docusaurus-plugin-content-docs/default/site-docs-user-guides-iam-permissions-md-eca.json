@@ -1,0 +1,27 @@
+{
+  "unversionedId": "user-guides/iam/permissions",
+  "id": "user-guides/iam/permissions",
+  "title": "Permissions Reference",
+  "description": "Complete reference for all permissions in ATLAS PUGUH.",
+  "source": "@site/docs/user-guides/iam/permissions.md",
+  "sourceDirName": "user-guides/iam",
+  "slug": "/user-guides/iam/permissions",
+  "permalink": "/docs/user-guides/iam/permissions",
+  "draft": false,
+  "editUrl": "https://github.com/arsaka/puguh/tree/main/docs-site/docs/user-guides/iam/permissions.md",
+  "tags": [],
+  "version": "current",
+  "sidebarPosition": 3,
+  "frontMatter": {
+    "sidebar_position": 3
+  },
+  "sidebar": "tutorialSidebar",
+  "previous": {
+    "title": "Roles & Permissions",
+    "permalink": "/docs/user-guides/iam/roles"
+  },
+  "next": {
+    "title": "Access Control",
+    "permalink": "/docs/user-guides/iam/access-control"
+  }
+}

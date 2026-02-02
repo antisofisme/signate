@@ -1,0 +1,140 @@
+{
+  "timestamp": "2026-01-31 08:49:07",
+  "best_config": {
+    "name": "Linear-10/90+crossencoder@30",
+    "relevance": 0.8301177536231883,
+    "std_dev": 0.2143330740253895,
+    "latency_ms": 6.720495223999023,
+    "settings": {
+      "fusion": "linear",
+      "vector_weight": 0.1,
+      "keyword_weight": 0.9,
+      "rrf_k": 60,
+      "rerank": "crossencoder",
+      "rerank_top_n": 30,
+      "boost_multi": 1.2
+    }
+  },
+  "all_results": [
+    {
+      "name": "Linear-10/90+crossencoder@30",
+      "relevance": 0.8301177536231883,
+      "std": 0.2143330740253895,
+      "latency": 6.720495223999023
+    },
+    {
+      "name": "Linear-10/90+crossencoder@20",
+      "relevance": 0.8280797101449274,
+      "std": 0.21078340753538402,
+      "latency": 6.380311648050944
+    },
+    {
+      "name": "Linear-10/90+crossencoder@30+boost1.1",
+      "relevance": 0.8245923913043477,
+      "std": 0.22085455548739585,
+      "latency": 6.6855669021606445
+    },
+    {
+      "name": "Linear-10/90+tfidf@30",
+      "relevance": 0.8234148550724637,
+      "std": 0.2261814179806505,
+      "latency": 6.38120174407959
+    },
+    {
+      "name": "Linear-10/90",
+      "relevance": 0.8227355072463768,
+      "std": 0.2335271800139574,
+      "latency": 5.978918075561523
+    },
+    {
+      "name": "Linear-10/90+none@50",
+      "relevance": 0.8221467391304347,
+      "std": 0.22708553636203282,
+      "latency": 6.035423278808594
+    },
+    {
+      "name": "Linear-10/90+tfidf@20",
+      "relevance": 0.8220108695652173,
+      "std": 0.23190104714476922,
+      "latency": 6.307665506998698
+    },
+    {
+      "name": "Linear-10/90+crossencoder@30+boost1.3",
+      "relevance": 0.8217391304347825,
+      "std": 0.232913228575577,
+      "latency": 6.639273961385091
+    },
+    {
+      "name": "Linear-10/90+crossencoder@50",
+      "relevance": 0.8210597826086956,
+      "std": 0.22822549109622345,
+      "latency": 6.8824052810668945
+    },
+    {
+      "name": "Linear-10/90+none@30",
+      "relevance": 0.8198822463768115,
+      "std": 0.22791750254051546,
+      "latency": 6.187971433003743
+    },
+    {
+      "name": "Linear-40/60",
+      "relevance": 0.8193840579710144,
+      "std": 0.223961042244337,
+      "latency": 6.088876724243164
+    },
+    {
+      "name": "Linear-20/80",
+      "relevance": 0.8181612318840579,
+      "std": 0.2274056438292788,
+      "latency": 6.057492891947429
+    },
+    {
+      "name": "Linear-10/90+crossencoder@30+boost1.2",
+      "relevance": 0.8170742753623188,
+      "std": 0.2302864350762605,
+      "latency": 6.487043698628743
+    },
+    {
+      "name": "Linear-0/100",
+      "relevance": 0.816711956521739,
+      "std": 0.23706358724736437,
+      "latency": 5.991045633951823
+    },
+    {
+      "name": "Linear-50/50",
+      "relevance": 0.8164855072463767,
+      "std": 0.2301831531908555,
+      "latency": 6.026403109232585
+    },
+    {
+      "name": "Linear-30/70",
+      "relevance": 0.8162590579710144,
+      "std": 0.23546838489532015,
+      "latency": 6.154131889343262
+    },
+    {
+      "name": "Linear-10/90+none@20",
+      "relevance": 0.8148097826086955,
+      "std": 0.23172946182180598,
+      "latency": 6.1190446217854815
+    },
+    {
+      "name": "Linear-10/90+tfidf@50",
+      "relevance": 0.8132699275362318,
+      "std": 0.24754033395729624,
+      "latency": 6.447752316792806
+    },
+    {
+      "name": "Linear-10/90+crossencoder@30+boost1.0",
+      "relevance": 0.8132246376811594,
+      "std": 0.23493413693152557,
+      "latency": 6.649986902872722
+    },
+    {
+      "name": "Linear-60/40",
+      "relevance": 0.8114130434782608,
+      "std": 0.22780875032032527,
+      "latency": 6.140923500061035
+    }
+  ]
+}

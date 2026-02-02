@@ -1,0 +1,309 @@
+{
+  "timestamp": "2026-01-31 08:56:35",
+  "test_params": {
+    "decisions_count": 1000,
+    "vector_weights_tested": "0.0 to 0.5 (step 0.1)",
+    "keyword_weights_tested": "0.5 to 1.0 (step 0.1)",
+    "rerank_methods": [
+      "none",
+      "tfidf",
+      "crossencoder"
+    ]
+  },
+  "optimal_configs": {
+    "short": {
+      "config": {
+        "fusion": "linear",
+        "vector_weight": 0.0,
+        "keyword_weight": 1.0,
+        "rrf_k": 60,
+        "rerank": "none",
+        "rerank_top_n": 30,
+        "min_score": 0.1,
+        "boost_multi": 1.2,
+        "exact_match_boost": 1.0,
+        "fuzzy_boost": 0.0
+      },
+      "config_name": "V0/K100-none",
+      "metrics": {
+        "relevance": 0.9712825933756164,
+        "std_dev": 0.06607573635418676,
+        "latency_ms": 7.392896546257867,
+        "top_5": [
+          {
+            "name": "V0/K100-none",
+            "relevance": 0.9713
+          },
+          {
+            "name": "V0/K100-tfidf",
+            "relevance": 0.9713
+          },
+          {
+            "name": "V20/K80-crossencoder",
+            "relevance": 0.9598
+          },
+          {
+            "name": "V10/K90-tfidf",
+            "relevance": 0.9575
+          },
+          {
+            "name": "V0/K100-crossencoder",
+            "relevance": 0.9566
+          }
+        ]
+      }
+    },
+    "long": {
+      "config": {
+        "fusion": "linear",
+        "vector_weight": 0.0,
+        "keyword_weight": 1.0,
+        "rrf_k": 60,
+        "rerank": "none",
+        "rerank_top_n": 30,
+        "min_score": 0.1,
+        "boost_multi": 1.2,
+        "exact_match_boost": 1.0,
+        "fuzzy_boost": 0.0
+      },
+      "config_name": "V0/K100-none",
+      "metrics": {
+        "relevance": 0.5183403805496828,
+        "std_dev": 0.08298768077028675,
+        "latency_ms": 11.166532834370932,
+        "top_5": [
+          {
+            "name": "V0/K100-none",
+            "relevance": 0.5183
+          },
+          {
+            "name": "V10/K90-none",
+            "relevance": 0.5168
+          },
+          {
+            "name": "V20/K80-none",
+            "relevance": 0.5163
+          },
+          {
+            "name": "V0/K100-tfidf",
+            "relevance": 0.5063
+          },
+          {
+            "name": "V20/K80-tfidf",
+            "relevance": 0.5059
+          }
+        ]
+      }
+    },
+    "technical": {
+      "config": {
+        "fusion": "linear",
+        "vector_weight": 0.0,
+        "keyword_weight": 1.0,
+        "rrf_k": 60,
+        "rerank": "none",
+        "rerank_top_n": 30,
+        "min_score": 0.1,
+        "boost_multi": 1.2,
+        "exact_match_boost": 1.0,
+        "fuzzy_boost": 0.0
+      },
+      "config_name": "V0/K100-none",
+      "metrics": {
+        "relevance": 0.6123326286116982,
+        "std_dev": 0.21383550151395592,
+        "latency_ms": 7.9077402750651045,
+        "top_5": [
+          {
+            "name": "V0/K100-none",
+            "relevance": 0.6123
+          },
+          {
+            "name": "V0/K100-tfidf",
+            "relevance": 0.6123
+          },
+          {
+            "name": "V20/K80-none",
+            "relevance": 0.6088
+          },
+          {
+            "name": "V10/K90-crossencoder",
+            "relevance": 0.6069
+          },
+          {
+            "name": "V40/K60-tfidf",
+            "relevance": 0.606
+          }
+        ]
+      }
+    },
+    "conceptual": {
+      "config": {
+        "fusion": "linear",
+        "vector_weight": 0.0,
+        "keyword_weight": 1.0,
+        "rrf_k": 60,
+        "rerank": "tfidf",
+        "rerank_top_n": 30,
+        "min_score": 0.1,
+        "boost_multi": 1.2,
+        "exact_match_boost": 1.0,
+        "fuzzy_boost": 0.0
+      },
+      "config_name": "V0/K100-tfidf",
+      "metrics": {
+        "relevance": 0.6495771670190273,
+        "std_dev": 0.2375576473684015,
+        "latency_ms": 8.65262746810913,
+        "top_5": [
+          {
+            "name": "V0/K100-tfidf",
+            "relevance": 0.6496
+          },
+          {
+            "name": "RRF-k60-tfidf",
+            "relevance": 0.6474
+          },
+          {
+            "name": "V40/K60-tfidf",
+            "relevance": 0.6464
+          },
+          {
+            "name": "V50/K50-crossencoder",
+            "relevance": 0.646
+          },
+          {
+            "name": "V10/K90-tfidf",
+            "relevance": 0.6456
+          }
+        ]
+      }
+    },
+    "domain": {
+      "config": {
+        "fusion": "linear",
+        "vector_weight": 0.0,
+        "keyword_weight": 1.0,
+        "rrf_k": 60,
+        "rerank": "none",
+        "rerank_top_n": 30,
+        "min_score": 0.1,
+        "boost_multi": 1.3,
+        "exact_match_boost": 1.0,
+        "fuzzy_boost": 0.0
+      },
+      "config_name": "V0/K100-none",
+      "metrics": {
+        "relevance": 1.0,
+        "std_dev": 0.0,
+        "latency_ms": 7.991870244344075,
+        "top_5": [
+          {
+            "name": "V0/K100-none",
+            "relevance": 1.0
+          },
+          {
+            "name": "V0/K100-tfidf",
+            "relevance": 1.0
+          },
+          {
+            "name": "V0/K100-crossencoder",
+            "relevance": 1.0
+          },
+          {
+            "name": "V10/K90-none",
+            "relevance": 1.0
+          },
+          {
+            "name": "V10/K90-tfidf",
+            "relevance": 1.0
+          }
+        ]
+      }
+    },
+    "exact": {
+      "config": {
+        "fusion": "linear",
+        "vector_weight": 0.0,
+        "keyword_weight": 1.0,
+        "rrf_k": 60,
+        "rerank": "none",
+        "rerank_top_n": 30,
+        "min_score": 0.1,
+        "boost_multi": 1.2,
+        "exact_match_boost": 1.5,
+        "fuzzy_boost": 0.0
+      },
+      "config_name": "V0/K100-none",
+      "metrics": {
+        "relevance": 0.7499999999999998,
+        "std_dev": 0.2611164839335467,
+        "latency_ms": 8.654395739237467,
+        "top_5": [
+          {
+            "name": "V0/K100-none",
+            "relevance": 0.75
+          },
+          {
+            "name": "V0/K100-tfidf",
+            "relevance": 0.75
+          },
+          {
+            "name": "V10/K90-none",
+            "relevance": 0.75
+          },
+          {
+            "name": "V10/K90-tfidf",
+            "relevance": 0.75
+          },
+          {
+            "name": "V20/K80-none",
+            "relevance": 0.75
+          }
+        ]
+      }
+    },
+    "fuzzy": {
+      "config": {
+        "fusion": "linear",
+        "vector_weight": 0.2,
+        "keyword_weight": 0.8,
+        "rrf_k": 60,
+        "rerank": "tfidf",
+        "rerank_top_n": 30,
+        "min_score": 0.1,
+        "boost_multi": 1.2,
+        "exact_match_boost": 1.0,
+        "fuzzy_boost": 0.3
+      },
+      "config_name": "V20/K80-tfidf",
+      "metrics": {
+        "relevance": 0.59707540521494,
+        "std_dev": 0.13277135658305908,
+        "latency_ms": 18.734216690063477,
+        "top_5": [
+          {
+            "name": "V20/K80-tfidf",
+            "relevance": 0.5971
+          },
+          {
+            "name": "V10/K90-none",
+            "relevance": 0.5766
+          },
+          {
+            "name": "V50/K50-crossencoder",
+            "relevance": 0.5662
+          },
+          {
+            "name": "V10/K90-tfidf",
+            "relevance": 0.5648
+          },
+          {
+            "name": "V30/K70-tfidf",
+            "relevance": 0.5628
+          }
+        ]
+      }
+    }
+  }
+}

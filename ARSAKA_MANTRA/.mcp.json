@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "mantra": {
+      "type": "http",
+      "url": "http://localhost:8004/mcp",
+      "headers": {
+        "Authorization": "Bearer ${MANTRA_MCP_MASTER_KEY}"
+      }
+    }
+  }
+}
